@@ -123,10 +123,29 @@ async function findRelease(run, repository, tag) {
   return matches[0];
 }
 
+const uploadAttempts = 3;
+const defaultRetryDelay = (attempt) => new Promise((done) => setTimeout(done, attempt * 2_000));
+
+/** 大体积安装包上传易被网络中断；--clobber 让重试幂等，避免整条原生流水线重跑。 */
+async function uploadReleaseAsset(run, repository, tag, file, retryDelay) {
+  let failure;
+  for (let attempt = 1; attempt <= uploadAttempts; attempt += 1) {
+    try {
+      await run(["release", "upload", tag, file.path, "--repo", repository, "--clobber"]);
+      return;
+    } catch (error) {
+      failure = error;
+      if (attempt < uploadAttempts) await retryDelay(attempt);
+    }
+  }
+  throw failure;
+}
+
 export async function publishCodexRelease({
   directory,
   env = process.env,
   run = async (args) => (await exec("gh", args, { maxBuffer: 8 * 1024 * 1024 })).stdout,
+  retryDelay = defaultRetryDelay,
 }) {
   const identity = releaseIdentity(env);
   const assets = await collectReleaseAssets(directory);
@@ -147,23 +166,30 @@ export async function publishCodexRelease({
       "All six native desktop builds and Codex smoke checks passed. Installers include pinned Codex and verified remote components. SHA256SUMS files accompany every target.",
       "Unsigned installers are labelled accordingly. Automatic application updates remain disabled. Live external SSH/WSL, real account OAuth and plugin installs are not certified by native package smoke tests.",
     ].join("\n\n");
-    await run([
-      "release",
-      "create",
-      tag,
-      "--repo",
-      repository,
-      "--target",
-      sha,
-      "--draft",
-      `--prerelease=${prerelease}`,
-      "--latest=false",
-      "--title",
-      `ZCode Codex build ${env.GITHUB_RUN_ID} (${sha.slice(0, 12)})`,
-      "--notes",
-      notes,
-    ]);
-    release = await findRelease(run, repository, tag);
+    // 创建接口直接返回权威对象。草稿刚创建时按 tag 的接口必然 404，分页列表也可能
+    // 短暂不可见；重新查询会把一次成功的创建误判成身份不明，并留下一个空草稿。
+    release = JSON.parse(
+      await run([
+        "api",
+        "--method",
+        "POST",
+        `repos/${repository}/releases`,
+        "-f",
+        `tag_name=${tag}`,
+        "-f",
+        `target_commitish=${sha}`,
+        "-F",
+        "draft=true",
+        "-F",
+        `prerelease=${prerelease}`,
+        "-f",
+        "make_latest=false",
+        "-f",
+        `name=ZCode Codex build ${env.GITHUB_RUN_ID} (${sha.slice(0, 12)})`,
+        "-f",
+        `body=${notes}`,
+      ]),
+    );
   }
   if (
     !Number.isSafeInteger(release?.id) ||
@@ -174,7 +200,7 @@ export async function publishCodexRelease({
     throw new Error("Could not verify draft identity");
   for (const file of assets) {
     console.log(`[codex-release] Upload ${file.name}`);
-    await run(["release", "upload", tag, file.path, "--repo", repository, "--clobber"]);
+    await uploadReleaseAsset(run, repository, tag, file, retryDelay);
   }
   release = JSON.parse(await run(["api", `repos/${repository}/releases/${release.id}`]));
   verifyUploaded(release, assets, sha);

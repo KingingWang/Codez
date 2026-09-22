@@ -176,16 +176,60 @@ export async function verifyCodexBinary(path, asset) {
   if ((await sha256File(path)) !== asset.sha256) throw new Error("Codex binary checksum mismatch");
 }
 
-async function downloadVerifiedBinary(path, asset, fetchImpl) {
+const downloadAttempts = 4;
+const downloadRetryBaseMs = 1_500;
+
+function integrityError(message) {
+  return Object.assign(new Error(message), { codexIntegrity: true });
+}
+
+/** 完整性问题必须 fail closed；只有网络重置、超时、429 与 5xx 属于可重试的瞬时故障。 */
+function retryableDownloadError(error) {
+  if (error?.codexIntegrity) return false;
+  const status = Number(error?.codexStatus ?? 0);
+  return status === 0 || status === 429 || status >= 500;
+}
+
+export async function downloadVerifiedBinary(
+  path,
+  asset,
+  fetchImpl,
+  {
+    attempts = downloadAttempts,
+    retryDelay = (attempt) =>
+      new Promise((done) => setTimeout(done, attempt * downloadRetryBaseMs)),
+  } = {},
+) {
+  let failure;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await downloadVerifiedAttempt(path, asset, fetchImpl);
+      return;
+    } catch (error) {
+      if (!retryableDownloadError(error)) throw error;
+      failure = error;
+      // Release CDN 的 ECONNRESET/5xx 会让整条原生流水线白跑十几分钟；有界重试即可恢复。
+      if (attempt === attempts) break;
+      await rm(path, { force: true });
+      await retryDelay(attempt);
+    }
+  }
+  throw failure;
+}
+
+async function downloadVerifiedAttempt(path, asset, fetchImpl) {
   const response = await fetchImpl(asset.url, { signal: AbortSignal.timeout(600_000) });
   if (!response.ok || !response.body)
-    throw new Error(`Codex download failed: HTTP ${response.status}`);
+    throw Object.assign(new Error(`Codex download failed: HTTP ${response.status}`), {
+      codexStatus: response.status,
+    });
   let size = 0;
   const hash = createHash("sha256");
   const verifier = new Transform({
     transform(chunk, _encoding, callback) {
       size += chunk.length;
-      if (size > asset.size) return callback(new Error("Codex download size exceeds manifest"));
+      if (size > asset.size)
+        return callback(integrityError("Codex download size exceeds manifest"));
       hash.update(chunk);
       callback(null, chunk);
     },
@@ -195,8 +239,8 @@ async function downloadVerifiedBinary(path, asset, fetchImpl) {
     verifier,
     createWriteStream(path, { flags: "wx", mode: 0o755 }),
   );
-  if (size !== asset.size) throw new Error("Codex download size mismatch");
-  if (hash.digest("hex") !== asset.sha256) throw new Error("Codex download checksum mismatch");
+  if (size !== asset.size) throw integrityError("Codex download size mismatch");
+  if (hash.digest("hex") !== asset.sha256) throw integrityError("Codex download checksum mismatch");
   await chmod(path, 0o755);
 }
 

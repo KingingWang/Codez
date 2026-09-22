@@ -20,6 +20,9 @@ const env = {
 };
 const extensions = { darwin: [".dmg", ".zip"], linux: [".AppImage", ".deb"], win32: [".exe"] };
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const isCreate = (args) =>
+  args[0] === "api" && args[2] === "POST" && String(args[3]).endsWith("/releases");
+const isList = (args) => args[0] === "api" && String(args[1]).endsWith("/releases?per_page=100");
 
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "codex-release-"));
@@ -39,10 +42,18 @@ async function fixture(t) {
   return root;
 }
 
-function fakeGithub({ existing, failUpload = false, mainSha = sha } = {}) {
+function fakeGithub({
+  existing,
+  failUpload = false,
+  mainSha = sha,
+  hideCreated = false,
+  flakyUploads = 0,
+} = {}) {
   const state = {
     release: existing ? { id: 123, tag_name: releaseIdentity(env).tag, ...existing } : undefined,
     calls: [],
+    created: false,
+    uploadAttempts: 0,
   };
   const run = async (args) => {
     state.calls.push(args);
@@ -50,29 +61,42 @@ function fakeGithub({ existing, failUpload = false, mainSha = sha } = {}) {
       if (!state.release || state.release.draft) throw new Error("HTTP 404: Not Found");
       return JSON.stringify(state.release);
     }
-    if (args[0] === "api" && args[1].endsWith("/releases?per_page=100")) {
+    if (isList(args)) {
       assert.ok(args.includes("--paginate") && args.includes("--slurp"));
+      // 复现真实故障：刚创建的草稿在分页列表里短暂不可见。
+      const hidden = hideCreated && state.created;
       return JSON.stringify([
         [{ id: 99, tag_name: "unrelated", draft: true }],
-        state.release ? [state.release] : [],
+        state.release && !hidden ? [state.release] : [],
       ]);
     }
     if (args[0] === "api" && args[1].endsWith("/releases/123"))
       return JSON.stringify(state.release);
     if (args[0] === "api" && args[1].endsWith("/commits/main"))
       return JSON.stringify({ sha: mainSha });
-    if (args[1] === "create") {
+    if (isCreate(args)) {
+      const fields = {};
+      for (let index = 4; index < args.length; index += 2) {
+        const separator = args[index + 1].indexOf("=");
+        fields[args[index + 1].slice(0, separator)] = args[index + 1].slice(separator + 1);
+      }
+      assert.equal(fields.tag_name, releaseIdentity(env).tag);
       state.release = {
         id: 123,
-        tag_name: args[2],
-        draft: true,
-        target_commitish: sha,
+        tag_name: fields.tag_name,
+        draft: fields.draft === "true",
+        prerelease: fields.prerelease === "true",
+        target_commitish: fields.target_commitish,
         assets: [],
       };
-      return "created";
+      state.created = true;
+      return JSON.stringify(state.release);
     }
     if (args[1] === "upload") {
+      state.uploadAttempts += 1;
       if (failUpload) throw new Error("upload failed");
+      // 模拟 CDN 连接重置：前若干次上传失败，之后 --clobber 重传必须成功。
+      if (state.uploadAttempts <= flakyUploads) throw new Error("unexpected EOF");
       const file = args[3];
       const bytes = await readFile(file);
       const name = file.split(/[\\/]/).at(-1);
@@ -135,25 +159,56 @@ test("publish verifies all uploads before making release public and main Latest"
   await publishCodexRelease({ directory: await fixture(t), env, run: github.run });
   assert.equal(github.state.release.draft, false);
   assert.equal(github.state.release.assets.length, 16);
-  assert.ok(github.state.calls.find((args) => args[1] === "create").includes(sha));
+  assert.ok(github.state.calls.find(isCreate).includes(`target_commitish=${sha}`));
   assert.ok(github.state.calls.at(-1).includes("--latest=true"));
   assert.ok(github.state.calls.some((args) => args[1].endsWith("/releases/123")));
+});
+
+test("created draft identity survives release-list read-after-write lag", async (t) => {
+  const github = fakeGithub({ hideCreated: true });
+  await publishCodexRelease({ directory: await fixture(t), env, run: github.run });
+  assert.equal(github.state.release.draft, false);
+  assert.equal(github.state.release.assets.length, 16);
+  // 身份必须来自创建接口的返回体；创建后不能再依赖一次可能滞后的列表查询。
+  assert.equal(github.state.calls.filter(isList).length, 1);
 });
 
 test("upload failure stays draft, rerun resumes, published rerun never overwrites", async (t) => {
   const root = await fixture(t);
   const failure = fakeGithub({ failUpload: true });
   await assert.rejects(
-    publishCodexRelease({ directory: root, env, run: failure.run }),
+    publishCodexRelease({
+      directory: root,
+      env,
+      run: failure.run,
+      retryDelay: async () => {},
+    }),
     /upload failed/,
   );
+  // 有界重试用尽后才失败，且绝不能提前公开草稿。
+  assert.equal(failure.state.uploadAttempts, 3);
   assert.equal(failure.state.release.draft, true);
   assert.ok(!failure.state.calls.some((args) => args[1] === "edit"));
   const retry = fakeGithub({ existing: failure.state.release });
   await publishCodexRelease({ directory: root, env, run: retry.run });
   const rerun = fakeGithub({ existing: retry.state.release });
   await publishCodexRelease({ directory: root, env, run: rerun.run });
-  assert.ok(!rerun.state.calls.some((args) => ["create", "upload", "edit"].includes(args[1])));
+  assert.ok(
+    !rerun.state.calls.some((args) => isCreate(args) || ["upload", "edit"].includes(args[1])),
+  );
+});
+
+test("transient upload resets are retried and still fully verified", async (t) => {
+  const github = fakeGithub({ flakyUploads: 2 });
+  await publishCodexRelease({
+    directory: await fixture(t),
+    env,
+    run: github.run,
+    retryDelay: async () => {},
+  });
+  assert.equal(github.state.release.draft, false);
+  assert.equal(github.state.release.assets.length, 16);
+  assert.equal(github.state.uploadAttempts, 18);
 });
 
 test("older main and feature results do not become Latest", async (t) => {
