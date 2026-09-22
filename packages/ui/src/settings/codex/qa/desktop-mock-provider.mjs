@@ -2,7 +2,7 @@
 import { createServer } from "node:http";
 import { once } from "node:events";
 
-export async function startDesktopMockProvider() {
+export async function startDesktopMockProvider({ reuseItemId = false } = {}) {
   const requests = [];
   const pending = new Set();
   const completed = [];
@@ -49,7 +49,8 @@ export async function startDesktopMockProvider() {
       const index = requests.length;
       const text = `Isolated desktop QA response ${index}`;
       const item = {
-        id: `msg_qa_${index}`,
+        // 兼容性回归：部分 provider 在不同轮次复用消息 ID，不能导致桌面第二轮退出。
+        id: reuseItemId ? "msg_qa_reused" : `msg_qa_${index}`,
         type: "message",
         role: "assistant",
         status: "completed",

@@ -3,6 +3,7 @@ import type { CodexNotification, CodexRpcPort } from "./contract.js";
 import { array, object, string, type JsonObject } from "./json.js";
 import { decorateNativeThread } from "./command-input.js";
 import { mergeNativeTurn } from "./merge-turn.js";
+import { canonicalNativeThreads } from "./projection.js";
 
 export class DeletedThreadError extends Error {
   constructor() {
@@ -273,6 +274,7 @@ export class ThreadStateStore {
       if (cursor && seen.has(cursor)) throw new Error("Repeated native thread cursor");
       if (cursor) seen.add(cursor);
     } while (cursor);
-    return threads;
+    // 分页只收集原始事实；完整校验与同 ID rollout 选择由投影单一 owner 处理。
+    return canonicalNativeThreads(threads);
   }
 }

@@ -11,7 +11,10 @@ const packagedExecutable = join(packagedRoot, "zcode-codex");
 const isolated = await mkdtemp(join(tmpdir(), "codex-ui-qa-"));
 for (const name of ["home", "config", "data", "cache", "codex", "workspace", "session", "userData"])
   await mkdir(join(isolated, name));
-const mock = process.env.CODEX_UI_QA_MOCK === "1" ? await startDesktopMockProvider() : null;
+const mock =
+  process.env.CODEX_UI_QA_MOCK === "1"
+    ? await startDesktopMockProvider({ reuseItemId: process.env.CODEX_UI_QA_REUSE_ITEM_ID === "1" })
+    : null;
 await writeFile(
   join(isolated, "codex/config.toml"),
   `model_provider = "ui_qa"\nmodel = "ui-qa-offline"\napproval_policy = "never"\nsandbox_mode = "read-only"\n[model_providers.ui_qa]\nname = "Isolated UI QA"\nbase_url = "${mock?.url ?? "http://127.0.0.1:9"}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n[analytics]\nenabled = false\n`,

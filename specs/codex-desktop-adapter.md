@@ -82,6 +82,51 @@ closed, and native config/skills/plugin requests stay on the canonical execution
 
 ## Desktop surfaces
 
+### Follow-up turn reliability and send latency
+
+- Native item IDs are scoped to a turn, not a whole conversation. Presentation
+  entity IDs encode `(turnId, itemId)` without collisions; native RPCs retain raw
+  IDs. Repeated IDs inside one turn remain invalid. Resume and live projections
+  use the same identity mapping, including edit/revert, tools and attachments.
+  V4 pending interactions carry an additive optional `turnId`; native approvals
+  populate it so repeated tool IDs cannot attach to another turn. Existing legacy
+  interaction producers may omit it; reply authority remains in the broker.
+- Session indexes have one entry per native thread ID even when multiple rollout
+  files or pages describe it. Choose the most recently updated record; ties keep
+  the first encountered record. Preserve first-encounter ordering and do not
+  mutate or remove native history. Invalid records still fail validation.
+- Codex remains the sole execution authority. Conversation event processing must
+  not await sidebar index/configuration IO. The existing subscription publisher
+  owns coalescing, sequence and stale-route rejection; no parallel event queue or
+  retry of accepted mutations is introduced.
+
+```text
+native notification → ordered conversation state → conversation publisher
+                  └→ independent sidebar invalidation → coalesced snapshot IO
+desktop continuous / mobile replayable → same owner, separate existing routes
+```
+
+- Composer preparation reuses the existing workspace-scoped model catalog owner;
+  a ready catalog must not be re-fetched on every send. Missing/invalidated state
+  still awaits authoritative discovery, configuration changes invalidate it,
+  and stale reads from another workspace cannot authorize sending.
+  The hook keeps one scope entry and shares its in-flight read. Explicit settings
+  config/account success invalidates all mounted catalogs before checking whether
+  the settings panel is still mounted (native configuration is global). The UI
+  invalidation signal carries no configuration values and is not an authority or
+  a second cache. Focus/runtime restart remain refresh boundaries; invalidation
+  is synchronous, and StrictMode replay/unmount cannot authorize stale readers.
+- Fatal production diagnostics expose an allowlisted failure category and safe
+  code-location information, never arbitrary native error text, prompts, paths,
+  tokens or user IDs. Fatal execution/transport failures are not silently retried.
+  Shutdown attempts native transport close even when derived-resource cleanup
+  fails, and reports cleanup rejection through the same bounded diagnostic path.
+- Regression acceptance: two sequential completed turns with reused item IDs;
+  duplicate thread records within/across pages; deterministic selection; delayed
+  sidebar IO while next-turn events flow; both delivery modes; close during an
+  outstanding refresh; warm sends without extra catalog RPC; production failure
+  diagnostics that exclude synthetic secrets.
+
 Required: create/resume/list/fork/archive/delete/name, text/image input, streaming,
 tool/plan/diff display, stop/steer/native queue, approvals/questions, account login
 and logout, models/reasoning/permissions/configuration, skills/MCP/plugins, history

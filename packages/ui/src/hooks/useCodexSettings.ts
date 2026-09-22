@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { codexRequestSchema, type CodexRequest } from "@zcode/shared";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
+import { invalidateCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
 import {
   readCodexResource,
   type CodexResource,
@@ -93,6 +94,18 @@ export function useCodexSettings({
         workspaceIdentity,
         request: codexRequestSchema.parse(request),
       });
+      // 原生全局写入已成功时，即使面板刚卸载/切 workspace，也必须先失效目录。
+      // 登录完成的主动刷新同样会改变可用模型，故 account/read 也触发失效。
+      if (
+        [
+          "config/value/write",
+          "config/batchWrite",
+          "account/login/start",
+          "account/logout",
+          "account/read",
+        ].includes(request.method)
+      )
+        invalidateCodexModelCatalog();
       if (!mounted.current || currentScope.current !== scope)
         throw new Error("Codex workspace changed; refresh current state");
       return result;

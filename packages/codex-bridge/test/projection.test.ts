@@ -27,7 +27,7 @@ test("conversation is schema-valid, deterministic, pure and preserves caller wat
   assert.equal(result.rows.firstRowId, 0);
   assert.equal(result.rows.totalCount, 4);
   const user = result.rows.window[1];
-  assert.equal(user?.entityId, "user-1");
+  assert.equal(user?.entityId, "codex:turn:turn-1:item:user-1");
   assert.equal(user?.kind === "userInput" && user.sourceCommandId, "command-1");
   assert.equal(user?.kind === "userInput" && user.clientId, undefined);
   assert.equal(result.rows.window[0]?.createdAt, 101000);
@@ -115,6 +115,113 @@ test("malformed/partial histories and duplicate IDs fail before projecting misle
   assert.throws(
     () => projectThread(threadFixture(), { workspacePath: "/workspace", seq: 1 }),
     /epoch/i,
+  );
+});
+
+test("follow-up turns may reuse native item IDs without colliding presentation identities", () => {
+  const thread = threadFixture();
+  const first = thread.turns[0]!;
+  const second = {
+    ...first,
+    id: "turn-2",
+    startedAt: 121,
+    completedAt: 122,
+    items: [
+      {
+        type: "userMessage" as const,
+        id: "user-1",
+        clientId: "command-2",
+        content: [{ type: "text" as const, text: "Follow-up", text_elements: [] }],
+      },
+      { type: "agentMessage" as const, id: "answer-1", text: "Follow-up response" },
+    ],
+  };
+  thread.turns.push(second);
+  const snapshot = projectThread(thread, options);
+  const identities = snapshot.rows.window.map((row) => row.entityId);
+  assert.deepEqual(identities, [
+    "codex:turn:turn-1",
+    "codex:turn:turn-1:item:user-1",
+    "codex:turn:turn-1:item:reason-1",
+    "codex:turn:turn-1:item:answer-1",
+    "codex:turn:turn-2",
+    "codex:turn:turn-2:item:user-1",
+    "codex:turn:turn-2:item:answer-1",
+  ]);
+  assert.equal(new Set(identities).size, identities.length);
+  assert.equal(snapshot.rows.window[1]?.turnId, "turn-1");
+  assert.equal(snapshot.rows.window[5]?.turnId, "turn-2");
+});
+
+test("turn header entity IDs encode delimiter-shaped native turn IDs", () => {
+  const thread = threadFixture();
+  thread.turns = [
+    {
+      ...thread.turns[0]!,
+      id: "t:item:i",
+      items: [
+        {
+          type: "userMessage" as const,
+          id: "header-user",
+          content: [{ type: "text" as const, text: "Special turn", text_elements: [] }],
+        },
+      ],
+    },
+    {
+      ...thread.turns[0]!,
+      id: "t",
+      items: [
+        { type: "agentMessage" as const, id: "i", text: "Collides with an unencoded header" },
+      ],
+    },
+  ];
+  const identities = projectThread(thread, options).rows.window.map((row) => row.entityId);
+  assert.deepEqual(identities, [
+    "codex:turn:t%3Aitem%3Ai",
+    "codex:turn:t%3Aitem%3Ai:item:header-user",
+    "codex:turn:t",
+    "codex:turn:t:item:i",
+  ]);
+  assert.equal(new Set(identities).size, identities.length);
+});
+
+test("duplicate thread records validate first and index only the newest first-encounter entry", () => {
+  const older = threadFixture();
+  const newer = {
+    ...threadFixture(),
+    preview: "Newer rollout",
+    updatedAt: 130,
+    turns: [],
+  };
+  const other = { ...threadFixture(), id: "thread-2", updatedAt: 125 };
+  const index = projectSessionsIndex([older, other, newer], {
+    workspacePath: "/workspace",
+    logEpoch: "host-index-epoch",
+  });
+  assert.deepEqual(
+    index.sessions.map((session) => [session.sessionId, session.title, session.lastActivityAt]),
+    [
+      ["thread-1", "Newer rollout", 130000],
+      ["thread-2", "Hello", 125000],
+    ],
+  );
+
+  const stale = { ...newer, updatedAt: 90 };
+  const tieFirst = projectSessionsIndex(
+    [newer, stale, { ...newer, updatedAt: 130, preview: "Late tie" }],
+    { workspacePath: "/workspace", logEpoch: "host-index-epoch" },
+  );
+  assert.equal(tieFirst.sessions.length, 1);
+  assert.equal(tieFirst.sessions[0]?.title, "Newer rollout");
+
+  const invalid = { ...older, updatedAt: "recent" };
+  assert.throws(
+    () =>
+      projectSessionsIndex([newer, invalid], {
+        workspacePath: "/workspace",
+        logEpoch: "host-index-epoch",
+      }),
+    /updatedAt/,
   );
 });
 

@@ -25,6 +25,7 @@ import { CodexSettingsSection } from "../CodexSettingsSection.js";
 import { CodexComposerModelControls } from "../CodexComposerModelControls.js";
 import { V4ComposerModeSwitch } from "@/v4/composer/V4ComposerModeControls.js";
 import type { V4ComposerConfigPicker } from "@/v4/composer/configPickerState.js";
+import { CatalogLifetimeControls, waitForCatalogFixture } from "./catalog-lifetime-fixture.js";
 import "@/styles.css";
 
 const model = (name: string, isDefault = false) => ({
@@ -40,7 +41,7 @@ const model = (name: string, isDefault = false) => ({
     { reasoningEffort: "high", description: "Detailed" },
   ],
 });
-const requests: CodexRequest[] = [];
+const requests: Array<CodexRequest & { workspacePath?: string }> = [];
 let modelFailure = false;
 let legacyReads = 0;
 let interactionCommandCount = 0;
@@ -55,16 +56,40 @@ const config = {
     { name: { type: "user", file: "/isolated/config.toml" }, version: "fixture-v1", config: {} },
   ],
 };
+const otherWorkspaceConfig = {
+  config: {
+    model: "workspace-model",
+    model_provider: "native-provider",
+    model_reasoning_effort: "medium",
+  },
+  origins: {},
+  layers: [
+    {
+      name: { type: "user", file: "/isolated/other-config.toml" },
+      version: "fixture-v1",
+      config: {},
+    },
+  ],
+};
 const emptyEvent = () => ({ dispose() {} });
 const services = {
   zcodeAgentService: {
     onAgentRuntimeRestarted: emptyEvent,
-    codexRequest: async ({ request }: { request: CodexRequest }) => {
-      requests.push(request);
+    codexRequest: async ({
+      request,
+      workspacePath,
+    }: {
+      request: CodexRequest;
+      workspacePath: string;
+    }) => {
+      requests.push(request.method === "config/read" ? { ...request, workspacePath } : request);
       switch (request.method) {
         case "config/read":
-          return structuredClone(config);
+          return structuredClone(
+            workspacePath === "/isolated/other-workspace" ? otherWorkspaceConfig : config,
+          );
         case "model/list":
+          await waitForCatalogFixture();
           if (modelFailure) throw new Error("Fixture catalog unavailable");
           return { data: [model("native-model", true), model("second-model")], nextCursor: null };
         case "account/read":
@@ -133,15 +158,17 @@ function Harness() {
   const [output, setOutput] = useState<unknown>(null);
   const [rejectNext, setRejectNext] = useState(false);
   const [requestNumber, setRequestNumber] = useState(0);
-  const read = useCodexModelCatalog({ workspacePath: "/isolated/workspace", enabled: true });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [workspacePath, setWorkspacePath] = useState("/isolated/workspace");
+  const read = useCodexModelCatalog({ workspacePath, enabled: true });
   const gate = useDraftModelReadinessGate({
-    workspacePath: "/isolated/workspace",
+    workspacePath,
     sessionId: session,
     modelSelectionService: services.modelSelectionService,
     codex: true,
   });
   const draft = useDraftConfigControl({
-    workspacePath: "/isolated/workspace",
+    workspacePath,
     sessionId: session,
     modelSelectionService: services.modelSelectionService,
     codex: true,
@@ -211,6 +238,17 @@ function Harness() {
           {session ? "NewTask" : "Active conversation"}
         </Button>
         <Button
+          onClick={() =>
+            setWorkspacePath((current) =>
+              current === "/isolated/workspace"
+                ? "/isolated/other-workspace"
+                : "/isolated/workspace",
+            )
+          }
+        >
+          Switch workspace
+        </Button>
+        <Button
           onClick={() => {
             config.config.model =
               config.config.model === "vendor/private" ? "native-model" : "vendor/private";
@@ -235,10 +273,12 @@ function Harness() {
         <Button onClick={() => setOutput({ requests, legacyReads, interactionCommandCount })}>
           Inspect RPC log
         </Button>
+        <Button onClick={() => setSettingsOpen((open) => !open)}>Toggle settings</Button>
       </div>
+      <CatalogLifetimeControls read={read} output={setOutput} />
       <section aria-label="Composer" className="space-y-2">
         <V4ComposerModeSwitch
-          workspacePath="/isolated/workspace"
+          workspacePath={workspacePath}
           draftConfig={draft.draftConfig}
           disabled={busy}
           activeConfigPicker={picker}
@@ -296,7 +336,7 @@ function Harness() {
           })}
         />
       </div>
-      <CodexSettingsSection workspacePath="/isolated/workspace" />
+      {settingsOpen ? <CodexSettingsSection workspacePath={workspacePath} /> : null}
       <V4ConversationContext.Provider value={conversation}>
         <V4InteractionDialogs
           sessionId="fixture-session"

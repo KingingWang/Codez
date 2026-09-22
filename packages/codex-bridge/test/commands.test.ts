@@ -128,7 +128,11 @@ test("CAS rejects stale revision/epoch and invalid envelopes without side effect
     ["epoch", { baseLogEpoch: "old-epoch" }],
   ] as const) {
     const ack = await h.execute({
-      ...h.command("forkAssistant", { target: { rowId: 3, entityId: "answer-1" } }, id),
+      ...h.command(
+        "forkAssistant",
+        { target: { rowId: 3, entityId: "codex:turn:turn-1:item:answer-1" } },
+        id,
+      ),
       ...override,
     });
     assert.equal(ack.status, "stale");
@@ -200,7 +204,9 @@ test("fork resolves stable row+entity to native turn and rejects stale target id
   assert.equal(bad.status, "failed");
   assert.deepEqual(h.rpc.calls, []);
   const ack = await h.execute(
-    h.command("forkAssistant", { target: { rowId: 3, entityId: "answer-1" } }),
+    h.command("forkAssistant", {
+      target: { rowId: 3, entityId: "codex:turn:turn-1:item:answer-1" },
+    }),
   );
   assert.equal(ack.status, "accepted");
   assert.deepEqual(h.rpc.params("thread/fork"), [{ threadId: sessionId, lastTurnId: "turn-1" }]);
@@ -212,7 +218,7 @@ test("unsupported file rewind fails closed without destructive RPC", async (t) =
   for (const type of ["applyFileRewind", "editUserQuery"] as const) {
     const ack = await h.execute(
       h.command(type, {
-        target: { rowId: 1, entityId: "user-1" },
+        target: { rowId: 1, entityId: "codex:turn:turn-1:item:user-1" },
         newText: "edit",
         workspaceMode: "rewind",
       }),

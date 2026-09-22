@@ -9,8 +9,9 @@ import { DeletedThreadError, type ThreadStateStore } from "./thread-state.js";
 import type { InteractionBroker } from "./interactions.js";
 import { readControlModelSettings, readControlPresentation } from "./control-presentation.js";
 import { projectThread, projectSessionsIndex } from "./projection.js";
-import { array, object } from "./json.js";
+import { array, object, string } from "./json.js";
 import { projectTurnFileChanges } from "./file-changes.js";
+import { itemEntityId } from "./projection-rows.js";
 import type { AttachmentStore, AttachmentReadAuthorization } from "./attachments.js";
 
 export class BridgeSnapshots {
@@ -94,10 +95,23 @@ export class BridgeSnapshots {
         }
       }
       if (row.kind === "userInput" && this.attachments) {
-        const user = array(state.thread.turns)
-          .flatMap((turn) => array(object(turn).items))
+        // entityId 是 turn 作用域的稳定展示键；与投影同一纯函数比较即可找回原始
+        // userMessage，不做解码，也不依赖 rowId/header 的位置布局。
+        const turn = array(state.thread.turns)
           .map(object)
-          .find((item) => item.id === row.entityId && item.type === "userMessage");
+          .find((candidate) => candidate.id === row.turnId);
+        const entityId = row.entityId;
+        const nativeTurnId = typeof turn?.id === "string" ? turn.id : undefined;
+        const user =
+          typeof entityId === "string" && nativeTurnId !== undefined
+            ? array(turn?.items)
+                .map(object)
+                .find(
+                  (item) =>
+                    item.type === "userMessage" &&
+                    itemEntityId(nativeTurnId, string(item.id)) === entityId,
+                )
+            : undefined;
         const refs = await Promise.all(
           array(user?.content).map(async (part) => {
             const input = object(part);

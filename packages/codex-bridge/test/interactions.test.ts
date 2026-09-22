@@ -31,7 +31,9 @@ test("approval preserves reverse request id and rejects cross-thread or duplicat
       availableDecisions: ["accept", "decline"],
     },
   });
-  const id = broker.list("thread")[0]!.interactionId;
+  const pending = broker.list("thread")[0]!;
+  assert.equal(pending.turnId, "turn");
+  const id = pending.interactionId;
   await assert.rejects(broker.resolve("other", id, { optionId: "accept" }), /stale/);
   await broker.resolve("thread", id, { optionId: "accept" });
   assert.deepEqual(responses, [{ id: 45, result: { decision: "accept" } }]);

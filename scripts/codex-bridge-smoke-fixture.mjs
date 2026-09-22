@@ -23,13 +23,14 @@ export function pixelPng() {
   ]);
 }
 
-export function createSmokeModelServer() {
+export function createSmokeModelServer({ reuseItemId = false } = {}) {
   let requestCount = 0;
   const server = createServer((req, res) => {
     req.resume();
     requestCount += 1;
     const item = {
-      id: `msg_${requestCount}`,
+      // 默认保留原始 unique-ID 控制组；opt-in 复用真实协议允许的跨 turn item ID。
+      id: reuseItemId ? "msg_reused_across_turns" : `msg_${requestCount}`,
       type: "message",
       role: "assistant",
       status: "completed",

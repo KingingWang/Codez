@@ -225,15 +225,34 @@ export function projectSessionSummary(thread: unknown, workspacePath: string): S
   });
 }
 
+/** Canonical native thread-list input: validate every record, then retain one newest record
+ * per native thread ID. Equal timestamps keep the first encountered record and first position. */
+export function canonicalNativeThreads(threads: readonly unknown[]): unknown[] {
+  const parsed = threads.map((thread) => codexThreadSchema.parse(thread));
+  const winner = new Map<string, { thread: CodexThread; updatedAt: number }>();
+  const order: string[] = [];
+  for (const thread of parsed) {
+    const existing = winner.get(thread.id);
+    if (!existing) {
+      winner.set(thread.id, { thread, updatedAt: thread.updatedAt });
+      order.push(thread.id);
+      continue;
+    }
+    // 同一 rollout 可在多个文件/分页出现；先完整校验，再保留最新且同时间先遇到的记录。
+    if (thread.updatedAt > existing.updatedAt)
+      winner.set(thread.id, { thread, updatedAt: thread.updatedAt });
+  }
+  return order.map((id) => winner.get(id)!.thread);
+}
+
 export function projectSessionsIndex(
   threads: readonly unknown[],
   options: SessionsIndexOptions,
 ): SessionsIndexSnapshot {
   const workspaceId = workspaceKey(options);
-  const sessions = threads.map((thread) => projectSessionSummary(thread, workspaceId));
-  if (new Set(sessions.map((session) => session.sessionId)).size !== sessions.length) {
-    throw new Error("Duplicate Codex thread ID in sessions index");
-  }
+  const sessions = canonicalNativeThreads(threads).map((thread) =>
+    projectSessionSummary(thread, workspaceId),
+  );
   return sessionsIndexSnapshotSchema.parse({
     protocolVersion: 1,
     workspaceId,

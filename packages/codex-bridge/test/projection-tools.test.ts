@@ -24,7 +24,7 @@ test("unknown native items remain visible but malformed known items fail closed"
   const fallback = snapshot.rows.window.slice(-nativeTypes.length);
   assert.deepEqual(
     fallback.map((row) => row.entityId),
-    nativeTypes,
+    nativeTypes.map((type) => `codex:turn:turn-1:item:${type}`),
   );
   for (const row of fallback) {
     assert.equal(row.kind, "toolCall");
@@ -195,6 +195,57 @@ test("pending approvals are validated and tied to the matching tool, not other t
   );
   if (interaction.payload.kind === "permission") interaction.payload.summary = "Changed by caller";
   assert.notDeepEqual(snapshot.pendingInteractions, [interaction]);
+});
+
+test("reused native tool IDs do not inherit an approval from another turn", () => {
+  const thread = threadFixture();
+  thread.turns.push({
+    ...thread.turns[0]!,
+    id: "turn-2",
+    startedAt: 121,
+    completedAt: null,
+    items: [
+      {
+        type: "commandExecution",
+        id: "reason-1",
+        command: "pwd",
+        cwd: "/workspace",
+        status: "inProgress",
+      },
+    ],
+  });
+  thread.status = { type: "active", activeFlags: ["waitingOnApproval"] };
+  const interaction: PendingInteraction = {
+    interactionId: "turn-2-approval",
+    kind: "permission",
+    turnId: "turn-2",
+    anchorRowId: null,
+    createdAt: 122000,
+    payload: {
+      kind: "permission",
+      toolCallId: "reason-1",
+      toolName: "Bash",
+      summary: "Run pwd in turn 2",
+      detail: { command: "pwd" },
+      options: [{ optionId: "allow", label: "Allow", kind: "allowOnce" }],
+    },
+  };
+  const snapshot = projectThread(thread, {
+    workspacePath: "/workspace",
+    interactions: [interaction],
+  });
+  const reusedReasoning = snapshot.rows.window.find(
+    (row) => row.entityId === "codex:turn:turn-1:item:reason-1",
+  );
+  const currentTool = snapshot.rows.window.find(
+    (row) => row.entityId === "codex:turn:turn-2:item:reason-1",
+  );
+  assert.equal(reusedReasoning?.kind, "reasoning");
+  assert.equal(currentTool?.kind === "toolCall" && currentTool.status, "pendingApproval");
+  assert.equal(
+    currentTool?.kind === "toolCall" && currentTool.approvalInteractionId,
+    "turn-2-approval",
+  );
 });
 
 test("reasoning and user media fallbacks retain content without inventing attachment facts", () => {

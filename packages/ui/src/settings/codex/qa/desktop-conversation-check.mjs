@@ -33,6 +33,7 @@ const page = browser
 assert.ok(page, "Refuse a non-QA renderer");
 const checks = [];
 const errors = [];
+const sendTimings = [];
 page.on("pageerror", (error) => errors.push(error.message));
 async function until(predicate) {
   const deadline = Date.now() + 30_000;
@@ -75,8 +76,13 @@ try {
     .setInputFiles({ name: "qa-pixel.png", mimeType: "image/png", buffer: pixelPng() });
   await until(() => page.getByRole("button", { name: "Send", exact: true }).isEnabled());
   await page.screenshot({ path: join(evidence, "first-image-ready.png") });
+  const firstSendAt = performance.now();
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await until(async () => (await state()).requests.length === 1);
+  sendTimings.push({
+    turn: 1,
+    clickToObservedProviderMs: Math.round(performance.now() - firstSendAt),
+  });
   const first = (await state()).requests[0];
   assert.deepEqual(first, { model: "ui-qa-offline", imageCount: 1, imageIsDataUrl: true });
   checks.push(
@@ -112,8 +118,13 @@ try {
 
   await fetch(new URL("/qa/hold", mockUrl), { method: "POST" });
   await composer.fill("QA held turn before queued image. No tools.");
+  const secondSendAt = performance.now();
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await until(async () => (await state()).requests.length === 2);
+  sendTimings.push({
+    turn: 2,
+    clickToObservedProviderMs: Math.round(performance.now() - secondSendAt),
+  });
   await until(() =>
     page.getByRole("combobox", { name: "Default model", exact: true }).isDisabled(),
   );
@@ -161,6 +172,7 @@ try {
         mode: packaged ? "packaged" : "dev",
         renderer: page.url(),
         checks,
+        sendTimings,
         state: await state(),
         errors,
       },
@@ -168,7 +180,7 @@ try {
       2,
     ),
   );
-  console.log(JSON.stringify({ status: "passed", evidence, checks }, null, 2));
+  console.log(JSON.stringify({ status: "passed", evidence, checks, sendTimings }, null, 2));
 } catch (error) {
   await page.screenshot({ path: join(evidence, "failure.png"), fullPage: true }).catch(() => {});
   await writeFile(
