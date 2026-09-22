@@ -1,6 +1,9 @@
 # Codex desktop adapter
 
-Status: implementation in progress. A capability is not accepted until its test evidence exists.
+Status: native desktop adapter implemented and validated on 2026-09-22, within
+the capability and validation boundaries recorded in
+`docs/codex-desktop-validation.md`. This is not acceptance of unsupported legacy
+feature parity. A capability is not accepted until its test evidence exists.
 
 ## Scope
 
