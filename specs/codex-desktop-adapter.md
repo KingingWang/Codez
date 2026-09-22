@@ -47,6 +47,11 @@ closed, and native config/skills/plugin requests stay on the canonical execution
 - Explicit experimental opt-in is necessary for queue and structured user input.
 - Validate message envelopes and mapped payloads at runtime. Keep generated
   types bound to the actual pinned executable; version text alone is insufficient.
+- Staging the pinned executable retries transient network resets, timeouts, 429
+  and 5xx responses a bounded number of times after removing the partial file.
+  Size/checksum mismatches and other 4xx responses fail closed without retry, so
+  a runner-side CDN reset cannot waste a full native build and a tampered or
+  truncated artifact can never be published.
 - A failed or ambiguous mutation is not automatically retried. Reconnect reads
   authority and reconstructs projections. Do not promise crash-time exactly-once.
 - Pending approvals are scoped to connection generation/thread/turn/request ID;
@@ -203,8 +208,10 @@ prefixes stripped. The two can disagree for the same thread, so discovery
 filtering, resume ownership and `thread/started` attribution canonicalize both
 sides and keep a raw-equality fallback for directories that no longer exist.
 Canonicalization must never widen ownership: relative input and genuinely
-different directories stay rejected. The synchronous notification path can only
-compare the spellings already resolved for the authorized workspace.
+different directories stay rejected. Attribution needs filesystem resolution, so
+native event projection is asynchronous; the runtime keeps one serialized event
+tail so native ordering is unchanged, and request/response paths still project
+their own turns synchronously.
 Legacy `session/read`, `session/resume` and `session/list` projections must carry
 both the authorized `workspaceKey` and explicit `workspaceIdentity`. Downstream
 task-index persistence consumes `workspaceIdentity`, not `workspaceKey`; dropping

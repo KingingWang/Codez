@@ -29,3 +29,6 @@ attribution canonicalize both sides (macOS `/private/var`, Windows 8.3 short nam
 and verbatim `\\?\` prefixes). A canonicalization failure falls back to raw
 equality and must never widen ownership: relative paths and genuinely different
 directories stay rejected.
+Attribution therefore needs filesystem resolution, so native event projection is
+asynchronous. The runtime keeps one serialized event tail, which preserves native
+ordering, and request/response paths still project their own turns synchronously.
