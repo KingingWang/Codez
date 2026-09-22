@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import type { CodexNotification, CodexRpcPort } from "./contract.js";
 import { array, object, string, type JsonObject } from "./json.js";
 import { decorateNativeThread } from "./command-input.js";
+import {
+  canonicalExecutionPath,
+  normalizeExecutionSpelling,
+  sameExecutionPath,
+} from "./execution-path.js";
 import { mergeNativeTurn } from "./merge-turn.js";
 import { canonicalNativeThreads } from "./projection.js";
 
@@ -27,11 +32,32 @@ export class ThreadStateStore {
   private readonly loaded = new Set<string>();
   private readonly deleted = new Set<string>();
   private readonly completedItems = new Set<string>();
+  /** 同步通知路径无法 await，只能比对已解析出的工作区拼写集合。 */
+  private readonly workspaceSpellings = new Set<string>();
+  private canonicalCwd?: Promise<string>;
 
   constructor(
     private readonly rpc: CodexRpcPort,
     readonly cwd: string,
-  ) {}
+  ) {
+    this.workspaceSpellings.add(normalizeExecutionSpelling(cwd));
+    // 规范化解析不会 reject（失败退回原拼写）；提前解析让别名拼写的实时事件也能归属。
+    void this.executionCwd();
+  }
+
+  private executionCwd(): Promise<string> {
+    this.canonicalCwd ??= canonicalExecutionPath(this.cwd).then((canonical) => {
+      this.workspaceSpellings.add(canonical);
+      return canonical;
+    });
+    return this.canonicalCwd;
+  }
+
+  private inWorkspace(value: unknown): boolean {
+    return (
+      typeof value === "string" && this.workspaceSpellings.has(normalizeExecutionSpelling(value))
+    );
+  }
 
   onChange(listener: (threadId: string) => void): () => void {
     this.listeners.add(listener);
@@ -88,7 +114,10 @@ export class ThreadStateStore {
     this.assertAvailable(id);
     const metadata = object(read.thread);
     // 路径不是远端身份，但本进程只能操作其 Host 已授权工作区中的线程。
-    if (metadata.cwd !== this.cwd) throw new Error("Thread belongs to a different workspace");
+    // 原生 thread/read 返回物理路径；Host 可能传入符号链接或 Windows 短名拼写，
+    // 字符串相等会把同一目录的会话误判成别的工作区，导致恢复历史失败。
+    if (!(await sameExecutionPath(metadata.cwd, this.cwd)))
+      throw new Error("Thread belongs to a different workspace");
     const resumed = object(await this.rpc.request("thread/resume", { threadId: id }));
     this.assertAvailable(id);
     const thread = decorateNativeThread(resumed);
@@ -188,7 +217,7 @@ export class ThreadStateStore {
     }
     if (event.method === "thread/started") {
       const thread = object(params.thread);
-      if (thread.cwd !== this.cwd || this.deleted.has(string(thread.id))) return;
+      if (!this.inWorkspace(thread.cwd) || this.deleted.has(string(thread.id))) return;
       this.put(thread);
       return string(thread.id);
     }
@@ -278,7 +307,12 @@ export class ThreadStateStore {
           archived: false,
         }),
       );
-      threads.push(...array(page.data).filter((thread) => object(thread).cwd === this.cwd));
+      const rows = array(page.data);
+      // CLI/exec 落盘的是规范化物理路径；按物理目录过滤，别名拼写才不会把列表判空。
+      const owned = await Promise.all(
+        rows.map((row) => sameExecutionPath(object(row).cwd, this.cwd)),
+      );
+      threads.push(...rows.filter((_, index) => owned[index]));
       cursor = typeof page.nextCursor === "string" ? page.nextCursor : undefined;
       if (cursor && seen.has(cursor)) throw new Error("Repeated native thread cursor");
       if (cursor) seen.add(cursor);

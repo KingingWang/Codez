@@ -195,6 +195,16 @@ configured provider), and include user-facing CLI, editor, exec and app-server
 sources, not subagent/internal auxiliary threads. Preserve archive/delete and
 workspace isolation boundaries. Opening a discovered conversation resumes its
 native thread ID through the existing command path.
+Workspace membership is decided by physical directory, never by path spelling.
+Codex persists two cwd representations for one thread: `thread/list` returns the
+raw rollout value (the literal `thread/start` cwd, or the CLI `getcwd()` result)
+while `thread/read` returns the canonicalized store value with Windows verbatim
+prefixes stripped. The two can disagree for the same thread, so discovery
+filtering, resume ownership and `thread/started` attribution canonicalize both
+sides and keep a raw-equality fallback for directories that no longer exist.
+Canonicalization must never widen ownership: relative input and genuinely
+different directories stay rejected. The synchronous notification path can only
+compare the spellings already resolved for the authorized workspace.
 Legacy `session/read`, `session/resume` and `session/list` projections must carry
 both the authorized `workspaceKey` and explicit `workspaceIdentity`. Downstream
 task-index persistence consumes `workspaceIdentity`, not `workspaceKey`; dropping

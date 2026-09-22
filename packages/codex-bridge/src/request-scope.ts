@@ -1,23 +1,10 @@
 import { codexRequestSchema, type CodexRequest } from "@zcode/shared";
-import { realpath } from "node:fs/promises";
-import { isAbsolute } from "node:path";
 import type { CodexRpcPort } from "./contract.js";
+import { sameExecutionPath } from "./execution-path.js";
 import { array, object } from "./json.js";
 
 function mismatch(): never {
   throw Object.assign(new Error("Request workspace scope mismatch"), { code: -32602 });
-}
-
-async function sameExecutionPath(value: unknown, cwd: string): Promise<boolean> {
-  if (value === cwd) return true;
-  if (typeof value !== "string" || !isAbsolute(value)) return false;
-  try {
-    // macOS /var 与 /private/var（及目录 junction）可指向同一 cwd；不能用字符串误拒绝。
-    const [requested, current] = await Promise.all([realpath(value), realpath(cwd)]);
-    return requested === current;
-  } catch {
-    return false;
-  }
 }
 
 /** Compare filesystem paths, never coalesce explicit Host identities. */
