@@ -25,6 +25,7 @@ import { DirectoryBrowser } from "@/DirectoryBrowser.js";
 import { useTabPersistence } from "@/hooks/useTabPersistence.js";
 import { useTokenRefresh } from "@/hooks/useTokenRefresh.js";
 import { useWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
+import { useCodexProjectDiscovery } from "@/hooks/useCodexProjectDiscovery.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { SSHDialog } from "@/SSHDialog.js";
 import { SettingsPage } from "@/SettingsPage.js";
@@ -395,6 +396,14 @@ function RootInner({
     workspaceShellRemoteSessionId,
     workspaceShellIdentity,
   );
+
+  useCodexProjectDiscovery({
+    workspacePath: workspaceShellPath,
+    workspaceIdentity: workspaceShellIdentity,
+    remoteSessionId: workspaceShellRemoteSessionId,
+    activeWorkspaceTab,
+    isDesktop,
+  });
 
   const localWorkspacePathForRemoteConnection = useTabStore((state) => {
     const activeTab = state.activeTabId

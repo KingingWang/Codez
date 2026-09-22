@@ -267,7 +267,16 @@ export class ThreadStateStore {
     const seen = new Set<string>();
     do {
       const page = object(
-        await this.rpc.request("thread/list", { cwd: this.cwd, cursor, limit: 100 }),
+        await this.rpc.request("thread/list", {
+          cwd: this.cwd,
+          cursor,
+          limit: 100,
+          // 原生默认只列当前 provider 的交互来源；项目历史应包含 CLI/exec 与桌面
+          // 创建的会话，切换 provider 也不能让旧记录消失。空数组显式取消 provider 过滤。
+          modelProviders: [],
+          sourceKinds: ["cli", "vscode", "exec", "appServer"],
+          archived: false,
+        }),
       );
       threads.push(...array(page.data).filter((thread) => object(thread).cwd === this.cwd));
       cursor = typeof page.nextCursor === "string" ? page.nextCursor : undefined;

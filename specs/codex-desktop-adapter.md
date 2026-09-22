@@ -183,6 +183,53 @@ smoke, pnpm typecheck/lint/architecture checks, and per-platform CI artifacts.
 
 ## Remote Codex deployment
 
+### Project conversation discovery
+
+Opening/adding a connected Codex project explicitly refreshes its native session
+index, including conversations created by Codex CLI outside this desktop. A warm
+connection is not proof that the persisted thread list is current. Discovery is
+read-only, paginated, scoped to the execution cwd and the remote attachment's
+existing workspace identity; it never copies history into a second execution store.
+List all model providers explicitly (the pinned native server defaults to its
+configured provider), and include user-facing CLI, editor, exec and app-server
+sources, not subagent/internal auxiliary threads. Preserve archive/delete and
+workspace isolation boundaries. Opening a discovered conversation resumes its
+native thread ID through the existing command path.
+Legacy `session/read`, `session/resume` and `session/list` projections must carry
+both the authorized `workspaceKey` and explicit `workspaceIdentity`. Downstream
+task-index persistence consumes `workspaceIdentity`, not `workspaceKey`; dropping
+it would silently file remote conversations under a local-path partition. A fresh
+native scan rebuilds the correct remote shell rows without deleting legacy data.
+
+```text
+project activation → scoped session/list → native thread/list
+                          ↓ after response
+existing index subscribers refresh → native thread/list
+                                                          ↓
+remote task-index syncer → insert missing shell metadata → workspace list invalidation
+                                                          ↓
+Window Host task membership + native live details → project sidebar
+```
+
+The remote task-index syncer is the only shell-index writer. Initial discovery
+must publish one scoped list invalidation after newly inserted rows are committed;
+it must not replay historical terminal events or unread signals. Existing pin,
+archive, deletion tombstones and custom titles remain authoritative shell state.
+Late results from a disposed/replaced subscription cannot publish to a new owner.
+Background list observers stay existing-only; explicit project activation may
+start the configured runtime. Desktop continuous and mobile replayable clients
+retain their existing connection/lease and recovery semantics.
+
+Acceptance: cold remote project with CLI history and empty shell index; a new
+desktop thread appears without restarting; reopening a warm project discovers
+new external CLI history; cross-provider history remains visible; two remote
+identities with the same path stay isolated; repeated scans preserve shell state
+and do not replay completion/unread events; concurrent list consumers do not
+replace each other's ownership; discovered history can be resumed.
+The six-target release matrix runs the discovery/resume regression against its
+verified native Codex executable with isolated configuration and a loopback model
+fixture; ordinary adapter unit tests may skip that test before native staging.
+
 The remote deployment owner remains `packages/server/src/remote`: reuse its pinned
 per-platform release manifest, verified component installer and install-root lock.
 For the Codex product (`ZCODE_DESKTOP_RUNTIME=codex` or compiled Codex flavor), use

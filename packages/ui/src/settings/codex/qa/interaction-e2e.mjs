@@ -8,6 +8,7 @@ import { createServer } from "vite";
 import { chromium } from "playwright-core";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { verifyProjectDiscovery } from "./project-discovery-e2e.mjs";
 
 const evidence = await mkdtemp(join(tmpdir(), "codex-ui-interaction-e2e-"));
 const checks = [];
@@ -308,6 +309,7 @@ try {
   checks.push(
     "StrictMode lifecycle, captured old scope, synchronous reload, and pending/ready unmount reject stale catalog reads",
   );
+  await verifyProjectDiscovery(page, checks);
   assert.deepEqual(errors, []);
   await page.screenshot({ path: join(evidence, "desktop-width.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });

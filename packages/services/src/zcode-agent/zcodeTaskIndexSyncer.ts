@@ -53,7 +53,7 @@ const logger = createServiceLogger("zcode-task-index-syncer");
 const TASK_INDEX_SUBSCRIBER_SCOPE = "task-index";
 const MAX_PENDING_TOPIC_FRAMES = 1_024;
 const MAX_PENDING_TOPIC_BYTES = 32 * 1024 * 1024;
-const INITIAL_BASELINE_SEED_BATCH_SIZE = 64;
+const DISCOVERED_TASK_SEED_BATCH_SIZE = 64;
 const PROVIDER_NOT_READY_RETRY_MS = 5_000;
 const TOPIC_SUBSCRIBE_WARN_INTERVAL_MS = 60_000;
 
@@ -267,8 +267,13 @@ interface WorkspaceIngestState {
   configLastWarnAt: number | null;
   /** 会话摘要基线（terminal 迁移/标题变化的 diff 依据）。 */
   summaries: Map<string, SessionSummary>;
-  /** 首帧（snapshot）静默补缺失行，但不回放历史终态事件或列表广播。 */
+  /** 首帧（snapshot）只补缺失行，不回放历史终态事件或 unread。 */
   seeded: boolean;
+  /** 同一 warm snapshot 中待合并补齐的 terminal 摘要，避免逐行读取/写入。 */
+  discoveredSeedQueue: Array<{ summary: SessionSummary; generation: number }>;
+  discoveredSeedQueueScheduled: boolean;
+  /** discovery seed flight 的 session → 发起时订阅代际，防止换代后互相遮挡。 */
+  discoveredSeedInFlightGenerations: Map<string, number>;
   /** workspace 级 frame emitter 跨 runtime generation 保持稳定，只允许安装一组 listener。 */
   frameListenersInstalled: boolean;
   disposables: IDisposable[];
@@ -683,6 +688,14 @@ export function createZCodeTaskIndexSyncer(
       });
       return;
     }
+    if (becameVisibleTask && isTerminalPhase(next.phase)) {
+      // warm snapshot / 断档恢复时，之前没有基线的历史 terminal 会话不能调用
+      // readSession：bridge 的读取路径会 ensure/resume thread，违反 discovery 只读
+      // 边界，还可能触发排队。摘要足够建立 shell 行；正文/错误详情仍留给真实
+      // terminal 迁移或用户打开会话时收敛。
+      queueDiscoveredTerminalSummary(state, next);
+      return;
+    }
     if (becameVisibleTask) {
       // v4 预热 session 从 draft 提升，或 online delta 首次出现新 session 时，
       // 不经过 zcodeSessionService.createSession。此处是最早且不依赖标题时序的新任务边界；
@@ -698,22 +711,98 @@ export function createZCodeTaskIndexSyncer(
     }
   }
 
-  async function seedMissingRowsFromInitialSnapshot(
+  function queueDiscoveredTerminalSummary(
+    state: WorkspaceIngestState,
+    summary: SessionSummary,
+  ): void {
+    const generation = state.indexSubscriptionGeneration;
+    if (state.discoveredSeedInFlightGenerations.get(summary.sessionId) === generation) return;
+    state.discoveredSeedQueue.push({ summary, generation });
+    if (state.discoveredSeedQueueScheduled) return;
+    state.discoveredSeedQueueScheduled = true;
+    queueMicrotask(() => {
+      state.discoveredSeedQueueScheduled = false;
+      const queued = state.discoveredSeedQueue.splice(0, state.discoveredSeedQueue.length);
+      // 换代后不能把旧订阅排队的摘要过继给新 owner；旧项直接丢弃，
+      // 新代若仍有同一 session，会由新 frame 重新入队。
+      const generation = state.indexSubscriptionGeneration;
+      const batch = queued.filter((item) => item.generation === generation);
+      for (const item of batch) {
+        state.discoveredSeedInFlightGenerations.set(item.summary.sessionId, item.generation);
+      }
+      void seedDiscoveredTaskRows(
+        state,
+        batch.map((item) => item.summary),
+        generation,
+      )
+        .catch((error) => {
+          logger.warn(
+            undefined,
+            `同步晚发现 terminal 会话到 task index 失败 workspace=${resolveWorkspaceKey(state.target)}`,
+            error,
+          );
+        })
+        .finally(() => {
+          for (const item of batch) {
+            if (
+              state.discoveredSeedInFlightGenerations.get(item.summary.sessionId) ===
+              item.generation
+            ) {
+              state.discoveredSeedInFlightGenerations.delete(item.summary.sessionId);
+            }
+          }
+        });
+    });
+  }
+
+  function isOwnedIndexSeed(
+    state: WorkspaceIngestState,
+    indexSubscriptionGeneration: number,
+  ): boolean {
+    return isLiveState(state) && state.indexSubscriptionGeneration === indexSubscriptionGeneration;
+  }
+
+  async function seedDiscoveredTaskRows(
     state: WorkspaceIngestState,
     summaries: Iterable<SessionSummary>,
+    indexSubscriptionGeneration: number,
   ): Promise<void> {
     const candidates = [...summaries].filter((summary) => summary.phase !== "draft");
-    if (candidates.length === 0) return;
+    if (candidates.length === 0 || !isOwnedIndexSeed(state, indexSubscriptionGeneration)) return;
     // 纯 V4 UI 不经过 zcodeSessionService.initializeWorkspace；若把首帧
     // 当成“已有 sqlite 存量”的静默基线，远端新库就会永远是 0 行。这里只做原子
-    // insert-if-missing，不广播、不回放历史终态，也不覆盖已有产品壳状态；后续打开/
+    // insert-if-missing，不回放历史终态或 unread，也不覆盖已有产品壳状态；后续打开/
     // 收口时再由完整 snapshot 补 model、正文搜索等权威字段。
+    let existingTaskIds = new Set<string>();
+    try {
+      // 一次合并读取含 tombstone 的已提交行集合，判断“本次是否插入”；warm snapshot
+      // 不能按 summary 数量重复全表读取。已存在行不写入、不广播，保证重复扫描保留壳状态。
+      existingTaskIds = new Set(
+        (
+          await taskIndexRepo.listTaskMetas({
+            workspacePath: state.target.workspacePath,
+            workspaceIdentity: state.target.workspaceIdentity,
+            includeDeleted: true,
+          })
+        ).map((meta) => meta.taskId),
+      );
+    } catch (error) {
+      logger.warn(
+        undefined,
+        `读取 sessions-index discovery 已有 task 行失败 workspace=${resolveWorkspaceKey(state.target)} total=${candidates.length}`,
+        error,
+      );
+      return;
+    }
+    const missing = candidates.filter((summary) => !existingTaskIds.has(summary.sessionId));
     // 防灾保护：历史会话可能很多，不能一次创建等量 Promise 挤占 host 事件循环。
     // 固定小批次写入；失败只汇总一条生产日志，避免逐会话错误再次制造日志风暴。
+    let insertedCount = 0;
     let failedCount = 0;
     let firstError: unknown;
-    for (let offset = 0; offset < candidates.length; offset += INITIAL_BASELINE_SEED_BATCH_SIZE) {
-      const batch = candidates.slice(offset, offset + INITIAL_BASELINE_SEED_BATCH_SIZE);
+    for (let offset = 0; offset < missing.length; offset += DISCOVERED_TASK_SEED_BATCH_SIZE) {
+      if (!isOwnedIndexSeed(state, indexSubscriptionGeneration)) return;
+      const batch = missing.slice(offset, offset + DISCOVERED_TASK_SEED_BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map((summary) =>
           taskIndexRepo.seedTaskMetaIfMissing(buildBaselineMetaFromSummary(state.target, summary)),
@@ -723,13 +812,21 @@ export function createZCodeTaskIndexSyncer(
         if (result.status === "rejected") {
           failedCount += 1;
           firstError ??= result.reason;
+        } else {
+          insertedCount += 1;
         }
       }
+    }
+    // 首帧/晚发现补齐是归属变更：Host/Renderer 可能已经缓存了首次查询的空
+    // membership。所有 insert-if-missing 批次提交后只发一次 scoped invalidation；
+    // 不带 taskMeta，因为这是批量发现边界，不能把某个历史会话伪装成最新单个任务。
+    if (insertedCount > 0 && isOwnedIndexSeed(state, indexSubscriptionGeneration)) {
+      emitWorkspaceTaskListChanged(state.target, undefined, "task_created");
     }
     if (failedCount > 0) {
       logger.warn(
         undefined,
-        `首次 sessions-index 基线补齐 task index 失败 workspace=${resolveWorkspaceKey(state.target)} failed=${failedCount} total=${candidates.length}`,
+        `sessions-index discovery 补齐 task index 失败 workspace=${resolveWorkspaceKey(state.target)} failed=${failedCount} inserted=${insertedCount} total=${missing.length}`,
         firstError,
       );
     }
@@ -1017,8 +1114,28 @@ export function createZCodeTaskIndexSyncer(
         // 防止远端/新安装的空 sqlite 因纯 V4 路径永远没有存量。
         state.summaries = nextSummaries;
         state.seeded = true;
-        void seedMissingRowsFromInitialSnapshot(state, nextSummaries.values());
         const generation = state.indexSubscriptionGeneration;
+        const initialCandidates = [...nextSummaries.values()].filter(
+          (summary) => summary.phase !== "draft",
+        );
+        for (const summary of initialCandidates) {
+          state.discoveredSeedInFlightGenerations.set(summary.sessionId, generation);
+        }
+        void seedDiscoveredTaskRows(state, initialCandidates, generation)
+          .catch((error) => {
+            logger.warn(
+              undefined,
+              `首次 sessions-index 基线补齐 task index 失败 workspace=${resolveWorkspaceKey(state.target)}`,
+              error,
+            );
+          })
+          .finally(() => {
+            for (const summary of initialCandidates) {
+              if (state.discoveredSeedInFlightGenerations.get(summary.sessionId) === generation) {
+                state.discoveredSeedInFlightGenerations.delete(summary.sessionId);
+              }
+            }
+          });
         void repairSubagentTaskIndex({
           target: state.target,
           visibleSessionIds: new Set(nextSummaries.keys()),
@@ -1423,6 +1540,8 @@ export function createZCodeTaskIndexSyncer(
     if (state.indexRetryTimer) clearTimeout(state.indexRetryTimer);
     state.indexRetryTimer = null;
     const generation = ++state.indexSubscriptionGeneration;
+    // 换代会让队列里的旧摘要失去 owner；立即丢弃，避免 microtask 把旧工作过继给新代。
+    state.discoveredSeedQueue.length = 0;
     const previousSubscriptionId = state.indexSubscriptionId;
     state.indexSubscriptionId = null;
     discardIndexRecovery(state);
@@ -1644,6 +1763,9 @@ export function createZCodeTaskIndexSyncer(
       configLastWarnAt: null,
       summaries: new Map(),
       seeded: false,
+      discoveredSeedQueue: [],
+      discoveredSeedQueueScheduled: false,
+      discoveredSeedInFlightGenerations: new Map(),
       frameListenersInstalled: false,
       disposables: [],
       indexAssembler: new TopicWireFrameAssembler(sessionsIndexTopicFrameSchema),
