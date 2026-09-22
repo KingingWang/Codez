@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -17,9 +17,11 @@ test(
   async () => {
     const temporary = await mkdtemp(join(tmpdir(), "zcode-bridge-smoke-"));
     const codexHome = join(temporary, "codex-home");
-    const workspace = join(temporary, "workspace");
+    const directory = join(temporary, "physical-workspace");
+    const workspace = join(temporary, "workspace-alias");
     await mkdir(codexHome);
-    await mkdir(workspace);
+    await mkdir(directory);
+    await symlink(directory, workspace, process.platform === "win32" ? "junction" : "dir");
     const { server, requests } = createSmokeModelServer();
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
@@ -35,7 +37,7 @@ test(
       ZCODE_CODEX_COMMAND: binary,
       ZCODE_CODEX_BRIDGE_TEST_DIAGNOSTICS: "1",
       ZCODE_CODEX_BRIDGE_HOME: join(temporary, "bridge-state"),
-      ZCODE_WORKSPACE_IDENTITY: "smoke-workspace",
+      ZCODE_WORKSPACE_IDENTITY: workspace,
     };
     for (const key of [
       "PATH",
@@ -104,7 +106,7 @@ test(
       });
       assert.equal(account.requiresOpenaiAuth, false);
       const generated = await rpc("workspace/generateText", {
-        workspace: { workspacePath: workspace, workspaceKey: "smoke-workspace" },
+        workspace: { workspacePath: workspace, workspaceKey: workspace },
         selection: { providerId: "smoke", modelId: "gpt-5.2" },
         prompt: "Generate a commit subject from this synthetic change",
         querySource: "git_commit_message",
@@ -112,7 +114,7 @@ test(
       });
       assert.equal(generated.text, "Bridge smoke response");
       const config = await rpc("v4/conversation/subscribe", {
-        topic: "workspace-config/smoke-workspace",
+        topic: `workspace-config/${workspace}`,
         connectionId: "desktop",
         clientMode: "desktop-continuous",
       });
@@ -122,7 +124,7 @@ test(
         clientId: "desktop",
         sessionId: null,
         type: "createSession",
-        payload: { workspaceId: "smoke-workspace" },
+        payload: { workspaceId: workspace },
         issuedAt: Date.now(),
       });
       assert.equal(created.status, "accepted", created.message);
@@ -133,8 +135,8 @@ test(
         clientMode: "desktop-continuous",
         workspace: {
           workspacePath: workspace,
-          workspaceIdentity: "smoke-workspace",
-          workspaceKey: "smoke-workspace",
+          workspaceIdentity: workspace,
+          workspaceKey: workspace,
         },
       });
       const image = pixelPng();
@@ -233,8 +235,8 @@ test(
         clientMode: "web-remote-replayable",
         workspace: {
           workspacePath: workspace,
-          workspaceIdentity: "smoke-workspace",
-          workspaceKey: "smoke-workspace",
+          workspaceIdentity: workspace,
+          workspaceKey: workspace,
         },
       });
       assert.equal(resumed.ack.mode, "snapshot");

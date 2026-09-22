@@ -19,10 +19,10 @@ paid model, install external plugins, or grant real tool approvals.
 | `pnpm lint`                                                      | Passed; 70 pre-existing warnings, zero errors        |
 | `pnpm fmt:check`                                                 | Passed                                               |
 | `pnpm architecture:check --changed`                              | Zero violations                                      |
-| Bridge tests with the pinned auxiliary-test binary               | 301 passed, zero skipped                             |
-| Distribution regression tests                                    | 31 passed                                            |
+| Bridge tests with the pinned auxiliary-test binary               | 302 passed, zero skipped                             |
+| Distribution regression tests                                    | 35 passed                                            |
 | Service, Desktop and remote regression tests with CI environment | 38 passed; one real-package test is separately gated |
-| Native UI parser/render/selection tests                          | 23 passed                                            |
+| Native UI parser/render/selection tests                          | 24 passed                                            |
 | Real pinned Codex plus packaged bridge smoke                     | Passed                                               |
 
 The native bridge smoke covers account/config reads, isolated auxiliary generation,
@@ -37,6 +37,23 @@ payloads, ambiguous mutations and workspace/identity isolation.
 For reproducible desktop and browser interaction checks, see
 `packages/ui/src/settings/codex/qa/README.md`. A rendered mock UI is not counted as
 proof of actual Electron/Host/native execution.
+
+The actual standard `dev.mjs` desktop entry passed six full-turn checks with a
+fresh profile and pinned native runtime: first-message image input, streamed
+response, busy setting locks, blocked busy `/plan` with draft retention, queued
+image admission, and automatic native dispatch after the current turn completes.
+Three native turns completed with zero renderer page errors. The separate browser
+interaction suite covers native question/approval forms and settings mutations
+against deterministic Host fixtures rather than a real account.
+
+The first six-target CI run exposed two platform defects: macOS path aliases were
+incorrectly rejected as a different workspace, and Windows Git Bash tar treated
+drive-letter archive names as remote hosts. The bridge now verifies filesystem
+aliases without changing Host identity; the native smoke uses a symlink/junction
+workspace on every platform. Archive operations use an archive-parent cwd and a
+relative `-f` argument. A separate macOS cold-start flake in the timeout test was
+fixed with an explicit late-reply barrier, not by retrying mutations or disabling
+the test. These fixes require a new native matrix run before acceptance.
 
 ## Distribution acceptance
 

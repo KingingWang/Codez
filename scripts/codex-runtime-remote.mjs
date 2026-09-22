@@ -1,9 +1,8 @@
-import { spawn } from "node:child_process";
-import { once } from "node:events";
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { buildCodexBridge } from "./build-codex-bridge.mjs";
+import { runCodexTar } from "./codex-runtime-archive.mjs";
 import {
   codexWorkspaceRoot,
   loadCodexManifest,
@@ -35,13 +34,12 @@ export async function prepareCodexRemoteComponent({
   const temporary = await mkdtemp(join(outputRoot, ".codex-remote-"));
   try {
     const archive = join(temporary, "runtime.tar.gz");
-    const child = spawn(
-      "tar",
-      ["-czf", archive, "-C", directory, "codex", "bridge.cjs", "distribution.json"],
-      { shell: false, stdio: "inherit" },
-    );
-    const [code, signal] = await once(child, "exit");
-    if (code !== 0) throw new Error(`Remote Codex archive failed (${code ?? signal})`);
+    await runCodexTar({
+      mode: "create",
+      archivePath: archive,
+      directory,
+      entries: ["codex", "bridge.cjs", "distribution.json"],
+    });
     const sha256 = await sha256File(archive);
     const artifactPath = `codex-runtime-${target.key}-${sha256}.tar.gz`;
     const metadata = JSON.parse(await readFile(join(directory, "distribution.json"), "utf8"));

@@ -19,7 +19,7 @@ import { array, object, string, unsupported } from "./json.js";
 import { projectTurnFileChanges } from "./file-changes.js";
 import { join } from "node:path";
 import { AuxiliaryText } from "./auxiliary-text.js";
-import { assertWorkspaceScope, scopedNativeRequest } from "./request-scope.js";
+import { scopeWorkspaceParams, scopedNativeRequest } from "./request-scope.js";
 
 export interface BridgeResponse {
   result: unknown;
@@ -143,7 +143,7 @@ export class BridgeRuntime {
 
   async request(method: string, params: unknown): Promise<BridgeResponse> {
     const { rpc, cwd, workspaceId } = this.options;
-    assertWorkspaceScope(params, cwd, workspaceId);
+    params = await scopeWorkspaceParams(params, cwd, workspaceId);
     if (this.auxiliary.supports(method))
       return { result: await this.auxiliary.handle(method, params) };
     if (method === "codex/request") {

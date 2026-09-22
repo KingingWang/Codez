@@ -9,6 +9,7 @@ const mode = process.env.FAKE_CODEX_MODE;
 let initialized = false;
 let initializeCount = 0;
 let mutationCount = 0;
+let delayedMutationId;
 const replies = [];
 const send = (value) => process.stdout.write(`${JSON.stringify(value)}\n`);
 const trace = (text) => appendFile(process.env.FAKE_CODEX_TRACE, `${text}\n`);
@@ -56,7 +57,12 @@ input.on("line", (line) => {
       break;
     case "mutate":
       mutationCount++;
-      setTimeout(() => send({ id, result: "late mutation result" }), 180);
+      delayedMutationId = id;
+      break;
+    case "release-mutation":
+      send({ id: delayedMutationId, result: "late mutation result" });
+      delayedMutationId = undefined;
+      send({ id, result: null });
       break;
     case "hang":
       break;
