@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test, { type TestContext } from "node:test";
 import { createCodexProcess } from "../src/codex-process.js";
 import type { CodexProcess } from "../src/contract.js";
+import { sameExecutionPath } from "../src/execution-path.js";
 import { ThreadStateStore } from "../src/thread-state.js";
 
 interface NativeThread {
@@ -152,13 +153,17 @@ test(
   },
   async (t) => {
     const temporary = await mkdtemp(join(tmpdir(), "zcode-discovery-native-"));
-    const cwd = join(temporary, "workspace");
+    const physicalCwd = join(temporary, "workspace");
+    // macOS 的 /var/folders 与 Windows 8.3 短名临时目录都是别名拼写；用符号链接/junction
+    // 让每个平台都复现“Host 传别名、原生落盘物理路径”的真实生产场景。
+    const cwd = join(temporary, "workspace-alias");
     const foreignCwd = join(temporary, "foreign-workspace");
     const codexHome = join(temporary, "codex-home");
     let rpc: CodexProcess | undefined;
-    await mkdir(cwd);
+    await mkdir(physicalCwd);
     await mkdir(foreignCwd);
     await mkdir(codexHome);
+    await symlink(physicalCwd, cwd, process.platform === "win32" ? "junction" : "dir");
     t.after(async () => {
       // Windows 不允许移除仍由 app-server 打开的 SQLite 文件；先关闭进程再清理目录。
       await rpc?.close();
@@ -266,7 +271,9 @@ test(
     assert.equal(desktop.modelProvider, "cross-provider");
 
     const resumed = await store.ensure(externalThreadId);
-    assert.equal(resumed.thread.cwd, cwd);
+    // 原生回传物理路径；归属按物理目录判断，不要求与别名拼写字符串相等。
+    assert.equal(await sameExecutionPath(resumed.thread.cwd, physicalCwd), true);
+    assert.equal(await sameExecutionPath(resumed.thread.cwd, foreignCwd), false);
     assert.equal((resumed.thread.turns as unknown[]).length, 1);
     const resumedTurn = await startTurnAndWaitForCompletion(rpc, externalThreadId, [
       { text: "Reply with desktop." },
