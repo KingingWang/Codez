@@ -110,6 +110,12 @@ Desktop QA launches the repository's actual `packages/desktop/scripts/dev.mjs`
 entry with its real package metadata and ready-marker/Vite checks. The isolation
 helper must not synthesize a package/version or replace updater behavior to make
 startup pass. Existing build artifacts must be stable before launch.
+Packaged verification launches only this checkout's `packages/desktop/dist/linux-unpacked/zcode-codex`
+from a temporary workspace, without renderer, bridge or native executable overrides.
+It uses dedicated CDP 9230 and accepts only the exact packaged
+`resources/app.asar/out/renderer/index.html` file URL (bootstrap query/hash allowed).
+The real packaged resolver, ASAR main/preload/Host/renderer and bundled native must
+carry a fixture text/image turn to completion; source-tree dev fallback is not evidence.
 No real account mutation, credential reading or external installation is permitted.
 The live no-auth loopback conversation check sends a first-input fixture image to
 completion, verifies busy model/permission locks and rejected `/plan`, then queues

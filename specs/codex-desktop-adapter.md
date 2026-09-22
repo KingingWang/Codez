@@ -29,6 +29,13 @@ Use `workspaceIdentity?.trim() || workspacePath` for isolation; use workspacePat
 only for execution and filesystem operations. Preserve remoteSessionId and trusted
 connection scopes. Never start a separate agent for a mobile attachment.
 
+The Host passes its already-resolved workspace key into the Codex process even for
+local path fallback. Filesystem aliases (for example macOS `/var` and `/private/var`)
+may resolve to the same execution directory; verify this asynchronously by realpath
+before normalizing internal cwd inputs. Never normalize or equate explicit workspace
+identities based on filesystem equality. Missing paths and foreign identities fail
+closed, and native config/skills/plugin requests stay on the canonical execution cwd.
+
 ## Runtime contract
 
 - Launch the selected native executable with `app-server --listen stdio://`;

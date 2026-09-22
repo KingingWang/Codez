@@ -16,6 +16,7 @@ import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { buildCodexBridge } from "./build-codex-bridge.mjs";
+import { runCodexTar } from "./codex-runtime-archive.mjs";
 import {
   codexWorkspaceRoot,
   resolveCodexTarget,
@@ -141,7 +142,7 @@ export async function prepareCodexRemotePackage({
     if (publishComponents)
       return await publishCodexRemoteComponents({ directory, descriptor, outputRoot, temporary });
     const archive = join(temporary, "runtime.tar.gz");
-    await run("tar", ["-czf", archive, "-C", directory, "."], { shell: false });
+    await runCodexTar({ mode: "create", archivePath: archive, directory, entries: ["."] });
     const sha256 = await sha256File(archive);
     descriptor.sha256 = sha256;
     descriptor.artifactPath = `codex-server-${target.key}-${sha256}.tar.gz`;
@@ -203,7 +204,7 @@ export async function publishCodexRemoteComponents({
   };
   for (const [id, mount, source] of definitions) {
     const archive = join(temporary, `${id}.tar.gz`);
-    await run("tar", ["-czf", archive, "-C", source, "."], { shell: false });
+    await runCodexTar({ mode: "create", archivePath: archive, directory: source, entries: ["."] });
     const sha256 = await sha256File(archive);
     const artifactPath = `components/${key}/${id}/${sha256}.tar.gz`;
     await mkdir(dirname(join(outputRoot, artifactPath)), { recursive: true });

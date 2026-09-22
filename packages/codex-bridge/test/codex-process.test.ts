@@ -198,10 +198,11 @@ test(
   "timeout never retries mutations; late replies cannot settle newer requests",
   options,
   async (t) => {
-    const { process } = await fixture(t, "normal", 100);
+    // macOS CI 冷启动可能超过 100ms；握手用常规预算，迟到响应由显式 barrier 控制。
+    const { process } = await fixture(t);
     await process.initialize();
     await assert.rejects(process.request("mutate"), /timed out/i);
-    await delay(140);
+    await process.request("release-mutation");
     const status = await process.request<{ mutationCount: number }>("status");
     assert.equal(status.mutationCount, 1);
     assert.equal(await process.request("echo", "after timeout"), "after timeout");

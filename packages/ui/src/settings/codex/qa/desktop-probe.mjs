@@ -5,6 +5,9 @@ import { resolve, join } from "node:path";
 import { spawn } from "node:child_process";
 import { startDesktopMockProvider } from "./desktop-mock-provider.mjs";
 const root = process.cwd();
+const packaged = process.env.CODEX_UI_QA_PACKAGED === "1";
+const packagedRoot = resolve(root, "packages/desktop/dist/linux-unpacked");
+const packagedExecutable = join(packagedRoot, "zcode-codex");
 const isolated = await mkdtemp(join(tmpdir(), "codex-ui-qa-"));
 for (const name of ["home", "config", "data", "cache", "codex", "workspace", "session", "userData"])
   await mkdir(join(isolated, name));
@@ -13,12 +16,26 @@ await writeFile(
   join(isolated, "codex/config.toml"),
   `model_provider = "ui_qa"\nmodel = "ui-qa-offline"\napproval_policy = "never"\nsandbox_mode = "read-only"\n[model_providers.ui_qa]\nname = "Isolated UI QA"\nbase_url = "${mock?.url ?? "http://127.0.0.1:9"}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n[analytics]\nenabled = false\n`,
 );
-const nativeRoot = resolve(root, "packages/desktop/bundled-agents/linux-x64");
-const manifest = JSON.parse(
-  await readFile(resolve(root, "scripts/codex-runtime-manifest.json"), "utf8"),
-);
-const nativeName = `codex-${manifest.assets["linux-x64"].sha256}`;
-await access(join(nativeRoot, nativeName, "codex"));
+let nativeOverride;
+if (packaged) {
+  await Promise.all([
+    access(packagedExecutable),
+    access(join(packagedRoot, "resources/app.asar")),
+    access(join(packagedRoot, "resources/codex/bridge.cjs")),
+    access(join(packagedRoot, "resources/codex/codex")),
+  ]);
+} else {
+  const manifest = JSON.parse(
+    await readFile(resolve(root, "scripts/codex-runtime-manifest.json"), "utf8"),
+  );
+  nativeOverride = resolve(
+    root,
+    "packages/desktop/bundled-agents/linux-x64",
+    `codex-${manifest.assets["linux-x64"].sha256}`,
+    "codex",
+  );
+  await access(nativeOverride);
+}
 const env = {
   PATH: process.env.PATH,
   LANG: "en_US.UTF-8",
@@ -33,7 +50,7 @@ const env = {
   ZCODE_DESKTOP_HOME_DIR: join(isolated, "home"),
   ZCODE_DESKTOP_USER_DATA_DIR: join(isolated, "userData"),
   ZCODE_DESKTOP_SESSION_DATA_DIR: join(isolated, "session"),
-  ZCODE_CODEX_COMMAND: join(nativeRoot, nativeName, "codex"),
+  ...(nativeOverride ? { ZCODE_CODEX_COMMAND: nativeOverride } : {}),
 };
 const display = spawn(
   "Xvfb",
@@ -54,17 +71,24 @@ env.DISPLAY = await new Promise((resolveDisplay, reject) => {
 });
 // dev.mjs owns Electron ['.'], build readiness, renderer URL and child process cleanup.
 // Isolation must not bypass real package/updater startup validation.
-const app = spawn(process.execPath, ["scripts/dev.mjs"], {
-  cwd: resolve(root, "packages/desktop"),
-  env,
-  stdio: "inherit",
-});
+// 打包验收不覆盖 bridge/native 路径；临时 cwd 也不能回溯到源码树 resolver fallback。
+const app = spawn(
+  packaged ? packagedExecutable : process.execPath,
+  packaged
+    ? ["--remote-debugging-port=9230", "--remote-debugging-address=127.0.0.1"]
+    : ["scripts/dev.mjs"],
+  {
+    cwd: packaged ? join(isolated, "workspace") : resolve(root, "packages/desktop"),
+    env,
+    stdio: "inherit",
+  },
+);
 console.log(
   JSON.stringify({
     isolated,
-    cdp: "http://127.0.0.1:9229",
+    cdp: `http://127.0.0.1:${packaged ? 9230 : 9229}`,
     devPid: app.pid,
-    entry: "packages/desktop/scripts/dev.mjs",
+    entry: packaged ? packagedExecutable : "packages/desktop/scripts/dev.mjs",
     mockProvider: mock?.url,
   }),
 );

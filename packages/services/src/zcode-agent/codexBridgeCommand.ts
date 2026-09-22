@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
+import { ZCODE_WORKSPACE_IDENTITY_ENV } from "@zcode/shared";
 import type {
   ZCodeAgentCommand,
   ZCodeAgentCommandResolverContext,
@@ -77,6 +78,11 @@ export function resolveCodexBridgeCommand(
     command: runtime.execPath ?? process.execPath,
     args: [bridge],
     cwd: context.workspacePath,
-    env: { ELECTRON_RUN_AS_NODE: "1", ZCODE_CODEX_COMMAND: native },
+    env: {
+      ELECTRON_RUN_AS_NODE: "1",
+      ZCODE_CODEX_COMMAND: native,
+      // process.cwd() 可能变成物理路径；Host 的本地 path-fallback key 不能随之变化。
+      [ZCODE_WORKSPACE_IDENTITY_ENV]: context.workspaceKey,
+    },
   };
 }
