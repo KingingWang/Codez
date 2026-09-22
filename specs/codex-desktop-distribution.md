@@ -18,8 +18,44 @@ CI uses Node 24.14.0 and pnpm 10.33.2, frozen dependency installation, typecheck
 lint, architecture and adapter tests. Build six native targets with fail-fast
 disabled to collect independent results, but never mask an individual failure.
 Smoke-test Codex handshake and package resources. Upload installers and SHA256
-manifests; release publishing is explicitly triggered, not performed on arbitrary
-pull requests. Build jobs need read-only repository permissions.
+manifests. Every branch/tag push builds and automatically publishes a public
+release after all six targets pass; pull requests never publish. Build jobs need
+read-only repository permissions.
+
+## Per-push release publication
+
+The release job is the only publication owner and the only job with contents-write
+permission. It accepts artifacts from its own successful workflow run, verifies
+all six installer/checksum sets, uploads them to a draft, verifies the uploaded
+names, sizes and SHA256 digests, then publishes that draft. A failed build or upload
+must not expose a partial public release. Per-architecture updater metadata is
+not published, and automatic application updates remain disabled.
+
+```text
+push → remote assets → six native builds → verify checksums → draft upload
+                                                         → verify assets → public release
+```
+
+Each run uses `zcode-codex-build-<run-id>-<short-sha>` targeting the exact built
+commit. Reruns reuse that identity: incomplete drafts may resume; a complete public
+release is verified without overwriting its assets. Unexpected ownership, commit,
+assets or digests fail closed. Spaces in public asset names are normalized to dots
+with corresponding regenerated checksum manifests, avoiding GitHub name rewriting.
+
+Push runs do not share a branch concurrency group: a later push must not replace
+an earlier pending build. Only superseded PR checks may be cancelled. Main pushes
+publish stable releases; other refs publish prereleases. Only a build that still
+matches the current main head is eligible to become Latest, preventing an older
+slow build from deliberately replacing a newer main result. Manual dispatch keeps
+an explicit publish switch, enabled by default. The workflow token creates release
+tags without a separate user-token push loop. GitHub's explicit workflow-skip commit
+markers and platform/account execution limits remain external trigger constraints.
+
+Acceptance includes trigger/concurrency/permission tests; six-target completeness,
+checksum corruption and duplicate/path rejection; draft upload failure; same-run
+rerun; published-release immutability; and one actual main-push release with all
+six targets and public download assets. Existing validated source/installer records
+remain historical evidence, not proof of this new publishing path.
 
 macOS: DMG/ZIP; Windows: NSIS; Linux: AppImage/DEB initially. A platform is accepted
 only after its actual job succeeds. Unsigned artifacts are labelled as such;
