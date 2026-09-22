@@ -170,7 +170,8 @@ test("history paging plus live notification retains earlier items in the same tu
   );
   const loading = store.ensure("t1");
   await new Promise((resolve) => setImmediate(resolve));
-  store.apply({ method: "thread/started", params: { thread: thread() } });
+  // 归属判定要解析物理路径，thread/started 必须先落位，后续 turn/item 才有投影可写。
+  await store.apply({ method: "thread/started", params: { thread: thread() } });
   store.apply({
     method: "turn/started",
     params: { threadId: "t1", turn: { id: "turn", status: "inProgress", items: [] } },
@@ -297,16 +298,16 @@ test("aliased workspace path discovers, resumes and attributes native threads", 
   );
   const state = await store.ensure("t1");
   assert.deepEqual(state.thread.turns, [{ id: "turn-1" }]);
-  // thread/started 是同步通知路径，也必须把物理拼写归属到别名工作区。
+  // thread/started 实时通知也必须把物理拼写归属到别名工作区。
   assert.equal(
-    store.apply({
+    await store.apply({
       method: "thread/started",
       params: { thread: { ...thread(), id: "live", cwd: physical } },
     }),
     "live",
   );
   assert.equal(
-    store.apply({
+    await store.apply({
       method: "thread/started",
       params: { thread: { ...thread(), id: "elsewhere", cwd: root } },
     }),

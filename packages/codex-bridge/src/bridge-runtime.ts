@@ -93,7 +93,8 @@ export class BridgeRuntime {
           .then(async () => {
             if (this.closed) return;
             const params = object(event.params ?? {});
-            this.store.apply(event);
+            // 事件已在 eventTail 上串行；await 保证归属解析不会让后到的事件插队。
+            await this.store.apply(event);
             if (event.method === "serverRequest/resolved") {
               await this.interactions.resolved(string(params.threadId), params.requestId);
             }
