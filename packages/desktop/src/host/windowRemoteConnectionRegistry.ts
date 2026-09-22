@@ -8,6 +8,7 @@ import {
 } from "@zcode/shared";
 
 interface WindowRemoteAssetDirs {
+  bundledRemoteAssetsDir?: string;
   mockCdnDir?: string;
   remoteCdnBaseUrl?: string;
   remoteCdnBaseUrls?: string[];

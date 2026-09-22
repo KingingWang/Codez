@@ -32,6 +32,14 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { getPathLeaf } from "@/lib/path.js";
 import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
+import {
+  CodexSettingsSection,
+  CodexCapabilityNotice,
+} from "@/settings/codex/CodexSettingsSection.js";
+import {
+  isCodexSettingsSection,
+  isCodexUnsupportedSection,
+} from "@/settings/codex/codexSettingsData.js";
 import { useUsageEntitlement } from "@/hooks/useUsageEntitlement.js";
 import {
   addPendingSettingsSectionListener,
@@ -590,7 +598,10 @@ export function SettingsPage({
     );
   }, [selectedUsageCodingPlanSource, usageActiveTab, usageCodingPlanSources]);
   const setNewUserOnboardingOpen = useZCodeStore((state) => state.setNewUserOnboardingOpen);
-  const requestOnboardingDialog = () => setNewUserOnboardingOpen(true);
+  const requestOnboardingDialog = () => {
+    if (isDesktop) setActiveSettingsSection("codex");
+    else setNewUserOnboardingOpen(true);
+  };
   const setActiveSettingsSection = useCallback(
     (section: SettingsSectionId, fallbackSection: SettingsSectionId = activeSection) => {
       const resolvedSection = resolveSettingsSection(section, fallbackSection);
@@ -1651,7 +1662,28 @@ export function SettingsPage({
                         ) : null}
                       </div>
                       <div className="space-y-8">
-                        {activeSection === "general" ? (
+                        {isDesktop && isCodexSettingsSection(activeSection) ? (
+                          <CodexSettingsSection
+                            workspacePath={activeWorkspacePath}
+                            workspaceIdentity={activeWorkspaceIdentity}
+                            remoteSessionId={activeWorkspaceTab?.remoteSessionId ?? undefined}
+                            initialPanel={
+                              activeSection === "skill"
+                                ? "skills"
+                                : activeSection === "mcp"
+                                  ? "mcp"
+                                  : activeSection === "plugin"
+                                    ? "plugins"
+                                    : activeSection === "modelProvider"
+                                      ? "models"
+                                      : "account"
+                            }
+                          />
+                        ) : isDesktop && isCodexUnsupportedSection(activeSection) ? (
+                          <CodexCapabilityNotice
+                            onOpenSettings={() => setActiveSettingsSection("codex")}
+                          />
+                        ) : activeSection === "general" ? (
                           <GeneralSectionContent
                             localePreference={localePreference}
                             interfaceMode={interfaceMode}

@@ -27,9 +27,11 @@ import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { runUserAction, runUserActionAsync } from "@/lib/userActionTelemetry.js";
+import { useCodexMessages } from "@/settings/codex/messages.js";
 
 interface ConversationQueuePanelProps {
   queue: QueueState;
+  nativeCodex?: boolean;
   /** 删除队列项（deleteQueueItem command）。 */
   onDeleteItem?: (queueItemId: string) => void;
   /** 撤回队列项到发起端 composer；权威删除成功后才恢复草稿。 */
@@ -274,6 +276,7 @@ const QueueRow = memo(function QueueRow({
  */
 function ConversationQueuePanelImpl({
   queue,
+  nativeCodex = false,
   onDeleteItem,
   onEditItem,
   pendingEditQueueItemId = null,
@@ -282,6 +285,7 @@ function ConversationQueuePanelImpl({
   onResume,
 }: ConversationQueuePanelProps) {
   const { intl } = useZCodeIntl();
+  const codexText = useCodexMessages();
   const [resumePending, setResumePending] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -324,13 +328,16 @@ function ConversationQueuePanelImpl({
     <div
       data-testid={TID_V4_QUEUE}
       data-queue-count={queue.items.length}
-      data-queue-auto-drain={queue.autoDrain ? "true" : "false"}
+      data-queue-auto-drain={nativeCodex ? "native" : queue.autoDrain ? "true" : "false"}
       className={cn(
         "relative z-0 w-full overflow-hidden rounded-t-2xl border border-border bg-surface p-1 backdrop-blur-md",
         "-mb-7 pb-7",
       )}
     >
-      {!queue.autoDrain ? (
+      {nativeCodex ? (
+        <p className="px-3 py-2 text-ui-sm text-foreground-muted">{codexText.nativeQueue}</p>
+      ) : null}
+      {!nativeCodex && !queue.autoDrain ? (
         <div
           data-testid={TID_V4_QUEUE_PAUSED_BANNER}
           className="mb-1 flex min-h-10 items-center gap-3 rounded-xl border border-border/70 bg-surface-raised px-3 py-2 text-ui-base text-foreground"

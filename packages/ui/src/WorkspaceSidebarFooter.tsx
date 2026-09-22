@@ -39,6 +39,9 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { usePlatform } from "@/hooks/usePlatform.js";
+import { useCodexMessages } from "@/settings/codex/messages.js";
+import { setPendingSettingsSectionIntent } from "@/lib/settingsNavigation.js";
+import { useTabStore } from "@/store/TabStoreProvider.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
@@ -123,6 +126,12 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   className?: string;
 }) {
   const { intl } = useZCodeIntl();
+  const codexText = useCodexMessages();
+  const openSettingsTab = useTabStore((state) => state.openSettingsTab);
+  const openCodexAccount = () => {
+    setPendingSettingsSectionIntent("codex");
+    openSettingsTab();
+  };
   const platform = usePlatform();
   const interfaceMode = useZCodeStore((state) => state.interfaceMode);
   const setInterfaceMode = useZCodeStore((state) => state.setInterfaceMode);
@@ -130,21 +139,27 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   const zoomOutShortcutLabel = useShortcutCommandLabel("zoomOut");
   const resetZoomShortcutLabel = useShortcutCommandLabel("resetZoom");
   const isRestoringOAuthSession = useZCodeStore((state) => state.isRestoringOAuthSession);
-  const profileBadge = getSidebarProfileBadge(user, intl.formatMessage);
+  const profileBadge = isDesktop
+    ? `${codexText.title} · ${codexText.account}`
+    : getSidebarProfileBadge(user, intl.formatMessage);
   const avatarFallbackText = getAvatarFallbackText(user);
   const avatarKey = user?.avatarUrl ?? user?.id ?? "guest";
-  const showAuthRestoreLoading = !user && isRestoringOAuthSession;
+  const showAuthRestoreLoading = !isDesktop && !user && isRestoringOAuthSession;
   const usageSummaryState = useWorkspaceSidebarFooterUsageSummaryState({
-    enabled: true,
+    enabled: !isDesktop,
     workspaceIdentity,
     workspacePath,
   });
   const profileContent = (
     <>
       <Avatar key={avatarKey} size="default">
-        {user?.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={profileBadge} /> : null}
+        {!isDesktop && user?.avatarUrl ? (
+          <AvatarImage src={user.avatarUrl} alt={profileBadge} />
+        ) : null}
         <AvatarFallback className="bg-background text-foreground">
-          {user ? (
+          {isDesktop ? (
+            "C"
+          ) : user ? (
             avatarFallbackText
           ) : showAuthRestoreLoading ? (
             <>
@@ -164,7 +179,9 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
           <span className="min-w-0 truncate text-ui-base font-semibold text-foreground">
             {profileBadge}
           </span>
-          {user ? <WorkspaceSidebarFooterPlanBadge state={usageSummaryState} /> : null}
+          {!isDesktop && user ? (
+            <WorkspaceSidebarFooterPlanBadge state={usageSummaryState} />
+          ) : null}
         </div>
       </div>
     </>
@@ -343,12 +360,20 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               </DropdownMenuSub>
             ) : null}
             {/* 升级入口状态不再以菜单开关为生命周期边界。*/}
-            <WorkspaceSidebarFooterUsageSummaryContent
-              state={usageSummaryState}
-              onUsageClick={usageButtonClick}
-              onUpgradeClick={onUpgradeClick}
-            />
-            {onLogin && !user ? (
+            {!isDesktop && (
+              <WorkspaceSidebarFooterUsageSummaryContent
+                state={usageSummaryState}
+                onUsageClick={usageButtonClick}
+                onUpgradeClick={onUpgradeClick}
+              />
+            )}
+            {isDesktop && (
+              <DropdownMenuItem onSelect={openCodexAccount}>
+                <User className="size-4" />
+                {codexText.title} · {codexText.account}
+              </DropdownMenuItem>
+            )}
+            {!isDesktop && onLogin && !user ? (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={onLogin} data-testid={TID_LOGIN_MENU_ITEM}>
@@ -357,7 +382,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
                 </DropdownMenuItem>
               </>
             ) : null}
-            {onLogout ? (
+            {!isDesktop && onLogout ? (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={onLogout} data-testid={TID_LOGOUT_BUTTON}>

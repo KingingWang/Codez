@@ -1,4 +1,22 @@
-# ZCode
+# ZCode Codex
+
+本 fork 的桌面端默认使用 **Codex CLI / app-server**，通过本仓库中的
+`packages/codex-bridge` 适配原有桌面协议；不需要修改或克隆相邻的 Codex 源码。
+这是社区适配版，不是 OpenAI 官方桌面应用。
+
+```bash
+pnpm install --frozen-lockfile
+pnpm dev:desktop
+```
+
+开发入口会准备固定版本 Codex 和适配层。桌面安装包内置对应平台运行时；
+账户、模型、权限、MCP、技能和插件请使用「设置 → Codex」。
+构建、行为差异和限制见 [Codex 桌面说明](docs/codex-desktop.md)。
+GitHub Actions 的 **ZCode Codex desktop** 工作流生成 Windows、macOS、Linux
+的 x64 / arm64 安装包。未配置签名时产物标记为 unsigned，不会自动安装上游更新。
+
+下方保留上游项目说明。旧 Agent CLI / 独立 Web 的开发说明不代表桌面仍使用旧运行时；
+需要显式测试旧桌面运行时可设置 `ZCODE_DESKTOP_RUNTIME=legacy`。
 
 <div align="center">
   <img src="public/logo/icons/1024x1024.png" alt="ZCode" width="128" height="128" />

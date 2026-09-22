@@ -622,6 +622,28 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
+  packages/codex-bridge:
+    dependencies:
+      '@zcode/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@types/node':
+        specifier: ^25.5.0
+        version: 25.6.0
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.12
+      tsx:
+        specifier: ^4.19.4
+        version: 4.21.0
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
   packages/desktop:
     dependencies:
       '@arms/rum-electron':

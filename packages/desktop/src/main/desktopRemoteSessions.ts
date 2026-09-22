@@ -670,6 +670,8 @@ export function createRemoteWorkspaceSessionManager(options: {
       level: "info",
       message: `正在通过窗口 Host 连接 ${resolvedTarget.kind} workspace`,
     });
+    // 资产契约失败必须发生在 pending 注册前，否则同步异常会泄漏请求关联。
+    const remoteAssets = options.resolveRemoteAssetDirs();
     return new Promise<string>((resolve, reject) => {
       pendingByRequestKey.set(key, {
         requestId: resolvedRequestId,
@@ -683,7 +685,7 @@ export function createRemoteWorkspaceSessionManager(options: {
         type: HostMessageTypes.ConnectRemoteWorkspace,
         requestId: resolvedRequestId,
         target: resolvedTarget,
-        remoteAssets: options.resolveRemoteAssetDirs(),
+        remoteAssets,
         ...(context?.workspacePath ? { workspacePath: context.workspacePath } : {}),
         ...(context?.workspaceIdentity ? { workspaceIdentity: context.workspaceIdentity } : {}),
       });

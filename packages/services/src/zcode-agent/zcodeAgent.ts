@@ -5,6 +5,7 @@ import { ServiceChannels } from "@zcode/shared";
 import type { AppUsageRange, AppUsageSnapshot, ZCodeTaskTokenUsageResult } from "@zcode/shared";
 import type { ZCodeAutomation, ZCodeAutomationRun } from "@zcode/shared";
 import type {
+  CodexRequest,
   ZCodeStorageStartupState,
   ZCodeDeliveryKind,
   ZCodeAgentMcpServer,
@@ -564,6 +565,8 @@ export interface ZCodeAgentStorageStartupSnapshot {
 }
 
 export interface IZCodeAgentService {
+  /** Native settings RPC; startup does not require legacy provider/model readiness. */
+  codexRequest(params: ZCodeAgentWorkspaceTarget & { request: CodexRequest }): Promise<unknown>;
   /** 控制面不需要账号或模型，且不发送普通协议请求。 */
   prepareStorage(params: ZCodeAgentWorkspaceTarget): Promise<void>;
   getStorageStartupState(

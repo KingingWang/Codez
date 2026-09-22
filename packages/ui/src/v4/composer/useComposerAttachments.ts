@@ -43,6 +43,7 @@ import {
   type ComposerAttachmentUploadStatus,
 } from "@/store/composerAttachmentUploadStore.js";
 import { uploadComposerAttachment, type AttachmentPutFn } from "@/v4/composer/attachmentUpload.js";
+import { useCodexMessages } from "@/settings/codex/messages.js";
 
 const COMPOSER_ATTACHMENT_UPLOAD_CONCURRENCY = 2;
 const COMPOSER_ATTACHMENT_AUTO_RETRY_DELAY_MS = 500;
@@ -60,6 +61,7 @@ export type {
 } from "@/store/composerAttachmentUploadStore.js";
 
 interface UploadTarget {
+  nativeCodex?: boolean;
   sessionId: string | null;
   workspacePath: string;
   workspaceIdentity?: string;
@@ -102,6 +104,7 @@ interface ComposerAttachmentsApi {
 }
 
 interface UseComposerAttachmentsOptions {
+  nativeCodex?: boolean;
   workspacePath: string;
   workspaceIdentity?: string;
   remoteSessionId?: string;
@@ -189,6 +192,7 @@ export function useComposerAttachments(
   options: UseComposerAttachmentsOptions,
 ): ComposerAttachmentsApi {
   const {
+    nativeCodex = false,
     workspacePath,
     workspaceIdentity,
     remoteSessionId,
@@ -203,6 +207,7 @@ export function useComposerAttachments(
   const platform = usePlatform();
   const { promptAttachmentTransferService } = useServices();
   const { intl } = useZCodeIntl();
+  const codexText = useCodexMessages();
   const scopeKey = buildScopeKey(workspacePath, workspaceIdentity, scopeId);
   exposeComposerAttachmentScopeKeyForE2E(scopeKey);
 
@@ -228,6 +233,7 @@ export function useComposerAttachments(
   const dragFeedbackTimerRef = useRef<number | null>(null);
 
   targetsRef.current.set(scopeKey, {
+    nativeCodex,
     sessionId: attachmentSessionId,
     workspacePath,
     workspaceIdentity,
@@ -268,9 +274,16 @@ export function useComposerAttachments(
   }, []);
 
   const finishWithReady = useCallback(
-    (targetScopeKey: string, attachmentId: string, ref: AttachmentRef, staged: boolean) => {
+    (
+      targetScopeKey: string,
+      attachmentId: string,
+      ref: AttachmentRef,
+      staged: boolean,
+      committedSessionId: string,
+    ) => {
       updateItem(targetScopeKey, attachmentId, (item) => ({
         ...item,
+        committedSessionId,
         uploadStatus: "ready",
         uploadProgress: 100,
         uploadError: undefined,
@@ -312,8 +325,8 @@ export function useComposerAttachments(
           (candidate) => candidate.id === attachmentId,
         );
         if (!item || !target.sessionId) return;
-        if (item.localPath && isRemoteAttachmentTarget(target)) {
-          if (!target.remoteSessionId) {
+        if (item.localPath && (isRemoteAttachmentTarget(target) || target.nativeCodex)) {
+          if (isRemoteAttachmentTarget(target) && !target.remoteSessionId) {
             updateItem(targetScopeKey, attachmentId, (current) => ({
               ...current,
               uploadStatus: "waitingSession",
@@ -349,9 +362,11 @@ export function useComposerAttachments(
           // staged:false + host localPath。远端 Agent 无法读取该路径，因此必须阻止发送。
           if (!result.staged) {
             throw new RemoteAttachmentNotStagedError(
-              intl.formatMessage({
-                id: "chat.attachments.upload.remoteMaterializationRequired",
-              }),
+              target.nativeCodex
+                ? codexText.attachmentStagingRequired
+                : intl.formatMessage({
+                    id: "chat.attachments.upload.remoteMaterializationRequired",
+                  }),
             );
           }
           finishWithReady(
@@ -364,6 +379,7 @@ export function useComposerAttachments(
               bytes: result.bytes,
             },
             result.staged,
+            target.sessionId,
           );
           return;
         }
@@ -390,7 +406,7 @@ export function useComposerAttachments(
         );
         if (!ref) throw new Error("附件缺少可读取内容");
         if (controllersRef.current.get(controllerKey) !== controller) return;
-        finishWithReady(targetScopeKey, attachmentId, ref, false);
+        finishWithReady(targetScopeKey, attachmentId, ref, false, target.sessionId);
       } catch (error) {
         if (controllersRef.current.get(controllerKey) !== controller || controller.signal.aborted) {
           return;
@@ -466,7 +482,7 @@ export function useComposerAttachments(
         pumpQueueRef.current();
       }
     },
-    [enqueueUpload, finishWithReady, intl, updateItem],
+    [enqueueUpload, finishWithReady, intl, updateItem, codexText.attachmentStagingRequired],
   );
 
   const pumpQueue = useCallback(() => {
@@ -498,6 +514,29 @@ export function useComposerAttachments(
     }
   }, [runUpload, updateItem]);
   pumpQueueRef.current = pumpQueue;
+
+  useEffect(() => {
+    if (!nativeCodex) return;
+    // 原因：预热被替换并不迁移 native 附件归属；保留文件供显式重试，不携带旧 ref 新建线程。
+    for (const item of attachments) {
+      if (item.uploadStatus !== "ready" || item.committedSessionId === attachmentSessionId)
+        continue;
+      updateItem(scopeKey, item.id, (current) => ({
+        ...current,
+        uploadStatus: "failed",
+        uploadError: codexText.attachmentSessionLost,
+        uploadErrorKind: "permanent",
+        attachmentRef: undefined,
+      }));
+    }
+  }, [
+    nativeCodex,
+    attachmentSessionId,
+    attachments,
+    scopeKey,
+    updateItem,
+    codexText.attachmentSessionLost,
+  ]);
 
   useEffect(() => {
     const current = readComposerAttachmentScope(scopeKey);
@@ -641,7 +680,10 @@ export function useComposerAttachments(
       const items: ComposerAttachmentUploadItem[] = accepted.map((attachment) => {
         // 远端 identity 往往早于 remoteSessionId 注入；这段窗口不能退化为本地路径直读。
         const localZeroCopy = Boolean(
-          attachment.localPath && target && !isRemoteAttachmentTarget(target),
+          attachment.localPath &&
+          target &&
+          !target.nativeCodex &&
+          !isRemoteAttachmentTarget(target),
         );
         return {
           ...attachment,
@@ -683,7 +725,8 @@ export function useComposerAttachments(
         selectedFiles.map((file) => {
           let localPath: string | undefined;
           try {
-            const resolvedPath = platform.getPathForFile?.(file);
+            // native bridge 只接受绑定会话的 opaque ref；File 必须走现有 bytes 上传，不能用路径冒充 ref。
+            const resolvedPath = nativeCodex ? undefined : platform.getPathForFile?.(file);
             localPath = resolvedPath?.trim() ? resolvedPath : undefined;
           } catch (error) {
             // Electron 32+ 的 File 需要经 preload webUtils 解析；失败时仍可走 Web bytes。
@@ -693,7 +736,7 @@ export function useComposerAttachments(
         }),
       );
     },
-    [addPreparedAttachments, platform],
+    [addPreparedAttachments, platform, nativeCodex],
   );
 
   const addAttachmentLocalPaths = useCallback(
@@ -708,7 +751,7 @@ export function useComposerAttachments(
       showAttachmentLimitWarning();
       return;
     }
-    if (!platform.canSelectFilePath) {
+    if (nativeCodex || !platform.canSelectFilePath) {
       attachmentInputRef.current?.click();
       return;
     }
@@ -723,7 +766,7 @@ export function useComposerAttachments(
           ),
         );
       });
-  }, [addAttachmentLocalPaths, intl, platform, scopeKey, showAttachmentLimitWarning]);
+  }, [addAttachmentLocalPaths, intl, platform, scopeKey, showAttachmentLimitWarning, nativeCodex]);
 
   const handleAttachmentInputChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -759,6 +802,12 @@ export function useComposerAttachments(
       if (!shouldCreateClipboardTextAttachment(text)) return;
       event.preventDefault();
       event.stopPropagation?.();
+      if (nativeCodex) {
+        addAttachmentFiles([
+          new File([text], createClipboardTextAttachmentFilenameForDate(), { type: "text/plain" }),
+        ]);
+        return;
+      }
       void (async () => {
         try {
           const attachment = await platform.createTempTextAttachment?.({
@@ -778,7 +827,7 @@ export function useComposerAttachments(
         }
       })();
     },
-    [addAttachmentFiles, addPreparedAttachments, disabled, intl, platform],
+    [addAttachmentFiles, addPreparedAttachments, disabled, intl, platform, nativeCodex],
   );
 
   const clearDragFeedbackTimer = useCallback(() => {
@@ -1011,6 +1060,7 @@ export function useComposerAttachments(
           uploadStatus: "ready",
           uploadProgress: 100,
           attachmentRef: { ...attachmentRef },
+          committedSessionId: targetsRef.current.get(scopeKey)?.sessionId ?? undefined,
           operationId: `session-owned-${id}`,
           autoRetryCount: 0,
           runtimeRebuildRetryCount: 0,
@@ -1031,6 +1081,12 @@ export function useComposerAttachments(
 
   const prepareForSend = useCallback(async (): Promise<AttachmentRef[] | null> => {
     const current = readComposerAttachmentScope(scopeKey);
+    const target = targetsRef.current.get(scopeKey);
+    if (
+      target?.nativeCodex &&
+      current.some((item) => !target.sessionId || item.committedSessionId !== target.sessionId)
+    )
+      return null;
     if (current.some((item) => item.uploadStatus !== "ready" || !item.attachmentRef)) {
       return null;
     }

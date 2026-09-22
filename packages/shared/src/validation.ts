@@ -166,6 +166,7 @@ export const broadcastMessageSchema = z.object({
 });
 
 export const remoteAssetDirsSchema = z.object({
+  bundledRemoteAssetsDir: nonEmptyStringSchema.optional(),
   mockCdnDir: z.string().optional(),
   remoteCdnBaseUrl: z.string().optional(),
   remoteCdnBaseUrls: z.array(z.string()).optional(),
