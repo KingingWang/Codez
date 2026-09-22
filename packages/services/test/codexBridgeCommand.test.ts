@@ -104,10 +104,22 @@ test("development launches the built bridge with Node and a native executable en
       command: "/node",
       args: [bridge],
       cwd: context.workspacePath,
-      env: { ELECTRON_RUN_AS_NODE: "1", ZCODE_CODEX_COMMAND: "/native codex/二进制" },
+      env: {
+        ELECTRON_RUN_AS_NODE: "1",
+        ZCODE_CODEX_COMMAND: "/native codex/二进制",
+        [ZCODE_WORKSPACE_IDENTITY_ENV]: context.workspaceKey,
+      },
     });
     assert.equal(command.supportsStorageStartup, undefined);
     assert.equal(command.storagePreparationEntry, undefined);
+    assert.equal(
+      resolveCodexBridgeCommand(
+        { ...context, workspaceKey: context.workspacePath },
+        { cwd, env: {} },
+      ).env?.[ZCODE_WORKSPACE_IDENTITY_ENV],
+      context.workspacePath,
+      "local path-fallback identity survives a canonicalized process cwd",
+    );
     assert.equal(
       resolveCodexBridgeCommand(context, { cwd, env: {} }).env?.ZCODE_CODEX_COMMAND,
       "codex",

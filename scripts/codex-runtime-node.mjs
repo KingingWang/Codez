@@ -1,14 +1,12 @@
-import { execFile } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import { chmod, mkdir, mkdtemp, readFile, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { promisify } from "node:util";
+import { runCodexTar } from "./codex-runtime-archive.mjs";
 import { sha256File } from "./codex-runtime.mjs";
 import { stageNodeNotices } from "./third-party-notices.mjs";
 
-const run = promisify(execFile);
 export async function loadCodexNodeManifest() {
   return JSON.parse(
     await readFile(new URL("./codex-runtime-node-manifest.json", import.meta.url), "utf8"),
@@ -54,11 +52,13 @@ export async function stageCodexRemoteNode({ directory, target, manifest, fetchI
     if ((await sha256File(archive)) !== asset.sha256)
       throw new Error("Node archive checksum mismatch");
     // 只在固定发行包校验通过后解出确定的单一成员，禁止把任意归档路径发布到运行目录。
-    await run(
-      "tar",
-      ["-xzf", archive, "-C", temporary, "--strip-components=2", `${asset.name}/bin/node`],
-      { shell: false },
-    );
+    await runCodexTar({
+      mode: "extract",
+      archivePath: archive,
+      directory: temporary,
+      stripComponents: 2,
+      entries: [`${asset.name}/bin/node`],
+    });
     const binary = join(temporary, "node");
     const binarySha256 = await sha256File(binary);
     await chmod(binary, 0o755);

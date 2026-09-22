@@ -42,23 +42,58 @@ CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/q
 This sends only a generated 1-pixel image and fixture text through the real
 Electron/Host/native bridge to an in-process no-auth loopback provider. It holds
 the response to verify busy controls and `/plan`, then releases a deterministic
-response without tools. The URL must be loopback and the probe must be fresh.
+response without tools. A second held turn admits a queued fixture image; the test
+asserts no busy immediate-send or pause/resume control, releases the current turn,
+and observes automatic native image dispatch and the completed response. Native
+`thread/queue/start` is **idle-only**; busy atomic stop/promote is not supported or
+claimed. The URL must be loopback and the probe must be fresh.
 On failure it writes the UI text, errors, sanitized mock request diagnostics and
 a screenshot, and releases the held response. It does not automatically retry
 commands or move attachment refs between sessions.
 
-Full-turn blocker reproduced with **actual dev.mjs** on 2026-09-22:
-`/tmp/codex-ui-desktop-conversation-j76tnR/failure.json`. Startup succeeded with
-real desktop package metadata; no semver workaround was used. The bridge then
-rejected native history at `turns[0].items[0].type` (`Invalid input`). A direct
-read-only native `thread/read` confirmed the first `userMessage` contains
-`{type: "localImage", detail: null}`; the current bridge validator allowed null for
-`image.detail`, but not `localImage.detail`. No mock provider request arrived.
-This is **not** a passing first-input image/stream E2E, and not an attachment
-owner mismatch. The bridge owner has the minimal reproduction for a fix/retest.
+Fresh full-turn **actual dev.mjs** verification passed on 2026-09-22:
+`/tmp/codex-ui-desktop-conversation-gqtR57/results.json` (six checks, three completed
+native turns, zero page errors). Screenshots include `first-image-ready.png`,
+`native-image-response.png`, `native-auto-queue-waiting.png`,
+`native-queued-image-auto-drained.png`, and `agent-browser-final.png` in that directory.
+This run uses the repaired bridge with nullish native `localImage.detail`, real
+desktop package metadata, and a new isolated profile with frozen UI source.
+Live QA also caught and fixed a draft-prewarm race: display placeholders had sent
+empty provider/effort to native. Prewarm now waits for catalog selection and omits
+unconfigured effort. No fake metadata, model capability, or raw attachment path
+was substituted to make this pass.
 
 For manual inspection use `agent-browser --session codex-ui-qa --cdp 9229 snapshot -i`.
 Never auto-connect to an unrelated browser or use its existing profile.
+
+## Real packaged Linux application
+
+Wait for distribution to confirm `packages/desktop/dist/linux-unpacked` is stable.
+No Vite server, installation, build, or executable-path override is needed:
+
+```sh
+CODEX_UI_QA_PACKAGED=1 CODEX_UI_QA_MOCK=1 node packages/ui/src/settings/codex/qa/desktop-probe.mjs
+# Substitute only the loopback port printed by that fresh probe:
+CODEX_UI_QA_PACKAGED=1 CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/qa/desktop-conversation-check.mjs
+```
+
+This launches the actual `linux-unpacked/zcode-codex` from an isolated temporary
+cwd. The allowlisted environment contains no `ELECTRON_RENDERER_URL`,
+`ELECTRON_RUN_AS_NODE`, `ZCODE_CODEX_BRIDGE_PATH`, or `ZCODE_CODEX_COMMAND`. Packaged
+resolution must find its own ASAR and `resources/codex` binaries. Dedicated CDP
+9230 accepts only this checkout's exact
+`resources/app.asar/out/renderer/index.html` file URL, allowing bootstrap query/hash;
+it does not accept arbitrary file or CDP pages. Manual inspection uses
+`agent-browser --session codex-ui-qa --cdp 9230 snapshot -i`.
+
+Actual packaged verification passed **6/6** on September 22, 2026:
+`/tmp/codex-ui-desktop-conversation-7BM4eI/results.json`. It includes the exact
+packaged renderer URL, three completed native/loopback turns and zero page errors.
+`packaged-paths.json` in that directory records live `/proc` executable/argv/cwd,
+ASAR Host launch logs and SHA-256 hashes; `agent-browser-packaged.png` records the UI.
+The packaged ASAR hash is `7638f87d60fa943844084afbea660ee97863bba6c90692a01f0ffd4c2007c1b3`.
+No credentials were read, no account changed, and no system installation performed.
+Stop the probe after verification; retain temporary evidence only.
 
 ## Deterministic browser interactions
 
@@ -94,8 +129,10 @@ approval option IDs, and versioned configuration writes followed by refresh.
 - Live native config reads revealed omitted `layers[].disabledReason`; the shared
   projection now accepts that omission, with a parser regression test.
 - Unit/parser/render tests: run `pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test packages/ui/src/settings/codex/*.test.ts packages/ui/src/settings/codex/*.test.tsx`.
+  Final run: 24 passed, including native queue availability and empty prewarm field regressions.
 
 Not validated here: real authentication mutations, external installs/OAuth, native
-model inference, remote attachment switching, recovery across a Host restart, or
+external model inference, remote attachment switching, recovery across a Host restart, or
 workflow/CUA parity. Native approval/question transport is mocked in the browser suite;
-the live desktop suite proves native read integration and composer usability only.
+the live desktop suite proves native read integration and real first-image/queued-image
+full turns through Electron, Host and pinned Codex to the no-auth loopback fixture.

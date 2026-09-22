@@ -2,7 +2,8 @@
 import assert from "node:assert/strict";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { crc32, deflateSync } from "node:zlib";
 import { setTimeout } from "node:timers/promises";
 import { chromium } from "playwright-core";
@@ -14,11 +15,21 @@ const initial = await state();
 assert.equal(initial.hold, true);
 assert.equal(initial.requests.length, 0, "Use a fresh isolated mock probe");
 const evidence = await mkdtemp(join(tmpdir(), "codex-ui-desktop-conversation-"));
-const browser = await chromium.connectOverCDP("http://127.0.0.1:9229");
+const packaged = process.env.CODEX_UI_QA_PACKAGED === "1";
+const packagedRenderer = pathToFileURL(
+  resolve("packages/desktop/dist/linux-unpacked/resources/app.asar/out/renderer/index.html"),
+).href;
+const browser = await chromium.connectOverCDP(`http://127.0.0.1:${packaged ? 9230 : 9229}`);
 const page = browser
   .contexts()
   .flatMap((context) => context.pages())
-  .find((entry) => /^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):5174\//.test(entry.url()));
+  .find((entry) => {
+    if (!packaged) return /^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):5174\//.test(entry.url());
+    const url = new URL(entry.url());
+    url.search = "";
+    url.hash = "";
+    return url.href === packagedRenderer;
+  });
 assert.ok(page, "Refuse a non-QA renderer");
 const checks = [];
 const errors = [];
@@ -145,7 +156,17 @@ try {
   assert.deepEqual(errors, []);
   await writeFile(
     join(evidence, "results.json"),
-    JSON.stringify({ checks, state: await state(), errors }, null, 2),
+    JSON.stringify(
+      {
+        mode: packaged ? "packaged" : "dev",
+        renderer: page.url(),
+        checks,
+        state: await state(),
+        errors,
+      },
+      null,
+      2,
+    ),
   );
   console.log(JSON.stringify({ status: "passed", evidence, checks }, null, 2));
 } catch (error) {
