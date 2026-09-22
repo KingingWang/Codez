@@ -1,0 +1,278 @@
+import { randomUUID } from "node:crypto";
+import type { CodexNotification, CodexRpcPort } from "./contract.js";
+import { array, object, string, type JsonObject } from "./json.js";
+import { decorateNativeThread } from "./command-input.js";
+import { mergeNativeTurn } from "./merge-turn.js";
+
+export class DeletedThreadError extends Error {
+  constructor() {
+    super("Thread was deleted; refresh the session list");
+  }
+}
+
+export interface ThreadProjectionState {
+  thread: JsonObject;
+  queue: unknown[];
+  revision: number;
+  seq: number;
+  epoch: string;
+}
+
+/** A disposable projection cache. All durable facts and queue admission belong to Codex. */
+export class ThreadStateStore {
+  private readonly states = new Map<string, ThreadProjectionState>();
+  private readonly listeners = new Set<(threadId: string) => void>();
+  private readonly loads = new Map<string, Promise<ThreadProjectionState>>();
+  private readonly loaded = new Set<string>();
+  private readonly deleted = new Set<string>();
+  private readonly completedItems = new Set<string>();
+
+  constructor(
+    private readonly rpc: CodexRpcPort,
+    readonly cwd: string,
+  ) {}
+
+  onChange(listener: (threadId: string) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  get(id: string): ThreadProjectionState | undefined {
+    return this.states.get(id);
+  }
+
+  remove(id: string): void {
+    this.deleted.add(id);
+    this.states.delete(id);
+    this.loaded.delete(id);
+  }
+
+  private assertAvailable(id: string): void {
+    if (this.deleted.has(id)) throw new DeletedThreadError();
+  }
+
+  put(value: unknown): ThreadProjectionState {
+    const thread = object(value);
+    const id = string(thread.id);
+    this.assertAvailable(id);
+    const previous = this.states.get(id);
+    const state = previous ?? { thread, queue: [], revision: 0, seq: 0, epoch: randomUUID() };
+    state.thread = { ...previous?.thread, ...thread };
+    this.states.set(id, state);
+    this.touch(id);
+    return state;
+  }
+
+  touch(id: string): void {
+    const state = this.states.get(id);
+    if (!state) return;
+    state.revision += 1;
+    state.seq += 1;
+    for (const listener of this.listeners) listener(id);
+  }
+
+  async ensure(id: string): Promise<ThreadProjectionState> {
+    this.assertAvailable(id);
+    const existing = this.states.get(id);
+    if (existing && this.loaded.has(id)) return existing;
+    const loading = this.loads.get(id);
+    if (loading) return loading;
+    const pending = this.load(id).finally(() => this.loads.delete(id));
+    this.loads.set(id, pending);
+    return pending;
+  }
+
+  private async load(id: string): Promise<ThreadProjectionState> {
+    const read = object(await this.rpc.request("thread/read", { threadId: id }));
+    this.assertAvailable(id);
+    const metadata = object(read.thread);
+    // 路径不是远端身份，但本进程只能操作其 Host 已授权工作区中的线程。
+    if (metadata.cwd !== this.cwd) throw new Error("Thread belongs to a different workspace");
+    const resumed = object(await this.rpc.request("thread/resume", { threadId: id }));
+    this.assertAvailable(id);
+    const thread = decorateNativeThread(resumed);
+    const turns: unknown[] = [];
+    let cursor: string | undefined;
+    const seen = new Set<string>();
+    do {
+      const page = object(
+        await this.rpc.request("thread/turns/list", {
+          threadId: id,
+          cursor,
+          limit: 100,
+          sortDirection: "asc",
+          itemsView: "full",
+        }),
+      );
+      turns.push(...array(page.data));
+      cursor = typeof page.nextCursor === "string" ? page.nextCursor : undefined;
+      if (cursor && seen.has(cursor)) throw new Error("Repeated native history cursor");
+      if (cursor) seen.add(cursor);
+    } while (cursor);
+    // resume 到分页读取期间的通知不能被旧历史覆盖；同 id 的 live turn 优先。
+    const live = array(this.states.get(id)?.thread.turns);
+    const merged = new Map(turns.map((turn) => [string(object(turn).id), turn]));
+    for (const turn of live) {
+      const key = string(object(turn).id);
+      const old = merged.get(key);
+      merged.set(key, old ? mergeNativeTurn(object(old), object(turn)) : turn);
+    }
+    thread.turns = [...merged.values()];
+    const state = this.put(thread);
+    this.loaded.add(id);
+    await this.refreshQueue(id);
+    this.assertAvailable(id);
+    return state;
+  }
+
+  markStarted(thread: unknown): ThreadProjectionState {
+    const state = this.put(thread);
+    this.loaded.add(string(state.thread.id));
+    return state;
+  }
+
+  acceptTurnResponse(id: string, response: unknown): void {
+    const turn = object(object(response).turn);
+    const state = this.states.get(id);
+    const existing = state && this.turn(state, turn.id);
+    // 请求响应可能晚于终态通知；同 id 的终态不能被较旧 admission 响应覆盖。
+    if (existing && existing.status !== "inProgress") return;
+    this.apply({ method: "turn/started", params: { threadId: id, turn } });
+  }
+
+  applySettings(id: string, settings: JsonObject): void {
+    const state = this.states.get(id);
+    if (!state) return;
+    for (const key of ["model", "approvalPolicy", "sandboxPolicy", "collaborationMode"]) {
+      if (settings[key] !== undefined) state.thread[key] = settings[key];
+    }
+    if (settings.effort !== undefined) state.thread.reasoningEffort = settings.effort;
+    this.touch(id);
+  }
+
+  async reloadAfterHistoryChange(id: string): Promise<ThreadProjectionState> {
+    const state = this.states.get(id);
+    if (state) {
+      state.epoch = randomUUID();
+      state.thread.turns = [];
+    }
+    this.loaded.delete(id);
+    return this.ensure(id);
+  }
+
+  async refreshQueue(id: string): Promise<void> {
+    const state = this.states.get(id);
+    if (!state) return;
+    const values: unknown[] = [];
+    let cursor: string | undefined;
+    const seen = new Set<string>();
+    do {
+      const page = object(
+        await this.rpc.request("thread/queue/list", { threadId: id, cursor, limit: 100 }),
+      );
+      values.push(...array(page.data));
+      cursor = typeof page.nextCursor === "string" ? page.nextCursor : undefined;
+      if (cursor && seen.has(cursor)) throw new Error("Repeated native queue cursor");
+      if (cursor) seen.add(cursor);
+    } while (cursor);
+    state.queue = values;
+    this.touch(id);
+  }
+
+  apply(event: CodexNotification): string | undefined {
+    const params = object(event.params ?? {});
+    if (event.method === "thread/deleted") {
+      this.remove(string(params.threadId));
+      return;
+    }
+    if (event.method === "thread/started") {
+      const thread = object(params.thread);
+      if (thread.cwd !== this.cwd || this.deleted.has(string(thread.id))) return;
+      this.put(thread);
+      return string(thread.id);
+    }
+    const id = typeof params.threadId === "string" ? params.threadId : undefined;
+    const state = id ? this.states.get(id) : undefined;
+    if (!state || !id) return;
+    if (event.method === "thread/status/changed") state.thread.status = params.status;
+    else if (event.method === "thread/name/updated") state.thread.name = params.threadName;
+    else if (event.method === "thread/settings/updated") {
+      const settings = object(params.threadSettings);
+      state.thread.model = settings.model;
+      state.thread.modelProvider = settings.modelProvider;
+      state.thread.reasoningEffort = settings.effort;
+      state.thread.sandboxPolicy = settings.sandboxPolicy;
+      state.thread.approvalPolicy = settings.approvalPolicy;
+      state.thread.collaborationMode = settings.collaborationMode;
+    } else if (event.method === "thread/tokenUsage/updated")
+      state.thread.tokenUsage = params.tokenUsage;
+    else if (event.method === "turn/started" || event.method === "turn/completed") {
+      const turn = object(params.turn);
+      const turns = array(state.thread.turns);
+      const index = turns.findIndex((value) => object(value).id === turn.id);
+      // 原生生命周期通知仅携 turn 摘要；当前连接已按 item 事件收齐的内容不能被 summary 清空。
+      if (index < 0)
+        turns.push({
+          ...turn,
+          items: array(turn.items),
+          itemsView: event.method === "turn/started" ? "full" : turn.itemsView,
+        });
+      else turns[index] = mergeNativeTurn(object(turns[index]), turn);
+      state.thread.turns = turns;
+    } else if (event.method === "item/started" || event.method === "item/completed") {
+      const turn = this.turn(state, params.turnId);
+      if (!turn) return;
+      const items = array(turn.items);
+      const item = object(params.item);
+      const itemKey = JSON.stringify([id, params.turnId, item.id]);
+      if (event.method === "item/started" && this.completedItems.has(itemKey)) return;
+      if (event.method === "item/completed") this.completedItems.add(itemKey);
+      const index = items.findIndex((value) => object(value).id === item.id);
+      if (index < 0) items.push(item);
+      else items[index] = item;
+      turn.items = items;
+    } else if (event.method.endsWith("/delta") || event.method.endsWith("Delta")) {
+      if (this.completedItems.has(JSON.stringify([id, params.turnId, params.itemId]))) return;
+      const turn = this.turn(state, params.turnId);
+      const item = array(turn?.items)
+        .map(object)
+        .find((value) => value.id === params.itemId);
+      if (!item || typeof params.delta !== "string") return;
+      if (event.method === "item/agentMessage/delta" || event.method === "item/plan/delta") {
+        item.text = String(item.text ?? "") + params.delta;
+      } else if (event.method === "item/commandExecution/outputDelta") {
+        item.aggregatedOutput = String(item.aggregatedOutput ?? "") + params.delta;
+      } else if (event.method === "item/reasoning/summaryTextDelta") {
+        const summary = array(item.summary);
+        const index = typeof params.summaryIndex === "number" ? params.summaryIndex : 0;
+        summary[index] = String(summary[index] ?? "") + params.delta;
+        item.summary = summary;
+      } else return;
+    } else return;
+    state.thread.updatedAt = Math.floor(Date.now() / 1000);
+    this.touch(id);
+    return id;
+  }
+
+  private turn(state: ThreadProjectionState, id: unknown): JsonObject | undefined {
+    return array(state.thread.turns)
+      .map(object)
+      .find((turn) => turn.id === id);
+  }
+
+  async list(): Promise<unknown[]> {
+    const threads: unknown[] = [];
+    let cursor: string | undefined;
+    const seen = new Set<string>();
+    do {
+      const page = object(
+        await this.rpc.request("thread/list", { cwd: this.cwd, cursor, limit: 100 }),
+      );
+      threads.push(...array(page.data).filter((thread) => object(thread).cwd === this.cwd));
+      cursor = typeof page.nextCursor === "string" ? page.nextCursor : undefined;
+      if (cursor && seen.has(cursor)) throw new Error("Repeated native thread cursor");
+      if (cursor) seen.add(cursor);
+    } while (cursor);
+    return threads;
+  }
+}

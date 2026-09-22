@@ -5,6 +5,14 @@
  */
 export const ZCODE_PREVIEW_IDENTITY_ENV = "ZCODE_PREVIEW_IDENTITY";
 
+export function resolveDesktopRuntime(env = process.env) {
+  const value = env.ZCODE_DESKTOP_RUNTIME?.trim() || "codex";
+  if (value !== "codex" && value !== "legacy") {
+    throw new Error(`invalid ZCODE_DESKTOP_RUNTIME=${value}; expected codex or legacy`);
+  }
+  return value;
+}
+
 const PRODUCTION_IDENTITY = Object.freeze({
   flavor: "production",
   appId: "dev.zcode.app",
@@ -23,9 +31,19 @@ const PREVIEW_IDENTITY = Object.freeze({
   cuaHelperInstallVariant: "preview",
 });
 
+const CODEX_IDENTITY = Object.freeze({
+  flavor: "codex",
+  appId: "io.github.kingingwang.zcode.codex",
+  productName: "ZCode Codex",
+  linuxExecutableName: "zcode-codex",
+  linuxPackageName: "zcode-codex",
+  cuaHelperInstallVariant: "codex",
+});
+
 export const desktopProductIdentities = Object.freeze({
   production: PRODUCTION_IDENTITY,
   preview: PREVIEW_IDENTITY,
+  codex: CODEX_IDENTITY,
 });
 
 function normalizeDesktopZCodeEnv(env) {
@@ -52,11 +70,13 @@ export function isPreviewIdentityRequested(env = process.env) {
 
 /**
  * 产品身份（flavor）与后端环境（`ZCODE_ENV`）是两个轴：
+ * - 默认 Codex 身份；以下 Preview/production 规则只适用于显式 legacy runtime。
  * - `ZCODE_ENV=test` 一律是 Preview，测试后端不能顶着正式 `ZCode` 身份覆盖用户的正式安装；
  * - `ZCODE_ENV=production` 默认是正式身份，显式 `ZCODE_PREVIEW_IDENTITY=1` 时改用 Preview 身份。
  * 未知 `ZCODE_ENV` 继续按 test 处理，和共享层 normalizeZCodeEnv 的 fail-safe 默认值一致。
  */
 export function resolveDesktopProductFlavor(env = process.env) {
+  if (resolveDesktopRuntime(env) === "codex") return "codex";
   if (isPreviewIdentityRequested(env)) {
     return "preview";
   }
@@ -84,9 +104,12 @@ export function resolveDesktopArtifactSuffix(env = process.env) {
  */
 export function resolveWindowsAppUserModelIdForFlavor(flavor, runtime = { isPackaged: true }) {
   if (runtime.isPackaged === false) {
+    if (flavor === "codex") return CODEX_IDENTITY.appId;
     return "cn.aminer.zcode";
   }
-  return desktopProductIdentities[flavor === "preview" ? "preview" : "production"].appId;
+  return desktopProductIdentities[
+    flavor === "codex" ? "codex" : flavor === "preview" ? "preview" : "production"
+  ].appId;
 }
 
 export function resolveWindowsAppUserModelId(env = process.env, runtime = { isPackaged: true }) {

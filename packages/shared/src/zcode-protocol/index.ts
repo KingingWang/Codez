@@ -3561,6 +3561,7 @@ export const zcodeOffPeakListResultSchema = z
 export type ZCodeOffPeakListProtocolResult = z.infer<typeof zcodeOffPeakListResultSchema>;
 
 export const zcodeProtocolMethods = {
+  codexRequest: "codex/request",
   runtimeCapabilities: "runtime/capabilities",
   computerUseOperationEvent: "computer-use/operation-event",
   sessionCreate: "session/create",

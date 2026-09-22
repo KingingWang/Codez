@@ -2,7 +2,7 @@ import type { ZCodeRuntimeEnv } from "./runtimeEnv.js";
 
 export type ZCodeEnv = "test" | "production";
 /** 安装包身份：决定应用名、app id、Electron 数据目录与更新策略；与后端环境 `ZCodeEnv` 是两个轴。 */
-export type ZCodeProductFlavor = "production" | "preview";
+export type ZCodeProductFlavor = "production" | "preview" | "codex";
 export type ArmsRumEnv = "local" | "prod";
 
 // 非构建环境（如 e2e 测试的 mocha）下 define 不存在，用 typeof 检查 + fallback 避免 ReferenceError
@@ -27,7 +27,7 @@ export function normalizeZCodeProductFlavor(
   zcodeEnv: ZCodeEnv,
 ): ZCodeProductFlavor {
   const normalized = value?.trim().toLowerCase();
-  if (normalized === "production" || normalized === "preview") {
+  if (normalized === "production" || normalized === "preview" || normalized === "codex") {
     return normalized;
   }
   return zcodeEnv === "production" ? "production" : "preview";

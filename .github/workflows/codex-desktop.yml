@@ -1,0 +1,186 @@
+name: ZCode Codex desktop
+
+on:
+  pull_request:
+  push:
+    branches: ["feat/codex-desktop-adapter", "main"]
+    tags: ["zcode-codex-v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish a draft fork release (requires a zcode-codex-v tag ref)"
+        type: boolean
+        default: false
+      signed:
+        description: "Use protected codex-signing environment credentials (macOS/Windows)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codex-desktop-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  remote-assets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      ZCODE_ENV: production
+      ZCODE_DESKTOP_RUNTIME: codex
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --test scripts/test-codex-distribution*.mjs
+      - name: Codex service, desktop and remote deployment regressions (Linux once)
+        run: pnpm exec tsx --test packages/services/test/codex*.test.ts packages/desktop/test/codex*.test.ts packages/server/test/codex*.test.ts
+      - name: Codex UI settings regressions (Linux once)
+        run: pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test packages/ui/src/settings/codex/*.test.ts packages/ui/src/settings/codex/*.test.tsx
+      - name: Assemble four remote targets without compiling Codex
+        run: node scripts/codex-runtime-remote-assets.mjs
+      - name: Native standalone remote package smoke
+        run: node scripts/codex-runtime-remote-smoke.mjs
+      - name: Real bundled remote deployment and shipped executables (Linux once)
+        env:
+          ZCODE_TEST_BUNDLED_REMOTE_ASSETS_DIR: ${{ github.workspace }}/packages/desktop/bundled-resources/codex-remote
+        run: pnpm exec tsx --test --test-name-pattern='actual packaged linux-x64' packages/server/test/codexBundledRemoteAssets.test.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codex-remote-assets
+          if-no-files-found: error
+          path: |
+            packages/desktop/bundled-resources/codex-remote/components/**
+            packages/desktop/bundled-resources/codex-remote/releases/**
+  build:
+    needs: remote-assets
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: darwin, arch: x64, runner: macos-15-intel, builder: mac }
+          - { os: darwin, arch: arm64, runner: macos-15, builder: mac }
+          - { os: linux, arch: x64, runner: ubuntu-24.04, builder: linux }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, builder: linux }
+          - { os: win32, arch: x64, runner: windows-2025, builder: win }
+          - { os: win32, arch: arm64, runner: windows-11-arm, builder: win }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    environment: ${{ inputs.signed && matrix.os != 'linux' && 'codex-signing' || 'codex-unsigned' }}
+    env:
+      ZCODE_ENV: production
+      ZCODE_DESKTOP_RUNTIME: codex
+      ZCODE_TARGET_OS: ${{ matrix.os }}
+      ZCODE_TARGET_ARCH: ${{ matrix.arch }}
+      ZCODE_CODEX_SIGNED: ${{ inputs.signed && matrix.os != 'linux' && '1' || '0' }}
+      ZCODE_ENABLE_MAC_SIGN: ${{ inputs.signed && matrix.os == 'darwin' && '1' || '0' }}
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      ZCODE_ELECTRON_RUNTIME_MIRROR: https://github.com/electron/electron/releases/download/
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+      - name: Verify exact native toolchain
+        run: |
+          node -e 'if (process.version !== "v24.14.0" || process.platform !== process.env.ZCODE_TARGET_OS || process.arch !== process.env.ZCODE_TARGET_ARCH) throw new Error("Native toolchain mismatch")'
+          test "$(pnpm --version)" = "10.33.2"
+      - run: pnpm install --frozen-lockfile
+      - name: Mock distribution regression tests (before network downloads)
+        run: node --test scripts/test-codex-distribution*.mjs
+      - name: Typecheck, lint, architecture and adapter tests
+        run: |
+          pnpm typecheck
+          pnpm --filter @zcode/codex-bridge typecheck
+          pnpm lint
+          pnpm architecture:check
+          pnpm --filter @zcode/codex-bridge test
+      - name: Verified native Codex experimental API and isolated handshake
+        run: node scripts/codex-runtime-smoke.mjs
+      - name: Bundled bridge against verified native runtime (isolated fake model)
+        run: node --test scripts/test-codex-bridge-smoke.mjs
+      - uses: actions/download-artifact@v4
+        with:
+          name: codex-remote-assets
+          path: packages/desktop/bundled-resources/codex-remote
+      - name: Verify remote package on its native OS/architecture
+        if: matrix.os != 'win32'
+        run: node scripts/codex-runtime-remote-smoke.mjs
+      - name: Build Codex desktop
+        run: pnpm --filter @zcode/desktop build
+      - name: Package fork installers (never auto-publish)
+        env:
+          CSC_LINK: ${{ inputs.signed && (matrix.os == 'darwin' && secrets.MAC_CSC_LINK || secrets.WINDOWS_CSC_LINK) || '' }}
+          CSC_KEY_PASSWORD: ${{ inputs.signed && (matrix.os == 'darwin' && secrets.MAC_CSC_KEY_PASSWORD || secrets.WINDOWS_CSC_KEY_PASSWORD) || '' }}
+          APPLE_SIGNING_IDENTITY: ${{ inputs.signed && secrets.APPLE_SIGNING_IDENTITY || '' }}
+          APPLE_ID: ${{ inputs.signed && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ inputs.signed && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ inputs.signed && secrets.APPLE_TEAM_ID || '' }}
+        run: pnpm --filter @zcode/desktop exec electron-builder --config electron-builder.config.js --${{ matrix.builder }} --${{ matrix.arch }} --publish never
+      - name: Installer SHA256 manifests
+        run: node scripts/codex-runtime-artifacts.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zcode-codex-${{ matrix.os }}-${{ matrix.arch }}-${{ inputs.signed && matrix.os != 'linux' && 'signed' || 'unsigned' }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            packages/desktop/dist/*.dmg
+            packages/desktop/dist/*.zip
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.AppImage
+            packages/desktop/dist/*.deb
+            packages/desktop/dist/*.blockmap
+            packages/desktop/dist/*.yml
+            packages/desktop/dist/SHA256SUMS-*.txt
+
+  release:
+    needs: build
+    if: >-
+      startsWith(github.ref, 'refs/tags/zcode-codex-v') &&
+      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish))
+    runs-on: ubuntu-24.04
+    environment: codex-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: zcode-codex-*
+          path: artifacts
+      - name: Create controlled draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          [[ "$RELEASE_TAG" =~ ^zcode-codex-v[0-9][0-9A-Za-z.+-]*$ ]] || exit 1
+          # Per-architecture update YAML has overlapping names; do not merge or publish
+          # an incomplete auto-update feed. Installers and checksums are unambiguous.
+          mapfile -d '' files < <(find artifacts -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name 'SHA256SUMS-*.txt' \) -print0)
+          test "${#files[@]}" -gt 0
+          gh release create "$RELEASE_TAG" "${files[@]}" --draft --verify-tag --title "ZCode Codex $RELEASE_TAG" --notes 'Independent community ZCode Codex build; not an official OpenAI product. Includes the pinned native Codex runtime and verified macOS/Linux x64/arm64 remote runtime components (Node 24.14.0, standalone server, bridge, PTY and search tools), with Codex deployment roots, startup environment and bridge resolution; no legacy GLM agent. Native package smoke does not prove live SSH/WSL operation: these transports remain unverified unless the release validation report explicitly records acceptance. Filenames identify unsigned installers; automatic updates remain disabled pending trusted signed update metadata.'

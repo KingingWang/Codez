@@ -25,20 +25,28 @@ import { LoginApiKeyForm } from "./login/LoginApiKeyForm.js";
 import { renderOAuthProviderIcon } from "./lib/oauthProviderIcon.js";
 import { ThemeHeroVisual } from "./openWorkspacePageThemeHero.js";
 import { useZCodeStore } from "./store/StoreProvider.js";
+import { CodexWelcomePanel } from "@/settings/codex/CodexWelcomePanel.js";
 
 interface WelcomeScreenProps {
   onComplete: (reason: LoginCompleteReason) => void | Promise<void>;
+  codex?: boolean;
 }
 
 export type LoginCompleteReason = "oauth" | "apiKey" | "skip";
 
-export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
+export function WelcomeScreen({ onComplete, codex = false }: WelcomeScreenProps) {
   return (
     <main className="relative flex h-full min-h-dvh items-center justify-center overflow-hidden bg-background px-4 py-6 text-foreground sm:px-6">
       <ThemeHeroVisual className="absolute inset-0" />
       <div className="pointer-events-none absolute left-0 top-0 right-0 z-10 flex h-12 w-full items-center [app-region:drag]" />
-      <section className="relative z-10 w-full flex flex-col gap-10 max-w-sm rounded-2xl border border-popover-border bg-background p-8 text-ui-base/relaxed shadow-md sm:p-10">
-        <LoginPanel active onComplete={onComplete} />
+      <section
+        className={`relative z-10 w-full flex flex-col gap-4 max-h-full overflow-auto rounded-xl border border-popover-border bg-background p-4 text-ui-base shadow-md ${codex ? "max-w-2xl" : "max-w-sm sm:p-10"}`}
+      >
+        {codex ? (
+          <CodexWelcomePanel onContinue={() => void onComplete("skip")} />
+        ) : (
+          <LoginPanel active onComplete={onComplete} />
+        )}
       </section>
     </main>
   );

@@ -1,6 +1,7 @@
 import { requestPluginReferenceCatalog } from "#src/zcode-agent/pluginReferenceCatalogRequest.js";
 import {
   localTtftFactsSchema,
+  codexRequestSchema,
   sessionDebugSnapshotSchema,
   type LocalTtftFacts,
 } from "@zcode/shared";
@@ -296,7 +297,11 @@ import { AutomationService } from "#src/session/automationService.js";
 import { AutomationRepo } from "#src/session/automationRepo.js";
 import { TaskIndexRepo } from "#src/session/taskIndexRepo.js";
 import { ZCodeAgentMcpStatusModeUnsupportedError } from "#src/zcode-agent/zcodeAgentErrors.js";
-import { ZCodeAgentProcessManager } from "./zcodeAgentProcessManager.js";
+import { usesCodexBridgeRuntime } from "./codexBridgeCommand.js";
+import {
+  ZCodeAgentProcessManager,
+  resolveDefaultZCodeAgentCommand,
+} from "./zcodeAgentProcessManager.js";
 import type { ZCodeAgentProcessManagerOptions } from "./zcodeAgentProcessManager.js";
 import type { IOffPeakTaskService } from "#src/session/offPeakTask.js";
 import {
@@ -1058,6 +1063,12 @@ export function createZCodeAgentService(
   options?: CreateZCodeAgentServiceOptions,
 ): IZCodeAgentService & { disposeAllAndWait(): Promise<void> } {
   const processManager = new ZCodeAgentProcessManager(options);
+  const usesDefaultCodexBridge = usesCodexBridgeRuntime({
+    desktopDefault: options?.presentationSurface === "desktop",
+    customCommandResolver: Boolean(
+      options?.commandResolver && options.commandResolver !== resolveDefaultZCodeAgentCommand,
+    ),
+  });
   // Windows indicator 与 macOS producer lifecycle client 共用已校验、去重的 sideband facts。
   const cuaOperationTurnTracker =
     options?.cuaOperationStateReporter || options?.onCuaPipSessionLifecycle
@@ -1382,7 +1393,8 @@ export function createZCodeAgentService(
     client: ZCodeProtocolClient;
     reason: string;
   }): Promise<void> {
-    if (!accountProviderConfigSource) return;
+    // Codex 自己管理账号和配置；旧 Provider 快照不能覆盖原生配置或阻塞原生登录。
+    if (usesDefaultCodexBridge || !accountProviderConfigSource) return;
     const previous = accountConfigSyncByClient.get(params.client) ?? Promise.resolve();
     const current = previous
       .catch(() => {
@@ -3035,6 +3047,12 @@ export function createZCodeAgentService(
   }
 
   async function getClient(params: ZCodeAgentWorkspaceTarget) {
+    if (usesDefaultCodexBridge) {
+      const entry = await getOrStartReadOnlyClient(params);
+      entry.modelExecutionEnabled = true;
+      processManager.markReady(params, entry.client);
+      return entry.client;
+    }
     const workspaceKey = resolveWorkspaceKey(params);
     const active = activeClientsByWorkspaceKey.get(workspaceKey);
     if (active?.modelExecutionEnabled && isReusableActiveClientEntry(params, active)) {
@@ -3282,6 +3300,8 @@ export function createZCodeAgentService(
     params: ZCodeAgentConversationCommandParams,
   ): Promise<CommandEnvelope> {
     const envelope = params.envelope;
+    // Codex 直接消费原生 selection/plan 意图；旧工具策略不能重写该信封或引入 Provider 前置读取。
+    if (usesDefaultCodexBridge) return envelope;
     if (envelope.type === "createSession") {
       // V4 createSession 绕过 legacy session/create 的参数构造，工具面 flag 必须在
       // 信封处同源注入；门禁 false 时不写字段（缺省即 fail-closed，与 legacy 一致）。
@@ -3331,6 +3351,12 @@ export function createZCodeAgentService(
   }
 
   return {
+    async codexRequest(params) {
+      // 先校验再启动，拒绝未授权 native RPC；只读启动不限制已获 UI 授权的设置写入。
+      const request = codexRequestSchema.parse(params.request);
+      const client = await getReadOnlyClient(params);
+      return client.request(zcodeProtocolMethods.codexRequest, request);
+    },
     async prepareStorage(params) {
       const client = await processManager.getClient(params);
       wireClient(client, params, "chat");
@@ -4911,7 +4937,8 @@ export function createZCodeAgentService(
           localTerminal: true,
           binaryFrames: false,
           compression: "none" as const,
-          workspaceHookReview: true,
+          // Codex bridge 不支持旧 Hooks 审批写入，不能向 UI 广告该能力。
+          workspaceHookReview: !usesDefaultCodexBridge,
           independentPlanState: true,
           // 与 connection scope 的 hello 同一份能力集：直连 base service 的宿主内部消费者
           // 也能收到 `workflowRun.*` 增量（是否真收由它自己的 clientHello 决定）。
@@ -5049,10 +5076,12 @@ export function createZCodeAgentService(
         firstInput?: { planEnabled?: boolean };
       };
       if (
-        planPayload.planEnabled ||
-        planPayload.config?.planEnabled ||
-        planPayload.firstInput?.planEnabled
+        !usesDefaultCodexBridge &&
+        (planPayload.planEnabled ||
+          planPayload.config?.planEnabled ||
+          planPayload.firstInput?.planEnabled)
       ) {
+        // 已知内置 bridge 把独立 Plan 映射为 native collaborationMode；旧/自定义 CLI 仍须探测能力。
         await ensureIndependentPlanSupport(client);
       }
       // RPC facade 会清掉调用方可伪造的顶层 clientMode，再用 trusted carrier 注入 host
@@ -5080,7 +5109,7 @@ export function createZCodeAgentService(
         const { ttft: _ttft, ...withoutTtft } = envelope;
         envelope = withoutTtft;
       }
-      if (envelope.type === "sendText" && envelope.sessionId) {
+      if (!usesDefaultCodexBridge && envelope.type === "sendText" && envelope.sessionId) {
         const payload = commandPayloadSchemas.sendText.parse(envelope.payload);
         const browserAmbientContext = await collectBrowserAmbientContext(
           options?.browserControlExecutor,
