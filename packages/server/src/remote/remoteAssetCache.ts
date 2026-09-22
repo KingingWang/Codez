@@ -54,6 +54,7 @@ const REMOTE_ASSET_PROGRESS_INTERVAL_MS = 1_000;
 const REMOTE_ASSET_PROGRESS_PERCENT_STEP = 5;
 const CONTENT_ADDRESSED_COMPONENT_RELEASE_DIRS: Record<string, string> = {
   "server-bundle": "server-content",
+  "codex-runtime": "codex-content",
   glm: "glm-content",
 };
 const REMOTE_ASSET_DIRECTORY_COMMIT_RETRY_DELAYS_MS = [
@@ -88,6 +89,10 @@ interface ComponentMountRule {
 }
 
 const REMOTE_COMPONENT_MOUNT_RULES: Record<string, ComponentMountRule> = {
+  "codex-runtime": {
+    platformScoped: true,
+    resolveExpectedMount: () => "codex",
+  },
   "server-bundle": {
     platformScoped: false,
     resolveExpectedMount: () => "server",
@@ -1489,7 +1494,7 @@ function resolvePathWithinBase(baseDir: string, relativePath: string, label: str
   return targetPath;
 }
 
-async function commitStagingDirectoryAtomically(
+export async function commitStagingDirectoryAtomically(
   stagingDir: string,
   targetDir: string,
 ): Promise<void> {
@@ -1799,7 +1804,7 @@ async function hashFileContent(
   }
 }
 
-async function computeFileSha256(filePath: string): Promise<string> {
+export async function computeFileSha256(filePath: string): Promise<string> {
   const hash = createHash("sha256");
   const stream = createReadStream(filePath);
   for await (const chunk of stream) {

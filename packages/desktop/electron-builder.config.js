@@ -20,6 +20,7 @@ import { getTargetPlatform } from "./scripts/target-platform.mjs";
 import {
   resolveDesktopArtifactSuffix,
   resolveDesktopProductIdentity,
+  resolveDesktopRuntime,
 } from "./scripts/desktop-product-identity.mjs";
 import { createWindowsPowerShellSecurityArgs } from "./scripts/powershell-command.mjs";
 import { isSharpRequiredByComputerUse, verifyStagedSharp } from "./scripts/sharp-package-assets.mjs";
@@ -29,6 +30,8 @@ import {
   finalizePackagedWindowsCuaHelper,
   resolveElectronBuilderWindowsTarget,
 } from "./scripts/windows-cua-helper-assets.mjs";
+import { resolveCodexBuildSelection, verifyCodexResources } from "../../scripts/codex-runtime.mjs";
+import { verifyCodexRemoteAssets } from "../../scripts/codex-runtime-remote-verify.mjs";
 import {
   findDesktopNativePackageViolations,
   createDesktopNativePackagePrunePatterns,
@@ -46,6 +49,13 @@ const targetPlatform = getTargetPlatform();
 // 代码和完整供应链保留在显式 opt-in 后，便于未来恢复而不影响当前发布流程。
 const shouldPackageWindowsBrowserImportHelper =
   targetPlatform.os === "win32" && process.env.ZCODE_ENABLE_WINDOWS_BROWSER_IMPORT === "1";
+const isCodexBuild = resolveDesktopRuntime() === "codex";
+const codexStaging = isCodexBuild
+  ? await resolveCodexBuildSelection({ target: targetPlatform })
+  : null;
+const codexRemote = isCodexBuild
+  ? await verifyCodexRemoteAssets({ bridgePath: resolve(codexStaging.directory, "bridge.cjs") })
+  : null;
 const builtinProviderConfig = await loadBuiltinProviderConfig();
 const desktopProductIdentity = resolveDesktopProductIdentity({
   ...process.env,
@@ -60,6 +70,25 @@ const macSigningIdentity =
   rawMacSigningIdentity?.replace(/^Developer ID Application:\s*/, "") ?? null;
 const shouldEnableMacSigning =
   process.env.ZCODE_ENABLE_MAC_SIGN === "1" && Boolean(macSigningIdentity);
+const codexSigned = isCodexBuild && process.env.ZCODE_CODEX_SIGNED === "1";
+if (codexSigned) {
+  if (
+    !["darwin", "win32"].includes(targetPlatform.os) ||
+    !process.env.CSC_LINK ||
+    !process.env.CSC_KEY_PASSWORD
+  )
+    throw new Error("Signed Codex builds require platform signing credentials");
+  if (
+    targetPlatform.os === "darwin" &&
+    (!shouldEnableMacSigning ||
+      !process.env.APPLE_ID ||
+      !process.env.APPLE_APP_SPECIFIC_PASSWORD ||
+      !process.env.APPLE_TEAM_ID)
+  )
+    throw new Error(
+      "Signed Codex macOS builds require signing identity and notarization credentials",
+    );
+}
 const workspaceRoot = resolve(import.meta.dirname, "../..");
 const desktopPackageRoot = import.meta.dirname;
 // Computer Use Helper（macOS .app、Windows runtime）只随真实 producer 打包；开源占位包下跳过随包资源与校验。
@@ -215,7 +244,7 @@ const shouldEnableWindowsVsign =
   process.platform === "win32" && process.env.ZCODE_ENABLE_WINDOWS_SIGN === "1";
 const commandStdoutMaxBuffer = 64 * 1024 * 1024;
 // 产物后缀只标记后端环境（_TEST）；身份靠 productName 区分，生产后端的 Preview 包没有后缀。
-const desktopArtifactEnvSuffix = resolveDesktopArtifactSuffix(process.env);
+const desktopArtifactEnvSuffix = `${resolveDesktopArtifactSuffix(process.env)}${isCodexBuild && process.env.ZCODE_CODEX_SIGNED !== "1" ? "-unsigned" : ""}`;
 
 // Preview 是内部签名测试包。CI 明确打开 macOS 签名时若没有身份，必须在生成未签名包前失败，
 // 避免“产物存在”被误认为已经走完和生产版相同的签名链路。
@@ -246,7 +275,7 @@ const PACKAGING_PRUNE_PATTERNS = [
 
 function buildDesktopArtifactName(platformName, extension = "${ext}") {
   // 测试环境产物必须和正式安装包文件名区分，避免上传、下载或人工验收时混用。
-  return `\${productName}-\${version}-${platformName}-\${arch}${desktopArtifactEnvSuffix}.${extension}`;
+  return `\${productName}-\${version}-${platformName}-${targetPlatform.arch}${desktopArtifactEnvSuffix}.${extension}`;
 }
 
 function runAsarCommand(args) {
@@ -562,11 +591,19 @@ export default {
   // CI 环境下若这些字段缺失会在产物阶段直接失败。这里统一在构建配置补齐，避免依赖外部注入。
   extraMetadata: {
     version: buildMetadata.appVersion,
+    ...(isCodexBuild
+      ? {
+          name: "zcode-codex",
+          productName: "ZCode Codex",
+          description:
+            "ZCode Codex — independent community desktop, not an official OpenAI product",
+        }
+      : {}),
     zcodeProductFlavor: desktopProductIdentity.flavor,
-    homepage: "https://zcode.z.ai",
+    homepage: isCodexBuild ? "https://github.com/KingingWang/ZCode" : "https://zcode.z.ai",
     author: {
-      name: "ZCode",
-      email: "dev@zcode.z.ai",
+      name: isCodexBuild ? "ZCode Codex community" : "ZCode",
+      email: isCodexBuild ? "KingingWang@users.noreply.github.com" : "dev@zcode.z.ai",
     },
   },
   // macOS 签名阶段会对 Electron Framework 下每个语言包逐个 codesign。
@@ -589,6 +626,7 @@ export default {
     mirror: resolveElectronDownloadMirror(),
   },
   productName: desktopProductIdentity.productName,
+  forceCodeSigning: codexSigned,
   directories: {
     // macOS arm64/x64 CI 可能共享同一个 checkout 并行打包。
     // 输出根目录允许按架构隔离，避免一个 job 清理 dist 时删除另一个 job 正在签名的 .app。
@@ -612,6 +650,15 @@ export default {
     `node_modules/node-pty/prebuilds/${targetPlatform.key}/**`,
   ],
   beforePack: async (context) => {
+    if (isCodexBuild) {
+      if (
+        context.electronPlatformName !== targetPlatform.os ||
+        ELECTRON_BUILDER_ARCH[context.arch] !== targetPlatform.arch
+      )
+        throw new Error("Codex packaging target does not match verified runtime target");
+      await verifyCodexResources(codexStaging);
+      await verifyCodexRemoteAssets({ bridgePath: resolve(codexStaging.directory, "bridge.cjs") });
+    }
     runTimedSync("beforePack:restoreTargetNodePtyPrebuild", () =>
       restoreTargetNodePtyPrebuild({ desktopPackageRoot, targetPlatform }),
     );
@@ -651,6 +698,16 @@ export default {
     await stageElectronNotices(context.appOutDir, resources, framework.version);
   },
   afterPack: async (context) => {
+    if (isCodexBuild) {
+      await verifyCodexResources({
+        ...codexStaging,
+        directory: resolve(resolvePackagedResourcesDir(context), "codex"),
+      });
+      await verifyCodexRemoteAssets({
+        root: resolve(resolvePackagedResourcesDir(context), "codex-remote"),
+        bridgePath: resolve(resolvePackagedResourcesDir(context), "codex/bridge.cjs"),
+      });
+    }
     const actualWindowsTarget =
       context.electronPlatformName === "win32"
         ? resolveElectronBuilderWindowsTarget({
@@ -702,6 +759,9 @@ export default {
       }
     : {}),
   extraResources: [
+    ...(isCodexBuild
+      ? [{ from: codexRemote.root, to: "codex-remote", filter: codexRemote.files }]
+      : []),
     { from: resolve(workspaceRoot, noticesFileName), to: noticesFileName },
     ...(targetPlatform.os === "darwin"
       ? [
@@ -779,15 +839,29 @@ export default {
           },
         ]
       : []),
-    {
-      // agent 运行时资产，打包到 resources/glm。
-      // 桌面端内置的是 agent 的 JS bundle（glm/zcode.cjs，由 prepare:agent-bundle 生成），
-      // Host 进程用 app 自带的 Electron Node runtime（ELECTRON_RUN_AS_NODE）执行 `zcode.cjs app-server --stdio`，
-      // 不再随包内置独立 Node 二进制。远端 SSH/WSL 仍走原生二进制（无 Electron）。
-      from: `bundled-agents/${targetPlatform.key}/glm`,
-      to: "glm",
-      filter: ["**/*", "!**/*.map"],
-    },
+    ...(isCodexBuild
+      ? [
+          {
+            from: codexStaging.directory,
+            to: "codex",
+            filter: [
+              targetPlatform.os === "win32" ? "codex.exe" : "codex",
+              "bridge.cjs",
+              "distribution.json",
+            ],
+          },
+        ]
+      : [
+          {
+            // agent 运行时资产，打包到 resources/glm。
+            // 桌面端内置的是 agent 的 JS bundle（glm/zcode.cjs，由 prepare:agent-bundle 生成），
+            // Host 进程用 app 自带的 Electron Node runtime（ELECTRON_RUN_AS_NODE）执行 `zcode.cjs app-server --stdio`，
+            // 不再随包内置独立 Node 二进制。远端 SSH/WSL 仍走原生二进制（无 Electron）。
+            from: `bundled-agents/${targetPlatform.key}/glm`,
+            to: "glm",
+            filter: ["**/*", "!**/*.map"],
+          },
+        ]),
     {
       // agent shell 之前完全依赖宿主系统 PATH，GUI 启动时经常拿不到用户自己装的 rg。
       // 这里把 ripgrep 作为桌面端内置 runtime tool 打进 resources/tools，
@@ -811,11 +885,12 @@ export default {
       // 协议处理器的展示名之前使用小写 scheme，打包产物里的协议描述无法体现产品名。
       // 展示名跟随安装包身份；scheme 仍保持 zcode，因此两个应用中最后注册者会成为默认 handler。
       name: desktopProductIdentity.productName,
-      schemes: ["zcode"],
+      schemes: [isCodexBuild ? "zcode-codex" : "zcode"],
     },
   ],
   mac: {
     target: ["dmg", "zip"],
+    ...(isCodexBuild ? { binaries: ["Resources/codex/codex"] } : {}),
     category: "public.app-category.developer-tools",
     artifactName: buildDesktopArtifactName("mac"),
     extendInfo: {
@@ -834,7 +909,7 @@ export default {
     // macOS 产物采用“build 阶段签名 + 独立公证阶段”的两段式流水线。
     // 如果这里不显式关闭 electron-builder 内置 notarize，它会在 build 阶段读取 Apple 凭据后直接尝试公证，
     // 并强制要求 APPLE_APP_SPECIFIC_PASSWORD，导致 build 还没产出 DMG 就提前失败。
-    notarize: false,
+    notarize: isCodexBuild && shouldEnableMacSigning,
     hardenedRuntime: shouldEnableMacSigning,
     gatekeeperAssess: false,
     entitlements: "build/entitlements.mac.plist",
@@ -845,11 +920,13 @@ export default {
     // 命中后可跳过已预签名目录的重复签名/遍历，同时保留主 app 与框架签名。
     // CUA Helper 在独立 job 中已完成 Developer ID 签名和 notarization staple；
     // electron-builder 若再次签名嵌套 Helper 会改变 CDHash，使最终用户包中的 staple 失效。
-    signIgnore: [
-      "[/\\\\]Contents[/\\\\]Resources[/\\\\]cua-helper([/\\\\]|$)",
-      "[/\\\\]Contents[/\\\\]Resources[/\\\\]glm([/\\\\]|$)",
-      "[/\\\\]Contents[/\\\\]Resources[/\\\\]tools([/\\\\]|$)",
-    ],
+    signIgnore: isCodexBuild
+      ? []
+      : [
+          "[/\\\\]Contents[/\\\\]Resources[/\\\\]cua-helper([/\\\\]|$)",
+          "[/\\\\]Contents[/\\\\]Resources[/\\\\]glm([/\\\\]|$)",
+          "[/\\\\]Contents[/\\\\]Resources[/\\\\]tools([/\\\\]|$)",
+        ],
   },
   win: {
     target: ["nsis"],
@@ -868,7 +945,7 @@ export default {
       : {}),
   },
   linux: {
-    target: ["AppImage", "deb", "rpm", "pacman"],
+    target: isCodexBuild ? ["AppImage", "deb"] : ["AppImage", "deb", "rpm", "pacman"],
     artifactName: buildDesktopArtifactName("linux"),
     // desktop 包名是 scoped package（@zcode/desktop），electron-builder 默认会把
     // Linux executable/Icon 推成 @zcodedesktop。部分桌面环境无法按这个 icon name 命中
@@ -876,7 +953,9 @@ export default {
     // 与 /usr/share/icons/hicolor/*/apps/zcode.png 保持一致。
     executableName: desktopProductIdentity.linuxExecutableName,
     category: "Development",
-    maintainer: "ZCode <dev@zcode.z.ai>",
+    maintainer: isCodexBuild
+      ? "ZCode Codex community <KingingWang@users.noreply.github.com>"
+      : "ZCode <dev@zcode.z.ai>",
   },
   deb: {
     // 生产版与 Preview 必须是两个 dpkg package；只改可执行名仍会让安装器把另一版本当成升级替换。
@@ -929,14 +1008,21 @@ export default {
     installerHeaderIcon: "build/icon_installer.ico",
   },
   detectUpdateChannel: false,
-  publish: {
-    provider: "generic",
-    // 当前 OSS/CDN 对多 Range 请求返回 206，但 Content-Type 仍是 application/x-msdownload，
-    // electron-updater 会因缺少 multipart/byteranges 直接回退整包下载。关闭 multiple range 后仍走差分，
-    // 只是按单 Range 顺序拉取差异块，避免 Windows 用户更新时从约 15MB 退化成 300MB+ 全量包。
-    useMultipleRangeRequest: false,
-    // 新客户端运行时使用服务端 manifest provider；这里仅保留 electron-builder 必需的
-    // generic publish 占位，避免打包产物继续携带可配置的旧 stable feed。
-    url: "http://localhost:8081",
-  },
+  publish: isCodexBuild
+    ? {
+        provider: "github",
+        owner: "KingingWang",
+        repo: "ZCode",
+        releaseType: "draft",
+      }
+    : {
+        provider: "generic",
+        // 当前 OSS/CDN 对多 Range 请求返回 206，但 Content-Type 仍是 application/x-msdownload，
+        // electron-updater 会因缺少 multipart/byteranges 直接回退整包下载。关闭 multiple range 后仍走差分，
+        // 只是按单 Range 顺序拉取差异块，避免 Windows 用户更新时从约 15MB 退化成 300MB+ 全量包。
+        useMultipleRangeRequest: false,
+        // 新客户端运行时使用服务端 manifest provider；这里仅保留 electron-builder 必需的
+        // generic publish 占位，避免打包产物继续携带可配置的旧 stable feed。
+        url: "http://localhost:8081",
+      },
 };

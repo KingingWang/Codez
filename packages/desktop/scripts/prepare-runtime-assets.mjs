@@ -7,11 +7,16 @@ import { resolveNativeSearchReleasePlan } from "../../../scripts/native-search-t
 import { runCommand } from "../../../scripts/spawn-command.mjs";
 import { getTargetPlatform } from "./target-platform.mjs";
 import { isRealComputerUseProducerInstalled } from "./computer-use-producer.mjs";
+import { prepareCodexRuntime } from "./prepare-codex-runtime.mjs";
+import { resolveDesktopRuntime } from "./desktop-product-identity.mjs";
+import { ensureCodexRemoteAssets } from "../../../scripts/codex-runtime-remote-assets.mjs";
+import { publishCodexBuildSelection } from "../../../scripts/codex-runtime.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(scriptDir, "..");
 const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const target = getTargetPlatform();
+const isCodexBuild = resolveDesktopRuntime() === "codex";
 const nativeSearchReleasePlan = resolveNativeSearchReleasePlan({
   platform: target.os,
   arch: target.arch,
@@ -32,7 +37,7 @@ const shouldPrepareMacosWindowBounds = target.os === "darwin";
 // native-search 由 prepare-native-search-tools.mjs 统一准备：内网依赖源已配置时下载固定摘要的归档，
 // 未配置时解包仓库内置的同名归档，两种情况都不需要额外开关。
 const localRuntimeScripts = [
-  "prepare:agent-bundle",
+  ...(!isCodexBuild ? ["prepare:agent-bundle"] : []),
   ...(shouldPrepareWindowsCuaHelper ? ["prepare:windows-cua-helper"] : []),
   ...(nativeSearchReleasePlan.enabled ? ["prepare:native-search"] : []),
   ...(shouldPrepareWindowsBrowserImportHelper ? ["prepare:browser-import-helper"] : []),
@@ -56,7 +61,14 @@ function runTimedPnpmScript(scriptName) {
 
 const shouldSkipRemoteAssets = process.env.ZCODE_SKIP_REMOTE_ASSETS === "1";
 
-if (!shouldSkipRemoteAssets) {
+if (isCodexBuild) {
+  const directory = await prepareCodexRuntime();
+  await ensureCodexRemoteAssets({ bridgePath: resolve(directory, "bridge.cjs") });
+  await publishCodexBuildSelection({ directory });
+  console.log(
+    "[prepare:runtime-assets] verified four-target Codex remote components; SSH/WSL end-to-end validation is tracked separately from build readiness",
+  );
+} else if (!shouldSkipRemoteAssets) {
   runTimedPnpmScript("prepare:remote-assets");
 } else {
   // Windows build job 的桌面安装包不依赖 mock-cdn remote 资产。

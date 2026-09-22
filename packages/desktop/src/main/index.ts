@@ -3,6 +3,11 @@ import { createLocalTtftExporter } from "./localTtftExporter.js";
 /* eslint-disable max-lines */
 import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
+import {
+  resolveDesktopBootstrapSettingsFile,
+  resolveDesktopDataBaseDir,
+  resolveDesktopUpdatePolicy,
+} from "./desktopProductRuntime.js";
 import { powerMonitor, powerSaveBlocker } from "electron";
 import { crashCapturePaths } from "./appCrashCaptureBootstrap.js";
 import { armsInitPromise } from "./appARMSBootstrap.js";
@@ -563,7 +568,7 @@ async function runBrowserCommandOnView(params: {
 let currentDesktopZoomLevel = 0;
 let currentDesktopWindowSize: DesktopWindowSize | undefined;
 const preloadPath = join(import.meta.dirname, "../preload/index.cjs");
-const settingsFile = join(homedir(), ".zcode", "v2", "setting.json");
+const settingsFile = resolveDesktopBootstrapSettingsFile();
 let activeAppShutdownPolicy = resolveAppShutdownPolicy("normal", process.platform);
 let activeAppShutdownKind: AppShutdownKind | null = null;
 const WINDOWS_AGENT_FORCE_KILL_TIMEOUT_MS = 2_000;
@@ -2114,7 +2119,7 @@ app.whenReady().then(async () => {
   try {
     bootstrapSettings = await mainSettingService.get();
     if (bootstrapSettings.dataBaseDir) {
-      setDataBaseDir(bootstrapSettings.dataBaseDir);
+      setDataBaseDir(resolveDesktopDataBaseDir(bootstrapSettings.dataBaseDir));
     }
     if (bootstrapSettings.locale) {
       loadedBootstrapLocale = true;
@@ -2237,7 +2242,7 @@ app.whenReady().then(async () => {
   // 不向 Preview 渠道提供更新。构建期未启用自动更新时同样不更新
   // （见 docs/desktop/build-time-optional-capabilities.md）。
   void initAutoUpdater({
-    enabled: ZCODE_PRODUCT_FLAVOR === "production" && ZCODE_AUTO_UPDATE_ENABLED,
+    enabled: resolveDesktopUpdatePolicy().automatic,
     onBeforeQuitAndInstall: async () => {
       notifyStabilityLifecycle("update_install");
       await prepareAppQuit("auto-update quitAndInstall", "update-install");

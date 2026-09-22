@@ -118,6 +118,19 @@ export async function prepareSessionStorage(options: {
   preparedPaths?: Set<string>;
   observePath: (path: string) => Promise<void>;
 }): Promise<void> {
+  if (options.signal.aborted) throw statusError("transport_closed");
+  if (
+    !process.env.ZCODE_AGENT_SERVER_COMMAND?.trim() &&
+    process.env.ZCODE_DESKTOP_RUNTIME?.trim() !== "legacy"
+  ) {
+    // 默认桌面 bridge 不使用旧 session SQLite；不能启动迁移 Worker 或把缺少 CLI 当数据库故障。
+    // 原生 executable/bridge 的可用性由实际 Agent 启动校验，Host 存储仍由 prepareHostStorage 准备。
+    options.report("ready", {
+      databaseId: "session",
+      migration: { kind: "none", executedCount: 0, committedCount: 0 },
+    });
+    return;
+  }
   const command = resolveDefaultZCodeAgentCommand({
     workspacePath: options.cwd,
     workspaceKey: options.cwd,

@@ -51,6 +51,7 @@ export function useDraftModelReadinessGate(params: {
   provider?: ZCodeProvider;
   sessionId: string | null;
   modelSelectionService: Pick<IModelSelectionService, "getView" | "onDidChange">;
+  codex?: boolean;
 }): DraftModelReadinessGate {
   const {
     workspacePath,
@@ -61,7 +62,7 @@ export function useDraftModelReadinessGate(params: {
   } = params;
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   const displayProvider = provider ?? ZCODE_AGENT_PROVIDER;
-  const enabled = sessionId === null && isZCodeAgentProvider(displayProvider);
+  const enabled = !params.codex && sessionId === null && isZCodeAgentProvider(displayProvider);
   const gateKey = `${workspaceKey}\u0000${displayProvider}`;
   const [state, setState] = useState<DraftModelReadinessState>(() => ({
     gateKey,

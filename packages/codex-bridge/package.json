@@ -1,0 +1,24 @@
+{
+  "name": "@zcode/codex-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/contract.ts"
+  },
+  "scripts": {
+    "test": "tsx --test test/*.test.ts",
+    "build": "node ../../scripts/build-codex-bridge.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@zcode/shared": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.4",
+    "typescript": "^6.0.2"
+  }
+}

@@ -1,5 +1,6 @@
-const DEEP_LINK_SCHEME = "zcode";
-const DEEP_LINK_RE = /\bzcode:(?:\/\/|\/)?[^\s"'<>]+/i;
+import { desktopProtocolScheme } from "./desktopProductRuntime.js";
+const DEEP_LINK_SCHEME = desktopProtocolScheme;
+const DEEP_LINK_RE = new RegExp(`\\b${DEEP_LINK_SCHEME}:(?:\\/\\/|\\/)?[^\\s"'<>]+`, "i");
 const OAUTH_CALLBACK_HOSTS = new Set(["oauth"]);
 const PAYMENT_CALLBACK_HOST = "payment";
 const WORKSPACE_OPEN_HOST = "workspace";

@@ -1,15 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { resolveDesktopBootstrapSettingsFile } from "./desktopProductRuntime.js";
 
 interface ChromiumHardwareAccelerationApp {
   disableHardwareAcceleration(): void;
 }
 
 export function resolveChromiumHardwareAccelerationSettingsFile(
-  homePath: string = homedir(),
+  homePath?: string,
 ): string {
-  return join(homePath, ".zcode", "v2", "setting.json");
+  return resolveDesktopBootstrapSettingsFile(homePath);
 }
 
 export function extractBootstrapChromiumHardwareAccelerationEnabled(rawValue: unknown): boolean {
@@ -26,7 +25,7 @@ export function extractBootstrapChromiumHardwareAccelerationEnabled(rawValue: un
 }
 
 function readBootstrapChromiumHardwareAccelerationEnabledFromDisk(
-  settingsFile: string = resolveChromiumHardwareAccelerationSettingsFile(),
+  settingsFile: string = resolveDesktopBootstrapSettingsFile(),
 ): boolean {
   if (!existsSync(settingsFile)) {
     return true;

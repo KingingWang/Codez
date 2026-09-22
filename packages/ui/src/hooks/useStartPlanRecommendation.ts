@@ -19,6 +19,7 @@ import { logger } from "@/logger.js";
 export function useStartPlanRecommendation(
   view: ModelSelectionView | null | undefined,
   surface?: "subagent",
+  enabled = true,
 ) {
   const services = useOptionalBaseWorkspaceServices();
   const { intl } = useZCodeIntl();
@@ -26,16 +27,20 @@ export function useStartPlanRecommendation(
   // Registry 已完成登录品牌、权益、模型配置校验，不从展示名称推测执行身份。
   const start = view?.providers.find((provider) => isStartPlanModelProviderId(provider.providerId));
   const settings = useProviderSettingsView();
-  const entitlement = useUsageEntitlementWithService(services?.usageStatsService, {
-    ...buildStartPlanEntitlementOptions(
-      settings.state.status === "ready" ? settings.state.view : null,
-      start?.providerId ?? "",
-    ),
-    refreshOnMount: true,
-    mountRefreshReason: "access",
-  });
+  const entitlement = useUsageEntitlementWithService(
+    enabled ? services?.usageStatsService : undefined,
+    {
+      ...buildStartPlanEntitlementOptions(
+        settings.state.status === "ready" ? settings.state.view : null,
+        start?.providerId ?? "",
+      ),
+      refreshOnMount: enabled,
+      mountRefreshReason: "access",
+    },
+  );
   return useCallback(
     async (selection: ModelSelection): Promise<ModelSelection | null> => {
+      if (!enabled) return selection;
       // 提交不等待网络；过期额度跳过推荐，访问刷新沿用一分钟节流与失败退避。
       void entitlement.refresh({ silent: true, reason: "access" });
       const candidate = entitlement.error
@@ -94,6 +99,7 @@ export function useStartPlanRecommendation(
       services,
       surface,
       view,
+      enabled,
     ],
   );
 }

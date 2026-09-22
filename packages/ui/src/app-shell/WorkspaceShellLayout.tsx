@@ -53,6 +53,10 @@ import type {
 } from "@/settings/saved-workflows/SavedWorkflowsSection.js";
 import { AutomationsMainBreadcrumbFrame } from "@/settings/AutomationsMainBreadcrumbFrame.js";
 import { PluginStorePage } from "@/settings/PluginStorePage.js";
+import {
+  CodexCapabilityNotice,
+  CodexSettingsSection,
+} from "@/settings/codex/CodexSettingsSection.js";
 import { TaskFindDialog } from "@/quickpick/TaskFindDialog.js";
 import { WebRemoteControlMobileShell } from "@/WebRemoteControlMobileShell.js";
 import { WorkspaceHeader } from "@/WorkspaceHeader.js";
@@ -2692,7 +2696,7 @@ export const WorkspaceShellLayout = memo(
                             className="min-h-full"
                           >
                             <div className="mx-auto flex w-full max-w-5xl flex-col px-4 py-4 md:px-6 md:py-6">
-                              <AutomationsSection
+                              {isDesktop ? <CodexCapabilityNotice /> : <AutomationsSection
                                 workspacePath={workspaceAbsPath}
                                 workspaceIdentity={workspaceIdentity}
                                 onCreateViaChat={handleCreateAutomationInChat}
@@ -2715,7 +2719,7 @@ export const WorkspaceShellLayout = memo(
                                     workspaceIdentity,
                                   )
                                 }
-                              />
+                              />}
                             </div>
                           </ScopedErrorBoundary>
                         </div>
@@ -2735,14 +2739,20 @@ export const WorkspaceShellLayout = memo(
                       >
                         <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
                           <div className="mx-auto flex w-full max-w-4xl flex-col px-4 py-4 md:px-6 md:py-6">
-                            <PluginStorePage
+                            {isDesktop ? (
+                              <CodexSettingsSection
+                                workspacePath={workspaceAbsPath}
+                                workspaceIdentity={workspaceIdentity}
+                                initialPanel="plugins"
+                              />
+                            ) : <PluginStorePage
                           isWebRemoteControl={isWebRemoteControlShell}
                               key={`plugin-store:${pluginStoreOpenVersion}`}
                               workspacePath={workspaceAbsPath}
                               workspaceIdentity={workspaceIdentity}
                               onCreateTask={handleCreateTaskInChat}
                               onManageInstalled={handleManageInstalledPlugins}
-                            />
+                            />}
                           </div>
                         </div>
                       </AutomationsMainBreadcrumbFrame>

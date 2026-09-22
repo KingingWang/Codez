@@ -1,4 +1,8 @@
 import { applyComposerPermissionGrant } from "@/v4/composer/composerPermissionGrant.js";
+import {
+  resolveCodexSelection,
+  type CodexModelCatalog,
+} from "@/settings/codex/codexModelCatalog.js";
 /* eslint-disable max-lines -- Composer 草稿 owner 同时收口选择、正文与提交生命周期，保持单一状态边界。 */
 // Composer 的模式/模型选择与正文使用同一 scope 草稿；Session 只提供一次初始化种子。
 // 菜单点击立即保存 Renderer 意图，Prewarm 与 Submission 只消费它，不反向覆盖。
@@ -6,6 +10,7 @@ import { applyComposerPermissionGrant } from "@/v4/composer/composerPermissionGr
 // Workspace presentation 水合只提供 mode 与 slash commands；模型候选、能力和首选值
 // 统一来自目标 Host ModelSelectionView。
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { resolveCodexPrewarmConfig } from "@/settings/codex/codexSubmissionSettings.js";
 import { ZCODE_AGENT_PROVIDER, resolveExecutionState } from "@zcode/shared";
 import { applyComposerPlanTransition } from "@/v4/composer/composerPlanTransition.js";
 import type {
@@ -110,6 +115,8 @@ export function useDraftConfigControl(params: {
   /** provider registry 已通过 renderer readiness 门禁后才允许拉起 Agent。 */
   agentStartupAllowed?: boolean;
   modelSelectionService: IModelSelectionService | null;
+  codex?: boolean;
+  codexCatalog?: CodexModelCatalog;
 }): DraftConfigControl {
   const {
     workspacePath,
@@ -119,6 +126,8 @@ export function useDraftConfigControl(params: {
     sessionConfig,
     agentStartupAllowed = true,
     modelSelectionService,
+    codex = false,
+    codexCatalog,
   } = params;
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   const displayProvider = provider ?? ZCODE_AGENT_PROVIDER;
@@ -142,7 +151,7 @@ export function useDraftConfigControl(params: {
   let draft = currentState.draft;
   const modelSelectionRead = useModelSelectionServiceView(
     modelSelectionService,
-    true,
+    !codex,
     "remote-waiting",
     {
       selection: draft.modelSelection ?? null,
@@ -151,20 +160,51 @@ export function useDraftConfigControl(params: {
   const modelSelectionView =
     modelSelectionRead.state.status === "ready" ? modelSelectionRead.state.view : null;
   const initializeAsNewTask = sessionId === null || draft.initializeFromNewTask === true;
-  if (!draft.mode && (initializeAsNewTask ? modelSelectionView !== null : sessionConfig != null)) {
+  if (
+    !draft.mode &&
+    (codex
+      ? codexCatalog !== undefined && (initializeAsNewTask || sessionConfig != null)
+      : initializeAsNewTask
+        ? modelSelectionView !== null
+        : sessionConfig != null)
+  ) {
     const mode = submissionModeSchema.safeParse(sessionConfig?.mode);
     // Recent 是初始化原意图，不先按旧 Provider 是否仍在候选中删掉；下一次输入读取
     // 由同一解析入口对应当前账号，或暂时留空。否则冷启动会绕过统一账号对应规则。
     // mode 是已初始化标记：历史恢复给出的空选择也是确定结果，后续 Snapshot 不得填满。
     draft =
-      initializeAsNewTask && modelSelectionView
-        ? initializeNewTaskDraft(draft, workspacePath, workspaceIdentity, modelSelectionView)
-        : {
+      codex && codexCatalog
+        ? {
             ...draft,
-            mode: mode.success && mode.data !== "plan" ? mode.data : "build",
-            planEnabled: resolveExecutionState(sessionConfig ?? {}).planEnabled,
-            modelSelection: sessionConfig?.modelSelection,
-          };
+            // 恢复原生会话必须保留权限/plan；强制 build 会让 busy guide 与线程设置不一致。
+            mode:
+              !initializeAsNewTask && mode.success && mode.data !== "plan" ? mode.data : "build",
+            planEnabled:
+              !initializeAsNewTask && resolveExecutionState(sessionConfig ?? {}).planEnabled,
+            modelSelection:
+              resolveCodexSelection(
+                codexCatalog,
+                draft.modelSelection ??
+                  sessionConfig?.modelSelection ??
+                  (sessionConfig?.model
+                    ? {
+                        providerId: sessionConfig.provider || codexCatalog.providerId,
+                        modelId: sessionConfig.model,
+                        ...(sessionConfig.thought
+                          ? { options: { reasoningLevel: sessionConfig.thought } }
+                          : {}),
+                      }
+                    : undefined),
+              ) ?? undefined,
+          }
+        : initializeAsNewTask && modelSelectionView
+          ? initializeNewTaskDraft(draft, workspacePath, workspaceIdentity, modelSelectionView)
+          : {
+              ...draft,
+              mode: mode.success && mode.data !== "plan" ? mode.data : "build",
+              planEnabled: resolveExecutionState(sessionConfig ?? {}).planEnabled,
+              modelSelection: sessionConfig?.modelSelection,
+            };
   }
   if (sessionConfig) {
     draft = applyComposerPlanTransition(draft, sessionConfig.planTransition);
@@ -176,9 +216,13 @@ export function useDraftConfigControl(params: {
   stateRef.current = currentState;
   // 原因：按 revision 清草稿会把短暂不可用永久写成空选择。这里只派生当前结果，
   // 正文/模式自动保存继续保存 draft 中的原意图；读取未就绪时保留展示，提交由 View 门禁阻断。
-  const effectiveSelection = modelSelectionView
-    ? (modelSelectionView.effectiveSelection ?? undefined)
-    : draft.modelSelection;
+  const effectiveSelection = codex
+    ? codexCatalog
+      ? (resolveCodexSelection(codexCatalog, draft.modelSelection) ?? undefined)
+      : undefined
+    : modelSelectionView
+      ? (modelSelectionView.effectiveSelection ?? undefined)
+      : draft.modelSelection;
   const draftConfig = useMemo<Partial<SessionConfigState>>(
     () => ({
       mode: draft.mode,
@@ -270,13 +314,14 @@ export function useDraftConfigControl(params: {
     [scopeKey, updateComposerDraft],
   );
   const resolveInitialDraftConfig = useCallback((): Partial<SessionConfigState> | undefined => {
+    if (codex) return resolveCodexPrewarmConfig(draftConfigRef.current);
     if (!draftConfigRef.current.mode) return undefined;
     const config = { ...draftConfigRef.current };
     if (appFollowupMode) {
       config.followupMode = appFollowupMode;
     }
     return config;
-  }, [appFollowupMode]);
+  }, [appFollowupMode, codex]);
 
   const updateComposerContent = useCallback(
     (content: Pick<V4ComposerDraft, "text" | "editorStateJson" | "mention">) => {
@@ -412,9 +457,11 @@ export function useDraftConfigControl(params: {
       const modelId = modelProvider ? `${modelProvider}/${model}` : model;
       const parsedSelection = parseModelPickerValue(modelId);
       // 用户点击模型只确定模型身份；Reasoning 没有默认值，保持为空并等待用户选择。
-      const modelSelection = modelSelectionView
-        ? (completeNewModelSelection(modelSelectionView, parsedSelection) ?? parsedSelection)
-        : parsedSelection;
+      const modelSelection = codexCatalog
+        ? (resolveCodexSelection(codexCatalog, parsedSelection) ?? parsedSelection)
+        : modelSelectionView
+          ? (completeNewModelSelection(modelSelectionView, parsedSelection) ?? parsedSelection)
+          : parsedSelection;
       logger.debug("[v4-draft-config] select model", {
         modelProvider,
         model,
@@ -426,7 +473,7 @@ export function useDraftConfigControl(params: {
       });
       updateDraftConfig((current) => applyDraftModelSelection(current, modelSelection));
     },
-    [modelSelectionView, updateDraftConfig, workspaceIdentity, workspacePath],
+    [codexCatalog, modelSelectionView, updateDraftConfig, workspaceIdentity, workspacePath],
   );
 
   const handleDraftSelectThought = useCallback(

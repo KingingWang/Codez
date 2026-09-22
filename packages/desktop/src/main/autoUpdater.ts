@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- autoUpdater 需要集中维护 Electron 事件、菜单状态与 IPC 交互，过度拆分会让更新状态流更难追踪 */
-import { app, BrowserWindow, ipcMain, Menu } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, shell } from "electron";
 import type { ISettingService } from "@zcode/services";
 import pkg, { CancellationToken } from "electron-updater";
 import semver from "semver";
@@ -19,6 +19,7 @@ import {
   type UpdateCheckResultPayload,
   type UpdateStatePayload,
 } from "@zcode/shared";
+import { isCodexDesktop, resolveDesktopUpdatePolicy } from "./desktopProductRuntime.js";
 import { logger } from "./logger.js";
 import { ManifestUpdateProvider, getElectronReleasePlatform } from "./manifestUpdateProvider.js";
 
@@ -733,6 +734,7 @@ export function resolveUpdateFeedSourceFromStartupConfig(
     env?: Record<string, string | undefined>;
   } = {},
 ): RuntimeUpdateFeedSource | undefined {
+  if (isCodexDesktop) return undefined;
   const argv = options.argv ?? process.argv;
   const env = options.env ?? process.env;
   const feedUrl = readSwitchValue(argv, UPDATE_FEED_URL_SWITCH) ?? env[UPDATE_FEED_URL_ENV]?.trim();
@@ -781,6 +783,11 @@ async function syncAutoUpdateCheckChannelFromSettings(
 }
 
 function applyManifestUpdateProvider(options: InitAutoUpdaterOptions): void {
+  // Codex 禁止复用上游 manifest provider，即使调用方错误地启用 updater 也不能跨产品升级。
+  if (isCodexDesktop)
+    throw new Error(
+      "ZCode Codex automatic-update trust is not configured; use the fork release page",
+    );
   const manifestUrl = options.updateFeedSource?.url.trim();
   autoUpdater.setFeedURL({
     provider: "custom",
@@ -1505,7 +1512,7 @@ export async function acknowledgePostUpdateReleaseNotes(
 }
 
 export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Promise<void> {
-  if (options.enabled === false) {
+  if (isCodexDesktop || options.enabled === false) {
     autoUpdaterDisabledForProductFlavor = true;
     if (autoUpdatePollTimer) {
       clearInterval(autoUpdatePollTimer);
@@ -1974,6 +1981,13 @@ export function requestAutoUpdateCheckWithoutWindow(reason = "force-update") {
 
 export function checkForUpdateMenuClick(originWindow?: BrowserWindow | null) {
   logger.info("[auto-update] user clicked Check for Updates");
+  const releasePage = resolveDesktopUpdatePolicy().manualReleasePage;
+  if (releasePage) {
+    void shell
+      .openExternal(releasePage)
+      .catch((error) => logger.warn("[auto-update] fork release page could not be opened", error));
+    return;
+  }
 
   const targetWindow =
     originWindow && !originWindow.isDestroyed()
