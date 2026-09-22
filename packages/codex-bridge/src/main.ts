@@ -1,13 +1,15 @@
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { realpath } from "node:fs/promises";
 import { createCodexProcess } from "./codex-process.js";
 import { RpcFramer, type RpcEnvelope } from "./rpc-framing.js";
 import { HostOutput } from "./host-output.js";
 import { BridgeRuntime } from "./bridge-runtime.js";
 
 async function main(): Promise<void> {
-  const cwd = process.cwd();
+  // Windows 的 cwd 可保留 junction/短路径拼写；执行路径统一为物理目录，身份仍由 Host 指定。
+  const cwd = await realpath(process.cwd());
   const workspaceId = process.env.ZCODE_WORKSPACE_IDENTITY?.trim() || cwd;
   const scope = createHash("sha256").update(workspaceId).digest("hex");
   const stateRoot = join(
