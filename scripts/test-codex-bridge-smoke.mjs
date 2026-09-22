@@ -14,7 +14,7 @@ import { pixelPng, createSmokeModelServer } from "./codex-bridge-smoke-fixture.m
 test(
   "actual pinned Codex + bundled bridge: settings, thread, stream, queue, reconnect",
   { timeout: 120000 },
-  async () => {
+  async (t) => {
     const temporary = await mkdtemp(join(tmpdir(), "zcode-bridge-smoke-"));
     const codexHome = join(temporary, "codex-home");
     const directory = join(temporary, "physical-workspace");
@@ -98,6 +98,7 @@ test(
       child.stdin.end();
       await closeChild;
     };
+    let cleanupFailure;
     try {
       let rpc = start();
       const account = await rpc("codex/request", {
@@ -337,14 +338,23 @@ test(
         /deleted/,
       );
       await stop();
+    } catch (error) {
+      t.diagnostic(`Native smoke failure before cleanup: ${error.stack ?? error}`);
+      throw error;
     } finally {
       if (child?.exitCode === null && child.signalCode === null) {
-        child.kill();
-        await closeChild;
+        // Windows kill 会直接终止 bridge 而留下 native 子进程；EOF 让其先完成受控关闭。
+        await stop();
       }
       server.closeAllConnections();
       await new Promise((resolve) => server.close(resolve));
-      await rm(temporary, { recursive: true, force: true });
+      try {
+        await rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      } catch (error) {
+        cleanupFailure = error;
+        t.diagnostic(`Isolated fixture cleanup also failed: ${error.code}`);
+      }
     }
+    if (cleanupFailure) throw cleanupFailure;
   },
 );
