@@ -233,3 +233,29 @@ test("thread-list duplicate canonicalization rejects malformed records instead o
   );
   await assert.rejects(store.list(), /updatedAt/);
 });
+
+test("project discovery requests all providers and user-facing native sources on every page", async () => {
+  const calls: Record<string, unknown>[] = [];
+  const store = new ThreadStateStore(
+    port((method, params) => {
+      assert.equal(method, "thread/list");
+      const request = params as Record<string, unknown>;
+      calls.push(request);
+      assert.deepEqual(request.modelProviders, []);
+      assert.deepEqual(request.sourceKinds, ["cli", "vscode", "exec", "appServer"]);
+      assert.equal(request.cwd, "/work");
+      assert.equal(request.archived, false);
+      return request.cursor
+        ? { data: [{ ...thread(), id: "cli", modelProvider: "other" }], nextCursor: null }
+        : { data: [thread(), { ...thread(), id: "foreign", cwd: "/other" }], nextCursor: "next" };
+    }),
+    "/work",
+  );
+  assert.deepEqual(
+    (await store.list()).map((entry) => (entry as { id: string }).id),
+    ["t1", "cli"],
+  );
+  assert.equal(calls.length, 2);
+  await store.list();
+  assert.equal(calls.length, 4, "opening a project scans native history again, not a cached list");
+});

@@ -183,8 +183,17 @@ export class BridgeRuntime {
     }
     if (supportsControlMethod(method))
       return { result: await handleControlRequest(method, params, { rpc, cwd }) };
-    if (method.startsWith("session/"))
-      return { result: await handleLegacySession(method, params, rpc, this.store, workspaceId) };
+    if (method.startsWith("session/")) {
+      const result = await handleLegacySession(method, params, rpc, this.store, workspaceId);
+      return {
+        result,
+        // 外部 CLI 不会向此连接发 thread 事件；显式打开项目后的列表扫描必须让
+        // 既有 task-index/侧栏订阅重新读取事实。定向修复读取不能触发刷新回环。
+        ...(method === "session/list" && object(params ?? {}).sessionIds === undefined
+          ? { afterResponse: async () => this.refreshSidebar("sessions-index") }
+          : {}),
+      };
+    }
     switch (method) {
       case V4_METHODS.conversationSubscribe:
         return this.subscriptions.subscribe(params);

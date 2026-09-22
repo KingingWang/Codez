@@ -122,7 +122,7 @@ jobs:
       - name: Verified native Codex experimental API and isolated handshake
         run: node scripts/codex-runtime-smoke.mjs
       - name: Bundled bridge against verified native runtime (isolated fake model)
-        run: node --test scripts/test-codex-bridge-smoke.mjs
+        run: node --test scripts/test-codex-bridge-smoke.mjs scripts/test-codex-project-discovery.mjs
       - uses: actions/download-artifact@v4
         with:
           name: codex-remote-assets

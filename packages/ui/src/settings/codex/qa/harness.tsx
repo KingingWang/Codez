@@ -1,5 +1,5 @@
 // Browser-only fixture: real UI/hooks, injected Host authority, no filesystem or native credentials.
-import { StrictMode, useState } from "react";
+import { StrictMode, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { IServiceAccessor } from "@zcode/services";
 import type { IPlatformService, CodexRequest } from "@zcode/shared";
@@ -7,7 +7,7 @@ import type { ConversationSnapshot, PendingInteraction } from "@zcode/shared/zco
 import { pendingInteractionSchema, queueStateSchema } from "@zcode/shared/zcode-protocol-v4";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
-import { TabStoreProvider } from "@/store/TabStoreProvider.js";
+import { TabStoreProvider, useTabStoreApi } from "@/store/TabStoreProvider.js";
 import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
 import { useCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
 import { useDraftConfigControl } from "@/v4/composer/useDraftConfigControl.js";
@@ -26,6 +26,12 @@ import { CodexComposerModelControls } from "../CodexComposerModelControls.js";
 import { V4ComposerModeSwitch } from "@/v4/composer/V4ComposerModeControls.js";
 import type { V4ComposerConfigPicker } from "@/v4/composer/configPickerState.js";
 import { CatalogLifetimeControls, waitForCatalogFixture } from "./catalog-lifetime-fixture.js";
+import {
+  createProjectDiscoveryLocalServices,
+  initializeProjectDiscoveryFixture,
+  ProjectDiscoveryFixture,
+  seedProjectDiscoveryFixtureTabs,
+} from "./project-discovery-fixture.js";
 import "@/styles.css";
 
 const model = (name: string, isDefault = false) => ({
@@ -41,6 +47,7 @@ const model = (name: string, isDefault = false) => ({
     { reasoningEffort: "high", description: "Detailed" },
   ],
 });
+const projectDiscoveryLocalServices = createProjectDiscoveryLocalServices();
 const requests: Array<CodexRequest & { workspacePath?: string }> = [];
 let modelFailure = false;
 let legacyReads = 0;
@@ -130,8 +137,9 @@ const services = {
       throw new Error("Legacy registry subscribed");
     },
   },
-  zcodeSessionService: {},
+  zcodeSessionService: projectDiscoveryLocalServices.zcodeSessionService,
 } as unknown as IServiceAccessor;
+initializeProjectDiscoveryFixture();
 const platform = {
   openExternal: () => {
     throw new Error("External navigation forbidden");
@@ -150,6 +158,16 @@ const questions = [
   },
   { id: "private-code", header: "Secret", question: "Enter fixture secret", isSecret: true },
 ];
+function ProjectDiscoveryTabSeeder() {
+  const tabStore = useTabStoreApi();
+  const seededRef = useRef(false);
+  if (!seededRef.current) {
+    seededRef.current = true;
+    seedProjectDiscoveryFixtureTabs(tabStore);
+  }
+  return null;
+}
+
 function Harness() {
   const [busy, setBusy] = useState(false);
   const [picker, setPicker] = useState<V4ComposerConfigPicker | null>(null);
@@ -275,6 +293,7 @@ function Harness() {
         </Button>
         <Button onClick={() => setSettingsOpen((open) => !open)}>Toggle settings</Button>
       </div>
+      <ProjectDiscoveryFixture />
       <CatalogLifetimeControls read={read} output={setOutput} />
       <section aria-label="Composer" className="space-y-2">
         <V4ComposerModeSwitch
@@ -364,6 +383,7 @@ createRoot(document.getElementById("root")!).render(
     <ServiceProvider services={services}>
       <PlatformProvider platform={platform}>
         <TabStoreProvider>
+          <ProjectDiscoveryTabSeeder />
           <ZCodeIntlProvider initialLocale="en-US">
             <TooltipProvider>
               <Harness />

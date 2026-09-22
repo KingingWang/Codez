@@ -413,6 +413,44 @@ test("sidebar invalidations coalesce during a blocked read and publish the lates
   assert.match(JSON.stringify(h.frames.at(-1)), /Final sidebar name/);
 });
 
+test("explicit project listing discovers external history for all existing index consumers", async (t) => {
+  const h = await fixture(t);
+  const topic = `sessions-index/${workspaceId}`;
+  for (const [connectionId, clientMode] of [
+    ["task-index", "desktop-continuous"],
+    ["desktop", "desktop-continuous"],
+    ["mobile", "web-remote-replayable"],
+  ]) {
+    const response = await h.runtime.request(V4_METHODS.conversationSubscribe, {
+      ...subscribe(topic, clientMode),
+      connectionId,
+    });
+    await response.afterResponse!();
+  }
+  h.frames.length = 0;
+  h.authority.thread = { ...h.authority.thread, id: "external-cli-thread", name: "External CLI" };
+  const response = await h.runtime.request("session/list", { workspace: generate.workspace });
+  assert.match(JSON.stringify(response.result), /external-cli-thread/);
+  assert.equal(h.frames.length, 0, "discovery response is sent before index invalidation");
+  await response.afterResponse?.();
+  await tick();
+  assert.equal(h.frames.length, 3);
+  assert.ok(h.frames.every((frame) => JSON.stringify(frame).includes("external-cli-thread")));
+  assert.equal(
+    h.calls.some((call) => call.method === "thread/resume"),
+    false,
+    "scanning cannot resume external tasks",
+  );
+  h.frames.length = 0;
+  const scoped = await h.runtime.request("session/list", {
+    workspace: generate.workspace,
+    sessionIds: ["external-cli-thread"],
+  });
+  await scoped.afterResponse?.();
+  await tick();
+  assert.equal(h.frames.length, 0, "targeted index repair cannot recursively trigger discovery");
+});
+
 test("a live sidebar failure remains fatal with a safe origin and no read retry", async (t) => {
   const h = await fixture(t);
   const response = await h.runtime.request(

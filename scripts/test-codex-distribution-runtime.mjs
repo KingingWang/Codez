@@ -56,7 +56,10 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   assert.ok(
     build.steps.findIndex((step) => step.run?.includes("test-codex-distribution")) < nativeSmoke,
   );
-  assert.equal(build.steps[nativeSmoke + 1].run, "node --test scripts/test-codex-bridge-smoke.mjs");
+  assert.equal(
+    build.steps[nativeSmoke + 1].run,
+    "node --test scripts/test-codex-bridge-smoke.mjs scripts/test-codex-project-discovery.mjs",
+  );
   assert.equal(release.needs, "build");
   assert.match(release.if, /github.event_name == 'push'/);
   assert.doesNotMatch(release.if, /refs\/tags/);
