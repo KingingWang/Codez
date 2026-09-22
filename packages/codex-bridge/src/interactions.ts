@@ -67,6 +67,8 @@ export class InteractionBroker {
       kind: payload.kind,
       anchorRowId: null,
       createdAt: Date.now(),
+      // toolCallId 只在 turn 内唯一；保留 turnId 防止后续轮次复用 itemId 时误挂审批。
+      ...(typeof params.turnId === "string" ? { turnId: params.turnId } : {}),
       payload,
     });
     this.pending.set(interactionId, {
