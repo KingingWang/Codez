@@ -16,11 +16,20 @@ export async function handleLegacySession(
   const p = object(params ?? {});
   if (p.workspace && object(p.workspace).workspacePath !== store.cwd)
     throw new Error("Workspace mismatch");
+  // task-index 按 workspaceIdentity 持久化；只改 workspaceKey 会把远端新会话
+  // 写进本地路径分区。身份只取 Host 已授权的 workspaceId，不能从路径猜测远端。
+  const workspace = {
+    workspacePath: store.cwd,
+    workspaceKey: workspaceId,
+    ...(workspaceId !== store.cwd || object(p.workspace ?? {}).workspaceIdentity
+      ? { workspaceIdentity: workspaceId }
+      : {}),
+  };
   if (method === "session/list") {
     return {
       sessions: (await store.list()).map((thread) => {
         const session = projectLegacySnapshot(thread, store.cwd).session;
-        session.workspace.workspaceKey = workspaceId;
+        session.workspace = workspace;
         return session;
       }),
     };
@@ -86,7 +95,7 @@ export async function handleLegacySession(
       unsupported(method);
   }
   const snapshot = projectLegacySnapshot(state.thread, store.cwd);
-  snapshot.session.workspace.workspaceKey = workspaceId;
+  snapshot.session.workspace = workspace;
   snapshot.settings = await readControlModelSettings({ rpc, cwd: store.cwd });
   return shared.zcodeSessionStateSnapshotSchema.parse(snapshot);
 }

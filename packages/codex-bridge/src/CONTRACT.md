@@ -12,3 +12,11 @@ The session index collapses duplicate native thread records without changing
 history. Sidebar invalidation shares the existing coalescing publisher but never
 blocks ordered conversation events. Production fatal diagnostics include fixed
 failure categories and origin labels, not arbitrary exception text or user paths.
+
+Project discovery lists native user-facing history across providers in the scoped
+cwd. A generic legacy session-list read invalidates existing index subscriptions
+after replying; targeted repair reads do not recursively invalidate them. Legacy
+session responses retain the Host-authorized workspace identity as well as its
+key, because shell task-index persistence consumes the identity field. Discovery
+does not resume threads; explicit conversation opening retains the native resume
+path. Native history is never copied, moved or deleted to repair shell visibility.
