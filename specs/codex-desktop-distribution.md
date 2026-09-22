@@ -1,6 +1,9 @@
 # Codex desktop distribution
 
-Status: implementation in progress.
+Status: unsigned six-target distribution accepted on 2026-09-22. GitHub Actions
+run `35713167778` passed on source `a1dcf9d`; see
+`docs/codex-desktop-validation.md` for evidence and the remaining signing,
+automatic-update and external remote-validation boundaries.
 
 The fork publishes ZCode Codex desktop builds from KingingWang/ZCode. Preserve
 upstream history and license notices. Use an independent application identity,
