@@ -40,17 +40,35 @@ async function fixture(t) {
 }
 
 function fakeGithub({ existing, failUpload = false, mainSha = sha } = {}) {
-  const state = { release: existing, calls: [] };
+  const state = {
+    release: existing ? { id: 123, tag_name: releaseIdentity(env).tag, ...existing } : undefined,
+    calls: [],
+  };
   const run = async (args) => {
     state.calls.push(args);
     if (args[0] === "api" && args[1].includes("/releases/tags/")) {
-      if (!state.release) throw new Error("HTTP 404: Not Found");
+      if (!state.release || state.release.draft) throw new Error("HTTP 404: Not Found");
       return JSON.stringify(state.release);
     }
+    if (args[0] === "api" && args[1].endsWith("/releases?per_page=100")) {
+      assert.ok(args.includes("--paginate") && args.includes("--slurp"));
+      return JSON.stringify([
+        [{ id: 99, tag_name: "unrelated", draft: true }],
+        state.release ? [state.release] : [],
+      ]);
+    }
+    if (args[0] === "api" && args[1].endsWith("/releases/123"))
+      return JSON.stringify(state.release);
     if (args[0] === "api" && args[1].endsWith("/commits/main"))
       return JSON.stringify({ sha: mainSha });
     if (args[1] === "create") {
-      state.release = { draft: true, target_commitish: sha, assets: [] };
+      state.release = {
+        id: 123,
+        tag_name: args[2],
+        draft: true,
+        target_commitish: sha,
+        assets: [],
+      };
       return "created";
     }
     if (args[1] === "upload") {
@@ -119,6 +137,7 @@ test("publish verifies all uploads before making release public and main Latest"
   assert.equal(github.state.release.assets.length, 16);
   assert.ok(github.state.calls.find((args) => args[1] === "create").includes(sha));
   assert.ok(github.state.calls.at(-1).includes("--latest=true"));
+  assert.ok(github.state.calls.some((args) => args[1].endsWith("/releases/123")));
 });
 
 test("upload failure stays draft, rerun resumes, published rerun never overwrites", async (t) => {
@@ -186,7 +205,7 @@ test("API authorization and uploaded-digest errors never publish", async (t) => 
       const value = await github.run(args);
       if (
         args[0] === "api" &&
-        args[1].includes("/releases/tags/") &&
+        args[1].endsWith("/releases/123") &&
         github.state.release?.assets.length
       ) {
         const data = JSON.parse(value);
