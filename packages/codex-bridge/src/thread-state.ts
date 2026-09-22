@@ -2,11 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { CodexNotification, CodexRpcPort } from "./contract.js";
 import { array, object, string, type JsonObject } from "./json.js";
 import { decorateNativeThread } from "./command-input.js";
-import {
-  canonicalExecutionPath,
-  normalizeExecutionSpelling,
-  sameExecutionPath,
-} from "./execution-path.js";
+import { sameExecutionPath } from "./execution-path.js";
 import { mergeNativeTurn } from "./merge-turn.js";
 import { canonicalNativeThreads } from "./projection.js";
 
@@ -32,32 +28,11 @@ export class ThreadStateStore {
   private readonly loaded = new Set<string>();
   private readonly deleted = new Set<string>();
   private readonly completedItems = new Set<string>();
-  /** 同步通知路径无法 await，只能比对已解析出的工作区拼写集合。 */
-  private readonly workspaceSpellings = new Set<string>();
-  private canonicalCwd?: Promise<string>;
 
   constructor(
     private readonly rpc: CodexRpcPort,
     readonly cwd: string,
-  ) {
-    this.workspaceSpellings.add(normalizeExecutionSpelling(cwd));
-    // 规范化解析不会 reject（失败退回原拼写）；提前解析让别名拼写的实时事件也能归属。
-    void this.executionCwd();
-  }
-
-  private executionCwd(): Promise<string> {
-    this.canonicalCwd ??= canonicalExecutionPath(this.cwd).then((canonical) => {
-      this.workspaceSpellings.add(canonical);
-      return canonical;
-    });
-    return this.canonicalCwd;
-  }
-
-  private inWorkspace(value: unknown): boolean {
-    return (
-      typeof value === "string" && this.workspaceSpellings.has(normalizeExecutionSpelling(value))
-    );
-  }
+  ) {}
 
   onChange(listener: (threadId: string) => void): () => void {
     this.listeners.add(listener);
@@ -167,7 +142,7 @@ export class ThreadStateStore {
     const existing = state && this.turn(state, turn.id);
     // 请求响应可能晚于终态通知；同 id 的终态不能被较旧 admission 响应覆盖。
     if (existing && existing.status !== "inProgress") return;
-    this.apply({ method: "turn/started", params: { threadId: id, turn } });
+    void this.apply({ method: "turn/started", params: { threadId: id, turn } });
   }
 
   applySettings(id: string, settings: JsonObject): void {
@@ -209,7 +184,8 @@ export class ThreadStateStore {
     this.touch(id);
   }
 
-  apply(event: CodexNotification): string | undefined {
+  /** 归属判定需要解析物理路径，所以事件投影是异步的；调用方必须保持事件串行。 */
+  async apply(event: CodexNotification): Promise<string | undefined> {
     const params = object(event.params ?? {});
     if (event.method === "thread/deleted") {
       this.remove(string(params.threadId));
@@ -217,7 +193,10 @@ export class ThreadStateStore {
     }
     if (event.method === "thread/started") {
       const thread = object(params.thread);
-      if (!this.inWorkspace(thread.cwd) || this.deleted.has(string(thread.id))) return;
+      // 原生可能回传与 Host 不同的别名拼写（macOS /var、Windows 8.3 短名）；
+      // 只有解析物理路径才能判定归属，同步字符串集合会漏掉实时事件。
+      if (!(await sameExecutionPath(thread.cwd, this.cwd)) || this.deleted.has(string(thread.id)))
+        return;
       this.put(thread);
       return string(thread.id);
     }
