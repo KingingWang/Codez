@@ -30,6 +30,7 @@ import {
   stageCodexRemoteNode,
 } from "./codex-runtime-node.mjs";
 import { prepareCodexRemotePackage } from "./codex-runtime-remote-package.mjs";
+import { runCodexTar } from "./codex-runtime-archive.mjs";
 
 const bytes = Buffer.from("mock native executable\n");
 const sha256 = createHash("sha256").update(bytes).digest("hex");
@@ -397,10 +398,10 @@ test("remote producer archives Codex resources and separates consumer integratio
   assert.equal(descriptor.nodeVersion, "24.14.0");
   assert.equal(descriptor.runtimeRoot, "~/.zcode-codex/server");
   assert.match(descriptor.requiredEnv.ZCODE_CODEX_BRIDGE_PATH, /\/codex\/bridge.cjs$/);
-  const { stdout } = await promisify(execFile)("tar", [
-    "-tzf",
-    join(outputRoot, descriptor.artifactPath),
-  ]);
+  const { stdout } = await runCodexTar({
+    mode: "list",
+    archivePath: join(outputRoot, descriptor.artifactPath),
+  });
   assert.deepEqual(stdout.trim().split(/\r?\n/).sort(), [
     "bridge.cjs",
     "codex",
