@@ -1,5 +1,14 @@
 /* eslint-disable max-lines -- Root 当前集中编排启动和 workspace shell wiring，先保持入口收口避免跨层状态拆散。 */
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react";
 import { LucideProvider, RefreshCw } from "lucide-react";
 import {
   APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
@@ -44,9 +53,11 @@ import { RootWorkspaceContent } from "@/root/RootWorkspaceContent.js";
 import { resolveRootWorkspaceShellTarget } from "@/root/rootWorkspaceShellTarget.js";
 import { OccupationOnboarding } from "@/onboarding/OccupationOnboarding.js";
 import { OnboardingDialog } from "@/onboarding/OnboardingDialog.js";
+
 import { useRemoteWorkspaceHistory } from "@/root/useRemoteWorkspaceHistory.js";
 import { useRemoteWorkspaceTabLifecycle } from "@/root/useRemoteWorkspaceTabLifecycle.js";
 import { useRootProviderStateRefresh } from "@/root/useRootProviderStateRefresh.js";
+import { resolveDesktopRuntimePreferences } from "@/settings/codex/codexRuntimePreferences.js";
 import { useModelSelectionServiceView } from "@/hooks/useModelSelectionView.js";
 import { useRootProviderSettingsSnapshot } from "@/root/useRootProviderSettingsSnapshot.js";
 import { useRootOAuthEffects } from "@/root/useRootOAuthEffects.js";
@@ -85,6 +96,14 @@ import {
 } from "@/v4/telemetry/ConversationTelemetryAttachment.js";
 
 const DEFAULT_LUCIDE_STROKE_WIDTH = 1.5;
+
+function RuntimeOnboarding({
+  codex,
+  ...props
+}: ComponentProps<typeof OccupationOnboarding> & { codex: boolean }) {
+  // 旧职业引导会等待 Z.ai 账户并写入旧 Agent 偏好；Codex 桌面保留外壳而不挂载该门禁。
+  return codex ? <>{props.children}</> : <OccupationOnboarding {...props} />;
+}
 interface RemoteConnectionOpenPreference {
   preferredKind?: RemoteTarget["kind"];
   preferredWslDistro?: string;
@@ -204,16 +223,19 @@ function RootInner({
   } = useSettings();
   const [welcomeScreenOpenReason, setWelcomeScreenOpenReason] =
     useState<WelcomeScreenOpenReason | null>(() =>
-      consumeZcodeJwtInvalidRestartMarker() ? "session-expired" : null,
+      consumeZcodeJwtInvalidRestartMarker() && !isDesktop ? "session-expired" : null,
     );
   const [providerFamilyDomainMigrationComplete, setProviderFamilyDomainMigrationComplete] =
     useState(false);
   const loginEntryRequest = useZCodeStore((state) => state.loginEntryRequest);
-  const rootModelSelectionRead = useModelSelectionServiceView(services.modelSelectionService);
+  const rootModelSelectionRead = useModelSelectionServiceView(
+    services.modelSelectionService,
+    !isDesktop,
+  );
   const rootModelSelectionView =
     rootModelSelectionRead.state.status === "ready" ? rootModelSelectionRead.state.view : null;
   const rootModelSelectionErrorNode =
-    rootModelSelectionRead.state.status === "error" ? (
+    !isDesktop && rootModelSelectionRead.state.status === "error" ? (
       <div className="fixed right-4 bottom-4 z-50 flex max-w-sm items-center gap-3 rounded-lg border border-destructive/30 bg-surface-raised px-3 py-2 text-ui-base text-foreground shadow-lg">
         <span className="min-w-0 flex-1">
           {intl.formatMessage({ id: "root.modelSelection.loadFailed" })}
@@ -265,9 +287,13 @@ function RootInner({
           return;
         }
         void refreshAppSettings();
-        void services.zcodeAgentService.syncAppRuntimePreferences(parsed.data).catch((error) => {
-          logger.warn("[settings] 同步跨窗口运行时偏好失败", error);
-        });
+        void services.zcodeAgentService
+          .syncAppRuntimePreferences(
+            resolveDesktopRuntimePreferences(parsed.data, Boolean(isDesktop)),
+          )
+          .catch((error) => {
+            logger.warn("[settings] 同步跨窗口运行时偏好失败", error);
+          });
         void services.botsService.syncAppRuntimePreferences(parsed.data).catch((error) => {
           logger.warn("[settings] 同步跨窗口 Bot 运行时偏好失败", error);
         });
@@ -307,6 +333,7 @@ function RootInner({
     services.botsService,
     services.broadcastService,
     services.zcodeAgentService,
+    isDesktop,
   ]);
 
   useEffect(() => {
@@ -314,11 +341,16 @@ function RootInner({
       return;
     }
     void services.zcodeAgentService
-      .syncAppRuntimePreferences({
-        askUserQuestionAutoResolutionEnabled:
-          appSettings.askUserQuestionAutoResolutionEnabled !== false,
-        modelIoFullRetentionEnabled: appSettings.modelIoFullRetentionEnabled === true,
-      })
+      .syncAppRuntimePreferences(
+        resolveDesktopRuntimePreferences(
+          {
+            askUserQuestionAutoResolutionEnabled:
+              appSettings.askUserQuestionAutoResolutionEnabled !== false,
+            modelIoFullRetentionEnabled: appSettings.modelIoFullRetentionEnabled === true,
+          },
+          Boolean(isDesktop),
+        ),
+      )
       .catch((error) => {
         logger.warn("[settings] 初始化运行时偏好失败", error);
       });
@@ -335,6 +367,7 @@ function RootInner({
     appSettings?.askUserQuestionAutoResolutionEnabled,
     appSettings?.modelIoFullRetentionEnabled,
     services.botsService,
+    isDesktop,
     services.zcodeAgentService,
   ]);
 
@@ -419,17 +452,20 @@ function RootInner({
 
   const shouldPreferDirectoryBrowser = Boolean(preferDirectoryBrowser);
   const supportsEmbeddedBrowser = explicitSupportsEmbeddedBrowser ?? Boolean(isDesktop);
-  const isResolvingStartupAuthState = isRestoringOAuthSession;
+  // Codex 默认桌面运行时的账户由原生 app-server 管理，旧 OAuth 不能阻塞应用外壳。
+  const isResolvingStartupAuthState = !isDesktop && isRestoringOAuthSession;
   const rootProviderAvailability = resolveProviderAvailabilityState({
     modelSelectionView: rootModelSelectionView,
   });
-  const providerStartupSyncPending = isProviderStartupSyncPending({
-    providerFamilyDomainMigrationComplete,
-    modelSelectionViewHydrated:
-      rootProviderAvailability.hydrated || rootModelSelectionRead.state.status === "error",
-  });
+  const providerStartupSyncPending =
+    !isDesktop &&
+    isProviderStartupSyncPending({
+      providerFamilyDomainMigrationComplete,
+      modelSelectionViewHydrated:
+        rootProviderAvailability.hydrated || rootModelSelectionRead.state.status === "error",
+    });
   const providerAvailabilityLoginEntryGuardEnabled =
-    shouldEnableProviderAvailabilityLoginEntryGuard();
+    !isDesktop && shouldEnableProviderAvailabilityLoginEntryGuard();
   const { startupCheckCompleted: providerAvailabilityStartupCheckCompleted } =
     useProviderAvailabilityLoginEntryGuard({
       enabled: providerAvailabilityLoginEntryGuardEnabled,
@@ -455,10 +491,12 @@ function RootInner({
         });
       },
     });
-  const isResolvingProviderStartupState = shouldResolveProviderStartupState({
-    providerStartupSyncPending,
-    providerAvailabilityStartupCheckCompleted,
-  });
+  const isResolvingProviderStartupState =
+    !isDesktop &&
+    shouldResolveProviderStartupState({
+      providerStartupSyncPending,
+      providerAvailabilityStartupCheckCompleted,
+    });
   const isStartupProviderLoginEntryOpen = welcomeScreenOpenReason === "startup-provider-required";
   // 首次安装时 provider 登录入口判定晚于 workspace 注入，ChatView 会先 mount 并触发草稿预热。
   // 这里把 provider 启动检查纳入 workspace 恢复门禁，避免未连接账号前启动 ZCode session。
@@ -484,8 +522,8 @@ function RootInner({
     setDirectoryBrowserOpen(true);
   }, []);
   const handleReauthenticationRequired = useCallback(() => {
-    setWelcomeScreenOpenReason("session-expired");
-  }, []);
+    if (!isDesktop) setWelcomeScreenOpenReason("session-expired");
+  }, [isDesktop]);
   const {
     setWorkspaceActionError,
     startDraftInWorkspace,
@@ -518,7 +556,7 @@ function RootInner({
     setOAuthError,
     setUser,
     onProviderFamilyDomainClearedAfterLogout: () => {
-      setWelcomeScreenOpenReason("logout-provider-required");
+      if (!isDesktop) setWelcomeScreenOpenReason("logout-provider-required");
     },
     userId: user?.id,
     onOpenRemoteConnection: allowRemoteWorkspace ? handleOpenRemoteConnection : undefined,
@@ -872,6 +910,11 @@ function RootInner({
   };
   const handleWelcomeScreenComplete = useCallback(
     async (reason: LoginCompleteReason) => {
+      // 进入外壳不是认证成功；即使原生运行时不可用也允许关闭 Codex 登录入口。
+      if (isDesktop) {
+        setWelcomeScreenOpenReason(null);
+        return;
+      }
       await refreshAppSettings();
       if (
         welcomeScreenOpenReason !== "startup-provider-required" ||
@@ -894,6 +937,7 @@ function RootInner({
       }
     },
     [
+      isDesktop,
       allowOpenWorkspace,
       handleEnsureConversationWorkspace,
       refreshAppSettings,
@@ -985,7 +1029,7 @@ function RootInner({
         {rootModelSelectionErrorNode}
         {remoteConnectionDialog}
         {directoryBrowserDialog}
-        <WelcomeScreen onComplete={handleWelcomeScreenComplete} />
+        <WelcomeScreen codex={Boolean(isDesktop)} onComplete={handleWelcomeScreenComplete} />
       </RootShell>
     );
   }
@@ -1012,7 +1056,8 @@ function RootInner({
       {rootModelSelectionErrorNode}
       {remoteConnectionDialog}
       {directoryBrowserDialog}
-      <OccupationOnboarding
+      <RuntimeOnboarding
+        codex={Boolean(isDesktop)}
         showWindowControls={Boolean(isWindowsDesktop || (isDesktop && !isMacDesktop))}
         showChildrenWhileLoading={!workspaceShellPath && isSettingsTabActive}
         isMacDesktop={isMacDesktop}
@@ -1072,18 +1117,20 @@ function RootInner({
             supportsEmbeddedBrowser={supportsEmbeddedBrowser}
           />
         )}
-        <ScopedErrorBoundary
-          scope="onboarding-dialog"
-          resetKeys={[workspaceShellIdentity?.trim() || workspaceShellPath]}
-          variant="silent"
-        >
-          <OnboardingDialog
-            workspacePath={workspaceShellPath || undefined}
-            workspaceIdentity={workspaceShellIdentity}
-            isDesktop={isDesktop}
-          />
-        </ScopedErrorBoundary>
-      </OccupationOnboarding>
+        {!isDesktop ? (
+          <ScopedErrorBoundary
+            scope="onboarding-dialog"
+            resetKeys={[workspaceShellIdentity?.trim() || workspaceShellPath]}
+            variant="silent"
+          >
+            <OnboardingDialog
+              workspacePath={workspaceShellPath || undefined}
+              workspaceIdentity={workspaceShellIdentity}
+              isDesktop={isDesktop}
+            />
+          </ScopedErrorBoundary>
+        ) : null}
+      </RuntimeOnboarding>
     </RootShell>
   );
 }

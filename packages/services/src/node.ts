@@ -12,6 +12,8 @@ import {
 import { getAppConfigDir as resolveAppConfigDir } from "./paths.js";
 import {
   buildLocalMediaPreviewUrl,
+  codexConfigResponseSchema,
+  codexModelsResponseSchema,
   isProviderProvisioningAccountCredentialKey,
   type ProviderProvisioningTrigger,
 } from "@zcode/shared";
@@ -343,6 +345,8 @@ import { createObservableSettingService } from "./setting/observableSettingServi
 import { createCredentialService } from "./credential/credentialService.js";
 import { createBroadcastService } from "./broadcast/broadcastService.js";
 import { createZCodeAgentService } from "./zcode-agent/zcodeAgentService.js";
+import { resolveDefaultZCodeAgentCommand } from "./zcode-agent/zcodeAgentProcessManager.js";
+import { usesCodexBridgeRuntime } from "./zcode-agent/codexBridgeCommand.js";
 import type { ZCodeAgentCommandResolver } from "./zcode-agent/zcodeAgentProcessManager.js";
 import { buildAgentTelemetrySpawnEnv } from "./zcode-agent/agentTelemetryEnv.js";
 import { resolveZCodeAgentPresentationSurface } from "./zcode-agent/zcodeAgentPresentationSurface.js";
@@ -1384,6 +1388,18 @@ export function createLocalServices(options: {
       : desktopContextPromptEnabledRaw === "0"
         ? false
         : undefined;
+  const presentationSurface = resolveZCodeAgentPresentationSurface({
+    runtimeSurface: options?.agentRuntimeContext?.runtimeSurface,
+    serviceAuthorityMode: options?.serviceAuthorityMode,
+    desktopContextPromptEnabled,
+  });
+  const usesDefaultCodexDesktopBridge = usesCodexBridgeRuntime({
+    desktopDefault: !isDesktopAttachedRemote && presentationSurface === "desktop",
+    customCommandResolver: Boolean(
+      options.zcodeAgentCommandResolver &&
+      options.zcodeAgentCommandResolver !== resolveDefaultZCodeAgentCommand,
+    ),
+  });
 
   // app 自签 CA：首次启动生成一份根 CA（幂等），供 agent 子进程经 NODE_EXTRA_CA_CERTS 信任、
   // 出口代理用其私钥重签。生成失败不应阻断启动（例如只读文件系统），仅记录日志后继续。
@@ -2076,7 +2092,7 @@ export function createLocalServices(options: {
   let offPeakTaskServiceForAgent: OffPeakTaskService | undefined;
   // desktop-attached-remote 装配不暴露 Off-Peak 工具面（远程不在支持范围）。
   const offPeakToolWiring =
-    options?.serviceAuthorityMode === "desktop-attached-remote"
+    usesDefaultCodexDesktopBridge || options?.serviceAuthorityMode === "desktop-attached-remote"
       ? {}
       : {
           resolveOffPeakClientConfig: () => codingPlanSubscriptionService.getOffPeakClientConfig(),
@@ -2093,14 +2109,11 @@ export function createLocalServices(options: {
     // 动态工作流灰度：与 Off-Peak 不同，
     // 这里不按 serviceAuthorityMode 裁剪——SSH/WSL/Docker 的 desktop-attached-remote Host
     // 是它自己那些 workspace 的唯一裁决者，灰度开启时远程 workspace 同样提供工作流。
-    resolveDynamicWorkflowClientConfig: () =>
-      codingPlanSubscriptionService.getDynamicWorkflowClientConfig(),
+    resolveDynamicWorkflowClientConfig: usesDefaultCodexDesktopBridge
+      ? undefined
+      : () => codingPlanSubscriptionService.getDynamicWorkflowClientConfig(),
     commandResolver: options?.zcodeAgentCommandResolver,
-    presentationSurface: resolveZCodeAgentPresentationSurface({
-      runtimeSurface: options?.agentRuntimeContext?.runtimeSurface,
-      serviceAuthorityMode: options?.serviceAuthorityMode,
-      desktopContextPromptEnabled,
-    }),
+    presentationSurface,
     onAutomationManualRunRequested: options?.onAutomationManualRunRequested,
     // createLocalServices 虽然暴露了 reporter 注入点，旧装配却没有继续传给
     // ZCodeAgentProcessManager，导致 host 永远不向 main 上报 Agent spawn/exit，进程监控器
@@ -2142,9 +2155,10 @@ export function createLocalServices(options: {
     // 设置页的 HTTP 代理、No Proxy + 自定义 CA 按 spawn 时读取注入 agent 子进程 env，
     // 覆盖模型 API / MCP / Bash 出口流量并信任用户显式配置的证书；改动后下次启动 agent 生效。
     resolveSpawnEnv: async (context) => {
-      const [settings] = await Promise.all([settingService.get(), providerRuntime.start()]);
-      // 内置 Subagent 的旧覆盖必须在 CLI 独立读取之前导入，不能等待设置页操作。
-      await subagentsService.prepareRuntimeState();
+      const [settings] = await Promise.all([
+        settingService.get(),
+        usesDefaultCodexDesktopBridge ? Promise.resolve() : providerRuntime.start(),
+      ]);
       const agentNetwork =
         isDesktopAttachedRemote && options?.remoteAgentNetwork
           ? options.remoteAgentNetwork
@@ -2152,6 +2166,16 @@ export function createLocalServices(options: {
               httpProxy: settings.httpProxy,
               noProxy: settings.httpProxyNoProxy,
             };
+      const networkEnv = buildAgentRuntimeEnv({
+        httpProxy: agentNetwork.httpProxy,
+        noProxy: agentNetwork.noProxy,
+        caCertPath: settings.httpProxyCaCertPath,
+      });
+      // Codex 拥有账号、配置与工具；旧 Provider/Zai/CUA/Subagent 准备不能成为其启动前置条件。
+      // PATH 仍由 initializeRuntimeProcessEnv 统一准备，身份与 transport 仍由进程管理器注入。
+      if (usesDefaultCodexDesktopBridge) return networkEnv;
+      // 内置 Subagent 的旧覆盖必须在 CLI 独立读取之前导入，不能等待设置页操作。
+      await subagentsService.prepareRuntimeState();
       // 与 helper 创建同一个门控（isCuaEnabledForContext：dev/internal 特性 OR 官方插件 enablement），
       // 避免 dev mode 下 helper 建了但 resolveSpawnEnv 漏注入 broker env 的割裂。
       const cuaPluginEnabled = isCuaEnabledForContext(context);
@@ -2219,11 +2243,7 @@ export function createLocalServices(options: {
       // 先拿到尚不存在的 provider_config.json 并发布短暂空 Registry。
       await providerConfigRuntime.start();
       return {
-        ...buildAgentRuntimeEnv({
-          httpProxy: agentNetwork.httpProxy,
-          noProxy: agentNetwork.noProxy,
-          caCertPath: settings.httpProxyCaCertPath,
-        }),
+        ...networkEnv,
         // 把 host 解析出的权威 origin（含 settings 覆盖）下发给 agent，否则 agent 侧只按
         // env 推导，test env + 自定义端点时两侧信任判定的输入分叉、官方 MCP 整体 fail closed。
         ...buildAgentEndpointOriginEnv(await resolveCurrentZCodeEndpointOrigin()),
@@ -2305,7 +2325,64 @@ export function createLocalServices(options: {
   });
   const gitCommitMessageGenerator = new GitCommitMessageGenerator({
     currentModelProvider: {
-      async readCurrentModel() {
+      async readCurrentModel(workspace) {
+        if (usesDefaultCodexDesktopBridge) {
+          // Git 辅助也必须使用目标 cwd 的原生配置；旧 View 会启动 Provider Runtime 并误拦截 Codex。
+          const [rawConfig, rawModels] = await Promise.all([
+            zcodeAgentService.codexRequest({
+              ...workspace,
+              request: {
+                method: "config/read",
+                params: { cwd: workspace.workspacePath, includeLayers: false },
+              },
+            }),
+            zcodeAgentService.codexRequest({
+              ...workspace,
+              request: { method: "model/list", params: { includeHidden: false } },
+            }),
+          ]);
+          const { config } = codexConfigResponseSchema.parse(rawConfig);
+          const catalog = codexModelsResponseSchema.parse(rawModels);
+          const cursors = new Set<string>();
+          while (catalog.nextCursor) {
+            const cursor = catalog.nextCursor;
+            if (cursors.has(cursor) || cursors.size >= 100) {
+              throw new Error("Invalid Codex model pagination cursor");
+            }
+            cursors.add(cursor);
+            const page = codexModelsResponseSchema.parse(
+              await zcodeAgentService.codexRequest({
+                ...workspace,
+                request: { method: "model/list", params: { includeHidden: false, cursor } },
+              }),
+            );
+            catalog.data.push(...page.data);
+            catalog.nextCursor = page.nextCursor;
+          }
+          const configuredModel =
+            typeof config.model === "string" ? config.model.trim() : undefined;
+          const model = catalog.data.find(
+            (entry) =>
+              !entry.hidden &&
+              (configuredModel ? entry.model === configuredModel : entry.isDefault),
+          );
+          // custom provider 的配置模型可能不在发现目录；保留有效配置，不伪造模型能力。
+          const modelId = configuredModel || model?.model;
+          if (!modelId) return null;
+          const providerId =
+            typeof config.model_provider === "string"
+              ? config.model_provider.trim() || "openai"
+              : "openai";
+          const effort =
+            (typeof config.model_reasoning_effort === "string"
+              ? config.model_reasoning_effort.trim()
+              : undefined) || model?.defaultReasoningEffort;
+          return {
+            providerId,
+            modelId,
+            ...(effort ? { options: { reasoningLevel: effort } } : {}),
+          };
+        }
         // Git sidecar 属于目标 Environment；初始模型直接读取同一 Host View，
         // 不再通过临时 Agent workspace state 反推模型与 reasoning。
         return (await providerRuntime.modelSelection.getView()).preferredSelection ?? null;
@@ -2637,18 +2714,20 @@ export function createLocalServices(options: {
     );
   }
   const log = createServiceLogger("provider-runtime");
-  void providerRuntime.start().then(
-    () => {
-      const snapshot = providerRuntime.registryService.getSnapshot()!;
-      log.info("Provider Registry 已就绪", {
-        configRevision: snapshot.sourceRevisions.config,
-        providerCount: snapshot.registry.providers.length,
-      });
-    },
-    (error: unknown) => {
-      log.error("Provider 配置事实初始化失败", error);
-    },
-  );
+  // 旧装配无条件预热会在 Codex 登录前读取 Zai 账号并启动配置同步；原生默认路径保持按需服务。
+  if (!usesDefaultCodexDesktopBridge)
+    void providerRuntime.start().then(
+      () => {
+        const snapshot = providerRuntime.registryService.getSnapshot()!;
+        log.info("Provider Registry 已就绪", {
+          configRevision: snapshot.sourceRevisions.config,
+          providerCount: snapshot.registry.providers.length,
+        });
+      },
+      (error: unknown) => {
+        log.error("Provider 配置事实初始化失败", error);
+      },
+    );
 
   // 见 sharedSqliteRepos 声明处注释：登记全部 tasks-index sqlite 句柄，dispose 链统一关闭
   sqliteReposToClose.push(taskIndexRepo);

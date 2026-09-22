@@ -4,6 +4,10 @@ import { dirname, resolve } from "node:path";
 
 import { withPinnedNodePath } from "./mise-toolchain-env.mjs";
 import { quoteArgsForWindowsShell } from "./spawn-command.mjs";
+import { resolveDesktopRuntime } from "../packages/desktop/scripts/desktop-product-identity.mjs";
+import { prepareCodexRuntime } from "../packages/desktop/scripts/prepare-codex-runtime.mjs";
+
+process.env.ZCODE_DESKTOP_RUNTIME = resolveDesktopRuntime();
 
 const requestedEnv = process.argv[2]?.trim().toLowerCase();
 const agentBytecode = process.argv.slice(3).includes("--agent-bytecode");
@@ -59,10 +63,24 @@ try {
   // before rebuilding bundles or starting Electron.
   await run(pnpmCommand, ["--filter", "@zcode/desktop", "pre-dev"]);
   // On Windows, use "node" (resolved via PATHEXT) to avoid "C:\Program Files\..." space issues
-  await run(process.platform === "win32" ? "node" : process.execPath, [
-    resolve(repoRoot, "scripts/build-desktop-agent-cli.mjs"),
-  ]);
-  if (agentBytecode) {
+  if (process.env.ZCODE_DESKTOP_RUNTIME === "codex") {
+    if (agentBytecode)
+      throw new Error("--agent-bytecode is only supported with ZCODE_DESKTOP_RUNTIME=legacy");
+    const directory = await prepareCodexRuntime();
+    process.env.ZCODE_CODEX_COMMAND = resolve(
+      directory,
+      process.platform === "win32" ? "codex.exe" : "codex",
+    );
+    process.env.ZCODE_CODEX_BRIDGE_PATH = resolve(
+      repoRoot,
+      "packages/codex-bridge/dist/bridge.cjs",
+    );
+  } else {
+    await run(process.platform === "win32" ? "node" : process.execPath, [
+      resolve(repoRoot, "scripts/build-desktop-agent-cli.mjs"),
+    ]);
+  }
+  if (agentBytecode && process.env.ZCODE_DESKTOP_RUNTIME === "legacy") {
     await run(process.platform === "win32" ? "node" : process.execPath, [
       resolve(repoRoot, "scripts/build-desktop-agent-bytecode.mjs"),
     ]);

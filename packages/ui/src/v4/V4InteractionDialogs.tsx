@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CodexQuestionDialog } from "@/settings/codex/CodexQuestionDialog.js";
+import { readCodexQuestions } from "@/settings/codex/codexQuestions.js";
 import type { ZCodeElicitationRequest, ZCodePermissionOption, ZCodeProvider } from "@zcode/shared";
 import type { ConversationSnapshot } from "@zcode/shared/zcode-protocol-v4";
 import { ElicitationDialog } from "@/ElicitationDialog.js";
@@ -350,6 +352,17 @@ export function V4InteractionDialogs({
             setPermissionResponse({ interactionId, pending: false, failed: !accepted });
           });
         }}
+      />
+    );
+  }
+
+  const codexQuestions = readCodexQuestions(pending.payload.input);
+  if (codexQuestions) {
+    return (
+      <CodexQuestionDialog
+        key={`${sessionId}:${pending.interactionId}`}
+        questions={codexQuestions}
+        onRespond={(answer) => resolveInteraction(pending.interactionId, answer)}
       />
     );
   }

@@ -5,6 +5,14 @@ import { reportSessionCreate } from "@/lib/sessionCreateTelemetry.js";
 import { getLocalTtftObserver } from "@/v4/telemetry/localTtftObserver.js";
 /* oxlint-disable eslint(max-lines) -- SessionPane 是单 pane 竖切的命令编排收口（订阅/发送/停止/fork/edit/retry/queue/slash 全集），与旧 ChatView 同粒度；HEAD 已超限（693 行计数），拆散命令组会打散 dispatchCommand/snapshotRef 的闭包纪律。 */
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
+import { useCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
+import { isCodexSelectionReady } from "@/settings/codex/codexModelCatalog.js";
+import {
+  isCodexComposerBusy,
+  codexSubmissionSettingsAllowed,
+  isQueueSendNowAvailable,
+} from "@/settings/codex/codexSubmissionSettings.js";
+import { useCodexMessages } from "@/settings/codex/messages.js";
 import {
   useCallback,
   useEffect,
@@ -556,6 +564,7 @@ export function SessionPane({
   const { conversationShareService, modelSelectionService, zcodeSessionService, zcodeTaskService } =
     useServices();
   const { intl, locale } = useZCodeIntl();
+  const codexText = useCodexMessages();
   const slashCommands = useSlashCommands(workspacePath, workspaceIdentity);
   const baseWorkspaceServices = useBaseWorkspaceServices();
   const workspaceHomePath = useWorkspaceHomePath({
@@ -1221,6 +1230,12 @@ export function SessionPane({
     taskId: null,
   });
 
+  const codexModels = useCodexModelCatalog({
+    workspacePath,
+    workspaceIdentity,
+    remoteSessionId,
+    enabled: isDesktop,
+  });
   const {
     agentStartupAllowed: draftAgentStartupAllowed,
     error: draftModelReadinessError,
@@ -1228,6 +1243,7 @@ export function SessionPane({
     ensureReadyForSend: ensureDraftModelReadyForSend,
     markProviderNotReady: markDraftProviderNotReady,
   } = useDraftModelReadinessGate({
+    codex: isDesktop,
     workspacePath,
     workspaceIdentity,
     provider,
@@ -1250,6 +1266,8 @@ export function SessionPane({
     replaceComposerDraft,
     updateComposerContent,
   } = useDraftConfigControl({
+    codex: isDesktop,
+    codexCatalog: codexModels.catalog,
     workspacePath,
     workspaceIdentity,
     provider,
@@ -1283,14 +1301,24 @@ export function SessionPane({
     // 回收并按最新选择事实重建，已显式选择和正式会话仍保持冻结。
     useZCodeSessionStore.getState().invalidateDraftRuntime(workspacePath, workspaceIdentity);
   }, [draftConfigRef, modelSelectionView?.revision, sessionId, workspaceIdentity, workspacePath]);
-  const recommendStartPlan = useStartPlanRecommendation(modelSelectionView);
+  const recommendStartPlan = useStartPlanRecommendation(modelSelectionView, undefined, !isDesktop);
   const createSubmissionFromComposer = useCallback(
-    () => createComposerSubmissionConfig(draftConfigRef.current, modelSelectionView),
-    [draftConfigRef, modelSelectionView],
+    () =>
+      createComposerSubmissionConfig(
+        draftConfigRef.current,
+        modelSelectionView,
+        isDesktop ? codexModels.catalog : undefined,
+      ),
+    [draftConfigRef, modelSelectionView, isDesktop, codexModels.catalog],
   );
   const composerSubmissionReady = useMemo(
-    () => createComposerSubmissionConfig(draftConfig, modelSelectionView) !== null,
-    [draftConfig, modelSelectionView],
+    () =>
+      createComposerSubmissionConfig(
+        draftConfig,
+        modelSelectionView,
+        isDesktop ? codexModels.catalog : undefined,
+      ) !== null,
+    [draftConfig, modelSelectionView, isDesktop, codexModels.catalog],
   );
   const codingPlanUpgradeDialog = useOptionalCodingPlanUpgradeDialog();
   const openSettingsTab = useOptionalTabStore((state) => state.openSettingsTab);
@@ -1974,7 +2002,11 @@ export function SessionPane({
         snapshotRef.current?.config,
         modelSelectionView,
       );
-      const chosen = inherited ? await recommendStartPlan(inherited) : undefined;
+      const chosen = inherited
+        ? isDesktop
+          ? inherited
+          : await recommendStartPlan(inherited)
+        : undefined;
       if (chosen === null) return false;
       const modelSelection = chosen && chosen !== inherited ? chosen : undefined;
       // 参数命令每次都是新 child；同一条文本在 ACK 未回时重试仍复用 pending，
@@ -2010,6 +2042,7 @@ export function SessionPane({
       dispatchCommand,
       modelSelectionView,
       recommendStartPlan,
+      isDesktop,
       onOpenSelectionSideChat,
       remoteSessionId,
       selectionSideChatKey,
@@ -2109,7 +2142,7 @@ export function SessionPane({
     snapshot?.control.activeWorks ?? [],
   );
   // 子智能体详情的会话内容仍只读；文件撤销恢复的是 workspace，必须作为独立能力判断。
-  const workspaceFileRewindEnabled = !readOnly || allowWorkspaceFileRewind;
+  const workspaceFileRewindEnabled = !isDesktop && (!readOnly || allowWorkspaceFileRewind);
   // cancelBackgroundWork：启动卡 / 后台任务卡的「取消」入口。定义在 rowContext memo 之前，
   // 供其绑定（onOpenWorkflowRun 同样在 memo 前定义）；只读模式下不下发（与 4213 处一致）。
   const handleCancelBackgroundWork = useCallback(
@@ -2161,6 +2194,7 @@ export function SessionPane({
 
   const rowContext = useMemo<ConversationRowRenderContext>(
     () => ({
+      nativeCodex: isDesktop,
       workspacePath,
       workspaceHomePath,
       workspaceIdentity,
@@ -2223,6 +2257,7 @@ export function SessionPane({
       workspaceHomePath,
       workspaceIdentity,
       remoteSessionId,
+      isDesktop,
       modelSelectionView,
       snapshot?.logEpoch,
       theme,
@@ -2279,7 +2314,10 @@ export function SessionPane({
   // pane 未绑定会话时后台建 phase=draft 会话作预热载体：配置写 CAS 直达、首发复用。
   // 对外绑定语义不变（shell activeTaskId 仍 null），预热会话只是 pane 内部 effective 订阅目标。
   const { binding: prewarmBinding } = useDraftSessionPrewarm({
-    enabled: sessionId === null && draftAgentStartupAllowed,
+    enabled:
+      sessionId === null &&
+      draftAgentStartupAllowed &&
+      (!isDesktop || isCodexSelectionReady(codexModels.catalog, draftConfig.modelSelection)),
     workspaceKey,
     paneId,
     invalidationVersion: draftRuntimeInvalidationVersion,
@@ -2551,6 +2589,10 @@ export function SessionPane({
 
       // 空 /plan 与模式菜单相同，只编辑当前 Composer，不提前改写 Agent 执行状态。
       if (slashCommand?.kind === "planShortcut") {
+        if (isDesktop && isCodexComposerBusy(snapshotRef.current)) {
+          toast(codexText.busySettings);
+          return "blocked" as const;
+        }
         handleDraftSwitchMode("plan");
         if (submission) submission = { ...submission, planEnabled: true };
         if (!slashCommand.task) return "sent" as const;
@@ -2558,6 +2600,18 @@ export function SessionPane({
 
       if (!(await ensureDraftModelReadyForSend())) {
         return "blocked" as const;
+      }
+      if (isDesktop) {
+        try {
+          const currentCatalog = await codexModels.readCurrent();
+          if (!isCodexSelectionReady(currentCatalog, submission?.modelSelection)) {
+            codexModels.reload();
+            return "blocked" as const;
+          }
+        } catch {
+          codexModels.reload();
+          return "blocked" as const;
+        }
       }
 
       let effectiveText = text;
@@ -2605,8 +2659,18 @@ export function SessionPane({
         logger.warn("[v4-pane] Submission 缺少完整模型或模式配置");
         return "blocked" as const;
       }
+      // 原因：native queue/guide 不接受每条输入的设置覆盖。读取目录期间可能变忙，
+      // 必须按最新 snapshot 再验冻结意图；不能静默换成线程配置，也不能清掉草稿。
+      if (
+        isDesktop &&
+        !codexSubmissionSettingsAllowed(submission, snapshotRef.current, options?.requestedDelivery)
+      ) {
+        toast(codexText.settingsMismatch);
+        return "blocked" as const;
+      }
       const currentRoutingMode = snapshotRef.current?.inputRouting.mode;
       if (
+        !isDesktop &&
         currentRoutingMode === "choice" &&
         !heldQueueDisposition &&
         (slashCommand === null || slashCommand.kind === "sendGoalCommand")
@@ -2617,7 +2681,7 @@ export function SessionPane({
       }
       if (slashCommand === null || slashCommand.kind === "sendGoalCommand") {
         const original = submission.modelSelection;
-        const chosen = await recommendStartPlan(original);
+        const chosen = isDesktop ? original : await recommendStartPlan(original);
         if (!chosen) return "blocked" as const;
         if (chosen !== original) {
           onAcceptedSelection = captureAcceptedModelSelection(chosen, original);
@@ -2781,6 +2845,11 @@ export function SessionPane({
             throw error;
           }
         }
+        // native refs 归属于上传时的 native session；失去预热不能带旧 ref 新建会话。
+        if (isDesktop && readyAttachments.length > 0) {
+          toast(codexText.attachmentSessionLost);
+          return "blocked" as const;
+        }
         // fallback：无预热（创建失败/已丢弃）时现场建会话。草稿已选 config 随
         // createSession 携带（CLI 归并请求与 runtime 缺省，首发即用草稿选择）。
         // fallback 有 prewarm 投影时必须以 Agent 当前配置为 base；只有从未拿到投影
@@ -2896,6 +2965,10 @@ export function SessionPane({
     [
       dispatchCommand,
       recommendStartPlan,
+      isDesktop,
+      codexModels.readCurrent,
+      codexModels.reload,
+      codexText,
       captureAcceptedModelSelection,
       dispatchSlashCommand,
       ensureDraftModelReadyForSend,
@@ -3063,7 +3136,7 @@ export function SessionPane({
         {
           target,
           newText,
-          workspaceMode,
+          workspaceMode: isDesktop ? "preserve" : workspaceMode,
           // editUserQuery 的 attachments 缺省表示保留 canonical 原附件；
           // 只有显式透传 []，CLI 才能区分“用户删除全部”与“调用方未修改附件”。
           ...(attachments ? { attachments: [...attachments] } : {}),
@@ -3079,7 +3152,7 @@ export function SessionPane({
       // fork ACK 只做旧协议解码兼容；新 edit 永不导航 child。blocked 由行内冲突弹窗处理。
       return ack;
     },
-    [dispatchCommand, sessionId],
+    [dispatchCommand, sessionId, isDesktop],
   );
 
   const dispatchRetryTurn = useCallback(
@@ -3260,6 +3333,7 @@ export function SessionPane({
   );
 
   const handleResumeQueue = useCallback(async () => {
+    if (isDesktop) return;
     const current = snapshotRef.current;
     if (!sessionId || !current || current.queue.autoDrain || current.queue.items.length === 0) {
       return;
@@ -3273,7 +3347,7 @@ export function SessionPane({
     if (ack.status !== "accepted" && ack.status !== "noop") {
       logger.warn(`[v4-pane] 恢复暂停队列被拒绝: ${ack.status} ${ack.reasonCode ?? ""}`);
     }
-  }, [dispatchCommand, sessionId]);
+  }, [dispatchCommand, sessionId, isDesktop]);
 
   // 配置面 CAS 命令的 stale 重试。模型→思考深度→模式连续操作时，前一条命令的
   // revision bump 可能尚未回流到本地投影，直接用本地 revision 会被 CAS 判 stale。
@@ -3342,6 +3416,8 @@ export function SessionPane({
   const telemetryDraftConfig = draftConfig;
   const ensureDraftPrewarmConfigBeforeSend = useCallback(
     async (targetSessionId: string) => {
+      // 实测首次附图在这里被旧 setFollowupMode 屏障拒绝；native delivery 由线程/输入命令所有。
+      if (isDesktop) return;
       // followupMode 仍是 Session 行为设置；模型与模式属于本次 Submission，随 sendText
       // 原子提交，不能在发送前通过 CAS 改写共享 Session。
       const desiredConfig = buildDraftCreateConfigPayload(
@@ -3376,12 +3452,13 @@ export function SessionPane({
         requireAcceptedConfigAck("setFollowupMode", ack);
       }
     },
-    [appFollowupMode, dispatchConfigCas, draftConfigRef],
+    [appFollowupMode, dispatchConfigCas, draftConfigRef, isDesktop],
   );
   ensureDraftPrewarmConfigBeforeSendRef.current = ensureDraftPrewarmConfigBeforeSend;
 
   const followupModeSyncKeyRef = useRef<string | null>(null);
   useEffect(() => {
+    if (isDesktop) return;
     const targetSessionId = sessionId ?? prewarmSessionId;
     if (!targetSessionId || !appFollowupMode || snapshotRevision === null) return;
     if (snapshotSessionId !== targetSessionId) return;
@@ -3400,6 +3477,7 @@ export function SessionPane({
     );
   }, [
     appFollowupMode,
+    isDesktop,
     configCommandBarrier,
     dispatchConfigCas,
     prewarmSessionId,
@@ -3413,6 +3491,7 @@ export function SessionPane({
   // 在 Submission 真正开跑（Guide 为下一次 model-step）时由 CLI/Core 更新。
   const handleSelectModel = useCallback(
     (modelProvider: string, model: string, sourceModel: ModelSelectionSource | null) => {
+      if (isDesktop && isCodexComposerBusy(snapshotRef.current)) return;
       const resolvedProvider =
         modelProvider || draftConfigRef.current.provider || sourceModel?.provider || "";
       logger.debug("[v4-pane] onSelectModel", {
@@ -3422,14 +3501,15 @@ export function SessionPane({
       });
       handleDraftSelectModel(resolvedProvider, model);
     },
-    [draftConfigRef, handleDraftSelectModel],
+    [draftConfigRef, handleDraftSelectModel, isDesktop],
   );
 
   const handleSelectThought = useCallback(
     (thought: string, _modelContext: { provider: string; model: string }) => {
+      if (isDesktop && isCodexComposerBusy(snapshotRef.current)) return;
       handleDraftSelectThought(thought);
     },
-    [handleDraftSelectThought],
+    [handleDraftSelectThought, isDesktop],
   );
 
   const handleRecoverCustomModelSelection = useCallback(
@@ -3529,9 +3609,10 @@ export function SessionPane({
   // 模式与模型一样属于下一次 Submission；选择时只更新 Composer。
   const handleSwitchMode = useCallback(
     (mode: string) => {
+      if (isDesktop && isCodexComposerBusy(snapshotRef.current)) return;
       handleDraftSwitchMode(mode);
     },
-    [handleDraftSwitchMode],
+    [handleDraftSwitchMode, isDesktop],
   );
 
   // context usage 面板的压缩入口（命令文本 = "/compact"，复用 slash 解析路径）。
@@ -4398,6 +4479,7 @@ export function SessionPane({
       modelSelectionView={modelSelectionView}
       modelSelectionState={modelSelectionRead.state}
       modelSelectionReload={modelSelectionRead.reload}
+      codexModelCatalog={isDesktop ? codexModels : undefined}
       attachmentSessionId={effectiveSessionId}
       attachmentPut={attachmentPut}
       onRuntimeRestart={onRuntimeRestart}
@@ -4527,15 +4609,20 @@ export function SessionPane({
       {sessionId && snapshot ? (
         <ConversationQueuePanel
           key="conversation-queue"
+          nativeCodex={isDesktop}
           queue={pendingGuideProjection?.visibleQueue ?? snapshot.queue}
           onDeleteItem={handleDeleteQueueItem}
           onEditItem={handleEditQueueItem}
           pendingEditQueueItemId={
             queueEditActiveForCurrentComposer ? queueEditOperation.queueItemId : null
           }
-          onSendNow={handleSendQueuedNow}
+          onSendNow={
+            isQueueSendNowAvailable(isDesktop, snapshot.availability.sendQueuedNow)
+              ? handleSendQueuedNow
+              : undefined
+          }
           onMoveItem={handleReorderQueueItem}
-          onResume={handleResumeQueue}
+          onResume={isDesktop ? undefined : handleResumeQueue}
         />
       ) : null}
       {/* v4 权限/问答等待态只是 runtime 的阻塞交互，必须和 composer

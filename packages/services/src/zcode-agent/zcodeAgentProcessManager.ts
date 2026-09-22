@@ -35,6 +35,7 @@ import type { ZCodeAgentPresentationSurface } from "./zcodeAgentPresentationSurf
 import { shouldSpawnInDetachedProcessGroup } from "../process/processTreeTerminator.js";
 import type { RuntimeProcessLifecycleReporter } from "../process/runtimeProcessLifecycle.js";
 import { buildAgentWorkspaceIdentityEnv } from "../runtime-tools/agentProxyEnv.js";
+import { resolveCodexBridgeCommand, usesCodexBridgeRuntime } from "./codexBridgeCommand.js";
 
 export interface ZCodeAgentCommand {
   /** 本地配套 CLI bundle 的存储专用 Worker 入口；远端/自定义命令不推断能力。 */
@@ -448,6 +449,15 @@ export function resolveDefaultZCodeAgentCommand(
       },
       context.presentationSurface,
     );
+  }
+
+  if (
+    usesCodexBridgeRuntime({
+      desktopDefault: context.presentationSurface === "desktop",
+      customCommandResolver: false,
+    })
+  ) {
+    return resolveCodexBridgeCommand(context);
   }
 
   // 顺序：env 显式覆盖 → monorepo dev 源码/dist（dev 改源码立刻生效，不会被远端历史装的 native binary

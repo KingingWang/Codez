@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button.js";
 import { SettingsBadge, SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
 import { DataBaseDirControl } from "@/settings/DataBaseDirControl.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodexMessages } from "@/settings/codex/messages.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
 import { ProactiveSuggestionsSetting } from "@/settings/ProactiveSuggestionsSetting.js";
 import { normalizeInterfaceMode, type InterfaceMode } from "@/lib/interfaceMode.js";
@@ -172,6 +173,7 @@ export function GeneralSectionContent({
   onOpenOnboardingDialog: () => void;
 }) {
   const { intl } = useZCodeIntl();
+  const codexText = useCodexMessages();
   const hasServices = Boolean(useOptionalServices());
   // 部分 SSR 单测会用精简 props 直接渲染本组件，新增终端设置项后旧 helper 未必同步传值。
   // 这里把运行时缺省值兜到“继承系统 profile”，避免 undefined.trim() 把无关测试打断。
@@ -670,68 +672,74 @@ export function GeneralSectionContent({
       </SettingsGroupCard>
 
       <SettingsGroupCard>
-        <SettingsRow
-          label={intl.formatMessage({ id: "settings.zcodeInteractionBehavior" })}
-          description={intl.formatMessage({
-            id: "settings.zcodeInteractionBehaviorDescription",
-          })}
-          control={
-            <Select
-              value={zcodeInteractionBehavior}
-              onValueChange={(value) => {
-                void onZCodeInteractionBehaviorChange(value as ZCodeInteractionBehavior);
-              }}
-            >
-              <SelectTrigger size="lg" className="w-[260px] min-w-0 justify-between">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ZCODE_INTERACTION_BEHAVIOR_OPTIONS.map((behavior) => (
-                  <SelectItem key={behavior} value={behavior}>
-                    {intl.formatMessage({
-                      id: `settings.zcodeInteractionBehavior.option.${behavior}`,
-                    })}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          }
-        />
-        <SettingsRow
-          label={intl.formatMessage({
-            id: "settings.askUserQuestionAutoResolution",
-          })}
-          description={intl.formatMessage({
-            id: "settings.askUserQuestionAutoResolutionDescription",
-          })}
-          control={
-            <Switch
-              aria-label={intl.formatMessage({
+        {isDesktop ? (
+          <p className="p-4 text-ui-sm text-muted-foreground">{codexText.legacyPreferences}</p>
+        ) : (
+          <>
+            <SettingsRow
+              label={intl.formatMessage({ id: "settings.zcodeInteractionBehavior" })}
+              description={intl.formatMessage({
+                id: "settings.zcodeInteractionBehaviorDescription",
+              })}
+              control={
+                <Select
+                  value={zcodeInteractionBehavior}
+                  onValueChange={(value) => {
+                    void onZCodeInteractionBehaviorChange(value as ZCodeInteractionBehavior);
+                  }}
+                >
+                  <SelectTrigger size="lg" className="w-[260px] min-w-0 justify-between">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ZCODE_INTERACTION_BEHAVIOR_OPTIONS.map((behavior) => (
+                      <SelectItem key={behavior} value={behavior}>
+                        {intl.formatMessage({
+                          id: `settings.zcodeInteractionBehavior.option.${behavior}`,
+                        })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              }
+            />
+            <SettingsRow
+              label={intl.formatMessage({
                 id: "settings.askUserQuestionAutoResolution",
               })}
-              checked={askUserQuestionAutoResolutionEnabled}
-              data-testid={TID_SETTINGS_ASK_USER_QUESTION_AUTO_RESOLUTION_SWITCH}
-              onCheckedChange={(checked) => {
-                void onAskUserQuestionAutoResolutionEnabledChange(checked);
-              }}
+              description={intl.formatMessage({
+                id: "settings.askUserQuestionAutoResolutionDescription",
+              })}
+              control={
+                <Switch
+                  aria-label={intl.formatMessage({
+                    id: "settings.askUserQuestionAutoResolution",
+                  })}
+                  checked={askUserQuestionAutoResolutionEnabled}
+                  data-testid={TID_SETTINGS_ASK_USER_QUESTION_AUTO_RESOLUTION_SWITCH}
+                  onCheckedChange={(checked) => {
+                    void onAskUserQuestionAutoResolutionEnabledChange(checked);
+                  }}
+                />
+              }
             />
-          }
-        />
-        <SettingsRow
-          label={intl.formatMessage({ id: "settings.modelIoFullRetention" })}
-          description={intl.formatMessage({
-            id: "settings.modelIoFullRetentionDescription",
-          })}
-          control={
-            <Switch
-              aria-label={intl.formatMessage({ id: "settings.modelIoFullRetention" })}
-              checked={modelIoFullRetentionEnabled}
-              onCheckedChange={(checked) => {
-                void onModelIoFullRetentionEnabledChange(checked);
-              }}
+            <SettingsRow
+              label={intl.formatMessage({ id: "settings.modelIoFullRetention" })}
+              description={intl.formatMessage({
+                id: "settings.modelIoFullRetentionDescription",
+              })}
+              control={
+                <Switch
+                  aria-label={intl.formatMessage({ id: "settings.modelIoFullRetention" })}
+                  checked={modelIoFullRetentionEnabled}
+                  onCheckedChange={(checked) => {
+                    void onModelIoFullRetentionEnabledChange(checked);
+                  }}
+                />
+              }
             />
-          }
-        />
+          </>
+        )}
         <SettingsRow
           label={intl.formatMessage({ id: "settings.messageStreamShowReasoning" })}
           description={intl.formatMessage({

@@ -6,11 +6,16 @@ import { fileURLToPath } from "node:url";
 import { resolveNativeSearchReleasePlan } from "../../../scripts/native-search-tools-config.mjs";
 import { runCommand } from "../../../scripts/spawn-command.mjs";
 import { getTargetPlatform } from "./target-platform.mjs";
+import { prepareCodexRuntime } from "./prepare-codex-runtime.mjs";
+import { resolveDesktopRuntime } from "./desktop-product-identity.mjs";
+import { ensureCodexRemoteAssets } from "../../../scripts/codex-runtime-remote-assets.mjs";
+import { publishCodexBuildSelection } from "../../../scripts/codex-runtime.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(scriptDir, "..");
 const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const target = getTargetPlatform();
+const isCodexBuild = resolveDesktopRuntime() === "codex";
 const nativeSearchReleasePlan = resolveNativeSearchReleasePlan({
   platform: target.os,
   arch: target.arch,
@@ -27,7 +32,7 @@ const shouldPrepareMacosWindowBounds = target.os === "darwin";
 // 远端跨平台原生二进制仍由上面的 prepare:remote-assets 提供。
 // native-search 归档随仓库分发，准备步骤只做本地解包校验，不需要任何下载源配置。
 const localRuntimeScripts = [
-  "prepare:agent-bundle",
+  ...(!isCodexBuild ? ["prepare:agent-bundle"] : []),
   ...(nativeSearchReleasePlan.enabled ? ["prepare:native-search"] : []),
   ...(shouldPrepareWindowsBrowserImportHelper ? ["prepare:browser-import-helper"] : []),
   ...(shouldPrepareMacosWindowBounds ? ["prepare:macos-window-bounds"] : []),
@@ -50,7 +55,14 @@ function runTimedPnpmScript(scriptName) {
 
 const shouldSkipRemoteAssets = process.env.ZCODE_SKIP_REMOTE_ASSETS === "1";
 
-if (!shouldSkipRemoteAssets) {
+if (isCodexBuild) {
+  const directory = await prepareCodexRuntime();
+  await ensureCodexRemoteAssets({ bridgePath: resolve(directory, "bridge.cjs") });
+  await publishCodexBuildSelection({ directory });
+  console.log(
+    "[prepare:runtime-assets] verified four-target Codex remote components; SSH/WSL end-to-end validation is tracked separately from build readiness",
+  );
+} else if (!shouldSkipRemoteAssets) {
   runTimedPnpmScript("prepare:remote-assets");
 } else {
   // Windows build job 的桌面安装包不依赖 mock-cdn remote 资产。

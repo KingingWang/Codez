@@ -1,6 +1,7 @@
 /* oxlint-disable eslint(max-lines) -- v4 逐行 row 渲染分发集中收口（每种 row 一个 memo 叶子 + timelineMarker 分隔线），拆分会打散行类型对照。 */
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCodexMessages } from "@/settings/codex/messages.js";
 import {
   ArchiveIcon,
   ArrowRightLeftIcon,
@@ -862,6 +863,7 @@ const UserInputRowView = memo(function UserInputRowView({
   status?: string;
 }) {
   const { intl } = useZCodeIntl();
+  const codexText = useCodexMessages();
   // 引擎尾注折叠：正文只到 epilogueStart，
   // 之后的引擎文本折进气泡底部的披露。提示词上下文解析也只看正文——尾注里没有用户引用。
   const { body: bodyText, epilogue } = splitUserInputEpilogue(row.text, row.epilogueStart);
@@ -898,7 +900,9 @@ const UserInputRowView = memo(function UserInputRowView({
   const inputApiRef = useRef<LexicalChatInputHandle | null>(null);
   const editContextCount = countComposerPromptContexts(editPromptContexts);
   const canSubmit = draft.trim().length > 0 || editAttachments.length > 0 || editContextCount > 0;
-  const submitLabel = intl.formatMessage({ id: "chat.send" });
+  const submitLabel = context.nativeCodex
+    ? codexText.historyEdit
+    : intl.formatMessage({ id: "chat.send" });
   const cancelLabel = intl.formatMessage({ id: "common.cancel" });
   const rewindWorkspaceLabel = intl.formatMessage({
     id: "chat.edit.resetConversationAndFiles",
@@ -1151,20 +1155,24 @@ const UserInputRowView = memo(function UserInputRowView({
           submitTestId={testId(TID_V4_EDIT_SUBMIT, String(row.rowId))}
           cancelTestId={testId(TID_V4_EDIT_CANCEL, String(row.rowId))}
           betweenCancelAndSubmitAction={
-            <ControlHintTooltip
-              title={rewindWorkspaceTooltipTitle}
-              description={rewindWorkspaceTooltipDescription}
-            >
-              {rewindWorkspaceDisabled ? (
-                // Button disabled 会应用 pointer-events-none，TooltipTrigger 直接落在
-                // 按钮上时收不到 hover。禁用态用外层 span 承接 hover，实际按钮仍保持 disabled。
-                <span className="inline-flex" data-disabled-tooltip-trigger="true">
-                  {rewindWorkspaceButton}
-                </span>
-              ) : (
-                rewindWorkspaceButton
-              )}
-            </ControlHintTooltip>
+            context.nativeCodex ? (
+              <span className="text-ui-xs text-foreground-muted">{codexText.preserveFiles}</span>
+            ) : (
+              <ControlHintTooltip
+                title={rewindWorkspaceTooltipTitle}
+                description={rewindWorkspaceTooltipDescription}
+              >
+                {rewindWorkspaceDisabled ? (
+                  // Button disabled 会应用 pointer-events-none，TooltipTrigger 直接落在
+                  // 按钮上时收不到 hover。禁用态用外层 span 承接 hover，实际按钮仍保持 disabled。
+                  <span className="inline-flex" data-disabled-tooltip-trigger="true">
+                    {rewindWorkspaceButton}
+                  </span>
+                ) : (
+                  rewindWorkspaceButton
+                )}
+              </ControlHintTooltip>
+            )
           }
           className="w-full max-w-xl"
           shellClassName="min-h-32"

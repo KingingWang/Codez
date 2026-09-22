@@ -18,6 +18,7 @@ import {
   isShareImportUrl,
 } from "./desktopDeepLinkUrl.js";
 import { registerLinuxDeepLinkProtocol } from "./desktopLinuxDeepLinkRegistration.js";
+import { desktopProtocolScheme } from "./desktopProductRuntime.js";
 
 interface DeepLinkWorkspaceGateOptions {
   canOpenWorkspace?: (workspacePath: string) => boolean;
@@ -402,7 +403,7 @@ export function registerDeepLinkProtocol(
   },
   options: { iconPath?: string } = {},
 ) {
-  const scheme = "zcode";
+  const scheme = desktopProtocolScheme;
 
   if (process.defaultApp && process.argv.length >= 2) {
     const entry = resolve(process.argv[1]!);

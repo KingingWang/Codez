@@ -15,6 +15,9 @@ import { getLocalTtftObserver } from "@/v4/telemetry/localTtftObserver.js";
  * - 草稿 per-session 持久化（composerDraftStore）+ prompt history（promptHistoryStorage）；
  * - 工具条（模型/思考深度/模式/context usage）见 V4ComposerToolbar。
  */
+import type { CodexModelCatalogRead } from "@/hooks/useCodexModelCatalog.js";
+import { CodexComposerModelControls } from "@/settings/codex/CodexComposerModelControls.js";
+import { isCodexComposerBusy } from "@/settings/codex/codexSubmissionSettings.js";
 import {
   memo,
   useCallback,
@@ -400,6 +403,7 @@ interface ConversationComposerProps {
   modelSelectionState?: ModelSelectionState;
   /** Model Selection 首次读取失败后的显式重试入口。 */
   modelSelectionReload?: () => void;
+  codexModelCatalog?: CodexModelCatalogRead;
   /** 草稿态使用预热 session 作附件 transaction 载体。 */
   attachmentSessionId?: string | null;
   attachmentPut: AttachmentPutFn;
@@ -504,6 +508,7 @@ function ConversationComposerImpl({
   modelSelectionView = null,
   modelSelectionState = MODEL_SELECTION_LOADING_STATE,
   modelSelectionReload,
+  codexModelCatalog,
   attachmentSessionId = null,
   attachmentPut,
   onRuntimeRestart,
@@ -620,6 +625,7 @@ function ConversationComposerImpl({
 
   // ── 附件全链路（选择/粘贴/拖拽/画板/预传/门禁）──
   const attachmentsApi = useComposerAttachments({
+    nativeCodex: Boolean(codexModelCatalog),
     workspacePath,
     workspaceIdentity,
     remoteSessionId,
@@ -1096,6 +1102,8 @@ function ConversationComposerImpl({
     inputRoutingMode: mode,
   });
   const canStop = Boolean(snapshot?.control.canStop);
+  const nativeSettingsLocked =
+    Boolean(codexModelCatalog) && (pending || isCodexComposerBusy(snapshot));
   const modifiedEnterReversesDelivery = modifiedEnterSubmits && canStop;
   const hasText = text.trim().length > 0;
   const hasDraftToSubmit =
@@ -2039,27 +2047,38 @@ function ConversationComposerImpl({
     () => (
       <div className="flex min-w-0 items-center gap-1">
         <span className="flex min-w-0 shrink items-center gap-1 overflow-hidden empty:hidden">
-          <V4ComposerModelControls
-            workspacePath={workspacePath}
-            workspaceIdentity={workspaceIdentity}
-            modelSelectionView={modelSelectionView}
-            modelSelectionState={modelSelectionState}
-            modelSelectionReload={modelSelectionReload}
-            sessionId={sessionId ?? null}
-            phase={composerPhase}
-            provider={provider}
-            draftMode={draftMode}
-            draftConfig={draftConfig}
-            usage={composerUsage}
-            disabled={disabled}
-            activeConfigPicker={activeConfigPicker}
-            onConfigPickerOpenChange={handleConfigPickerOpenChange}
-            onSelectModel={handleSelectModelTrace}
-            onSelectThought={onSelectThought}
-            onSwitchMode={onSwitchMode}
-            onRecoverCustomModelSelection={onRecoverCustomModelSelection}
-            onSendCompressionCommand={onSendCompressionCommand}
-          />
+          {codexModelCatalog ? (
+            <CodexComposerModelControls
+              read={codexModelCatalog}
+              selection={draftConfig?.modelSelection}
+              disabled={disabled}
+              busy={nativeSettingsLocked}
+              onSelectModel={handleSelectModelTrace}
+              onSelectThought={onSelectThought}
+            />
+          ) : (
+            <V4ComposerModelControls
+              workspacePath={workspacePath}
+              workspaceIdentity={workspaceIdentity}
+              modelSelectionView={modelSelectionView}
+              modelSelectionState={modelSelectionState}
+              modelSelectionReload={modelSelectionReload}
+              sessionId={sessionId ?? null}
+              phase={composerPhase}
+              provider={provider}
+              draftMode={draftMode}
+              draftConfig={draftConfig}
+              usage={composerUsage}
+              disabled={disabled}
+              activeConfigPicker={activeConfigPicker}
+              onConfigPickerOpenChange={handleConfigPickerOpenChange}
+              onSelectModel={handleSelectModelTrace}
+              onSelectThought={onSelectThought}
+              onSwitchMode={onSwitchMode}
+              onRecoverCustomModelSelection={onRecoverCustomModelSelection}
+              onSendCompressionCommand={onSendCompressionCommand}
+            />
+          )}
         </span>
         {showStopControl ? (
           <ControlHintTooltip title={stopTooltipTitle} shortcut="Esc">
@@ -2112,6 +2131,8 @@ function ConversationComposerImpl({
       mode,
       handleSelectModelTrace,
       modelSelectionReload,
+      codexModelCatalog,
+      nativeSettingsLocked,
       modelSelectionState,
       modelSelectionView,
       onSelectThought,
@@ -2144,19 +2165,21 @@ function ConversationComposerImpl({
           workspaceIdentity={workspaceIdentity}
           provider={provider}
           draftConfig={draftConfig}
-          disabled={disabled}
+          disabled={disabled || nativeSettingsLocked}
           activeConfigPicker={activeConfigPicker}
           onConfigPickerOpenChange={handleConfigPickerOpenChange}
           onSwitchMode={onSwitchMode}
         />
         {/* 附件画廊重构曾整段覆盖 leadingActions，误删 CUA 常驻入口。
             入口自身继续负责平台、远程与设置可见性，不在 composer 重复判定。 */}
-        <V4ComposerCuaEntry
-          workspacePath={workspacePath}
-          workspaceIdentity={workspaceIdentity}
-          remoteSessionId={remoteSessionId}
-          currentSessionBusy={canStop}
-        />
+        {!codexModelCatalog && (
+          <V4ComposerCuaEntry
+            workspacePath={workspacePath}
+            workspaceIdentity={workspaceIdentity}
+            remoteSessionId={remoteSessionId}
+            currentSessionBusy={canStop}
+          />
+        )}
         <ConversationBackgroundWorkTrigger
           backgroundWorks={snapshot?.backgroundWorks ?? []}
           runningSubagentCount={runningSubagentCount}
@@ -2168,6 +2191,8 @@ function ConversationComposerImpl({
     [
       activeConfigPicker,
       canStop,
+      codexModelCatalog,
+      nativeSettingsLocked,
       disabled,
       draftConfig,
       handleConfigPickerOpenChange,
