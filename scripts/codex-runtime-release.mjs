@@ -108,6 +108,21 @@ function verifyUploaded(release, assets, sha) {
   }
 }
 
+async function findRelease(run, repository, tag) {
+  try {
+    return JSON.parse(await run(["api", `repos/${repository}/releases/tags/${tag}`]));
+  } catch (error) {
+    if (!/HTTP 404/.test(error.message)) throw error;
+  }
+  // 按 tag 的 REST 接口只返回已发布版本；草稿必须从有写权限的分页列表定位。
+  const pages = JSON.parse(
+    await run(["api", `repos/${repository}/releases?per_page=100`, "--paginate", "--slurp"]),
+  );
+  const matches = pages.flat().filter((release) => release.tag_name === tag);
+  if (matches.length > 1) throw new Error("Ambiguous release identity");
+  return matches[0];
+}
+
 export async function publishCodexRelease({
   directory,
   env = process.env,
@@ -116,13 +131,7 @@ export async function publishCodexRelease({
   const identity = releaseIdentity(env);
   const assets = await collectReleaseAssets(directory);
   const { repository, sha, tag, prerelease } = identity;
-  const endpoint = `repos/${repository}/releases/tags/${tag}`;
-  let release;
-  try {
-    release = JSON.parse(await run(["api", endpoint]));
-  } catch (error) {
-    if (!/HTTP 404/.test(error.message)) throw error;
-  }
+  let release = await findRelease(run, repository, tag);
   if (release && release.target_commitish !== sha)
     throw new Error("Release target does not match built commit");
   if (release && !release.draft) {
@@ -154,12 +163,20 @@ export async function publishCodexRelease({
       "--notes",
       notes,
     ]);
+    release = await findRelease(run, repository, tag);
   }
+  if (
+    !Number.isSafeInteger(release?.id) ||
+    release.id <= 0 ||
+    release.target_commitish !== sha ||
+    !release.draft
+  )
+    throw new Error("Could not verify draft identity");
   for (const file of assets) {
     console.log(`[codex-release] Upload ${file.name}`);
     await run(["release", "upload", tag, file.path, "--repo", repository, "--clobber"]);
   }
-  release = JSON.parse(await run(["api", endpoint]));
+  release = JSON.parse(await run(["api", `repos/${repository}/releases/${release.id}`]));
   verifyUploaded(release, assets, sha);
   // 较早 push 可能较晚完成；仅当前 main 结果有资格更新 Latest，其他结果仍公开保留。
   const latest =
