@@ -12,7 +12,11 @@ test("legacy compatibility view parses the real schema and preserves stable mess
   assert.deepEqual(thread, before);
   assert.deepEqual(
     result.messages.map((message) => message.info.messageId),
-    ["user-1", "reason-1", "answer-1"],
+    [
+      "codex:turn:turn-1:item:user-1",
+      "codex:turn:turn-1:item:reason-1",
+      "codex:turn:turn-1:item:answer-1",
+    ],
   );
   assert.equal(result.messages[0]?.info.role, "user");
   assert.equal(
@@ -22,7 +26,7 @@ test("legacy compatibility view parses the real schema and preserves stable mess
   assert.equal(result.messages[1]?.parts[0]?.type, "reasoning");
   assert.equal(
     result.messages[2]?.info.role === "assistant" && result.messages[2].info.parentMessageId,
-    "user-1",
+    "codex:turn:turn-1:item:user-1",
   );
   assert.equal(result.session.workspace.workspacePath, "/workspace");
   assert.equal(result.session.status, "completed");

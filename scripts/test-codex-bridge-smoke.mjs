@@ -22,7 +22,7 @@ test(
     await mkdir(codexHome);
     await mkdir(directory);
     await symlink(directory, workspace, process.platform === "win32" ? "junction" : "dir");
-    const { server, requests } = createSmokeModelServer();
+    const { server, requests } = createSmokeModelServer({ reuseItemId: true });
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
     const port = server.address().port;
@@ -228,6 +228,19 @@ test(
         completedImages,
         "turn/start image and its provisional localImage project before completion",
       );
+      const twoTurnRows = await rpc("v4/conversation/rowsRange", { sessionId, limit: 200 });
+      const completedAnswers = twoTurnRows.rows.filter(
+        (row) =>
+          row.kind === "assistantText" &&
+          row.state === "complete" &&
+          row.entityId?.endsWith(":item:msg_reused_across_turns"),
+      );
+      assert.equal(
+        completedAnswers.length,
+        2,
+        "two real turns reuse the native message ID but keep turn-scoped entity IDs",
+      );
+      assert.equal(new Set(completedAnswers.map((row) => row.entityId)).size, 2);
       await stop();
       rpc = start();
       const resumed = await rpc("v4/conversation/subscribe", {

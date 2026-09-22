@@ -36,6 +36,13 @@ await page.route("**/*", (route) =>
   new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort(),
 );
 const result = async () => JSON.parse(await page.getByTestId("result").innerText());
+const catalogConfigReads = async (workspacePath = "/isolated/workspace") => {
+  await page.getByRole("button", { name: "Inspect RPC log", exact: true }).click();
+  const requests = (await result()).requests ?? [];
+  return requests.filter(
+    (request) => request.method === "config/read" && request.workspacePath === workspacePath,
+  ).length;
+};
 const waitEnabled = async (name) => {
   await page.getByRole("button", { name, exact: true }).waitFor();
   await page.waitForFunction(
@@ -60,6 +67,52 @@ try {
     options: { reasoningLevel: "medium" },
   });
   checks.push("NewTask native config/model readiness, legacy registry never accessed");
+  const firstSendConfigReads = await catalogConfigReads();
+  await page.getByRole("button", { name: "Send fixture", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"native-model"'),
+  );
+  assert.equal(
+    await catalogConfigReads(),
+    firstSendConfigReads,
+    "Two warm sends in one workspace must reuse the catalog owner without another config/model RPC",
+  );
+  checks.push("Warm follow-up send reuses workspace catalog discovery");
+  await page.getByRole("button", { name: "Invalidate and read", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"stale"'),
+  );
+  await waitEnabled("Send fixture");
+  await page.getByRole("button", { name: "Capture reader", exact: true }).click();
+
+  await page.getByRole("button", { name: "Switch workspace", exact: true }).click();
+  await page.getByRole("button", { name: "Read captured", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"stale"'),
+  );
+  await page.getByRole("button", { name: "Send fixture", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"workspace-model"'),
+  );
+  const otherWorkspaceConfigReads = await catalogConfigReads("/isolated/other-workspace");
+  assert.ok(
+    otherWorkspaceConfigReads > 0,
+    "Workspace switch must invalidate the catalog before a different workspace can send",
+  );
+  checks.push("Workspace switch fetches a fresh catalog and cannot reuse the old result");
+
+  await page.getByRole("button", { name: "Switch workspace", exact: true }).click();
+  await page.getByRole("button", { name: "Send fixture", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"native-model"'),
+  );
+  const returnedWorkspaceConfigReads = await catalogConfigReads();
+  assert.ok(
+    returnedWorkspaceConfigReads > firstSendConfigReads,
+    "Returning to the first workspace must also invalidate the other workspace catalog",
+  );
+  checks.push("Returning to the first workspace fetches its own catalog");
+
   await page.getByRole("button", { name: "Active conversation", exact: true }).click();
   await page.getByRole("button", { name: "Send fixture", exact: true }).click();
   await page.waitForFunction(() =>
@@ -112,10 +165,15 @@ try {
   checks.push(
     "Configured custom model absent from discovery remains selectable/submittable with native effort and no fabricated capability picker",
   );
+  const invalidatedConfigReads = await catalogConfigReads();
+  assert.ok(
+    invalidatedConfigReads > returnedWorkspaceConfigReads,
+    "Explicit catalog reload after a configuration change must fetch changed config once",
+  );
+  checks.push("Configuration invalidation fetches the changed catalog once");
   await page.getByRole("button", { name: "Toggle configured custom model" }).click();
-  await models.getByRole("combobox", { name: "Default model" }).click();
-  await page.getByRole("option", { name: "second-model", exact: true }).click();
-  await page.getByRole("button", { name: "Toggle catalog failure" }).click();
+  await page.getByRole("button", { name: "NewTask", exact: true }).click();
+  await page.getByRole("button", { name: "Toggle catalog failure", exact: true }).click();
   await page.getByRole("alert").filter({ hasText: "Fixture catalog unavailable" }).waitFor();
   assert.equal(
     await page.getByRole("button", { name: "Send fixture", exact: true }).isDisabled(),
@@ -187,12 +245,31 @@ try {
   checks.push(
     "Real PermissionDialog preserves native accept/acceptForSession/decline/cancel option IDs",
   );
+  await page.getByRole("button", { name: "Toggle settings", exact: true }).click();
   await page.getByRole("button", { name: "Models & permissions", exact: true }).click();
   const settings = page.getByTestId("codex-settings");
   await settings.getByRole("combobox", { name: "Default model" }).click();
   await page.getByRole("option", { name: "second-model", exact: true }).click();
+  const beforeSettingsWriteConfigReads = await catalogConfigReads();
   await settings.getByRole("button", { name: "Save", exact: true }).click();
   await page.getByText("Write accepted. Review refreshed effective values below.").waitFor();
+  await page.getByRole("button", { name: "Toggle settings", exact: true }).click();
+  await page.getByRole("button", { name: "Inspect catalog", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"second-model"'),
+  );
+  const afterSettingsWriteConfigReads = await catalogConfigReads();
+  assert.ok(
+    afterSettingsWriteConfigReads > beforeSettingsWriteConfigReads,
+    "Native config write must invalidate the ready catalog before the next warm send",
+  );
+  await page.getByRole("button", { name: "Send fixture", exact: true }).click();
+  assert.equal(
+    await catalogConfigReads(),
+    afterSettingsWriteConfigReads,
+    "Warm send after refresh must reuse the new catalog without overriding the explicit draft model",
+  );
+  checks.push("Native configuration write invalidates composer catalog before next send");
   await page.getByRole("button", { name: "Inspect RPC log", exact: true }).click();
   const recorded = (await result()).requests;
   assert.equal(
@@ -209,6 +286,28 @@ try {
     mergeStrategy: "replace",
   });
   checks.push("Real settings hook writes native versioned config and refreshes effective values");
+  await page.getByRole("button", { name: "Mount held catalog", exact: true }).click();
+  await page.getByTestId("lifetime-status").filter({ hasText: "loading" }).waitFor();
+  await page.getByRole("button", { name: "Read lifetime catalog", exact: true }).click();
+  await page.getByRole("button", { name: "Unmount catalog", exact: true }).click();
+  await page.getByRole("button", { name: "Release catalog", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"stale"'),
+  );
+  await page.getByRole("button", { name: "Mount ready catalog", exact: true }).click();
+  await page.getByTestId("lifetime-status").filter({ hasText: "ready" }).waitFor();
+  await page.getByRole("button", { name: "Read lifetime catalog", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"ready"'),
+  );
+  await page.getByRole("button", { name: "Unmount catalog", exact: true }).click();
+  await page.getByRole("button", { name: "Read lifetime catalog", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"stale"'),
+  );
+  checks.push(
+    "StrictMode lifecycle, captured old scope, synchronous reload, and pending/ready unmount reject stale catalog reads",
+  );
   assert.deepEqual(errors, []);
   await page.screenshot({ path: join(evidence, "desktop-width.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });

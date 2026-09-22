@@ -313,6 +313,9 @@ export const pendingInteractionSchema = z
     // null = 会话级（如 provider 交互和 workspace Hook review）。
     anchorRowId: z.number().nullable(),
     createdAt: timestampSchema,
+    // additive：Codex item IDs 按 turn 作用域；新审批回传 turnId。旧 snapshot/旧发送端
+    // 可省略，消费者不得因此拒绝；投影仅在字段存在时用它防跨 turn 误挂审批。
+    turnId: z.string().optional(),
     autoResolution: interactionAutoResolutionSchema.optional(),
     payload: z.discriminatedUnion("kind", [
       permissionRequestPayloadSchema,
