@@ -39,7 +39,7 @@ test("native image history and queue accept nullable detail without losing user 
   const row = snapshot.rows.window[1];
   assert.equal(row?.kind, "userInput");
   if (row?.kind !== "userInput") assert.fail("native image must remain a userInput row");
-  assert.equal(row.entityId, user.id);
+  assert.equal(row.entityId, `codex:turn:turn-1:item:${user.id}`);
   assert.equal(row.sourceCommandId, user.clientId);
   assert.equal(row.text, "[image]");
   assert.equal(row.attachments, undefined, "schema must not invent restored attachment refs");

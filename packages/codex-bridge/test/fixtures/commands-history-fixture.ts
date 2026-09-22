@@ -78,7 +78,10 @@ export async function verifyHistoryChange(t: TestContext, type: HistoryCommand) 
   const h = await setup(t);
   const originalInput = historicalTurns(h);
   const before = snapshot(h);
-  const entityId = type === "editUserQuery" ? "middle-user" : "middle-answer";
+  const entityId =
+    type === "editUserQuery"
+      ? "codex:turn:middle-turn:item:middle-user"
+      : "codex:turn:middle-turn:item:middle-answer";
   const targetRow = before.rows.window.find((row) => row.entityId === entityId)!;
   assert.ok(targetRow);
   assert.equal(targetRow.turnId, "middle-turn");
@@ -181,7 +184,9 @@ export async function verifyHistoryChange(t: TestContext, type: HistoryCommand) 
     after.rows.window.some((row) => row.turnId === "middle-turn" || row.turnId === "later-turn"),
     false,
   );
-  const newUser = after.rows.window.find((row) => row.entityId === "rerun-user");
+  const newUser = after.rows.window.find(
+    (row) => row.entityId === "codex:turn:rerun-turn:item:rerun-user",
+  );
   assert.equal(newUser?.kind === "userInput" && newUser.sourceCommandId, command.commandId);
   assert.equal(after.control.phase, "running");
 

@@ -50,6 +50,7 @@ async function fixture(t: TestContext) {
   const frames: RoutedTopicWireFrame[] = [],
     order: string[] = [],
     fatal: Error[] = [];
+  const fatalOrigins: (string | undefined)[] = [];
   const started = Promise.withResolvers<void>();
   let closeCount = 0,
     closed = false;
@@ -121,8 +122,9 @@ async function fixture(t: TestContext) {
       frames.push(frame);
       order.push(`frame:${frame.topic}`);
     },
-    fatal(error) {
+    fatal(error, origin) {
       fatal.push(error);
+      fatalOrigins.push(origin);
     },
   });
   const close = async () => {
@@ -142,6 +144,8 @@ async function fixture(t: TestContext) {
     calls,
     handlers,
     frames,
+    fatal,
+    fatalOrigins,
     order,
     started,
     authority,
@@ -276,6 +280,159 @@ test("V4 mutation ACK waits for native admission; index refresh is post-response
   assert.equal(commandAckSchema.parse(failed.result).status, "failed");
   await h.runtime.request(V4_METHODS.command, create("failed"));
   assert.equal(h.calls.filter((call) => call.method === "thread/start").length, 2);
+});
+
+test("slow sidebar refresh never delays the next turn on either delivery profile", async (t) => {
+  for (const mode of ["desktop-continuous", "web-remote-replayable"])
+    await t.test(mode, async (t) => {
+      const h = await fixture(t);
+      for (const topic of ["conversation/thread-1", `sessions-index/${workspaceId}`]) {
+        const response = await h.runtime.request(
+          V4_METHODS.conversationSubscribe,
+          subscribe(topic, mode),
+        );
+        await response.afterResponse!();
+      }
+      const entered = Promise.withResolvers<void>();
+      const listing = Promise.withResolvers<unknown>();
+      h.handlers["thread/list"] = () => {
+        entered.resolve();
+        return listing.promise;
+      };
+      h.emit("turn/completed", {
+        threadId: "thread-1",
+        turn: { id: "turn-1", status: "completed" },
+      });
+      await entered.promise;
+      try {
+        h.emit("turn/started", {
+          threadId: "thread-1",
+          turn: { id: "turn-2", status: "inProgress", items: [] },
+        });
+        h.emit("item/completed", {
+          threadId: "thread-1",
+          turnId: "turn-2",
+          item: { id: "second-answer", type: "agentMessage", text: "Second answer" },
+        });
+        await tick();
+        const rows = await h.runtime.request(V4_METHODS.conversationRowsRange, {
+          sessionId: "thread-1",
+          limit: 100,
+        });
+        assert.match(JSON.stringify(rows.result), /Second answer/);
+        assert.match(JSON.stringify(h.frames), /Second answer/);
+      } finally {
+        listing.resolve({ data: [h.authority.thread], nextCursor: null });
+        await tick();
+      }
+    });
+});
+
+test("close invalidates a pending sidebar refresh without a late frame or fatal", async (t) => {
+  const h = await fixture(t);
+  const response = await h.runtime.request(
+    V4_METHODS.conversationSubscribe,
+    subscribe(`sessions-index/${workspaceId}`),
+  );
+  await response.afterResponse!();
+  const entered = Promise.withResolvers<void>();
+  const listing = Promise.withResolvers<unknown>();
+  h.handlers["thread/list"] = () => {
+    entered.resolve();
+    return listing.promise;
+  };
+  h.emit("thread/name/updated", { threadId: "thread-1", threadName: "Updated" });
+  await entered.promise;
+  const count = h.frames.length;
+  await h.close();
+  listing.reject(new Error("Transport closed during index read"));
+  await tick();
+  assert.equal(h.frames.length, count);
+});
+
+test("slow configuration invalidation also leaves native turn events unblocked", async (t) => {
+  const h = await fixture(t);
+  for (const topic of ["conversation/thread-1", `workspace-config/${workspaceId}`]) {
+    const response = await h.runtime.request(V4_METHODS.conversationSubscribe, subscribe(topic));
+    await response.afterResponse!();
+  }
+  const entered = Promise.withResolvers<void>();
+  const catalog = Promise.withResolvers<unknown>();
+  h.handlers["model/list"] = () => {
+    entered.resolve();
+    return catalog.promise;
+  };
+  h.emit("account/updated", {});
+  await entered.promise;
+  try {
+    h.emit("turn/started", {
+      threadId: "thread-1",
+      turn: { id: "turn-after-config", status: "inProgress", items: [] },
+    });
+    await tick();
+    const rows = await h.runtime.request(V4_METHODS.conversationRowsRange, {
+      sessionId: "thread-1",
+      limit: 100,
+    });
+    assert.match(JSON.stringify(rows.result), /turn-after-config/);
+  } finally {
+    catalog.resolve({ data: [], nextCursor: null });
+    await tick();
+  }
+});
+
+test("sidebar invalidations coalesce during a blocked read and publish the latest state", async (t) => {
+  const h = await fixture(t);
+  const response = await h.runtime.request(
+    V4_METHODS.conversationSubscribe,
+    subscribe(`sessions-index/${workspaceId}`),
+  );
+  await response.afterResponse!();
+  h.frames.length = 0;
+  const entered = Promise.withResolvers<void>();
+  const listing = Promise.withResolvers<unknown>();
+  let reads = 0;
+  h.handlers["thread/list"] = () => {
+    reads++;
+    if (reads === 1) {
+      entered.resolve();
+      return listing.promise;
+    }
+    return { data: [{ ...h.authority.thread, name: "Final sidebar name" }], nextCursor: null };
+  };
+  h.emit("thread/name/updated", { threadId: "thread-1", threadName: "First" });
+  await entered.promise;
+  for (let i = 0; i < 5; i++)
+    h.emit("thread/name/updated", { threadId: "thread-1", threadName: `Name ${i}` });
+  await tick();
+  assert.equal(reads, 1);
+  listing.resolve({ data: [h.authority.thread], nextCursor: null });
+  await tick();
+  assert.equal(reads, 2, "one additional read repairs all invalidations during IO");
+  assert.equal(h.frames.length, 2);
+  assert.match(JSON.stringify(h.frames.at(-1)), /Final sidebar name/);
+});
+
+test("a live sidebar failure remains fatal with a safe origin and no read retry", async (t) => {
+  const h = await fixture(t);
+  const response = await h.runtime.request(
+    V4_METHODS.conversationSubscribe,
+    subscribe(`sessions-index/${workspaceId}`),
+  );
+  await response.afterResponse!();
+  const failure = new Error("Synthetic list failure");
+  let reads = 0;
+  h.handlers["thread/list"] = () => {
+    reads++;
+    throw failure;
+  };
+  h.emit("thread/name/updated", { threadId: "thread-1", threadName: "Updated" });
+  await tick();
+  assert.deepEqual(h.fatal.splice(0), [failure]);
+  assert.deepEqual(h.fatalOrigins, ["sessions-index"]);
+  assert.equal(reads, 1);
+  await h.close();
+  assert.equal(h.closeCount(), 1);
 });
 
 test("read-only codex/request methods forward once; execution and unknown RPCs never escape allowlist", async (t) => {

@@ -39,6 +39,11 @@ export function projectInputText(input: readonly CodexUserInput[]): string {
     .join("\n");
 }
 
+/** 展示 ID 编码原生 (turnId, itemId)，避免原生按 turn 复用 itemId 时发生碰撞。 */
+export function itemEntityId(turnId: string, itemId: string): string {
+  return `codex:turn:${encodeURIComponent(turnId)}:item:${encodeURIComponent(itemId)}`;
+}
+
 type RowBase = Pick<
   ConversationRow,
   "rowId" | "entityId" | "turnId" | "productTurnId" | "createdAt" | "createdAtSeq" | "visibility"
@@ -56,7 +61,9 @@ function toolRow(
 ): ToolCallRow {
   const approval = interactions.find(
     (interaction) =>
-      interaction.payload.kind === "permission" && interaction.payload.toolCallId === item.id,
+      interaction.payload.kind === "permission" &&
+      interaction.payload.toolCallId === item.id &&
+      (interaction.turnId === undefined || interaction.turnId === turn.id),
   );
   let status: ToolCallRow["status"];
   if (item.status === "completed") status = "success";
@@ -122,7 +129,9 @@ function itemRow(
   if (!isCodexKnownItem(item)) {
     const approval = interactions.find(
       (interaction) =>
-        interaction.payload.kind === "permission" && interaction.payload.toolCallId === item.id,
+        interaction.payload.kind === "permission" &&
+        interaction.payload.toolCallId === item.id &&
+        (interaction.turnId === undefined || interaction.turnId === turn.id),
     );
     const nativeStatus = typeof item.status === "string" ? item.status : undefined;
     const status =
@@ -208,7 +217,6 @@ export function projectRows(
   interactions: readonly PendingInteraction[] = [],
 ): ConversationRow[] {
   const rows: ConversationRow[] = [];
-  const entities = new Set<string>();
   const turnIds = new Set<string>();
   for (const turn of thread.turns) {
     if (turn.itemsView !== "full")
@@ -224,12 +232,13 @@ export function projectRows(
       visibility: "visible" as const,
     };
     const source = turn.items.filter(isCodexKnownItem).find((item) => item.type === "userMessage");
+    const entityIds = new Set<string>();
     rows.push(
       assertRowBudget(
         conversationRowSchema.parse({
           ...base,
           rowId: rows.length,
-          entityId: `codex:turn:${turn.id}`,
+          entityId: `codex:turn:${encodeURIComponent(turn.id)}`,
           kind: "turnHeader",
           origin: "userInput",
           executionKind: "agent",
@@ -250,12 +259,24 @@ export function projectRows(
       ),
     );
     for (const item of turn.items) {
-      if (entities.has(item.id)) throw new Error(`Duplicate Codex item ID: ${item.id}`);
-      entities.add(item.id);
+      if (entityIds.has(item.id)) {
+        // 原生协议按 turn 限定 itemId；同一 turn 内重复仍表示损坏历史，必须失败。
+        throw new Error(`Duplicate Codex item ID in turn ${turn.id}: ${item.id}`);
+      }
+      entityIds.add(item.id);
       rows.push(
         assertRowBudget(
           conversationRowSchema.parse(
-            itemRow(item, turn, { ...base, rowId: rows.length, entityId: item.id }, interactions),
+            itemRow(
+              item,
+              turn,
+              {
+                ...base,
+                rowId: rows.length,
+                entityId: itemEntityId(turn.id, item.id),
+              },
+              interactions,
+            ),
           ),
         ),
       );

@@ -20,6 +20,7 @@ import { projectTurnFileChanges } from "./file-changes.js";
 import { join } from "node:path";
 import { AuxiliaryText } from "./auxiliary-text.js";
 import { scopeWorkspaceParams, scopedNativeRequest } from "./request-scope.js";
+import type { BridgeFailureOrigin } from "./diagnostics.js";
 
 export interface BridgeResponse {
   result: unknown;
@@ -31,7 +32,7 @@ export interface BridgeRuntimeOptions {
   workspaceId: string;
   stateRoot: string;
   notify(method: string, params: unknown): Promise<void>;
-  fatal(error: Error): void;
+  fatal(error: Error, origin?: BridgeFailureOrigin): void;
 }
 
 export class BridgeRuntime {
@@ -81,7 +82,8 @@ export class BridgeRuntime {
     this.unsubscribe.push(
       this.store.onChange((id) => {
         void this.subscriptions.changed(`conversation/${id}`).catch((error: Error) => {
-          if (!(error instanceof DeletedThreadError)) options.fatal(error);
+          if (!this.closed && !(error instanceof DeletedThreadError))
+            options.fatal(error, "conversation-projection");
         });
       }),
     );
@@ -113,17 +115,19 @@ export class BridgeRuntime {
                 "turn/completed",
               ].includes(event.method)
             ) {
-              await this.subscriptions.changed(`sessions-index/${workspaceId}`);
+              this.refreshSidebar("sessions-index");
             }
             if (
               ["account/updated", "account/login/completed", "skills/changed"].includes(
                 event.method,
               )
             ) {
-              await this.subscriptions.changed(`workspace-config/${workspaceId}`);
+              this.refreshSidebar("workspace-config");
             }
           })
-          .catch((error: Error) => options.fatal(error));
+          .catch((error: Error) => {
+            if (!this.closed) options.fatal(error, "native-event");
+          });
       }),
     );
     this.unsubscribe.push(
@@ -136,9 +140,21 @@ export class BridgeRuntime {
               message: "Invalid native interaction",
             });
           })
-          .catch((error: Error) => options.fatal(error));
+          .catch((error: Error) => {
+            if (!this.closed) options.fatal(error, "native-interaction");
+          });
       }),
     );
+  }
+
+  private refreshSidebar(topic: "sessions-index" | "workspace-config"): void {
+    // 列表/配置读取不能卡住下一轮原生事件；复用 publisher 的 dirty 合并与代际校验。
+    // 关闭时在途读取的拒绝属于旧连接，不应再触发运行时崩溃。
+    void this.subscriptions
+      .changed(`${topic}/${this.options.workspaceId}`)
+      .catch((error: Error) => {
+        if (!this.closed) this.options.fatal(error, topic);
+      });
   }
 
   async request(method: string, params: unknown): Promise<BridgeResponse> {
@@ -263,8 +279,15 @@ export class BridgeRuntime {
     this.closed = true;
     for (const dispose of this.unsubscribe) dispose();
     this.subscriptions.close();
-    await this.auxiliary.close();
-    await this.attachments.close();
-    await this.options.rpc.close();
+    // 派生资源清理失败不能跳过原生进程关闭，避免 Host 重启后残留上一代运行时。
+    try {
+      await this.auxiliary.close();
+    } finally {
+      try {
+        await this.attachments.close();
+      } finally {
+        await this.options.rpc.close();
+      }
+    }
   }
 }

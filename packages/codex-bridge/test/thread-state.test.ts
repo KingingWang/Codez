@@ -3,7 +3,21 @@ import test from "node:test";
 import { ThreadStateStore } from "../src/thread-state.js";
 import type { CodexRpcPort } from "../src/contract.js";
 
-const thread = () => ({ id: "t1", cwd: "/work", turns: [], name: null });
+const thread = () => ({
+  id: "t1",
+  cwd: "/work",
+  turns: [],
+  name: null,
+  preview: "Thread",
+  modelProvider: "openai",
+  model: null,
+  reasoningEffort: null,
+  createdAt: 100,
+  updatedAt: 120,
+  status: { type: "idle" },
+  forkedFromId: null,
+  parentThreadId: null,
+});
 function port(handler: (method: string, params?: unknown) => unknown): CodexRpcPort {
   return {
     async request<T>(method: string, params?: unknown) {
@@ -182,4 +196,40 @@ test("history paging plus live notification retains earlier items in the same tu
     (state.thread.turns as { items: { id: string }[] }[])[0]!.items.map((item) => item.id),
     ["user", "live"],
   );
+});
+
+test("duplicate native thread records across pages keep first order and newest record", async () => {
+  const calls: string[] = [];
+  const first = { ...thread(), id: "same", updatedAt: 100, preview: "first" };
+  const newest = { ...first, updatedAt: 200, preview: "newest" };
+  const stale = { ...first, updatedAt: 150, preview: "stale" };
+  const other = { ...thread(), id: "other", updatedAt: 175 };
+  const store = new ThreadStateStore(
+    port((method, params) => {
+      calls.push(method);
+      if (method !== "thread/list") return { data: [], nextCursor: null };
+      return (params as { cursor?: string }).cursor
+        ? {
+            data: [other, stale, { ...newest, updatedAt: 200, preview: "late tie" }],
+            nextCursor: null,
+          }
+        : { data: [first, newest], nextCursor: "page-2" };
+    }),
+    "/work",
+  );
+  assert.deepEqual(await store.list(), [newest, other]);
+  assert.deepEqual(calls, ["thread/list", "thread/list"]);
+});
+
+test("thread-list duplicate canonicalization rejects malformed records instead of coercing", async () => {
+  const malformed = { ...thread(), id: "same", updatedAt: "200", preview: "bad" };
+  const store = new ThreadStateStore(
+    port((method, params) =>
+      method === "thread/list" && !(params as { cursor?: string }).cursor
+        ? { data: [malformed], nextCursor: null }
+        : { data: [], nextCursor: null },
+    ),
+    "/work",
+  );
+  await assert.rejects(store.list(), /updatedAt/);
 });

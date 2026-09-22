@@ -6,6 +6,7 @@ import { createCodexProcess } from "./codex-process.js";
 import { RpcFramer, type RpcEnvelope } from "./rpc-framing.js";
 import { HostOutput } from "./host-output.js";
 import { BridgeRuntime } from "./bridge-runtime.js";
+import { describeBridgeFailure, type BridgeFailureOrigin } from "./diagnostics.js";
 
 async function main(): Promise<void> {
   // Windows 的 cwd 可保留 junction/短路径拼写；执行路径统一为物理目录，身份仍由 Host 指定。
@@ -37,17 +38,29 @@ async function main(): Promise<void> {
       );
       process.exitCode = 1;
     }
-    if (runtime) await runtime.close();
-    else await rpc.close();
+    try {
+      if (runtime) await runtime.close();
+      else await rpc.close();
+    } catch (error) {
+      // 关闭失败也必须留在受控退出路径；不能让未处理拒绝输出原生异常中的私密内容。
+      process.stderr.write(
+        `Codex desktop bridge failure: ${JSON.stringify(describeBridgeFailure(error, "shutdown"))}\n`,
+      );
+      process.exitCode = 1;
+    }
   };
-  const fatal = (error: Error) => {
+  const fatal = (error: Error, origin?: BridgeFailureOrigin) => {
+    if (stopping) return;
+    process.stderr.write(
+      `Codex desktop bridge failure: ${JSON.stringify(describeBridgeFailure(error, origin))}\n`,
+    );
     if (process.env.ZCODE_CODEX_BRIDGE_TEST_DIAGNOSTICS === "1")
       process.stderr.write(`${error.stack}\n`);
     void stop(true);
   };
   process.stdout.on("error", fatal);
   rpc.onClose((error) => {
-    if (!stopping) fatal(error);
+    if (!stopping) fatal(error, "native-transport");
   });
   process.once("SIGTERM", () => {
     void stop(false);
@@ -118,7 +131,10 @@ async function main(): Promise<void> {
   process.stdin.once("error", fatal);
 }
 
-void main().catch(() => {
+void main().catch((error: unknown) => {
+  process.stderr.write(
+    `Codex desktop bridge failure: ${JSON.stringify(describeBridgeFailure(error, "startup"))}\n`,
+  );
   process.stderr.write(
     "Unable to initialize the Codex desktop runtime. Check the executable and native configuration.\n",
   );
