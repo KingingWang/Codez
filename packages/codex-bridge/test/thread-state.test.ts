@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { ThreadStateStore } from "../src/thread-state.js";
 import type { CodexRpcPort } from "../src/contract.js";
@@ -258,4 +261,55 @@ test("project discovery requests all providers and user-facing native sources on
   assert.equal(calls.length, 2);
   await store.list();
   assert.equal(calls.length, 4, "opening a project scans native history again, not a cached list");
+});
+
+test("aliased workspace path discovers, resumes and attributes native threads", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "zcode-thread-state-alias-"));
+  const physical = join(root, "physical");
+  const alias = join(root, "alias");
+  await mkdir(physical);
+  await symlink(physical, alias, process.platform === "win32" ? "junction" : "dir");
+  t.after(() => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
+
+  const store = new ThreadStateStore(
+    port((method) => {
+      // CLI/exec 落盘的是物理路径；另一条记录属于真正不同的目录，必须继续被排除。
+      if (method === "thread/list")
+        return {
+          data: [
+            { ...thread(), cwd: physical },
+            { ...thread(), id: "foreign", cwd: root },
+          ],
+          nextCursor: null,
+        };
+      if (method === "thread/read" || method === "thread/resume")
+        return { thread: { ...thread(), cwd: physical } };
+      if (method === "thread/turns/list") return { data: [{ id: "turn-1" }], nextCursor: null };
+      if (method === "thread/queue/list") return { data: [], nextCursor: null };
+      return {};
+    }),
+    alias,
+  );
+
+  assert.deepEqual(
+    (await store.list()).map((row) => (row as { id: string }).id),
+    ["t1"],
+  );
+  const state = await store.ensure("t1");
+  assert.deepEqual(state.thread.turns, [{ id: "turn-1" }]);
+  // thread/started 是同步通知路径，也必须把物理拼写归属到别名工作区。
+  assert.equal(
+    store.apply({
+      method: "thread/started",
+      params: { thread: { ...thread(), id: "live", cwd: physical } },
+    }),
+    "live",
+  );
+  assert.equal(
+    store.apply({
+      method: "thread/started",
+      params: { thread: { ...thread(), id: "elsewhere", cwd: root } },
+    }),
+    undefined,
+  );
 });

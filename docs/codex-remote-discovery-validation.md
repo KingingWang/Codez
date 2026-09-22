@@ -37,6 +37,27 @@ Opening a discovered conversation resumes the original native thread ID.
 Desktop-continuous and mobile-replayable consumers retain their existing
 connection ownership and recovery behavior. No second UI history store is added.
 
+## Physical path matching
+
+Discovery ownership is decided by physical directory, not by path spelling. Codex
+persists two cwd representations for one thread: `thread/list` returns the raw
+rollout value (the literal `thread/start` cwd or the CLI `getcwd()` result), while
+`thread/read` returns the canonicalized store value with Windows verbatim prefixes
+stripped. The two can disagree for the same thread, and both can differ from the
+path the desktop supplied.
+
+Strict string equality therefore dropped discovered history on macOS, where
+`/var/folders/...` is a symlink to `/private/var/folders/...`, and rejected resume
+on Windows, where temporary directories use 8.3 short names such as
+`C:\Users\RUNNER~1\...`. List filtering, resume ownership and `thread/started`
+attribution now canonicalize both sides and keep a raw-equality fallback for
+directories that no longer exist. Canonicalization never widens ownership:
+relative input and genuinely different directories stay rejected.
+
+The Linux CI lane originally masked this because `/tmp` is not a symlink. The
+native regression now starts Codex and the store from a symlink alias (a junction
+on Windows), so every lane reproduces the alias-versus-physical spelling split.
+
 ## Verification
 
 Commands run using Node 24.14.0 and pnpm 10.33.2:
