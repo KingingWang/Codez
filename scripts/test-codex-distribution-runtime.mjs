@@ -12,7 +12,10 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   const workflow = require("yaml").parse(
     await readFile(new URL("../.github/workflows/codex-desktop.yml", import.meta.url), "utf8"),
   );
-  assert.deepEqual(workflow.on.push.branches, ["feat/codex-desktop-adapter", "main"]);
+  assert.deepEqual(workflow.on.push.branches, ["**"]);
+  assert.deepEqual(workflow.on.push.tags, ["**"]);
+  assert.match(workflow.concurrency.group, /github\.run_id/);
+  assert.match(workflow.concurrency.group, /pull_request/);
   assert.equal(workflow.permissions.contents, "read");
   for (const name of ["build", "remote-assets"]) {
     const job = workflow.jobs[name];
@@ -55,7 +58,14 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   );
   assert.equal(build.steps[nativeSmoke + 1].run, "node --test scripts/test-codex-bridge-smoke.mjs");
   assert.equal(release.needs, "build");
-  assert.match(release.if, /refs\/tags\/zcode-codex-v/);
+  assert.match(release.if, /github.event_name == 'push'/);
+  assert.doesNotMatch(release.if, /refs\/tags/);
+  assert.equal(release.permissions.contents, "write");
+  assert.equal(workflow.on.workflow_dispatch.inputs.publish.default, true);
+  assert.ok(
+    release.steps.some((step) => step.run === "node scripts/codex-runtime-release.mjs artifacts"),
+  );
+  assert.ok(release.steps.some((step) => step.uses?.startsWith("actions/checkout")));
 });
 
 async function loadRuntimeModule(t, source, flavor = "codex", plugins = []) {

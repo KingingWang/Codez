@@ -118,8 +118,23 @@ streaming, process restart, history and duplicate-command reconciliation.
 `.github/workflows/codex-desktop.yml` builds native macOS, Windows and Linux
 artifacts for x64 and arm64. Build artifacts include SHA256 manifests. Optional
 signing uses protected GitHub environments; unsigned builds are labeled as such.
-A successful Linux build is not evidence that the other five targets passed:
-check every matrix job before publishing a release.
+Every branch/tag push automatically publishes a downloadable GitHub Release after
+all six native jobs pass. `main` produces stable releases; other refs produce
+prereleases. Pull requests only validate and never publish. Manual runs publish by
+default, with a `publish` switch to opt out. Explicit GitHub skip-CI commit markers
+still skip the workflow, so do not use them when a release is wanted.
+
+Each release is named `zcode-codex-build-<run-id>-<short-sha>` and points to the exact
+built commit. The release job checks all ten installers and six SHA256 manifests,
+uploads to a temporary draft, checks the uploaded asset digests, then makes it
+public. Failed uploads remain drafts and can be resumed by rerunning the failed
+job. A rerun verifies an already-public release without replacing its assets.
+Public filenames use `ZCode.Codex-…`; the downloadable SHA256 manifests use those
+same names. Per-platform updater YAML files are not released.
+
+Find installers under **KingingWang/ZCode → Releases**, not only the workflow's
+14-day Artifacts. Only a release built from the current main head is eligible for
+Latest; older completed builds remain downloadable without replacing it.
 
 The fork does not install upstream ZCode updates. Automatic updates remain off
 until a complete trusted fork feed, signing and platform update manifests are

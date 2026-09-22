@@ -3,14 +3,14 @@ name: ZCode Codex desktop
 on:
   pull_request:
   push:
-    branches: ["feat/codex-desktop-adapter", "main"]
-    tags: ["zcode-codex-v*"]
+    branches: ["**"]
+    tags: ["**"]
   workflow_dispatch:
     inputs:
       publish:
-        description: "Publish a draft fork release (requires a zcode-codex-v tag ref)"
+        description: "Publish installers after all six native targets pass"
         type: boolean
-        default: false
+        default: true
       signed:
         description: "Use protected codex-signing environment credentials (macOS/Windows)"
         type: boolean
@@ -20,7 +20,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: codex-desktop-${{ github.ref }}
+  # Pushes must not replace an earlier pending run; only PR checks share a group.
+  group: codex-desktop-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -160,27 +161,27 @@ jobs:
   release:
     needs: build
     if: >-
-      startsWith(github.ref, 'refs/tags/zcode-codex-v') &&
+      github.repository == 'KingingWang/ZCode' &&
       (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish))
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     environment: codex-release
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
       - uses: actions/download-artifact@v4
         with:
           pattern: zcode-codex-*
           path: artifacts
-      - name: Create controlled draft release
+      - name: Verify all six targets and publish release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
         shell: bash
-        run: |
-          [[ "$RELEASE_TAG" =~ ^zcode-codex-v[0-9][0-9A-Za-z.+-]*$ ]] || exit 1
-          # Per-architecture update YAML has overlapping names; do not merge or publish
-          # an incomplete auto-update feed. Installers and checksums are unambiguous.
-          mapfile -d '' files < <(find artifacts -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name 'SHA256SUMS-*.txt' \) -print0)
-          test "${#files[@]}" -gt 0
-          gh release create "$RELEASE_TAG" "${files[@]}" --draft --verify-tag --title "ZCode Codex $RELEASE_TAG" --notes 'Independent community ZCode Codex build; not an official OpenAI product. Includes the pinned native Codex runtime and verified macOS/Linux x64/arm64 remote runtime components (Node 24.14.0, standalone server, bridge, PTY and search tools), with Codex deployment roots, startup environment and bridge resolution; no legacy GLM agent. Native package smoke does not prove live SSH/WSL operation: these transports remain unverified unless the release validation report explicitly records acceptance. Filenames identify unsigned installers; automatic updates remain disabled pending trusted signed update metadata.'
+        run: node scripts/codex-runtime-release.mjs artifacts
