@@ -150,7 +150,6 @@ jobs:
           retention-days: 14
           path: |
             packages/desktop/dist/*.dmg
-            packages/desktop/dist/*.zip
             packages/desktop/dist/*.exe
             packages/desktop/dist/*.AppImage
             packages/desktop/dist/*.deb
