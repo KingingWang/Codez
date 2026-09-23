@@ -488,8 +488,7 @@ export default {
       ? {
           name: "codez-codex",
           productName: "Codez",
-          description:
-            "Codez — independent community desktop, not an official OpenAI product",
+          description: "Codez — independent community desktop, not an official OpenAI product",
         }
       : {}),
     codezProductFlavor: desktopProductIdentity.flavor,
@@ -729,8 +728,9 @@ export default {
     },
   ],
   mac: {
-    // codex 发布只保留 dmg：zip 内容与 dmg 相同且几乎不减小体积，不再构建。
-    target: ["dmg"],
+    // codex 已启用 electron-updater 自动更新，macOS 的 Squirrel.Mac 只能用 zip 产物更新，
+    // dmg 无法驱动更新链路；zip 仅服务更新源，dmg 保留为手动安装入口。非 codex 仍只出 dmg。
+    target: isCodexBuild ? ["dmg", "zip"] : ["dmg"],
     ...(isCodexBuild ? { binaries: ["Resources/codex/codex"] } : {}),
     category: "public.app-category.developer-tools",
     artifactName: buildDesktopArtifactName("mac"),
@@ -839,6 +839,11 @@ export default {
         owner: "KingingWang",
         repo: "Codez",
         releaseType: "draft",
+        // 同一 release 同时承载 6 个构建目标的 updater 元数据；按本次构建 arch 区分
+        // channel（x64-latest / arm64-latest），避免两架构的 latest*.yml 互相覆盖。
+        // 该 channel 会烘焙进 app-update.yml，运行时 electron-updater 再按平台追加
+        // -mac / -linux[-arm64] 后缀，恰好命中 app-builder-lib 生成的 per-arch yml 文件名。
+        channel: `${targetPlatform.arch}-latest`,
       }
     : {
         provider: "generic",
