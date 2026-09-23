@@ -53,8 +53,10 @@ test("remote-prod uses fork cache on every OS and refuses upstream CDN selection
   ]) {
     const codex = buildDesktopRemoteProdEnv({}, platform, home);
     const legacy = buildDesktopRemoteProdEnv({ CODEZ_DESKTOP_RUNTIME: "legacy" }, platform, home);
-    assert.match(codex.CODEZ_REMOTE_ASSET_CACHE_DIR, /Codez Codex/);
-    assert.notEqual(codex.CODEZ_REMOTE_ASSET_CACHE_DIR, legacy.CODEZ_REMOTE_ASSET_CACHE_DIR);
+    assert.match(codex.CODEZ_REMOTE_ASSET_CACHE_DIR, /Codez/);
+    // 更名后 codex 与 legacy 共享 Codez 显示目录（不再断言路径不同）；
+    // 隔离由 appId、协议 scheme 与 ~/.codez-codex 数据目录保证。
+    assert.equal(codex.CODEZ_REMOTE_ASSET_CACHE_DIR, legacy.CODEZ_REMOTE_ASSET_CACHE_DIR);
     assert.equal(codex.CODEZ_DEV_REMOTE_ASSET_USE_CDN, "0");
     assert.equal(legacy.CODEZ_DEV_REMOTE_ASSET_USE_CDN, "1");
     assert.equal(codex.CODEZ_DESKTOP_RUNTIME, "codex");

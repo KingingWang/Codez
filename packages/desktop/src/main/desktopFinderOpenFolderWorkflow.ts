@@ -1,18 +1,21 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import type { Locale } from "@codez/shared";
 import { desktopProtocolScheme, isCodexDesktop } from "./desktopProductRuntime.js";
 
-const WORKFLOW_NAME = isCodexDesktop ? "Open in Codez Codex.workflow" : "Open in Codez.workflow";
+const WORKFLOW_NAME = "Open in Codez.workflow";
+// 更名前 codex 版本写入的 workflow 名；安装新名称后需 best-effort 清理，
+// 否则 Finder 服务菜单会同时残留 “Open in Codez Codex” 旧入口。
+const LEGACY_CODEX_WORKFLOW_NAME = "Open in Codez Codex.workflow";
 const WORKFLOW_BUNDLE_ID = isCodexDesktop
   ? "io.github.kingingwang.codez.codex.finder-open-workflow"
   : "dev.codez.app.finder-open-workflow";
 const WORKFLOW_VERSION = "5";
 const SERVICES_MENU_LABELS: Record<Locale, string> = {
-  "zh-CN": isCodexDesktop ? "在 Codez Codex 中打开" : "在Codez中打开",
-  "en-US": isCodexDesktop ? "Open in Codez Codex" : "Open in Codez",
+  "zh-CN": "在 Codez 中打开",
+  "en-US": "Open in Codez",
 };
 
 const workflowScript = `first=""
@@ -260,6 +263,15 @@ export function installFinderOpenFolderWorkflow(options: {
   }
 
   const servicesDir = join(options.homeDir ?? homedir(), "Library", "Services");
+  // 更名前遗留的 codex workflow 与新 workflow 内容相同但名称不同；不清理会在
+  // Finder 服务菜单留下重复的 “Open in Codez Codex” 入口。仅在 codex flavor 清理。
+  if (isCodexDesktop) {
+    try {
+      rmSync(join(servicesDir, LEGACY_CODEX_WORKFLOW_NAME), { recursive: true, force: true });
+    } catch {
+      // best-effort：清理失败只残留旧入口，不影响新 workflow 安装。
+    }
+  }
   const workflowDir = join(servicesDir, WORKFLOW_NAME);
   const contentsDir = join(workflowDir, "Contents");
   const resourcesDir = join(contentsDir, "Resources");
