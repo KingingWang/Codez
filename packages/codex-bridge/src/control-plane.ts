@@ -5,6 +5,7 @@ import { checkWorkspace, ControlError, input, unsupported } from "./control-comm
 import { readControlPresentation, readControlSkills } from "./control-presentation.js";
 import { readControlMcp } from "./control-mcp.js";
 import { handlePluginRequest } from "./control-plugins.js";
+import { handleAgentRequest } from "./control-agents.js";
 
 const methods = new Set([
   "runtime/capabilities",
@@ -27,6 +28,9 @@ const methods = new Set([
   "plugins/marketplace/add",
   "plugins/marketplace/remove",
   "plugins/marketplace/update",
+  "agents/list",
+  "agents/write",
+  "agents/delete",
 ]);
 
 /** Dispatch ownership, not a promise that every parameter combination is supported. */
@@ -68,6 +72,7 @@ async function dispatch(
   context: BridgeControlContext,
 ): Promise<unknown> {
   if (method.startsWith("plugins/")) return handlePluginRequest(method, params, context);
+  if (method.startsWith("agents/")) return handleAgentRequest(method, params, context);
   switch (method) {
     case "runtime/capabilities":
       input(z.object({}).strict(), params ?? {}, method);

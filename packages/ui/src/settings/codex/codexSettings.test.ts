@@ -20,6 +20,7 @@ import {
   isCodexSettingsSection,
   isCodexUnsupportedSection,
 } from "./codexSettingsData.js";
+import { roleFormToWriteInput } from "./CodexAgentsPanel.js";
 
 const model = codexModelSchema.parse({
   id: "catalog-id",
@@ -269,10 +270,56 @@ test("workspace reads carry native cwd and malformed lists fail rather than look
 });
 
 test("legacy settings routes resolve to Codex or explicit unsupported capability notices", () => {
-  for (const route of ["codex", "modelProvider", "skill", "mcp", "plugin"])
+  for (const route of ["codex", "modelProvider", "skill", "subagents", "mcp", "plugin"])
     assert.equal(isCodexSettingsSection(route), true);
-  for (const route of ["automations", "computerUse", "browser", "migration", "subagents"])
+  for (const route of ["automations", "computerUse", "browser", "migration"])
     assert.equal(isCodexUnsupportedSection(route), true);
   assert.equal(isCodexUnsupportedSection("appearance"), false);
   assert.equal(isCodexSettingsSection("general"), false);
+});
+
+test("agent role form validates like the bridge and omits blank optional fields", () => {
+  const base = {
+    scope: "user" as const,
+    name: " researcher ",
+    description: "  Reads code  ",
+    model: " ",
+    effort: "high",
+    instructions: " You research. ",
+    nicknames: "scout, deep-dive",
+  };
+  assert.deepEqual(roleFormToWriteInput(base), {
+    name: "researcher",
+    description: "Reads code",
+    modelReasoningEffort: "high",
+    developerInstructions: "You research.",
+    nicknameCandidates: ["scout", "deep-dive"],
+  });
+  // 可选字段全部留空 = 省略（bridge 语义：清除该 key）。
+  assert.deepEqual(
+    roleFormToWriteInput({
+      ...base,
+      description: " ",
+      effort: " ",
+      nicknames: " , ,",
+    }),
+    { name: "researcher", developerInstructions: "You research." },
+  );
+  // 编辑（originalName 存在）时不走新建字符集校验，名称保持锁定值。
+  assert.equal(roleFormToWriteInput({ ...base, originalName: "researcher" }).name, "researcher");
+  for (const bad of [
+    { ...base, name: " " },
+    { ...base, name: "has.dot" },
+    { ...base, name: "has/slash" },
+    { ...base, instructions: " " },
+    { ...base, nicknames: "a, a" },
+    { ...base, nicknames: "nön-ascii" },
+  ]) {
+    assert.throws(() => roleFormToWriteInput(bad));
+  }
+  // 编辑既有非常规字符集角色：bridge 按原名定位，不重新派生文件名。
+  assert.equal(
+    roleFormToWriteInput({ ...base, name: "weird—name", originalName: "weird—name" }).name,
+    "weird—name",
+  );
 });

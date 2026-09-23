@@ -25,6 +25,10 @@ import type {
   CodezProcessChildProcess,
   CodezMcpListResult,
   CodezPluginsListResult,
+  CodezAgentRoleScope,
+  CodezAgentRoleWriteInput,
+  CodezAgentsListResult,
+  CodezAgentsWriteResult,
   CodezPluginsOverviewResult,
   CodezPluginsMarketplaceMutationResult,
   CodezPluginsInstallResult,
@@ -567,6 +571,21 @@ export interface CodezAgentStorageStartupSnapshot {
   state: CodezStorageStartupState | null;
 }
 
+// Codex 子智能体（agent roles）文件管理参数。agents/* 是 bridge 控制面方法族，
+// 载体必须是真实 workspace client——project scope 解析 `<cwd>/.codex/agents`，
+// 远程 workspace 由远端 bridge 进程解析其 CODEX_HOME（spec：specs/codex-desktop-subagents.md）。
+export interface CodezAgentWriteAgentRoleParams extends CodezAgentWorkspaceTarget {
+  scope: CodezAgentRoleScope;
+  /** 提供 = 更新既有角色（不支持改名）；缺省 = 新建。 */
+  originalName?: string;
+  role: CodezAgentRoleWriteInput;
+}
+
+export interface CodezAgentDeleteAgentRoleParams extends CodezAgentWorkspaceTarget {
+  scope: CodezAgentRoleScope;
+  name: string;
+}
+
 export interface ICodezAgentService {
   /** Native settings RPC; startup does not require legacy provider/model readiness. */
   codexRequest(params: CodezAgentWorkspaceTarget & { request: CodexRequest }): Promise<unknown>;
@@ -609,6 +628,16 @@ export interface ICodezAgentService {
   ): Promise<CodezWorkspaceHookTrustGrantResult>;
   listMcpServerStatuses(params: CodezAgentListMcpServerStatusesParams): Promise<CodezMcpListResult>;
   listPlugins(params: CodezAgentPluginViewParams): Promise<CodezPluginsListResult>;
+  /**
+   * Codex 子智能体（agent roles）文件列表：user/project 两 scope 的托管目录。
+   * 走 workspace 级 agent client（bridge 按 attachment cwd 校验 project scope），
+   * 不走独立 plugin management 进程。
+   */
+  listAgentRoles(params: CodezAgentWorkspaceTarget): Promise<CodezAgentsListResult>;
+  /** 新建或更新角色 TOML；更新传 originalName，不支持改名（删除+新建）。 */
+  writeAgentRole(params: CodezAgentWriteAgentRoleParams): Promise<CodezAgentsWriteResult>;
+  /** 删除角色 TOML；按 effective name 定位，文件必须存在于该 scope。 */
+  deleteAgentRole(params: CodezAgentDeleteAgentRoleParams): Promise<void>;
   /**
    * Plugin 对话引用 catalog：session-scoped 只读投影。
    * 走 workspace 级 agent client（session 记录只存在于该进程），不走独立插件管理进程。
