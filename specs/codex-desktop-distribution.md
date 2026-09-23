@@ -38,8 +38,10 @@ The release job is the only publication owner and the only job with contents-wri
 permission. It accepts artifacts from its own successful workflow run, verifies
 all six installer/checksum sets, uploads them to a draft, verifies the uploaded
 names, sizes and SHA256 digests, then publishes that draft. A failed build or upload
-must not expose a partial public release. Per-architecture updater metadata is
-not published, and automatic application updates remain disabled.
+must not expose a partial public release. The upload set covers each target's
+installers plus its updater metadata (channel `<arch>-latest*.yml` and
+differential `*.blockmap` files), so published releases feed the Codex flavor's
+automatic updates directly.
 
 ```text
 push → remote assets → six native builds → verify checksums → draft upload
@@ -116,10 +118,48 @@ because standard `dev.mjs` launches Electron against that package and updater
 construction reads its version before update-disable policy runs. No QA-only
 updater replacement is permitted; release builder metadata overrides this with
 the root release version.
-Until merged architecture-specific update metadata and signing trust are
-published, checks open that release page rather than invoking the upstream
-manifest provider or auto-installing unsigned artifacts. Preview/production
-retain their existing behavior.
+
+## Automatic updates (Codex flavor)
+
+Codex installs auto-update from KingingWang/Codez GitHub releases through
+electron-updater's GitHub provider. The upstream server manifest provider and
+its stable/preview channel switching never apply to this flavor, and
+`autoUpdater.allowPrerelease` stays `false`. Every build bakes a
+per-architecture channel (`x64-latest` / `arm64-latest`) into `app-update.yml`,
+so the six targets of one release publish updater metadata side by side without
+overwriting each other. electron-updater appends its platform suffix to the
+baked channel and fetches exactly one metadata file from the release marked
+Latest, then verifies the SHA512 checksums recorded there before installing:
+
+| platform | updater asset set per target |
+| --- | --- |
+| macOS | `Codez-<version>-mac-<arch>[-unsigned].dmg`, `.dmg.blockmap`, `.zip`, `.zip.blockmap`, `<arch>-latest-mac.yml` |
+| Windows | `Codez-<version>-win-<arch>[-unsigned].exe`, `.exe.blockmap`, `<arch>-latest.yml` |
+| Linux | `Codez-<version>-linux-<arch>[-unsigned].AppImage`, `.AppImage.blockmap`, `.deb`, `x64-latest-linux.yml` / `arm64-latest-linux-arm64.yml` |
+
+macOS updates require the zip artifact (dmg cannot drive Squirrel.Mac); the dmg
+stays the manual-install option. The deb is installer-only and never
+participates in updates. Checksum manifests and release upload validation cover
+the exact asset sets above; anything else fails closed.
+
+The release job still creates a draft, uploads and verifies the full set, then
+publishes: current-main stable builds become Latest, other refs stay
+non-Latest prereleases that `allowPrerelease=false` never offers. Runtime
+behavior keeps the shared desktop policy: `autoDownload` remains `false`, the
+user's auto-download preference drives any background download, and no
+unconditional background install happens. Preview/production flavors retain
+their existing manifest-provider behavior.
+
+Unsigned builds are not signature-gated: Windows NSIS skips signature
+verification when no publisher name is baked, and Linux has no signature gate.
+macOS compares an update against the running app's code-signature identity, so
+unsigned builds carry no certificate identity to pin either. Update integrity
+therefore rests on the metadata SHA512 checksums fetched over HTTPS from
+GitHub; introducing signing later must keep one stable Developer ID identity.
+
+Installs older than the first updater-enabled release can never discover it
+because their updater was disabled; they must install that one version manually
+from the release page. Afterwards updates are automatic.
 
 Remote Codex requires a native Codex binary plus bridge, Node compatible with
 the bridge, server bundle, PTY and search components. A Codex component is not

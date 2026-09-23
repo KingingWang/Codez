@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { resolveCodexUpdaterAssetPlan } from "./codex-runtime-artifacts.mjs";
 import {
   collectReleaseAssets,
   publishCodexRelease,
@@ -18,7 +19,22 @@ const env = {
   GITHUB_REF: "refs/heads/main",
   GITHUB_EVENT_NAME: "push",
 };
-const extensions = { darwin: [".dmg"], linux: [".AppImage", ".deb"], win32: [".exe"] };
+const platforms = { darwin: "mac", linux: "linux", win32: "win" };
+// 每个目标的完整 release 资产集：安装包 + 差分 blockmap + per-arch channel yml，
+// 与 scripts/codex-runtime-artifacts.mjs 写出的校验清单一一对应。
+const targetAssetNames = (os, arch) => {
+  const plan = resolveCodexUpdaterAssetPlan(os, arch);
+  return [
+    ...plan.installers.map((ext) => `Codez-3.14.0-${platforms[os]}-${arch}-unsigned${ext}`),
+    ...plan.blockmapped.map(
+      (ext) => `Codez-3.14.0-${platforms[os]}-${arch}-unsigned${ext}.blockmap`,
+    ),
+    plan.channelYml,
+  ];
+};
+const allAssetNames = Object.keys(platforms).flatMap((os) =>
+  ["x64", "arm64"].flatMap((arch) => targetAssetNames(os, arch)),
+);
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const isCreate = (args) =>
   args[0] === "api" && args[2] === "POST" && String(args[3]).endsWith("/releases");
@@ -27,13 +43,12 @@ const isList = (args) => args[0] === "api" && String(args[1]).endsWith("/release
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "codex-release-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-  for (const [os, exts] of Object.entries(extensions))
+  for (const os of Object.keys(platforms))
     for (const arch of ["x64", "arm64"]) {
       const dir = join(root, `codez-${os}-${arch}-unsigned`);
       await mkdir(dir);
       const lines = [];
-      for (const ext of exts) {
-        const name = `Codez-3.14.0-${{ darwin: "mac", linux: "linux", win32: "win" }[os]}-${arch}-unsigned${ext}`;
+      for (const name of targetAssetNames(os, arch)) {
         await writeFile(join(dir, name), name);
         lines.push(`${digest(name)}  ${name}`);
       }
@@ -130,12 +145,55 @@ test("release identity is exact-commit/run-scoped and rejects PRs and foreign re
     assert.throws(() => releaseIdentity({ ...env, ...override }));
 });
 
-test("all six targets yield eight installers and no checksum assets are published", async (t) => {
+test("all six targets yield their exact installer plus updater asset sets", async (t) => {
   const assets = await collectReleaseAssets(await fixture(t));
-  assert.equal(assets.length, 8);
+  // mac: dmg+zip+2 blockmap+yml(5) ×2 arch；win: exe+blockmap+yml(3) ×2；linux: AppImage+deb+blockmap+yml(4) ×2。
+  assert.equal(assets.length, 24);
+  assert.deepEqual(assets.map((asset) => asset.name).sort(), [...allAssetNames].sort());
+  // per-arch channel yml 的精确命名契约（含 linux arm64 的 -linux-arm64 双后缀）。
+  for (const yml of [
+    "x64-latest-mac.yml",
+    "arm64-latest-mac.yml",
+    "x64-latest.yml",
+    "arm64-latest.yml",
+    "x64-latest-linux.yml",
+    "arm64-latest-linux-arm64.yml",
+  ])
+    assert.ok(
+      assets.some((asset) => asset.name === yml),
+      yml,
+    );
   assert.ok(assets.every((asset) => !asset.name.includes(" ")));
   // SHA256 清单仅用于发布前校验，不作为 Release 资产上传。
   assert.ok(!assets.some((item) => item.name.startsWith("SHA256SUMS")));
+});
+
+test("missing or foreign updater metadata is rejected before publication", async (t) => {
+  for (const fault of ["missing-yml", "missing-blockmap", "foreign-yml", "duplicate-blockmap"]) {
+    const root = await fixture(t);
+    const dir = join(root, "codez-darwin-x64-unsigned");
+    const manifest = join(dir, "SHA256SUMS-darwin-x64.txt");
+    const lines = (await readFile(manifest, "utf8")).trim().split("\n");
+    if (fault === "missing-yml") {
+      await writeFile(manifest, `${lines.filter((line) => !line.endsWith(".yml")).join("\n")}\n`);
+    } else if (fault === "missing-blockmap") {
+      await writeFile(
+        manifest,
+        `${lines.filter((line) => !line.endsWith(".zip.blockmap")).join("\n")}\n`,
+      );
+    } else if (fault === "foreign-yml") {
+      // electron-updater 只认 per-arch channel 名；latest-mac.yml 这类外来元数据必须 fail closed。
+      const entry = lines.find((line) => line.endsWith(".yml"));
+      lines[lines.indexOf(entry)] = `${digest("latest-mac.yml")}  latest-mac.yml`;
+      await writeFile(join(dir, "latest-mac.yml"), "latest-mac.yml");
+      await writeFile(manifest, `${lines.join("\n")}\n`);
+    } else {
+      const entry = lines.find((line) => line.endsWith(".dmg.blockmap"));
+      lines[lines.indexOf(lines.find((line) => line.endsWith(".zip.blockmap")))] = entry;
+      await writeFile(manifest, `${lines.join("\n")}\n`);
+    }
+    await assert.rejects(collectReleaseAssets(root), undefined, fault);
+  }
 });
 
 test("missing targets, corrupt content and traversal checksums fail before publication", async (t) => {
@@ -158,7 +216,7 @@ test("publish verifies all uploads before making release public and main Latest"
   const github = fakeGithub();
   await publishCodexRelease({ directory: await fixture(t), env, run: github.run });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 8);
+  assert.equal(github.state.release.assets.length, 24);
   assert.ok(github.state.calls.find(isCreate).includes(`target_commitish=${sha}`));
   assert.ok(github.state.calls.at(-1).includes("--latest=true"));
   assert.ok(github.state.calls.some((args) => args[1].endsWith("/releases/123")));
@@ -168,7 +226,7 @@ test("created draft identity survives release-list read-after-write lag", async 
   const github = fakeGithub({ hideCreated: true });
   await publishCodexRelease({ directory: await fixture(t), env, run: github.run });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 8);
+  assert.equal(github.state.release.assets.length, 24);
   // 身份必须来自创建接口的返回体；创建后不能再依赖一次可能滞后的列表查询。
   assert.equal(github.state.calls.filter(isList).length, 1);
 });
@@ -207,8 +265,8 @@ test("transient upload resets are retried and still fully verified", async (t) =
     retryDelay: async () => {},
   });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 8);
-  assert.equal(github.state.uploadAttempts, 10);
+  assert.equal(github.state.release.assets.length, 24);
+  assert.equal(github.state.uploadAttempts, 26);
 });
 
 test("older main and feature results do not become Latest", async (t) => {

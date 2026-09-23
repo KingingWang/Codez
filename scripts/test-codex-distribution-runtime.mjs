@@ -59,8 +59,7 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   assert.ok(
     build.steps.some(
       (step) =>
-        step.uses?.startsWith("actions/download-artifact") &&
-        step.with?.name === "codez-manifest",
+        step.uses?.startsWith("actions/download-artifact") && step.with?.name === "codez-manifest",
     ),
   );
   const nativeSmoke = build.steps.findIndex(
@@ -133,10 +132,8 @@ test("runtime identities, settings and data roots are disjoint and idempotent", 
     runtime.resolveDesktopBootstrapSettingsFile(directory),
     runtime.resolveDesktopBootstrapSettingsFile(directory, "production"),
   );
-  assert.deepEqual(runtime.resolveDesktopUpdatePolicy(), {
-    automatic: false,
-    manualReleasePage: "https://github.com/KingingWang/Codez/releases",
-  });
+  // codex 已启用 GitHub releases 自动更新，不再有手动网页回退；只有 preview 保持关闭。
+  assert.deepEqual(runtime.resolveDesktopUpdatePolicy(), { automatic: true });
   assert.equal(runtime.resolveDesktopUpdatePolicy("production").automatic, true);
   assert.equal(runtime.resolveDesktopUpdatePolicy("preview").automatic, false);
 });
