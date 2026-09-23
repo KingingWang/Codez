@@ -25,6 +25,24 @@ interface HarnessOptions {
   summaries: SessionSummary[];
 }
 
+function waitForListEvent(
+  harness: Awaited<ReturnType<typeof createHarness>>,
+  expectedLength: number,
+): Promise<void> {
+  if (harness.listEvents.length >= expectedLength) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const disposable = harness.syncer.onDynamicWorkspaceEvent(harness.workspace)((event) => {
+      if (
+        event.type === "workspace_task_list_changed" &&
+        harness.listEvents.length >= expectedLength
+      ) {
+        disposable.dispose();
+        resolve();
+      }
+    });
+  });
+}
+
 interface ListChangedEvent {
   taskId?: string;
   reason: string;
@@ -156,6 +174,7 @@ async function createHarness(options: HarnessOptions) {
   };
   return {
     agentService,
+    workspace: options.workspace,
     listEvents,
     readSessionCalls,
     readyEvents,
@@ -316,8 +335,10 @@ test("same-path remote identities remain isolated during discovery", async () =>
   });
   try {
     await first.sendInitialSnapshot();
+    await waitForListEvent(first, 1);
     const firstEvents = first.listEvents.length;
     await second.sendInitialSnapshot();
+    await waitForListEvent(second, 1);
     assert.equal(first.listEvents.length, firstEvents);
     assert.deepEqual(
       (await firstRepo.listTaskMetas({ ...firstWorkspace, includeDeleted: true })).map(
