@@ -229,10 +229,12 @@ Window Host task membership + native live details → project sidebar
 ```
 
 The remote task-index syncer is the only shell-index writer. Initial discovery
-must publish one scoped list invalidation after newly inserted rows are committed;
-it must not replay historical terminal events or unread signals. Existing pin,
-archive, deletion tombstones and custom titles remain authoritative shell state.
-Late results from a disposed/replaced subscription cannot publish to a new owner.
+must publish one scoped list invalidation after newly inserted rows are committed,
+and observers must treat that commit/invalidation boundary as asynchronous rather
+than inferring it from a fixed number of event-loop ticks. It must not replay
+historical terminal events or unread signals. Existing pin, archive, deletion
+tombstones and custom titles remain authoritative shell state. Late results from
+a disposed/replaced subscription cannot publish to a new owner.
 Background list observers stay existing-only; explicit project activation may
 start the configured runtime. Desktop continuous and mobile replayable clients
 retain their existing connection/lease and recovery semantics.
