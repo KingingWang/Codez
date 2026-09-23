@@ -288,6 +288,9 @@ test("late discovered terminal summary seeds a row without loading native histor
       snapshot([summary("late-cli-completed", "completedSuccess")]),
       2,
     );
+    // online 帧会触发一次 scoped discovery invalidation，落库在额外的异步链路上；
+    // 不能只依赖 sendFrame 的 setImmediate 等待，否则 CI 上 getTaskMeta 会偶发读不到行。
+    await waitForListEvent(harness, 1);
     assert.equal(
       (await repo.getTaskMeta({ ...workspace, taskId: "late-cli-completed" }))?.taskId,
       "late-cli-completed",
