@@ -145,7 +145,7 @@ jobs:
         run: node scripts/codex-runtime-artifacts.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: codez-codex-${{ matrix.os }}-${{ matrix.arch }}-${{ inputs.signed && matrix.os != 'linux' && 'signed' || 'unsigned' }}
+          name: codez-${{ matrix.os }}-${{ matrix.arch }}-${{ inputs.signed && matrix.os != 'linux' && 'signed' || 'unsigned' }}
           if-no-files-found: error
           retention-days: 14
           path: |
@@ -177,7 +177,7 @@ jobs:
           node-version: 24.14.0
       - uses: actions/download-artifact@v4
         with:
-          pattern: codez-codex-*
+          pattern: codez-*
           path: artifacts
       - name: Verify all six targets and publish release
         env:

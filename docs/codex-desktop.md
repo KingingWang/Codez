@@ -1,4 +1,4 @@
-# Codez Codex desktop
+# Codez desktop
 
 This community fork uses the unmodified Codex app-server as its execution engine.
 It is not an official OpenAI desktop application. No neighboring Codex checkout
@@ -124,7 +124,7 @@ prereleases. Pull requests only validate and never publish. Manual runs publish 
 default, with a `publish` switch to opt out. Explicit GitHub skip-CI commit markers
 still skip the workflow, so do not use them when a release is wanted.
 
-Each release is named `codez-codex-build-<run-id>-<short-sha>` and points to the exact
+Each release is named `codez-build-<run-id>-<short-sha>` and points to the exact
 built commit. The release job checks all ten installers and six SHA256 manifests,
 uploads to a temporary draft, checks the uploaded asset digests, then makes it
 public. Failed uploads remain drafts and can be resumed by rerunning the failed

@@ -1,4 +1,4 @@
-# Codez Codex
+# Codez
 
 This community fork defaults to the **Codex CLI / app-server** for desktop execution.
 `packages/codex-bridge` adapts the existing desktop protocol without changing Codex
@@ -12,7 +12,7 @@ pnpm dev:desktop
 Development prepares a pinned native Codex and the bridge. Installers bundle the
 matching runtime. Use **Settings → Codex** for accounts, models, permissions,
 MCP, skills and plugins. See [Codex desktop documentation](docs/codex-desktop.md)
-for builds and explicit capability differences. The **Codez Codex desktop** workflow
+for builds and explicit capability differences. The **Codez desktop** workflow
 builds Windows, macOS and Linux x64 / arm64 installers. Without signing credentials,
 artifacts are labeled unsigned; upstream automatic updates are disabled.
 

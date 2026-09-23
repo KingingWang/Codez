@@ -15,7 +15,8 @@ export function resolveProductionRemoteAssetCacheDir(
   homeDir = homedir(),
 ) {
   const pathApi = pathApiForPlatform(platform);
-  const product = resolveDesktopRuntime(env) === "codex" ? "Codez Codex" : "Codez";
+  // 更名后 codex 与 upstream 共享 Codez 显示目录；隔离由 appId 与数据目录保证。
+  const product = "Codez";
   if (platform === "darwin") {
     return pathApi.join(homeDir, "Library", "Application Support", product, "remote-assets-cache");
   }

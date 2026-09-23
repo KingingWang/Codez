@@ -3,12 +3,15 @@ import { resolve } from "node:path";
 import type { Locale } from "@codez/shared";
 import { isCodexDesktop } from "./desktopProductRuntime.js";
 
-const MENU_KEY_NAME = isCodexDesktop ? "CodezCodex.OpenInCodezCodex" : "Codez.OpenInCodez";
+const MENU_KEY_NAME = "Codez.OpenInCodez";
+// 更名前 codex 版本使用的注册表键；安装新键后需 best-effort 删除，
+// 否则资源管理器右键菜单会残留 “Open in Codez Codex” 旧入口。
+const LEGACY_CODEX_MENU_KEY_NAME = "CodezCodex.OpenInCodezCodex";
 const DIRECTORY_MENU_KEY = `HKCU\\Software\\Classes\\Directory\\shell\\${MENU_KEY_NAME}`;
 const DRIVE_MENU_KEY = `HKCU\\Software\\Classes\\Drive\\shell\\${MENU_KEY_NAME}`;
 const MENU_LABELS: Record<Locale, string> = {
-  "zh-CN": isCodexDesktop ? "在 Codez Codex 中打开" : "在Codez中打开",
-  "en-US": isCodexDesktop ? "Open in Codez Codex" : "Open in Codez",
+  "zh-CN": "在 Codez 中打开",
+  "en-US": "Open in Codez",
 };
 
 type Logger = {
@@ -76,6 +79,18 @@ function runRegAdd(args: readonly string[]): Promise<void> {
   });
 }
 
+function runRegDeleteBestEffort(key: string): Promise<void> {
+  // 旧键不存在时 reg.exe 会返回非零；这里只 best-effort 清理，失败不影响安装。
+  return new Promise((resolvePromise) => {
+    const child = spawn("reg.exe", ["delete", key, "/f"], {
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    child.on("error", () => resolvePromise());
+    child.on("exit", () => resolvePromise());
+  });
+}
+
 export async function installWindowsOpenFolderContextMenu(options: {
   platform: NodeJS.Platform;
   executablePath: string;
@@ -100,6 +115,18 @@ export async function installWindowsOpenFolderContextMenu(options: {
 
   try {
     await Promise.all(operations.map((operation) => runRegAdd(operation.args)));
+
+    if (isCodexDesktop) {
+      // 先删 command 子键再删父键；reg delete 遇到子键会失败，两步都 best-effort。
+      await Promise.all(
+        [LEGACY_CODEX_MENU_KEY_NAME].flatMap((legacyKey) => [
+          runRegDeleteBestEffort(`HKCU\\Software\\Classes\\Directory\\shell\\${legacyKey}\\command`),
+          runRegDeleteBestEffort(`HKCU\\Software\\Classes\\Directory\\shell\\${legacyKey}`),
+          runRegDeleteBestEffort(`HKCU\\Software\\Classes\\Drive\\shell\\${legacyKey}\\command`),
+          runRegDeleteBestEffort(`HKCU\\Software\\Classes\\Drive\\shell\\${legacyKey}`),
+        ]),
+      );
+    }
 
     options.logger.info("[open-folder] Windows Explorer 右键菜单已安装或更新", {
       executablePath: options.executablePath,

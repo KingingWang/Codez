@@ -11,7 +11,7 @@ export function resolveDesktopApplicationName(
   flavor: CodezProductFlavor,
   isPackaged: boolean,
 ): string {
-  if (flavor === "codex") return isPackaged ? "Codez Codex" : "Codez Codex Dev";
+  // 更名后 codex 与上游共享 Codez 显示名；隔离依赖 appId、协议与数据目录，而非产品名。
   return !isPackaged ? "Codez Dev" : flavor === "preview" ? "Codez Preview" : "Codez";
 }
 

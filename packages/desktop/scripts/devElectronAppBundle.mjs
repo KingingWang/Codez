@@ -4,7 +4,7 @@ import { resolveDesktopRuntime } from "./desktop-product-identity.mjs";
 
 const isCodex = resolveDesktopRuntime() === "codex";
 export const DEV_ELECTRON_PROTOCOL_SCHEME = isCodex ? "codez-codex" : "codez";
-export const DEV_ELECTRON_APP_NAME = isCodex ? "Codez Codex Dev" : "Codez Dev";
+export const DEV_ELECTRON_APP_NAME = "Codez Dev";
 export const DEV_ELECTRON_APP_BUNDLE_ID = isCodex
   ? "io.github.kingingwang.codez.codex.development"
   : "dev.codez.app.development";

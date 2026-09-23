@@ -77,19 +77,19 @@ per-file SHA256 manifest. Desktop artifacts have a 14-day retention period.
 
 | Target        | Installers    | Artifact                            |
 | ------------- | ------------- | ----------------------------------- |
-| macOS x64     | DMG, ZIP      | `codez-codex-darwin-x64-unsigned`   |
-| macOS arm64   | DMG, ZIP      | `codez-codex-darwin-arm64-unsigned` |
-| Windows x64   | NSIS EXE      | `codez-codex-win32-x64-unsigned`    |
-| Windows arm64 | NSIS EXE      | `codez-codex-win32-arm64-unsigned`  |
-| Linux x64     | AppImage, DEB | `codez-codex-linux-x64-unsigned`    |
-| Linux arm64   | AppImage, DEB | `codez-codex-linux-arm64-unsigned`  |
+| macOS x64     | DMG, ZIP      | `codez-darwin-x64-unsigned`   |
+| macOS arm64   | DMG, ZIP      | `codez-darwin-arm64-unsigned` |
+| Windows x64   | NSIS EXE      | `codez-win32-x64-unsigned`    |
+| Windows arm64 | NSIS EXE      | `codez-win32-arm64-unsigned`  |
+| Linux x64     | AppImage, DEB | `codez-linux-x64-unsigned`    |
+| Linux arm64   | AppImage, DEB | `codez-linux-arm64-unsigned`  |
 
 The additional `codex-remote-assets` artifact contains the four remote native
 target sets. No release/tag or upstream update was published by this delivery.
 The workflow's release job is intentionally skipped for this feature-branch push.
 
 The final local production Linux x64 AppImage and DEB were built successfully,
-with root version `3.14.0` and independent product name `Codez Codex`. Native code
+with root version `3.14.0` and independent product name `Codez`. Native code
 and the bridge are outside ASAR; all 2,765 packaged application output files
 matched the freshly built output. The four remote target sets contain 32 verified
 manifest-selected resource files.

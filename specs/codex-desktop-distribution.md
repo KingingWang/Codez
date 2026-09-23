@@ -44,7 +44,7 @@ push → remote assets → six native builds → verify checksums → draft uplo
                                                          → verify assets → public release
 ```
 
-Each run uses `codez-codex-build-<run-id>-<short-sha>` targeting the exact built
+Each run uses `codez-build-<run-id>-<short-sha>` targeting the exact built
 commit. Reruns reuse that identity: incomplete drafts may resume; a complete public
 release is verified without overwriting its assets. Unexpected ownership, commit,
 assets or digests fail closed. Spaces in public asset names are normalized to dots
@@ -82,7 +82,7 @@ Electron, then passes the selected native path to Host. No manual build prerequi
 ## Runtime isolation and remote boundary
 
 `codex` is an explicit product flavor, independent of test/production backend.
-Main owns the desktop identity: Codez Codex (Codez Codex Dev when unpackaged),
+Main owns the desktop identity: Codez (Codez Dev when unpackaged),
 the `codez-codex` protocol and OS registration names. It must not consume
 `codez:` links or overwrite upstream desktop/Finder/Explorer registrations.
 Electron userData/sessionData use that identity. Business storage keeps the
