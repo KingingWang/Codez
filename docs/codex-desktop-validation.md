@@ -77,8 +77,8 @@ per-file SHA256 manifest. Desktop artifacts have a 14-day retention period.
 
 | Target        | Installers    | Artifact                            |
 | ------------- | ------------- | ----------------------------------- |
-| macOS x64     | DMG, ZIP      | `codez-darwin-x64-unsigned`   |
-| macOS arm64   | DMG, ZIP      | `codez-darwin-arm64-unsigned` |
+| macOS x64     | DMG           | `codez-darwin-x64-unsigned`   |
+| macOS arm64   | DMG           | `codez-darwin-arm64-unsigned` |
 | Windows x64   | NSIS EXE      | `codez-win32-x64-unsigned`    |
 | Windows arm64 | NSIS EXE      | `codez-win32-arm64-unsigned`  |
 | Linux x64     | AppImage, DEB | `codez-linux-x64-unsigned`    |

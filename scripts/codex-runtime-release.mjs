@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 import { sha256File } from "./codex-runtime.mjs";
 
 const exec = promisify(execFile);
-const formats = { darwin: [".dmg", ".zip"], linux: [".AppImage", ".deb"], win32: [".exe"] };
+const formats = { darwin: [".dmg"], linux: [".AppImage", ".deb"], win32: [".exe"] };
 const platformNames = { darwin: "mac", linux: "linux", win32: "win" };
 
 export function releaseIdentity(env) {
@@ -85,7 +85,7 @@ export async function collectReleaseAssets(directory) {
         manifest.push(`${expected}  ${publicName}`);
       }
       await writeFile(checksum, `${manifest.join("\n")}\n`);
-      result.push(await asset(checksum));
+      // 校验清单只在流水线内用于完整性校验，不上传到 Release，避免冗余资产。
     }
   }
   return result;
@@ -163,7 +163,7 @@ export async function publishCodexRelease({
       "Independent community Codez build; not an official OpenAI product.",
       `Source commit: ${sha}. Source ref: ${env.GITHUB_REF}.`,
       `Build evidence: https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}`,
-      "All six native desktop builds and Codex smoke checks passed. Installers include pinned Codex and verified remote components. SHA256SUMS files accompany every target.",
+      "All six native desktop builds and Codex smoke checks passed. Installers include pinned Codex and verified remote components. SHA256 checksums are verified before publication.",
       "Unsigned installers are labelled accordingly. Automatic application updates remain disabled. Live external SSH/WSL, real account OAuth and plugin installs are not certified by native package smoke tests.",
     ].join("\n\n");
     // 创建接口直接返回权威对象。草稿刚创建时按 tag 的接口必然 404，分页列表也可能

@@ -65,7 +65,7 @@ rerun; published-release immutability; and one actual main-push release with all
 six targets and public download assets. Existing validated source/installer records
 remain historical evidence, not proof of this new publishing path.
 
-macOS: DMG/ZIP; Windows: NSIS; Linux: AppImage/DEB initially. A platform is accepted
+macOS: DMG; Windows: NSIS; Linux: AppImage/DEB initially. A platform is accepted
 only after its actual job succeeds. Unsigned artifacts are labelled as such;
 signature/notarization and automatic-update trust need configured credentials.
 Do not silently substitute legacy remote support to make a package build succeed.

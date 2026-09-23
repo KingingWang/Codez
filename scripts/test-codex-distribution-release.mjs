@@ -18,7 +18,7 @@ const env = {
   GITHUB_REF: "refs/heads/main",
   GITHUB_EVENT_NAME: "push",
 };
-const extensions = { darwin: [".dmg", ".zip"], linux: [".AppImage", ".deb"], win32: [".exe"] };
+const extensions = { darwin: [".dmg"], linux: [".AppImage", ".deb"], win32: [".exe"] };
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const isCreate = (args) =>
   args[0] === "api" && args[2] === "POST" && String(args[3]).endsWith("/releases");
@@ -130,12 +130,12 @@ test("release identity is exact-commit/run-scoped and rejects PRs and foreign re
     assert.throws(() => releaseIdentity({ ...env, ...override }));
 });
 
-test("all six targets yield ten installers and six matching public-name manifests", async (t) => {
+test("all six targets yield eight installers and no checksum assets are published", async (t) => {
   const assets = await collectReleaseAssets(await fixture(t));
-  assert.equal(assets.length, 16);
+  assert.equal(assets.length, 8);
   assert.ok(assets.every((asset) => !asset.name.includes(" ")));
-  for (const asset of assets.filter((item) => item.name.startsWith("SHA256SUMS")))
-    assert.match(await readFile(asset.path, "utf8"), /  Codez-/);
+  // SHA256 清单仅用于发布前校验，不作为 Release 资产上传。
+  assert.ok(!assets.some((item) => item.name.startsWith("SHA256SUMS")));
 });
 
 test("missing targets, corrupt content and traversal checksums fail before publication", async (t) => {
@@ -158,7 +158,7 @@ test("publish verifies all uploads before making release public and main Latest"
   const github = fakeGithub();
   await publishCodexRelease({ directory: await fixture(t), env, run: github.run });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 16);
+  assert.equal(github.state.release.assets.length, 8);
   assert.ok(github.state.calls.find(isCreate).includes(`target_commitish=${sha}`));
   assert.ok(github.state.calls.at(-1).includes("--latest=true"));
   assert.ok(github.state.calls.some((args) => args[1].endsWith("/releases/123")));
@@ -168,7 +168,7 @@ test("created draft identity survives release-list read-after-write lag", async 
   const github = fakeGithub({ hideCreated: true });
   await publishCodexRelease({ directory: await fixture(t), env, run: github.run });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 16);
+  assert.equal(github.state.release.assets.length, 8);
   // 身份必须来自创建接口的返回体；创建后不能再依赖一次可能滞后的列表查询。
   assert.equal(github.state.calls.filter(isList).length, 1);
 });
@@ -207,8 +207,8 @@ test("transient upload resets are retried and still fully verified", async (t) =
     retryDelay: async () => {},
   });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 16);
-  assert.equal(github.state.uploadAttempts, 18);
+  assert.equal(github.state.release.assets.length, 8);
+  assert.equal(github.state.uploadAttempts, 10);
 });
 
 test("older main and feature results do not become Latest", async (t) => {
