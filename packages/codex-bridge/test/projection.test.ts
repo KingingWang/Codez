@@ -5,7 +5,7 @@ import {
   conversationSnapshotSchema,
   sessionSummarySchema,
   sessionsIndexSnapshotSchema,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { projectThread, projectSessionSummary, projectSessionsIndex } from "../src/projection.js";
 import { threadFixture } from "./projection-fixtures.test.js";
 

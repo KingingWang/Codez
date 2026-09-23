@@ -10,18 +10,18 @@ import {
   type SessionSummary,
   type SessionsIndexTopicFrame,
   type SessionsIndexTopicWireCandidate,
-} from "@zcode/shared/zcode-protocol-v4";
-import { Emitter } from "@zcode/rpc";
+} from "@codez/shared/codez-protocol-v4";
+import { Emitter } from "@codez/rpc";
 import { TaskIndexRepo } from "../src/session/taskIndexRepo.js";
-import { createZCodeTaskIndexSyncer } from "../src/zcode-agent/zcodeTaskIndexSyncer.js";
+import { createCodezTaskIndexSyncer } from "../src/codez-agent/codezTaskIndexSyncer.js";
 import type {
-  IZCodeAgentService,
-  ZCodeAgentWorkspaceTarget,
-} from "../src/zcode-agent/zcodeAgent.js";
+  ICodezAgentService,
+  CodezAgentWorkspaceTarget,
+} from "../src/codez-agent/codezAgent.js";
 
 interface HarnessOptions {
   taskIndexRepo: TaskIndexRepo;
-  workspace: ZCodeAgentWorkspaceTarget;
+  workspace: CodezAgentWorkspaceTarget;
   summaries: SessionSummary[];
 }
 
@@ -92,19 +92,19 @@ async function createHarness(options: HarnessOptions) {
     },
     async unsubscribeWorkspaceConfigV4() {},
     onDynamicSessionsIndexFrame(
-      _workspace: ZCodeAgentWorkspaceTarget,
-    ): ReturnType<IZCodeAgentService["onDynamicSessionsIndexFrame"]> {
+      _workspace: CodezAgentWorkspaceTarget,
+    ): ReturnType<ICodezAgentService["onDynamicSessionsIndexFrame"]> {
       return indexFrameEmitter.event;
     },
     onDynamicWorkspaceConfigFrame(
-      _workspace: ZCodeAgentWorkspaceTarget,
-    ): ReturnType<IZCodeAgentService["onDynamicWorkspaceConfigFrame"]> {
+      _workspace: CodezAgentWorkspaceTarget,
+    ): ReturnType<ICodezAgentService["onDynamicWorkspaceConfigFrame"]> {
       return configFrameEmitter.event as unknown as ReturnType<
-        IZCodeAgentService["onDynamicWorkspaceConfigFrame"]
+        ICodezAgentService["onDynamicWorkspaceConfigFrame"]
       >;
     },
-  } as unknown as IZCodeAgentService;
-  const syncer = createZCodeTaskIndexSyncer({
+  } as unknown as ICodezAgentService;
+  const syncer = createCodezTaskIndexSyncer({
     agentService,
     taskIndexRepo: options.taskIndexRepo,
   });
@@ -167,13 +167,13 @@ async function createHarness(options: HarnessOptions) {
 }
 
 test("initial discovery commits missing rows then emits one scoped invalidation", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-codex-index-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-codex-index-"));
   const repo = new TaskIndexRepo(join(dir, "tasks.sqlite"));
   const workspace = { workspacePath: "/remote/project", workspaceIdentity: "ssh:remote-a" };
   await repo.syncTaskMeta({
     meta: {
       taskId: "cli-existing",
-      traceId: "zcode-cli-existing",
+      traceId: "codez-cli-existing",
       title: "Custom title",
       workspacePath: workspace.workspacePath,
       workspaceIdentity: workspace.workspaceIdentity,
@@ -253,7 +253,7 @@ test("initial discovery commits missing rows then emits one scoped invalidation"
 });
 
 test("late discovered terminal summary seeds a row without loading native history", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-codex-index-warm-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-codex-index-warm-"));
   const repo = new TaskIndexRepo(join(dir, "tasks.sqlite"));
   const workspace = { workspacePath: "/remote/project", workspaceIdentity: "ssh:remote-b" };
   const harness = await createHarness({
@@ -298,8 +298,8 @@ test("late discovered terminal summary seeds a row without loading native histor
 });
 
 test("same-path remote identities remain isolated during discovery", async () => {
-  const firstDir = await mkdtemp(join(tmpdir(), "zcode-codex-index-a-"));
-  const secondDir = await mkdtemp(join(tmpdir(), "zcode-codex-index-b-"));
+  const firstDir = await mkdtemp(join(tmpdir(), "codez-codex-index-a-"));
+  const secondDir = await mkdtemp(join(tmpdir(), "codez-codex-index-b-"));
   const firstRepo = new TaskIndexRepo(join(firstDir, "tasks.sqlite"));
   const secondRepo = new TaskIndexRepo(join(secondDir, "tasks.sqlite"));
   const firstWorkspace = { workspacePath: "/remote/project", workspaceIdentity: "ssh:first" };
@@ -342,7 +342,7 @@ test("same-path remote identities remain isolated during discovery", async () =>
 });
 
 test("disposed discovery seeds do not write stale rows or broadcast", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-codex-index-stale-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-codex-index-stale-"));
   const workspace = { workspacePath: "/remote/project", workspaceIdentity: "ssh:remote-c" };
   const repo = new TaskIndexRepo(join(dir, "tasks.sqlite"));
   let releaseSeedList: Array<() => void> = [];

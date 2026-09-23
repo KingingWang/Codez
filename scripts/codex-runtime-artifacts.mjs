@@ -12,11 +12,11 @@ export async function writeCodexArtifactChecksums(directory) {
   // electron-builder 的 ${arch} 在 AppImage/deb 中分别展开为 x86_64/amd64，不能只认 Node 的 x64。
   const archNames = target.arch === "x64" ? "x64|x86_64|amd64" : "arm64|aarch64";
   const targetName = new RegExp(`-${platformName}-(?:${archNames})(?:_TEST)?(?:-unsigned)?\\.`);
-  const signed = process.env.ZCODE_CODEX_SIGNED === "1";
+  const signed = process.env.CODEZ_CODEX_SIGNED === "1";
   const files = (await readdir(directory))
     .filter(
       (file) =>
-        file.startsWith("ZCode Codex-") &&
+        file.startsWith("Codez Codex-") &&
         targetName.test(file) &&
         file.includes("-unsigned.") !== signed &&
         extensions.some((ext) => file.endsWith(ext)),

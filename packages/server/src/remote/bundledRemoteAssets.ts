@@ -148,7 +148,7 @@ export function createBundledRemoteAssetSource(
 function requiredFiles(component: RemoteAssetManifestComponent, target: string): string[] {
   switch (component.id) {
     case "server-bundle":
-      return ["zcode-server.cjs"];
+      return ["codez-server.cjs"];
     case "node-runtime":
       return ["node"];
     case "node-pty":

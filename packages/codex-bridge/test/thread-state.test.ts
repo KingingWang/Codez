@@ -265,7 +265,7 @@ test("project discovery requests all providers and user-facing native sources on
 });
 
 test("aliased workspace path discovers, resumes and attributes native threads", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-thread-state-alias-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-thread-state-alias-"));
   const physical = join(root, "physical");
   const alias = join(root, "alias");
   await mkdir(physical);

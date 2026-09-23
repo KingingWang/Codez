@@ -5,7 +5,7 @@ import { once } from "node:events";
 import { mkdtemp, mkdir, writeFile, readFile, access, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { zcodeWorkspaceGenerateTextResultSchema } from "@zcode/shared";
+import { codezWorkspaceGenerateTextResultSchema } from "@codez/shared";
 import type { CodexProcess, CodexNotification } from "../src/contract.js";
 import { AuxiliaryText } from "../src/auxiliary-text.js";
 import { createCodexProcess } from "../src/codex-process.js";
@@ -133,7 +133,7 @@ test("restricted ephemeral request waits for actual completion and disposes list
   await Promise.resolve();
   assert.equal(settled, false);
   f.complete();
-  const generated = zcodeWorkspaceGenerateTextResultSchema.parse(await pending);
+  const generated = codezWorkspaceGenerateTextResultSchema.parse(await pending);
   assert.equal(generated.text, "fix: preserve ACK ordering");
   assert.deepEqual(generated.selection, params.selection);
   assert.equal(generated.finishReason, "stop");
@@ -149,7 +149,7 @@ test("completion before turn/start reply is retained, not lost or applied to ano
     f.complete();
     return { turn: { id: "aux-turn" } };
   };
-  const generated = zcodeWorkspaceGenerateTextResultSchema.parse(
+  const generated = codezWorkspaceGenerateTextResultSchema.parse(
     await f.auxiliary.handle("workspace/generateText", params),
   );
   assert.equal(generated.text, "fix: preserve ACK ordering");
@@ -280,7 +280,7 @@ test(
     timeout: 60_000,
   },
   async (t) => {
-    const temporary = await mkdtemp(join(tmpdir(), "zcode-auxiliary-"));
+    const temporary = await mkdtemp(join(tmpdir(), "codez-auxiliary-"));
     const cwd = join(temporary, "workspace"),
       codexHome = join(temporary, "codex-home");
     await mkdir(cwd);
@@ -375,7 +375,7 @@ test(
       await rpc.close();
     });
     await rpc.initialize();
-    const generated = zcodeWorkspaceGenerateTextResultSchema.parse(
+    const generated = codezWorkspaceGenerateTextResultSchema.parse(
       await auxiliary.handle("workspace/generateText", {
         ...params,
         workspace: { workspacePath: cwd, workspaceKey: cwd },

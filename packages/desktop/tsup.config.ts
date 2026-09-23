@@ -1,4 +1,4 @@
-import { pickProductEndpointEnv } from "@zcode/shared/zcodeEndpoint";
+import { pickProductEndpointEnv } from "@codez/shared/codezEndpoint";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -30,9 +30,9 @@ function loadEnvFiles(): Record<string, string> {
     }
   }
   // 真实环境变量优先级最高
-  if (process.env.ZCODE_ENV) vars.ZCODE_ENV = process.env.ZCODE_ENV;
-  if (process.env.ZCODE_BASE_URL) vars.ZCODE_BASE_URL = process.env.ZCODE_BASE_URL;
-  if (process.env.VITE_ZCODE_BASE_URL) vars.VITE_ZCODE_BASE_URL = process.env.VITE_ZCODE_BASE_URL;
+  if (process.env.CODEZ_ENV) vars.CODEZ_ENV = process.env.CODEZ_ENV;
+  if (process.env.CODEZ_BASE_URL) vars.CODEZ_BASE_URL = process.env.CODEZ_BASE_URL;
+  if (process.env.VITE_CODEZ_BASE_URL) vars.VITE_CODEZ_BASE_URL = process.env.VITE_CODEZ_BASE_URL;
   // OAuth origin/client_id 由 host runtime 读取；这里保留覆盖入口，方便开发构建时观察统一 env 来源。
   if (process.env.ZAI_OAUTH_CLIENT_ID) vars.ZAI_OAUTH_CLIENT_ID = process.env.ZAI_OAUTH_CLIENT_ID;
   if (process.env.ZAI_OAUTH_ORIGIN) vars.ZAI_OAUTH_ORIGIN = process.env.ZAI_OAUTH_ORIGIN;
@@ -59,16 +59,16 @@ function loadEnvFiles(): Record<string, string> {
 }
 
 const env = loadEnvFiles();
-const { environment: zcodeEnv } = await loadBuiltinProviderConfig();
-// 安装包身份与后端环境分轴：ZCODE_PREVIEW_IDENTITY=1 让生产后端的构建仍以 ZCode Preview 身份打包运行。
-const zcodeProductFlavor = resolveDesktopProductFlavor({ ...process.env, ZCODE_ENV: zcodeEnv });
-console.log(`[tsup] ZCODE_ENV=${zcodeEnv} ZCODE_PRODUCT_FLAVOR=${zcodeProductFlavor}`);
+const { environment: codezEnv } = await loadBuiltinProviderConfig();
+// 安装包身份与后端环境分轴：CODEZ_PREVIEW_IDENTITY=1 让生产后端的构建仍以 Codez Preview 身份打包运行。
+const codezProductFlavor = resolveDesktopProductFlavor({ ...process.env, CODEZ_ENV: codezEnv });
+console.log(`[tsup] CODEZ_ENV=${codezEnv} CODEZ_PRODUCT_FLAVOR=${codezProductFlavor}`);
 
 export function resolveDesktopTsupBundleSecurityOptions(
   runtimeEnv: Record<string, string | undefined> = process.env,
 ) {
   const isProduction = runtimeEnv.NODE_ENV === "production";
-  const isE2ECoverageBuild = runtimeEnv.ZCODE_E2E_COVERAGE === "1";
+  const isE2ECoverageBuild = runtimeEnv.CODEZ_E2E_COVERAGE === "1";
   return {
     // 发布包的 main/host/preload 之前没有随 NODE_ENV=production 压缩，
     // 产物保留大量源码注释与格式化换行，增加逆向和内部实现暴露风险。
@@ -96,20 +96,20 @@ const desktopTsupBundleSecurityOptions = resolveDesktopTsupBundleSecurityOptions
 
 function createSharedDefines() {
   return {
-    __ZCODE_VERSION__: JSON.stringify(buildMetadata.appVersion),
-    __ZCODE_COMMIT__: JSON.stringify(buildMetadata.buildCommitId),
-    __ZCODE_BUILD_TIME__: JSON.stringify(buildMetadata.buildTime),
-    __ZCODE_ENV__: JSON.stringify(zcodeEnv),
-    __ZCODE_ENDPOINT_ENV__: JSON.stringify(pickProductEndpointEnv(env)),
-    __ZCODE_PRODUCT_FLAVOR__: JSON.stringify(zcodeProductFlavor),
+    __CODEZ_VERSION__: JSON.stringify(buildMetadata.appVersion),
+    __CODEZ_COMMIT__: JSON.stringify(buildMetadata.buildCommitId),
+    __CODEZ_BUILD_TIME__: JSON.stringify(buildMetadata.buildTime),
+    __CODEZ_ENV__: JSON.stringify(codezEnv),
+    __CODEZ_ENDPOINT_ENV__: JSON.stringify(pickProductEndpointEnv(env)),
+    __CODEZ_PRODUCT_FLAVOR__: JSON.stringify(codezProductFlavor),
     // Computer Use Helper build identity — helperInstaller 读它决定下载哪个 Helper bundle。
-    // 缺失时 installer 抛 "Packaged ZCode is missing its embedded Computer Use Helper build identity"。
-    // CI 构建时通过 ZCODE_CUA_HELPER_BUILD_ID env 注入；dev 为空串走兜底（dev helper 不走下载）。
-    __ZCODE_CUA_HELPER_BUILD_ID__: JSON.stringify(
-      process.env.ZCODE_CUA_HELPER_BUILD_ID?.trim() ?? "",
+    // 缺失时 installer 抛 "Packaged Codez is missing its embedded Computer Use Helper build identity"。
+    // CI 构建时通过 CODEZ_CUA_HELPER_BUILD_ID env 注入；dev 为空串走兜底（dev helper 不走下载）。
+    __CODEZ_CUA_HELPER_BUILD_ID__: JSON.stringify(
+      process.env.CODEZ_CUA_HELPER_BUILD_ID?.trim() ?? "",
     ),
     // 客户端只有一个 CDN 配置，与发布端 OSS 目标列表分离。
-    __ZCODE_CDN_BASE_URL__: JSON.stringify(env.ZCODE_CDN_BASE_URL?.trim() || ""),
+    __CODEZ_CDN_BASE_URL__: JSON.stringify(env.CODEZ_CDN_BASE_URL?.trim() || ""),
   };
 }
 
@@ -139,7 +139,7 @@ export default defineConfig([
     entry: {
       "main/index": "src/main/index.ts",
       "main/browserWebmRecorder": "src/main/browserView/electronBrowserWebmRecorder.ts",
-      "main/zcodeDataSizeWorker": "src/main/zcodeDataSizeWorker.ts",
+      "main/codezDataSizeWorker": "src/main/codezDataSizeWorker.ts",
       // 资源管理器「存储」tab 的扫描 Worker：main 持有 StorageService，遍历放独立线程，供 new Worker(new URL()) 解析。
       "main/storageScanWorker": "src/main/storageScanWorker.ts",
     },
@@ -152,19 +152,19 @@ export default defineConfig([
     // desktop 保持 undici 为外部依赖，remote 单文件 bundle 再单独内联。
     external: desktopNodeRuntimeExternals,
     noExternal: [
-      "@zcode/server",
-      "@zcode/shared",
-      "@zcode/rpc",
-      "@zcode/services",
-      "@zcode/client",
+      "@codez/server",
+      "@codez/shared",
+      "@codez/rpc",
+      "@codez/services",
+      "@codez/client",
       // Provider Refactor 的 workspace 包导出 TypeScript 源码；Electron 生产运行时没有
       // TS loader，必须随 Desktop bundle 内联，不能留下指向 src/index.ts 的裸包引用。
-      "@zcode/provider",
-      "@zcode/provider-node",
+      "@codez/provider",
+      "@codez/provider-node",
       // services 已内联进 main，但其 producer import 曾被保留为裸包引用；
-      // electron-builder 又会排除 node_modules/@zcode，导致安装包启动即 ERR_MODULE_NOT_FOUND。
+      // electron-builder 又会排除 node_modules/@codez，导致安装包启动即 ERR_MODULE_NOT_FOUND。
       // producer 的 JS broker 必须跟随 services 一起内联，原生 addon 仍只存在于独立 Helper。
-      "@zcode/zcode-cua",
+      "@codez/codez-cua",
     ],
     // OTLP 端点与鉴权只在运行时读取；构建环境中的凭据不能写进公开安装包。
     define: createSharedDefines(),
@@ -193,7 +193,7 @@ export default defineConfig([
     platform: "node",
     target: "node22",
     external: ["electron"],
-    noExternal: ["@zcode/shared"],
+    noExternal: ["@codez/shared"],
     outExtension: () => ({ js: ".cjs" }),
     define: createSharedDefines(),
     esbuildOptions(options) {
@@ -216,14 +216,14 @@ export default defineConfig([
     // 这里同样保留为外部依赖，避免 desktop 开发态和打包态 host 进程启动失败。
     external: desktopNodeRuntimeExternals,
     noExternal: [
-      "@zcode/server",
-      "@zcode/shared",
-      "@zcode/rpc",
-      "@zcode/services",
-      "@zcode/client",
-      "@zcode/provider",
-      "@zcode/provider-node",
-      "@zcode/zcode-cua",
+      "@codez/server",
+      "@codez/shared",
+      "@codez/rpc",
+      "@codez/services",
+      "@codez/client",
+      "@codez/provider",
+      "@codez/provider-node",
+      "@codez/codez-cua",
     ],
     define: createSharedDefines(),
     // 与 main 保持一致的 chunk 隔离策略，避免 host/main 产物相互覆盖。
@@ -241,18 +241,18 @@ export default defineConfig([
     format: "esm",
     platform: "node",
     target: "node22",
-    // 与 host 同构：常驻 cron scheduler 进程复用 @zcode/services（tasks-index + cron），
+    // 与 host 同构：常驻 cron scheduler 进程复用 @codez/services（tasks-index + cron），
     // 同样保留 undici 等为外部依赖，避免 Electron ESM runtime 的 dynamic require 崩溃。
     external: desktopNodeRuntimeExternals,
     noExternal: [
-      "@zcode/server",
-      "@zcode/shared",
-      "@zcode/rpc",
-      "@zcode/services",
-      "@zcode/client",
-      "@zcode/provider",
-      "@zcode/provider-node",
-      "@zcode/zcode-cua",
+      "@codez/server",
+      "@codez/shared",
+      "@codez/rpc",
+      "@codez/services",
+      "@codez/client",
+      "@codez/provider",
+      "@codez/provider-node",
+      "@codez/codez-cua",
     ],
     define: createSharedDefines(),
     esbuildOptions(options) {

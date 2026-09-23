@@ -1,5 +1,5 @@
 import { z } from "zod";
-import * as s from "@zcode/shared";
+import * as s from "@codez/shared";
 import type { BridgeControlContext } from "./contract.js";
 import { checkWorkspace, ControlError, input, unsupported } from "./control-common.js";
 import { readControlPresentation, readControlSkills } from "./control-presentation.js";
@@ -71,61 +71,61 @@ async function dispatch(
   switch (method) {
     case "runtime/capabilities":
       input(z.object({}).strict(), params ?? {}, method);
-      return s.zcodeRuntimeCapabilitiesSchema.parse({ independentPlanState: true });
+      return s.codezRuntimeCapabilitiesSchema.parse({ independentPlanState: true });
     case "workspace/readPresentation": {
-      const p = input(s.zcodeWorkspaceReadPresentationParamsSchema, params, method);
+      const p = input(s.codezWorkspaceReadPresentationParamsSchema, params, method);
       checkWorkspace(p.workspace, context, method);
       return readControlPresentation(p.workspace, context);
     }
     case "skills/referenceCatalog": {
-      const p = input(s.zcodeSkillsReferenceCatalogParamsSchema, params, method);
+      const p = input(s.codezSkillsReferenceCatalogParamsSchema, params, method);
       checkWorkspace(p.workspace, context, method);
       if (p.sessionId) unsupported(method, "Codex does not expose a frozen session skill catalog");
       return readControlSkills(context);
     }
     case "mcp/list": {
-      const p = input(s.zcodeMcpListParamsSchema, params, method);
+      const p = input(s.codezMcpListParamsSchema, params, method);
       checkWorkspace(p.workspace, context, method);
       if (p.mcpServers?.length)
         unsupported(
           method,
-          "Codex owns MCP configuration; ZCode server overlays cannot be applied",
+          "Codex owns MCP configuration; Codez server overlays cannot be applied",
         );
       return readControlMcp(context);
     }
     case "provider/updateAccountConfig": {
-      const p = input(s.zcodeProviderUpdateAccountConfigParamsSchema, params, method);
-      // 只确认旧 Host 同步信封已收到；0 表示未注册任何 ZCode provider，不能覆盖 Codex 凭据。
-      return s.zcodeProviderUpdateAccountConfigResultSchema.parse({
+      const p = input(s.codezProviderUpdateAccountConfigParamsSchema, params, method);
+      // 只确认旧 Host 同步信封已收到；0 表示未注册任何 Codez provider，不能覆盖 Codex 凭据。
+      return s.codezProviderUpdateAccountConfigResultSchema.parse({
         receivedRevision: p.revision,
         providerCount: 0,
         status: "received",
       });
     }
     case "workspace/updateInteractionPreferences": {
-      const p = input(s.zcodeWorkspaceUpdateInteractionPreferencesParamsSchema, params, method);
+      const p = input(s.codezWorkspaceUpdateInteractionPreferencesParamsSchema, params, method);
       checkWorkspace(p.workspace, context, method);
       if (p.preferences.askUserQuestionAutoResolutionEnabled)
         unsupported(method, "Codex questions require explicit user answers");
-      return s.zcodeWorkspaceUpdateInteractionPreferencesResultSchema.parse({
+      return s.codezWorkspaceUpdateInteractionPreferencesResultSchema.parse({
         workspace: p.workspace,
         askUserQuestionAutoResolutionEnabled: false,
         snoozedInteractionCount: 0,
       });
     }
     case "workspace/updateModelIoPreferences": {
-      const p = input(s.zcodeWorkspaceUpdateModelIoPreferencesParamsSchema, params, method);
+      const p = input(s.codezWorkspaceUpdateModelIoPreferencesParamsSchema, params, method);
       checkWorkspace(p.workspace, context, method);
       if (p.preferences.fullRetentionEnabled)
-        unsupported(method, "ZCode full model-I/O retention is not implemented for Codex");
-      return s.zcodeWorkspaceUpdateModelIoPreferencesResultSchema.parse({
+        unsupported(method, "Codez full model-I/O retention is not implemented for Codex");
+      return s.codezWorkspaceUpdateModelIoPreferencesResultSchema.parse({
         workspace: p.workspace,
         fullRetentionEnabled: false,
         updatedSessionCount: 0,
       });
     }
     case "workspace/generateText": {
-      const p = input(s.zcodeWorkspaceGenerateTextParamsSchema, params, method);
+      const p = input(s.codezWorkspaceGenerateTextParamsSchema, params, method);
       checkWorkspace(p.workspace, context, method);
       // RPC port 无事件订阅，ephemeral thread 又不支持 includeTurns；不能开始一个无法收尾或取消的生成。
       return unsupported(
@@ -134,7 +134,7 @@ async function dispatch(
       );
     }
     case "workspace/cancelGenerateText":
-      input(s.zcodeWorkspaceCancelGenerateTextParamsSchema, params, method);
+      input(s.codezWorkspaceCancelGenerateTextParamsSchema, params, method);
       return unsupported(method, "Auxiliary generation is unavailable; no operation was started");
     default:
       return unsupported(method, "No Codex control-plane mapping");

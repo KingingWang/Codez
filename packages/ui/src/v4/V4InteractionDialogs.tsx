@@ -1,22 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CodexQuestionDialog } from "@/settings/codex/CodexQuestionDialog.js";
 import { readCodexQuestions } from "@/settings/codex/codexQuestions.js";
-import type { ZCodeElicitationRequest, ZCodePermissionOption, ZCodeProvider } from "@zcode/shared";
-import type { ConversationSnapshot } from "@zcode/shared/zcode-protocol-v4";
+import type { CodezElicitationRequest, CodezPermissionOption, CodezProvider } from "@codez/shared";
+import type { ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
 import { ElicitationDialog } from "@/ElicitationDialog.js";
 import { PermissionDialog } from "@/PermissionDialog.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { usePendingInteractionTaskNotifications } from "@/hooks/useTaskNotifications.js";
 import { logger } from "@/logger.js";
-import { useZCodeStoreWithDefault } from "@/store/StoreProvider.js";
+import { useCodezStoreWithDefault } from "@/store/StoreProvider.js";
 import { useWorkspaceHookReviewStore } from "@/store/workspaceHookReviewStore.js";
 import {
   getTaskUiState,
   getWorkspaceState,
-  useZCodeSessionStore,
-} from "@/store/zcodeSessionStore.js";
-import type { ElicitationFormDraft } from "@/store/zcodeSessionStoreTypes.js";
+  useCodezSessionStore,
+} from "@/store/codezSessionStore.js";
+import type { ElicitationFormDraft } from "@/store/codezSessionStoreTypes.js";
 import { createCommandEnvelope } from "@/v4/commandFactory.js";
 import { pendingCommandRegistry } from "@/v4/pendingCommandRegistry.js";
 import { sendInteractionAutoResolutionSnooze } from "@/v4/interactionAutoResolutionCommand.js";
@@ -33,7 +33,7 @@ interface V4InteractionDialogsProps {
   workspacePath: string;
   workspaceIdentity?: string;
   remoteSessionId?: string;
-  provider?: ZCodeProvider;
+  provider?: CodezProvider;
   snapshot: ConversationSnapshot | null;
   onCommandSettled?: (commandId: string) => void;
   onPlanInteractionAccepted?: (interactionId: string) => void;
@@ -46,7 +46,7 @@ function getCurrentSessionInteractionSnapshot(
   return snapshot?.sessionId === sessionId ? snapshot : null;
 }
 
-function buildV4ElicitationProgressKey(request: ZCodeElicitationRequest): string {
+function buildV4ElicitationProgressKey(request: CodezElicitationRequest): string {
   return `${request.requestId}:${request.currentQuestionIndex ?? 0}:${JSON.stringify(request.answerDrafts ?? {})}`;
 }
 
@@ -96,7 +96,7 @@ export function V4InteractionDialogs({
   const upsertWorkspaceHookReview = useWorkspaceHookReviewStore((state) => state.upsert);
   const clearWorkspaceHookReview = useWorkspaceHookReviewStore((state) => state.clear);
   const platform = useOptionalPlatform();
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   // task 切换时 sessionId 会先更新，旧 task snapshot 可能再保留一帧。
   // 若直接使用旧 snapshot，会把当前 task 的 renderer-local 问答草稿误判为过期并清理。
   const currentSnapshot = getCurrentSessionInteractionSnapshot(sessionId, snapshot);
@@ -111,8 +111,8 @@ export function V4InteractionDialogs({
   const workspaceHookReview = currentSnapshot?.pendingInteractions.find(
     (interaction) => interaction.payload.kind === "workspaceHookReview",
   );
-  const notificationEnabled = useZCodeStoreWithDefault((state) => state.notificationEnabled, true);
-  const localElicitationDraft = useZCodeSessionStore((state) => {
+  const notificationEnabled = useCodezStoreWithDefault((state) => state.notificationEnabled, true);
+  const localElicitationDraft = useCodezSessionStore((state) => {
     if (!pending || pending.payload.kind !== "userInput") return undefined;
     return getTaskUiState(getWorkspaceState(state, workspacePath, workspaceIdentity), sessionId)
       .elicitationFormDraftsByRequestId[pending.interactionId];
@@ -229,7 +229,7 @@ export function V4InteractionDialogs({
 
   const persistElicitationDraft = useCallback(
     (requestId: string, draft: ElicitationFormDraft) => {
-      useZCodeSessionStore
+      useCodezSessionStore
         .getState()
         .setTaskElicitationFormDraft(workspacePath, sessionId, requestId, draft, workspaceIdentity);
     },
@@ -238,7 +238,7 @@ export function V4InteractionDialogs({
 
   const removeElicitationDraft = useCallback(
     (requestId: string) => {
-      useZCodeSessionStore
+      useCodezSessionStore
         .getState()
         .removeTaskElicitationFormDraft(workspacePath, sessionId, requestId, workspaceIdentity);
     },
@@ -253,7 +253,7 @@ export function V4InteractionDialogs({
         .map((interaction) => interaction.interactionId),
     );
     const taskUiState = getTaskUiState(
-      getWorkspaceState(useZCodeSessionStore.getState(), workspacePath, workspaceIdentity),
+      getWorkspaceState(useCodezSessionStore.getState(), workspacePath, workspaceIdentity),
       sessionId,
     );
     for (const requestId of Object.keys(taskUiState.elicitationFormDraftsByRequestId)) {
@@ -322,7 +322,7 @@ export function V4InteractionDialogs({
             ? intl.formatMessage({ id: "chat.permission.responseFailed" })
             : undefined
         }
-        onRespond={(_requestId, option: ZCodePermissionOption, feedback?: string) => {
+        onRespond={(_requestId, option: CodezPermissionOption, feedback?: string) => {
           if (permissionResponseFlight.current === pending.interactionId) return;
           const interactionId = pending.interactionId;
           permissionResponseFlight.current = interactionId;

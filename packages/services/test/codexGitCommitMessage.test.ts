@@ -6,26 +6,26 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
-import { Emitter } from "@zcode/rpc";
+import { Emitter } from "@codez/rpc";
 import {
   appSettingsSchema,
   resolveWorkspaceKey,
-  zcodeWorkspaceGenerateTextParamsSchema,
+  codezWorkspaceGenerateTextParamsSchema,
   type CodexModel,
   type CodexRequest,
   type ModelSelection,
-  type ZCodeProtocolMessage,
-} from "@zcode/shared";
+  type CodezProtocolMessage,
+} from "@codez/shared";
 import { createLocalServices, disposeServiceResourcesAndWait } from "../src/node.js";
 import { IGitService } from "../src/git/git.js";
 import { ProviderRuntime } from "../src/model-provider/providerRuntime.js";
 import type { ISettingService } from "../src/setting/setting.js";
 import { setDataBaseDir } from "../src/paths.js";
 import {
-  ZCodeAgentProcessManager,
-  type ZCodeAgentProcessManagerOptions,
-} from "../src/zcode-agent/zcodeAgentProcessManager.js";
-import { ZCodeProtocolClient } from "../src/zcode-agent/zcodeProtocolClient.js";
+  CodezAgentProcessManager,
+  type CodezAgentProcessManagerOptions,
+} from "../src/codez-agent/codezAgentProcessManager.js";
+import { CodezProtocolClient } from "../src/codez-agent/codezProtocolClient.js";
 
 const nativeModel = (model: string, isDefault = false): CodexModel => ({
   id: model,
@@ -40,15 +40,15 @@ const nativeModel = (model: string, isDefault = false): CodexModel => ({
 
 test("Git native model discovery and auxiliary generation never prepare legacy providers", async (t) => {
   const savedEnv = { ...process.env };
-  const root = await mkdtemp(join(tmpdir(), "zcode-codex-git-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-codex-git-"));
   setDataBaseDir(root);
-  process.env.ZCODE_DESKTOP_HOME_DIR = root;
-  delete process.env.ZCODE_AGENT_SERVER_COMMAND;
-  delete process.env.ZCODE_DESKTOP_RUNTIME;
-  delete process.env.ZCODE_CODEX_BRIDGE_PATH;
-  process.env.ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED = "1";
+  process.env.CODEZ_DESKTOP_HOME_DIR = root;
+  delete process.env.CODEZ_AGENT_SERVER_COMMAND;
+  delete process.env.CODEZ_DESKTOP_RUNTIME;
+  delete process.env.CODEZ_CODEX_BRIDGE_PATH;
+  process.env.CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED = "1";
   const calls: Array<{ identity: string; method: string; params: unknown }> = [];
-  const clients: ZCodeProtocolClient[] = [];
+  const clients: CodezProtocolClient[] = [];
   let config: Record<string, unknown> = {};
   let pages: Array<{ data: CodexModel[]; nextCursor: string | null }> = [];
   let invalidConfig = false;
@@ -60,18 +60,18 @@ test("Git native model discovery and auxiliary generation never prepare legacy p
     throw new Error("legacy provider must not be required");
   });
   t.mock.method(
-    ZCodeAgentProcessManager.prototype,
+    CodezAgentProcessManager.prototype,
     "getClient",
     async function (
-      this: ZCodeAgentProcessManager,
+      this: CodezAgentProcessManager,
       workspace: { workspacePath: string; workspaceIdentity?: string },
     ) {
       const identity = resolveWorkspaceKey(workspace);
-      const manager = this as unknown as Pick<ZCodeAgentProcessManagerOptions, "resolveSpawnEnv">;
+      const manager = this as unknown as Pick<CodezAgentProcessManagerOptions, "resolveSpawnEnv">;
       await manager.resolveSpawnEnv?.({ ...workspace, workspaceKey: identity });
-      const messages = new Emitter<ZCodeProtocolMessage>();
+      const messages = new Emitter<CodezProtocolMessage>();
       const closes = new Emitter<{ reason?: string }>();
-      const client = new ZCodeProtocolClient({
+      const client = new CodezProtocolClient({
         kind: "memory",
         onMessage: messages.event,
         onClose: closes.event,
@@ -96,7 +96,7 @@ test("Git native model discovery and auxiliary generation never prepare legacy p
               "workspace/generateText",
               "no legacy readiness/account/tool RPCs",
             );
-            const params = zcodeWorkspaceGenerateTextParamsSchema.parse(message.params);
+            const params = codezWorkspaceGenerateTextParamsSchema.parse(message.params);
             assert.equal(params.workspace.workspacePath, root);
             assert.equal(params.workspace.workspaceIdentity, identity);
             assert.equal(params.querySource, "git_commit_message");
@@ -139,21 +139,21 @@ test("Git native model discovery and auxiliary generation never prepare legacy p
     await promisify(execFile)("git", ["-c", "init.defaultBranch=main", "init", root]);
     await writeFile(join(root, "example.txt"), "native Git fixture\n");
     for (const runtime of ["local", "deployed", "explicit-legacy", "custom-legacy"] as const) {
-      delete process.env.ZCODE_CODEX_BRIDGE_PATH;
-      delete process.env.ZCODE_AGENT_SERVER_COMMAND;
-      if (runtime === "deployed") process.env.ZCODE_CODEX_BRIDGE_PATH = "/remote/codex/bridge.cjs";
-      if (runtime === "explicit-legacy") process.env.ZCODE_AGENT_SERVER_COMMAND = "/legacy/agent";
+      delete process.env.CODEZ_CODEX_BRIDGE_PATH;
+      delete process.env.CODEZ_AGENT_SERVER_COMMAND;
+      if (runtime === "deployed") process.env.CODEZ_CODEX_BRIDGE_PATH = "/remote/codex/bridge.cjs";
+      if (runtime === "explicit-legacy") process.env.CODEZ_AGENT_SERVER_COMMAND = "/legacy/agent";
       const services = createLocalServices({
         settingService: settings,
         runtimeProcessEnvPatch: { PATH: savedEnv.PATH ?? "" },
-        zcodeBuiltinProviderConfigFilePath: fileURLToPath(
-          new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
+        codezBuiltinProviderConfigFilePath: fileURLToPath(
+          new URL("../../../config/provider/codez-builtin.json", import.meta.url),
         ),
         serviceAuthorityMode: runtime === "deployed" ? "desktop-attached-remote" : "desktop-local",
         agentRuntimeContext: {
           runtimeSurface: runtime === "deployed" ? "remote_workspace_host" : "desktop_local_host",
         },
-        ...(runtime === "custom-legacy" ? { zcodeAgentCommandResolver: () => null } : {}),
+        ...(runtime === "custom-legacy" ? { codezAgentCommandResolver: () => null } : {}),
         prepareLegacyAccountConnections: async () => {
           assert.fail("must not prepare legacy account");
         },

@@ -7,7 +7,7 @@ import { startDesktopMockProvider } from "./desktop-mock-provider.mjs";
 const root = process.cwd();
 const packaged = process.env.CODEX_UI_QA_PACKAGED === "1";
 const packagedRoot = resolve(root, "packages/desktop/dist/linux-unpacked");
-const packagedExecutable = join(packagedRoot, "zcode-codex");
+const packagedExecutable = join(packagedRoot, "codez-codex");
 const isolated = await mkdtemp(join(tmpdir(), "codex-ui-qa-"));
 for (const name of ["home", "config", "data", "cache", "codex", "workspace", "session", "userData"])
   await mkdir(join(isolated, name));
@@ -47,13 +47,13 @@ const env = {
   XDG_DATA_HOME: join(isolated, "data"),
   XDG_CACHE_HOME: join(isolated, "cache"),
   CODEX_HOME: join(isolated, "codex"),
-  ZCODE_DATA_BASE_DIR: join(isolated, "data"),
-  ZCODE_DESKTOP_RUNTIME: "codex",
-  ZCODE_DESKTOP_APPLICATION_NAME: "Codex UI QA",
-  ZCODE_DESKTOP_HOME_DIR: join(isolated, "home"),
-  ZCODE_DESKTOP_USER_DATA_DIR: join(isolated, "userData"),
-  ZCODE_DESKTOP_SESSION_DATA_DIR: join(isolated, "session"),
-  ...(nativeOverride ? { ZCODE_CODEX_COMMAND: nativeOverride } : {}),
+  CODEZ_DATA_BASE_DIR: join(isolated, "data"),
+  CODEZ_DESKTOP_RUNTIME: "codex",
+  CODEZ_DESKTOP_APPLICATION_NAME: "Codex UI QA",
+  CODEZ_DESKTOP_HOME_DIR: join(isolated, "home"),
+  CODEZ_DESKTOP_USER_DATA_DIR: join(isolated, "userData"),
+  CODEZ_DESKTOP_SESSION_DATA_DIR: join(isolated, "session"),
+  ...(nativeOverride ? { CODEZ_CODEX_COMMAND: nativeOverride } : {}),
 };
 const display = spawn(
   "Xvfb",

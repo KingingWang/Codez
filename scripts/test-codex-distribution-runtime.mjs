@@ -72,7 +72,7 @@ test("workflow gates six native targets, four bundled remote targets and isolate
 });
 
 async function loadRuntimeModule(t, source, flavor = "codex", plugins = []) {
-  const directory = await mkdtemp(join(tmpdir(), "zcode-identity-test-"));
+  const directory = await mkdtemp(join(tmpdir(), "codez-identity-test-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const outfile = join(directory, "test.cjs");
   await build({
@@ -84,9 +84,9 @@ async function loadRuntimeModule(t, source, flavor = "codex", plugins = []) {
     logLevel: "silent",
     plugins,
     define: {
-      __ZCODE_PRODUCT_FLAVOR__: JSON.stringify(flavor),
-      __ZCODE_ENV__: '"production"',
-      "process.env.ZCODE_DESKTOP_RUNTIME": JSON.stringify(flavor === "codex" ? "codex" : ""),
+      __CODEZ_PRODUCT_FLAVOR__: JSON.stringify(flavor),
+      __CODEZ_ENV__: '"production"',
+      "process.env.CODEZ_DESKTOP_RUNTIME": JSON.stringify(flavor === "codex" ? "codex" : ""),
     },
   });
   return { module: createRequire(import.meta.url)(outfile), directory };
@@ -94,12 +94,12 @@ async function loadRuntimeModule(t, source, flavor = "codex", plugins = []) {
 
 test("compiled codex flavor survives normalization and preserves upstream defaults", async (t) => {
   const { module } = await loadRuntimeModule(t, "packages/shared/src/env.ts");
-  assert.equal(module.ZCODE_PRODUCT_FLAVOR, "codex");
+  assert.equal(module.CODEZ_PRODUCT_FLAVOR, "codex");
   for (const backend of ["production", "test"])
-    assert.equal(module.normalizeZCodeProductFlavor("codex", backend), "codex");
-  assert.equal(module.normalizeZCodeProductFlavor(undefined, "production"), "production");
-  assert.equal(module.normalizeZCodeProductFlavor(undefined, "test"), "preview");
-  assert.equal(module.normalizeZCodeProductFlavor("codex-other", "production"), "production");
+    assert.equal(module.normalizeCodezProductFlavor("codex", backend), "codex");
+  assert.equal(module.normalizeCodezProductFlavor(undefined, "production"), "production");
+  assert.equal(module.normalizeCodezProductFlavor(undefined, "test"), "preview");
+  assert.equal(module.normalizeCodezProductFlavor("codex-other", "production"), "production");
 });
 
 test("runtime identities, settings and data roots are disjoint and idempotent", async (t) => {
@@ -107,14 +107,14 @@ test("runtime identities, settings and data roots are disjoint and idempotent", 
     t,
     "packages/desktop/src/main/desktopProductRuntime.ts",
   );
-  assert.equal(runtime.resolveDesktopApplicationName("codex", true), "ZCode Codex");
-  assert.equal(runtime.resolveDesktopApplicationName("codex", false), "ZCode Codex Dev");
-  const base = join(directory, ".zcode-codex");
+  assert.equal(runtime.resolveDesktopApplicationName("codex", true), "Codez Codex");
+  assert.equal(runtime.resolveDesktopApplicationName("codex", false), "Codez Codex Dev");
+  const base = join(directory, ".codez-codex");
   assert.equal(runtime.resolveDesktopDataBaseDir(undefined, directory), base);
   assert.equal(runtime.resolveDesktopDataBaseDir(base, directory), base);
   assert.equal(
     runtime.resolveDesktopBootstrapSettingsFile(directory),
-    join(base, ".zcode/v2/setting.json"),
+    join(base, ".codez/v2/setting.json"),
   );
   assert.notEqual(
     runtime.resolveDesktopBootstrapSettingsFile(directory),
@@ -122,7 +122,7 @@ test("runtime identities, settings and data roots are disjoint and idempotent", 
   );
   assert.deepEqual(runtime.resolveDesktopUpdatePolicy(), {
     automatic: false,
-    manualReleasePage: "https://github.com/KingingWang/ZCode/releases",
+    manualReleasePage: "https://github.com/KingingWang/Codez/releases",
   });
   assert.equal(runtime.resolveDesktopUpdatePolicy("production").automatic, true);
   assert.equal(runtime.resolveDesktopUpdatePolicy("preview").automatic, false);
@@ -153,12 +153,12 @@ test("Codex deep links accept only the fork scheme, including encoded argv", asy
     t,
     "packages/desktop/src/main/desktopDeepLinkUrl.ts",
   );
-  const url = "zcode-codex://workspace/open?path=%2Ftmp%2Fworkspace";
+  const url = "codez-codex://workspace/open?path=%2Ftmp%2Fworkspace";
   assert.equal(links.extractDeepLinkUrlFromArgs([encodeURIComponent(url)]), url);
   assert.equal(links.extractWorkspaceOpenPath(new URL(url)), "/tmp/workspace");
-  assert.equal(links.extractDeepLinkUrlFromArgs(["zcode://workspace/open?path=/tmp"]), null);
-  assert.equal(links.isOAuthCallbackUrl(new URL("zcode://oauth/callback?state=abc")), false);
-  assert.equal(links.isOAuthCallbackUrl(new URL("zcode-codex://oauth/callback?state=abc")), true);
+  assert.equal(links.extractDeepLinkUrlFromArgs(["codez://workspace/open?path=/tmp"]), null);
+  assert.equal(links.isOAuthCallbackUrl(new URL("codez://oauth/callback?state=abc")), false);
+  assert.equal(links.isOAuthCallbackUrl(new URL("codez-codex://oauth/callback?state=abc")), true);
   const upstream = await loadRuntimeModule(
     t,
     "packages/desktop/src/main/desktopDeepLinkUrl.ts",
@@ -174,11 +174,11 @@ test("Linux registration neither replaces nor deletes the upstream desktop entry
   );
   const applications = join(directory, ".local/share/applications");
   await mkdir(applications, { recursive: true });
-  const upstream = join(applications, "zcode.desktop");
-  await writeFile(upstream, "Comment=ZCode Desktop App\nupstream sentinel\n");
+  const upstream = join(applications, "codez.desktop");
+  await writeFile(upstream, "Comment=Codez Desktop App\nupstream sentinel\n");
   const calls = [];
   module.registerLinuxDeepLinkProtocol({
-    executablePath: "/opt/ZCode Codex/zcode-codex",
+    executablePath: "/opt/Codez Codex/codez-codex",
     homeDir: directory,
     systemApplicationDirs: [],
     env: {},
@@ -189,11 +189,11 @@ test("Linux registration neither replaces nor deletes the upstream desktop entry
     },
   });
   assert.match(await readFile(upstream, "utf8"), /upstream sentinel/);
-  const entry = await readFile(join(applications, "zcode-codex.desktop"), "utf8");
-  assert.match(entry, /MimeType=x-scheme-handler\/zcode-codex;/);
-  assert.match(entry, /Icon=zcode-codex/);
+  const entry = await readFile(join(applications, "codez-codex.desktop"), "utf8");
+  assert.match(entry, /MimeType=x-scheme-handler\/codez-codex;/);
+  assert.match(entry, /Icon=codez-codex/);
   assert.ok(
-    calls.some(([command, args]) => command === "xdg-mime" && args[1] === "zcode-codex.desktop"),
+    calls.some(([command, args]) => command === "xdg-mime" && args[1] === "codez-codex.desktop"),
   );
 });
 
@@ -209,33 +209,33 @@ test("Finder workflow has a separate name, bundle id and protocol", async (t) =>
     refreshServicesIndex() {},
     logger: { info() {}, warn() {} },
   });
-  const contents = join(directory, "Library/Services/Open in ZCode Codex.workflow/Contents");
+  const contents = join(directory, "Library/Services/Open in Codez Codex.workflow/Contents");
   assert.match(
     await readFile(join(contents, "Info.plist"), "utf8"),
-    /io.github.kingingwang.zcode.codex.finder-open-workflow/,
+    /io.github.kingingwang.codez.codex.finder-open-workflow/,
   );
   assert.match(
     await readFile(join(contents, "document.wflow"), "utf8"),
-    /zcode-codex:\/\/workspace\/open/,
+    /codez-codex:\/\/workspace\/open/,
   );
 });
 
 test("early bootstrap ignores upstream settings and namespaces a fork custom root", async (t) => {
-  const home = await mkdtemp(join(tmpdir(), "zcode-bootstrap-test-"));
+  const home = await mkdtemp(join(tmpdir(), "codez-bootstrap-test-"));
   t.after(() => {
     delete globalThis.__codexTestBase;
     return rm(home, { recursive: true, force: true });
   });
-  await mkdir(join(home, ".zcode/v2"), { recursive: true });
+  await mkdir(join(home, ".codez/v2"), { recursive: true });
   await writeFile(
-    join(home, ".zcode/v2/setting.json"),
+    join(home, ".codez/v2/setting.json"),
     JSON.stringify({ dataBaseDir: "/upstream-must-not-be-read" }),
   );
   const plugins = [
     {
       name: "bootstrap-ports",
       setup(build) {
-        build.onResolve({ filter: /^@zcode\/services\/node$|^node:os$/ }, ({ path }) => ({
+        build.onResolve({ filter: /^@codez\/services\/node$|^node:os$/ }, ({ path }) => ({
           path,
           namespace: "fixture",
         }));
@@ -254,15 +254,15 @@ test("early bootstrap ignores upstream settings and namespaces a fork custom roo
     "codex",
     plugins,
   );
-  assert.equal(module.applyEarlyDataBaseDirBootstrap(), join(home, ".zcode-codex"));
-  assert.equal(globalThis.__codexTestBase, join(home, ".zcode-codex"));
-  const forkSettings = join(home, ".zcode-codex/.zcode/v2");
+  assert.equal(module.applyEarlyDataBaseDirBootstrap(), join(home, ".codez-codex"));
+  assert.equal(globalThis.__codexTestBase, join(home, ".codez-codex"));
+  const forkSettings = join(home, ".codez-codex/.codez/v2");
   await mkdir(forkSettings, { recursive: true });
   await writeFile(
     join(forkSettings, "setting.json"),
     JSON.stringify({ dataBaseDir: join(home, "custom") }),
   );
-  assert.equal(module.applyEarlyDataBaseDirBootstrap(), join(home, "custom/.zcode-codex"));
+  assert.equal(module.applyEarlyDataBaseDirBootstrap(), join(home, "custom/.codez-codex"));
 });
 
 test("macOS development bundle uses Codex identity and protocol", async (t) => {
@@ -273,7 +273,7 @@ test("macOS development bundle uses Codex identity and protocol", async (t) => {
   const plist =
     "<plist><dict><key>CFBundleDisplayName</key><string>Electron</string><key>CFBundleIdentifier</key><string>com.github.Electron</string><key>CFBundleName</key><string>Electron</string></dict></plist>";
   const patched = module.patchDevElectronInfoPlist(plist);
-  assert.match(patched, /ZCode Codex Dev/);
-  assert.match(patched, /io.github.kingingwang.zcode.codex.development/);
-  assert.match(patched, /<string>zcode-codex<\/string>/);
+  assert.match(patched, /Codez Codex Dev/);
+  assert.match(patched, /io.github.kingingwang.codez.codex.development/);
+  assert.match(patched, /<string>codez-codex<\/string>/);
 });

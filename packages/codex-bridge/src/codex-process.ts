@@ -288,7 +288,7 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
       return (initialization ??= (async () => {
         try {
           await request("initialize", {
-            clientInfo: { name: "zcode", title: "ZCode", version: "0.1.0" },
+            clientInfo: { name: "codez", title: "Codez", version: "0.1.0" },
             capabilities: { experimentalApi: true },
           });
           await write({ method: "initialized" });

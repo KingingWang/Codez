@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { codexMcpOauthResponseSchema } from "@zcode/shared";
+import { codexMcpOauthResponseSchema } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import { usePlatform } from "@/hooks/usePlatform.js";

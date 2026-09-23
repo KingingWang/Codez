@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, open, readFile, rename } from "node:fs/promises";
 import { join } from "node:path";
-import { commandAckSchema, type CommandAck } from "@zcode/shared/zcode-protocol-v4";
+import { commandAckSchema, type CommandAck } from "@codez/shared/codez-protocol-v4";
 
 /** Durable correlation only, never an execution queue. Pending means unknown, not retryable. */
 export class CommandLedger {

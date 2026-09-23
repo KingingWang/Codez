@@ -5,27 +5,27 @@
 // task-realtime.ts 保留旧协议兼容接口；本文件集中定义对应的运行时 schema。
 
 import { z } from "zod";
-import type { ZCodeTaskMigrationSource, ZCodeTaskMode } from "./zcode-task-types-core.js";
-import { zcodeAgentProviderSchema } from "./zcode-agent-policy.js";
-import { zcodePermissionResponseSchema } from "./zcode-protocol-legacy-types.js";
+import type { CodezTaskMigrationSource, CodezTaskMode } from "./codez-task-types-core.js";
+import { codezAgentProviderSchema } from "./codez-agent-policy.js";
+import { codezPermissionResponseSchema } from "./codez-protocol-legacy-types.js";
 // merge 冲突解决：两侧分别在相邻行新增独立 import（本分支 hook trust review
 // 决策 schema、staging telemetry error attribution schema），二者无语义交集，均保留。
-import { workspaceHookReviewDecisionSchema } from "./zcode-protocol-v4/workspace-hook-review.js";
-import { errorAttributionSchema } from "./zcode-protocol-v4/snapshot.js";
+import { workspaceHookReviewDecisionSchema } from "./codez-protocol-v4/workspace-hook-review.js";
+import { errorAttributionSchema } from "./codez-protocol-v4/snapshot.js";
 
 const nonEmptyString = z.string().trim().min(1);
-const zcodeTaskModeRealtimeValues = [
+const codezTaskModeRealtimeValues = [
   "yolo",
   "plan",
   "edit",
   "auto",
   "autoEdit",
   "build",
-] as const satisfies readonly ZCodeTaskMode[];
-const zcodeTaskMigrationSourceRealtimeValues = [
+] as const satisfies readonly CodezTaskMode[];
+const codezTaskMigrationSourceRealtimeValues = [
   "claudeCode",
-] as const satisfies readonly ZCodeTaskMigrationSource[];
-const zcodeTaskChangeSummaryRealtimeSchema = z
+] as const satisfies readonly CodezTaskMigrationSource[];
+const codezTaskChangeSummaryRealtimeSchema = z
   .object({
     fileCount: z.number().int().nonnegative(),
     added: z.number().int().nonnegative(),
@@ -53,12 +53,12 @@ const taskMetaRealtimeSchema = z.object({
   createdAt: z.number().int().nonnegative(),
   updatedAt: z.number().int().nonnegative(),
   // realtime deliver 的运行时 schema 之前把 mode 放宽成 string，
-  // schema 推导类型因此无法回到 ZCodeTaskMeta，host typecheck 也就无法覆盖这条链路。
-  mode: z.enum(zcodeTaskModeRealtimeValues),
+  // schema 推导类型因此无法回到 CodezTaskMeta，host typecheck 也就无法覆盖这条链路。
+  mode: z.enum(codezTaskModeRealtimeValues),
   model: z.string().optional(),
   runtimeEpoch: z.number().int().nonnegative().optional(),
-  provider: zcodeAgentProviderSchema.optional(),
-  migrationSource: z.enum(zcodeTaskMigrationSourceRealtimeValues).optional(),
+  provider: codezAgentProviderSchema.optional(),
+  migrationSource: z.enum(codezTaskMigrationSourceRealtimeValues).optional(),
   forkedFromTaskId: nonEmptyString.optional(),
   unreadAt: z.number().int().nonnegative().optional(),
   status: z.enum(["running", "completed", "error"]).optional(),
@@ -73,7 +73,7 @@ const taskMetaRealtimeSchema = z.object({
       attribution: errorAttributionSchema.optional(),
     })
     .optional(),
-  changeSummary: zcodeTaskChangeSummaryRealtimeSchema.optional(),
+  changeSummary: codezTaskChangeSummaryRealtimeSchema.optional(),
 });
 export function resolveWorkspaceKey(params: {
   workspacePath: string;
@@ -158,7 +158,7 @@ export const workspaceTaskListInvalidatedEventSchema = taskRealtimeInvalidationB
     taskMeta: taskMetaRealtimeSchema.optional(),
   })
   .strict();
-const zcodePromptAttachmentSchema = z.discriminatedUnion("kind", [
+const codezPromptAttachmentSchema = z.discriminatedUnion("kind", [
   z
     .object({
       kind: z.literal("image"),
@@ -223,7 +223,7 @@ const taskStreamMirrorUserMessagePublishOpSchema = z
     kind: z.literal("user_message"),
     messageId: nonEmptyString,
     content: z.string(),
-    attachments: z.array(zcodePromptAttachmentSchema).optional(),
+    attachments: z.array(codezPromptAttachmentSchema).optional(),
     timestamp: z.number().finite(),
   })
   .strict();
@@ -328,7 +328,7 @@ const taskRespondPermissionOwnerCommandRequestSchema = taskOwnerCommandBaseSchem
     type: z.literal("respond_permission"),
     permissionRequestId: nonEmptyString,
     optionId: nonEmptyString,
-    response: zcodePermissionResponseSchema,
+    response: codezPermissionResponseSchema,
   })
   .strict();
 const taskRespondElicitationOwnerCommandRequestSchema = taskOwnerCommandBaseSchema
@@ -360,7 +360,7 @@ const taskRespondWorkspaceHookReviewOwnerCommandRequestSchema = taskOwnerCommand
       });
     }
   });
-const zcodeTaskRuntimeCommandBaseSchema = z
+const codezTaskRuntimeCommandBaseSchema = z
   .object({
     commandId: nonEmptyString,
     taskId: nonEmptyString,
@@ -376,12 +376,12 @@ const zcodeTaskRuntimeCommandBaseSchema = z
     error: z.string().optional(),
   })
   .strict();
-const zcodeTaskRuntimeCommandSchema = z.discriminatedUnion("type", [
-  zcodeTaskRuntimeCommandBaseSchema
+const codezTaskRuntimeCommandSchema = z.discriminatedUnion("type", [
+  codezTaskRuntimeCommandBaseSchema
     .extend({
       type: z.literal("send_prompt"),
       content: z.string(),
-      attachments: z.array(zcodePromptAttachmentSchema).optional(),
+      attachments: z.array(codezPromptAttachmentSchema).optional(),
       automationId: nonEmptyString.optional(),
     })
     .strict(),
@@ -389,7 +389,7 @@ const zcodeTaskRuntimeCommandSchema = z.discriminatedUnion("type", [
 const taskEnqueueCommandOwnerCommandRequestSchema = taskOwnerCommandBaseSchema
   .extend({
     type: z.literal("enqueue_task_command"),
-    taskCommand: zcodeTaskRuntimeCommandSchema,
+    taskCommand: codezTaskRuntimeCommandSchema,
   })
   .strict();
 const taskPromoteCommandOwnerCommandRequestSchema = taskOwnerCommandBaseSchema
@@ -470,7 +470,7 @@ export const taskOwnerCommandResultSchema = z.discriminatedUnion("success", [
     .object({
       commandRequestId: nonEmptyString,
       success: z.literal(true),
-      taskCommand: zcodeTaskRuntimeCommandSchema.optional(),
+      taskCommand: codezTaskRuntimeCommandSchema.optional(),
     })
     .strict(),
   z

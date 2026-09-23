@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { setDataBaseDir } from "@zcode/services/node";
+import { setDataBaseDir } from "@codez/services/node";
 import {
   isCodexDesktop,
   resolveDesktopBootstrapSettingsFile,
@@ -38,7 +38,7 @@ function readBootstrapDataBaseDirFromDisk(
 export function applyEarlyDataBaseDirBootstrap(): string | null {
   const configured = readBootstrapDataBaseDirFromDisk();
   const dataBaseDir = isCodexDesktop
-    ? resolveDesktopDataBaseDir(configured ?? process.env.ZCODE_DATA_BASE_DIR)
+    ? resolveDesktopDataBaseDir(configured ?? process.env.CODEZ_DATA_BASE_DIR)
     : configured;
   if (dataBaseDir) {
     // 启动早期就把 dataBaseDir 注入进来，避免 logger / crashReporter 先按默认 HOME 建目录，

@@ -7,7 +7,7 @@ import { quoteArgsForWindowsShell } from "./spawn-command.mjs";
 import { resolveDesktopRuntime } from "../packages/desktop/scripts/desktop-product-identity.mjs";
 import { prepareCodexRuntime } from "../packages/desktop/scripts/prepare-codex-runtime.mjs";
 
-process.env.ZCODE_DESKTOP_RUNTIME = resolveDesktopRuntime();
+process.env.CODEZ_DESKTOP_RUNTIME = resolveDesktopRuntime();
 
 const requestedEnv = process.argv[2]?.trim().toLowerCase();
 const agentBytecode = process.argv.slice(3).includes("--agent-bytecode");
@@ -29,8 +29,8 @@ function run(command, args) {
       env: withPinnedNodePath(
         {
           ...process.env,
-          ZCODE_ENV: requestedEnv,
-          ZCODE_DESKTOP_AGENT_BYTECODE: agentBytecode ? "1" : "0",
+          CODEZ_ENV: requestedEnv,
+          CODEZ_DESKTOP_AGENT_BYTECODE: agentBytecode ? "1" : "0",
         },
         process.execPath,
       ),
@@ -61,17 +61,17 @@ try {
   // `dev` lifecycle directly, so pnpm will not run `pre-dev` automatically.
   // Preserve its runtime-asset preparation and stale `out` cleanup explicitly
   // before rebuilding bundles or starting Electron.
-  await run(pnpmCommand, ["--filter", "@zcode/desktop", "pre-dev"]);
+  await run(pnpmCommand, ["--filter", "@codez/desktop", "pre-dev"]);
   // On Windows, use "node" (resolved via PATHEXT) to avoid "C:\Program Files\..." space issues
-  if (process.env.ZCODE_DESKTOP_RUNTIME === "codex") {
+  if (process.env.CODEZ_DESKTOP_RUNTIME === "codex") {
     if (agentBytecode)
-      throw new Error("--agent-bytecode is only supported with ZCODE_DESKTOP_RUNTIME=legacy");
+      throw new Error("--agent-bytecode is only supported with CODEZ_DESKTOP_RUNTIME=legacy");
     const directory = await prepareCodexRuntime();
-    process.env.ZCODE_CODEX_COMMAND = resolve(
+    process.env.CODEZ_CODEX_COMMAND = resolve(
       directory,
       process.platform === "win32" ? "codex.exe" : "codex",
     );
-    process.env.ZCODE_CODEX_BRIDGE_PATH = resolve(
+    process.env.CODEZ_CODEX_BRIDGE_PATH = resolve(
       repoRoot,
       "packages/codex-bridge/dist/bridge.cjs",
     );
@@ -80,12 +80,12 @@ try {
       resolve(repoRoot, "scripts/build-desktop-agent-cli.mjs"),
     ]);
   }
-  if (agentBytecode && process.env.ZCODE_DESKTOP_RUNTIME === "legacy") {
+  if (agentBytecode && process.env.CODEZ_DESKTOP_RUNTIME === "legacy") {
     await run(process.platform === "win32" ? "node" : process.execPath, [
       resolve(repoRoot, "scripts/build-desktop-agent-bytecode.mjs"),
     ]);
   }
-  await run(pnpmCommand, ["--filter", "@zcode/desktop", "dev:runtime"]);
+  await run(pnpmCommand, ["--filter", "@codez/desktop", "dev:runtime"]);
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exit(1);

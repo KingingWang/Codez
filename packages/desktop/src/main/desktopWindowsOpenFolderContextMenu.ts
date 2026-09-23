@@ -1,14 +1,14 @@
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
-import type { Locale } from "@zcode/shared";
+import type { Locale } from "@codez/shared";
 import { isCodexDesktop } from "./desktopProductRuntime.js";
 
-const MENU_KEY_NAME = isCodexDesktop ? "ZCodeCodex.OpenInZCodeCodex" : "ZCode.OpenInZCode";
+const MENU_KEY_NAME = isCodexDesktop ? "CodezCodex.OpenInCodezCodex" : "Codez.OpenInCodez";
 const DIRECTORY_MENU_KEY = `HKCU\\Software\\Classes\\Directory\\shell\\${MENU_KEY_NAME}`;
 const DRIVE_MENU_KEY = `HKCU\\Software\\Classes\\Drive\\shell\\${MENU_KEY_NAME}`;
 const MENU_LABELS: Record<Locale, string> = {
-  "zh-CN": isCodexDesktop ? "在 ZCode Codex 中打开" : "在ZCode中打开",
-  "en-US": isCodexDesktop ? "Open in ZCode Codex" : "Open in ZCode",
+  "zh-CN": isCodexDesktop ? "在 Codez Codex 中打开" : "在Codez中打开",
+  "en-US": isCodexDesktop ? "Open in Codez Codex" : "Open in Codez",
 };
 
 type Logger = {

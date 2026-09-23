@@ -19,7 +19,7 @@ export async function smokeCodexRuntime() {
     throw new Error("Codex smoke must run natively for its matrix target");
   const binary = await stageCodexBinary({ target });
   await verifyCodexBinary(binary, selectCodexAsset(await loadCodexManifest(), target));
-  const temporary = await mkdtemp(join(tmpdir(), "zcode-codex-smoke-"));
+  const temporary = await mkdtemp(join(tmpdir(), "codez-codex-smoke-"));
   // 测试不继承 API key、账号 token 或用户的 Codex 配置，只传进程启动必需环境。
   const env = { CODEX_HOME: join(temporary, "config") };
   for (const key of [
@@ -102,7 +102,7 @@ export async function smokeCodexRuntime() {
         }
       });
       child.stdin.write(
-        `${JSON.stringify({ id: 1, method: "initialize", params: { clientInfo: { name: "zcode_codex_distribution_smoke", version: "1.0.0" }, capabilities: { experimentalApi: true } } })}\n`,
+        `${JSON.stringify({ id: 1, method: "initialize", params: { clientInfo: { name: "codez_codex_distribution_smoke", version: "1.0.0" }, capabilities: { experimentalApi: true } } })}\n`,
       );
     });
     child.stdin.end();

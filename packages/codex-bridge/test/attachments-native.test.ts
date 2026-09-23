@@ -8,7 +8,7 @@ import {
   V4_METHODS,
   attachmentRefSchema,
   v4AttachmentCommitResultSchema,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { AttachmentStore } from "../src/attachments.js";
 
 const sessionId = "native-thread";
@@ -16,7 +16,7 @@ const scope = { sessionId, connectionId: "connection", uploadId: "image-upload" 
 const fakeId = "00000000-0000-4000-8000-000000000000";
 
 async function fixture(t: TestContext) {
-  const cwd = await mkdtemp(join(tmpdir(), "zcode native lookup 中文 "));
+  const cwd = await mkdtemp(join(tmpdir(), "codez native lookup 中文 "));
   const root = join(cwd, "attachments");
   const stores: AttachmentStore[] = [];
   const create = (options = { cwd, root }) => {
@@ -103,7 +103,7 @@ test("unrelated and noncanonical paths are rejected before any storage I/O", asy
     relative(cwd, expected),
     basename(expected),
     `file://${expected}`,
-    `zcode-attachment://${fakeId}`,
+    `codez-attachment://${fakeId}`,
     `${dirname(expected)}${sep}..${sep}objects${sep}${basename(expected)}`,
     `${dirname(expected)}${sep}.${sep}${basename(expected)}`,
     `${dirname(expected)}${sep}${sep}${basename(expected)}`,

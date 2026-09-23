@@ -22,14 +22,14 @@ export async function generateCodexSchema(
       !isAbsolute(segment)
     );
   };
-  if (!inside(destination)) throw new Error("Schema output must be inside ZCode");
+  if (!inside(destination)) throw new Error("Schema output must be inside Codez");
   // 先检查最近的真实父目录，防止软链接把生成结果写入邻居仓库。
   let parent = destination;
   while (true) {
     try {
       const actual = await realpath(parent);
       if (actual !== root && !inside(actual))
-        throw new Error("Schema output escapes ZCode through a symlink");
+        throw new Error("Schema output escapes Codez through a symlink");
       break;
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
@@ -69,7 +69,7 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
   const args = process.argv.slice(2);
   if (args.length > 2 || (args[1] && args[1] !== "--json"))
     throw new Error(
-      "Usage: node scripts/codex-runtime-schema.mjs [ZCode-relative-output] [--json]",
+      "Usage: node scripts/codex-runtime-schema.mjs [Codez-relative-output] [--json]",
     );
   console.log(await generateCodexSchema(args[0], { json: args[1] === "--json" }));
 }

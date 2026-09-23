@@ -4,12 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import test from "node:test";
-import { ZCODE_VERSION } from "@zcode/shared";
+import { CODEZ_VERSION } from "@codez/shared";
 import type { IRemoteBackend, StdioStream } from "../src/remote/backend.js";
 import type { RemoteAssetInstaller } from "../src/remote/remoteAssetInstaller.js";
 
 // 模块级部署根与产品构建绑定；测试进程单独选择 Codex，不修改真实远端或用户目录。
-process.env.ZCODE_DESKTOP_RUNTIME = "codex";
+process.env.CODEZ_DESKTOP_RUNTIME = "codex";
 const { resolveRemoteRuntimeLayout } = await import("../src/remote/remoteRuntime.js");
 const { buildRemoteServerCommand } = await import("../src/remote/connect.js");
 const { deployCodexRuntime, assertCodexRemoteNodeVersion, assertCodexRemoteEnvironment } =
@@ -20,7 +20,7 @@ const { deployServer } = await import("../src/remote/deploy.js");
 const { LocalUploadAssetInstaller, RemoteDownloadAssetInstaller } =
   await import("../src/remote/remoteAssetInstaller.js");
 
-const root = "~/.zcode-codex/server";
+const root = "~/.codez-codex/server";
 const sha = "a".repeat(64);
 const loggers = { log() {}, logWarn() {} };
 
@@ -94,14 +94,14 @@ function fixture() {
 }
 
 test("product runtime layout isolates Codex while explicit legacy retains its root", () => {
-  assert.deepEqual(resolveRemoteRuntimeLayout({ ZCODE_DESKTOP_RUNTIME: "codex" }, "preview"), {
+  assert.deepEqual(resolveRemoteRuntimeLayout({ CODEZ_DESKTOP_RUNTIME: "codex" }, "preview"), {
     kind: "codex",
     root,
   });
   assert.deepEqual(resolveRemoteRuntimeLayout({}, "codex"), { kind: "codex", root });
-  assert.deepEqual(resolveRemoteRuntimeLayout({ ZCODE_DESKTOP_RUNTIME: "legacy" }, "codex"), {
+  assert.deepEqual(resolveRemoteRuntimeLayout({ CODEZ_DESKTOP_RUNTIME: "legacy" }, "codex"), {
     kind: "legacy",
-    root: "~/.zcode/server",
+    root: "~/.codez/server",
   });
   assert.equal(resolveRemoteRuntimeLayout({}, "preview").kind, "legacy");
 });
@@ -110,25 +110,25 @@ test("startup expands remote home, preserves network authority, and never forwar
   const command = buildRemoteServerCommand(
     {
       remoteRuntimeEnv: {
-        ZCODE_CODEX_COMMAND: "/desktop/codex",
-        ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED: "0",
+        CODEZ_CODEX_COMMAND: "/desktop/codex",
+        CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED: "0",
       },
       appVersion: "1.0'quoted",
     },
     { authoritative: true, httpProxy: "http://127.0.0.1:18080", noProxy: "localhost" },
   );
-  assert.match(command, /ZCODE_CODEX_COMMAND="\$HOME"'\/\.zcode-codex\/server\/codex\/codex'/);
+  assert.match(command, /CODEZ_CODEX_COMMAND="\$HOME"'\/\.codez-codex\/server\/codex\/codex'/);
   assert.match(
     command,
-    /ZCODE_CODEX_BRIDGE_PATH="\$HOME"'\/\.zcode-codex\/server\/codex\/bridge.cjs'/,
+    /CODEZ_CODEX_BRIDGE_PATH="\$HOME"'\/\.codez-codex\/server\/codex\/bridge.cjs'/,
   );
-  assert.match(command, /ZCODE_CODEX_BRIDGE_HOME="\$HOME"'\/\.zcode-codex\/bridge'/);
+  assert.match(command, /CODEZ_CODEX_BRIDGE_HOME="\$HOME"'\/\.codez-codex\/bridge'/);
   assert.match(command, /desktop-attached-remote/);
   assert.match(command, /http:\/\/127.0.0.1:18080/);
-  assert.match(command, /ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED='0'/);
+  assert.match(command, /CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED='0'/);
   assert.ok(
     command.endsWith(
-      `"$HOME"'/.zcode-codex/server/node' "$HOME"'/.zcode-codex/server/zcode-server.cjs'`,
+      `"$HOME"'/.codez-codex/server/node' "$HOME"'/.codez-codex/server/codez-server.cjs'`,
     ),
   );
   assert.doesNotMatch(command, /\/desktop\/|app-server|--surface|--prepare-storage|glm/);
@@ -274,7 +274,7 @@ test("existing Node/server pipeline selects Codex, never GLM, for new and matchi
     for (const platform of ["linux", "darwin"]) {
       for (const arch of ["x64", "arm64"]) {
         await t.test(`${mode}/${platform}-${arch}`, async (t) => {
-          const cache = await mkdtemp(join(tmpdir(), "zcode-codex-remote-cache-"));
+          const cache = await mkdtemp(join(tmpdir(), "codez-codex-remote-cache-"));
           t.after(() => rm(cache, { recursive: true, force: true }));
           const platformArch = `${platform}-${arch}`;
           const matchingServer = arch === "arm64";
@@ -283,7 +283,7 @@ test("existing Node/server pipeline selects Codex, never GLM, for new and matchi
           f.files.delete(`${root}/codex/bridge.cjs`);
           if (matchingServer) {
             f.files.add(`${root}/node`);
-            f.files.add(`${root}/zcode-server.cjs`);
+            f.files.add(`${root}/codez-server.cjs`);
           }
           f.backend.readFile = async (path) => {
             const id = path
@@ -296,8 +296,8 @@ test("existing Node/server pipeline selects Codex, never GLM, for new and matchi
             f.commands.push(command);
             return stream(
               command.endsWith("--version")
-                ? command.includes("zcode-server.cjs")
-                  ? ZCODE_VERSION
+                ? command.includes("codez-server.cjs")
+                  ? CODEZ_VERSION
                   : "v24.14.0"
                 : command.includes("command -v curl")
                   ? "download=curl\ntar=tar\nsha256=sha256sum\n"
@@ -336,7 +336,7 @@ test("existing Node/server pipeline selects Codex, never GLM, for new and matchi
           );
           const manifest = {
             schemaVersion: 1,
-            appVersion: ZCODE_VERSION,
+            appVersion: CODEZ_VERSION,
             platformArch,
             components: [
               { id: "server-bundle", mount: "server" },
@@ -372,12 +372,12 @@ test("existing Node/server pipeline selects Codex, never GLM, for new and matchi
           assert.ok(!installed.includes("glm"));
           assert.ok(
             f.commands.some(
-              (command) => command.endsWith("--version") && !command.includes("zcode-server.cjs"),
+              (command) => command.endsWith("--version") && !command.includes("codez-server.cjs"),
             ),
           );
           assert.ok(
             f.commands.every(
-              (command) => !command.includes("/.zcode/server") && !command.includes("glm"),
+              (command) => !command.includes("/.codez/server") && !command.includes("glm"),
             ),
           );
         });

@@ -22,7 +22,7 @@ async function fixture(t) {
   const manifest = structuredClone(await loadCodexManifest());
   manifest.assets["linux-x64"].sha256 = createHash("sha256").update(bytes).digest("hex");
   manifest.assets["linux-x64"].size = bytes.length;
-  const target = resolveCodexTarget({ ZCODE_TARGET_OS: "linux", ZCODE_TARGET_ARCH: "x64" });
+  const target = resolveCodexTarget({ CODEZ_TARGET_OS: "linux", CODEZ_TARGET_ARCH: "x64" });
   return { root, asset: selectCodexAsset(manifest, target) };
 }
 

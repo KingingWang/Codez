@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { codexRequestSchema, type CodexRequest } from "@zcode/shared";
+import { codexRequestSchema, type CodexRequest } from "@codez/shared";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
 import { invalidateCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
 import {
@@ -63,7 +63,7 @@ export function useCodexSettings({
 
   useEffect(() => {
     if (!enabled) return;
-    const subscription = services.zcodeAgentService.onAgentRuntimeRestarted((event) => {
+    const subscription = services.codezAgentService.onAgentRuntimeRestarted((event) => {
       // 相同 workspace 的运行时重启也会使 loginId、配置版本和待处理响应失效。
       if (event.workspaceKey === workspaceKey) setRuntimeRevision((revision) => revision + 1);
     });
@@ -85,7 +85,7 @@ export function useCodexSettings({
         throw new Error("Codex workspace changed; refresh current state");
       if (!workspacePath || !rpcReady)
         throw new Error("Open a connected workspace to configure Codex");
-      const agent = services.zcodeAgentService;
+      const agent = services.codezAgentService;
       // 由 Host 提供该方法；不回退旧配置服务，以免把未接通误报为已保存。
       if (typeof agent.codexRequest !== "function")
         throw new Error("Codex settings bridge is unavailable. Update the desktop runtime.");

@@ -25,8 +25,8 @@ export function resolveDesktopProductionCleanPaths(cwd) {
 }
 
 export async function cleanDesktopProductionOutput({ cwd }) {
-  if (process.env.ZCODE_E2E_KEEP_BUILD_CACHE === "1") {
-    console.log("[build] ZCODE_E2E_KEEP_BUILD_CACHE=1, skipping clean");
+  if (process.env.CODEZ_E2E_KEEP_BUILD_CACHE === "1") {
+    console.log("[build] CODEZ_E2E_KEEP_BUILD_CACHE=1, skipping clean");
     return;
   }
   // 生产构建之前如果已有开发态/旧生产态 out，tsup 不会主动删除过期 chunk。
@@ -41,7 +41,7 @@ export async function cleanDesktopProductionOutput({ cwd }) {
 export function createDesktopProductionBuildPlan({ cwd, baseEnv = process.env }) {
   const env = {
     ...baseEnv,
-    ZCODE_DESKTOP_RUNTIME: resolveDesktopRuntime(baseEnv),
+    CODEZ_DESKTOP_RUNTIME: resolveDesktopRuntime(baseEnv),
     NODE_ENV: "production",
   };
 

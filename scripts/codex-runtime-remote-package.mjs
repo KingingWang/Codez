@@ -36,15 +36,15 @@ const require = createRequire(join(serverRoot, "package.json"));
 export async function buildCodexRemoteServer() {
   await run(process.execPath, [require.resolve("tsx/cli"), "build-remote.ts"], {
     cwd: serverRoot,
-    env: { ...process.env, ZCODE_DESKTOP_RUNTIME: "codex" },
+    env: { ...process.env, CODEZ_DESKTOP_RUNTIME: "codex" },
     maxBuffer: 16 * 1024 * 1024,
     shell: false,
   });
-  return join(serverRoot, "dist/remote/zcode-server.cjs");
+  return join(serverRoot, "dist/remote/codez-server.cjs");
 }
 
 export async function copyCodexRemoteServer(directory) {
-  for (const file of ["zcode-server.cjs", "THIRD-PARTY-NOTICES.md"]) {
+  for (const file of ["codez-server.cjs", "THIRD-PARTY-NOTICES.md"]) {
     await copyFile(join(serverRoot, "dist/remote", file), join(directory, file));
   }
 }
@@ -114,25 +114,25 @@ export async function prepareCodexRemotePackage({
     const files = await hashTree(directory);
     const descriptor = {
       schemaVersion: 1,
-      product: "zcode-codex",
+      product: "codez-codex",
       platformArch: target.key,
       ...codexRemoteDeploymentContract,
-      runtimeRoot: "~/.zcode-codex/server",
+      runtimeRoot: "~/.codez-codex/server",
       node,
       files,
       searchComponents: searchPlan.artifacts.map(({ toolId, release }) => ({
         id: toolId,
         version: release,
       })),
-      command: ["<runtimeRoot>/node", "<runtimeRoot>/zcode-server.cjs"],
+      command: ["<runtimeRoot>/node", "<runtimeRoot>/codez-server.cjs"],
       requiredEnv: {
-        ZCODE_DESKTOP_RUNTIME: "codex",
-        ZCODE_SERVER_RUNTIME_ROOT: "<runtimeRoot>",
-        ZCODE_CODEX_BRIDGE_PATH: "<runtimeRoot>/codex/bridge.cjs",
-        ZCODE_CODEX_COMMAND: "<runtimeRoot>/codex/codex",
-        ZCODE_CODEX_BRIDGE_HOME: "~/.zcode-codex/bridge",
-        ZCODE_DATA_BASE_DIR: "~/.zcode-codex",
-        ZCODE_HOME: "~/.zcode-codex/.zcode",
+        CODEZ_DESKTOP_RUNTIME: "codex",
+        CODEZ_SERVER_RUNTIME_ROOT: "<runtimeRoot>",
+        CODEZ_CODEX_BRIDGE_PATH: "<runtimeRoot>/codex/bridge.cjs",
+        CODEZ_CODEX_COMMAND: "<runtimeRoot>/codex/codex",
+        CODEZ_CODEX_BRIDGE_HOME: "~/.codez-codex/bridge",
+        CODEZ_DATA_BASE_DIR: "~/.codez-codex",
+        CODEZ_HOME: "~/.codez-codex/.codez",
       },
     };
     await writeFile(
@@ -170,7 +170,7 @@ export async function publishCodexRemoteComponents({
   const key = descriptor.platformArch;
   const grouped = join(temporary, "groups");
   for (const [group, names] of [
-    ["server", ["zcode-server.cjs", "THIRD-PARTY-NOTICES.md"]],
+    ["server", ["codez-server.cjs", "THIRD-PARTY-NOTICES.md"]],
     ["node", ["node", "LICENSE.node.txt", "NODE-SOURCES.json"]],
   ]) {
     await mkdir(join(grouped, group), { recursive: true });

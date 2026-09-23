@@ -7,7 +7,7 @@ import {
   type V4AttachmentChunkParams,
   type V4AttachmentChunkResult,
   type V4AttachmentCommitParams,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { AttachmentFiles } from "./attachments-files.js";
 import { attachmentFault } from "./attachments-types.js";
 

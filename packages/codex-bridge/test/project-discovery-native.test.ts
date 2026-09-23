@@ -152,7 +152,7 @@ test(
     timeout: 60_000,
   },
   async (t) => {
-    const temporary = await mkdtemp(join(tmpdir(), "zcode-discovery-native-"));
+    const temporary = await mkdtemp(join(tmpdir(), "codez-discovery-native-"));
     const physicalCwd = join(temporary, "workspace");
     // macOS 的 /var/folders 与 Windows 8.3 短名临时目录都是别名拼写；用符号链接/junction
     // 让每个平台都复现“Host 传别名、原生落盘物理路径”的真实生产场景。

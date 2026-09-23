@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BackgroundBashOutput, BackgroundBashOutputResult } from "@zcode/shared";
-import { useZCodeAgentService } from "@/hooks/useZCodeAgentService.js";
+import type { BackgroundBashOutput, BackgroundBashOutputResult } from "@codez/shared";
+import { useCodezAgentService } from "@/hooks/useCodezAgentService.js";
 import { ensureAgentV4ConnectionHandshake } from "@/v4/agentV4ConnectionHandshake.js";
 import { logger } from "@/logger.js";
 
@@ -14,7 +14,7 @@ interface BackgroundBashOutputTarget {
 
 export function useBackgroundBashOutput(target: BackgroundBashOutputTarget, visible: boolean) {
   const { workspacePath, workspaceIdentity, remoteSessionId, sessionId, workId } = target;
-  const service = useZCodeAgentService(workspacePath, remoteSessionId, workspaceIdentity);
+  const service = useCodezAgentService(workspacePath, remoteSessionId, workspaceIdentity);
   const [latest, setLatest] = useState<BackgroundBashOutput | null>(null);
   const [frozen, setFrozen] = useState<BackgroundBashOutput | null>(null);
   const [error, setError] = useState<string | null>(null);

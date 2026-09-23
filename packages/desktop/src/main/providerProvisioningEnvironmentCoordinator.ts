@@ -1,4 +1,4 @@
-import type { ProviderProvisioningTrigger } from "@zcode/shared";
+import type { ProviderProvisioningTrigger } from "@codez/shared";
 
 type ExecuteSync = (trigger: ProviderProvisioningTrigger) => Promise<void>;
 

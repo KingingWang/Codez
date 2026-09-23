@@ -1,14 +1,14 @@
 // Browser-only fixture: real UI/hooks, injected Host authority, no filesystem or native credentials.
 import { StrictMode, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { IServiceAccessor } from "@zcode/services";
-import type { IPlatformService, CodexRequest } from "@zcode/shared";
-import type { ConversationSnapshot, PendingInteraction } from "@zcode/shared/zcode-protocol-v4";
-import { pendingInteractionSchema, queueStateSchema } from "@zcode/shared/zcode-protocol-v4";
+import type { IServiceAccessor } from "@codez/services";
+import type { IPlatformService, CodexRequest } from "@codez/shared";
+import type { ConversationSnapshot, PendingInteraction } from "@codez/shared/codez-protocol-v4";
+import { pendingInteractionSchema, queueStateSchema } from "@codez/shared/codez-protocol-v4";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import { TabStoreProvider, useTabStoreApi } from "@/store/TabStoreProvider.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { useCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
 import { useDraftConfigControl } from "@/v4/composer/useDraftConfigControl.js";
 import { useDraftModelReadinessGate } from "@/v4/composer/useDraftModelReadinessGate.js";
@@ -80,7 +80,7 @@ const otherWorkspaceConfig = {
 };
 const emptyEvent = () => ({ dispose() {} });
 const services = {
-  zcodeAgentService: {
+  codezAgentService: {
     onAgentRuntimeRestarted: emptyEvent,
     codexRequest: async ({
       request,
@@ -137,7 +137,7 @@ const services = {
       throw new Error("Legacy registry subscribed");
     },
   },
-  zcodeSessionService: projectDiscoveryLocalServices.zcodeSessionService,
+  codezSessionService: projectDiscoveryLocalServices.codezSessionService,
 } as unknown as IServiceAccessor;
 initializeProjectDiscoveryFixture();
 const platform = {
@@ -384,11 +384,11 @@ createRoot(document.getElementById("root")!).render(
       <PlatformProvider platform={platform}>
         <TabStoreProvider>
           <ProjectDiscoveryTabSeeder />
-          <ZCodeIntlProvider initialLocale="en-US">
+          <CodezIntlProvider initialLocale="en-US">
             <TooltipProvider>
               <Harness />
             </TooltipProvider>
-          </ZCodeIntlProvider>
+          </CodezIntlProvider>
         </TabStoreProvider>
       </PlatformProvider>
     </ServiceProvider>

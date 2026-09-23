@@ -15,14 +15,14 @@ import {
   v4ConversationAttachmentReadResultSchema,
   v4ConversationAttachmentStatResultSchema,
   type AttachmentRef,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { AttachmentStore, type AttachmentStoreOptions } from "../src/attachments.js";
 
 const checksum = (bytes: Buffer) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const common = { connectionId: "connection", sessionId: "draft-session", uploadId: "upload" };
 const target = { rowId: 1, entityId: "entity" };
 async function fixture(t: TestContext, overrides: Partial<AttachmentStoreOptions> = {}) {
-  const cwd = await mkdtemp(join(tmpdir(), "zcode attachments 中文 "));
+  const cwd = await mkdtemp(join(tmpdir(), "codez attachments 中文 "));
   const root = join(cwd, "storage");
   const store = new AttachmentStore({ cwd, root, ...overrides });
   t.after(async () => {
@@ -71,7 +71,7 @@ test("draft-session upload produces opaque owned refs and UTF-8 native text", as
   const { store } = await fixture(t);
   const bytes = Buffer.from("你好🙂 attachment");
   const ref = await put(store, bytes, { fileName: "../../outside.txt" });
-  assert.match(ref.ref, /^zcode-attachment:\/\//);
+  assert.match(ref.ref, /^codez-attachment:\/\//);
   const resolved = await store.resolve(ref.ref, common.sessionId);
   assert.equal(resolved.fileName, "../../outside.txt");
   assert.equal(resolved.bytes, bytes.length);

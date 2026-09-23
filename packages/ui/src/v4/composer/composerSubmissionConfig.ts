@@ -1,7 +1,7 @@
-import { resolveExecutionState, type ModelSelection } from "@zcode/shared";
-import { submissionModeSchema, type SubmissionMode } from "@zcode/shared/zcode-protocol-v4";
-import type { ModelSelectionView } from "@zcode/services";
-import { validateModelSelectionOptions } from "@zcode/provider";
+import { resolveExecutionState, type ModelSelection } from "@codez/shared";
+import { submissionModeSchema, type SubmissionMode } from "@codez/shared/codez-protocol-v4";
+import type { ModelSelectionView } from "@codez/services";
+import { validateModelSelectionOptions } from "@codez/provider";
 import {
   isCodexSelectionReady,
   type CodexModelCatalog,
