@@ -148,6 +148,14 @@ export class BridgeRuntime {
     );
   }
 
+  /** writer-conflict 只读投影在 subscribe/resync 时失效，下一次快照读取重新 load 并重试 resume。 */
+  private invalidateReadOnlyProjection(params: unknown): void {
+    // params 的形状校验归 subscriptions；这里仅 best-effort 提取 topic，健康线程不受影响。
+    const topic = (params as { topic?: unknown } | null)?.topic;
+    if (typeof topic === "string" && topic.startsWith("conversation/"))
+      this.store.invalidate(topic.slice("conversation/".length));
+  }
+
   private refreshSidebar(topic: "sessions-index" | "workspace-config"): void {
     // 列表/配置读取不能卡住下一轮原生事件；复用 publisher 的 dirty 合并与代际校验。
     // 关闭时在途读取的拒绝属于旧连接，不应再触发运行时崩溃。
@@ -197,8 +205,10 @@ export class BridgeRuntime {
     }
     switch (method) {
       case V4_METHODS.conversationSubscribe:
+        this.invalidateReadOnlyProjection(params);
         return this.subscriptions.subscribe(params);
       case V4_METHODS.conversationResync:
+        this.invalidateReadOnlyProjection(params);
         return this.subscriptions.resync(params);
       case V4_METHODS.conversationUnsubscribe:
         return { result: await this.subscriptions.unsubscribe(params) };

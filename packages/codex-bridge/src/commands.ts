@@ -23,6 +23,13 @@ import { array, object, string, unsupported } from "./json.js";
 import { projectThread } from "./projection.js";
 import { createNativeSession } from "./command-create.js";
 
+/** writer-conflict 只读会话上的既有会话命令拒绝；admit 映射为 guard.codex.writerConflict。 */
+export class WriterConflictError extends Error {
+  constructor() {
+    super("Thread is read-only: another writer holds the session lock");
+  }
+}
+
 export interface CommandContext {
   rpc: CodexRpcPort;
   store: ThreadStateStore;
@@ -91,13 +98,22 @@ export class CommandRouter {
         };
       }
     } catch (error) {
-      ack = {
-        commandId: command.commandId,
-        status: "failed",
-        revisionAtDecision: 0,
-        reasonCode: "codex.commandFailed",
-        message: error instanceof Error ? error.message : "Native request failed",
-      };
+      ack =
+        error instanceof WriterConflictError
+          ? {
+              commandId: command.commandId,
+              status: "rejected",
+              reasonCode: "guard.codex.writerConflict",
+              message: error.message,
+              revisionAtDecision: 0,
+            }
+          : {
+              commandId: command.commandId,
+              status: "failed",
+              revisionAtDecision: 0,
+              reasonCode: "codex.commandFailed",
+              message: error instanceof Error ? error.message : "Native request failed",
+            };
     }
     await ledger.finish(command.sessionId, ack);
     return commandAckSchema.parse(ack);
@@ -108,6 +124,11 @@ export class CommandRouter {
     if (command.type === "createSession") return createNativeSession(command, this.context);
     const sessionId = string(command.sessionId, "sessionId");
     const state = await store.ensure(sessionId);
+    // writer-conflict 只读：另一进程持有该线程写锁。deny-by-default——除 forkAssistant
+    // （thread/fork 读源线程 rollout、不取源写锁，是只读会话唯一的逃生通道）外，
+    // 既有会话命令一律在此拒绝；不做逐命令枚举，未来的写命令也自动被覆盖。
+    if (state.readOnly === "writer-conflict" && command.type !== "forkAssistant")
+      throw new WriterConflictError();
     const native = { threadId: sessionId };
     const running = array(state.thread.turns)
       .map(object)

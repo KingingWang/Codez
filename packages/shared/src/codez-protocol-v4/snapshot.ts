@@ -509,6 +509,10 @@ export const conversationSnapshotSchema = z.object({
   workspaceHookAdmission: workspaceHookAdmissionStateSchema.nullable().default(null),
   // （2026-09-12）：原 additive 字段 pluginUiSurfaces 已删除，插件面板 widgetState 只留在
   // 宿主 renderer 内存。
+  // writer-conflict 降级只读：additive optional，遵守冻结规则——旧快照/旧发送端缺字段视为可写。
+  // Codex 线程被另一进程持有写锁时，bridge 用 lock-free 的 thread/read + turns/list
+  // 构建只读投影并置此标记；写命令由 guard.codex.writerConflict 拒绝，fork 豁免。
+  writerConflict: z.object({ readOnly: z.literal(true) }).optional(),
   // B 区
   rows: rowsWindowSchema,
 });
