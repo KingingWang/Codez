@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { DatabaseStartupState } from "@zcode/shared";
+import type { DatabaseStartupState } from "@codez/shared";
 import { prepareSessionStorage } from "../src/host/storagePreparationProcesses.js";
 import { DatabaseStartupCoordinator } from "../src/host/databaseStartupCoordinator.js";
 
 test("Codex storage preflight reports no migration and reaches the startup UI ready state", async () => {
-  const previous = process.env.ZCODE_AGENT_SERVER_COMMAND;
-  delete process.env.ZCODE_AGENT_SERVER_COMMAND;
+  const previous = process.env.CODEZ_AGENT_SERVER_COMMAND;
+  delete process.env.CODEZ_AGENT_SERVER_COMMAND;
   const states: DatabaseStartupState[] = [];
   const preparedPaths = new Set<string>();
   let initialized = false;
@@ -53,8 +53,8 @@ test("Codex storage preflight reports no migration and reaches the startup UI re
       false,
     );
   } finally {
-    if (previous === undefined) delete process.env.ZCODE_AGENT_SERVER_COMMAND;
-    else process.env.ZCODE_AGENT_SERVER_COMMAND = previous;
+    if (previous === undefined) delete process.env.CODEZ_AGENT_SERVER_COMMAND;
+    else process.env.CODEZ_AGENT_SERVER_COMMAND = previous;
   }
 });
 
@@ -77,8 +77,8 @@ test("an aborted preflight never acknowledges ready", async () => {
 });
 
 test("explicit legacy commands retain the unsupported storage capability failure", async () => {
-  const previous = process.env.ZCODE_AGENT_SERVER_COMMAND;
-  process.env.ZCODE_AGENT_SERVER_COMMAND = "/explicit/legacy-command";
+  const previous = process.env.CODEZ_AGENT_SERVER_COMMAND;
+  process.env.CODEZ_AGENT_SERVER_COMMAND = "/explicit/legacy-command";
   try {
     await assert.rejects(
       prepareSessionStorage({
@@ -94,7 +94,7 @@ test("explicit legacy commands retain the unsupported storage capability failure
       { kind: "unsupported_runtime" },
     );
   } finally {
-    if (previous === undefined) delete process.env.ZCODE_AGENT_SERVER_COMMAND;
-    else process.env.ZCODE_AGENT_SERVER_COMMAND = previous;
+    if (previous === undefined) delete process.env.CODEZ_AGENT_SERVER_COMMAND;
+    else process.env.CODEZ_AGENT_SERVER_COMMAND = previous;
   }
 });

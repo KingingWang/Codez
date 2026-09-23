@@ -1,4 +1,4 @@
-import type { ConversationSnapshot, SessionConfigState } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationSnapshot, SessionConfigState } from "@codez/shared/codez-protocol-v4";
 import type { ComposerSubmissionConfig } from "@/v4/composer/composerSubmissionConfig.js";
 
 export function resolveCodexPrewarmConfig(

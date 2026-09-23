@@ -3,11 +3,11 @@ import { dirname, join } from "node:path";
 import { resolveDesktopRuntime } from "./desktop-product-identity.mjs";
 
 const isCodex = resolveDesktopRuntime() === "codex";
-export const DEV_ELECTRON_PROTOCOL_SCHEME = isCodex ? "zcode-codex" : "zcode";
-export const DEV_ELECTRON_APP_NAME = isCodex ? "ZCode Codex Dev" : "ZCode Dev";
+export const DEV_ELECTRON_PROTOCOL_SCHEME = isCodex ? "codez-codex" : "codez";
+export const DEV_ELECTRON_APP_NAME = isCodex ? "Codez Codex Dev" : "Codez Dev";
 export const DEV_ELECTRON_APP_BUNDLE_ID = isCodex
-  ? "io.github.kingingwang.zcode.codex.development"
-  : "dev.zcode.app.development";
+  ? "io.github.kingingwang.codez.codex.development"
+  : "dev.codez.app.development";
 // 副本布局版本，见 prepareDevElectronAppBundle 中的指纹说明。
 export const DEV_ELECTRON_BUNDLE_FORMAT = 2;
 
@@ -41,8 +41,8 @@ function appendProtocolDeclaration(plist) {
 }
 
 /**
- * 为 macOS 本地 Dev runtime 写入产品身份和 zcode URL scheme。
- * raw Electron 的 Info.plist 没有 CFBundleURLTypes，系统只能把 zcode 交给
+ * 为 macOS 本地 Dev runtime 写入产品身份和 codez URL scheme。
+ * raw Electron 的 Info.plist 没有 CFBundleURLTypes，系统只能把 codez 交给
  * com.github.Electron；这里仅修改启动副本，避免污染 node_modules 中的 Electron。
  */
 export function patchDevElectronInfoPlist(plist) {
@@ -69,7 +69,7 @@ export async function prepareDevElectronAppBundle({
   // 源二进制的身份指纹，写在 .app 外面：放进 Contents 会污染 bundle 结构。
   const sourceStampPath = join(
     dirname(appPath),
-    isCodex ? ".zcode-codex-dev-electron-source.json" : ".zcode-dev-electron-source.json",
+    isCodex ? ".codez-codex-dev-electron-source.json" : ".codez-dev-electron-source.json",
   );
   // 这里原本把两个 Electron 可执行文件（各 ~100MB+）整份读进内存做 equals，
   // 每次 dev 启动都要付一次全量读盘。源二进制由 npm 包解压产出，记录它的 size+mtime

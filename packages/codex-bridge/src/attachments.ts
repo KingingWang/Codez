@@ -13,7 +13,7 @@ import {
   v4ConversationAttachmentStatParamsSchema,
   v4ConversationAttachmentStatResultSchema,
   type AttachmentRef,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import type { CodexUserInput } from "./codex-types.js";
 import { AttachmentFiles, openAttachmentFile } from "./attachments-files.js";
 import { AttachmentUploads } from "./attachments-upload.js";

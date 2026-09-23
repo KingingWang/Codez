@@ -1,0 +1,40 @@
+{
+  "name": "@codez/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Main CLI application for codez",
+  "bin": {
+    "codez": "./dist/codez.cjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/codez.cjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:desktop-agent": "node scripts/build.mjs --desktop-agent",
+    "build:sea": "pnpm --dir ../../../.. exec turbo --skip-infer --cwd apps/codez-cli run build --filter=!@codez/cli --force && pnpm build && node scripts/build-sea.mjs --all",
+    "sea": "node scripts/build-sea.mjs",
+    "upload:sea": "node scripts/upload-sea-smb.mjs",
+    "clean": "node ../../scripts/clean-dist.mjs",
+    "dev": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src",
+    "lint:fix": "oxlint --write src"
+  },
+  "dependencies": {
+    "@codez/adapters": "workspace:*",
+    "@codez/bootstrap": "workspace:*",
+    "@codez/contracts": "workspace:*",
+    "@codez/core": "workspace:*",
+    "@codez/dynamic-workflow-runtime": "workspace:*",
+    "@codez/i18n": "workspace:*",
+    "@codez/provider-node": "workspace:*",
+    "@codez/shared": "workspace:*",
+    "@codez/shared-types": "workspace:*",
+    "@codez/tui": "workspace:*",
+    "dotenv": "^17.4.2",
+    "playwright-core": "1.59.1"
+  }
+}

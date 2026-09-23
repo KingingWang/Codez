@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
-import type { IPlatformService } from "@zcode/shared";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import type { IPlatformService } from "@codez/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
 import { CodexAccountPanel } from "./CodexAccountPanel.js";
@@ -28,9 +28,9 @@ const controller: CodexSettingsController = {
 const platform = { openExternal: () => {} } as unknown as IPlatformService;
 function render(children: ReactNode, locale: "en-US" | "zh-CN" = "en-US") {
   return renderToStaticMarkup(
-    <ZCodeIntlProvider initialLocale={locale}>
+    <CodezIntlProvider initialLocale={locale}>
       <PlatformProvider platform={platform}>{children}</PlatformProvider>
-    </ZCodeIntlProvider>,
+    </CodezIntlProvider>,
   );
 }
 

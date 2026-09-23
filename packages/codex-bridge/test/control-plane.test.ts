@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  zcodeWorkspacePresentationSchema,
-  zcodeSessionSettingsStateSchema,
-  zcodeSkillsReferenceCatalogResultSchema,
-  zcodeProviderUpdateAccountConfigResultSchema,
-  zcodeRuntimeCapabilitiesSchema,
-  zcodeWorkspaceUpdateInteractionPreferencesResultSchema,
-  zcodeWorkspaceUpdateModelIoPreferencesResultSchema,
-} from "@zcode/shared";
+  codezWorkspacePresentationSchema,
+  codezSessionSettingsStateSchema,
+  codezSkillsReferenceCatalogResultSchema,
+  codezProviderUpdateAccountConfigResultSchema,
+  codezRuntimeCapabilitiesSchema,
+  codezWorkspaceUpdateInteractionPreferencesResultSchema,
+  codezWorkspaceUpdateModelIoPreferencesResultSchema,
+} from "@codez/shared";
 import type { CodexRpcPort } from "../src/contract.js";
 import { handleControlRequest, supportsControlMethod } from "../src/control-plane.js";
 import { readControlModelSettings } from "../src/control-presentation.js";
@@ -92,7 +92,7 @@ function fixture(overrides: Record<string, unknown> = {}) {
 
 test("presentation parses the real strict schema, preserving remote identity", async () => {
   const { context, calls } = fixture();
-  const result = zcodeWorkspacePresentationSchema.parse(
+  const result = codezWorkspacePresentationSchema.parse(
     await handleControlRequest("workspace/readPresentation", { workspace }, context),
   );
   assert.deepEqual(result.workspace, workspace);
@@ -107,7 +107,7 @@ test("presentation parses the real strict schema, preserving remote identity", a
 
 test("model settings use model identity, complete format properties and reasoning refs", async () => {
   const { context } = fixture();
-  const settings = zcodeSessionSettingsStateSchema.parse(await readControlModelSettings(context));
+  const settings = codezSessionSettingsStateSchema.parse(await readControlModelSettings(context));
   assert.deepEqual(settings.model.current, {
     providerId: "fixture",
     modelId: "test-model",
@@ -121,7 +121,7 @@ test("model settings use model identity, complete format properties and reasonin
 test("capabilities expose native independent plan state without inventing execution capability", async () => {
   const { context, calls } = fixture();
   const raw = await handleControlRequest("runtime/capabilities", {}, context);
-  assert.deepEqual(raw, zcodeRuntimeCapabilitiesSchema.parse(raw));
+  assert.deepEqual(raw, codezRuntimeCapabilitiesSchema.parse(raw));
   assert.deepEqual(raw, { independentPlanState: true });
   assert.equal(calls.length, 0);
 });
@@ -135,7 +135,7 @@ test("read-only permission never implies independent plan collaboration", async 
     const { context } = fixture({ "config/read": { config: { sandbox_mode, approval_policy } } });
     const settings = await readControlModelSettings(context);
     assert.equal(settings.mode.current, expected);
-    const presentation = zcodeWorkspacePresentationSchema.parse(
+    const presentation = codezWorkspacePresentationSchema.parse(
       await handleControlRequest("workspace/readPresentation", { workspace }, context),
     );
     assert.equal(presentation.mode, expected);
@@ -153,7 +153,7 @@ test("configured custom model remains selectable without invented catalog capabi
         },
       },
     });
-    const settings = zcodeSessionSettingsStateSchema.parse(await readControlModelSettings(context));
+    const settings = codezSessionSettingsStateSchema.parse(await readControlModelSettings(context));
     const configured = settings.model.available.find(
       (model) => model.ref.modelId === "custom/model",
     );
@@ -170,7 +170,7 @@ test("configured custom model remains selectable without invented catalog capabi
     assert.equal(configured.properties.outputFormat.supportsText, false);
     assert.deepEqual(settings.thoughtLevel.available, []);
     assert.equal(settings.thoughtLevel.defaultLevel, undefined);
-    const presentation = zcodeWorkspacePresentationSchema.parse(
+    const presentation = codezWorkspacePresentationSchema.parse(
       await handleControlRequest("workspace/readPresentation", { workspace }, context),
     );
     assert.ok(
@@ -183,7 +183,7 @@ test("configured custom model remains selectable without invented catalog capabi
 
 test("workspace skill catalog is enabled-only; frozen session authority is not fabricated", async () => {
   const { context } = fixture();
-  const result = zcodeSkillsReferenceCatalogResultSchema.parse(
+  const result = codezSkillsReferenceCatalogResultSchema.parse(
     await handleControlRequest("skills/referenceCatalog", { workspace }, context),
   );
   assert.equal(result.authority, "workspace");
@@ -197,10 +197,10 @@ test("workspace skill catalog is enabled-only; frozen session authority is not f
 
 test("account overlay acknowledges receipt without changing Codex configuration", async () => {
   const { context, calls } = fixture();
-  const result = zcodeProviderUpdateAccountConfigResultSchema.parse(
+  const result = codezProviderUpdateAccountConfigResultSchema.parse(
     await handleControlRequest(
       "provider/updateAccountConfig",
-      { revision: "r1", basedOnZCodeBuiltinRevision: "b1", providers: { legacy: {} }, states: {} },
+      { revision: "r1", basedOnCodezBuiltinRevision: "b1", providers: { legacy: {} }, states: {} },
       context,
     ),
   );
@@ -268,7 +268,7 @@ test("malformed upstream data is not a fabricated empty catalog", async () => {
 
 test("disabled compatibility preferences acknowledge zero bridge-owned sessions", async () => {
   const { context, calls } = fixture();
-  const interaction = zcodeWorkspaceUpdateInteractionPreferencesResultSchema.parse(
+  const interaction = codezWorkspaceUpdateInteractionPreferencesResultSchema.parse(
     await handleControlRequest(
       "workspace/updateInteractionPreferences",
       {
@@ -280,7 +280,7 @@ test("disabled compatibility preferences acknowledge zero bridge-owned sessions"
   );
   assert.equal(interaction.snoozedInteractionCount, 0);
   assert.equal(interaction.askUserQuestionAutoResolutionEnabled, false);
-  const io = zcodeWorkspaceUpdateModelIoPreferencesResultSchema.parse(
+  const io = codezWorkspaceUpdateModelIoPreferencesResultSchema.parse(
     await handleControlRequest(
       "workspace/updateModelIoPreferences",
       {
@@ -320,7 +320,7 @@ test("all model pages and the pinned audio modality are projected", async () => 
     }
     return { ...result, nextCursor: "page-2" } as T;
   };
-  const settings = zcodeSessionSettingsStateSchema.parse(await readControlModelSettings(context));
+  const settings = codezSessionSettingsStateSchema.parse(await readControlModelSettings(context));
   assert.equal(settings.model.available.length, 2);
   assert.equal(settings.model.available[1]?.properties.inputFormat.supportsAudio, true);
 });
@@ -346,7 +346,7 @@ test("only mapped built-ins appear and duplicate skills cannot shadow them", asy
       ],
     },
   });
-  const result = zcodeWorkspacePresentationSchema.parse(
+  const result = codezWorkspacePresentationSchema.parse(
     await handleControlRequest("workspace/readPresentation", { workspace }, context),
   );
   assert.deepEqual(

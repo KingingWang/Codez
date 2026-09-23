@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@codez/browser-use-plugin",
+  "version": "0.5.1",
+  "private": true,
+  "description": "作为官方 Codez 内置插件发布的 Browser Use skill 与 client runtime；node_repl MCP server 由 @codez/node-repl-host 提供。",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/mcp/server.js",
+  "scripts": {
+    "build": "tsc && node scripts/build.mjs",
+    "clean": "node ../../scripts/clean-dist.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src --no-ignore"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "@codez/contracts": "workspace:*",
+    "@codez/core": "workspace:*",
+    "@codez/node-repl-host": "workspace:*",
+    "@codez/shared": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
+    "@types/node": "^24.0.0",
+    "@codez/adapters": "workspace:*",
+    "@codez/bootstrap": "workspace:*",
+    "esbuild": "^0.25.0",
+    "playwright-core": "1.59.1",
+    "typescript": "^5.9.0"
+  }
+}

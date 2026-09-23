@@ -3,10 +3,10 @@ import { readdir, readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import os from "node:os";
 import {
-  formatZCodeAgentProcessName,
+  formatCodezAgentProcessName,
   type HostResourceUsageProcess,
-  type ZCodeProcessChildProcess,
-} from "@zcode/shared";
+  type CodezProcessChildProcess,
+} from "@codez/shared";
 
 /**
  * 资源管理器 Host 侧采样。
@@ -334,7 +334,7 @@ export interface HostResourceUsageAgent {
   provider: string;
   workspacePath: string;
   /** CLI `process/childProcesses` 的回报；请求失败时为空数组，其后代全部归入 cli */
-  children: readonly ZCodeProcessChildProcess[];
+  children: readonly CodezProcessChildProcess[];
 }
 
 interface AttributeHostProcessTreeOptions {
@@ -347,7 +347,7 @@ interface AttributeHostProcessTreeOptions {
 
 type Owner =
   | { kind: "agent"; agent: HostResourceUsageAgent }
-  | { kind: "mcp"; child: ZCodeProcessChildProcess }
+  | { kind: "mcp"; child: CodezProcessChildProcess }
   | { kind: "builtin"; pluginName: string };
 
 function commandDisplayName(command: string): string {
@@ -377,7 +377,7 @@ function ownerToRow(
     return {
       pid: sample.pid,
       name: isOwnerRoot
-        ? formatZCodeAgentProcessName(owner.agent.provider, owner.agent.workspacePath)
+        ? formatCodezAgentProcessName(owner.agent.provider, owner.agent.workspacePath)
         : commandDisplayName(sample.command),
       category: "base",
       groupKey: "cli",

@@ -7,7 +7,7 @@ import {
   isProtectedStoragePath,
   type StorageCatalogContext,
 } from "./storageCatalog.js";
-import type { StorageCategoryId } from "@zcode/shared";
+import type { StorageCategoryId } from "@codez/shared";
 
 export interface StorageCleanCandidate {
   relativePath: string;

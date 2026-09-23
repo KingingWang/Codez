@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { zcodeMcpListResultSchema } from "@zcode/shared";
+import { codezMcpListResultSchema } from "@codez/shared";
 import type { CodexRpcPort } from "../src/contract.js";
 import { handleControlRequest } from "../src/control-plane.js";
 
@@ -45,7 +45,7 @@ test("MCP list maps actual runtime state and transport rather than inferring fro
     ["disabled", "disabled"],
   ]) {
     const { context } = fixture(native);
-    const result = zcodeMcpListResultSchema.parse(
+    const result = codezMcpListResultSchema.parse(
       await handleControlRequest("mcp/list", { workspace, mode: "status" }, context),
     );
     assert.equal(result.statuses.fixture?.status, expected);

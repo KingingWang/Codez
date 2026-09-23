@@ -1,6 +1,6 @@
 # Follow-up turn reliability — 2026-09-22
 
-This receipt covers the ZCode-only fixes following the macOS report on build
+This receipt covers the Codez-only fixes following the macOS report on build
 `61ff1e28`. The sibling Codex checkout and pinned native runtime are unchanged.
 The supplied user log archive is not a committed fixture.
 

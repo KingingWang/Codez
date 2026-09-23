@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import * as s from "@zcode/shared";
+import * as s from "@codez/shared";
 import type { CodexRpcPort } from "../src/contract.js";
 import { handleControlRequest } from "../src/control-plane.js";
 
@@ -102,26 +102,26 @@ function fixture(remote = false) {
   return { context: { rpc, cwd: workspace.workspacePath }, calls, plugin, market, replies };
 }
 
-test("plugin read surfaces parse real ZCode result schemas", async () => {
+test("plugin read surfaces parse real Codez result schemas", async () => {
   const { context } = fixture();
-  const list = s.zcodePluginsListResultSchema.parse(
+  const list = s.codezPluginsListResultSchema.parse(
     await handleControlRequest("plugins/list", { workspace }, context),
   );
   assert.equal(list.plugins[0]?.skillCount, 1);
   assert.deepEqual(list.plugins[0]?.mcpServerNames, ["example-mcp"]);
-  const overview = s.zcodePluginsOverviewResultSchema.parse(
+  const overview = s.codezPluginsOverviewResultSchema.parse(
     await handleControlRequest("plugins/overview", { workspace }, context),
   );
   assert.equal(overview.availablePlugins[0]?.version, "2.0");
   assert.equal(overview.installedPlugins[0]?.version, "1.0");
   assert.equal(overview.marketplaces[0]?.isOfficial, undefined);
   assert.deepEqual(overview.marketplaces[0]?.featured, ["example@market"]);
-  const catalog = s.zcodePluginsReferenceCatalogResultSchema.parse(
+  const catalog = s.codezPluginsReferenceCatalogResultSchema.parse(
     await handleControlRequest("plugins/referenceCatalogWithCategory", { workspace }, context),
   );
   assert.deepEqual(catalog.plugins[0]?.skillQualifiedNames, ["example:review"]);
   assert.equal(catalog.plugins[0]?.category, "Coding");
-  const described = s.zcodePluginsDescribeResultSchema.parse(
+  const described = s.codezPluginsDescribeResultSchema.parse(
     await handleControlRequest(
       "plugins/describe",
       { workspace, pluginName: "example", marketplace: "market" },
@@ -138,7 +138,7 @@ test("local and remote installs address actual Codex schemas, not marketplace ID
   for (const remote of [false, true]) {
     const { context, plugin, calls } = fixture(remote);
     plugin.installed = false;
-    const result = s.zcodePluginsInstallResultSchema.parse(
+    const result = s.codezPluginsInstallResultSchema.parse(
       await handleControlRequest(
         "plugins/install",
         {
@@ -164,7 +164,7 @@ test("local and remote installs address actual Codex schemas, not marketplace ID
 
 test("enablement writes only the exact quoted plugin key and confirms effective state", async () => {
   const { context, calls } = fixture();
-  const result = s.zcodePluginsSetEnabledResultSchema.parse(
+  const result = s.codezPluginsSetEnabledResultSchema.parse(
     await handleControlRequest(
       "plugins/setEnabled",
       { workspace, pluginId: "example@market", enabled: false },
@@ -200,7 +200,7 @@ test("higher-priority overridden enablement rejects instead of claiming success"
 
 test("uninstall translates compound identity to native pluginId and verifies removal", async () => {
   const { context, calls } = fixture();
-  const result = s.zcodePluginsUninstallResultSchema.parse(
+  const result = s.codezPluginsUninstallResultSchema.parse(
     await handleControlRequest(
       "plugins/uninstall",
       { workspace, pluginName: "example", marketplace: "market" },
@@ -220,7 +220,7 @@ test("marketplace operations map to add/remove/upgrade and parse the result sche
     ["plugins/marketplace/remove", { workspace, marketplace: "market" }],
     ["plugins/marketplace/update", { workspace, marketplace: "market" }],
   ] as const) {
-    s.zcodePluginsMarketplaceMutationResultSchema.parse(
+    s.codezPluginsMarketplaceMutationResultSchema.parse(
       await handleControlRequest(method, params, context),
     );
   }

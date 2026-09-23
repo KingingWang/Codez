@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { zcodeSessionStateSnapshotSchema } from "@zcode/shared";
+import { codezSessionStateSnapshotSchema } from "@codez/shared";
 import { projectLegacySnapshot } from "../src/projection.js";
 import { threadFixture } from "./projection-fixtures.test.js";
 
@@ -8,7 +8,7 @@ test("legacy compatibility view parses the real schema and preserves stable mess
   const thread = threadFixture();
   const before = structuredClone(thread);
   const result = projectLegacySnapshot(thread, "/workspace");
-  assert.deepEqual(zcodeSessionStateSnapshotSchema.parse(result), result);
+  assert.deepEqual(codezSessionStateSnapshotSchema.parse(result), result);
   assert.deepEqual(thread, before);
   assert.deepEqual(
     result.messages.map((message) => message.info.messageId),

@@ -1,4 +1,4 @@
-# ZCode Codex desktop
+# Codez Codex desktop
 
 This community fork uses the unmodified Codex app-server as its execution engine.
 It is not an official OpenAI desktop application. No neighboring Codex checkout
@@ -15,7 +15,7 @@ pnpm dev:desktop
 
 The desktop starts a workspace-scoped bridge, which starts `codex app-server
 --listen stdio://`. The development entry builds the bridge and prepares the pinned,
-checksum-verified native executable automatically. Set `ZCODE_CODEX_COMMAND` to
+checksum-verified native executable automatically. Set `CODEZ_CODEX_COMMAND` to
 an absolute executable path to explicitly select another development installation.
 Packaged applications use the verified bundled executable.
 
@@ -28,16 +28,16 @@ app-server handshake. Generated schemas can be inspected with:
 node scripts/codex-runtime-schema.mjs packages/codex-bridge/dist/schema
 ```
 
-An explicitly configured `ZCODE_AGENT_SERVER_COMMAND` retains the advanced custom
-runtime override. Such a process must speak ZCode's desktop protocol; a raw Codex
-executable does not speak that protocol and belongs in `ZCODE_CODEX_COMMAND`.
+An explicitly configured `CODEZ_AGENT_SERVER_COMMAND` retains the advanced custom
+runtime override. Such a process must speak Codez's desktop protocol; a raw Codex
+executable does not speak that protocol and belongs in `CODEZ_CODEX_COMMAND`.
 
 ## Accounts and configuration
 
 Open a workspace, then open **Settings → Codex**. Account login/logout, model and
 reasoning choices, effective configuration, skills, MCP servers and plugins use
 the native Codex APIs. Codex owns credentials and configuration; the desktop does
-not copy tokens into ZCode's legacy provider settings. Existing Codex CLI settings
+not copy tokens into Codez's legacy provider settings. Existing Codex CLI settings
 and authentication are reused through its normal `CODEX_HOME` resolution.
 
 Native login completion can be checked with the settings refresh action. Custom
@@ -45,16 +45,16 @@ model-provider configuration remains native Codex configuration. Errors from
 managed policies and version-conflicted configuration writes are shown rather
 than silently overwriting newer settings.
 
-The fork has a separate product identity and desktop data root. Existing ZCode
+The fork has a separate product identity and desktop data root. Existing Codez
 history is not automatically converted, and native Codex history is never claimed
-to be a lossless import of ZCode workflows or proprietary tool state.
+to be a lossless import of Codez workflows or proprietary tool state.
 
 ## Conversation behavior
 
 - Codex owns threads, turns, durable messages and the accepted input queue.
 - Busy input can steer the current turn or enter the native queue. Native queues
   **automatically start when idle**, including on cold resume; they do not provide
-  ZCode's legacy held-queue/auto-drain switch.
+  Codez's legacy held-queue/auto-drain switch.
   Starting a selected queued input is idle-only in Codex. The desktop does not
   promise an atomic "stop current turn and immediately promote this input" action;
   native auto-dispatch can race with that two-mutation approximation.
@@ -91,13 +91,13 @@ pnpm dev:desktop
 ```
 
 The existing deployment owner verifies and materializes bundled archives into a
-target/SHA-scoped cache, then installs under `~/.zcode-codex/server`. It does not
+target/SHA-scoped cache, then installs under `~/.codez-codex/server`. It does not
 fall back to the old GLM runtime or upstream CDN. A pre-existing remote-download
 preference cannot bypass the bundled Codex components.
 
 Native authentication remains on the target machine (`CODEX_HOME` / normal Codex
 home resolution). The desktop never copies local credentials to a remote host.
-Bridge metadata and ZCode application data are isolated under `~/.zcode-codex`.
+Bridge metadata and Codez application data are isolated under `~/.codez-codex`.
 Local real-archive deployment is covered by tests; actual external SSH and WSL
 transport acceptance still requires suitable target environments.
 
@@ -124,19 +124,19 @@ prereleases. Pull requests only validate and never publish. Manual runs publish 
 default, with a `publish` switch to opt out. Explicit GitHub skip-CI commit markers
 still skip the workflow, so do not use them when a release is wanted.
 
-Each release is named `zcode-codex-build-<run-id>-<short-sha>` and points to the exact
+Each release is named `codez-codex-build-<run-id>-<short-sha>` and points to the exact
 built commit. The release job checks all ten installers and six SHA256 manifests,
 uploads to a temporary draft, checks the uploaded asset digests, then makes it
 public. Failed uploads remain drafts and can be resumed by rerunning the failed
 job. A rerun verifies an already-public release without replacing its assets.
-Public filenames use `ZCode.Codex-…`; the downloadable SHA256 manifests use those
+Public filenames use `Codez.Codex-…`; the downloadable SHA256 manifests use those
 same names. Per-platform updater YAML files are not released.
 
-Find installers under **KingingWang/ZCode → Releases**, not only the workflow's
+Find installers under **KingingWang/Codez → Releases**, not only the workflow's
 14-day Artifacts. Only a release built from the current main head is eligible for
 Latest; older completed builds remain downloadable without replacing it.
 
-The fork does not install upstream ZCode updates. Automatic updates remain off
+The fork does not install upstream Codez updates. Automatic updates remain off
 until a complete trusted fork feed, signing and platform update manifests are
 configured. This prevents an update from replacing the adapter with upstream's
 different runtime.

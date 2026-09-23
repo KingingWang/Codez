@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { IServiceAccessor } from "@zcode/services";
+import type { IServiceAccessor } from "@codez/services";
 import { Button } from "@/components/ui/button.js";
 import { useCodexProjectDiscovery } from "@/hooks/useCodexProjectDiscovery.js";
 import { useTabStore, useTabStoreApi } from "@/store/TabStoreProvider.js";
@@ -21,7 +21,7 @@ export const createProjectDiscoveryLocalServices = (): IServiceAccessor => creat
 
 const createServices = (generation: number, hold = false): IServiceAccessor =>
   ({
-    zcodeSessionService: {
+    codezSessionService: {
       listSessions: async (params: { workspacePath: string; workspaceIdentity?: string }) => {
         calls.push({
           generation,

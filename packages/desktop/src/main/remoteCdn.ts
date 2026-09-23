@@ -1,10 +1,10 @@
-import { ZCODE_VERSION, type ZCodeEnv } from "@zcode/shared";
+import { CODEZ_VERSION, type CodezEnv } from "@codez/shared";
 
-declare const __ZCODE_CDN_BASE_URL__: string | undefined;
+declare const __CODEZ_CDN_BASE_URL__: string | undefined;
 const DEFAULT_CDN_BASE_URL = "https://cdn-zcode.z.ai";
 
 export interface ResolveRemoteCdnOptions {
-  env?: ZCodeEnv;
+  env?: CodezEnv;
   locale?: string;
   timeZone?: string;
   overrideBaseUrl?: string;
@@ -23,10 +23,10 @@ export function resolveRemoteCdnBaseUrls(options: ResolveRemoteCdnOptions = {}):
   const override = options.overrideBaseUrl?.trim();
   if (override) return [normalizeBaseUrl(override)];
   const baseUrl =
-    process.env.ZCODE_CDN_BASE_URL?.trim() ||
-    (typeof __ZCODE_CDN_BASE_URL__ === "undefined" ? "" : __ZCODE_CDN_BASE_URL__) ||
+    process.env.CODEZ_CDN_BASE_URL?.trim() ||
+    (typeof __CODEZ_CDN_BASE_URL__ === "undefined" ? "" : __CODEZ_CDN_BASE_URL__) ||
     DEFAULT_CDN_BASE_URL;
   return [
-    `${normalizeBaseUrl(baseUrl)}/zcode/electron/releases/${options.version ?? ZCODE_VERSION}`,
+    `${normalizeBaseUrl(baseUrl)}/codez/electron/releases/${options.version ?? CODEZ_VERSION}`,
   ];
 }

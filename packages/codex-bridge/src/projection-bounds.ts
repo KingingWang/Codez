@@ -3,7 +3,7 @@ import {
   type ConversationRow,
   type ToolCallRow,
   type ToolOutput,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 
 const previewBudget = limits.toolOutputFinalHeadBytes + limits.toolOutputFinalTailBytes;
 // 为 60 行尾窗预留一个物理帧给信封/元数据；消息正文不能像工具预览一样静默截断。

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zcodeMcpListResultSchema, type ZCodeMcpServerStatusSnapshot } from "@zcode/shared";
+import { codezMcpListResultSchema, type CodezMcpServerStatusSnapshot } from "@codez/shared";
 import type { BridgeControlContext } from "./contract.js";
 import { readConfig, readPages, unsupported } from "./control-common.js";
 
@@ -25,7 +25,7 @@ export async function readControlMcp(context: BridgeControlContext) {
     readConfig(context),
     readPages(context, "mcpServerStatus/list", statusSchema, { detail: "toolsAndAuthOnly" }),
   ]);
-  const statuses: Record<string, ZCodeMcpServerStatusSnapshot> = {};
+  const statuses: Record<string, CodezMcpServerStatusSnapshot> = {};
   for (const server of servers) {
     const configured = config.mcp_servers?.[server.name];
     const transport = configured?.command ? "stdio" : configured?.url ? "http" : undefined;
@@ -56,5 +56,5 @@ export async function readControlMcp(context: BridgeControlContext) {
       ...(server.runtimeStatus === null ? { failureKind: "status_unavailable" as const } : {}),
     };
   }
-  return zcodeMcpListResultSchema.parse({ statuses });
+  return codezMcpListResultSchema.parse({ statuses });
 }

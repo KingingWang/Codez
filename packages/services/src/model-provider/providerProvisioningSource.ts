@@ -6,12 +6,12 @@ import {
   providerProvisioningEnvelopeSchema,
   type ProviderProvisioningCredentialEntry,
   type ProviderProvisioningEnvelope,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type {
   PersonalProviderConfigRepository,
   ProviderConfigLayerSnapshot,
-} from "@zcode/provider";
-import { decodeProviderConfigFile, encodeProviderConfigFile } from "@zcode/provider-node";
+} from "@codez/provider";
+import { decodeProviderConfigFile, encodeProviderConfigFile } from "@codez/provider-node";
 import {
   createCredentialCipherProvider,
   type CredentialCipherProvider,
@@ -27,7 +27,7 @@ export const PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS = [
   "oauth:bigmodel:access_token",
   "oauth:bigmodel:refresh_token",
   "oauth:bigmodel:user_info",
-  "zcodejwttoken",
+  "codezjwttoken",
 ] as const;
 
 export interface ProviderProvisioningSource {

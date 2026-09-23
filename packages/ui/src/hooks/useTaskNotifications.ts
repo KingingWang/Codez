@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { IPlatformService, TaskNotificationPayload } from "@zcode/shared";
-import type { ConversationSnapshot, SessionSummary } from "@zcode/shared/zcode-protocol-v4";
+import type { IPlatformService, TaskNotificationPayload } from "@codez/shared";
+import type { ConversationSnapshot, SessionSummary } from "@codez/shared/codez-protocol-v4";
 import { useServices } from "@/hooks/useServices.js";
 import type { IntlInstance } from "@/i18n/index.js";
 import { logger } from "@/logger.js";
@@ -94,7 +94,7 @@ export function useWorkspaceTerminalTaskNotifications({
   platform,
   formatMessage,
 }: WorkspaceTerminalTaskNotificationsParams): void {
-  const { zcodeAgentService } = useServices();
+  const { codezAgentService } = useServices();
   const workspaceIdentity = trimOptional(rawWorkspaceIdentity);
   const endpointKey = trimOptional(rawEndpointKey);
   const workspaceKey = workspaceIdentity ?? workspacePath;
@@ -135,7 +135,7 @@ export function useWorkspaceTerminalTaskNotifications({
       ...(workspaceIdentity ? { workspaceIdentity } : {}),
       ...(endpointKey ? { endpointKey } : {}),
     };
-    const store = acquireSessionsIndex(registryScope, zcodeAgentService);
+    const store = acquireSessionsIndex(registryScope, codezAgentService);
     const syncState = () => {
       setIndexState({
         signature,
@@ -159,7 +159,7 @@ export function useWorkspaceTerminalTaskNotifications({
     workspaceIdentity,
     workspaceKey,
     workspacePath,
-    zcodeAgentService,
+    codezAgentService,
   ]);
 
   useEffect(() => {

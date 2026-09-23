@@ -1,8 +1,8 @@
 packages:
   - packages/*
-  - apps/zcode-cli
-  - apps/zcode-cli/packages/*
-  - apps/zcode-cli/tools/*
+  - apps/codez-cli
+  - apps/codez-cli/packages/*
+  - apps/codez-cli/tools/*
 supportedArchitectures:
   os:
     - current

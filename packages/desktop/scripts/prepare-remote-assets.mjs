@@ -15,7 +15,7 @@ export async function prepareDesktopRemoteAssets({
   const root = resolve(import.meta.dirname, "../../..");
   const child = spawn(process.execPath, [resolve(root, "scripts/prepare-prebuilds.mjs")], {
     cwd: root,
-    env: { ...env, ZCODE_DESKTOP_RUNTIME: "legacy" },
+    env: { ...env, CODEZ_DESKTOP_RUNTIME: "legacy" },
     shell: false,
     stdio: "inherit",
   });
