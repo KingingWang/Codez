@@ -221,15 +221,15 @@ async function shouldSkipDevelopmentCodezAgentDeploy(params: {
     return false;
   }
 
-  if (isWslBackend(params.backend)) {
-    try {
-      const remoteWrapper = await params.backend.readFile(params.remoteBinaryPath);
-      if (!isRemoteAgentBundleWrapperCurrent(remoteWrapper, params.runtimeResourceDir)) {
-        return false;
-      }
-    } catch {
+  // 与生产路径一致：所有 backend（SSH/Docker/WSL）都做 wrapper 内容比对，内容不同即重部署，
+  // 避免 codex flavor 远端继续执行指向旧 ~/.codez 根的历史 wrapper（目录隔离失效）。
+  try {
+    const remoteWrapper = await params.backend.readFile(params.remoteBinaryPath);
+    if (!isRemoteAgentBundleWrapperCurrent(remoteWrapper, params.runtimeResourceDir)) {
       return false;
     }
+  } catch {
+    return false;
   }
 
   if (!(await params.backend.exists(params.remoteBundlePath))) {
