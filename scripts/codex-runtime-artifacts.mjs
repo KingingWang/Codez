@@ -5,7 +5,7 @@ import { codexWorkspaceRoot, resolveCodexTarget, sha256File } from "./codex-runt
 
 export async function writeCodexArtifactChecksums(directory) {
   const target = resolveCodexTarget();
-  const extensions = { darwin: [".dmg", ".zip"], linux: [".AppImage", ".deb"], win32: [".exe"] }[
+  const extensions = { darwin: [".dmg"], linux: [".AppImage", ".deb"], win32: [".exe"] }[
     target.os
   ];
   const platformName = { darwin: "mac", win32: "win", linux: "linux" }[target.os];

@@ -732,7 +732,8 @@ export default {
     },
   ],
   mac: {
-    target: ["dmg", "zip"],
+    // codex 发布只保留 dmg：zip 内容与 dmg 相同且几乎不减小体积，不再构建。
+    target: ["dmg"],
     ...(isCodexBuild ? { binaries: ["Resources/codex/codex"] } : {}),
     category: "public.app-category.developer-tools",
     artifactName: buildDesktopArtifactName("mac"),
