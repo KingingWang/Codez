@@ -15,8 +15,8 @@ import {
   type UpdateCheckResultPayload,
   type UpdateStatePayload,
 } from "@codez/shared";
-import { app, BrowserWindow, ipcMain, Menu, shell } from "electron";
-import { isCodexDesktop, resolveDesktopUpdatePolicy } from "./desktopProductRuntime.js";
+import { app, BrowserWindow, ipcMain, Menu } from "electron";
+import { isCodexDesktop } from "./desktopProductRuntime.js";
 import pkg, { CancellationToken } from "electron-updater";
 import semver from "semver";
 import { logger } from "./logger.js";
@@ -753,12 +753,25 @@ async function syncAutoUpdateCheckChannelFromSettings(
   activeAutoUpdateCheckChannel = nextChannel;
 }
 
+function applyCodexGitHubUpdateProvider(): void {
+  // codex 走 electron-updater 内置 GitHub provider：feed 指向 fork 的 KingingWang/Codez。
+  // 显式 setFeedURL 而非依赖烘焙的 app-update.yml：dev 更新验证（forceDevUpdateConfig）
+  // 没有烘焙配置也能跑通，且运行时意图与打包元数据解耦。channel 仍由 app-update.yml
+  // 烘焙的 per-arch 值（x64-latest / arm64-latest）决定，这里不覆盖。
+  autoUpdater.setFeedURL({
+    provider: "github",
+    owner: "KingingWang",
+    repo: "Codez",
+  });
+  // 只有被标记 Latest 的正式发布才提供更新；feature 分支发布的 prerelease 永不参与。
+  autoUpdater.allowPrerelease = false;
+  logger.info("[auto-update] codex github provider applied repo=KingingWang/Codez");
+}
+
 function applyManifestUpdateProvider(options: InitAutoUpdaterOptions): void {
-  // Codex 禁止复用上游 manifest provider，即使调用方错误地启用 updater 也不能跨产品升级。
+  // Codex 禁止复用上游 manifest provider，即使调用方错误地走到这里也不能跨产品升级。
   if (isCodexDesktop)
-    throw new Error(
-      "Codez automatic-update trust is not configured; use the fork release page",
-    );
+    throw new Error("Codez automatic-update trust is not configured; use the fork GitHub provider");
   const manifestUrl = options.updateFeedSource?.url.trim();
   autoUpdater.setFeedURL({
     provider: "custom",
@@ -1360,6 +1373,10 @@ export function refreshAutoUpdaterReleaseChannel(
   receivePreviewUpdates: boolean,
   reason = "settings receivePreviewUpdates changed",
 ) {
+  // codex 没有 stable/preview manifest 通道概念，preview 偏好不改变其 GitHub feed。
+  if (isCodexDesktop) {
+    return;
+  }
   const nextChannel: ElectronReleaseChannel = receivePreviewUpdates ? "preview" : "stable";
 
   if (!canUseAutoUpdaterInCurrentRuntime()) {
@@ -1467,7 +1484,7 @@ export async function acknowledgePostUpdateReleaseNotes(
 }
 
 export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Promise<void> {
-  if (isCodexDesktop || options.enabled === false) {
+  if (options.enabled === false) {
     autoUpdaterDisabledForProductFlavor = true;
     if (autoUpdatePollTimer) {
       clearInterval(autoUpdatePollTimer);
@@ -1511,7 +1528,12 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
   // 这里仅在 Windows 关闭“退出即自动安装”，要求用户显式点更新；其他平台保持原有行为，避免改动既有升级链路。
   autoUpdater.autoInstallOnAppQuit = process.platform !== "win32";
   autoUpdater.logger = logger;
-  applyManifestUpdateProvider(options);
+  // codex 与上游 flavor 的更新源完全分离：codex 用 GitHub releases，其余走服务端 manifest。
+  if (isCodexDesktop) {
+    applyCodexGitHubUpdateProvider();
+  } else {
+    applyManifestUpdateProvider(options);
+  }
 
   const triggerCheckForUpdates = (reason: string) => {
     if (checkForUpdatesInFlight) {
@@ -1529,12 +1551,15 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
     }
 
     const checkId = beginAutoUpdateCheck();
-    const checkForUpdatesPromise = options.settingService
-      ? (async () => {
-          await syncAutoUpdateCheckChannelFromSettings(checkId, options.settingService, reason);
-          await autoUpdater.checkForUpdates();
-        })()
-      : autoUpdater.checkForUpdates();
+    // codex 的更新 channel 由 app-update.yml 烘焙的 per-arch 值唯一决定，
+    // 不接入 receivePreviewUpdates 的 stable/preview 切换。
+    const checkForUpdatesPromise =
+      !isCodexDesktop && options.settingService
+        ? (async () => {
+            await syncAutoUpdateCheckChannelFromSettings(checkId, options.settingService, reason);
+            await autoUpdater.checkForUpdates();
+          })()
+        : autoUpdater.checkForUpdates();
 
     checkForUpdatesPromise
       .catch((err) => {
@@ -1843,14 +1868,6 @@ export function requestForceAutoUpdate(
 
 export function checkForUpdateMenuClick(originWindow?: BrowserWindow | null) {
   logger.info("[auto-update] user clicked Check for Updates");
-  const releasePage = resolveDesktopUpdatePolicy().manualReleasePage;
-  if (releasePage) {
-    void shell
-      .openExternal(releasePage)
-      .catch((error) => logger.warn("[auto-update] fork release page could not be opened", error));
-    return;
-  }
-
   const targetWindow =
     originWindow && !originWindow.isDestroyed()
       ? originWindow

@@ -2,7 +2,6 @@ import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { CODEZ_PRODUCT_FLAVOR, type CodezProductFlavor } from "@codez/shared";
 
-export const CODEX_RELEASE_PAGE = "https://github.com/KingingWang/Codez/releases";
 export const isCodexDesktop = CODEZ_PRODUCT_FLAVOR === "codex";
 export const desktopProtocolScheme = isCodexDesktop ? "codez-codex" : "codez";
 export const desktopIntegrationName = isCodexDesktop ? "codez-codex" : "codez";
@@ -35,9 +34,10 @@ export function resolveDesktopBootstrapSettingsFile(
 }
 
 export function resolveDesktopUpdatePolicy(flavor: CodezProductFlavor = CODEZ_PRODUCT_FLAVOR) {
-  return flavor === "codex"
-    ? { automatic: false, manualReleasePage: CODEX_RELEASE_PAGE }
-    : { automatic: flavor === "production", manualReleasePage: undefined };
+  // codex 已接入 GitHub releases 自动更新（electron-updater github provider + per-arch
+  // channel，见 specs/codex-desktop-distribution.md），不再回退到手动打开发布页。
+  // 只有 preview 保持关闭：preview 身份不对外分发更新。
+  return { automatic: flavor !== "preview" };
 }
 
 export function resolveCodexRemoteAssetDirs(options: {

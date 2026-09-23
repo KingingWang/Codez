@@ -17,7 +17,10 @@ import {
 } from "./codex-runtime.mjs";
 import { generateCodexSchema } from "./codex-runtime-schema.mjs";
 import { buildCodexBridge } from "./build-codex-bridge.mjs";
-import { writeCodexArtifactChecksums } from "./codex-runtime-artifacts.mjs";
+import {
+  resolveCodexUpdaterAssetPlan,
+  writeCodexArtifactChecksums,
+} from "./codex-runtime-artifacts.mjs";
 import { prepareCodexRemoteComponent } from "./codex-runtime-remote.mjs";
 import {
   resolveDesktopProductIdentity,
@@ -364,29 +367,30 @@ test("bridge bundles as executable CJS; failed build preserves prior output", as
   assert.deepEqual(await readdir(join(root, "packages/codex-bridge/dist")), ["bridge.cjs"]);
 });
 
-test("artifact checksums require each native installer and exclude unrelated files", async (t) => {
+test("artifact checksums cover installers plus updater assets and exclude unrelated files", async (t) => {
   const { root } = await fixture(t);
   await assert.rejects(writeCodexArtifactChecksums(root), /Missing .* installer/);
   const target = resolveCodexTarget();
+  const plan = resolveCodexUpdaterAssetPlan(target.os, target.arch);
   const platform = { darwin: "mac", win32: "win", linux: "linux" }[target.os];
-  const extensions = { darwin: ["dmg"], win32: ["exe"], linux: ["AppImage", "deb"] }[
-    target.os
-  ];
   const suffix = process.env.CODEZ_CODEX_SIGNED === "1" ? "" : "-unsigned";
-  const files = extensions.map((ext) => {
-    const arch = target.key === "linux-x64" ? (ext === "deb" ? "amd64" : "x86_64") : target.arch;
-    return `Codez-1.0.0-${platform}-${arch}${suffix}.${ext}`;
-  });
-  for (const name of files) await writeFile(join(root, name), bytes);
-  await writeFile(join(root, "unrelated.exe"), "do not publish");
+  const installerName = (ext) => {
+    const arch = target.key === "linux-x64" ? (ext === ".deb" ? "amd64" : "x86_64") : target.arch;
+    return `Codez-1.0.0-${platform}-${arch}${suffix}${ext}`;
+  };
+  const installers = plan.installers.map((ext) => installerName(ext));
+  const blockmaps = plan.blockmapped.map((ext) => `${installerName(ext)}.blockmap`);
+  for (const name of installers) await writeFile(join(root, name), bytes);
+  // 只有安装包没有 updater 资产时同样 fail closed：差分 blockmap 与 channel yml 缺一不可。
+  await assert.rejects(writeCodexArtifactChecksums(root), /Missing .* updater/);
+  for (const name of blockmaps) await writeFile(join(root, name), bytes);
+  await assert.rejects(writeCodexArtifactChecksums(root), /Missing .* updater metadata/);
+  // 非本目标的 yml（含 electron-builder 调试输出）与其他外来文件一律不得混入校验清单。
+  for (const name of [plan.channelYml, "unrelated.exe", "builder-debug.yml", "latest.yml"])
+    await writeFile(join(root, name), bytes);
   const manifest = await readFile(await writeCodexArtifactChecksums(root), "utf8");
-  assert.equal(
-    manifest,
-    files
-      .sort()
-      .map((file) => `${sha256}  ${file}\n`)
-      .join(""),
-  );
+  const expected = [...installers.sort(), ...blockmaps, plan.channelYml];
+  assert.equal(manifest, expected.map((file) => `${sha256}  ${file}\n`).join(""));
 });
 
 test("remote producer archives Codex resources and separates consumer integration from transport validation", async (t) => {

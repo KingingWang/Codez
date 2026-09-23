@@ -139,18 +139,25 @@ default, with a `publish` switch to opt out. Explicit GitHub skip-CI commit mark
 still skip the workflow, so do not use them when a release is wanted.
 
 Each release is named `codez-build-<run-id>-<short-sha>` and points to the exact
-built commit. The release job checks all eight installers against their SHA256
-manifests, uploads only the installers to a temporary draft, checks the uploaded
-asset digests, then makes it public. Checksum manifests are pipeline-internal and
+built commit. The release job checks every asset against its SHA256 manifest —
+installers plus the auto-update feed (per-arch updater YAML, blockmaps, and the
+macOS zip) — uploads them to a temporary draft, checks the uploaded asset
+digests, then makes it public. Checksum manifests are pipeline-internal and
 not release assets. Failed uploads remain drafts and can be resumed by rerunning
 the failed job. A rerun verifies an already-public release without replacing its
-assets. Per-platform updater YAML files are not released.
+assets.
 
 Find installers under **KingingWang/Codez → Releases**, not only the workflow's
 14-day Artifacts. Only a release built from the current main head is eligible for
 Latest; older completed builds remain downloadable without replacing it.
 
-The fork does not install upstream Codez updates. Automatic updates remain off
-until a complete trusted fork feed, signing and platform update manifests are
-configured. This prevents an update from replacing the adapter with upstream's
-different runtime.
+Codex desktop builds update themselves from these GitHub releases via
+electron-updater's GitHub provider. Each package is baked with an
+architecture-scoped channel (`x64-latest` / `arm64-latest`), so the updater reads
+the matching per-arch YAML from the release marked Latest and never crosses
+architectures or into upstream Codez feeds. Update downloads still require the
+in-app "download automatically" preference or an explicit click; checks run at
+startup, hourly, and from the menu. Unsigned builds are not signature-gated on
+any platform. One-time bootstrap: builds installed before auto-update was
+enabled cannot discover this feed — install the first updater-enabled release
+manually, and later releases update automatically.
