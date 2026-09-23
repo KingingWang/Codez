@@ -5,11 +5,21 @@ import { decorateNativeThread } from "./command-input.js";
 import { sameExecutionPath } from "./execution-path.js";
 import { mergeNativeTurn } from "./merge-turn.js";
 import { canonicalNativeThreads } from "./projection.js";
+import { CodexRpcError } from "./rpc-errors.js";
 
 export class DeletedThreadError extends Error {
   constructor() {
     super("Thread was deleted; refresh the session list");
   }
+}
+
+/** Codex 写锁冲突签名（rollout/writer_lock.rs：InvalidRequest + 固定文案），两者同时匹配才算冲突。 */
+export function isWriterConflictError(error: unknown): boolean {
+  return (
+    error instanceof CodexRpcError &&
+    error.code === -32600 &&
+    error.message.includes("already has an active writer")
+  );
 }
 
 export interface ThreadProjectionState {
@@ -18,6 +28,8 @@ export interface ThreadProjectionState {
   revision: number;
   seq: number;
   epoch: string;
+  /** writer-conflict：另一进程持有该线程写锁，投影为只读降级；恢复需 invalidate 后重新 load。 */
+  readOnly?: "writer-conflict";
 }
 
 /** A disposable projection cache. All durable facts and queue admission belong to Codex. */
@@ -45,6 +57,13 @@ export class ThreadStateStore {
 
   remove(id: string): void {
     this.deleted.add(id);
+    this.states.delete(id);
+    this.loaded.delete(id);
+  }
+
+  /** 只读降级条目是可恢复的：subscribe/resync 前失效它，下一次 ensure 重新 load 并重试 resume。 */
+  invalidate(id: string): void {
+    if (this.states.get(id)?.readOnly !== "writer-conflict") return;
     this.states.delete(id);
     this.loaded.delete(id);
   }
@@ -93,9 +112,21 @@ export class ThreadStateStore {
     // 字符串相等会把同一目录的会话误判成别的工作区，导致恢复历史失败。
     if (!(await sameExecutionPath(metadata.cwd, this.cwd)))
       throw new Error("Thread belongs to a different workspace");
-    const resumed = object(await this.rpc.request("thread/resume", { threadId: id }));
-    this.assertAvailable(id);
-    const thread = decorateNativeThread(resumed);
+    let thread: Record<string, unknown>;
+    let readOnly: ThreadProjectionState["readOnly"];
+    try {
+      const resumed = object(await this.rpc.request("thread/resume", { threadId: id }));
+      this.assertAvailable(id);
+      thread = decorateNativeThread(resumed);
+    } catch (error) {
+      // 另一 writer（CLI/另一窗口）持有写锁时 resume 以 InvalidRequest 拒绝，但历史仍可读：
+      // 用 lock-free 的 thread/read envelope（与 resume 响应同构，同过 decorateNativeThread）
+      // 投影并标记只读；签名不匹配的错误照旧抛出，不能把普通失败误判成冲突。
+      if (!isWriterConflictError(error)) throw error;
+      this.assertAvailable(id);
+      thread = decorateNativeThread(read);
+      readOnly = "writer-conflict";
+    }
     const turns: unknown[] = [];
     let cursor: string | undefined;
     const seen = new Set<string>();
@@ -124,8 +155,11 @@ export class ThreadStateStore {
     }
     thread.turns = [...merged.values()];
     const state = this.put(thread);
+    if (readOnly) state.readOnly = readOnly;
     this.loaded.add(id);
-    await this.refreshQueue(id);
+    // 原生 queue/list 不属于已验证的免锁读集合；只读降级跳过队列读取（队列变更命令
+    // 已被 deny guard 拦截），避免可选数据让整次只读加载失败。
+    if (!readOnly) await this.refreshQueue(id);
     this.assertAvailable(id);
     return state;
   }
