@@ -29,11 +29,11 @@ async function fixture(t) {
   t.after(() => rm(root, { recursive: true, force: true }));
   for (const [os, exts] of Object.entries(extensions))
     for (const arch of ["x64", "arm64"]) {
-      const dir = join(root, `codez-codex-${os}-${arch}-unsigned`);
+      const dir = join(root, `codez-${os}-${arch}-unsigned`);
       await mkdir(dir);
       const lines = [];
       for (const ext of exts) {
-        const name = `Codez Codex-3.14.0-${{ darwin: "mac", linux: "linux", win32: "win" }[os]}-${arch}-unsigned${ext}`;
+        const name = `Codez-3.14.0-${{ darwin: "mac", linux: "linux", win32: "win" }[os]}-${arch}-unsigned${ext}`;
         await writeFile(join(dir, name), name);
         lines.push(`${digest(name)}  ${name}`);
       }
@@ -119,7 +119,7 @@ function fakeGithub({
 }
 
 test("release identity is exact-commit/run-scoped and rejects PRs and foreign repositories", () => {
-  assert.equal(releaseIdentity(env).tag, `codez-codex-build-12345-${sha.slice(0, 12)}`);
+  assert.equal(releaseIdentity(env).tag, `codez-build-12345-${sha.slice(0, 12)}`);
   assert.equal(releaseIdentity({ ...env, GITHUB_REF: "refs/heads/feature" }).prerelease, true);
   for (const override of [
     { GITHUB_EVENT_NAME: "pull_request" },
@@ -135,16 +135,16 @@ test("all six targets yield ten installers and six matching public-name manifest
   assert.equal(assets.length, 16);
   assert.ok(assets.every((asset) => !asset.name.includes(" ")));
   for (const asset of assets.filter((item) => item.name.startsWith("SHA256SUMS")))
-    assert.match(await readFile(asset.path, "utf8"), /  Codez\.Codex-/);
+    assert.match(await readFile(asset.path, "utf8"), /  Codez-/);
 });
 
 test("missing targets, corrupt content and traversal checksums fail before publication", async (t) => {
   for (const fault of ["missing", "corrupt", "traversal"]) {
     const root = await fixture(t);
-    const dir = join(root, "codez-codex-win32-arm64-unsigned");
+    const dir = join(root, "codez-win32-arm64-unsigned");
     if (fault === "missing") await rm(dir, { recursive: true });
     if (fault === "corrupt")
-      await writeFile(join(dir, "Codez Codex-3.14.0-win-arm64-unsigned.exe"), "corrupt");
+      await writeFile(join(dir, "Codez-3.14.0-win-arm64-unsigned.exe"), "corrupt");
     if (fault === "traversal")
       await writeFile(
         join(dir, "SHA256SUMS-win32-arm64.txt"),
@@ -240,13 +240,22 @@ test("foreign target or published incomplete release is never overwritten", asyn
 test("duplicate installer manifest entries and public-name collisions fail closed", async (t) => {
   for (const kind of ["duplicate", "collision"]) {
     const root = await fixture(t);
-    const dir = join(root, "codez-codex-darwin-x64-unsigned");
+    const dir = join(root, "codez-darwin-x64-unsigned");
     const manifest = join(dir, "SHA256SUMS-darwin-x64.txt");
     if (kind === "duplicate") {
       const first = (await readFile(manifest, "utf8")).split("\n")[0];
       await writeFile(manifest, `${first}\n${first}\n`);
     } else {
-      await writeFile(join(dir, "Codez.Codex-3.14.0-mac-x64-unsigned.dmg"), "conflict");
+      // 更名后安装包名不再含空格；构造一个空格规范化后会撞上已存在文件的清单条目，
+      // 验证 “Public asset name collision” 仍然 fail closed。
+      const lines = (await readFile(manifest, "utf8")).split("\n");
+      const original = lines[0].slice(66);
+      const spaced = original.replace("-mac-", " -mac-");
+      await rm(join(dir, original));
+      await writeFile(join(dir, spaced), spaced);
+      lines[0] = `${digest(spaced)}  ${spaced}`;
+      await writeFile(manifest, `${lines.join("\n")}`);
+      await writeFile(join(dir, spaced.replaceAll(" ", ".")), "conflict");
     }
     await assert.rejects(collectReleaseAssets(root));
   }

@@ -233,7 +233,7 @@ test("unsafe manifest names, missing digests and local overrides are rejected", 
   );
 });
 
-test("Codex product identity never collides with upstream", () => {
+test("Codex product identity keeps machine-facing fields disjoint from upstream", () => {
   const codex = resolveDesktopProductIdentity({
     CODEZ_DESKTOP_RUNTIME: "codex",
     CODEZ_ENV: "production",
@@ -242,7 +242,8 @@ test("Codex product identity never collides with upstream", () => {
     CODEZ_ENV: "production",
     CODEZ_DESKTOP_RUNTIME: "legacy",
   });
-  assert.equal(codex.productName, "Codez Codex");
+  assert.equal(codex.productName, "Codez");
+  // 更名后 productName 与上游共享；机器可读的隔离字段必须保持不同。
   for (const field of ["appId", "linuxExecutableName", "linuxPackageName"])
     assert.notEqual(codex[field], upstream[field]);
 });
@@ -372,7 +373,7 @@ test("artifact checksums require each native installer and exclude unrelated fil
   const suffix = process.env.CODEZ_CODEX_SIGNED === "1" ? "" : "-unsigned";
   const files = extensions.map((ext) => {
     const arch = target.key === "linux-x64" ? (ext === "deb" ? "amd64" : "x86_64") : target.arch;
-    return `Codez Codex-1.0.0-${platform}-${arch}${suffix}.${ext}`;
+    return `Codez-1.0.0-${platform}-${arch}${suffix}.${ext}`;
   });
   for (const name of files) await writeFile(join(root, name), bytes);
   await writeFile(join(root, "unrelated.exe"), "do not publish");

@@ -757,7 +757,7 @@ function applyManifestUpdateProvider(options: InitAutoUpdaterOptions): void {
   // Codex 禁止复用上游 manifest provider，即使调用方错误地启用 updater 也不能跨产品升级。
   if (isCodexDesktop)
     throw new Error(
-      "Codez Codex automatic-update trust is not configured; use the fork release page",
+      "Codez automatic-update trust is not configured; use the fork release page",
     );
   const manifestUrl = options.updateFeedSource?.url.trim();
   autoUpdater.setFeedURL({
