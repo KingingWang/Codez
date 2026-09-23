@@ -591,3 +591,42 @@ test("path-only create fallback is retained but explicit foreign identity is rej
   await assert.rejects(pending, { code: -32602 });
   assert.equal(h.calls.filter((call) => call.method === "turn/start").length, 0);
 });
+
+test("writer-conflict subscribe degrades to read-only; resync invalidates it and retries resume", async (t) => {
+  const h = await fixture(t);
+  let conflicted = true;
+  const resumes = () => h.calls.filter((call) => call.method === "thread/resume").length;
+  h.handlers["thread/resume"] = () => {
+    if (conflicted) throw new CodexRpcError(-32600, "thread thread-1 already has an active writer");
+    return { thread: h.authority.thread };
+  };
+  const topic = "conversation/thread-1";
+  const subscribed = await h.runtime.request(V4_METHODS.conversationSubscribe, subscribe(topic));
+  await subscribed.afterResponse!();
+  const initial = JSON.stringify(h.frames.at(-1));
+  assert.match(initial, /"writerConflict":\{"readOnly":true\}/);
+  assert.match(initial, /guard\.codex\.writerConflict/);
+  // 历史仍然投影（不是全屏错误）：fixture 的 assistant 文案在帧里。
+  assert.match(initial, /Hello back/);
+  // 锁仍占用时重订阅：失效只读条目并重试 resume，仍是只读。
+  const resumedBefore = resumes();
+  const again = await h.runtime.request(V4_METHODS.conversationSubscribe, subscribe(topic));
+  await again.afterResponse!();
+  assert.ok(resumes() > resumedBefore, "re-subscribe must retry resume");
+  assert.match(JSON.stringify(h.frames.at(-1)), /"writerConflict":\{"readOnly":true\}/);
+  // 锁释放后 resync：失效只读条目 → 重载 → resume 成功 → 快照恢复可写。
+  // 重订阅已替换路由（旧 subscriptionId 作废），resync 必须用最新 ACK 的身份。
+  conflicted = false;
+  const latest = v4ConversationSubscribeResultSchema.parse(again.result).ack;
+  const resynced = await h.runtime.request(V4_METHODS.conversationResync, {
+    subscriptionId: latest.subscriptionId,
+    topic,
+    connectionId: "desktop-1",
+    base: null,
+    forceSnapshot: true,
+  });
+  await resynced.afterResponse!();
+  const recovered = JSON.stringify(h.frames.at(-1));
+  assert.equal(recovered.includes("writerConflict"), false);
+  assert.match(recovered, /Hello back/);
+});

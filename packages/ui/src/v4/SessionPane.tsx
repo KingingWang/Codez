@@ -602,6 +602,12 @@ export function SessionPane({
   const [lease, setLease] = useState<SessionLease | null>(null);
   const state = useConversationProjection(lease);
   const snapshot = state.snapshot;
+  // writer-conflict 只读：另一窗口/进程持有该线程写锁，codex bridge 降级为只读投影。
+  // 只禁写路径（composer/编辑/重试/stop/拖拽），fork 保留——不能复用 readOnly prop（它会连 fork 一起禁）。
+  const writerConflictReadOnly =
+    sessionId !== null &&
+    snapshot?.sessionId === sessionId &&
+    snapshot?.writerConflict?.readOnly === true;
   const newlyCreatedSessionIdRef = useRef<string | null>(null);
   const shareDraft = useConversationShareSelectionStore((storeState) =>
     sessionId ? storeState.drafts[sessionId] : undefined,
@@ -1069,9 +1075,8 @@ export function SessionPane({
     }),
     [],
   );
-  const effectiveDropTargetController = readOnly
-    ? readOnlyDropTargetController
-    : dropTargetController;
+  const effectiveDropTargetController =
+    readOnly || writerConflictReadOnly ? readOnlyDropTargetController : dropTargetController;
 
   // 稳定回调读取的最新值经 ref 透传，避免回调依赖高频变化的 snapshot/文本。
   const snapshotRef = useRef<ConversationSnapshot | null>(snapshot);
@@ -3681,7 +3686,7 @@ export function SessionPane({
   // preventDefault，本 handler 自然让路）。仅 focused pane 监听：
   // 「stop 等危险操作永远作用于明确的 pane，快捷键走 focused pane」。
   useEffect(() => {
-    if (!focused || readOnly) return;
+    if (!focused || readOnly || writerConflictReadOnly) return;
     if (!sessionId || !snapshot?.control.canStop) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -3691,7 +3696,7 @@ export function SessionPane({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focused, handleStop, readOnly, sessionId, snapshot?.control.canStop]);
+  }, [focused, handleStop, readOnly, writerConflictReadOnly, sessionId, snapshot?.control.canStop]);
 
   // handleStop 带 source 参数（button / escape 两个调用点），但 ConversationComposer 是 memo：
   // 直接写 onStop={() => handleStop("button")} 每次 render 都换引用，memo 白做，而 composer
@@ -3767,12 +3772,14 @@ export function SessionPane({
   });
   // retry 的产品裁决属于行级权威投影。这里仅提供命令能力，入口是否展示
   // 完全读取 row.actions.canRetry，禁止再用 pane phase 形成第二套 guard。
-  const retryActionsEnabled = !readOnly && !selectionSideChat && Boolean(sessionId);
+  const retryActionsEnabled =
+    !readOnly && !writerConflictReadOnly && !selectionSideChat && Boolean(sessionId);
   // fork 可用性完全由 row.actions.canFork（CLI stable resolver 投影）裁决；pane 只提供命令回调。
   const forkActionsEnabled = !readOnly && !selectionSideChat && Boolean(sessionId);
   // editUserQuery 已由 command 层防御 latest real user query，并在 running
   // 提交时先 stop barrier 再 rewind/rerun；UI 不应再用 completed gate 把入口整轮隐藏。
-  const editActionsEnabled = !readOnly && !selectionSideChat && Boolean(sessionId);
+  const editActionsEnabled =
+    !readOnly && !writerConflictReadOnly && !selectionSideChat && Boolean(sessionId);
   const isDraft = sessionId === null;
   // 滚动恢复必须使用与 sessionId 匹配的 lease projection。切换 session 的 render 与
   // passive effect 不在同一时刻，旧 lease 的 rows 若提前交给 timeline，会让新记忆按旧
@@ -4444,7 +4451,9 @@ export function SessionPane({
 
   // subagent 右侧 child tab 是观察视图；复用普通 SessionPane 时
   // 若仍创建 composer，会让用户误以为可以直接向 child session 继续输入。
-  const composerNode = readOnly ? null : (
+  // writer-conflict 只读同样不写这条会话，composer 一并收敛。
+  const composerSuppressed = readOnly || writerConflictReadOnly;
+  const composerNode = composerSuppressed ? null : (
     <ConversationComposer
       key="conversation-composer"
       // Snapshot 仍服务用量、路由与运行态；工具栏的 mode/model 只读下方 Composer Draft。
@@ -4517,7 +4526,7 @@ export function SessionPane({
     />
   );
   const pendingGuideProjection = snapshot ? projectPendingGuideQueue(snapshot.queue) : null;
-  const conversationBottomDockContent = readOnly ? null : shareActive && sessionId ? (
+  const conversationBottomDockContent = composerSuppressed ? null : shareActive && sessionId ? (
     shareInSelectionStage ? (
       <ConversationShareSelectionDock
         selectedCount={selectedShareRowIds.size}
@@ -4792,6 +4801,25 @@ export function SessionPane({
               onOpenWorkflowRunDirectory ? handleOpenWorkflowRunDirectoryFromPanel : undefined
             }
           />
+        ) : null}
+
+        {writerConflictReadOnly ? (
+          <div
+            role="status"
+            data-testid="v4-writer-conflict-banner"
+            className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-hover)] px-3 py-2 text-ui-base text-[var(--color-foreground)]"
+          >
+            <span className="min-w-0 flex-1">
+              {intl.formatMessage({ id: "chat.writerConflict.banner" })}
+            </span>
+            <button
+              type="button"
+              className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-primary-foreground hover:bg-primary/80"
+              onClick={handleRetrySubscribe}
+            >
+              {intl.formatMessage({ id: "chat.writerConflict.retry" })}
+            </button>
+          </div>
         ) : null}
 
         {readOnly && controlLastError ? (

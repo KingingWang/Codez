@@ -318,3 +318,45 @@ legacy/CDN strategies are unchanged. Tests must use real tar archives and verify
 cross-target isolation, bad SHA/mount/path rejection, cache repair/concurrency,
 Host schema passthrough, and actual Linux packaged Node/server execution through
 the consumer rather than substituting mocked installer methods.
+
+## Writer-conflict read-only sessions
+
+A historical thread can be held by another live writer (another window, CLI, or
+app-server process). `thread/resume` then fails with JSON-RPC code `-32600` and a
+message containing `already has an active writer` (Codex `rollout/writer_lock.rs`).
+Both the code and the message must match; any other resume failure still rejects the
+load and keeps the existing error surface.
+
+- On a matching writer-conflict failure, load degrades to read-only instead of
+  failing: the lock-free `thread/read` response envelope is projected through the
+  same `decorateNativeThread` path, `thread/turns/list` pagination builds history,
+  live notifications keep merging into the projection, and the state is marked
+  `readOnly: "writer-conflict"`. The conversation renders history plus live
+  projection; it never silently claims write authority.
+- The native queue list is not read in this degraded mode (its lock semantics are
+  not part of the verified lock-free read set), so the queue projects as empty.
+  Bridge-local command ledger reads stay available; queue mutations are commands
+  and are rejected by the guard below.
+- Command admission is deny-by-default while the mark is present: every
+  existing-session command is rejected with reasonCode `guard.codex.writerConflict`
+  except `forkAssistant`. `thread/fork` reads the source rollout without taking the
+  source write lock, so fork is the sanctioned escape hatch; a cold fork on an
+  unloaded conflicted thread still completes the load fallback before dispatching.
+  Enumeration is deliberately avoided so future write commands (file rewind, goal
+  mutations) are covered automatically.
+- The conversation snapshot carries the additive optional marker
+  `writerConflict: { readOnly: true }`; old snapshots and old senders omit it and
+  are treated as writable (schema freeze rule: optional/additive only). In
+  read-only mode snapshot availability keeps `fork` idle-gated, blocks `compact`,
+  `switchModelConfig`, `queueEdit` and `sendQueuedNow` with
+  `guard.codex.writerConflict`, and suppresses userInput edit/retry row actions.
+- The UI derives the mode from the snapshot field only: the timeline renders
+  normally with a top banner (zh/en), the composer, bottom dock, drop target,
+  Esc-stop and row edit/retry are disabled, and row fork actions stay enabled.
+  The existing subagent-observer `readOnly` pane prop is not reused because it
+  also disables fork.
+- Recovery is explicit: conversation subscribe and resync invalidate a
+  writer-conflict read-only entry, so the next snapshot read re-runs the load and
+  retries `thread/resume`; a healthy thread is never invalidated. A full bridge
+  reconnect naturally reloads everything. Once resume succeeds the projection is
+  writable again with no marker.
