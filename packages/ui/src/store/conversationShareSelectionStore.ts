@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { ConversationShareAccessMode } from "@zcode/shared";
-import type { ConversationShareFailureIssue } from "@zcode/services";
+import type { ConversationShareAccessMode } from "@codez/shared";
+import type { ConversationShareFailureIssue } from "@codez/services";
 
 export type ConversationShareScope = "all" | "partial";
 export type ConversationShareSelectionView = "selection" | "timeline";
@@ -106,7 +106,7 @@ export const DEFAULT_CONVERSATION_SHARE_DOCK_STATE: ConversationShareDockState =
   attempt: null,
 });
 
-const SESSION_SWITCH_REOPEN_KEY = "__zcodeConversationShareReopenAfterTaskSwitch";
+const SESSION_SWITCH_REOPEN_KEY = "__codezConversationShareReopenAfterTaskSwitch";
 
 type ConversationShareWindow = Window & Partial<Record<typeof SESSION_SWITCH_REOPEN_KEY, boolean>>;
 

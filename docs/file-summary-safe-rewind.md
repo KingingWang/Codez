@@ -32,7 +32,7 @@
 
 ## 协议
 
-新增两个 ZCode Protocol session 方法：
+新增两个 Codez Protocol session 方法：
 
 - `session/previewFileRewind`
 - `session/applyFileRewind`
@@ -42,7 +42,7 @@
 ```ts
 {
   sessionId: string;
-  target: ZCodeSessionHistoryTarget;
+  target: CodezSessionHistoryTarget;
   expectedRevision?: number;
 }
 ```
@@ -52,7 +52,7 @@ preview 返回文件级结果：
 ```ts
 {
   sessionId: string;
-  target: ZCodeSessionHistoryTarget;
+  target: CodezSessionHistoryTarget;
   canApply: boolean;
   safeFiles: Array<{
     path: string;

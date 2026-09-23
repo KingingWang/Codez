@@ -6,8 +6,8 @@
 // 计数语义写明：**动态工作流没有静态总数**，`nodesTotal` 是**已排程**（observed）节点数，
 // 进度读作「已排程的里结算了几个」，绝不冒充全程百分比。
 import { describe, expect, it } from "vitest";
-import type { WorkflowRunNode, WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
-import { workflowRunStepCounts } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunNode, WorkflowRunState } from "@codez/shared/codez-protocol-v4";
+import { workflowRunStepCounts } from "@codez/shared/codez-protocol-v4";
 import {
   buildWorkflowGraphByToolCallId,
   buildWorkflowRunByRunId,
@@ -15,7 +15,7 @@ import {
   buildWorkflowRunPendingQuestionsByRunId,
   resolveWorkflowRunOpenToolCallId,
 } from "@/v4/workflowRunCardJoin.js";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 
 function node(
   overrides: Partial<WorkflowRunNode> & Pick<WorkflowRunNode, "phase">,
@@ -129,7 +129,7 @@ describe("buildWorkflowRunByToolCallId", () => {
   });
 });
 
-// 计数规则本身住在 @zcode/shared（表内 + 表外，唯一实现）；这里钉的是**建表读的是它**——
+// 计数规则本身住在 @codez/shared（表内 + 表外，唯一实现）；这里钉的是**建表读的是它**——
 // 联接表与状态胶囊、时间线摘要必须报同一个数，此前三处各数一遍，撞过界的 run 在三个地方
 // 显示三个都偏小的数字。
 describe("步数来源", () => {
@@ -331,7 +331,7 @@ describe("buildWorkflowGraphByToolCallId", () => {
       toolCallId: "launch-abc",
       name: "deep-research",
       scope: "project",
-      path: "/w/.zcode/workflows/deep-research.dwf.ts",
+      path: "/w/.codez/workflows/deep-research.dwf.ts",
       display: { ...display, causalityGraph: GRAPH },
     };
     const rows = [

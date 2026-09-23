@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import {
   buildTaskEntityKey,
   buildTaskListCacheDescriptor,
@@ -20,7 +20,7 @@ import {
 const WORKSPACE_PATH = "/workspace";
 const WORKSPACE_KEY = buildTaskWorkspaceKey(WORKSPACE_PATH);
 
-function createTask(index: number): ZCodeTaskMeta {
+function createTask(index: number): CodezTaskMeta {
   return {
     createdAt: 100 - index,
     mode: "default",
@@ -34,9 +34,9 @@ function createTask(index: number): ZCodeTaskMeta {
 }
 
 function createCachedResult(
-  tasks: ZCodeTaskMeta[],
+  tasks: CodezTaskMeta[],
   total: number,
-  allTasks: ZCodeTaskMeta[],
+  allTasks: CodezTaskMeta[],
 ): CachedTaskListResult {
   const descriptor = buildTaskListCacheDescriptor({
     kind: "workspace",
@@ -64,8 +64,8 @@ function createCachedResult(
 }
 
 function buildDisplayGroup(params: {
-  allTasks: ZCodeTaskMeta[];
-  cachedTasks?: ZCodeTaskMeta[];
+  allTasks: CodezTaskMeta[];
+  cachedTasks?: CodezTaskMeta[];
   previousGroup?: WorkspaceTaskListGroup;
   taskUnreadOverlayByEntityKey?: Record<string, number | null>;
   visibleLimit: number;

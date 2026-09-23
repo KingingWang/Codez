@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { IZCodeSessionService } from "@zcode/services";
-import { invalidateDeferredDraftSessionForSkillChange } from "../src/lib/zcodeDraftSkillInvalidation.js";
-import { useZCodeSessionStore } from "../src/store/zcodeSessionStore.js";
+import type { ICodezSessionService } from "@codez/services";
+import { invalidateDeferredDraftSessionForSkillChange } from "../src/lib/codezDraftSkillInvalidation.js";
+import { useCodezSessionStore } from "../src/store/codezSessionStore.js";
 
 function createSessionService(
-  closeSession: IZCodeSessionService["closeSession"] = vi.fn(async () => {}),
-): Pick<IZCodeSessionService, "closeSession"> {
+  closeSession: ICodezSessionService["closeSession"] = vi.fn(async () => {}),
+): Pick<ICodezSessionService, "closeSession"> {
   return { closeSession };
 }
 
 beforeEach(() => {
-  useZCodeSessionStore.setState((state) => ({
+  useCodezSessionStore.setState((state) => ({
     ...state,
     workspaces: {},
   }));
@@ -21,13 +21,13 @@ describe("invalidateDeferredDraftSessionForSkillChange", () => {
     const closeSession = vi.fn(async () => {});
     const workspacePath = "/workspace/app";
     const workspaceIdentity = "ssh:dev";
-    useZCodeSessionStore.getState().setDraftSessionId(workspacePath, "draft-1", workspaceIdentity);
+    useCodezSessionStore.getState().setDraftSessionId(workspacePath, "draft-1", workspaceIdentity);
 
     await invalidateDeferredDraftSessionForSkillChange({
       reason: "test",
       workspacePath,
       workspaceIdentity,
-      zcodeSessionService: createSessionService(closeSession),
+      codezSessionService: createSessionService(closeSession),
     });
 
     expect(closeSession).toHaveBeenCalledWith({
@@ -36,11 +36,11 @@ describe("invalidateDeferredDraftSessionForSkillChange", () => {
       sessionId: "draft-1",
     });
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
         .draftSessionId,
     ).toBeNull();
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
         .draftRuntimeInvalidationVersion,
     ).toBe(1);
   });
@@ -52,12 +52,12 @@ describe("invalidateDeferredDraftSessionForSkillChange", () => {
     await invalidateDeferredDraftSessionForSkillChange({
       reason: "test",
       workspacePath,
-      zcodeSessionService: createSessionService(closeSession),
+      codezSessionService: createSessionService(closeSession),
     });
 
     expect(closeSession).not.toHaveBeenCalled();
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath)
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath)
         .draftRuntimeInvalidationVersion,
     ).toBe(1);
   });
@@ -67,12 +67,12 @@ describe("invalidateDeferredDraftSessionForSkillChange", () => {
       throw new Error("stale draft");
     });
     const workspacePath = "/workspace/app";
-    useZCodeSessionStore.getState().setDraftSessionId(workspacePath, "draft-1");
+    useCodezSessionStore.getState().setDraftSessionId(workspacePath, "draft-1");
 
     await invalidateDeferredDraftSessionForSkillChange({
       reason: "test",
       workspacePath,
-      zcodeSessionService: createSessionService(closeSession),
+      codezSessionService: createSessionService(closeSession),
     });
 
     expect(closeSession).toHaveBeenCalledWith({
@@ -80,10 +80,10 @@ describe("invalidateDeferredDraftSessionForSkillChange", () => {
       sessionId: "draft-1",
     });
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath).draftSessionId,
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath).draftSessionId,
     ).toBeNull();
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath)
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath)
         .draftRuntimeInvalidationVersion,
     ).toBe(1);
   });

@@ -2,13 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import {
   collectBrowserAmbientContext,
   type BrowserAmbientContextExecutor,
-} from "../src/zcode-agent/zcodeAgentBrowserAmbientContext.js";
+} from "../src/codez-agent/codezAgentBrowserAmbientContext.js";
 
 const descriptor = {
   id: "iab-runtime",
   generation: 7,
   type: "iab" as const,
-  name: "ZCode In-app Browser",
+  name: "Codez In-app Browser",
   capabilities: {},
 };
 

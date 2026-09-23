@@ -94,7 +94,7 @@ vi.mock("@/components/lib/utils.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -105,7 +105,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
 
 const mockPlatform = {
   canOpenCommunity: vi.fn(async () => false),
-  getZCodeStdioTapDevState: vi.fn(async () => ({
+  getCodezStdioTapDevState: vi.fn(async () => ({
     enabled: false,
     visible: false,
   })),
@@ -156,7 +156,7 @@ vi.mock("@/hooks/useUsageEntitlement.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (selector: (state: Record<string, unknown>) => unknown) =>
+  useCodezStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       codePreviewSettings: {},
       notificationEnabled: true,

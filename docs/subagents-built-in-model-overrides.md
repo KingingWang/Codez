@@ -150,12 +150,12 @@ custom / workspace profile 的既有加载、命名优先级和模型字段保�
 
 ## 插件 subagent 的发现范围
 
-Settings 与 runtime 必须看到同一批插件 subagent。runtime 通过 plugin resolve 同时加载 marketplace 安装插件与内置官方插件；services 的 `discoverPluginAgents` 过去只读 `installed_plugins.json`，导致内置官方插件（如 `document-skills` 的 `judge`）在 Settings 不可见。修复后 services 额外扫描 `<cli storage>/plugins/cache/zcode-plugins-official/<name>/<version>/`：
+Settings 与 runtime 必须看到同一批插件 subagent。runtime 通过 plugin resolve 同时加载 marketplace 安装插件与内置官方插件；services 的 `discoverPluginAgents` 过去只读 `installed_plugins.json`，导致内置官方插件（如 `document-skills` 的 `judge`）在 Settings 不可见。修复后 services 额外扫描 `<cli storage>/plugins/cache/codez-plugins-official/<name>/<version>/`：
 
 ```text
 installed_plugins.json 记录 ──────────────┐
                                           ├─> 按 pluginId 去重（安装记录优先）
-cache/zcode-plugins-official/<name>/<ver> ┘        │
+cache/codez-plugins-official/<name>/<ver> ┘        │
    版本目录按数字感知降序取第一个可用目录            ▼
    跳过 .backup / .seed-lock / .tmp- 目录     启用判定：
                                               enabledPlugins[pluginId]
@@ -163,7 +163,7 @@ cache/zcode-plugins-official/<name>/<ver> ┘        │
                                               且不在 suppressedBuiltins
 ```
 
-官方插件的 `pluginId` 为 `<manifest.name>@zcode-plugins-official`，与 CLI `PluginMetadata.id` 一致，因此覆盖键在两侧对得上。
+官方插件的 `pluginId` 为 `<manifest.name>@codez-plugins-official`，与 CLI `PluginMetadata.id` 一致，因此覆盖键在两侧对得上。
 
 ## Explore 工具面
 
@@ -229,7 +229,7 @@ Settings CRUD 使用独立的无 provider-request E2E 验证保存产物，不�
 | Builtin `general-purpose` | 产品不支持，剪枝 | 覆盖             | `agents-state.json` 中 model / effort 原子组合                                        |
 | Builtin `Explore`         | 产品不支持，剪枝 | 覆盖             | `agents-state.json` 中 model / effort 原子组合                                        |
 | Custom user               | 覆盖             | 覆盖（含重命名） | `<user-data>/agents/<name>.md` 的完整 frontmatter、正文与旧路径删除                   |
-| Custom workspace          | 覆盖             | 覆盖（含重命名） | `<workspace>/.zcode/agents/<name>.md` 的完整 frontmatter、正文与旧路径删除            |
+| Custom workspace          | 覆盖             | 覆盖（含重命名） | `<workspace>/.codez/agents/<name>.md` 的完整 frontmatter、正文与旧路径删除            |
 | Plugin                    | 产品不支持，剪枝 | 覆盖             | `agents-state.json` 中 `pluginAgent*Overrides` 按 agent id 的 model / effort 原子组合 |
 
 该 E2E 只消费现有 model/capability 投影来驱动控件，不发送 prompt、不重启验证 child、不修改 CLI 或 model resolver。Custom user 与 workspace 共用表单和 service serializer，但分别验证两个实际落盘目录。

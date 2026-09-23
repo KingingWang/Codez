@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import {
   persistTaskOrder,
   pruneTaskOrder,
@@ -7,7 +7,7 @@ import {
   sortTasksByOrder,
 } from "../src/lib/taskOrderPreference.js";
 
-function createTask(taskId: string, updatedAt: number): ZCodeTaskMeta {
+function createTask(taskId: string, updatedAt: number): CodezTaskMeta {
   return {
     taskId,
     workspacePath: "/tmp/workspace-sort",

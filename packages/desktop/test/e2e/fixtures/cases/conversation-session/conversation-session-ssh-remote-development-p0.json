@@ -9,6 +9,6 @@
   "fileFixtures": [],
   "providerRequestPolicy": "none",
   "noProviderRequests": true,
-  "providerRequestReason": "SSH-P0-DEV-01/02/03 通过真实远端 file/tree/preview、Terminal 和 Git UI 验证 workspace 服务路由，不启动模型请求。远端数据由 case 在 workspace 的 .zcode-e2e 隔离目录下创建并清理。",
+  "providerRequestReason": "SSH-P0-DEV-01/02/03 通过真实远端 file/tree/preview、Terminal 和 Git UI 验证 workspace 服务路由，不启动模型请求。远端数据由 case 在 workspace 的 .codez-e2e 隔离目录下创建并清理。",
   "requests": []
 }

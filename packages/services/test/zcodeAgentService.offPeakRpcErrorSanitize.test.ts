@@ -1,16 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  zcodeProtocolMethods,
+  codezProtocolMethods,
   OFF_PEAK_PROVIDER_IDS,
   type OffPeakCodingPlanSupport,
-  type ZCodeOffPeakTaskCreateParams,
-} from "@zcode/shared";
+  type CodezOffPeakTaskCreateParams,
+} from "@codez/shared";
 import { offPeakSelectionView } from "./fixtures/offPeakSelection.js";
 
 // review CR-01：offPeak/create、offPeak/list 兜底 catch 不得把底层异常文本（路径/SQL/上游片段）
 // 跨 RPC 回传；对外固定稳定错误码 + 通用文案，原始错误只进服务端日志。
 
-const SENSITIVE = "/Users/alice/.zcode/private.db: SQLITE_BUSY database is locked";
+const SENSITIVE = "/Users/alice/.codez/private.db: SQLITE_BUSY database is locked";
 
 class MockProcessManagerBase {
   onRuntimeLifecycle() {
@@ -31,11 +31,11 @@ async function setup(
   const handlers: RequestHandler[] = [];
   const respond = vi.fn(async (_id: string, _result: unknown) => undefined);
   const respondError = vi.fn(async (_id: string, _error: unknown) => undefined);
-  const createTask = vi.fn(async (_params: ZCodeOffPeakTaskCreateParams) => {
+  const createTask = vi.fn(async (_params: CodezOffPeakTaskCreateParams) => {
     throw new Error(SENSITIVE);
   });
   const request = vi.fn(async (method: string, requestParams?: unknown) => {
-    if (method === zcodeProtocolMethods.workspaceUpdateOffPeakToolPolicy) return requestParams;
+    if (method === codezProtocolMethods.workspaceUpdateOffPeakToolPolicy) return requestParams;
     throw new Error(`Unexpected method ${method}`);
   });
   const getClient = vi.fn(async () => ({
@@ -51,18 +51,18 @@ async function setup(
     onClose: () => ({ dispose() {} }),
   }));
   vi.resetModules();
-  vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-    ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+  vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+    CodezAgentProcessManager: class extends MockProcessManagerBase {
       getClient = getClient;
       disposeAll() {}
     },
   }));
-  const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
+  const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
   const resolveConfig = vi.fn(async () => {
     if (configState === "error") throw new Error("config unavailable");
     return { enabled: configState === "enabled", modelSelectionView: offPeakSelectionView() };
   });
-  const service = createZCodeAgentService({
+  const service = createCodezAgentService({
     modelSelectionReadinessSource: { getView: async () => offPeakSelectionView() },
     resolveOffPeakClientConfig: resolveConfig,
     resolveOffPeakTaskService: () => ({
@@ -87,7 +87,7 @@ async function setup(
   };
   const dispatchReply = async (params: unknown) => {
     for (const handler of handlers)
-      handler({ id: "req-1", method: zcodeProtocolMethods.offPeakCreate, params });
+      handler({ id: "req-1", method: codezProtocolMethods.offPeakCreate, params });
     await vi.waitFor(() => expect(respond).toHaveBeenCalled());
     return respond.mock.calls[0]?.[1];
   };
@@ -126,7 +126,7 @@ describe("offPeak RPC 内部异常脱敏（review CR-01）", () => {
         providerId: `account:${family}-individual-coding-plan`,
       });
       try {
-        await dispatch(zcodeProtocolMethods.offPeakCreate, {
+        await dispatch(codezProtocolMethods.offPeakCreate, {
           title: "t",
           prompt: "p",
           boundSessionId: "sess-1",
@@ -152,7 +152,7 @@ describe("offPeak RPC 内部异常脱敏（review CR-01）", () => {
   it("显式档位传给创建服务；另一域独有模型不取号", async () => {
     const { service, dispatch, dispatchReply, createTask } = await setup();
     try {
-      await dispatch(zcodeProtocolMethods.offPeakCreate, {
+      await dispatch(codezProtocolMethods.offPeakCreate, {
         title: "t",
         prompt: "p",
         model: " glm-5.2 ",
@@ -195,7 +195,7 @@ describe("offPeak RPC 内部异常脱敏（review CR-01）", () => {
 
   it("offPeak/create 底层抛错时不回传原始错误文本", async () => {
     const { service, dispatch, respond } = await setup();
-    const error = await dispatch(zcodeProtocolMethods.offPeakCreate, {
+    const error = await dispatch(codezProtocolMethods.offPeakCreate, {
       title: "t",
       prompt: "p",
     });
@@ -210,7 +210,7 @@ describe("offPeak RPC 内部异常脱敏（review CR-01）", () => {
 
   it("offPeak/list 底层抛错时不回传原始错误文本", async () => {
     const { service, dispatch } = await setup();
-    const error = await dispatch(zcodeProtocolMethods.offPeakList, {});
+    const error = await dispatch(codezProtocolMethods.offPeakList, {});
     expect(error.code).toBe(-32603);
     expect(error.message).toBe("Internal off-peak service error");
     expect(JSON.stringify(error)).not.toContain(SENSITIVE);

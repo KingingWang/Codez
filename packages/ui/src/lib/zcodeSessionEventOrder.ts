@@ -1,26 +1,26 @@
-import type { ZCodeSessionEvent } from "@zcode/shared";
+import type { CodezSessionEvent } from "@codez/shared";
 
 const MAX_TRACKED_SESSION_EVENT_IDS = 10_000;
 
-export interface ZCodeSessionEventGap {
+export interface CodezSessionEventGap {
   expectedSeq: number;
   receivedSeq: number;
 }
 
-export interface ZCodeSessionEventOrderResult {
+export interface CodezSessionEventOrderResult {
   duplicate?: boolean;
-  gap?: ZCodeSessionEventGap;
-  readyEvents: ZCodeSessionEvent[];
+  gap?: CodezSessionEventGap;
+  readyEvents: CodezSessionEvent[];
 }
 
-export interface ZCodeSessionEventOrderGate {
+export interface CodezSessionEventOrderGate {
   clearPendingAfterGap(): void;
-  getGap(): ZCodeSessionEventGap | undefined;
-  markSnapshotSeq(seq: number, options?: { preservePendingEvents?: boolean }): ZCodeSessionEvent[];
-  push(event: ZCodeSessionEvent): ZCodeSessionEventOrderResult;
+  getGap(): CodezSessionEventGap | undefined;
+  markSnapshotSeq(seq: number, options?: { preservePendingEvents?: boolean }): CodezSessionEvent[];
+  push(event: CodezSessionEvent): CodezSessionEventOrderResult;
   releasePendingAfterGap(options?: {
-    preserve?: (event: ZCodeSessionEvent) => boolean;
-  }): ZCodeSessionEvent[];
+    preserve?: (event: CodezSessionEvent) => boolean;
+  }): CodezSessionEvent[];
 }
 
 function rememberBoundedId(ids: Set<string>, order: string[], id: string): boolean {
@@ -38,17 +38,17 @@ function rememberBoundedId(ids: Set<string>, order: string[], id: string): boole
   return true;
 }
 
-export function createZCodeSessionEventOrderGate(): ZCodeSessionEventOrderGate {
+export function createCodezSessionEventOrderGate(): CodezSessionEventOrderGate {
   const deliveredEventIds = new Set<string>();
   const deliveredEventIdOrder: string[] = [];
-  const pendingEvents = new Map<number, ZCodeSessionEvent>();
+  const pendingEvents = new Map<number, CodezSessionEvent>();
   let nextSeq: number | null = null;
 
-  const drainReadyEvents = (): ZCodeSessionEvent[] => {
+  const drainReadyEvents = (): CodezSessionEvent[] => {
     if (nextSeq === null) {
       return [];
     }
-    const readyEvents: ZCodeSessionEvent[] = [];
+    const readyEvents: CodezSessionEvent[] = [];
     while (nextSeq !== null) {
       const event = pendingEvents.get(nextSeq);
       if (!event) {
@@ -61,7 +61,7 @@ export function createZCodeSessionEventOrderGate(): ZCodeSessionEventOrderGate {
     return readyEvents;
   };
 
-  const currentGap = (): ZCodeSessionEventGap | undefined => {
+  const currentGap = (): CodezSessionEventGap | undefined => {
     if (nextSeq === null || pendingEvents.size === 0) {
       return undefined;
     }
@@ -111,7 +111,7 @@ export function createZCodeSessionEventOrderGate(): ZCodeSessionEventOrderGate {
       return drainReadyEvents();
     },
 
-    push(event: ZCodeSessionEvent) {
+    push(event: CodezSessionEvent) {
       if (event.seq <= 0) {
         return { readyEvents: [event] };
       }

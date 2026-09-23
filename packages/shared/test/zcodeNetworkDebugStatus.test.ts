@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { zcodeTaskNetworkDebugStatusFromPayload } from "../src/zcode-network-debug-status.js";
+import { codezTaskNetworkDebugStatusFromPayload } from "../src/codez-network-debug-status.js";
 
-describe("zcodeTaskNetworkDebugStatusFromPayload", () => {
+describe("codezTaskNetworkDebugStatusFromPayload", () => {
   it("projects model network status payloads with headers and without response data", () => {
-    const event = zcodeTaskNetworkDebugStatusFromPayload({
+    const event = codezTaskNetworkDebugStatusFromPayload({
       taskId: "task-1",
       traceId: "trace-1",
       inputId: "input-1",
@@ -63,7 +63,7 @@ describe("zcodeTaskNetworkDebugStatusFromPayload", () => {
   it("ignores the admission-wait status types (workflow-adaptive-concurrency v3 决策 44)", () => {
     for (const type of ["model_request_queued", "model_request_admitted"]) {
       expect(
-        zcodeTaskNetworkDebugStatusFromPayload({
+        codezTaskNetworkDebugStatusFromPayload({
           taskId: "task-1",
           traceId: "trace-1",
           payload: {

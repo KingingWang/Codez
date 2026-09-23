@@ -1,7 +1,7 @@
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { build } from "esbuild";
-import { TID_FEEDBACK_LOGS_OPT_IN } from "@zcode/shared";
+import { TID_FEEDBACK_LOGS_OPT_IN } from "@codez/shared";
 import {
   readSettings,
   seedSettings,
@@ -71,7 +71,7 @@ describe("反馈上传授权（manual review）", () => {
     ["zh-CN", 430, 900, "帮助", "问题上报", "默认开启"],
   ] as const) {
     it(`FB-PRIV-01/08: ${locale} ${width}px 新反馈默认开启日志且允许取消`, async () => {
-      await seedSettings({ locale, localePreference: locale, zcodeEndpointOrigin: server.origin });
+      await seedSettings({ locale, localePreference: locale, codezEndpointOrigin: server.origin });
       await browser.electron.execute(
         (electron, size) => {
           electron.BrowserWindow.getAllWindows()[0]!.setSize(size.width, size.height);
@@ -106,7 +106,7 @@ describe("反馈上传授权（manual review）", () => {
         await logs.scrollIntoView();
         await expect(logs).toBeDisplayed();
         // E2E runtime path guard 禁止源码出现裸系统临时目录字面量，须走 tmpdir() 拼接。
-        await browser.saveScreenshot(join(tmpdir(), `zcode-feedback-${locale}-${theme}.png`));
+        await browser.saveScreenshot(join(tmpdir(), `codez-feedback-${locale}-${theme}.png`));
       }
       await browser.keys("Escape");
     });

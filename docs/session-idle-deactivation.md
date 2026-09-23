@@ -4,8 +4,8 @@
 
 ## 问题
 
-每个 workspace runtime 对应一个常驻 `zcode-cli app-server --stdio` 进程。进程内每个已加载
-session 都持有完整 `ZCodeApp`、内存事件库、MCP/runtime 接线和 V4 publisher。正常切换 task、
+每个 workspace runtime 对应一个常驻 `codez-cli app-server --stdio` 进程。进程内每个已加载
+session 都持有完整 `CodezApp`、内存事件库、MCP/runtime 接线和 V4 publisher。正常切换 task、
 关闭 pane 或切 workspace 不会删除持久 session，因此同一 CLI 进程浏览过的 session 越多，
 常驻内存越大。
 

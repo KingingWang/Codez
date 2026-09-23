@@ -25,7 +25,7 @@ describe("desktopCrashCapture", () => {
   });
 
   async function createPaths(platform: NodeJS.Platform): Promise<CrashCapturePaths> {
-    const rootDir = await mkdtemp(join(tmpdir(), "zcode-crash-capture-"));
+    const rootDir = await mkdtemp(join(tmpdir(), "codez-crash-capture-"));
     tempDirs.push(rootDir);
     const paths: CrashCapturePaths = {
       rootDir,

@@ -9,7 +9,7 @@ const originalHome = process.env.HOME;
 const tempHomes: string[] = [];
 
 function makeTempHome(): string {
-  const home = mkdtempSync(join(tmpdir(), "zcode-credential-home-"));
+  const home = mkdtempSync(join(tmpdir(), "codez-credential-home-"));
   tempHomes.push(home);
   return home;
 }
@@ -57,7 +57,7 @@ describe("credentialService encryption", () => {
 
     await service.save(credentialKey, "plain-access-token");
 
-    const credentialsFile = join(home, ".zcode", "v2", "credentials.json");
+    const credentialsFile = join(home, ".codez", "v2", "credentials.json");
     const rawStore = JSON.parse(readFileSync(credentialsFile, "utf-8")) as Record<string, string>;
     const storedValue = rawStore[credentialKey];
 
@@ -69,7 +69,7 @@ describe("credentialService encryption", () => {
 
   it("keeps backward compatibility for legacy plaintext values", async () => {
     const home = makeTempHome();
-    const credentialsDir = join(home, ".zcode", "v2");
+    const credentialsDir = join(home, ".codez", "v2");
     const credentialsFile = join(credentialsDir, "credentials.json");
     await mkdir(credentialsDir, { recursive: true });
     writeFileSync(
@@ -104,7 +104,7 @@ describe("credentialService encryption", () => {
 
   it("backs up corrupt JSON and refuses to erase it during save", async () => {
     const home = makeTempHome();
-    const credentialsDir = join(home, ".zcode", "v2");
+    const credentialsDir = join(home, ".codez", "v2");
     const credentialsFile = join(credentialsDir, "credentials.json");
     await mkdir(credentialsDir, { recursive: true });
     writeFileSync(credentialsFile, "{not-json", "utf-8");
@@ -114,11 +114,11 @@ describe("credentialService encryption", () => {
     try {
       await Promise.all(
         Array.from({ length: 8 }, () =>
-          expect(service.load("oauth:test:new")).rejects.toThrow("ZCode credentials are corrupt"),
+          expect(service.load("oauth:test:new")).rejects.toThrow("Codez credentials are corrupt"),
         ),
       );
       await expect(service.save("oauth:test:new", "value")).rejects.toThrow(
-        "ZCode credentials are corrupt",
+        "Codez credentials are corrupt",
       );
       expect(readFileSync(credentialsFile, "utf-8")).toBe("{not-json");
       const backups = readdirSync(credentialsDir).filter((file) =>

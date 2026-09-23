@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button } from "@zcode/ui";
-import type { UserInfo } from "@zcode/shared";
+import { Button } from "@codez/ui";
+import type { UserInfo } from "@codez/shared";
 import { getWebAuthCopy } from "./webAuthLocale.js";
 
 interface WebLoggedInWaitingPageProps {

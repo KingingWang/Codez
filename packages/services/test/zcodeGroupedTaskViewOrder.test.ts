@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import { setDataBaseDir } from "../src/paths.js";
 import { TaskIndexRepo } from "../src/session/taskIndexRepo.js";
 
@@ -11,7 +11,7 @@ let tempDir: string;
 const allRepos: TaskIndexRepo[] = [];
 
 beforeEach(() => {
-  tempDir = mkdtempSync(join(tmpdir(), "zcode-grouped-task-view-"));
+  tempDir = mkdtempSync(join(tmpdir(), "codez-grouped-task-view-"));
   setDataBaseDir(tempDir);
 });
 
@@ -45,8 +45,8 @@ function createTrackedRepo(): TaskIndexRepo {
 function createTask(
   taskId: string,
   createdAt: number,
-  overrides: Partial<ZCodeTaskMeta> = {},
-): ZCodeTaskMeta {
+  overrides: Partial<CodezTaskMeta> = {},
+): CodezTaskMeta {
   return {
     taskId,
     traceId: `trace-${taskId}`,
@@ -64,8 +64,8 @@ async function seedTask(
   repo: TaskIndexRepo,
   taskId: string,
   createdAt: number,
-  overrides: Partial<ZCodeTaskMeta> = {},
-): Promise<ZCodeTaskMeta> {
+  overrides: Partial<CodezTaskMeta> = {},
+): Promise<CodezTaskMeta> {
   return repo.syncTaskMeta({ meta: createTask(taskId, createdAt, overrides) });
 }
 
@@ -329,14 +329,14 @@ describe("grouped task view order", () => {
   it("keeps conversation tasks ungrouped during the legacy workspace bootstrap", async () => {
     const repo = createTrackedRepo();
     await seedTask(repo, "conversation-task", 100, {
-      workspacePath: "/Users/demo/.zcode/workspace/default",
+      workspacePath: "/Users/demo/.codez/workspace/default",
       workspacePurpose: "conversation",
     });
 
     const view = await repo.queryGroupedTaskView({
       workspaceScopes: [
         {
-          workspacePath: "/Users/demo/.zcode/workspace/default",
+          workspacePath: "/Users/demo/.codez/workspace/default",
           workspacePurpose: "conversation",
         },
       ],
@@ -348,7 +348,7 @@ describe("grouped task view order", () => {
 
   it("stamps conversation purpose from the query scope onto task-list results", async () => {
     const repo = createTrackedRepo();
-    const workspacePath = "/Users/demo/.zcode/workspace/default";
+    const workspacePath = "/Users/demo/.codez/workspace/default";
     await seedTask(repo, "conversation-list-task", 100, { workspacePath });
 
     const result = await repo.queryTaskList({

@@ -6,7 +6,7 @@ import {
   TID_CHAT_MESSAGES,
   TID_CHAT_USER_MESSAGE,
   TID_CHAT_VIEW,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   assertVisibleUserMessagesNotContaining,
@@ -371,7 +371,7 @@ async function readTimelineProjection(): Promise<TimelineProjectionSnapshot> {
       }));
       const storeApi = (
         window as Window & {
-          __zcodeSessionStoreE2E?: {
+          __codezSessionStoreE2E?: {
             getState?: () => {
               workspaces?: Record<
                 string,
@@ -382,7 +382,7 @@ async function readTimelineProjection(): Promise<TimelineProjectionSnapshot> {
             };
           };
         }
-      ).__zcodeSessionStoreE2E;
+      ).__codezSessionStoreE2E;
       const state = storeApi?.getState?.();
       const rawMessages = Object.values(state?.workspaces ?? {}).flatMap(
         (workspace) => (taskId ? (workspace.taskMessagesByTaskId?.[taskId] ?? []) : []),
@@ -538,7 +538,7 @@ async function injectManualCompactFailedSplitFixture(prompt: string, tailToken: 
     (taskIdArg, promptArg, tailTokenArg) => {
       const storeApi = (
         window as Window & {
-          __zcodeSessionStoreE2E?: {
+          __codezSessionStoreE2E?: {
             getState?: () => {
               setTaskMessages?: (
                 workspacePath: string,
@@ -563,7 +563,7 @@ async function injectManualCompactFailedSplitFixture(prompt: string, tailToken: 
             };
           };
         }
-      ).__zcodeSessionStoreE2E;
+      ).__codezSessionStoreE2E;
       const state = storeApi?.getState?.();
       const workspaceEntry = Object.entries(state?.workspaces ?? {}).find(
         ([, workspace]) =>

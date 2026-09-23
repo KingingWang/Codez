@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_CHAT_CONTEXT_USAGE_TRIGGER } from "@zcode/shared";
+import { TID_CHAT_CONTEXT_USAGE_TRIGGER } from "@codez/shared";
 import { getV4PaneSnapshot } from "./v4-conversation.js";
 import { sel } from "./selectors.js";
 
@@ -9,7 +9,7 @@ type UsageCategory = { source: string; chars: number };
 /** V4 不使用 legacy task store 的 usage；读取同一 session 的实际请求统计。 */
 export async function readBackgroundContextUsage(): Promise<UsageCategory[]> {
   const { sessionId } = await getV4PaneSnapshot();
-  const logDir = process.env.ZCODE_LOG_DIR;
+  const logDir = process.env.CODEZ_LOG_DIR;
   if (!sessionId || sessionId === "draft" || !logDir) {
     throw new Error("BG36 缺少已绑定 session 或 worker 日志目录");
   }

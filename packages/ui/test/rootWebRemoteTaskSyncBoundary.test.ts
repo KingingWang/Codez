@@ -22,8 +22,8 @@ describe("Root Web remote task sync subscription boundary", () => {
 
     // 性能回归保护：桌面 continuous 主链路没有开启 Web remote 时，
     // Root 不能为了远控 task 索引订阅整张 workspace 表，否则流式更新会唤醒整棵 shell。
-    expect(rootInnerSource).not.toContain("useZCodeSessionStore((state) => state.workspaces)");
-    expect(webRemoteTaskSyncSource).toContain("useZCodeSessionStore((state) => state.workspaces)");
+    expect(rootInnerSource).not.toContain("useCodezSessionStore((state) => state.workspaces)");
+    expect(webRemoteTaskSyncSource).toContain("useCodezSessionStore((state) => state.workspaces)");
     expect(rootSource).toMatch(/hasCompletedFullRestore\s*&&\s*webRemoteControlTaskSyncEnabled/);
   });
 });

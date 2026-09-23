@@ -1,50 +1,50 @@
-import { readTrustedZCodeAgentV4Connection } from "#src/zcode-agent/zcodeAgentConnectionScope.js";
+import { readTrustedCodezAgentV4Connection } from "#src/codez-agent/codezAgentConnectionScope.js";
 import {
   readBotGroupRuntimeSnapshot,
   waitBotGroupExecutionEnd,
-} from "#src/zcode-agent/groupRuntimeSnapshot.js";
+} from "#src/codez-agent/groupRuntimeSnapshot.js";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Emitter, setNetworkTelemetrySink } from "@zcode/rpc";
+import { Emitter, setNetworkTelemetrySink } from "@codez/rpc";
 import type {
   SessionSummary,
   SessionsIndexTopicFrame,
   SessionsIndexTopicWireFrame,
   WorkspaceConfigTopicWireFrame,
-} from "@zcode/shared/zcode-protocol-v4";
-import type { NetworkObservation } from "@zcode/rpc";
+} from "@codez/shared/codez-protocol-v4";
+import type { NetworkObservation } from "@codez/rpc";
 import { getLegacyTaskSessionSnapshotPath, setDataBaseDir } from "../src/paths.js";
-import { createZCodeTaskServiceAdapter } from "../src/zcode-agent/zcodeTaskServiceAdapter.js";
-import { createZCodeTaskIndexSyncer } from "../src/zcode-agent/zcodeTaskIndexSyncer.js";
+import { createCodezTaskServiceAdapter } from "../src/codez-agent/codezTaskServiceAdapter.js";
+import { createCodezTaskIndexSyncer } from "../src/codez-agent/codezTaskIndexSyncer.js";
 import { TaskIndexRepo } from "../src/session/taskIndexRepo.js";
 import type { CuaProductMcpServerResolver } from "../src/cua-permission-broker/index.js";
 import type {
-  IZCodeAgentService,
-  ZCodeAgentCreateSessionParams,
-  ZCodeAgentServiceEvent,
-} from "../src/zcode-agent/zcodeAgent.js";
+  ICodezAgentService,
+  CodezAgentCreateSessionParams,
+  CodezAgentServiceEvent,
+} from "../src/codez-agent/codezAgent.js";
 import type {
   AppSettings,
   TraceId,
-  ZCodeMessageWithParts,
+  CodezMessageWithParts,
   ModelSelection,
-  ZCodeProvider,
-  ZCodeSessionEvent,
-  ZCodeSessionStateSnapshot,
-  ZCodeStreamEvent,
-  ZCodeWorkspaceStateSnapshot,
-} from "@zcode/shared";
+  CodezProvider,
+  CodezSessionEvent,
+  CodezSessionStateSnapshot,
+  CodezStreamEvent,
+  CodezWorkspaceStateSnapshot,
+} from "@codez/shared";
 import {
   resolveWorkspaceKey,
-  ZCODE_CUA_OFFICIAL_MCP_NAMESPACE_NAME,
-  ZCODE_CUA_OFFICIAL_PLUGIN_ID,
-  ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY,
-  ZCODE_PLUGIN_ID_ENV_KEY,
-} from "@zcode/shared";
+  CODEZ_CUA_OFFICIAL_MCP_NAMESPACE_NAME,
+  CODEZ_CUA_OFFICIAL_PLUGIN_ID,
+  CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY,
+  CODEZ_PLUGIN_ID_ENV_KEY,
+} from "@codez/shared";
 
-vi.mock("#src/zcode-agent/groupRuntimeSnapshot.js", () => ({
+vi.mock("#src/codez-agent/groupRuntimeSnapshot.js", () => ({
   readBotGroupRuntimeSnapshot: vi.fn(async () => ({})),
   waitBotGroupExecutionEnd: vi.fn(async () => ({})),
 }));
@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 function useTempDataBaseDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "zcode-task-index-"));
+  const dir = mkdtempSync(join(tmpdir(), "codez-task-index-"));
   tempDirs.push(dir);
   setDataBaseDir(dir);
   return dir;
@@ -85,9 +85,9 @@ function makeSnapshot(params: {
   createdAt?: number;
   updatedAt?: number;
   model?: ModelSelection;
-  messages?: ZCodeMessageWithParts[];
-  backgroundJobs?: ZCodeSessionStateSnapshot["projection"]["backgroundJobs"];
-}): ZCodeSessionStateSnapshot {
+  messages?: CodezMessageWithParts[];
+  backgroundJobs?: CodezSessionStateSnapshot["projection"]["backgroundJobs"];
+}): CodezSessionStateSnapshot {
   const workspace = {
     workspacePath: params.workspacePath,
     workspaceIdentity: params.workspaceIdentity,
@@ -95,7 +95,7 @@ function makeSnapshot(params: {
   };
   const model = params.model ?? { providerId: "glm", modelId: "glm-4.6" };
   return {
-    protocol: { name: "ZCode Protocol", version: 1 },
+    protocol: { name: "Codez Protocol", version: 1 },
     session: {
       sessionId: params.sessionId,
       workspace,
@@ -146,9 +146,9 @@ function makeSnapshot(params: {
 function makeUserMessage(params: {
   sessionId: string;
   messageId: string;
-  parts?: ZCodeMessageWithParts["parts"];
+  parts?: CodezMessageWithParts["parts"];
   text: string;
-}): ZCodeMessageWithParts {
+}): CodezMessageWithParts {
   return {
     info: {
       messageId: params.messageId,
@@ -174,7 +174,7 @@ function makeAssistantAgentToolMessage(params: {
   sessionId: string;
   messageId: string;
   toolCallId: string;
-}): ZCodeMessageWithParts {
+}): CodezMessageWithParts {
   return {
     info: {
       messageId: params.messageId,
@@ -207,13 +207,13 @@ function makeAssistantAgentToolMessage(params: {
 }
 
 function createAgentMock() {
-  const eventEmitter = new Emitter<ZCodeAgentServiceEvent>();
+  const eventEmitter = new Emitter<CodezAgentServiceEvent>();
   const indexFrameEmitter = new Emitter<SessionsIndexTopicWireFrame>();
-  const snapshots = new Map<string, ZCodeSessionStateSnapshot>();
+  const snapshots = new Map<string, CodezSessionStateSnapshot>();
   const workspaceState = (params: {
     workspacePath: string;
     workspaceIdentity?: string;
-  }): ZCodeWorkspaceStateSnapshot => {
+  }): CodezWorkspaceStateSnapshot => {
     const snapshot =
       [...snapshots.values()].find(
         (item) =>
@@ -230,15 +230,15 @@ function createAgentMock() {
       settings: snapshot.settings,
     };
   };
-  const agent: IZCodeAgentService = {
+  const agent: ICodezAgentService = {
     initialize: vi.fn(async (params) => ({
       available: true,
       workspaceKey: params.workspaceIdentity ?? params.workspacePath,
-      protocolName: "ZCode Protocol",
+      protocolName: "Codez Protocol",
       protocolVersion: 1,
       transportKind: "stdio",
     })),
-    createSession: vi.fn(async (params: ZCodeAgentCreateSessionParams) => {
+    createSession: vi.fn(async (params: CodezAgentCreateSessionParams) => {
       const sessionId = params.sessionId ?? `sess_${snapshots.size + 1}`;
       const snapshot = makeSnapshot({
         sessionId,
@@ -283,7 +283,7 @@ function createAgentMock() {
                     text: message.content,
                   },
                 ],
-              } satisfies ZCodeMessageWithParts)
+              } satisfies CodezMessageWithParts)
             : makeUserMessage({
                 sessionId,
                 messageId: `msg_import_${index}`,
@@ -438,20 +438,20 @@ function createService(options?: {
     : undefined;
   // adapter 现在要求注入 syncer；测试里给一个真实的 syncer（agent 上面已经 mock 了 onDynamicSessionEvent）。
   const taskIndexRepo = new TaskIndexRepo();
-  const taskIndexSyncer = createZCodeTaskIndexSyncer({
+  const taskIndexSyncer = createCodezTaskIndexSyncer({
     agentService: agent,
     taskIndexRepo,
   });
 
-  const service = createZCodeTaskServiceAdapter({
-    zcodeAgentService: agent,
+  const service = createCodezTaskServiceAdapter({
+    codezAgentService: agent,
     taskIndexRepo,
     taskIndexSyncer,
     ...(settingService ? { settingService } : {}),
     ...(options?.cuaProductMcpServerResolver
       ? { cuaProductMcpServerResolver: options.cuaProductMcpServerResolver }
       : {}),
-  }) as ReturnType<typeof createZCodeTaskServiceAdapter> & {
+  }) as ReturnType<typeof createCodezTaskServiceAdapter> & {
     disposeAll(): void;
   };
   disposables.push(service);
@@ -561,7 +561,7 @@ async function seedIndexedTask(
   repo: TaskIndexRepo,
   params: {
     taskId: string;
-    provider: ZCodeProvider;
+    provider: CodezProvider;
     model?: string;
     workspacePath?: string;
     createdAt?: number;
@@ -624,7 +624,7 @@ async function seedLegacyAcpSessionId(
   await repo.ensureReady();
 }
 
-describe("ZCode legacy task compat task index", () => {
+describe("Codez legacy task compat task index", () => {
   it.each([undefined, "ssh://host/repo"])(
     "waits for an in-flight topic admission before confirming cancellation (%s)",
     async (workspaceIdentity) => {
@@ -721,7 +721,7 @@ describe("ZCode legacy task compat task index", () => {
     });
     const connections: string[] = [];
     const check = (params: unknown) => {
-      const connection = readTrustedZCodeAgentV4Connection(params);
+      const connection = readTrustedCodezAgentV4Connection(params);
       if (!connection) throw new Error("fault.attachment.connectionUntrusted");
       expect(connection.clientMode).toBe("desktop-continuous");
       expect(params).toEqual(
@@ -1186,7 +1186,7 @@ describe("ZCode legacy task compat task index", () => {
                 args: [
                   ...(server.args ?? []),
                   "--permission-broker-socket",
-                  "/tmp/zcode-cua/helper.sock",
+                  "/tmp/codez-cua/helper.sock",
                 ],
               }
             : server,
@@ -1200,12 +1200,12 @@ describe("ZCode legacy task compat task index", () => {
       provider: "glm",
       mcpServers: [
         {
-          name: ZCODE_CUA_OFFICIAL_MCP_NAMESPACE_NAME,
+          name: CODEZ_CUA_OFFICIAL_MCP_NAMESPACE_NAME,
           command: "uvx",
-          args: ["zcode-cua"],
+          args: ["codez-cua"],
           env: [
-            { name: ZCODE_PLUGIN_ID_ENV_KEY, value: ZCODE_CUA_OFFICIAL_PLUGIN_ID },
-            { name: ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY, value: "test-authority" },
+            { name: CODEZ_PLUGIN_ID_ENV_KEY, value: CODEZ_CUA_OFFICIAL_PLUGIN_ID },
+            { name: CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY, value: "test-authority" },
           ],
         },
       ],
@@ -1215,9 +1215,9 @@ describe("ZCode legacy task compat task index", () => {
     const server = createParams?.mcpServers?.[0];
     expect(resolver.resolveMcpServers).toHaveBeenCalledTimes(1);
     expect(server && "command" in server ? server.args : []).toEqual([
-      "zcode-cua",
+      "codez-cua",
       "--permission-broker-socket",
-      "/tmp/zcode-cua/helper.sock",
+      "/tmp/codez-cua/helper.sock",
     ]);
   });
 
@@ -1316,7 +1316,7 @@ describe("ZCode legacy task compat task index", () => {
     expect(observations).toEqual([
       {
         transport: "http",
-        interface: "zcode_agent.model.openai-compatible.sse.api.example.com/v1",
+        interface: "codez_agent.model.openai-compatible.sse.api.example.com/v1",
         durationMs: 456,
         ok: true,
         attempt: 2,
@@ -1327,7 +1327,7 @@ describe("ZCode legacy task compat task index", () => {
   it("projects user input response to elicitation response in dynamic task fallback subscriptions", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const streamEvents: ZCodeStreamEvent[] = [];
+    const streamEvents: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -1363,7 +1363,7 @@ describe("ZCode legacy task compat task index", () => {
   it("projects structured turn failure codes into dynamic task errors", async () => {
     const { eventEmitter, service, taskIndexRepo } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const streamEvents: ZCodeStreamEvent[] = [];
+    const streamEvents: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -1444,7 +1444,7 @@ describe("ZCode legacy task compat task index", () => {
   it("projects streaming Write input in dynamic task fallback subscriptions", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const streamEvents: ZCodeStreamEvent[] = [];
+    const streamEvents: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -1532,7 +1532,7 @@ describe("ZCode legacy task compat task index", () => {
 
     const runStarted = streamEvents.find((event) => event.type === "task_run_started");
     const toolUpdates = streamEvents.filter(
-      (event): event is Extract<ZCodeStreamEvent, { type: "tool_call_update" }> =>
+      (event): event is Extract<CodezStreamEvent, { type: "tool_call_update" }> =>
         event.type === "tool_call_update",
     );
 
@@ -1559,7 +1559,7 @@ describe("ZCode legacy task compat task index", () => {
   it("keeps background Agent launch acknowledgements in progress in dynamic task streams", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const streamEvents: ZCodeStreamEvent[] = [];
+    const streamEvents: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -1634,7 +1634,7 @@ describe("ZCode legacy task compat task index", () => {
   it("keeps previous and current async Task launch acknowledgements in progress in dynamic task streams", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const streamEvents: ZCodeStreamEvent[] = [];
+    const streamEvents: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -3217,7 +3217,7 @@ describe("ZCode legacy task compat task index", () => {
   it("routes respondElicitation through v4 resolveInteraction with action/content", async () => {
     const { agent, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const received: ZCodeStreamEvent[] = [];
+    const received: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -3285,7 +3285,7 @@ describe("ZCode legacy task compat task index", () => {
     ).resolves.toBe(true);
   });
 
-  it("merges live subagent tool projection into terminal ZCode snapshots", async () => {
+  it("merges live subagent tool projection into terminal Codez snapshots", async () => {
     const { agent, eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
     const terminalSnapshot = makeSnapshot({
@@ -3316,7 +3316,7 @@ describe("ZCode legacy task compat task index", () => {
       },
     });
 
-    const streamEvents: ZCodeStreamEvent[] = [];
+    const streamEvents: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -3325,7 +3325,7 @@ describe("ZCode legacy task compat task index", () => {
     });
 
     try {
-      const scheduledEvent: ZCodeSessionEvent = {
+      const scheduledEvent: CodezSessionEvent = {
         eventId: "evt_subagent_tool_scheduled",
         sessionId: task.taskId,
         turnId: "turn_1",
@@ -3346,7 +3346,7 @@ describe("ZCode legacy task compat task index", () => {
           childToolCallId: "call_child_read",
         },
       };
-      const resultEvent: ZCodeSessionEvent = {
+      const resultEvent: CodezSessionEvent = {
         eventId: "evt_subagent_tool_result",
         sessionId: task.taskId,
         turnId: "turn_1",
@@ -3492,7 +3492,7 @@ describe("ZCode legacy task compat task index", () => {
               },
             },
           ],
-        } satisfies ZCodeMessageWithParts,
+        } satisfies CodezMessageWithParts,
         makeUserMessage({
           sessionId: task.taskId,
           messageId: "msg_task_notification",
@@ -3537,7 +3537,7 @@ describe("ZCode legacy task compat task index", () => {
     expect(snapshot?.messages).toHaveLength(2);
     expect(snapshot?.messages[1]?.tools?.[0]?.raw).toMatchObject({
       _meta: {
-        zcode: {
+        codez: {
           taskNotification: {
             outputFile: "/tmp/background-agent.output",
             result: "Background Agent restored result",
@@ -3617,7 +3617,7 @@ describe("ZCode legacy task compat task index", () => {
                 },
               },
             ],
-          } satisfies ZCodeMessageWithParts,
+          } satisfies CodezMessageWithParts,
           makeUserMessage({
             sessionId: task.taskId,
             messageId: "msg_failed_task_notification",
@@ -3648,7 +3648,7 @@ describe("ZCode legacy task compat task index", () => {
         status: expectedStatus,
         raw: {
           _meta: {
-            zcode: {
+            codez: {
               taskNotification: {
                 status: notificationStatus,
                 summary: notificationSummary,
@@ -3665,7 +3665,7 @@ describe("ZCode legacy task compat task index", () => {
   it("projects live task notification turns back onto matching background Agent tools", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const streamEvents: ZCodeStreamEvent[] = [];
+    const streamEvents: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -3710,7 +3710,7 @@ describe("ZCode legacy task compat task index", () => {
           content: "Background Agent live result",
           raw: expect.objectContaining({
             _meta: expect.objectContaining({
-              zcode: expect.objectContaining({
+              codez: expect.objectContaining({
                 taskNotification: {
                   outputFile: "/tmp/background-agent.output",
                   result: "Background Agent live result",
@@ -3732,7 +3732,7 @@ describe("ZCode legacy task compat task index", () => {
   it("projects failed live task notifications with the provider error on matching Agent tools", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const streamEvents: ZCodeStreamEvent[] = [];
+    const streamEvents: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -3772,7 +3772,7 @@ describe("ZCode legacy task compat task index", () => {
     }
 
     const failedUpdate = streamEvents.find(
-      (event): event is Extract<ZCodeStreamEvent, { type: "tool_call_update" }> =>
+      (event): event is Extract<CodezStreamEvent, { type: "tool_call_update" }> =>
         event.type === "tool_call_update" && event.toolId === "toolu_background_agent_failed",
     );
     expect(failedUpdate).toMatchObject({
@@ -3783,7 +3783,7 @@ describe("ZCode legacy task compat task index", () => {
       error: BACKGROUND_AGENT_PROVIDER_ERROR,
       raw: {
         _meta: {
-          zcode: {
+          codez: {
             taskNotification: {
               error: BACKGROUND_AGENT_PROVIDER_ERROR,
               status: "failed",
@@ -3838,7 +3838,7 @@ describe("ZCode legacy task compat task index", () => {
       "bash_b",
     ]);
 
-    const streamEvents: ZCodeStreamEvent[] = [];
+    const streamEvents: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath,
       workspaceIdentity,
@@ -3868,7 +3868,7 @@ describe("ZCode legacy task compat task index", () => {
       });
 
       const backgroundUpdate = streamEvents.findLast(
-        (event): event is Extract<ZCodeStreamEvent, { type: "background_bash_jobs_update" }> =>
+        (event): event is Extract<CodezStreamEvent, { type: "background_bash_jobs_update" }> =>
           event.type === "background_bash_jobs_update",
       );
       expect(backgroundUpdate?.jobs.map((job) => [job.jobId, job.status])).toEqual([
@@ -4056,7 +4056,7 @@ describe("ZCode legacy task compat task index", () => {
     expect(visibleArchived.map((task) => task.taskId)).toEqual(["stale_glm"]);
   });
 
-  it("does not include zero ZCode Protocol context usage in task snapshots", async () => {
+  it("does not include zero Codez Protocol context usage in task snapshots", async () => {
     const { service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
 
@@ -4859,10 +4859,10 @@ describe("ZCode legacy task compat task index", () => {
     });
   });
 
-  it("maps ZCode Protocol context projection events to legacy usage_update", async () => {
+  it("maps Codez Protocol context projection events to legacy usage_update", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const received: ZCodeStreamEvent[] = [];
+    const received: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -4907,7 +4907,7 @@ describe("ZCode legacy task compat task index", () => {
     async ({ streamed, expected }) => {
       const { eventEmitter, service } = createService();
       const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-      const received: ZCodeStreamEvent[] = [];
+      const received: CodezStreamEvent[] = [];
       const subscription = service.onDynamicTaskEvent({
         workspacePath: "/repo",
         taskId: task.taskId,
@@ -4917,7 +4917,7 @@ describe("ZCode legacy task compat task index", () => {
       });
       let seq = 0;
       const emit = (
-        type: ZCodeSessionEvent["type"],
+        type: CodezSessionEvent["type"],
         payload: Record<string, unknown>,
         turnId = "turn_repair",
       ) => {
@@ -4988,7 +4988,7 @@ describe("ZCode legacy task compat task index", () => {
   it("不同 assistant message 的正文独立核对，不受前言或子代理文字影响", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const received: ZCodeStreamEvent[] = [];
+    const received: CodezStreamEvent[] = [];
     const subscription = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -5034,7 +5034,7 @@ describe("ZCode legacy task compat task index", () => {
   it("uses prompt inputId as per-turn traceId for session stream events", async () => {
     const { agent, eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const received: ZCodeStreamEvent[] = [];
+    const received: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -5127,7 +5127,7 @@ describe("ZCode legacy task compat task index", () => {
   it("maps main turn model usage with context window to legacy usage_update", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const received: ZCodeStreamEvent[] = [];
+    const received: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -5205,7 +5205,7 @@ describe("ZCode legacy task compat task index", () => {
   it("maps aggregate main turn cache hit usage to legacy usage_update", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const received: ZCodeStreamEvent[] = [];
+    const received: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -5273,7 +5273,7 @@ describe("ZCode legacy task compat task index", () => {
   it("prefers real main turn model usage over projected context used", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const received: ZCodeStreamEvent[] = [];
+    const received: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -5334,7 +5334,7 @@ describe("ZCode legacy task compat task index", () => {
   it("does not map sidecar model usage to legacy usage_update", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const received: ZCodeStreamEvent[] = [];
+    const received: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,
@@ -5389,10 +5389,10 @@ describe("ZCode legacy task compat task index", () => {
     });
   });
 
-  it("maps ZCode model retry status to apiRetry stream events and runtime snapshots", async () => {
+  it("maps Codez model retry status to apiRetry stream events and runtime snapshots", async () => {
     const { eventEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
-    const received: ZCodeStreamEvent[] = [];
+    const received: CodezStreamEvent[] = [];
     const disposable = service.onDynamicTaskEvent({
       workspacePath: "/repo",
       taskId: task.taskId,

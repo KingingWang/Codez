@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { UserInputRow } from "@zcode/shared/zcode-protocol-v4";
+import type { UserInputRow } from "@codez/shared/codez-protocol-v4";
 import { expandTopicInputMessages } from "@/v4/topicInputMessages.js";
 
 describe("topic input presentation", () => {

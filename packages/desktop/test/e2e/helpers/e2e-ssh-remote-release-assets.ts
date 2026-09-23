@@ -7,7 +7,7 @@ export interface EnsureSshRemoteReleaseAssetsOptions {
    */
   releaseDir: string;
   /**
-   * 执行 `pnpm --filter @zcode/desktop prepare:remote-assets` 的回调，由 wdio.conf.ts
+   * 执行 `pnpm --filter @codez/desktop prepare:remote-assets` 的回调，由 wdio.conf.ts
    * 注入以复用 runPnpmWorkspaceCommand（处理 CI HOME / NODE_OPTION / Windows shell）。
    */
   prepareReleaseAssets: () => void;
@@ -71,7 +71,7 @@ export function ensureSshRemoteReleaseAssets(
   onInfo(
     `[e2e] SSH remote assets missing or incomplete: ${releaseDir} ` +
       `(missing: ${listMissingManifests(releaseDir, exists).join(", ")}); ` +
-      "auto-running pnpm --filter @zcode/desktop prepare:remote-assets",
+      "auto-running pnpm --filter @codez/desktop prepare:remote-assets",
   );
   prepareReleaseAssets();
 

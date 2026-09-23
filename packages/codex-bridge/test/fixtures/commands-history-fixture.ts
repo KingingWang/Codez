@@ -3,7 +3,7 @@ import type { TestContext } from "node:test";
 import {
   conversationSnapshotSchema,
   type ConversationSnapshot,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { codexUserInputSchema, type CodexTurn } from "../../src/codex-types.js";
 import { projectThread } from "../../src/projection.js";
 import { setup, cwd, sessionId, textInput, turn, attachment } from "./commands-fixture.js";

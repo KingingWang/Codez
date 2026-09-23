@@ -53,7 +53,7 @@ describe("模型 Provider Turbo 跨能力切换 E2E", () => {
     });
     await waitForSelectedModel(E2E_BIGMODEL_PLAN_PROVIDER_ID, E2E_PLAN_TURBO_MODEL);
     // Bug 根因：V4 草稿跨模型切换以 toolbar projection 为显示真值，不再把乐观
-    // 配置反写旧 zcodeSessionStore.configOptions。原子切换应读取 V4 稳定投影。
+    // 配置反写旧 codezSessionStore.configOptions。原子切换应读取 V4 稳定投影。
     await waitForV4DraftModelConfig({ model: E2E_PLAN_TURBO_MODEL, thought: "enabled" });
     await waitForDraftThoughtLevelState({ current: "enabled", values: ["off", "enabled"] });
   });

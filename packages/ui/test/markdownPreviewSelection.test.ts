@@ -6,7 +6,7 @@ import {
 import { createElement } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { MarkdownPreviewContent } from "@/previewPaneMarkdownContent.js";
 import {
   appendConversationSelectionReference,
@@ -30,7 +30,7 @@ const reference: ConversationSelectionReference = {
 };
 function preview(content = "Selected paragraph", sessionId: string | null = null) {
   return createElement(
-    ZCodeIntlProvider,
+    CodezIntlProvider,
     { initialLocale: "en-US" },
     createElement(MarkdownPreviewContent, {
       content,

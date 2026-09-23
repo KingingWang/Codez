@@ -3,7 +3,7 @@ import {
   MEDIA_BUDGET_CURRENT_IMAGE_TOO_LARGE_ERROR_CODE,
   MEDIA_BUDGET_CURRENT_VIDEO_TOO_LARGE_ERROR_CODE,
   OFF_PEAK_TICKET_EXPIRED_MARKER,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { resolveChatErrorBannerDisplayMessage } from "@/ChatErrorBanner.js";
 import type { IntlInstance } from "@/i18n/IntlProvider.js";
 import enUS from "@/i18n/locales/en-US.js";

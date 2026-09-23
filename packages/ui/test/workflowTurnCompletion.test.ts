@@ -1,7 +1,7 @@
 // 完成卡的解析（docs/dynamic-workflow/transcript-and-notifications.md「When the card appears」）：只有 completed 的
 // 终态工作流通知轮解析出卡；errored / stopped / 升级 / 载荷缺席 / bash 通知都不。
 import { describe, expect, it } from "vitest";
-import type { TurnHeaderRow } from "@zcode/shared/zcode-protocol-v4";
+import type { TurnHeaderRow } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowRunCardSummary } from "@/ToolCallBlocks/shared.js";
 import { resolveWorkflowTurnCompletion } from "@/v4/workflowTurnCompletion.js";
 

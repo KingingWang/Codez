@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { codexModelSchema } from "@zcode/shared";
+import { codexModelSchema } from "@codez/shared";
 import { createComposerSubmissionConfig } from "@/v4/composer/composerSubmissionConfig.js";
 import { codexQuestionAnswer, readCodexQuestions } from "./codexQuestions.js";
 import { resolveDesktopRuntimePreferences } from "./codexRuntimePreferences.js";
@@ -10,7 +10,7 @@ import {
   isQueueSendNowAvailable,
   resolveCodexPrewarmConfig,
 } from "./codexSubmissionSettings.js";
-import type { ConversationSnapshot } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
 import {
   readCodexModelCatalog,
   resolveCodexSelection,

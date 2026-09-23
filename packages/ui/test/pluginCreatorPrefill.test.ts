@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { SkillSummary } from "@zcode/shared";
+import type { SkillSummary } from "@codez/shared";
 import { buildPluginCreatorPrefill } from "@/settings/pluginCreatorPrefill.js";
 
 const creator: SkillSummary = {
@@ -11,7 +11,7 @@ const creator: SkillSummary = {
   scope: "plugin",
   enabled: true,
   pluginName: "plugin-creator",
-  pluginId: "plugin-creator@zcode-plugins-official",
+  pluginId: "plugin-creator@codez-plugins-official",
 };
 describe("Plugin Creator prefill", () => {
   it("binds the real official skill path and preserves trailing space without submission", () => {

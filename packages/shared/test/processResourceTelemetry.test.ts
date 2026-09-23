@@ -11,7 +11,7 @@ import {
   PROCESS_RESOURCE_ROLES,
   checkProcessResourceEventProperties,
   resolveCliProcessResourceRole,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 describe("processResourceTelemetry 事件契约", () => {
   it("角色枚举覆盖 spec 第一期 10 个角色", () => {

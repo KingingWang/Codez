@@ -11,7 +11,7 @@
 默认全量 desktop E2E 不会执行 manual review spec。需要显式打开：
 
 ```bash
-ZCODE_E2E_MANUAL_REVIEW=1 \
+CODEZ_E2E_MANUAL_REVIEW=1 \
 E2E_PROVIDER_API_KEY=<real-provider-key> \
 pnpm exec wdio run wdio.conf.ts \
   --spec ./test/e2e/conversation-session/conversation-session-goal-run-cases.test.ts
@@ -32,7 +32,7 @@ packages/desktop/.e2e-artifacts/<run-id>/manual-review/goal-run-cases/
 
 抓包代理默认把 CA 和 capture 文件放在 `packages/desktop/.e2e-network-capture/`。这个目录不能放进 `.e2e-home`，因为 WDIO 每个 session 启动前都会清空 `.e2e-home` 来保证测试隔离；如果 CA 被 reset 删除，agent 子进程读取 `httpProxyCaCertPath` 时会直接报 `ENOENT`。
 
-capture 模式只需要抓真实 DeepSeek provider 请求。默认 `NO_PROXY` 会绕过 `localhost`、`js.stripe.com`、`zcode.z.ai` 和 `cdn.zcode-ai.com`，避免 app 启动期 telemetry/CDN 请求进入 MITM 代理后产生无关证书告警。
+capture 模式只需要抓真实 DeepSeek provider 请求。默认 `NO_PROXY` 会绕过 `localhost`、`js.stripe.com`、`zcode.z.ai` 和 `cdn.codez-ai.com`，避免 app 启动期 telemetry/CDN 请求进入 MITM 代理后产生无关证书告警。
 
 ## 预设启动态
 
@@ -96,7 +96,7 @@ prompt 同时明确禁止 `Edit`、`Write`、删除、移动、安装、提交�
 可选日志观察：
 
 ```bash
-tail -f ~/.zcode/cli/log/zcode-$(date +%F).jsonl | rg "target\\.continuation|target\\.completion_verification|turn\\.started|turn\\.completed"
+tail -f ~/.codez/cli/log/codez-$(date +%F).jsonl | rg "target\\.continuation|target\\.completion_verification|turn\\.started|turn\\.completed"
 ```
 
 人工观察点：

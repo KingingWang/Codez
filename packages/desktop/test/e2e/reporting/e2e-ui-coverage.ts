@@ -94,7 +94,7 @@ const RENDERER_BASELINE_RELATIVE_PATH =
 export function createE2EUICoverageCollector(
   options: E2EUICoverageCollectorOptions,
 ) {
-  const enabled = process.env.ZCODE_E2E_COVERAGE === COVERAGE_ENV_VALUE;
+  const enabled = process.env.CODEZ_E2E_COVERAGE === COVERAGE_ENV_VALUE;
   const coverageDir = resolve(options.artifactDir, "coverage");
   const rawDir = resolve(coverageDir, "raw", "renderer");
   const htmlDir = resolve(coverageDir, "ui-renderer-html");
@@ -147,7 +147,7 @@ export function createE2EUICoverageCollector(
         options.repoRoot,
       );
       const workerId = sanitizeCoverageFilePart(
-        process.env.ZCODE_E2E_WORKER_ID ?? "worker",
+        process.env.CODEZ_E2E_WORKER_ID ?? "worker",
       );
       const workerRawPath = resolve(rawDir, `${workerId}-${process.pid}.json`);
       const mergedCoverage = createCoverageMap({});

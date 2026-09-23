@@ -3,12 +3,12 @@ import { createElement, useState } from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { RemoteTarget } from "@zcode/shared";
+import type { RemoteTarget } from "@codez/shared";
 
 const capturedRemoteSyncDialogProps = vi.hoisted(() => [] as Array<Record<string, unknown>>);
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },

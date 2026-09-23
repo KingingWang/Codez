@@ -6,7 +6,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -21,9 +21,9 @@ const LEGACY_SERVER_NAME = "e2e_legacy_2025";
 const PINNED_LEGACY_SERVER_NAME = "e2e_pinned_legacy";
 const BUILT_IN_NODE_REPL_SERVER_NAME = "node_repl";
 const E2E_PATHS = getE2EAppDataPaths();
-// 修复原因：WDIO 为每轮运行注入隔离 HOME，但 CLI 数据根实际是 HOME/.zcode。
-// 这里沿用 desktop-app 的 storageRoot 合同；直接从 homeDir 再拼 .zcode 会在
-// 当前 fixture layout 下绕过 runner 已创建的 .zcode/cli，导致写入前 ENOENT。
+// 修复原因：WDIO 为每轮运行注入隔离 HOME，但 CLI 数据根实际是 HOME/.codez。
+// 这里沿用 desktop-app 的 storageRoot 合同；直接从 homeDir 再拼 .codez 会在
+// 当前 fixture layout 下绕过 runner 已创建的 .codez/cli，导致写入前 ENOENT。
 const CLI_CONFIG_FILE = join(E2E_PATHS.storageRoot, "cli", "config.json");
 const CASE_ROOT = join(E2E_PATHS.workspace, "mcp-dual-era-version-negotiation-e2e");
 const MODERN_WIRE_LOG = join(CASE_ROOT, "modern-wire.ndjson");
@@ -257,7 +257,7 @@ async function waitForConnectedLogs(
 
 async function readConnectedLogs(): Promise<Map<string, McpConnectedLog>> {
   const logDir =
-    process.env.ZCODE_LOG_DIR?.trim() || join(E2E_PATHS.homeDir, ".zcode", "cli", "log");
+    process.env.CODEZ_LOG_DIR?.trim() || join(E2E_PATHS.homeDir, ".codez", "cli", "log");
   const result = new Map<string, McpConnectedLog>();
   const files = await readdir(logDir).catch(() => []);
   for (const file of files) {

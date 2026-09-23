@@ -305,7 +305,7 @@ rewind stale alias 清理补丁完成后，同一无 rewind focused fixture 复�
 挂在原有 `row.removed` 分支，普通事件不新增 alias 遍历；结构测试同时固定一段 16-event replay
 只在两次 rewind 上各清理一次，并在重复删除后只保留仍指向当前 snapshot row 的 alias。
 
-除下方单独标注的 PERF03-E 外，历史结果环境为 Apple M2 Pro、10 logical CPU、16 GiB RAM、Electron 41.0.3；renderer 使用 Vite dev server，CLI 使用 `ZCODE_ENV=production`。以下数字是本机诊断证据，不是跨机器 SLA。
+除下方单独标注的 PERF03-E 外，历史结果环境为 Apple M2 Pro、10 logical CPU、16 GiB RAM、Electron 41.0.3；renderer 使用 Vite dev server，CLI 使用 `CODEZ_ENV=production`。以下数字是本机诊断证据，不是跨机器 SLA。
 
 ### PERF03-H 单次冷恢复物化（2026-08-12；2026-08-13 复核）
 
@@ -525,7 +525,7 @@ rehydration 与 wire 编码，不应归因成单一阶段。具体职责边界�
 
 ## E2E Handoff Notes
 
-- Provider fixture: 不需要；使用 `zcode-large-task-fixture` 直接构造持久 conversation。
+- Provider fixture: 不需要；使用 `codez-large-task-fixture` 直接构造持久 conversation。
 - File-system fixture: 无。
 - Timing strategy: 单独 manual performance run；focused benchmark 只守复杂度趋势，避免 CI 绝对墙钟抖动。
 - Docker preset: 不进入常规 conversation suite。

@@ -13,7 +13,7 @@ JSON 响应中省略官方 Responses 结构要求的字段：
 - `output[].type === "message"` 时省略 `id`；
 - `output[].content[].type === "output_text"` 时省略 `annotations`。
 
-ZCode 的主会话默认走流式请求，而 compact 固定调用 `modelAdapter.generateText()`。因此同一个
+Codez 的主会话默认走流式请求，而 compact 固定调用 `modelAdapter.generateText()`。因此同一个
 provider/model 可以正常完成主会话，却在 compact 的 HTTP 200 响应进入
 `OpenAIResponsesLanguageModel.doGenerate()` 后，被 AI SDK 以 `Invalid JSON response` 拒绝。
 
@@ -43,7 +43,7 @@ createOpenAI({
 Responses 返回体兼容不得放入该共享 fetch，也不得进入 `anthropic`、`gateway` 或
 `openai-compatible` factory。
 
-ZCode 的 provider 类型合同已经把 `providerKind === "openai"` 唯一映射为
+Codez 的 provider 类型合同已经把 `providerKind === "openai"` 唯一映射为
 `apiFormat === "openai-responses"`。registry 必须显式返回 AI SDK 的 `provider.responses`
 factory，让 factory 组合本身成为协议判据；兼容器不得通过请求 URL、method、模型名或 baseURL
 再次猜测协议。

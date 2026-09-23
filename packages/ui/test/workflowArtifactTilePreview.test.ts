@@ -18,7 +18,7 @@ vi.mock("@/v4/V4ConversationContext.js", () => ({
 }));
 
 // eslint-disable-next-line import/first -- 必须在 mock 之后再引入被测组件。
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 // eslint-disable-next-line import/first
 import {
   WorkflowArtifactTilePreview,
@@ -62,7 +62,7 @@ function bytesOf(text: string, mediaType: string) {
 function renderPreview(artifact: WorkflowCompletionArtifact) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(
         "div",

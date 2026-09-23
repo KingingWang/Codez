@@ -1,6 +1,6 @@
-import type { ApiClient } from "@zcode/shared";
+import type { ApiClient } from "@codez/shared";
 import { describe, expect, it, vi } from "vitest";
-import { fetchZCodeBuiltinRemoteRelease } from "../src/model-provider/zcodeBuiltinRemoteConfig.js";
+import { fetchCodezBuiltinRemoteRelease } from "../src/model-provider/codezBuiltinRemoteConfig.js";
 import { NodeApiClient } from "../src/providers/api/nodeApiClient.js";
 
 const release = {
@@ -18,7 +18,7 @@ const release = {
   },
 };
 
-describe("fetchZCodeBuiltinRemoteRelease", () => {
+describe("fetchCodezBuiltinRemoteRelease", () => {
   it("App 注入现有网络实现，控制面 URL 与 CDN 共用总预算且不携带账号鉴权", async () => {
     const request = vi.fn(
       async (_url: string | URL, _init?: RequestInit) => new Response(JSON.stringify(release)),
@@ -33,10 +33,10 @@ describe("fetchZCodeBuiltinRemoteRelease", () => {
     );
     expect(
       (
-        await fetchZCodeBuiltinRemoteRelease({
+        await fetchCodezBuiltinRemoteRelease({
           apiClient: new NodeApiClient({
             fetchImpl: request as typeof fetch,
-            resolveZCodeEndpointOrigin: () => "https://example.com",
+            resolveCodezEndpointOrigin: () => "https://example.com",
           }),
           endpointOrigin: "https://example.com/base",
           appVersion: "3.0.0",
@@ -61,10 +61,10 @@ describe("fetchZCodeBuiltinRemoteRelease", () => {
   it("服务端尚未下发 URL 时不请求 CDN，也不消费旧 inline 字段", async () => {
     const request = vi.fn(
       async () =>
-        new Response(JSON.stringify({ code: 0, data: { configs: { zcodeBuiltin: release } } })),
+        new Response(JSON.stringify({ code: 0, data: { configs: { codezBuiltin: release } } })),
     );
     await expect(
-      fetchZCodeBuiltinRemoteRelease({
+      fetchCodezBuiltinRemoteRelease({
         apiClient: { request } as ApiClient,
         endpointOrigin: "https://example.com",
         appVersion: "3.0.0",

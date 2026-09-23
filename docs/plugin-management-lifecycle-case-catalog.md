@@ -9,7 +9,7 @@
   Personal Source、inline 展示、重启恢复、代表性运行时注入、关键可恢复失败。
 - Excluded：Standalone Web、手机 `/remote`、remote workspace plugin sync、workspace-scope 安装、
   公网依赖的正式 CI、完整 locale/theme/viewport 笛卡尔积。
-- 安装、配置、enabled、来源和抑制状态由 `<E2E_HOME>/.zcode/cli/plugins` 与 CLI config 持久化；
+- 安装、配置、enabled、来源和抑制状态由 `<E2E_HOME>/.codez/cli/plugins` 与 CLI config 持久化；
   UI store 是投影，不是权威来源。
 - Desktop local workspace A/B 共用同一 E2E HOME，验证当前 user-scope 语义。
 
@@ -20,7 +20,7 @@ UI entry
 pluginManagementStore
   | typed plugin service
   v
-ZCode Agent plugin handlers
+Codez Agent plugin handlers
   |                     |
   v                     v
 user plugin storage     future session runtime discovery
@@ -53,11 +53,11 @@ user plugin storage     future session runtime discovery
 | `PLM-LC-010 secret-env-agent-projection`  | Personal 插件含 `${E2E_PLUGIN_RUNTIME_SECRET}` MCP env 与一个 agent | 安装后在新 session 调用 MCP；打开 Settings > Subagents                                                         | MCP 只返回 secret 已解析标记且不回显 secret；同一 agent 文件只有规范名称一行，裸名称仍可作为运行时别名     | provider capture + Subagents DOM + screenshots + Electron `capturePage()` video | `manual-review`                  |
 | `PLM-LC-011 no-git-github-archive`        | 真实 Anthropic Claude Marketplace；Agent Git binary 指向不存在路径；adapter 另有 loopback fixture | 先探测非 GitHub Git fallback；经 Renderer → Host → Agent Protocol 刷新 `claude-plugins-official` 并安装真实 `aikido` 插件 | fallback 返回 `plugin_git_unavailable`；真实 Marketplace/plugin HTTP Archive 安装成功；cache 无 `.git` 且可 discover | diagnostics + captured HTTP records + installed/cache snapshot | `manual-review`, never formal CI |
 | `PLM-LC-012 isolated-refresh-atomic-cache` | 两个 Marketplace 已有 v1 snapshot；fixture A=v2、B=失败；cache copy/rename 可注入失败 | 批量刷新；重启；恢复 B；更新插件时注入激活失败并重试 | A 更新；B 保留 v1 且失败状态跨重启；B 成功后清除失败；激活失败始终保留旧 cache/install record，重试后原子切到 v2 | diagnostics + persisted JSON + directory snapshots | `manual-review` |
-| `PLM-LC-013 suggested-prompt-official-install` | New Task 推荐项引用缺失 Plugin；官方目录 fixture 可在成功/失败/超时间切换 | 点击推荐项；刷新 `zcode-plugins-official`；在 Popover 确认 User-scope 安装；安装中切换另一推荐项 | 首次本地检查缺失后唯一 Popover 先进入 loading，可信解析与 Composer 稳定后同一实例切安装确认；prompt 一次性预填且不发送；刷新达到 10000ms 时中止并 fail closed，失败/超时拒绝旧快照；成功只安装官方候选；切换时取消旧 operation、迟到结果丢弃；同一 Popover 完成后 chip 前置且正文保留 | protocol/focused tests + UI manual review + user storage snapshot | `manual-review` |
+| `PLM-LC-013 suggested-prompt-official-install` | New Task 推荐项引用缺失 Plugin；官方目录 fixture 可在成功/失败/超时间切换 | 点击推荐项；刷新 `codez-plugins-official`；在 Popover 确认 User-scope 安装；安装中切换另一推荐项 | 首次本地检查缺失后唯一 Popover 先进入 loading，可信解析与 Composer 稳定后同一实例切安装确认；prompt 一次性预填且不发送；刷新达到 10000ms 时中止并 fail closed，失败/超时拒绝旧快照；成功只安装官方候选；切换时取消旧 operation、迟到结果丢弃；同一 Popover 完成后 chip 前置且正文保留 | protocol/focused tests + UI manual review + user storage snapshot | `manual-review` |
 | `PLM-LC-014 builtin-uninstall-detail-parity` | 隔离 HOME；内置插件已 seed、启用并有配置/data | 打开详情；卸载；在详情页重试；重启；点击 Install | `installed=false`；suppression 存在；Runtime 不提供 Skill/Command/MCP；Catalog/cache/完整组件详情仍可读；describe 不改变 config/data/cache；Install 恢复且不产生普通 installed record | UI + protocol + config/data/cache/manifest + fresh discovery | `manual-review` |
 | `PLM-LC-015 bundled-install-ownership` | suppressed builtin 与合并 official entry；另有 CDN 同名 source fixture | 分别走 UI Install 与 direct protocol install | bundled `filesystem/sea` 路径等价 restore；CDN source 仍走 Marketplace install；无 stale suppression、重复 ownership 或错误 installed record | protocol + installed record + runtime | `manual-review` |
 | `PLM-LC-016 seed-cache-runtime-separation` | suppressed builtin 分别处于 cache 存在/缺失；filesystem 与 SEA seed fixture | resolve/list/describe/skills/commands；触发 cache 自愈 | suppression 始终过滤 Runtime；缺失 cache 可由 seed 恢复；describe 前后都成功；Catalog 不被过滤；无 seed↔uninstall 互删震荡 | bootstrap + adapter + services tests | `manual-review` |
-| `PLM-LC-017 installed-menu-layout` | 内置插件在 Workspace `.zcode/config.json` 显式启用（enabledSource=workspace） | Settings > Plugins 切到 Workspace scope；打开已安装列表行内「…」菜单 | 「恢复 User 默认」/「Restore User default」与更新、卸载项都单行显示、等高；菜单按内容撑开而非绑定图标触发器宽度 | menuitem 文本 Range 行框计数 + 截图 | `manual-review` |
+| `PLM-LC-017 installed-menu-layout` | 内置插件在 Workspace `.codez/config.json` 显式启用（enabledSource=workspace） | Settings > Plugins 切到 Workspace scope；打开已安装列表行内「…」菜单 | 「恢复 User 默认」/「Restore User default」与更新、卸载项都单行显示、等高；菜单按内容撑开而非绑定图标触发器宽度 | menuitem 文本 Range 行框计数 + 截图 | `manual-review` |
 | `PLM-LC-018 official-auto-refresh-throttled` | 隔离 HOME；官方目录已有条目且一分钟前刷新 | 进入、退出、重新进入商店 | 不再刷新；Claude 目录时间及失败状态不变；原候选仍可见 | DOM + overview + throttle 单测 | `manual-review` |
 | `PLM-LC-019 official-auto-refresh-on-enter` | 隔离 HOME；官方目录已有条目但时间过期；允许真实 CDN | 不点刷新进入商店，再退出重进 | 官方时间更新且无失败诊断；重进不再次刷新 | DOM + overview + runtime logs | `manual-review`, never formal CI |
 | `PLM-LC-020 plugin-subagent-override-cold` | 隔离 HOME；官方 judge 的结构化覆盖指定 alternate/high，主选择 primary/max | 完整重启后发送，通过 Agent 调用 document-skills:judge | child 请求为 alternate/high，父 continuation 为 primary/max；Agent 正常完成；已保存覆盖不变 | case-local replay + 实际请求 + UI + state | `manual-review` |

@@ -4,7 +4,7 @@ import {
   ModelConfigRules,
   parseModelConfig,
   parsePersonalModelConfigRules,
-  parseZCodeBuiltinModelConfigRules,
+  parseCodezBuiltinModelConfigRules,
   extractManualModelConfig,
 } from "../src/index.js";
 
@@ -74,8 +74,8 @@ describe("Todo104 规则集合读写与应用", () => {
         { providerId: "p", modelId: "model-x", config: { properties: { contextWindow: 60_000 } } },
       ],
     };
-    const rules = parseZCodeBuiltinModelConfigRules(source);
-    expect(rules.toZCodeBuiltinJSON()).toEqual(source);
+    const rules = parseCodezBuiltinModelConfigRules(source);
+    expect(rules.toCodezBuiltinJSON()).toEqual(source);
     expect(rules.resolve(input).properties?.contextWindow).toBe(60_000);
     expect(rules.resolve({ ...input, providerId: "other" }).properties?.contextWindow).toBe(50_000);
     expect(
@@ -101,7 +101,7 @@ describe("Todo104 规则集合读写与应用", () => {
   });
 
   it("手动配置保留系统叶子，用户可编辑叶子固定", () => {
-    const builtin = parseZCodeBuiltinModelConfigRules({
+    const builtin = parseCodezBuiltinModelConfigRules({
       ...emptyBuiltin,
       modelRules: [{ modelMatch: ".*", config: complete }],
     });
@@ -164,7 +164,7 @@ describe("Todo104 规则集合读写与应用", () => {
 
   it("不接受旧持久化 type/模式布尔和宽泛层条件", () => {
     expect(() =>
-      parseZCodeBuiltinModelConfigRules({
+      parseCodezBuiltinModelConfigRules({
         ...emptyBuiltin,
         modelRules: [{ type: "match", modelMatch: ".*", config: {} }],
       }),
@@ -178,7 +178,7 @@ describe("Todo104 规则集合读写与应用", () => {
       }),
     ).toThrow();
     expect(() =>
-      parseZCodeBuiltinModelConfigRules({
+      parseCodezBuiltinModelConfigRules({
         ...emptyBuiltin,
         modelRules: [{ modelMatch: ".*", providerMatch: "p", config: {} }],
       }),
@@ -188,12 +188,12 @@ describe("Todo104 规则集合读写与应用", () => {
   it("真实 Builtin 越层规则按精确 Endpoint 接回，Start 搜索保留", async () => {
     const release = JSON.parse(
       await readFile(
-        new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
+        new URL("../../../config/provider/codez-builtin.json", import.meta.url),
         "utf8",
       ),
     );
-    const rules = parseZCodeBuiltinModelConfigRules(release.config.modelConfigRules);
-    expect(rules.toZCodeBuiltinJSON()).toEqual(release.config.modelConfigRules);
+    const rules = parseCodezBuiltinModelConfigRules(release.config.modelConfigRules);
+    expect(rules.toCodezBuiltinJSON()).toEqual(release.config.modelConfigRules);
     const resolve = (baseUrl: string, modelId = "unknown-model", apiType = "anthropic-messages") =>
       rules.resolve({
         providerId: "custom:site-test",

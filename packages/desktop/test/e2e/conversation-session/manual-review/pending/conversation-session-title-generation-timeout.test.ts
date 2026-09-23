@@ -2,7 +2,7 @@ import {
   TID_TASK_ITEM,
   TID_WORKSPACE_TITLE,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   getTaskStoreSnapshot,

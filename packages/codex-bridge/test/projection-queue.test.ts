@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { queueStateSchema } from "@zcode/shared/zcode-protocol-v4";
+import { queueStateSchema } from "@codez/shared/codez-protocol-v4";
 import { projectCodexQueue, projectQueue, projectThread } from "../src/projection.js";
 import { threadFixture } from "./projection-fixtures.test.js";
 

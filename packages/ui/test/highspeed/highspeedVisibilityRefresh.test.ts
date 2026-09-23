@@ -1,9 +1,9 @@
 import { act, createElement, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ConversationSnapshot } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
 import { SessionPane } from "@/v4/SessionPane.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import type { ConversationComposer } from "@/v4/ConversationComposer.js";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -73,10 +73,10 @@ const mocks = vi.hoisted(() => ({
     })),
     onDidChangeProviderRegistry: vi.fn(() => ({ dispose: vi.fn() })),
   },
-  zcodeSessionService: {
+  codezSessionService: {
     readWorkspaceState: vi.fn(),
   },
-  zcodeTaskService: {
+  codezTaskService: {
     restartWorkspaceProcess: vi.fn(async () => {}),
   },
   toast: vi.fn(),
@@ -107,8 +107,8 @@ vi.mock("@/hooks/useServices.js", () => ({
     broadcastService: mocks.broadcastService,
     highspeedCardService: mocks.highspeedCardService,
     modelProviderService: mocks.modelProviderService,
-    zcodeSessionService: mocks.zcodeSessionService,
-    zcodeTaskService: mocks.zcodeTaskService,
+    codezSessionService: mocks.codezSessionService,
+    codezTaskService: mocks.codezTaskService,
   }),
   // SessionPane 渲染链里的 useStartPlanRecommendation 走可选服务降级，
   // 本用例只验证到期采样，无服务上下文按 null 处理即可（与其它 SessionPane 用例一致）。
@@ -129,12 +129,12 @@ vi.mock("@/v4/V4ConversationContext.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
+  useCodezStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
 }));
 
 vi.mock("@/hooks/useSettingService.js", () => ({
   useSettings: () => ({
-    settings: { zcodeInteractionBehavior: "queue" },
+    settings: { codezInteractionBehavior: "queue" },
     loading: false,
     error: null,
     update: vi.fn(async () => {}),
@@ -411,7 +411,7 @@ async function renderExpiredCardPane(cardId: string, sourceCommandId: string): P
   await act(async () => {
     root.render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(SessionPane, {
           paneId: "workspace-main",

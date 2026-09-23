@@ -22,7 +22,7 @@ function renderAttachmentWithOpen(openable: boolean) {
             type: "file",
             filename: "screenshot.png",
             mediaType: "image/png",
-            url: "blob:zcode-preview",
+            url: "blob:codez-preview",
           },
           onOpen: openable ? () => undefined : undefined,
           openLabel: "Open image preview",

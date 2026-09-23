@@ -8,7 +8,7 @@
   "fileFixtures": [
     {
       "kind": "app-config-seed",
-      "path": "~/.zcode/v2/credentials.json",
+      "path": "~/.codez/v2/credentials.json",
       "purpose": "使用默认有效 OAuth 会话 seed，验证运行中 401 后的清理和重启动作。"
     }
   ],

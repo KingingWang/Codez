@@ -56,7 +56,7 @@ after(async () => {
   await server?.close();
 });
 
-const official = "zcode-plugins-official";
+const official = "codez-plugins-official";
 const config = {
   code: {
     categoryOrder: ["legal", "developer-tools", "productivity"],
@@ -67,7 +67,7 @@ const config = {
     pluginOrder: { productivity: [`p5@${official}`, `p4@${official}`] },
   },
 };
-const artifacts = join(tmpdir(), "zcode-plugin-mode-order");
+const artifacts = join(tmpdir(), "codez-plugin-mode-order");
 for (const [width, locale, theme] of [
   [1200, "en-US", "light"],
   [390, "zh-CN", "dark"],
@@ -144,7 +144,7 @@ for (const [width, locale, theme] of [
       assert.deepEqual(await cards(sections().nth(0)), ["p1", "p0"]);
       assert.equal(requests, 1);
       assert.equal(
-        await page.evaluate(() => localStorage.getItem("zcode-interface-mode")),
+        await page.evaluate(() => localStorage.getItem("codez-interface-mode")),
         "general",
       );
       // 个人与全量搜索继续按各自原来的名称顺序。
@@ -191,7 +191,7 @@ for (const [width, locale, theme] of [
       assert.equal(categoryTitles.includes(locale === "zh-CN" ? "法律" : "Legal"), false);
       const legacyCategory = await page
         .locator(
-          '[data-testid="plugin-store-card"][data-plugin-id="legacy-guide@zcode-plugins-official"]',
+          '[data-testid="plugin-store-card"][data-plugin-id="legacy-guide@codez-plugins-official"]',
         )
         .evaluate((element) => element.closest("section").querySelector("h2").textContent);
       assert.equal(legacyCategory, locale === "zh-CN" ? "实用工具" : "Utilities");
@@ -209,7 +209,7 @@ for (const [width, locale, theme] of [
       body = config;
       await page.goto(`${origin}fixture?locale=${locale}&theme=${theme}&legal=1`);
       const legalCard = page.locator(
-        '[data-testid="plugin-store-card"][data-plugin-id="legal-example@zcode-plugins-official"]',
+        '[data-testid="plugin-store-card"][data-plugin-id="legal-example@codez-plugins-official"]',
       );
       await legalCard.waitFor();
       assert.equal(
@@ -224,7 +224,7 @@ for (const [width, locale, theme] of [
         );
         return (
           sections[1]?.querySelector("[data-plugin-id]")?.getAttribute("data-plugin-id") ===
-          "legal-example@zcode-plugins-official"
+          "legal-example@codez-plugins-official"
         );
       });
       assert.deepEqual(errors, []);
@@ -295,7 +295,7 @@ for (const width of [1200, 390]) {
           await Promise.all(bundledIcons.map(([name]) => card(name).locator("img").waitFor()));
           await page.waitForFunction(() => {
             const images = document.querySelectorAll(
-              '[data-plugin-id$="@zcode-plugins-official"] img',
+              '[data-plugin-id$="@codez-plugins-official"] img',
             );
             return [...images].every((image) => image.complete && image.naturalWidth > 0);
           });

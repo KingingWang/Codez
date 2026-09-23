@@ -12,7 +12,7 @@ import {
   TID_TASK_ITEM,
   TID_WORKSPACE_TITLE,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -126,7 +126,7 @@ describe("automation run keeps the first-input session title", () => {
     // Bugfix 回归：旧实现会在主回复后追加 session_title 请求，并把标题改成回复里的实体。
     // 留出快速 sidecar 的完成窗口，再同时核对请求边界和两处用户可见标题投影。
     // Bug 根因：V4 task list 元数据已迁移到 taskQueryCacheStore，旧 case 仍从
-    // zcodeSessionStore.taskListCache 读第三份副本，因此稳定得到 null 并误判产品失败。
+    // codezSessionStore.taskListCache 读第三份副本，因此稳定得到 null 并误判产品失败。
     await browser.pause(1500);
     expect(await countUpstreamTitleRequestsContaining(RUN_PROMPT)).toBe(0);
     await expectHeaderTitle(RUN_PROMPT);

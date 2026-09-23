@@ -6,7 +6,7 @@ desktop-default surface; Web's existing settings remain unchanged.
 ## Ownership and transport
 
 ```text
-local form draft → workspace-resolved zcodeAgentService.codexRequest
+local form draft → workspace-resolved codezAgentService.codexRequest
                 → Host identity/lease route → bridge → native Codex authority
 local read projection ← validated RPC response ← same authority
 ```
@@ -44,7 +44,7 @@ effective configuration, resource installation state, or accepted commands.
 - Resource enable/install/uninstall controls reflect native returned state. Respect
   plugin availability/install policy and interstitial requirements; do not replace
   required consent with an implicit install. Marketplace actions use native names
-  and source fields, not ZCode's legacy official-marketplace vocabulary.
+  and source fields, not Codez's legacy official-marketplace vocabulary.
 
 ## Conversation integration and interaction QA
 
@@ -110,7 +110,7 @@ Desktop QA launches the repository's actual `packages/desktop/scripts/dev.mjs`
 entry with its real package metadata and ready-marker/Vite checks. The isolation
 helper must not synthesize a package/version or replace updater behavior to make
 startup pass. Existing build artifacts must be stable before launch.
-Packaged verification launches only this checkout's `packages/desktop/dist/linux-unpacked/zcode-codex`
+Packaged verification launches only this checkout's `packages/desktop/dist/linux-unpacked/codez-codex`
 from a temporary workspace, without renderer, bridge or native executable overrides.
 It uses dedicated CDP 9230 and accepts only the exact packaged
 `resources/app.asar/out/renderer/index.html` file URL (bootstrap query/hash allowed).

@@ -2,7 +2,7 @@
 import { createElement } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ConversationSelectionReferenceChip } from "@/v4/composer/ConversationSelectionReferenceChip.js";
 import {
   parsePromptConversationSelections,
@@ -18,7 +18,7 @@ it.each(["/workspace/docs/a.md", "C:\\docs\\a.md"])(
     );
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationSelectionReferenceChip, { references }),
       ),
@@ -32,7 +32,7 @@ it.each(["/workspace/docs/a.md", "C:\\docs\\a.md"])(
 it("混合引用使用通用计数", () => {
   render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(ConversationSelectionReferenceChip, {
         references: [{ path: "a.md", text: "file" }, { text: "message" }],

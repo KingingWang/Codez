@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { prepareMarketingHero } from "@/components/marketing-touch/marketingResources.js";
-import type { ICloudContentService } from "@zcode/services";
+import type { ICloudContentService } from "@codez/services";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("marketing resource preparation", () => {
@@ -96,7 +96,7 @@ describe("marketing resource preparation", () => {
         type: "bundle",
         args: {
           heading: "Banner",
-          zcode_plan: {
+          codez_plan: {
             name: "Weekend",
             entitlements: [
               {
@@ -123,7 +123,7 @@ describe("marketing resource preparation", () => {
         heading: "Banner",
         planName: "Weekend",
         amountValue: "300,000,000",
-        zcode_plan: { name: "Weekend" },
+        codez_plan: { name: "Weekend" },
       },
     });
     await result.release();

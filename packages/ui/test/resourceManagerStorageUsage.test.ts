@@ -2,7 +2,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { StorageManagementBridge, StorageUsageSnapshot } from "@zcode/shared";
+import type { StorageManagementBridge, StorageUsageSnapshot } from "@codez/shared";
 
 const { storageService, listeners, jobState } = vi.hoisted(() => {
   const listeners = new Set<(snapshot: unknown) => void>();

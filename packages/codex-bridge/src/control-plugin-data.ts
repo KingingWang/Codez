@@ -1,10 +1,10 @@
 import { dirname } from "node:path";
 import { z } from "zod";
 import {
-  zcodePluginInfoSchema,
-  zcodeInstalledPluginSummarySchema,
-  type ZCodePluginComponentGroup,
-} from "@zcode/shared";
+  codezPluginInfoSchema,
+  codezInstalledPluginSummarySchema,
+  type CodezPluginComponentGroup,
+} from "@codez/shared";
 import type { BridgeControlContext } from "./contract.js";
 import { ControlError } from "./control-common.js";
 
@@ -149,7 +149,7 @@ export async function readPluginDetail(context: BridgeControlContext, row: Plugi
   return detail;
 }
 
-export function pluginComponents(detail: PluginDetail): ZCodePluginComponentGroup[] {
+export function pluginComponents(detail: PluginDetail): CodezPluginComponentGroup[] {
   return [
     {
       kind: "skill",
@@ -179,7 +179,7 @@ export function pluginListing(plugin: PluginRow["plugin"]) {
 }
 
 export function installedPlugin({ market, plugin }: PluginRow) {
-  return zcodeInstalledPluginSummarySchema.parse({
+  return codezInstalledPluginSummarySchema.parse({
     id: plugin.id,
     name: plugin.name,
     marketplace: market.name,
@@ -197,7 +197,7 @@ export function installedPlugin({ market, plugin }: PluginRow) {
 
 export function pluginInfo(row: PluginRow, detail: PluginDetail) {
   const plugin = detail.summary;
-  return zcodePluginInfoSchema.parse({
+  return codezPluginInfoSchema.parse({
     id: plugin.id,
     name: plugin.name,
     marketplace: row.market.name,

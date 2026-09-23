@@ -55,13 +55,13 @@ export async function prepareAccessToken401Fixture(options: {
   if (!address || typeof address === "string") throw new Error("OAuth fixture 缺少监听端口");
   const baseUrl = `http://127.0.0.1:${address.port}`;
   const envPatch = {
-    ZCODE_E2E_ACCESS_TOKEN_401_URL: baseUrl,
+    CODEZ_E2E_ACCESS_TOKEN_401_URL: baseUrl,
     BIGMODEL_API_BASE_URL: baseUrl,
     BIGMODEL_OAUTH_USERINFO_URL: `${baseUrl}/api/biz/customer/getCustomerInfo`,
     ZAI_BUSINESS_BASE_URL: baseUrl,
-    ZCODE_BASE_URL: baseUrl,
-    ZCODE_TEST_BASE_URL: baseUrl,
-    ZCODE_ENDPOINT_ORIGIN: baseUrl,
+    CODEZ_BASE_URL: baseUrl,
+    CODEZ_TEST_BASE_URL: baseUrl,
+    CODEZ_ENDPOINT_ORIGIN: baseUrl,
   };
   const previous = Object.fromEntries(Object.keys(envPatch).map((key) => [key, process.env[key]]));
   Object.assign(process.env, envPatch);
@@ -76,7 +76,7 @@ export async function prepareAccessToken401Fixture(options: {
         username: "Fixture User",
         displayName: "Fixture User",
       }),
-      zcodejwttoken: "e2e-distinct-zcode-jwt",
+      codezjwttoken: "e2e-distinct-codez-jwt",
       "bot:e2e:credential": "e2e-independent-bot-token",
     }),
     { mode: 0o600 },

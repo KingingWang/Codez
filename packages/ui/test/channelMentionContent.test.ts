@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ChannelMentionContent, BotChannelMessageContent } from "@/v4/ChannelMentionContent.js";
-import type { ChannelContentPart } from "@zcode/shared";
+import type { ChannelContentPart } from "@codez/shared";
 const parts: ChannelContentPart[] = [
   { type: "text", text: "帮我 " },
   {

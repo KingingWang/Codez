@@ -9,7 +9,7 @@
 ## 问题与根因
 
 当前 Marketplace 和插件 entry 的 `github`、`git`、legacy `url`、`git-subdir` 来源最终都会
-进入 `execFile("git", ...)`。这使插件管理能力隐式依赖运行 ZCode Agent 的主机已安装 Git：
+进入 `execFile("git", ...)`。这使插件管理能力隐式依赖运行 Codez Agent 的主机已安装 Git：
 
 - Desktop 本地 workspace 依赖本机 Git；
 - standalone CLI 依赖 CLI 所在主机 Git；
@@ -204,7 +204,7 @@ interface MarketplaceRefreshFailure {
 
 ## 协议与 UI 行为
 
-- `zcodePluginMarketplaceSummarySchema` 增加可选 `refreshFailure`，不破坏旧 Agent payload；
+- `codezPluginMarketplaceSummarySchema` 增加可选 `refreshFailure`，不破坏旧 Agent payload；
 - `plugins/marketplace/update` 使用现有 optional `diagnostics` 返回部分失败；
 - UI 的 update operation 必须检查 error diagnostics，并在重新加载 overview 后保留 Marketplace 的
   `refreshFailure`；部分失败返回 false、写入共用 store 错误态，并在 Marketplace source 行展示
@@ -218,7 +218,7 @@ interface MarketplaceRefreshFailure {
 
 ## 跨端与远程边界
 
-- 来源分类、下载、解压、Git fallback 和原子激活全部位于 zcode-cli adapter；
+- 来源分类、下载、解压、Git fallback 和原子激活全部位于 codez-cli adapter；
 - Desktop/Web/mobile 只经 typed plugin service 和当前 workspace Agent Host 调用；
 - remote workspace 继续使用 `workspaceIdentity` / `remoteSessionId` 选择权威 Agent，不创建独立 runtime；
 - remote plugin source archive sync 是另一条“本地已物化目录传远端”的路径，本功能不删除它；

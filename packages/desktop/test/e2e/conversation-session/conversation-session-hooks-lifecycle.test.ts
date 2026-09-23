@@ -11,7 +11,7 @@ import {
   TID_V4_HOOK_DETAILS_CONTENT,
   TID_V4_HOOK_DETAILS_TRIGGER,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -64,7 +64,7 @@ async function startNewV4Draft() {
   await selectUpstreamThoughtLevel();
 }
 const HOOK_BLOCK_SCREENSHOT_DIR = join(
-  process.env.ZCODE_E2E_ARTIFACT_DIR?.trim() || join(process.cwd(), ".e2e-artifacts"),
+  process.env.CODEZ_E2E_ARTIFACT_DIR?.trim() || join(process.cwd(), ".e2e-artifacts"),
   "hooks-block-reason",
 );
 

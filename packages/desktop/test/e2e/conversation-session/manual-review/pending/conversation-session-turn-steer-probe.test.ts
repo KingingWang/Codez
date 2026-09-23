@@ -4,7 +4,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -162,7 +162,7 @@ async function waitForToolBlock() {
 }
 
 async function ensureQueueInteractionBehavior() {
-  if ((await readSettings()).zcodeInteractionBehavior === "queue") {
+  if ((await readSettings()).codezInteractionBehavior === "queue") {
     return;
   }
 
@@ -182,7 +182,7 @@ async function ensureQueueInteractionBehavior() {
   await clickInteractionBehaviorSelect();
   await clickInteractionBehaviorQueueOption();
 
-  await browser.waitUntil(async () => (await readSettings()).zcodeInteractionBehavior === "queue", {
+  await browser.waitUntil(async () => (await readSettings()).codezInteractionBehavior === "queue", {
     timeout: 15000,
     timeoutMsg: "turn steer: 交互行为没有保存为 queue",
   });

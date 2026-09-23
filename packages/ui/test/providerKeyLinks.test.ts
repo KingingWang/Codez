@@ -5,7 +5,7 @@ import { PresetProviderApiKeyBanner } from "@/settings/model-provider-section/Pr
 import { ProviderApiKeySection } from "@/settings/model-provider-section/ProviderCardSections.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 describe("Preset API Key acquisition", () => {
   it("所有模板复用一个获取入口", () => {

@@ -85,12 +85,12 @@ Runtime 当前会话选择；缺失时使用已有 restoredModelSelection
 
 ## 主要代码与测试入口
 
-- `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts`：恢复选择及执行校验，原则上保持不变。
-- `apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts`、`app/types.ts`、`app/provider-registry-selection.ts`：App 只读模型配置查询。
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-types.ts`、`server-operations.ts`：已有恢复候选及其清除规则。
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-runtime.ts`、`v4-bridge.ts`：容量来源与两个恢复入口。
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/transcript-hydration.ts`、`product-projection.ts`：初始化、用量种子和未知容量传播。
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts`：真实历史用量读取及 Compact 水位，按需核对。
-- `packages/shared/src/zcode-protocol-v4/snapshot.ts`：已有 nullable 容量协议，原则上不扩展。
+- `apps/codez-cli/packages/bootstrap/src/app/create-app.ts`：恢复选择及执行校验，原则上保持不变。
+- `apps/codez-cli/packages/bootstrap/src/app/session-facade.ts`、`app/types.ts`、`app/provider-registry-selection.ts`：App 只读模型配置查询。
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-types.ts`、`server-operations.ts`：已有恢复候选及其清除规则。
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-runtime.ts`、`v4-bridge.ts`：容量来源与两个恢复入口。
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/transcript-hydration.ts`、`product-projection.ts`：初始化、用量种子和未知容量传播。
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol/session-mapper.ts`：真实历史用量读取及 Compact 水位，按需核对。
+- `packages/shared/src/codez-protocol-v4/snapshot.ts`：已有 nullable 容量协议，原则上不扩展。
 - `packages/ui/src/v4/composer/V4ComposerToolbar.tsx`：共享展示消费，原则上不改布局。
 - `packages/desktop/test/e2e/conversation-session/conversation-session-context-window-cold-resume.test.ts` 及 Bootstrap hydration／projection／protocol 单测。

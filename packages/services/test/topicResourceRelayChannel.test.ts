@@ -1,8 +1,8 @@
-import { ChannelClient, ChannelServer, createQueuePair } from "@zcode/rpc";
-import { TOPIC_RESOURCE_RELAY_CHANNEL } from "@zcode/shared";
+import { ChannelClient, ChannelServer, createQueuePair } from "@codez/rpc";
+import { TOPIC_RESOURCE_RELAY_CHANNEL } from "@codez/shared";
 import { describe, expect, it } from "vitest";
-import { createTopicResourceRelayChannel } from "../src/zcode-agent/topicResourceRelayChannel.js";
-import { readTopicResourceFromRelay } from "../src/zcode-agent/topicResourceRelayClient.js";
+import { createTopicResourceRelayChannel } from "../src/codez-agent/topicResourceRelayChannel.js";
+import { readTopicResourceFromRelay } from "../src/codez-agent/topicResourceRelayClient.js";
 
 describe("private topic resource reverse RPC", () => {
   it("transfers through a private channel while enforcing the owning workspace", async () => {

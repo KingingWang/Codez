@@ -29,7 +29,7 @@ const TOOL_ENTER_MARKER = "E2E_PLAN_MODE_TOOL_BOUNDARY_ENTER";
 const TOOL_MIXED_MARKER = "E2E_PLAN_MODE_TOOL_BOUNDARY_MIXED";
 const TOOL_WRITE_CALL_ID = "toolu_e2e_plan_mode_boundary_write";
 const TOOL_READ_CALL_ID = "toolu_e2e_plan_mode_boundary_read";
-const DENIED_WRITE_FILE_NAME = "zcode-e2e-plan-mode-denied-write.txt";
+const DENIED_WRITE_FILE_NAME = "codez-e2e-plan-mode-denied-write.txt";
 const DENIED_WRITE_FILE_PATH = resolveE2EToolPath(
   "conversation-session-plan-mode-capabilities",
   DENIED_WRITE_FILE_NAME,

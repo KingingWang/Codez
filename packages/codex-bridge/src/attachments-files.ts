@@ -8,10 +8,10 @@ import {
   v4AttachmentBeginParamsSchema,
   type AttachmentRef,
   type V4AttachmentBeginParams,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { attachmentFault, type ResolvedAttachment } from "./attachments-types.js";
 
-const PREFIX = "zcode-attachment://";
+const PREFIX = "codez-attachment://";
 const idPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const metadataSchema = z
   .object({
@@ -104,7 +104,7 @@ export class AttachmentFiles {
   private readonly workspace: string;
   private readonly boundary: string;
   constructor(cwd: string, root?: string) {
-    this.root = resolve(cwd, root ?? ".zcode/codex-bridge/attachments");
+    this.root = resolve(cwd, root ?? ".codez/codex-bridge/attachments");
     if (this.root === parse(this.root).root || this.root === resolve(cwd))
       throw attachmentFault("unsafeStoragePath");
     const within = relative(resolve(cwd), this.root);

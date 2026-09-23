@@ -10,7 +10,7 @@ import {
   TID_V4_COMPOSER_INPUT,
   testId,
   type DynamicWorkflowMode,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clickTestIdByDom,
   clickTestIdByWebDriver,
@@ -47,7 +47,7 @@ export function automationsPageTabTestId(tab: "automation" | "workflow"): string
 
 /** 读 case-local 配置网关的观测端点，证明 Host 真的从这台 mock 取过灰度快照。 */
 export async function readDynamicWorkflowGrayMockStatus(): Promise<DynamicWorkflowConfigMockStatus> {
-  const origin = process.env.ZCODE_TEST_BASE_URL;
+  const origin = process.env.CODEZ_TEST_BASE_URL;
   if (!origin) throw new Error("缺少动态工作流灰度的 case-local 配置网关");
   const response = await fetch(new URL(DYNAMIC_WORKFLOW_CONFIG_MOCK_STATUS_PATH, origin));
   return (await response.json()) as DynamicWorkflowConfigMockStatus;

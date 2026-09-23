@@ -19,7 +19,7 @@ import {
   TID_CHAT_THOUGHT_LEVEL_SELECT_TRIGGER,
   TID_CHAT_THOUGHT_LEVEL_SELECT_ITEM,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -72,11 +72,11 @@ describe("定时任务表单创建与管理 E2E", () => {
     const workspaceMenuItems = await readWorkspaceMenuItems();
     // 新版允许任务脱离项目运行；仍需确认当前项目存在且没有混入其它已关闭项目。
     expect(workspaceMenuItems).toHaveLength(2);
-    expect(workspaceMenuItems).toContain("ZCodeProject");
+    expect(workspaceMenuItems).toContain("CodezProject");
     expect(
       workspaceMenuItems.some((label) => /不在项目中工作|Work outside a project/u.test(label)),
     ).toBe(true);
-    await selectWorkspaceMenuItem("ZCodeProject");
+    await selectWorkspaceMenuItem("CodezProject");
     await clickTestIdByWebDriver(TID_CHAT_MODEL_SELECT_TRIGGER);
     await clickTestIdByWebDriver(
       testId(TID_CHAT_MODEL_SELECT_GROUP, `registry-provider:${UPSTREAM_PROVIDER_ID}`),

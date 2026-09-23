@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { conversationSnapshotSchema } from "@zcode/shared/zcode-protocol-v4";
+import { conversationSnapshotSchema } from "@codez/shared/codez-protocol-v4";
 import { codexThreadSchema, codexUserInputSchema } from "../src/codex-types.js";
 import { projectCodexQueue, projectThread } from "../src/projection.js";
 import { threadFixture } from "./projection-fixtures.test.js";

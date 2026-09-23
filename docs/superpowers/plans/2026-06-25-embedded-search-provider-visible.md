@@ -2,13 +2,13 @@
 
 > For agentic workers: REQUIRED SKILL: Use superpowers:executing-plans to execute this plan step-by-step.
 
-> 2026-06-25 复核修正：ZCode 默认启用 embedded search branch（embedded search gate 开启且 Bash 可用）。provider-visible request 以 embedded branch 合同测试为证据；direct Glob/Grep short description 由 dedicated contract baseline 单独校验。
+> 2026-06-25 复核修正：Codez 默认启用 embedded search branch（embedded search gate 开启且 Bash 可用）。provider-visible request 以 embedded branch 合同测试为证据；direct Glob/Grep short description 由 dedicated contract baseline 单独校验。
 
 > 2026-06-25 临时运行时策略：provider-visible embedded branch 继续保持默认开启，但 Bash 执行层暂不注入 `find()` / `grep()` prelude。模型仍会看到并优先使用 Bash 中的 `find` / `grep`，实际命令先依赖用户本地 shell 环境；如果是 CMD 或缺少命令，由首轮 Bash 错误反馈给模型自适应。prelude builder、backend 类型和 adapter 支持代码保留，后续可通过开关恢复。
 
 ## 目标
 
-将 ZCode 的 main agent、Agent/Explore subagent、Glob/Grep 工具描述，以及 Bash 中 `find`/`grep` 的运行时行为，统一切换到默认的 **embedded search 分支**。
+将 Codez 的 main agent、Agent/Explore subagent、Glob/Grep 工具描述，以及 Bash 中 `find`/`grep` 的运行时行为，统一切换到默认的 **embedded search 分支**。
 
 当前默认 baseline 是 embedded search branch：
 
@@ -41,7 +41,7 @@
 以下取舍是为了降低第一版实现成本，允许保留，但必须在代码和测试中清楚体现：
 
 - 第一版不实现 `ARGV0=bfs/ugrep` 自分发二进制。
-  - ZCode 第一版使用 `internal-cli` backend 接管 `find` / `grep`。
+  - Codez 第一版使用 `internal-cli` backend 接管 `find` / `grep`。
   - 架构事实必须叫 embedded search backend，而不是 internal search shim。
   - 默认 provider-visible 行为保持 embedded search；模型看到并调用 Bash 中的 `find` / `grep`。
   - 预留 `argv0-dispatch` backend 口子，未来可以替换成单 binary 自分发实现，不改 prompt/tool exposure。
@@ -68,10 +68,10 @@
 - 不用 patch-on-patch 的零散判断，统一抽出 branch capability、backend 和 prelude helper。
 - 注释如需解释 bug/差异原因，用中文。
 - 提交前必须执行：
-  - `pnpm --filter @zcode/core typecheck`
-  - `pnpm --filter @zcode/core lint`
-  - `pnpm --filter @zcode/adapters typecheck`
-  - `pnpm --filter @zcode/adapters lint`
+  - `pnpm --filter @codez/core typecheck`
+  - `pnpm --filter @codez/core lint`
+  - `pnpm --filter @codez/adapters typecheck`
+  - `pnpm --filter @codez/adapters lint`
   - 相关单测
 
 ## Provider-Visible 合同边界
@@ -92,7 +92,7 @@
 5. Agent tool description 默认不列出 direct search tools。
    - Explore description 不能写 `(Tools: Glob, Grep, Read, Bash, WebFetch, WebSearch, TodoWrite)`。
 6. Main system guidance 默认不输出 Agent/Explore session guidance。
-   - embedded branch 的 simple guidance 不包含这两行；ZCode 保持注释不输出。
+   - embedded branch 的 simple guidance 不包含这两行；Codez 保持注释不输出。
 
 当前临时策略下，CMD / legacy shell fallback 不再改变 provider-visible branch：仍默认隐藏 direct `Glob` / `Grep`，Bash prompt 仍允许模型使用 `find` / `grep`。执行层不注入 Bash prelude；如果本地 shell 不支持这些命令，由首轮 Bash 错误反馈给模型自适应。
 
@@ -110,7 +110,7 @@
      find() { ... "$@"; }
      grep() { ... "$@"; }
      ```
-   - 接收 `EmbeddedSearchBackend`，不硬编码 `zcode __internal-search`。
+   - 接收 `EmbeddedSearchBackend`，不硬编码 `codez __internal-search`。
 3. Embedded search backend
    - 第一版使用 `internal-cli` 降低实现成本。
    - 未来允许切换到 `argv0-dispatch`。
@@ -133,35 +133,35 @@
 
 预期新增：
 
-- `apps/zcode-cli/packages/core/src/embedded-search/capability.ts`
-- `apps/zcode-cli/packages/core/tests/runtime-embedded-search-capability.test.ts`
-- `apps/zcode-cli/packages/adapters/src/exec/embedded-search-prelude.ts`
-- `apps/zcode-cli/packages/adapters/tests/embedded-search-prelude.test.ts`
-- `apps/zcode-cli/packages/cli/src/internal-search/embedded-search-cli.ts`
-- `apps/zcode-cli/packages/cli/tests/internal-search.test.ts`
+- `apps/codez-cli/packages/core/src/embedded-search/capability.ts`
+- `apps/codez-cli/packages/core/tests/runtime-embedded-search-capability.test.ts`
+- `apps/codez-cli/packages/adapters/src/exec/embedded-search-prelude.ts`
+- `apps/codez-cli/packages/adapters/tests/embedded-search-prelude.test.ts`
+- `apps/codez-cli/packages/cli/src/internal-search/embedded-search-cli.ts`
+- `apps/codez-cli/packages/cli/tests/internal-search.test.ts`
 
 预期修改：
 
 - `docs/plan/trajectory/embedded-search-provider-visible.md`
-- `apps/zcode-cli/packages/contracts/src/interfaces/execution.port.ts`
-- `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
-- `apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts`
-- `apps/zcode-cli/packages/core/src/tool/executor/types.ts`
-- `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`
-- `apps/zcode-cli/packages/core/src/tool/types.ts`
-- `apps/zcode-cli/packages/core/src/tool/handlers/index.ts`
-- `apps/zcode-cli/packages/core/src/tool/handlers/bash.ts`
-- `apps/zcode-cli/packages/core/src/tool/handlers/bash-prompt.ts`
-- `apps/zcode-cli/packages/core/src/tool/handlers/agent.ts`
-- `apps/zcode-cli/packages/core/src/tool/handlers/plan-mode-prompts.ts`
-- `apps/zcode-cli/packages/core/src/subagent/explore.ts`
-- `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
-- `apps/zcode-cli/packages/core/tests/tool-contracts.test.ts`
-- `apps/zcode-cli/packages/core/tests/context-builder.test.ts`
-- `apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
-- `apps/zcode-cli/packages/adapters/src/exec/index.ts`
-- `apps/zcode-cli/packages/adapters/src/exec/cwd-capture.ts`
-- `apps/zcode-cli/packages/cli/src/run.ts`
+- `apps/codez-cli/packages/contracts/src/interfaces/execution.port.ts`
+- `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
+- `apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts`
+- `apps/codez-cli/packages/core/src/tool/executor/types.ts`
+- `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`
+- `apps/codez-cli/packages/core/src/tool/types.ts`
+- `apps/codez-cli/packages/core/src/tool/handlers/index.ts`
+- `apps/codez-cli/packages/core/src/tool/handlers/bash.ts`
+- `apps/codez-cli/packages/core/src/tool/handlers/bash-prompt.ts`
+- `apps/codez-cli/packages/core/src/tool/handlers/agent.ts`
+- `apps/codez-cli/packages/core/src/tool/handlers/plan-mode-prompts.ts`
+- `apps/codez-cli/packages/core/src/subagent/explore.ts`
+- `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
+- `apps/codez-cli/packages/core/tests/tool-contracts.test.ts`
+- `apps/codez-cli/packages/core/tests/context-builder.test.ts`
+- `apps/codez-cli/packages/core/tests/bash-handler.test.ts`
+- `apps/codez-cli/packages/adapters/src/exec/index.ts`
+- `apps/codez-cli/packages/adapters/src/exec/cwd-capture.ts`
+- `apps/codez-cli/packages/cli/src/run.ts`
 
 用户补充约束：本轮完成后不要自动 commit、不要 push、不要 stage；所有改动留在 unstaged 工作区中等待 review。
 
@@ -185,7 +185,7 @@ git status --short
 执行：
 
 ```bash
-pnpm --filter @zcode/core test -- tool-contracts.test.ts context-builder.test.ts
+pnpm --filter @codez/core test -- tool-contracts.test.ts context-builder.test.ts
 ```
 
 期望：
@@ -208,7 +208,7 @@ docs/plan/trajectory/embedded-search-provider-visible.md
   - Bash 初始化注入 `find` / `grep`。
   - main/Explore/Bash prompt 的 embedded 分支。
   - Glob/Grep short description 分支与 gate 的关系。
-- ZCode 的实现策略：
+- Codez 的实现策略：
   - provider-visible branch capability。
   - provider-visible branch。
   - Bash prelude。
@@ -234,7 +234,7 @@ test -f docs/plan/trajectory/embedded-search-provider-visible.md
 新增：
 
 ```text
-apps/zcode-cli/packages/core/tests/runtime-embedded-search-capability.test.ts
+apps/codez-cli/packages/core/tests/runtime-embedded-search-capability.test.ts
 ```
 
 测试覆盖：
@@ -254,7 +254,7 @@ apps/zcode-cli/packages/core/tests/runtime-embedded-search-capability.test.ts
 测试命令：
 
 ```bash
-pnpm --filter @zcode/core test -- runtime-embedded-search-capability.test.ts
+pnpm --filter @codez/core test -- runtime-embedded-search-capability.test.ts
 ```
 
 期望：
@@ -266,13 +266,13 @@ pnpm --filter @zcode/core test -- runtime-embedded-search-capability.test.ts
 新增：
 
 ```text
-apps/zcode-cli/packages/core/src/embedded-search/capability.ts
+apps/codez-cli/packages/core/src/embedded-search/capability.ts
 ```
 
 导出：
 
 ```ts
-import type { ModelConnectionInfo, ModelConnectionPort, ModelRef } from "@zcode/contracts";
+import type { ModelConnectionInfo, ModelConnectionPort, ModelRef } from "@codez/contracts";
 
 const ENABLE_EMBEDDED_SEARCH_BRANCH = true;
 
@@ -404,7 +404,7 @@ if (isEmbeddedSearchCapableModel(resolvedContext.modelId)) {
 执行：
 
 ```bash
-pnpm --filter @zcode/core test -- runtime-embedded-search-capability.test.ts
+pnpm --filter @codez/core test -- runtime-embedded-search-capability.test.ts
 ```
 
 期望：
@@ -418,7 +418,7 @@ pnpm --filter @zcode/core test -- runtime-embedded-search-capability.test.ts
 文件：
 
 ```text
-apps/zcode-cli/packages/core/src/tool/handlers/index.ts
+apps/codez-cli/packages/core/src/tool/handlers/index.ts
 ```
 
 目标：
@@ -460,13 +460,13 @@ export function registerBuiltInTools(
 文件：
 
 ```text
-apps/zcode-cli/packages/core/src/tool/handlers/bash-prompt.ts
+apps/codez-cli/packages/core/src/tool/handlers/bash-prompt.ts
 ```
 
 目标：
 
 - embedded branch exact 合同：avoid list 不包含 `find` / `grep`，只保留 ``cat``, ``head``, ``tail``, ``sed``, ``awk``, or ``echo``。
-- direct branch 保留当前“避免 Bash 跑 find/grep/cat/head/tail/sed/awk/echo”的 ZCode 规则。
+- direct branch 保留当前“避免 Bash 跑 find/grep/cat/head/tail/sed/awk/echo”的 Codez 规则。
 
 建议接口：
 
@@ -495,7 +495,7 @@ export function buildBashPrompt(options: BuildBashPromptOptions = {}): string {
 文件：
 
 ```text
-apps/zcode-cli/packages/core/src/tool/handlers/agent.ts
+apps/codez-cli/packages/core/src/tool/handlers/agent.ts
 ```
 
 目标：
@@ -514,7 +514,7 @@ apps/zcode-cli/packages/core/src/tool/handlers/agent.ts
 文件：
 
 ```text
-apps/zcode-cli/packages/core/src/subagent/explore.ts
+apps/codez-cli/packages/core/src/subagent/explore.ts
 ```
 
 目标：
@@ -557,7 +557,7 @@ export function buildExploreAllowedTools(options: BuildExploreSubagentOptions = 
 文件：
 
 ```text
-apps/zcode-cli/packages/core/src/tool/handlers/plan-mode-prompts.ts
+apps/codez-cli/packages/core/src/tool/handlers/plan-mode-prompts.ts
 ```
 
 目标：
@@ -574,7 +574,7 @@ apps/zcode-cli/packages/core/src/tool/handlers/plan-mode-prompts.ts
 文件：
 
 ```text
-apps/zcode-cli/packages/core/src/context/dynamic-sections.ts
+apps/codez-cli/packages/core/src/context/dynamic-sections.ts
 ```
 
 目标：
@@ -593,7 +593,7 @@ apps/zcode-cli/packages/core/src/context/dynamic-sections.ts
 文件：
 
 ```text
-apps/zcode-cli/packages/core/src/context/dynamic-sections.ts
+apps/codez-cli/packages/core/src/context/dynamic-sections.ts
 ```
 
 目标：
@@ -613,8 +613,8 @@ apps/zcode-cli/packages/core/src/context/dynamic-sections.ts
 修改：
 
 ```text
-apps/zcode-cli/packages/core/tests/tool-contracts.test.ts
-apps/zcode-cli/packages/core/tests/context-builder.test.ts
+apps/codez-cli/packages/core/tests/tool-contracts.test.ts
+apps/codez-cli/packages/core/tests/context-builder.test.ts
 ```
 
 新增断言：
@@ -637,7 +637,7 @@ apps/zcode-cli/packages/core/tests/context-builder.test.ts
 执行：
 
 ```bash
-pnpm --filter @zcode/core test -- tool-contracts.test.ts context-builder.test.ts
+pnpm --filter @codez/core test -- tool-contracts.test.ts context-builder.test.ts
 ```
 
 期望：
@@ -651,23 +651,23 @@ pnpm --filter @zcode/core test -- tool-contracts.test.ts context-builder.test.ts
 新增：
 
 ```text
-apps/zcode-cli/packages/cli/tests/internal-search.test.ts
+apps/codez-cli/packages/cli/tests/internal-search.test.ts
 ```
 
 测试覆盖：
 
 - `grep pattern file` 输出真实 `grep` 匹配行。
-- `grep -e pattern file` 这类真实 `grep` 参数不能被 ZCode shim 拒绝。
+- `grep -e pattern file` 这类真实 `grep` 参数不能被 Codez shim 拒绝。
 - `grep -Rni --include "*.ts" --exclude-dir ignored pattern .` 透传给真实 `grep`。
 - `cat file | grep pattern` 这类 stdin 管道输入必须保留。
 - `find . -name "*.ts"` 输出真实 `find` 匹配文件。
-- `find . -type f -name "*.ts" -print` 这类真实 `find` predicate 不能被 ZCode shim 拒绝。
-- invalid predicate / flag 的 stderr 与 exit code 来自真实命令，而不是 ZCode 私有 unsupported 文案。
+- `find . -type f -name "*.ts" -print` 这类真实 `find` predicate 不能被 Codez shim 拒绝。
+- invalid predicate / flag 的 stderr 与 exit code 来自真实命令，而不是 Codez 私有 unsupported 文案。
 
 执行：
 
 ```bash
-pnpm --filter @zcode/cli test -- internal-search.test.ts
+pnpm --filter @codez/cli test -- internal-search.test.ts
 ```
 
 期望：
@@ -699,7 +699,7 @@ export interface EmbeddedSearchBackend {
 新增：
 
 ```text
-apps/zcode-cli/packages/cli/src/internal-search/embedded-search-cli.ts
+apps/codez-cli/packages/cli/src/internal-search/embedded-search-cli.ts
 ```
 
 导出：
@@ -723,7 +723,7 @@ export async function runEmbeddedSearchCli(argv: string[], io: EmbeddedSearchIo)
 - `__internal-search grep ...` 通过 `spawn("grep", argv)` 透传到宿主真实 `grep`。
 - `__internal-search find ...` 通过 `spawn("find", argv)` 透传到宿主真实 `find`。
 - stdin、stdout、stderr、cwd、exit code 必须按真实命令语义保留。
-- 真实命令支持的全部参数都必须透传；ZCode shim 只验证第一个子命令是 `find` 或 `grep`。
+- 真实命令支持的全部参数都必须透传；Codez shim 只验证第一个子命令是 `find` 或 `grep`。
 - 后续如果要跨平台提供一致能力，应切换 backend 到 bundled `bfs` / `ugrep` 或 `argv0-dispatch`，不能回到手写参数子集。
 
 说明：
@@ -736,7 +736,7 @@ export async function runEmbeddedSearchCli(argv: string[], io: EmbeddedSearchIo)
 修改：
 
 ```text
-apps/zcode-cli/packages/cli/src/run.ts
+apps/codez-cli/packages/cli/src/run.ts
 ```
 
 目标：
@@ -744,8 +744,8 @@ apps/zcode-cli/packages/cli/src/run.ts
 - 支持内部命令：
 
 ```bash
-zcode __internal-search grep ...
-zcode __internal-search find ...
+codez __internal-search grep ...
+codez __internal-search find ...
 ```
 
 验收点：
@@ -758,7 +758,7 @@ zcode __internal-search find ...
 执行：
 
 ```bash
-pnpm --filter @zcode/cli test -- internal-search.test.ts
+pnpm --filter @codez/cli test -- internal-search.test.ts
 ```
 
 期望：
@@ -772,7 +772,7 @@ pnpm --filter @zcode/cli test -- internal-search.test.ts
 修改：
 
 ```text
-apps/zcode-cli/packages/contracts/src/interfaces/execution.port.ts
+apps/codez-cli/packages/contracts/src/interfaces/execution.port.ts
 ```
 
 新增：
@@ -808,7 +808,7 @@ bashPrelude?: ExecutionEmbeddedSearchPrelude;
 新增：
 
 ```text
-apps/zcode-cli/packages/adapters/tests/embedded-search-prelude.test.ts
+apps/codez-cli/packages/adapters/tests/embedded-search-prelude.test.ts
 ```
 
 测试覆盖：
@@ -825,7 +825,7 @@ apps/zcode-cli/packages/adapters/tests/embedded-search-prelude.test.ts
 执行：
 
 ```bash
-pnpm --filter @zcode/adapters test -- embedded-search-prelude.test.ts
+pnpm --filter @codez/adapters test -- embedded-search-prelude.test.ts
 ```
 
 期望：
@@ -837,13 +837,13 @@ pnpm --filter @zcode/adapters test -- embedded-search-prelude.test.ts
 新增：
 
 ```text
-apps/zcode-cli/packages/adapters/src/exec/embedded-search-prelude.ts
+apps/codez-cli/packages/adapters/src/exec/embedded-search-prelude.ts
 ```
 
 导出：
 
 ```ts
-import type { ExecutionEmbeddedSearchPrelude } from "@zcode/contracts";
+import type { ExecutionEmbeddedSearchPrelude } from "@codez/contracts";
 
 export function applyEmbeddedSearchPrelude(
   command: string,
@@ -869,15 +869,15 @@ export function applyEmbeddedSearchPrelude(
 `internal-cli` backend 生成：
 
 ```bash
-find() { command zcode __internal-search find "$@"; }
-grep() { command zcode __internal-search grep "$@"; }
+find() { command codez __internal-search find "$@"; }
+grep() { command codez __internal-search grep "$@"; }
 ```
 
 `argv0-dispatch` backend 预留生成：
 
 ```bash
-find() { ARGV0=bfs command zcode -S dfs -regextype findutils-default "$@"; }
-grep() { ARGV0=ugrep command zcode -G --ignore-files --hidden -I "$@"; }
+find() { ARGV0=bfs command codez -S dfs -regextype findutils-default "$@"; }
+grep() { ARGV0=ugrep command codez -G --ignore-files --hidden -I "$@"; }
 ```
 
 注意：
@@ -892,8 +892,8 @@ grep() { ARGV0=ugrep command zcode -G --ignore-files --hidden -I "$@"; }
 修改：
 
 ```text
-apps/zcode-cli/packages/adapters/src/exec/index.ts
-apps/zcode-cli/packages/adapters/src/exec/cwd-capture.ts
+apps/codez-cli/packages/adapters/src/exec/index.ts
+apps/codez-cli/packages/adapters/src/exec/cwd-capture.ts
 ```
 
 接入顺序：
@@ -910,7 +910,7 @@ apps/zcode-cli/packages/adapters/src/exec/cwd-capture.ts
 更新测试：
 
 ```text
-apps/zcode-cli/packages/adapters/tests/exec.test.ts
+apps/codez-cli/packages/adapters/tests/exec.test.ts
 ```
 
 新增 case：
@@ -921,7 +921,7 @@ apps/zcode-cli/packages/adapters/tests/exec.test.ts
 执行：
 
 ```bash
-pnpm --filter @zcode/adapters test -- embedded-search-prelude.test.ts exec.test.ts
+pnpm --filter @codez/adapters test -- embedded-search-prelude.test.ts exec.test.ts
 ```
 
 期望：
@@ -935,8 +935,8 @@ pnpm --filter @zcode/adapters test -- embedded-search-prelude.test.ts exec.test.
 修改：
 
 ```text
-apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts
-apps/zcode-cli/packages/core/src/tool/executor/types.ts
+apps/codez-cli/packages/core/src/runtime/agent-runtime.ts
+apps/codez-cli/packages/core/src/tool/executor/types.ts
 ```
 
 目标：
@@ -984,8 +984,8 @@ SEA/packaged 场景填入：
 修改：
 
 ```text
-apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts
-apps/zcode-cli/packages/core/src/tool/types.ts
+apps/codez-cli/packages/core/src/tool/executor/call-runner.ts
+apps/codez-cli/packages/core/src/tool/types.ts
 ```
 
 目标：
@@ -1020,7 +1020,7 @@ embeddedSearch: {
 修改：
 
 ```text
-apps/zcode-cli/packages/core/src/tool/handlers/bash.ts
+apps/codez-cli/packages/core/src/tool/handlers/bash.ts
 ```
 
 目标：
@@ -1048,7 +1048,7 @@ bashPrelude: {
 更新测试：
 
 ```text
-apps/zcode-cli/packages/core/tests/bash-handler.test.ts
+apps/codez-cli/packages/core/tests/bash-handler.test.ts
 ```
 
 新增 case：
@@ -1060,7 +1060,7 @@ apps/zcode-cli/packages/core/tests/bash-handler.test.ts
 执行：
 
 ```bash
-pnpm --filter @zcode/core test -- bash-handler.test.ts
+pnpm --filter @codez/core test -- bash-handler.test.ts
 ```
 
 期望：
@@ -1072,7 +1072,7 @@ pnpm --filter @zcode/core test -- bash-handler.test.ts
 修改：
 
 ```text
-apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts
+apps/codez-cli/packages/core/src/runtime/agent-runtime.ts
 ```
 
 目标：
@@ -1108,7 +1108,7 @@ registerBuiltInTools(registry, dependencies, {
 新增或更新测试：
 
 ```text
-apps/zcode-cli/packages/core/tests/tool-contracts.test.ts
+apps/codez-cli/packages/core/tests/tool-contracts.test.ts
 ```
 
 断言：
@@ -1133,7 +1133,7 @@ apps/zcode-cli/packages/core/tests/tool-contracts.test.ts
 执行：
 
 ```bash
-pnpm --filter @zcode/core test -- tool-contracts.test.ts context-builder.test.ts
+pnpm --filter @codez/core test -- tool-contracts.test.ts context-builder.test.ts
 ```
 
 期望：
@@ -1144,8 +1144,8 @@ pnpm --filter @zcode/core test -- tool-contracts.test.ts context-builder.test.ts
 
 新增测试位置优先级：
 
-1. `apps/zcode-cli/packages/adapters/tests/exec.test.ts`
-2. 如果需要完整 CLI shim，放到 `apps/zcode-cli/packages/cli/tests/internal-search.test.ts`
+1. `apps/codez-cli/packages/adapters/tests/exec.test.ts`
+2. 如果需要完整 CLI shim，放到 `apps/codez-cli/packages/cli/tests/internal-search.test.ts`
 
 构造临时目录：
 
@@ -1177,15 +1177,15 @@ find . -name "*.ts"
 执行：
 
 ```bash
-pnpm --filter @zcode/core test -- runtime-embedded-search-capability.test.ts tool-contracts.test.ts context-builder.test.ts bash-handler.test.ts
-pnpm --filter @zcode/adapters test -- embedded-search-prelude.test.ts exec.test.ts
-pnpm --filter @zcode/cli test -- internal-search.test.ts
-pnpm --filter @zcode/core typecheck
-pnpm --filter @zcode/core lint
-pnpm --filter @zcode/adapters typecheck
-pnpm --filter @zcode/adapters lint
-pnpm --filter @zcode/cli typecheck
-pnpm --filter @zcode/cli lint
+pnpm --filter @codez/core test -- runtime-embedded-search-capability.test.ts tool-contracts.test.ts context-builder.test.ts bash-handler.test.ts
+pnpm --filter @codez/adapters test -- embedded-search-prelude.test.ts exec.test.ts
+pnpm --filter @codez/cli test -- internal-search.test.ts
+pnpm --filter @codez/core typecheck
+pnpm --filter @codez/core lint
+pnpm --filter @codez/adapters typecheck
+pnpm --filter @codez/adapters lint
+pnpm --filter @codez/cli typecheck
+pnpm --filter @codez/cli lint
 ```
 
 期望：
@@ -1205,7 +1205,7 @@ pnpm lint
 执行：
 
 ```bash
-git diff -- docs/plan/trajectory/embedded-search-provider-visible.md apps/zcode-cli/packages/core apps/zcode-cli/packages/adapters apps/zcode-cli/packages/cli apps/zcode-cli/packages/contracts
+git diff -- docs/plan/trajectory/embedded-search-provider-visible.md apps/codez-cli/packages/core apps/codez-cli/packages/adapters apps/codez-cli/packages/cli apps/codez-cli/packages/contracts
 ```
 
 检查清单：
@@ -1242,20 +1242,20 @@ git diff
 如果用户 review 后明确要求提交，提交说明可使用：
 
 ```text
-Switches ZCode's default provider-visible surface to the embedded search branch.
+Switches Codez's default provider-visible surface to the embedded search branch.
 
 Keeps CMD and legacy shell fallback on the direct Glob/Grep branch, while Bash find/grep are routed through an embedded search backend for supported POSIX shells.
 
 Verification:
-- pnpm --filter @zcode/core test -- runtime-embedded-search-capability.test.ts tool-contracts.test.ts context-builder.test.ts bash-handler.test.ts
-- pnpm --filter @zcode/adapters test -- embedded-search-prelude.test.ts exec.test.ts
-- pnpm --filter @zcode/cli test -- internal-search.test.ts
-- pnpm --filter @zcode/core typecheck
-- pnpm --filter @zcode/core lint
-- pnpm --filter @zcode/adapters typecheck
-- pnpm --filter @zcode/adapters lint
-- pnpm --filter @zcode/cli typecheck
-- pnpm --filter @zcode/cli lint
+- pnpm --filter @codez/core test -- runtime-embedded-search-capability.test.ts tool-contracts.test.ts context-builder.test.ts bash-handler.test.ts
+- pnpm --filter @codez/adapters test -- embedded-search-prelude.test.ts exec.test.ts
+- pnpm --filter @codez/cli test -- internal-search.test.ts
+- pnpm --filter @codez/core typecheck
+- pnpm --filter @codez/core lint
+- pnpm --filter @codez/adapters typecheck
+- pnpm --filter @codez/adapters lint
+- pnpm --filter @codez/cli typecheck
+- pnpm --filter @codez/cli lint
 ```
 
 ## 回滚方案
@@ -1272,8 +1272,8 @@ git revert <commit-sha>
 3. 回滚后重新执行：
 
 ```bash
-pnpm --filter @zcode/core test -- tool-contracts.test.ts context-builder.test.ts bash-handler.test.ts
-pnpm --filter @zcode/adapters test -- exec.test.ts
+pnpm --filter @codez/core test -- tool-contracts.test.ts context-builder.test.ts bash-handler.test.ts
+pnpm --filter @codez/adapters test -- exec.test.ts
 ```
 
 ## 验收标准
@@ -1282,7 +1282,7 @@ pnpm --filter @zcode/adapters test -- exec.test.ts
 - 默认 Bash prompt 不再劝模型避免用 Bash 跑 `find` / `grep`。
 - 默认 Explore prompt、Plan prompt 和 Agent description 走 Bash `find` / `grep` wording。
 - CMD / legacy shell fallback provider-visible request 暴露 direct Glob/Grep tools。
-- Bash runtime 在默认 embedded branch 中通过 injected function 调用 ZCode embedded search backend。
+- Bash runtime 在默认 embedded branch 中通过 injected function 调用 Codez embedded search backend。
 - direct Glob/Grep fallback branch 保留并通过现有 description/schema 测试。
 - 所有新增 branch 判断集中在 `embedded-search-capability.ts`，没有散落的 provider/source 判断。
 - `internal-cli` 只是第一版 backend strategy，未来可切换到 `argv0-dispatch`。

@@ -13,7 +13,7 @@ last-selected 配置种子；首发后才由 CLI session projection 成为权威
 1. mode 从 renderer 的 draft mode 偏好读取，不以 workspace catalog 为持久事实。
 2. 模型和 thought 优先读取该 workspace 身份下的全局 last-selected 配置元组。
 3. workspace `configOptions` 提供可选目录并校验选择；目录未加载时
-   `prepareWorkspaceWithZCodeSessionService` 负责水合。
+   `prepareWorkspaceWithCodezSessionService` 负责水合。
 4. 用户本次显式选择写入 reactive draft intent，优先于初始种子和异步目录回包。
 5. `followupMode` 来自 app 设置，并随 create config 传递。
 
@@ -115,6 +115,6 @@ queue。远程链路必须贯穿 `workspaceIdentity` 和 `remoteSessionId`。
 - `packages/ui/src/v4/composer/modelConfigPreferenceConfirmation.ts`
 - `packages/ui/src/hooks/workspacePrepareModelPreference.ts`
 - `packages/ui/src/v4/SessionPane.tsx`
-- `packages/ui/src/lib/zcodeModelPreference.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/session-mgmt.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/model-config.ts`
+- `packages/ui/src/lib/codezModelPreference.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/session-mgmt.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/model-config.ts`

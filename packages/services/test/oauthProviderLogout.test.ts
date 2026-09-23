@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS, ZAI_PROVIDER_ID } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, ZAI_PROVIDER_ID } from "@codez/shared";
 import { createOAuthProviderLogoutHandler } from "../src/oauth/oauthProviderLogout.js";
 
 function createAccountProviderCredentialStoreStub() {

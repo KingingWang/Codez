@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { downloadZCodeBuiltinRelease } from "../src/zcode-builtin-download.js";
+import { downloadCodezBuiltinRelease } from "../src/codez-builtin-download.js";
 
 const release = {
   schemaVersion: 1,
@@ -36,7 +36,7 @@ describe("Built-in 共用 URL 下载边界", () => {
           String(url).startsWith(input.endpointOrigin) ? envelope(cdn) : JSON.stringify(release),
         ),
     );
-    const result = await downloadZCodeBuiltinRelease({ ...input, request });
+    const result = await downloadCodezBuiltinRelease({ ...input, request });
     expect(result?.revision).toBe(7);
     expect(request).toHaveBeenCalledTimes(2);
     expect(String(request.mock.calls[0][0])).toBe(
@@ -59,7 +59,7 @@ describe("Built-in 共用 URL 下载边界", () => {
     '{"revision":7}',
   ])("拒绝非法 URL 字段 %j", async (field) => {
     const request = vi.fn(async () => new Response(envelope(field)));
-    await expect(downloadZCodeBuiltinRelease({ ...input, request })).rejects.toThrow(
+    await expect(downloadCodezBuiltinRelease({ ...input, request })).rejects.toThrow(
       /client-config/,
     );
     expect(request).toHaveBeenCalledTimes(1);
@@ -67,9 +67,9 @@ describe("Built-in 共用 URL 下载边界", () => {
   it("缺省与旧内联字段不下载、不当清空", async () => {
     const request = vi.fn(
       async () =>
-        new Response(JSON.stringify({ code: 0, data: { configs: { zcodeBuiltin: release } } })),
+        new Response(JSON.stringify({ code: 0, data: { configs: { codezBuiltin: release } } })),
     );
-    await expect(downloadZCodeBuiltinRelease({ ...input, request })).resolves.toBeNull();
+    await expect(downloadCodezBuiltinRelease({ ...input, request })).resolves.toBeNull();
     expect(request).toHaveBeenCalledTimes(1);
   });
   it.each(["http", "json", "schema", "regex", "cel"])("CDN %s 失败可诊断", async (kind) => {
@@ -93,7 +93,7 @@ describe("Built-in 共用 URL 下载边界", () => {
           status: kind === "http" ? 500 : 200,
         }),
       );
-    await expect(downloadZCodeBuiltinRelease({ ...input, request })).rejects.toThrow(/cdn/);
+    await expect(downloadCodezBuiltinRelease({ ...input, request })).rejects.toThrow(/cdn/);
   });
   it.each([10_000_000, 10_000_001])(
     "按实际字节计数，%d 字节边界不信 Content-Length",
@@ -104,7 +104,7 @@ describe("Built-in 共用 URL 下载边界", () => {
         .fn()
         .mockResolvedValueOnce(new Response(envelope(cdn)))
         .mockResolvedValueOnce(new Response(body, { headers: { "Content-Length": "1" } }));
-      const pending = downloadZCodeBuiltinRelease({ ...input, request });
+      const pending = downloadCodezBuiltinRelease({ ...input, request });
       if (size === 10_000_000) await expect(pending).resolves.toMatchObject({ revision: 7 });
       else await expect(pending).rejects.toThrow(/limit/);
     },
@@ -125,7 +125,7 @@ describe("Built-in 共用 URL 下载边界", () => {
           new Promise((resolve) => setTimeout(() => resolve(new Response(envelope(cdn))), 12_000)),
       )
       .mockResolvedValueOnce(new Response(body));
-    const pending = downloadZCodeBuiltinRelease({ ...input, request });
+    const pending = downloadCodezBuiltinRelease({ ...input, request });
     const rejected = expect(pending).rejects.toThrow(/cdn.*timeout/);
     await vi.advanceTimersByTimeAsync(19_999);
     expect(cancel).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe("Built-in 共用 URL 下载边界", () => {
   it("退出取消头等待，不等待不响应 Abort 的网络替身", async () => {
     const controller = new AbortController();
     const request = vi.fn(() => new Promise<Response>(() => {}));
-    const pending = downloadZCodeBuiltinRelease({ ...input, request, signal: controller.signal });
+    const pending = downloadCodezBuiltinRelease({ ...input, request, signal: controller.signal });
     controller.abort();
     await expect(pending).rejects.toThrow(/cancelled/);
   });

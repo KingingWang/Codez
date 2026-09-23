@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { join } from "node:path";
-import { PlatformChannels } from "@zcode/shared";
+import { PlatformChannels } from "@codez/shared";
 
 const mocks = vi.hoisted(() => ({
   agentOptions: [] as Array<{ connect?: { lookup?: Function } }>,
@@ -65,7 +65,7 @@ describe("desktopSaveFile", () => {
     mocks.fileWrite.mockReset();
     mocks.fileWrite.mockResolvedValue(undefined);
     mocks.mkdtemp.mockReset();
-    mocks.mkdtemp.mockResolvedValue("/tmp/zcode-save-file-test");
+    mocks.mkdtemp.mockResolvedValue("/tmp/codez-save-file-test");
     mocks.lookup.mockReset();
     mocks.lookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
     mocks.rm.mockReset();
@@ -141,10 +141,10 @@ describe("desktopSaveFile", () => {
     // 分隔符是 `\`，而这里原来写死 POSIX 字面量，用例在 Windows 上必然失败。用宿主 join
     // 组装期望值，断言仍然表达同一个「临时目录下的 download 中转文件」。
     expect(mocks.copyFile).toHaveBeenCalledWith(
-      join("/tmp/zcode-save-file-test", "download"),
+      join("/tmp/codez-save-file-test", "download"),
       "/tmp/cat.png",
     );
-    expect(mocks.rm).toHaveBeenCalledWith("/tmp/zcode-save-file-test", {
+    expect(mocks.rm).toHaveBeenCalledWith("/tmp/codez-save-file-test", {
       force: true,
       recursive: true,
     });
@@ -344,6 +344,6 @@ describe("desktopSaveFile", () => {
   });
 
   it("注册到统一的平台频道", () => {
-    expect(PlatformChannels.SaveFile).toBe("zcode:save-file");
+    expect(PlatformChannels.SaveFile).toBe("codez:save-file");
   });
 });

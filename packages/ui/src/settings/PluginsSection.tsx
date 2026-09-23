@@ -22,15 +22,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { Switch } from "@/components/ui/switch.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { TID_PLUGIN_STORE_BROWSE } from "@zcode/shared";
-import type { ZCodePluginInfo, ZCodePluginScope, ZCodePluginUserConfigOption } from "@zcode/shared";
+import { TID_PLUGIN_STORE_BROWSE } from "@codez/shared";
+import type { CodezPluginInfo, CodezPluginScope, CodezPluginUserConfigOption } from "@codez/shared";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
 import {
   useBaseWorkspaceServices,
   useWorkspaceServicesResolution,
 } from "@/hooks/useWorkspaceServices.js";
 import { getPathLeaf } from "@/lib/path.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { McpSettingsSection } from "@/settings/McpSettingsSection.js";
 import { SkillsSection } from "@/settings/SkillsSection.js";
 import { CommandsSection } from "@/settings/CommandsSection.js";
@@ -149,7 +149,7 @@ function PluginList({
   onVisibleCountChange,
 }: {
   target: WorkspaceTabState | null;
-  configScope: ZCodePluginScope;
+  configScope: CodezPluginScope;
   searchQuery: string;
   isDesktop: boolean;
   isMacDesktop: boolean;
@@ -162,7 +162,7 @@ function PluginList({
   showMarketplaceBreadcrumb?: boolean;
   onVisibleCountChange?: (count: number) => void;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const targetServiceResolution = useWorkspaceServicesResolution(
     target?.workspacePath,
     target?.remoteSessionId,
@@ -410,9 +410,9 @@ function PluginList({
     }));
   };
   const getPluginOptionValue = (
-    plugin: ZCodePluginInfo,
+    plugin: CodezPluginInfo,
     key: string,
-    option: ZCodePluginUserConfigOption,
+    option: CodezPluginUserConfigOption,
   ): string | number | boolean => {
     const draft = pluginOptionsDrafts[plugin.id]?.[key];
     if (draft === null) return "";
@@ -423,7 +423,7 @@ function PluginList({
       (option.type === "boolean" ? false : "")
     );
   };
-  const savePluginOptions = async (plugin: ZCodePluginInfo) => {
+  const savePluginOptions = async (plugin: CodezPluginInfo) => {
     const { options, clearOptionKeys } = buildPluginConfigPatch(
       plugin,
       pluginOptionsDrafts[plugin.id] ?? {},
@@ -484,7 +484,7 @@ function PluginList({
     });
   }, [initialize, pluginManagementService, configScope, target, targetServiceResolution.rpcReady]);
 
-  const renderPluginRows = (items: ZCodePluginInfo[]) => (
+  const renderPluginRows = (items: CodezPluginInfo[]) => (
     <div className="overflow-hidden rounded-xl bg-surface">
       {items.map((plugin, index) => (
         <Fragment key={plugin.id}>
@@ -926,8 +926,8 @@ function PluginList({
         onPluginOpenChange={setRemotePluginSyncOpen}
         localPluginSyncService={baseServices.pluginSyncService}
         remotePluginSyncService={targetServiceResolution.services.pluginSyncService}
-        localZCodeAgentService={baseServices.zcodeAgentService}
-        remoteZCodeAgentService={targetServiceResolution.services.zcodeAgentService}
+        localCodezAgentService={baseServices.codezAgentService}
+        remoteCodezAgentService={targetServiceResolution.services.codezAgentService}
         remoteTarget={connectedRemoteSyncTarget}
         skillWorkspacePath=""
         mcpWorkspacePath=""
@@ -964,7 +964,7 @@ export function PluginsSection({
   onOpenPluginStore,
   showMarketplaceBreadcrumb = false,
 }: PluginsSectionProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const tabs = useTabStore((state) => state.tabs);
   const storeActiveWorkspacePath = useTabStore((state) => state.activeWorkspacePath);
   const storeActiveWorkspaceIdentity = useTabStore((state) => state.activeWorkspaceIdentity);

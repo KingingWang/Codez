@@ -6,7 +6,7 @@ import { DEFAULT_WORKSPACE } from "./desktop-app.js";
  * Workspace Hook Trust e2e fixture（HK05–HK07）。
  *
  * 与 hooks-lifecycle-fixture 的关键区别：hook trust 的审核对象是 workspace
- * （project）级 `.zcode/config.json`，而不是 user 级 CLI config；且该配置
+ * （project）级 `.codez/config.json`，而不是 user 级 CLI config；且该配置
  * 必须在首个 agent 进程冷启动前落盘（wdio.conf.ts 的 resetE2EHome 会针对
  * 本 spec 再调用一次 installHookTrustFixture），否则 SessionStart 软门禁
  * 不会在首轮 turn 中生效。
@@ -18,16 +18,16 @@ export const E2E_HOOK_TRUST_LABELS = {
   promptSubmit: "hook-trust-prompt-submit",
 } as const;
 
-const WORKSPACE_ZCODE_DIR = join(DEFAULT_WORKSPACE, ".zcode");
-const CONFIG_PATH = join(WORKSPACE_ZCODE_DIR, "config.json");
-const RECORDER_PATH = join(WORKSPACE_ZCODE_DIR, "hook-trust-e2e-recorder.mjs");
+const WORKSPACE_CODEZ_DIR = join(DEFAULT_WORKSPACE, ".codez");
+const CONFIG_PATH = join(WORKSPACE_CODEZ_DIR, "config.json");
+const RECORDER_PATH = join(WORKSPACE_CODEZ_DIR, "hook-trust-e2e-recorder.mjs");
 const EVIDENCE_DIR = join(DEFAULT_WORKSPACE, ".hook-trust-e2e");
 const EVIDENCE_PATH = join(EVIDENCE_DIR, "executions.jsonl");
 // Trust store 位于隔离 E2E HOME（= DEFAULT_WORKSPACE 的上级目录）下，
 // 与 adapters 的 resolveWorkspaceHookTrustStorePath 默认值一致。
 const TRUST_STORE_PATH = join(
   dirname(DEFAULT_WORKSPACE),
-  ".zcode",
+  ".codez",
   "security",
   "workspace-hook-trust-v1.json",
 );
@@ -58,7 +58,7 @@ function processHook(event: string, label: string): Record<string, unknown> {
 }
 
 export async function installHookTrustFixture(): Promise<void> {
-  await mkdir(WORKSPACE_ZCODE_DIR, { recursive: true });
+  await mkdir(WORKSPACE_CODEZ_DIR, { recursive: true });
   await rm(EVIDENCE_DIR, { recursive: true, force: true });
 
   await writeFile(RECORDER_PATH, RECORDER_SOURCE, "utf8");

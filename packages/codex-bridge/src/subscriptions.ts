@@ -16,7 +16,7 @@ import {
   v4ConnectionFlowResultSchema,
   type RoutedTopicWireFrame,
   type V4ConversationSubscribeParams,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 
 export interface BridgeSubscriptionsOptions {
   workspaceId: string;

@@ -131,7 +131,7 @@ describe("atomicWriteText", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "zcode-atomic-write-"));
+    tempDir = mkdtempSync(join(tmpdir(), "codez-atomic-write-"));
     fsMockState.renameFailures.length = 0;
     fsMockState.lockRemoveFailure = null;
     fsMockState.renameDelayMs = 0;
@@ -202,7 +202,7 @@ describe("atomicWriteText", () => {
       code: "EACCES",
       path: filePath,
       syscall: "rename",
-      zcodeFsFaultId: "D03-provider-settings-eacces",
+      codezFsFaultId: "D03-provider-settings-eacces",
     });
 
     expect(vi.mocked(rename)).toHaveBeenCalledTimes(0);
@@ -325,7 +325,7 @@ describe("atomicWriteText", () => {
     mkdirGate.release();
 
     await expect(writePromise).rejects.toMatchObject({
-      code: "ZCODE_FILE_LOCK_TIMEOUT",
+      code: "CODEZ_FILE_LOCK_TIMEOUT",
     });
     expect(existsSync(lockDir)).toBe(true);
     expect(existsSync(filePath)).toBe(false);
@@ -366,7 +366,7 @@ describe("atomicWriteText", () => {
     mkdirGate.release();
 
     await expect(writePromise).rejects.toMatchObject({
-      code: "ZCODE_FILE_LOCK_TIMEOUT",
+      code: "CODEZ_FILE_LOCK_TIMEOUT",
     });
     expect(existsSync(lockFile)).toBe(true);
     expect(existsSync(filePath)).toBe(false);
@@ -456,7 +456,7 @@ describe("atomicWriteText", () => {
         lockOwnerlessGraceMs: 10,
         lockMaxWaitMs: 20,
       }),
-    ).rejects.toMatchObject({ code: "ZCODE_FILE_LOCK_TIMEOUT" });
+    ).rejects.toMatchObject({ code: "CODEZ_FILE_LOCK_TIMEOUT" });
 
     expect(readFileSync(ownerFile, "utf-8")).toContain('"token":"live-owner"');
     expect(existsSync(filePath)).toBe(false);
@@ -487,7 +487,7 @@ describe("atomicWriteText", () => {
     mkdirGate.release();
 
     await expect(writePromise).rejects.toMatchObject({
-      code: "ZCODE_FILE_LOCK_TIMEOUT",
+      code: "CODEZ_FILE_LOCK_TIMEOUT",
     });
     expect(readFileSync(freshOwnerFile, "utf-8")).toContain(
       '"token":"fresh-owner"',
@@ -510,7 +510,7 @@ describe("atomicWriteText", () => {
         lockMaxWaitMs: 10,
       }),
     ).rejects.toMatchObject({
-      code: "ZCODE_FILE_LOCK_TIMEOUT",
+      code: "CODEZ_FILE_LOCK_TIMEOUT",
       path: filePath,
       syscall: "mkdir",
     });

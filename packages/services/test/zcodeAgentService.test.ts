@@ -11,14 +11,14 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  ZCODE_SESSION_RUNTIME_PREFERENCES_REQUEST_TIMEOUT_MS,
-  type ZCodeSessionRuntimePreferencesScope,
-} from "@zcode/shared";
-import { createZCodeAgentService } from "../src/zcode-agent/zcodeAgentService.js";
-import { ZCodeAgentProcessManager } from "../src/zcode-agent/zcodeAgentProcessManager.js";
-import type { ZCodeProtocolClient } from "../src/zcode-agent/zcodeProtocolClient.js";
-import { ZCODE_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE } from "../src/zcode-agent/zcodeAgentErrors.js";
-import type { ZCodeAgentServiceEvent } from "../src/zcode-agent/zcodeAgent.js";
+  CODEZ_SESSION_RUNTIME_PREFERENCES_REQUEST_TIMEOUT_MS,
+  type CodezSessionRuntimePreferencesScope,
+} from "@codez/shared";
+import { createCodezAgentService } from "../src/codez-agent/codezAgentService.js";
+import { CodezAgentProcessManager } from "../src/codez-agent/codezAgentProcessManager.js";
+import type { CodezProtocolClient } from "../src/codez-agent/codezProtocolClient.js";
+import { CODEZ_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE } from "../src/codez-agent/codezAgentErrors.js";
+import type { CodezAgentServiceEvent } from "../src/codez-agent/codezAgent.js";
 import { getTasksIndexDatabasePath, setDataBaseDir } from "../src/paths.js";
 
 const protocolModelProperties = {
@@ -33,8 +33,8 @@ const protocolModelProperties = {
 };
 const protocolModelPropertiesJson = JSON.stringify(protocolModelProperties);
 
-function createReadyZCodeAgentService(options?: Parameters<typeof createZCodeAgentService>[0]) {
-  return createZCodeAgentService({
+function createReadyCodezAgentService(options?: Parameters<typeof createCodezAgentService>[0]) {
+  return createCodezAgentService({
     modelSelectionReadinessSource: {
       async getView() {
         return {
@@ -60,7 +60,7 @@ function createReadyZCodeAgentService(options?: Parameters<typeof createZCodeAge
   });
 }
 
-// 一个最小的 ZCode Protocol stdio fake agent：
+// 一个最小的 Codez Protocol stdio fake agent：
 // 第一次收到 session/subscribe 返回错误（模拟 "Session is not active" 之类的瞬时失败），
 // 第二次返回成功并带一条 session.titleUpdated 事件。用来验证订阅建立失败后会重试。
 const FLAKY_SUBSCRIBE_FAKE_AGENT = `
@@ -332,7 +332,7 @@ function workspaceState(workspace) {
 }
 function snapshot(workspace, sessionId = "sess_shell_settings") {
   return {
-    protocol: { name: "ZCode Protocol", version: 1 },
+    protocol: { name: "Codez Protocol", version: 1 },
     session: {
       sessionId,
       workspace,
@@ -462,7 +462,7 @@ function workspaceState(workspace) {
 function snapshot(workspace) {
   const sessionId = "sess_runtime_preferences";
   return {
-    protocol: { name: "ZCode Protocol", version: 1 },
+    protocol: { name: "Codez Protocol", version: 1 },
     session: {
       sessionId,
       workspace,
@@ -538,7 +538,7 @@ let buf = "";
 function send(obj) { process.stdout.write(JSON.stringify(obj) + "\\n"); }
 function createSnapshot(sessionId) {
   return {
-    protocol: { name: "ZCode Protocol", version: 1 },
+    protocol: { name: "Codez Protocol", version: 1 },
     session: {
       sessionId,
       workspace: {
@@ -610,7 +610,7 @@ let currentWorkspace = null;
 function send(obj) { process.stdout.write(JSON.stringify(obj) + "\\n"); }
 function createSnapshot(workspace, thoughtLevel) {
   return {
-    protocol: { name: "ZCode Protocol", version: 1 },
+    protocol: { name: "Codez Protocol", version: 1 },
     session: {
       sessionId: "sess_compat",
       workspace,
@@ -757,11 +757,11 @@ process.stdin.on("data", (chunk) => {
         id: msg.id,
         result: {
           plugins: [{
-            id: "skill-creator@zcode-plugins-official",
+            id: "skill-creator@codez-plugins-official",
             name: "skill-creator",
             enabled: true,
             source: "official",
-            marketplace: "zcode-plugins-official",
+            marketplace: "codez-plugins-official",
             skillCount: 1,
             skillRootCount: 1,
             commandRootCount: 0,
@@ -1045,11 +1045,11 @@ process.stdin.on("data", (chunk) => {
         id: msg.id,
         result: {
           plugins: [{
-            id: "cwd-check@zcode-plugins-official",
+            id: "cwd-check@codez-plugins-official",
             name: "cwd-check",
             enabled: true,
             source: "official",
-            marketplace: "zcode-plugins-official",
+            marketplace: "codez-plugins-official",
             skillCount: 0,
             skillRootCount: 0,
             commandRootCount: 0,
@@ -1184,12 +1184,12 @@ process.stdin.on("data", (chunk) => {
 });
 `;
 
-describe("createZCodeAgentService", () => {
+describe("createCodezAgentService", () => {
   it("资源查询仅观察就绪的现存 runtime，透传取消且不启动或等待迁移", async () => {
     const request = vi.fn(async () => ({ processes: [] }));
     const migratingRequest = vi.fn();
     const enumeration = vi
-      .spyOn(ZCodeAgentProcessManager.prototype, "listManagedProcesses")
+      .spyOn(CodezAgentProcessManager.prototype, "listManagedProcesses")
       .mockReturnValue([])
       .mockReturnValueOnce([
         {
@@ -1199,7 +1199,7 @@ describe("createZCodeAgentService", () => {
             request,
             isDisposed: false,
             storageStartup: { isWaiting: false },
-          } as unknown as ZCodeProtocolClient,
+          } as unknown as CodezProtocolClient,
         },
         {
           pid: 102,
@@ -1208,11 +1208,11 @@ describe("createZCodeAgentService", () => {
             request: migratingRequest,
             isDisposed: false,
             storageStartup: { isWaiting: true },
-          } as unknown as ZCodeProtocolClient,
+          } as unknown as CodezProtocolClient,
         },
       ]);
     const commandResolver = vi.fn(() => null);
-    const service = createZCodeAgentService({ commandResolver });
+    const service = createCodezAgentService({ commandResolver });
     const controller = new AbortController();
     try {
       await expect(service.collectLocalRuntimeChildProcesses(controller.signal)).resolves.toEqual([
@@ -1241,7 +1241,7 @@ describe("createZCodeAgentService", () => {
       onExit: vi.fn(),
       onError: vi.fn(),
     };
-    const service = createZCodeAgentService({
+    const service = createCodezAgentService({
       commandResolver,
       processLifecycleReporter,
       modelSelectionReadinessSource: {
@@ -1268,7 +1268,7 @@ describe("createZCodeAgentService", () => {
   afterEach(() => {
     setDataBaseDir(null);
     for (const dir of createdDirs.splice(0).reverse()) {
-      // 根因同 zcodeAgentService.v4.test.ts：Windows 上仍有打开句柄的目录删不掉，
+      // 根因同 codezAgentService.v4.test.ts：Windows 上仍有打开句柄的目录删不掉，
       // `force: true` 不重试，afterEach 会以 EPERM 把断言已通过的用例判成失败。
       try {
         rmSync(dir, {
@@ -1284,7 +1284,7 @@ describe("createZCodeAgentService", () => {
   });
 
   it("caches interaction preferences without spawning and applies ordered snapshots to active/new runtimes", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-interaction-preferences-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-interaction-preferences-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "interaction-preferences-agent.cjs");
     const logPath = join(workspacePath, "protocol.log");
@@ -1293,7 +1293,7 @@ describe("createZCodeAgentService", () => {
       command: process.execPath,
       args: [scriptPath, logPath],
     }));
-    const service = createReadyZCodeAgentService({ commandResolver });
+    const service = createReadyCodezAgentService({ commandResolver });
 
     try {
       await service.syncAppRuntimePreferences({
@@ -1375,12 +1375,12 @@ describe("createZCodeAgentService", () => {
   });
 
   it("retries cached interaction preferences when a new runtime sync fails", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-interaction-retry-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-interaction-retry-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "interaction-preferences-agent.cjs");
     const logPath = join(workspacePath, "protocol.log");
     writeFileSync(scriptPath, INTERACTION_PREFERENCES_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({
         command: process.execPath,
         args: [scriptPath, logPath, "fail-first"],
@@ -1409,12 +1409,12 @@ describe("createZCodeAgentService", () => {
   });
 
   it("does not lose a rapid preference toggle while a new runtime is applying its cache", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-interaction-startup-race-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-interaction-startup-race-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "interaction-preferences-agent.cjs");
     const logPath = join(workspacePath, "protocol.log");
     writeFileSync(scriptPath, INTERACTION_PREFERENCES_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({
         command: process.execPath,
         args: [scriptPath, logPath, "delay-first"],
@@ -1454,11 +1454,11 @@ describe("createZCodeAgentService", () => {
   });
 
   it("dispatcher 缺失时 Run Now 不创建台账或占用 manual claim", async () => {
-    const sandboxRoot = mkdtempSync(join(tmpdir(), "zcode-agent-service-run-now-"));
+    const sandboxRoot = mkdtempSync(join(tmpdir(), "codez-agent-service-run-now-"));
     createdDirs.push(sandboxRoot);
     setDataBaseDir(sandboxRoot);
     const workspacePath = "/workspace/run-now";
-    const serviceWithoutDispatcher = createZCodeAgentService();
+    const serviceWithoutDispatcher = createCodezAgentService();
     const automation = await serviceWithoutDispatcher.createAutomation({
       workspacePath,
       title: "daily check",
@@ -1481,7 +1481,7 @@ describe("createZCodeAgentService", () => {
     ).resolves.toEqual([]);
 
     const dispatch = vi.fn(async () => undefined);
-    const serviceWithDispatcher = createZCodeAgentService({
+    const serviceWithDispatcher = createCodezAgentService({
       onAutomationManualRunRequested: dispatch,
     });
     await expect(
@@ -1494,14 +1494,14 @@ describe("createZCodeAgentService", () => {
   });
 
   it("automation/checkTaskBinding 不依赖完整列表字段，历史空 mode 仍可完成归属判断", async () => {
-    const sandboxRoot = mkdtempSync(join(tmpdir(), "zcode-agent-binding-check-"));
+    const sandboxRoot = mkdtempSync(join(tmpdir(), "codez-agent-binding-check-"));
     createdDirs.push(sandboxRoot);
     setDataBaseDir(sandboxRoot);
     const workspacePath = sandboxRoot;
     const scriptPath = join(sandboxRoot, "binding-check-agent.cjs");
     const logPath = join(sandboxRoot, "binding-check-response.json");
     writeFileSync(scriptPath, AUTOMATION_BINDING_CHECK_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath, logPath] }),
     });
     const automation = await service.createAutomation({
@@ -1533,7 +1533,7 @@ describe("createZCodeAgentService", () => {
   });
 
   it("reports unavailable without starting a process when no command is configured", async () => {
-    const service = createReadyZCodeAgentService({ commandResolver: () => null });
+    const service = createReadyCodezAgentService({ commandResolver: () => null });
 
     await expect(
       service.initialize({
@@ -1543,13 +1543,13 @@ describe("createZCodeAgentService", () => {
     ).resolves.toMatchObject({
       available: false,
       workspaceKey: "remote:ssh:dev:/workspace/app",
-      protocolName: "ZCode Protocol",
+      protocolName: "Codez Protocol",
       protocolVersion: 1,
     });
   });
 
   it("starts stdio app-server during initialize", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-"));
     createdDirs.push(workspacePath);
     const commandResolver = vi.fn(() => ({
       command: process.execPath,
@@ -1561,7 +1561,7 @@ describe("createZCodeAgentService", () => {
       onExit: vi.fn(),
       onError: vi.fn(),
     };
-    const service = createReadyZCodeAgentService({ commandResolver, processLifecycleReporter });
+    const service = createReadyCodezAgentService({ commandResolver, processLifecycleReporter });
 
     await expect(
       service.initialize({
@@ -1570,7 +1570,7 @@ describe("createZCodeAgentService", () => {
     ).resolves.toMatchObject({
       available: true,
       workspaceKey: workspacePath,
-      protocolName: "ZCode Protocol",
+      protocolName: "Codez Protocol",
       protocolVersion: 1,
       transportKind: "stdio",
     });
@@ -1602,7 +1602,7 @@ describe("createZCodeAgentService", () => {
   });
 
   it("routes browser discovery and browserId-aware execute with full remote context", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-browser-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-browser-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "browser-agent.cjs");
     writeFileSync(scriptPath, BROWSER_DISCOVERY_FAKE_AGENT);
@@ -1611,7 +1611,7 @@ describe("createZCodeAgentService", () => {
         id: "iab-runtime-1",
         generation: 1,
         type: "iab" as const,
-        name: "ZCode In-app Browser",
+        name: "Codez In-app Browser",
         capabilities: {},
       },
     ]);
@@ -1625,7 +1625,7 @@ describe("createZCodeAgentService", () => {
       },
       elapsedMs: 1,
     }));
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
       browserControlExecutor: { list, execute },
     });
@@ -1669,21 +1669,21 @@ describe("createZCodeAgentService", () => {
   });
 
   it("passes session tool lists through protocol session/create", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-tool-list-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-tool-list-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "tool-list-agent.cjs");
     const logPath = join(workspacePath, "protocol.log");
     writeFileSync(scriptPath, SHELL_SETTINGS_SNAPSHOT_FAKE_AGENT);
     // 修复原因：本用例只验证 session/create 的工具列表透传，不验证 provider readiness。
     // 门禁启用后必须复用标准 ready registry fixture，否则测试会在协议请求前被正确拦截。
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath, logPath] }),
     });
 
     try {
       await service.createSession({
         workspacePath,
-        toolAllowlist: ["mcp__zcode-cua__request_access", "mcp__zcode-cua__list_apps"],
+        toolAllowlist: ["mcp__codez-cua__request_access", "mcp__codez-cua__list_apps"],
         toolDenylist: ["Bash"],
       });
 
@@ -1693,8 +1693,8 @@ describe("createZCodeAgentService", () => {
         .map((line) => JSON.parse(line) as { method: string; params: Record<string, unknown> })
         .find((entry) => entry.method === "session/create");
       expect(createRequest?.params.toolAllowlist).toEqual([
-        "mcp__zcode-cua__request_access",
-        "mcp__zcode-cua__list_apps",
+        "mcp__codez-cua__request_access",
+        "mcp__codez-cua__list_apps",
       ]);
       expect(createRequest?.params.toolDenylist).toEqual(["Bash"]);
     } finally {
@@ -1703,13 +1703,13 @@ describe("createZCodeAgentService", () => {
   });
 
   it("resolves runtime preferences at materialization and first execution without forwarding them", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-shell-snapshot-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-shell-snapshot-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "shell-settings-agent.cjs");
     const logPath = join(workspacePath, "protocol.log");
     writeFileSync(scriptPath, SHELL_SETTINGS_SNAPSHOT_FAKE_AGENT);
     const resolveSessionRuntimePreferences = vi.fn(
-      async (scope: ZCodeSessionRuntimePreferencesScope) => ({
+      async (scope: CodezSessionRuntimePreferencesScope) => ({
         askUserQuestionAutoResolutionEnabled: false,
         nativeSearchEnhancementsEnabled: false,
         memoryEnabled: false,
@@ -1728,7 +1728,7 @@ describe("createZCodeAgentService", () => {
           : {}),
       }),
     );
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath, logPath] }),
       resolveSessionRuntimePreferences,
     });
@@ -1792,7 +1792,7 @@ describe("createZCodeAgentService", () => {
   });
 
   it("adds bounded IAB ambient context to session/send without changing prompt content", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-browser-ambient-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-browser-ambient-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "browser-ambient-agent.cjs");
     const logPath = join(workspacePath, "protocol.log");
@@ -1802,7 +1802,7 @@ describe("createZCodeAgentService", () => {
         id: "iab-runtime-1",
         generation: 3,
         type: "iab" as const,
-        name: "ZCode In-app Browser",
+        name: "Codez In-app Browser",
         capabilities: {},
       },
     ]);
@@ -1821,7 +1821,7 @@ describe("createZCodeAgentService", () => {
             elapsedMs: 0,
           },
     );
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({
         command: process.execPath,
         args: [scriptPath, logPath],
@@ -1875,13 +1875,13 @@ describe("createZCodeAgentService", () => {
 
   it("retries session/send without browser ambient context when a legacy agent returns an enhanced invalid params error", async () => {
     const workspacePath = mkdtempSync(
-      join(tmpdir(), "zcode-agent-service-browser-ambient-compat-"),
+      join(tmpdir(), "codez-agent-service-browser-ambient-compat-"),
     );
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "browser-ambient-compat-agent.cjs");
     const logPath = join(workspacePath, "protocol.log");
     writeFileSync(scriptPath, SHELL_SETTINGS_SNAPSHOT_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({
         command: process.execPath,
         args: [scriptPath, logPath, "reject-browser-ambient"],
@@ -1892,7 +1892,7 @@ describe("createZCodeAgentService", () => {
             id: "iab-runtime-legacy",
             generation: 1,
             type: "iab" as const,
-            name: "ZCode In-app Browser",
+            name: "Codez In-app Browser",
             capabilities: {},
           },
         ]),
@@ -1943,7 +1943,7 @@ describe("createZCodeAgentService", () => {
   });
 
   it("resolves execution preferences before a deferred draft accepts its first prompt", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-shell-draft-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-shell-draft-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "shell-settings-agent.cjs");
     const logPath = join(workspacePath, "protocol.log");
@@ -1960,7 +1960,7 @@ describe("createZCodeAgentService", () => {
         path: "/usr/bin/first-send-bash",
       },
     }));
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath, logPath] }),
       resolveSessionRuntimePreferences,
     });
@@ -2072,13 +2072,13 @@ describe("createZCodeAgentService", () => {
 
     for (const testCase of cases) {
       const workspacePath = mkdtempSync(
-        join(tmpdir(), `zcode-agent-runtime-preferences-${testCase.name}-`),
+        join(tmpdir(), `codez-agent-runtime-preferences-${testCase.name}-`),
       );
       createdDirs.push(workspacePath);
       const scriptPath = join(workspacePath, "runtime-preferences-agent.cjs");
       const logPath = join(workspacePath, "protocol.log");
       writeFileSync(scriptPath, RUNTIME_PREFERENCES_FAKE_AGENT);
-      const service = createReadyZCodeAgentService({
+      const service = createReadyCodezAgentService({
         commandResolver: () => ({
           command: process.execPath,
           args: [scriptPath, logPath, testCase.requestMode ?? "valid"],
@@ -2128,7 +2128,7 @@ describe("createZCodeAgentService", () => {
   });
 
   it("does not send a second runtime preference response after the Agent disconnects", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-runtime-preferences-close-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-runtime-preferences-close-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "runtime-preferences-agent.cjs");
     const logPath = join(workspacePath, "protocol.log");
@@ -2145,7 +2145,7 @@ describe("createZCodeAgentService", () => {
     const resolverFinished = new Promise<void>((resolve) => {
       markResolverFinished = resolve;
     });
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({
         command: process.execPath,
         args: [scriptPath, logPath, "disconnect"],
@@ -2179,14 +2179,14 @@ describe("createZCodeAgentService", () => {
   });
 
   it("routes external runtime preference requests by opaque requestId", async () => {
-    const fixtureDir = mkdtempSync(join(tmpdir(), "zcode-agent-external-preferences-"));
-    const firstWorkspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-preferences-first-"));
-    const secondWorkspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-preferences-second-"));
+    const fixtureDir = mkdtempSync(join(tmpdir(), "codez-agent-external-preferences-"));
+    const firstWorkspacePath = mkdtempSync(join(tmpdir(), "codez-agent-preferences-first-"));
+    const secondWorkspacePath = mkdtempSync(join(tmpdir(), "codez-agent-preferences-second-"));
     createdDirs.push(fixtureDir, firstWorkspacePath, secondWorkspacePath);
     const scriptPath = join(fixtureDir, "runtime-preferences-agent.cjs");
     const logPath = join(fixtureDir, "protocol.log");
     writeFileSync(scriptPath, RUNTIME_PREFERENCES_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath, logPath] }),
       sessionRuntimePreferencesAuthority: "external",
     });
@@ -2228,12 +2228,12 @@ describe("createZCodeAgentService", () => {
 
   it("expires unanswered external runtime preference requests without replaying them", async () => {
     vi.useFakeTimers({ toFake: ["clearTimeout", "setTimeout"] });
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-preferences-timeout-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-preferences-timeout-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "runtime-preferences-agent.cjs");
     const logPath = join(workspacePath, "protocol.log");
     writeFileSync(scriptPath, RUNTIME_PREFERENCES_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath, logPath] }),
       sessionRuntimePreferencesAuthority: "external",
     });
@@ -2249,7 +2249,7 @@ describe("createZCodeAgentService", () => {
       const createPromise = service.createSession({ workspacePath });
       await requestSeen;
 
-      await vi.advanceTimersByTimeAsync(ZCODE_SESSION_RUNTIME_PREFERENCES_REQUEST_TIMEOUT_MS);
+      await vi.advanceTimersByTimeAsync(CODEZ_SESSION_RUNTIME_PREFERENCES_REQUEST_TIMEOUT_MS);
       await createPromise;
 
       const response = readFileSync(logPath, "utf8")
@@ -2266,7 +2266,7 @@ describe("createZCodeAgentService", () => {
       expect(response?.error).toEqual({
         code: -32022,
         data: {
-          timeoutMs: ZCODE_SESSION_RUNTIME_PREFERENCES_REQUEST_TIMEOUT_MS,
+          timeoutMs: CODEZ_SESSION_RUNTIME_PREFERENCES_REQUEST_TIMEOUT_MS,
         },
         message: "Session runtime preferences request timed out",
       });
@@ -2286,11 +2286,11 @@ describe("createZCodeAgentService", () => {
   });
 
   it("uses the compact-specific request timeout for delayed compact ACKs", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-compact-timeout-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-compact-timeout-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "delayed-compact-agent.cjs");
     writeFileSync(scriptPath, DELAYED_COMPACT_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
       requestTimeoutMs: 20,
     });
@@ -2312,15 +2312,15 @@ describe("createZCodeAgentService", () => {
   });
 
   it("retries session subscription after a transient subscribe failure", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-retry-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-retry-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "flaky-agent.cjs");
     writeFileSync(scriptPath, FLAKY_SUBSCRIBE_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
 
-    const received: ZCodeAgentServiceEvent[] = [];
+    const received: CodezAgentServiceEvent[] = [];
     const subscription = service.onDynamicSessionEvent({
       workspacePath,
       sessionId: "sess-1",
@@ -2341,15 +2341,15 @@ describe("createZCodeAgentService", () => {
   });
 
   it("delivers subscribe replay events only to the subscriber that requested them", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-replay-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-replay-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "replay-agent.cjs");
     writeFileSync(scriptPath, SUBSCRIBE_REPLAY_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
 
-    const firstReceived: ZCodeAgentServiceEvent[] = [];
+    const firstReceived: CodezAgentServiceEvent[] = [];
     const firstSubscription = service.onDynamicSessionEvent({
       workspacePath,
       sessionId: "sess-1",
@@ -2364,7 +2364,7 @@ describe("createZCodeAgentService", () => {
       { timeout: 5000, interval: 50 },
     );
 
-    const secondReceived: ZCodeAgentServiceEvent[] = [];
+    const secondReceived: CodezAgentServiceEvent[] = [];
     const secondSubscription = service.onDynamicSessionEvent({
       workspacePath,
       sessionId: "sess-1",
@@ -2388,13 +2388,13 @@ describe("createZCodeAgentService", () => {
   });
 
   it("reports only validated de-duplicated CUA sideband events without legacy session delivery", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-cua-operation-live-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-cua-operation-live-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "cua-operation-live-agent.cjs");
     writeFileSync(scriptPath, CUA_OPERATION_LIVE_EVENT_FAKE_AGENT);
     const reportedStates: Array<{ active: boolean; sessionId: string; turnId: string }> = [];
     const observedServiceActiveStates: boolean[] = [];
-    let service: ReturnType<typeof createReadyZCodeAgentService>;
+    let service: ReturnType<typeof createReadyCodezAgentService>;
     const onStateChanged = vi.fn(
       (event: { active: boolean; sessionId: string; turnId: string }) => {
         reportedStates.push(event);
@@ -2402,12 +2402,12 @@ describe("createZCodeAgentService", () => {
         if (event.active) throw new Error("host port closed");
       },
     );
-    service = createReadyZCodeAgentService({
+    service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
       cuaOperationStateReporter: { onStateChanged },
     });
     expect(service.hasActiveCuaOperationTurn()).toBe(false);
-    const received: ZCodeAgentServiceEvent[] = [];
+    const received: CodezAgentServiceEvent[] = [];
     const subscription = service.onDynamicSessionEvent({
       workspacePath,
       sessionId: "sess-cua-live",
@@ -2425,7 +2425,7 @@ describe("createZCodeAgentService", () => {
 
       const liveEvents = received
         .filter(
-          (event): event is Extract<ZCodeAgentServiceEvent, { type: "session.event" }> =>
+          (event): event is Extract<CodezAgentServiceEvent, { type: "session.event" }> =>
             event.type === "session.event",
         )
         .map((event) => event.event);
@@ -2439,12 +2439,12 @@ describe("createZCodeAgentService", () => {
   });
 
   it("clears CUA state when the runtime becomes unavailable without a restart", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-cua-runtime-exit-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-cua-runtime-exit-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "cua-operation-runtime-exit-agent.cjs");
     writeFileSync(scriptPath, CUA_OPERATION_RUNTIME_EXIT_FAKE_AGENT);
     const reportedStates: boolean[] = [];
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
       cuaOperationStateReporter: {
         onStateChanged: (event) => reportedStates.push(event.active),
@@ -2472,11 +2472,11 @@ describe("createZCodeAgentService", () => {
   });
 
   it("retries createSession without optional fields rejected by legacy agents", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-compat-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-compat-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "legacy-create-agent.cjs");
     writeFileSync(scriptPath, LEGACY_CREATE_PARAMS_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
 
@@ -2504,7 +2504,7 @@ describe("createZCodeAgentService", () => {
   });
 
   it("restarts a stale protocol client and retries plugin list without provider registry sync", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-plugins-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-plugins-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "stale-plugin-agent.cjs");
     const markerPath = join(workspacePath, "first-run-marker");
@@ -2513,7 +2513,7 @@ describe("createZCodeAgentService", () => {
       command: process.execPath,
       args: [scriptPath, markerPath],
     }));
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver,
       // Bugfix: 该用例只需要首个 fake agent 超时，full suite 并发时第二个进程启动到响应可能超过 500ms。
       // 局部放宽 request timeout，避免把重启后成功恢复的路径误判成第二次 stale。
@@ -2531,19 +2531,19 @@ describe("createZCodeAgentService", () => {
   });
 
   it("loads plugin list from the dedicated plugin workspace when the real workspace is missing", async () => {
-    const sandboxRoot = mkdtempSync(join(tmpdir(), "zcode-agent-service-plugin-cwd-"));
+    const sandboxRoot = mkdtempSync(join(tmpdir(), "codez-agent-service-plugin-cwd-"));
     createdDirs.push(sandboxRoot);
     setDataBaseDir(sandboxRoot);
     const scriptPath = join(sandboxRoot, "plugin-cwd-agent.cjs");
     writeFileSync(scriptPath, PLUGIN_LIST_ECHO_CWD_FAKE_AGENT);
     const missingWorkspacePath = join(sandboxRoot, "deleted-workspace");
-    const pluginWorkspacePath = join(sandboxRoot, ".zcode", "plugin-workspace");
+    const pluginWorkspacePath = join(sandboxRoot, ".codez", "plugin-workspace");
     const commandResolver = vi.fn(({ workspacePath }) => ({
       command: process.execPath,
       args: [scriptPath],
       cwd: workspacePath,
     }));
-    const service = createReadyZCodeAgentService({ commandResolver });
+    const service = createReadyCodezAgentService({ commandResolver });
 
     try {
       const result = await service.listPlugins({ workspacePath: missingWorkspacePath });
@@ -2561,44 +2561,44 @@ describe("createZCodeAgentService", () => {
   });
 
   it("updatePlugin issues plugins/update with the requested pluginId", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-plugin-update-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-plugin-update-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "plugin-update-agent.cjs");
     writeFileSync(scriptPath, PLUGIN_UPDATE_ECHO_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
 
     try {
       const result = await service.updatePlugin({
         workspacePath,
-        pluginId: "skill-creator@zcode-plugins-official",
+        pluginId: "skill-creator@codez-plugins-official",
       });
 
       expect(result.installedPlugins).toEqual([]);
       expect(result.diagnostics[0]?.code).toBe("echo-plugin-id");
-      expect(result.diagnostics[0]?.message).toBe("skill-creator@zcode-plugins-official");
+      expect(result.diagnostics[0]?.message).toBe("skill-creator@codez-plugins-official");
     } finally {
       await service.disposeAllAndWait();
     }
   });
 
   it("restoreBuiltinPlugin issues plugins/restoreBuiltin with the requested pluginId", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-plugin-restore-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-plugin-restore-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "plugin-restore-agent.cjs");
     writeFileSync(scriptPath, PLUGIN_RESTORE_BUILTIN_ECHO_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
 
     try {
       const result = await service.restoreBuiltinPlugin({
         workspacePath,
-        pluginId: "skill-creator@zcode-plugins-official",
+        pluginId: "skill-creator@codez-plugins-official",
       });
 
-      expect(result.pluginId).toBe("skill-creator@zcode-plugins-official");
+      expect(result.pluginId).toBe("skill-creator@codez-plugins-official");
       expect(result.diagnostics).toEqual([]);
     } finally {
       await service.disposeAllAndWait();
@@ -2606,7 +2606,7 @@ describe("createZCodeAgentService", () => {
   });
 
   it("restarts a stale protocol client and retries MCP status list without provider registry sync", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-mcp-list-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-mcp-list-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "stale-mcp-list-agent.cjs");
     const markerPath = join(workspacePath, "first-run-marker");
@@ -2615,7 +2615,7 @@ describe("createZCodeAgentService", () => {
       command: process.execPath,
       args: [scriptPath, markerPath],
     }));
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver,
       requestTimeoutMs: 1_500,
     });
@@ -2631,19 +2631,19 @@ describe("createZCodeAgentService", () => {
   });
 
   it("loads MCP status list through the dedicated plugin workspace", async () => {
-    const sandboxRoot = mkdtempSync(join(tmpdir(), "zcode-agent-service-mcp-cwd-"));
+    const sandboxRoot = mkdtempSync(join(tmpdir(), "codez-agent-service-mcp-cwd-"));
     createdDirs.push(sandboxRoot);
     setDataBaseDir(sandboxRoot);
     const scriptPath = join(sandboxRoot, "mcp-cwd-agent.cjs");
     writeFileSync(scriptPath, MCP_LIST_ECHO_CWD_FAKE_AGENT);
     const missingWorkspacePath = join(sandboxRoot, "deleted-workspace");
-    const pluginWorkspacePath = join(sandboxRoot, ".zcode", "plugin-workspace");
+    const pluginWorkspacePath = join(sandboxRoot, ".codez", "plugin-workspace");
     const commandResolver = vi.fn(({ workspacePath }) => ({
       command: process.execPath,
       args: [scriptPath],
       cwd: workspacePath,
     }));
-    const service = createReadyZCodeAgentService({ commandResolver });
+    const service = createReadyCodezAgentService({ commandResolver });
 
     try {
       const result = await service.listMcpServerStatuses({ workspacePath: missingWorkspacePath });
@@ -2660,7 +2660,7 @@ describe("createZCodeAgentService", () => {
   });
 
   it("plugins/uninstall 不会排在挂起的 mcp/list 后面：MCP 状态探测使用独立 agent 进程", async () => {
-    const sandboxRoot = mkdtempSync(join(tmpdir(), "zcode-agent-service-mcp-lane-"));
+    const sandboxRoot = mkdtempSync(join(tmpdir(), "codez-agent-service-mcp-lane-"));
     createdDirs.push(sandboxRoot);
     setDataBaseDir(sandboxRoot);
     const scriptPath = join(sandboxRoot, "serial-queue-agent.cjs");
@@ -2670,7 +2670,7 @@ describe("createZCodeAgentService", () => {
       command: process.execPath,
       args: [scriptPath, markerPath],
     }));
-    const service = createReadyZCodeAgentService({ commandResolver });
+    const service = createReadyCodezAgentService({ commandResolver });
 
     try {
       // connect 模式的 mcp/list 在真实环境里会因坏 MCP server 吃满 30s 超时；这里让它永不返回。
@@ -2694,7 +2694,7 @@ describe("createZCodeAgentService", () => {
   });
 
   it("mcp-status lane 进程的 spawn/exit 会上报 processLifecycleReporter", async () => {
-    const sandboxRoot = mkdtempSync(join(tmpdir(), "zcode-agent-service-mcp-lane-report-"));
+    const sandboxRoot = mkdtempSync(join(tmpdir(), "codez-agent-service-mcp-lane-report-"));
     createdDirs.push(sandboxRoot);
     setDataBaseDir(sandboxRoot);
     const scriptPath = join(sandboxRoot, "serial-queue-agent.cjs");
@@ -2706,7 +2706,7 @@ describe("createZCodeAgentService", () => {
       onExit: vi.fn(),
       onError: vi.fn(),
     };
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath, markerPath] }),
       processLifecycleReporter,
     });
@@ -2733,7 +2733,7 @@ describe("createZCodeAgentService", () => {
   });
 
   it("mcp-status lane 空闲超时后回收进程并释放 MCP 连接，下次探测重新拉起", async () => {
-    const sandboxRoot = mkdtempSync(join(tmpdir(), "zcode-agent-service-mcp-lane-idle-"));
+    const sandboxRoot = mkdtempSync(join(tmpdir(), "codez-agent-service-mcp-lane-idle-"));
     createdDirs.push(sandboxRoot);
     setDataBaseDir(sandboxRoot);
     const scriptPath = join(sandboxRoot, "mcp-echo-agent.cjs");
@@ -2745,7 +2745,7 @@ describe("createZCodeAgentService", () => {
       onExit: vi.fn(),
       onError: vi.fn(),
     };
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver,
       processLifecycleReporter,
       mcpStatusIdleTimeoutMs: 300,
@@ -2774,7 +2774,7 @@ describe("createZCodeAgentService", () => {
   });
 
   it("mcp/list 超时触发 watchdog 回收后重试仍落在 mcp-status lane，plugin lane 进程不受影响", async () => {
-    const sandboxRoot = mkdtempSync(join(tmpdir(), "zcode-agent-service-mcp-lane-timeout-"));
+    const sandboxRoot = mkdtempSync(join(tmpdir(), "codez-agent-service-mcp-lane-timeout-"));
     createdDirs.push(sandboxRoot);
     setDataBaseDir(sandboxRoot);
     const scriptPath = join(sandboxRoot, "serial-queue-agent.cjs");
@@ -2790,7 +2790,7 @@ describe("createZCodeAgentService", () => {
       onExit: vi.fn(),
       onError: vi.fn(),
     };
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver,
       processLifecycleReporter,
       // 覆盖 fake agent 冷启动（node 进程拉起 + 首个响应），又足够短让两次超时在秒级完成。
@@ -2834,11 +2834,11 @@ describe("createZCodeAgentService", () => {
   });
 
   it("passes UI-resolved MCP servers to mcp/list", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-mcp-explicit-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-mcp-explicit-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "mcp-explicit-agent.cjs");
     writeFileSync(scriptPath, MCP_LIST_ECHO_MCP_SERVERS_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
 
@@ -2871,11 +2871,11 @@ describe("createZCodeAgentService", () => {
   });
 
   it("passes status mode to mcp/list", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-mcp-mode-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-mcp-mode-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "mcp-mode-agent.cjs");
     writeFileSync(scriptPath, MCP_LIST_ECHO_MODE_FAKE_AGENT);
-    const service = createZCodeAgentService({
+    const service = createCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
 
@@ -2892,11 +2892,11 @@ describe("createZCodeAgentService", () => {
   });
 
   it("retries mcp/list without explicit MCP servers for legacy agents", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-mcp-compat-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-mcp-compat-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "mcp-compat-agent.cjs");
     writeFileSync(scriptPath, MCP_LIST_REJECTS_MCP_SERVERS_ONCE_FAKE_AGENT);
-    const service = createReadyZCodeAgentService({
+    const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
 
@@ -2913,11 +2913,11 @@ describe("createZCodeAgentService", () => {
   });
 
   it("retries connect-mode mcp/list without mode for legacy agents", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-mcp-mode-compat-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-mcp-mode-compat-"));
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "mcp-mode-compat-agent.cjs");
     writeFileSync(scriptPath, MCP_LIST_REJECTS_MODE_ONCE_FAKE_AGENT);
-    const service = createZCodeAgentService({
+    const service = createCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
 
@@ -2936,12 +2936,12 @@ describe("createZCodeAgentService", () => {
 
   it("does not retry status-only mcp/list as connect for legacy agents", async () => {
     const workspacePath = mkdtempSync(
-      join(tmpdir(), "zcode-agent-service-mcp-mode-subset-compat-"),
+      join(tmpdir(), "codez-agent-service-mcp-mode-subset-compat-"),
     );
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "mcp-mode-subset-compat-agent.cjs");
     writeFileSync(scriptPath, MCP_LIST_REJECTS_MODE_ONCE_FAKE_AGENT);
-    const service = createZCodeAgentService({
+    const service = createCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
 
@@ -2960,8 +2960,8 @@ describe("createZCodeAgentService", () => {
           ],
         }),
       ).rejects.toMatchObject({
-        code: ZCODE_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
-        name: "ZCodeAgentMcpStatusModeUnsupportedError",
+        code: CODEZ_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
+        name: "CodezAgentMcpStatusModeUnsupportedError",
       });
     } finally {
       await service.disposeAllAndWait();

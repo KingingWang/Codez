@@ -1,12 +1,12 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ConversationRow, UserInputRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow, UserInputRow } from "@codez/shared/codez-protocol-v4";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
 import { ConversationTurnGroup } from "@/v4/ConversationTurnGroup.js";
 import { buildConversationTurnRenderUnits } from "@/v4/conversationTurnRenderUnits.js";
 import type { ConversationRowRenderContext } from "@/v4/conversationRowContext.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const { rowViewProps } = vi.hoisted(() => ({
   rowViewProps: [] as Array<{
@@ -110,7 +110,7 @@ describe("authoritative conversation row actions", () => {
     for (const unit of units) {
       renderToStaticMarkup(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationTurnGroup, {
             unit,
@@ -144,7 +144,7 @@ describe("authoritative conversation row actions", () => {
     for (const unit of units) {
       renderToStaticMarkup(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationTurnGroup, {
             unit,

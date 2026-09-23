@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { HostMessageTypes, HostResponseTypes } from "@zcode/shared";
+import { HostMessageTypes, HostResponseTypes } from "@codez/shared";
 import { createBotRemoteWorkspaceService } from "../src/bots/botRemoteWorkspaceBridge.js";
 
 type ParentPortListener = (event: { data: unknown; ports?: unknown[] }) => void;
@@ -81,14 +81,14 @@ class RuntimePortMock {
 }
 
 function createBridge(port: ParentPortMock, autoResolutionEnabled = true) {
-  const remoteZCodeSessionService = {
+  const remoteCodezSessionService = {
     updateProviderRegistry: vi.fn(async () => ({
       workspaceState: {},
       status: "applied",
       providerCount: 0,
     })),
   };
-  const remoteZCodeAgentService = {
+  const remoteCodezAgentService = {
     syncAppRuntimePreferences: vi.fn(async () => undefined),
   };
   const remoteModelSelectionService = {
@@ -121,17 +121,17 @@ function createBridge(port: ParentPortMock, autoResolutionEnabled = true) {
       load: vi.fn(async () => null),
     } as never,
     createRuntimeServicesFromPort: vi.fn(() => ({
-      zcodeAgentService: remoteZCodeAgentService,
-      zcodeTaskService: {},
-      zcodeSessionService: remoteZCodeSessionService,
+      codezAgentService: remoteCodezAgentService,
+      codezTaskService: {},
+      codezSessionService: remoteCodezSessionService,
       modelSelectionService: remoteModelSelectionService,
     })) as never,
   });
   return {
     bridge,
-    remoteZCodeAgentService,
+    remoteCodezAgentService,
     remoteModelSelectionService,
-    remoteZCodeSessionService,
+    remoteCodezSessionService,
   };
 }
 
@@ -176,7 +176,7 @@ describe("createBotRemoteWorkspaceService", () => {
       workspaceIdentity: "remote:docker:demo:/workspace/link",
     };
 
-    await expect(bridge.getZCodeTaskService(target)).resolves.toBeTruthy();
+    await expect(bridge.getCodezTaskService(target)).resolves.toBeTruthy();
     await expect(bridge.getModelSelectionService(target)).resolves.toBeTruthy();
 
     expect(runtimePortRequestCount(port)).toBe(1);
@@ -195,32 +195,32 @@ describe("createBotRemoteWorkspaceService", () => {
 
   it("validates the remote registry without injecting Desktop provider facts", async () => {
     const port = new ParentPortMock();
-    const { bridge, remoteModelSelectionService, remoteZCodeSessionService } = createBridge(port);
+    const { bridge, remoteModelSelectionService, remoteCodezSessionService } = createBridge(port);
     const target = {
       workspacePath: "/workspace/link",
       workspaceIdentity: "remote:docker:demo:/workspace/link",
     };
 
-    await bridge.getZCodeTaskService(target);
+    await bridge.getCodezTaskService(target);
     await bridge.getModelSelectionService(target);
 
     expect(runtimePortRequestCount(port)).toBe(1);
     expect(remoteModelSelectionService.getView).toHaveBeenCalledTimes(1);
-    expect(remoteZCodeSessionService.updateProviderRegistry).not.toHaveBeenCalled();
+    expect(remoteCodezSessionService.updateProviderRegistry).not.toHaveBeenCalled();
   });
 
   it("applies the app preference before exposing a new remote Bot runtime", async () => {
     const port = new ParentPortMock();
-    const { bridge, remoteZCodeAgentService } = createBridge(port, false);
+    const { bridge, remoteCodezAgentService } = createBridge(port, false);
     const target = {
       workspacePath: "/workspace/link",
       workspaceIdentity: "remote:docker:demo:/workspace/link",
     };
 
-    await bridge.getZCodeTaskService(target);
+    await bridge.getCodezTaskService(target);
 
     // settings 未配置 modelIoFullRetentionEnabled 时按默认关闭（=== true → false）下发
-    expect(remoteZCodeAgentService.syncAppRuntimePreferences).toHaveBeenCalledWith({
+    expect(remoteCodezAgentService.syncAppRuntimePreferences).toHaveBeenCalledWith({
       askUserQuestionAutoResolutionEnabled: false,
       modelIoFullRetentionEnabled: false,
     });
@@ -228,7 +228,7 @@ describe("createBotRemoteWorkspaceService", () => {
 
   it("syncs only cached remote Bot runtimes without spawning another runtime", async () => {
     const port = new ParentPortMock();
-    const { bridge, remoteZCodeAgentService } = createBridge(port);
+    const { bridge, remoteCodezAgentService } = createBridge(port);
     const target = {
       workspacePath: "/workspace/link",
       workspaceIdentity: "remote:docker:demo:/workspace/link",
@@ -239,14 +239,14 @@ describe("createBotRemoteWorkspaceService", () => {
     });
     expect(runtimePortRequestCount(port)).toBe(0);
 
-    await bridge.getZCodeTaskService(target);
-    remoteZCodeAgentService.syncAppRuntimePreferences.mockClear();
+    await bridge.getCodezTaskService(target);
+    remoteCodezAgentService.syncAppRuntimePreferences.mockClear();
     await bridge.syncAppRuntimePreferences({
       askUserQuestionAutoResolutionEnabled: false,
     });
 
     expect(runtimePortRequestCount(port)).toBe(1);
-    expect(remoteZCodeAgentService.syncAppRuntimePreferences).toHaveBeenCalledWith({
+    expect(remoteCodezAgentService.syncAppRuntimePreferences).toHaveBeenCalledWith({
       askUserQuestionAutoResolutionEnabled: false,
     });
   });

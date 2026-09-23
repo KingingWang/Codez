@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 
-import type { BotsConfigFile, BotsStateFile, ZCodeStreamEvent } from "@zcode/shared";
-import { createBotsService } from "@zcode/services/node";
+import type { BotsConfigFile, BotsStateFile, CodezStreamEvent } from "@codez/shared";
+import { createBotsService } from "@codez/services/node";
 import { createBotModelSelectionView } from "./helpers/bots-service-harness.js";
 import { resolveE2ERuntimePath } from "../helpers/e2e-runtime-paths.js";
 
@@ -12,7 +12,7 @@ type LifecycleFixture = {
   classification: "synthetic";
   syntheticReason: string;
   prompt: string;
-  events: Array<Record<string, unknown> & { type: ZCodeStreamEvent["type"] }>;
+  events: Array<Record<string, unknown> & { type: CodezStreamEvent["type"] }>;
   expectedTimeline: string[];
   forbiddenCardMarkers: string[];
 };
@@ -52,10 +52,10 @@ describe("BOT-E2E-SC-01 Feishu streaming card lifecycle", () => {
     const sendPromptCalls: unknown[] = [];
     const subscriptions: Array<{
       params: Record<string, unknown>;
-      listener: (event: ZCodeStreamEvent) => Promise<void> | void;
+      listener: (event: CodezStreamEvent) => Promise<void> | void;
     }> = [];
 
-    const zcodeTaskService = {
+    const codezTaskService = {
       listTasks: async () => [],
       createTask: async (params: unknown) => {
         createTaskCalls.push(params);
@@ -98,7 +98,7 @@ describe("BOT-E2E-SC-01 Feishu streaming card lifecycle", () => {
       stopGeneration: async () => undefined,
       onDynamicTaskEvent:
         (params: Record<string, unknown>) =>
-        (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+        (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
           subscriptions.push({ params, listener });
           return { dispose() {} };
         },
@@ -111,7 +111,7 @@ describe("BOT-E2E-SC-01 Feishu streaming card lifecycle", () => {
         save: async () => undefined,
         delete: async () => undefined,
       },
-      zcodeTaskService,
+      codezTaskService,
       settingService: {
         get: async () => ({
           locale: "zh-CN",
@@ -174,7 +174,7 @@ describe("BOT-E2E-SC-01 Feishu streaming card lifecycle", () => {
         ...fixture.events[index],
         taskId: "task-e2e-bot-streaming-card",
         traceId: `trace-e2e-bot-${index}`,
-      } as ZCodeStreamEvent;
+      } as CodezStreamEvent;
       await listener?.(event);
     }
 

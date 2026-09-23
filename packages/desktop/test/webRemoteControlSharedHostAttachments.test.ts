@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { describe, expect, it, vi } from "vitest";
-import { HostMessageTypes } from "@zcode/shared";
+import { HostMessageTypes } from "@codez/shared";
 import { createWebRemoteControlSharedHostAttachments } from "../src/main/webRemoteControlSharedHostAttachments.js";
 
 const { browserWindowMock } = vi.hoisted(() => ({

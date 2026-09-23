@@ -14,7 +14,7 @@ async function fixture(
   requestTimeoutMs = 1000,
   interactionTimeoutMs?: number,
 ) {
-  const directory = await mkdtemp(join(tmpdir(), "zcode transport 中文 "));
+  const directory = await mkdtemp(join(tmpdir(), "codez transport 中文 "));
   const executable = join(directory, "fake codex");
   const trace = join(directory, "trace");
   await copyFile(new URL("./fixtures/fake-codex.mjs", import.meta.url), executable);
@@ -185,7 +185,7 @@ test("invalid explicit interaction deadlines reject before spawning", () => {
     assert.throws(
       () =>
         createCodexProcess({
-          executable: "/nonexistent/zcode-codex-test",
+          executable: "/nonexistent/codez-codex-test",
           cwd: tmpdir(),
           interactionTimeoutMs,
         }),
@@ -278,7 +278,7 @@ test("process death rejects every pending request and emits close once", options
 
 test("missing executable is an actionable startup failure", options, async () => {
   const process = createCodexProcess({
-    executable: "/nonexistent/zcode-codex-test",
+    executable: "/nonexistent/codez-codex-test",
     cwd: tmpdir(),
   });
   await assert.rejects(process.initialize(), /executable|start|spawn/i);

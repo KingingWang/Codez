@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   calculateDocxPreviewFit,
   decodeBase64ToArrayBuffer,
@@ -285,7 +285,7 @@ describe("Office file preview", () => {
     const { PreviewPaneOfficeXlsxContent } = await import("@/previewPaneOfficeXlsxContent.js");
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(PreviewPaneOfficeXlsxContent, {
           buffer: new ArrayBuffer(4),

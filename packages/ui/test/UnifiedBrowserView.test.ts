@@ -37,7 +37,7 @@ import {
   TID_BROWSER_RESPONSIVE_ZOOM_OPTION,
   TID_BROWSER_RESPONSIVE_ZOOM_SELECT,
   TID_BROWSER_WEBVIEW,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 
 // 用 vi.hoisted 定义 mock 依赖，规避 vi.mock 工厂对外部变量的引用限制。
@@ -119,7 +119,7 @@ vi.mock("@/hooks/useSettingService.js", () => ({
 }));
 // intl 只需把 message id 原样返回即可满足 aria-label / placeholder 断言。
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, number | string>) =>
         id === "browser.responsive.dimensionRangeError"

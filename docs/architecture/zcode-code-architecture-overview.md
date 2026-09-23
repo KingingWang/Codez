@@ -13,8 +13,8 @@ Electron App
    ├─ Renderer
    └─ Window Host（唯一 PID）
       ├─ LocalSource
-      │  ├─ workspaceKey A ── stdio ── zcode-cli A
-      │  └─ workspaceKey B ── stdio ── zcode-cli B
+      │  ├─ workspaceKey A ── stdio ── codez-cli A
+      │  └─ workspaceKey B ── stdio ── codez-cli B
       ├─ RemoteConnectionRegistry
       │  ├─ SSH / WSL pooled connection
       │  ├─ Docker / Server dedicated connection
@@ -25,7 +25,7 @@ Electron App
          └─ web-remote-replayable
 ```
 
-窗口、Host、connection 和 workspace 不是同一层级：窗口 Host 按 workspaceKey 隔离本地 CLI，并在进程内维护远端 connection 与 logical session。SSH 在同一窗口、同一标准化 target 下共享一条连接和一个远端 `zcode-server`；WSL 按 normalized distro/user 共享连接并保留既有 60 秒 idle TTL/running-task protection；Docker、Server 保持 dedicated connection。所有 transport 仍保留独立 `remoteSessionId`、attachment 和 workspaceKey，连接复用不等于 workspace 身份合并。
+窗口、Host、connection 和 workspace 不是同一层级：窗口 Host 按 workspaceKey 隔离本地 CLI，并在进程内维护远端 connection 与 logical session。SSH 在同一窗口、同一标准化 target 下共享一条连接和一个远端 `codez-server`；WSL 按 normalized distro/user 共享连接并保留既有 60 秒 idle TTL/running-task protection；Docker、Server 保持 dedicated connection。所有 transport 仍保留独立 `remoteSessionId`、attachment 和 workspaceKey，连接复用不等于 workspace 身份合并。
 
 ## 进程职责
 
@@ -45,7 +45,7 @@ Electron App
 
 真实窗口关闭、app quit 和 update install 只等待该窗口唯一 Host；Host 内部对 attachment、远端 registry 和本地 services 做有界释放。手机 attachment 断开只释放 attachment，不进入 Host shutdown 屏障。
 
-### zcode-cli
+### codez-cli
 
 每个 workspaceKey 最多一个聊天 CLI 进程。CLI 承载 session/core runtime、V4 command inbox、幂等/CAS 裁决、ProductProjection reducer、conversation topic、queue、goal、interaction、tool 与模型运行态。
 
@@ -71,7 +71,7 @@ workspaceKey = workspaceIdentity?.trim() || workspacePath
 | `packages/client`   | service proxy 与客户端 transport 装配                    |
 | `packages/ui`       | 平台无关 React UI、hooks、V4 projection store            |
 | `packages/desktop`  | Electron main/preload/renderer/host 壳                   |
-| `apps/zcode-cli`    | Agent core、command、projection 与 app-server            |
+| `apps/codez-cli`    | Agent core、command、projection 与 app-server            |
 
 ```text
 UI -> hooks/types -> service/protocol contracts
@@ -100,13 +100,13 @@ desktop 和 mobile 共享这条事实链。差别只在 delivery profile：桌�
 ## 平台抽象与 UI 规则
 
 - UI 通过 `IPlatformService` 访问目录选择、外链等平台能力。
-- 组件通过 `useServices()`、`usePlatform()` 等 hooks 获取依赖，不直接使用 `window.zcode` 或 service 单例。
+- 组件通过 `useServices()`、`usePlatform()` 等 hooks 获取依赖，不直接使用 `window.codez` 或 service 单例。
 - Desktop/Web/Mobile 差异通过装配和依赖注入处理，不在共享组件里硬编码平台分支。
 
 ## 当前事实入口
 
 - [通信协议分层](./communication-protocol-layers.md)
-- [ZCode Protocol](../zcode-protocol.md)
+- [Codez Protocol](../codez-protocol.md)
 - [Message Flow](./message-flow.md)
 - [Web Remote Control Architecture](../web-remote-control/web-remote-control-architecture.md)
 - [Task Realtime Sync](../web-remote-control/task-realtime-sync.md)

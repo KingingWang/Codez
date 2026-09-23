@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { botGroupInputSourceSchema } from "@zcode/shared";
+import { botGroupInputSourceSchema } from "@codez/shared";
 
 const source = {
   provider: "feishu",

@@ -182,7 +182,7 @@ describe("PptxPreviewViewer lifecycle", () => {
     const rendererMount = previewDocument.renderPage.mock.calls[0]?.[1] as
       | HTMLElement
       | undefined;
-    expect(rendererMount?.dataset.zcodePptxRenderSurface).toBe("true");
+    expect(rendererMount?.dataset.codezPptxRenderSurface).toBe("true");
     expect(rendererMount?.childElementCount).toBe(1);
 
     fireEvent.click(screen.getByRole("button", { name: labels.selectElement }));

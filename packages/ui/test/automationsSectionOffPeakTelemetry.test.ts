@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import type { IPlatformService, OffPeakTaskCreateResult } from "@zcode/shared";
+import type { IPlatformService, OffPeakTaskCreateResult } from "@codez/shared";
 import {
   buildOffPeakCreateResultTelemetryPayload,
   createAndReportOffPeakTask,

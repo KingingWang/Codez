@@ -47,7 +47,7 @@ App modelProviderService + entitlement + family settings
 ### Provider 目录
 
 `useModelProviders` 先读 `getAllCached()`，再后台读 `getAll()`；设置页保存后立即更新共享 snapshot，
-关键 runtime 字段变化再同步到所有已打开 workspace。ZCode Agent 菜单只使用 app provider registry
+关键 runtime 字段变化再同步到所有已打开 workspace。Codez Agent 菜单只使用 app provider registry
 构造 provider/model groups，不把 CLI 返回的 native available list 反向混入完整目录。
 
 Provider 进入菜单前至少要满足：
@@ -55,7 +55,7 @@ Provider 进入菜单前至少要满足：
 - enabled；
 - 有模型；
 - 有可用 credential 或被 Coding/Start Plan 的专用鉴权规则允许；
-- endpoint format 可被 ZCode Agent runtime 使用；
+- endpoint format 可被 Codez Agent runtime 使用；
 - provider family、当前 connection selection 和 entitlement 没有把它过滤掉。
 
 目录仍在 entitlement/provider 水合时，不把暂时不可见的历史模型立即判为不可用。水合完成且模型确实不存在时，
@@ -115,14 +115,14 @@ Team Plan 只在 BigModel family 开放。一个账号可以有多个 organizati
 
 ```text
 GET /api/biz/v1/organization/{organizationId}/projects/{projectId}/api_keys
-  -> 复用 name=zcode-team-api-key 且 keyType=2
+  -> 复用 name=codez-team-api-key 且 keyType=2
   -> 不存在则 POST 创建
   -> 仅当前选中的团队项目按需 copy secret
   -> runtime 使用 apiKey.secretKey
 ```
 
 - 请求必须携带 `bigmodel-organization` 与 `bigmodel-project` header。
-- 不能复用个人 preset 的 `zcode-api-key`，也不能复用同名但 `keyType != 2` 的 key。
+- 不能复用个人 preset 的 `codez-api-key`，也不能复用同名但 `keyType != 2` 的 key。
 - 预热所有团队项目时只确保 key 存在，不批量复制 secret；单项目失败不阻断其他项目。
 - `apiKeyStatus=available | unavailable` 是产品状态。unavailable 项在设置页保留并解释原因，但输入框和
   自动连接选择不能把它当成可发送连接。

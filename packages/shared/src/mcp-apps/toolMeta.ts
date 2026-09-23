@@ -102,7 +102,7 @@ export function normalizeMcpAppResourcePermissions(value: unknown): McpAppsResou
 }
 
 /**
- * 资源级 `_meta["zcode/csp"]`：只认 `MCP_APPS_CSP_RELAXATION_FLAGS` 里的布尔键，未知键与非布尔值丢弃；
+ * 资源级 `_meta["codez/csp"]`：只认 `MCP_APPS_CSP_RELAXATION_FLAGS` 里的布尔键，未知键与非布尔值丢弃；
  * 没有任何为 true 的键返回 null（false 等于不声明）。
  */
 export function normalizeMcpAppCspRelaxations(meta: unknown): McpAppCspRelaxations | null {

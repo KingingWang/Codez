@@ -1,10 +1,10 @@
 import { PassThrough } from "node:stream";
-import type { IDisposable, Event } from "@zcode/rpc";
+import type { IDisposable, Event } from "@codez/rpc";
 import type {
   IRemoteBackend,
   StdioStream,
-} from "@zcode/server/remote/backend.js";
-import { checkRemoteAssetComponentIdentity } from "@zcode/server/remote/remoteAssetLiveIdentity.js";
+} from "@codez/server/remote/backend.js";
+import { checkRemoteAssetComponentIdentity } from "@codez/server/remote/remoteAssetLiveIdentity.js";
 import { describe, expect, it } from "vitest";
 
 class IdentityBackend implements IRemoteBackend {

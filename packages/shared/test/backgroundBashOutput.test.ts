@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   backgroundBashOutputResultSchema,
   v4BackgroundBashOutputParamsSchema,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 describe("background Bash output query", () => {
   it("rejects arbitrary paths and caller-selected read budgets", () => {

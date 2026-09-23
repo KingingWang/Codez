@@ -24,14 +24,14 @@ function readCssRule(source: string, selector: string): string {
 function createBootstrapDocument(theme: "zai-dark" | "zai-light"): JSDOM {
   return new JSDOM(readWebIndexHtml(), {
     beforeParse(window) {
-      window.localStorage.setItem("zcode-theme", theme);
+      window.localStorage.setItem("codez-theme", theme);
       Object.defineProperty(window, "matchMedia", {
         configurable: true,
         value: () => ({ matches: false }),
       });
     },
     runScripts: "dangerously",
-    url: "https://zcode.example/remote",
+    url: "https://codez.example/remote",
   });
 }
 
@@ -53,9 +53,9 @@ describe("web remote control bootstrap shell", () => {
 
   it("预渲染 loading 容器自身兜底主题背景，避免全局透明 body 露出白底", () => {
     const html = readWebIndexHtml();
-    const loadingRule = readCssRule(html, ".zcode-boot-loading");
+    const loadingRule = readCssRule(html, ".codez-boot-loading");
 
-    expect(loadingRule).toContain("background: var(--zcode-bootstrap-bg");
+    expect(loadingRule).toContain("background: var(--codez-bootstrap-bg");
     expect(loadingRule).toContain("#0f172a");
   });
 
@@ -68,7 +68,7 @@ describe("web remote control bootstrap shell", () => {
       const dom = createBootstrapDocument(storedTheme);
       const { document } = dom.window;
 
-      expect(document.documentElement.getAttribute("data-zcode-browser-theme-surface")).toBe(
+      expect(document.documentElement.getAttribute("data-codez-browser-theme-surface")).toBe(
         resolvedTheme,
       );
       expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
@@ -84,9 +84,9 @@ describe("web remote control bootstrap shell", () => {
 
   it("Web 根表面以语义背景覆盖 Electron 透明根背景", () => {
     const html = readWebIndexHtml();
-    const browserSurfaceRule = readCssRule(html, "html[data-zcode-browser-theme-surface] #root");
+    const browserSurfaceRule = readCssRule(html, "html[data-codez-browser-theme-surface] #root");
 
-    expect(html).toContain("html[data-zcode-browser-theme-surface] body");
+    expect(html).toContain("html[data-codez-browser-theme-surface] body");
     expect(browserSurfaceRule).toContain("background: var(--color-background");
     expect(browserSurfaceRule).toContain("!important");
   });

@@ -8,9 +8,9 @@ import {
   ISettingService,
   ICredentialService,
   IBroadcastService,
-  IZCodeTaskService,
-  IZCodeAgentService,
-  IZCodeSessionService,
+  ICodezTaskService,
+  ICodezAgentService,
+  ICodezSessionService,
   IFileWatcherService,
   IOAuthService,
   ICodingPlanSubscriptionService,
@@ -26,7 +26,7 @@ import {
   ISettingsSyncService,
   IPromptAttachmentTransferService,
   type IServiceAccessor,
-} from "@zcode/services";
+} from "@codez/services";
 import {
   createSettingService,
   createBroadcastService,
@@ -37,8 +37,8 @@ import {
   createClientScenesService,
   createSettingsSyncService,
   createMediaPreviewService,
-} from "@zcode/services/node";
-import type { ApiClient } from "@zcode/shared";
+} from "@codez/services/node";
+import type { ApiClient } from "@codez/shared";
 
 export function createRemoteConnectionServiceCollection(params: {
   clientConfigService: IClientConfigService;
@@ -46,8 +46,8 @@ export function createRemoteConnectionServiceCollection(params: {
   parentPort: Parameters<typeof createBroadcastService>[0];
   credentialService: ICredentialService;
   apiClient: ApiClient;
-  remoteZCodeTaskService: IZCodeTaskService;
-  remoteZCodeSessionService: IZCodeSessionService;
+  remoteCodezTaskService: ICodezTaskService;
+  remoteCodezSessionService: ICodezSessionService;
   promptAttachmentTransferService: IPromptAttachmentTransferService;
 }): ServiceCollection {
   const handleOAuthProviderLogout = createOAuthProviderLogoutHandler({
@@ -72,9 +72,9 @@ export function createRemoteConnectionServiceCollection(params: {
       .register(ISettingService, createSettingService())
       .register(ICredentialService, params.credentialService)
       .register(IBroadcastService, createBroadcastService(params.parentPort))
-      .register(IZCodeTaskService, params.remoteZCodeTaskService)
-      .register(IZCodeAgentService, params.connectionServices.zcodeAgentService)
-      .register(IZCodeSessionService, params.remoteZCodeSessionService)
+      .register(ICodezTaskService, params.remoteCodezTaskService)
+      .register(ICodezAgentService, params.connectionServices.codezAgentService)
+      .register(ICodezSessionService, params.remoteCodezSessionService)
       .register(IPromptAttachmentTransferService, params.promptAttachmentTransferService)
       .register(IFileWatcherService, params.connectionServices.fileWatcherService)
       .register(

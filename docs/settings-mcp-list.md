@@ -28,7 +28,7 @@ Configured、Plugin MCP 共用一套失败展示：按 `failureKind` 国际化�
 连接成功、重新连接或 workspace 切换必须清除旧诊断。
 
 官方 Server MCP 的 JSON-RPC 错误码会先转换为稳定的设置页分类：`1006` 显示“未登录，请先登录
-ZCode”，`3101` 显示“当前账号没有 Coding Plan，请先购买或配置 Coding Plan”；这两类提示不再
+Codez”，`3101` 显示“当前账号没有 Coding Plan，请先购买或配置 Coding Plan”；这两类提示不再
 显示为笼统的“协议请求失败”。
 
 MCP、Skills、Commands 共用 `SettingsResourceGroupHeader` 与 `SettingsResourceList`：分组间

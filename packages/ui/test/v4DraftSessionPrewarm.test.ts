@@ -3,7 +3,7 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CommandAck, SessionConfigState } from "@zcode/shared/zcode-protocol-v4";
+import type { CommandAck, SessionConfigState } from "@codez/shared/codez-protocol-v4";
 import {
   startDraftSessionPrewarm,
   useDraftSessionPrewarm,
@@ -882,7 +882,7 @@ describe("useDraftSessionPrewarm workspace owner", () => {
         if (type === "createSession") {
           createCount += 1;
           // 首次撞上 Helper ready 触发的回收（client disposed），重试时回收已结束。
-          if (createCount === 1) throw new Error("ZCode Protocol client disposed");
+          if (createCount === 1) throw new Error("Codez Protocol client disposed");
           return acceptedCreateAck(`draft-${createCount}`);
         }
         return NOOP_ACK;
@@ -926,7 +926,7 @@ describe("useDraftSessionPrewarm workspace owner", () => {
         sessionId: string | null,
       ): Promise<CommandAck> => {
         calls.push({ type, sessionId });
-        if (type === "createSession") throw new Error("ZCode Protocol client disposed");
+        if (type === "createSession") throw new Error("Codez Protocol client disposed");
         return NOOP_ACK;
       },
     );

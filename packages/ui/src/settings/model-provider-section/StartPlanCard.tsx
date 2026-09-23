@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import type { StartPlanPreviewConfig, StartPlanPreviewEntitlement } from "@zcode/shared";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import type { StartPlanPreviewConfig, StartPlanPreviewEntitlement } from "@codez/shared";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { formatCompactTokenNumber } from "@/lib/tokenNumberFormat.js";
 
 export interface StartPlanEntitlementSummary {
@@ -16,7 +16,7 @@ export function StartPlanCard({
   preview: StartPlanPreviewConfig;
   actions?: ReactNode;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const entitlementSummary = resolveStartPlanEntitlementSummary(preview, intl, locale);
   if (!entitlementSummary) {
     // 体验套餐卡片必须由远端 startPlanPreview.entitlements 驱动；
@@ -72,7 +72,7 @@ export function StartPlanCard({
 
 export function resolveStartPlanEntitlementSummary(
   preview: StartPlanPreviewConfig,
-  intl: ReturnType<typeof useZCodeIntl>["intl"],
+  intl: ReturnType<typeof useCodezIntl>["intl"],
   locale: string,
 ): StartPlanEntitlementSummary | null {
   const entitlements = (preview?.entitlements ?? []).filter(isDisplayableModelUsageEntitlement);
@@ -138,7 +138,7 @@ function formatHeroGrantUnits(value: number, locale: string): string {
 function formatEntitlementDetailsDescription(
   entitlements: StartPlanPreviewEntitlement[],
   primary: StartPlanPreviewEntitlement,
-  intl: ReturnType<typeof useZCodeIntl>["intl"],
+  intl: ReturnType<typeof useCodezIntl>["intl"],
   locale: string,
 ): string {
   const unit = formatStartPlanUnitTypeLabel(primary, intl);
@@ -208,7 +208,7 @@ function formatModelList(modelNames: string[], locale: string): string {
 
 function formatStartPlanUnitLabel(
   entitlement: StartPlanPreviewEntitlement,
-  intl: ReturnType<typeof useZCodeIntl>["intl"],
+  intl: ReturnType<typeof useCodezIntl>["intl"],
 ): string {
   const unit = formatStartPlanUnitTypeLabel(entitlement, intl);
   if (entitlement.period === "daily") {
@@ -224,7 +224,7 @@ function formatStartPlanUnitLabel(
 
 function formatStartPlanUnitTypeLabel(
   entitlement: StartPlanPreviewEntitlement,
-  intl: ReturnType<typeof useZCodeIntl>["intl"],
+  intl: ReturnType<typeof useCodezIntl>["intl"],
 ): string {
   return entitlement.unitType === "token"
     ? intl.formatMessage({

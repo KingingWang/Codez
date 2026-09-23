@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { TID_TASK_ITEM, testId } from "@zcode/shared";
+import { TID_TASK_ITEM, testId } from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,

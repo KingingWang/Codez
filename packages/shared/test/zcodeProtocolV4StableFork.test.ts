@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { stableForkTargetSchema } from "../src/zcode-protocol-v4/index.js";
+import { stableForkTargetSchema } from "../src/codez-protocol-v4/index.js";
 
-describe("ZCode Protocol v4 stable fork target", () => {
+describe("Codez Protocol v4 stable fork target", () => {
   it("固定 product/transcript turn 与有序 logical message boundary", () => {
     expect(
       stableForkTargetSchema.parse({

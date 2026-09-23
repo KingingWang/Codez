@@ -457,7 +457,7 @@ describe("idle-time task Figma layout contracts", () => {
     expect(editViewSource).toContain("<ConfigSelect");
     expect(editViewSource).not.toContain("OffPeakToolbarSelect");
     expect(editViewSource).toContain("buildAutomationModeOption(mode)");
-    expect(editViewSource).toContain("provider={ZCODE_AGENT_PROVIDER}");
+    expect(editViewSource).toContain("provider={CODEZ_AGENT_PROVIDER}");
     expect(editViewSource).not.toContain("offPeak.mode.");
     expect(automationEditViewSource).toContain("<ConfigSelect");
     expect(editViewSource).toContain(

@@ -1,10 +1,10 @@
-package com.example.zcode_mobile.remote
+package com.example.codez_mobile.remote
 
 import android.net.Uri
-import com.example.zcode_mobile.BuildConfig
+import com.example.codez_mobile.BuildConfig
 
-private const val ZCODE_REMOTE_SCHEME = "zcode"
-private const val ZCODE_REMOTE_HOST = "remote"
+private const val CODEZ_REMOTE_SCHEME = "codez"
+private const val CODEZ_REMOTE_HOST = "remote"
 
 object RemoteControlUrlPolicy {
     fun resolve(raw: String?): String? {
@@ -22,7 +22,7 @@ object RemoteControlUrlPolicy {
             return null
         }
 
-        if (uri.scheme == ZCODE_REMOTE_SCHEME && uri.host == ZCODE_REMOTE_HOST) {
+        if (uri.scheme == CODEZ_REMOTE_SCHEME && uri.host == CODEZ_REMOTE_HOST) {
             return buildDefaultRemoteUrl(uri)
         }
 

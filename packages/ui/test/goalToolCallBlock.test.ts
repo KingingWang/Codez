@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { GoalToolCallBlock } from "../src/ToolCallBlocks/renderers/goal.js";
 
 const displayModel = {
@@ -19,7 +19,7 @@ describe("GoalToolCallBlock", () => {
   it("renders only goal result details without parameters or raw tool payload", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(GoalToolCallBlock, {
           toolCallNode: {

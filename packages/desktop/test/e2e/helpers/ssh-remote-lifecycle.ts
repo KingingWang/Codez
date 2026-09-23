@@ -7,7 +7,7 @@ import {
   buildRemoteWorkspaceIdentity,
   testId,
   type RemoteTarget,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clickTestIdByDom,
   waitForWorkspaceApp,
@@ -369,17 +369,17 @@ export async function reconnectSSHWorkspace(
   );
 }
 
-export async function listRemoteZCodeServerPids(
+export async function listRemoteCodezServerPids(
   config: SSHConnectionConfig,
 ): Promise<number[]> {
   const result = await runSSHCommand(config, "ps -eo pid=,args=");
   if (result.code !== 0) {
-    throw new Error(`读取远端 zcode-server PID 失败: ${result.stderr}`);
+    throw new Error(`读取远端 codez-server PID 失败: ${result.stderr}`);
   }
   return result.stdout
     .split("\n")
     .flatMap((line) => {
-      const match = line.match(/^\s*(\d+)\s+.*(?:^|\s)zcode-server\.cjs(?:\s|$)/u);
+      const match = line.match(/^\s*(\d+)\s+.*(?:^|\s)codez-server\.cjs(?:\s|$)/u);
       return match ? [Number.parseInt(match[1]!, 10)] : [];
     })
     .filter((pid) => Number.isSafeInteger(pid) && pid > 0);
@@ -390,23 +390,23 @@ export async function stopOwnedSSHServer(
   beforePids: readonly number[],
   caseMarker: string,
 ): Promise<number> {
-  const currentPids = await listRemoteZCodeServerPids(config);
+  const currentPids = await listRemoteCodezServerPids(config);
   const owned = currentPids.filter((pid) => !beforePids.includes(pid));
   if (owned.length !== 1) {
     throw new Error(
-      `${caseMarker}: 只允许终止本 case 新建的一个 zcode-server，before=${beforePids.join(",")}, current=${currentPids.join(",")}`,
+      `${caseMarker}: 只允许终止本 case 新建的一个 codez-server，before=${beforePids.join(",")}, current=${currentPids.join(",")}`,
     );
   }
   const pid = owned[0]!;
   const result = await runSSHCommand(config, `kill -TERM -- ${pid}`);
   if (result.code !== 0) {
-    throw new Error(`${caseMarker}: 终止远端 zcode-server ${pid} 失败: ${result.stderr}`);
+    throw new Error(`${caseMarker}: 终止远端 codez-server ${pid} 失败: ${result.stderr}`);
   }
   await browser.waitUntil(
-    async () => !(await listRemoteZCodeServerPids(config)).includes(pid),
+    async () => !(await listRemoteCodezServerPids(config)).includes(pid),
     {
       timeout: SSH_WORKSPACE_READY_TIMEOUT_MS,
-      timeoutMsg: `${caseMarker}: 远端 zcode-server ${pid} 没有退出`,
+      timeoutMsg: `${caseMarker}: 远端 codez-server ${pid} 没有退出`,
     },
   );
   return pid;

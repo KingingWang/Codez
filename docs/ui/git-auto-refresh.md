@@ -28,7 +28,7 @@ Git 自身解析出的 gitdir/common-dir 元数据路径，避免把 workspace �
 - macOS / Windows 外部编辑器修改、创建、删除文件后，顶部 Git 操作入口重新判断 dirty 状态。
 - 所有平台的外部命令切换分支、提交、stage/unstage 后，底部分支名和 push/commit 入口同步更新。
 - Linux workspace 的工作树外部编辑不会由 workspace watcher 触发即时 dirty 刷新；用户可手动刷新，
-  ZCode/Git 操作完成后的既有刷新链路不变。
+  Codez/Git 操作完成后的既有刷新链路不变。
 - 远程 workspace 继续通过 workspace-scoped services 注册 watcher；WSL/SSH/Docker 的平台事实
   来自远端 Host 的 `systemService.info()`，不能使用桌面端平台判断。远程断连或平台不支持
   watch 时，监听失败只记录 warn，保留手动刷新和操作后刷新链路。

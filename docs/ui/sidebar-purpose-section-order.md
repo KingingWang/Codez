@@ -7,7 +7,7 @@
 | Change                | `Project + By project` 中的“项目 / 任务”二级分区支持拖拽换位，并持久化用户顺序                                            |
 | User-visible surfaces | Desktop 与共享 Web workspace sidebar；共享 task-purpose 标签同步显示为“任务 / Tasks”                                      |
 | Existing docs         | `docs/ui/sidebar-task-view-switcher.md`、`docs/superpowers/specs/2026-07-10-non-project-conversation-workspace-design.md` |
-| State owner           | Renderer-local `zcode-sidebar-purpose-section-preferences`                                                                |
+| State owner           | Renderer-local `codez-sidebar-purpose-section-preferences`                                                                |
 | Out of scope          | 手机 `/remote` 拖拽布局、跨窗口实时同步、Host/Agent/protocol 状态、其它“对话”文案                                         |
 
 内部 `workspacePurpose=conversation` 语义保持不变；把共享的 task-purpose 分区/工作区标签及桌面侧栏空态、创建入口文案从

@@ -22,7 +22,7 @@ describe("web Vite config", () => {
         webRoot,
         "silent",
       );
-      expect(result?.config.define?.__ZCODE_VERSION__).toBe(
+      expect(result?.config.define?.__CODEZ_VERSION__).toBe(
         JSON.stringify(override?.trim() || version),
       );
     },
@@ -76,13 +76,13 @@ describe("web Vite config", () => {
       "silent",
     );
 
-    expect(result?.config.plugins?.some((plugin) => plugin.name === "zcode:pdfjs-cmaps")).toBe(
+    expect(result?.config.plugins?.some((plugin) => plugin.name === "codez:pdfjs-cmaps")).toBe(
       true,
     );
   });
 
-  it("显式 ZCODE_ENV=production 时注入生产 ZAI OAuth 和 API 链接", async () => {
-    vi.stubEnv("ZCODE_ENV", "production");
+  it("显式 CODEZ_ENV=production 时注入生产 ZAI OAuth 和 API 链接", async () => {
+    vi.stubEnv("CODEZ_ENV", "production");
     const webRoot = resolve(import.meta.dirname, "..");
     const configFile = resolve(webRoot, "vite.config.ts");
     const result = await loadConfigFromFile(
@@ -99,7 +99,7 @@ describe("web Vite config", () => {
 
     expect(result?.config.define).toMatchObject({
       "import.meta.env.VITE_ZAI_OAUTH_CLIENT_ID": JSON.stringify("client_P8X5CMWmlaRO9gyO-KSqtg"),
-      "import.meta.env.VITE_ZCODE_BASE_URL": JSON.stringify("https://zcode.z.ai"),
+      "import.meta.env.VITE_CODEZ_BASE_URL": JSON.stringify("https://zcode.z.ai"),
     });
   });
 
@@ -109,8 +109,8 @@ describe("web Vite config", () => {
   (isWindows ? it.skip : it)(
     "uses the same public ZAI OAuth origin in local development mode",
     async () => {
-      vi.stubEnv("ZCODE_ENV", "");
-      vi.stubEnv("ZCODE_BASE_URL", "");
+      vi.stubEnv("CODEZ_ENV", "");
+      vi.stubEnv("CODEZ_BASE_URL", "");
       vi.stubEnv("ZAI_OAUTH_ORIGIN", "");
       vi.stubEnv("ZAI_OAUTH_CLIENT_ID", "");
       const webRoot = resolve(import.meta.dirname, "..");
@@ -129,15 +129,15 @@ describe("web Vite config", () => {
 
       expect(result?.config.define).toMatchObject({
         "import.meta.env.VITE_ZAI_OAUTH_CLIENT_ID": JSON.stringify("client_P8X5CMWmlaRO9gyO-KSqtg"),
-        "import.meta.env.VITE_ZCODE_BASE_URL": JSON.stringify("https://zcode.z.ai"),
+        "import.meta.env.VITE_CODEZ_BASE_URL": JSON.stringify("https://zcode.z.ai"),
         "import.meta.env.VITE_ZAI_OAUTH_ORIGIN": JSON.stringify("https://chat.z.ai"),
       });
     },
   );
 
-  it("uses shared ZCode endpoint env override for renderer injection", async () => {
-    vi.stubEnv("ZCODE_ENV", "test");
-    vi.stubEnv("ZCODE_BASE_URL", "https://zcode.z.ai/custom/path");
+  it("uses shared Codez endpoint env override for renderer injection", async () => {
+    vi.stubEnv("CODEZ_ENV", "test");
+    vi.stubEnv("CODEZ_BASE_URL", "https://zcode.z.ai/custom/path");
     const webRoot = resolve(import.meta.dirname, "..");
     const configFile = resolve(webRoot, "vite.config.ts");
     const result = await loadConfigFromFile(
@@ -153,8 +153,8 @@ describe("web Vite config", () => {
     );
 
     expect(result?.config.define).toMatchObject({
-      "import.meta.env.VITE_ZCODE_BASE_URL": JSON.stringify("https://zcode.z.ai"),
-      "import.meta.env.VITE_ZCODE_ENDPOINT_ORIGIN": JSON.stringify("https://zcode.z.ai"),
+      "import.meta.env.VITE_CODEZ_BASE_URL": JSON.stringify("https://zcode.z.ai"),
+      "import.meta.env.VITE_CODEZ_ENDPOINT_ORIGIN": JSON.stringify("https://zcode.z.ai"),
     });
   });
 });

@@ -3,7 +3,7 @@ import {
   TID_SSH_DIALOG,
   buildRemoteWorkspaceIdentity,
   type RemoteTarget,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,

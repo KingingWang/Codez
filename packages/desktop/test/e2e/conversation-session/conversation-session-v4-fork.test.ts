@@ -6,7 +6,7 @@
 import {
   TID_CHAT_THOUGHT_LEVEL_SELECT_ITEM,
   TID_CHAT_THOUGHT_LEVEL_SELECT_TRIGGER,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,

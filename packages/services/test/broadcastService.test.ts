@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { HostMessageTypes, HostResponseTypes } from "@zcode/shared";
+import { HostMessageTypes, HostResponseTypes } from "@codez/shared";
 import { createBroadcastService } from "../src/broadcast/broadcastService.js";
 
 class FakeParentPort {

@@ -1,6 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { ESTIMATED_TOKEN_CHAR_DIVISOR } from "@zcode/shared";
+import { ESTIMATED_TOKEN_CHAR_DIVISOR } from "@codez/shared";
 import { clearAppData, getE2EAppDataPaths } from "../helpers/desktop-app.js";
 import { selectUpstreamProviderModelById } from "../helpers/upstream-provider.js";
 import { waitForSelectedModel } from "../helpers/model-provider-restart.js";
@@ -425,7 +425,7 @@ async function readAutoCompactContexts(
   sessionId: string,
   event: "compact.auto.skipped" | "compact.auto.started",
 ): Promise<Record<string, unknown>[]> {
-  const logDir = process.env.ZCODE_LOG_DIR?.trim() || join(paths.storageRoot, "cli", "log");
+  const logDir = process.env.CODEZ_LOG_DIR?.trim() || join(paths.storageRoot, "cli", "log");
   const files = await readdir(logDir).catch(() => []);
   const contexts: Record<string, unknown>[] = [];
   for (const file of files) {

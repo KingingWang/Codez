@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModelSelectGroup } from "@/ModelConfigSelect.js";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import {
   buildAutomationModelSelectGroups,
   buildAutomationModelSelection,
@@ -11,7 +11,7 @@ import {
   resolveAutomationModelTriggerLabel,
   resolveAutomationThoughtLevelUpdate,
 } from "@/settings/automationAgentConfigOptions.js";
-import { encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
+import { encodeCustomModelValue } from "@/lib/codezCustomModelValue.js";
 
 const groups: ModelSelectGroup[] = [
   {
@@ -199,7 +199,7 @@ describe("automation model/thought linkage", () => {
   });
 
   it("runtime provider 包装值只在模型名唯一时映射回菜单项", () => {
-    expect(resolveAutomationModelItem(groups, "zcode-openai-compatible/model-a")?.value).toBe(
+    expect(resolveAutomationModelItem(groups, "codez-openai-compatible/model-a")?.value).toBe(
       encodeCustomModelValue("demo", "model-a"),
     );
   });

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { PluginStoreListView } from "@/settings/PluginStoreListView.js";
 import type { StorePluginItem } from "@/settings/pluginStoreListing.js";
@@ -32,7 +32,7 @@ function Fixture() {
   const [updated, setUpdated] = useState("");
   const [opened, setOpened] = useState("");
   return (
-    <ZCodeIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
+    <CodezIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
       <TooltipProvider>
         <main className="min-h-screen bg-background p-4 text-foreground">
           <PluginStoreListView
@@ -58,7 +58,7 @@ function Fixture() {
           <output data-testid="opened">{opened}</output>
         </main>
       </TooltipProvider>
-    </ZCodeIntlProvider>
+    </CodezIntlProvider>
   );
 }
 createRoot(document.getElementById("root")!).render(<Fixture />);

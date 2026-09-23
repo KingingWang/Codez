@@ -51,7 +51,7 @@ describe("ChunkStream", () => {
   });
 });
 
-// ── PersistentProtocol 两个补丁（docs/v4-refactor/05 §@zcode/rpc）──
+// ── PersistentProtocol 两个补丁（docs/v4-refactor/05 §@codez/rpc）──
 
 /** 可注入数据的假 socket：write 收集出站帧，emitData 模拟对端来包。 */
 class FakeSocket implements ISocket {
@@ -270,12 +270,12 @@ describe("MessagePortProtocol connection flow sideband", () => {
         sendFlowState(state: "saturated" | "drained"): void;
       }
     ).sendFlowState("saturated");
-    rightPort.emit({ __zcodeRpcControl: "connection-flow-v1", state: "forged" });
+    rightPort.emit({ __codezRpcControl: "connection-flow-v1", state: "forged" });
 
     expect(binary).toEqual(["rpc-binary"]);
     expect(flow).toEqual(["saturated"]);
     expect(leftPort.posted).toContainEqual({
-      __zcodeRpcControl: "connection-flow-v1",
+      __codezRpcControl: "connection-flow-v1",
       state: "saturated",
     });
     left.disconnect();

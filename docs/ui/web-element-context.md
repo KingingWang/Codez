@@ -1,13 +1,13 @@
 # Web Element Context
 
-ZCode 的内置浏览器支持在桌面端把网页元素加入聊天上下文。
+Codez 的内置浏览器支持在桌面端把网页元素加入聊天上下文。
 
 ## Flow
 
 1. Browser toolbar 中的元素选择按钮进入 picking mode。
 2. `EmbeddedBrowserPane` 通过 Electron `webview.executeJavaScript` 临时注入 picker。
 3. 用户 hover 时页面内部显示高亮和基础信息浮窗，click 后采集当前元素并退出；Esc 会取消选择态。
-4. Renderer 派发 `zcode:web-element-context-add-to-chat` 事件。
+4. Renderer 派发 `codez:web-element-context-add-to-chat` 事件。
 5. Chat composer 显示网页元素 chip，发送时把上下文拼成 Markdown text block。
 
 ## V4 Composer Wiring
@@ -17,7 +17,7 @@ V4 不新增协议字段，web element context 仍然是 prompt 文本上下文�
 
 ```
 EmbeddedBrowserPane
-  -> zcode:web-element-context-add-to-chat
+  -> codez:web-element-context-add-to-chat
   -> ConversationComposer/useWebElementContexts
        workspaceKey = workspaceIdentity?.trim() || workspacePath
        transient in-memory contexts[]
@@ -49,7 +49,7 @@ EmbeddedBrowserPane
 - 上下文按 `workspaceIdentity?.trim() || workspacePath` 归属当前 workspace。
 - V4 远程 workspace 必须继续传 `workspaceIdentity`；禁止只按 `workspacePath` 过滤 context。
 - 不读取 cookie、localStorage、sessionStorage，也不采集 input 当前 value；password input 会被 mask。
-- 发送给 ZCode Agent 的内容是纯文本 Markdown，兼容当前 provider。
+- 发送给 Codez Agent 的内容是纯文本 Markdown，兼容当前 provider。
 
 ## Captured Fields
 

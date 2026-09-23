@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/shared/readonly-tool.txt",
+      "path": ".codez-e2e/shared/readonly-tool.txt",
       "source": "created-by-spec",
       "description": "父会话真实 Read 工具结果，用于断言 fork 后继承历史进入 child provider 请求。"
     }

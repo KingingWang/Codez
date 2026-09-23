@@ -5,8 +5,8 @@ import type {
   McpAppsDownloadFileItem,
   PluginSandboxHandle,
   PluginSandboxPlatformPort,
-} from "@zcode/shared/mcp-apps";
-import { MCP_APPS_SET_WIDGET_STATE_METHOD, concatMcpAppsTextContent } from "@zcode/shared/mcp-apps";
+} from "@codez/shared/mcp-apps";
+import { MCP_APPS_SET_WIDGET_STATE_METHOD, concatMcpAppsTextContent } from "@codez/shared/mcp-apps";
 import { z } from "zod";
 import type { PluginUiHostBridge } from "./pluginUiHostBridge.js";
 
@@ -56,7 +56,7 @@ const unsupported = (method: string) =>
   new ProtocolError(METHOD_NOT_FOUND, `${method} is not available for this app`);
 
 /**
- * 会话交互（ui/message、ui/update-model-context、ui/download-file、ZCode 扩展 ui/set-widget-state）接到官方
+ * 会话交互（ui/message、ui/update-model-context、ui/download-file、Codez 扩展 ui/set-widget-state）接到官方
  * AppBridge：缺省回调回 -32601；ui/message 的手势 token 由 main 在 guest input-event 记录、一次性消费，没有句柄视为无手势。
  */
 export function wirePluginUiInteractions(

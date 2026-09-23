@@ -1,6 +1,6 @@
 import { dirname } from "node:path";
-import { PlatformChannels } from "@zcode/shared";
-import type { BrowserViewCloseTabNotification } from "@zcode/shared";
+import { PlatformChannels } from "@codez/shared";
+import type { BrowserViewCloseTabNotification } from "@codez/shared";
 import { DEFAULT_WORKSPACE, clearAppData, waitForWorkspaceApp } from "./helpers/desktop-app.js";
 import {
   SMALL_AGENT_WARMUP_SCENARIO,

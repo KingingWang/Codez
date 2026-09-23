@@ -3,9 +3,9 @@
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ZCodeElicitationRequest } from "@zcode/shared";
+import type { CodezElicitationRequest } from "@codez/shared";
 import { ElicitationDialog } from "@/ElicitationDialog.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 afterEach(() => {
   cleanup();
@@ -20,7 +20,7 @@ describe("ElicitationDialog custom answer focus", () => {
         window.setTimeout(() => callback(performance.now()), 0),
       );
       vi.stubGlobal("cancelAnimationFrame", (id: number) => window.clearTimeout(id));
-      const request: ZCodeElicitationRequest = {
+      const request: CodezElicitationRequest = {
         type: "elicitation_request",
         taskId: "task-focus",
         traceId: "trace-focus",
@@ -44,7 +44,7 @@ describe("ElicitationDialog custom answer focus", () => {
       const onRespond = vi.fn();
       const { container } = render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ElicitationDialog, { request, onRespond }),
         ),

@@ -75,7 +75,7 @@ describe("conversation share route", () => {
       /showContinueHelp \? \(\s*(?:\/\/[^\n]*\n\s*)*<ShareContentInset>/u,
     );
     // Bug 根因二：站点首页本身就是下载入口，/download 这个 path 是 404。
-    expect(source).toContain('const ZCODE_DOWNLOAD_URL = "https://zcode.z.ai"');
+    expect(source).toContain('const CODEZ_DOWNLOAD_URL = "https://zcode.z.ai"');
     expect(source).not.toContain("zcode.z.ai/download");
   });
 });

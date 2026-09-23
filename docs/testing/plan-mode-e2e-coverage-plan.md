@@ -8,7 +8,7 @@ Plan mode 的端到端验收面是桌面本地 `desktop-continuous` 会话里的
 
 - `conversation-session-tool-cross-product.test.ts` 已覆盖 `EnterPlanMode` 成功入工具块，以及非 plan mode 下 `ExitPlanMode` 快速失败的普通工具展示边界。
 - `conversation-session-plan-approval-feedback-user-message.test.ts` 覆盖 `ExitPlanMode` 被用户输入 custom feedback 拒绝后，feedback 作为真实 user message 进入下一次 provider 请求。
-- `conversation-session-plan-file-compact-continuity.test.ts` 覆盖 `ExitPlanMode` 审批通过后 plan 原文写入 `.zcode/plans`，并在手动 `/compact` 后通过 `plan_file_reference` 回到 provider-visible context。
+- `conversation-session-plan-file-compact-continuity.test.ts` 覆盖 `ExitPlanMode` 审批通过后 plan 原文写入 `.codez/plans`，并在手动 `/compact` 后通过 `plan_file_reference` 回到 provider-visible context。
 
 ## Added Coverage
 

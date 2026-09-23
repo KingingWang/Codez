@@ -16,8 +16,8 @@ import {
   type RoutedTopicWireFrame,
   type SessionsIndexTopicFrame,
   type WorkspaceConfigTopicFrame,
-} from "../src/zcode-protocol-v4/index.js";
-import { crc32WireBytes, encodeWireBytesBase64 } from "../src/zcode-protocol-v4/wire-binary.js";
+} from "../src/codez-protocol-v4/index.js";
+import { crc32WireBytes, encodeWireBytesBase64 } from "../src/codez-protocol-v4/wire-binary.js";
 
 const encoder = new TextEncoder();
 const TOPIC = "conversation/session-physical";

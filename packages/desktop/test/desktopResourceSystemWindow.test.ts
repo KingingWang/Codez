@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ARMS_CUSTOM_EVENT_PROPERTY_LIMIT } from "@zcode/shared";
+import { ARMS_CUSTOM_EVENT_PROPERTY_LIMIT } from "@codez/shared";
 
 /**
  * 设备级 `perf_system_window`（票 02，spec：docs/monitoring/process-resource-telemetry.md）。
@@ -57,9 +57,9 @@ vi.mock("node:os", async (importOriginal) => {
 vi.mock("electron", () => ({
   app: {
     getAppMetrics: getAppMetricsMock,
-    getPath: vi.fn((name: string) => (name === "userData" ? "/tmp/zcode-user" : "/tmp")),
+    getPath: vi.fn((name: string) => (name === "userData" ? "/tmp/codez-user" : "/tmp")),
     isPackaged: false,
-    getAppPath: vi.fn(() => "/tmp/zcode-app"),
+    getAppPath: vi.fn(() => "/tmp/codez-app"),
   },
   BrowserWindow: {
     getAllWindows: getAllWindowsMock,
@@ -265,7 +265,7 @@ describe("desktopResourceTelemetry perf_system_window", () => {
       expect(Number(event?.properties.telemetry_self_ms)).toBeGreaterThanOrEqual(0);
       expect(Number(event?.properties.app_uptime_minutes)).toBeGreaterThanOrEqual(0);
 
-      const { checkProcessResourceEventProperties } = await import("@zcode/shared");
+      const { checkProcessResourceEventProperties } = await import("@codez/shared");
       expect(
         checkProcessResourceEventProperties(SYSTEM_WINDOW_EVENT, event?.properties ?? {}),
       ).toMatchObject({ ok: true, count: 17 });

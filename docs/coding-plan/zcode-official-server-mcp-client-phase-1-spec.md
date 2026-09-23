@@ -1,25 +1,25 @@
-# ZCode 官方 Server MCP 客户端接入（第一阶段，历史 Decision Log）
+# Codez 官方 Server MCP 客户端接入（第一阶段，历史 Decision Log）
 
-> 当前实现事实统一见 `zcode-official-server-mcp-auth-spec.md`。本文保留阶段性设计与决策演进，
+> 当前实现事实统一见 `codez-official-server-mcp-auth-spec.md`。本文保留阶段性设计与决策演进，
 > 不再作为当前鉴权头、scope、额度或 UI 行为的直接实现依据。
 
 > 日期：2026-08-14（2026-08-15 实现完成）  
 > 状态：已实现（客户端侧；后端待开发，见 §12）  
-> 范围：ZCode 客户端/Agent 运行时；不改 UI，不改官方 MCP 后端，不提交 fake 能力到正式发布目录
+> 范围：Codez 客户端/Agent 运行时；不改 UI，不改官方 MCP 后端，不提交 fake 能力到正式发布目录
 
 ## 1. 目标
 
-第一阶段让 ZCode 能从官方 Plugin 加载远程 Streamable HTTP MCP，并在每次实际 HTTP 请求前，
+第一阶段让 Codez 能从官方 Plugin 加载远程 Streamable HTTP MCP，并在每次实际 HTTP 请求前，
 为受信任的官方 Origin 注入当前用户的 Coding Plan 身份头。
 
 本阶段交付以下能力：
 
-1. Plugin 的单个 HTTP MCP 可以声明 `zcode_official`；
-2. `jwt_token` provider 使用当前 ZCode 用户 JWT 作为 Bearer Token；仅在 Registry 存在有效
+1. Plugin 的单个 HTTP MCP 可以声明 `codez_official`；
+2. `jwt_token` provider 使用当前 Codez 用户 JWT 作为 Bearer Token；仅在 Registry 存在有效
    Coding Plan Provider 且 MaaS JWT 可用时附加 `X-Bigmodel-Authorization`，并按对应
    `wireScope` 附加 `Bigmodel-Target-Type` 及 Team 的 organization/project（完整头集合与
    identity-only 例外见 §6.1）；
-3. 只有目标 Origin 等于当前 ZCode API origin 时，MCP transport 才能取得并注入身份头
+3. 只有目标 Origin 等于当前 Codez API origin 时，MCP transport 才能取得并注入身份头
    （本条最初要求“官方 Plugin 身份 + Plugin 内 MCP key + 精确 Origin”三者同时命中宿主可信映射，
    2026-08 收敛为只校验 Origin，理由与残留风险见 §5.1）；
 4. 增加一个测试专用的 fake 官方 Plugin 与 fake HTTP MCP server，覆盖插件解析、信任判断和
@@ -33,14 +33,14 @@ MCP 身份；运行时仍使用现有命名空间 `plugin:<pluginName>:<mcpKey>`
 
 | 当前事实 | 代码位置 | 本阶段结论 |
 | --- | --- | --- |
-| MCP runtime config 已支持 `stdio`、`http`、`sse`，HTTP 当前只有 `headers` / `oauth` | `apps/zcode-cli/packages/contracts/src/interfaces/mcp.port.ts` | 只扩展 HTTP config 的官方鉴权声明，不新增新的 MCP transport |
-| Plugin loader 会把 `.mcp.json` 的 MCP key 投影为 `plugin:<pluginName>:<mcpKey>`，但当前会丢弃未知 `auth` 字段 | `apps/zcode-cli/packages/adapters/src/plugins/mcp.ts` | 在 Plugin 解析边界严格解析 `zcode_official`，同时保留宿主生成的 provenance |
-| Streamable HTTP transport 通过 `createMcpTransportFetch(...)` 发请求，静态 header 进入 `requestInit` | `apps/zcode-cli/packages/adapters/src/mcp/index.ts`、`network.ts` | 敏感身份头必须由动态 fetch wrapper 注入，不能写回 config 或长期放在 `requestInit` |
-| **`http`/`sse` MCP 在没有 `oauth` 字段且静态 `headers` 无 `authorization` 时，默认被赋予 `{type:"authorization_code"}`**，进而创建 OAuth session、起 localhost 回调 server 并把 `authProvider` 交给 transport | `adapters/src/mcp/index.ts` 的 `resolveAuthorizationCodeOAuthConfig` / `hasAuthorizationHeader`；transport 构造见同文件 HTTP 分支 | `zcode_official` 必须显式退出该默认路径（§6.3）。本方案禁止静态 `authorization` 且不配 `oauth`，若不显式关闭，官方 MCP 必然落入隐式 OAuth |
-| SDK 在有 `authProvider` 时把 401/403 转成 OAuth 重授权流程，并经 `onAuthorizationRequired` 把 authorizationUrl 写入 MCP record status | `@modelcontextprotocol/sdk` client `streamableHttp` 的 401/403 分支；`adapters/src/mcp/oauth.ts` 的 `redirectToAuthorization`；`adapters/src/mcp/index.ts` 的 `createAuthorizationCodeOAuthOptions` | 与"无 UI 自动鉴权"目标冲突。`zcode_official` 需自有 401/403 语义（§6.3），不得触发授权 URL 或浏览器 |
+| MCP runtime config 已支持 `stdio`、`http`、`sse`，HTTP 当前只有 `headers` / `oauth` | `apps/codez-cli/packages/contracts/src/interfaces/mcp.port.ts` | 只扩展 HTTP config 的官方鉴权声明，不新增新的 MCP transport |
+| Plugin loader 会把 `.mcp.json` 的 MCP key 投影为 `plugin:<pluginName>:<mcpKey>`，但当前会丢弃未知 `auth` 字段 | `apps/codez-cli/packages/adapters/src/plugins/mcp.ts` | 在 Plugin 解析边界严格解析 `codez_official`，同时保留宿主生成的 provenance |
+| Streamable HTTP transport 通过 `createMcpTransportFetch(...)` 发请求，静态 header 进入 `requestInit` | `apps/codez-cli/packages/adapters/src/mcp/index.ts`、`network.ts` | 敏感身份头必须由动态 fetch wrapper 注入，不能写回 config 或长期放在 `requestInit` |
+| **`http`/`sse` MCP 在没有 `oauth` 字段且静态 `headers` 无 `authorization` 时，默认被赋予 `{type:"authorization_code"}`**，进而创建 OAuth session、起 localhost 回调 server 并把 `authProvider` 交给 transport | `adapters/src/mcp/index.ts` 的 `resolveAuthorizationCodeOAuthConfig` / `hasAuthorizationHeader`；transport 构造见同文件 HTTP 分支 | `codez_official` 必须显式退出该默认路径（§6.3）。本方案禁止静态 `authorization` 且不配 `oauth`，若不显式关闭，官方 MCP 必然落入隐式 OAuth |
+| SDK 在有 `authProvider` 时把 401/403 转成 OAuth 重授权流程，并经 `onAuthorizationRequired` 把 authorizationUrl 写入 MCP record status | `@modelcontextprotocol/sdk` client `streamableHttp` 的 401/403 分支；`adapters/src/mcp/oauth.ts` 的 `redirectToAuthorization`；`adapters/src/mcp/index.ts` 的 `createAuthorizationCodeOAuthOptions` | 与"无 UI 自动鉴权"目标冲突。`codez_official` 需自有 401/403 语义（§6.3），不得触发授权 URL 或浏览器 |
 | SDK 组装请求头时 `requestInit.headers` 优先级高于 `authProvider` 写入的 `Authorization`，且能覆盖 `mcp-session-id` / `mcp-protocol-version` | SDK client `streamableHttp` 的 `_commonHeaders()` | 保留头黑名单需覆盖协议头，且身份头注入必须发生在最后一棒的 fetch wrapper（§6.3） |
 | 当前选中 Coding Plan 的 JWT、API Key、Team organization/project 已能被解析成同一份凭证快照 | `packages/services/src/session/offPeakRuntimeModel.ts` | **作为逻辑参考，不复用、不修改**（§6.1.1）。官方 MCP 另写一套等价实现，避免与 Off-Peak 耦合 |
-| 官方 Plugin 的内置身份、版本及打包根由 Bootstrap 清单管理 | `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts` | 该清单**不参与**官方 MCP 授权（§5.1 已移除映射表）；Plugin 声明的 URL 仍不被信任，但校验依据是运行时解析的 ZCode API origin |
+| 官方 Plugin 的内置身份、版本及打包根由 Bootstrap 清单管理 | `apps/codez-cli/packages/bootstrap/src/app/official-plugin-definitions.ts` | 该清单**不参与**官方 MCP 授权（§5.1 已移除映射表）；Plugin 声明的 URL 仍不被信任，但校验依据是运行时解析的 Codez API origin |
 
 本次扫描使用当前工作区静态代码与 `rg` 证据；当前环境未提供 codegraph 索引，因此没有把
 未验证的间接可达关系当成产品事实。
@@ -58,10 +58,10 @@ MCP 身份；运行时仍使用现有命名空间 `plugin:<pluginName>:<mcpKey>`
 
 ### 3.2 范围外
 
-- `stdio`、`sse` MCP 的 `zcode_official`；
+- `stdio`、`sse` MCP 的 `codez_official`；
 - **Start Plan 用户的工具调用权益**。官方 Server MCP 的工具调用仍是 Coding Plan 专属权益；
-  Start Plan 只有 ZCode JWT、没有可用的 Coding Plan Provider。API Key 模式或 Registry 缺少有效
-  Coding Plan Provider 时也走同一 identity-only 语义：连接/发现请求只携带 ZCode JWT，不携带 MaaS
+  Start Plan 只有 Codez JWT、没有可用的 Coding Plan Provider。API Key 模式或 Registry 缺少有效
+  Coding Plan Provider 时也走同一 identity-only 语义：连接/发现请求只携带 Codez JWT，不携带 MaaS
   JWT，由服务端区分登录态和套餐态错误（`1006` / `3101`）。
 - 官方 MCP 后端工具实现、计费、限流和业务接口设计；
 - `/api/v1/client/configs` 灰度逻辑；第一阶段仅保持现有灰度能力不变；
@@ -81,9 +81,9 @@ MCP 身份；运行时仍使用现有命名空间 `plugin:<pluginName>:<mcpKey>`
   "mcpServers": {
     "fake-official-search": {
       "type": "http",
-      "url": "${ZCODE_FAKE_OFFICIAL_MCP_URL}",
+      "url": "${CODEZ_FAKE_OFFICIAL_MCP_URL}",
       "auth": {
-        "type": "zcode_official",
+        "type": "codez_official",
         "provider": "jwt_token"
       },
       "timeoutMs": 30000
@@ -99,7 +99,7 @@ MCP 身份；运行时仍使用现有命名空间 `plugin:<pluginName>:<mcpKey>`
 | `mcpServers.fake-official-search` | Plugin 内 MCP key；仅作凭证解析与日志的归属标识（不参与授权，§5.1），不再重复声明 `serverId` |
 | `type: "http"` | 使用现有 Streamable HTTP MCP client |
 | `url` | MCP endpoint；可以继续使用现有 Plugin 模板解析，但解析结果必须再做 Origin 校验 |
-| `auth.type` | 精确值 `zcode_official`（区分大小写）；不接受 `zcode-official_auth`、`zcode-official`、`zcode_official_auth` 等别名或大小写变体，避免配置语义分叉 |
+| `auth.type` | 精确值 `codez_official`（区分大小写）；不接受 `codez-official_auth`、`codez-official`、`codez_official_auth` 等别名或大小写变体，避免配置语义分叉 |
 | `auth.provider` | 第一阶段只允许 `jwt_token`；后续若增加短期 Token，应新增 provider，而不是改变该值的既有语义 |
 | `timeoutMs` | 复用现有 MCP 协议请求超时 |
 
@@ -109,8 +109,8 @@ MCP 可以使用不同 URL 或鉴权方式；Plugin 级声明会错误扩大凭�
 ### 4.2 类型
 
 ```ts
-export interface ZCodeOfficialMcpAuthConfig {
-  type: "zcode_official";
+export interface CodezOfficialMcpAuthConfig {
+  type: "codez_official";
   provider: "jwt_token";
 }
 
@@ -119,7 +119,7 @@ export interface McpHttpServerConfig extends McpServerConfigBase {
   url: string;
   headers?: Record<string, string>;
   oauth?: McpOAuthConfig;
-  auth?: ZCodeOfficialMcpAuthConfig;
+  auth?: CodezOfficialMcpAuthConfig;
 }
 ```
 
@@ -127,18 +127,18 @@ export interface McpHttpServerConfig extends McpServerConfigBase {
 
 - `auth` 只允许出现在 `type: "http"`；stdio/sse 出现时 Plugin loader 报
   `plugin_mcp_server_disabled` 并禁用该 MCP；
-  **已被第二阶段修订**：stdio 现在也可声明 `zcode_official`，身份头改经 `tools/call` 的 `_meta`
-  下发，见 `zcode-official-server-mcp-stdio-meta-phase-2-spec.md`。`sse` 仍拒；
-- 第一阶段不允许同一个 MCP 同时配置 `oauth` 与 `zcode_official`；两者同时出现时 Plugin loader 报
+  **已被第二阶段修订**：stdio 现在也可声明 `codez_official`，身份头改经 `tools/call` 的 `_meta`
+  下发，见 `codez-official-server-mcp-stdio-meta-phase-2-spec.md`。`sse` 仍拒；
+- 第一阶段不允许同一个 MCP 同时配置 `oauth` 与 `codez_official`；两者同时出现时 Plugin loader 报
   `plugin_mcp_server_disabled` 并禁用该 MCP，不做优先级裁决；
-- `zcode_official` 命中时必须**显式关闭**该 MCP 的隐式 OAuth 兜底：`authProvider` 传 `undefined`，
+- `codez_official` 命中时必须**显式关闭**该 MCP 的隐式 OAuth 兜底：`authProvider` 传 `undefined`，
   不创建 OAuth session、不起 localhost 回调 server。仅"不写 `oauth` 字段"不足以达到该效果，
   原因见 §2 的既有默认行为与 §6.3；
 - 官方身份不是由 `auth` 字符串单独证明。Plugin loader 仍会生成不可由 `.mcp.json` 控制的运行时
   provenance：`pluginId`、原始 `mcpKey`、`source`；它们用于日志归属与凭证解析，**但自 2026-08
   起不再参与信任判定**（见 §5.1）；
-- 因此，第三方 Plugin 复制同一 `auth` 字段并把 url 指向 ZCode API origin，**确实能取得身份头**。
-  这是移除 marketplace 检查后有意接受的结果：凭证只流向真实 ZCode 后端，风险是滥用而非外泄，
+- 因此，第三方 Plugin 复制同一 `auth` 字段并把 url 指向 Codez API origin，**确实能取得身份头**。
+  这是移除 marketplace 检查后有意接受的结果：凭证只流向真实 Codez 后端，风险是滥用而非外泄，
   由服务端的权益／配额校验兜底。详见 §5.1 的残留风险第 1 条。
 
 ## 5. 信任模型与 Origin 映射
@@ -151,18 +151,18 @@ export interface McpHttpServerConfig extends McpServerConfigBase {
 **规则（决策已变更两次，当前为最新）**：
 
 ```text
-目标 origin === 当前 ZCode API origin（https）
+目标 origin === 当前 Codez API origin（https）
 ```
 
 **为什么不再要求 pluginId 来自官方 marketplace（2026-08 决策变更）**：该检查曾作为第二道
-控制存在（要求 pluginId 以 `@zcode-plugins-official` 结尾）。移除原因有两条：
+控制存在（要求 pluginId 以 `@codez-plugins-official` 结尾）。移除原因有两条：
 
 1. **它让官方插件在发布前无法自测。** 本地安装的插件 id 是 `official-tools@inline`
    （`plugins.dirs`）或 `official-tools@<本地 marketplace>`，永远拿不到官方后缀。而 dev
    loopback 开关只放开 http loopback，救不了指向真实 https 端点的自测。结果是"要测真实后端
    就必须先发布到官方 marketplace"——死锁；
 2. **它防御的场景已被其它能力覆盖。** 第三方插件若要冒领凭证，它同样可以携带 hook /
-   command，而那是以用户身份执行的任意代码，能直接读取 `~/.zcode` 下的同一份凭证。因此这道
+   command，而那是以用户身份执行的任意代码，能直接读取 `~/.codez` 下的同一份凭证。因此这道
    检查并非"第三方拿不到凭证"的真实屏障。
 
 **为什么不再维护 per-mcpKey 白名单**：官方插件不完全随 app 发版，可经带外渠道更新。
@@ -170,10 +170,10 @@ export interface McpHttpServerConfig extends McpServerConfigBase {
 摩擦；而该清单对本地篡改场景几乎无防护价值（名字就写在常量里，照抄即可）。因此
 `OfficialPluginDefinition` 上不再声明 `trustedMcpOrigins`，也不存在 canonical 域名表。
 
-**为什么域名用运行时解析而不硬编码**：ZCode API origin 随环境变化（production/test、
+**为什么域名用运行时解析而不硬编码**：Codez API origin 随环境变化（production/test、
 自建环境），硬编码 prod 域名会让非生产环境全部 fail closed。解析口径与闲时任务一致
-（host 侧走 `resolveCurrentZCodeEndpointOrigin`，含 settings 覆盖；CLI 侧走
-`resolveRuntimeZCodeEndpointOrigin(env)`）。
+（host 侧走 `resolveCurrentCodezEndpointOrigin`，含 settings 覆盖；CLI 侧走
+`resolveRuntimeCodezEndpointOrigin(env)`）。
 
 **为什么把该 origin 纳入信任不扩大信任面**：同一 origin **已经**在收同一批凭证——闲时任务发
 `authorization` + `x-coding-plan-api-key`（`offPeakServerClient`），Coding Plan reset / usage 接口发
@@ -181,7 +181,7 @@ export interface McpHttpServerConfig extends McpServerConfigBase {
 因此这是等价性论证，而不是"官方域名所以可信"。
 
 **为什么在 shared 而不是 CLI bootstrap**：判定有两个消费者且分属互不可见的包——MCP adapter
-（请求发出前）与 host/services（身份权威边界的二次校验，只依赖 `@zcode/shared`）。单源是硬
+（请求发出前）与 host/services（身份权威边界的二次校验，只依赖 `@codez/shared`）。单源是硬
 要求，双处判定分叉会让一侧放行、另一侧拒绝。CLI 侧文件只做转发。
 
 **唯一的控制与残留风险**：
@@ -195,8 +195,8 @@ export interface McpHttpServerConfig extends McpServerConfigBase {
 残留风险有五处，均已知并接受：
 
 1. **任何插件都能声明官方鉴权**（移除 marketplace 检查后新增的风险）。第三方插件只要
-   `auth.type = zcode_official` 且 url 指向 ZCode API origin，就能让客户端为它注入身份头。
-   凭证只流向真实 ZCode 后端，**不构成外泄**，但构成滥用：以用户身份消耗额度、触发有副作用
+   `auth.type = codez_official` 且 url 指向 Codez API origin，就能让客户端为它注入身份头。
+   凭证只流向真实 Codez 后端，**不构成外泄**，但构成滥用：以用户身份消耗额度、触发有副作用
    的官方接口。缓解依赖服务端——官方 MCP 端点走 `requireAuth` + `WithCodingPlan`，服务端对
    每次调用仍做权益与配额校验；
 2. 能写入官方 plugin 缓存目录的本地攻击者，可在官方插件里加 MCP 并获得凭证注入。同上属
@@ -206,8 +206,8 @@ export interface McpHttpServerConfig extends McpServerConfigBase {
    host 代发请求、凭证永不出 host，属更大的设计改动，不在本阶段。因此当前设计的定位是
    **防御纵深**（防 agent 侧 bug、防未走 wrapper 的新代码），不是防已被攻破的 agent。
    顺带纠正一处曾经写错的推论（SG-03）：targetOrigin 校验**挡不住"知道该 origin 的请求方"**
-   ——agent 经 `ZCODE_BASE_URL` 就知道它，插件也能在配置里写出它。它的作用只是把凭证的
-   **流向**钉死在 ZCode origin；
+   ——agent 经 `CODEZ_BASE_URL` 就知道它，插件也能在配置里写出它。它的作用只是把凭证的
+   **流向**钉死在 Codez origin；
 4. **没有用户可见的授权确认**。插件声明官方鉴权、宿主发放身份头，全程用户无感。补一次性确认
    是收紧方向（见 `isOfficialMcpOriginTrusted` 末段），属产品决策，未做；
 5. **审计粒度只到"首次发放"**。host 侧现在会为每个
@@ -225,10 +225,10 @@ export interface McpHttpServerConfig extends McpServerConfigBase {
 Plugin MCP 配置
       |
       v
-auth 是否精确为 zcode_official/jwt_token? -- 否 --> 普通 MCP 路径
+auth 是否精确为 codez_official/jwt_token? -- 否 --> 普通 MCP 路径
       | 是
       v
-URL.origin 是否 === 运行时 ZCode API origin 且为 HTTPS? -- 否 --> fail closed
+URL.origin 是否 === 运行时 Codez API origin 且为 HTTPS? -- 否 --> fail closed
       |                                                        (official_mcp_origin_untrusted)
       | 是
       v
@@ -239,11 +239,11 @@ URL.origin 是否 === 运行时 ZCode API origin 且为 HTTPS? -- 否 --> fail c
 pluginId / mcpKey 仍随请求传递，但只用于日志归属与凭证解析归属。
 
 stdio 形态的判定输入不同（没有 URL 可供校验，targetOrigin 由客户端自行解析），见
-`zcode-official-server-mcp-stdio-meta-phase-2-spec.md` §5。
+`codez-official-server-mcp-stdio-meta-phase-2-spec.md` §5。
 
 - 正式判定只允许 `https:`，并拒绝 URL 中的 username/password；
 - 单元/集成测试通过依赖注入增加 `http://127.0.0.1:<ephemeral-port>`，本地自测通过
-  `ZCODE_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS` 显式登记 loopback origin；两者都不得放开非 loopback；
+  `CODEZ_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS` 显式登记 loopback origin；两者都不得放开非 loopback；
 - authenticated fetch 使用 `redirect: "manual"`。第一阶段遇到 3xx 直接失败，避免 Bearer Token
   被跨 Origin redirect 带走；正式 endpoint 应配置为 canonical URL；
 - Plugin 的静态 `headers` 不得包含（大小写不敏感）任一保留头：`authorization`、
@@ -268,7 +268,7 @@ stdio 形态的判定输入不同（没有 URL 可供校验，targetOrigin 由�
     HTTP 层是成功，上面那条非 2xx warn 覆盖不到；而响应头只有 fetch wrapper 看得见（它之上
     是 MCP SDK，只交出 JSON-RPC 结果）。因此 wrapper 通过回调把 id 上报给 adapter，adapter
     按 **span** 关联回本次 `tools/call`：写一条 `mcp.tool.call` 的 warn，并在结果的 `_meta`
-    上附 `zcode/officialMcpServerRequestId`（成功路径不附，避免每次调用都塞排障字段）。
+    上附 `codez/officialMcpServerRequestId`（成功路径不附，避免每次调用都塞排障字段）。
   - 关联键必须是 span 而非 traceId：traceId 覆盖整个顶层 session，同一 session 的多次调用
     共用它，用它关联会串号。取不到 span（`initialize` / `tools/list` 没有 `_meta`，或调用方
     未传 trace）时**不填**该字段，绝不用"最近一次响应"兜底——那会把上一次调用的 id 贴到这次
@@ -281,21 +281,21 @@ stdio 形态的判定输入不同（没有 URL 可供校验，targetOrigin 由�
 对可信 MCP 的每个 HTTP 请求，动态生成：
 
 ```http
-Authorization: Bearer <current-zcode-jwt>        # 由服务端 requireAuth 校验，始终发送
+Authorization: Bearer <current-codez-jwt>        # 由服务端 requireAuth 校验，始终发送
 X-Bigmodel-Authorization: Bearer <current-family-maas-jwt>   # 仅有效 Coding Plan Provider + MaaS JWT 可用时发送
 Bigmodel-Target-Type: PERSONAL | TEAM            # 仅存在对应 wire scope 时发送
 Bigmodel-Organization: <organization-id>         # 仅 TEAM，且与 project 同时存在
 Bigmodel-Project: <project-id>                   # 仅 TEAM，且与 organization 同时存在
 ```
 
-服务端契约依据（已按 `zcode-server` 当前代码核对）：`WithCodingPlan` 中间件读取
+服务端契约依据（已按 `codez-server` 当前代码核对）：`WithCodingPlan` 中间件读取
 `X-Coding-Plan-Api-Key`、`X-Bigmodel-Authorization`、`Bigmodel-Organization`、`Bigmodel-Project`、
 `Bigmodel-Target-Type` 五个头，JWT 的 `Authorization` 由 `requireAuth` 单独读取。要点：
 
 - **`Bigmodel-Target-Type` 仅在存在对应 `wireScope` 时发送**，取值 `PERSONAL` / `TEAM`。
   对 BigModel Personal/Team，wire scope 分别为 PERSONAL/TEAM；ZAI Team 的 wire scope 为
   `null`，因此不发送该头并沿用服务端 fallback 分支。对 identity-only 请求（Start Plan、API Key
-  模式或 Registry 缺少有效 Coding Plan Provider），同样不发送该头；这些请求只携带 ZCode JWT。
+  模式或 Registry 缺少有效 Coding Plan Provider），同样不发送该头；这些请求只携带 Codez JWT。
   当该头发送为 TEAM 时，organization/project 必须成对存在；任一缺失时两者都不发送。
 - 服务端 `CodingPlanContext.Valid()` 在 `TargetType=TEAM` 时要求 organization 与 project 同时非空。
   因此客户端也遵守成对原子性：两者任一缺失时都不发送；发送半套身份头会被直接判为 bad request；
@@ -304,7 +304,7 @@ Bigmodel-Project: <project-id>                   # 仅 TEAM，且与 organizatio
   Authorization 优先）。第一阶段的决策是"沿用 `X-Coding-Plan-Api-Key`、不发 MaaS JWT"，并把切换
   记为技术债；后端确认后（`middleware/coding_plan.go` 已把 API Key 通道注释为"仅存量客户端兼容，
   新接入必须用 MaaS JWT 头"），官方 MCP 在套餐凭证可用时改为**只发
-  `X-Bigmodel-Authorization`**。identity-only 请求仍只发 ZCode JWT。三个要点：
+  `X-Bigmodel-Authorization`**。identity-only 请求仍只发 Codez JWT。三个要点：
   - **是换凭证，不只是换头名。** 新头必须携带 **MaaS 登录 JWT**
     （`oauth:<family>:access_token`，与 Coding Plan reset / usage 接口同一份），服务端会
     `ParseWithoutVerification` 取其 `customer_id` 并要求与当前用户一致。把 Coding Plan 业务 key
@@ -313,7 +313,7 @@ Bigmodel-Project: <project-id>                   # 仅 TEAM，且与 organizatio
     （`validateIdentityFromApiKey`）仍会照跑一次，一把过期或不属于本人的 key 会让整个请求 403/3101。
     因此这是替换而不是叠加；
   - **值带 `Bearer ` 前缀。** 服务端 `strings.CutPrefix(..., "Bearer ")`，裸 token 也接受；
-    这里按 `zcode-server/docs/api_server_mcp.md` 规定的形式发送。
+    这里按 `codez-server/docs/api_server_mcp.md` 规定的形式发送。
   Off-Peak 与 model relay 仍走 `X-Coding-Plan-Api-Key`（不同接口族、不同服务端契约），本次刻意不动；
 - 头名大小写不敏感（服务端经 Gin `GetHeader` 做 `textproto` 规范化），按上方 http 块的写法发送即可，
   无需为大小写单独适配。
@@ -351,28 +351,28 @@ Off-Peak 现有实现中的四处特性，新实现需**照抄语义但自行编
    不发送该头。若后续要支持 ZAI Team 的精确 wire scope，在官方 MCP 侧单独放开即可，不需要同步改
    Off-Peak；
 3. **防竞态的凭证一致性检查必须保留，且需覆盖所有 identity-only 路径**：每轮先读取由
-   `providerFamilyDomain`、选中连接指纹、`oauth:active_provider`、`zcodejwttoken` 组成的身份快照；
+   `providerFamilyDomain`、选中连接指纹、`oauth:active_provider`、`codezjwttoken` 组成的身份快照；
    在返回仅身份凭证或完整 Coding Plan 凭证前再读取一次。任一字段前后不一致即整轮重来，两轮
    仍不稳定则返回 `official_auth_unavailable`。完整凭证路径还必须把当前 family 的 MaaS JWT 纳入
    同一轮一致性检查。这样既能挡住跨 family 混搭，也能挡住同 family 的 token 轮换；JWT 原文只在
    内存比较，不进日志、不进错误信息；
-4. **mock 凭证不得默认开启**：Off-Peak 的 `resolveOffPeakCredentials` 在 `ZCODE_OFFPEAK_MOCK=1`
+4. **mock 凭证不得默认开启**：Off-Peak 的 `resolveOffPeakCredentials` 在 `CODEZ_OFFPEAK_MOCK=1`
    且未显式传 `allowMockCredentials: false` 时返回占位 JWT/Key。新实现**不应引入该 mock 分支**；
    官方 MCP 没有对应的 mock 网关，测试通过依赖注入替换 credential 来源即可。若确需保留开关，
-   必须默认关闭且使用独立环境变量，不复用 `ZCODE_OFFPEAK_MOCK`。
+   必须默认关闭且使用独立环境变量，不复用 `CODEZ_OFFPEAK_MOCK`。
 
 Start Plan 的套餐限制**在新实现中显式编码**（而非靠继承 Off-Peak）：选中连接为 Start Plan 时
-返回 `official_auth_plan_required`，但仍允许连接/发现请求发送仅身份的 ZCode JWT。不要沿用
+返回 `official_auth_plan_required`，但仍允许连接/发现请求发送仅身份的 Codez JWT。不要沿用
 Off-Peak 的 `start_plan_not_supported` 等 reason 字符串；工具调用是否放行由服务端套餐校验决定。
 
 身份认证与套餐凭证是两个独立维度。选中 Coding Plan、但无权益 Provider 已被 Registry 过滤时，
-必须在要求 MaaS JWT **之前**识别该状态，并返回仅含 ZCode JWT 的 identity-only snapshot；不能因为
+必须在要求 MaaS JWT **之前**识别该状态，并返回仅含 Codez JWT 的 identity-only snapshot；不能因为
 MaaS JWT 缺失把已登录请求降级成匿名。identity-only snapshot 的 `planScope` / `wireScope` 均为
 `null`，且不包含 `codingPlanAuthorization`。
 
 ### 6.2 状态 owner
 
-- JWT 权威源：host `credentialService` 中当前 ZCode 登录身份；
+- JWT 权威源：host `credentialService` 中当前 Codez 登录身份；
 - Coding Plan 选择态、MaaS JWT 与 Team context 权威源：host 当前 settings、credentialService 与同一份
   provider registry snapshot；业务 key 不作为官方 MCP 出站凭证；
 - Plugin 配置只声明“需要哪种鉴权”，不保存、不生成、不刷新凭证；
@@ -402,11 +402,11 @@ MaaS JWT 缺失把已登录请求降级成匿名。identity-only snapshot 的 `p
 `mcpKey` / `targetOrigin` / workspace 分桶——凭证是 host 级全局状态（§7.1），同一时刻不同 Plugin、
 不同 MCP、不同 workspace 的请求本就应拿到同一份凭证。按维度分桶只会削弱去重效果，不提升隔离性。
 
-### 6.3 与 OAuth 隔离，以及 `zcode_official` 自有的鉴权失败语义
+### 6.3 与 OAuth 隔离，以及 `codez_official` 自有的鉴权失败语义
 
-`zcode_official` 与 MCP OAuth 是两条互斥的鉴权路径。官方鉴权失败是**用户身份/套餐问题**，
-只能由 ZCode 自身的登录与 Coding Plan 选择解决，不可能由目标 MCP 的 OAuth 授权解决；把 401
-交给 OAuth 会把"请重新登录 ZCode"错误地呈现成"请授权这个 MCP"。
+`codez_official` 与 MCP OAuth 是两条互斥的鉴权路径。官方鉴权失败是**用户身份/套餐问题**，
+只能由 Codez 自身的登录与 Coding Plan 选择解决，不可能由目标 MCP 的 OAuth 授权解决；把 401
+交给 OAuth 会把"请重新登录 Codez"错误地呈现成"请授权这个 MCP"。
 
 #### 6.3.1 必须关闭隐式 OAuth 兜底
 
@@ -416,7 +416,7 @@ MaaS JWT 缺失把已登录请求降级成匿名。identity-only snapshot 的 `p
 
 ```text
 resolveAuthorizationCodeOAuthConfig(config):
-  if auth?.type === "zcode_official" -> return undefined   # 新增，位于所有既有分支之前
+  if auth?.type === "codez_official" -> return undefined   # 新增，位于所有既有分支之前
   ...既有分支保持不变
 ```
 
@@ -425,7 +425,7 @@ resolveAuthorizationCodeOAuthConfig(config):
 - `authProvider` 必须为 `undefined`；不得创建 OAuth session，不得起 localhost 回调 server；
 - 不得写入 `authorization` 字段到 MCP record status，不得调用 `onAuthorizationRequired`，
   不得调用 `openAuthorizationUrl`；
-- 普通 MCP、显式 `oauth` MCP 的既有默认行为完全不变——本条短路只对 `zcode_official` 生效。
+- 普通 MCP、显式 `oauth` MCP 的既有默认行为完全不变——本条短路只对 `codez_official` 生效。
 
 #### 6.3.2 身份头注入必须是最后一棒且为覆盖语义
 
@@ -439,17 +439,17 @@ resolveAuthorizationCodeOAuthConfig(config):
 
 #### 6.3.3 失败分类与响应处理
 
-`zcode_official` 的 MCP 请求按下表处理；凭证缺失时不得回退 OAuth、不得读环境变量猜凭证：
+`codez_official` 的 MCP 请求按下表处理；凭证缺失时不得回退 OAuth、不得读环境变量猜凭证：
 
 > 本表适用于 `type:"http"`。stdio 形态的失败语义**有意不同**（下发 `{ok:false, reason}` 而不是
 > 置 failed，因为拿不到头的插件不会去打官方端点，不存在匿名请求），见
-> `zcode-official-server-mcp-stdio-meta-phase-2-spec.md` §6.3。
+> `codez-official-server-mcp-stdio-meta-phase-2-spec.md` §6.3。
 
 | 情况 | 分类 | 行为 |
 | --- | --- | --- |
 | host auth port 不可用（如 standalone CLI） | `official_auth_unavailable` | 连接置 failed，不发任何请求 |
 | 未登录，或无当前选中的 provider family / connection | `official_auth_unavailable` | 连接置 failed，不发任何请求 |
-| 已登录但持有的是 Start Plan、API Key 模式，或当前选中 Coding Plan Provider 已从 Registry 移除 | `official_auth_plan_required` | 连接/发现请求仅发送 ZCode JWT，不发送 MaaS JWT 或 scope 头；工具调用仍由服务端判定套餐权益 |
+| 已登录但持有的是 Start Plan、API Key 模式，或当前选中 Coding Plan Provider 已从 Registry 移除 | `official_auth_plan_required` | 连接/发现请求仅发送 Codez JWT，不发送 MaaS JWT 或 scope 头；工具调用仍由服务端判定套餐权益 |
 | Origin/provenance 校验不通过（adapter 本地校验） | `official_mcp_origin_untrusted` | 连接置 failed，网络请求次数为 0 |
 | host 侧二次校验 Origin 不匹配 | `official_mcp_origin_untrusted` | host 在读取凭据前拒绝，`resolveHeaders` 零调用；agent 侧置 failed |
 | 后端 401 | `official_auth_rejected` | 按下方规则重试一次；仍 401 则置 failed |
@@ -465,7 +465,7 @@ resolveAuthorizationCodeOAuthConfig(config):
 
 - 重新解析身份头并重试，**上限一次**，无条件（不比较凭证是否变化）；
 - 重试仍 401 → 置 failed，分类 `official_auth_rejected`；重试次数硬上限为 1，不存在自旋可能；
-- 该重试只针对 `zcode_official`，不改变普通 MCP 与 OAuth MCP 的既有 401 行为。
+- 该重试只针对 `codez_official`，不改变普通 MCP 与 OAuth MCP 的既有 401 行为。
 
 之所以无条件重试、不做"凭证变了才重试"的判定：身份头是每请求现解析的（§6.2），401 时凭证在毫秒
 前才取得，能靠重试自愈的只有"请求发出后凭证恰好被刷新"这一窄竞态。为它引入跨进程的凭证变更
@@ -478,7 +478,7 @@ resolveAuthorizationCodeOAuthConfig(config):
 
 #### 6.3.4 第一阶段不启用 GET SSE 流
 
-`zcode_official` MCP **不开启** SDK 的 GET `text/event-stream` 服务端推流。
+`codez_official` MCP **不开启** SDK 的 GET `text/event-stream` 服务端推流。
 
 原因：该流的请求头在开流瞬间一次性算好，之后连接长期挂着，没有"下一次请求"可供重新注入。
 若启用，§11 的"切换登录身份或 Coding Plan connection 后不复用旧 header"对这条流无法成立，
@@ -542,11 +542,11 @@ interface OfficialMcpAuthHeadersPort {
   `workspaceKey = workspaceIdentity?.trim() || workspacePath` 并完整透传 identity（CR review CR-01），
   否则同路径不同 identity 的远端 workspace 在审计上下文里无法区分。
   **剩余缺口**：CLI agent 进程当前没有 workspaceIdentity 来源
-  （`RunZCodeProtocolAgentOptions` 仅有 cwd/env/… ，也无对应环境变量），故该字段实际退化为
+  （`RunCodezProtocolAgentOptions` 仅有 cwd/env/… ，也无对应环境变量），故该字段实际退化为
   workspacePath。端口保证的是"拿到 identity 就正确透传"，不是"identity 一定存在"；
   若审计需要真实远端身份，需在 spawn 或协议层把 identity 传给 agent，不在本阶段范围；
 - `pluginId` / `mcpKey` / `targetOrigin` 用于**host 侧的二次校验**与日志，不参与凭证选择。
-  该校验已在 host 实现（CR review CR-01）：`zcodeAgentService` 的 handler 在调用凭据解析
+  该校验已在 host 实现（CR review CR-01）：`codezAgentService` 的 handler 在调用凭据解析
   **之前**用同一份 shared registry 校验三元组，未命中即返回
   `official_mcp_origin_untrusted`，`resolveHeaders` 不被调用，因此没有任何凭据被读入内存。
   validator 缺省时一律拒绝（fail closed），不退化为"只做 schema 校验就发凭据"。
@@ -556,7 +556,7 @@ interface OfficialMcpAuthHeadersPort {
   adapter 校验，远端 runtime 只要发这个 RPC 就能取到本地 JWT 与 Coding Plan key；agent 侧
   wrapper 被改坏或被绕过时也没有兜底。等于让被审查方自己当审查者。
 
-  注意 dev 开关 `ZCODE_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS` 必须**同时**对 host 生效
+  注意 dev 开关 `CODEZ_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS` 必须**同时**对 host 生效
   （`node.ts` 装配时传入 `env`），否则本地自测会被 host 单方面拒绝。
 
 职责分离：
@@ -564,7 +564,7 @@ interface OfficialMcpAuthHeadersPort {
 1. Plugin loader：严格解析 `auth`，附加宿主生成的 official provenance；
 2. Bootstrap：从 `OFFICIAL_PLUGIN_DEFINITIONS` 构造可信 Origin registry，并注入 MCP adapter；
 3. MCP adapter：在动态 fetch 中先校验 provenance/Origin，再调用 `OfficialMcpAuthHeadersPort`；
-4. MCP adapter：`zcode_official` 命中时短路 OAuth 配置解析，`authProvider` 传 `undefined`，并按
+4. MCP adapter：`codez_official` 命中时短路 OAuth 配置解析，`authProvider` 传 `undefined`，并按
    §6.3.3 自行分类 401/403/3xx；
 5. host/service：解析当前身份与 Coding Plan 凭证并返回条件化 header（独立实现、无 mock 分支，见
    §6.1.1）；
@@ -591,9 +591,9 @@ interaction/requestOfficialMcpAuthHeaders
     "workspacePath": "/repo",
     "workspaceIdentity": "optional-remote-identity"
   },
-  "pluginId": "zcode-tools@zcode-plugins-official",
+  "pluginId": "codez-tools@codez-plugins-official",
   "mcpKey": "image-search",
-  "targetOrigin": "https://mcp.zcode.example"
+  "targetOrigin": "https://mcp.codez.example"
 }
 ```
 
@@ -621,7 +621,7 @@ interaction/requestOfficialMcpAuthHeaders
 schema 用 `.strict()`（与既有协议一致），`reason` 为 §6.3.3 的枚举而非自由文本。响应中**不含**
 `errorMessage`：失败原因必须可枚举，避免调用方按文本分流。
 
-协议 schema 放在 `packages/shared/src/zcode-protocol/index.ts`。host 收到后由 service 自动解析并
+协议 schema 放在 `packages/shared/src/codez-protocol/index.ts`。host 收到后由 service 自动解析并
 响应，不产生 renderer event，也不经过 React controller。
 
 Standalone CLI 若没有可用的 host auth port，第一阶段必须以 `official_auth_unavailable` 失败，不能
@@ -631,7 +631,7 @@ Standalone CLI 若没有可用的 host auth port，第一阶段必须以 `offici
 ### 7.3 请求时序
 
 ```text
-User            ZCode host/service        Agent + Plugin loader       HTTP MCP backend
+User            Codez host/service        Agent + Plugin loader       HTTP MCP backend
  |                      |                           |                         |
  | start/resume task    |                           |                         |
  |--------------------->| create/reuse Agent        |                         |
@@ -642,7 +642,7 @@ User            ZCode host/service        Agent + Plugin loader       HTTP MCP b
  |                      |                           |                         |
  |                      |<--------------------------| request auth headers    |
  |                      | resolve one credential snapshot                     |
- |                      | ZCode JWT + 条件化套餐头（MaaS JWT / wire scope）     |
+ |                      | Codez JWT + 条件化套餐头（MaaS JWT / wire scope）     |
  |                      |-------------------------->| private response         |
  |                      |                           | inject headers           |
  |                      |                           |------------------------>|
@@ -681,8 +681,8 @@ fake Plugin 使用测试 fixture，不加入 `OFFICIAL_PLUGIN_DEFINITIONS`、SEA
 remote prebuild 清单。建议目录：
 
 ```text
-apps/zcode-cli/packages/bootstrap/tests/fixtures/zcode-official-http-mcp/
-  .zcode-plugin/plugin.json
+apps/codez-cli/packages/bootstrap/tests/fixtures/codez-official-http-mcp/
+  .codez-plugin/plugin.json
   .mcp.json
 ```
 
@@ -696,27 +696,27 @@ Origin。fake HTTP MCP server 监听 `127.0.0.1` 随机端口，避免固定端�
 | OMCP-001 | official fixture + 合法 auth | 解析 Plugin | runtime name 为 `plugin:<name>:fake-official-search`；auth/provenance 保留 | Adapter unit |
 | OMCP-002 | inline/third-party Plugin 复制相同 auth | 解析/连接 | 不请求身份头，MCP fail closed | Adapter unit |
 | OMCP-003 | official identity，但 URL Origin 与映射不符 | 连接 | `official_mcp_origin_untrusted`；网络请求次数为 0 | Adapter unit |
-| OMCP-004 | official identity + 精确 loopback Origin | initialize/list/call | fake server 三类请求均收到当前 ZCode JWT；有有效套餐凭证时同时收到 MaaS JWT 与对应 wire scope | Adapter HTTP integration |
+| OMCP-004 | official identity + 精确 loopback Origin | initialize/list/call | fake server 三类请求均收到当前 Codez JWT；有有效套餐凭证时同时收到 MaaS JWT 与对应 wire scope | Adapter HTTP integration |
 | OMCP-005 | BigModel Team snapshot 完整 | 发 MCP 请求 | organization/project 成对出现 | Services + integration |
 | OMCP-006 | Team snapshot 缺任一字段 | 发 MCP 请求 | 两个 Team header 均不存在 | Services unit |
 | OMCP-007 | Plugin 静态 header 覆盖任一保留头 | 解析 | MCP 被禁用并产生明确 diagnostic | Plugin unit |
 | OMCP-008 | backend 返回 3xx | 请求 | 不跟随 redirect，目标 Origin 未收到凭证 | Adapter HTTP integration |
-| OMCP-009 | JWT/套餐凭证/host auth port 缺失 | 连接 | 身份-only 场景仅发送 ZCode JWT；host auth port 不可用时 status 为 failed；日志不含 secret | Adapter/Bootstrap unit |
+| OMCP-009 | JWT/套餐凭证/host auth port 缺失 | 连接 | 身份-only 场景仅发送 Codez JWT；host auth port 不可用时 status 为 failed；日志不含 secret | Adapter/Bootstrap unit |
 | OMCP-010 | 同 Plugin 两个 MCP、不同 key/origin | 分别连接 | 各自按映射授权，不共享或串用 identity | Bootstrap integration |
 | OMCP-011 | desktop-attached remote workspace identity（与 local 同 `workspacePath`、不同 `workspaceIdentity`） | 请求 auth | 响应只回到发起请求的那个 Agent client 与其 request id；同路径 local client 零调用；交错请求不串台 | Services protocol unit |
 | OMCP-012 | MCP connection pool 被多个 session 复用 | 并发请求 | 每个 HTTP 请求使用当时解析的 credential snapshot，不把首个 session 的 secret 固化进 config | Adapter pool unit |
-| OMCP-013 | official fixture + `zcode_official`，无 `oauth` 字段、无静态 `authorization` | 建立连接 | `authProvider` 为 `undefined`；未创建 OAuth session；未监听任何 localhost 回调端口 | Adapter unit |
+| OMCP-013 | official fixture + `codez_official`，无 `oauth` 字段、无静态 `authorization` | 建立连接 | `authProvider` 为 `undefined`；未创建 OAuth session；未监听任何 localhost 回调端口 | Adapter unit |
 | OMCP-014 | 同上，fake server 对所有请求返回 401 | initialize | 分类 `official_auth_rejected` 且 status 为 failed；`onAuthorizationRequired` / `openAuthorizationUrl` 零调用；record status 无 `authorization` 字段；未打开浏览器 | Adapter HTTP integration |
 | OMCP-015 | 同上，fake server 返回 403 | initialize | 分类 `official_auth_forbidden`；请求次数恰为 1（不重试） | Adapter HTTP integration |
 | OMCP-016 | 首次 401，重解析后第二次 200 | initialize | 恰重试 1 次并最终成功；第二次请求携带重解析的凭证 | Adapter HTTP integration |
 | OMCP-017 | 持续 401 | initialize | 恰重试 1 次后置 failed；请求次数恰为 2，不再继续 | Adapter HTTP integration |
-| OMCP-018 | `zcode_official` 与 `oauth` 同时配置 | 解析 Plugin | `plugin_mcp_server_disabled` 并禁用，不做优先级裁决 | Plugin unit |
+| OMCP-018 | `codez_official` 与 `oauth` 同时配置 | 解析 Plugin | `plugin_mcp_server_disabled` 并禁用，不做优先级裁决 | Plugin unit |
 | OMCP-019 | 普通 HTTP MCP（无 `auth`、无 `oauth`、无静态 `authorization`） | 建立连接 | 仍得到既有 authorization_code 兜底行为，回归不受官方短路影响 | Adapter unit |
 | OMCP-020 | 静态 `headers` 覆盖 `bigmodel-target-type` 或 `mcp-session-id` | 解析 | MCP 被禁用并产生明确 diagnostic | Plugin unit |
 | OMCP-021 | 个人 / BigModel Team / ZAI Team 三种 credential kind | 发 MCP 请求 | wire scope 分别为 `PERSONAL` / `TEAM` / `null`；仅 `TEAM` 时 organization/project 成对出现 | Services unit |
 | OMCP-022 | 身份头注入前 header 已存在 `Authorization` | 发 MCP 请求 | 最终请求恰有一个 `Authorization`，值为当前 JWT（覆盖而非 append） | Adapter unit |
-| OMCP-023 | 已登录，但选中连接为 Start Plan | 建立连接 | 仅发送 ZCode JWT，不发送 MaaS JWT；记录服务端返回的登录/套餐错误分类 | Services + Adapter unit |
-| OMCP-024 | `ZCODE_OFFPEAK_MOCK=1` | 发 MCP 请求 | 官方 MCP 不受该变量影响（新实现无此分支），不发送任何占位凭证 | Services unit |
+| OMCP-023 | 已登录，但选中连接为 Start Plan | 建立连接 | 仅发送 Codez JWT，不发送 MaaS JWT；记录服务端返回的登录/套餐错误分类 | Services + Adapter unit |
+| OMCP-024 | `CODEZ_OFFPEAK_MOCK=1` | 发 MCP 请求 | 官方 MCP 不受该变量影响（新实现无此分支），不发送任何占位凭证 | Services unit |
 | OMCP-025 | 官方 MCP 全量用例执行前后 | 运行 Off-Peak 既有测试套件 | Off-Peak 行为零变化，测试全绿（验证 §6.1.1 的隔离） | Services regression |
 | OMCP-026 | 并发发起 N 个 MCP 请求 | 并发 | 底层凭证解析恰执行 1 次（in-flight 去重生效）；N 个请求拿到同一份 header | Services unit |
 | OMCP-027 | 一次解析 settle 后再发请求 | 顺序两次 | 第二次重新完整解析（无时间维度缓存）；切换 Coding Plan connection 后第二次拿到新 header | Services unit |
@@ -733,11 +733,11 @@ unit/integration tests。
 | --- | --- | --- |
 | 配置合同 | `contracts/interfaces/mcp.port.ts`、Plugin MCP parser | `auth` 必须从文件配置进入 runtime，且只允许 HTTP |
 | 请求出口 | `adapters/src/mcp/index.ts`、`network.ts` | 所有 Streamable HTTP MCP 请求必须在唯一出口动态注入并校验 redirect |
-| OAuth 隔离 | `adapters/src/mcp/index.ts` 的 `resolveAuthorizationCodeOAuthConfig`、`createAuthorizationCodeOAuthOptions`、`adapters/src/mcp/oauth.ts` | `zcode_official` 必须短路隐式 authorization_code 兜底并自行处理 401/403；同时不得影响普通 MCP 的既有兜底行为 |
+| OAuth 隔离 | `adapters/src/mcp/index.ts` 的 `resolveAuthorizationCodeOAuthConfig`、`createAuthorizationCodeOAuthOptions`、`adapters/src/mcp/oauth.ts` | `codez_official` 必须短路隐式 authorization_code 兜底并自行处理 401/403；同时不得影响普通 MCP 的既有兜底行为 |
 | 官方身份 | `bootstrap/official-plugin-definitions.ts`、Plugin discovery | Origin 映射和 bundled official provenance 是授权前提 |
 | 身份权威 | 新增 official MCP credential resolver（如 `services/official-mcp/`）、services 装配 | JWT、Plan key、Team context 必须来自同一当前 snapshot；独立于 Off-Peak 实现（§6.1.1） |
 | Off-Peak 隔离 | `services/session/offPeakRuntimeModel.ts` 及其调用方 | 本阶段**只读参考**，不得修改导出、签名或行为；Off-Peak 既有测试必须全绿 |
-| 跨进程协议 | shared zcode protocol、bootstrap protocol server、zcodeAgentService | Agent 不持有身份权威，且实现不能依赖 UI 响应 |
+| 跨进程协议 | shared codez protocol、bootstrap protocol server、codezAgentService | Agent 不持有身份权威，且实现不能依赖 UI 响应 |
 | pool 隔离 | MCP connection pool | 共享连接不能把首个 session/workspace 的凭证固化或串给后续请求 |
 
 ### 9.2 should-inspect
@@ -760,7 +760,7 @@ unit/integration tests。
 
 ### 9.4 建议的 feature graph delta
 
-后续进入实现时，可新增 `capability.zcode-official-server-mcp-auth`，关联：
+后续进入实现时，可新增 `capability.codez-official-server-mcp-auth`，关联：
 
 ```text
 official Plugin definition
@@ -789,24 +789,24 @@ official Plugin definition
 ## 11. 验收标准
 
 - 官方 Plugin 的 HTTP MCP 能通过 `.mcp.json` 的 per-MCP `auth` 声明启用
-  `zcode_official/jwt_token`；
+  `codez_official/jwt_token`；
 - 正确官方 identity 但错误 Origin、正确 Origin 但第三方 Plugin、复制 auth 字段、跨 Origin redirect
   四种情况都不会发出任何敏感 header；
-- MCP `initialize`、`tools/list`、`tools/call` 均携带当前 ZCode JWT（`Authorization`）；仅在
+- MCP `initialize`、`tools/list`、`tools/call` 均携带当前 Codez JWT（`Authorization`）；仅在
   Registry 存在有效 Coding Plan Provider 且当前 family 的 MaaS JWT 可用时携带
   `X-Bigmodel-Authorization`，并仅在存在对应 `wireScope` 时携带 `Bigmodel-Target-Type`。
   `TEAM` wire scope 时 organization/project 必须成对出现；
-- `zcode_official` MCP 不创建 OAuth session、不占用 localhost 回调端口，`authProvider` 为
+- `codez_official` MCP 不创建 OAuth session、不占用 localhost 回调端口，`authProvider` 为
   `undefined`；后端 401/403 时按 §6.3.3 分类为 failed，`onAuthorizationRequired` /
   `openAuthorizationUrl` 零调用，record status 不含 `authorization` 字段；
 - 401 最多重试一次，持续 401 时请求次数恰为 2 且不再继续；
 - Start Plan、API Key 模式及 Registry 缺少有效 Coding Plan Provider 的官方 MCP 归类为
   `official_auth_plan_required`，`initialize` / `tools/list` / `tools/call` 的连接与发现请求仅
-  发送 ZCode JWT（不发送 MaaS JWT 或 target/scope 头），与 `official_auth_unavailable` 可区分；
+  发送 Codez JWT（不发送 MaaS JWT 或 target/scope 头），与 `official_auth_unavailable` 可区分；
 - 切换登录身份或 Coding Plan connection 后，后续请求不复用旧 header；
 - fake Plugin 只存在于测试 fixture，不进入正式 bundled assets；
 - 普通 MCP、OAuth MCP、stdio MCP 和现有 proxy/CA 行为回归通过，隐式 authorization_code 兜底对
-  非 `zcode_official` 的 MCP 保持不变；
+  非 `codez_official` 的 MCP 保持不变；
 - 无任何 `packages/ui` 改动；
 - `pnpm typecheck`、`pnpm lint` 通过。
 
@@ -821,13 +821,13 @@ official Plugin definition
 
 | Header | 取值 | 条件 |
 | --- | --- | --- |
-| `Authorization` | `Bearer <zcode-jwt>` | 始终 |
+| `Authorization` | `Bearer <codez-jwt>` | 始终 |
 | `X-Bigmodel-Authorization` | `Bearer <当前 family 的 MaaS 登录 JWT>` | 仅在 Registry 存在有效 Coding Plan Provider 且 MaaS JWT 可用时发送（2026-08 起替代 `X-Coding-Plan-Api-Key`） |
 | `Bigmodel-Target-Type` | `PERSONAL` \| `TEAM` | 仅在存在对应 wire scope 时发送；无 scope 时省略 |
 | `Bigmodel-Organization` | organizationId | 仅 `TEAM`，与 project 成对 |
 | `Bigmodel-Project` | projectId | 仅 `TEAM`，与 organization 成对 |
 
-同时携带现有统一来源头（`User-Agent`、`X-Platform` 等），语义与其它 ZCode 业务接口一致，无新增
+同时携带现有统一来源头（`User-Agent`、`X-Platform` 等），语义与其它 Codez 业务接口一致，无新增
 字段。**链路 id 例外**：`X-Request-Id` / `X-Trace-Id` 不发送，只从响应头读回，理由与口径见 §5.2
 末条。传输为 Streamable HTTP MCP 协议，body 由 MCP SDK 生成。
 
@@ -853,7 +853,7 @@ JWT），**不再发送** `X-Coding-Plan-Api-Key`；identity-only 请求则只�
 能力（§6.3.1）。鉴权失败请用 401/403 表达。
 
 客户端侧的请求约束，供后端了解流量特征：官方 MCP 为 Coding Plan 专属权益（§3.2）。Start Plan
-用户与无 Coding Plan 连接的用户在连接/发现阶段仍可能到达后端，但只携带非空 ZCode JWT，不携带
+用户与无 Coding Plan 连接的用户在连接/发现阶段仍可能到达后端，但只携带非空 Codez JWT，不携带
 `X-Bigmodel-Authorization`；选中项仍指向 Coding Plan、但无权益 Provider 已从 Registry 移除时也遵循
 同一规则。后端应据此区分已登录与未登录，并执行自身的套餐校验。客户端判定依据是"选中的连接
 形态 + 当前 Registry 是否仍有可用 Provider"，而不是 MaaS JWT 或业务 key 是否存在；只有 Registry
@@ -862,7 +862,7 @@ JWT），**不再发送** `X-Coding-Plan-Api-Key`；identity-only 请求则只�
 
 ### 12.3 需要后端/发布侧提供的值
 
-已确认（`zcode-server`，2026-08 实测）：
+已确认（`codez-server`，2026-08 实测）：
 
 1. **端点与路由**：`POST /api/v1/mcp/server/:mcp_group`（`internal/interfaces/web/router.go`）。
    两条硬约束：`:mcp_group` **必填**（只写 `/api/v1/mcp/server/` 返回 404），且 **不能带尾斜杠**
@@ -883,7 +883,7 @@ JWT），**不再发送** `X-Coding-Plan-Api-Key`；identity-only 请求则只�
 2. 新 group 上线时的通知机制——每个 group 一个端点，意味着新增 group 仍需改 `.mcp.json`，
    与"新增官方 MCP 零改动"的目标存在张力（见下段部署约束）。
 
-canonical HTTPS Origin **不再是待锁定项**：官方 MCP 必须与 ZCode API 同 origin，客户端运行时
+canonical HTTPS Origin **不再是待锁定项**：官方 MCP 必须与 Codez API 同 origin，客户端运行时
 解析（§5.1）。若后端要把官方 MCP 部署到独立域名，则需要回到显式清单并承担发版摩擦——
 这是一条需要提前对齐的部署约束。
 
@@ -896,17 +896,17 @@ canonical HTTPS Origin **不再是待锁定项**：官方 MCP 必须与 ZCode AP
 | 职责 | 文件 |
 | --- | --- |
 | 头集合 / 保留头黑名单（两侧同源，§5.2） | `packages/shared/src/official-mcp-auth.ts` |
-| Agent 协议 schema（§7.2） | `packages/shared/src/zcode-protocol/index.ts` |
+| Agent 协议 schema（§7.2） | `packages/shared/src/codez-protocol/index.ts` |
 | 凭证解析 + 身份头构造 + in-flight 去重（§6.1 / §6.2.1） | `packages/services/src/official-mcp/officialMcpCredentials.ts` |
-| host 侧反向请求处理（§7.2） | `packages/services/src/zcode-agent/zcodeAgentService.ts` |
+| host 侧反向请求处理（§7.2） | `packages/services/src/codez-agent/codezAgentService.ts` |
 | 装配（host 为唯一身份权威） | `packages/services/src/node.ts` |
-| 配置合同与端口类型（§4.2 / §7.1） | `apps/zcode-cli/packages/contracts/src/interfaces/mcp.port.ts` |
-| Plugin 严格解析 + provenance（§4.2） | `apps/zcode-cli/packages/adapters/src/plugins/mcp.ts` |
-| 动态注入 + Origin 校验 + 失败分类（§6.3.2 / §6.3.3） | `apps/zcode-cli/packages/adapters/src/mcp/official-auth.ts` |
-| OAuth 短路（§6.3.1） | `apps/zcode-cli/packages/adapters/src/mcp/index.ts` 的 `resolveAuthorizationCodeOAuthConfig` / `createOfficialAuthFetch` |
+| 配置合同与端口类型（§4.2 / §7.1） | `apps/codez-cli/packages/contracts/src/interfaces/mcp.port.ts` |
+| Plugin 严格解析 + provenance（§4.2） | `apps/codez-cli/packages/adapters/src/plugins/mcp.ts` |
+| 动态注入 + Origin 校验 + 失败分类（§6.3.2 / §6.3.3） | `apps/codez-cli/packages/adapters/src/mcp/official-auth.ts` |
+| OAuth 短路（§6.3.1） | `apps/codez-cli/packages/adapters/src/mcp/index.ts` 的 `resolveAuthorizationCodeOAuthConfig` / `createOfficialAuthFetch` |
 | 可信 Origin registry（§5.1） | `packages/shared/src/official-mcp-auth.ts` |
-| Agent 侧 auth port（§7.1） | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/official-mcp-auth-port.ts` |
-| 运行时装配 | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-entrypoint.ts` |
+| Agent 侧 auth port（§7.1） | `apps/codez-cli/packages/bootstrap/src/codez-protocol/official-mcp-auth-port.ts` |
+| 运行时装配 | `apps/codez-cli/packages/bootstrap/src/codez-protocol-entrypoint.ts` |
 
 用例落位：`plugin-official-mcp-auth.test.ts`（解析）、`packages/shared/test/officialMcpTrust.test.ts`（信任）、
 `mcp-official-auth.test.ts`（注入与分类）、`mcp-official-auth-integration.test.ts`（fake 端到端）、
@@ -942,19 +942,19 @@ fake server 收到 `initialize` / `tools/list` 并携带完整身份头，GET �
 
 - `scripts/dev-official-mcp-server.mjs`——loopback fake MCP，打印每个请求的鉴权头
   （JWT 与 Coding Plan key 脱敏，`Bigmodel-Target-Type` / organization / project 原样显示）；
-- `ZCODE_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS`——本地 dev 开关，**只**接受 http loopback
+- `CODEZ_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS`——本地 dev 开关，**只**接受 http loopback
   （`normalizeTrustedOrigin` 的 `"loopback"` 模式会拒绝 https 与非 loopback 主机，
   避免一个环境变量就把真实 JWT 导向远端）。不设置时行为与实现前完全一致。
 
 自测踩坑记录（供后续复现时省时间）：
 
-- 本地 plugin 经 `~/.zcode/cli/config.json` 的 `plugins.dirs` 加载，**不是**
-  `~/.zcode/v2/config.json`（后者是 desktop/services 配置），也不是设置页的「添加 marketplace」
+- 本地 plugin 经 `~/.codez/cli/config.json` 的 `plugins.dirs` 加载，**不是**
+  `~/.codez/v2/config.json`（后者是 desktop/services 配置），也不是设置页的「添加 marketplace」
   （那个入口要 marketplace 目录）；
 - 经 `dirs` 加载的 plugin marketplace 固定为 `inline`，故 pluginId 形如
   `dev-official-mcp@inline`。该后缀**不影响授权**（§5.1 移除了 marketplace 检查），
-  本地自测能否通过只取决于 Origin：https 端点需等于当前 ZCode API origin，
-  http loopback 需列入 `ZCODE_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS`；
+  本地自测能否通过只取决于 Origin：https 端点需等于当前 Codez API origin，
+  http loopback 需列入 `CODEZ_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS`；
 - MCP 连接在 session 建立时一次性发起，失败后停留在 failed 不自动重连；必须**先起 fake server
   再启动 desktop**。desktop 的 MCP 状态展示存在刷新滞后（重启后才与 agent 实际状态一致），
   属既有行为，不在本阶段范围（§9.3 不改 `packages/ui`）。
@@ -997,12 +997,12 @@ fake server 收到 `initialize` / `tools/list` 并携带完整身份头，GET �
 需要区分的两条链路：设置页走 entrypoint 的 `protocol-settings` lease，session 走各自的
 session lease；两者共用连接池但状态互不回灌。因此"session 侧已知失败"不会反映到设置页。
 
-另外确认：`mcp/list` 默认（connect）模式**会真正重连**（`bootstrap/src/zcode-protocol/mcp.ts`
+另外确认：`mcp/list` 默认（connect）模式**会真正重连**（`bootstrap/src/codez-protocol/mcp.ts`
 调用 `connectConfiguredServers`），并非只读缓存。所以问题不是"读到旧缓存"，而是"没人去读"。
 
 Plugin 列表同理：`pluginManagementStore.initialize` 按 workspace 在 `useEffect` 调用，
 `refresh()` 只在启用/禁用/安装/卸载等变更后主动触发，无定时器。因此手工编辑
-`~/.zcode/cli/config.json` 的 `plugins.dirs` 后，UI 不会自行发现。
+`~/.codez/cli/config.json` 的 `plugins.dirs` 后，UI 不会自行发现。
 
 对普通 MCP 影响有限（有 OAuth 的走轮询；无 OAuth 的通常连接够快，在首次挂载前后就已完成），
 但官方 MCP 的连接是 session 级按需发起、时间上常晚于设置页挂载，因此必然看到旧状态。
@@ -1028,17 +1028,17 @@ Plugin 列表同理：`pluginManagementStore.initialize` 按 workspace 在 `useE
 
 一个**不需要服务端**的 fail-closed 场景（验证"拒绝时不泄露凭证"，比服务端故障更重要）：
 
-- `official_mcp_origin_untrusted`：不设 `ZCODE_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS` 启动，同样零请求。
+- `official_mcp_origin_untrusted`：不设 `CODEZ_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS` 启动，同样零请求。
 
-统一判读：`grep '"officialAuthKind"' ~/.zcode/cli/log/zcode-<日期>.jsonl`。
+统一判读：`grep '"officialAuthKind"' ~/.codez/cli/log/codez-<日期>.jsonl`。
 注意连接时故障需重启 desktop 才会重连（§13.2.1 的刷新盲区），tool-call 时故障不需要。
 
 ### 13.3 已知未接通项
 
 - ~~正式 `OFFICIAL_PLUGIN_DEFINITIONS` 尚未登记任何 `trustedMcpOrigins`~~：该机制已随 §5.1
-  的决策变更删除。registry 不再持有映射表，判定改为"目标 origin 等于运行时解析的 ZCode API
+  的决策变更删除。registry 不再持有映射表，判定改为"目标 origin 等于运行时解析的 Codez API
   origin"，因此不存在"待填入 Origin"这一步；未解析出 origin 时仍 fail closed
-  （`zcode_origin_unresolved`）；
+  （`codez_origin_unresolved`）；
 - desktop-attached remote 的**定向协议测试已补**（`officialMcpAuthRemoteRouting.test.ts`，
   OMCP-011）：覆盖"同 `workspacePath`、不同 `workspaceIdentity`"两条独立链路的响应路由、
   交错请求不串台、plan-required 原样透传、无 resolver 时 `official_auth_unavailable`、

@@ -158,56 +158,56 @@
     }
   ],
   "histograms": {
-    "zcode.local_ttft.duration": {
+    "codez.local_ttft.duration": {
       "sampleCount": 3,
       "boundsMs": [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 30000, 60000, 300000],
       "bucketCounts": [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0],
       "p50BucketEstimateMs": 875.0,
       "p95BucketEstimateMs": 4550.0
     },
-    "zcode.local_ttft.stage.duration:renderer_prepare": {
+    "codez.local_ttft.stage.duration:renderer_prepare": {
       "sampleCount": 3,
       "boundsMs": [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 30000, 60000, 300000],
       "bucketCounts": [0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       "p50BucketEstimateMs": 6.25,
       "p95BucketEstimateMs": 9.625
     },
-    "zcode.local_ttft.stage.duration:command_admission": {
+    "codez.local_ttft.stage.duration:command_admission": {
       "sampleCount": 3,
       "boundsMs": [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 30000, 60000, 300000],
       "bucketCounts": [0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0],
       "p50BucketEstimateMs": 350.0,
       "p95BucketEstimateMs": 925.0
     },
-    "zcode.local_ttft.stage.duration:execution_wait": {
+    "codez.local_ttft.stage.duration:execution_wait": {
       "sampleCount": 3,
       "boundsMs": [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 30000, 60000, 300000],
       "bucketCounts": [0, 1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       "p50BucketEstimateMs": 125.0,
       "p95BucketEstimateMs": 192.5
     },
-    "zcode.local_ttft.stage.duration:request_prepare": {
+    "codez.local_ttft.stage.duration:request_prepare": {
       "sampleCount": 3,
       "boundsMs": [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 30000, 60000, 300000],
       "bucketCounts": [0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0],
       "p50BucketEstimateMs": 750.0,
       "p95BucketEstimateMs": 4550.0
     },
-    "zcode.local_ttft.stage.duration:model_request": {
+    "codez.local_ttft.stage.duration:model_request": {
       "sampleCount": 3,
       "boundsMs": [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 30000, 60000, 300000],
       "bucketCounts": [0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
       "p50BucketEstimateMs": 75.0,
       "p95BucketEstimateMs": 455.0
     },
-    "zcode.local_ttft.stage.duration:output_return": {
+    "codez.local_ttft.stage.duration:output_return": {
       "sampleCount": 3,
       "boundsMs": [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 30000, 60000, 300000],
       "bucketCounts": [0, 0, 0, 0, 2, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
       "p50BucketEstimateMs": 42.5,
       "p95BucketEstimateMs": 455.0
     },
-    "zcode.local_ttft.first_text.duration": {
+    "codez.local_ttft.first_text.duration": {
       "sampleCount": 3,
       "boundsMs": [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 30000, 60000, 300000],
       "bucketCounts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0],

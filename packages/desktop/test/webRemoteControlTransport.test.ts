@@ -5,7 +5,7 @@ import {
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   encodeWebRemoteControlRpcTransportMessage,
   type WebRemoteControlAppPayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   WebRemoteControlDeviceTransport,
   type WebRemoteControlDeviceTransportState,
@@ -39,7 +39,7 @@ function createRelayDataJsonWithExactBytes(targetBytes: number): string {
     JSON.stringify({
       type: "data",
       payload: {
-        zcode_type: "app-error",
+        codez_type: "app-error",
         reason: "unexpected-error",
         error,
       },
@@ -259,7 +259,7 @@ describe("WebRemoteControlDeviceTransport", () => {
       await waitUntil(() => payloads.length === 1 && rawFaults.length === 1, 5_000);
 
       expect(payloads[0]).toMatchObject({
-        zcode_type: "app-error",
+        codez_type: "app-error",
         reason: "unexpected-error",
       });
       expect(rawFaults).toEqual(["remote.rpcFrame.envelopeTooLarge"]);
@@ -289,14 +289,14 @@ describe("WebRemoteControlDeviceTransport", () => {
 
     expect(
       transport.sendPayloadResult({
-        zcode_type: "app-error",
+        codez_type: "app-error",
         reason: "unexpected-error",
         error: "bounded",
       }),
     ).toEqual({ kind: "unavailable" });
     expect(
       transport.sendPayloadResult({
-        zcode_type: "app-error",
+        codez_type: "app-error",
         reason: "unexpected-error",
         error: "x".repeat(WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes),
       }),
@@ -389,7 +389,7 @@ describe("WebRemoteControlDeviceTransport", () => {
     await waitUntil(() => states.includes("paired"));
 
     transport.sendPayload({
-      zcode_type: "workspace-list-request",
+      codez_type: "workspace-list-request",
       requestId: "req-compressed",
       padding: "x".repeat(4096),
     } as WebRemoteControlAppPayload);
@@ -726,7 +726,7 @@ describe("WebRemoteControlDeviceTransport", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     const sentWhileSuspect = transport.sendPayload({
-      zcode_type: "workspace-list-response",
+      codez_type: "workspace-list-response",
       requestId: "req-1",
       success: true,
       result: {
@@ -744,7 +744,7 @@ describe("WebRemoteControlDeviceTransport", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     const sentAfterMatched = transport.sendPayload({
-      zcode_type: "workspace-list-response",
+      codez_type: "workspace-list-response",
       requestId: "req-2",
       success: true,
       result: {
@@ -757,7 +757,7 @@ describe("WebRemoteControlDeviceTransport", () => {
 
     expect(sentAfterMatched).toBe(true);
     expect(relay.messages.find((message) => message.type === "data")).toMatchObject({
-      payload: { zcode_type: "workspace-list-response", requestId: "req-2" },
+      payload: { codez_type: "workspace-list-response", requestId: "req-2" },
     });
     transport.dispose();
   });
@@ -865,7 +865,7 @@ describe("WebRemoteControlDeviceTransport", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     const sent = transport.sendPayload({
-      zcode_type: "workspace-list-response",
+      codez_type: "workspace-list-response",
       requestId: "req-waiting",
       success: true,
       result: {
@@ -1140,7 +1140,7 @@ describe("WebRemoteControlDeviceTransport", () => {
     await waitUntil(() => relay.messages.some((message) => message.type === "pair_status_query"));
 
     const sent = transport.sendPayload({
-      zcode_type: "workspace-list-response",
+      codez_type: "workspace-list-response",
       requestId: "req-1",
       success: true,
       result: {
@@ -1347,7 +1347,7 @@ describe("WebRemoteControlDeviceTransport", () => {
     transport.start();
     await waitUntil(() => payloads.length === 1);
 
-    expect(payloads[0]).toMatchObject({ zcode_type: "rpc-frame", seq: 1 });
+    expect(payloads[0]).toMatchObject({ codez_type: "rpc-frame", seq: 1 });
     expect(JSON.stringify(logger.warn.mock.calls)).not.toContain("secret");
     transport.dispose();
   });

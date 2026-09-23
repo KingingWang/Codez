@@ -5,9 +5,9 @@ import {
   ZhipuAccountAccessConfig,
   type AccountProviderConfigSnapshot,
   type ModelSelectionView,
-} from "@zcode/provider";
-import { zcodeProtocolMethods } from "@zcode/shared";
-import { V4_METHODS } from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/provider";
+import { codezProtocolMethods } from "@codez/shared";
+import { V4_METHODS } from "@codez/shared/codez-protocol-v4";
 import { createAccountProviderConfig } from "./providerConfigFixtures.js";
 
 const START_PLAN_PROVIDER_ID = "account:zai-start-plan";
@@ -53,7 +53,7 @@ function createSessionSnapshot(params: {
   thoughtLevel?: string;
 }) {
   return {
-    protocol: { name: "ZCode Protocol", version: 1 },
+    protocol: { name: "Codez Protocol", version: 1 },
     session: {
       sessionId: "sess_1",
       workspace: {
@@ -227,7 +227,7 @@ function createReadyModelSelectionSource() {
   ).source;
 }
 
-describe("createZCodeAgentService provider registry", () => {
+describe("createCodezAgentService provider registry", () => {
   it("uses the process model selection view for local startup without sending runtimeModel", async () => {
     const selectionSource = createModelSelectionChangeSource({
       revision: 1,
@@ -245,15 +245,15 @@ describe("createZCodeAgentService provider registry", () => {
       ],
     });
     const request = vi.fn(async (method: string, params?: unknown) => {
-      if (method === zcodeProtocolMethods.sessionCreate) {
+      if (method === codezProtocolMethods.sessionCreate) {
         const model = (params as { model: { providerId: string; modelId: string } }).model;
         return createSessionSnapshot({ model, thoughtLevel: "high" });
       }
       throw new Error(`Unexpected method ${method}`);
     });
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         async getClient() {
           return {
             request,
@@ -266,8 +266,8 @@ describe("createZCodeAgentService provider registry", () => {
         disposeAll() {}
       },
     }));
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: selectionSource.source,
     });
 
@@ -278,7 +278,7 @@ describe("createZCodeAgentService provider registry", () => {
     });
 
     const createCall = request.mock.calls.find(
-      ([method]) => method === zcodeProtocolMethods.sessionCreate,
+      ([method]) => method === codezProtocolMethods.sessionCreate,
     );
     expect(createCall?.[1]).toMatchObject({
       model: { providerId: "custom-openai", modelId: "agent-model" },
@@ -305,14 +305,14 @@ describe("createZCodeAgentService provider registry", () => {
       onClose: () => ({ dispose() {} }),
     }));
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         getClient = getClient;
         disposeAll() {}
       },
     }));
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: selectionSource.source,
     });
 
@@ -349,15 +349,15 @@ describe("createZCodeAgentService provider registry", () => {
     const respond = vi.fn(async () => {});
     const resolveCurrent = vi.fn(async () => ({ apiKey: "team-runtime-key" }));
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         async getClient() {
           return {
             request: vi.fn(async (method: string) => {
-              if (method === zcodeProtocolMethods.initialize) {
+              if (method === codezProtocolMethods.initialize) {
                 return {
                   available: true,
-                  protocolName: "ZCode Protocol",
+                  protocolName: "Codez Protocol",
                   protocolVersion: 1,
                   workspaceKey: "/workspace/app",
                 };
@@ -378,8 +378,8 @@ describe("createZCodeAgentService provider registry", () => {
         disposeAll() {}
       },
     }));
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       accountRequestAuthService: { resolveCurrent },
       modelSelectionReadinessSource: createModelSelectionChangeSource(
         createModelSelectionViewFromRegistry(createBigModelCodingPlanRegistry()),
@@ -389,7 +389,7 @@ describe("createZCodeAgentService provider registry", () => {
     await service.initialize({ workspacePath: "/workspace/app" });
     requestListener?.({
       id: "agent-request-team-auth",
-      method: zcodeProtocolMethods.interactionRequestProviderRuntimeHeaders,
+      method: codezProtocolMethods.interactionRequestProviderRuntimeHeaders,
       params: {
         requestId: "team-auth-1",
         sessionId: "sess_1",
@@ -435,14 +435,14 @@ describe("createZCodeAgentService provider registry", () => {
   it("keeps initialize waiting without creating a client when provider/model is unavailable", async () => {
     const getClient = vi.fn();
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         getClient = getClient;
         disposeAll() {}
       },
     }));
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: createModelSelectionChangeSource({
         revision: 1,
         providers: [],
@@ -471,14 +471,14 @@ describe("createZCodeAgentService provider registry", () => {
       onClose: () => ({ dispose() {} }),
     }));
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         getClient = getClient;
         disposeAll() {}
       },
     }));
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: createModelSelectionChangeSource(
         createModelSelectionViewFromRegistry(
           createStartPlanRegistry({ revision: "sha256:ready-concurrent" }),
@@ -518,14 +518,14 @@ describe("createZCodeAgentService provider registry", () => {
         onClose: () => ({ dispose() {} }),
       }));
       vi.resetModules();
-      vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-        ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+      vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+        CodezAgentProcessManager: class extends MockProcessManagerBase {
           getClient = getClient;
           disposeAll() {}
         },
       }));
-      const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-      const service = createZCodeAgentService({ modelSelectionReadinessSource: { getView } });
+      const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+      const service = createCodezAgentService({ modelSelectionReadinessSource: { getView } });
       const workspace = {
         workspacePath: "/workspace/concurrent-first-input",
         ...(clientMode === "web-remote-replayable"
@@ -579,15 +579,15 @@ describe("createZCodeAgentService provider registry", () => {
       onClose: () => ({ dispose() {} }),
     }));
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         getClient = getClient;
         async disposeWorkspace() {}
         disposeAll() {}
       },
     }));
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({ modelSelectionReadinessSource: { getView } });
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({ modelSelectionReadinessSource: { getView } });
     const workspace = { workspacePath: "/workspace/reopen-during-readiness" };
     try {
       const oldStartup = service.initialize(workspace);
@@ -625,8 +625,8 @@ describe("createZCodeAgentService provider registry", () => {
       return client;
     });
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         getClient = getClient;
         disposeAll() {}
       },
@@ -635,8 +635,8 @@ describe("createZCodeAgentService provider registry", () => {
       revision: 1,
       providers: [],
     });
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: selectionSource.source,
     });
     const firstIdentity = "remote:ssh:first:/workspace/app";
@@ -683,15 +683,15 @@ describe("createZCodeAgentService provider registry", () => {
       onClose: () => ({ dispose() {} }),
     }));
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         getClient = getClient;
         disposeAll() {}
       },
     }));
     const selectionSource = createModelSelectionChangeSource({ revision: 1, providers: [] });
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: selectionSource.source,
     });
     try {
@@ -715,8 +715,8 @@ describe("createZCodeAgentService provider registry", () => {
     }));
     const disposeWorkspace = vi.fn(async () => {});
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         getClient = getClient;
         disposeWorkspace = disposeWorkspace;
         disposeAll() {}
@@ -726,8 +726,8 @@ describe("createZCodeAgentService provider registry", () => {
       revision: 1,
       providers: [],
     });
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: selectionSource.source,
     });
     const workspace = { workspacePath: "/workspace/released-before-ready" };
@@ -770,8 +770,8 @@ describe("createZCodeAgentService provider registry", () => {
       onClose: () => ({ dispose() {} }),
     }));
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         getClient = getClient;
         disposeAll() {}
       },
@@ -780,8 +780,8 @@ describe("createZCodeAgentService provider registry", () => {
       revision: 1,
       providers: [],
     });
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: selectionSource.source,
     });
     const workspacePath = "/workspace/read-only-then-ready";
@@ -814,14 +814,14 @@ describe("createZCodeAgentService provider registry", () => {
     const calls: string[] = [];
     const request = vi.fn(async (method: string) => {
       calls.push(method);
-      if (method === zcodeProtocolMethods.providerUpdateAccountConfig) {
+      if (method === codezProtocolMethods.providerUpdateAccountConfig) {
         return {
           receivedRevision: "account-1",
           status: "received" as const,
           providerCount: 1,
         };
       }
-      if (method === zcodeProtocolMethods.sessionCreate) {
+      if (method === codezProtocolMethods.sessionCreate) {
         return createSessionSnapshot({
           model: { providerId: "e2e-primary", modelId: "deepseek-v4-flash" },
         });
@@ -829,8 +829,8 @@ describe("createZCodeAgentService provider registry", () => {
       throw new Error(`Unexpected method ${method}`);
     });
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         async getClient() {
           return {
             request,
@@ -843,10 +843,10 @@ describe("createZCodeAgentService provider registry", () => {
         disposeAll() {}
       },
     }));
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
     const accountSnapshot: AccountProviderConfigSnapshot = {
       revision: "account-1",
-      basedOnZCodeBuiltinRevision: "zcode-builtin:1",
+      basedOnCodezBuiltinRevision: "codez-builtin:1",
       states: {
         "account:zai-individual-coding-plan": {
           availability: "available",
@@ -864,7 +864,7 @@ describe("createZCodeAgentService provider registry", () => {
         ],
       ]),
     };
-    const service = createZCodeAgentService({
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: createReadyModelSelectionSource(),
       accountProviderConfigSource: {
         async read() {
@@ -883,15 +883,15 @@ describe("createZCodeAgentService provider registry", () => {
     });
 
     expect(calls).toEqual([
-      zcodeProtocolMethods.providerUpdateAccountConfig,
-      zcodeProtocolMethods.sessionCreate,
+      codezProtocolMethods.providerUpdateAccountConfig,
+      codezProtocolMethods.sessionCreate,
     ]);
     expect(request).toHaveBeenNthCalledWith(
       1,
-      zcodeProtocolMethods.providerUpdateAccountConfig,
+      codezProtocolMethods.providerUpdateAccountConfig,
       {
         revision: "account-1",
-        basedOnZCodeBuiltinRevision: "zcode-builtin:1",
+        basedOnCodezBuiltinRevision: "codez-builtin:1",
         states: accountSnapshot.states,
         providers: {
           "account:zai-individual-coding-plan": {
@@ -916,7 +916,7 @@ describe("createZCodeAgentService provider registry", () => {
   it("pushes changed Account Config without rebuilding the Workspace Snapshot", async () => {
     const accountSource = createAccountProviderConfigChangeSource({
       revision: "account-1",
-      basedOnZCodeBuiltinRevision: "zcode-builtin:1",
+      basedOnCodezBuiltinRevision: "codez-builtin:1",
       providers: new ProviderConfigMap([
         [
           "account:zai-individual-coding-plan",
@@ -927,11 +927,11 @@ describe("createZCodeAgentService provider registry", () => {
       ]),
     });
     const request = vi.fn(async (method: string, params?: unknown) => {
-      if (method === zcodeProtocolMethods.providerUpdateAccountConfig) {
+      if (method === codezProtocolMethods.providerUpdateAccountConfig) {
         const revision = (params as { revision: string }).revision;
         return { receivedRevision: revision, providerCount: 1, status: "received" as const };
       }
-      if (method === zcodeProtocolMethods.sessionCreate) {
+      if (method === codezProtocolMethods.sessionCreate) {
         return createSessionSnapshot({
           model: { providerId: "e2e-primary", modelId: "model-a" },
         });
@@ -939,8 +939,8 @@ describe("createZCodeAgentService provider registry", () => {
       throw new Error(`Unexpected method ${method}`);
     });
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         async getClient() {
           return {
             request,
@@ -953,8 +953,8 @@ describe("createZCodeAgentService provider registry", () => {
         disposeAll() {}
       },
     }));
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: createReadyModelSelectionSource(),
       accountProviderConfigSource: accountSource.source,
     });
@@ -966,7 +966,7 @@ describe("createZCodeAgentService provider registry", () => {
 
     accountSource.emit("team-plan-selected", {
       revision: "account-2",
-      basedOnZCodeBuiltinRevision: "zcode-builtin:1",
+      basedOnCodezBuiltinRevision: "codez-builtin:1",
       providers: new ProviderConfigMap([
         [
           "account:zai-individual-coding-plan",
@@ -979,7 +979,7 @@ describe("createZCodeAgentService provider registry", () => {
 
     await vi.waitFor(() => {
       expect(request).toHaveBeenCalledWith(
-        zcodeProtocolMethods.providerUpdateAccountConfig,
+        codezProtocolMethods.providerUpdateAccountConfig,
         expect.objectContaining({ revision: "account-2" }),
         expect.any(Object),
       );
@@ -1009,12 +1009,12 @@ describe("createZCodeAgentService provider registry", () => {
     await vi.waitFor(() => {
       expect(
         request.mock.calls.filter(
-          ([method]) => method === zcodeProtocolMethods.providerUpdateAccountConfig,
+          ([method]) => method === codezProtocolMethods.providerUpdateAccountConfig,
         ),
       ).toHaveLength(2);
     });
     const delivered = request.mock.calls
-      .filter(([method]) => method === zcodeProtocolMethods.providerUpdateAccountConfig)
+      .filter(([method]) => method === codezProtocolMethods.providerUpdateAccountConfig)
       .map(([, params]) => (params as { revision: string }).revision);
     service.disposeAll();
     expect(readsBeforeRelease).toBe(1);
@@ -1037,8 +1037,8 @@ describe("createZCodeAgentService provider registry", () => {
       throw new Error(`Unexpected method ${method}`);
     });
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         async getClient() {
           return {
             request,
@@ -1051,8 +1051,8 @@ describe("createZCodeAgentService provider registry", () => {
         disposeAll() {}
       },
     }));
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: createReadyModelSelectionSource(),
     });
 
@@ -1107,8 +1107,8 @@ describe("createZCodeAgentService provider registry", () => {
       slashCommands: [],
     }));
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class extends MockProcessManagerBase {
         async getClient() {
           return {
             request,
@@ -1121,15 +1121,15 @@ describe("createZCodeAgentService provider registry", () => {
         disposeAll() {}
       },
     }));
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: createReadyModelSelectionSource(),
     });
 
     await service.readWorkspacePresentation({ workspacePath: "/workspace/app" });
 
     const readPresentationCall = request.mock.calls.find(
-      ([method]) => method === zcodeProtocolMethods.workspaceReadPresentation,
+      ([method]) => method === codezProtocolMethods.workspaceReadPresentation,
     );
     expect(readPresentationCall?.[1]).toMatchObject({
       workspace: {
@@ -1150,8 +1150,8 @@ describe("createZCodeAgentService provider registry", () => {
       slashCommands: [],
     };
     const firstRequest = vi.fn(async (method: string) => {
-      if (method === zcodeProtocolMethods.workspaceReadPresentation) {
-        throw new Error("ZCode agent stdio transport is closed");
+      if (method === codezProtocolMethods.workspaceReadPresentation) {
+        throw new Error("Codez agent stdio transport is closed");
       }
       return {
         workspace: workspacePresentation.workspace,
@@ -1160,7 +1160,7 @@ describe("createZCodeAgentService provider registry", () => {
       };
     });
     const secondRequest = vi.fn(async (method: string) => {
-      if (method === zcodeProtocolMethods.workspaceReadPresentation) {
+      if (method === codezProtocolMethods.workspaceReadPresentation) {
         return workspacePresentation;
       }
       return {
@@ -1186,8 +1186,8 @@ describe("createZCodeAgentService provider registry", () => {
         onClose: () => ({ dispose() {} }),
       });
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class {
         getClient = getClient;
         // Bug 原因同共享 mock：service 构造期新增 runtime 生命周期订阅；本用例只驱动
         // stdio 重试，因此用空 disposable 补齐局部测试桩契约。
@@ -1202,8 +1202,8 @@ describe("createZCodeAgentService provider registry", () => {
         disposeAll() {}
       },
     }));
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       modelSelectionReadinessSource: createReadyModelSelectionSource(),
     });
 
@@ -1213,12 +1213,12 @@ describe("createZCodeAgentService provider registry", () => {
 
     expect(getClient).toHaveBeenCalledTimes(2);
     expect(firstRequest).toHaveBeenCalledWith(
-      zcodeProtocolMethods.workspaceReadPresentation,
+      codezProtocolMethods.workspaceReadPresentation,
       expect.anything(),
       expect.anything(),
     );
     expect(secondRequest).toHaveBeenCalledWith(
-      zcodeProtocolMethods.workspaceReadPresentation,
+      codezProtocolMethods.workspaceReadPresentation,
       expect.anything(),
       expect.anything(),
     );

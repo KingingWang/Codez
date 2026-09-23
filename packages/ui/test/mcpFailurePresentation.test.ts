@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ZCodeIntlProvider } from "../src/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "../src/i18n/IntlProvider.js";
 import {
   McpFailurePresentation,
   resolveMcpFailureMessageId,
@@ -30,7 +30,7 @@ describe("MCP failure presentation", () => {
   ])("keeps diagnostics inside the click-only popover for %s", (locale, message) => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: locale },
         createElement(McpFailurePresentation, {
           error: "raw sdk error",
@@ -51,12 +51,12 @@ describe("MCP failure presentation", () => {
   });
 
   it.each([
-    ["zh-CN" as const, "当前未登录，请先登录 ZCode。"],
-    ["en-US" as const, "You are not signed in. Sign in to ZCode to use this MCP server."],
+    ["zh-CN" as const, "当前未登录，请先登录 Codez。"],
+    ["en-US" as const, "You are not signed in. Sign in to Codez to use this MCP server."],
   ])("localizes the not-authenticated diagnosis for %s", (locale, message) => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: locale },
         createElement(McpFailurePresentation, { failureKind: "not_authenticated" }),
       ),
@@ -73,7 +73,7 @@ describe("MCP failure presentation", () => {
   ])("localizes the coding-plan diagnosis for %s", (locale, message) => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: locale },
         createElement(McpFailurePresentation, { failureKind: "coding_plan_required" }),
       ),

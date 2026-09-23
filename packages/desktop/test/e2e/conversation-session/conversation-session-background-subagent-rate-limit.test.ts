@@ -1,4 +1,4 @@
-import { TID_V4_SUBAGENT_OPEN_SIDE_PANE } from "@zcode/shared";
+import { TID_V4_SUBAGENT_OPEN_SIDE_PANE } from "@codez/shared";
 import { clearAppData } from "../helpers/desktop-app.js";
 import { waitForUpstreamRequest } from "../helpers/conversation-session-network.js";
 import {

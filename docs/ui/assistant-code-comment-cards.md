@@ -2,8 +2,8 @@
 
 ## 状态
 
-- 本文是 Assistant 输出 `::code-comment{...}` 在 ZCode Renderer 中解析、展示与只读 Code Review 跳转的功能规范。
-- 本功能只派生 UI，不新增 ZCode Protocol、session snapshot、relay、Host 或 Agent runtime 状态。
+- 本文是 Assistant 输出 `::code-comment{...}` 在 Codez Renderer 中解析、展示与只读 Code Review 跳转的功能规范。
+- 本功能只派生 UI，不新增 Codez Protocol、session snapshot、relay、Host 或 Agent runtime 状态。
 - capability 默认关闭；Desktop 与手机 `/remote` 的 workspace bridge 显式开启，普通 Web Server
   入口保持关闭。关闭时保留现有原始 directive 展示，避免 Agent 已输出审查意见但 Renderer 静默吞掉。
 

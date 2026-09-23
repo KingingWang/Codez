@@ -29,7 +29,7 @@ describe("TelemetryCore final HTTP privacy boundary", () => {
       homes.push(homeDir);
       const core = createTelemetryCore({
         homeDir,
-        resolveZCodeEndpointOrigin: () => `http://127.0.0.1:${address.port}`,
+        resolveCodezEndpointOrigin: () => `http://127.0.0.1:${address.port}`,
       });
       const context = { clientTimezone: "UTC", clientLanguage: "en-US", screenResolution: "1x1" };
       await core.reportEvent({

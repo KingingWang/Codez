@@ -15,7 +15,7 @@ test(
   "actual pinned Codex + bundled bridge: settings, thread, stream, queue, reconnect",
   { timeout: 120000 },
   async (t) => {
-    const temporary = await mkdtemp(join(tmpdir(), "zcode-bridge-smoke-"));
+    const temporary = await mkdtemp(join(tmpdir(), "codez-bridge-smoke-"));
     const codexHome = join(temporary, "codex-home");
     const directory = join(temporary, "physical-workspace");
     const workspace = join(temporary, "workspace-alias");
@@ -34,10 +34,10 @@ test(
     const bridge = await buildCodexBridge();
     const env = {
       CODEX_HOME: codexHome,
-      ZCODE_CODEX_COMMAND: binary,
-      ZCODE_CODEX_BRIDGE_TEST_DIAGNOSTICS: "1",
-      ZCODE_CODEX_BRIDGE_HOME: join(temporary, "bridge-state"),
-      ZCODE_WORKSPACE_IDENTITY: workspace,
+      CODEZ_CODEX_COMMAND: binary,
+      CODEZ_CODEX_BRIDGE_TEST_DIAGNOSTICS: "1",
+      CODEZ_CODEX_BRIDGE_HOME: join(temporary, "bridge-state"),
+      CODEZ_WORKSPACE_IDENTITY: workspace,
     };
     for (const key of [
       "PATH",

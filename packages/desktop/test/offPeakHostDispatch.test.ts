@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
-import { OFF_PEAK_PROVIDER_IDS } from "@zcode/shared";
+import { OFF_PEAK_PROVIDER_IDS } from "@codez/shared";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { OffPeakModelUnavailableError } from "@zcode/services/node";
+import { OffPeakModelUnavailableError } from "@codez/services/node";
 import {
   assertBoundSessionDispatchable,
   resolveOffPeakDispatchKind,
@@ -58,7 +58,7 @@ function setup() {
     activeServices: { getOptional: () => service },
     reportHostSessionCreate: report,
     parentPort: {},
-    IZCodeTaskService: Symbol("task-service"),
+    ICodezTaskService: Symbol("task-service"),
     ensureOffPeakRuntime: async () => runtime,
     OffPeakModelUnavailableError,
     resolveOffPeakDispatchKind,

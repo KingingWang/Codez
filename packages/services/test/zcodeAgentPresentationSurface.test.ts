@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { resolveZCodeAgentPresentationSurface } from "../src/zcode-agent/zcodeAgentPresentationSurface.js";
+import { resolveCodezAgentPresentationSurface } from "../src/codez-agent/codezAgentPresentationSurface.js";
 
-describe("resolveZCodeAgentPresentationSurface", () => {
+describe("resolveCodezAgentPresentationSurface", () => {
   it("从本地 Desktop Host 的 telemetry runtime surface 推导 Desktop 呈现面", () => {
     expect(
-      resolveZCodeAgentPresentationSurface({
+      resolveCodezAgentPresentationSurface({
         runtimeSurface: "desktop_local_host",
       }),
     ).toBe("desktop");
@@ -12,7 +12,7 @@ describe("resolveZCodeAgentPresentationSurface", () => {
 
   it("服务端灰度关闭时不注入 Desktop 呈现面", () => {
     expect(
-      resolveZCodeAgentPresentationSurface({
+      resolveCodezAgentPresentationSurface({
         runtimeSurface: "desktop_local_host",
         desktopContextPromptEnabled: false,
       }),
@@ -21,7 +21,7 @@ describe("resolveZCodeAgentPresentationSurface", () => {
 
   it("服务端灰度开启时保留 Desktop 呈现面", () => {
     expect(
-      resolveZCodeAgentPresentationSurface({
+      resolveCodezAgentPresentationSurface({
         serviceAuthorityMode: "desktop-attached-remote",
         desktopContextPromptEnabled: true,
       }),
@@ -30,7 +30,7 @@ describe("resolveZCodeAgentPresentationSurface", () => {
 
   it("从 Desktop-attached remote authority 推导 Desktop 呈现面", () => {
     expect(
-      resolveZCodeAgentPresentationSurface({
+      resolveCodezAgentPresentationSurface({
         serviceAuthorityMode: "desktop-attached-remote",
       }),
     ).toBe("desktop");
@@ -38,10 +38,10 @@ describe("resolveZCodeAgentPresentationSurface", () => {
 
   it("不把普通 remote runtime 或无宿主事实的 Server 推导成 Desktop", () => {
     expect(
-      resolveZCodeAgentPresentationSurface({
+      resolveCodezAgentPresentationSurface({
         runtimeSurface: "remote_workspace_host",
       }),
     ).toBeUndefined();
-    expect(resolveZCodeAgentPresentationSurface({})).toBeUndefined();
+    expect(resolveCodezAgentPresentationSurface({})).toBeUndefined();
   });
 });

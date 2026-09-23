@@ -33,7 +33,7 @@ describe("Host API proxy routing", () => {
       }),
     ).toEqual({ kind: "direct", noProxyMatched: true });
     expect(
-      resolveHostProxyForUrl("https://zcode.ai/v1", {
+      resolveHostProxyForUrl("https://codez.ai/v1", {
         httpProxy: "http://proxy.example.com:8080",
         noProxy: ".example.com",
       }),

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ArmsCustomEventPayload } from "@zcode/shared";
+import type { ArmsCustomEventPayload } from "@codez/shared";
 import {
   REACT_ERROR_ARMS_EVENT_NAME,
   REACT_ERROR_ARMS_GROUP,
@@ -110,11 +110,11 @@ describe("reportReactErrorToArms", () => {
     setReactErrorArmsReporter(reporter);
 
     const error = new Error("boom");
-    error.stack = "Error: boom\n    at render (file:///Users/alice/zcode/app/index.js:10:5)";
+    error.stack = "Error: boom\n    at render (file:///Users/alice/codez/app/index.js:10:5)";
 
     reportReactErrorToArms({
       error,
-      componentStack: "    at Settings (/Users/alice/zcode/src/SettingsPage.tsx:42:7)",
+      componentStack: "    at Settings (/Users/alice/codez/src/SettingsPage.tsx:42:7)",
     });
 
     const properties = reporter.calls[0]?.properties;

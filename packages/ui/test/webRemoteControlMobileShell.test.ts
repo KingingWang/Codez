@@ -11,10 +11,10 @@ import { persistWebRemoteControlMobileTaskHomePreferences } from "@/WebRemoteCon
 import type {
   WebRemoteControlTaskTarget,
   WebRemoteControlWorkspaceListResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -30,7 +30,7 @@ vi.mock("@/logger.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (selector: (state: { theme: string; setTheme: (theme: string) => void }) => unknown) =>
+  useCodezStore: (selector: (state: { theme: string; setTheme: (theme: string) => void }) => unknown) =>
     selector({ theme: "dark", setTheme: vi.fn() }),
 }));
 
@@ -214,7 +214,7 @@ describe("WebRemoteControlMobileShell", () => {
   it("restores chat from browser history state after refreshing on the chat page", () => {
     vi.stubGlobal("window", {
       history: {
-        state: { zcodeMobilePage: "chat" },
+        state: { codezMobilePage: "chat" },
         back: vi.fn(),
         pushState: vi.fn(),
       },
@@ -353,8 +353,8 @@ describe("WebRemoteControlMobileShell", () => {
   });
 
   it("recognizes only the mobile chat browser history state", () => {
-    expect(isWebRemoteControlMobileChatHistoryState({ zcodeMobilePage: "chat" })).toBe(true);
-    expect(isWebRemoteControlMobileChatHistoryState({ zcodeMobilePage: "home" })).toBe(false);
+    expect(isWebRemoteControlMobileChatHistoryState({ codezMobilePage: "chat" })).toBe(true);
+    expect(isWebRemoteControlMobileChatHistoryState({ codezMobilePage: "home" })).toBe(false);
     expect(isWebRemoteControlMobileChatHistoryState(null)).toBe(false);
   });
 });

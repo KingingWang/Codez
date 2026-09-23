@@ -24,7 +24,7 @@ import {
   type WebRemoteControlTaskDisplayStatus,
   type WebRemoteControlTaskTarget,
   type WebRemoteControlWorkspaceListResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -41,7 +41,7 @@ import {
   useWebRemoteControlTaskOpen,
 } from "@/hooks/useWebRemoteControlTaskOpen.js";
 import { getErrorMessage } from "@/hooks/chatActionHelpers.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { formatTaskRelativeTime } from "@/lib/taskListItemPresentation.js";
 import { TaskWorkflowRunLines } from "@/components/workflow-run-line/TaskWorkflowRunLines.js";
 import {
@@ -123,7 +123,7 @@ export function WebRemoteControlMobileTaskHome({
   refreshKey?: number;
   onCrossWorkspaceSwitchingChange?: (switching: boolean) => void;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const [result, setResult] = useState<WebRemoteControlWorkspaceListResult>(
     initialResult ?? EMPTY_WEB_REMOTE_CONTROL_WORKSPACE_LIST,
   );

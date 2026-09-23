@@ -9,7 +9,7 @@
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { WorkflowRunArtifact } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunArtifact } from "@codez/shared/codez-protocol-v4";
 
 vi.mock("@/logger.js", () => ({ logger: { debug: vi.fn(), warn: vi.fn() } }));
 vi.mock("@/ControlHintTooltip.js", () => ({
@@ -27,7 +27,7 @@ vi.mock("@/v4/V4ConversationContext.js", () => ({
 }));
 
 // eslint-disable-next-line import/first -- 必须在 mock 之后再引入被测组件。
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 // eslint-disable-next-line import/first
 import { ConversationWorkflowCompletion } from "@/v4/ConversationWorkflowCompletion.js";
 // eslint-disable-next-line import/first
@@ -115,7 +115,7 @@ function renderCompletion(
   } as unknown as ConversationRowRenderContext;
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(ConversationWorkflowCompletion, { completion, context, turnKey: "t1" }),
     ),

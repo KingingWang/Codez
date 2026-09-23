@@ -3,12 +3,12 @@
 // 位置上、头（笔 · 名）悬在它们之上；无阶段的补全不抬头，站自己带笔标。类型从不上界面。
 // 卡、确认窗与侧板都从这一个模型出发，所以规则钉在这里。
 //
-// 夹具照分析器的真实输出写（apps/zcode-cli/packages/dynamic-workflow/docs/analysis.md「Sites」）：
+// 夹具照分析器的真实输出写（apps/codez-cli/packages/dynamic-workflow/docs/analysis.md「Sites」）：
 // 留白 id 是名字键 `hole#<8 位十六进制>`，不随嵌套增长；留白**自己的**阶段带 `fill: <包着它的留白>`
 // （顶层没有），补全过的留白即使体以标记开头也留着自己的阶段。这里的十六进制是随手写的形状，
 // 渲染器只认形状，不重算哈希。
 import { describe, expect, it } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/types.js";
 import { laneRefsById } from "@/components/workflow-graph/lane-name.js";
 import { buildWorkflowTimeline } from "@/components/workflow-timeline/timeline-model.js";

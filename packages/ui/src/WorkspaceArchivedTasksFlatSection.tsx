@@ -6,7 +6,7 @@ import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useGlobalTaskList } from "@/hooks/useGlobalTaskList.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { formatTaskRelativeTime } from "@/lib/taskListItemPresentation.js";
 import { getTaskChangeSummary } from "@/lib/taskChangeSummary.js";
 import { getPathLeaf } from "@/lib/path.js";
@@ -44,7 +44,7 @@ export function WorkspaceArchivedTasksFlatSection({
     targetWorkspaceIdentity?: string,
   ) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const confirmDialog = useConfirmDialog();
   const baseServices = useBaseWorkspaceServices();
   const sessionsById = useRemoteWorkspaceSessionStore((state) => state.sessionsById);
@@ -106,7 +106,7 @@ export function WorkspaceArchivedTasksFlatSection({
           label: tab.label || getPathLeaf(tab.workspacePath),
           service: workspaceServiceLookup.get(
             buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity),
-          )?.services.zcodeTaskService,
+          )?.services.codezTaskService,
         }))}
         onDeleted={removeTaskFromTaskCaches}
         onRefresh={refresh}
@@ -222,7 +222,7 @@ export function WorkspaceArchivedTasksFlatSection({
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    void services.zcodeTaskService
+                    void services.codezTaskService
                       .unarchiveTask({
                         taskId: task.taskId,
                         workspacePath: task.workspacePath,
@@ -287,7 +287,7 @@ export function WorkspaceArchivedTasksFlatSection({
 
                         setDeletingTaskKeys((current) => new Set(current).add(taskKey));
                         try {
-                          await services.zcodeTaskService.deleteTask({
+                          await services.codezTaskService.deleteTask({
                             taskId: task.taskId,
                             workspacePath: task.workspacePath,
                             ...(task.workspaceIdentity

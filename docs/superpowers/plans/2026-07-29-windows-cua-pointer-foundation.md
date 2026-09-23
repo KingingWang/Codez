@@ -16,7 +16,7 @@ screenshot/clipboard behavior while adding pointer support.
 
 ## Global Constraints
 
-- Work only in `C:\Users\dev\zcode-cua` and the local Windows desktop CUA integration in `C:\Users\dev\z-code`.
+- Work only in `C:\Users\dev\codez-cua` and the local Windows desktop CUA integration in `C:\Users\dev\z-code`.
 - Do not start, attach, or change SSH, WSL, Docker, remote workspace, mobile `/remote`, or replayable realtime paths.
 - Do not add or rename MCP tools; `TOOL_NAMES`, `TOOL_REGISTRY`, `TIER_TABLE`, and the evaluator manifest remain at 30 tools.
 - Keep all native Windows behavior behind the existing broker and optional native adapter ABI.
@@ -31,7 +31,7 @@ screenshot/clipboard behavior while adding pointer support.
 
 ## File Map
 
-`C:\Users\dev\zcode-cua`:
+`C:\Users\dev\codez-cua`:
 
 - Modify `src/tools/pointer.ts`: retain the resolved `app_ref`, validate drag endpoint scope, and send `app_ref` on pointer broker calls.
 - Modify `test/pointer-tools.test.ts`: lock the tool-to-broker scope contract and drag mismatch refusal.
@@ -58,8 +58,8 @@ screenshot/clipboard behavior while adding pointer support.
 
 **Files:**
 
-- Modify: `C:\Users\dev\zcode-cua\test\pointer-tools.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\tools\pointer.ts`
+- Modify: `C:\Users\dev\codez-cua\test\pointer-tools.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\tools\pointer.ts`
 
 **Interfaces:**
 
@@ -154,7 +154,7 @@ Add a mismatched-PID test that expects `isError:true` and zero broker calls.
 Run:
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm exec vitest run test/pointer-tools.test.ts
 ```
 
@@ -272,9 +272,9 @@ git commit -m "fix(pointer): preserve application scope"
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\test\windows-pointer-foreground-gate.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\electronInputHandlers.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\electronNativeBackend.ts`
+- Create: `C:\Users\dev\codez-cua\test\windows-pointer-foreground-gate.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\electronInputHandlers.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\electronNativeBackend.ts`
 
 **Interfaces:**
 
@@ -464,8 +464,8 @@ git commit -m "fix(windows): gate pointer input by foreground app"
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\test\native\windows-input-dispatch.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\native\ax_win.cc`
+- Create: `C:\Users\dev\codez-cua\test\native\windows-input-dispatch.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\native\ax_win.cc`
 
 **Interfaces:**
 
@@ -633,9 +633,9 @@ git commit -m "fix(windows): use virtual desktop pointer coordinates"
 
 **Files:**
 
-- Modify: `C:\Users\dev\zcode-cua\test\native\windows-input-dispatch.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\native\types.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\native\ax_win.cc`
+- Modify: `C:\Users\dev\codez-cua\test\native\windows-input-dispatch.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\native\types.ts`
+- Modify: `C:\Users\dev\codez-cua\src\native\ax_win.cc`
 
 **Interfaces:**
 
@@ -850,12 +850,12 @@ git commit -m "feat(windows): add raw pointer primitives"
 
 **Files:**
 
-- Modify: `C:\Users\dev\zcode-cua\test\native\windows-input-dispatch.test.ts`
-- Create: `C:\Users\dev\zcode-cua\test\broker-terminal-input-cleanup.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\native\types.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\native\ax_win.cc`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\brokerServer.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\helperMain.ts`
+- Modify: `C:\Users\dev\codez-cua\test\native\windows-input-dispatch.test.ts`
+- Create: `C:\Users\dev\codez-cua\test\broker-terminal-input-cleanup.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\native\types.ts`
+- Modify: `C:\Users\dev\codez-cua\src\native\ax_win.cc`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\brokerServer.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\helperMain.ts`
 
 **Interfaces:**
 
@@ -1077,8 +1077,8 @@ git commit -m "fix(windows): release held input on helper stop"
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\scripts\windows-pointer-live-smoke.mjs`
-- Modify: `C:\Users\dev\zcode-cua\package.json`
+- Create: `C:\Users\dev\codez-cua\scripts\windows-pointer-live-smoke.mjs`
+- Modify: `C:\Users\dev\codez-cua\package.json`
 
 **Interfaces:**
 
@@ -1114,7 +1114,7 @@ Expected: exit non-zero with module-not-found for `scripts/windows-pointer-live-
 The script must:
 
 1. exit `2` unless `process.platform === "win32"`;
-2. exit `2` unless `ZCODE_CUA_WINDOWS_POINTER_LIVE === "1"`;
+2. exit `2` unless `CODEZ_CUA_WINDOWS_POINTER_LIVE === "1"`;
 3. create a cryptographically random named pipe and bearer token;
 4. spawn `dist/windows-helper.js` with
    `--socket <pipe> --parent-pid <current pid>` and the token only in the
@@ -1160,9 +1160,9 @@ process.stdout.write(`${JSON.stringify(summary)}\n`);
 Run:
 
 ```powershell
-$env:ZCODE_CUA_WINDOWS_POINTER_LIVE='1'
+$env:CODEZ_CUA_WINDOWS_POINTER_LIVE='1'
 pnpm smoke:windows:pointer
-Remove-Item Env:ZCODE_CUA_WINDOWS_POINTER_LIVE
+Remove-Item Env:CODEZ_CUA_WINDOWS_POINTER_LIVE
 ```
 
 Expected: exit `0`; JSON has `moveAccepted`, `observedWithinTolerance`,
@@ -1192,7 +1192,7 @@ git commit -m "test(windows): add pointer live smoke"
 
 **Files:**
 
-- Modify: `C:\Users\dev\zcode-cua\docs\platforms.md`
+- Modify: `C:\Users\dev\codez-cua\docs\platforms.md`
 - Modify: `C:\Users\dev\z-code\docs\cua\windows-source-development.md`
 
 **Interfaces:**
@@ -1205,7 +1205,7 @@ git commit -m "test(windows): add pointer live smoke"
 Run:
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm rebuild:native
 pnpm build
 Test-Path .\build\Release\ax_native.node
@@ -1220,9 +1220,9 @@ Run:
 
 ```powershell
 cd C:\Users\dev\z-code
-$env:ZCODE_CUA_DEV_ROOT='C:\Users\dev\zcode-cua'
+$env:CODEZ_CUA_DEV_ROOT='C:\Users\dev\codez-cua'
 pnpm exec vitest run packages/services/test/windowsCuaDevHelper.integration.test.ts
-Remove-Item Env:ZCODE_CUA_DEV_ROOT
+Remove-Item Env:CODEZ_CUA_DEV_ROOT
 ```
 
 Expected: the real child, named pipe, health, `broker_info`, official plugin
@@ -1233,16 +1233,16 @@ credentials, and clean stop integration pass.
 Run:
 
 ```powershell
-cd C:\Users\dev\zcode-cua
-$env:ZCODE_CUA_WINDOWS_POINTER_LIVE='1'
+cd C:\Users\dev\codez-cua
+$env:CODEZ_CUA_WINDOWS_POINTER_LIVE='1'
 pnpm smoke:windows:pointer
-Remove-Item Env:ZCODE_CUA_WINDOWS_POINTER_LIVE
+Remove-Item Env:CODEZ_CUA_WINDOWS_POINTER_LIVE
 ```
 
 Expected: JSON reports scoped move, zero-scroll dispatch, cursor restore,
 interruptible hold preemption, and clean Helper shutdown success.
 
-- [ ] **Step 4: Run all zcode-cua gates**
+- [ ] **Step 4: Run all codez-cua gates**
 
 Run:
 
@@ -1255,14 +1255,14 @@ pnpm build
 
 Expected: every command exits `0`.
 
-- [ ] **Step 5: Run focused ZCode CUA gates**
+- [ ] **Step 5: Run focused Codez CUA gates**
 
 Run:
 
 ```powershell
 cd C:\Users\dev\z-code
 pnpm exec vitest run packages/services/test/cua
-pnpm --filter @zcode/zcode-cua-plugin test
+pnpm --filter @codez/codez-cua-plugin test
 pnpm typecheck
 pnpm lint
 ```
@@ -1290,12 +1290,12 @@ and UIA worker isolation explicitly pending.
 In `docs/cua/windows-source-development.md`, add:
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm rebuild:native
 pnpm build
-$env:ZCODE_CUA_WINDOWS_POINTER_LIVE='1'
+$env:CODEZ_CUA_WINDOWS_POINTER_LIVE='1'
 pnpm smoke:windows:pointer
-Remove-Item Env:ZCODE_CUA_WINDOWS_POINTER_LIVE
+Remove-Item Env:CODEZ_CUA_WINDOWS_POINTER_LIVE
 ```
 
 Document:
@@ -1306,10 +1306,10 @@ Document:
 - WGC, clipboard implementation, and UIA worker isolation remain unavailable;
 - the smoke restores the original cursor and is disabled without explicit opt-in.
 
-- [ ] **Step 8: Commit zcode-cua documentation**
+- [ ] **Step 8: Commit codez-cua documentation**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 git add -- docs/platforms.md
 git commit -m "docs(windows): record pointer source support"
 ```
@@ -1327,7 +1327,7 @@ git commit -m "docs(cua): add Windows pointer source smoke"
 Run:
 
 ```powershell
-git -C C:\Users\dev\zcode-cua status --short
+git -C C:\Users\dev\codez-cua status --short
 git -C C:\Users\dev\z-code status --short
 ```
 

@@ -2,12 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 async function loadSettingsNavigation(env: "test" | "production") {
   vi.resetModules();
-  vi.doMock("@zcode/shared", async () => {
+  vi.doMock("@codez/shared", async () => {
     const actual =
-      await vi.importActual<typeof import("@zcode/shared")>("@zcode/shared");
+      await vi.importActual<typeof import("@codez/shared")>("@codez/shared");
     return {
       ...actual,
-      ZCODE_ENV: env,
+      CODEZ_ENV: env,
     };
   });
 
@@ -76,7 +76,7 @@ describe("settingsNavigation", () => {
       usageTab: undefined,
       modelProviderId: undefined,
     });
-    expect(storage.has("zcode-settings-section-intent")).toBe(false);
+    expect(storage.has("codez-settings-section-intent")).toBe(false);
     dispose();
   });
 
@@ -180,7 +180,7 @@ describe("settingsNavigation", () => {
         pluginTab: "plugins",
       }),
     );
-    expect(storage.has("zcode-settings-plugin-scope-key-intent")).toBe(false);
+    expect(storage.has("codez-settings-plugin-scope-key-intent")).toBe(false);
     expect(navigation.consumePendingSettingsPluginScopeKey()).toBeUndefined();
     dispose();
   });
@@ -256,7 +256,7 @@ describe("settingsNavigation", () => {
 
   it("旧版已删除分区意图会回落到安全分区", async () => {
     const storage = new Map<string, string>([
-      ["zcode-settings-section-intent", "legacy-removed-section"],
+      ["codez-settings-section-intent", "legacy-removed-section"],
     ]);
     vi.stubGlobal("window", {
       sessionStorage: {
@@ -272,13 +272,13 @@ describe("settingsNavigation", () => {
     expect(navigation.consumePendingSettingsSection("modelProvider")).toBe(
       "modelProvider",
     );
-    expect(storage.has("zcode-settings-section-intent")).toBe(false);
+    expect(storage.has("codez-settings-section-intent")).toBe(false);
   });
 
   it("保留 MCP 设置分区为独立入口", async () => {
     const sessionStorage = new Map<string, string>();
     const localStorage = new Map<string, string>([
-      ["zcode-settings-last-section", "mcp"],
+      ["codez-settings-last-section", "mcp"],
     ]);
     vi.stubGlobal("window", {
       sessionStorage: {
@@ -299,12 +299,12 @@ describe("settingsNavigation", () => {
     const navigation = await loadSettingsNavigation("test");
 
     expect(navigation.consumeInitialSettingsSection("general")).toBe("mcp");
-    expect(localStorage.get("zcode-settings-last-section")).toBe("mcp");
+    expect(localStorage.get("codez-settings-last-section")).toBe("mcp");
   });
 
   it("把旧 Skills 一次性跳转意图迁移到独立 skill 入口", async () => {
     const sessionStorage = new Map<string, string>([
-      ["zcode-settings-section-intent", "skills"],
+      ["codez-settings-section-intent", "skills"],
     ]);
     vi.stubGlobal("window", {
       sessionStorage: {
@@ -325,7 +325,7 @@ describe("settingsNavigation", () => {
 
   it("清理不再保留的 customize 分区", async () => {
     const localStorage = new Map<string, string>([
-      ["zcode-settings-last-section", "customize"],
+      ["codez-settings-last-section", "customize"],
     ]);
     vi.stubGlobal("window", {
       localStorage: {
@@ -344,12 +344,12 @@ describe("settingsNavigation", () => {
     expect(navigation.readLastSettingsSectionPreference("general")).toBe(
       "general",
     );
-    expect(localStorage.has("zcode-settings-last-section")).toBe(false);
+    expect(localStorage.has("codez-settings-last-section")).toBe(false);
   });
 
   it("把旧代码预览分区迁移到外观", async () => {
     const localStorage = new Map<string, string>([
-      ["zcode-settings-last-section", "codePreview"],
+      ["codez-settings-last-section", "codePreview"],
     ]);
     vi.stubGlobal("window", {
       localStorage: {
@@ -361,15 +361,15 @@ describe("settingsNavigation", () => {
     const navigation = await loadSettingsNavigation("test");
 
     expect(navigation.readLastSettingsSectionPreference()).toBe("appearance");
-    expect(localStorage.get("zcode-settings-last-section")).toBe("appearance");
+    expect(localStorage.get("codez-settings-last-section")).toBe("appearance");
   });
 
   it("显式设置分区意图优先于上次停留分区", async () => {
     const sessionStorage = new Map<string, string>([
-      ["zcode-settings-section-intent", "modelProvider"],
+      ["codez-settings-section-intent", "modelProvider"],
     ]);
     const localStorage = new Map<string, string>([
-      ["zcode-settings-last-section", "mcp"],
+      ["codez-settings-last-section", "mcp"],
     ]);
     vi.stubGlobal("window", {
       sessionStorage: {
@@ -392,12 +392,12 @@ describe("settingsNavigation", () => {
     expect(navigation.consumeInitialSettingsSection("general")).toBe(
       "modelProvider",
     );
-    expect(sessionStorage.has("zcode-settings-section-intent")).toBe(false);
+    expect(sessionStorage.has("codez-settings-section-intent")).toBe(false);
   });
 
   it("记录设置页最后停留分区并清理非法旧值", async () => {
     const localStorage = new Map<string, string>([
-      ["zcode-settings-last-section", "legacy-removed-section"],
+      ["codez-settings-last-section", "legacy-removed-section"],
     ]);
     vi.stubGlobal("window", {
       localStorage: {
@@ -418,16 +418,16 @@ describe("settingsNavigation", () => {
     expect(navigation.readLastSettingsSectionPreference("general")).toBe(
       "general",
     );
-    expect(localStorage.has("zcode-settings-last-section")).toBe(false);
+    expect(localStorage.has("codez-settings-last-section")).toBe(false);
 
     navigation.writeLastSettingsSectionPreference("plugin");
 
-    expect(localStorage.get("zcode-settings-last-section")).toBe("plugin");
+    expect(localStorage.get("codez-settings-last-section")).toBe("plugin");
   });
 
   it("保留 hooks 分区的历史偏好", async () => {
     const localStorage = new Map<string, string>([
-      ["zcode-settings-last-section", "hooks"],
+      ["codez-settings-last-section", "hooks"],
     ]);
     vi.stubGlobal("window", {
       localStorage: {
@@ -451,6 +451,6 @@ describe("settingsNavigation", () => {
 
     navigation.writeLastSettingsSectionPreference("hooks");
 
-    expect(localStorage.get("zcode-settings-last-section")).toBe("hooks");
+    expect(localStorage.get("codez-settings-last-section")).toBe("hooks");
   });
 });

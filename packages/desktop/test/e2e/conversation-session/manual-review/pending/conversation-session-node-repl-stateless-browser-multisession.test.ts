@@ -17,7 +17,7 @@ import { isV4TurnCompleted } from "../../../helpers/v4-turn-completion.js";
 
 const NODE_REPL_TOOL = "mcp__node_repl__js";
 const NODE_REPL_SERVER = "node_repl";
-const NODE_REPL_PROCESS_TITLE = "zcode-node-repl-mcp";
+const NODE_REPL_PROCESS_TITLE = "codez-node-repl-mcp";
 const SESSION_A_MARKER = "E2E_NODE_REPL_BROWSER_STATELESS_A";
 const SESSION_B_MARKER = "E2E_NODE_REPL_BROWSER_STATELESS_B";
 const SESSION_A_DONE = "E2E_NODE_REPL_BROWSER_STATELESS_A_DONE";
@@ -287,9 +287,9 @@ async function readMcpLogContexts(): Promise<McpLogContext[]> {
 }
 
 async function resolveMcpLogDirs(): Promise<string[]> {
-  const explicit = process.env.ZCODE_LOG_DIR?.trim();
+  const explicit = process.env.CODEZ_LOG_DIR?.trim();
   if (explicit) return [explicit];
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR?.trim();
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR?.trim();
   if (artifactDir) {
     const runtimeLogDir = join(artifactDir, "runtime-logs");
     const workers = await readdir(runtimeLogDir, { withFileTypes: true }).catch(() => []);

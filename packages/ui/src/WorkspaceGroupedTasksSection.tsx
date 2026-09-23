@@ -19,13 +19,13 @@ import type {
   DropAnimation,
 } from "@dnd-kit/core";
 import type {
-  ZCodeGroupedTaskView,
-  ZCodeTaskGroupColor,
-} from "@zcode/services";
-import { OFF_PEAK_DEFAULT_GROUP_ID, type ZCodeTaskMeta } from "@zcode/shared";
+  CodezGroupedTaskView,
+  CodezTaskGroupColor,
+} from "@codez/services";
+import { OFF_PEAK_DEFAULT_GROUP_ID, type CodezTaskMeta } from "@codez/shared";
 import { createPortal } from "react-dom";
 import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { TaskRenameDialog } from "@/TaskRenameDialog.js";
 import {
   shouldHideGroupedTaskContent,
@@ -38,9 +38,9 @@ import { resolveTaskFileTreeTargetFromTabs } from "@/lib/taskFileTreeTarget.js";
 import { toast } from "@/components/ui/toast.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import {
-  selectWorkspaceZCodeState,
-  useZCodeSessionStore,
-} from "@/store/zcodeSessionStore.js";
+  selectWorkspaceCodezState,
+  useCodezSessionStore,
+} from "@/store/codezSessionStore.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { buildWorkspaceServiceLookup } from "@/lib/workspaceServiceResolver.js";
 import { applyTaskQueryCacheMutation } from "@/store/taskQueryCacheStore.js";
@@ -226,10 +226,10 @@ const groupedTaskCollisionDetection: CollisionDetection = (args) => {
 };
 
 function getGroupedTaskOverTaskPreviewView(
-  view: ZCodeGroupedTaskView,
+  view: CodezGroupedTaskView,
   event: DragOverEvent,
   position: GroupedTaskDragDirectionPosition,
-): ZCodeGroupedTaskView {
+): CodezGroupedTaskView {
   const activeTaskKey = getGroupedTaskDragTaskKey(event.active.data.current);
   const overTaskKey = getGroupedTaskDragTaskKey(event.over?.data.current);
   if (!activeTaskKey || !overTaskKey || activeTaskKey === overTaskKey) {
@@ -243,10 +243,10 @@ function getGroupedTaskOverTaskPreviewView(
 }
 
 function getGroupedTaskOverCollapsedGroupPreviewView(
-  view: ZCodeGroupedTaskView,
+  view: CodezGroupedTaskView,
   event: DragOverEvent,
   position: GroupedTaskDragDirectionPosition,
-): ZCodeGroupedTaskView {
+): CodezGroupedTaskView {
   const activeTaskKey = getGroupedTaskDragTaskKey(event.active.data.current);
   const overGroupId = getGroupedTaskCollapsedOverGroupId(
     event.over?.data.current,
@@ -262,10 +262,10 @@ function getGroupedTaskOverCollapsedGroupPreviewView(
 }
 
 function getGroupedTaskOverGroupHeaderPreviewView(
-  view: ZCodeGroupedTaskView,
+  view: CodezGroupedTaskView,
   event: DragOverEvent,
   position: GroupedTaskDragDirectionPosition,
-): ZCodeGroupedTaskView {
+): CodezGroupedTaskView {
   const activeTaskKey = getGroupedTaskDragTaskKey(event.active.data.current);
   const overGroupId = getGroupedTaskHeaderOverGroupId(event.over?.data.current);
   if (!activeTaskKey || !overGroupId) {
@@ -285,10 +285,10 @@ function getGroupedTaskOverGroupHeaderPreviewView(
 }
 
 function getGroupedTaskOverGroupFooterPreviewView(
-  view: ZCodeGroupedTaskView,
+  view: CodezGroupedTaskView,
   event: DragOverEvent,
   position: GroupedTaskDragDirectionPosition,
-): ZCodeGroupedTaskView {
+): CodezGroupedTaskView {
   const activeTaskKey = getGroupedTaskDragTaskKey(event.active.data.current);
   const overGroupId = getGroupedTaskFooterOverGroupId(event.over?.data.current);
   if (!activeTaskKey || !overGroupId) {
@@ -308,9 +308,9 @@ function getGroupedTaskOverGroupFooterPreviewView(
 }
 
 function getGroupedTaskOverEmptyDropZonePreviewView(
-  view: ZCodeGroupedTaskView,
+  view: CodezGroupedTaskView,
   event: DragOverEvent,
-): ZCodeGroupedTaskView {
+): CodezGroupedTaskView {
   const activeTaskKey = getGroupedTaskDragTaskKey(event.active.data.current);
   const overGroupId = getGroupedTaskEmptyOverGroupId(event.over?.data.current);
   if (!activeTaskKey || !overGroupId) {
@@ -323,10 +323,10 @@ function getGroupedTaskOverEmptyDropZonePreviewView(
 }
 
 function getGroupedGroupOverGroupPreviewView(
-  view: ZCodeGroupedTaskView,
+  view: CodezGroupedTaskView,
   event: DragOverEvent,
   position: GroupedTaskDragDirectionPosition,
-): ZCodeGroupedTaskView {
+): CodezGroupedTaskView {
   const activeGroupId = getGroupedTaskDragGroupId(event.active.data.current);
   const overGroupId = getGroupedGroupOverGroupId(event.over?.data.current);
   if (!activeGroupId || !overGroupId || activeGroupId === overGroupId) {
@@ -340,10 +340,10 @@ function getGroupedGroupOverGroupPreviewView(
 }
 
 function getGroupedGroupOverTaskPreviewView(
-  view: ZCodeGroupedTaskView,
+  view: CodezGroupedTaskView,
   event: DragOverEvent,
   position: GroupedTaskDragDirectionPosition,
-): ZCodeGroupedTaskView {
+): CodezGroupedTaskView {
   const activeGroupId = getGroupedTaskDragGroupId(event.active.data.current);
   const overTaskKey = getGroupedTaskDragTaskKey(event.over?.data.current);
   if (!activeGroupId || !overTaskKey) {
@@ -356,7 +356,7 @@ function getGroupedGroupOverTaskPreviewView(
   });
 }
 
-function getGroupedTaskViewSignature(view: ZCodeGroupedTaskView): string {
+function getGroupedTaskViewSignature(view: CodezGroupedTaskView): string {
   return view.nodes
     .map((node) =>
       node.type === "task"
@@ -615,7 +615,7 @@ export function WorkspaceGroupedTasksSection({
   /** 闲时系统分组的「+」/右键新建路由到 Automations 主视图。 */
   onOpenAutomations?: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const baseServices = useBaseWorkspaceServices();
   const sessionsById = useRemoteWorkspaceSessionStore(
     (state) => state.sessionsById,
@@ -643,32 +643,32 @@ export function WorkspaceGroupedTasksSection({
       ),
     [baseServices, serviceResolverState, workspaceTabs],
   );
-  const removeTaskState = useZCodeSessionStore(
+  const removeTaskState = useCodezSessionStore(
     (state) => state.removeTaskState,
   );
-  const upsertOptimisticTaskListItem = useZCodeSessionStore(
+  const upsertOptimisticTaskListItem = useCodezSessionStore(
     (state) => state.upsertOptimisticTaskListItem,
   );
-  const setTaskUnreadIndicator = useZCodeSessionStore(
+  const setTaskUnreadIndicator = useCodezSessionStore(
     (state) => state.setTaskUnreadIndicator,
   );
-  const groupedDraftTask = useZCodeSessionStore(
+  const groupedDraftTask = useCodezSessionStore(
     (state) =>
-      selectWorkspaceZCodeState(
+      selectWorkspaceCodezState(
         state,
         activeWorkspacePath,
         activeWorkspaceIdentity,
       ).groupedDraftTask,
   );
-  const groupedDraftFocusVersion = useZCodeSessionStore(
+  const groupedDraftFocusVersion = useCodezSessionStore(
     (state) =>
-      selectWorkspaceZCodeState(
+      selectWorkspaceCodezState(
         state,
         activeWorkspacePath,
         activeWorkspaceIdentity,
       ).draftFocusVersion,
   );
-  const clearGroupedDraftTask = useZCodeSessionStore(
+  const clearGroupedDraftTask = useCodezSessionStore(
     (state) => state.clearGroupedDraftTask,
   );
   const {
@@ -712,8 +712,8 @@ export function WorkspaceGroupedTasksSection({
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const groupMenuItemsRef = useRef<TaskGroupMenuItem[]>([]);
   const groupIdsRef = useRef<string[]>([]);
-  const dragOriginViewRef = useRef<ZCodeGroupedTaskView | null>(null);
-  const dragPreviewViewRef = useRef<ZCodeGroupedTaskView | null>(null);
+  const dragOriginViewRef = useRef<CodezGroupedTaskView | null>(null);
+  const dragPreviewViewRef = useRef<CodezGroupedTaskView | null>(null);
   const lastDragOverEventRef = useRef<DragOverEvent | null>(null);
   const createDraftContextRef = useRef({
     activeTaskId,
@@ -955,7 +955,7 @@ export function WorkspaceGroupedTasksSection({
   );
 
   const getTaskWorkspaceLabel = useCallback(
-    (task: ZCodeTaskMeta) => {
+    (task: CodezTaskMeta) => {
       const tab = workspaceTabByKey.get(
         buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity),
       );
@@ -985,7 +985,7 @@ export function WorkspaceGroupedTasksSection({
   }, [activeWorkspaceIdentity, activeWorkspacePath, intl, workspaceTabByKey]);
 
   const getTaskRemoteSessionId = useCallback(
-    (task: ZCodeTaskMeta) =>
+    (task: CodezTaskMeta) =>
       workspaceServiceLookup.get(
         buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity),
       )?.remoteSessionId,
@@ -993,7 +993,7 @@ export function WorkspaceGroupedTasksSection({
   );
 
   const handleOpenTaskFileTree = useCallback(
-    (task: ZCodeTaskMeta) => {
+    (task: CodezTaskMeta) => {
       const target = resolveTaskFileTreeTargetFromTabs(task, workspaceTabs);
       if (!onOpenFileTree || !target) {
         return;
@@ -1048,13 +1048,13 @@ export function WorkspaceGroupedTasksSection({
     setRenameDraft("");
   }, []);
 
-  const handleStartRenameTask = useCallback((task: ZCodeTaskMeta) => {
+  const handleStartRenameTask = useCallback((task: CodezTaskMeta) => {
     setRenamingTaskKey(taskKey(task));
     setRenameDraft(task.title ?? "");
   }, []);
 
   const handleMoveTaskToGroup = useCallback(
-    (task: ZCodeTaskMeta, groupId: string | null) => {
+    (task: CodezTaskMeta, groupId: string | null) => {
       // archivingTaskKeys 过滤后的 view 只用于渲染；若拿它计算并持久化排序，
       // 归档请求失败前的任意结构变更都会把被隐藏任务从权威分组中永久删除。
       const nextView = moveTaskByMenu(authoritativeView, task, groupId);
@@ -1069,7 +1069,7 @@ export function WorkspaceGroupedTasksSection({
   );
 
   const handleMoveTaskToTop = useCallback(
-    (task: ZCodeTaskMeta) => {
+    (task: CodezTaskMeta) => {
       const nextView = moveTaskToTopByMenu(authoritativeView, task);
       if (nextView === authoritativeView) {
         return;
@@ -1106,7 +1106,7 @@ export function WorkspaceGroupedTasksSection({
     }
 
     try {
-      const meta = await workspaceServices.services.zcodeTaskService.renameTask(
+      const meta = await workspaceServices.services.codezTaskService.renameTask(
         {
           taskId: task.taskId,
           workspacePath: task.workspacePath,
@@ -1150,7 +1150,7 @@ export function WorkspaceGroupedTasksSection({
   ]);
 
   const handleMarkTaskAsUnread = useCallback(
-    (task: ZCodeTaskMeta) => {
+    (task: CodezTaskMeta) => {
       const workspaceServices = workspaceServiceLookup.get(
         buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity),
       );
@@ -1158,7 +1158,7 @@ export function WorkspaceGroupedTasksSection({
         return;
       }
 
-      void workspaceServices.services.zcodeTaskService
+      void workspaceServices.services.codezTaskService
         .setTaskUnread({
           taskId: task.taskId,
           workspacePath: task.workspacePath,
@@ -1201,7 +1201,7 @@ export function WorkspaceGroupedTasksSection({
   );
 
   const handleCloseTask = useCallback(
-    (task: ZCodeTaskMeta) => {
+    (task: CodezTaskMeta) => {
       const workspaceServices = workspaceServiceLookup.get(
         buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity),
       );
@@ -1217,7 +1217,7 @@ export function WorkspaceGroupedTasksSection({
         return new Set(current).add(closingTaskKey);
       });
 
-      void workspaceServices.services.zcodeTaskService
+      void workspaceServices.services.codezTaskService
         .archiveTask({
           taskId: task.taskId,
           workspacePath: task.workspacePath,
@@ -1282,7 +1282,7 @@ export function WorkspaceGroupedTasksSection({
   );
 
   const handleUpdateGroupColor = useCallback(
-    (groupId: string, color: ZCodeTaskGroupColor) => {
+    (groupId: string, color: CodezTaskGroupColor) => {
       void updateGroupColor(groupId, color).catch(() => {
         toast(intl.formatMessage({ id: "taskGroup.colorFailed" }));
       });
@@ -1308,7 +1308,7 @@ export function WorkspaceGroupedTasksSection({
   }, []);
 
   const setViewWithGroupedTaskAnimation = useCallback(
-    (nextView: ZCodeGroupedTaskView) => {
+    (nextView: CodezGroupedTaskView) => {
       const previousRects = collectGroupedTaskLayoutRects(
         groupedSectionRootRef.current,
       );
@@ -1392,7 +1392,7 @@ export function WorkspaceGroupedTasksSection({
       const activeTask = findTaskInGroupedView(view, nextActiveTaskKey);
       if (activeTask) {
         workbenchDragPayloadRef.current = {
-          kind: "zcode/session",
+          kind: "codez/session",
           workspacePath: activeTask.workspacePath,
           workspaceIdentity: activeTask.workspaceIdentity,
           remoteSessionId: getTaskRemoteSessionId(activeTask),
@@ -1709,7 +1709,7 @@ export function WorkspaceGroupedTasksSection({
   ]);
 
   const renderTopLevelNode = useCallback(
-    (node: ZCodeGroupedTaskView["nodes"][number]) =>
+    (node: CodezGroupedTaskView["nodes"][number]) =>
       node.type === "group" ? (
         <div
           key={node.group.id}

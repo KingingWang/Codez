@@ -1,4 +1,4 @@
-# @zcode/rpc
+# @codez/rpc
 
 VS Code 风格的 IPC 通信抽象框架。传输无关、类型安全、支持双向 RPC 和远程连接。
 
@@ -56,7 +56,7 @@ packages/rpc/src/
 ### Disposable — 资源生命周期
 
 ```typescript
-import { IDisposable, toDisposable, DisposableStore } from "@zcode/rpc";
+import { IDisposable, toDisposable, DisposableStore } from "@codez/rpc";
 
 // 包装清理函数
 const d = toDisposable(() => socket.close());
@@ -73,7 +73,7 @@ store.dispose(); // 一次性清理全部
 `Event<T>` 是一个函数签名：`(listener: (e: T) => void) => IDisposable`。订阅返回 disposable，用于取消订阅。
 
 ```typescript
-import { Emitter, Event } from "@zcode/rpc";
+import { Emitter, Event } from "@codez/rpc";
 
 class FileWatcher {
   private _onDidChange = new Emitter<string>();
@@ -115,7 +115,7 @@ const emitter = new Emitter<Data>({
 ### CancellationToken — 异步取消
 
 ```typescript
-import { CancellationTokenSource } from "@zcode/rpc";
+import { CancellationTokenSource } from "@codez/rpc";
 
 const cts = new CancellationTokenSource();
 doWork(cts.token);
@@ -134,7 +134,7 @@ cts.dispose(); // 释放资源
 VQL (Variable-Length Quantity) 编码：小整数只需 1 字节（vs JSON 的 4 字节），非常节省空间。
 
 ```typescript
-import { BufferWriter, BufferReader, serialize, deserialize } from "@zcode/rpc";
+import { BufferWriter, BufferReader, serialize, deserialize } from "@codez/rpc";
 
 const writer = new BufferWriter();
 serialize(writer, { name: "test", count: 42, data: [1, 2, 3] });
@@ -172,7 +172,7 @@ interface IMessagePassingProtocol {
 ### createQueuePair — 测试利器
 
 ```typescript
-import { createQueuePair } from "@zcode/rpc";
+import { createQueuePair } from "@codez/rpc";
 
 const [clientProtocol, serverProtocol] = createQueuePair();
 // clientProtocol.send() 的数据会出现在 serverProtocol.onMessage 中，反之亦然
@@ -212,7 +212,7 @@ interface IServerChannel<TContext = string> {
 ### ChannelServer + ChannelClient
 
 ```typescript
-import { ChannelServer, ChannelClient, createQueuePair } from "@zcode/rpc";
+import { ChannelServer, ChannelClient, createQueuePair } from "@codez/rpc";
 
 const [cp, sp] = createQueuePair();
 
@@ -253,7 +253,7 @@ calc.listen<string>("onDidLog")((msg) => console.log(msg)); // 订阅事件
 一个 server 管理多个 client 连接。支持反向 RPC（server 调用 client）。
 
 ```typescript
-import { IPCServer, IPCClient, StaticRouter, createQueuePair } from "@zcode/rpc";
+import { IPCServer, IPCClient, StaticRouter, createQueuePair } from "@codez/rpc";
 
 // server 监听连接事件
 const server = new IPCServer(onDidClientConnect);
@@ -314,7 +314,7 @@ class FileServiceChannel implements IServerChannel {
 ### 解决
 
 ```typescript
-import { ProxyChannel } from "@zcode/rpc";
+import { ProxyChannel } from "@codez/rpc";
 
 // ✅ 服务端：一行暴露
 const channel = ProxyChannel.fromService(fileService);
@@ -429,7 +429,7 @@ const app = ProxyChannel.toService<IAppService>(client.getChannel("app"));
 
 ### 多窗口管理
 
-> 通用 RPC 能力说明：ZCode 的每个 workspace window 各自拥有唯一 Window Host。base 与 remote-scoped
+> 通用 RPC 能力说明：Codez 的每个 workspace window 各自拥有唯一 Window Host。base 与 remote-scoped
 > MessagePort 都连接该 Host；SSH/WSL pool 和 Docker/Server dedicated connection 是 Host 内部资源，
 > 不再对应额外 Host 进程。channel/context 必须保持窗口、remoteSessionId、attachment 和 workspaceKey 隔离。
 
@@ -459,7 +459,7 @@ const allCloses = server.getChannel("window", () => true).listen("onDidClose");
 ## 运行示例
 
 ```bash
-pnpm --filter @zcode/rpc demo:basic    # 基础 RPC
-pnpm --filter @zcode/rpc demo:proxy    # ProxyChannel
-pnpm --filter @zcode/rpc demo:remote   # 远程连接
+pnpm --filter @codez/rpc demo:basic    # 基础 RPC
+pnpm --filter @codez/rpc demo:proxy    # ProxyChannel
+pnpm --filter @codez/rpc demo:remote   # 远程连接
 ```

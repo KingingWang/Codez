@@ -1,17 +1,17 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import type {
-  ZCodePersistedFileChange,
-  ZCodeTaskChangeSummary,
-  ZCodeTurnFileState,
-} from "@zcode/shared";
-import { TID_CHAT_CHANGE_SUMMARY_TOGGLE_FILES_BUTTON, testId } from "@zcode/shared";
+  CodezPersistedFileChange,
+  CodezTaskChangeSummary,
+  CodezTurnFileState,
+} from "@codez/shared";
+import { TID_CHAT_CHANGE_SUMMARY_TOGGLE_FILES_BUTTON, testId } from "@codez/shared";
 import { ChevronRightIcon, Undo2 } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import { FileDisplayInline } from "@/lib/fileDisplay.js";
 import { buildTurnChangeSummary, toWorkspaceRelativePath } from "@/lib/taskChangeSummary.js";
@@ -30,13 +30,13 @@ export {
 } from "@/messageChangeSummaryPreview.js";
 
 interface MessageChangeSummaryPanelProps {
-  summary: ZCodeTaskChangeSummary;
+  summary: CodezTaskChangeSummary;
   workspacePath: string;
   workspaceIdentity?: string;
   workspaceRemoteSessionId?: string;
-  changeDetails?: ZCodePersistedFileChange | null;
+  changeDetails?: CodezPersistedFileChange | null;
   readonlyDiffPatchesByPath?: ReadonlyMap<string, string>;
-  fileState?: ZCodeTurnFileState;
+  fileState?: CodezTurnFileState;
   messageId?: string;
   compactForRemoteControl?: boolean;
   animationDelayMs?: number;
@@ -61,7 +61,7 @@ export function MessageChangeSummaryPanel({
   onToggleFiles,
   onOpenCodeViewer,
 }: MessageChangeSummaryPanelProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [isFileListOpen, setIsFileListOpen] = useState(false);
 
   const turnSummary = useMemo(() => {
@@ -105,11 +105,11 @@ export function MessageChangeSummaryPanel({
       onOpenChange={setIsFileListOpen}
       // Bugfix: 历史消息里的文件卡会等二次校验后再出现；
       // summary 如果没有同样的渐入，会在文件卡稳定前后显得像突兀跳出。
-      data-zcode-stream-animate="true"
+      data-codez-stream-animate="true"
       className="overflow-hidden rounded-xl border border-border bg-card shadow-none"
       style={
         {
-          "--zcode-stream-animation-delay": `${animationDelayMs}ms`,
+          "--codez-stream-animation-delay": `${animationDelayMs}ms`,
         } as CSSProperties
       }
     >

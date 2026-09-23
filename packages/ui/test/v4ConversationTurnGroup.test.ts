@@ -4,7 +4,7 @@ import { DeliveryContext } from "@/v4/botGroupDeliveryContext.js";
 import { withTopicPreparationMessages } from "@/v4/topicPreparationRenderUnits.js";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import type {
   ApiRetryState,
   AssistantTextRow,
@@ -18,18 +18,18 @@ import type {
   UserInputRow,
   WorkflowLaunchMeta,
   WorkflowRunState,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import {
   TID_CHAT_WORKFLOW_ARTIFACT_CHIP,
   TID_CHAT_WORKFLOW_RUN_DIGEST,
   TID_CRON_CREATE_CARD,
   TID_CRON_CREATE_OPEN,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ConversationTurnGroup } from "@/v4/ConversationTurnGroup.js";
 import {
   completeHighspeedTurn,
@@ -330,7 +330,7 @@ function renderUnit(
       DeliveryContext.Provider,
       { value: options.botContext ?? null },
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: options.locale ?? "zh-CN" },
         createElement(
           PlatformProvider,
@@ -2501,7 +2501,7 @@ describe("ConversationTurnGroup ChatLoading lifecycle", () => {
 
     expect(html).not.toContain("重新连接中...");
     expect(html).toContain('data-testid="chat-loading"');
-    expect(html).toContain('data-zcode-chat-loading-slot="true"');
+    expect(html).toContain('data-codez-chat-loading-slot="true"');
   });
 
   it("attempt<=2 时仍遵守阻塞交互的 loading gate", () => {
@@ -2674,7 +2674,7 @@ const LAUNCH_META: WorkflowLaunchMeta = {
   toolCallId: "launch-abc",
   name: "deep-research",
   scope: "global",
-  path: "/home/u/.zcode/workflows/deep-research.dwf.ts",
+  path: "/home/u/.codez/workflows/deep-research.dwf.ts",
   description: "跨网深挖一个话题并写简报。",
   args: { topic: "adaptive concurrency" },
 };

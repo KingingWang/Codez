@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  ZCODE_PROTOCOL_NAME,
-  ZCODE_PROTOCOL_VERSION,
-  type ZCodeMessageWithParts,
-  type ZCodeSessionStateSnapshot,
-  type ZCodeTaskSnapshot,
-} from "@zcode/shared";
+  CODEZ_PROTOCOL_NAME,
+  CODEZ_PROTOCOL_VERSION,
+  type CodezMessageWithParts,
+  type CodezSessionStateSnapshot,
+  type CodezTaskSnapshot,
+} from "@codez/shared";
 import {
   readDesktopContinuousSessionRestoreSnapshot,
   readWebRemoteReplayableSessionConfigOptions,
-} from "../src/lib/zcodeSessionRestore.js";
+} from "../src/lib/codezSessionRestore.js";
 
 const workspace = {
   workspacePath: "/workspace/app",
@@ -21,12 +21,12 @@ const model = { providerId: "glm", modelId: "glm-4.6" };
 
 function createSnapshot(params: {
   title?: string;
-  messages?: ZCodeMessageWithParts[];
-} = {}): ZCodeSessionStateSnapshot {
+  messages?: CodezMessageWithParts[];
+} = {}): CodezSessionStateSnapshot {
   return {
     protocol: {
-      name: ZCODE_PROTOCOL_NAME,
-      version: ZCODE_PROTOCOL_VERSION,
+      name: CODEZ_PROTOCOL_NAME,
+      version: CODEZ_PROTOCOL_VERSION,
     },
     session: {
       sessionId: "sess_1",
@@ -74,7 +74,7 @@ function createSnapshot(params: {
   };
 }
 
-function createLegacyTaskSnapshot(): ZCodeTaskSnapshot {
+function createLegacyTaskSnapshot(): CodezTaskSnapshot {
   return {
     meta: {
       taskId: "sess_1",
@@ -102,7 +102,7 @@ describe("readDesktopContinuousSessionRestoreSnapshot", () => {
   it("resumes historical desktop session before reading the limited snapshot", async () => {
     const calls: string[] = [];
     let active = false;
-    const zcodeSessionService = {
+    const codezSessionService = {
       resumeSession: vi.fn(async () => {
         calls.push("resume");
         active = true;
@@ -118,7 +118,7 @@ describe("readDesktopContinuousSessionRestoreSnapshot", () => {
     };
 
     const restoreParams: Parameters<typeof readDesktopContinuousSessionRestoreSnapshot>[0] = {
-      zcodeSessionService,
+      codezSessionService,
       workspacePath: workspace.workspacePath,
       workspaceIdentity: workspace.workspaceIdentity,
       sessionId: "sess_1",
@@ -130,14 +130,14 @@ describe("readDesktopContinuousSessionRestoreSnapshot", () => {
     const result = await readDesktopContinuousSessionRestoreSnapshot(restoreParams);
 
     expect(calls).toEqual(["resume", "read"]);
-    expect(zcodeSessionService.resumeSession).toHaveBeenCalledWith({
+    expect(codezSessionService.resumeSession).toHaveBeenCalledWith({
       workspacePath: workspace.workspacePath,
       workspaceIdentity: workspace.workspaceIdentity,
       sessionId: "sess_1",
       model: { providerId: "custom-openai", modelId: "deepseek-v4-flash" },
       thoughtLevel: "high",
     });
-    expect(zcodeSessionService.readSession).toHaveBeenCalledWith({
+    expect(codezSessionService.readSession).toHaveBeenCalledWith({
       workspacePath: workspace.workspacePath,
       workspaceIdentity: workspace.workspaceIdentity,
       sessionId: "sess_1",
@@ -150,19 +150,19 @@ describe("readDesktopContinuousSessionRestoreSnapshot", () => {
 
   it("falls back to legacy task snapshot when the protocol session is missing", async () => {
     const legacySnapshot = createLegacyTaskSnapshot();
-    const zcodeSessionService = {
+    const codezSessionService = {
       resumeSession: vi.fn(async () => {
         throw new Error("Session not found: sess_1");
       }),
       readSession: vi.fn(async () => createSnapshot()),
     };
-    const zcodeTaskService = {
+    const codezTaskService = {
       getTaskSnapshot: vi.fn(async () => legacySnapshot),
     };
 
     const result = await readDesktopContinuousSessionRestoreSnapshot({
-      zcodeSessionService,
-      zcodeTaskService,
+      codezSessionService,
+      codezTaskService,
       workspacePath: workspace.workspacePath,
       workspaceIdentity: workspace.workspaceIdentity,
       sessionId: "sess_1",
@@ -172,8 +172,8 @@ describe("readDesktopContinuousSessionRestoreSnapshot", () => {
     expect(result.usedLegacySnapshot).toBe(true);
     expect(result.resumedSessionSnapshot).toBeUndefined();
     expect(result.snapshot.meta.title).toBe("Legacy task");
-    expect(zcodeSessionService.readSession).not.toHaveBeenCalled();
-    expect(zcodeTaskService.getTaskSnapshot).toHaveBeenCalledWith({
+    expect(codezSessionService.readSession).not.toHaveBeenCalled();
+    expect(codezTaskService.getTaskSnapshot).toHaveBeenCalledWith({
       taskId: "sess_1",
       workspacePath: workspace.workspacePath,
       workspaceIdentity: workspace.workspaceIdentity,
@@ -186,21 +186,21 @@ describe("readDesktopContinuousSessionRestoreSnapshot", () => {
     const legacySnapshot = createLegacyTaskSnapshot();
     const unavailableModelError = Object.assign(
       new Error("历史任务使用的模型已不可用，请选择当前可用模型后继续。"),
-      { code: "ZCODE_RUNTIME_MODEL_UNAVAILABLE" },
+      { code: "CODEZ_RUNTIME_MODEL_UNAVAILABLE" },
     );
-    const zcodeSessionService = {
+    const codezSessionService = {
       resumeSession: vi.fn(async () => {
         throw unavailableModelError;
       }),
       readSession: vi.fn(async () => createSnapshot()),
     };
-    const zcodeTaskService = {
+    const codezTaskService = {
       getTaskSnapshot: vi.fn(async () => legacySnapshot),
     };
 
     const result = await readDesktopContinuousSessionRestoreSnapshot({
-      zcodeSessionService,
-      zcodeTaskService,
+      codezSessionService,
+      codezTaskService,
       workspacePath: workspace.workspacePath,
       workspaceIdentity: workspace.workspaceIdentity,
       sessionId: "sess_1",
@@ -211,13 +211,13 @@ describe("readDesktopContinuousSessionRestoreSnapshot", () => {
     expect(result.usedLegacySnapshot).toBe(true);
     expect(result.resumedSessionSnapshot).toBeUndefined();
     expect(result.restoreWarning).toMatchObject({
-      code: "ZCODE_RUNTIME_MODEL_UNAVAILABLE",
+      code: "CODEZ_RUNTIME_MODEL_UNAVAILABLE",
       message: "历史任务使用的模型已不可用，请选择当前可用模型后继续。",
       taskId: "sess_1",
     });
     expect(result.snapshot.meta.title).toBe("Legacy task");
-    expect(zcodeSessionService.readSession).not.toHaveBeenCalled();
-    expect(zcodeTaskService.getTaskSnapshot).toHaveBeenCalledWith({
+    expect(codezSessionService.readSession).not.toHaveBeenCalled();
+    expect(codezTaskService.getTaskSnapshot).toHaveBeenCalledWith({
       taskId: "sess_1",
       workspacePath: workspace.workspacePath,
       workspaceIdentity: workspace.workspaceIdentity,
@@ -231,10 +231,10 @@ describe("readWebRemoteReplayableSessionConfigOptions", () => {
   it("resumes with the historical model before reading active mobile task toolbar settings", async () => {
     const calls: string[] = [];
     const historicalModel = {
-      providerId: "china-llm-zcode-dev:demo",
+      providerId: "china-llm-codez-dev:demo",
       modelId: "deepseek-v4-flash",
     };
-    const zcodeSessionService = {
+    const codezSessionService = {
       resumeSession: vi.fn(async () => {
         calls.push("resume");
         return createSnapshot({ title: "Mobile resumed session" });
@@ -248,7 +248,7 @@ describe("readWebRemoteReplayableSessionConfigOptions", () => {
     };
 
     const restoreParams: Parameters<typeof readWebRemoteReplayableSessionConfigOptions>[0] = {
-      zcodeSessionService,
+      codezSessionService,
       workspacePath: workspace.workspacePath,
       workspaceIdentity: workspace.workspaceIdentity,
       sessionId: "sess_1",
@@ -259,14 +259,14 @@ describe("readWebRemoteReplayableSessionConfigOptions", () => {
     const configOptions = await readWebRemoteReplayableSessionConfigOptions(restoreParams);
 
     expect(calls).toEqual(["resume", "read"]);
-    expect(zcodeSessionService.resumeSession).toHaveBeenCalledWith({
+    expect(codezSessionService.resumeSession).toHaveBeenCalledWith({
       workspacePath: workspace.workspacePath,
       workspaceIdentity: workspace.workspaceIdentity,
       sessionId: "sess_1",
       model: historicalModel,
       thoughtLevel: "high",
     });
-    expect(zcodeSessionService.readSession).toHaveBeenCalledWith({
+    expect(codezSessionService.readSession).toHaveBeenCalledWith({
       workspacePath: workspace.workspacePath,
       workspaceIdentity: workspace.workspaceIdentity,
       sessionId: "sess_1",
@@ -281,7 +281,7 @@ describe("readWebRemoteReplayableSessionConfigOptions", () => {
 
   it("includes thought level from replayable session settings when enabled", async () => {
     const snapshot = createSnapshot();
-    const zcodeSessionService = {
+    const codezSessionService = {
       readSession: vi.fn(async () => ({
         ...snapshot,
         settings: {
@@ -300,7 +300,7 @@ describe("readWebRemoteReplayableSessionConfigOptions", () => {
     };
 
     const configOptions = await readWebRemoteReplayableSessionConfigOptions({
-      zcodeSessionService,
+      codezSessionService,
       workspacePath: workspace.workspacePath,
       workspaceIdentity: workspace.workspaceIdentity,
       sessionId: "sess_1",
@@ -318,7 +318,7 @@ describe("readWebRemoteReplayableSessionConfigOptions", () => {
   });
 
   it("returns null for legacy tasks without an active protocol session", async () => {
-    const zcodeSessionService = {
+    const codezSessionService = {
       readSession: vi.fn(async () => {
         throw new Error("Session not found: sess_1");
       }),
@@ -327,7 +327,7 @@ describe("readWebRemoteReplayableSessionConfigOptions", () => {
 
     await expect(
       readWebRemoteReplayableSessionConfigOptions({
-        zcodeSessionService,
+        codezSessionService,
         workspacePath: workspace.workspacePath,
         workspaceIdentity: workspace.workspaceIdentity,
         sessionId: "sess_1",

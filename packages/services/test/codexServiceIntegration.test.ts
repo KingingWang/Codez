@@ -3,32 +3,32 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { Emitter } from "@zcode/rpc";
-import { resolveWorkspaceKey, type CodexRequest, type ZCodeProtocolMessage } from "@zcode/shared";
+import { Emitter } from "@codez/rpc";
+import { resolveWorkspaceKey, type CodexRequest, type CodezProtocolMessage } from "@codez/shared";
 import { setDataBaseDir } from "../src/paths.js";
-import { createZCodeAgentService } from "../src/zcode-agent/zcodeAgentService.js";
-import { ZCodeAgentProcessManager } from "../src/zcode-agent/zcodeAgentProcessManager.js";
-import { ZCodeProtocolClient } from "../src/zcode-agent/zcodeProtocolClient.js";
+import { createCodezAgentService } from "../src/codez-agent/codezAgentService.js";
+import { CodezAgentProcessManager } from "../src/codez-agent/codezAgentProcessManager.js";
+import { CodezProtocolClient } from "../src/codez-agent/codezProtocolClient.js";
 
 test("native requests validate before startup, preserve identity, and bypass only legacy readiness", async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-codex-service-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-codex-service-"));
   setDataBaseDir(dir);
-  const previousCommand = process.env.ZCODE_AGENT_SERVER_COMMAND;
-  delete process.env.ZCODE_AGENT_SERVER_COMMAND;
-  const clients = new Map<string, ZCodeProtocolClient>();
+  const previousCommand = process.env.CODEZ_AGENT_SERVER_COMMAND;
+  delete process.env.CODEZ_AGENT_SERVER_COMMAND;
+  const clients = new Map<string, CodezProtocolClient>();
   const starts: string[] = [];
-  const sent: Array<{ key: string; message: ZCodeProtocolMessage }> = [];
+  const sent: Array<{ key: string; message: CodezProtocolMessage }> = [];
   let providerReads = 0;
   let readinessReads = 0;
   let notifyAccount: ((reason: string) => void) | undefined;
-  t.mock.method(ZCodeAgentProcessManager.prototype, "getClient", async (workspace) => {
+  t.mock.method(CodezAgentProcessManager.prototype, "getClient", async (workspace) => {
     const key = resolveWorkspaceKey(workspace);
     starts.push(key);
     let client = clients.get(key);
     if (!client) {
-      const messages = new Emitter<ZCodeProtocolMessage>();
+      const messages = new Emitter<CodezProtocolMessage>();
       const closes = new Emitter<{ reason?: string }>();
-      client = new ZCodeProtocolClient({
+      client = new CodezProtocolClient({
         kind: "memory",
         onMessage: messages.event,
         onClose: closes.event,
@@ -54,7 +54,7 @@ test("native requests validate before startup, preserve identity, and bypass onl
     }
     return client;
   });
-  const options: Parameters<typeof createZCodeAgentService>[0] = {
+  const options: Parameters<typeof createCodezAgentService>[0] = {
     presentationSurface: "desktop",
     modelSelectionReadinessSource: {
       async getView() {
@@ -73,7 +73,7 @@ test("native requests validate before startup, preserve identity, and bypass onl
       },
     },
   };
-  const service = createZCodeAgentService(options);
+  const service = createCodezAgentService(options);
   const workspace = { workspacePath: dir, workspaceIdentity: "remote-a" };
   try {
     for (const request of [
@@ -127,7 +127,7 @@ test("native requests validate before startup, preserve identity, and bypass onl
     );
     assert.equal(sent.length, beforeFailure + 1, "native mutations are never retried");
 
-    const legacyService = createZCodeAgentService({ ...options, commandResolver: () => null });
+    const legacyService = createCodezAgentService({ ...options, commandResolver: () => null });
     try {
       assert.equal((await legacyService.initialize(workspace)).available, false);
       assert.equal(readinessReads, 1, "custom runtimes retain their readiness gate");
@@ -147,8 +147,8 @@ test("native requests validate before startup, preserve identity, and bypass onl
     await service.disposeAllAndWait();
     for (const client of clients.values()) client.dispose();
     setDataBaseDir(null);
-    if (previousCommand === undefined) delete process.env.ZCODE_AGENT_SERVER_COMMAND;
-    else process.env.ZCODE_AGENT_SERVER_COMMAND = previousCommand;
+    if (previousCommand === undefined) delete process.env.CODEZ_AGENT_SERVER_COMMAND;
+    else process.env.CODEZ_AGENT_SERVER_COMMAND = previousCommand;
     await rm(dir, { recursive: true, force: true });
   }
 });

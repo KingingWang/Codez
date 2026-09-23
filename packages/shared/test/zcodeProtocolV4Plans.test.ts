@@ -3,7 +3,7 @@ import {
   V4_METHODS,
   v4ConversationPlansParamsSchema,
   v4ConversationPlansResultSchema,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 describe("v4 conversation plans query", () => {
   it("declares a strict read-only session query", () => {

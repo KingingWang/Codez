@@ -1,16 +1,16 @@
 import {
-  buildZCodeEndpointUrls,
-  buildZCodeSourceHeadersFromContext,
-  ZCODE_ENV,
-  ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
-} from "@zcode/shared";
+  buildCodezEndpointUrls,
+  buildCodezSourceHeadersFromContext,
+  CODEZ_ENV,
+  CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
+} from "@codez/shared";
 import {
   createSingleFeatureRollout,
   type SingleFeatureRollout,
   type SingleFeatureRolloutLogger,
 } from "./singleFeatureRollout.js";
 
-export { ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV };
+export { CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV };
 
 export type DesktopContextPromptRolloutLogger = SingleFeatureRolloutLogger;
 export const DESKTOP_CONTEXT_PROMPT_REQUEST_TIMEOUT_MS = 3_000;
@@ -88,7 +88,7 @@ export function createElectronDesktopContextPromptConfigFetcher(options: {
   return async (signal) => {
     const { net } = await import("electron");
     const endpointOrigin = await options.resolveEndpointOrigin();
-    const url = new URL(`${buildZCodeEndpointUrls(endpointOrigin).origin}/api/v1/client/configs`);
+    const url = new URL(`${buildCodezEndpointUrls(endpointOrigin).origin}/api/v1/client/configs`);
     url.searchParams.set("app_version", options.appVersion);
     url.searchParams.set("platform", `${process.platform}-${process.arch}`);
 
@@ -113,13 +113,13 @@ export function createElectronDesktopContextPromptConfigFetcher(options: {
       };
       signal.addEventListener("abort", onAbort, { once: true });
 
-      const sourceHeaders = buildZCodeSourceHeadersFromContext({
+      const sourceHeaders = buildCodezSourceHeadersFromContext({
         appVersion: options.appVersion,
         arch: process.arch,
         deviceMid: options.deviceMid,
         endpointOrigin,
         platform: process.platform,
-        releaseChannel: ZCODE_ENV,
+        releaseChannel: CODEZ_ENV,
         sourceTitle: "electron",
       });
       for (const [name, value] of Object.entries(sourceHeaders)) {

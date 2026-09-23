@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import { mergeWorkspaceTaskListItemsWithOptimistic } from "@/hooks/workspaceTaskListOptimisticOverlay.js";
 import { attachTaskListRowActivity } from "@/v4/taskListRowActivity.js";
 import {
@@ -10,8 +10,8 @@ import {
 function createTask(
   taskId: string,
   updatedAt: number,
-  patch: Partial<ZCodeTaskMeta> = {},
-): ZCodeTaskMeta {
+  patch: Partial<CodezTaskMeta> = {},
+): CodezTaskMeta {
   return {
     taskId,
     traceId: `trace-${taskId}`,
@@ -28,8 +28,8 @@ function createTask(
 function createSessionTask(
   taskId: string,
   lastActivityAt: number,
-  patch: Partial<ZCodeTaskMeta> = {},
-): ZCodeTaskMeta {
+  patch: Partial<CodezTaskMeta> = {},
+): CodezTaskMeta {
   return attachTaskListRowActivity(createTask(taskId, lastActivityAt, patch), {
     phase: "completedSuccess",
     lastActivityAt,

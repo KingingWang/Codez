@@ -6,7 +6,7 @@ import {
   TID_BROWSER_PERMISSION_PROMPTS,
   TID_BROWSER_REFRESH_BUTTON,
   TID_BROWSER_WEBVIEW,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clickTestIdByWebDriver } from "./helpers/desktop-app.js";
 import { openFirstBrowserTab } from "./helpers/browser-side-pane.js";
 import { prepareConversationE2E } from "./helpers/conversation-session.js";

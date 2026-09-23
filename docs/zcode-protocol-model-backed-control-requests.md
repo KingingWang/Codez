@@ -1,8 +1,8 @@
-# ZCode Protocol 模型型控制请求异步化
+# Codez Protocol 模型型控制请求异步化
 
 ## 背景
 
-App 通过子进程 stdio 与 `apps/zcode-cli` 的 ZCode Protocol 通信。协议客户端把普通 request 当作短通信请求处理，默认 30 秒超时；agent 侧 NDJSON transport 又会串行处理进入的消息。若一个 protocol handler 在同步等待模型请求，后续消息会排队，甚至会挡住 agent -> app 反向 request 的 response。
+App 通过子进程 stdio 与 `apps/codez-cli` 的 Codez Protocol 通信。协议客户端把普通 request 当作短通信请求处理，默认 30 秒超时；agent 侧 NDJSON transport 又会串行处理进入的消息。若一个 protocol handler 在同步等待模型请求，后续消息会排队，甚至会挡住 agent -> app 反向 request 的 response。
 
 `session/send` 会快速 ACK，真实模型 turn 在后台运行，并通过 session event / `state.updated` 推送进度。过去 `session/compact` 和 `prompt/enhance` 同步等待模型请求时，会遇到同类问题：
 
@@ -100,9 +100,9 @@ UI 的“取消增强”必须调用 `prompt/enhance/cancel`，不能只让旧�
 
 ## App / Service 责任
 
-- `ZCodeAgentService.enhancePrompt()` 可继续对 UI 暴露 Promise，但内部应封装 start、result notification 和 cancel。
+- `CodezAgentService.enhancePrompt()` 可继续对 UI 暴露 Promise，但内部应封装 start、result notification 和 cancel。
 - service 持有 pending prompt enhance job；relay 和 desktop main 只做透传，不持有业务状态。
-- `ZCodeSessionService.compactSession()` 和 task facade 的 `compactSession()` 返回 ACK 后不再广播 terminal snapshot；终态由 session event / snapshot 同步驱动。
+- `CodezSessionService.compactSession()` 和 task facade 的 `compactSession()` 返回 ACK 后不再广播 terminal snapshot；终态由 session event / snapshot 同步驱动。
 - 手机 replayable 路径不得绕过 shared host，也不得把 prompt enhance job 状态下沉到 relay/main。
 
 ## 验证清单
@@ -120,13 +120,13 @@ UI 的“取消增强”必须调用 `prompt/enhance/cancel`，不能只让旧�
 
 ### 现象
 
-2026-09-09 的用户日志（`zcode-logs-20260909-035718`，构建 3.11.2 / c4d5b5bc）里，两个 dwf run
+2026-09-09 的用户日志（`codez-logs-20260909-035718`，构建 3.11.2 / c4d5b5bc）里，两个 dwf run
 （`dwfrun-920daa62` 5 个子代理、`dwfrun-5e8d371f` 3 个子代理，provider 都是
 `builtin:bigmodel-start-plan`）的全部 8 个子代理各自打出一条 `model.request.started` 之后再无
 任何事件，直到 80 分钟后日志导出：没有完成、没有失败、也没有 `model.stream.stalled`（600 秒
 stream idle 计时器要等首个 SSE 事件才起跑，请求根本没发出去）。CLI 侧每个子代理的最后一行是
-`zcode_protocol.session.require_missing`，桌面侧对应 8 条
-`zcode-agent.respondProviderRuntimeHeaders FAIL … Session is not active: sess_dwf-…`；同一天主会话
+`codez_protocol.session.require_missing`，桌面侧对应 8 条
+`codez-agent.respondProviderRuntimeHeaders FAIL … Session is not active: sess_dwf-…`；同一天主会话
 的 38 次同类交换全部 OK。
 
 ### 根因链路
@@ -180,7 +180,7 @@ stream idle 计时器要等首个 SSE 事件才起跑，请求根本没发出去
 
 - runtime 侧的 `ProviderRuntimeHeadersPort.refreshBeforeModelRequest` 入参**不再有** `sessionId`。
 - workspace 级实现仍然是会话参数化的，单独命名为 `SessionRoutedProviderRuntimeHeadersPort`，
-  只出现在 `ZCodeAppOptions` 与协议装配层。
+  只出现在 `CodezAppOptions` 与协议装配层。
 - 两者之间只有一座桥 `bindProviderRuntimeHeadersPort(port, clientSessionId)`，绑定唯一发生在
   create-app 为**主** runtime 装配时。类型上未绑定端口进不了 runtime deps，调用点因此无从选错。
 
@@ -213,7 +213,7 @@ stream idle 计时器要等首个 SSE 事件才起跑，请求根本没发出去
 | 父铸造的 permission broker 带父会话身份 + 子代理 origin | 同上 |
 | 嵌套两层时 `sessionId` 收敛到根、`origin` 保留最内层 | `core/tests/child-client-ports.test.ts` |
 | core subagent 路由行为不变（私有包装删除后由统一派生覆盖） | `core/tests/subagent-explore.test.ts`（含「端口入参不得再出现 sessionId」回归守卫） |
-| 桌面侧 runtime model config 推送抛错时 CLI 仍收到 response | `packages/services/test/zcodeAgentService.providerRegistry.test.ts` |
+| 桌面侧 runtime model config 推送抛错时 CLI 仍收到 response | `packages/services/test/codezAgentService.providerRegistry.test.ts` |
 | 未绑定的 `SessionRoutedProviderRuntimeHeadersPort` 进不了 runtime deps | `pnpm typecheck`（两个类型不兼容，三处 child 装配都在 src 内） |
 | legacy workflow child 与 dwf actor 走同一次派生 | 同一调用点 + 类型；facade 目前没有测试装配，无独立用例 |
 
@@ -262,7 +262,7 @@ node_repl broker socket ──► ProtocolBrowserControlBroker（每个 server c
   `closeBrowserSession`，连 tab 关闭；core subagent 用 `tabOwner: "parent"`，下发的 `sessionId` 换成父会话
   （与当前对话共用 tab，面板据此展开），子端口的 turnEnded / closeSession 不发往桌面，closeSession 只撤销登记
   （`docs/browser-use/2026-07-16-subagent-browser-unavailable-spec.md`）。legacy `Workflow` child 没有关闭链路，
-  不给。细节见 `apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md`「Subagent sessions」。
+  不给。细节见 `apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md`「Subagent sessions」。
 - 同一 server context 里 `createProtocolBrowserControlBroker` 被调用两次（进程级 node_repl broker 与每个
   app 的 runtime 端口）。连接记忆（`turnEnded` / `closeSession` 要发往哪些 browser）与子会话登记都必须
   按 context 共享：node_repl 流量走进程级实例，生命周期走 app 实例；分开存时 app 实例从未见过连接，

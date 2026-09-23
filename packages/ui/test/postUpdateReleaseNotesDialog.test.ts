@@ -25,7 +25,7 @@ vi.mock("@/components/ui/dialog.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: vi.fn((descriptor: { id: string }) => {
         if (descriptor.id === "postUpdateReleaseNotes.acknowledge") {

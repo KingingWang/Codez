@@ -2,17 +2,17 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
-import type { Locale } from "@zcode/shared";
+import type { Locale } from "@codez/shared";
 import { desktopProtocolScheme, isCodexDesktop } from "./desktopProductRuntime.js";
 
-const WORKFLOW_NAME = isCodexDesktop ? "Open in ZCode Codex.workflow" : "Open in ZCode.workflow";
+const WORKFLOW_NAME = isCodexDesktop ? "Open in Codez Codex.workflow" : "Open in Codez.workflow";
 const WORKFLOW_BUNDLE_ID = isCodexDesktop
-  ? "io.github.kingingwang.zcode.codex.finder-open-workflow"
-  : "dev.zcode.app.finder-open-workflow";
+  ? "io.github.kingingwang.codez.codex.finder-open-workflow"
+  : "dev.codez.app.finder-open-workflow";
 const WORKFLOW_VERSION = "5";
 const SERVICES_MENU_LABELS: Record<Locale, string> = {
-  "zh-CN": isCodexDesktop ? "在 ZCode Codex 中打开" : "在ZCode中打开",
-  "en-US": isCodexDesktop ? "Open in ZCode Codex" : "Open in ZCode",
+  "zh-CN": isCodexDesktop ? "在 Codez Codex 中打开" : "在Codez中打开",
+  "en-US": isCodexDesktop ? "Open in Codez Codex" : "Open in Codez",
 };
 
 const workflowScript = `first=""

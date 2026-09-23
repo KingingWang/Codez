@@ -48,14 +48,14 @@ describe("host log relay", () => {
     relay.onStructuredLog({
       level: "info",
       source: "host",
-      message: "[zcode-host] initializing local services",
+      message: "[codez-host] initializing local services",
     });
     relay.onStderr("late stderr");
     relay.flushRawLogs();
 
     expect(logger.info).toHaveBeenCalledTimes(1);
     expect(logger.info).toHaveBeenCalledWith(
-      "[host-log] (local-1) [host] [zcode-host] initializing local services",
+      "[host-log] (local-1) [host] [codez-host] initializing local services",
     );
     expect(logger.error).not.toHaveBeenCalled();
   });

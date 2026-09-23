@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import { link, mkdir, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getZCodeDataRootDir } from "@zcode/services/node";
+import { getCodezDataRootDir } from "@codez/services/node";
 import type {
   MaterializeWorkflowArtifactFileRequest,
   MaterializeWorkflowArtifactFileResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 /**
  * dwf 产物「作为文件打开」的宿主副本（docs/dynamic-workflow/authoring.md「How the user sees them」）。
@@ -28,7 +28,7 @@ const MAX_SEGMENT_LENGTH = 120;
 const WINDOWS_RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/iu;
 
 /**
- * 落点：`~/.zcode/tmp/workflow-artifacts/<runId>-<digest>/<artifactId>-<digest>/v<N>/<name>`（见 {@link identitySegment}）。
+ * 落点：`~/.codez/tmp/workflow-artifacts/<runId>-<digest>/<artifactId>-<digest>/v<N>/<name>`（见 {@link identitySegment}）。
  *
  * **只在路径为空时写**：一版的字节永不变，所以已有的副本要么是同一份字节、要么是用户在外部
  * App 里的编辑——两者都该保留，再次打开还是同一个文件。写法是「临时文件 + link」：link 在目标
@@ -40,7 +40,7 @@ export async function materializeWorkflowArtifactFile(
 ): Promise<MaterializeWorkflowArtifactFileResult> {
   const request = parseRequest(payload);
   const dir = join(
-    getZCodeDataRootDir(),
+    getCodezDataRootDir(),
     "tmp",
     WORKFLOW_ARTIFACT_DIR,
     identitySegment(request.runId),

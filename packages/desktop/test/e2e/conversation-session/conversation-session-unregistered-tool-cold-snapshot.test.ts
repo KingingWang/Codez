@@ -3,7 +3,7 @@ import {
   TID_CHAT_LOADING,
   TID_V4_COMPOSER_SEND,
   TID_V4_TIMELINE_LOAD_OLDER,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData } from "../helpers/desktop-app.js";
 import {
   getV4TimelineScrollState,

@@ -9,7 +9,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -50,7 +50,7 @@ const OPUS47_ANTHROPIC_PROVIDER_NAME_PREFIX = "Opus 4.7 Anthropic E2E";
 const OPUS47_ANTHROPIC_MEDIUM_LEVEL = "medium";
 const OPUS47_ANTHROPIC_MAX_LEVEL = "max";
 const E2E_PROVIDER_RUNTIME_FILE = resolve(
-  process.env.ZCODE_E2E_NETWORK_CAPTURE_DIR?.trim() ||
+  process.env.CODEZ_E2E_NETWORK_CAPTURE_DIR?.trim() ||
     resolve(homedir(), "..", ".e2e-network-capture"),
   "upstream-runtime.json",
 );

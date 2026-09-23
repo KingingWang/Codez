@@ -2,7 +2,7 @@
 
 ## 背景
 
-旧版 ZCode session 记录已备份到 `~/.zcode-bak/v2/sessions`，当前新版 ZCode 已改用 `~/.zcode/cli/db/db.sqlite` 作为真实 session/message/part 存储，并用 `~/.zcode/v2/tasks-index.sqlite` 作为 app 侧任务列表索引。恢复历史任务时，用户需要先选择旧 agent，再选择要恢复的 workspace，最后选择具体对话。
+旧版 Codez session 记录已备份到 `~/.codez-bak/v2/sessions`，当前新版 Codez 已改用 `~/.codez/cli/db/db.sqlite` 作为真实 session/message/part 存储，并用 `~/.codez/v2/tasks-index.sqlite` 作为 app 侧任务列表索引。恢复历史任务时，用户需要先选择旧 agent，再选择要恢复的 workspace，最后选择具体对话。
 
 ## 目标
 
@@ -19,7 +19,7 @@
 
 ## 数据映射
 
-- 旧源：`~/.zcode-bak/v2/sessions/{workspaceHash}/{legacyTaskId}.json`
+- 旧源：`~/.codez-bak/v2/sessions/{workspaceHash}/{legacyTaskId}.json`
 - 新 session 首选旧快照中的稳定 session id；缺失时回退到旧 task id。
 - 旧 snapshot ID：`meta.taskId`
 - workspace 隔离键：`workspaceIdentity?.trim() || workspacePath`
@@ -32,7 +32,7 @@
 
 ## Skill 工作流
 
-默认只扫描备份源 `~/.zcode-bak/v2/sessions`，目的地仍是当前 `~/.zcode/cli/db/db.sqlite` 与 `~/.zcode/v2/tasks-index.sqlite`。需要检查原目录时，必须显式传入 `--legacy-dir ~/.zcode/v2/sessions`。
+默认只扫描备份源 `~/.codez-bak/v2/sessions`，目的地仍是当前 `~/.codez/cli/db/db.sqlite` 与 `~/.codez/v2/tasks-index.sqlite`。需要检查原目录时，必须显式传入 `--legacy-dir ~/.codez/v2/sessions`。
 
 1. 扫描 agent：
    `node .agents/skills/restore-legacy-sessions/scripts/scan-legacy-sessions.mjs agents`
@@ -46,7 +46,7 @@
    - `needs-task-index`：CLI DB 已有，但 task-index 缺索引，需要补索引。
    - `needs-full-import`：两边都缺，需要完整导入。
 5. 确认要恢复单个对话后执行恢复脚本：
-   `node .agents/skills/restore-legacy-sessions/scripts/restore-conversation.mjs --snapshot ~/.zcode-bak/v2/sessions/<workspaceHash>/<legacyTaskId>.json`
+   `node .agents/skills/restore-legacy-sessions/scripts/restore-conversation.mjs --snapshot ~/.codez-bak/v2/sessions/<workspaceHash>/<legacyTaskId>.json`
 
 ## 安全约束
 

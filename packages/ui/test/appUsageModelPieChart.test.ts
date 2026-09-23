@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { AppUsageSnapshot } from "@zcode/shared";
+import type { AppUsageSnapshot } from "@codez/shared";
 import { buildAppUsageModelPieChartViewModel } from "@/settings/usage-stats/appUsageModelPieChartViewModel.js";
 
 function createSnapshot(models: AppUsageSnapshot["models"]): AppUsageSnapshot {

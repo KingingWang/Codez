@@ -3,9 +3,9 @@ import { resolve } from "node:path";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
-import type { ZCodeTaskMeta } from "@zcode/shared";
-import type { ZCodeGroupedTaskView } from "@zcode/services";
+import type { IServiceAccessor } from "@codez/services";
+import type { CodezTaskMeta } from "@codez/shared";
+import type { CodezGroupedTaskView } from "@codez/services";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import {
   clearCachedGroupedViewsForTest,
@@ -19,7 +19,7 @@ import {
 } from "@/hooks/useGroupedTaskView.js";
 import { buildTaskEntityKey } from "@/lib/taskQueryCache.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 import { attachTaskListRowActivity, getTaskListRowActivity } from "@/v4/taskListRowActivity.js";
 import { taskKey } from "@/workspace-grouped-tasks/ids.js";
@@ -126,14 +126,14 @@ function cleanupHookTestGlobals(): void {
     sessionIdByWorkspaceIdentity: {},
     sessionIdByWorkspacePath: {},
   });
-  useZCodeSessionStore.setState({ workspaces: {} });
+  useCodezSessionStore.setState({ workspaces: {} });
   clearCachedGroupedViewsForTest();
   delete (globalThis as { document?: unknown }).document;
   delete (globalThis as { window?: unknown }).window;
   delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: unknown }).IS_REACT_ACT_ENVIRONMENT;
 }
 
-function createTaskMeta(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
+function createTaskMeta(overrides: Partial<CodezTaskMeta> = {}): CodezTaskMeta {
   return {
     taskId: "task-default",
     traceId: "trace-default",
@@ -149,8 +149,8 @@ function createTaskMeta(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
 
 function createGroupNode(
   id: string,
-  tasks: ZCodeTaskMeta[],
-): Extract<ZCodeGroupedTaskView["nodes"][number], { type: "group" }> {
+  tasks: CodezTaskMeta[],
+): Extract<CodezGroupedTaskView["nodes"][number], { type: "group" }> {
   return {
     type: "group",
     group: {
@@ -164,7 +164,7 @@ function createGroupNode(
   };
 }
 
-function describeGroupedView(view: ZCodeGroupedTaskView): Array<string | string[]> {
+function describeGroupedView(view: CodezGroupedTaskView): Array<string | string[]> {
   return view.nodes.map((node) =>
     node.type === "task"
       ? node.task.taskId
@@ -176,7 +176,7 @@ describe("filterGroupedViewByTaskKeys", () => {
   it("keeps archiving tasks hidden when a stale authoritative view restores them", () => {
     const rootTask = createTaskMeta({ taskId: "root-task" });
     const groupTask = createTaskMeta({ taskId: "group-task" });
-    const staleView: ZCodeGroupedTaskView = {
+    const staleView: CodezGroupedTaskView = {
       nodes: [
         { type: "task", task: rootTask },
         createGroupNode("group-a", [groupTask]),
@@ -207,7 +207,7 @@ describe("filterGroupedViewByTaskKeys", () => {
   it("preserves an archiving task when another task changes group", () => {
     const archivingTask = createTaskMeta({ taskId: "archiving-task" });
     const movingTask = createTaskMeta({ taskId: "moving-task" });
-    const authoritativeView: ZCodeGroupedTaskView = {
+    const authoritativeView: CodezGroupedTaskView = {
       nodes: [
         createGroupNode("group-a", [archivingTask, movingTask]),
         createGroupNode("group-b", []),
@@ -232,7 +232,7 @@ describe("moveTaskOverTask", () => {
     const rootA = createTaskMeta({ taskId: "root-a" });
     const rootB = createTaskMeta({ taskId: "root-b" });
     const rootC = createTaskMeta({ taskId: "root-c" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [
         { type: "task", task: rootA },
         { type: "task", task: rootB },
@@ -253,7 +253,7 @@ describe("moveTaskOverTask", () => {
     const rootA = createTaskMeta({ taskId: "root-a" });
     const groupTaskA = createTaskMeta({ taskId: "group-a-task-a" });
     const groupTaskB = createTaskMeta({ taskId: "group-a-task-b" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [{ type: "task", task: rootA }, createGroupNode("group-a", [groupTaskA, groupTaskB])],
     };
 
@@ -271,7 +271,7 @@ describe("moveTaskOverTask", () => {
   it("moves a group task across groups when over another group task", () => {
     const groupATask = createTaskMeta({ taskId: "group-a-task" });
     const groupBTask = createTaskMeta({ taskId: "group-b-task" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [createGroupNode("group-a", [groupATask]), createGroupNode("group-b", [groupBTask])],
     };
 
@@ -291,7 +291,7 @@ describe("moveTaskOverTask", () => {
     const rootA = createTaskMeta({ taskId: "root-a" });
     const rootB = createTaskMeta({ taskId: "root-b" });
     const groupTask = createTaskMeta({ taskId: "group-task" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [
         { type: "task", task: rootA },
         createGroupNode("group-a", [groupTask]),
@@ -314,7 +314,7 @@ describe("prependTaskGroupToView", () => {
     const rootTask = createTaskMeta({ taskId: "root-task" });
     const existingGroup = createGroupNode("group-existing", []);
     existingGroup.sortOrder = -2000;
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [existingGroup, { type: "task", task: rootTask, sortOrder: -1000 }],
     };
     const next = prependTaskGroupToView(view, {
@@ -502,12 +502,12 @@ describe("useGroupedTaskView remote data refresh", () => {
     }>();
     const listGroupedTaskViewStructure = vi.fn(() => structure.promise);
     const listPinnedTaskIds = vi.fn(async (): Promise<string[]> => []);
-    const listArchivedTasks = vi.fn(async (): Promise<ZCodeTaskMeta[]> => []);
-    const listTasks = vi.fn(async (): Promise<ZCodeTaskMeta[]> => []);
-    const listPinnedTasks = vi.fn(async (): Promise<ZCodeTaskMeta[]> => []);
+    const listArchivedTasks = vi.fn(async (): Promise<CodezTaskMeta[]> => []);
+    const listTasks = vi.fn(async (): Promise<CodezTaskMeta[]> => []);
+    const listPinnedTasks = vi.fn(async (): Promise<CodezTaskMeta[]> => []);
     const listDeletedTaskIds = vi.fn(async (): Promise<string[]> => []);
     const services = {
-      zcodeTaskService: {
+      codezTaskService: {
         listGroupedTaskViewStructure,
         listPinnedTaskIds,
         listArchivedTasks,
@@ -590,7 +590,7 @@ describe("moveTaskToRootAroundGroup", () => {
   it("moves a root task before a group", () => {
     const rootA = createTaskMeta({ taskId: "root-a" });
     const groupTask = createTaskMeta({ taskId: "group-task" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [createGroupNode("group-a", [groupTask]), { type: "task", task: rootA }],
     };
 
@@ -606,7 +606,7 @@ describe("moveTaskToRootAroundGroup", () => {
   it("moves a group task after its group", () => {
     const groupTaskA = createTaskMeta({ taskId: "group-task-a" });
     const groupTaskB = createTaskMeta({ taskId: "group-task-b" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [createGroupNode("group-a", [groupTaskA, groupTaskB])],
     };
 
@@ -624,7 +624,7 @@ describe("moveTaskToGroupStart", () => {
   it("moves a root task before the first group task", () => {
     const rootA = createTaskMeta({ taskId: "root-a" });
     const groupTask = createTaskMeta({ taskId: "group-task" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [{ type: "task", task: rootA }, createGroupNode("group-a", [groupTask])],
     };
 
@@ -638,7 +638,7 @@ describe("moveTaskToGroupStart", () => {
 
   it("moves a root task into an empty group", () => {
     const rootA = createTaskMeta({ taskId: "root-a" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [{ type: "task", task: rootA }, createGroupNode("group-a", [])],
     };
 
@@ -655,7 +655,7 @@ describe("moveTaskToGroupEnd", () => {
   it("moves a root task after the last group task", () => {
     const rootA = createTaskMeta({ taskId: "root-a" });
     const groupTask = createTaskMeta({ taskId: "group-task" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [{ type: "task", task: rootA }, createGroupNode("group-a", [groupTask])],
     };
 
@@ -669,7 +669,7 @@ describe("moveTaskToGroupEnd", () => {
 
   it("moves a root task into an empty group", () => {
     const rootA = createTaskMeta({ taskId: "root-a" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [{ type: "task", task: rootA }, createGroupNode("group-a", [])],
     };
 
@@ -687,7 +687,7 @@ describe("moveGroupAroundTopLevelNode", () => {
     const groupATask = createTaskMeta({ taskId: "group-a-task" });
     const groupBTask = createTaskMeta({ taskId: "group-b-task" });
     const rootA = createTaskMeta({ taskId: "root-a" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [
         createGroupNode("group-a", [groupATask]),
         { type: "task", task: rootA },
@@ -712,7 +712,7 @@ describe("moveGroupAroundTopLevelNode", () => {
     const groupATask = createTaskMeta({ taskId: "group-a-task" });
     const rootA = createTaskMeta({ taskId: "root-a" });
     const rootB = createTaskMeta({ taskId: "root-b" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [
         createGroupNode("group-a", [groupATask]),
         { type: "task", task: rootA },
@@ -736,7 +736,7 @@ describe("moveGroupAroundTopLevelNode", () => {
   it("treats group over group task as over that group", () => {
     const groupATask = createTaskMeta({ taskId: "group-a-task" });
     const groupBTask = createTaskMeta({ taskId: "group-b-task" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [createGroupNode("group-a", [groupATask]), createGroupNode("group-b", [groupBTask])],
     };
 
@@ -764,7 +764,7 @@ describe("resolveGroupedDraftTaskPlacementForTask", () => {
       workspaceIdentity: "ssh://host/repo/grouped",
       workspacePath: "/repo/grouped",
     });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [
         { type: "task", task: rootTaskWithSameId },
         createGroupNode("group-a", [groupedActiveTask]),
@@ -780,7 +780,7 @@ describe("resolveGroupedDraftTaskPlacementForTask", () => {
   it("uses top placement when the active task is ungrouped", () => {
     const rootTask = createTaskMeta({ taskId: "root-task" });
     const groupedTask = createTaskMeta({ taskId: "group-task" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [{ type: "task", task: rootTask }, createGroupNode("group-a", [groupedTask])],
     };
 
@@ -791,7 +791,7 @@ describe("resolveGroupedDraftTaskPlacementForTask", () => {
 
   it("falls back to top placement when the active task is missing", () => {
     const groupedTask = createTaskMeta({ taskId: "group-task" });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [createGroupNode("group-a", [groupedTask])],
     };
 
@@ -805,7 +805,7 @@ describe("mergeGroupedTaskViewWithOptimistic", () => {
   it("keeps a root draft promotion at the top while grouped structure is stale", () => {
     const existingTask = createTaskMeta({ taskId: "task-existing", updatedAt: 10 });
     const promotedTask = createTaskMeta({ taskId: "task-promoted", updatedAt: 20 });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       // 模拟 sessions-index 已出现新 task，但 structure 尚未带回它的顶部 sort_order。
       nodes: [
         { type: "task", task: existingTask, sortOrder: 1000 },
@@ -838,7 +838,7 @@ describe("mergeGroupedTaskViewWithOptimistic", () => {
   it("applies promoted group placement to an authoritative task without optimistic meta", () => {
     const existingTask = createTaskMeta({ taskId: "task-existing", updatedAt: 10 });
     const promotedTask = createTaskMeta({ taskId: "task-promoted", updatedAt: 20 });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [{ type: "task", task: promotedTask }, createGroupNode("group-a", [existingTask])],
     };
 
@@ -866,7 +866,7 @@ describe("mergeGroupedTaskViewWithOptimistic", () => {
   it("moves an already-authoritative root task back to its promoted draft group", () => {
     const existingTask = createTaskMeta({ taskId: "task-existing", updatedAt: 10 });
     const promotedTask = createTaskMeta({ taskId: "task-promoted", updatedAt: 20 });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [{ type: "task", task: promotedTask }, createGroupNode("group-a", [existingTask])],
     };
 
@@ -894,7 +894,7 @@ describe("mergeGroupedTaskViewWithOptimistic", () => {
   it("keeps a task promoted from a group draft at the first position in that group", () => {
     const existingTask = createTaskMeta({ taskId: "task-existing", updatedAt: 10 });
     const promotedTask = createTaskMeta({ taskId: "task-promoted", updatedAt: 20 });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [createGroupNode("group-a", [existingTask])],
     };
 
@@ -935,7 +935,7 @@ describe("mergeGroupedTaskViewWithOptimistic", () => {
       title: "不该被补进来",
       updatedAt: 30,
     });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [{ type: "task", task: existingTask }],
     };
 
@@ -980,7 +980,7 @@ describe("mergeGroupedTaskViewWithOptimistic", () => {
       title: "真实首条消息",
       updatedAt: 20,
     });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [
         {
           type: "group",
@@ -1033,7 +1033,7 @@ describe("mergeGroupedTaskViewWithOptimistic", () => {
       status: undefined,
       updatedAt: 0,
     });
-    const view: ZCodeGroupedTaskView = {
+    const view: CodezGroupedTaskView = {
       nodes: [createGroupNode("group-a", [authoritativeTask])],
     };
 
@@ -1070,7 +1070,7 @@ describe("mergeGroupedTaskViewWithOptimistic", () => {
       title: "首发 prompt",
       updatedAt: 20,
     });
-    const emptyView: ZCodeGroupedTaskView = {
+    const emptyView: CodezGroupedTaskView = {
       nodes: [{ type: "task", task: existingTask }],
     };
     const newTaskKey = buildTaskEntityKey(newTask);
@@ -1099,7 +1099,7 @@ describe("mergeGroupedTaskViewWithOptimistic", () => {
     });
     expect(afterActiveSwitchKeys).toEqual(new Set([newTaskKey]));
 
-    const settledView: ZCodeGroupedTaskView = {
+    const settledView: CodezGroupedTaskView = {
       nodes: [
         { type: "task", task: newTask },
         { type: "task", task: existingTask },

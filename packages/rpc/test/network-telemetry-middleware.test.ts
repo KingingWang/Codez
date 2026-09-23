@@ -16,7 +16,7 @@ describe("network telemetry middleware", () => {
 
     emitNetworkTelemetryObservation({
       transport: "http",
-      interface: "zcode_agent.model.sse",
+      interface: "codez_agent.model.sse",
       durationMs: 123,
       ok: true,
       attempt: 2,
@@ -25,7 +25,7 @@ describe("network telemetry middleware", () => {
     expect(observations).toEqual([
       {
         transport: "http",
-        interface: "zcode_agent.model.sse",
+        interface: "codez_agent.model.sse",
         durationMs: 123,
         ok: true,
         attempt: 2,

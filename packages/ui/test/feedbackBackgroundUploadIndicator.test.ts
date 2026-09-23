@@ -1,8 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { FeedbackTicketDetail, FeedbackTicketSummary } from "@zcode/shared";
-import type { IFeedbackService } from "@zcode/services";
+import type { FeedbackTicketDetail, FeedbackTicketSummary } from "@codez/shared";
+import type { IFeedbackService } from "@codez/services";
 import {
   FeedbackBackgroundUploadIndicator,
   FeedbackBackgroundUploadIndicatorView,
@@ -14,7 +14,7 @@ import {
   dismissFeedbackSubmissionJob,
   startFeedbackSubmissionJob,
 } from "@/feedback/feedbackSubmissionJob.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 function createTicket(id: string): FeedbackTicketDetail {
   const summary: FeedbackTicketSummary = {
@@ -62,7 +62,7 @@ function createFeedbackService(overrides: Partial<IFeedbackService> = {}): IFeed
 function renderIndicator(props?: Partial<FeedbackBackgroundUploadIndicatorViewProps>) {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(FeedbackBackgroundUploadIndicatorView, {
         status: "running",
@@ -145,7 +145,7 @@ describe("FeedbackBackgroundUploadIndicator", () => {
     expect(
       renderToStaticMarkup(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(FeedbackBackgroundUploadIndicator, {
             feedbackDialogOpen: true,
@@ -184,7 +184,7 @@ describe("FeedbackBackgroundUploadIndicator", () => {
 
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(FeedbackBackgroundUploadIndicator, {
           feedbackDialogOpen: false,

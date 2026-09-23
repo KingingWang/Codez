@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildZCodeSourceHeadersFromContext,
-  ZCODE_SOURCE_HEADERS,
-} from "../src/zcode-source-headers.js";
+  buildCodezSourceHeadersFromContext,
+  CODEZ_SOURCE_HEADERS,
+} from "../src/codez-source-headers.js";
 
-describe("buildZCodeSourceHeadersFromContext", () => {
-  it("builds the shared ZCode endpoint attribution headers", () => {
+describe("buildCodezSourceHeadersFromContext", () => {
+  it("builds the shared Codez endpoint attribution headers", () => {
     expect(
-      buildZCodeSourceHeadersFromContext({
+      buildCodezSourceHeadersFromContext({
         appVersion: " 2.14.0 ",
         arch: "arm64",
         clientLanguage: "zh-CN",
@@ -20,10 +20,10 @@ describe("buildZCodeSourceHeadersFromContext", () => {
         sourceTitle: "cli",
       }),
     ).toEqual({
-      ...ZCODE_SOURCE_HEADERS,
+      ...CODEZ_SOURCE_HEADERS,
       "HTTP-Referer": "https://zcode.z.ai",
-      "User-Agent": "ZCode/2.14.0",
-      "X-ZCode-App-Version": "2.14.0",
+      "User-Agent": "Codez/2.14.0",
+      "X-Codez-App-Version": "2.14.0",
       "X-Title": "Z Code@cli",
       "X-Platform": "darwin-arm64",
       "X-Release-Channel": "test",
@@ -36,7 +36,7 @@ describe("buildZCodeSourceHeadersFromContext", () => {
   });
 
   it("drops invalid optional values without emitting malformed headers", () => {
-    const headers = buildZCodeSourceHeadersFromContext({
+    const headers = buildCodezSourceHeadersFromContext({
       appVersion: "bad\nversion",
       clientLanguage: "\n",
       clientTimezone: "",
@@ -46,13 +46,13 @@ describe("buildZCodeSourceHeadersFromContext", () => {
     });
 
     expect(headers).toMatchObject({
-      "User-Agent": "ZCode/unknown",
+      "User-Agent": "Codez/unknown",
       "X-Client-Language": "unknown",
       "X-Client-Timezone": "unknown",
       "X-Os-Category": "windows",
       "X-Title": "Z Code@electron",
     });
     expect(headers).not.toHaveProperty("X-Device-Mid");
-    expect(headers).not.toHaveProperty("X-ZCode-App-Version");
+    expect(headers).not.toHaveProperty("X-Codez-App-Version");
   });
 });

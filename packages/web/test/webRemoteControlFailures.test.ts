@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createWebRemoteControlConnectionRecoveryTimeoutFailure } from "@zcode/shared";
+import { createWebRemoteControlConnectionRecoveryTimeoutFailure } from "@codez/shared";
 
 describe("web remote control failures", () => {
   it("maps mobile connection recovery timeout without marking desktop offline", () => {

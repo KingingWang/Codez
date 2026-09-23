@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { UserInputRow } from "@zcode/shared/zcode-protocol-v4";
+import type { UserInputRow } from "@codez/shared/codez-protocol-v4";
 import { withTopicPreparationMessages } from "@/v4/topicPreparationRenderUnits.js";
 import { splitConversationTimelineLiveTail } from "@/v4/conversationTimelineLiveTail.js";
 const pending = [

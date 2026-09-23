@@ -6,22 +6,22 @@
 
 桌面端提供两处 **资源管理器** 入口，都打开同一个独立单例窗口：macOS 原生菜单栏的 Help 菜单，以及所有桌面平台右上角的问号帮助菜单（`WorkspaceHelpMenuButton`，2026-09-11 补入——Windows/Linux 没有原生菜单栏，Windows 自绘标题栏箭头菜单又已下线，此前 Windows 上没有任何入口）。Web 端不渲染该菜单项（`isDesktop` 由挂载处注入，见 `docs/windows-caption-help-menu.md`）。窗口顶部有四个 tab：**CPU**、**内存**、**存储**、**网络**（2026-09-10 裁决：存储管理从设置页整体迁入这里）。
 
-- **CPU / 内存 tab**：实时展示 ZCode 的 CPU 或内存占用，布局相同，只是指标卡与列表指标列换成当前 tab 的指标。切到「存储」或「网络」tab 时停止 CPU/内存的 1s 轮询。
-- **存储 tab**：本机 `.zcode` 数据目录的磁盘占用，按卷汇总、按类别拆分、可下钻与清理。产品与实现细节见 `docs/settings-storage-management.md`；下面「存储 tab 数据通路」只写与本窗口相关的接线。
+- **CPU / 内存 tab**：实时展示 Codez 的 CPU 或内存占用，布局相同，只是指标卡与列表指标列换成当前 tab 的指标。切到「存储」或「网络」tab 时停止 CPU/内存的 1s 轮询。
+- **存储 tab**：本机 `.codez` 数据目录的磁盘占用，按卷汇总、按类别拆分、可下钻与清理。产品与实现细节见 `docs/settings-storage-management.md`；下面「存储 tab 数据通路」只写与本窗口相关的接线。
 
 CPU / 内存 tab 的内容：
 
-- 左侧两块指标卡：**CPU**、**内存**。每块都有一根双层进度条——**灰色**表示整机总占用，**彩色（brand）**表示 ZCode 自身占用；数字显示 ZCode 占用与整机占用。
+- 左侧两块指标卡：**CPU**、**内存**。每块都有一根双层进度条——**灰色**表示整机总占用，**彩色（brand）**表示 Codez 自身占用；数字显示 Codez 占用与整机占用。
 - 右侧按三类分组列出进程，每组显示小计，可展开看到每个进程的名称、PID、CPU、内存：
   - **基础服务**：Electron main、GPU、所有 renderer（含 DevTools / WebContentsView）、window-scoped Host（utility）、Host 派生的非 Agent 子进程（终端 shell 等）、Agent CLI 进程及其非插件子进程（工具/命令子进程）、其它 Electron utility（network service 等）。
-  - **内置插件**：官方市场（`zcode-plugins-official`）插件的 MCP 子进程树——当前即 `browser-use`（`node_repl` + plugin host）与 `computer-use`。
+  - **内置插件**：官方市场（`codez-plugins-official`）插件的 MCP 子进程树——当前即 `browser-use`（`node_repl` + plugin host）与 `computer-use`。
   - **社区插件**：其余全部 MCP 子进程树——第三方市场插件与用户自定义 MCP（`custom`）。
 
 **网络 tab**：只在资源管理器窗口存活期间观测本机 Main、Host、App Renderer、CLI 的 HTTP(S) 请求与 WebSocket 建连，不采集正文。窗口关闭即取消监听并释放记录；具体边界、代理兼容和验收见 [网络请求观测](resource-manager-network.md)。磁盘占用即「存储」tab。
 
 ## 存储 tab 数据通路
 
-该窗口按设计不接 RPC / MessagePort（见 `preload/resourceManager.ts`），因此存储服务不走 Window Host，而是由 **main 进程持有唯一的 `StorageService` 实例**（`@zcode/services` 的 storage 模块），遍历放在 `worker_threads` 里（entry `main/storageScanWorker`），不阻塞 main 事件循环；这与「main 禁止起外部进程采样」不冲突，扫盘只是 fs 遍历。
+该窗口按设计不接 RPC / MessagePort（见 `preload/resourceManager.ts`），因此存储服务不走 Window Host，而是由 **main 进程持有唯一的 `StorageService` 实例**（`@codez/services` 的 storage 模块），遍历放在 `worker_threads` 里（entry `main/storageScanWorker`），不阻塞 main 事件循环；这与「main 禁止起外部进程采样」不冲突，扫盘只是 fs 遍历。
 
 ```
 Resource Manager Renderer            preload (window.resourceManager.storage)        Main
@@ -39,7 +39,7 @@ Resource Manager Renderer            preload (window.resourceManager.storage)   
 
 ## 口径
 
-- **CPU 统一为整机归一化百分比**：`100%` = 整机所有逻辑核心全部占满。左侧灰色条即 `os.cpus()` 两次采样间 busy/total；ZCode 占用 = 所有进程行 CPU 之和；各进程行也用同一口径，因此分组小计与总计可以直接相加。旧版进程监视器在 macOS 上按 Activity Monitor（单核 = 100%）展示，本版不再沿用。
+- **CPU 统一为整机归一化百分比**：`100%` = 整机所有逻辑核心全部占满。左侧灰色条即 `os.cpus()` 两次采样间 busy/total；Codez 占用 = 所有进程行 CPU 之和；各进程行也用同一口径，因此分组小计与总计可以直接相加。旧版进程监视器在 macOS 上按 Activity Monitor（单核 = 100%）展示，本版不再沿用。
   - Electron 自身进程来自 `app.getAppMetrics().cpu.percentCPUUsage`：darwin / win32 已是整机口径；linux 上 Chromium 返回单核口径，进入快照前除以逻辑核心数（`normalizeElectronCpuToMachinePercent`）。
   - 外部进程（Agent / MCP / 终端）由 Host 侧采样器按 `Δcputime / Δwall / 逻辑核心数` 计算，首个样本没有差分基线，CPU 记 0。
 - **内存**：Electron 进程用 `workingSetSize`；外部进程用 RSS（macOS/Linux）或 WorkingSet（Windows）。整机总量 `os.totalmem()`，整机已用 `total - os.freemem()`（macOS 上与 `top` 的 PhysMem used 同口径，包含文件缓存）。
@@ -87,7 +87,7 @@ CLI observation 超时 → 本轮无映射；Agent 生命周期与业务 idle �
 ### 为什么这样分层
 
 - **main 进程禁止起外部进程采样**（历史 bug：同步 `ps` / PowerShell 曾把整个 App 卡死；异步 `execFile` 的 CreateProcess 阶段同样会阻塞 main）。所以外部进程的 CPU/内存一律在 **Window Host（utility 进程）** 内异步采样，且只在资源管理器窗口发起请求时才采样；窗口关闭后 Host 不再有任何周期性开销。
-- **插件归属只有 CLI 知道**：MCP 子进程由 Agent CLI 拉起，`ZCODE_PLUGIN_ID` / server name / `source.kind` 都在 CLI 内存里；现有 `process/mcpTelemetry` 通道为了遥测脱敏刻意不带 pid。因此新增一个纯内存、无 I/O 的协议请求 `process/childProcesses`，Host 用它把 pid 映射到插件。
+- **插件归属只有 CLI 知道**：MCP 子进程由 Agent CLI 拉起，`CODEZ_PLUGIN_ID` / server name / `source.kind` 都在 CLI 内存里；现有 `process/mcpTelemetry` 通道为了遥测脱敏刻意不带 pid。因此新增一个纯内存、无 I/O 的协议请求 `process/childProcesses`，Host 用它把 pid 映射到插件。
 - **Host 做进程树归属**：Host 是 Agent 的父进程，一次 `ps -axo pid=,ppid=,rss=,cputime=,comm=`（darwin）/ 扫描 `/proc/*/stat` + `/proc/<pid>/status`（linux）/ `Get-CimInstance Win32_Process`（win32）就能覆盖 Host 全部后代。每个后代按“最近的已知祖先”归属：MCP 根 pid → 对应插件；Agent pid → 基础服务 `cli`；无归属 → 基础服务 `host` 子进程。
 - **main 只合并**：`app.getAppMetrics()`（Electron 进程）+ 系统总量 + Host 回报；Agent 注册表里已知但 Host 尚未回报的 Agent 仍会出现在列表中（`sampled=false`，指标为 0），保证拓扑始终可见，E2E 也依赖这一点。
 
@@ -98,7 +98,7 @@ type ResourceUsageCategory = "base" | "builtin-plugin" | "community-plugin";
 
 interface ResourceUsageProcess {
   pid: number;
-  name: string; // zcode-main / zcode-renderer-main / zcode-agent-<provider>-<ws> / MCP server name / 命令名
+  name: string; // codez-main / codez-renderer-main / codez-agent-<provider>-<ws> / MCP server name / 命令名
   category: ResourceUsageCategory;
   groupKey: string; // base: main|gpu|renderer|host|cli|utility；插件: 插件名或 MCP server name
   groupLabel: string; // 分组展示名（插件名 / server name）
@@ -116,10 +116,10 @@ interface ResourceUsageSnapshot {
 }
 ```
 
-### 协议新增（`packages/shared/src/zcode-protocol/index.ts`）
+### 协议新增（`packages/shared/src/codez-protocol/index.ts`）
 
-- `zcodeProtocolMethods.processChildProcesses = "process/childProcesses"`，params `{}`。
-- 结果 `zcodeProcessChildProcessesResultSchema`：`{ processes: Array<{ pid, serverName, mcpSource: "builtin"|"plugin"|"custom", pluginName?: string }> }`。
+- `codezProtocolMethods.processChildProcesses = "process/childProcesses"`，params `{}`。
+- 结果 `codezProcessChildProcessesResultSchema`：`{ processes: Array<{ pid, serverName, mcpSource: "builtin"|"plugin"|"custom", pluginName?: string }> }`。
 - CLI 实现：`McpTelemetryTracker.listProcesses()` 直接读取已注册连接的 `process.pid`、`serverName`、`mcpSource`；`pluginName` 由 `plugin:<name>:<key>` 命名空间或官方插件 `hostMcpServerNames`（`node_repl` → `browser-use`）解析。不做任何 I/O。
 
 ### main ↔ host 消息
@@ -134,7 +134,7 @@ interface ResourceUsageSnapshot {
 - `createProcessResourceSampler()`：保存上一轮各 pid 的 `cpuTimeMs` 与时间戳，输出整机口径 `cpuPercent`；pid 消失后基线自动淘汰。
 - `attributeHostProcessTree()`（纯函数）：输入进程表、Host pid、Agent 列表（pid/workspacePath/provider）、各 Agent 的 MCP 子进程映射，输出 `HostResourceUsageProcess[]`。
 
-Host 入口 `packages/desktop/src/host/hostResourceUsage.ts` 把上述三者与 `IZCodeAgentService.collectLocalRuntimeChildProcesses()` 串起来，收到请求后回帖结果。
+Host 入口 `packages/desktop/src/host/hostResourceUsage.ts` 把上述三者与 `ICodezAgentService.collectLocalRuntimeChildProcesses()` 串起来，收到请求后回帖结果。
 
 ## 架构治理决策记录
 
@@ -157,7 +157,7 @@ delivery:         desktop-only（独立 BrowserWindow + 专用 preload）；不�
 reuse decision:   未复用 services/process/processTreeSnapshot.ts（同步 spawnSync，为 app quit 设计，列不同）
                   与 CLI mcp/process-memory.ts（5 分钟内存遥测，Windows 只有 tasklist）——采样需要异步、cputime、
                   在 Host 内执行，三者职责不同；PowerShell CIM 命令格式与 processTreeSnapshot 相近，属已知重复
-contracts/spec:   packages/shared protocol.ts / channels.ts / validation.ts / zcode-protocol；本文；
+contracts/spec:   packages/shared protocol.ts / channels.ts / validation.ts / codez-protocol；本文；
                   desktop、services、ui、CLI 四组单测 + e2e resource-manager.test.ts
 ```
 
@@ -174,19 +174,19 @@ contracts/spec:   packages/shared protocol.ts / channels.ts / validation.ts / zc
 | `desktop/src/main/resourceManagerStorage.ts`                                                            | 存储 tab 的 ipc 面：持有 StorageService、进度推送、关窗取消、定位路径校验                                  |
 | `desktop/src/main/storageScanWorker.ts` / `storageScanWorkerClient.ts` / `storageScanWorkerProtocol.ts` | 扫描 Worker 入口与 ScanRunnerPort 实现                                                                     |
 | `ui/src/resource-manager/storage/*`                                                                     | 存储 tab UI（磁盘卡片、类别列表、明细、清理确认）与 `useStorageUsage`                                      |
-| `desktop/src/renderer/resource-manager.html` / `src/resource-manager.tsx`                               | 独立 renderer 入口，挂载 `@zcode/ui` 的 `ResourceManagerApp`                                               |
+| `desktop/src/renderer/resource-manager.html` / `src/resource-manager.tsx`                               | 独立 renderer 入口，挂载 `@codez/ui` 的 `ResourceManagerApp`                                               |
 | `ui/src/resource-manager/ResourceManagerApp.tsx`                                                        | 窗口 UI（指标卡 + 分组列表），组件放在 `packages/ui` 内以纳入 Tailwind 扫描                                |
 | `ui/src/resource-manager/resourceUsageView.ts`                                                          | 分组聚合与格式化纯函数                                                                                     |
 | `services/src/process/processResourceSampler.ts`                                                        | 跨平台进程表读取、CPU 差分、进程树归属                                                                     |
-| `services/src/zcode-agent/zcodeAgentService.ts`                                                         | `collectLocalRuntimeChildProcesses()`                                                                      |
-| `shared/src/protocol.ts` / `channels.ts` / `validation.ts` / `zcode-protocol/index.ts`                  | 类型、IPC 通道、host 消息 schema、CLI 协议                                                                 |
-| `apps/zcode-cli/.../mcp/telemetry.ts` / `zcode-protocol/server.ts`                                      | `listProcesses()` 与 `process/childProcesses` 处理                                                         |
+| `services/src/codez-agent/codezAgentService.ts`                                                         | `collectLocalRuntimeChildProcesses()`                                                                      |
+| `shared/src/protocol.ts` / `channels.ts` / `validation.ts` / `codez-protocol/index.ts`                  | 类型、IPC 通道、host 消息 schema、CLI 协议                                                                 |
+| `apps/codez-cli/.../mcp/telemetry.ts` / `codez-protocol/server.ts`                                      | `listProcesses()` 与 `process/childProcesses` 处理                                                         |
 
 ## UI 细节
 
 - 顶部 tab 用 `Tabs variant="line"`（与设置页插件 tab 同款胶囊触发器），test id `resource-manager-tab-{cpu|memory|storage}`；默认 CPU。
-- 窗口 900×600，系统默认标题栏；主题与字号沿用主窗口的 `localStorage`（`zcode-theme` / UI font size），语言用 `ZCodeIntlProvider` 的本地偏好。
-- 指标卡：`bg-card border-card-border rounded-xl`；进度条底色 `bg-surface-hover`、整机段 `bg-foreground-subtlest/40`（灰）、ZCode 段 `bg-brand`（彩）。
+- 窗口 900×600，系统默认标题栏；主题与字号沿用主窗口的 `localStorage`（`codez-theme` / UI font size），语言用 `CodezIntlProvider` 的本地偏好。
+- 指标卡：`bg-card border-card-border rounded-xl`；进度条底色 `bg-surface-hover`、整机段 `bg-foreground-subtlest/40`（灰）、Codez 段 `bg-brand`（彩）。
 - 分组：三组固定顺序（基础服务 / 内置插件 / 社区插件），组头显示进程数、CPU 小计、内存小计；空组显示“暂无进程”。默认展开基础服务，其余按需展开；展开状态只存组件内。
 - 列表行：名称（`font-medium`，`title` 为完整名）、PID（`font-mono`）、CPU、内存；未采样行 CPU/内存显示 `—`。
 - 刷新频率 1s；请求串行（上一轮未返回不叠加）。
@@ -196,4 +196,4 @@ contracts/spec:   packages/shared protocol.ts / channels.ts / validation.ts / zc
 
 - 单测：`desktop/test/resourceManagerWindow.test.ts`（快照合并、Agent 兜底、linux CPU 归一化、系统 CPU 差分）、`services/test/processResourceSampler.test.ts`（三平台解析、CPU 差分、树归属）、`ui/test/resourceUsageView.test.ts`（分组聚合/格式化）、CLI `mcp-telemetry.test.ts`（`listProcesses`）。
 - E2E：`desktop/test/e2e/resource-manager-storage.test.ts`——存储 tab 扫描 / 下钻 / safe 与 confirm 清理 / 日志保留当天（SM-01~05）。
-- E2E：`desktop/test/e2e/resource-manager.test.ts`——菜单打开窗口、默认 CPU tab 三组分区可见、切内存 tab 换指标卡、`zcode-main` 与 `zcode-agent-*` 行出现、Agent 行在 Host 采样后 `memoryBytes > 0`。既有依赖进程监视器的 E2E helper 改读 `window.resourceManager.getSnapshot().processes`。
+- E2E：`desktop/test/e2e/resource-manager.test.ts`——菜单打开窗口、默认 CPU tab 三组分区可见、切内存 tab 换指标卡、`codez-main` 与 `codez-agent-*` 行出现、Agent 行在 Host 采样后 `memoryBytes > 0`。既有依赖进程监视器的 E2E helper 改读 `window.resourceManager.getSnapshot().processes`。

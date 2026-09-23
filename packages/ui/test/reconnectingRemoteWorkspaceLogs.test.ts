@@ -21,7 +21,7 @@ describe("reconnecting remote workspace runtime logs", () => {
           id: "history-docker",
           target: {
             kind: "docker",
-            container: "zcode-dev",
+            container: "codez-dev",
           },
         },
       ],

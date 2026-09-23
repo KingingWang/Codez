@@ -147,7 +147,7 @@ OpenAI-compatible Adapter 最终把它发成：
 
 ### App 的持久配置
 
-App 的权威文件是 `~/.zcode/v2/config.json`。目前持久化的 reasoning 只描述档位，不保存供应商请求参数：
+App 的权威文件是 `~/.codez/v2/config.json`。目前持久化的 reasoning 只描述档位，不保存供应商请求参数：
 
 ```jsonc
 {
@@ -184,13 +184,13 @@ App 的权威文件是 `~/.zcode/v2/config.json`。目前持久化的 reasoning 
 }
 ```
 
-App 保存配置时会清理旧的 `model.variants`、`reasoningSpec` 和 `zcode.reasoning` 参数映射。换句话说，普通用户通过 App 设置页保存的配置无法直接规定 `high` 最终使用 `reasoning_effort` 还是 `enable_thinking`；zcode-cli 会在运行时补出映射。
+App 保存配置时会清理旧的 `model.variants`、`reasoningSpec` 和 `codez.reasoning` 参数映射。换句话说，普通用户通过 App 设置页保存的配置无法直接规定 `high` 最终使用 `reasoning_effort` 还是 `enable_thinking`；codez-cli 会在运行时补出映射。
 
 相关转换位于 `modelProviderServiceStorage.ts` 的 `openCodeReasoningToModelReasoning()` 与 `modelReasoningToOpenCodeReasoning()`。
 
 ### Standalone CLI 的配置
 
-Standalone CLI 读取 `~/.zcode/cli/config.json`。它接受更接近 Runtime 的结构，可以显式保存 `providerOptionsByLevel`：
+Standalone CLI 读取 `~/.codez/cli/config.json`。它接受更接近 Runtime 的结构，可以显式保存 `providerOptionsByLevel`：
 
 ```jsonc
 {
@@ -265,7 +265,7 @@ Kimi K3 的一条真实 Catalog 配置是：
 }
 ```
 
-App 向 zcode-cli 投影当前 transport 时，只取相应 kind 的 patch。假设当前 kind 是 `openai-compatible`，上面会变成：
+App 向 codez-cli 投影当前 transport 时，只取相应 kind 的 patch。假设当前 kind 是 `openai-compatible`，上面会变成：
 
 ```ts
 {
@@ -277,9 +277,9 @@ App 向 zcode-cli 投影当前 transport 时，只取相应 kind 的 patch。假
 }
 ```
 
-普通 App 持久配置会清掉这些 patch，但内置 Coding Plan、Start Plan 和远端 client config 可以在内存中携带完整 `ModelProviderReasoningSpec`，再经过同一个协议投影函数进入 zcode-cli。
+普通 App 持久配置会清掉这些 patch，但内置 Coding Plan、Start Plan 和远端 client config 可以在内存中携带完整 `ModelProviderReasoningSpec`，再经过同一个协议投影函数进入 codez-cli。
 
-Plan 的登录态、权益判断、运行时 API Key 和一次性安全校验 Header 不参与 reasoning 方言选择。它们先形成当前可调用的 Provider；reasoning 仍由这个 Provider 的 `kind` 与模型定义决定。当前 ZCode 内置 Plan 主要按 Anthropic runtime 投影，因此 GLM 等模型会走 `anthropic.effort` / `anthropic.thinking` 路径。请求前刷新 Token 或 Header 只改变鉴权材料，不改变已经选择的 reasoning level。
+Plan 的登录态、权益判断、运行时 API Key 和一次性安全校验 Header 不参与 reasoning 方言选择。它们先形成当前可调用的 Provider；reasoning 仍由这个 Provider 的 `kind` 与模型定义决定。当前 Codez 内置 Plan 主要按 Anthropic runtime 投影，因此 GLM 等模型会走 `anthropic.effort` / `anthropic.thinking` 路径。请求前刷新 Token 或 Header 只改变鉴权材料，不改变已经选择的 reasoning level。
 
 当前本地 Catalog 中实际出现的 reasoning patch 路径只有五类：
 
@@ -294,9 +294,9 @@ openai-compatible
 └─ thinking.type
 ```
 
-Catalog 的 patch 结构是配置层表达；最终是否能直接被 SDK 接受，还会经过 zcode-cli 的模型特例和 Adapter 归一化。例如 Kimi K3 会在 CLI overlay 中重新生成 `anthropic.effort`，不会直接把 Catalog 的 `anthropic.output_config.effort` 交给 SDK。
+Catalog 的 patch 结构是配置层表达；最终是否能直接被 SDK 接受，还会经过 codez-cli 的模型特例和 Adapter 归一化。例如 Kimi K3 会在 CLI overlay 中重新生成 `anthropic.effort`，不会直接把 Catalog 的 `anthropic.output_config.effort` 交给 SDK。
 
-## zcode-cli 如何形成 `providerOptionsByLevel`
+## codez-cli 如何形成 `providerOptionsByLevel`
 
 ### 动态 App Provider
 
@@ -929,7 +929,7 @@ Automation、Bot、OffPeak Task 都可以携带 `thoughtLevel` 字符串。普�
 
 Host 把临时 Provider 作为 turn overlay 注入，CLI 再生成 `TurnExecutionModel`，其中已经包含 `modelRef` 和 `modelProviderOptions`。这个对象是当前最接近未来 ModelBinding 输入的结构。
 
-这里存在一个值得迁移时修正的差异：`ZCodeModelRuntimeConfig.thoughtLevel` 会随闲时任务传入，但当前 `resolveTurnExecutionModel()` 解析参数时读取的是 CLI 全局 reasoning preference，并没有直接把 `runtimeModel.thoughtLevel` 作为 preferred level 传入。只有两者恰好一致，或模型默认值一致时，本轮实际档位才与 Host 指定值一致。
+这里存在一个值得迁移时修正的差异：`CodezModelRuntimeConfig.thoughtLevel` 会随闲时任务传入，但当前 `resolveTurnExecutionModel()` 解析参数时读取的是 CLI 全局 reasoning preference，并没有直接把 `runtimeModel.thoughtLevel` 作为 preferred level 传入。只有两者恰好一致，或模型默认值一致时，本轮实际档位才与 Host 指定值一致。
 
 ## Model Step 如何使用参数
 
@@ -1006,7 +1006,7 @@ anthropic-messages
 
 ### Bot
 
-Bot 没有另一套模型请求 Adapter。Bot 的 `/thoughtLevel` 配置、草稿状态和任务参数保存逻辑 level，创建或恢复 ZCode Task 后仍进入标准 Session/Agent 执行链。因此 Bot 需要统一的是 Selection、Submission 与 Session 恢复语义，不需要新增 reasoning wire 方言。
+Bot 没有另一套模型请求 Adapter。Bot 的 `/thoughtLevel` 配置、草稿状态和任务参数保存逻辑 level，创建或恢复 Codez Task 后仍进入标准 Session/Agent 执行链。因此 Bot 需要统一的是 Selection、Submission 与 Session 恢复语义，不需要新增 reasoning wire 方言。
 
 ### Project Memory
 
@@ -1166,22 +1166,22 @@ Wire 测试
 
 ## 主要代码证据
 
-- 能力类型：`apps/zcode-cli/packages/contracts/src/model/catalog.ts`
+- 能力类型：`apps/codez-cli/packages/contracts/src/model/catalog.ts`
 - App provider/config 类型：`packages/shared/src/model-provider-types.ts`
 - App config 读写：`packages/services/src/model-provider/modelProviderServiceStorage.ts`
-- App 到协议的 reasoning patch 投影：`packages/shared/src/zcode-protocol/index.ts`
-- 动态 App Provider 映射：`apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts`
-- CLI 静态默认规则：`apps/zcode-cli/packages/adapters/src/model/default-policy.ts`
-- 各种内置映射：`apps/zcode-cli/packages/adapters/src/model/reasoning-policy.ts`
-- Standalone CLI 配置归一化：`apps/zcode-cli/packages/adapters/src/config/schema.ts`
-- level 解析与遥测反推：`apps/zcode-cli/packages/adapters/src/model/runtime-thought-level.ts`
-- Runtime options 合并与旧配置迁移：`apps/zcode-cli/packages/bootstrap/src/runtime-model-metadata.ts`
-- Session 档位切换：`apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts`
-- Model Step 使用点：`apps/zcode-cli/packages/core/src/runtime/methods/turn-model-step.ts`
-- Adapter 最终归一化：`apps/zcode-cli/packages/adapters/src/model/runner-options.ts`
-- OpenAI-compatible wire tests：`apps/zcode-cli/packages/adapters/tests/openai-compatible-extra-body-wire.test.ts`
-- Anthropic wire tests：`apps/zcode-cli/packages/adapters/tests/anthropic-effort-wire.test.ts`
-- disabled wire tests：`apps/zcode-cli/packages/adapters/tests/reasoning-disabled-wire.test.ts`
-- 特殊调用策略：`apps/zcode-cli/packages/core/src/runtime/methods/title-provider-options.ts`、`compact-active.ts`、`workspace-generate-text.ts` 和 `project-memory-recall.ts`
+- App 到协议的 reasoning patch 投影：`packages/shared/src/codez-protocol/index.ts`
+- 动态 App Provider 映射：`apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts`
+- CLI 静态默认规则：`apps/codez-cli/packages/adapters/src/model/default-policy.ts`
+- 各种内置映射：`apps/codez-cli/packages/adapters/src/model/reasoning-policy.ts`
+- Standalone CLI 配置归一化：`apps/codez-cli/packages/adapters/src/config/schema.ts`
+- level 解析与遥测反推：`apps/codez-cli/packages/adapters/src/model/runtime-thought-level.ts`
+- Runtime options 合并与旧配置迁移：`apps/codez-cli/packages/bootstrap/src/runtime-model-metadata.ts`
+- Session 档位切换：`apps/codez-cli/packages/bootstrap/src/app/session-facade.ts`
+- Model Step 使用点：`apps/codez-cli/packages/core/src/runtime/methods/turn-model-step.ts`
+- Adapter 最终归一化：`apps/codez-cli/packages/adapters/src/model/runner-options.ts`
+- OpenAI-compatible wire tests：`apps/codez-cli/packages/adapters/tests/openai-compatible-extra-body-wire.test.ts`
+- Anthropic wire tests：`apps/codez-cli/packages/adapters/tests/anthropic-effort-wire.test.ts`
+- disabled wire tests：`apps/codez-cli/packages/adapters/tests/reasoning-disabled-wire.test.ts`
+- 特殊调用策略：`apps/codez-cli/packages/core/src/runtime/methods/title-provider-options.ts`、`compact-active.ts`、`workspace-generate-text.ts` 和 `project-memory-recall.ts`
 - Repo Wiki 直连请求：`packages/services/src/repo-wiki/repoWikiModelClient.ts` 与 `repoWikiProviderRegistryModelConfig.ts`
 - Bot 档位选择与任务派发：`packages/services/src/bots/botsService.ts`

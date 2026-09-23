@@ -8,7 +8,7 @@
 
 **Architecture:** Keep model draft parsing in `ProviderModelMetadata.ts`, keep dialog rendering in `ProviderModelMetadataDialog.tsx`, and wire add/edit behavior from `ProviderModelsSection` / `ModelRowInput`. Add one small multi-select dropdown inside the dialog using existing `DropdownMenuCheckboxItem`.
 
-**Tech Stack:** React, TypeScript, Radix-backed local UI components, Vitest server-side render tests, existing `@zcode/shared` model provider types.
+**Tech Stack:** React, TypeScript, Radix-backed local UI components, Vitest server-side render tests, existing `@codez/shared` model provider types.
 
 ---
 
@@ -145,7 +145,7 @@ import {
   modelProviderReasoningSpecSchema,
   type ModelProviderKind,
   type ModelProviderModelConfig,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 const MODEL_PROVIDER_KIND_ORDER: ModelProviderKind[] = [
   "anthropic",
@@ -336,7 +336,7 @@ In `ProviderModelMetadataDialog.tsx`, add imports:
 
 ```ts
 import { ChevronDown, Pencil } from "lucide-react";
-import type { ModelProviderApiFormat, ModelProviderKind } from "@zcode/shared";
+import type { ModelProviderApiFormat, ModelProviderKind } from "@codez/shared";
 import {
   Dialog,
   DialogContent,
@@ -390,7 +390,7 @@ function ProviderModelApiFormatMultiSelect({
   kinds: ModelProviderKind[];
   onChange: (kinds: ModelProviderKind[]) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const labels = MODEL_API_FORMAT_OPTIONS.filter((option) =>
     kinds.includes(option.kind),
   ).map((option) => intl.formatMessage({ id: option.labelId }));
@@ -603,7 +603,7 @@ Pass `mode="edit"` into the dialog:
 
 - [ ] **Step 4: Add ProviderModelsSection add dialog state**
 
-In `ProviderCardSections.tsx`, change the React import and add `createModelProviderModelConfig` to the existing `@zcode/shared` import:
+In `ProviderCardSections.tsx`, change the React import and add `createModelProviderModelConfig` to the existing `@codez/shared` import:
 
 ```ts
 import { useCallback, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";

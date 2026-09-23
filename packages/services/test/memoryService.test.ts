@@ -30,7 +30,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 
 import { createMemoryService } from "../src/memory/memoryService.js";
 import { PROJECT_MEMORY_FILE_CHANGED_ERROR_CODE } from "../src/memory/memory.js";
-import { getZCodeDataRootDir, setDataBaseDir } from "../src/paths.js";
+import { getCodezDataRootDir, setDataBaseDir } from "../src/paths.js";
 
 let tempDir: string;
 const actualFs =
@@ -46,7 +46,7 @@ function createNotFoundError(path: string): NodeJS.ErrnoException {
 }
 
 function projectsRoot(): string {
-  return join(getZCodeDataRootDir(), "cli", "memories", "projects");
+  return join(getCodezDataRootDir(), "cli", "memories", "projects");
 }
 
 function workspaceMemoryRoot(workspaceId: string): string {
@@ -75,7 +75,7 @@ beforeEach(async () => {
   fsMocks.open.mockImplementation(actualFs.open);
   fsMocks.readdir.mockReset();
   fsMocks.readdir.mockImplementation(actualFs.readdir);
-  tempDir = await mkdtemp(join(tmpdir(), "zcode-project-memory-service-"));
+  tempDir = await mkdtemp(join(tmpdir(), "codez-project-memory-service-"));
   setDataBaseDir(tempDir);
 });
 

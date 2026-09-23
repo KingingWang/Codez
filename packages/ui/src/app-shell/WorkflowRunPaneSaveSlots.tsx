@@ -6,7 +6,7 @@
 // 这里只造宿主描述，不直接调用槽位 hook：控制器要查 agent，没有服务上下文的宿主不该挂它。
 // 从 WorkflowRunSidePane.tsx 拆出（max-lines 400 行门）。
 import { useCallback, useMemo, type ReactNode } from "react";
-import type { ConversationRow, WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow, WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import {
   WorkflowRunSaveSlotsBoundary,
   type WorkflowRunSaveSlots,
@@ -58,7 +58,7 @@ function useWorkflowRunPaneSaveHost(params: WorkflowRunPaneSaveParams): Workflow
         }),
       );
       if (ack.status !== "accepted") {
-        logger.warn("[workflow-run] 交给 ZCode 提炼保存的那条消息被拒", {
+        logger.warn("[workflow-run] 交给 Codez 提炼保存的那条消息被拒", {
           reasonCode: ack.reasonCode ?? null,
           runId: tab.runId,
           status: ack.status,

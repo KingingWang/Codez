@@ -1652,9 +1652,9 @@ describe("workspaceSidePane", () => {
     const encodedSource = {
       type: "file" as const,
       title: "engine.ts",
-      path: "/Users/dev/ZCodeProject/323/Auto%20Snake/src/game/engine.ts",
+      path: "/Users/dev/CodezProject/323/Auto%20Snake/src/game/engine.ts",
     };
-    const decodedPath = "/Users/dev/ZCodeProject/323/Auto Snake/src/game/engine.ts";
+    const decodedPath = "/Users/dev/CodezProject/323/Auto Snake/src/game/engine.ts";
 
     const first = openCodeViewerSidePane(null, encodedSource);
     const second = openCodeViewerSidePane(first, {

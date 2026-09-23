@@ -2,7 +2,7 @@
 // Bug 背景（2026-07-07 v4 首测）：工具条门控在投影 config!==null 上，草稿态整体不渲染；
 // 修复后草稿以 renderer intent 为显示真值，目录只在无 intent 时提供初始回落。
 import { describe, expect, it } from "vitest";
-import type { ModelSelectionView } from "@zcode/services";
+import type { ModelSelectionView } from "@codez/services";
 import {
   resolveDraftDisplayedConfig,
   resolveDraftModelThoughtOption,

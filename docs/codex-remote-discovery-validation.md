@@ -15,7 +15,7 @@ empty. Three adapter/index boundaries required correction:
   `thread/list` default also excludes other providers and non-interactive exec
   sessions unless explicitly requested.
 
-Only ZCode is changed. Native Codex source, credentials, history and user log
+Only Codez is changed. Native Codex source, credentials, history and user log
 archives are not modified or included in the commit.
 
 ## Ownership and behavior

@@ -99,7 +99,7 @@ reasoningLevel == "low"
 - 复杂条件分支分行；
 - 多层对象展开，避免 GUI 中出现很长的一行；
 - 简单 Map 不机械展开；
-- 允许 `zcode-builtin.json` 中出现换行转义，物理文件的紧凑程度不是目标；
+- 允许 `codez-builtin.json` 中出现换行转义，物理文件的紧凑程度不是目标；
 - GUI 继续原样展示字符串中的换行和缩进，不增加第二套格式化结果；
 - Personal Map 不强制自动重排，避免在保存时意外改写用户输入。
 
@@ -154,9 +154,9 @@ reasoningLevel == "low"
 
 验证结果：
 
-- `@zcode/model-option-map`：26 tests passed；typecheck passed。
-- `@zcode/provider`：167 tests passed；typecheck passed。
-- `@zcode/provider-node`：47 tests passed；typecheck passed。
+- `@codez/model-option-map`：26 tests passed；typecheck passed。
+- `@codez/provider`：167 tests passed；typecheck passed。
+- `@codez/provider-node`：47 tests passed；typecheck passed。
 - CLI Adapter 定向：54 tests passed。
 - CLI Bootstrap Registry/Model 定向：83 tests passed。
 - UI、Services、Server 定向：144 tests passed；UI 默认配置展示补充用例 11 tests passed。

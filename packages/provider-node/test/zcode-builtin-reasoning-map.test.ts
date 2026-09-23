@@ -1,18 +1,18 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
-import { compileModelOptionMaps } from "@zcode/model-option-map";
+import { compileModelOptionMaps } from "@codez/model-option-map";
 import {
   ModelConfig,
   ModelOptionSpecsConfig,
   validateModelSelectionOptions,
-} from "@zcode/provider";
-import { NodeZCodeBuiltinProviderConfigSource } from "../src/index.js";
+} from "@codez/provider";
+import { NodeCodezBuiltinProviderConfigSource } from "../src/index.js";
 import baseline from "./fixtures/reasoning-map-before-todo95.json";
 
-const source = new NodeZCodeBuiltinProviderConfigSource({
+const source = new NodeCodezBuiltinProviderConfigSource({
   bundledFilePath: fileURLToPath(
-    new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
+    new URL("../../../config/provider/codez-builtin.json", import.meta.url),
   ),
   watch: false,
 });
@@ -27,7 +27,7 @@ let rules: Record<string, Rule[]>;
 beforeAll(async () => {
   snapshot = await source.read();
   rules = JSON.parse(
-    await readFile(new URL("../../../config/provider/zcode-builtin.json", import.meta.url), "utf8"),
+    await readFile(new URL("../../../config/provider/codez-builtin.json", import.meta.url), "utf8"),
   ).config.modelConfigRules;
 });
 afterAll(() => source.dispose());

@@ -15,7 +15,7 @@ function writeSpec(baseDir: string, relativePath: string): void {
 }
 
 function withFixture<T>(run: (baseDir: string) => T): T {
-  const baseDir = mkdtempSync(join(tmpdir(), "zcode-e2e-spec-resolution-"));
+  const baseDir = mkdtempSync(join(tmpdir(), "codez-e2e-spec-resolution-"));
   try {
     return run(baseDir);
   } finally {

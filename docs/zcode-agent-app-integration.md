@@ -1,8 +1,8 @@
-# ZCode Agent 与 App 当前集成
+# Codez Agent 与 App 当前集成
 
 更新日期：2026-09-04
 
-ZCode App 只启动 ZCode Agent（`apps/zcode-cli` 的 `zcode app-server --stdio`）。退役的多 Agent
+Codez App 只启动 Codez Agent（`apps/codez-cli` 的 `codez app-server --stdio`）。退役的多 Agent
 process manager、第三方 runtime installer、proxy traffic 和 UI agent switch 不属于当前产品路径。
 
 ## 进程与服务边界
@@ -10,12 +10,12 @@ process manager、第三方 runtime installer、proxy traffic 和 UI agent switc
 ```text
 Renderer / Web UI
   -> hooks / IServiceAccessor
-  -> IZCodeAgentService（V4 command/topic）
-     IZCodeSessionService（仍存的 lifecycle/workspace config facade）
-     IZCodeTaskService（列表组织态、兼容查询和 remote wrapper）
+  -> ICodezAgentService（V4 command/topic）
+     ICodezSessionService（仍存的 lifecycle/workspace config facade）
+     ICodezTaskService（列表组织态、兼容查询和 remote wrapper）
   -> window-scoped Local Host Process
-  -> ZCodeAgentProcessManager
-  -> workspaceKey-scoped zcode app-server --stdio
+  -> CodezAgentProcessManager
+  -> workspaceKey-scoped codez app-server --stdio
 ```
 
 - UI 不管理子进程、不解析 stdio 帧，也不直接调用 service concrete implementation。
@@ -36,14 +36,14 @@ Renderer / Web UI
 | pin/archive/group/unread、列表搜索兼容 metadata                                                 | host tasks-index                                                                                                |
 | draft、scroll、focus、panel、optimistic pending overlay                                         | renderer/web 本地                                                                                               |
 
-`zcodeSessionStore` 仍承载 workspace shell、任务列表缓存、未读/乐观组织态和部分兼容 service 投影，但不再
+`codezSessionStore` 仍承载 workspace shell、任务列表缓存、未读/乐观组织态和部分兼容 service 投影，但不再
 拥有 V4 conversation transcript 或已绑定 session config。UI conversation 读路径是
 `ConversationProjectionStore` / `SessionDataLayer`，列表活性读路径是 sessions-index。
 
 ## 协议
 
-stdio 使用 LF 分隔的 NDJSON，schema 位于 `packages/shared/src/zcode-protocol-v4/`。Host 的
-`zcodeProtocolClient` 和 `zcodeStdioTransport` 负责请求、通知和运行时代际；高频原始 frame/chunk 日志必须
+stdio 使用 LF 分隔的 NDJSON，schema 位于 `packages/shared/src/codez-protocol-v4/`。Host 的
+`codezProtocolClient` 和 `codezStdioTransport` 负责请求、通知和运行时代际；高频原始 frame/chunk 日志必须
 用 service logger 的 `debug`。
 
 主路径：
@@ -55,7 +55,7 @@ stdio 使用 LF 分隔的 NDJSON，schema 位于 `packages/shared/src/zcode-prot
   最终收敛到同一 snapshot；
 - 旧 `session/*` schema 只允许维护剩余兼容 facade，不能承接新 conversation 功能。
 
-详见 [ZCode Protocol](./zcode-protocol.md)。
+详见 [Codez Protocol](./codez-protocol.md)。
 
 ## Provider 就绪与启动
 
@@ -102,32 +102,32 @@ tasks-index 建立后台订阅时由 Agent spawn preflight 动态检查真实 cw
 
 ## 远程资源与打包
 
-当前默认远端部署/桌面打包只保留 ZCode Agent 及必要工具/runtime（例如 Node、node-pty、ripgrep 和各平台
+当前默认远端部署/桌面打包只保留 Codez Agent 及必要工具/runtime（例如 Node、node-pty、ripgrep 和各平台
 search runtime）。历史 `resourcePackages.selectedPackageIds` 只兼容读取，不能裁剪当前必需资源。构建脚本、
 签名和 Windows 资源锁检查都不得把本机残留的退役第三方 runtime 重新带入产物。
 
-- `@zcode/desktop` 的 `prepare:glm` 仅保留为手动下载旧原生 Agent 的兼容兜底；默认本机打包通过
-  `prepare:agent-bundle` 准备 `zcode.cjs`。`prepare:native-search` 按目标平台下载 `bfs`、`ugrep`、`ripgrep`
+- `@codez/desktop` 的 `prepare:glm` 仅保留为手动下载旧原生 Agent 的兼容兜底；默认本机打包通过
+  `prepare:agent-bundle` 准备 `codez.cjs`。`prepare:native-search` 按目标平台下载 `bfs`、`ugrep`、`ripgrep`
   预编译归档，旧 `prepare:rg` 不再作为独立维护入口暴露。
 - `pnpm dev:desktop` 的本地 runtime 自检只补齐当前平台的 native-search 工具集和必需平台 helper：
   macOS/Linux 的工具集为 `bfs`、`ugrep`、`ripgrep`，Windows x64/arm64 为 `ugrep`、`ripgrep`；自检不再
-  检查或下载 `glm/zcode-agent`。开发态 Agent 由 `dev-desktop-env.mjs` 在 `pre-dev` 后调用
-  `build-desktop-agent-cli.mjs` 构建，运行时优先使用 workspace 内的 `dist/zcode.cjs`。
-- 桌面安装包携带 `resources/glm/zcode.cjs`、`resources/tools/ugrep` 与 `resources/tools/ripgrep`；
+  检查或下载 `glm/codez-agent`。开发态 Agent 由 `dev-desktop-env.mjs` 在 `pre-dev` 后调用
+  `build-desktop-agent-cli.mjs` 构建，运行时优先使用 workspace 内的 `dist/codez.cjs`。
+- 桌面安装包携带 `resources/glm/codez.cjs`、`resources/tools/ugrep` 与 `resources/tools/ripgrep`；
   macOS/Linux 另携带 `resources/tools/bfs`。
 
-Agent runtime 版本事实源是 `packages/shared/src/zcode-agent-runtime.ts`。本地开发、desktop build、remote
+Agent runtime 版本事实源是 `packages/shared/src/codez-agent-runtime.ts`。本地开发、desktop build、remote
 manifest 和下载逻辑应共同读取它，不再从旧 provider runtime 清单推断。
 
 ## 当前入口
 
-- `packages/services/src/zcode-agent/zcodeAgentService.ts`
-- `packages/services/src/zcode-agent/zcodeAgentProcessManager.ts`
-- `packages/services/src/zcode-agent/zcodeProtocolClient.ts`
-- `packages/services/src/zcode-agent/zcodeStdioTransport.ts`
-- `packages/services/src/zcode-agent/zcodeAgentConnectionScope.ts`
+- `packages/services/src/codez-agent/codezAgentService.ts`
+- `packages/services/src/codez-agent/codezAgentProcessManager.ts`
+- `packages/services/src/codez-agent/codezProtocolClient.ts`
+- `packages/services/src/codez-agent/codezStdioTransport.ts`
+- `packages/services/src/codez-agent/codezAgentConnectionScope.ts`
 - `packages/ui/src/v4/V4ConversationContext.tsx`
 - `packages/ui/src/v4/SessionPane.tsx`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-entrypoint.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/v4-gateway.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-entrypoint.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol/server.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/v4-gateway.ts`

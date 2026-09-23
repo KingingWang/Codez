@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { expect, it, vi } from "vitest";
-import { NodeZCodeBuiltinProviderConfigSource, decodeZCodeBuiltinRelease } from "../src/index.js";
+import { NodeCodezBuiltinProviderConfigSource, decodeCodezBuiltinRelease } from "../src/index.js";
 
 it("两个真实消费进程观察同一 Active 原子替换，各自发布同版 Account / Registry", async () => {
   const root = await mkdtemp(join(tmpdir(), "builtin-process-"));
@@ -26,7 +26,7 @@ it("两个真实消费进程观察同一 Active 原子替换，各自发布同�
   const bundled = join(root, "bundled.json");
   const active = join(root, "active.json");
   await writeFile(bundled, JSON.stringify(release));
-  const source = new NodeZCodeBuiltinProviderConfigSource({
+  const source = new NodeCodezBuiltinProviderConfigSource({
     bundledFilePath: bundled,
     activeFilePath: active,
     watch: false,
@@ -50,13 +50,13 @@ it("两个真实消费进程观察同一 Active 原子替换，各自发布同�
     await vi.waitFor(() => expect(new Set(messages.map((message) => message.pid)).size).toBe(2), {
       timeout: 10_000,
     });
-    await source.applyRemoteRelease(decodeZCodeBuiltinRelease({ ...release, revision: 2 }));
+    await source.applyRemoteRelease(decodeCodezBuiltinRelease({ ...release, revision: 2 }));
     await vi.waitFor(
       () =>
         expect(
           new Set(
             messages
-              .filter((message) => message.builtin.startsWith("zcode-builtin:2:"))
+              .filter((message) => message.builtin.startsWith("codez-builtin:2:"))
               .map((message) => message.pid),
           ).size,
         ).toBe(2),

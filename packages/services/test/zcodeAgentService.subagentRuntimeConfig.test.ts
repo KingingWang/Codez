@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   subagentRuntimeConfigSchema,
-  zcodeProtocolMethods,
+  codezProtocolMethods,
   type SubagentRuntimeConfig,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { offPeakSelectionView } from "./fixtures/offPeakSelection.js";
 
 afterEach(() => {
-  vi.doUnmock("../src/zcode-agent/zcodeAgentProcessManager.js");
+  vi.doUnmock("../src/codez-agent/codezAgentProcessManager.js");
   vi.resetModules();
 });
 
@@ -16,12 +16,12 @@ describe("subagent runtime config reverse RPC", () => {
     const handlers: Array<(request: { id: string; method: string; params?: unknown }) => void> = [];
     const request = (id: string, params: unknown) =>
       handlers.forEach((handler) =>
-        handler({ id, method: zcodeProtocolMethods.subagentsReadRuntimeConfig, params }),
+        handler({ id, method: codezProtocolMethods.subagentsReadRuntimeConfig, params }),
       );
     const respond = vi.fn(async () => {}),
       respondError = vi.fn(async () => {});
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class {
         onRuntimeLifecycle() {
           return { dispose() {} };
         }
@@ -64,8 +64,8 @@ describe("subagent runtime config reverse RPC", () => {
     const read = vi
       .fn(async (): Promise<SubagentRuntimeConfig> => configuration)
       .mockReturnValueOnce(pending.promise);
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService({
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService({
       readSubagentRuntimeConfig: read,
       modelSelectionReadinessSource: { getView: async () => offPeakSelectionView() },
     });

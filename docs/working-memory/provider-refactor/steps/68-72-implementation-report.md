@@ -168,7 +168,7 @@ Core 全量、Bootstrap 定向回归、Pro 首请求证据与文档/类型入口
 - SSH 与 Terminal 启动都曾在创建 WebDriver session 时超时。Electron sample 分别显示调试器
   `realpath/getcwd/open`、模块解析 `GetPackageJSON/open` 等待；不是 Session 恢复异常。
   只把 cwd 换到 `/tmp` 不足以恢复；将同一隔离代码/依赖/构建副本复制到
-  `/tmp/zcode-todo70-wdio.JjKqz1/source` 后，Electron 正常启动并执行用例。目录访问是有证据支持的
+  `/tmp/codez-todo70-wdio.JjKqz1/source` 后，Electron 正常启动并执行用例。目录访问是有证据支持的
   原因，尚未确定具体 macOS 拦截机制；没有修改系统权限、正式应用或真实用户配置。
 - `desktop-e2e-20260903-161420-335` 已通过真实首发、写盘、重启和历史恢复，随后捕获产品缺口：
   缺失 reasoning 的工具条错误显示 `max`。Agent 日志确认 Session 恢复成功；工具条两处默认补值
@@ -261,7 +261,7 @@ Core 全量、Bootstrap 定向回归、Pro 首请求证据与文档/类型入口
 按用户最新要求，后续测试统一使用 MacBook Pro。此前误沿用 68 文档中的 Air 要求，已修正文档。
 Air 第一轮 E2E 停在模型菜单不可点击，未取得完整切模证据，不能算验证通过；第二轮停止。
 Air 独立目录、依赖和测试日志暂留，旧源码目录及真实用户数据未覆盖。
-Pro 独立测试目录：`/Users/dev/Desktop/projects/Z.AI/zcode-todo68-e2e.H1cvBo`。
+Pro 独立测试目录：`/Users/dev/Desktop/projects/Z.AI/codez-todo68-e2e.H1cvBo`。
 Pro 使用 Node 24.14.0 / pnpm 10.33.2。Electron 下载中断后复用同机旧目录的相同版本 41.0.3 二进制；
 只给测试命令设置 PATH / 跳过重复下载，不改全局 mise 信任、Shell 或 Git 配置，也不覆盖旧源码目录。
 

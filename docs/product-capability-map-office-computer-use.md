@@ -8,7 +8,7 @@
 | Capability       | Office Suite & Computer Use Incubation                                                                                                                                             |
 | Change layer     | presentation                                                                                                                                                                       |
 | Operating mode   | planning                                                                                                                                                                           |
-| Primary seeds    | `packages/ui/src/PreviewPane.tsx`、`packages/ui/src/components/ui/pdf-viewer.tsx`、`apps/zcode-cli/packages/document-skills-plugin`、`packages/services/src/cua-permission-broker` |
+| Primary seeds    | `packages/ui/src/PreviewPane.tsx`、`packages/ui/src/components/ui/pdf-viewer.tsx`、`apps/codez-cli/packages/document-skills-plugin`、`packages/services/src/cua-permission-broker` |
 | Out of scope     | 实现 DOCX/XLSX/PPTX 原生编辑器、修改 CUA 权限模型或默认开启 CUA                                                                                                                    |
 
 ## Current Fact Versus Roadmap
@@ -17,7 +17,7 @@
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
 | Office 预览  | 工作区文件预览、PDF 分页/缩放预览、DOCX/DOC 与 XLSX 只读预览                                                                                                                                                                                                                         | PPTX 高保真预览、缩略图和跨页导航；Office 原生编辑器仍规划                 |
 | Office 编辑  | Agent 可通过官方 DOCX/PDF/PPTX/XLSX Skills 创建、编辑和校验工作区制品                                                                                                                                                                                                                | 原生文档/表格/演示编辑、批注、修订、增量保存和导出                         |
-| Computer Use | macOS/Windows 本地默认启用的 CUA Helper、权限引导、屏幕读取、原生输入；模型通过 shared-host `node_repl` 的 `agent.computerUse` SDK 调用，CUA runtime/Helper 状态留在 shared host；macOS PiP session coordinator 由 producer 持有，ZCode 只发布前台 session 与 turn facts；Windows 通过 `computer-use/operation-event` runtime sideband 在 CUA turn 期间显示顶部操作提示，兜底 30 秒 | 暂停/接管、逐步确认，以及 Linux 平台能力                                   |
+| Computer Use | macOS/Windows 本地默认启用的 CUA Helper、权限引导、屏幕读取、原生输入；模型通过 shared-host `node_repl` 的 `agent.computerUse` SDK 调用，CUA runtime/Helper 状态留在 shared host；macOS PiP session coordinator 由 producer 持有，Codez 只发布前台 session 与 turn facts；Windows 通过 `computer-use/operation-event` runtime sideband 在 CUA turn 期间显示顶部操作提示，兜底 30 秒 | 暂停/接管、逐步确认，以及 Linux 平台能力                                   |
 | 多端/远程    | Desktop 本地 Host 是 CUA 权限主体；工作区文件服务支持 local/remote                                                                                                                                                                                                                   | Web/Mobile 只消费投影或挂载已有 Desktop Host；远端 Computer Use 需独立方案 |
 
 能力图中的“规划”节点表示维护边界和路线图，不表示当前已存在可调用的产品接口。群级 LOC 只统计已落地代码，不给规划能力预填代码量。
@@ -28,7 +28,7 @@
 | -------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------- | ------------------------------ | ------------------------------------------ | ------------------------------------------------------------- | --------------------------------------------------------- |
 | 预览 Office/PDF 文件 | Workspace File Tree → Preview Pane                          | Preview Pane、PDF Viewer、未来 Office renderer                       | Renderer preview state                                                 | workspace file metadata           | MIME/extension、大小、转换能力                                | 只读打开/翻页/缩放             | Host file/document service；workspace file | Desktop/Web/Mobile UI 可复用；local/remote 服务源不同         | Agent 文档生成和原生编辑提交                              |
 | 编辑 Office 文件     | 未来 Office Editor                                          | 未来文档/表格/演示编辑壳                                             | Renderer editor draft                                                  | 当前 workspace 文件版本           | 文件类型、写权限、版本冲突                                    | save/export/comment/revision   | 规划中的 Host Office Document Service      | 必须支持 workspaceIdentity；路径 IO 使用 workspacePath        | CLI Document Skills 的直接工作区执行                      |
-| Agent 创建或编辑文档 | Conversation + DOCX/PDF/PPTX/XLSX Skill                     | CLI Skill runtime、内置工具和脚本                                    | Agent turn                                                             | 官方 document-skills plugin       | Skill 启用、依赖可用、工具权限                                | 写入/修改工作区制品            | ZCode CLI tool execution + workspace files | local/SSH/WSL/Docker 在各自 CLI 工作区执行                    | 原生 Office Editor 草稿状态                               |
+| Agent 创建或编辑文档 | Conversation + DOCX/PDF/PPTX/XLSX Skill                     | CLI Skill runtime、内置工具和脚本                                    | Agent turn                                                             | 官方 document-skills plugin       | Skill 启用、依赖可用、工具权限                                | 写入/修改工作区制品            | Codez CLI tool execution + workspace files | local/SSH/WSL/Docker 在各自 CLI 工作区执行                    | 原生 Office Editor 草稿状态                               |
 | 使用 Computer Use    | 通用 `node_repl` 工具结果、CUA 权限引导；Windows 顶部操作提示 | shared-host node_repl runtime、CuaControlPort、Helper、Desktop Main native projection | CLI runtime lifecycle；Host CUA turn tracker；Renderer generic node_repl projection | MCP config + explicit kill switch | macOS/Windows、本地 Host、可信 Helper/broker token 与平台权限 | observe/click/type/open app    | Desktop-local CUA Helper + shared-host CUA runtime | macOS/Windows desktop-local；mobile 走 shared-host attachment | remote host 自建 Helper、其他 MCP/子进程继承 broker token |
 | 暂停或人工接管       | 未来 Computer Use control surface                           | 未来 step projection / takeover protocol                             | Renderer control intent                                                | active CUA operation              | 操作阶段、权限、高风险动作                                    | pause/confirm/take over/resume | 尚未定义；能力图只保留规划节点             | Desktop 与 mobile 的控制权语义需另立 spec                     | 普通 conversation stop/permission 语义                    |
 
@@ -47,7 +47,7 @@
 | -------------- | --------------------------------- | -------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | must-inspect   | Office 预览/编辑体验              | reads/writes through             | Host Office Document Service                  | 原生 Office UI 落地时                                                                         | Renderer 不直接持有 Node/LibreOffice 文件 IO                | `IPlatformService` / Host 分层约束                                                |
 | must-inspect   | Document Skills                   | produces workspace artifacts for | Office Preview                                | 当前 DOCX/PDF/PPTX/XLSX skill 运行                                                            | Agent 生产和 UI 预览是两个 owner                            | `docs/document-skills-plugin.md`                                                  |
-| must-inspect   | Computer Use SDK via node_repl    | executes through                 | shared-host CuaControlPort → Helper/Broker    | macOS/Windows desktop-local                                                                  | 高权限动作必须走签名 Helper 且 fail closed                  | `docs/cua-permission-broker/zcode-cua-permission-broker.md`                       |
+| must-inspect   | Computer Use SDK via node_repl    | executes through                 | shared-host CuaControlPort → Helper/Broker    | macOS/Windows desktop-local                                                                  | 高权限动作必须走签名 Helper 且 fail closed                  | `docs/cua-permission-broker/codez-cua-permission-broker.md`                       |
 | should-inspect | Computer Use lifecycle projection | renders in                       | Conversation Timeline + Windows top indicator | Conversation 使用通用 tool lifecycle；Windows 顶部提示独立消费 `computer-use/operation-event` | 顶部提示只表达 Agent 正在操作，不等于实时画面或可接管工作台 | `packages/ui/src/v4`、`packages/desktop/src/main/windowsCuaOperationIndicator.ts` |
 | invariant-only | Remote/Mobile Host                | must not create                  | Desktop CUA Helper                            | SSH/WSL/Docker/mobile remote                                                                  | CUA 授权主体是本机桌面 Helper                               | CUA broker fact spec                                                              |
 | invariant-only | CUA broker credential             | must remain isolated from        | other MCP/hooks/Bash                          | 所有 CUA 运行                                                                                 | 防止 confused-deputy                                        | CUA broker fact spec                                                              |
@@ -62,7 +62,7 @@
 | CUA permission subject          | Permission dialog              | signed Computer Use Helper                                       | request_access / system settings                                 | macOS TCC                             | CUA broker docs                   |
 | CUA observation/action          | Generic node_repl projection   | CuaControlPort + Helper broker                          | `agent.computerUse.<tool>` via `mcp__node_repl__js`              | tool result/session event             | CUA broker implementation         |
 | Windows CUA operation indicator | Desktop Main native projection | CLI runtime lifecycle + desktop-local Host turn tracker | `computer-use/operation-event` → Host→Main `cua-operation-state` | ephemeral；不进入 snapshot/replayable | `windowsCuaOperationIndicator.ts` |
-| macOS CUA PiP session surface | `@zcode/zcode-cua` native presentation | Desktop Main focus router + Host turn fact publisher | typed `pip-session` presentation client | Helper process-local；不进入 snapshot/replayable | producer `PipSessionCoordinator` |
+| macOS CUA PiP session surface | `@codez/codez-cua` native presentation | Desktop Main focus router + Host turn fact publisher | typed `pip-session` presentation client | Helper process-local；不进入 snapshot/replayable | producer `PipSessionCoordinator` |
 | Human takeover                  | 未来专属 UI                    | 未定义                                                  | 未定义                                                           | 未定义                                | roadmap only                      |
 
 ## State And Delivery Boundary
@@ -79,17 +79,17 @@ Host File Service + Office Document Service
 workspacePath files
           ^
           | DOCX/PDF Skill + CLI tools（当前）
-ZCode CLI Document Skills
+Codez CLI Document Skills
 
 Computer Use（当前 macOS/Windows desktop-local beta）
 Renderer Conversation / Permission UI
           ^
           | ProductProjection / tool lifecycle
-ZCode CLI MCP Runtime -- node_repl js / CUA SDK call -->
+Codez CLI MCP Runtime -- node_repl js / CUA SDK call -->
           |
           | shared-host bridge token + request context
           v
-Local Host CUA Broker --> signed ZCode Computer Use.app --> AX / Screen / Input
+Local Host CUA Broker --> signed Codez Computer Use.app --> AX / Screen / Input
 
 CLI runtime lifecycle
         -> computer-use/operation-event sideband
@@ -112,7 +112,7 @@ Remote Host --------------------------X--> create/launch local Computer Use Help
 | 规划节点不冒充已交付功能               | 能力图                            | 节点 scope 明确“当前/规划”，群 LOC 只计算当前代码                  | map data + detail panel        |
 | Renderer 不直接拥有 Office 平台 IO     | Desktop/Web/Mobile                | 未来解析/转换/保存通过可注入 Host service                          | architecture spec              |
 | Document Skills 与原生 Editor 草稿隔离 | Agent + UI                        | Skill 可独立工作；Editor 取消不撤销 Agent 已提交文件               | document skill boundary        |
-| CUA 默认启用且 fail closed             | macOS/Windows Desktop             | 显式关闭或 broker/可信运行时失败时不裸跑 `zcode-cua`               | CUA broker spec/tests          |
+| CUA 默认启用且 fail closed             | macOS/Windows Desktop             | 显式关闭或 broker/可信运行时失败时不裸跑 `codez-cua`               | CUA broker spec/tests          |
 | Remote/Mobile 不另起 CUA Helper        | remote/mobile                     | 只允许 shared-host attachment 复用本地 Host                        | web remote + CUA spec          |
 | Windows 提示不进入截图或 replayable    | Windows Desktop/Mobile attachment | `setContentProtection(true)`；状态只走 Host→Main ephemeral message | operation indicator spec/tests |
 

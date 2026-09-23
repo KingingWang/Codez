@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOffPeakTask } from "../src/zcode-task-types.js";
+import { isOffPeakTask } from "../src/codez-task-types.js";
 
 // D48：闲时会话/幻影行的月亮身份只看持久 meta 标记，不再依赖 UI 反查 off-peak store。
 describe("isOffPeakTask", () => {

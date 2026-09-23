@@ -5,7 +5,7 @@ run `35713167778` passed on source `a1dcf9d`; see
 `docs/codex-desktop-validation.md` for evidence and the remaining signing,
 automatic-update and external remote-validation boundaries.
 
-The fork publishes ZCode Codex desktop builds from KingingWang/ZCode. Preserve
+The fork publishes Codez desktop builds from KingingWang/Codez. Preserve
 upstream history and license notices. Use an independent application identity,
 desktop data directory and update feed; do not update a fork install to upstream.
 
@@ -24,6 +24,14 @@ read-only repository permissions.
 
 ## Per-push release publication
 
+## Product identity
+
+Codez is the fork's public product name. Repository, package, command,
+environment-variable, desktop registration, deep-link, data-root, artifact, and
+release names use the `Codez` / `codez` / `CODEZ` spelling. The legacy Codez
+service host and service path remain unchanged when they identify an external
+API contract rather than this product.
+
 The release job is the only publication owner and the only job with contents-write
 permission. It accepts artifacts from its own successful workflow run, verifies
 all six installer/checksum sets, uploads them to a draft, verifies the uploaded
@@ -36,7 +44,7 @@ push → remote assets → six native builds → verify checksums → draft uplo
                                                          → verify assets → public release
 ```
 
-Each run uses `zcode-codex-build-<run-id>-<short-sha>` targeting the exact built
+Each run uses `codez-codex-build-<run-id>-<short-sha>` targeting the exact built
 commit. Reruns reuse that identity: incomplete drafts may resume; a complete public
 release is verified without overwriting its assets. Unexpected ownership, commit,
 assets or digests fail closed. Spaces in public asset names are normalized to dots
@@ -66,21 +74,21 @@ Remote consumers use bundled native archives; missing or invalid assets fail
 explicitly rather than preparing or deploying the old GLM CLI.
 
 Public desktop dev/build/bundle commands and standalone builder configuration default
-to `ZCODE_DESKTOP_RUNTIME=codex`, including the isolated Codex product flavor.
-Only explicit `ZCODE_DESKTOP_RUNTIME=legacy` retains upstream identity/runtime behavior.
+to `CODEZ_DESKTOP_RUNTIME=codex`, including the isolated Codex product flavor.
+Only explicit `CODEZ_DESKTOP_RUNTIME=legacy` retains upstream identity/runtime behavior.
 The dev entry prepares the verified native binary and builds the bridge before starting
 Electron, then passes the selected native path to Host. No manual build prerequisite.
 
 ## Runtime isolation and remote boundary
 
 `codex` is an explicit product flavor, independent of test/production backend.
-Main owns the desktop identity: ZCode Codex (ZCode Codex Dev when unpackaged),
-the `zcode-codex` protocol and OS registration names. It must not consume
-`zcode:` links or overwrite upstream desktop/Finder/Explorer registrations.
+Main owns the desktop identity: Codez Codex (Codez Codex Dev when unpackaged),
+the `codez-codex` protocol and OS registration names. It must not consume
+`codez:` links or overwrite upstream desktop/Finder/Explorer registrations.
 Electron userData/sessionData use that identity. Business storage keeps the
 existing services path contract under an isolated base: by default
-`~/.zcode-codex/.zcode/v2`; an explicit custom base is namespaced with
-`.zcode-codex` too. Bootstrap settings stay anchored in the fork's home root,
+`~/.codez-codex/.codez/v2`; an explicit custom base is namespaced with
+`.codez-codex` too. Bootstrap settings stay anchored in the fork's home root,
 and Main forwards the resolved base to Host before services are created.
 No upstream settings/credentials/cache are migrated or reused implicitly.
 
@@ -90,7 +98,7 @@ compiled codex flavor → Main identity/bootstrap owner → isolated settings/ba
 verified release asset → immutable staging → resource checks → packaged Codex
 ```
 
-Runtime update checks for Codex resolve only to KingingWang/ZCode releases.
+Runtime update checks for Codex resolve only to KingingWang/Codez releases.
 The private Desktop workspace package carries a valid development SemVer (`0.0.0`)
 because standard `dev.mjs` launches Electron against that package and updater
 construction reads its version before update-disable policy runs. No QA-only
@@ -159,12 +167,12 @@ Integrated consumer boundaries:
 
 - `packages/server/src/remote/remoteAssetCache.ts`: recognize `codex-runtime`
   and its mount; retain archive/hash validation.
-- `deployShared.ts`, `deploy.ts`, `zcodeAgentDeploy.ts`, `connect.ts`: isolate
-  `~/.zcode-codex/server`, deploy Codex instead of GLM/plugin packages, retain
+- `deployShared.ts`, `deploy.ts`, `codezAgentDeploy.ts`, `connect.ts`: isolate
+  `~/.codez-codex/server`, deploy Codex instead of GLM/plugin packages, retain
   identity/lease/refresh guards, and pass explicit resolved remote paths.
-- `packages/services/src/zcode-agent/codexBridgeCommand.ts`: resolve the
-  deployed bridge via `ZCODE_CODEX_BRIDGE_PATH`; invoke the remote Node with
-  the bridge and pass the pinned executable through `ZCODE_CODEX_COMMAND`.
+- `packages/services/src/codez-agent/codexBridgeCommand.ts`: resolve the
+  deployed bridge via `CODEZ_CODEX_BRIDGE_PATH`; invoke the remote Node with
+  the bridge and pass the pinned executable through `CODEZ_CODEX_COMMAND`.
 - Remote Node uses 24.14.0 rather than the old producer's 22.16.0, with pinned
   checksums/notices. Codex app configuration stays owned by
   native Codex; desktop does not copy credentials to satisfy startup.

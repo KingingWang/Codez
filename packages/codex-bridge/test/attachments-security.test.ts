@@ -18,13 +18,13 @@ import {
   PROTOCOL_V4_LIMITS as LIMITS,
   V4_METHODS,
   v4AttachmentCommitResultSchema,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { AttachmentStore } from "../src/attachments.js";
 
 const common = { connectionId: "connection", sessionId: "draft", uploadId: "upload" };
 const sha = (bytes: Buffer) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 async function fixture(t: TestContext) {
-  const cwd = await mkdtemp(join(tmpdir(), "zcode attachment security "));
+  const cwd = await mkdtemp(join(tmpdir(), "codez attachment security "));
   const root = join(cwd, "store");
   const store = new AttachmentStore({ cwd, root, authorizeRead: () => true });
   t.after(async () => {
@@ -69,9 +69,9 @@ test("client paths and crafted opaque references never become filesystem inputs"
     outside,
     "../../secret.txt",
     `file://${outside}`,
-    "zcode-attachment://../../secret.txt",
-    "zcode-attachment://%2e%2e%2fsecret",
-    "zcode-attachment://00000000-0000-4000-8000-000000000000/extra",
+    "codez-attachment://../../secret.txt",
+    "codez-attachment://%2e%2e%2fsecret",
+    "codez-attachment://00000000-0000-4000-8000-000000000000/extra",
   ]) {
     await assert.rejects(store.resolve(ref, "draft"), /refNotAuthorized/);
     await assert.rejects(

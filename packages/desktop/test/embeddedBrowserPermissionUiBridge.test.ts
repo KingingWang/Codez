@@ -10,7 +10,7 @@ const sentPrompts: Array<{ hostWebContentsId: number | undefined; event: Record<
 vi.mock("electron", () => ({
   ipcMain: {
     on: (channel: string, listener: (event: unknown, payload: unknown) => void) => {
-      if (channel === "zcode:embedded-browser-permission-resolve") {
+      if (channel === "codez:embedded-browser-permission-resolve") {
         resolveListeners.push(listener);
       }
     },
@@ -259,7 +259,7 @@ describe("createEmbeddedBrowserSitePermissionStore", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "zcode-site-permissions-"));
+    dir = await mkdtemp(join(tmpdir(), "codez-site-permissions-"));
   });
 
   afterEach(async () => {

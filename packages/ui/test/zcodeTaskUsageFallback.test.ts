@@ -4,7 +4,7 @@ import {
   buildTaskContextUsageFromUsageUpdate,
   recordTaskContextUsageUpdate,
   resetTaskContextUsageUpdateRecordsForTest,
-} from "../src/lib/zcodeTaskUsageFallback.js";
+} from "../src/lib/codezTaskUsageFallback.js";
 
 function createUsage(totalTokens: number) {
   return {
@@ -14,7 +14,7 @@ function createUsage(totalTokens: number) {
   };
 }
 
-describe("zcodeTaskUsageFallback", () => {
+describe("codezTaskUsageFallback", () => {
   beforeEach(() => {
     resetTaskContextUsageUpdateRecordsForTest();
   });

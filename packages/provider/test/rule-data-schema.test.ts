@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { completeModelConfigDataSchema } from "@zcode/shared/model-config";
+import { completeModelConfigDataSchema } from "@codez/shared/model-config";
 import { extractManualModelConfig } from "../src/index.js";
 import {
   builtinModelConfigRulesSchema,

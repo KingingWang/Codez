@@ -10,9 +10,9 @@ import {
   TID_WORKFLOW_LAUNCH_ARG,
   TID_WORKFLOW_LAUNCH_DIALOG,
   testId,
-  type ZCodeSavedWorkflowEntry,
-  type ZCodeWorkflowsSaveResult,
-} from "@zcode/shared";
+  type CodezSavedWorkflowEntry,
+  type CodezWorkflowsSaveResult,
+} from "@codez/shared";
 
 vi.mock("@/logger.js", () => ({ logger: { debug: vi.fn(), warn: vi.fn(), info: vi.fn() } }));
 const toastSpy = vi.hoisted(() => vi.fn());
@@ -39,7 +39,7 @@ vi.mock("@/hooks/useWorkflowRunSave.js", () => ({
 }));
 
 // eslint-disable-next-line import/first -- 必须在 mock 之后再引入被测组件。
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 // eslint-disable-next-line import/first
 import {
   WorkflowSavePopover,
@@ -74,15 +74,15 @@ afterEach(() => {
   cleanup();
 });
 
-const ENTRY: ZCodeSavedWorkflowEntry = {
+const ENTRY: CodezSavedWorkflowEntry = {
   name: "pr-review",
   description: "分层评审",
   scope: "project",
-  path: "/repo/.zcode/workflows/pr-review.dwf.ts",
+  path: "/repo/.codez/workflows/pr-review.dwf.ts",
 };
 
 function withIntl(node: ReactNode, locale: "en-US" | "zh-CN" = "en-US") {
-  return createElement(ZCodeIntlProvider, { initialLocale: locale }, node);
+  return createElement(CodezIntlProvider, { initialLocale: locale }, node);
 }
 
 // ── 弹层 ──
@@ -94,7 +94,7 @@ function popoverHost(overrides: Partial<WorkflowSavePopoverHost> = {}): Workflow
     scopeLocked: false,
     saving: false,
     save: vi.fn(
-      async (): Promise<ZCodeWorkflowsSaveResult> => ({
+      async (): Promise<CodezWorkflowsSaveResult> => ({
         ok: true,
         name: "pr-review",
         scope: "project",
@@ -125,22 +125,22 @@ function renderPopover(host: WorkflowSavePopoverHost, locale: "en-US" | "zh-CN" 
 }
 
 describe("WorkflowSavePopover", () => {
-  it("zh：先是整条宽的 ZCode 主路，细线之下才是三个字段；名字按 run 名预填、名字框拿到焦点", () => {
+  it("zh：先是整条宽的 Codez 主路，细线之下才是三个字段；名字按 run 名预填、名字框拿到焦点", () => {
     renderPopover(popoverHost(), "zh-CN");
     expect(screen.getByText("保存工作流")).toBeTruthy();
-    expect(screen.getByTestId("workflow-save-lead").textContent).toBe("让 ZCode 帮我提炼保存");
-    expect(screen.getByText("ZCode 会帮你提炼出可复用的工作流，再交你确认。")).toBeTruthy();
+    expect(screen.getByTestId("workflow-save-lead").textContent).toBe("让 Codez 帮我提炼保存");
+    expect(screen.getByText("Codez 会帮你提炼出可复用的工作流，再交你确认。")).toBeTruthy();
     expect(screen.getByText("或按原样直接保存")).toBeTruthy();
     const name = screen.getByTestId<HTMLInputElement>("workflow-save-name");
     expect(name.value).toBe("pr-review");
     expect(document.activeElement).toBe(name);
     expect(screen.getByTestId("workflow-save-consequence").textContent).toContain(
-      ".zcode/workflows/pr-review.dwf.ts",
+      ".codez/workflows/pr-review.dwf.ts",
     );
     expect(screen.getByTestId("workflow-save-submit").textContent).toBe("直接保存");
   });
 
-  it("ZCode 主路：把填好的字段交出去，然后关掉", async () => {
+  it("Codez 主路：把填好的字段交出去，然后关掉", async () => {
     const host = popoverHost();
     const { onOpenChange } = renderPopover(host);
     fireEvent.change(screen.getByTestId("workflow-save-description"), {
@@ -155,7 +155,7 @@ describe("WorkflowSavePopover", () => {
     });
   });
 
-  it("⌘↩ 从任何字段触发 ZCode 主路", async () => {
+  it("⌘↩ 从任何字段触发 Codez 主路", async () => {
     const host = popoverHost();
     renderPopover(host);
     fireEvent.keyDown(screen.getByTestId("workflow-save-name"), { key: "Enter", metaKey: true });
@@ -211,7 +211,7 @@ describe("WorkflowSavePopover", () => {
   it("agent 拒绝（target_exists 之外）：画出它的原因与诊断，弹层留着——什么都没写", async () => {
     const host = popoverHost({
       save: vi.fn(
-        async (): Promise<ZCodeWorkflowsSaveResult> => ({
+        async (): Promise<CodezWorkflowsSaveResult> => ({
           ok: false,
           reason: "compile_failed",
           detail: "L1:C1 bad",
@@ -228,7 +228,7 @@ describe("WorkflowSavePopover", () => {
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
-  it("老 agent 没有 workflows/save：只留 ZCode 那条路，提示里说清楚", () => {
+  it("老 agent 没有 workflows/save：只留 Codez 那条路，提示里说清楚", () => {
     renderPopover(popoverHost({ directSaveUnsupported: true }));
     expect(screen.getByTestId("workflow-save-lead")).toBeTruthy();
     expect(screen.queryByTestId("workflow-save-name")).toBeNull();
@@ -236,7 +236,7 @@ describe("WorkflowSavePopover", () => {
     expect(screen.getByText(/This agent cannot save directly\./u)).toBeTruthy();
   });
 
-  it("宿主没有发送路径：没有 ZCode 那一枚、也没有分隔线，只剩字段", () => {
+  it("宿主没有发送路径：没有 Codez 那一枚、也没有分隔线，只剩字段", () => {
     const host = popoverHost();
     delete host.sendLead;
     renderPopover(host);
@@ -249,7 +249,7 @@ describe("WorkflowSavePopover", () => {
 // ── 表头两个槽位 ──
 
 interface ControllerOverrides {
-  entry?: ZCodeSavedWorkflowEntry;
+  entry?: CodezSavedWorkflowEntry;
   runArgs?: Record<string, unknown>;
   launch?: ReturnType<typeof vi.fn>;
 }
@@ -382,7 +382,7 @@ describe("表头槽位", () => {
   });
 
   it("再次运行：有实参就开窗，预填这次 run 跑过的那一份", async () => {
-    const entry: ZCodeSavedWorkflowEntry = {
+    const entry: CodezSavedWorkflowEntry = {
       ...ENTRY,
       args: { base: { type: "string", default: "main" } },
     };

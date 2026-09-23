@@ -4,7 +4,7 @@ import {
   v4ConversationRowsRangeParamsSchema,
   v4ConversationPlansParamsSchema,
   v4ConversationFileChangesParamsSchema,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import type { CodexProcess } from "./contract.js";
 import { DeletedThreadError, ThreadStateStore } from "./thread-state.js";
 import { InteractionBroker } from "./interactions.js";

@@ -7,10 +7,10 @@ import type {
   CommandEnvelope,
   ConversationRowTarget,
   ConversationSnapshot,
-} from "@zcode/shared/zcode-protocol-v4";
-import type { HighspeedCardSnapshot } from "@zcode/shared";
+} from "@codez/shared/codez-protocol-v4";
+import type { HighspeedCardSnapshot } from "@codez/shared";
 import { SessionPane } from "@/v4/SessionPane.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 // spec §9.2：激活动效只属于本端发送路径的 draw 新命中；切回、恢复与同卡复用都按 restore 呈现。
 
@@ -92,10 +92,10 @@ const servicesMock = vi.hoisted(() => ({
     share: vi.fn(),
   },
   // readiness hook 将 service 作为 effect 依赖；每次 render 重建会导致无限重渲染。
-  zcodeSessionService: {
+  codezSessionService: {
     updateProviderRegistry: vi.fn(),
   },
-  zcodeTaskService: {
+  codezTaskService: {
     restartWorkspaceProcess: vi.fn(),
   },
 }));
@@ -122,7 +122,7 @@ vi.mock("@/hooks/useSettingService.js", () => ({
     error: null,
     loading: false,
     refresh: vi.fn(async () => {}),
-    settings: { zcodeInteractionBehavior: "queue" },
+    settings: { codezInteractionBehavior: "queue" },
     update: vi.fn(async () => {}),
   }),
 }));
@@ -149,7 +149,7 @@ vi.mock("@/v4/V4ConversationContext.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
+  useCodezStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
 }));
 
 vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
@@ -426,7 +426,7 @@ async function renderPane(root: Root, sessionId: string): Promise<void> {
   await act(async () => {
     root.render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(SessionPane, {
           paneId: "workspace-main",

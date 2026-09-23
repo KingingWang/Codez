@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveChannelMentionNames } from "../src/bots/channelMentionResolver.js";
-import { channelReplyResultSchema } from "@zcode/shared";
+import { channelReplyResultSchema } from "@codez/shared";
 
 const resolve = (names: string[], members: Record<string, string> | undefined) =>
   resolveChannelMentionNames(

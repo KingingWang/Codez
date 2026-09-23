@@ -7,7 +7,7 @@ import {
 } from "@/hooks/useClaudeSessionMigration.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, string>) => {
         if (id === "onboarding.sessions.count") {

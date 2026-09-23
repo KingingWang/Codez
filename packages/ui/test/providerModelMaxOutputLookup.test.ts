@@ -55,7 +55,7 @@ vi.mock("@/components/ui/dialog.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "zh-CN",
     intl: {
       formatMessage: ({ id }: { id: string }) => {

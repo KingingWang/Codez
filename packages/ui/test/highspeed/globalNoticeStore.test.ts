@@ -44,7 +44,7 @@ describe("global notice store", () => {
   it("drops a persisted legacy Highspeed mock notice during hydration", () => {
     const storage = memoryStorage();
     storage.setItem(
-      "zcode:global-notice:v1",
+      "codez:global-notice:v1",
       JSON.stringify({
         version: 1,
         latest: {
@@ -76,7 +76,7 @@ describe("global notice store", () => {
 
     expect(store.getVisible()).toBeNull();
     expect(store.getSnapshot().latest).toBeNull();
-    expect(JSON.parse(storage.getItem("zcode:global-notice:v1") ?? "null").latest).toBeNull();
+    expect(JSON.parse(storage.getItem("codez:global-notice:v1") ?? "null").latest).toBeNull();
   });
 
   it("persists latest-only Highspeed notice and enforces a user-level 24h dismissal", () => {
@@ -160,7 +160,7 @@ describe("global notice store", () => {
     // 存储恢复后下一次写入照常落盘，内存态与持久态重新对齐。
     failWrites = false;
     store.publish({ ...shareNotice(2000), noticeId: "notice-2", revision: 2 });
-    expect(JSON.parse(backing.getItem("zcode:global-notice:v1") ?? "null").latest.noticeId).toBe(
+    expect(JSON.parse(backing.getItem("codez:global-notice:v1") ?? "null").latest.noticeId).toBe(
       "notice-2",
     );
   });
@@ -168,7 +168,7 @@ describe("global notice store", () => {
   it("drops the legacy mock notice even when the cleanup write fails", () => {
     const backing = memoryStorage();
     backing.setItem(
-      "zcode:global-notice:v1",
+      "codez:global-notice:v1",
       JSON.stringify({
         version: 1,
         latest: { ...shareNotice(1000), payload: { cardId: "hsc_mock_1" } },

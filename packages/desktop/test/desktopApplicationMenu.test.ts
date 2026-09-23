@@ -14,7 +14,7 @@ vi.mock("electron", () => ({
   app: {
     getLocale: vi.fn(() => envMock.locale),
     getPreferredSystemLanguages: vi.fn(() => envMock.preferredSystemLanguages),
-    name: "ZCode",
+    name: "Codez",
     get isPackaged() {
       return envMock.isPackaged;
     },
@@ -28,8 +28,8 @@ vi.mock("electron", () => ({
 }));
 
 // Bugfix: 这个用例只验证菜单模板，不能通过 importActual 拉完整 shared/services/main 依赖。
-// 全量 pre-push 并发时真实依赖加载会撞 5s 超时，并让 ZCODE_ENV 的模块缓存污染后续断言。
-vi.mock("@zcode/shared", () => ({
+// 全量 pre-push 并发时真实依赖加载会撞 5s 超时，并让 CODEZ_ENV 的模块缓存污染后续断言。
+vi.mock("@codez/shared", () => ({
   DesktopCommandIds: {
     NewTask: "newTask",
     OpenWorkspace: "openWorkspace",
@@ -46,11 +46,11 @@ vi.mock("@zcode/shared", () => ({
     ExportLogs: "exportLogs",
     ToggleDevTools: "toggleDevTools",
     OpenResourceManager: "openResourceManager",
-    ToggleZCodeStdioTapDevProxy: "toggleZCodeStdioTapDevProxy",
-    SetZCodeEndpointProduction: "setZCodeEndpointProduction",
-    SetZCodeEndpointTest: "setZCodeEndpointTest",
-    SetZCodeEndpointCustom: "setZCodeEndpointCustom",
-    ResetZCodeEndpoint: "resetZCodeEndpoint",
+    ToggleCodezStdioTapDevProxy: "toggleCodezStdioTapDevProxy",
+    SetCodezEndpointProduction: "setCodezEndpointProduction",
+    SetCodezEndpointTest: "setCodezEndpointTest",
+    SetCodezEndpointCustom: "setCodezEndpointCustom",
+    ResetCodezEndpoint: "resetCodezEndpoint",
     ClearAllData: "clearAllData",
   },
   desktopMenuMessageIds: {
@@ -85,30 +85,30 @@ vi.mock("@zcode/shared", () => ({
     helpCheckForUpdates: "titleBar.menu.help.checkForUpdates",
     helpToggleDevTools: "titleBar.menu.help.toggleDevTools",
     helpResourceManager: "titleBar.menu.help.resourceManager",
-    helpToggleZCodeStdioTap: "titleBar.menu.help.toggleZCodeStdioTap",
-    helpZCodeEndpoint: "titleBar.menu.help.zcodeEndpoint",
-    helpZCodeEndpointProduction: "titleBar.menu.help.zcodeEndpoint.production",
-    helpZCodeEndpointTest: "titleBar.menu.help.zcodeEndpoint.test",
-    helpZCodeEndpointCustom: "titleBar.menu.help.zcodeEndpoint.custom",
-    helpZCodeEndpointReset: "titleBar.menu.help.zcodeEndpoint.reset",
+    helpToggleCodezStdioTap: "titleBar.menu.help.toggleCodezStdioTap",
+    helpCodezEndpoint: "titleBar.menu.help.codezEndpoint",
+    helpCodezEndpointProduction: "titleBar.menu.help.codezEndpoint.production",
+    helpCodezEndpointTest: "titleBar.menu.help.codezEndpoint.test",
+    helpCodezEndpointCustom: "titleBar.menu.help.codezEndpoint.custom",
+    helpCodezEndpointReset: "titleBar.menu.help.codezEndpoint.reset",
     helpFeedback: "titleBar.menu.help.feedback",
     helpExportLogs: "titleBar.menu.help.exportLogs",
     helpClearAllData: "titleBar.menu.help.clearAllData",
   },
-  get ZCODE_ENV() {
+  get CODEZ_ENV() {
     return envMock.value;
   },
   // 身份跟随后端环境的旧单轴语义：test → preview，production → production。
-  get ZCODE_PRODUCT_FLAVOR() {
+  get CODEZ_PRODUCT_FLAVOR() {
     return envMock.value === "production" ? "production" : "preview";
   },
   getDesktopMenuMessage: (_locale: string, id: string) => {
     const enLabels: Record<string, string> = {
-      "titleBar.menu.help.zcodeEndpoint": "ZCode Endpoint",
-      "titleBar.menu.help.zcodeEndpoint.production": "Production (default)",
-      "titleBar.menu.help.zcodeEndpoint.test": "Test",
-      "titleBar.menu.help.zcodeEndpoint.custom": "Custom...",
-      "titleBar.menu.help.zcodeEndpoint.reset": "Reset to Default",
+      "titleBar.menu.help.codezEndpoint": "Codez Endpoint",
+      "titleBar.menu.help.codezEndpoint.production": "Production (default)",
+      "titleBar.menu.help.codezEndpoint.test": "Test",
+      "titleBar.menu.help.codezEndpoint.custom": "Custom...",
+      "titleBar.menu.help.codezEndpoint.reset": "Reset to Default",
     };
     const zhLabels: Record<string, string> = {
       "titleBar.menu.file": "文件",
@@ -155,13 +155,13 @@ vi.mock("../src/main/autoUpdater.js", () => ({
 
 vi.mock("../src/main/desktopCommandHandlers.js", () => ({
   HELP_TOGGLE_DEV_TOOLS_MENU_ID: "help.toggle-dev-tools",
-  HELP_TOGGLE_ZCODE_STDIO_TAP_MENU_ID: "help.toggle-zcode-stdio-tap",
+  HELP_TOGGLE_CODEZ_STDIO_TAP_MENU_ID: "help.toggle-codez-stdio-tap",
   PERF_START_MENU_ID: "help.performance.start-recording",
   PERF_STOP_MENU_ID: "help.performance.stop-recording",
 }));
 
-vi.mock("@zcode/services/node", () => ({
-  readZCodeStdioTapDevState: vi.fn(() => ({ enabled: false, visible: false })),
+vi.mock("@codez/services/node", () => ({
+  readCodezStdioTapDevState: vi.fn(() => ({ enabled: false, visible: false })),
 }));
 
 describe("desktopApplicationMenu endpoint submenu", () => {
@@ -187,19 +187,19 @@ describe("desktopApplicationMenu endpoint submenu", () => {
 
   it("test 环境显示 endpoint 子菜单并标记当前 test 选项", async () => {
     envMock.value = "test";
-    const { HELP_ZCODE_ENDPOINT_TEST_MENU_ID, rebuildApplicationMenu } =
+    const { HELP_CODEZ_ENDPOINT_TEST_MENU_ID, rebuildApplicationMenu } =
       await import("../src/main/desktopApplicationMenu.js");
 
     rebuildApplicationMenu({
       currentApplicationLocale: "en-US",
-      zcodeEndpointSelection: "test",
+      codezEndpointSelection: "test",
       executeDesktopCommand: vi.fn(),
     });
 
     const template = buildFromTemplateMock.mock
       .calls[0]?.[0] as Electron.MenuItemConstructorOptions[];
-    const endpointItem = findMenuItem(template, "ZCode Endpoint");
-    const testItem = findMenuItem(template, undefined, HELP_ZCODE_ENDPOINT_TEST_MENU_ID);
+    const endpointItem = findMenuItem(template, "Codez Endpoint");
+    const testItem = findMenuItem(template, undefined, HELP_CODEZ_ENDPOINT_TEST_MENU_ID);
     expect(endpointItem).toBeTruthy();
     expect(testItem?.checked).toBe(true);
   });
@@ -210,13 +210,13 @@ describe("desktopApplicationMenu endpoint submenu", () => {
 
     rebuildApplicationMenu({
       currentApplicationLocale: "en-US",
-      zcodeEndpointSelection: "test",
+      codezEndpointSelection: "test",
       executeDesktopCommand: vi.fn(),
     });
 
     const template = buildFromTemplateMock.mock
       .calls[0]?.[0] as Electron.MenuItemConstructorOptions[];
-    expect(findMenuItem(template, "ZCode Endpoint")).toBeUndefined();
+    expect(findMenuItem(template, "Codez Endpoint")).toBeUndefined();
   });
 
   it("Preview 隐藏更新入口，生产版继续显示", async () => {
@@ -250,7 +250,7 @@ describe("desktopApplicationMenu endpoint submenu", () => {
 
     rebuildApplicationMenu({
       currentApplicationLocale: "en-US",
-      zcodeEndpointSelection: "production",
+      codezEndpointSelection: "production",
       executeDesktopCommand: vi.fn(),
     });
 
@@ -267,7 +267,7 @@ describe("desktopApplicationMenu endpoint submenu", () => {
 
     rebuildApplicationMenu({
       currentApplicationLocale: "en-US",
-      zcodeEndpointSelection: "production",
+      codezEndpointSelection: "production",
       executeDesktopCommand: vi.fn(),
     });
 
@@ -282,7 +282,7 @@ describe("desktopApplicationMenu endpoint submenu", () => {
 
     rebuildApplicationMenu({
       currentApplicationLocale: "en-US",
-      zcodeEndpointSelection: "production",
+      codezEndpointSelection: "production",
       executeDesktopCommand,
     });
 
@@ -302,7 +302,7 @@ describe("desktopApplicationMenu endpoint submenu", () => {
 
     rebuildApplicationMenu({
       currentApplicationLocale: "zh-CN",
-      zcodeEndpointSelection: "production",
+      codezEndpointSelection: "production",
       executeDesktopCommand: vi.fn(),
     });
 
@@ -317,7 +317,7 @@ describe("desktopApplicationMenu endpoint submenu", () => {
     expect(findMenuItem(template, "粘贴")?.role).toBe("paste");
     expect(findMenuItem(template, "最小化")?.role).toBe("minimize");
     if (process.platform === "darwin") {
-      expect(findMenuItem(template, "隐藏 ZCode")?.role).toBe("hide");
+      expect(findMenuItem(template, "隐藏 Codez")?.role).toBe("hide");
     }
   });
 
@@ -327,7 +327,7 @@ describe("desktopApplicationMenu endpoint submenu", () => {
 
     rebuildApplicationMenu({
       currentApplicationLocale: "en-US",
-      zcodeEndpointSelection: "production",
+      codezEndpointSelection: "production",
       executeDesktopCommand,
       currentZoomLevel: 1,
     });
@@ -387,7 +387,7 @@ describe("desktopApplicationMenu endpoint submenu", () => {
 
     rebuildApplicationMenu({
       currentApplicationLocale: "en-US",
-      zcodeEndpointSelection: "production",
+      codezEndpointSelection: "production",
       executeDesktopCommand,
       currentZoomLevel: 0,
     });
@@ -400,7 +400,7 @@ describe("desktopApplicationMenu endpoint submenu", () => {
 
     rebuildApplicationMenu({
       currentApplicationLocale: "en-US",
-      zcodeEndpointSelection: "production",
+      codezEndpointSelection: "production",
       executeDesktopCommand,
       currentZoomLevel: 5,
     });
@@ -416,7 +416,7 @@ describe("desktopApplicationMenu endpoint submenu", () => {
 
     rebuildApplicationMenu({
       currentApplicationLocale: "en-US",
-      zcodeEndpointSelection: "production",
+      codezEndpointSelection: "production",
       executeDesktopCommand,
       currentZoomLevel: -3,
     });

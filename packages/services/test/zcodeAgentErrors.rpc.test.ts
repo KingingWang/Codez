@@ -1,26 +1,26 @@
-import { ChannelClient, ChannelServer, createQueuePair, ProxyChannel } from "@zcode/rpc";
+import { ChannelClient, ChannelServer, createQueuePair, ProxyChannel } from "@codez/rpc";
 import { describe, expect, it } from "vitest";
-import { IZCodeAgentService } from "#src/zcode-agent/zcodeAgent.js";
+import { ICodezAgentService } from "#src/codez-agent/codezAgent.js";
 import {
-  ZCODE_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
-  ZCodeAgentMcpStatusModeUnsupportedError,
-} from "#src/zcode-agent/zcodeAgentErrors.js";
+  CODEZ_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
+  CodezAgentMcpStatusModeUnsupportedError,
+} from "#src/codez-agent/codezAgentErrors.js";
 
-describe("ZCode Agent RPC errors", () => {
+describe("Codez Agent RPC errors", () => {
   it("preserves the MCP status-only unsupported code across ChannelClient RPC", async () => {
     const [serverProtocol, clientProtocol] = createQueuePair();
     const server = new ChannelServer(serverProtocol, "test");
     const client = new ChannelClient(clientProtocol);
     server.registerChannel(
-      IZCodeAgentService.channelName,
+      ICodezAgentService.channelName,
       ProxyChannel.fromService({
         async listMcpServerStatuses() {
-          throw new ZCodeAgentMcpStatusModeUnsupportedError();
+          throw new CodezAgentMcpStatusModeUnsupportedError();
         },
       }),
     );
-    const service = ProxyChannel.toService<IZCodeAgentService>(
-      client.getChannel(IZCodeAgentService.channelName),
+    const service = ProxyChannel.toService<ICodezAgentService>(
+      client.getChannel(ICodezAgentService.channelName),
     );
 
     try {
@@ -31,8 +31,8 @@ describe("ZCode Agent RPC errors", () => {
           workspacePath: "/tmp/workspace",
         }),
       ).rejects.toMatchObject({
-        code: ZCODE_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
-        name: "ZCodeAgentMcpStatusModeUnsupportedError",
+        code: CODEZ_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
+        name: "CodezAgentMcpStatusModeUnsupportedError",
       });
     } finally {
       client.dispose();

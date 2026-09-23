@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ZCodeConfigOption } from "@zcode/shared";
+import type { CodezConfigOption } from "@codez/shared";
 import {
   shouldRefreshBotTaskList,
   shouldMirrorBotTaskStreamToStore,
@@ -27,7 +27,7 @@ describe("useBotBroadcastEffects", () => {
     ).toBe(true);
   });
 
-  it("keeps skipping active local bot stream to avoid duplicate normal ZCode Agent subscription writes", () => {
+  it("keeps skipping active local bot stream to avoid duplicate normal Codez Agent subscription writes", () => {
     expect(
       shouldMirrorBotTaskStreamToStore({
         activeTaskId: "task-1",
@@ -37,7 +37,7 @@ describe("useBotBroadcastEffects", () => {
   });
 
   it("syncs bot config options through the task config bucket", () => {
-    const configOptions: ZCodeConfigOption[] = [
+    const configOptions: CodezConfigOption[] = [
       {
         id: "runtime_mode",
         category: "mode",
@@ -49,19 +49,19 @@ describe("useBotBroadcastEffects", () => {
         ],
       },
     ];
-    const zcodeSessionStore = {
+    const codezSessionStore = {
       setTaskConfigOptions: vi.fn(),
     };
 
     syncBotTaskConfigOptionsToStore({
-      zcodeSessionStore,
+      codezSessionStore,
       workspacePath: "/repo",
       workspaceIdentity: "ssh://host/repo",
       taskId: "task-1",
       configOptions,
     });
 
-    expect(zcodeSessionStore.setTaskConfigOptions).toHaveBeenCalledWith(
+    expect(codezSessionStore.setTaskConfigOptions).toHaveBeenCalledWith(
       "/repo",
       "task-1",
       configOptions,

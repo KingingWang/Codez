@@ -1,4 +1,4 @@
-import type { GitCommitMessageConversationContext } from "@zcode/shared";
+import type { GitCommitMessageConversationContext } from "@codez/shared";
 
 const MAX_COMMIT_CONVERSATION_MESSAGES = 12;
 const MAX_COMMIT_CONVERSATION_MESSAGE_CHARS = 600;

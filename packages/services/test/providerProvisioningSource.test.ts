@@ -1,11 +1,11 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ModelConfigRules, parsePersonalProviderConfigMap } from "@zcode/provider";
+import { ModelConfigRules, parsePersonalProviderConfigMap } from "@codez/provider";
 import {
   NodePersonalProviderConfigRepository,
   encodeProviderConfigFile,
-} from "@zcode/provider-node";
+} from "@codez/provider-node";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCredentialCipherProvider } from "../src/credential/providers/credentialCipherProvider.js";
 import {
@@ -31,9 +31,9 @@ function personalRepository(root: string) {
 
 describe("Provider Provisioning Source", () => {
   it("exports sparse Personal Config, default, account settings and only provider credentials", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-provider-provisioning-source-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-provider-provisioning-source-"));
     const credentialsPath = join(root, "credentials.json");
-    const cipher = createCredentialCipherProvider({ env: { ZCODE_CREDENTIAL_SECRET: "source" } });
+    const cipher = createCredentialCipherProvider({ env: { CODEZ_CREDENTIAL_SECRET: "source" } });
     await writeFile(
       credentialsPath,
       JSON.stringify({
@@ -105,9 +105,9 @@ describe("Provider Provisioning Source", () => {
   });
 
   it("does not let malformed non-allowlist credential records block sync", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-provider-provisioning-source-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-provider-provisioning-source-"));
     const credentialsPath = join(root, "credentials.json");
-    const cipher = createCredentialCipherProvider({ env: { ZCODE_CREDENTIAL_SECRET: "source" } });
+    const cipher = createCredentialCipherProvider({ env: { CODEZ_CREDENTIAL_SECRET: "source" } });
     await writeFile(
       credentialsPath,
       JSON.stringify({
@@ -132,7 +132,7 @@ describe("Provider Provisioning Source", () => {
   });
 
   it("still rejects malformed allowlist credential records", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-provider-provisioning-source-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-provider-provisioning-source-"));
     const credentialsPath = join(root, "credentials.json");
     await writeFile(
       credentialsPath,

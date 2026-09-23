@@ -17,5 +17,5 @@
 ## Implementation Notes
 
 - 数据来源为 `WorkspaceTabState.remoteTarget` 和 `workspacePath`，不读取凭据，也不显示密码、私钥路径或 passphrase。
-- 仅修改 UI 展示层，不新增或修改 ZCode session/task realtime、snapshot、queue、stream、owner command 或 web remote-control 状态。
+- 仅修改 UI 展示层，不新增或修改 Codez session/task realtime、snapshot、queue、stream、owner command 或 web remote-control 状态。
 - 桌面端与 Web 端共用 `packages/ui` 组件；手机远控任务首页不使用桌面侧栏，不受该 tooltip 影响。

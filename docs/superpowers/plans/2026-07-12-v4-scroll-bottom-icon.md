@@ -47,7 +47,7 @@ Expected: FAIL because `ConversationTimeline.tsx` still renders the visible text
 
 - [x] **Step 3: Implement the minimal icon-only control**
 
-In `ConversationTimeline.tsx`, import `ArrowDownIcon`, the shared `Button`, and `useZCodeIntl`. Define a module-level `ConversationBackToBottomButton` that renders:
+In `ConversationTimeline.tsx`, import `ArrowDownIcon`, the shared `Button`, and `useCodezIntl`. Define a module-level `ConversationBackToBottomButton` that renders:
 
 ```tsx
 <Button

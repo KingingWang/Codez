@@ -1,4 +1,4 @@
-import { TID_TASK_ITEM, TID_WORKSPACE_MORE_BUTTON, testId } from "@zcode/shared";
+import { TID_TASK_ITEM, TID_WORKSPACE_MORE_BUTTON, testId } from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,

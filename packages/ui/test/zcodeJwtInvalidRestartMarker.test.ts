@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   consumeZcodeJwtInvalidRestartMarker,
   markZcodeJwtInvalidRestart,
-} from "../src/root/zcodeJwtInvalidRestartMarker.js";
+} from "../src/root/codezJwtInvalidRestartMarker.js";
 
 function createStorage() {
   const values = new Map<string, string>();
@@ -13,7 +13,7 @@ function createStorage() {
   };
 }
 
-describe("zcode JWT invalid restart marker", () => {
+describe("codez JWT invalid restart marker", () => {
   it("is consumed exactly once after relaunch", () => {
     const storage = createStorage();
     markZcodeJwtInvalidRestart(storage);

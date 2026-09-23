@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ResourceManagerApp } from "@/resource-manager/ResourceManagerApp.js";
 
 const { intl } = vi.hoisted(() => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }));
-vi.mock("@/i18n/index.js", () => ({ useZCodeIntl: () => ({ intl }) }));
+vi.mock("@/i18n/index.js", () => ({ useCodezIntl: () => ({ intl }) }));
 vi.mock("@/resource-manager/storage/StorageSection.js", () => ({ StorageSection: () => null }));
 vi.mock("@/resource-manager/NetworkSection.js", () => ({ NetworkSection: () => null }));
 

@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { describe, expect, it, vi } from "vitest";
-import { encodeCustomModelValue, type BotsStateFile, type ZCodeStreamEvent } from "@zcode/shared";
+import { encodeCustomModelValue, type BotsStateFile, type CodezStreamEvent } from "@codez/shared";
 import * as f from "./botsService.fixtures.js";
 
 const actor = {
@@ -794,7 +794,7 @@ describe("botsService messageFlow", () => {
     service.disposeAll();
   });
 
-  it("syncs active task model, mode, and cli changes through ZCode Agent and broadcasts UI updates", async () => {
+  it("syncs active task model, mode, and cli changes through Codez Agent and broadcasts UI updates", async () => {
     const repo = f.createMemoryRepo(f.weixinConfig, {
       version: 3,
       bots: {
@@ -821,13 +821,13 @@ describe("botsService messageFlow", () => {
             value: "gpt-5.3",
             name: "GPT-5.3",
             modelProviderId: "glm",
-            modelProviderName: "ZCode Agent",
+            modelProviderName: "Codez Agent",
           },
           {
             value: "gpt-5.4",
             name: "GPT-5.4",
             modelProviderId: "glm",
-            modelProviderName: "ZCode Agent",
+            modelProviderName: "Codez Agent",
           },
         ],
       },
@@ -861,13 +861,13 @@ describe("botsService messageFlow", () => {
       { ...configOptions[1]!, currentValue: "plan" },
     ]);
     const broadcastService = f.createBroadcastService();
-    const zcodeSessionService = f.createZCodeSessionService(
-      f.createZCodeSessionSettingsFromConfigOptions(configOptions),
+    const codezSessionService = f.createCodezSessionService(
+      f.createCodezSessionSettingsFromConfigOptions(configOptions),
     );
     const service = f.createBotsService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
-      zcodeSessionService,
+      codezSessionService,
       broadcastService,
       modelSelectionService: f.createModelSelectionService([
         {
@@ -992,8 +992,8 @@ describe("botsService messageFlow", () => {
         currentValue: encodeCustomModelValue(providerId, modelId),
       },
     ]);
-    const zcodeSessionService = Object.assign(
-      f.createZCodeSessionService(f.createZCodeSessionSettingsFromConfigOptions(configOptions)),
+    const codezSessionService = Object.assign(
+      f.createCodezSessionService(f.createCodezSessionSettingsFromConfigOptions(configOptions)),
       {
         updateProviderRegistry: vi.fn(async () => undefined),
       },
@@ -1001,7 +1001,7 @@ describe("botsService messageFlow", () => {
     const service = f.createBotsService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
-      zcodeSessionService,
+      codezSessionService,
       modelSelectionService: {
         getView: vi.fn(async () => ({
           revision: 1,
@@ -1039,7 +1039,7 @@ describe("botsService messageFlow", () => {
       actor: weixinActor,
     });
 
-    expect(zcodeSessionService.updateProviderRegistry).not.toHaveBeenCalled();
+    expect(codezSessionService.updateProviderRegistry).not.toHaveBeenCalled();
     expect(legacyTaskService.setModel).toHaveBeenCalledWith(
       expect.objectContaining({
         taskId: "task-1",
@@ -1065,7 +1065,7 @@ describe("botsService messageFlow", () => {
         },
       },
     });
-    const zcodeTaskService = f.createLegacyTaskService();
+    const codezTaskService = f.createLegacyTaskService();
     const configOptions = [
       {
         id: "model",
@@ -1075,8 +1075,8 @@ describe("botsService messageFlow", () => {
         options: [{ value: "glm-4.6", name: "GLM 4.6" }],
       },
     ];
-    vi.mocked(zcodeTaskService.getTaskConfigOptions).mockResolvedValue(configOptions);
-    vi.mocked(zcodeTaskService.listTasks).mockResolvedValue([
+    vi.mocked(codezTaskService.getTaskConfigOptions).mockResolvedValue(configOptions);
+    vi.mocked(codezTaskService.listTasks).mockResolvedValue([
       {
         taskId: "task-1",
         title: "Active task",
@@ -1086,13 +1086,13 @@ describe("botsService messageFlow", () => {
         status: "completed",
       },
     ]);
-    vi.mocked(zcodeTaskService.setModel).mockResolvedValue(configOptions);
-    const zcodeSessionService = f.createZCodeSessionService();
-    const updateProviderRegistry = vi.mocked(zcodeSessionService.updateProviderRegistry);
+    vi.mocked(codezTaskService.setModel).mockResolvedValue(configOptions);
+    const codezSessionService = f.createCodezSessionService();
+    const updateProviderRegistry = vi.mocked(codezSessionService.updateProviderRegistry);
     const service = f.createBotsService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
-      zcodeTaskService,
-      zcodeSessionService,
+      codezTaskService,
+      codezSessionService,
       settingService: f.createSettingService({
         locale: "zh-CN",
         lastWorkspaceSession: [{ kind: "local", workspacePath: "/tmp/workspace" }],
@@ -1134,7 +1134,7 @@ describe("botsService messageFlow", () => {
     });
     expect(modelReplies[0]?.text).toContain("工作区:");
 
-    expect(zcodeTaskService.setModel).toHaveBeenCalledWith(
+    expect(codezTaskService.setModel).toHaveBeenCalledWith(
       expect.objectContaining({
         taskId: "task-1",
         modelSelection: { providerId, modelId, options: { reasoningLevel: "max" } },
@@ -1144,7 +1144,7 @@ describe("botsService messageFlow", () => {
     service.disposeAll();
   });
 
-  it("renders /mode labels after normalizing legacy task provider to ZCode Agent", async () => {
+  it("renders /mode labels after normalizing legacy task provider to Codez Agent", async () => {
     const repo = f.createMemoryRepo(f.weixinConfig, {
       version: 3,
       bots: {
@@ -1212,7 +1212,7 @@ describe("botsService messageFlow", () => {
     service.disposeAll();
   });
 
-  it("loads /mode options from ZCode workspace state when active task has no mode option", async () => {
+  it("loads /mode options from Codez workspace state when active task has no mode option", async () => {
     const repo = f.createMemoryRepo(f.weixinConfig, {
       version: 3,
       bots: {
@@ -1349,8 +1349,8 @@ describe("botsService messageFlow", () => {
         status: "completed",
       },
     ]);
-    const zcodeSessionService = f.createZCodeSessionService(
-      f.createZCodeSessionSettingsFromConfigOptions([
+    const codezSessionService = f.createCodezSessionService(
+      f.createCodezSessionSettingsFromConfigOptions([
         {
           id: "model",
           category: "model",
@@ -1361,7 +1361,7 @@ describe("botsService messageFlow", () => {
               value: "gpt-5.4",
               name: "GPT-5.4",
               modelProviderId: "glm",
-              modelProviderName: "ZCode Agent",
+              modelProviderName: "Codez Agent",
             },
           ],
         },
@@ -1370,7 +1370,7 @@ describe("botsService messageFlow", () => {
     const service = f.createBotsService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
-      zcodeSessionService,
+      codezSessionService,
       modelSelectionService: {
         getView: vi.fn(async () => ({
           revision: 7,
@@ -1624,7 +1624,7 @@ describe("botsService messageFlow", () => {
     service.disposeAll();
   });
 
-  it("creates an ZCode Agent task from a bound private message", async () => {
+  it("creates an Codez Agent task from a bound private message", async () => {
     const repo = f.createMemoryRepo(f.baseConfig);
     const legacyTaskService = f.createLegacyTaskService();
     const broadcastService = f.createBroadcastService();
@@ -1684,7 +1684,7 @@ describe("botsService messageFlow", () => {
       remoteWorkspaceService: {
         isConnected: vi.fn(async () => true),
         ensureConnected: vi.fn(async () => ({ ok: true })),
-        getZCodeTaskService: vi.fn(async () => legacyTaskService),
+        getCodezTaskService: vi.fn(async () => legacyTaskService),
         getModelSelectionService: vi.fn(async () => remoteModelSelectionService),
       },
       repo: repo as never,
@@ -1748,11 +1748,11 @@ describe("botsService messageFlow", () => {
   it("delivers an automation terminal result through the original Weixin bot channel", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ret: 0 }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const legacyTaskService = {
       ...f.createLegacyTaskService(),
       onDynamicTaskEvent: vi.fn(
-        () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+        () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
           streamListeners.push(listener);
           return { dispose() {} };
         },
@@ -1857,15 +1857,15 @@ describe("botsService messageFlow", () => {
       bots: [
         {
           ...f.baseConfig.bots[0]!,
-          webhookUrl: "https://example.test/zcode-bot-outbound",
+          webhookUrl: "https://example.test/codez-bot-outbound",
         },
       ],
     });
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const legacyTaskService = {
       ...f.createLegacyTaskService(),
       onDynamicTaskEvent: vi.fn(
-        () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+        () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
           streamListeners.push(listener);
           return { dispose() {} };
         },
@@ -1930,7 +1930,7 @@ describe("botsService messageFlow", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://example.test/zcode-bot-outbound",
+      "https://example.test/codez-bot-outbound",
       expect.objectContaining({
         method: "POST",
         body: expect.stringContaining("完成了。"),
@@ -1959,11 +1959,11 @@ describe("botsService messageFlow", () => {
         },
       ],
     });
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const legacyTaskService = {
       ...f.createLegacyTaskService(),
       onDynamicTaskEvent: vi.fn(
-        () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+        () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
           streamListeners.push(listener);
           return { dispose() {} };
         },
@@ -2147,13 +2147,13 @@ describe("botsService messageFlow", () => {
         );
       });
       vi.stubGlobal("fetch", fetchMock);
-      const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+      const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
       const service = f.createBotsService({
         credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
         legacyTaskService: {
           ...f.createLegacyTaskService(),
           onDynamicTaskEvent: vi.fn(
-            () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+            () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
               streamListeners.push(listener);
               return { dispose() {} };
             },
@@ -2226,13 +2226,13 @@ describe("botsService messageFlow", () => {
         return new Response(JSON.stringify({ code: 0 }));
       });
       vi.stubGlobal("fetch", fetchMock);
-      const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+      const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
       const service = f.createBotsService({
         credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
         legacyTaskService: {
           ...f.createLegacyTaskService(),
           onDynamicTaskEvent: vi.fn(
-            () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+            () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
               streamListeners.push(listener);
               return { dispose() {} };
             },
@@ -2293,13 +2293,13 @@ describe("botsService messageFlow", () => {
       return new Response(JSON.stringify({ code: 0 }));
     });
     vi.stubGlobal("fetch", fetchMock);
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const service = f.createBotsService({
       credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
       legacyTaskService: {
         ...f.createLegacyTaskService(),
         onDynamicTaskEvent: vi.fn(
-          () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+          () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
             streamListeners.push(listener);
             return { dispose() {} };
           },
@@ -2383,13 +2383,13 @@ describe("botsService messageFlow", () => {
       ...f.feishuConfig,
       bots: [{ ...f.feishuConfig.bots[0]!, replyMode: "streaming_card" }],
     });
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const service = f.createBotsService({
       credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
       legacyTaskService: {
         ...f.createLegacyTaskService(),
         onDynamicTaskEvent: vi.fn(
-          () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+          () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
             streamListeners.push(listener);
             return { dispose() {} };
           },
@@ -2451,7 +2451,7 @@ describe("botsService messageFlow", () => {
               type: "callback",
               value: {
                 command: `/elicitation ${token} approve`,
-                zcodeCardText: "Review this implementation plan.",
+                codezCardText: "Review this implementation plan.",
               },
             },
           ],
@@ -2527,7 +2527,7 @@ describe("botsService messageFlow", () => {
         },
       ],
     });
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const service = f.createBotsService({
       runStartupBackgroundTasks: false,
       credentialService: f.createCredentialService({
@@ -2536,7 +2536,7 @@ describe("botsService messageFlow", () => {
       legacyTaskService: {
         ...f.createLegacyTaskService(),
         onDynamicTaskEvent: vi.fn(
-          () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+          () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
             streamListeners.push(listener);
             return { dispose() {} };
           },
@@ -2607,11 +2607,11 @@ describe("botsService messageFlow", () => {
       bots: [
         {
           ...f.baseConfig.bots[0]!,
-          webhookUrl: "https://example.test/zcode-bot-outbound",
+          webhookUrl: "https://example.test/codez-bot-outbound",
         },
       ],
     });
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const completedTask = {
       taskId: "task-1",
       title: "Task 1",
@@ -2648,7 +2648,7 @@ describe("botsService messageFlow", () => {
         ],
       })),
       onDynamicTaskEvent: vi.fn(
-        () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+        () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
           streamListeners.push(listener);
           return { dispose() {} };
         },
@@ -2704,15 +2704,15 @@ describe("botsService messageFlow", () => {
       bots: [
         {
           ...f.baseConfig.bots[0]!,
-          webhookUrl: "https://example.test/zcode-bot-outbound",
+          webhookUrl: "https://example.test/codez-bot-outbound",
         },
       ],
     });
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const legacyTaskService = {
       ...f.createLegacyTaskService(),
       onDynamicTaskEvent: vi.fn(
-        () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+        () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
           streamListeners.push(listener);
           return { dispose() {} };
         },
@@ -2755,7 +2755,7 @@ describe("botsService messageFlow", () => {
       elicitation?: { requestId?: string };
       selection?: { action?: string; token?: string };
     };
-    expect(body.type).toBe("zcode.bot.elicitation_request");
+    expect(body.type).toBe("codez.bot.elicitation_request");
     expect(body.elicitation?.requestId).toBe("elicit-1");
     expect(body.selection?.action).toBe("elicitation.respond");
     expect(body.selection?.token).toMatch(/^[a-f0-9]{12}$/u);
@@ -2828,15 +2828,15 @@ describe("botsService messageFlow", () => {
       bots: [
         {
           ...f.baseConfig.bots[0]!,
-          webhookUrl: "https://example.test/zcode-bot-outbound",
+          webhookUrl: "https://example.test/codez-bot-outbound",
         },
       ],
     });
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const legacyTaskService = {
       ...f.createLegacyTaskService(),
       onDynamicTaskEvent: vi.fn(
-        () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+        () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
           streamListeners.push(listener);
           return { dispose() {} };
         },
@@ -2971,11 +2971,11 @@ describe("botsService messageFlow", () => {
         },
       },
     });
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const legacyTaskService = {
       ...f.createLegacyTaskService(),
       onDynamicTaskEvent: vi.fn(
-        () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+        () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
           streamListeners.push(listener);
           return { dispose() {} };
         },
@@ -3031,7 +3031,7 @@ describe("botsService messageFlow", () => {
               type: "callback",
               value: {
                 command: `/elicitation ${token} base`,
-                zcodeCardText: "Question",
+                codezCardText: "Question",
               },
             },
           ],
@@ -3057,7 +3057,7 @@ describe("botsService messageFlow", () => {
               type: "callback",
               value: {
                 command: `/elicitation ${token} __custom__`,
-                zcodeCardText: "Question",
+                codezCardText: "Question",
               },
             },
           ],
@@ -3090,7 +3090,7 @@ describe("botsService messageFlow", () => {
               type: "callback",
               value: {
                 command: `/elicitation ${token} __form__:`,
-                zcodeCardText: "Question",
+                codezCardText: "Question",
               },
             },
           ],
@@ -3176,11 +3176,11 @@ describe("botsService messageFlow", () => {
         },
       },
     });
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const legacyTaskService = {
       ...f.createLegacyTaskService(),
       onDynamicTaskEvent: vi.fn(
-        () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+        () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
           streamListeners.push(listener);
           return { dispose() {} };
         },
@@ -3237,7 +3237,7 @@ describe("botsService messageFlow", () => {
               type: "callback",
               value: {
                 command: `/elicitation ${token} web`,
-                zcodeCardText: "Question",
+                codezCardText: "Question",
               },
             },
           ],
@@ -3310,11 +3310,11 @@ describe("botsService messageFlow", () => {
         },
       },
     });
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const legacyTaskService = {
       ...f.createLegacyTaskService(),
       onDynamicTaskEvent: vi.fn(
-        () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+        () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
           streamListeners.push(listener);
           return { dispose() {} };
         },
@@ -3361,7 +3361,7 @@ describe("botsService messageFlow", () => {
               type: "callback",
               value: {
                 command: `/elicitation ${token} web`,
-                zcodeCardText: "Question",
+                codezCardText: "Question",
               },
             },
           ],
@@ -3410,17 +3410,17 @@ describe("botsService messageFlow", () => {
       bots: [
         {
           ...f.baseConfig.bots[0]!,
-          webhookUrl: "https://example.test/zcode-bot-outbound",
+          webhookUrl: "https://example.test/codez-bot-outbound",
         },
       ],
     });
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const deferredRespond = createDeferred<boolean>();
     const legacyTaskService = {
       ...f.createLegacyTaskService(),
       respondElicitation: vi.fn(() => deferredRespond.promise),
       onDynamicTaskEvent: vi.fn(
-        () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+        () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
           streamListeners.push(listener);
           return { dispose() {} };
         },
@@ -3918,7 +3918,7 @@ describe("botsService messageFlow", () => {
   });
 
   it("creates a task from an attachment-only bot message with the default prompt", async () => {
-    vi.stubEnv("ZCODE_DATA_BASE_DIR", `/tmp/zcode-bot-attachments-${Date.now()}`);
+    vi.stubEnv("CODEZ_DATA_BASE_DIR", `/tmp/codez-bot-attachments-${Date.now()}`);
     const repo = f.createMemoryRepo(f.baseConfig);
     const legacyTaskService = f.createLegacyTaskService();
     const service = f.createBotsService({
@@ -3969,7 +3969,7 @@ describe("botsService messageFlow", () => {
   });
 
   it("adds unsupported bot files to the prompt as cached path context", async () => {
-    vi.stubEnv("ZCODE_DATA_BASE_DIR", `/tmp/zcode-bot-files-${Date.now()}`);
+    vi.stubEnv("CODEZ_DATA_BASE_DIR", `/tmp/codez-bot-files-${Date.now()}`);
     const repo = f.createMemoryRepo(f.baseConfig);
     const legacyTaskService = f.createLegacyTaskService();
     const service = f.createBotsService({
@@ -4202,7 +4202,7 @@ describe("botsService messageFlow", () => {
       actor,
     });
 
-    expect(helpReplies[0]?.text).toContain("ZCode 机器人命令");
+    expect(helpReplies[0]?.text).toContain("Codez 机器人命令");
     expect(statusReplies[0]?.text).toContain("状态: 远端未连接");
     expect(statusReplies[0]?.text).toContain("**/重连**");
     expect(legacyTaskService.listTasks).not.toHaveBeenCalled();
@@ -4221,7 +4221,7 @@ describe("botsService messageFlow", () => {
       remoteWorkspaceService: {
         isConnected,
         ensureConnected,
-        getZCodeTaskService: vi.fn(async () => legacyTaskService),
+        getCodezTaskService: vi.fn(async () => legacyTaskService),
       },
       repo: repo as never,
     });
@@ -4393,7 +4393,7 @@ describe("botsService messageFlow", () => {
       remoteWorkspaceService: {
         isConnected: vi.fn(async () => true),
         ensureConnected: vi.fn(async () => ({ ok: true })),
-        getZCodeTaskService: vi.fn(async () => legacyTaskService),
+        getCodezTaskService: vi.fn(async () => legacyTaskService),
         getModelSelectionService: vi.fn(async () =>
           f.createModelSelectionService([{ id: "glm", name: "GLM", models: ["default"] }]),
         ),
@@ -4512,8 +4512,8 @@ describe("botsService messageFlow", () => {
         options: [{ value: "medium", name: "Medium" }],
       },
     ]);
-    const zcodeSessionService = f.createZCodeSessionService(
-      f.createZCodeSessionSettingsFromConfigOptions([
+    const codezSessionService = f.createCodezSessionService(
+      f.createCodezSessionSettingsFromConfigOptions([
         {
           id: "mode",
           category: "mode",
@@ -4533,7 +4533,7 @@ describe("botsService messageFlow", () => {
     const service = f.createBotsService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
-      zcodeSessionService,
+      codezSessionService,
       repo: repo as never,
     });
     await bind(service);
@@ -4886,8 +4886,8 @@ describe("botsService messageFlow", () => {
         options: [{ value: "medium", name: "Medium" }],
       },
     ]);
-    const zcodeSessionService = f.createZCodeSessionService(
-      f.createZCodeSessionSettingsFromConfigOptions([
+    const codezSessionService = f.createCodezSessionService(
+      f.createCodezSessionSettingsFromConfigOptions([
         {
           id: "model",
           category: "model",
@@ -4917,7 +4917,7 @@ describe("botsService messageFlow", () => {
     const service = f.createBotsService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
-      zcodeSessionService,
+      codezSessionService,
       modelSelectionService: f.createModelSelectionService([
         {
           id: "runtime-provider",
@@ -5007,7 +5007,7 @@ describe("botsService messageFlow", () => {
     service.disposeAll();
   });
 
-  it("skips stale unsupported draft mode when creating a ZCode Agent task", async () => {
+  it("skips stale unsupported draft mode when creating a Codez Agent task", async () => {
     const repo = f.createMemoryRepo(f.weixinConfig, {
       version: 3,
       bots: {
@@ -5198,13 +5198,13 @@ describe("botsService messageFlow", () => {
         },
       },
     });
-    const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+    const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
     const service = f.createBotsService({
       credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
       legacyTaskService: {
         ...f.createLegacyTaskService(),
         onDynamicTaskEvent: vi.fn(
-          () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+          () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
             streamListeners.push(listener);
             return { dispose() {} };
           },
@@ -5241,7 +5241,7 @@ describe("botsService messageFlow", () => {
           behaviors: [
             {
               type: "callback",
-              value: { command: `/elicitation ${token} __custom__`, zcodeCardText: "Plan" },
+              value: { command: `/elicitation ${token} __custom__`, codezCardText: "Plan" },
             },
           ],
         },
@@ -5327,13 +5327,13 @@ describe("botsService messageFlow", () => {
           },
         },
       });
-      const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+      const streamListeners: Array<(event: CodezStreamEvent) => Promise<void> | void> = [];
       const service = f.createBotsService({
         credentialService: f.createCredentialService(credentials),
         legacyTaskService: {
           ...f.createLegacyTaskService(),
           onDynamicTaskEvent: vi.fn(
-            () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+            () => (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
               streamListeners.push(listener);
               return { dispose() {} };
             },

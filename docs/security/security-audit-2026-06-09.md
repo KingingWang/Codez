@@ -42,14 +42,14 @@
 | --- | --- | --- | --- | --- |
 | `axios` | `1.13.6` | `packages__desktop>@larksuiteoapi/node-sdk>axios` | 多个 prototype pollution、代理凭据泄漏、请求劫持、ReDoS/DoS | `>=1.16.0` 或依赖方升级 |
 | `protobufjs` | `7.5.5` | `packages__desktop>@larksuiteoapi/node-sdk>protobufjs` | 原型污染后代码生成 gadget、递归 DoS、unsafe option path | `>=7.5.8` |
-| `basic-ftp` | `5.2.2` | `apps__zcode-cli>proxy-agent>pac-proxy-agent>get-uri>basic-ftp` | 恶意 FTP server 可触发客户端内存/响应缓冲 DoS | `>=5.3.1` |
-| `fast-uri` | `3.1.0` | `apps__zcode-cli__packages__adapters>@modelcontextprotocol/sdk>ajv>fast-uri` | percent-encoded authority/path 混淆，可能影响 SSRF/path traversal 判断 | `>=3.1.2` |
+| `basic-ftp` | `5.2.2` | `apps__codez-cli>proxy-agent>pac-proxy-agent>get-uri>basic-ftp` | 恶意 FTP server 可触发客户端内存/响应缓冲 DoS | `>=5.3.1` |
+| `fast-uri` | `3.1.0` | `apps__codez-cli__packages__adapters>@modelcontextprotocol/sdk>ajv>fast-uri` | percent-encoded authority/path 混淆，可能影响 SSRF/path traversal 判断 | `>=3.1.2` |
 
 其他 moderate/low 重点：
 
 - `mermaid@11.14.0`：CSS/HTML 注入、Gantt DoS，路径 `packages__ui>@streamdown/mermaid>mermaid`，建议 `>=11.15.0`。
 - `dompurify@3.3.3`：多项 sanitizer bypass，路径 `packages__ui>@streamdown/mermaid>mermaid>dompurify`，建议 `>=3.4.0`。
-- `hono@4.12.12`：JWT scheme、cookie/header、bodyLimit、JSX 注入等多项 moderate/low，路径 `apps__zcode-cli__packages__debug>hono`，建议 `>=4.12.21`。
+- `hono@4.12.12`：JWT scheme、cookie/header、bodyLimit、JSX 注入等多项 moderate/low，路径 `apps__codez-cli__packages__debug>hono`，建议 `>=4.12.21`。
 - `electron@41.0.3`：low/moderate Electron advisory，路径 `packages__desktop>@arms/rum-electron>electron`，建议 `>=41.1.0`。
 
 修复建议：
@@ -108,12 +108,12 @@
 证据：
 
 - `packages/services/src/credential/providers/credentialCipherProvider.ts:23-37`
-- `apps/zcode-cli/packages/adapters/src/auth/credential-cipher.ts:87-100`
+- `apps/codez-cli/packages/adapters/src/auth/credential-cipher.ts:87-100`
 
 现状：
 
 - AES-256-GCM 使用随机 IV，算法选择合理。
-- 如果未设置 `ZCODE_CREDENTIAL_SECRET`，密钥由 `platform + homedir + username` 推导。
+- 如果未设置 `CODEZ_CREDENTIAL_SECRET`，密钥由 `platform + homedir + username` 推导。
 
 风险：
 
@@ -135,7 +135,7 @@
 
 现状：
 
-- Renderer 可通过 `window.zcode.openExternal(url)` 发送任意字符串到 main。
+- Renderer 可通过 `window.codez.openExternal(url)` 发送任意字符串到 main。
 - main 直接 `shell.openExternal(url)`，没有协议 allowlist。
 - 另一个 webview popup 路径已有 `isAllowedEmbeddedBrowserNewWindowUrl` 校验，说明项目已有相邻防护模式。
 
@@ -176,8 +176,8 @@
 
 证据：
 
-- `apps/zcode-cli/packages/debug/server/index.ts:29-31`
-- `apps/zcode-cli/packages/debug/server/index.ts:107-119`
+- `apps/codez-cli/packages/debug/server/index.ts:29-31`
+- `apps/codez-cli/packages/debug/server/index.ts:107-119`
 
 现状：
 

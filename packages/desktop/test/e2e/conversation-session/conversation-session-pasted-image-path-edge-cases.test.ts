@@ -1,6 +1,6 @@
 import { readdir, readFile, stat, unlink } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join } from "node:path";
-import { TID_CHAT_ERROR_BANNER } from "@zcode/shared";
+import { TID_CHAT_ERROR_BANNER } from "@codez/shared";
 import { clearAppData, getE2EAppDataPaths, waitForTestIdByDom } from "../helpers/desktop-app.js";
 import {
   assertUpstreamRequestCapture,
@@ -43,13 +43,13 @@ const VALID_BMP_BASE64 =
   "Qk06AAAAAAAAADYAAAAoAAAAAQAAAAEAAAABABgAAAAAAAQAAAATCwAAEwsAAAAAAAAAAAAAAAD/AA==";
 const artifactRoot = join(
   getE2EAppDataPaths().homeDir,
-  ".zcode",
+  ".codez",
   "cli",
   "artifacts",
 );
 const imageCacheRoot = join(
   getE2EAppDataPaths().homeDir,
-  ".zcode",
+  ".codez",
   "cli",
   "image-cache",
 );

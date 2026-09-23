@@ -22,17 +22,17 @@ import {
 } from "../src/session/automationCron.js";
 import {
   AUTOMATION_CREATE_LIMIT,
-  type ZCodeAutomationCreateParams,
-  type ZCodeAutomationLifecycleStatus,
-} from "@zcode/shared";
+  type CodezAutomationCreateParams,
+  type CodezAutomationLifecycleStatus,
+} from "@codez/shared";
 
 // 固定基准时间，保证退避 / 重排断言可复现。
 const NOW = 1_700_000_000_000;
 const MINUTE = 60_000;
 
 function makeParams(
-  overrides: Partial<ZCodeAutomationCreateParams> = {},
-): ZCodeAutomationCreateParams {
+  overrides: Partial<CodezAutomationCreateParams> = {},
+): CodezAutomationCreateParams {
   return {
     title: "每日巡检",
     cronExpr: "0 9 * * *",
@@ -45,7 +45,7 @@ function makeParams(
 
 // 修复原因：此前测试用 setDataBaseDir(tempDir) 把全局 _dataBaseDir 重定向到临时目录，
 // 但 vitest threads 池并发跑测试文件时，全局值会被其它文件的 setDataBaseDir 互相覆盖，
-// 导致 repo 与裸 SQL 操作在并发窗口内写进真实库 ~/.zcode/v2（/tmp/ws 系列脏数据即因此产生）。
+// 导致 repo 与裸 SQL 操作在并发窗口内写进真实库 ~/.codez/v2（/tmp/ws 系列脏数据即因此产生）。
 // 改为依赖注入：每个 describe 持有独立 tempDir，repo 通过构造参数接收 dbPath，
 // 裸 SQL 用同一 dbPath，彻底脱离全局单例。
 function buildTempDbPath(tempDir: string): string {
@@ -58,7 +58,7 @@ describe("AutomationRepo 调度状态机", () => {
   let repo: AutomationRepo;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "zcode-automation-repo-"));
+    tempDir = mkdtempSync(join(tmpdir(), "codez-automation-repo-"));
     dbPath = buildTempDbPath(tempDir);
     repo = new AutomationRepo(dbPath);
   });
@@ -385,7 +385,7 @@ describe("AutomationRepo 调度状态机", () => {
   });
 
   it("create：所有生命周期状态合计达到 20 条后拒绝创建，删除后释放名额", async () => {
-    const statuses: ZCodeAutomationLifecycleStatus[] = ["active", "paused", "completed", "failed"];
+    const statuses: CodezAutomationLifecycleStatus[] = ["active", "paused", "completed", "failed"];
     for (let index = 0; index < AUTOMATION_CREATE_LIMIT; index += 1) {
       await repo.create(makeParams({ title: `task-${index}` }), {
         nextRunAt: NOW + MINUTE,
@@ -1724,7 +1724,7 @@ describe("automation workspace 隔离", () => {
   const KEY_B = "/tmp/ws-b";
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "zcode-automation-iso-"));
+    tempDir = mkdtempSync(join(tmpdir(), "codez-automation-iso-"));
     dbPath = buildTempDbPath(tempDir);
     repo = new AutomationRepo(dbPath);
   });

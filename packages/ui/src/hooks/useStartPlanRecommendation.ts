@@ -1,15 +1,15 @@
 import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
 import { buildStartPlanEntitlementOptions } from "@/lib/startPlanEntitlementOptions.js";
 import { useCallback } from "react";
-import type { ModelSelectionView } from "@zcode/provider";
+import type { ModelSelectionView } from "@codez/provider";
 import {
   TID_START_PLAN_RECOMMENDATION_DIALOG,
   isStartPlanModelProviderId,
   type ModelSelection,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { useOptionalBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useUsageEntitlementWithService } from "@/hooks/useUsageEntitlement.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useConfirmDialogStore } from "@/store/confirmDialogStore.js";
 import { resolveStartPlanRecommendation } from "@/lib/startPlanRecommendation.js";
 import { toast } from "@/components/ui/toast.js";
@@ -22,7 +22,7 @@ export function useStartPlanRecommendation(
   enabled = true,
 ) {
   const services = useOptionalBaseWorkspaceServices();
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const requestChoice = useConfirmDialogStore((state) => state.requestChoice);
   // Registry 已完成登录品牌、权益、模型配置校验，不从展示名称推测执行身份。
   const start = view?.providers.find((provider) => isStartPlanModelProviderId(provider.providerId));

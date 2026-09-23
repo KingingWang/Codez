@@ -29,14 +29,14 @@ describe("buildWebRemoteControlWorkspaceTargets", () => {
           createWorkspaceTab({
             id: "conversation",
             label: "default",
-            workspacePath: "/Users/demo/.zcode/workspace/default",
+            workspacePath: "/Users/demo/.codez/workspace/default",
             workspacePurpose: "conversation",
           }),
         ],
       }),
     ).toEqual([
       {
-        workspacePath: "/Users/demo/.zcode/workspace/default",
+        workspacePath: "/Users/demo/.codez/workspace/default",
         label: "default",
         kind: "local",
         workspacePurpose: "conversation",
@@ -109,9 +109,9 @@ describe("buildConnectedRemoteWorkspaceSessionTargets", () => {
             id: "remote-connected",
             label: "Remote Connected",
             workspacePath: "/root",
-            workspaceIdentity: "remote:docker:zcode-ssh-container:/root",
+            workspaceIdentity: "remote:docker:codez-ssh-container:/root",
             remoteSessionId: "remote-session-1",
-            remoteTarget: { kind: "docker", container: "zcode-ssh-container" },
+            remoteTarget: { kind: "docker", container: "codez-ssh-container" },
           }),
           createWorkspaceTab({
             id: "remote-placeholder",
@@ -133,7 +133,7 @@ describe("buildConnectedRemoteWorkspaceSessionTargets", () => {
         label: "Remote Connected",
         kind: "remote",
         connectionState: "connected",
-        workspaceIdentity: "remote:docker:zcode-ssh-container:/root",
+        workspaceIdentity: "remote:docker:codez-ssh-container:/root",
         remoteSessionId: "remote-session-1",
       },
     ]);

@@ -42,7 +42,7 @@ export function useGenUi(
       files,
       openExternal: (url) => platformService.openExternal(url),
       watchTaskRemoved(run) {
-        const subscription = services?.zcodeTaskService?.onDynamicWorkspaceEvent({
+        const subscription = services?.codezTaskService?.onDynamicWorkspaceEvent({
           workspacePath: currentTarget.workspacePath,
           workspaceIdentity: currentTarget.workspaceIdentity,
         })((event) => {

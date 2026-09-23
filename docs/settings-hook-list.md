@@ -18,7 +18,7 @@ Scope、搜索、分组标题、列表容器和空状态信息架构。
 `New` 位于 `Installed` 分组标题右侧；标题行复用 Commands 的 `flex flex-wrap items-center justify-between gap-3` 布局，不使用固定高度。搜索后仅展示包含可见行的分组，不保留
 `Installed 0` 等空标题；未搜索且 Installed 为空时保留该分组作为新建入口。
 
-1. `Installed`：当前 Scope 下由 ZCode 直接管理的 Hook。
+1. `Installed`：当前 Scope 下由 Codez 直接管理的 Hook。
 2. 每个插件独立分组：标题使用插件规范化名称，行只读，启停仍由插件设置管理。
 3. `Legacy`：`.agents` / `.claude` 兼容来源，提供 Import 操作。
 

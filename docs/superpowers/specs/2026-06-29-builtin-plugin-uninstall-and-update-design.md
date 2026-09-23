@@ -2,7 +2,7 @@
 
 > Date: 2026-06-29
 > Status: Draft v2 (revised after review; pending user review + plan)
-> Scope: ZCode plugin management page — (1) allow uninstalling built-in
+> Scope: Codez plugin management page — (1) allow uninstalling built-in
 > (official/bundled) plugins, (2) surface per-plugin update in the UI.
 
 ## Problem
@@ -25,7 +25,7 @@ This design adds both, end to end.
 ### C1. Built-ins re-seed on every resolve — AND multiple readers materialize them
 
 `seedBundledOfficialPlugins` (`bootstrap/src/app/bundled-plugins.ts`) runs on every
-`resolveZCodePlugins` via `resolveOfficialPluginRoots`, writing each bundled plugin
+`resolveCodezPlugins` via `resolveOfficialPluginRoots`, writing each bundled plugin
 into `storageRoot/cache/<marketplace>/<name>/<version>` (skipped only when a content-
 hash marker matches). **Deleting cache files is futile — the next resolve re-creates
 them.**
@@ -34,7 +34,7 @@ Critically, **more than one reader** materializes or scans official plugins, so 
 suppression mechanism must thread through **all** of them or a built-in keeps
 showing up / running:
 
-- `bootstrap/src/plugins.ts` `resolveZCodePlugins` → `resolveOfficialPluginRoots` → `seedBundledOfficialPlugins`.
+- `bootstrap/src/plugins.ts` `resolveCodezPlugins` → `resolveOfficialPluginRoots` → `seedBundledOfficialPlugins`.
 - `bootstrap/src/app/startup-marks.ts:24` `resolveStartupPlugins` → `resolveOfficialPluginRoots` (independent call).
 - `bootstrap/src/app/plugin-facade.ts` in-session facade (caches `enabledPlugins`).
 - `packages/services/src/skills/skillsService.ts:818` `resolvePluginSkillRootDescriptors` — **directly** calls `scanOfficialPluginCacheRoots(pluginStorageRoot)` and force-default-enables official ids via `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`.
@@ -42,10 +42,10 @@ showing up / running:
 
 ### C2. UI installed list/detail renders from `plugins/list`, not the overview
 
-`PluginsSection.tsx` selects the detail plugin from `plugins` (`ZCodePluginInfo`,
+`PluginsSection.tsx` selects the detail plugin from `plugins` (`CodezPluginInfo`,
 from `plugins/list`). Extra per-plugin fields are join-patched by id (see
 `installedAt` at `PluginsSection.tsx:118`). So any new `updateAvailable` field must
-either be added to `ZCodePluginInfo` or join-patched the same way — putting it only
+either be added to `CodezPluginInfo` or join-patched the same way — putting it only
 on the overview's `installedPlugins` will not reach the detail panel.
 
 ## Decisions (locked with product)
@@ -58,8 +58,8 @@ on the overview's `installedPlugins` will not reach the detail panel.
 | Update freshness                            | **Cached manifest**; a "Check for updates" action re-pulls on demand.                                                                                                                                                                                                                                                                       |
 | Restore an uninstalled built-in             | **Restore via catalog** — but through a dedicated restore action, not the marketplace install path (see Restore below).                                                                                                                                                                                                                     |
 | Non-semver version diff                     | Show **"version changed"**, not "update available" (only `semver.gt` shows "update available").                                                                                                                                                                                                                                             |
-| Official marketplace name                   | **Locked** — user-added marketplaces may not claim `zcode-plugins-official` / `claude-plugins-official`.                                                                                                                                                                                                                                    |
-| Installed record vs built-in classification | **`installed_plugins.json` wins.** An exact installed record is always uninstalled through the marketplace path, even when its cache lives under `zcode-plugins-official`; only ids without an installed record may enter built-in suppression. Marketplace uninstall also removes a stale suppression marker left by older buggy versions. |
+| Official marketplace name                   | **Locked** — user-added marketplaces may not claim `codez-plugins-official` / `claude-plugins-official`.                                                                                                                                                                                                                                    |
+| Installed record vs built-in classification | **`installed_plugins.json` wins.** An exact installed record is always uninstalled through the marketplace path, even when its cache lives under `codez-plugins-official`; only ids without an installed record may enter built-in suppression. Marketplace uninstall also removes a stale suppression marker left by older buggy versions. |
 | Update vs running session                   | **Next session only** — update applies to future sessions; UI shows a "takes effect in new sessions" note.                                                                                                                                                                                                                                  |
 | Concurrency safety                          | **Lightweight lock** — in-process per-storageRoot serialization (async mutex) around install/update/uninstall/restore. Cross-process file lock is a non-goal.                                                                                                                                                                               |
 
@@ -118,14 +118,14 @@ cache directory missing" (`marketplace.ts:764` requires an existing cache dir fo
 
 ### Plugin update — wire existing backend + add detection + fail loudly
 
-The backend `pluginsUpdate` handler (`zcode-protocol/plugins.ts:235` `updatePlugin`)
+The backend `pluginsUpdate` handler (`codez-protocol/plugins.ts:235` `updatePlugin`)
 reinstalls the latest closure from the cached manifest. Changes:
 
 - **Fail loudly (finding #3):** aggregate diagnostics from every
-  `installZCodeMarketplacePlugin` call; if any target returns error diagnostics, the
+  `installCodezMarketplacePlugin` call; if any target returns error diagnostics, the
   op fails and the UI keeps the badge until the installed record's version actually
   changes.
-- **Detection (dual-track: version + sha):** in `getZCodePluginsOverview`, for each
+- **Detection (dual-track: version + sha):** in `getCodezPluginsOverview`, for each
   installed (`cache`) plugin, build a "latest pin" from its manifest entry — a semver
   `version` if present, else the commit `sha` from `entry.source` (`readPluginSourceSha`).
   `comparePluginUpdate` picks the axis: version present → semver compare; else sha
@@ -153,7 +153,7 @@ update click → store.updatePlugin(id) → agentService.updatePlugin() → RPC 
 `addMarketplace` (`marketplace.ts:254`) sets `id: loaded.manifest.name` with no
 guard, letting a user-added marketplace overwrite the official synthetic manifest.
 Add a guard: reject (or namespace) any added/updated marketplace whose resolved
-`manifest.name` is `zcode-plugins-official` or `claude-plugins-official` unless it is
+`manifest.name` is `codez-plugins-official` or `claude-plugins-official` unless it is
 the built-in seeding path. Surface a clear error in the add popover.
 
 ### Lightweight concurrency lock (finding #4)
@@ -167,7 +167,7 @@ iteration (tracked in Known limitations).
 
 ## Implementation surface
 
-### CLI (`apps/zcode-cli`)
+### CLI (`apps/codez-cli`)
 
 1. `adapters/src/config/schema.ts` (`pluginsSchema`): add
    `suppressedBuiltins: z.array(z.string().min(1)).optional()`.
@@ -180,11 +180,11 @@ iteration (tracked in Known limitations).
    `resolveOfficialPluginRoots` accept `suppressedBuiltins`; skip + rm suppressed;
    `writeOfficialMarketplace` omits suppressed.
 5. `bootstrap/src/plugins.ts`:
-   - `resolveZCodePlugins` passes `config.plugins.suppressedBuiltins` through.
-   - `uninstallZCodeMarketplacePlugin`: when `source !== "cache"`, suppress + purge
+   - `resolveCodezPlugins` passes `config.plugins.suppressedBuiltins` through.
+   - `uninstallCodezMarketplacePlugin`: when `source !== "cache"`, suppress + purge
      (bypassing the current installed-records `return null`); under storage lock.
    - new `restoreBuiltinPlugin`.
-   - `getZCodePluginsOverview`: compute update status + `restorableBuiltins`; add
+   - `getCodezPluginsOverview`: compute update status + `restorableBuiltins`; add
      `semver` + `compareVersions`.
    - `updatePlugin` aggregates diagnostics and fails on error.
    - add `withPluginStorageLock` and wrap mutating ops.
@@ -197,18 +197,18 @@ iteration (tracked in Known limitations).
    roots through `suppressedBuiltins` (from the CLI config they already read).
    Prefer a shared helper so suppression logic is not duplicated.
 
-### Protocol (`packages/shared/src/zcode-protocol/index.ts`)
+### Protocol (`packages/shared/src/codez-protocol/index.ts`)
 
-8. `zcodeInstalledPluginSummarySchema`: add `updateAvailable?`, `latestVersion?`.
-   Consider adding the same to `ZCodePluginInfo` (or join in UI per C2).
+8. `codezInstalledPluginSummarySchema`: add `updateAvailable?`, `latestVersion?`.
+   Consider adding the same to `CodezPluginInfo` (or join in UI per C2).
 9. Overview result: add `restorableBuiltins` (array of available-plugin summaries).
 10. New `pluginsRestoreBuiltin` method (params: workspace + pluginId). `pluginsUpdate`
     schema already present.
 
-### Services client (`packages/services/src/zcode-agent/`)
+### Services client (`packages/services/src/codez-agent/`)
 
-11. `zcodeAgent.ts` (`IZCodeAgentService`): add `updatePlugin`, `restoreBuiltinPlugin`.
-12. `zcodeAgentService.ts`: implement both via `client.request(...)` with the 5-min
+11. `codezAgent.ts` (`ICodezAgentService`): add `updatePlugin`, `restoreBuiltinPlugin`.
+12. `codezAgentService.ts`: implement both via `client.request(...)` with the 5-min
     plugin timeout.
 
 ### UI store (`packages/ui/src/store/pluginManagementStore.ts`)
@@ -241,14 +241,14 @@ iteration (tracked in Known limitations).
   greater; `version-changed` on non-semver; none on equal.
 - **update handler:** aggregates diagnostics; fails on error; badge persists until
   version changes.
-- **marketplace name guard:** adding a manifest named `zcode-plugins-official` is
+- **marketplace name guard:** adding a manifest named `codez-plugins-official` is
   rejected.
 - **lock:** concurrent uninstall+update on the same storageRoot serialize without
   corrupting `installed_plugins.json`.
 - **services client:** `updatePlugin` / `restoreBuiltinPlugin` issue correct RPCs.
 - **UI:** Update badge/button + "new sessions" note; built-in Uninstall; restorable
   built-in shows Restore in catalog; update existing mocks.
-- Run `npm run lint && npm test` in `apps/zcode-cli`; UI/services package tests.
+- Run `npm run lint && npm test` in `apps/codez-cli`; UI/services package tests.
 
 ## Known limitations (deferred, tracked here)
 

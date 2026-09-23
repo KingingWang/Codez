@@ -1,4 +1,4 @@
-import type { ClientSceneConfig, ClientSceneItem } from "@zcode/services";
+import type { ClientSceneConfig, ClientSceneItem } from "@codez/services";
 import { describe, expect, it } from "vitest";
 import {
   mapClientScenesToDraftSuggestedPromptItems,
@@ -23,7 +23,7 @@ function createItem(
 
 function createScene(promptItems: ClientSceneItem[]): ClientSceneConfig {
   return {
-    namespace: "zcode",
+    namespace: "codez",
     scene: "draft-suggestion",
     options: {
       prompts: {
@@ -45,8 +45,8 @@ function createScene(promptItems: ClientSceneItem[]): ClientSceneConfig {
             id: "document-skills",
             type: "plugin",
             contents: {
-              cn: "document-skills@zcode-plugins-official",
-              en: "document-skills@zcode-plugins-official",
+              cn: "document-skills@codez-plugins-official",
+              en: "document-skills@codez-plugins-official",
             },
             labels: { cn: "文档技能", en: "Document skills" },
           }),
@@ -92,7 +92,7 @@ describe("draft suggested prompt Client Scenes mapping", () => {
           en: "Create a PDF from the workspace",
         },
         plugin: {
-          stableId: "document-skills@zcode-plugins-official",
+          stableId: "document-skills@codez-plugins-official",
           label: { cn: "文档技能", en: "Document skills" },
         },
       },

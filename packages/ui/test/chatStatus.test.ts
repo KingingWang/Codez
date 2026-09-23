@@ -23,7 +23,7 @@ describe("deriveChatComposerStatusFromTaskRuntime", () => {
 });
 
 describe("getChatSubmitLabelId", () => {
-  it("returns preparing while workspace ZCode Agent is still initializing", () => {
+  it("returns preparing while workspace Codez Agent is still initializing", () => {
     expect(getChatSubmitLabelId("submitting", "initializing", "idle")).toBe("chat.preparing");
   });
 

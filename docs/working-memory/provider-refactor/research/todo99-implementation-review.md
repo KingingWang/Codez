@@ -90,11 +90,11 @@ Resolver 现在复制本轮设置，结束时重读身份与设置；可观察�
 
 测试夹具纠正：process-provider-registry-runtime 的旧模板缺 nameMap/config 外壳、模型缺必填 reasoningLevel、Personal fixture 携带废弃 matchRules 导致4例失败。只对齐测试输入，不放宽生产 Schema，不新增未上线格式兼容；完整10例恢复通过。
 
-产品验证：Air 新建隔离目录 `/Users/dev/zcode-todo99-e2e.AurUlf`，未碰运行中的日常 App；离线安装因私有 CUA Git 依赖仍触发钥匙串 -25308 失败。用户已授权改用 Pro，管理 SSH 已可用，隔离目录 `/Users/dev/zcode-todo99-e2e.1lO3PN`。W99-E01..06 在取得对应请求/进程/跨端证据前仍保留 pending；不得凭本页集成测试直接晋级。
+产品验证：Air 新建隔离目录 `/Users/dev/codez-todo99-e2e.AurUlf`，未碰运行中的日常 App；离线安装因私有 CUA Git 依赖仍触发钥匙串 -25308 失败。用户已授权改用 Pro，管理 SSH 已可用，隔离目录 `/Users/dev/codez-todo99-e2e.1lO3PN`。W99-E01..06 在取得对应请求/进程/跨端证据前仍保留 pending；不得凭本页集成测试直接晋级。
 
 ### 另外发现的既有失败
 
-`zcode-protocol.test.ts` 的“远程 SSH/WSL 默认禁用全部 Cron”仍失败：实际 denylist 只有 Bash，预期另有4个 Cron。基线已有同样差异；生产源码保留未使用的远程工具常量/identity import。未为了本项全绿删除断言，也未擅自改 Cron 产品语义，需单独核对原禁用合同。
+`codez-protocol.test.ts` 的“远程 SSH/WSL 默认禁用全部 Cron”仍失败：实际 denylist 只有 Bash，预期另有4个 Cron。基线已有同样差异；生产源码保留未使用的远程工具常量/identity import。未为了本项全绿删除断言，也未擅自改 Cron 产品语义，需单独核对原禁用合同。
 
 ## 6. 文档与图的校正
 
@@ -104,7 +104,7 @@ Codegraph 当前不可用；按实际符号/调用链审查，不声称全仓索
 
 ## 7. Pro 实机与最终收尾（2026-09-09）
 
-测试目录 `/Users/dev/zcode-todo99-e2e.1lO3PN`，Node 24.14.0、Electron/Chrome 146；使用当前 worktree 源码的隔离副本，不改 Pro 日常数据或 Git checkout，不操作钥匙串。代码基线如页首，加本次待提交 Todo99 变更。构建缺 `.git` 时显示 unknown，因此不能以构建内嵌版本代替这里记录的来源。
+测试目录 `/Users/dev/codez-todo99-e2e.1lO3PN`，Node 24.14.0、Electron/Chrome 146；使用当前 worktree 源码的隔离副本，不改 Pro 日常数据或 Git checkout，不操作钥匙串。代码基线如页首，加本次待提交 Todo99 变更。构建缺 `.git` 时显示 unknown，因此不能以构建内嵌版本代替这里记录的来源。
 
 | 用例 / run | 结果与实际证据 |
 | --- | --- |
@@ -127,4 +127,4 @@ Codegraph 当前不可用；按实际符号/调用链审查，不声称全仓索
 
 实现提交：`b4ffe44db0`（`fix(provider): complete worker account selection repair`），未推送。提交后把 Pro 隔离副本里的其他未提交迁移源码/测试还原成该提交的文件，不改本地原工作区。重新构建 Desktop 和 Agent，Worker 有效选择 spec **3/3 再次通过**：`desktop-e2e-20260909112629814-p20925-4b9a692d8243878d`，artifact 路径规则同上。
 
-另按 Git blob SHA-1 核对 `packages`、`apps/zcode-cli`、`config` 下 `.ts/.tsx/.json/.mjs/.cjs/.yaml`：**6,754 个文件与实现提交一致，0 差异**（首次唯一差异为未同步的新 Core 单测，随后补齐；不影响此前执行制品）。这避免用混入其他 dirty 生产源码的测试结果替本次提交背书。未把部署包版本 unknown、构建缓存或旧通过记录作为来源证明。
+另按 Git blob SHA-1 核对 `packages`、`apps/codez-cli`、`config` 下 `.ts/.tsx/.json/.mjs/.cjs/.yaml`：**6,754 个文件与实现提交一致，0 差异**（首次唯一差异为未同步的新 Core 单测，随后补齐；不影响此前执行制品）。这避免用混入其他 dirty 生产源码的测试结果替本次提交背书。未把部署包版本 unknown、构建缓存或旧通过记录作为来源证明。

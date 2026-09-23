@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ProviderSettingsView } from "@zcode/services";
+import type { ProviderSettingsView } from "@codez/services";
 import { projectProviderSettingsViewToFormProviders } from "@/lib/providerSettingsFormProjection.js";
 import { getProviderFormLabel } from "@/lib/providerSettingsFormTypes.js";
 import { persistPersonalProvider } from "@/lib/providerPersonalSave.js";

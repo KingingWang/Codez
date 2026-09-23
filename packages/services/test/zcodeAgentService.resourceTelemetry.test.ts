@@ -1,9 +1,9 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentLaneResourceSample } from "@zcode/shared";
+import type { AgentLaneResourceSample } from "@codez/shared";
 import { afterEach, describe, expect, it } from "vitest";
-import { createZCodeAgentService } from "../src/zcode-agent/zcodeAgentService.js";
+import { createCodezAgentService } from "../src/codez-agent/codezAgentService.js";
 
 const RESOURCE_SAMPLE_FAKE_AGENT = `
 let buffer = "";
@@ -76,7 +76,7 @@ process.stdin.on("data", (chunk) => {
 });
 `;
 
-describe("ZCodeAgentService process resource telemetry", () => {
+describe("CodezAgentService process resource telemetry", () => {
   const tempDirs: string[] = [];
 
   afterEach(() => {
@@ -86,11 +86,11 @@ describe("ZCodeAgentService process resource telemetry", () => {
   });
 
   it("PRT-025 旧格式样本通过校验并分发，新字段透传，lane 由 services 按进程管理器打标", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-resource-telemetry-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-resource-telemetry-"));
     tempDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "resource-agent.cjs");
     writeFileSync(scriptPath, RESOURCE_SAMPLE_FAKE_AGENT);
-    const service = createZCodeAgentService({
+    const service = createCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
     const samples: AgentLaneResourceSample[] = [];

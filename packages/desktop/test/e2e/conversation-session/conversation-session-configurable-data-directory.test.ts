@@ -12,7 +12,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -39,13 +39,13 @@ const APP_CANARY_CONTENT = "CDD01_APP_DATA_CANARY\n";
 const PROJECT_CANARY_CONTENT = "CDD01_PROJECT_DATA_CANARY\n";
 const paths = getE2EAppDataPaths();
 const customDataBaseDir = join(paths.homeDir, "cdd01-custom-data-root");
-const customAppDataDir = join(customDataBaseDir, ".zcode", "v2");
+const customAppDataDir = join(customDataBaseDir, ".codez", "v2");
 const oldTasksIndex = join(paths.appDataDir, "tasks-index.sqlite");
 const customTasksIndex = join(customAppDataDir, "tasks-index.sqlite");
 const bootstrapSettingsFile = join(paths.appDataDir, "setting.json");
-const cliDatabase = join(paths.homeDir, ".zcode", "cli", "db", "db.sqlite");
-const customCliRoot = join(customDataBaseDir, ".zcode", "cli");
-const projectCanary = join(paths.workspace, ".zcode", "e2e-cdd01-project-canary.txt");
+const cliDatabase = join(paths.homeDir, ".codez", "cli", "db", "db.sqlite");
+const customCliRoot = join(customDataBaseDir, ".codez", "cli");
+const projectCanary = join(paths.workspace, ".codez", "e2e-cdd01-project-canary.txt");
 
 describe("CDD01：修改数据存储路径后原任务仍可继续", () => {
   let showOpenDialogMock: ElectronMock | null = null;

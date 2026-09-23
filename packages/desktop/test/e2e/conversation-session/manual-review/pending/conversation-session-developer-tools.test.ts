@@ -1,4 +1,4 @@
-import { TID_SIDE_PANE_TOGGLE, TID_V4_COMPOSER_INPUT } from "@zcode/shared";
+import { TID_SIDE_PANE_TOGGLE, TID_V4_COMPOSER_INPUT } from "@codez/shared";
 import { clearAppData, switchToNewestWindow } from "../../../helpers/desktop-app.js";
 import {
   prepareV4ConversationE2E,
@@ -31,7 +31,7 @@ describe("DBG01 开发者工具请求诊断", () => {
     await waitForV4AssistantMessageContaining("upstream-e2e-ok");
     await waitForV4ConversationState((state) => state.state === "idle", "主请求尚未结束");
     await browser.execute(() => {
-      localStorage.setItem("zcode:developer-tools:enabled", "1");
+      localStorage.setItem("codez:developer-tools:enabled", "1");
       window.dispatchEvent(new Event("focus"));
     });
     const launcher = await $('[data-side-pane-open-tab-item="developer-tools"]');

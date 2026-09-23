@@ -4,7 +4,7 @@
 >
 > 日期：2026-09-10（Todo105/111/112/113 更新）
 
-本文只回答“ZCode 内置提供哪些入口、每个入口维护哪些模型”。它不是 Provider Config 的副本，不描述
+本文只回答“Codez 内置提供哪些入口、每个入口维护哪些模型”。它不是 Provider Config 的副本，不描述
 reasoning map、能力字段、请求 Header 或 Personal Provider Instance。
 
 协议选择遵循统一原则：供应商或具体模型/Endpoint 支持 Anthropic Messages 时，官方模板优先使用 Anthropic；否则选择该入口
@@ -54,7 +54,7 @@ OpenRouter 是普通 API Template，当前使用 `templateId=openrouter`。官�
 
 模型范围覆盖本清单中各家普通 API Template 的全部维护模型，只要 OpenRouter 当前实际提供，就全部纳入，不再只挑少数
 “代表模型”。每个上游供应商至少有一个重点模型默认启用，同一供应商的其他模型一般维护、默认关闭。OpenRouter 自己的全量
-动态目录不复制进 Builtin Config，未列入 ZCode 维护范围的模型仍由用户通过自定义 Provider 使用。
+动态目录不复制进 Builtin Config，未列入 Codez 维护范围的模型仍由用户通过自定义 Provider 使用。
 
 OpenRouter 的模型 ID 按它实际返回的值登记。例如当前可能出现 `openai/gpt-5.6-sol`，它对应上游的 `gpt-5.6-sol`；这只是
 OpenRouter 的命名事实，不是所有聚合供应商的通用格式，也不要求运行时剥离前缀。OpenRouter 的配置仍独立维护，不复用上游
@@ -104,7 +104,7 @@ OpenCode Zen 的维护范围覆盖官方模型表中仍有效的各家模型，�
   `ling-3.0-flash-fin-free`○、`nemotron-3-ultra-free`○、`nemotron-3.5-lightning-free`○、
   `muse-spark-1.2-contributor-free`○。
 
-上面是 ZCode 的维护列表，不是 Zen 的全量动态目录；正式写入前仍以 Zen 官方 `/zen/v1/models` 返回值和协议验证结果为最终门槛。
+上面是 Codez 的维护列表，不是 Zen 的全量动态目录；正式写入前仍以 Zen 官方 `/zen/v1/models` 返回值和协议验证结果为最终门槛。
 
 Z.ai、BigModel、Kimi、MiniMax 和 Qwen 的“一般维护”模型以各自具体 API 入口在实现时的官方可用模型列表为最终门槛；
 如果某个 ID 已不再被该入口接受，则从表和对应 Template 一并删除。这里不因为供应商官网仍保留历史资料就继续维护。
@@ -138,7 +138,7 @@ Z.ai、BigModel、Kimi、MiniMax 和 Qwen 的“一般维护”模型以各自�
 - OpenCode Zen 的官方模型使用同一个站点，但不同模型实际分布在 Responses、Anthropic Messages、OpenAI-compatible Chat
   三种 Endpoint/Schema。当前 `ProviderTemplate` 的 `api.type` 是单值，因此清单先按 `responses`、`messages`、`chat` 三个
   模板身份登记；实现时不把不同 Schema 的模型伪装成一个固定模板，也不在未有类型设计前扩展一套临时字段。
-- OpenCode 的模型清单以 Zen 官方 `/zen/v1/models` 和文档为准；表中★/○只表达 ZCode 的默认启用策略，不代表 Zen 的计费或
+- OpenCode 的模型清单以 Zen 官方 `/zen/v1/models` 和文档为准；表中★/○只表达 Codez 的默认启用策略，不代表 Zen 的计费或
   推荐等级。
 - OpenCode Zen 的维护集合覆盖其官方模型表中仍有效的各家模型，不因某一个品牌已经有重点模型就省略其他品牌；每个有模型进入
   清单的上游品牌至少有一个默认启用模型，其余官方模型一般维护、默认关闭。

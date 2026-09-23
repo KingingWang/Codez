@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RemoteWorkspaceSessionEntry } from "@zcode/shared";
+import type { RemoteWorkspaceSessionEntry } from "@codez/shared";
 import type { WindowTabState } from "@/store/tabStore.js";
 import type { ReconnectRemoteWorkspaceOptions } from "@/root/reconnectRemoteWorkspaceHistoryEntry.js";
 import {
@@ -60,8 +60,8 @@ function createWorkspaceTab(
 
 describe("bindRemoteWorkspaceContextAndGetSession", () => {
   it("bind 完成后重新读取同一 session 的新 attachment services", async () => {
-    const firstServices = { zcodeSessionService: { attachment: "A" } } as never;
-    const secondServices = { zcodeSessionService: { attachment: "B" } } as never;
+    const firstServices = { codezSessionService: { attachment: "A" } } as never;
+    const secondServices = { codezSessionService: { attachment: "B" } } as never;
     registerRemoteWorkspaceSession({
       sessionId: "remote-session-1",
       services: firstServices,

@@ -1,6 +1,6 @@
 # UI Error Boundaries
 
-ZCode 的 React 错误边界分两层：
+Codez 的 React 错误边界分两层：
 
 - 根级 `AppErrorBoundary`：兜住启动、Provider、Root 级异常，避免整窗白屏。
 - 局部 `ScopedErrorBoundary`：按 workspace 内的故障域隔离 sidebar、header、chat、terminal、side pane、settings layer 等区域。

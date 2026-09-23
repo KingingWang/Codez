@@ -16,9 +16,9 @@
 
 ## 0. 实际交付
 
-- `ModelSelection` 已收口到 `@zcode/shared`，作为跨进程选择意图的唯一严格契约；
+- `ModelSelection` 已收口到 `@codez/shared`，作为跨进程选择意图的唯一严格契约；
 - 当前执行统一持有 `Model`，Core、Compact、Memory、Subagent 和 Adapter 不再接收公共 `ModelRef`；
-- `ModelRef`、`ZCodeModelRef`、`variant` reasoning identity、parse/format/equality helper 及同形公共 alias 已删除；
+- `ModelRef`、`CodezModelRef`、`variant` reasoning identity、parse/format/equality helper 及同形公共 alias 已删除；
 - Result、Stream、Session persistence 与 Telemetry 按各自语义保存 Selection 或明确的 provider/model 字段，
   不再共享一份伪身份对象；
 - Bot、TUI、Protocol、CLI admission、历史 hydration 和 SQLite codec 已切到标准 `ModelSelection`；只有明确的
@@ -96,7 +96,7 @@ Parent、Child、Compact 等消费者需要继承未来选择时，读取其权�
 
 ### 3.5 统一 Selection 契约，不统一比较语义
 
-`@zcode/shared` 归属唯一严格的 `ModelSelection` Schema 和跨进程类型：
+`@codez/shared` 归属唯一严格的 `ModelSelection` Schema 和跨进程类型：
 
 ```ts
 {
@@ -265,7 +265,7 @@ Adapter 私有函数接受两个标量并不等于建立新业务 identity 类�
 ### Step B：先迁移选择与 Adapter
 
 - Runtime/Bootstrap 统一使用 ModelSelection；
-- 跨进程 Selection 类型和严格 Schema 收口到 `@zcode/shared`，删除各包的同形公共定义；
+- 跨进程 Selection 类型和严格 Schema 收口到 `@codez/shared`，删除各包的同形公共定义；
 - Adapter 接口改为显式已解析输入；
 - variant 迁入 options；
 - 删除 string/default provider 解析；

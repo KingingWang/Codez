@@ -34,7 +34,7 @@ function entry(path: string): GitStatusEntry {
 }
 
 async function fixture() {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-untracked-stats-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-untracked-stats-"));
   dirs.push(dir);
   return dir;
 }

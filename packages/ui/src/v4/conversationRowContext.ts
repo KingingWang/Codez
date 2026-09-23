@@ -11,8 +11,8 @@ import type { WorkflowRunSettingsChange } from "@/components/workflow-timeline/w
 import type { WorkflowDraftPosition, WorkflowRunCardSummary } from "@/ToolCallBlocks/shared.js";
 import type { WorkflowFillGraph } from "@/v4/workflowRunCardJoin.js";
 import type { Theme } from "@/useTheme.js";
-import type { ModelSelectionView } from "@zcode/services";
-import type { ZCodeWorkflowsForRunCandidate } from "@zcode/shared";
+import type { ModelSelectionView } from "@codez/services";
+import type { CodezWorkflowsForRunCandidate } from "@codez/shared";
 import type { ConversationAttachmentReadParams, ConversationTransport } from "@/v4/transport.js";
 import type {
   OpenPlanDetailSideTabRequest,
@@ -28,7 +28,7 @@ import type {
   TurnHeaderRow,
   V4ConversationFileChangesResult,
   V4ConversationFileRewindPreviewResult,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 
 export type ConversationFileChangesState = Exclude<
   NonNullable<TurnHeaderRow["fileChanges"]>["state"],
@@ -128,7 +128,7 @@ export interface ConversationRowRenderContext {
   ) => Promise<CommandAck>;
   /**
    * 完成卡的「保存」/「再次运行」（docs/dynamic-workflow/transcript-and-notifications.md
-   * 「Saving the run, and running it again」）：把 GUI 写好的那条用户消息发进本会话，交给 ZCode
+   * 「Saving the run, and running it again」）：把 GUI 写好的那条用户消息发进本会话，交给 Codez
    * 去提炼保存。与 Resume 同两道门（只读、灰度）且**同一个供给点**——写文件与起引擎都属于
    * 「Resume 被收走的地方一并收走」。缺席即卡上只剩「已保存」芯片那条事实。
    */
@@ -138,7 +138,7 @@ export interface ConversationRowRenderContext {
    * 由宿主从行窗口一遍建立。它是「模型另起名字存下的那份定义」与这次 run 之间仅有的联系
    * （模型不会用 run 名当工作流名），所以必须从转写里读。
    */
-  workflowSaveCandidatesByRunId?: ReadonlyMap<string, readonly ZCodeWorkflowsForRunCandidate[]>;
+  workflowSaveCandidatesByRunId?: ReadonlyMap<string, readonly CodezWorkflowsForRunCandidate[]>;
   /** 会话当前模型（「配置」弹层首项「会话模型」的名字）；读不到即缺席，首项只写「会话模型」。 */
   workflowSessionModel?: { providerId: string; modelId: string };
   /**

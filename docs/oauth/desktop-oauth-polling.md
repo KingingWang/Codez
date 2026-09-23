@@ -2,17 +2,17 @@
 
 ## 目标
 
-Z.AI 与 BigModel Desktop 登录不再把 `zcode://oauth/callback` 作为唯一完成路径。App 使用 ZCode
+Z.AI 与 BigModel Desktop 登录不再把 `codez://oauth/callback` 作为唯一完成路径。App 使用 Codez
 后端已有的短期 OAuth flow，在浏览器完成授权后轮询 flow 状态；deep link 仍保留为兼容路径。
 轮询接口的 `provider` 使用 `zai` 或 `bigmodel`，两者共享 flow 生命周期，但 `ready` 凭据字段按 provider 区分。
 BigModel 创建 flow 后，App 把授权地址中的回调改为官网旧中转页
 `https://zcode.z.ai/app/oauth/login`（测试环境使用对应测试站点），中转页继续把 `authCode/state`
-透传到 `zcode://oauth/callback`；Host 中的 polling flow 同时保留。
+透传到 `codez://oauth/callback`；Host 中的 polling flow 同时保留。
 
 ## 时序
 
 ```text
-Desktop App                 ZCode Backend                 Browser / Z.AI
+Desktop App                 Codez Backend                 Browser / Z.AI
     | POST /oauth/cli/init        |                              |
     |---------------------------->|                              |
     | flow_id + authorize_url     |                              |
@@ -32,7 +32,7 @@ BigModel 双路径：
 BigModel Browser
     | authCode/state
     v
-ZCode Website /app/oauth/login -----> zcode://oauth/callback -----> Desktop deep link
+Codez Website /app/oauth/login -----> codez://oauth/callback -----> Desktop deep link
                                                                     |
 Desktop Host ---------------- GET /oauth/cli/poll/:id --------------+
 ```
@@ -62,7 +62,7 @@ App                  init A                  init B                  Host pendin
   `poll_interval_sec`；异常服务端响应直接终止，不打开外部地址。
 - Root 常驻层查询 Host 中的 pending flow；没有 pending flow 时不得产生网络请求。
 - 只有 `zai`、`bigmodel` 使用 polling；扩展 provider 仍走原 deep link 流程，不启动 Root 空轮询。
-- BigModel 的浏览器回调使用官网 `/app/oauth/login?redirect=zcode://oauth/callback`，不得直接展示
+- BigModel 的浏览器回调使用官网 `/app/oauth/login?redirect=codez://oauth/callback`，不得直接展示
   `/oauth/cli/callback/bigmodel` 的成功或失败页面；修改回调地址不取消 Host polling。
 - `pending` 按服务端间隔继续查询；`ready` 原子落盘一次并结束；`failed`、过期、取消或
   业务错误结束当前 flow。

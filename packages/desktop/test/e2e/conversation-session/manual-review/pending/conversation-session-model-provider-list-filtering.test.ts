@@ -4,7 +4,7 @@ import {
   TID_CHAT_MODEL_SELECT_TRIGGER,
   encodeCustomModelValue,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,

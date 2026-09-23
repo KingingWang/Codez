@@ -2,7 +2,7 @@ import type {
   HighspeedCardUsage,
   HighspeedDrawResponse,
   HighspeedMockScenario,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { HighspeedServiceTransport } from "./highspeedCardService.js";
 
 const MOCK_DRAW_COOLDOWN_MS = 2 * 60_000;

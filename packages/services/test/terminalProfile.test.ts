@@ -53,7 +53,7 @@ describe("terminalProfile", () => {
 
   it("detects the Windows Terminal default profile font", () => {
     setProcessPlatform("win32");
-    const localAppData = makeTempDir("zcode-terminal-profile-localappdata-");
+    const localAppData = makeTempDir("codez-terminal-profile-localappdata-");
     const settingsDir = join(
       localAppData,
       "Packages",
@@ -89,7 +89,7 @@ describe("terminalProfile", () => {
 
   it("falls back when system profile inheritance is disabled", () => {
     setProcessPlatform("win32");
-    const localAppData = makeTempDir("zcode-terminal-profile-localappdata-");
+    const localAppData = makeTempDir("codez-terminal-profile-localappdata-");
     const settingsDir = join(
       localAppData,
       "Packages",
@@ -121,7 +121,7 @@ describe("terminalProfile", () => {
 
   it("detects the VS Code terminal font on Unix-like systems", () => {
     setProcessPlatform("linux");
-    const home = makeTempDir("zcode-terminal-profile-home-");
+    const home = makeTempDir("codez-terminal-profile-home-");
     const settingsDir = join(home, ".config", "Code", "User");
     mkdirSync(settingsDir, { recursive: true });
     writeFileSync(
@@ -144,7 +144,7 @@ describe("terminalProfile", () => {
 
   it("detects the default iTerm2 profile font as a macOS plugin", () => {
     setProcessPlatform("darwin");
-    const home = makeTempDir("zcode-terminal-profile-home-");
+    const home = makeTempDir("codez-terminal-profile-home-");
     const preferencesDir = join(home, "Library", "Preferences");
     mkdirSync(preferencesDir, { recursive: true });
     writeFileSync(join(preferencesDir, "com.googlecode.iterm2.plist"), "plist", "utf8");
@@ -201,7 +201,7 @@ describe("terminalProfile", () => {
 
   it("detects macOS Terminal font when iTerm2 is unavailable", () => {
     setProcessPlatform("darwin");
-    const home = makeTempDir("zcode-terminal-profile-home-");
+    const home = makeTempDir("codez-terminal-profile-home-");
     const preferencesDir = join(home, "Library", "Preferences");
     mkdirSync(preferencesDir, { recursive: true });
     writeFileSync(join(preferencesDir, "com.apple.Terminal.plist"), "plist", "utf8");
@@ -250,7 +250,7 @@ describe("terminalProfile", () => {
 
   it("keeps macOS profile size and theme when an explicit font override is configured", () => {
     setProcessPlatform("darwin");
-    const home = makeTempDir("zcode-terminal-profile-home-");
+    const home = makeTempDir("codez-terminal-profile-home-");
     const preferencesDir = join(home, "Library", "Preferences");
     mkdirSync(preferencesDir, { recursive: true });
     writeFileSync(join(preferencesDir, "com.googlecode.iterm2.plist"), "plist", "utf8");
@@ -287,7 +287,7 @@ describe("terminalProfile", () => {
 
   it("skips failing macOS terminal plugins and continues to fallback", () => {
     setProcessPlatform("darwin");
-    const home = makeTempDir("zcode-terminal-profile-home-");
+    const home = makeTempDir("codez-terminal-profile-home-");
     const preferencesDir = join(home, "Library", "Preferences");
     mkdirSync(preferencesDir, { recursive: true });
     writeFileSync(join(preferencesDir, "com.googlecode.iterm2.plist"), "plist", "utf8");

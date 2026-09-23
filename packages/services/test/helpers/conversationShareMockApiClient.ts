@@ -5,7 +5,7 @@
  * 只用于测试：让真实的 ConversationShareHttpClient 跑完整
  * preparation → upload → confirm → preview → continuation 时序，并按后端契约
  * 返回文档化的 status/code 组合。运行时一律走真实 API，因此它必须留在 test/ 下，
- * 不能编进 @zcode/services 的发布产物。
+ * 不能编进 @codez/services 的发布产物。
  */
 import { createHash } from "node:crypto";
 
@@ -22,7 +22,7 @@ import {
   type ConversationShareConfirmRequest,
   type ConversationSharePreparationRequest,
   type ConversationShareRecord,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 import { buildConversationShareConfirmRequest } from "../../src/conversation-share/conversationShareIntegrity.js";
 import { assertConversationSharePublicProjection } from "../../src/conversation-share/conversationSharePublicProjection.js";
@@ -131,7 +131,7 @@ export class ConversationShareMockApiClient implements ApiClient {
     // Mock 生成的链接必须指向当前可运行的 share 页面；示例域名会让本地发布结果变成不可访问的假链接。
     this.shareBaseUrl = (
       options.shareBaseUrl ??
-      process.env.ZCODE_CONVERSATION_SHARE_WEB_URL ??
+      process.env.CODEZ_CONVERSATION_SHARE_WEB_URL ??
       "http://127.0.0.1:5173/cn/share"
     ).replace(/\/+$/u, "");
     this.scenario = options.scenario ?? {};

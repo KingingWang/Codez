@@ -1,9 +1,9 @@
 // 完成卡「保存 / 再次运行」的纯逻辑（docs/dynamic-workflow/transcript-and-notifications.md「Saving the
-// run, and running it again」）：名字规则的前置回声、落点预览、弹层起点、交给 ZCode 的那条消息、
+// run, and running it again」）：名字规则的前置回声、落点预览、弹层起点、交给 Codez 的那条消息、
 // 转写里的候选联接、「再次运行」实参预填，以及「这次 run 存成了哪个工作流」的读缓存。
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
-import { ZCODE_WORKFLOWS_FOR_RUN_MAX_CANDIDATES } from "@zcode/shared";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
+import { CODEZ_WORKFLOWS_FOR_RUN_MAX_CANDIDATES } from "@codez/shared";
 
 vi.mock("@/logger.js", () => ({ logger: { debug: vi.fn(), warn: vi.fn(), info: vi.fn() } }));
 
@@ -54,8 +54,8 @@ describe("名字规则的前置回声", () => {
   });
 
   it("落点预览：项目档相对路径，全局档 ~ 开头（agent 机器的家目录）", () => {
-    expect(savedWorkflowPathPreview("project", "x")).toBe(".zcode/workflows/x.dwf.ts");
-    expect(savedWorkflowPathPreview("global", "x")).toBe("~/.zcode/workflows/x.dwf.ts");
+    expect(savedWorkflowPathPreview("project", "x")).toBe(".codez/workflows/x.dwf.ts");
+    expect(savedWorkflowPathPreview("global", "x")).toBe("~/.codez/workflows/x.dwf.ts");
   });
 });
 
@@ -82,7 +82,7 @@ describe("弹层起点", () => {
   });
 });
 
-describe("交给 ZCode 的那条消息", () => {
+describe("交给 Codez 的那条消息", () => {
   const base = { runId: "dwfrun-7", runName: "PR 分层评审", scope: "project" as const };
 
   it("zh：要提炼而不是照抄、带上填好的名字与说明、要求回传 run_id；不带脚本", () => {
@@ -149,11 +149,11 @@ describe("buildWorkflowSaveCandidatesByRunId", () => {
   });
 
   it("守住协议的候选上界：超出部分留最早的那几个", () => {
-    const rows = Array.from({ length: ZCODE_WORKFLOWS_FOR_RUN_MAX_CANDIDATES + 2 }, (_, i) =>
+    const rows = Array.from({ length: CODEZ_WORKFLOWS_FOR_RUN_MAX_CANDIDATES + 2 }, (_, i) =>
       saveRow(i + 1, { run_id: "r", name: `w${i}` }),
     );
     const list = buildWorkflowSaveCandidatesByRunId(rows).get("r") ?? [];
-    expect(list).toHaveLength(ZCODE_WORKFLOWS_FOR_RUN_MAX_CANDIDATES);
+    expect(list).toHaveLength(CODEZ_WORKFLOWS_FOR_RUN_MAX_CANDIDATES);
     expect(list[0]?.name).toBe("w0");
   });
 });
@@ -288,10 +288,10 @@ describe("词条", () => {
     expect(keysOf(enUS as Record<string, string>)).toEqual(zh);
     // 设计里定下的那两句逐字。
     expect((zhCN as Record<string, string>)["chat.toolCall.workflow.saveRun.lead"]).toBe(
-      "让 ZCode 帮我提炼保存",
+      "让 Codez 帮我提炼保存",
     );
     expect((zhCN as Record<string, string>)["chat.toolCall.workflow.saveRun.lead.hint"]).toBe(
-      "ZCode 会帮你提炼出可复用的工作流，再交你确认。",
+      "Codez 会帮你提炼出可复用的工作流，再交你确认。",
     );
   });
 });

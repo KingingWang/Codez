@@ -10,13 +10,13 @@ import { DatabaseSync } from "node:sqlite";
 const require = createRequire(import.meta.url);
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const root = resolve(desktop, "../..");
-const output = await mkdtemp(join(tmpdir(), "zcode-mcp-host-e2e-"));
+const output = await mkdtemp(join(tmpdir(), "codez-mcp-host-e2e-"));
 const fixture = join(desktop, "scripts/mcp-apps-host-fixture");
-const showcaseServer = process.env.ZCODE_SHOWCASE_SERVER;
+const showcaseServer = process.env.CODEZ_SHOWCASE_SERVER;
 if (process.argv.includes("--showcase-only")) {
   if (!showcaseServer)
     throw new Error(
-      "Set ZCODE_SHOWCASE_SERVER to the built Showcase dist/server.mjs from zcode-plugins",
+      "Set CODEZ_SHOWCASE_SERVER to the built Showcase dist/server.mjs from codez-plugins",
     );
   await access(showcaseServer);
 }
@@ -50,9 +50,9 @@ if (
         "pnpm",
         [
           "--dir",
-          join(root, "apps/zcode-cli"),
+          join(root, "apps/codez-cli"),
           "--filter",
-          `@zcode/${name}`,
+          `@codez/${name}`,
           name === "cli" ? "build:desktop-agent" : "build",
         ],
         { stdio: "inherit" },
@@ -70,7 +70,7 @@ const alias = {
   "@": join(root, "packages/ui/src"),
   ...Object.fromEntries(
     Object.entries(sharedExports).map(([key, value]) => [
-      key === "." ? "@zcode/shared" : `@zcode/shared/${key.slice(2)}`,
+      key === "." ? "@codez/shared" : `@codez/shared/${key.slice(2)}`,
       resolve(shared, "..", value),
     ]),
   ),
@@ -213,7 +213,7 @@ for (const mode of modes) {
             output,
             join(output, `${mode}-profile`),
             process.execPath,
-            join(root, "apps/zcode-cli/packages/cli/dist/zcode.cjs"),
+            join(root, "apps/codez-cli/packages/cli/dist/codez.cjs"),
             showcaseServer ?? "",
           ]
         : mode === "managed-empty"

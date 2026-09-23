@@ -11,7 +11,7 @@ vi.mock("electron", () => ({
 
 vi.mock("../src/main/desktopRuntimeEnv.js", () => ({
   buildHostProcessEnv: vi.fn(() => ({})),
-  schedulerModulePath: "/tmp/zcode-scheduler.js",
+  schedulerModulePath: "/tmp/codez-scheduler.js",
 }));
 
 class MockSchedulerProcess extends EventEmitter {

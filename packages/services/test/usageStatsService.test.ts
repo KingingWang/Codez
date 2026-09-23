@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ApiClient, AppUsageSnapshot, ZCodeAccountAccess } from "@zcode/shared";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
-import type { IZCodeAgentService } from "../src/zcode-agent/zcodeAgent.js";
+import type { ApiClient, AppUsageSnapshot, CodezAccountAccess } from "@codez/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
+import type { ICodezAgentService } from "../src/codez-agent/codezAgent.js";
 import { createUsageStatsService } from "../src/usage-stats/usageStatsService.js";
 import { resolveCodingPlanUsageTimeRange } from "../src/usage-stats/providers/bigmodelUsageMonitorRange.js";
 
@@ -74,9 +74,9 @@ function createUsageStatsServiceForTest(params: {
   credentialTokens?: Record<string, string | null | undefined>;
   resolveAccountAuth?: (input: {
     providerId: string;
-    accountAccess: ZCodeAccountAccess;
+    accountAccess: CodezAccountAccess;
   }) => Promise<{ apiKey?: string }>;
-  getAppUsageStats?: IZCodeAgentService["getAppUsageStats"];
+  getAppUsageStats?: ICodezAgentService["getAppUsageStats"];
 }) {
   const service = createUsageStatsService({
     apiClient: params.apiClient ?? {
@@ -121,7 +121,7 @@ function createUsageStatsServiceForTest(params: {
       load: vi.fn(async (key) => params.credentialTokens?.[key] ?? null),
     },
     env: params.env,
-    zcodeAgentService: {
+    codezAgentService: {
       getAppUsageStats: params.getAppUsageStats ?? vi.fn(async () => createAppUsageSnapshot()),
     },
   });
@@ -156,7 +156,7 @@ function createUsageStatsServiceForTest(params: {
         Parameters<NonNullable<typeof service.getCodingPlanRegularTps>>[0],
         "accountAccess"
       > & {
-        accountAccess?: ZCodeAccountAccess;
+        accountAccess?: CodezAccountAccess;
       },
     ) =>
       service.getCodingPlanRegularTps?.({
@@ -167,7 +167,7 @@ function createUsageStatsServiceForTest(params: {
             type: "zhipu-account",
             family: request.preferredProviderId.includes("zai") ? "zai" : "bigmodel",
             planKind: "individual-coding-plan",
-          } satisfies ZCodeAccountAccess),
+          } satisfies CodezAccountAccess),
       }),
   };
 }
@@ -428,7 +428,7 @@ describe("createUsageStatsService", () => {
     ).toThrow("coding_plan_usage_custom_range_too_long");
   });
 
-  it("App Usage 经 ZCode Protocol 读取 agent 数据库统计", async () => {
+  it("App Usage 经 Codez Protocol 读取 agent 数据库统计", async () => {
     const getAppUsageStats = vi.fn(async () => createAppUsageSnapshot());
     const apiClient: ApiClient = {
       request: vi.fn(),
@@ -645,7 +645,7 @@ describe("createUsageStatsService", () => {
         }),
       ],
       env: {
-        ZCODE_BIGMODEL_USAGE_API_KEY: "env-usage-key",
+        CODEZ_BIGMODEL_USAGE_API_KEY: "env-usage-key",
       },
     });
 
@@ -994,7 +994,7 @@ describe("createUsageStatsService", () => {
         if (url.endsWith("/api_keys")) {
           return createJsonResponse({
             code: 200,
-            data: [{ apiKey: "team-ak", keyType: 2, name: "zcode-team-api-key" }],
+            data: [{ apiKey: "team-ak", keyType: 2, name: "codez-team-api-key" }],
           });
         }
         if (url.endsWith("/api_keys/copy/team-ak")) {
@@ -1116,7 +1116,7 @@ describe("createUsageStatsService", () => {
         if (url.endsWith("/api_keys")) {
           return createJsonResponse({
             code: 200,
-            data: [{ apiKey: "team-ak", keyType: 2, name: "zcode-team-api-key" }],
+            data: [{ apiKey: "team-ak", keyType: 2, name: "codez-team-api-key" }],
           });
         }
         if (url.endsWith("/api_keys/copy/team-ak")) {
@@ -1184,7 +1184,7 @@ describe("createUsageStatsService", () => {
         if (url.endsWith("/api_keys")) {
           return createJsonResponse({
             code: 200,
-            data: [{ apiKey: "team-ak-zai", keyType: 2, name: "zcode-team-api-key" }],
+            data: [{ apiKey: "team-ak-zai", keyType: 2, name: "codez-team-api-key" }],
           });
         }
         if (url.endsWith("/api_keys/copy/team-ak-zai")) {
@@ -1292,7 +1292,7 @@ describe("createUsageStatsService", () => {
         if (url.endsWith("/api_keys")) {
           return createJsonResponse({
             code: 200,
-            data: [{ apiKey: "team-ak-zai", keyType: 2, name: "zcode-team-api-key" }],
+            data: [{ apiKey: "team-ak-zai", keyType: 2, name: "codez-team-api-key" }],
           });
         }
         if (url.endsWith("/api_keys/copy/team-ak-zai")) {
@@ -1356,7 +1356,7 @@ describe("createUsageStatsService", () => {
         if (url.endsWith("/api_keys")) {
           return createJsonResponse({
             code: 200,
-            data: [{ apiKey: "team-ak", keyType: 2, name: "zcode-team-api-key" }],
+            data: [{ apiKey: "team-ak", keyType: 2, name: "codez-team-api-key" }],
           });
         }
         if (url.endsWith("/api_keys/copy/team-ak")) {

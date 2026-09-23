@@ -3,7 +3,7 @@
 // 1) 把 plugin MCP 工具注册到模型请求 tools 数组；
 // 2) 允许模型在真实对话轮次里调它；
 // 3) chat 出现对应 tool-call block。
-// wdio 启动前已在 <E2E_HOME>/.zcode/cli/plugins/installed_plugins.json 写入带 installPath
+// wdio 启动前已在 <E2E_HOME>/.codez/cli/plugins/installed_plugins.json 写入带 installPath
 // 的记录，并把 config.json#plugins.enabledPlugins[id] 显式置为 true。
 // （安装型 plugin 的 defaultEnabled=false，所以必须显式打开才能让
 // NodePluginAdapter.resolveEnabled 返回 true。）

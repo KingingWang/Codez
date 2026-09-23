@@ -7,14 +7,14 @@
 | Developer intent / capability | M1 通用与编程模式的展示差异与面板保留                                                                   |
 | Change layer                  | presentation、option-source、draft-default、validation、persistence                                     |
 | Operating mode                | implementation-handoff；按已确认的产品语义补齐收尾验证                                                  |
-| Primary seeds                 | `createZCodeStore`、`useIsGeneralMode`、`useAppPanels`、`ToolCallBlockComponent`、`ConversationRowView` |
+| Primary seeds                 | `createCodezStore`、`useIsGeneralMode`、`useAppPanels`、`ToolCallBlockComponent`、`ConversationRowView` |
 | Out of scope                  | 模型提示词、产物管理、统一文件预览、设置按钮位移、修改 continuous/replayable 协议                       |
 
 ## UI Surface Matrix
 
 | 用户场景 / UI 入口      | 共享实现                                                 | 展示/权威 owner、默认与落点           | 校验 / 提交动作                     | 模式边界 / 隔离不变量                      |
 | ----------------------- | -------------------------------------------------------- | ------------------------------------- | ----------------------------------- | ------------------------------------------ |
-| 设置外观 / 头像菜单切换 | `settingsCodePreview` / `WorkspaceSidebarFooter`         | ZCodeStore；默认 coding；localStorage | setInterfaceMode / 现有广播         | Desktop/Web 共用；不改任务模式、模型或权限 |
+| 设置外观 / 头像菜单切换 | `settingsCodePreview` / `WorkspaceSidebarFooter`         | CodezStore；默认 coding；localStorage | setInterfaceMode / 现有广播         | Desktop/Web 共用；不改任务模式、模型或权限 |
 | 查看命令与文件修改      | `ToolCallBlocks` 四个 renderer                           | 原始 tool 节点，只派生展示            | canToggle/forceOpen、标题与详情过滤 | 不删除原始结果；文件点击仍沿用既有预览     |
 | 思考 / 正式回答         | `ConversationRowView` / `MessageResponse`                | 原始 row；代码预览偏好                | 思考原文展示、forceCodeWrap         | 流式/完成均应用；不写回原文                |
 | 状态 Git 区 / 轮次汇总  | `conversationStatusPanelModel` / `ConversationTurnGroup` | 原始 Git 与任务投影                   | 隐藏 Git model / 汇总               | 不停止 Git 查询或改写仓库                  |
@@ -39,7 +39,7 @@
 
 ## State Owners And Commit Sinks
 
-详见 [功能 spec](../ui/general-coding-mode.md) 的状态图。ZCodeStore 拥有模式；useAppPanels/taskSidePaneMemory 拥有面板；TerminalSession 拥有 PTY；CLI/runtime 拥有原始任务数据。设置服务环境修复只改变显式 Dev home 下的配置位置。
+详见 [功能 spec](../ui/general-coding-mode.md) 的状态图。CodezStore 拥有模式；useAppPanels/taskSidePaneMemory 拥有面板；TerminalSession 拥有 PTY；CLI/runtime 拥有原始任务数据。设置服务环境修复只改变显式 Dev home 下的配置位置。
 
 ## Must-Preserve Invariants
 
@@ -89,7 +89,7 @@
 - 移除思考过滤前的定向单测：8 个文件、121 条全部通过（与关联单测有重叠，不叠加计数）。涵盖偏好归一、持久化、广播无回声、面板 owner、运行/完成/失败工具展示、思考围栏、回复代码容器/复制/换行入口、Git 投影、编辑器过滤及 Dev home 隔离。
 - 独立 Electron：本页 pending spec 2/2 通过。实际创建审查、侧边终端及底部终端，切换模式后验证 tab id/选中项不变、已有 PTY 输出独立标记、关闭有效；同时验证设置页/头像菜单/刷新偏好。
 - `pnpm lint`：0 errors，41 warnings；未在本次新增文件发现 lint warning。
-- `pnpm typecheck`、`pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm architecture:check --changed`：通过，架构新增违规 0。
+- `pnpm typecheck`、`pnpm --filter @codez/desktop typecheck:e2e`、`pnpm architecture:check --changed`：通过，架构新增违规 0。
 - `pnpm verify:pre-push`：通过；由于还未创建 commit，其 affected 阶段比较 `origin/staging..HEAD` 为空并跳过。上面的工作树关联单测负责验证当前未提交代码，真正 push 时仍须再次经过 hook。
 - 改动文件格式检查：44 个文件通过；三个既有大型 catalog/matrix 在 HEAD 上也存在格式问题，仅追加本次覆盖索引，未重排其全部历史表格。`git diff --check` 通过。
 - 基线检查：开工时已快进至本轮获取的 staging；最终 `--no-fetch` 检查同步。最终在线 fetch 因 `git.example.invalid:443` 连接超时失败，提交/推送前应再刷新远端。
@@ -123,13 +123,13 @@
 首次从干净构建运行（需仓库依赖已安装）：
 
 ```bash
-ZCODE_E2E_MANUAL_REVIEW=1 \
-ZCODE_BUILTIN_PROVIDER_CONFIG_FILE="$PWD/config/provider/zcode-builtin.json" \
-  mise exec -- pnpm --filter @zcode/desktop test:e2e -- \
+CODEZ_E2E_MANUAL_REVIEW=1 \
+CODEZ_BUILTIN_PROVIDER_CONFIG_FILE="$PWD/config/provider/codez-builtin.json" \
+  mise exec -- pnpm --filter @codez/desktop test:e2e -- \
   --spec './test/e2e/ui-shell/manual-review/pending/general-coding-mode.test.ts'
 ```
 
-本轮先完成完整 E2E 构建，后续只修改测试时使用框架的 `ZCODE_E2E_SKIP_BUILD=1 ZCODE_E2E_SKIP_AGENT_BUILD=1` 复用构建。显式 provider config 防止测试启动回到无法完成的远端配置初始化；不改变模型响应，也不发送对话请求。
+本轮先完成完整 E2E 构建，后续只修改测试时使用框架的 `CODEZ_E2E_SKIP_BUILD=1 CODEZ_E2E_SKIP_AGENT_BUILD=1` 复用构建。显式 provider config 防止测试启动回到无法完成的远端配置初始化；不改变模型响应，也不发送对话请求。
 
 Electron 通过报告：`packages/desktop/.e2e-artifacts/desktop-e2e-20260910161155755-p86485-1e1dbe00b0b94651/summary.md`。
 
@@ -154,6 +154,6 @@ Windows/Linux 原生运行、实际手机远控、其他语言/主题、Docker r
 
 用户已确认验收，将同一文件内 MODE-01 与 MODE-02/03 两个测试转正到 `packages/desktop/test/e2e/ui-shell/general-coding-mode.test.ts`，修正 helper 相对路径并同步目录与矩阵引用。上文 pending 路径和状态保留为历史验证记录。
 
-现有 `e2e:promote` 脚本仅支持 conversation-session，dry run 拒绝 ui-shell 路径；本次按原领域直接迁移，不改脚本或挪入错误领域。用例只操作 UI 与本地 PTY，不发送模型请求，因此没有 case-local 模型响应 fixture。正式路径的运行不使用 `ZCODE_E2E_MANUAL_REVIEW`。Docker preset admission 尚未执行，不声明 Docker CI 覆盖。
+现有 `e2e:promote` 脚本仅支持 conversation-session，dry run 拒绝 ui-shell 路径；本次按原领域直接迁移，不改脚本或挪入错误领域。用例只操作 UI 与本地 PTY，不发送模型请求，因此没有 case-local 模型响应 fixture。正式路径的运行不使用 `CODEZ_E2E_MANUAL_REVIEW`。Docker preset admission 尚未执行，不声明 Docker CI 覆盖。
 
 转正验证：macOS 正式路径 2/2 通过（未开启 manual-review），报告 `packages/desktop/.e2e-artifacts/desktop-e2e-20260914135304096-p28302-df659cf52d0d2fbd/summary.md`。typecheck、desktop typecheck:e2e、lint、架构检查通过。额外执行 conversation coverage audit 失败；将全部本轮修改临时恢复到 HEAD 后复跑，审计输出完全相同，确认为既有统计/生成文档漂移，本次未新增审计失败。

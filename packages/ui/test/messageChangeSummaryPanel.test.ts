@@ -1,5 +1,5 @@
-import type { IBroadcastService } from "@zcode/services";
-import type { IPlatformService } from "@zcode/shared";
+import type { IBroadcastService } from "@codez/services";
+import type { IPlatformService } from "@codez/shared";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,7 +10,7 @@ import {
   openChangeSummaryDiffViewer,
 } from "@/MessageChangeSummaryPanel.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { StoreProvider } from "@/store/StoreProvider.js";
 
 const localStorageState = new Map<string, string>();
@@ -134,7 +134,7 @@ function renderPanel(overrides: Partial<PanelProps> = {}) {
 
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(
         PlatformProvider,
@@ -161,7 +161,7 @@ describe("MessageChangeSummaryPanel", () => {
     const html = renderPanel();
 
     expect(html).toContain("1 个文件已更改");
-    expect(html).toContain('data-zcode-stream-animate="true"');
+    expect(html).toContain('data-codez-stream-animate="true"');
     expect(html).toContain("+1");
     expect(html).toContain("-1");
     expect(html).toContain('aria-label="展开已更改文件"');

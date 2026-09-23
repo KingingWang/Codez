@@ -8,7 +8,7 @@ import {
   TID_V4_COMPOSER_INPUT,
   TID_V4_SESSION_PANE,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData, clickTestIdByDom, DEFAULT_WORKSPACE } from "../helpers/desktop-app.js";
 import { resolveE2ERuntimePath } from "../helpers/e2e-runtime-paths.js";
 import {
@@ -47,9 +47,9 @@ describe("Markdown preview selection", () => {
         { timeout: 5000, timeoutMsg: "Workspace file tree action did not mount after hover" },
       )
       .catch(async (error) => {
-        if (process.env.ZCODE_E2E_ARTIFACT_DIR) {
+        if (process.env.CODEZ_E2E_ARTIFACT_DIR) {
           await browser.saveScreenshot(
-            join(process.env.ZCODE_E2E_ARTIFACT_DIR, "markdown-file-tree-unavailable.png"),
+            join(process.env.CODEZ_E2E_ARTIFACT_DIR, "markdown-file-tree-unavailable.png"),
           );
         }
         console.log(
@@ -81,9 +81,9 @@ describe("Markdown preview selection", () => {
       (paneTestId, inputTestId) => {
         const input = document.querySelector(
           `[data-testid="${paneTestId}"] [data-testid="${inputTestId}"]`,
-        ) as HTMLElement & { __zcodeLexicalInputE2E?: { setText: (text: string) => void } };
-        if (!input?.__zcodeLexicalInputE2E) throw new Error("Composer bridge missing");
-        input.__zcodeLexicalInputE2E.setText("E2E_MARKDOWN_DRAFT_KEEP");
+        ) as HTMLElement & { __codezLexicalInputE2E?: { setText: (text: string) => void } };
+        if (!input?.__codezLexicalInputE2E) throw new Error("Composer bridge missing");
+        input.__codezLexicalInputE2E.setText("E2E_MARKDOWN_DRAFT_KEEP");
       },
       paneId,
       TID_V4_COMPOSER_INPUT,
@@ -121,9 +121,9 @@ describe("Markdown preview selection", () => {
         };
       });
       expect(layout).toEqual({ horizontal: true, adaptive: true, inside: true });
-      if (i === 0 && process.env.ZCODE_E2E_ARTIFACT_DIR) {
+      if (i === 0 && process.env.CODEZ_E2E_ARTIFACT_DIR) {
         await browser.saveScreenshot(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR, "markdown-selection-tooltip.png"),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR, "markdown-selection-tooltip.png"),
         );
       }
       await action.click();
@@ -133,20 +133,20 @@ describe("Markdown preview selection", () => {
     );
     await chip.waitForDisplayed();
     expect(await chip.getText()).toContain("selection.md");
-    if (process.env.ZCODE_E2E_ARTIFACT_DIR) {
+    if (process.env.CODEZ_E2E_ARTIFACT_DIR) {
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR, "markdown-selection-composer.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR, "markdown-selection-composer.png"),
       );
     }
     const state = await browser.execute(
       (paneTestId, inputTestId) => {
         const pane = document.querySelector(`[data-testid="${paneTestId}"]`)!;
         const input = pane.querySelector(`[data-testid="${inputTestId}"]`) as HTMLElement & {
-          __zcodeLexicalInputE2E?: { getText: () => string };
+          __codezLexicalInputE2E?: { getText: () => string };
         };
         return {
           session: pane.getAttribute("data-session-id"),
-          text: input.__zcodeLexicalInputE2E?.getText(),
+          text: input.__codezLexicalInputE2E?.getText(),
         };
       },
       paneId,
@@ -213,8 +213,8 @@ describe("Markdown preview selection", () => {
       (paneTestId, inputTestId) => {
         const input = document.querySelector(
           `[data-testid="${paneTestId}"] [data-testid="${inputTestId}"]`,
-        ) as HTMLElement & { __zcodeLexicalInputE2E: { setText: (text: string) => void } };
-        input.__zcodeLexicalInputE2E.setText("E2E_MARKDOWN_MAIN_KEEP");
+        ) as HTMLElement & { __codezLexicalInputE2E: { setText: (text: string) => void } };
+        input.__codezLexicalInputE2E.setText("E2E_MARKDOWN_MAIN_KEEP");
       },
       paneId,
       TID_V4_COMPOSER_INPUT,
@@ -243,20 +243,20 @@ describe("Markdown preview selection", () => {
     const sideState = await browser.execute((inputTestId) => {
       const pane = document.querySelector('[data-testid^="v4-session-pane-selection-side-chat:"]')!;
       const input = pane.querySelector(`[data-testid="${inputTestId}"]`) as HTMLElement & {
-        __zcodeLexicalInputE2E?: { getText: () => string };
+        __codezLexicalInputE2E?: { getText: () => string };
       };
       const main = document.querySelector('[data-testid="v4-session-pane-workspace-main"]')!;
       const mainInput = main.querySelector(`[data-testid="${inputTestId}"]`) as typeof input;
       return {
-        sideText: input.__zcodeLexicalInputE2E?.getText(),
-        mainText: mainInput.__zcodeLexicalInputE2E?.getText(),
+        sideText: input.__codezLexicalInputE2E?.getText(),
+        mainText: mainInput.__codezLexicalInputE2E?.getText(),
         distinct: pane.getAttribute("data-session-id") !== main.getAttribute("data-session-id"),
       };
     }, TID_V4_COMPOSER_INPUT);
     expect(sideState).toEqual({ sideText: "", mainText: "E2E_MARKDOWN_MAIN_KEEP", distinct: true });
-    if (process.env.ZCODE_E2E_ARTIFACT_DIR)
+    if (process.env.CODEZ_E2E_ARTIFACT_DIR)
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR, "markdown-side-conversation.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR, "markdown-side-conversation.png"),
       );
   });
 });

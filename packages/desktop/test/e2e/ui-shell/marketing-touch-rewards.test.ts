@@ -6,7 +6,7 @@ import {
   TID_LOGIN_USE_API_KEY_BUTTON,
   TID_LOGIN_API_KEY_SKIP_BUTTON,
   marketingDeliverySchema,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { waitForDefaultWorkspaceReady } from "../helpers/desktop-app.js";
 import { assertOverlayWindowControls } from "../helpers/overlay-window-controls.js";
 
@@ -40,7 +40,7 @@ async function assertAppReportHeaders(authenticated: boolean) {
   await browser.execute(async (elementName) => {
     const api = (
       window as typeof window & {
-        zcode: {
+        codez: {
           reportTelemetryEvent: (payload: {
             context: { clientLanguage: string; clientTimezone: string; screenResolution: string };
             elementName: string;
@@ -50,7 +50,7 @@ async function assertAppReportHeaders(authenticated: boolean) {
           }) => Promise<void>;
         };
       }
-    ).zcode;
+    ).codez;
     await api.reportTelemetryEvent({
       context: {
         clientLanguage: "zh-CN",
@@ -63,7 +63,7 @@ async function assertAppReportHeaders(authenticated: boolean) {
       eventExtraDetail: {},
     });
   }, marker);
-  const origin = process.env.ZCODE_CODING_PLAN_UPGRADE_MOCK_BASE_URL;
+  const origin = process.env.CODEZ_CODING_PLAN_UPGRADE_MOCK_BASE_URL;
   const reports = (await (await fetch(`${origin}/__e2e/marketing/telemetry`)).json()) as Array<
     Record<string, unknown>
   >;
@@ -85,7 +85,7 @@ async function assertAppReportHeaders(authenticated: boolean) {
 
 describe("Rewards website embedded integration", () => {
   it("REF-11: Banner 和独立弹窗 navigate rewards 打开邀请页并各上报一次", async () => {
-    const origin = process.env.ZCODE_CODING_PLAN_UPGRADE_MOCK_BASE_URL;
+    const origin = process.env.CODEZ_CODING_PLAN_UPGRADE_MOCK_BASE_URL;
     if (!origin) throw new Error("Missing isolated App fixture");
     const assets = (await (await fetch(`${origin}/__e2e/marketing/assets`)).json()) as Record<
       string,
@@ -153,7 +153,7 @@ describe("Rewards website embedded integration", () => {
     }
   });
   it("REF-02/03/04: 菜单打开隔离网页，主题不重载、语言路由切换、关闭", async () => {
-    const origin = process.env.ZCODE_CODING_PLAN_UPGRADE_MOCK_BASE_URL;
+    const origin = process.env.CODEZ_CODING_PLAN_UPGRADE_MOCK_BASE_URL;
     if (!origin) throw new Error("Missing isolated App fixture");
     await fetch(`${origin}/__e2e/marketing/reset`, {
       method: "POST",
@@ -168,7 +168,7 @@ describe("Rewards website embedded integration", () => {
       const target = globalThis as typeof globalThis & { rewardsHeaderProbe?: unknown[] };
       target.rewardsHeaderProbe = [];
       electron.session
-        .fromPartition("persist:zcode-rewards")
+        .fromPartition("persist:codez-rewards")
         .webRequest.onSendHeaders((details) => {
           if (details.resourceType !== "mainFrame") return;
           const headers = Object.fromEntries(
@@ -181,7 +181,7 @@ describe("Rewards website embedded integration", () => {
             path: new URL(details.url).pathname,
             authenticated: Boolean(headers.authorization),
             device: Boolean(headers["x-device-mid"]),
-            version: Boolean(headers["x-zcode-app-version"]),
+            version: Boolean(headers["x-codez-app-version"]),
             platform: Boolean(headers["x-platform"]),
             timezone: Boolean(headers["x-client-timezone"]),
             language: Boolean(headers["x-client-language"]),
@@ -195,9 +195,9 @@ describe("Rewards website embedded integration", () => {
     expect(await entry.getText()).toMatch(/^(邀请好友\s*奖励|Refer a friend\s*Rewards)$/);
     expect(await entry.$('[data-testid="rewards-reward-badge"]').isExisting()).toBe(true);
     // 截图只写入运行器提供的产物目录，避免系统临时目录破坏跨平台隔离。
-    if (process.env.ZCODE_E2E_ARTIFACT_DIR)
+    if (process.env.CODEZ_E2E_ARTIFACT_DIR)
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR, "rewards-reward-menu.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR, "rewards-reward-menu.png"),
       );
     const order = await browser.execute(() => {
       const entry = document.querySelector('[data-testid="rewards-menu-item"]');
@@ -210,12 +210,12 @@ describe("Rewards website embedded integration", () => {
     await browser.waitUntil(
       async () =>
         guestValue(
-          `Boolean(window.zcodeBridge?.getTheme() && document.querySelector('[data-app-auth]'))`,
+          `Boolean(window.codezBridge?.getTheme() && document.querySelector('[data-app-auth]'))`,
         ) as Promise<boolean>,
       { timeout: 60000 },
     );
-    expect(await guestValue(`typeof window.zcodeBridge.notifyPurchaseComplete`)).toBe("undefined");
-    expect(await guestValue(`window.zcodeBridge.getAuthState().status`)).toBe("ready");
+    expect(await guestValue(`typeof window.codezBridge.notifyPurchaseComplete`)).toBe("undefined");
+    expect(await guestValue(`window.codezBridge.getAuthState().status`)).toBe("ready");
     const firstHeaders = await browser.electron.execute(
       () =>
         (globalThis as typeof globalThis & { rewardsHeaderProbe: unknown[] }).rewardsHeaderProbe[0],
@@ -229,17 +229,17 @@ describe("Rewards website embedded integration", () => {
       language: false,
     });
     expect(await $('[data-testid="rewards-webview"]').getAttribute("partition")).toBe(
-      "persist:zcode-rewards",
+      "persist:codez-rewards",
     );
     expect(await guestValue(`location.pathname`)).toMatch(/^\/(cn|en)\/rewards$/);
     expect(
       await guestValue(
-        `(() => { const before = JSON.stringify(window.zcodeBridge.getAuthState()); window.dispatchEvent(new CustomEvent('zcode-referrals-context', { detail: { theme: 'zai-dark', locale: 'en-US', auth: {status:'anonymous',provider:null,revision:99999} } })); return JSON.stringify(window.zcodeBridge.getAuthState()) === before; })()`,
+        `(() => { const before = JSON.stringify(window.codezBridge.getAuthState()); window.dispatchEvent(new CustomEvent('codez-referrals-context', { detail: { theme: 'zai-dark', locale: 'en-US', auth: {status:'anonymous',provider:null,revision:99999} } })); return JSON.stringify(window.codezBridge.getAuthState()) === before; })()`,
       ),
     ).toBe(true);
     expect(
       await guestValue(
-        `(() => { const provider = window.zcodeBridge.getAuthState().provider; return { oauth: Boolean(localStorage.getItem('oauth:' + provider + ':access_token')), jwt: Boolean(localStorage.getItem('zcodejwttoken')), other: localStorage.getItem('oauth:' + (provider === 'zai' ? 'bigmodel' : 'zai') + ':access_token') === null }; })()`,
+        `(() => { const provider = window.codezBridge.getAuthState().provider; return { oauth: Boolean(localStorage.getItem('oauth:' + provider + ':access_token')), jwt: Boolean(localStorage.getItem('codezjwttoken')), other: localStorage.getItem('oauth:' + (provider === 'zai' ? 'bigmodel' : 'zai') + ':access_token') === null }; })()`,
       ),
     ).toEqual({ oauth: true, jwt: true, other: true });
     await guestValue(`window.__rewardsNoReload = "same-document"`);
@@ -279,14 +279,14 @@ describe("Rewards website embedded integration", () => {
               .getBoundingClientRect().top,
         ),
       ).toBe(before.headerTop);
-      if (process.env.ZCODE_E2E_ARTIFACT_DIR)
+      if (process.env.CODEZ_E2E_ARTIFACT_DIR)
         await browser.saveScreenshot(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR, `rewards-scroll-${theme}.png`),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR, `rewards-scroll-${theme}.png`),
         );
       await guestValue(`window.scrollTo(0, 0)`);
-      if (theme === "zai-light" && process.env.ZCODE_E2E_ARTIFACT_DIR)
+      if (theme === "zai-light" && process.env.CODEZ_E2E_ARTIFACT_DIR)
         await browser.saveScreenshot(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR, "rewards-embedded-light.png"),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR, "rewards-embedded-light.png"),
         );
     }
     for (const locale of ["zh-CN", "en-US"]) {
@@ -304,14 +304,14 @@ describe("Rewards website embedded integration", () => {
         { timeout: 30000 },
       );
     }
-    const directory = process.env.ZCODE_E2E_ARTIFACT_DIR;
+    const directory = process.env.CODEZ_E2E_ARTIFACT_DIR;
     if (!directory) throw new Error("Missing artifact directory");
     await browser.saveScreenshot(join(directory, "rewards-embedded-dark.png"));
     await $('[data-testid="rewards-surface"]')
       .$('button[aria-label="Refresh"],button[aria-label="刷新"]')
       .click();
     await browser.waitUntil(
-      async () => (await guestValue(`window.zcodeBridge?.getAuthState()?.status`)) === "ready",
+      async () => (await guestValue(`window.codezBridge?.getAuthState()?.status`)) === "ready",
     );
     expect(await guestValue(`document.querySelector('[data-embedded]').dataset.theme`)).toBe(
       "dark",
@@ -331,7 +331,7 @@ describe("Rewards website embedded integration", () => {
         language: false,
       });
     await browser.electron.execute((electron) => {
-      electron.session.fromPartition("persist:zcode-rewards").webRequest.onSendHeaders(null);
+      electron.session.fromPartition("persist:codez-rewards").webRequest.onSendHeaders(null);
       delete (globalThis as typeof globalThis & { rewardsHeaderProbe?: unknown[] })
         .rewardsHeaderProbe;
     });
@@ -342,7 +342,7 @@ describe("Rewards website embedded integration", () => {
     await $(`[data-testid="${TID_LOGIN_TRIGGER}"]`).click();
     await $('[data-testid="rewards-menu-item"]').click();
     await browser.waitUntil(
-      async () => (await guestValue(`window.zcodeBridge?.getAuthState()?.status`)) === "ready",
+      async () => (await guestValue(`window.codezBridge?.getAuthState()?.status`)) === "ready",
     );
     await $('[data-testid="rewards-surface"]')
       .$('button[aria-label="Close"],button[aria-label="关闭"]')
@@ -350,7 +350,7 @@ describe("Rewards website embedded integration", () => {
     await $('[data-testid="rewards-surface"]').waitForExist({ reverse: true });
   });
   it("REF-12: 匿名营销导航打开登录，取消后不打开邀请页并保留 confirm 上报", async () => {
-    const origin = process.env.ZCODE_CODING_PLAN_UPGRADE_MOCK_BASE_URL;
+    const origin = process.env.CODEZ_CODING_PLAN_UPGRADE_MOCK_BASE_URL;
     if (!origin) throw new Error("Missing isolated App fixture");
     const byId = (id: string) => $(`[data-testid="${id}"]`);
     // 复用匿名营销用例的真实退出流程，只阻止测试进程退出，不伪造登录状态。

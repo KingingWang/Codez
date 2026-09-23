@@ -2,7 +2,7 @@ import {
   ARMS_CUSTOM_EVENT_PROPERTY_LIMIT,
   PROCESS_RESOURCE_EVENT_NAMES,
   checkProcessResourceEventProperties,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData, waitForDefaultWorkspaceReady } from "./helpers/desktop-app.js";
 
 /**
@@ -17,7 +17,7 @@ interface FinalArmsEntry {
 }
 
 interface FinalArmsBridgeWindow extends Window {
-  __zcodeFinalArmsCustomEventsE2E?: {
+  __codezFinalArmsCustomEventsE2E?: {
     read(): Promise<FinalArmsEntry[]>;
     clear(): Promise<void>;
     configure(request: { suppressedEventNames: string[] }): Promise<void>;
@@ -45,7 +45,7 @@ describe("进程资源遥测 ARMS 角色事件", () => {
 
     const bridgeReady = await browser.execute(
       async (suppressed: string[]) => {
-        const bridge = (window as FinalArmsBridgeWindow).__zcodeFinalArmsCustomEventsE2E;
+        const bridge = (window as FinalArmsBridgeWindow).__codezFinalArmsCustomEventsE2E;
         if (!bridge) return false;
         // 抑制真实上报，只在 main 内存环里核对最终 payload，避免 E2E 往生产 ARMS 打点。
         await bridge.configure({ suppressedEventNames: suppressed });
@@ -61,7 +61,7 @@ describe("进程资源遥测 ARMS 角色事件", () => {
     await browser.waitUntil(
       async () => {
         entries = await browser.execute(async () => {
-          const bridge = (window as FinalArmsBridgeWindow).__zcodeFinalArmsCustomEventsE2E;
+          const bridge = (window as FinalArmsBridgeWindow).__codezFinalArmsCustomEventsE2E;
           return bridge ? await bridge.read() : [];
         });
         const roles = new Set(

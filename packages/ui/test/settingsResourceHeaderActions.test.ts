@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { SettingsResourceHeaderActions } from "@/settings/SettingsResourceHeaderActions.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 
@@ -13,7 +13,7 @@ describe("SettingsResourceHeaderActions", () => {
     const onRefresh = vi.fn();
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           TooltipProvider,
@@ -36,7 +36,7 @@ describe("SettingsResourceHeaderActions", () => {
     const onImport = vi.fn();
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           TooltipProvider,
@@ -66,7 +66,7 @@ describe("SettingsResourceHeaderActions", () => {
   it("allows a resource-specific visible create label", () => {
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           TooltipProvider,

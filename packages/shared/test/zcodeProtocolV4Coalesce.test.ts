@@ -14,7 +14,7 @@ import {
   type TurnHeaderRow,
   reasoningRowSchema,
   toolCallRowSchema,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 describe("assistant response correlation", () => {
   it("accepts the same optional assistantResponseId on reasoning, text and tool rows", () => {
@@ -172,7 +172,7 @@ function makeNodePhase(
   };
 }
 
-describe("zcode-protocol-v4 coalesce", () => {
+describe("codez-protocol-v4 coalesce", () => {
   it("旧 snapshot 缺少 thoughtLevels 时按空能力集合兼容解析", () => {
     const legacySnapshot = structuredClone(makeSnapshot()) as unknown as {
       config: Record<string, unknown>;
@@ -530,7 +530,7 @@ describe("zcode-protocol-v4 coalesce", () => {
   });
 });
 
-describe("zcode-protocol-v4 apply", () => {
+describe("codez-protocol-v4 apply", () => {
   it("隔离态 mutable accumulator 与规范不可变 apply 五种操作逐字节等价", () => {
     const base = makeSnapshot();
     const deltas: ConversationDelta[] = [
@@ -616,7 +616,7 @@ describe("zcode-protocol-v4 apply", () => {
   });
 });
 
-describe("zcode-protocol-v4 schema", () => {
+describe("codez-protocol-v4 schema", () => {
   it("validates a full snapshot round-trip", () => {
     const snapshot = applyConversationDeltas(makeSnapshot(), [
       { op: "row.appended", row: makeAssistantRow(1, "hello") },
@@ -720,7 +720,7 @@ describe("zcode-protocol-v4 schema", () => {
   });
 });
 
-describe("zcode-protocol-v4 conflation", () => {
+describe("codez-protocol-v4 conflation", () => {
   it("keeps only the latest item per key, ordered by last occurrence", () => {
     const items = [
       { id: "a", v: 1 },

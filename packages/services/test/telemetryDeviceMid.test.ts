@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setDataBaseDir } from "../src/paths.js";
-import { buildZCodeSourceHeaders } from "../src/providers/sourceHeaders.js";
+import { buildCodezSourceHeaders } from "../src/providers/sourceHeaders.js";
 import { createTelemetryCore, ensureTelemetryDeviceMid } from "../src/telemetry/telemetryCore.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -12,12 +12,12 @@ describe("ensureTelemetryDeviceMid", () => {
   const tempDirs: string[] = [];
 
   function createIsolatedDataBaseDir(): { dataBaseDir: string; stateFile: string } {
-    const dataBaseDir = mkdtempSync(join(tmpdir(), "zcode-remote-device-mid-"));
+    const dataBaseDir = mkdtempSync(join(tmpdir(), "codez-remote-device-mid-"));
     tempDirs.push(dataBaseDir);
     setDataBaseDir(dataBaseDir);
     return {
       dataBaseDir,
-      stateFile: join(dataBaseDir, ".zcode", "v2", "telemetry-state.json"),
+      stateFile: join(dataBaseDir, ".codez", "v2", "telemetry-state.json"),
     };
   }
 
@@ -28,18 +28,18 @@ describe("ensureTelemetryDeviceMid", () => {
     }
   });
 
-  it("远端主机没有 telemetry-state.json 时，确保后 ZCode 来源头才带上同一个 X-Device-Mid", async () => {
+  it("远端主机没有 telemetry-state.json 时，确保后 Codez 来源头才带上同一个 X-Device-Mid", async () => {
     // 复现远端事故前提：全新主机没有任何进程写过 state 文件，来源头缺 X-Device-Mid。
     const { stateFile } = createIsolatedDataBaseDir();
     expect(existsSync(stateFile)).toBe(false);
-    expect(buildZCodeSourceHeaders()["X-Device-Mid"]).toBeUndefined();
+    expect(buildCodezSourceHeaders()["X-Device-Mid"]).toBeUndefined();
 
     const deviceMid = await ensureTelemetryDeviceMid();
 
     expect(deviceMid).toMatch(UUID_PATTERN);
     expect(JSON.parse(readFileSync(stateFile, "utf-8"))).toEqual({ deviceMid });
     // 与 NodeApiClient 实际注入来源头的同一读取路径必须拿到同一个值。
-    expect(buildZCodeSourceHeaders()["X-Device-Mid"]).toBe(deviceMid);
+    expect(buildCodezSourceHeaders()["X-Device-Mid"]).toBe(deviceMid);
   });
 
   it("已有 deviceMid 时复用现值，不改写 state 文件里的其他字段", async () => {

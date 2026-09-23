@@ -37,7 +37,7 @@ run 进度事件持续推进 `lastActivityAt`，但两行都在运行层内按 `
 转圈图标仍只认 `prewarming/running`，后台工作不点亮转圈。Pinned 仍是独立结构区，Grouped 仍服从用户
 持久化的显式 `sort_order`，两者不被 running 层跨区打散。
 
-`Projects` / `Tasks` 二级 section 使用独立 renderer-local 偏好 `zcode-sidebar-purpose-section-preferences`，分别持久化 `projectsExpanded`、`conversationsExpanded` 与 `sectionOrder`；首次、旧版偏好、坏数据或 storage 不可用时默认全部展开并按 `Projects -> Tasks` 排列。
+`Projects` / `Tasks` 二级 section 使用独立 renderer-local 偏好 `codez-sidebar-purpose-section-preferences`，分别持久化 `projectsExpanded`、`conversationsExpanded` 与 `sectionOrder`；首次、旧版偏好、坏数据或 storage 不可用时默认全部展开并按 `Projects -> Tasks` 排列。
 
 ## 交互布局
 

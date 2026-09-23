@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatModelPickerValue, zcodeSessionSettingsStateSchema } from "../src/index.js";
+import { formatModelPickerValue, codezSessionSettingsStateSchema } from "../src/index.js";
 
 describe("未绑定模型的协议与显示边界", () => {
   it("允许 settings 没有当前模型，不用空 Provider/Model 冒充有效身份", () => {
@@ -8,9 +8,9 @@ describe("未绑定模型的协议与显示边界", () => {
       thoughtLevel: { enabled: false, available: [] },
       mode: { current: "build" },
     };
-    expect(zcodeSessionSettingsStateSchema.parse(settings).model.current).toBeUndefined();
+    expect(codezSessionSettingsStateSchema.parse(settings).model.current).toBeUndefined();
     expect(
-      zcodeSessionSettingsStateSchema.safeParse({
+      codezSessionSettingsStateSchema.safeParse({
         ...settings,
         model: { ...settings.model, current: { providerId: "", modelId: "" } },
       }).success,

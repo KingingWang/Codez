@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ExecuteToolCallBlock } from "@/ToolCallBlocks/renderers/execute.js";
 import { ExecuteGroupToolCallBlock } from "@/ToolCallBlocks/renderers/execute-group.js";
 import { EditToolCallBlock } from "@/ToolCallBlocks/renderers/edit.js";
@@ -45,7 +45,7 @@ function context(general: boolean, failed = false): ToolCallBlockRenderContext {
 
 function renderTool(component: typeof ExecuteToolCallBlock, props: ToolCallBlockRenderContext) {
   return renderToStaticMarkup(
-    createElement(ZCodeIntlProvider, { initialLocale: "zh-CN" }, createElement(component, props)),
+    createElement(CodezIntlProvider, { initialLocale: "zh-CN" }, createElement(component, props)),
   );
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FeedbackTicketStatus } from "@zcode/shared";
+import type { FeedbackTicketStatus } from "@codez/shared";
 import {
   FEEDBACK_STATUS_MESSAGE_IDS,
   STATUS_META,

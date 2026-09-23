@@ -14,13 +14,13 @@ import {
 } from "@/updateReleaseNotes.js";
 import enUS from "@/i18n/locales/en-US.js";
 import zhCN from "@/i18n/locales/zh-CN.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import type { IntlInstance } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
-import type { IServiceAccessor } from "@zcode/services";
-import type { IPlatformService, UpdateStatePayload } from "@zcode/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { IPlatformService, UpdateStatePayload } from "@codez/shared";
 
 const noopPlatform = {
   openExternal: () => undefined,
@@ -56,7 +56,7 @@ function renderUpdateStatusButton(
           PlatformProvider,
           { platform: noopPlatform },
           createElement(
-            ZCodeIntlProvider,
+            CodezIntlProvider,
             { initialLocale: "zh-CN" },
             createElement(UpdateStatusButton, {
               platform: noopPlatform,
@@ -401,22 +401,22 @@ describe("UpdateStatusButton release notes", () => {
       markdown: "- 默认说明",
       releaseNotesByLocale: {
         "zh-CN": {
-          title: "ZCode v3.1.3",
+          title: "Codez v3.1.3",
           markdown: "- 中文说明",
         },
         "en-US": {
-          title: "ZCode v3.1.3",
+          title: "Codez v3.1.3",
           markdown: "- English notes",
         },
       },
     };
 
     expect(getLocalizedUpdateReleaseNotes(payload, "en-US")).toEqual({
-      title: "ZCode v3.1.3",
+      title: "Codez v3.1.3",
       markdown: "- English notes",
     });
     expect(getLocalizedUpdateReleaseNotes(payload, "zh-CN")).toEqual({
-      title: "ZCode v3.1.3",
+      title: "Codez v3.1.3",
       markdown: "- 中文说明",
     });
   });

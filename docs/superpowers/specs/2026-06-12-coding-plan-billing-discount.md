@@ -4,7 +4,7 @@
 
 ## 背景
 
-`GET https://zcode.z.ai/api/v1/client/configs?app_version=<ZCODE_VERSION>&platform=<platform>-<arch>` 可能返回 `data.configs.codingPlanBillingDiscount`。该字段用于控制 Coding Plan 的限时配额活动提示。
+`GET https://zcode.z.ai/api/v1/client/configs?app_version=<CODEZ_VERSION>&platform=<platform>-<arch>` 可能返回 `data.configs.codingPlanBillingDiscount`。该字段用于控制 Coding Plan 的限时配额活动提示。
 
 ## 语义
 
@@ -46,5 +46,5 @@
 
 - 使用 `codingPlanBillingDiscount[locale].badgeBody` 展示短徽标文案，中文示例：`150% 配额`，英文示例：`150% Quota`。
 - 使用 `codingPlanBillingDiscount[locale].cardTitle` 和 `cardBody` 展示套餐列表顶部 banner。
-- banner 右侧说明 Dialog 使用本地 i18n 文案，弹窗宽度使用 `max-w-lg`，文案区域用 `div.p-3.!space-y-3` 包裹；标题为“权益规则说明：”；正文说明用户在 ZCode 中通过 Coding Plan 使用 GLM-5.2 模型时，额度消耗全周期按 0.67 系数折算；同样的模型调用量，在额度扣减侧仅按 67% 计算，等效来看，用户在活动周期内的可用额度约为原来的 1.5 倍；高峰期每日 14:00～18:00 由原先的 3x 调整为 2x 系数，非高峰期由原先的 1x 调整为 0.67x 系数；额度权益截止时间以官方公告为准。说明 Dialog 不展示额外寒暄或感谢文案。
+- banner 右侧说明 Dialog 使用本地 i18n 文案，弹窗宽度使用 `max-w-lg`，文案区域用 `div.p-3.!space-y-3` 包裹；标题为“权益规则说明：”；正文说明用户在 Codez 中通过 Coding Plan 使用 GLM-5.2 模型时，额度消耗全周期按 0.67 系数折算；同样的模型调用量，在额度扣减侧仅按 67% 计算，等效来看，用户在活动周期内的可用额度约为原来的 1.5 倍；高峰期每日 14:00～18:00 由原先的 3x 调整为 2x 系数，非高峰期由原先的 1x 调整为 0.67x 系数；额度权益截止时间以官方公告为准。说明 Dialog 不展示额外寒暄或感谢文案。
 - 服务端未下发当前 locale 或某个必需文案为空时，不展示对应活动 UI。

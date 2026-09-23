@@ -4,7 +4,7 @@
 //      这个文件里，拿一条宽 run（一条车道上几百个实例、阶段再入、游离节点）对拍。
 //   2. 一对 (graph, run) 只建一次模型，两处消费拿到同一个对象。
 import { describe, expect, it } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import {
   instanceCardId,
   liveParticipantView,

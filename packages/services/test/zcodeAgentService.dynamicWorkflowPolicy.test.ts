@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildRemoteWorkspaceIdentity,
-  zcodeProtocolMethods,
+  codezProtocolMethods,
   createDynamicWorkflowClientConfig,
   type DynamicWorkflowClientConfig,
   type DynamicWorkflowMode,
-} from "@zcode/shared";
-import { V4_METHODS } from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared";
+import { V4_METHODS } from "@codez/shared/codez-protocol-v4";
 import { offPeakSelectionView } from "./fixtures/offPeakSelection.js";
 
 // DWG-02（docs/dynamic-workflow/launch.md「Gray release」）：Host 是灰度的唯一裁决者。
@@ -53,14 +53,14 @@ async function setup(params: {
         )),
   );
   const request = vi.fn(async (method: string, requestParams?: unknown) => {
-    if (method === zcodeProtocolMethods.workspaceUpdateDynamicWorkflowPolicy) {
+    if (method === codezProtocolMethods.workspaceUpdateDynamicWorkflowPolicy) {
       if (params.policyResponse) return params.policyResponse(requestParams);
       return requestParams;
     }
-    if (method === zcodeProtocolMethods.sessionCreate) {
+    if (method === codezProtocolMethods.sessionCreate) {
       return sessionSnapshot("session-created");
     }
-    if (method === zcodeProtocolMethods.sessionResume) {
+    if (method === codezProtocolMethods.sessionResume) {
       return sessionSnapshot("session-resumed");
     }
     if (method === V4_METHODS.command) {
@@ -80,14 +80,14 @@ async function setup(params: {
     onClose: () => ({ dispose() {} }),
   }));
   vi.resetModules();
-  vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-    ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+  vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+    CodezAgentProcessManager: class extends MockProcessManagerBase {
       getClient = getClient;
       disposeAll() {}
     },
   }));
-  const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-  const service = createZCodeAgentService({
+  const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+  const service = createCodezAgentService({
     modelSelectionReadinessSource: { getView: async () => offPeakSelectionView() },
     ...(params.enabled === undefined && !params.configResolver
       ? {}
@@ -100,7 +100,7 @@ async function setup(params: {
 
 function policyCalls(request: ReturnType<typeof vi.fn>) {
   return request.mock.calls.filter(
-    ([method]) => method === zcodeProtocolMethods.workspaceUpdateDynamicWorkflowPolicy,
+    ([method]) => method === codezProtocolMethods.workspaceUpdateDynamicWorkflowPolicy,
   );
 }
 
@@ -274,11 +274,11 @@ describe("session create / resume / v4 createSession 的 flag（DWG-02）", () =
         envelope: v4CreateSessionEnvelope("cmd-dwf-on"),
       });
 
-      expect(paramsOf(request, zcodeProtocolMethods.sessionCreate)[0]).toMatchObject({
+      expect(paramsOf(request, codezProtocolMethods.sessionCreate)[0]).toMatchObject({
         dynamicWorkflowEnabled: true,
         dynamicWorkflowMode: "alwaysOn",
       });
-      expect(paramsOf(request, zcodeProtocolMethods.sessionResume)[0]).toMatchObject({
+      expect(paramsOf(request, codezProtocolMethods.sessionResume)[0]).toMatchObject({
         dynamicWorkflowEnabled: true,
         dynamicWorkflowMode: "alwaysOn",
       });
@@ -304,11 +304,11 @@ describe("session create / resume / v4 createSession 的 flag（DWG-02）", () =
         workspacePath: WORKSPACE_PATH,
         envelope: v4CreateSessionEnvelope("cmd-dwf-on-demand"),
       });
-      expect(paramsOf(request, zcodeProtocolMethods.sessionCreate)[0]).toMatchObject({
+      expect(paramsOf(request, codezProtocolMethods.sessionCreate)[0]).toMatchObject({
         dynamicWorkflowEnabled: true,
         dynamicWorkflowMode: "onDemand",
       });
-      expect(paramsOf(request, zcodeProtocolMethods.sessionResume)[0]).toMatchObject({
+      expect(paramsOf(request, codezProtocolMethods.sessionResume)[0]).toMatchObject({
         dynamicWorkflowEnabled: true,
         dynamicWorkflowMode: "onDemand",
       });
@@ -330,13 +330,13 @@ describe("session create / resume / v4 createSession 的 flag（DWG-02）", () =
         envelope: v4CreateSessionEnvelope("cmd-dwf-off"),
       });
 
-      expect(paramsOf(request, zcodeProtocolMethods.sessionCreate)[0]).not.toHaveProperty(
+      expect(paramsOf(request, codezProtocolMethods.sessionCreate)[0]).not.toHaveProperty(
         "dynamicWorkflowEnabled",
       );
-      expect(paramsOf(request, zcodeProtocolMethods.sessionCreate)[0]).not.toHaveProperty(
+      expect(paramsOf(request, codezProtocolMethods.sessionCreate)[0]).not.toHaveProperty(
         "dynamicWorkflowMode",
       );
-      expect(paramsOf(request, zcodeProtocolMethods.sessionResume)[0]).not.toHaveProperty(
+      expect(paramsOf(request, codezProtocolMethods.sessionResume)[0]).not.toHaveProperty(
         "dynamicWorkflowEnabled",
       );
       expect(
@@ -354,7 +354,7 @@ describe("session create / resume / v4 createSession 的 flag（DWG-02）", () =
     const { service, request } = await setup({});
     try {
       await service.createSession({ workspacePath: WORKSPACE_PATH, sessionId: "s-create" });
-      expect(paramsOf(request, zcodeProtocolMethods.sessionCreate)[0]).not.toHaveProperty(
+      expect(paramsOf(request, codezProtocolMethods.sessionCreate)[0]).not.toHaveProperty(
         "dynamicWorkflowEnabled",
       );
     } finally {
@@ -375,7 +375,7 @@ describe("session create / resume / v4 createSession 的 flag（DWG-02）", () =
         workspaceIdentity,
         sessionId: "s-remote",
       });
-      expect(paramsOf(request, zcodeProtocolMethods.sessionCreate)[0]).toMatchObject({
+      expect(paramsOf(request, codezProtocolMethods.sessionCreate)[0]).toMatchObject({
         dynamicWorkflowEnabled: true,
       });
     } finally {
@@ -388,10 +388,10 @@ describe("session create / resume / v4 createSession 的 flag（DWG-02）", () =
     try {
       let firstCreateSeen = false;
       request.mockImplementation(async (method: string, requestParams?: unknown) => {
-        if (method === zcodeProtocolMethods.workspaceUpdateDynamicWorkflowPolicy) {
+        if (method === codezProtocolMethods.workspaceUpdateDynamicWorkflowPolicy) {
           return requestParams;
         }
-        if (method === zcodeProtocolMethods.sessionCreate) {
+        if (method === codezProtocolMethods.sessionCreate) {
           if (!firstCreateSeen) {
             firstCreateSeen = true;
             throw Object.assign(new Error("Invalid params"), {
@@ -411,7 +411,7 @@ describe("session create / resume / v4 createSession 的 flag（DWG-02）", () =
       await expect(
         service.createSession({ workspacePath: WORKSPACE_PATH, sessionId: "s-compat" }),
       ).resolves.toMatchObject({ session: { sessionId: "session-created" } });
-      const creates = paramsOf(request, zcodeProtocolMethods.sessionCreate);
+      const creates = paramsOf(request, codezProtocolMethods.sessionCreate);
       expect(creates).toHaveLength(2);
       expect(creates[0]).toMatchObject({ dynamicWorkflowEnabled: true });
       expect(creates[1]).not.toHaveProperty("dynamicWorkflowEnabled");
@@ -431,10 +431,10 @@ describe("session create / resume / v4 createSession 的 flag（DWG-02）", () =
     try {
       let firstCreateSeen = false;
       request.mockImplementation(async (method: string, requestParams?: unknown) => {
-        if (method === zcodeProtocolMethods.workspaceUpdateDynamicWorkflowPolicy) {
+        if (method === codezProtocolMethods.workspaceUpdateDynamicWorkflowPolicy) {
           return requestParams;
         }
-        if (method === zcodeProtocolMethods.sessionCreate) {
+        if (method === codezProtocolMethods.sessionCreate) {
           if (!firstCreateSeen) {
             firstCreateSeen = true;
             throw Object.assign(new Error("Invalid params"), {
@@ -454,7 +454,7 @@ describe("session create / resume / v4 createSession 的 flag（DWG-02）", () =
       await expect(
         service.createSession({ workspacePath: WORKSPACE_PATH, sessionId: "s-compat-mode" }),
       ).resolves.toMatchObject({ session: { sessionId: "session-created" } });
-      const creates = paramsOf(request, zcodeProtocolMethods.sessionCreate);
+      const creates = paramsOf(request, codezProtocolMethods.sessionCreate);
       expect(creates).toHaveLength(2);
       expect(creates[0]).toMatchObject({
         dynamicWorkflowEnabled: true,
@@ -481,7 +481,7 @@ describe("用户选择（DWG-20）", () => {
       await service.createSession({ workspacePath: WORKSPACE_PATH, sessionId: "s-1" });
       choice = "alwaysOn";
       await service.createSession({ workspacePath: WORKSPACE_PATH, sessionId: "s-2" });
-      const creates = paramsOf(request, zcodeProtocolMethods.sessionCreate);
+      const creates = paramsOf(request, codezProtocolMethods.sessionCreate);
       expect(creates[0]).toMatchObject({
         dynamicWorkflowEnabled: true,
         dynamicWorkflowMode: "onDemand",
@@ -504,7 +504,7 @@ describe("用户选择（DWG-20）", () => {
     try {
       await service.createSession({ workspacePath: WORKSPACE_PATH, sessionId: "s-off" });
       expect(policyCalls(request)).toHaveLength(0);
-      const create = paramsOf(request, zcodeProtocolMethods.sessionCreate)[0] as Record<
+      const create = paramsOf(request, codezProtocolMethods.sessionCreate)[0] as Record<
         string,
         unknown
       >;
@@ -523,7 +523,7 @@ describe("用户选择（DWG-20）", () => {
     try {
       await service.createSession({ workspacePath: WORKSPACE_PATH, sessionId: "s-gated" });
       expect(policyCalls(request)).toHaveLength(0);
-      expect(paramsOf(request, zcodeProtocolMethods.sessionCreate)[0]).not.toHaveProperty(
+      expect(paramsOf(request, codezProtocolMethods.sessionCreate)[0]).not.toHaveProperty(
         "dynamicWorkflowMode",
       );
     } finally {
@@ -622,13 +622,13 @@ describe("远程 Host 的用户选择（DWG-21）", () => {
     try {
       await service.syncDynamicWorkflowUserMode({ mode: "onDemand" });
       await service.createSession({ workspacePath: WORKSPACE_PATH, sessionId: "s-pushed" });
-      expect(paramsOf(request, zcodeProtocolMethods.sessionCreate)[0]).toMatchObject({
+      expect(paramsOf(request, codezProtocolMethods.sessionCreate)[0]).toMatchObject({
         dynamicWorkflowEnabled: true,
         dynamicWorkflowMode: "onDemand",
       });
       await service.syncDynamicWorkflowUserMode({});
       await service.createSession({ workspacePath: WORKSPACE_PATH, sessionId: "s-follow" });
-      expect(paramsOf(request, zcodeProtocolMethods.sessionCreate)[1]).toMatchObject({
+      expect(paramsOf(request, codezProtocolMethods.sessionCreate)[1]).toMatchObject({
         dynamicWorkflowMode: "alwaysOn",
       });
     } finally {

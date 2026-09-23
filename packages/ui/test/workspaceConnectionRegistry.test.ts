@@ -1,13 +1,13 @@
 // 分屏二期：conversation 连接注册表单测（引用计数 / keep-warm / agentService 换代）。
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { IServiceAccessor } from "@zcode/services";
+import { Emitter } from "@codez/rpc";
+import type { IServiceAccessor } from "@codez/services";
 import type {
   ConversationRow,
   ConversationSnapshot,
   ConversationTopicFrame,
   ConversationTopicWireFrame,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import {
   WORKSPACE_CONNECTION_KEEP_WARM_MS,
   acquireWorkspaceConnection,
@@ -489,7 +489,7 @@ describe("workspaceConnectionRegistry", () => {
     const register = (agentService: WorkspaceConnectionAgentService) =>
       registerRemoteWorkspaceSession({
         sessionId: scope.remoteSessionId,
-        services: { zcodeAgentService: agentService } as unknown as IServiceAccessor,
+        services: { codezAgentService: agentService } as unknown as IServiceAccessor,
       });
     register(firstService);
     register(staleMiddleService);

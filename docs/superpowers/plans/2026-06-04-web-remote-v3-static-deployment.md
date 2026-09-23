@@ -71,7 +71,7 @@ export function resolveWebRemoteControlRoutePathFromBaseUrl(baseUrl: string): st
   let pathname = "/";
 
   try {
-    pathname = new URL(rawBaseUrl, "https://zcode.invalid").pathname;
+    pathname = new URL(rawBaseUrl, "https://codez.invalid").pathname;
   } catch {
     pathname = rawBaseUrl.startsWith("/") ? rawBaseUrl : `/${rawBaseUrl}`;
   }
@@ -96,7 +96,7 @@ Expected: PASS.
 
 - [ ] **Step 5: Use the helper in the Web entry route check**
 
-In `packages/web/src/main.tsx`, add the helper to the existing `@zcode/shared` import list:
+In `packages/web/src/main.tsx`, add the helper to the existing `@codez/shared` import list:
 
 ```ts
 import {
@@ -105,7 +105,7 @@ import {
   resolveWebRemoteControlInitialWorkspaceSelection,
   resolveWebRemoteControlRoutePathFromBaseUrl,
   resolveWebRemoteControlWorkspaceKey,
-} from "@zcode/shared";
+} from "@codez/shared";
 ```
 
 Replace `isWebRemoteControlRoute()` with:
@@ -212,7 +212,7 @@ Add this test in `packages/desktop/test/root-build-scripts.test.ts`:
 ```ts
 it("pnpm build:web-remote-control:v3 应使用 /remote/v3/ base 构建手机远控资源", () => {
   expect(rootPackageJson.scripts["build:web-remote-control:v3"]).toBe(
-    "pnpm --filter @zcode/web exec vite build --base=/remote/v3/",
+    "pnpm --filter @codez/web exec vite build --base=/remote/v3/",
   );
 });
 ```
@@ -232,8 +232,8 @@ Expected: FAIL because `build:web-remote-control:v3` is undefined.
 In root `package.json`, keep the existing v2 script and add the v3 script next to it:
 
 ```json
-"build:web-remote-control": "pnpm --filter @zcode/web exec vite build --base=/remote/",
-"build:web-remote-control:v3": "pnpm --filter @zcode/web exec vite build --base=/remote/v3/",
+"build:web-remote-control": "pnpm --filter @codez/web exec vite build --base=/remote/",
+"build:web-remote-control:v3": "pnpm --filter @codez/web exec vite build --base=/remote/v3/",
 ```
 
 - [ ] **Step 4: Run the focused script test and confirm it passes**
@@ -404,8 +404,8 @@ Create `scripts/test-web-remote-control-v3-docker-build.sh`:
 
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-zcode-remote-mobile-v3-test}"
-CONTAINER_NAME="${CONTAINER_NAME:-zcode-remote-mobile-v3-test}"
+IMAGE_NAME="${IMAGE_NAME:-codez-remote-mobile-v3-test}"
+CONTAINER_NAME="${CONTAINER_NAME:-codez-remote-mobile-v3-test}"
 PORT="${PORT:-8081}"
 DOCKERFILE="${DOCKERFILE:-Dockerfile.web-remote-control-v3}"
 
@@ -535,24 +535,24 @@ Copy `scripts/docker-build-and-push-web-remote-control.sh` to
 `scripts/docker-build-and-push-web-remote-control-v3.sh`, then apply these exact changes:
 
 ```diff
--IMAGE_NAME="${DOCKER_IMAGE_NAME:-uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-v2}"
+-IMAGE_NAME="${DOCKER_IMAGE_NAME:-uhub.service.ucloud.cn/tianqi/codez-remote-mobile-v2}"
 -DOCKERFILE="${DOCKERFILE:-Dockerfile.web-remote-control}"
-+IMAGE_NAME="${DOCKER_IMAGE_NAME:-uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-v3}"
++IMAGE_NAME="${DOCKER_IMAGE_NAME:-uhub.service.ucloud.cn/tianqi/codez-remote-mobile-v3}"
 +DOCKERFILE="${DOCKERFILE:-Dockerfile.web-remote-control-v3}"
 @@
--K8S_DEPLOYMENT_FILE="${K8S_DEPLOYMENT_FILE:-zcode/frontend/deployment-remote.yaml}"
-+K8S_DEPLOYMENT_FILE="${K8S_DEPLOYMENT_FILE:-zcode/frontend/deployment-remote-v3.yaml}"
+-K8S_DEPLOYMENT_FILE="${K8S_DEPLOYMENT_FILE:-codez/frontend/deployment-remote.yaml}"
++K8S_DEPLOYMENT_FILE="${K8S_DEPLOYMENT_FILE:-codez/frontend/deployment-remote-v3.yaml}"
 @@
--  DOCKER_IMAGE_NAME         Full image name. Default: uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-v2
-+  DOCKER_IMAGE_NAME         Full image name. Default: uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-v3
+-  DOCKER_IMAGE_NAME         Full image name. Default: uhub.service.ucloud.cn/tianqi/codez-remote-mobile-v2
++  DOCKER_IMAGE_NAME         Full image name. Default: uhub.service.ucloud.cn/tianqi/codez-remote-mobile-v3
 @@
--  K8S_DEPLOYMENT_FILE       Deployment YAML path relative to K8S_REPO_DIR. Default: zcode/frontend/deployment-remote.yaml
-+  K8S_DEPLOYMENT_FILE       Deployment YAML path relative to K8S_REPO_DIR. Default: zcode/frontend/deployment-remote-v3.yaml
+-  K8S_DEPLOYMENT_FILE       Deployment YAML path relative to K8S_REPO_DIR. Default: codez/frontend/deployment-remote.yaml
++  K8S_DEPLOYMENT_FILE       Deployment YAML path relative to K8S_REPO_DIR. Default: codez/frontend/deployment-remote-v3.yaml
 @@
--  local branch_name="${K8S_BRANCH_NAME:-deploy/zcode-remote-mobile-v2-$TAG}"
--  local mr_title="chore: update zcode remote image to $TAG"
-+  local branch_name="${K8S_BRANCH_NAME:-deploy/zcode-remote-mobile-v3-$TAG}"
-+  local mr_title="chore: update zcode remote v3 image to $TAG"
+-  local branch_name="${K8S_BRANCH_NAME:-deploy/codez-remote-mobile-v2-$TAG}"
+-  local mr_title="chore: update codez remote image to $TAG"
++  local branch_name="${K8S_BRANCH_NAME:-deploy/codez-remote-mobile-v3-$TAG}"
++  local mr_title="chore: update codez remote v3 image to $TAG"
 @@
 -    # Bugfix: 发布远控镜像后之前还需要手动去 k8s 仓库改 image，容易漏发或写错 tag。
 -    # 这里只替换 deployment 中第一条 image 字段，保持其他 YAML 内容和缩进不变。
@@ -586,8 +586,8 @@ Expected: PASS with no output.
 Run:
 
 ```bash
-rg -n "zcode-remote-mobile-v3|deployment-remote-v3|build:web-remote-control:v3" scripts/docker-build-and-push-web-remote-control-v3.sh
-rg -n "deployment-remote\\.yaml|zcode-remote-mobile-v2|build:web-remote-control$" scripts/docker-build-and-push-web-remote-control-v3.sh
+rg -n "codez-remote-mobile-v3|deployment-remote-v3|build:web-remote-control:v3" scripts/docker-build-and-push-web-remote-control-v3.sh
+rg -n "deployment-remote\\.yaml|codez-remote-mobile-v2|build:web-remote-control$" scripts/docker-build-and-push-web-remote-control-v3.sh
 ```
 
 Expected: first command prints v3 matches; second command prints no matches.
@@ -626,7 +626,7 @@ Add this test:
 ```ts
 it("desktop 新版本默认二维码 URL 应指向 /remote/v3", () => {
   expect(desktopMainIndexSource).toContain(
-    'process.env["ZCODE_WEB_REMOTE_CONTROL_URL"]?.trim() || "https://zcode.z.ai/remote/v3"',
+    'process.env["CODEZ_WEB_REMOTE_CONTROL_URL"]?.trim() || "https://zcode.z.ai/remote/v3"',
   );
 });
 ```
@@ -667,7 +667,7 @@ In `packages/desktop/src/main/index.ts`, update the fallback:
 
 ```ts
 mobileRemoteControlUrl:
-  process.env["ZCODE_WEB_REMOTE_CONTROL_URL"]?.trim() || "https://zcode.z.ai/remote/v3",
+  process.env["CODEZ_WEB_REMOTE_CONTROL_URL"]?.trim() || "https://zcode.z.ai/remote/v3",
 ```
 
 - [ ] **Step 5: Run focused desktop tests and confirm pass**
@@ -713,14 +713,14 @@ v2:
   pnpm run build:web-remote-control
   -> packages/web/dist
   -> Dockerfile.web-remote-control
-  -> uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-v2
+  -> uhub.service.ucloud.cn/tianqi/codez-remote-mobile-v2
   -> /remote
 
 v3:
   pnpm run build:web-remote-control:v3
   -> packages/web/dist
   -> Dockerfile.web-remote-control-v3
-  -> uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-v3
+  -> uhub.service.ucloud.cn/tianqi/codez-remote-mobile-v3
   -> /remote/v3
 ```
 

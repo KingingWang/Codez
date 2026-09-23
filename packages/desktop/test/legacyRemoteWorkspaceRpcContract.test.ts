@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
+import type { IServiceAccessor } from "@codez/services";
 import {
   LEGACY_REMOTE_WORKSPACE_RPC_CHANNELS,
   assertLegacyRemoteWorkspaceRpcContract,
@@ -19,10 +19,10 @@ describe("LegacyRemoteWorkspaceRpcContract", () => {
   it("在构造 mixed service collection 前拒绝缺失的远端 channel", () => {
     const contract = completeContract();
     delete contract.terminalService;
-    delete contract.zcodeTaskService;
+    delete contract.codezTaskService;
 
     expect(() => assertLegacyRemoteWorkspaceRpcContract(contract)).toThrow(
-      "terminalService, zcodeTaskService",
+      "terminalService, codezTaskService",
     );
   });
 });

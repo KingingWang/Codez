@@ -104,7 +104,7 @@ describe("feature boundary graph helpers", () => {
     const source = await readFile(
       resolve(
         process.cwd(),
-        "../../.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml",
+        "../../.agents/skills/feature-boundary-planner/references/codez-feature-graph.yaml",
       ),
       "utf8",
     );
@@ -125,7 +125,7 @@ describe("feature boundary graph helpers", () => {
     const source = await readFile(
       resolve(
         process.cwd(),
-        "../../.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml",
+        "../../.agents/skills/feature-boundary-planner/references/codez-feature-graph.yaml",
       ),
       "utf8",
     );
@@ -134,12 +134,12 @@ describe("feature boundary graph helpers", () => {
     const capability = graph.nodes.find((node) => node.id === capabilityId);
     expect(capability?.docs).toContain("docs/dangerous-command-approval-v1-plan.md");
     expect(capability?.codeSeeds).toEqual([
-      "matchDangerousCommand · apps/zcode-cli/packages/core/src/tool/handlers/guarded/command.ts",
-      "resolveToolPermission · apps/zcode-cli/packages/core/src/tool/executor/permission-flow.ts",
-      "buildProtocolPermissionOptions · apps/zcode-cli/packages/bootstrap/src/permission-options.ts",
-      "getZCodeAgentAvailableModes · packages/shared/src/zcode-agent-model-state.ts",
+      "matchDangerousCommand · apps/codez-cli/packages/core/src/tool/handlers/guarded/command.ts",
+      "resolveToolPermission · apps/codez-cli/packages/core/src/tool/executor/permission-flow.ts",
+      "buildProtocolPermissionOptions · apps/codez-cli/packages/bootstrap/src/permission-options.ts",
+      "getCodezAgentAvailableModes · packages/shared/src/codez-agent-model-state.ts",
       "buildAutomationModeOption · packages/ui/src/settings/automationAgentConfigOptions.ts",
-      "filterModeOptions · apps/zcode-cli/packages/tui/src/app-mode-command.ts",
+      "filterModeOptions · apps/codez-cli/packages/tui/src/app-mode-command.ts",
     ]);
     expect(graph.edges.filter((edge) => edge.from === capabilityId).map((edge) => edge.to)).toEqual(
       [

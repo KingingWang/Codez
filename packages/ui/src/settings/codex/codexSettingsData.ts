@@ -11,7 +11,7 @@ import {
   type CodexModel,
   type CodexPlugin,
   type CodexRequest,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export const codexReaders = {
   account: codexAccountReadResponseSchema,

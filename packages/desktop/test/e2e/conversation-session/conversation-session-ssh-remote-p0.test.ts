@@ -16,7 +16,7 @@ import {
   buildRemoteWorkspaceIdentity,
   testId,
   type RemoteTarget,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByWebDriver,
@@ -223,7 +223,7 @@ describe(`${CASE_MARKER}: SSH remote workspace P0`, () => {
 async function readProvisioningRecordCount(config: SSHRuntimeConfig): Promise<number> {
   const result = await runSSHCommand(
     config,
-    'if [ -f "$HOME/.zcode/v2/runtime/provider/provisioning.json" ]; then cat "$HOME/.zcode/v2/runtime/provider/provisioning.json"; else printf \'{"records":[]}\'; fi',
+    'if [ -f "$HOME/.codez/v2/runtime/provider/provisioning.json" ]; then cat "$HOME/.codez/v2/runtime/provider/provisioning.json"; else printf \'{"records":[]}\'; fi',
   );
   if (result.code !== 0) {
     throw new Error(`${CASE_MARKER}: 读取远端 Provisioning 状态失败：${result.stderr}`);
@@ -255,17 +255,17 @@ async function waitForProvisioningRecordCountGreaterThan(
 }
 
 function readSSHRuntimeConfig(): SSHRuntimeConfig {
-  const host = requireSecretEnv("ZCODE_E2E_SSH_HOST");
-  const username = requireSecretEnv("ZCODE_E2E_SSH_USERNAME");
-  const password = requireSecretEnv("ZCODE_E2E_SSH_PASSWORD");
-  const portText = process.env.ZCODE_E2E_SSH_PORT?.trim() || "22";
+  const host = requireSecretEnv("CODEZ_E2E_SSH_HOST");
+  const username = requireSecretEnv("CODEZ_E2E_SSH_USERNAME");
+  const password = requireSecretEnv("CODEZ_E2E_SSH_PASSWORD");
+  const portText = process.env.CODEZ_E2E_SSH_PORT?.trim() || "22";
   const port = Number.parseInt(portText, 10);
   if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
-    throw new Error(`${CASE_MARKER}: ZCODE_E2E_SSH_PORT 必须是 1..65535 的整数`);
+    throw new Error(`${CASE_MARKER}: CODEZ_E2E_SSH_PORT 必须是 1..65535 的整数`);
   }
 
   const workspacePaths = (
-    process.env.ZCODE_E2E_SSH_WORKSPACE_PATHS?.split(",") ?? ["/root", "/home"]
+    process.env.CODEZ_E2E_SSH_WORKSPACE_PATHS?.split(",") ?? ["/root", "/home"]
   )
     .map((value) => value.trim())
     .filter(Boolean);
@@ -274,7 +274,7 @@ function readSSHRuntimeConfig(): SSHRuntimeConfig {
     workspacePaths.some((value) => !value.startsWith("/")) ||
     workspacePaths[0] === workspacePaths[1]
   ) {
-    throw new Error(`${CASE_MARKER}: ZCODE_E2E_SSH_WORKSPACE_PATHS 必须是两个不同的绝对路径`);
+    throw new Error(`${CASE_MARKER}: CODEZ_E2E_SSH_WORKSPACE_PATHS 必须是两个不同的绝对路径`);
   }
 
   return {
@@ -387,7 +387,7 @@ async function waitForDraftWorkspaceSettled(): Promise<void> {
       const snapshot = await browser.execute((triggerTestId) => {
         const store = (
           window as Window & {
-            __zcodeTabStoreE2E?: {
+            __codezTabStoreE2E?: {
               getState?: () => {
                 activeTabId?: string | null;
                 activeWorkspaceIdentity?: string | null;
@@ -395,7 +395,7 @@ async function waitForDraftWorkspaceSettled(): Promise<void> {
               };
             };
           }
-        ).__zcodeTabStoreE2E;
+        ).__codezTabStoreE2E;
         const state = store?.getState?.();
         const visibleTriggerCount = Array.from(
           document.querySelectorAll<HTMLElement>(`[data-testid="${triggerTestId}"]`),
@@ -852,7 +852,7 @@ function readRemoteTabSnapshot(expectedIdentity: string): Promise<RemoteTabSnaps
     };
     const store = (
       window as Window & {
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState?: () => {
             activeTabId?: string | null;
             activeWorkspaceIdentity?: string | null;
@@ -861,7 +861,7 @@ function readRemoteTabSnapshot(expectedIdentity: string): Promise<RemoteTabSnaps
           };
         };
       }
-    ).__zcodeTabStoreE2E;
+    ).__codezTabStoreE2E;
     const state = store?.getState?.();
     const matchingRemoteTab = state?.tabs?.find((tab) => tab.workspaceIdentity === identity);
     const remoteTarget = matchingRemoteTab?.remoteTarget;

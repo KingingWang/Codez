@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS, type ZCodeProviderAccountAccess } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, type CodezProviderAccountAccess } from "@codez/shared";
 import {
   AccountRequestCredentialUnavailableError,
   createAccountProviderRequestAuthService,
@@ -7,19 +7,19 @@ import {
 
 function createService(overrides: Record<string, unknown> = {}) {
   return createAccountProviderRequestAuthService({
-    resolveCurrentAccountAccess: vi.fn(async (access: ZCodeProviderAccountAccess) => ({
+    resolveCurrentAccountAccess: vi.fn(async (access: CodezProviderAccountAccess) => ({
       type: "zhipu-account" as const,
       family: access.accountType,
       planKind: access.mode === "off-peak" ? ("individual-coding-plan" as const) : access.mode,
     })),
-    loadOAuthTokenSet: vi.fn(async () => ({ accessToken: "oauth", zcodeJwtToken: "jwt" })),
+    loadOAuthTokenSet: vi.fn(async () => ({ accessToken: "oauth", codezJwtToken: "jwt" })),
     loadIndividualPlanMaterial: vi.fn(async () => null),
     resolveTeamPlanMaterial: vi.fn(async () => null),
     ...overrides,
   } as never);
 }
 
-function individualAccess(): ZCodeProviderAccountAccess {
+function individualAccess(): CodezProviderAccountAccess {
   return {
     type: "zhipu-account",
     accountType: "zai",
@@ -28,8 +28,8 @@ function individualAccess(): ZCodeProviderAccountAccess {
 }
 
 describe("AccountProviderRequestAuthService", () => {
-  it("reads the provider-specific zcode jwt for start plan requests", async () => {
-    const loadOAuthTokenSet = vi.fn(async () => ({ zcodeJwtToken: "zai-zcode-jwt" }));
+  it("reads the provider-specific codez jwt for start plan requests", async () => {
+    const loadOAuthTokenSet = vi.fn(async () => ({ codezJwtToken: "zai-codez-jwt" }));
     const service = createService({ loadOAuthTokenSet });
     await expect(
       service.resolveCurrent({
@@ -41,7 +41,7 @@ describe("AccountProviderRequestAuthService", () => {
         },
         reason: "model-request",
       }),
-    ).resolves.toEqual({ apiKey: "zai-zcode-jwt" });
+    ).resolves.toEqual({ apiKey: "zai-codez-jwt" });
     expect(loadOAuthTokenSet).toHaveBeenCalledWith("zai");
   });
 

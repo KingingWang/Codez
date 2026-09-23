@@ -5,7 +5,7 @@ import {
   TID_MODEL_PROVIDER_CONNECTION_MODE_TRIGGER,
   TID_MODEL_PROVIDER_CONNECTION_MODE_ITEM,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clickTestIdByDom, waitForDefaultWorkspaceReady } from "./helpers/desktop-app.js";
 import { clearAppData } from "./helpers/desktop-app.js";
 import {
@@ -42,7 +42,7 @@ describe("BigModel Coding Plan 升级页个人套餐售罄 E2E", () => {
     };
     await selectMode("preset:builtin:bigmodel");
     const base =
-      process.env.ZCODE_CODING_PLAN_UPGRADE_MOCK_BASE_URL ?? process.env.BIGMODEL_TEST_API_BASE_URL;
+      process.env.CODEZ_CODING_PLAN_UPGRADE_MOCK_BASE_URL ?? process.env.BIGMODEL_TEST_API_BASE_URL;
     if (!base) throw new Error("Missing mock URL");
     const hold = async (held: boolean) => {
       const response = await fetch(`${base}/__e2e/coding-plan/customer-info-hold`, {

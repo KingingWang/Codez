@@ -1,5 +1,5 @@
 // RV01–RV03：真实 Web 入口与浏览器导航；模拟 relay/桌面响应，不验证外部资源路由服务。
-// 启动：pnpm --filter @zcode/web exec vite --host 127.0.0.1 --port 5178 --strictPort --base=/remote/v4/
+// 启动：pnpm --filter @codez/web exec vite --host 127.0.0.1 --port 5178 --strictPort --base=/remote/v4/
 // 运行：node packages/web/test/e2e/manual-review/pending/remote-version.mjs
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
@@ -20,7 +20,7 @@ async function scenario({ width, theme, locale, missingVersion = false, oldDeskt
   // 保留显式输出，其他浏览器异常仍使本用例失败。
   const knownHomeOnlyError = "agentService.onDynamicSessionsIndexFrame(...) is not a function";
   page.on("pageerror", (error) => errors.push(error.message));
-  await context.addInitScript((value) => localStorage.setItem("zcode-theme", value), theme);
+  await context.addInitScript((value) => localStorage.setItem("codez-theme", value), theme);
   const waitForHome = async () => {
     const home = page.getByText("E2E_REMOTE_VERSION", { exact: true }).first();
     const onboarding = page.getByTestId("onboarding-page");
@@ -33,7 +33,7 @@ async function scenario({ width, theme, locale, missingVersion = false, oldDeskt
       // 本候选只断言入口校验/保留已挂载区域/提示/导航，不宣称覆盖宽屏任务操作。
       const baselineError = page
         .getByText(
-          "shard.services.zcodeTaskService.onDynamicWorkspaceEvent(...) is not a function",
+          "shard.services.codezTaskService.onDynamicWorkspaceEvent(...) is not a function",
           { exact: true },
         )
         .first();
@@ -70,12 +70,12 @@ async function scenario({ width, theme, locale, missingVersion = false, oldDeskt
       if (message.type === "pair_status_query")
         send({ type: "pair_status_ack", pair_status: "matched" });
       const payload = message.payload;
-      if (payload?.zcode_type === "bootstrap-request") {
+      if (payload?.codez_type === "bootstrap-request") {
         bootstrapCount += 1;
         send({
           type: "data",
           payload: {
-            zcode_type: "bootstrap-response",
+            codez_type: "bootstrap-response",
             requestId: payload.requestId,
             success: true,
             result: {
@@ -87,18 +87,18 @@ async function scenario({ width, theme, locale, missingVersion = false, oldDeskt
           },
         });
       }
-      if (payload?.zcode_type === "workspace-list-request") {
+      if (payload?.codez_type === "workspace-list-request") {
         send({
           type: "data",
           payload: {
-            zcode_type: "workspace-list-response",
+            codez_type: "workspace-list-response",
             requestId: payload.requestId,
             success: true,
             result: { workspaces: [workspace], tasks: [] },
           },
         });
       }
-      if (payload?.zcode_type === "workspace-bridge-open") bridgeCount += 1;
+      if (payload?.codez_type === "workspace-bridge-open") bridgeCount += 1;
     });
   });
 

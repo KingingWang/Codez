@@ -16,9 +16,9 @@ vi.mock("@/ControlHintTooltip.js", () => ({
 // 见 docs/plugin-marketplace-ui-ux.md「降级矩阵」。
 function makeItem(requiresPaidPlan: boolean | undefined): StorePluginItem {
   return {
-    id: "pro-plugin@zcode-plugins-official",
+    id: "pro-plugin@codez-plugins-official",
     name: "pro-plugin",
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     installed: false,
     restorable: false,
     orphaned: false,
@@ -44,10 +44,10 @@ async function renderCard(
   locale: "en-US" | "zh-CN" = "en-US",
 ): Promise<string> {
   const { PluginStoreCard } = await import("../src/settings/PluginStoreCard.js");
-  const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+  const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(PluginStoreCard, { item, actions, locale }),
     ),
@@ -56,10 +56,10 @@ async function renderCard(
 
 async function renderDetail(item: StorePluginItem): Promise<string> {
   const { PluginStoreDetailView } = await import("../src/settings/PluginStoreDetailView.js");
-  const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+  const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(PluginStoreDetailView, {
         item,

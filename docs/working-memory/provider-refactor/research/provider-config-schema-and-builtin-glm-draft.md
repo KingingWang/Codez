@@ -317,7 +317,7 @@ Account Access 根据登录和套餐结果生成同形 Overlay：
 }
 ~~~
 
-这里的 models 是当前账号获准使用的子集。请求时使用的 ZCode JWT 和一次性安全校验 Header 由请求鉴权服务取得。
+这里的 models 是当前账号获准使用的子集。请求时使用的 Codez JWT 和一次性安全校验 Header 由请求鉴权服务取得。
 
 BigModel Start Plan 使用 providerId builtin:bigmodel-start-plan。它当前与 Z.AI Start Plan 共享 zcode-plan 请求语义；最终 Endpoint 和模型全集需要同远端 Official Config 再对齐。
 
@@ -639,7 +639,7 @@ OpenAI Responses 协议应遵循官方 reasoning item 与 effort 语义。GLM-5.
 ~~~text
 Start Plan
 ├─ accessId 固定当前账号的 Start Plan 连接
-├─ Request Auth 取得 ZCode JWT
+├─ Request Auth 取得 Codez JWT
 └─ 每个 attempt 按需取得一次性安全校验 Header
 
 Personal Coding Plan
@@ -660,8 +660,8 @@ Registry 只保存 Effective Provider Config 和最终模型配置。Model 保�
 - Builtin Provider ID 在 packages/shared/src/model-provider-types.ts。
 - Start Plan 与 Coding Plan 的 Endpoint fallback 在 packages/services/src/model-provider。
 - GLM reasoning 档位与 model-name 判断分散在 shared、services 和 CLI Adapter。
-- reasoning_content replay 仍由 apps/zcode-cli/packages/adapters/src/model/reasoning-content-compat.ts 的模型名称列表驱动。
-- Anthropic fixed budget 的兼容边界位于 apps/zcode-cli/packages/adapters/src/model/reasoning-policy.ts。
+- reasoning_content replay 仍由 apps/codez-cli/packages/adapters/src/model/reasoning-content-compat.ts 的模型名称列表驱动。
+- Anthropic fixed budget 的兼容边界位于 apps/codez-cli/packages/adapters/src/model/reasoning-policy.ts。
 - Native Web Search 与 Mid-conversation System 仍部分根据 Provider API、baseURL 和 modelId 推断。
 
 迁移时应先判断每条旧事实是否真实参与当前生产行为。真正生效的事实进入 Official Config 或 Adapter 固定协议逻辑；未生效的 models.dev/bundled catalog 字段不机械搬运。

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
-  ZCodePluginReferenceCatalogEntry,
-  ZCodePluginsReferenceCatalogResult,
-} from "@zcode/shared";
+  CodezPluginReferenceCatalogEntry,
+  CodezPluginsReferenceCatalogResult,
+} from "@codez/shared";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
 import { logger } from "@/logger.js";
 
 export interface PluginReferenceCatalogState {
-  entries: ZCodePluginReferenceCatalogEntry[];
+  entries: CodezPluginReferenceCatalogEntry[];
   authority: "session" | "workspace" | null;
   loading: boolean;
   error: string | null;
@@ -41,7 +41,7 @@ export interface PluginReferenceCatalogOptions {
 
 let sessionCatalogRequests = new WeakMap<
   object,
-  Map<string, Promise<ZCodePluginsReferenceCatalogResult>>
+  Map<string, Promise<CodezPluginsReferenceCatalogResult>>
 >();
 
 export function clearPluginReferenceCatalogCacheForTest(): void {
@@ -50,9 +50,9 @@ export function clearPluginReferenceCatalogCacheForTest(): void {
 
 function releaseSessionCatalogRequest(
   services: object,
-  serviceCache: Map<string, Promise<ZCodePluginsReferenceCatalogResult>>,
+  serviceCache: Map<string, Promise<CodezPluginsReferenceCatalogResult>>,
   requestKey: string,
-  request: Promise<ZCodePluginsReferenceCatalogResult>,
+  request: Promise<CodezPluginsReferenceCatalogResult>,
 ): void {
   // 成功 Promise 曾永久驻留，并在 Agent runtime 换代后继续冒充新
   // runtime 的 Session authority。缓存只能做挂载期的 in-flight 单飞；旧请求
@@ -66,9 +66,9 @@ function releaseSessionCatalogRequest(
 
 function releaseSessionCatalogRequestWhenSettled(
   services: object,
-  serviceCache: Map<string, Promise<ZCodePluginsReferenceCatalogResult>>,
+  serviceCache: Map<string, Promise<CodezPluginsReferenceCatalogResult>>,
   requestKey: string,
-  request: Promise<ZCodePluginsReferenceCatalogResult>,
+  request: Promise<CodezPluginsReferenceCatalogResult>,
 ): void {
   const release = () => releaseSessionCatalogRequest(services, serviceCache, requestKey, request);
   void request.then(release, release);
@@ -109,7 +109,7 @@ export function usePluginReferenceCatalog(
 
   useEffect(() => {
     if (!enabled || !workspacePath || !sessionId || !rpcReady) return;
-    const subscription = services.zcodeAgentService.onAgentRuntimeRestarted((event) => {
+    const subscription = services.codezAgentService.onAgentRuntimeRestarted((event) => {
       if (event.workspaceKey !== workspaceKey) return;
       // Runtime restart 后 workspace/session/attachment 都可能保持不变；显式推进代次，
       // 让旧 authority 首帧失效并保证新 runtime 必须重新执行 RPC。
@@ -141,8 +141,8 @@ export function usePluginReferenceCatalog(
       ...(remoteSessionId ? { remoteSessionId } : {}),
       ...(sessionId ? { sessionId } : {}),
     };
-    let request: Promise<ZCodePluginsReferenceCatalogResult>;
-    let requestServiceCache: Map<string, Promise<ZCodePluginsReferenceCatalogResult>> | undefined;
+    let request: Promise<CodezPluginsReferenceCatalogResult>;
+    let requestServiceCache: Map<string, Promise<CodezPluginsReferenceCatalogResult>> | undefined;
     if (options?.dedupeSessionRequest && sessionId) {
       let serviceCache = sessionCatalogRequests.get(services);
       if (!serviceCache) {

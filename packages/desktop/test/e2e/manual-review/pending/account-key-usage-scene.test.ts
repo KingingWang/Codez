@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import {
   clearAppData,
   getE2EAppDataPaths,
@@ -80,7 +80,7 @@ async function assertCreation(authorization: string) {
       request.method === "POST" &&
       request.path.endsWith("/organization/org-e2e/projects/proj-e2e/api_keys") &&
       request.headers.authorization === authorization &&
-      request.keyCreation?.name === "zcode-api-key" &&
+      request.keyCreation?.name === "codez-api-key" &&
       request.keyCreation.usageScene === 1,
     "真实 Host 没有创建 usageScene=1 的套餐 Key",
   );

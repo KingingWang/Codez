@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 
-import type { Hook } from "@zcode/shared";
+import type { Hook } from "@codez/shared";
 import { createElement } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { HooksList } from "@/settings/HooksList.js";
 
 function untrustedWorkspaceHook(): Hook {
@@ -25,7 +25,7 @@ function untrustedWorkspaceHook(): Hook {
       declarationEnabled: true,
       runtimeHooksEnabled: true,
       configuredEnabled: true,
-      sourcePath: ".zcode/config.json",
+      sourcePath: ".codez/config.json",
       trustState: "pending_trust",
     },
   };
@@ -40,7 +40,7 @@ describe("Workspace Hook 行内 Trust 交互", () => {
     const onTrust = vi.fn(async () => undefined);
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           TooltipProvider,

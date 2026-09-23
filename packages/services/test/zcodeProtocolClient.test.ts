@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { ZCodeProtocolMessage } from "@zcode/shared";
-import { zcodeSessionStateSnapshotSchema } from "@zcode/shared";
+import { Emitter } from "@codez/rpc";
+import type { CodezProtocolMessage } from "@codez/shared";
+import { codezSessionStateSnapshotSchema } from "@codez/shared";
 import {
-  DEFAULT_ZCODE_PROTOCOL_REQUEST_TIMEOUT_MS,
-  ZCodeProtocolClient,
-} from "../src/zcode-agent/zcodeProtocolClient.js";
+  DEFAULT_CODEZ_PROTOCOL_REQUEST_TIMEOUT_MS,
+  CodezProtocolClient,
+} from "../src/codez-agent/codezProtocolClient.js";
 import type {
-  ZCodeProtocolTransport,
-  ZCodeProtocolTransportClosedEvent,
-} from "../src/zcode-agent/zcodeProtocolTransport.js";
+  CodezProtocolTransport,
+  CodezProtocolTransportClosedEvent,
+} from "../src/codez-agent/codezProtocolTransport.js";
 
 const protocolModelProperties = {
   inputFormat: {
@@ -22,21 +22,21 @@ const protocolModelProperties = {
   outputFormat: { supportsText: true },
 };
 
-class FakeZCodeTransport implements ZCodeProtocolTransport {
+class FakeCodezTransport implements CodezProtocolTransport {
   readonly kind = "memory" as const;
-  readonly sent: ZCodeProtocolMessage[] = [];
+  readonly sent: CodezProtocolMessage[] = [];
 
-  private readonly messageEmitter = new Emitter<ZCodeProtocolMessage>();
-  private readonly closeEmitter = new Emitter<ZCodeProtocolTransportClosedEvent>();
+  private readonly messageEmitter = new Emitter<CodezProtocolMessage>();
+  private readonly closeEmitter = new Emitter<CodezProtocolTransportClosedEvent>();
 
   readonly onMessage = this.messageEmitter.event;
   readonly onClose = this.closeEmitter.event;
 
-  async send(message: ZCodeProtocolMessage): Promise<void> {
+  async send(message: CodezProtocolMessage): Promise<void> {
     this.sent.push(message);
   }
 
-  receive(message: ZCodeProtocolMessage): void {
+  receive(message: CodezProtocolMessage): void {
     this.messageEmitter.fire(message);
   }
 
@@ -47,7 +47,7 @@ class FakeZCodeTransport implements ZCodeProtocolTransport {
 }
 
 const snapshot = {
-  protocol: { name: "ZCode Protocol", version: 1 },
+  protocol: { name: "Codez Protocol", version: 1 },
   session: {
     sessionId: "sess_1",
     workspace: {
@@ -91,12 +91,12 @@ const snapshot = {
   messages: [],
 };
 
-describe("ZCodeProtocolClient", () => {
+describe("CodezProtocolClient", () => {
   it("dispose 批量拒绝不会把 fire-and-forget 请求的外层 Promise 判为 unhandled", async () => {
     // CR 复现：request() 返回的外层 Promise 才是 unhandledRejection 判定对象；
     // 调用方在启动后、挂靠 .catch 前 dispose，内外两层都必须已有兜底 handler。
-    const transport = new FakeZCodeTransport();
-    const client = new ZCodeProtocolClient(transport);
+    const transport = new FakeCodezTransport();
+    const client = new CodezProtocolClient(transport);
     const unhandled: unknown[] = [];
     const onUnhandled = (reason: unknown) => unhandled.push(reason);
     process.on("unhandledRejection", onUnhandled);
@@ -116,8 +116,8 @@ describe("ZCodeProtocolClient", () => {
 
   it("观测超时不触发进程 watchdog，业务请求仍可完成", async () => {
     vi.useFakeTimers();
-    const transport = new FakeZCodeTransport();
-    const client = new ZCodeProtocolClient(transport);
+    const transport = new FakeCodezTransport();
+    const client = new CodezProtocolClient(transport);
     const timedOut = vi.fn(() => client.dispose());
     client.onRequestTimeout(timedOut);
     try {
@@ -129,7 +129,7 @@ describe("ZCodeProtocolClient", () => {
         .catch((error: unknown) => error);
       const business = client.request("session/read", { sessionId: "sess_1" });
       await vi.advanceTimersByTimeAsync(800);
-      expect(await observation).toMatchObject({ name: "ZCodeProtocolRequestTimeoutError" });
+      expect(await observation).toMatchObject({ name: "CodezProtocolRequestTimeoutError" });
       expect(timedOut).not.toHaveBeenCalled();
       transport.receive({ id: 2, result: snapshot });
       await expect(business).resolves.toEqual(snapshot);
@@ -140,8 +140,8 @@ describe("ZCodeProtocolClient", () => {
   });
 
   it("观测不阻止业务 idle，成功和取消也不续期 idle", async () => {
-    const transport = new FakeZCodeTransport();
-    const client = new ZCodeProtocolClient(transport);
+    const transport = new FakeCodezTransport();
+    const client = new CodezProtocolClient(transport);
     const drained = vi.fn();
     client.onPendingRequestsDrained(drained);
     const controller = new AbortController();
@@ -173,8 +173,8 @@ describe("ZCodeProtocolClient", () => {
   it("迁移期间不发送业务请求，ready 后才开始普通请求 timeout", async () => {
     vi.useFakeTimers();
     try {
-      const transport = new FakeZCodeTransport();
-      const client = new ZCodeProtocolClient(transport, {
+      const transport = new FakeCodezTransport();
+      const client = new CodezProtocolClient(transport, {
         requireStorageStartup: true,
         requestTimeoutMs: 10,
       });
@@ -216,8 +216,8 @@ describe("ZCodeProtocolClient", () => {
   it("自定义命令主动声明启动状态后，已经发出的首个握手请求也不会误触普通 watchdog", async () => {
     vi.useFakeTimers();
     try {
-      const transport = new FakeZCodeTransport();
-      const client = new ZCodeProtocolClient(transport, { requestTimeoutMs: 10 });
+      const transport = new FakeCodezTransport();
+      const client = new CodezProtocolClient(transport, { requestTimeoutMs: 10 });
       const result = client.request("session/read", { sessionId: "s" });
       const packet = {
         schemaVersion: 1,
@@ -245,13 +245,13 @@ describe("ZCodeProtocolClient", () => {
   });
 
   it("matches requests with responses and validates result schemas", async () => {
-    const transport = new FakeZCodeTransport();
-    const client = new ZCodeProtocolClient(transport);
+    const transport = new FakeCodezTransport();
+    const client = new CodezProtocolClient(transport);
 
     const request = client.request(
       "session/read",
       { sessionId: "sess_1" },
-      zcodeSessionStateSnapshotSchema,
+      codezSessionStateSnapshotSchema,
     );
 
     expect(transport.sent).toMatchObject([
@@ -266,8 +266,8 @@ describe("ZCodeProtocolClient", () => {
   });
 
   it("emits notifications without requiring a jsonrpc field", () => {
-    const transport = new FakeZCodeTransport();
-    const client = new ZCodeProtocolClient(transport);
+    const transport = new FakeCodezTransport();
+    const client = new CodezProtocolClient(transport);
     const notifications: unknown[] = [];
     client.onNotification((event) => notifications.push(event));
 
@@ -279,13 +279,13 @@ describe("ZCodeProtocolClient", () => {
   });
 
   it("serializes protocol traces on the request envelope", async () => {
-    const transport = new FakeZCodeTransport();
-    const client = new ZCodeProtocolClient(transport);
+    const transport = new FakeCodezTransport();
+    const client = new CodezProtocolClient(transport);
 
     const request = client.request(
       "session/create",
       { workspace: { workspacePath: "/workspace/app", workspaceKey: "/workspace/app" } },
-      zcodeSessionStateSnapshotSchema,
+      codezSessionStateSnapshotSchema,
       { trace: { traceId: "trace_from_app" } },
     );
 
@@ -305,8 +305,8 @@ describe("ZCodeProtocolClient", () => {
   it("uses a per-request timeout override when provided", async () => {
     vi.useFakeTimers();
     try {
-      const transport = new FakeZCodeTransport();
-      const client = new ZCodeProtocolClient(transport, { requestTimeoutMs: 10 });
+      const transport = new FakeCodezTransport();
+      const client = new CodezProtocolClient(transport, { requestTimeoutMs: 10 });
       const timeouts: unknown[] = [];
       client.onRequestTimeout((event) => timeouts.push(event));
 
@@ -347,8 +347,8 @@ describe("ZCodeProtocolClient", () => {
   it("uses a three minute default request timeout", async () => {
     vi.useFakeTimers();
     try {
-      const transport = new FakeZCodeTransport();
-      const client = new ZCodeProtocolClient(transport);
+      const transport = new FakeCodezTransport();
+      const client = new CodezProtocolClient(transport);
       const timeouts: unknown[] = [];
       client.onRequestTimeout((event) => timeouts.push(event));
 
@@ -363,7 +363,7 @@ describe("ZCodeProtocolClient", () => {
           settled = true;
         });
 
-      await vi.advanceTimersByTimeAsync(DEFAULT_ZCODE_PROTOCOL_REQUEST_TIMEOUT_MS - 1);
+      await vi.advanceTimersByTimeAsync(DEFAULT_CODEZ_PROTOCOL_REQUEST_TIMEOUT_MS - 1);
       expect(settled).toBe(false);
       expect(timeouts).toEqual([]);
 
@@ -371,14 +371,14 @@ describe("ZCodeProtocolClient", () => {
       await expect(request).resolves.toMatchObject({
         error: {
           method: "session/read",
-          timeoutMs: DEFAULT_ZCODE_PROTOCOL_REQUEST_TIMEOUT_MS,
+          timeoutMs: DEFAULT_CODEZ_PROTOCOL_REQUEST_TIMEOUT_MS,
         },
         status: "rejected",
       });
       expect(timeouts).toMatchObject([
         {
           method: "session/read",
-          timeoutMs: DEFAULT_ZCODE_PROTOCOL_REQUEST_TIMEOUT_MS,
+          timeoutMs: DEFAULT_CODEZ_PROTOCOL_REQUEST_TIMEOUT_MS,
         },
       ]);
     } finally {
@@ -387,8 +387,8 @@ describe("ZCodeProtocolClient", () => {
   });
 
   it("cancels a pending request with an AbortSignal", async () => {
-    const transport = new FakeZCodeTransport();
-    const client = new ZCodeProtocolClient(transport);
+    const transport = new FakeCodezTransport();
+    const client = new CodezProtocolClient(transport);
     const controller = new AbortController();
 
     const request = client.request("workspace/generateText", {}, undefined, {
@@ -405,8 +405,8 @@ describe("ZCodeProtocolClient", () => {
   });
 
   it("does not send a request when its AbortSignal is already aborted", async () => {
-    const transport = new FakeZCodeTransport();
-    const client = new ZCodeProtocolClient(transport);
+    const transport = new FakeCodezTransport();
+    const client = new CodezProtocolClient(transport);
     const controller = new AbortController();
     controller.abort(new DOMException("cancelled", "AbortError"));
 
@@ -419,8 +419,8 @@ describe("ZCodeProtocolClient", () => {
   });
 
   it("supports server-to-client requests and responses", async () => {
-    const transport = new FakeZCodeTransport();
-    const client = new ZCodeProtocolClient(transport);
+    const transport = new FakeCodezTransport();
+    const client = new CodezProtocolClient(transport);
     client.onRequest((request) => {
       void client.respond(request.id, { decision: "allow" });
     });
@@ -438,8 +438,8 @@ describe("ZCodeProtocolClient", () => {
   // client.onClose 尚未触发时 activeClientsByWorkspaceKey 仍指向已 disposed 的 client。
   // getClient 必须能在复用前通过 isDisposed 判断，避免对 disposed client 发请求秒败。
   it("exposes isDisposed so callers can detect a recycled client before reuse", async () => {
-    const transport = new FakeZCodeTransport();
-    const client = new ZCodeProtocolClient(transport);
+    const transport = new FakeCodezTransport();
+    const client = new CodezProtocolClient(transport);
 
     expect(client.isDisposed).toBe(false);
 

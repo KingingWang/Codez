@@ -2,12 +2,12 @@
 
 - 日期：2026-08-19
 - 状态：已实现，等待人工 review
-- producer 候选：`zcode-cua@52da434158df32f6d0825db6af1c3d263754c44c`
+- producer 候选：`codez-cua@52da434158df32f6d0825db6af1c3d263754c44c`
 - 目标分支：`feat/cua-merge-0817`
 
 ## 背景
 
-z-code 已将 Helper runtime 的事实源迁到固定的 `@zcode/zcode-cua`，但旧 producer pin 仍迫使
+z-code 已将 Helper runtime 的事实源迁到固定的 `@codez/codez-cua`，但旧 producer pin 仍迫使
 consumer 维护三类重复状态：
 
 1. renderer 已不调用的 controller status/take/stop permission-service facade；
@@ -28,7 +28,7 @@ Zoom/ghost cursor 与 HTTP request 生命周期；`d51e5365` 把失败启动的 
 ## 架构与发布顺序
 
 ```text
-zcode-cua MR（producer）
+codez-cua MR（producer）
   ├─ ports: getStatus / restartHelper
   ├─ product host: ghost=true, PiP=true, background=false
   ├─ raw broker controller protocol + lease 保留
@@ -48,9 +48,9 @@ z-code MR（consumer）
 
 ### Desktop 安装包运行时闭包
 
-- `@zcode/services` 会把 producer broker 接入 Desktop main、host 与 scheduler；对应的
-  `@zcode/zcode-cua` JavaScript 必须由 tsup 内联，不能在最终 bundle 中留下裸包导入。
-- electron-builder 继续排除 `node_modules/@zcode/**`。不得为了修复模块解析而把 producer
+- `@codez/services` 会把 producer broker 接入 Desktop main、host 与 scheduler；对应的
+  `@codez/codez-cua` JavaScript 必须由 tsup 内联，不能在最终 bundle 中留下裸包导入。
+- electron-builder 继续排除 `node_modules/@codez/**`。不得为了修复模块解析而把 producer
   的源码、sourcemap、构建目录或 `ax_native.node` 整包复制进 `app.asar`；原生动作仍只由
   独立 Helper 承载。
 - 单元测试必须对 main、host、scheduler 三个配置机械检查 `noExternal`；发布验证必须实际
@@ -81,11 +81,11 @@ z-code MR（consumer）
 
 ### Helper identity 与打包
 
-- 稳定包固定使用 `ZCode Computer Use.app`，dev 包固定使用
-  `ZCode Computer Use Dev.app`，两者 executable 均为 `ZCode Computer Use`。
+- 稳定包固定使用 `Codez Computer Use.app`，dev 包固定使用
+  `Codez Computer Use Dev.app`，两者 executable 均为 `Codez Computer Use`。
 - dev 包的目录名、`CFBundleDisplayName` 与 broker display policy 使用
-  `ZCode Computer Use Dev`；这不改变 `CFBundleExecutable`。后者必须继续使用 producer 的
-  `HELPER_DISPLAY_NAME`（`ZCode Computer Use`），不得从 dev app 名反向推导 executable。
+  `Codez Computer Use Dev`；这不改变 `CFBundleExecutable`。后者必须继续使用 producer 的
+  `HELPER_DISPLAY_NAME`（`Codez Computer Use`），不得从 dev app 名反向推导 executable。
 - build、electron-builder、release zip、notarize、doctor、runtime resolver 与 CI 使用同一组
   producer constants；可执行的 JavaScript 构建/开发入口直接导入 constants，shell/CI 中无法
   导入模块的字面量由单测与 `HELPER_APP_NAME` / `HELPER_DISPLAY_NAME` 机械比对，不再依靠人工同步。
@@ -94,18 +94,18 @@ z-code MR（consumer）
   Node 单测按 CI 中的原始脚本文本实际执行，禁止只做字符串存在性检查。shell/YAML 中的正则
   不得双重转义 `/`，否则 Node 24 会在 native build 完成后以语法错误终止双架构 Helper job。
 - feature graph 必须把 Helper build/release 作为 Computer Use 与 build-release engineering 的
-  共同服务节点，并把 `ZCode Computer Use.app` / `ZCode Computer Use Dev.app` 记录为当前契约；
+  共同服务节点，并把 `Codez Computer Use.app` / `Codez Computer Use Dev.app` 记录为当前契约；
   旧 `cua-helper-build` seed 不得继续描述已退役的 app 名称。
 - `assembleHelperApp` 不再接收 `displayName`，bundle id 一次性决定 app 目录、plist 名称与
   executable，禁止部分覆写。
-- 0.5.5 legacy：旧 `ZCode CUA Helper.app` 可能留在用户目录；TCC 仍按既有 bundle id/签名身份识别。本批
+- 0.5.5 legacy：旧 `Codez CUA Helper.app` 可能留在用户目录；TCC 仍按既有 bundle id/签名身份识别。本批
   不做未经证明的目录删除或进程名 kill。
-- 当前运维、签名、公证、安装与排障 runbook 必须只把 `ZCode Computer Use.app` 当作验收目标；
+- 当前运维、签名、公证、安装与排障 runbook 必须只把 `Codez Computer Use.app` 当作验收目标；
   旧名称只允许出现在带 `0.5.5 legacy` 标记的残留说明中，避免 `codesign` / `spctl` 静默验到旧包。
 
 ### Pin 与 skill
 
-- workspace catalog 只保留一个 canonical `@zcode/zcode-cua` git pin。
+- workspace catalog 只保留一个 canonical `@codez/codez-cua` git pin。
 - wrapper package/plugin/bootstrap version、最终 raster spec 的 producer commit、bundled skill
   与 `upstream.json` 必须同步到 0.5.7 候选。
 - skill sync 脚本只接受一个 canonical pin，并写入明确的 upstream ref；不得要求已删除的
@@ -122,7 +122,7 @@ z-code MR（consumer）
 - CLI/plugin：authority/socket/token 缺失与漂移 fail closed；不再出现 permission-mode/backend。
 - packaging：stable/dev app、plist、executable、zip allowlist、electron-builder 资源路径、CI
   staging 路径与 producer provenance 一致；dev app 的 display name 与 executable 必须分别验证，
-  防止把 `ZCode Computer Use Dev` 错当成 executable。
+  防止把 `Codez Computer Use Dev` 错当成 executable。
 - operations docs 与 feature graph：所有可执行路径、签名验收命令和 build contract 指向
   canonical app；旧名只保留明确的 `0.5.5 legacy` 残留警告，并由机械测试锁定。
 - version/skill：version coherence、skill sync 实际执行、single-pin 断言、frozen install。
@@ -156,12 +156,12 @@ z-code MR（consumer）
   188 tests 通过。
 - 全仓 unit：1307 files 通过、1 skipped；11396 tests 通过、11 skipped。
 - 官方自包含 Node 24.14.0 下 `build:cua-helper` 通过，产物为
-  `ZCode Computer Use.app`；release dry-run 通过，当前环境仅缺少真实签名 identity。
+  `Codez Computer Use.app`；release dry-run 通过，当前环境仅缺少真实签名 identity。
 - 官方自包含 Node 24.19.0 下 `build:cua-helper:dev` 通过（本机 stable dev identity 的 keychain
   访问阻塞后使用脚本支持的显式 adhoc escape hatch）；实际 bundle 为
-  `ZCode Computer Use Dev.app`，`CFBundleName` / `CFBundleDisplayName` 为
-  `ZCode Computer Use Dev`，`CFBundleExecutable` 与唯一 arm64 Mach-O 文件均为
-  `ZCode Computer Use`。该验证只覆盖 dev bundle identity，不替代 release 签名 gate。
+  `Codez Computer Use Dev.app`，`CFBundleName` / `CFBundleDisplayName` 为
+  `Codez Computer Use Dev`，`CFBundleExecutable` 与唯一 arm64 Mach-O 文件均为
+  `Codez Computer Use`。该验证只覆盖 dev bundle identity，不替代 release 签名 gate。
 - root lint 0 errors（仓库已有 37 warnings）。root `fmt:check` 仍被已有 Electron
   fiddle HTML 与 `gb2312.js` 阻断；本次变更文件格式通过，上游 Skill 为了 byte-for-byte
   provenance 保持 producer 原样。

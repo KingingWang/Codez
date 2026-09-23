@@ -5,14 +5,14 @@ import { createElement, type ReactNode } from "react";
 import {
   resolveLocalePreferenceFromSettings,
   shouldApplyLocaleBroadcastMessage,
-  useZCodeIntl,
-  ZCodeIntlProvider,
+  useCodezIntl,
+  CodezIntlProvider,
 } from "@/i18n/IntlProvider.js";
-import type { Locale } from "@zcode/shared";
-import type { BroadcastMessage } from "@zcode/services";
+import type { Locale } from "@codez/shared";
+import type { BroadcastMessage } from "@codez/services";
 
 function LocaleProbe() {
-  const { locale, localePreference } = useZCodeIntl();
+  const { locale, localePreference } = useCodezIntl();
   return createElement(
     "div",
     null,
@@ -22,7 +22,7 @@ function LocaleProbe() {
 }
 
 function LocaleControls() {
-  const { setLocalePreference } = useZCodeIntl();
+  const { setLocalePreference } = useCodezIntl();
   return createElement(
     "div",
     null,
@@ -75,7 +75,7 @@ function renderIntlProvider({
   const settingService = createSettingService(settings, update);
   render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       {
         settingService,
         resolveSystemLocale,
@@ -304,7 +304,7 @@ describe("IntlProvider locale preference sync", () => {
       expect(screen.getByTestId("locale").textContent).toBe("en-US");
       expect(screen.getByTestId("localePreference").textContent).toBe("en-US");
     });
-    expect(localStorage.getItem("zcode-locale-preference")).toBe("en-US");
+    expect(localStorage.getItem("codez-locale-preference")).toBe("en-US");
     expect(settingService.update).toHaveBeenCalledWith({
       locale: "en-US",
       localePreference: "en-US",
@@ -357,7 +357,7 @@ describe("IntlProvider locale preference sync", () => {
 
     expect(screen.getByTestId("locale").textContent).toBe("zh-CN");
     expect(screen.getByTestId("localePreference").textContent).toBe("system");
-    expect(localStorage.getItem("zcode-locale-preference")).toBe("system");
+    expect(localStorage.getItem("codez-locale-preference")).toBe("system");
   });
 
   it("settingService 持久化延迟时不会阻塞跨窗口广播", async () => {

@@ -9,7 +9,7 @@ afterEach(cleanup);
 describe("marketing image banner", () => {
   const bundle: Extract<CloudDialogHero, { type: "interactive_bundle" }> = {
     type: "interactive_bundle",
-    runtime: "zcode-hero-sandbox-v1",
+    runtime: "codez-hero-sandbox-v1",
     resolvedUrl: "http://localhost/banner/index.html",
     viewport: { aspectRatio: "4:3" },
     data: { heading: "Weekend" },

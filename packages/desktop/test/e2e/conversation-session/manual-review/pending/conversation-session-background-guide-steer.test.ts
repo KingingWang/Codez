@@ -1,4 +1,4 @@
-import { TID_CHAT_INPUT } from "@zcode/shared";
+import { TID_CHAT_INPUT } from "@codez/shared";
 import { clearAppData, readSettings } from "../../../helpers/desktop-app.js";
 import { waitForUpstreamNetworkRequestStarted } from "../../../helpers/upstream-capture.js";
 import {
@@ -37,7 +37,7 @@ describe("会话区 Background Guide Steer E2E", () => {
     this.timeout(BACKGROUND_GUIDE_STEER_TIMEOUT_MS);
 
     await prepareConversationE2E();
-    expect((await readSettings()).zcodeInteractionBehavior).toBe("guide");
+    expect((await readSettings()).codezInteractionBehavior).toBe("guide");
     await startNewTask();
 
     const runId = Date.now();

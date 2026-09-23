@@ -111,7 +111,7 @@ for (const [width, locale, theme] of [
       assert.match(await page.locator(menuItems).first().textContent(), new RegExp(expected.title));
       const box = await page.getByRole("menu").boundingBox();
       assert.ok(box.x >= 0 && box.x + box.width <= width && box.y + box.height <= 800);
-      const artifacts = join(tmpdir(), "zcode-side-pane-plugin-menu");
+      const artifacts = join(tmpdir(), "codez-side-pane-plugin-menu");
       await mkdir(artifacts, { recursive: true });
       await page.screenshot({ path: join(artifacts, `${width}-${locale}-${theme}.png`) });
       await page.locator(menuItems).first().click();

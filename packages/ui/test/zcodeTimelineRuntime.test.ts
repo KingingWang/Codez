@@ -3,7 +3,7 @@ import type { TaskChatMessage } from "@/lib/taskChatMessageTypes.js";
 import {
   hasRunningGoalContinuationMessage,
   hasRunningGoalRuntimeSignal,
-} from "@/lib/zcodeTimelineRuntime.js";
+} from "@/lib/codezTimelineRuntime.js";
 
 describe("hasRunningGoalRuntimeSignal", () => {
   it("detects running goal verification timelines", () => {

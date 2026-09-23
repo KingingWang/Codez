@@ -28,7 +28,7 @@
 
 ### F02：删除用户指出的两条 Model 规则
 
-位置：`config/provider/zcode-builtin.json` 的 `config.modelConfigRules.modelRules`。
+位置：`config/provider/codez-builtin.json` 的 `config.modelConfigRules.modelRules`。
 
 1. 删除匹配 `.*\\[1m\\]`、仅设置 `properties.contextWindow = 1000000` 的规则。
 2. 删除匹配 `.*(?:ox-alpha|glm-x-preview-f|x-preview-f-free).*`、仅设置 `optionSpecs.maxOutputTokens.max = 128000` 的规则。

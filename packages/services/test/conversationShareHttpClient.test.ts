@@ -1,4 +1,4 @@
-import type { ApiClient } from "@zcode/shared";
+import type { ApiClient } from "@codez/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { debugLog, warnLog } = vi.hoisted(() => ({ debugLog: vi.fn(), warnLog: vi.fn() }));
@@ -233,7 +233,7 @@ describe("ConversationShareHttpClient", () => {
       producer_product_turn_id: "product-turn-1",
       artifact_version: 1,
       state: "current" as const,
-      ref: "zcode-artifact://share/artifact-1",
+      ref: "codez-artifact://share/artifact-1",
       artifact_type: "html" as const,
       display_name: "report.html",
       extension: "html",
@@ -609,7 +609,7 @@ describe("ConversationShareHttpClient", () => {
       producer_product_turn_id: "product-turn-1",
       artifact_version: 1,
       state: "current" as const,
-      ref: "zcode-artifact://share/artifact-1",
+      ref: "codez-artifact://share/artifact-1",
       artifact_type: "html" as const,
       display_name: "report.html",
       extension: "html",
@@ -651,7 +651,7 @@ describe("ConversationShareHttpClient", () => {
       producer_product_turn_id: "product-turn-1",
       artifact_version: 1,
       state: "current" as const,
-      ref: "zcode-artifact://share/artifact-1",
+      ref: "codez-artifact://share/artifact-1",
       artifact_type: "html" as const,
       display_name: "report.html",
       extension: "html",

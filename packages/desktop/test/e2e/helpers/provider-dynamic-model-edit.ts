@@ -1,6 +1,6 @@
-import { BUILTIN_MODEL_PROVIDER_IDS, TID_MODEL_PROVIDER_ADD_MODEL_BUTTON } from "@zcode/shared";
-import { ModelConfig } from "@zcode/provider";
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { BUILTIN_MODEL_PROVIDER_IDS, TID_MODEL_PROVIDER_ADD_MODEL_BUTTON } from "@codez/shared";
+import { ModelConfig } from "@codez/provider";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import { clickTestIdByDom, getE2EAppDataPaths } from "./desktop-app.js";
 
 /** Todo 88：只从账单 mock 提供成员，不能 seed Personal modelIds 让错误的静态校验侥幸通过。 */

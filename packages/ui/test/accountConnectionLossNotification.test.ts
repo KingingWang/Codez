@@ -16,7 +16,7 @@ vi.mock("@/root/accountConnectionLossSuggestion.js", () => ({
   prepareAccountConnectionSwitch: mocks.prepare,
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 afterEach(() => {
   cleanup();

@@ -1,23 +1,23 @@
 import { useState } from "react";
 import { Smartphone } from "lucide-react";
-import type { WebRemoteControlStatus } from "@zcode/shared";
+import type { WebRemoteControlStatus } from "@codez/shared";
 import {
   buildWebRemoteControlEntryViewTelemetry,
   parseRemoteWorkspaceIdentity,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useResolvedRemoteWorkspaceSessionId } from "@/hooks/useResolvedRemoteWorkspaceSessionId.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { useWebRemoteControlStatus } from "@/hooks/useWebRemoteControlStatus.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";
 import { WebRemoteControlDialog } from "@/WebRemoteControlDialog.js";
 import { useWebRemoteControlFeatureEnabled } from "@/WebRemoteControlFeatureProvider.js";
 
-type FormatMessage = ReturnType<typeof useZCodeIntl>["intl"]["formatMessage"];
+type FormatMessage = ReturnType<typeof useCodezIntl>["intl"]["formatMessage"];
 
 export function getWebRemoteControlTriggerPresentation(
   status: Pick<WebRemoteControlStatus, "status" | "mobileConnected">,
@@ -123,7 +123,7 @@ function WorkspaceWebRemoteControlTriggerContent({
   compact?: boolean;
   className?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const platform = useOptionalPlatform();
   const mappedRemoteSessionId = useResolvedRemoteWorkspaceSessionId(
     workspacePath,

@@ -7,9 +7,9 @@ import { DatabaseSync } from "node:sqlite";
 import { spawnSync } from "node:child_process";
 
 const args = parseArgs(process.argv.slice(2));
-const zcodeRoot = join(homedir(), ".zcode");
-const cliDbPath = join(zcodeRoot, "cli", "db", "db.sqlite");
-const taskIndexPath = join(zcodeRoot, "v2", "tasks-index.sqlite");
+const codezRoot = join(homedir(), ".codez");
+const cliDbPath = join(codezRoot, "cli", "db", "db.sqlite");
+const taskIndexPath = join(codezRoot, "v2", "tasks-index.sqlite");
 
 if (args.help) {
   printHelp();
@@ -80,7 +80,7 @@ function generateTask({ workspacePath, turnCount, title, backup }) {
   const modelId = "deepseek-v4-flash";
   const model = `${providerId}/${modelId}`;
   const baseTime = now - 1000 * 60 * 60 * 24;
-  const manifestPath = join(zcodeRoot, "perf-task-manifests", `${sessionId}.json`);
+  const manifestPath = join(codezRoot, "perf-task-manifests", `${sessionId}.json`);
   let partCount = 0;
 
   const cli = openDb(cliDbPath);
@@ -92,7 +92,7 @@ function generateTask({ workspacePath, turnCount, title, backup }) {
       const insertPart = cli.prepare("insert into part (id, message_id, session_id, time_created, time_updated, data) values (?, ?, ?, ?, ?, ?)");
       const insertTodo = cli.prepare("insert into todo (session_id, content, status, priority, position, time_created, time_updated) values (?, ?, ?, ?, ?, ?, ?)");
       const insertEntry = cli.prepare("insert into session_entry (id, session_id, type, time_created, time_updated, data) values (?, ?, ?, ?, ?, ?)");
-      const insertUsage = cli.prepare(`insert into model_usage (id, logical_request_id, attempt_index, session_id, turn_id, trace_id, span_id, assistant_message_id, parent_user_message_id, query_source, provider_id, model_id, variant, agent, mode, task_type, status, started_at, first_token_at, completed_at, duration_ms, time_to_first_token_ms, finish_reason, tool_call_count, input_tokens, output_tokens, reasoning_tokens, cache_creation_input_tokens, cache_read_input_tokens, provider_total_tokens, computed_total_tokens, retry_count, retryable, cancelled_by_user, context_exceeded, error_type, error_code, error_message, raw_usage_json, provider_metadata_json) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, null, 'zcode-agent', ?, 'interactive', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, null, null, null, ?, ?)`);
+      const insertUsage = cli.prepare(`insert into model_usage (id, logical_request_id, attempt_index, session_id, turn_id, trace_id, span_id, assistant_message_id, parent_user_message_id, query_source, provider_id, model_id, variant, agent, mode, task_type, status, started_at, first_token_at, completed_at, duration_ms, time_to_first_token_ms, finish_reason, tool_call_count, input_tokens, output_tokens, reasoning_tokens, cache_creation_input_tokens, cache_read_input_tokens, provider_total_tokens, computed_total_tokens, retry_count, retryable, cancelled_by_user, context_exceeded, error_type, error_code, error_message, raw_usage_json, provider_metadata_json) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, null, 'codez-agent', ?, 'interactive', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, null, null, null, ?, ?)`);
       const insertTurnUsage = cli.prepare(`insert into turn_usage (session_id, turn_id, trace_id, user_message_id, status, started_at, first_model_start_at, first_token_at, completed_at, duration_ms, time_to_first_token_ms, model_request_count, model_retry_count, tool_call_count, tool_error_count, input_tokens, output_tokens, reasoning_tokens, cache_creation_input_tokens, cache_read_input_tokens, computed_total_tokens, retryable, cancelled_by_user, context_exceeded, error_type, error_code) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, null, null)`);
 
       for (let n = 0; n < turnCount; n += 1) {
@@ -182,11 +182,11 @@ function insertUsageRows({ insertUsage, insertTurnUsage, sessionId, traceId, pro
 }
 
 function userMessage({ n, t, workspacePath, providerId, modelId }) {
-  return { role: "user", time: { created: t }, agent: "zcode-agent", model: { providerID: providerId, modelID: modelId }, contextSnapshot: { envInfo: { cwd: workspacePath, platform: process.platform, shell: process.env.SHELL ?? "zsh", nodeVersion: process.version, isGitRepository: true, gitStatus: n % 2 === 0 ? "clean" : "modified synthetic fixture files" } }, tools: { Read: true, Write: true, Edit: true, Bash: true, Glob: true, Grep: true, WebFetch: true, WebSearch: true, TodoRead: true, TodoWrite: true, AskUserQuestion: true, Agent: true, Skill: true }, metadata: { fixture: true, clientMode: n % 10 === 0 ? "web-remote-replayable" : "desktop-continuous" } };
+  return { role: "user", time: { created: t }, agent: "codez-agent", model: { providerID: providerId, modelID: modelId }, contextSnapshot: { envInfo: { cwd: workspacePath, platform: process.platform, shell: process.env.SHELL ?? "zsh", nodeVersion: process.version, isGitRepository: true, gitStatus: n % 2 === 0 ? "clean" : "modified synthetic fixture files" } }, tools: { Read: true, Write: true, Edit: true, Bash: true, Glob: true, Grep: true, WebFetch: true, WebSearch: true, TodoRead: true, TodoWrite: true, AskUserQuestion: true, Agent: true, Skill: true }, metadata: { fixture: true, clientMode: n % 10 === 0 ? "web-remote-replayable" : "desktop-continuous" } };
 }
 
 function assistantMessage({ n, parentId, t, completed, workspacePath, providerId, modelId }) {
-  return { role: "assistant", time: { created: t, completed }, parentID: parentId, modelID: modelId, providerID: providerId, mode: n % 7 === 0 ? "plan" : "build", agent: "zcode-agent", path: { cwd: workspacePath, root: workspacePath }, cost: 0, tokens: tokenUsage(n), finish: n % 13 === 0 ? "tool-calls" : "stop" };
+  return { role: "assistant", time: { created: t, completed }, parentID: parentId, modelID: modelId, providerID: providerId, mode: n % 7 === 0 ? "plan" : "build", agent: "codez-agent", path: { cwd: workspacePath, root: workspacePath }, cost: 0, tokens: tokenUsage(n), finish: n % 13 === 0 ? "tool-calls" : "stop" };
 }
 
 function toolPart({ n, tool, status, start, workspacePath }) {
@@ -209,7 +209,7 @@ function toolInput(tool, n, workspacePath) {
     TodoWrite: { todos: [{ content: `Synthetic todo ${n}`, status: "in_progress", priority: "medium" }] },
     AskUserQuestion: { question: `Synthetic decision question for turn ${n}?`, options: ["Proceed", "Skip", "Change scope"] },
     Agent: { prompt: `Explore synthetic subtask ${n}`, agent_type: n % 2 === 0 ? "explore" : "main" },
-    WebSearch: { query: `synthetic zcode performance fixture ${n}` },
+    WebSearch: { query: `synthetic codez performance fixture ${n}` },
     WebFetch: { url: "https://example.com", prompt: `summarize fixture ${n}` },
   };
   return values[tool] ?? { turn: n };
@@ -315,7 +315,7 @@ function assertDatabases() {
 
 function backupDatabases() {
   const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
-  const backupDir = join(zcodeRoot, "perf-task-backups", stamp);
+  const backupDir = join(codezRoot, "perf-task-backups", stamp);
   mkdirSync(backupDir, { recursive: true });
   sqliteBackup(taskIndexPath, join(backupDir, "tasks-index.sqlite"));
   sqliteBackup(cliDbPath, join(backupDir, "cli-db.sqlite"));

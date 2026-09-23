@@ -3,21 +3,21 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { IServiceAccessor } from "@zcode/services";
-import type { ZCodeTaskMeta, ZCodeWorkspaceEvent } from "@zcode/shared";
+import { Emitter } from "@codez/rpc";
+import type { IServiceAccessor } from "@codez/services";
+import type { CodezTaskMeta, CodezWorkspaceEvent } from "@codez/shared";
 import type {
   SessionsIndexTopicFrame,
   SessionsIndexTopicWireFrame,
   SessionSummary,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { useWorkspaceTaskLists } from "@/hooks/useWorkspaceTaskLists.js";
 import { clearTaskListWorkspaceEventCoordinatorForTest } from "@/lib/taskListWorkspaceEventCoordinator.js";
 import { clearTaskListMembershipCache } from "@/lib/taskListMembershipSets.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 import { getTaskListRowActivity } from "@/v4/taskListRowActivity.js";
 import { resetTaskStatusUnreadSyncForTest } from "@/lib/taskStatusUnreadSync.js";
@@ -45,7 +45,7 @@ function createWorkspaceTab(): WorkspaceTabState {
   };
 }
 
-function createTaskMeta(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
+function createTaskMeta(overrides: Partial<CodezTaskMeta> = {}): CodezTaskMeta {
   return {
     createdAt: 1,
     mode: "default",
@@ -55,7 +55,7 @@ function createTaskMeta(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
     updatedAt: 2,
     workspacePath: "/workspace",
     ...overrides,
-  } as ZCodeTaskMeta;
+  } as CodezTaskMeta;
 }
 
 function createMinimalElement(ownerDocument: Document, tagName = "div") {
@@ -187,7 +187,7 @@ describe("useWorkspaceTaskLists membership events (tasks-index 行 + session det
       sessionIdByWorkspaceIdentity: {},
       sessionIdByWorkspacePath: {},
     });
-    useZCodeSessionStore.setState({ workspaces: {} });
+    useCodezSessionStore.setState({ workspaces: {} });
     delete (globalThis as { document?: unknown }).document;
     delete (globalThis as { window?: unknown }).window;
     delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: unknown }).IS_REACT_ACT_ENVIRONMENT;
@@ -195,23 +195,23 @@ describe("useWorkspaceTaskLists membership events (tasks-index 行 + session det
 
   it("workspace 切换后仍按当前全局焦点处理旧 workspace 的终态未读", async () => {
     const task = createTaskMeta({ status: "completed" });
-    const workspaceEventListeners = new Map<string, (event: ZCodeWorkspaceEvent) => void>();
+    const workspaceEventListeners = new Map<string, (event: CodezWorkspaceEvent) => void>();
     const setTaskUnread = vi.fn(async () => ({ ...task, unreadAt: 123 }));
     const services = {
-      zcodeTaskService: {
+      codezTaskService: {
         listPinnedTaskIds: vi.fn(async (): Promise<string[]> => []),
-        listArchivedTasks: vi.fn(async (): Promise<ZCodeTaskMeta[]> => []),
-        listTasks: vi.fn(async (): Promise<ZCodeTaskMeta[]> => [task]),
-        listPinnedTasks: vi.fn(async (): Promise<ZCodeTaskMeta[]> => []),
+        listArchivedTasks: vi.fn(async (): Promise<CodezTaskMeta[]> => []),
+        listTasks: vi.fn(async (): Promise<CodezTaskMeta[]> => [task]),
+        listPinnedTasks: vi.fn(async (): Promise<CodezTaskMeta[]> => []),
         setTaskUnread,
         onDynamicWorkspaceEvent:
           ({ workspacePath }: { workspacePath: string }) =>
-          (listener: (event: ZCodeWorkspaceEvent) => void) => {
+          (listener: (event: CodezWorkspaceEvent) => void) => {
             workspaceEventListeners.set(workspacePath, listener);
             return { dispose() {} };
           },
       },
-      zcodeAgentService: {
+      codezAgentService: {
         ...v4Handshake("connection-cross-workspace-unread"),
         subscribeSessionsIndexV4: vi.fn(async ({ workspacePath }: { workspacePath: string }) => ({
           ack: {
@@ -233,7 +233,7 @@ describe("useWorkspaceTaskLists membership events (tasks-index 行 + session det
         workspacePath: "/workspace-2",
       },
     ];
-    useZCodeSessionStore.getState().setActiveTaskId("/workspace", task.taskId);
+    useCodezSessionStore.getState().setActiveTaskId("/workspace", task.taskId);
 
     function Probe({ activeWorkspacePath }: { activeWorkspacePath: string }) {
       useWorkspaceTaskLists({
@@ -320,32 +320,32 @@ describe("useWorkspaceTaskLists membership events (tasks-index 行 + session det
   }
 
   it("tasks-index 供行；session delta 补 detail；membership 事件触发 pin/archive re-filter", async () => {
-    const workspaceEventListeners: Array<(event: ZCodeWorkspaceEvent) => void> = [];
+    const workspaceEventListeners: Array<(event: CodezWorkspaceEvent) => void> = [];
     const frameListeners: Array<(frame: SessionsIndexTopicWireFrame) => void> = [];
-    let archivedTasks: ZCodeTaskMeta[] = [];
-    let activeTasks: ZCodeTaskMeta[] = [createTaskMeta()];
+    let archivedTasks: CodezTaskMeta[] = [];
+    let activeTasks: CodezTaskMeta[] = [createTaskMeta()];
     const listWorkspaceTaskLists = vi.fn(async () => []);
     const listPinnedTaskIds = vi.fn(async (): Promise<string[]> => []);
-    const listArchivedTasks = vi.fn(async (): Promise<ZCodeTaskMeta[]> => archivedTasks);
+    const listArchivedTasks = vi.fn(async (): Promise<CodezTaskMeta[]> => archivedTasks);
     let deletedIds: string[] = [];
     const listDeletedTaskIds = vi.fn(async () => deletedIds);
-    const listTasks = vi.fn(async (): Promise<ZCodeTaskMeta[]> => activeTasks);
+    const listTasks = vi.fn(async (): Promise<CodezTaskMeta[]> => activeTasks);
     const services = {
-      zcodeTaskService: {
+      codezTaskService: {
         listWorkspaceTaskLists,
         listPinnedTaskIds,
         listArchivedTasks,
         listDeletedTaskIds,
         listTasks,
-        listPinnedTasks: vi.fn(async (): Promise<ZCodeTaskMeta[]> => []),
-        onDynamicWorkspaceEvent: () => (listener: (event: ZCodeWorkspaceEvent) => void) => {
+        listPinnedTasks: vi.fn(async (): Promise<CodezTaskMeta[]> => []),
+        onDynamicWorkspaceEvent: () => (listener: (event: CodezWorkspaceEvent) => void) => {
           workspaceEventListeners.push(listener);
           return {
             dispose() {},
           };
         },
       },
-      zcodeAgentService: {
+      codezAgentService: {
         ...v4Handshake("connection-local"),
         subscribeSessionsIndexV4: vi.fn(async () => {
           const initial = snapshotFrame([createSession()]);
@@ -472,7 +472,7 @@ describe("useWorkspaceTaskLists membership events (tasks-index 行 + session det
         traceId: "trace-1",
         updatedAt: 2,
         workspacePath: "/workspace",
-      } as ZCodeTaskMeta,
+      } as CodezTaskMeta,
     ];
     await act(async () => {
       workspaceEventListeners[0]?.({
@@ -518,27 +518,27 @@ describe("useWorkspaceTaskLists membership events (tasks-index 行 + session det
   it.each(["completedInterrupted", "completedSuccess", "error"] as const)(
     "membership 在途时 activity 收敛为 %s，旧 running 结果不提交并自动重算",
     async (terminalPhase) => {
-      const workspaceEventListeners: Array<(event: ZCodeWorkspaceEvent) => void> = [];
+      const workspaceEventListeners: Array<(event: CodezWorkspaceEvent) => void> = [];
       const frameListeners: Array<(frame: SessionsIndexTopicWireFrame) => void> = [];
-      const deferredMembership = createDeferred<ZCodeTaskMeta[]>();
+      const deferredMembership = createDeferred<CodezTaskMeta[]>();
       let delayMembership = false;
       const listTasks = vi.fn(() =>
         delayMembership
           ? deferredMembership.promise
-          : Promise.resolve([createTaskMeta()] as ZCodeTaskMeta[]),
+          : Promise.resolve([createTaskMeta()] as CodezTaskMeta[]),
       );
       const services = {
-        zcodeTaskService: {
+        codezTaskService: {
           listPinnedTaskIds: vi.fn(async (): Promise<string[]> => []),
-          listArchivedTasks: vi.fn(async (): Promise<ZCodeTaskMeta[]> => []),
+          listArchivedTasks: vi.fn(async (): Promise<CodezTaskMeta[]> => []),
           listTasks,
-          listPinnedTasks: vi.fn(async (): Promise<ZCodeTaskMeta[]> => []),
-          onDynamicWorkspaceEvent: () => (listener: (event: ZCodeWorkspaceEvent) => void) => {
+          listPinnedTasks: vi.fn(async (): Promise<CodezTaskMeta[]> => []),
+          onDynamicWorkspaceEvent: () => (listener: (event: CodezWorkspaceEvent) => void) => {
             workspaceEventListeners.push(listener);
             return { dispose() {} };
           },
         },
-        zcodeAgentService: {
+        codezAgentService: {
           ...v4Handshake("connection-race"),
           subscribeSessionsIndexV4: vi.fn(async () => {
             const initial = snapshotFrame([
@@ -689,7 +689,7 @@ describe("useWorkspaceTaskLists membership events (tasks-index 行 + session det
       };
     });
     const remoteListTasks = vi.fn(
-      async (): Promise<ZCodeTaskMeta[]> => [
+      async (): Promise<CodezTaskMeta[]> => [
         {
           createdAt: 1,
           mode: "default",
@@ -700,18 +700,18 @@ describe("useWorkspaceTaskLists membership events (tasks-index 行 + session det
           unreadAt: 777,
           workspacePath: "/remote-ws",
           workspaceIdentity: remoteIdentity,
-        } as ZCodeTaskMeta,
+        } as CodezTaskMeta,
       ],
     );
     const remoteServices = {
-      zcodeTaskService: {
+      codezTaskService: {
         listPinnedTaskIds: vi.fn(async (): Promise<string[]> => []),
-        listArchivedTasks: vi.fn(async (): Promise<ZCodeTaskMeta[]> => []),
+        listArchivedTasks: vi.fn(async (): Promise<CodezTaskMeta[]> => []),
         listTasks: remoteListTasks,
-        listPinnedTasks: vi.fn(async (): Promise<ZCodeTaskMeta[]> => []),
+        listPinnedTasks: vi.fn(async (): Promise<CodezTaskMeta[]> => []),
         onDynamicWorkspaceEvent: () => () => ({ dispose() {} }),
       },
-      zcodeAgentService: {
+      codezAgentService: {
         ...v4Handshake("connection-remote"),
         subscribeSessionsIndexV4: remoteSubscribe,
         unsubscribeSessionsIndexV4: vi.fn(async () => {}),
@@ -724,14 +724,14 @@ describe("useWorkspaceTaskLists membership events (tasks-index 行 + session det
     } as unknown as IServiceAccessor;
     const baseFrameListeners: Array<(frame: SessionsIndexTopicWireFrame) => void> = [];
     const baseServices = {
-      zcodeTaskService: {
+      codezTaskService: {
         listPinnedTaskIds: vi.fn(async (): Promise<string[]> => []),
-        listArchivedTasks: vi.fn(async (): Promise<ZCodeTaskMeta[]> => []),
-        listTasks: vi.fn(async (): Promise<ZCodeTaskMeta[]> => [createTaskMeta()]),
-        listPinnedTasks: vi.fn(async (): Promise<ZCodeTaskMeta[]> => []),
+        listArchivedTasks: vi.fn(async (): Promise<CodezTaskMeta[]> => []),
+        listTasks: vi.fn(async (): Promise<CodezTaskMeta[]> => [createTaskMeta()]),
+        listPinnedTasks: vi.fn(async (): Promise<CodezTaskMeta[]> => []),
         onDynamicWorkspaceEvent: () => () => ({ dispose() {} }),
       },
-      zcodeAgentService: {
+      codezAgentService: {
         ...v4Handshake("connection-base"),
         subscribeSessionsIndexV4: vi.fn(async () => {
           const initial = snapshotFrame([createSession()]);

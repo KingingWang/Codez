@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import { createGenUiService } from "./service.js";
-import type { PluginSandboxRegisterInput } from "@zcode/shared/mcp-apps";
+import type { PluginSandboxRegisterInput } from "@codez/shared/mcp-apps";
 it("registers restricted Gen UI provenance with synchronous, escaped initial state", async () => {
   const stateRoot = await mkdtemp(join(tmpdir(), "gen-ui-service-"));
   let input: PluginSandboxRegisterInput | undefined;
@@ -16,7 +16,7 @@ it("registers restricted Gen UI provenance with synchronous, escaped initial sta
         sandboxId: "sandbox",
         initId: 1,
         partition: "gen-ui",
-        shellUrl: "zcode-sandbox://fixture",
+        shellUrl: "codez-sandbox://fixture",
       };
     },
   });
@@ -43,8 +43,8 @@ it("registers restricted Gen UI provenance with synchronous, escaped initial sta
     expect(input?.csp?.connectDomains).toEqual([]);
     expect(input?.csp?.frameDomains).toEqual([]);
     expect(input?.html).not.toContain("<script>evil()");
-    expect(input!.html.indexOf("zcode-gen-ui-initial-state")).toBeLessThan(
-      input!.html.indexOf("__ZCODE_GEN_UI_RUNTIME__"),
+    expect(input!.html.indexOf("codez-gen-ui-initial-state")).toBeLessThan(
+      input!.html.indexOf("__CODEZ_GEN_UI_RUNTIME__"),
     );
     await expect(
       service.prepareSandbox({

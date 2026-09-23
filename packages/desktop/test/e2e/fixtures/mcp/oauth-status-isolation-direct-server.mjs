@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { dirname } from "node:path";
 
 const requireFromMcpAdapter = createRequire(
-  new URL("../../../../../../apps/zcode-cli/packages/adapters/package.json", import.meta.url),
+  new URL("../../../../../../apps/codez-cli/packages/adapters/package.json", import.meta.url),
 );
 const { McpServer } = requireFromMcpAdapter("@modelcontextprotocol/sdk/server/mcp.js");
 const { StdioServerTransport } = requireFromMcpAdapter("@modelcontextprotocol/sdk/server/stdio.js");

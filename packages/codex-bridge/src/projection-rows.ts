@@ -3,7 +3,7 @@ import {
   type ConversationRow,
   type PendingInteraction,
   type ToolCallRow,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import {
   isCodexKnownItem,
   type CodexKnownItem,

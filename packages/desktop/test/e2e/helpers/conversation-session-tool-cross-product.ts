@@ -234,7 +234,7 @@ async function isFullAccessModeSelected() {
       (value ?? "").replace(/\u00a0/g, " ").trim();
     const store = (
       window as typeof window & {
-        __zcodeSessionStoreE2E?: {
+        __codezSessionStoreE2E?: {
           getState?: () => {
             workspaces?: Record<
               string,
@@ -250,7 +250,7 @@ async function isFullAccessModeSelected() {
           };
         };
       }
-    ).__zcodeSessionStoreE2E;
+    ).__codezSessionStoreE2E;
     const workspaceValues: string[] = [];
     const activeTaskValues: string[] = [];
     const collect = (

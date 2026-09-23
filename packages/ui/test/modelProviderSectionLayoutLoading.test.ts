@@ -5,7 +5,7 @@ import {
   ModelProviderSectionLayout,
   shouldShowModelProviderRefreshLoading,
 } from "@/settings/model-provider-section/SectionLayout.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 vi.mock("@/settings/model-provider-section/Navigation.js", () => ({
   ModelProviderSectionNavigation: () => createElement("nav", null, "providers"),
@@ -44,7 +44,7 @@ describe("model provider section refresh button loading", () => {
   it("使用最小高度自然分栏，由设置页统一滚动", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           ModelProviderSectionLayout,

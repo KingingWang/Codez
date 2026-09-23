@@ -19,7 +19,7 @@ const TEST_CODE_PREVIEW_SETTINGS = {
 } as const;
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: (
         { id }: { id: string },

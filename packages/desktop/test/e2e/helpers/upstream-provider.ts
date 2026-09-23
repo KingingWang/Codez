@@ -15,10 +15,10 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   TID_V4_MODEL_CONFIG,
-  ZCODE_AGENT_PROVIDER,
+  CODEZ_AGENT_PROVIDER,
   encodeCustomModelValue,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clickTestIdByDom,
@@ -52,7 +52,7 @@ export const UPSTREAM_THOUGHT_LEVEL = readUpstreamThoughtLevel();
 export const UPSTREAM_SECONDARY_THOUGHT_LEVEL =
   process.env.E2E_PROVIDER_SECONDARY_THOUGHT_LEVEL?.trim() || "max";
 const E2E_PROVIDER_REPLAY_API_KEY = "e2e-fixture-key";
-const MODEL_SELECTION_RECENT_KEY_PREFIX = "zcode-model-selection-recent-v1";
+const MODEL_SELECTION_RECENT_KEY_PREFIX = "codez-model-selection-recent-v1";
 const UPSTREAM_THOUGHT_LEVEL_MAX_ATTEMPTS = 8;
 const UPSTREAM_THOUGHT_LEVEL_LABELS_BY_VALUE: Record<string, string[]> = {
   high: ["High", "高"],
@@ -243,14 +243,14 @@ async function seedUpstreamToolbarPreferences() {
           ...(thoughtLevel.trim() ? { options: { reasoningLevel: thoughtLevel.trim() } } : {}),
         }),
       );
-      window.localStorage.setItem("zcode-last-agent-provider", appProvider);
+      window.localStorage.setItem("codez-last-agent-provider", appProvider);
     },
     DEFAULT_WORKSPACE,
     MODEL_SELECTION_RECENT_KEY_PREFIX,
     UPSTREAM_PROVIDER_ID,
     UPSTREAM_MODEL,
     UPSTREAM_THOUGHT_LEVEL,
-    ZCODE_AGENT_PROVIDER,
+    CODEZ_AGENT_PROVIDER,
   );
 }
 
@@ -876,7 +876,7 @@ async function isUpstreamThoughtLevelSelected(thoughtLevel: string) {
       const normalize = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
       const readCurrentThoughtLevel = () => {
         const e2eWindow = window as Window & {
-          __zcodeSessionStoreE2E?: {
+          __codezSessionStoreE2E?: {
             getState: () => {
               getWorkspaceState?: (
                 workspacePath: string,
@@ -902,7 +902,7 @@ async function isUpstreamThoughtLevelSelected(thoughtLevel: string) {
             };
           };
         };
-        const workspaceState = e2eWindow.__zcodeSessionStoreE2E
+        const workspaceState = e2eWindow.__codezSessionStoreE2E
           ?.getState()
           .getWorkspaceState?.(defaultWorkspace);
         const readFromOptions = (
@@ -966,7 +966,7 @@ export function getSelectedUpstreamThoughtLevelLabel() {
     (triggerTestId, modelConfigTestId, defaultWorkspace) => {
       const readCurrentValue = () => {
         const e2eWindow = window as Window & {
-          __zcodeSessionStoreE2E?: {
+          __codezSessionStoreE2E?: {
             getState: () => {
               getWorkspaceState?: (
                 workspacePath: string,
@@ -992,7 +992,7 @@ export function getSelectedUpstreamThoughtLevelLabel() {
             };
           };
         };
-        const workspaceState = e2eWindow.__zcodeSessionStoreE2E
+        const workspaceState = e2eWindow.__codezSessionStoreE2E
           ?.getState()
           .getWorkspaceState?.(defaultWorkspace);
         const readFromOptions = (
@@ -1189,7 +1189,7 @@ async function collectModelDropdownDiagnostics(
         locked: element.getAttribute("data-model-option-locked"),
       }));
       const e2eWindow = window as Window & {
-        __zcodeSessionStoreE2E?: {
+        __codezSessionStoreE2E?: {
           getState: () => {
             getWorkspaceState?: (
               workspacePath: string,
@@ -1227,7 +1227,7 @@ async function collectModelDropdownDiagnostics(
           };
         };
       };
-      const storeState = e2eWindow.__zcodeSessionStoreE2E?.getState();
+      const storeState = e2eWindow.__codezSessionStoreE2E?.getState();
       const workspaceState = storeState?.getWorkspaceState?.(defaultWorkspace);
       const selectSummary = (
         options:

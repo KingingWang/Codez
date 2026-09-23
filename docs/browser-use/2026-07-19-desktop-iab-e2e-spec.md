@@ -129,7 +129,7 @@ main: bootstrap -> cache Browser/Tab -> parent-before
 | --- | --- | --- |
 | 不把 Playwright 当 backend | Playwright 是 tab API family | IAB full chain + CLI managed CDP smoke |
 | 不为手机另起 runtime | `/remote` 必须 shared-host attachment | 后续 mobile replayable 只恢复 conversation fact |
-| 不测应用重启恢复 tab | IAB 只承诺当前 ZCode 进程内持久 | BU-E2E-003 |
+| 不测应用重启恢复 tab | IAB 只承诺当前 Codez 进程内持久 | BU-E2E-003 |
 | 不做全部 method × OS × zoom | 高风险等价类和 pairwise 足够区分行为 | BU-E2E-005/006/008/009 |
 | 不用 stub 声称 extension 可用 | unavailable member/backend 必须隐藏 | discovery contract/unit；正向 deferred |
 | 不固化未确认 safety 行为 | 当前矩阵仍为待实现 | BU-E2E-015 保持 undefined |

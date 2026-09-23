@@ -1,6 +1,6 @@
 # knip.dev（上游源码快照）
 
-> 本目录是 Knip V6 文档站源码的裁剪镜像，不属于 ZCode workspace，也不能在当前仓库独立
+> 本目录是 Knip V6 文档站源码的裁剪镜像，不属于 Codez workspace，也不能在当前仓库独立
 > 构建。generator 依赖的上游 monorepo 路径和部分插件页面没有随镜像复制。项目实际行为以
 > 根目录安装的 Knip 版本、配置和命令输出为准。
 

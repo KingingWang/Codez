@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createRemoteConnectionProgressContext } from "@zcode/server/remote/remoteConnectionProgressContext.js";
+import { createRemoteConnectionProgressContext } from "@codez/server/remote/remoteConnectionProgressContext.js";
 
 describe("remoteConnectionProgressContext", () => {
   it("并发远程连接按 requestId 隔离进度，连接结束后停止上报残留异步日志", async () => {

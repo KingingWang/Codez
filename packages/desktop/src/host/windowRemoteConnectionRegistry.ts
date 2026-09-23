@@ -5,7 +5,7 @@ import {
   type RemoteTarget,
   type WindowHostAttachmentScope,
   type WindowHostRemoteWorkspaceDescriptor,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export interface WindowRemoteAssetDirs {
   bundledRemoteAssetsDir?: string;

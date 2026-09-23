@@ -60,7 +60,7 @@ describe("resolveWebRemoteControlWorkspaceKey", () => {
 describe("external relay QR helpers", () => {
   it("validates the optional authoritative desktop version in bootstrap responses", () => {
     const response = {
-      zcode_type: "bootstrap-response",
+      codez_type: "bootstrap-response",
       requestId: "bootstrap-1",
       success: true,
       result: { windowControlSessionId: "sid-1", workspaces: [], tasks: [] },
@@ -317,7 +317,7 @@ describe("parseWebRemoteControlAppPayload", () => {
   it("accepts pushed workspace list updates", () => {
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "workspace-list-updated",
+        codez_type: "workspace-list-updated",
         result: {
           workspaces: [
             {
@@ -342,7 +342,7 @@ describe("parseWebRemoteControlAppPayload", () => {
         },
       }),
     ).toMatchObject({
-      zcode_type: "workspace-list-updated",
+      codez_type: "workspace-list-updated",
       result: {
         tasks: [expect.objectContaining({ taskId: "task-1", archived: true })],
       },
@@ -352,24 +352,24 @@ describe("parseWebRemoteControlAppPayload", () => {
   it("accepts workspace reconnect requests and responses", () => {
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "workspace-reconnect-request",
+        codez_type: "workspace-reconnect-request",
         requestId: "reconnect-1",
         workspaceKey: "remote:ssh:dev:/workspace/app",
       }),
     ).toMatchObject({
-      zcode_type: "workspace-reconnect-request",
+      codez_type: "workspace-reconnect-request",
       workspaceKey: "remote:ssh:dev:/workspace/app",
     });
 
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "workspace-reconnect-response",
+        codez_type: "workspace-reconnect-response",
         requestId: "reconnect-1",
         workspaceKey: "remote:ssh:dev:/workspace/app",
         success: true,
       }),
     ).toMatchObject({
-      zcode_type: "workspace-reconnect-response",
+      codez_type: "workspace-reconnect-response",
       success: true,
     });
   });
@@ -377,7 +377,7 @@ describe("parseWebRemoteControlAppPayload", () => {
   it("preserves mobile device info on mobile view state updates", () => {
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "mobile-view-state-update",
+        codez_type: "mobile-view-state-update",
         viewState: {
           activeWorkspaceKey: "/workspace/app",
           activeTaskId: "task-1",
@@ -406,7 +406,7 @@ describe("parseWebRemoteControlAppPayload", () => {
         },
       }),
     ).toMatchObject({
-      zcode_type: "mobile-view-state-update",
+      codez_type: "mobile-view-state-update",
       deviceInfo: {
         platform: "web",
         userAgent: "Mozilla/5.0 Mobile Safari/604.1",
@@ -421,7 +421,7 @@ describe("parseWebRemoteControlAppPayload", () => {
   it("removes the legacy one-shot rpc-frame branch from the production app parser", () => {
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "rpc-frame",
+        codez_type: "rpc-frame",
         bridgeSessionId: "bridge-1",
         bridgeGeneration: 2,
         recoveryId: "recovery-1",
@@ -442,14 +442,14 @@ describe("parseWebRemoteControlAppPayload", () => {
     expect(parseWebRemoteControlAppPayload(fragment)).toEqual(fragment);
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "rpc-frame-ack",
+        codez_type: "rpc-frame-ack",
         bridgeSessionId: "bridge-1",
         bridgeGeneration: 2,
         recoveryId: "recovery-1",
         ackMessageSeq: 1,
       }),
     ).toEqual({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       bridgeSessionId: "bridge-1",
       bridgeGeneration: 2,
       recoveryId: "recovery-1",
@@ -457,7 +457,7 @@ describe("parseWebRemoteControlAppPayload", () => {
     });
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "rpc-frame",
+        codez_type: "rpc-frame",
         bridgeSessionId: "bridge-1",
         seq: 1,
         dataBase64: "AQID",
@@ -517,27 +517,27 @@ describe("parseWebRemoteControlAppPayload", () => {
   it("accepts bridge degraded recovery payloads", () => {
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "bridge-degraded",
+        codez_type: "bridge-degraded",
         bridgeSessionId: "bridge-1",
         reason: "buffer-timeout",
         droppedCount: 1,
       }),
     ).toMatchObject({
-      zcode_type: "bridge-degraded",
+      codez_type: "bridge-degraded",
       bridgeSessionId: "bridge-1",
       reason: "buffer-timeout",
       droppedCount: 1,
     });
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "bridge-degraded",
+        codez_type: "bridge-degraded",
         bridgeSessionId: "bridge-1",
         bridgeGeneration: 2,
         recoveryId: "recovery-1",
         reason: "rpc-transport-fault",
       }),
     ).toMatchObject({
-      zcode_type: "bridge-degraded",
+      codez_type: "bridge-degraded",
       bridgeSessionId: "bridge-1",
       bridgeGeneration: 2,
       recoveryId: "recovery-1",
@@ -546,7 +546,7 @@ describe("parseWebRemoteControlAppPayload", () => {
     // 兼容旧 desktop 在原子升级窗口内仍可能发送的细分枚举。
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "bridge-degraded",
+        codez_type: "bridge-degraded",
         bridgeSessionId: "bridge-legacy",
         reason: "rpc-frame-gap",
       }),
@@ -556,7 +556,7 @@ describe("parseWebRemoteControlAppPayload", () => {
   it("preserves bridge metadata on workspace bridge payloads", () => {
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "workspace-bridge-open",
+        codez_type: "workspace-bridge-open",
         requestId: "bridge-open-1",
         bridgeSessionId: "bridge-1",
         bridgeGeneration: 2,
@@ -565,14 +565,14 @@ describe("parseWebRemoteControlAppPayload", () => {
         taskId: "task-1",
       }),
     ).toMatchObject({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       bridgeGeneration: 2,
       recoveryId: "recovery-1",
     });
 
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "workspace-bridge-ready",
+        codez_type: "workspace-bridge-ready",
         requestId: "bridge-open-1",
         bridgeSessionId: "bridge-1",
         bridgeGeneration: 2,
@@ -587,7 +587,7 @@ describe("parseWebRemoteControlAppPayload", () => {
         },
       }),
     ).toMatchObject({
-      zcode_type: "workspace-bridge-ready",
+      codez_type: "workspace-bridge-ready",
       bridgeGeneration: 2,
       recoveryId: "recovery-1",
       bridge: {
@@ -600,7 +600,7 @@ describe("parseWebRemoteControlAppPayload", () => {
   it("accepts low-frequency mobile diagnostic payloads", () => {
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "mobile-diagnostic",
+        codez_type: "mobile-diagnostic",
         event: "pair-status",
         timestamp: 1710000000000,
         state: "paired",
@@ -609,7 +609,7 @@ describe("parseWebRemoteControlAppPayload", () => {
         online: true,
       }),
     ).toMatchObject({
-      zcode_type: "mobile-diagnostic",
+      codez_type: "mobile-diagnostic",
       event: "pair-status",
       pairStatus: "waiting",
     });
@@ -618,7 +618,7 @@ describe("parseWebRemoteControlAppPayload", () => {
   it("rejects pair status values that are not emitted by the external relay", () => {
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "mobile-diagnostic",
+        codez_type: "mobile-diagnostic",
         event: "pair-status",
         timestamp: 1710000000000,
         state: "paired",
@@ -630,7 +630,7 @@ describe("parseWebRemoteControlAppPayload", () => {
   it("rejects invalid rpc-frame payloads", () => {
     expect(
       parseWebRemoteControlAppPayload({
-        zcode_type: "rpc-frame",
+        codez_type: "rpc-frame",
         bridgeSessionId: "bridge-1",
         seq: -1,
         dataBase64: "AQID",

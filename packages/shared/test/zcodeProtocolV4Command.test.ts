@@ -12,9 +12,9 @@ import {
   savedWorkflowStartRejectionReasonSchema,
   modelSelectionSchema,
   workflowRunSettingsRejectionReasonSchema,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
-describe("zcode-protocol-v4 command", () => {
+describe("codez-protocol-v4 command", () => {
   it("parses a valid sendText envelope with typed payload", () => {
     const result = parseCommandEnvelope({
       commandId: "018f0000-0000-7000-8000-000000000001",

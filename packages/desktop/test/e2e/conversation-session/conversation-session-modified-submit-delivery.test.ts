@@ -6,7 +6,7 @@ import {
   TID_V4_COMPOSER_INPUT,
   TID_V4_STOP,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { Key } from "webdriverio";
 import {
   INCOMING_MESSAGE_MODES,
@@ -53,7 +53,7 @@ describe("会话区修饰键单条 delivery E2E", () => {
   before(async function () {
     this.timeout(TEST_TIMEOUT_MS);
     await prepareV4ConversationE2E();
-    expect((await readSettings()).zcodeInteractionBehavior).toBe("queue");
+    expect((await readSettings()).codezInteractionBehavior).toBe("queue");
   });
 
   beforeEach(async function () {
@@ -150,7 +150,7 @@ describe("会话区修饰键单条 delivery E2E", () => {
     await waitForQueueContaining(marker);
     expect((await getQueueItems()).filter((item) => item.content.includes(marker))).toHaveLength(1);
     await expectNoUpstreamRequestForTextWithin(marker, 1500);
-    expect((await readSettings()).zcodeInteractionBehavior).toBe("guide");
+    expect((await readSettings()).codezInteractionBehavior).toBe("guide");
   });
 });
 
@@ -183,7 +183,7 @@ async function startPreOutputTurn(marker: string) {
 }
 
 async function setInteractionBehavior(behavior: "queue" | "guide") {
-  if ((await readSettings()).zcodeInteractionBehavior === behavior) return;
+  if ((await readSettings()).codezInteractionBehavior === behavior) return;
   await clickTestIdByDom(TID_TASK_SETTINGS_BUTTON);
   await $(sel(TID_SETTINGS_PAGE)).waitForDisplayed({ timeout: 15000 });
   await clickTestIdByDom(testId(TID_SETTINGS_SECTION_NAV, "general"));
@@ -217,7 +217,7 @@ async function setInteractionBehavior(behavior: "queue" | "guide") {
     { timeout: 15000, timeoutMsg: `没有找到交互行为 ${behavior} 选项` },
   );
   await browser.waitUntil(
-    async () => (await readSettings()).zcodeInteractionBehavior === behavior,
+    async () => (await readSettings()).codezInteractionBehavior === behavior,
     {
       timeout: 15000,
       timeoutMsg: `交互行为没有保存为 ${behavior}`,

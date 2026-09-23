@@ -1,4 +1,4 @@
-import { BUILTIN_MODEL_PROVIDER_IDS, type AppSettings, type OAuthProviderId } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, type AppSettings, type OAuthProviderId } from "@codez/shared";
 import { describe, expect, it, vi } from "vitest";
 import { ensureProviderFamilyDomainMigration } from "@/lib/providerFamilyDomainMigration.js";
 import { resolveLogoutProviderFamilyDomain } from "@/lib/providerFamilyDomainSettings.js";

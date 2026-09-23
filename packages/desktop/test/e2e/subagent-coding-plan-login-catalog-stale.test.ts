@@ -15,7 +15,7 @@ import {
   decodeCustomModelValue,
   encodeCustomModelValue,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -88,7 +88,7 @@ describe("BigModel 登录后 Subagent runtime catalog 滞后", () => {
     const authorizationUrl = await waitForBigModelAuthorizationUrl(openExternalMock);
     const state = new URL(authorizationUrl).searchParams.get("state");
     expect(state).toBeTruthy();
-    await deliverOAuthCallback(`zcode://oauth/callback?state=${state}&authCode=e2e-auth-code`);
+    await deliverOAuthCallback(`codez://oauth/callback?state=${state}&authCode=e2e-auth-code`);
 
     await waitForTestIdByDom(TID_TASK_SETTINGS_BUTTON, {
       timeout: 60_000,
@@ -141,7 +141,7 @@ describe("BigModel 登录后 Subagent runtime catalog 滞后", () => {
 });
 
 async function readCodingPlanMockRequests(): Promise<unknown[]> {
-  const baseUrl = process.env.ZCODE_E2E_CODING_PLAN_MOCK_URL?.trim();
+  const baseUrl = process.env.CODEZ_E2E_CODING_PLAN_MOCK_URL?.trim();
   if (!baseUrl) {
     return [];
   }
@@ -340,13 +340,13 @@ async function markSeededWorkspaceCatalogReady(): Promise<void> {
   const updated = await browser.execute((workspacePath) => {
     const state = (
       window as typeof window & {
-        __zcodeSessionStoreE2E?: {
+        __codezSessionStoreE2E?: {
           getState?: () => {
             setConfigOptionsStatus?: (path: string, status: "ready") => void;
           };
         };
       }
-    ).__zcodeSessionStoreE2E?.getState?.();
+    ).__codezSessionStoreE2E?.getState?.();
     if (!state?.setConfigOptionsStatus) return false;
     // E2E 启动夹具已预置真实 Agent catalog 内容，但不会同步 ready 标记；
     // 本 case 只补齐“登录前 catalog 已稳定”的前置状态，不改模型目录本身。
@@ -372,7 +372,7 @@ async function readWorkspaceCatalogSnapshot(): Promise<WorkspaceCatalogSnapshot>
     };
     const store = (
       window as typeof window & {
-        __zcodeSessionStoreE2E?: {
+        __codezSessionStoreE2E?: {
           getState?: () => {
             getWorkspaceState?: (path: string) => {
               configOptions?: BrowserConfigOption[] | null;
@@ -381,7 +381,7 @@ async function readWorkspaceCatalogSnapshot(): Promise<WorkspaceCatalogSnapshot>
           };
         };
       }
-    ).__zcodeSessionStoreE2E;
+    ).__codezSessionStoreE2E;
     const workspace = store?.getState?.().getWorkspaceState?.(workspacePath);
     const modelOption = workspace?.configOptions?.find(
       (option) =>

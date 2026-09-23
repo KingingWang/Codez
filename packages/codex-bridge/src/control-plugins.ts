@@ -1,5 +1,5 @@
 import { z } from "zod";
-import * as s from "@zcode/shared";
+import * as s from "@codez/shared";
 import type { BridgeControlContext } from "./contract.js";
 import { checkWorkspace, ControlError, input, unsupported } from "./control-common.js";
 import {
@@ -24,13 +24,13 @@ export async function handlePluginRequest(
   context: BridgeControlContext,
 ): Promise<unknown> {
   if (method === "plugins/overview") {
-    const p = input(s.zcodePluginsOverviewParamsSchema, params, method);
+    const p = input(s.codezPluginsOverviewParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
     if (p.configScope === "workspace")
       unsupported(method, "Workspace-only plugin configuration is not exposed by Codex");
     const catalog = await readPluginCatalog(context);
     const installed = await readPluginCatalog(context, true);
-    return s.zcodePluginsOverviewResultSchema.parse({
+    return s.codezPluginsOverviewResultSchema.parse({
       marketplaces: catalog.marketplaces.map((market) =>
         marketplaceSummary(market, catalog.featuredPluginIds),
       ),
@@ -56,8 +56,8 @@ export async function handlePluginRequest(
   ) {
     const isList = method === "plugins/list";
     const p = isList
-      ? input(s.zcodePluginsListParamsSchema, params, method)
-      : input(s.zcodePluginsReferenceCatalogParamsSchema, params, method);
+      ? input(s.codezPluginsListParamsSchema, params, method)
+      : input(s.codezPluginsReferenceCatalogParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
     if ("sessionId" in p && p.sessionId)
       unsupported(method, "Frozen session plugin catalogs are not exposed by Codex");
@@ -67,13 +67,13 @@ export async function handlePluginRequest(
     const rows = catalog.rows.filter((row) => row.plugin.installed);
     const details = await Promise.all(rows.map((row) => readPluginDetail(context, row)));
     if (isList)
-      return s.zcodePluginsListResultSchema.parse({
+      return s.codezPluginsListResultSchema.parse({
         plugins: rows.map((row, index) => pluginInfo(row, details[index]!)),
         diagnostics: catalog.diagnostics,
       });
     if (catalog.diagnostics.length)
       failure(method, "Plugin discovery failed; a complete reference catalog is unavailable");
-    return s.zcodePluginsReferenceCatalogResultSchema.parse({
+    return s.codezPluginsReferenceCatalogResultSchema.parse({
       authority: "workspace",
       plugins: rows.map(({ plugin, market }, index) => ({
         pluginId: plugin.id,
@@ -105,17 +105,17 @@ export async function handlePluginRequest(
     });
   }
   if (method === "plugins/describe") {
-    const p = input(s.zcodePluginsDescribeParamsSchema, params, method);
+    const p = input(s.codezPluginsDescribeParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
     const catalog = await readPluginCatalog(context);
     const detail = await readPluginDetail(context, findPlugin(catalog.rows, method, p));
-    return s.zcodePluginsDescribeResultSchema.parse({
+    return s.codezPluginsDescribeResultSchema.parse({
       components: pluginComponents(detail),
       diagnostics: catalog.diagnostics,
     });
   }
   if (method === "plugins/setEnabled") {
-    const p = input(s.zcodePluginsSetEnabledParamsSchema, params, method);
+    const p = input(s.codezPluginsSetEnabledParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
     if (p.scope === "workspace")
       unsupported(method, "Workspace-scoped plugin writes are not mapped");
@@ -138,13 +138,13 @@ export async function handlePluginRequest(
     const detail = await readPluginDetail(context, refreshed);
     if (detail.summary.enabled !== p.enabled)
       failure(method, "Codex has not confirmed the requested enablement");
-    return s.zcodePluginsSetEnabledResultSchema.parse({
+    return s.codezPluginsSetEnabledResultSchema.parse({
       plugin: pluginInfo(refreshed, detail),
       enabled: p.enabled,
     });
   }
   if (method === "plugins/install") {
-    const p = input(s.zcodePluginsInstallParamsSchema, params, method);
+    const p = input(s.codezPluginsInstallParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
     if (p.scope === "workspace" || p.dryRun)
       unsupported(method, "Codex plugin/install has no workspace scope or dry-run contract");
@@ -161,7 +161,7 @@ export async function handlePluginRequest(
     const after = await readPluginCatalog(context, true);
     const refreshed = findPlugin(after.rows, method, { pluginId: row.plugin.id });
     if (!refreshed.plugin.installed) failure(method, "Codex has not confirmed installation");
-    return s.zcodePluginsInstallResultSchema.parse({
+    return s.codezPluginsInstallResultSchema.parse({
       installedPlugins: [installedPlugin(refreshed)],
       dependencyClosure: [refreshed.plugin.id],
       diagnostics: [
@@ -179,7 +179,7 @@ export async function handlePluginRequest(
     });
   }
   if (method === "plugins/uninstall") {
-    const p = input(s.zcodePluginsUninstallParamsSchema, params, method);
+    const p = input(s.codezPluginsUninstallParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
     if (p.removeCache !== undefined)
       unsupported(method, "Codex does not expose cache-retention control");
@@ -195,7 +195,7 @@ export async function handlePluginRequest(
       after.rows.some((entry) => entry.plugin.id === row.plugin.id && entry.plugin.installed)
     )
       failure(method, "Codex has not confirmed removal");
-    return s.zcodePluginsUninstallResultSchema.parse({
+    return s.codezPluginsUninstallResultSchema.parse({
       removedPlugin: installedPlugin(row),
       diagnostics: [],
     });
@@ -212,7 +212,7 @@ async function handleMarketplaceRequest(
 ) {
   let selected: string | undefined;
   if (method === "plugins/marketplace/add") {
-    const p = input(s.zcodePluginsMarketplaceAddParamsSchema, params, method);
+    const p = input(s.codezPluginsMarketplaceAddParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
     if (p.dryRun) unsupported(method, "Codex marketplace/add does not support dry-run");
     const added = z
@@ -220,7 +220,7 @@ async function handleMarketplaceRequest(
       .parse(await context.rpc.request("marketplace/add", { source: p.source }));
     selected = added.marketplaceName;
   } else if (method === "plugins/marketplace/remove") {
-    const p = input(s.zcodePluginsMarketplaceRemoveParamsSchema, params, method);
+    const p = input(s.codezPluginsMarketplaceRemoveParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
     const removed = z
       .object({ marketplaceName: z.string(), installedRoot: z.string().nullable() })
@@ -228,7 +228,7 @@ async function handleMarketplaceRequest(
     if (removed.marketplaceName !== p.marketplace)
       failure(method, "Codex confirmed removal of a different marketplace");
   } else if (method === "plugins/marketplace/update") {
-    const p = input(s.zcodePluginsMarketplaceUpdateParamsSchema, params, method);
+    const p = input(s.codezPluginsMarketplaceUpdateParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
     const result = z
       .object({
@@ -258,7 +258,7 @@ async function handleMarketplaceRequest(
   const marketplace = marketplaces.find((market) => market.name === selected);
   if (selected && !marketplace)
     failure(method, "Mutated marketplace is not visible in Codex catalog");
-  return s.zcodePluginsMarketplaceMutationResultSchema.parse({
+  return s.codezPluginsMarketplaceMutationResultSchema.parse({
     marketplace,
     marketplaces,
     diagnostics: catalog.diagnostics,

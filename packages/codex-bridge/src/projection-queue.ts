@@ -1,4 +1,4 @@
-import { queueStateSchema, type QueueItem, type QueueState } from "@zcode/shared/zcode-protocol-v4";
+import { queueStateSchema, type QueueItem, type QueueState } from "@codez/shared/codez-protocol-v4";
 import {
   codexQueueListSchema,
   codexQueuedSubmissionSchema,
@@ -26,7 +26,7 @@ export function projectCodexQueue(queue: unknown): CodexQueueList {
  * admissionSeq=0. These are not measured facts and must not establish admission ordering.
  * queuePosition alone follows the native list. No shadow queue or ledger is retained here.
  * autoDrain controls stay unavailable: false is a disabled UI value,
- * not a claim that Codex implements the ZCode pause/auto-drain contract.
+ * not a claim that Codex implements the Codez pause/auto-drain contract.
  */
 export function projectQueue(
   queue: unknown,

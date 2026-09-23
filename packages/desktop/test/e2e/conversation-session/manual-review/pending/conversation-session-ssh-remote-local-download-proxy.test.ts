@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { ZCODE_VERSION } from "@zcode/shared";
+import { CODEZ_VERSION } from "@codez/shared";
 import { clearAppData, seedSettings } from "../../../helpers/desktop-app.js";
 import { prepareV4ConversationE2E } from "../../../helpers/v4-conversation.js";
 import {
@@ -27,13 +27,13 @@ const PROXY_NO_PROXY = [
   ".z.ai",
   ".codegeex.cn",
   ".z.ai",
-  ".zcode-ai.com",
+  ".codez-ai.com",
   "js.stripe.com",
 ].join(",");
 const REMOTE_ASSET_ENV_KEYS = [
-  "ZCODE_DEV_REMOTE_ASSET_USE_CDN",
-  "ZCODE_REMOTE_ASSET_CDN_BASE_URL",
-  "ZCODE_REMOTE_ASSET_CACHE_DIR",
+  "CODEZ_DEV_REMOTE_ASSET_USE_CDN",
+  "CODEZ_REMOTE_ASSET_CDN_BASE_URL",
+  "CODEZ_REMOTE_ASSET_CACHE_DIR",
 ] as const;
 
 describe(`${CASE_MARKER}: SSH 本地下载遵循应用代理`, () => {
@@ -70,11 +70,11 @@ describe(`${CASE_MARKER}: SSH 本地下载遵循应用代理`, () => {
       expectedHost: FAKE_CDN_HOST,
       mockCdnRoot: MOCK_CDN_ROOT,
     });
-    cacheDir = await mkdtemp(join(tmpdir(), "zcode-e2e-remote-assets-proxy-"));
+    cacheDir = await mkdtemp(join(tmpdir(), "codez-e2e-remote-assets-proxy-"));
 
-    process.env.ZCODE_DEV_REMOTE_ASSET_USE_CDN = "1";
-    process.env.ZCODE_REMOTE_ASSET_CDN_BASE_URL = `http://${FAKE_CDN_HOST}`;
-    process.env.ZCODE_REMOTE_ASSET_CACHE_DIR = cacheDir;
+    process.env.CODEZ_DEV_REMOTE_ASSET_USE_CDN = "1";
+    process.env.CODEZ_REMOTE_ASSET_CDN_BASE_URL = `http://${FAKE_CDN_HOST}`;
+    process.env.CODEZ_REMOTE_ASSET_CACHE_DIR = cacheDir;
     await seedSettings({
       httpProxy: proxy.proxyUrl,
       httpProxyNoProxy: PROXY_NO_PROXY,
@@ -97,8 +97,8 @@ describe(`${CASE_MARKER}: SSH 本地下载遵循应用代理`, () => {
     expect(
       proxy.requestPaths.some(
         (path) =>
-          path.endsWith(`/${ZCODE_VERSION}/manifest-linux-x64.json`) ||
-          path.endsWith(`/${ZCODE_VERSION}/manifest-linux-arm64.json`),
+          path.endsWith(`/${CODEZ_VERSION}/manifest-linux-x64.json`) ||
+          path.endsWith(`/${CODEZ_VERSION}/manifest-linux-arm64.json`),
       ),
     ).toBe(true);
     expect(await readHostProcesses()).toEqual(initialHosts);

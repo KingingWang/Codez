@@ -9,9 +9,9 @@
 迁移切换只通过 CI 环境变量完成：
 
 ```bash
-CDN_DOMAIN=cdn-zcode.z.ai,cdn.zcode-ai.com,cdn.codegeex.cn
+CDN_DOMAIN=cdn-zcode.z.ai,cdn.codez-ai.com,cdn.codegeex.cn
 OSS_BUCKET=new-bucket,old-bucket-a,old-bucket-b
-OSS_PATH_PREFIX=zcode/electron/releases
+OSS_PATH_PREFIX=codez/electron/releases
 OSS_CONFIG_FILE=/etc/ossutil/new,/etc/ossutil/old-a,/etc/ossutil/old-b
 ```
 
@@ -32,7 +32,7 @@ OSS_CONFIG_FILE=/etc/ossutil/new,/etc/ossutil/old-a,/etc/ossutil/old-b
 配置三组目标：
 
 ```bash
-CDN_DOMAIN=cdn-zcode.z.ai,cdn.zcode-ai.com,cdn.codegeex.cn
+CDN_DOMAIN=cdn-zcode.z.ai,cdn.codez-ai.com,cdn.codegeex.cn
 OSS_BUCKET=new-bucket,old-bucket-a,old-bucket-b
 OSS_CONFIG_FILE=/etc/ossutil/new,/etc/ossutil/old-a,/etc/ossutil/old-b
 ```
@@ -57,7 +57,7 @@ OSS_CONFIG_FILE=/etc/ossutil/new
 
 ```text
 oss://<bucket>/<pathPrefix>/<version>/
-  ZCode-...
+  Codez-...
   latest.yml
   manifest-*.json
 

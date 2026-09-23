@@ -21,7 +21,7 @@
 
 | Field | Value |
 | --- | --- |
-| Developer intent | 完整重启 ZCode 后恢复用户上次调整的主窗口尺寸 |
+| Developer intent | 完整重启 Codez 后恢复用户上次调整的主窗口尺寸 |
 | Capability | Desktop main window size persistence |
 | Change layer | persistence / recovery |
 | Operating mode | planning |
@@ -30,7 +30,7 @@
 
 | User scenario | UI entry | Display owner | Commit action | Authority/persistence | Mode boundary |
 | --- | --- | --- | --- | --- | --- |
-| 调整后重启应用 | Electron 主窗口边缘/系统最大化控件 | Electron `BrowserWindow` | resize/maximize/unmaximize 后更新设置 | `~/.zcode/v2/setting.json` 的 app-global 字段 | 仅 packaged/dev Desktop main；Web/手机不参与 |
+| 调整后重启应用 | Electron 主窗口边缘/系统最大化控件 | Electron `BrowserWindow` | resize/maximize/unmaximize 后更新设置 | `~/.codez/v2/setting.json` 的 app-global 字段 | 仅 packaged/dev Desktop main；Web/手机不参与 |
 
 ### Must-preserve invariants
 

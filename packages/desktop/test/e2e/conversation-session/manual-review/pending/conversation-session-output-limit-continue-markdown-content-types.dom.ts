@@ -1,4 +1,4 @@
-import { TID_V4_TIMELINE } from "@zcode/shared";
+import { TID_V4_TIMELINE } from "@codez/shared";
 import {
   AUTOLINK,
   CITATION_TARGET_PATH,
@@ -154,7 +154,7 @@ export function readMarkdownCaseSnapshot(userMarker: string): Promise<MarkdownCo
           ) ?? [],
         ).map((element) => cleanText(element).replace(/\s+/gu, " ")),
         paragraphs: Array.from(assistantRow?.querySelectorAll("p") ?? []).map(cleanText),
-        rawCitationVisible: cleanText(assistantRow).includes("zcode-file-citation"),
+        rawCitationVisible: cleanText(assistantRow).includes("codez-file-citation"),
         strongTexts: Array.from(assistantRow?.querySelectorAll("strong") ?? []).map(cleanText),
         tableRows: Array.from(assistantRow?.querySelectorAll("table tr") ?? []).map((row) =>
           Array.from(row.querySelectorAll("th, td")).map(cleanText),
@@ -197,7 +197,7 @@ export function isMarkdownCaseReady(
   if (id === "mermaid") {
     return snapshot.mermaidDiagramCount === 1;
   }
-  if (id === "zcode-file-citation" || id === "workspace-file-link") {
+  if (id === "codez-file-citation" || id === "workspace-file-link") {
     return snapshot.links.some((link) => link.tagName === "BUTTON");
   }
   return true;
@@ -326,7 +326,7 @@ export function assertMarkdownCase(id: MarkdownContinueCaseId, snapshot: Markdow
       expect(snapshot.mermaidDiagramCount).toBe(1);
       expect(snapshot.assistantRows[0]?.text).not.toContain("```mermaid");
       return;
-    case "zcode-file-citation":
+    case "codez-file-citation":
       expect(snapshot.rawCitationVisible).toBe(false);
       expect(snapshot.links).toContainEqual({
         tagName: "BUTTON",

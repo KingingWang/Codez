@@ -20,8 +20,8 @@ import type {
   V4ConversationResyncResult,
   V4ConversationSubscribeResult,
   WorkflowRunState,
-} from "@zcode/shared/zcode-protocol-v4";
-import { PROTOCOL_V4_LIMITS, conversationTopicFrameSchema } from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
+import { PROTOCOL_V4_LIMITS, conversationTopicFrameSchema } from "@codez/shared/codez-protocol-v4";
 import {
   E2E_SESSION_DATA_LAYER_KEEP_WARM_MS,
   resolveSessionDataLayerKeepWarmMs,
@@ -39,7 +39,7 @@ import type { ConversationTransport } from "@/v4/transport.js";
 import {
   SUBSCRIPTION_CONTENT_REJECTED,
   WIRE_FAULT_INVALID_PAYLOAD,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { logger } from "@/logger.js";
 
 // ── 测试装置 ──

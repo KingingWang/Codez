@@ -154,7 +154,7 @@ conversation fact、协议字段或持久化状态：
 - 缩略图入口、右上角关闭按钮和 Escape 均需可访问；关闭后焦点返回触发缩略图。
 - 多图结果按所点击图片分别打开，遮罩只展示当前图片，图片数据与原 `node_repl_images` fact 保持一致。
 - Windows 桌面端的关闭按钮必须位于原生 `titleBarOverlay` 下方，并向视口内侧留出额外间距；
-  位置优先使用 Window Controls Overlay 的真实 `titlebar-area-height`，不因 DPI 或 ZCode 页面缩放
+  位置优先使用 Window Controls Overlay 的真实 `titlebar-area-height`，不因 DPI 或 Codez 页面缩放
   回到原生关闭按钮命中区。Windows 大图的最大高度必须同步扣除上下两侧标题栏安全高度，
   使图片顶部与关闭按钮底部至少间隔 8px；不能只移动按钮而保留原图片高度。macOS、Linux、
   普通 Web 和手机 `/remote` 不继承该 Windows 安全区。

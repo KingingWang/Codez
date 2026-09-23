@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import {
   backgroundResultOriginMetaSchema,
   workflowNotificationMetaSchema,
-} from "../src/zcode-protocol-v4/rows.js";
+} from "../src/codez-protocol-v4/rows.js";
 
 const terminal = (overrides: Record<string, unknown> = {}) => ({
   kind: "terminal" as const,

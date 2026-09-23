@@ -3,7 +3,7 @@ import {
   conversationTelemetryFactSchema,
   commandAckSchema,
   parseCommandEnvelope,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 const base = {
   version: 1 as const,

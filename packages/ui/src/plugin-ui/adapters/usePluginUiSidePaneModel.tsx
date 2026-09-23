@@ -1,4 +1,4 @@
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { createPluginUiInteractions } from "@/plugin-ui/adapters/pluginUiInteractions.js";
 import { usePluginUiResourceDeltaFeed } from "@/plugin-ui/adapters/pluginUiResourceDeltaFeed.js";
 import { usePluginUiHost } from "@/plugin-ui/adapters/usePluginUiHost.js";
@@ -24,14 +24,14 @@ import {
   reducePluginUiSurfaceFeed,
 } from "@/plugin-ui/domain/pluginUiToolFeed.js";
 import { readPluginUiPresentation } from "@/plugin-ui/domain/readPluginUiPresentation.js";
-import { useZCodeStoreWithDefault } from "@/store/StoreProvider.js";
+import { useCodezStoreWithDefault } from "@/store/StoreProvider.js";
 import { resolveTheme } from "@/useTheme.js";
 import type { PaneWorkspaceScope } from "@/v4/paneLayoutStore.js";
 import type { SessionLease } from "@/v4/sessionDataLayer.js";
 import { toolCallRowToLegacyNode } from "@/v4/toolCallRowAdapter.js";
 import { useConversationProjection } from "@/v4/useConversationProjection.js";
 import { V4PaneConversationProvider, useV4Conversation } from "@/v4/V4ConversationContext.js";
-import type { McpAppsDisplayMode, PluginUiScopeRef } from "@zcode/shared/mcp-apps";
+import type { McpAppsDisplayMode, PluginUiScopeRef } from "@codez/shared/mcp-apps";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { resolvePluginUiLogicalScope } from "../domain/pluginUiLogicalScope.js";
 
@@ -49,10 +49,10 @@ export function usePluginUiSidePaneModel({
   onOpenBrowserUrl?: (url: string) => void;
   onCloseTab?: (tabId: string) => void;
 }): PluginUiSidePaneViewProps {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const { layer } = useV4Conversation();
   const [lease, setLease] = useState<SessionLease | null>(null);
-  const theme = useZCodeStoreWithDefault((state) => state.theme, "system");
+  const theme = useCodezStoreWithDefault((state) => state.theme, "system");
 
   useEffect(() => {
     const nextLease = layer.acquire(tab.parentSessionId);
@@ -184,7 +184,7 @@ export function usePluginUiSidePaneModel({
     toolResult,
     toolCallId,
     toolCancelled,
-    hostVersion: "zcode",
+    hostVersion: "codez",
     availableDisplayModes: canReturnInline ? INLINE_AND_FULLSCREEN : FULLSCREEN_ONLY,
     onDisplayModeRequest: handleDisplayModeRequest,
     onOpenExternal: onOpenBrowserUrl,

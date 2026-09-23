@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   CRON_DEFAULT_GROUP_ID,
   OFF_PEAK_DEFAULT_GROUP_ID,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { getTaskGroupDisplayTitle } from "@/workspace-grouped-tasks/group-title.js";
 import enUS from "@/i18n/locales/en-US.js";
 import zhCN from "@/i18n/locales/zh-CN.js";
@@ -17,7 +17,7 @@ function readSource(relativePath: string): string {
 
 describe("off-peak 系统分组 id 与标题", () => {
   it("shared 常量与 cron 并列且互不相同", () => {
-    expect(OFF_PEAK_DEFAULT_GROUP_ID).toBe("zcode-default-group-off-peak");
+    expect(OFF_PEAK_DEFAULT_GROUP_ID).toBe("codez-default-group-off-peak");
     expect(OFF_PEAK_DEFAULT_GROUP_ID).not.toBe(CRON_DEFAULT_GROUP_ID);
   });
 

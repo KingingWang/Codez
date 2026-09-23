@@ -1,14 +1,14 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ZCodeToolExecResource } from "@zcode/shared";
+import type { CodezToolExecResource } from "@codez/shared";
 import { expect, it } from "vitest";
-import { createZCodeAgentService } from "#src/zcode-agent/zcodeAgentService.js";
-import { createZCodeAgentConnectionScope } from "#src/zcode-agent/zcodeAgentConnectionScope.js";
+import { createCodezAgentService } from "#src/codez-agent/codezAgentService.js";
+import { createCodezAgentConnectionScope } from "#src/codez-agent/codezAgentConnectionScope.js";
 
 it("真实 stdio 严格解析 Bash 完成事实，只允许 trusted Host 订阅", async () => {
   const root = await mkdtemp(join(tmpdir(), "tool-resource-"));
-  const sample: ZCodeToolExecResource = {
+  const sample: CodezToolExecResource = {
     platform: "linux",
     toolName: "bash",
     durationMs: 40000,
@@ -35,24 +35,24 @@ readline.createInterface({ input: process.stdin }).on('line', (line) => {
   send({ id: request.id, result: { sessions: [] } });
 });`,
   );
-  const service = createZCodeAgentService({
+  const service = createCodezAgentService({
     commandResolver: () => ({ command: process.execPath, args: [script] }),
   });
-  const relay = createZCodeAgentConnectionScope(service, {
+  const relay = createCodezAgentConnectionScope(service, {
     connectionId: "relay",
     clientMode: "desktop-continuous",
     role: "trusted-host-relay",
   });
-  const desktop = createZCodeAgentConnectionScope(relay.service, {
+  const desktop = createCodezAgentConnectionScope(relay.service, {
     connectionId: "desktop",
     clientMode: "desktop-continuous",
   });
-  const mobile = createZCodeAgentConnectionScope(relay.service, {
+  const mobile = createCodezAgentConnectionScope(relay.service, {
     connectionId: "mobile",
     clientMode: "web-remote-replayable",
   });
-  const seen: ZCodeToolExecResource[] = [];
-  const forbidden: ZCodeToolExecResource[] = [];
+  const seen: CodezToolExecResource[] = [];
+  const forbidden: CodezToolExecResource[] = [];
   try {
     relay.service.onDynamicToolExecResource()((event) => seen.push(event));
     desktop.service.onDynamicToolExecResource()((event) => forbidden.push(event));

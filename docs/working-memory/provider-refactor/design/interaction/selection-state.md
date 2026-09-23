@@ -159,14 +159,14 @@ Provider、Endpoint、凭据或模型能力，因此与 Provider Config 使用�
 }
 ```
 
-本地 Node Workspace 的缺省物理位置是 `.zcode/v2/model-selection.json`。Host、Prompt CLI 与 TUI 可以共享
+本地 Node Workspace 的缺省物理位置是 `.codez/v2/model-selection.json`。Host、Prompt CLI 与 TUI 可以共享
 这份 Workspace 偏好；App Recent 仍是 App 专属状态，不写入这里。
 
 旧 CLI 用户文件中的 `model` 字段只在新文档不存在时单向迁入 `configuredDefault`。旧文件中的 Provider 定义由 Personal Provider Config 迁移处理，两者不会重新合成一份旧 Runtime Model Config。
 
 目标 Host 在生成同一份 `ModelSelectionView` 时解析 Configured Default 与 Fallback，并返回
 `preferredSelection`。仍可选择的 Configured Default 优先；Provider 或模型已经消失时进入 Fallback Policy。
-当前 Fallback Policy 取 Model Selection Facade 有序 View 中第一个用户可见模型，后续可以由 ZCode Built-in
+当前 Fallback Policy 取 Model Selection Facade 有序 View 中第一个用户可见模型，后续可以由 Codez Built-in
 推荐策略替换。hidden Provider 不参与 Fallback。Fallback 只初始化本次 Composer/Session，不自动覆写持久
 Configured Default。
 

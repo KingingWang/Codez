@@ -81,7 +81,7 @@ describe("describeWorkflowSubagentModel", () => {
   });
 
   it("清单把 provider 名回退成了 provider id 时，当作没查到", () => {
-    // zcodeSessionSettingsToConfigOptions 在没有 providerLabel 时会把 id 当名字塞回来。
+    // codezSessionSettingsToConfigOptions 在没有 providerLabel 时会把 id 当名字塞回来。
     const label = describeWorkflowSubagentModel(`${TEAM_PLAN_PROVIDER}/GLM-5.3-Flash`, {
       formatMessage: en,
       providerName: (providerId) => providerId,

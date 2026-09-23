@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { compileModelOptionMaps } from "@zcode/model-option-map";
+import { compileModelOptionMaps } from "@codez/model-option-map";
 import { fileURLToPath } from "node:url";
 import {
   ApiKeyAccessConfig,
@@ -9,14 +9,14 @@ import {
   ProviderConfigMap,
   ProviderConfigResolver,
   ZhipuAccountAccessConfig,
-} from "@zcode/provider";
+} from "@codez/provider";
 import { describe, expect, it } from "vitest";
-import { NodeZCodeBuiltinProviderConfigSource } from "../src/index.js";
+import { NodeCodezBuiltinProviderConfigSource } from "../src/index.js";
 
 // 发布验证必须指向最终上传的那份文件，而不是默认悄悄检查仓库源文件。
-const zcodeBuiltinProviderConfigFilePath =
-  process.env.ZCODE_BUILTIN_RELEASE_TEST_FILE?.trim() ||
-  fileURLToPath(new URL("../../../config/provider/zcode-builtin.json", import.meta.url));
+const codezBuiltinProviderConfigFilePath =
+  process.env.CODEZ_BUILTIN_RELEASE_TEST_FILE?.trim() ||
+  fileURLToPath(new URL("../../../config/provider/codez-builtin.json", import.meta.url));
 
 function reasoningPatch(map: string, reasoningLevel: string) {
   return compileModelOptionMaps({ reasoningLevel: { map }, maxOutputTokens: { map: "{}" } }).apply(
@@ -25,12 +25,12 @@ function reasoningPatch(map: string, reasoningLevel: string) {
   );
 }
 
-describe("ZCode Built-in Provider Config 完整性", () => {
+describe("Codez Built-in Provider Config 完整性", () => {
   it.each(["anthropic-messages", "openai-chat-completions", "openai-responses"] as const)(
     "未知模型在 %s 下拥有完整两档兜底并可进入 Registry",
     async (apiType) => {
-      const source = new NodeZCodeBuiltinProviderConfigSource({
-        bundledFilePath: zcodeBuiltinProviderConfigFilePath,
+      const source = new NodeCodezBuiltinProviderConfigSource({
+        bundledFilePath: codezBuiltinProviderConfigFilePath,
         watch: false,
       });
       try {
@@ -46,10 +46,10 @@ describe("ZCode Built-in Provider Config 完整性", () => {
         expect(model.optionSpecs?.reasoningLevel?.values).toEqual(["disabled", "enabled"]);
         expect(model.properties?.inputFormat.supportsImage).toBe(false);
         const result = new ProviderConfigResolver().resolve({
-          zcodeBuiltinProviders: snapshot.providers,
-          zcodeBuiltinProviderTemplates: snapshot.providerTemplates,
+          codezBuiltinProviders: snapshot.providers,
+          codezBuiltinProviderTemplates: snapshot.providerTemplates,
           accountProviders: ProviderConfigMap.empty(),
-          zcodeBuiltinModelRules: snapshot.models,
+          codezBuiltinModelRules: snapshot.models,
           personalModels: ModelConfigRules.empty(),
           personalProviders: new ProviderConfigMap([
             [
@@ -77,14 +77,14 @@ describe("ZCode Built-in Provider Config 完整性", () => {
     },
   );
   it("GLM-5.3-Flash 的媒体输入能力及 GLM-5.3 的套餐桥接保持明确", async () => {
-    const source = new NodeZCodeBuiltinProviderConfigSource({
-      bundledFilePath: zcodeBuiltinProviderConfigFilePath,
+    const source = new NodeCodezBuiltinProviderConfigSource({
+      bundledFilePath: codezBuiltinProviderConfigFilePath,
       watch: false,
     });
 
     try {
       const snapshot = await source.read();
-      const rawRelease = JSON.parse(await readFile(zcodeBuiltinProviderConfigFilePath, "utf8")) as {
+      const rawRelease = JSON.parse(await readFile(codezBuiltinProviderConfigFilePath, "utf8")) as {
         revision: number;
         config: { modelConfigRules: Record<string, unknown> };
       };
@@ -97,7 +97,7 @@ describe("ZCode Built-in Provider Config 完整性", () => {
       });
       expect(rawRelease.config.modelConfigRules).not.toHaveProperty("matchRules");
       expect(snapshot.revision).toMatch(
-        new RegExp(`^zcode-builtin:${rawRelease.revision}:[a-f0-9]{64}$`, "u"),
+        new RegExp(`^codez-builtin:${rawRelease.revision}:[a-f0-9]{64}$`, "u"),
       );
       const apiTemplateIds = [
         "zai-api",
@@ -234,8 +234,8 @@ describe("ZCode Built-in Provider Config 完整性", () => {
   });
 
   it("按当前官方证据声明各厂商主推模型和关键静态属性", async () => {
-    const source = new NodeZCodeBuiltinProviderConfigSource({
-      bundledFilePath: zcodeBuiltinProviderConfigFilePath,
+    const source = new NodeCodezBuiltinProviderConfigSource({
+      bundledFilePath: codezBuiltinProviderConfigFilePath,
       watch: false,
     });
 
@@ -375,8 +375,8 @@ describe("ZCode Built-in Provider Config 完整性", () => {
   });
 
   it("聚合供应商按维护清单提供独立模板，不复用上游 Provider 配置", async () => {
-    const source = new NodeZCodeBuiltinProviderConfigSource({
-      bundledFilePath: zcodeBuiltinProviderConfigFilePath,
+    const source = new NodeCodezBuiltinProviderConfigSource({
+      bundledFilePath: codezBuiltinProviderConfigFilePath,
       watch: false,
     });
     try {
@@ -400,8 +400,8 @@ describe("ZCode Built-in Provider Config 完整性", () => {
   });
 
   it("聚合供应商同型号命中模型规则和 API Map，保留完整 ID 且每家至少启用一个代表型号", async () => {
-    const source = new NodeZCodeBuiltinProviderConfigSource({
-      bundledFilePath: zcodeBuiltinProviderConfigFilePath,
+    const source = new NodeCodezBuiltinProviderConfigSource({
+      bundledFilePath: codezBuiltinProviderConfigFilePath,
       watch: false,
     });
     try {
@@ -468,8 +468,8 @@ describe("ZCode Built-in Provider Config 完整性", () => {
   });
 
   it("每个 Provider 的默认 enabled 模型形成成员前缀，历史或 alias 型号默认关闭", async () => {
-    const source = new NodeZCodeBuiltinProviderConfigSource({
-      bundledFilePath: zcodeBuiltinProviderConfigFilePath,
+    const source = new NodeCodezBuiltinProviderConfigSource({
+      bundledFilePath: codezBuiltinProviderConfigFilePath,
       watch: false,
     });
 
@@ -524,8 +524,8 @@ describe("ZCode Built-in Provider Config 完整性", () => {
   });
 
   it("按产品分组声明 Zhipu 系统 Provider 与外部主流 Provider", async () => {
-    const source = new NodeZCodeBuiltinProviderConfigSource({
-      bundledFilePath: zcodeBuiltinProviderConfigFilePath,
+    const source = new NodeCodezBuiltinProviderConfigSource({
+      bundledFilePath: codezBuiltinProviderConfigFilePath,
       watch: false,
     });
 
@@ -653,8 +653,8 @@ describe("ZCode Built-in Provider Config 完整性", () => {
   });
 
   it("按模型家族连续排列 Rule，且不保留语义等价的重复 matcher", async () => {
-    const source = new NodeZCodeBuiltinProviderConfigSource({
-      bundledFilePath: zcodeBuiltinProviderConfigFilePath,
+    const source = new NodeCodezBuiltinProviderConfigSource({
+      bundledFilePath: codezBuiltinProviderConfigFilePath,
       watch: false,
     });
 
@@ -672,7 +672,7 @@ describe("ZCode Built-in Provider Config 完整性", () => {
 
       // 分组后“模型家族连续”只约束 Model Rule 本组；把 Model/API/Site 三组拼起来会
       // 人为制造重复家族，无法再验证原本想检查的书写顺序。
-      const rawRelease = JSON.parse(await readFile(zcodeBuiltinProviderConfigFilePath, "utf8")) as {
+      const rawRelease = JSON.parse(await readFile(codezBuiltinProviderConfigFilePath, "utf8")) as {
         config: { modelConfigRules: { modelRules: readonly { modelMatch: string }[] } };
       };
       const modelRules = rawRelease.config.modelConfigRules.modelRules;
@@ -697,8 +697,8 @@ describe("ZCode Built-in Provider Config 完整性", () => {
   });
 
   it("Reasoning 公开档位按语义强度从低到高排列", async () => {
-    const source = new NodeZCodeBuiltinProviderConfigSource({
-      bundledFilePath: zcodeBuiltinProviderConfigFilePath,
+    const source = new NodeCodezBuiltinProviderConfigSource({
+      bundledFilePath: codezBuiltinProviderConfigFilePath,
       watch: false,
     });
 
@@ -736,8 +736,8 @@ describe("ZCode Built-in Provider Config 完整性", () => {
   });
 
   it("解析 OpenAI Responses 与 Anthropic Messages 的模型事实和 reasoning 映射", async () => {
-    const source = new NodeZCodeBuiltinProviderConfigSource({
-      bundledFilePath: zcodeBuiltinProviderConfigFilePath,
+    const source = new NodeCodezBuiltinProviderConfigSource({
+      bundledFilePath: codezBuiltinProviderConfigFilePath,
       watch: false,
     });
 
@@ -905,8 +905,8 @@ describe("ZCode Built-in Provider Config 完整性", () => {
   });
 
   it("每个 Built-in Provider 与模型成员都完整，启用成员在补齐访问材料后进入正式 Registry", async () => {
-    const source = new NodeZCodeBuiltinProviderConfigSource({
-      bundledFilePath: zcodeBuiltinProviderConfigFilePath,
+    const source = new NodeCodezBuiltinProviderConfigSource({
+      bundledFilePath: codezBuiltinProviderConfigFilePath,
       watch: false,
     });
 
@@ -983,11 +983,11 @@ describe("ZCode Built-in Provider Config 完整性", () => {
       }
 
       const resolution = new ProviderConfigResolver().resolve({
-        zcodeBuiltinProviders: snapshot.providers,
-        zcodeBuiltinProviderTemplates: snapshot.providerTemplates,
+        codezBuiltinProviders: snapshot.providers,
+        codezBuiltinProviderTemplates: snapshot.providerTemplates,
         accountProviders: new ProviderConfigMap(accountProviders),
         personalProviders: new ProviderConfigMap(personalProviders),
-        zcodeBuiltinModelRules: snapshot.models,
+        codezBuiltinModelRules: snapshot.models,
         personalModels: ModelConfigRules.empty(),
       });
 
@@ -1061,7 +1061,7 @@ describe("ZCode Built-in Provider Config 完整性", () => {
 
   it("正式 Built-in JSON 不携带旧模型能力字段", async () => {
     const document = JSON.parse(
-      await readFile(zcodeBuiltinProviderConfigFilePath, "utf8"),
+      await readFile(codezBuiltinProviderConfigFilePath, "utf8"),
     ) as unknown;
     const keys = collectObjectKeys(document);
 

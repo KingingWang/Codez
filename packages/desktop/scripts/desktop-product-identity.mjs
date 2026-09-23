@@ -1,42 +1,42 @@
 /**
- * 构建期开关：为真时安装包使用 Preview 身份，而后端环境仍由 `ZCODE_ENV` 单独决定。
- * 典型用法是 `ZCODE_ENV=production ZCODE_PREVIEW_IDENTITY=1`，得到一个连接生产后端、
- * 可与正式版并排安装的 `ZCode Preview`。
+ * 构建期开关：为真时安装包使用 Preview 身份，而后端环境仍由 `CODEZ_ENV` 单独决定。
+ * 典型用法是 `CODEZ_ENV=production CODEZ_PREVIEW_IDENTITY=1`，得到一个连接生产后端、
+ * 可与正式版并排安装的 `Codez Preview`。
  */
-export const ZCODE_PREVIEW_IDENTITY_ENV = "ZCODE_PREVIEW_IDENTITY";
+export const CODEZ_PREVIEW_IDENTITY_ENV = "CODEZ_PREVIEW_IDENTITY";
 
 export function resolveDesktopRuntime(env = process.env) {
-  const value = env.ZCODE_DESKTOP_RUNTIME?.trim() || "codex";
+  const value = env.CODEZ_DESKTOP_RUNTIME?.trim() || "codex";
   if (value !== "codex" && value !== "legacy") {
-    throw new Error(`invalid ZCODE_DESKTOP_RUNTIME=${value}; expected codex or legacy`);
+    throw new Error(`invalid CODEZ_DESKTOP_RUNTIME=${value}; expected codex or legacy`);
   }
   return value;
 }
 
 const PRODUCTION_IDENTITY = Object.freeze({
   flavor: "production",
-  appId: "dev.zcode.app",
-  productName: "ZCode",
-  linuxExecutableName: "zcode",
-  linuxPackageName: "zcode",
+  appId: "dev.codez.app",
+  productName: "Codez",
+  linuxExecutableName: "codez",
+  linuxPackageName: "codez",
   cuaHelperInstallVariant: null,
 });
 
 const PREVIEW_IDENTITY = Object.freeze({
   flavor: "preview",
-  appId: "dev.zcode.app.preview",
-  productName: "ZCode Preview",
-  linuxExecutableName: "zcode-preview",
-  linuxPackageName: "zcode-preview",
+  appId: "dev.codez.app.preview",
+  productName: "Codez Preview",
+  linuxExecutableName: "codez-preview",
+  linuxPackageName: "codez-preview",
   cuaHelperInstallVariant: "preview",
 });
 
 const CODEX_IDENTITY = Object.freeze({
   flavor: "codex",
-  appId: "io.github.kingingwang.zcode.codex",
-  productName: "ZCode Codex",
-  linuxExecutableName: "zcode-codex",
-  linuxPackageName: "zcode-codex",
+  appId: "io.github.kingingwang.codez.codex",
+  productName: "Codez Codex",
+  linuxExecutableName: "codez-codex",
+  linuxPackageName: "codez-codex",
   cuaHelperInstallVariant: "codex",
 });
 
@@ -46,17 +46,17 @@ export const desktopProductIdentities = Object.freeze({
   codex: CODEX_IDENTITY,
 });
 
-function normalizeDesktopZCodeEnv(env) {
-  return env.ZCODE_ENV?.trim().toLowerCase() === "production" ? "production" : "test";
+function normalizeDesktopCodezEnv(env) {
+  return env.CODEZ_ENV?.trim().toLowerCase() === "production" ? "production" : "test";
 }
 
 /**
  * 开关只有一种开启拼写 `1`（`0` / 空 = 关闭），与 CI workflow 规则和 release 门的
- * `$ZCODE_PREVIEW_IDENTITY == "1"` 精确比较保持同一套语义。其它拼写在构建期直接失败，
+ * `$CODEZ_PREVIEW_IDENTITY == "1"` 精确比较保持同一套语义。其它拼写在构建期直接失败，
  * 避免 `true` 之类在 YAML 路由层漏匹配、却在脚本层被当成开启，把 Preview 包打进生产验收目录。
  */
 export function isPreviewIdentityRequested(env = process.env) {
-  const value = env[ZCODE_PREVIEW_IDENTITY_ENV]?.trim() ?? "";
+  const value = env[CODEZ_PREVIEW_IDENTITY_ENV]?.trim() ?? "";
   if (value === "1") {
     return true;
   }
@@ -64,23 +64,23 @@ export function isPreviewIdentityRequested(env = process.env) {
     return false;
   }
   throw new Error(
-    `invalid ${ZCODE_PREVIEW_IDENTITY_ENV}=${env[ZCODE_PREVIEW_IDENTITY_ENV]}; expected 1 or 0`,
+    `invalid ${CODEZ_PREVIEW_IDENTITY_ENV}=${env[CODEZ_PREVIEW_IDENTITY_ENV]}; expected 1 or 0`,
   );
 }
 
 /**
- * 产品身份（flavor）与后端环境（`ZCODE_ENV`）是两个轴：
+ * 产品身份（flavor）与后端环境（`CODEZ_ENV`）是两个轴：
  * - 默认 Codex 身份；以下 Preview/production 规则只适用于显式 legacy runtime。
- * - `ZCODE_ENV=test` 一律是 Preview，测试后端不能顶着正式 `ZCode` 身份覆盖用户的正式安装；
- * - `ZCODE_ENV=production` 默认是正式身份，显式 `ZCODE_PREVIEW_IDENTITY=1` 时改用 Preview 身份。
- * 未知 `ZCODE_ENV` 继续按 test 处理，和共享层 normalizeZCodeEnv 的 fail-safe 默认值一致。
+ * - `CODEZ_ENV=test` 一律是 Preview，测试后端不能顶着正式 `Codez` 身份覆盖用户的正式安装；
+ * - `CODEZ_ENV=production` 默认是正式身份，显式 `CODEZ_PREVIEW_IDENTITY=1` 时改用 Preview 身份。
+ * 未知 `CODEZ_ENV` 继续按 test 处理，和共享层 normalizeCodezEnv 的 fail-safe 默认值一致。
  */
 export function resolveDesktopProductFlavor(env = process.env) {
   if (resolveDesktopRuntime(env) === "codex") return "codex";
   if (isPreviewIdentityRequested(env)) {
     return "preview";
   }
-  return normalizeDesktopZCodeEnv(env) === "production" ? "production" : "preview";
+  return normalizeDesktopCodezEnv(env) === "production" ? "production" : "preview";
 }
 
 export function resolveDesktopProductIdentity(env = process.env) {
@@ -89,10 +89,10 @@ export function resolveDesktopProductIdentity(env = process.env) {
 
 /**
  * 产物文件名后缀标记的是后端环境而不是身份：`_TEST` 只出现在测试后端的安装包上。
- * 生产后端的 Preview 包靠 productName（`ZCode Preview-<version>-...`）与正式包区分。
+ * 生产后端的 Preview 包靠 productName（`Codez Preview-<version>-...`）与正式包区分。
  */
 export function resolveDesktopArtifactSuffix(env = process.env) {
-  return normalizeDesktopZCodeEnv(env) === "test" ? "_TEST" : "";
+  return normalizeDesktopCodezEnv(env) === "test" ? "_TEST" : "";
 }
 
 /**
@@ -105,7 +105,7 @@ export function resolveDesktopArtifactSuffix(env = process.env) {
 export function resolveWindowsAppUserModelIdForFlavor(flavor, runtime = { isPackaged: true }) {
   if (runtime.isPackaged === false) {
     if (flavor === "codex") return CODEX_IDENTITY.appId;
-    return "cn.aminer.zcode";
+    return "cn.aminer.codez";
   }
   return desktopProductIdentities[
     flavor === "codex" ? "codex" : flavor === "preview" ? "preview" : "production"

@@ -11,7 +11,7 @@ import { cleanup } from "@testing-library/react";
 import { UsageStatsErrorNotice } from "../src/settings/usage-stats/UsageStatsErrorNotice.js";
 
 vi.mock("../src/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "en-US",
     intl: {
       formatMessage: ({ id }: { id: string }) => id,

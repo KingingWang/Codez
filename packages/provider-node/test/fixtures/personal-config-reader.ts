@@ -1,4 +1,4 @@
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 
 const filePath = process.argv[2];
 if (!filePath) throw new Error("missing personal config path");

@@ -8,8 +8,8 @@ import type {
   TimelineMarkerRow,
   TurnHeaderRow,
   UserInputRow,
-} from "@zcode/shared/zcode-protocol-v4";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+} from "@codez/shared/codez-protocol-v4";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ConversationTurnNavigator } from "@/v4/ConversationTurnNavigator.js";
 import { buildConversationTurnRenderUnits } from "@/v4/conversationTurnRenderUnits.js";
 import {
@@ -361,7 +361,7 @@ describe("conversation turn navigator helpers", () => {
   it("positions the compact rail at the owning timeline vertical center", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationTurnNavigator, {
           onJumpToQuery: () => {},
@@ -399,7 +399,7 @@ describe("conversation turn navigator helpers", () => {
   it("TN03：rail 只允许纵向滚动，山峰放大不产生横向滚动条", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationTurnNavigator, {
           onJumpToQuery: () => {},

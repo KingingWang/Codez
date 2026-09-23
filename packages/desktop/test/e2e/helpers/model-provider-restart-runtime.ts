@@ -1,4 +1,4 @@
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import {
   getE2EAppDataPaths,
   waitForDefaultWorkspaceReady,
@@ -8,7 +8,7 @@ import { reloadElectronSessionSafely } from "./e2e-electron-reload.js";
 import { flushElectronStorageData } from "./e2e-electron-storage.js";
 
 const paths = getE2EAppDataPaths();
-const MODEL_SELECTION_RECENT_KEY_PREFIX = "zcode-model-selection-recent-v1:";
+const MODEL_SELECTION_RECENT_KEY_PREFIX = "codez-model-selection-recent-v1:";
 let retainedRestartUserDataDir: string | null = null;
 
 export interface ModelProviderRestartOptions {
@@ -77,7 +77,7 @@ export async function restartIntoWorkspaceRestoringPreferences(
       Object.fromEntries(
         Object.entries(window.localStorage).filter(
           ([key]) =>
-            key.startsWith("zcode-last-agent-") ||
+            key.startsWith("codez-last-agent-") ||
             // Bug 根因：重启 helper 只恢复旧的 agent 键，遗漏当前唯一结构化
             // Model Selection recent 键，导致冷启动断言看到 storedConfig=null 并
             // 回退 preferredSelection。两类键必须在同一退出屏障后一起恢复。

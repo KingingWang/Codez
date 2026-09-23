@@ -1,7 +1,7 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   COLLAPSED_USER_INPUT_CONTENT_MAX_HEIGHT_PX,
   ConversationUserInputBody,
@@ -139,7 +139,7 @@ async function renderBody(root: Root, rowId: number, contentText: string) {
   await act(async () => {
     root.render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ConversationUserInputBody,

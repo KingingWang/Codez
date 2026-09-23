@@ -94,7 +94,7 @@
 
 ## 历史一致性
 
-- ZCode persisted tool call 现在会持久化 `status` 和 `raw`
+- Codez persisted tool call 现在会持久化 `status` 和 `raw`
 - 这样实时流里的 diff / image / 特殊 tool payload，刷新后仍然能复用同一套展示逻辑
 - Core 的 `ToolResultDisplayPayload` 是 UI 结构化事实边界：display 从原始 tool output 生成，通过实时 `ToolCallResult.result.display` 传输，并通过 completed tool part metadata 持久化。模型可见 content 的格式化、截断和 hook additional context 不得改变 display。
 - V4 product projection 必须把 CUA、file diff 等通用 display 保留在 `ToolCallRow.output.display`；`ToolCallRow.display` 只保留既有 `node_repl_images` 专用通道。UI adapter 优先读取 `output.display`，并兼容旧 Node REPL 顶层 display。

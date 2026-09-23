@@ -1,4 +1,4 @@
-import { TID_LOGIN_TRIGGER } from "@zcode/shared";
+import { TID_LOGIN_TRIGGER } from "@codez/shared";
 import { DEFAULT_WORKSPACE, waitForDefaultWorkspaceReady } from "./desktop-app.js";
 import { sel } from "./selectors.js";
 
@@ -51,7 +51,7 @@ async function selectCodingPlanRuntime(supplierKey: string) {
     (workspacePath, selectedSupplierKey) => {
       const store = (
         window as Window & {
-          __zcodeSessionStoreE2E?: {
+          __codezSessionStoreE2E?: {
             getState: () => {
               setModelSelectionResolution: (
                 workspacePath: string,
@@ -64,7 +64,7 @@ async function selectCodingPlanRuntime(supplierKey: string) {
             };
           };
         }
-      ).__zcodeSessionStoreE2E;
+      ).__codezSessionStoreE2E;
       store?.getState().setModelSelectionResolution(workspacePath, {
         selectedSupplierKey,
         isGhostSupplier: false,

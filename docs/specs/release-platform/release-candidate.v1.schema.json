@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://zcode.dev/schemas/release-candidate.v1.schema.json",
-  "title": "ZCode Release Candidate v1",
+  "$id": "https://codez.dev/schemas/release-candidate.v1.schema.json",
+  "title": "Codez Release Candidate v1",
   "type": "object",
   "additionalProperties": false,
   "required": [

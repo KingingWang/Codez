@@ -4,9 +4,9 @@
 
 **Goal:** 实现 subagent blocking interaction delegate 语义：child runtime 产生普通权限请求、AskUserQuestion、ExitPlanMode approval 等阻塞交互时，parent-visible interaction channel 负责展示和回包，payload 里保留 child/subagent 归因信息，避免 subagent 内 Bash/AskUserQuestion/ExitPlanMode 等等待用户输入的路径无弹窗卡死。
 
-**Architecture:** 在 ZCode core 层新增 subagent interaction broker delegate，把 child 侧经 `PermissionBrokerPort` 发出的阻塞交互请求对外 `sessionId` 改写为 parent session id，并附带 `origin.kind="subagent"` 元数据。bootstrap 按 toolName 继续分流到 `interaction/requestPermission` 或 `interaction/requestUserInput`，service/task/UI 继续按 parent task/session 路由 pending permission 和 elicitation；用户回包沿现有 protocol request promise 返回 child tool executor。普通权限请求与 ZCode 已拆出的 elicitation channel 统一走这条代理链路，并以 `origin` 元数据标明请求来自哪个 subagent。
+**Architecture:** 在 Codez core 层新增 subagent interaction broker delegate，把 child 侧经 `PermissionBrokerPort` 发出的阻塞交互请求对外 `sessionId` 改写为 parent session id，并附带 `origin.kind="subagent"` 元数据。bootstrap 按 toolName 继续分流到 `interaction/requestPermission` 或 `interaction/requestUserInput`，service/task/UI 继续按 parent task/session 路由 pending permission 和 elicitation；用户回包沿现有 protocol request promise 返回 child tool executor。普通权限请求与 Codez 已拆出的 elicitation channel 统一走这条代理链路，并以 `origin` 元数据标明请求来自哪个 subagent。
 
-**Tech Stack:** TypeScript, Zod schema, ZCode Protocol, core AgentRuntime, services task projection, React UI permission/elicitation surface, Vitest, WDIO manual-review E2E, pnpm.
+**Tech Stack:** TypeScript, Zod schema, Codez Protocol, core AgentRuntime, services task projection, React UI permission/elicitation surface, Vitest, WDIO manual-review E2E, pnpm.
 
 ## Global Constraints
 
@@ -17,7 +17,7 @@
 - `toolCallId` 默认保留 child tool call id；parent `Agent` tool call id 放到 `origin.parentToolCallId`，避免破坏 child tool result 回填。
 - permission policy 仍由 child runtime 自己判断；delegate 只代理 ask/user-input 路由，不把 child 权限判定替换成 parent 权限判定。
 - desktop continuous 与 web remote replayable 边界不改变：permission pending 和 elicitation pending 投影到 parent task snapshot/event，mobile `/remote` 仍通过 replayable 恢复 parent task 状态。
-- 修改 `packages/shared/src/zcode-protocol/index.ts` 时必须使用严格 schema，保持旧调用可兼容。
+- 修改 `packages/shared/src/codez-protocol/index.ts` 时必须使用严格 schema，保持旧调用可兼容。
 - 修改 `packages/ui` 前必须先读取根目录 `DESIGN.md`；UI 日志必须用 `packages/ui/src/logger.ts`，不能直接 `console.log`。
 - service/runtime 日志遵守项目日志规则：permission request/resolution 属低频生命周期事件可用 `info`，逐条 stream/tool delta 只能用 `debug`。
 - 修复代码里的 bug 原因注释使用中文，说明为什么 child blocking interaction 要代理到 parent session。
@@ -29,10 +29,10 @@
 
 - 事故票据：`ZCT-2073779059361222656`，用户反馈 subagent 在“变更前确认”模式下执行 Bash 会卡住。
 - 现象：child model 已产生 Bash tool call，permission flow 进入 ask，但 parent task 的 pending permission 数为 0，UI 没有弹窗；用户 stop 后 parent `Agent` tool 以取消失败收口。
-- 当前 core 已有类似设计样板：`apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts` 里的 `createSubagentProviderRuntimeHeadersPort()` 把 provider runtime headers 的对外 `sessionId` 改成 parent session id，并保留 child runtime 内部账本。
-- 当前 service pending key：`packages/services/src/zcode-agent/zcodeAgentService.ts` 用 `workspace + sessionId + requestId` 分别记录 pending permission 和 pending user input；因此只要 blocking request 出协议前改成 parent session id，现有 respond path 可继续工作。
-- 当前 task projection：`packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts` 将 permission request 转成 `ZCodePermissionRequest` stream event，并把 `raw` 保留为原始 request。
-- AskUserQuestion 和 ExitPlanMode approval 不是普通 permission popup：`apps/zcode-cli/packages/bootstrap/src/zcode-protocol/interaction-broker.ts` 会把它们 special-case 到 `interaction/requestUserInput`，service 再投影成 `elicitation_request`。它们同样会在 subagent child session 里卡住，必须和普通 permission 一起代理到 parent task。
+- 当前 core 已有类似设计样板：`apps/codez-cli/packages/core/src/runtime/methods/subagent.ts` 里的 `createSubagentProviderRuntimeHeadersPort()` 把 provider runtime headers 的对外 `sessionId` 改成 parent session id，并保留 child runtime 内部账本。
+- 当前 service pending key：`packages/services/src/codez-agent/codezAgentService.ts` 用 `workspace + sessionId + requestId` 分别记录 pending permission 和 pending user input；因此只要 blocking request 出协议前改成 parent session id，现有 respond path 可继续工作。
+- 当前 task projection：`packages/services/src/codez-agent/codezTaskServiceAdapter.ts` 将 permission request 转成 `CodezPermissionRequest` stream event，并把 `raw` 保留为原始 request。
+- AskUserQuestion 和 ExitPlanMode approval 不是普通 permission popup：`apps/codez-cli/packages/bootstrap/src/codez-protocol/interaction-broker.ts` 会把它们 special-case 到 `interaction/requestUserInput`，service 再投影成 `elicitation_request`。它们同样会在 subagent child session 里卡住，必须和普通 permission 一起代理到 parent task。
 - provider runtime headers（官方版本的安全校验经此链路）也是阻塞交互，但当前 `createSubagentProviderRuntimeHeadersPort()` 已经做 parent session wrapper。本计划只把它纳入回归验证，不重新设计这条链路。
 
 ---
@@ -65,12 +65,12 @@
 - Read: `docs/superpowers/plans/2026-07-06-subagent-permission-delegation.md`
 - Read: 历史差异审计文档（已删除）
 - Read: `docs/cli-background-subagent-wake-plan.md`
-- Read: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
-- Read: `apps/zcode-cli/packages/core/src/tool/executor/permission-flow.ts`
-- Read: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/interaction-broker.ts`
-- Read: `packages/services/src/zcode-agent/zcodeAgentService.ts`
-- Read: `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts`
-- Read: `packages/shared/src/zcode-protocol/index.ts`
+- Read: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
+- Read: `apps/codez-cli/packages/core/src/tool/executor/permission-flow.ts`
+- Read: `apps/codez-cli/packages/bootstrap/src/codez-protocol/interaction-broker.ts`
+- Read: `packages/services/src/codez-agent/codezAgentService.ts`
+- Read: `packages/services/src/codez-agent/codezTaskServiceAdapter.ts`
+- Read: `packages/shared/src/codez-protocol/index.ts`
 
 **Checklist:**
 
@@ -79,9 +79,9 @@
 - [ ] 确认 `resolveToolPermission()` 中普通 tool permission 走 `deps.permissionBroker.requestPermission(...)`。
 - [ ] 确认 `createProtocolInteractionBroker()` 会把 `AskUserQuestion` 分流到 `requestUserInput()`，把 `ExitPlanMode` 分流到 `requestExitPlanModeApproval()`，普通工具走 `requestPermission()`。
 - [ ] 确认 `requestPermission()`、`requestUserInput()`、`requestExitPlanModeApproval()` 当前都没有透传 `origin`。
-- [ ] 确认 `zcodeAgentService` 的 `pendingPermissions` key 使用 request params 的 `sessionId`。
-- [ ] 确认 `zcodeAgentService` 的 `pendingUserInputs` key 同样使用 request params 的 `sessionId`。
-- [ ] 确认 `zcodeTaskServiceAdapter.respondPermission()` 和 `respondElicitation()` 传给 agent service 的 `sessionId` 是 parent `taskId`。
+- [ ] 确认 `codezAgentService` 的 `pendingPermissions` key 使用 request params 的 `sessionId`。
+- [ ] 确认 `codezAgentService` 的 `pendingUserInputs` key 同样使用 request params 的 `sessionId`。
+- [ ] 确认 `codezTaskServiceAdapter.respondPermission()` 和 `respondElicitation()` 传给 agent service 的 `sessionId` 是 parent `taskId`。
 - [ ] 不做任何代码修改，直到 Phase 1 的 failing test 计划写清楚。
 
 **验收标准:**
@@ -96,20 +96,20 @@
 **Goal:** 在 contracts/shared protocol/task stream 类型中增加可选 `origin` 字段，表达 subagent 来源；所有旧 permission/user-input request 不传该字段时行为完全不变。
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/contracts/src/interfaces/permission.port.ts`
-- Modify: `packages/shared/src/zcode-protocol/index.ts`
-- Modify: `packages/shared/src/zcode-task-types.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/interfaces/permission.port.ts`
+- Modify: `packages/shared/src/codez-protocol/index.ts`
+- Modify: `packages/shared/src/codez-task-types.ts`
 - Test: schema/type 相关现有测试；必要时新增 shared schema test
 
 **Interfaces:**
 
 - Produces: `InteractionRequestOrigin`
-- Produces: `ZCodeInteractionRequestOrigin`
+- Produces: `CodezInteractionRequestOrigin`
 - Produces: `origin?: ...` on protocol permission request params, protocol user-input request params, permission requested event payload, pending permission snapshot, task stream permission request, task stream elicitation request
 
 ### Checklist
 
-- [ ] 在 `apps/zcode-cli/packages/contracts/src/interfaces/permission.port.ts` 增加 origin 类型。
+- [ ] 在 `apps/codez-cli/packages/contracts/src/interfaces/permission.port.ts` 增加 origin 类型。
 
 建议代码形状：
 
@@ -150,12 +150,12 @@ export interface PermissionBrokerRequest {
 }
 ```
 
-- [ ] 在 `packages/shared/src/zcode-protocol/index.ts` 增加 `zcodeInteractionRequestOriginSchema`。
+- [ ] 在 `packages/shared/src/codez-protocol/index.ts` 增加 `codezInteractionRequestOriginSchema`。
 
 建议 schema：
 
 ```ts
-export const zcodeInteractionRequestOriginSchema = z.discriminatedUnion("kind", [
+export const codezInteractionRequestOriginSchema = z.discriminatedUnion("kind", [
   z
     .object({
       kind: z.literal("subagent"),
@@ -170,32 +170,32 @@ export const zcodeInteractionRequestOriginSchema = z.discriminatedUnion("kind", 
     })
     .strict(),
 ]);
-export type ZCodeInteractionRequestOrigin = z.infer<
-  typeof zcodeInteractionRequestOriginSchema
+export type CodezInteractionRequestOrigin = z.infer<
+  typeof codezInteractionRequestOriginSchema
 >;
 ```
 
-- [ ] 给以下 schema 增加 `origin: zcodeInteractionRequestOriginSchema.optional()`：
-  - `zcodePendingPermissionSchema`
-  - `zcodePermissionRequestedEventPayloadSchema`
-  - `zcodePermissionRequestParamsSchema`
-  - `zcodeUserInputRequestParamsSchema`
+- [ ] 给以下 schema 增加 `origin: codezInteractionRequestOriginSchema.optional()`：
+  - `codezPendingPermissionSchema`
+  - `codezPermissionRequestedEventPayloadSchema`
+  - `codezPermissionRequestParamsSchema`
+  - `codezUserInputRequestParamsSchema`
 
-- [ ] 在 `packages/shared/src/zcode-task-types.ts` 从 `zcode-protocol/index.js` import `ZCodeInteractionRequestOrigin`，并给 `ZCodePermissionRequest` 和 `ZCodeElicitationRequest` 增加：
+- [ ] 在 `packages/shared/src/codez-task-types.ts` 从 `codez-protocol/index.js` import `CodezInteractionRequestOrigin`，并给 `CodezPermissionRequest` 和 `CodezElicitationRequest` 增加：
 
 ```ts
-origin?: ZCodeInteractionRequestOrigin;
+origin?: CodezInteractionRequestOrigin;
 ```
 
-- [ ] 检查所有构造 `ZCodePermissionRequest` 的地方，旧路径不需要强制补 origin。
-- [ ] 检查所有构造 `ZCodeElicitationRequest` 的地方，旧路径不需要强制补 origin。
+- [ ] 检查所有构造 `CodezPermissionRequest` 的地方，旧路径不需要强制补 origin。
+- [ ] 检查所有构造 `CodezElicitationRequest` 的地方，旧路径不需要强制补 origin。
 - [ ] 运行类型检查的快速子集。
 
 Commands:
 
 ```bash
 pnpm exec tsc -b packages/shared
-pnpm --dir apps/zcode-cli exec tsc -b packages/contracts
+pnpm --dir apps/codez-cli exec tsc -b packages/contracts
 ```
 
 Expected:
@@ -216,10 +216,10 @@ Expected:
 **Goal:** child runtime 仍用 child session 做事件和工具执行，但经 `PermissionBrokerPort` 发出的普通 permission、AskUserQuestion、ExitPlanMode approval 都向 parent permission broker 发起 parent-routed blocking request，并带上 child origin。
 
 **Files:**
-- Create: `apps/zcode-cli/packages/core/src/runtime/helpers/subagent-interaction-broker.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
-- Test: `apps/zcode-cli/packages/core/tests/subagent-interaction-broker.test.ts`
-- Optional Test: `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/helpers/subagent-interaction-broker.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
+- Test: `apps/codez-cli/packages/core/tests/subagent-interaction-broker.test.ts`
+- Optional Test: `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`
 
 **Interfaces:**
 
@@ -228,7 +228,7 @@ Expected:
 
 ### Checklist
 
-- [ ] 先新增 failing unit test：`apps/zcode-cli/packages/core/tests/subagent-interaction-broker.test.ts`。
+- [ ] 先新增 failing unit test：`apps/codez-cli/packages/core/tests/subagent-interaction-broker.test.ts`。
 
 测试应覆盖：
 
@@ -387,8 +387,8 @@ permissionBroker:
 Commands:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/subagent-interaction-broker.test.ts
-pnpm --dir apps/zcode-cli exec vitest run packages/core/tests/subagent-tool-events.test.ts
+pnpm --filter @codez/core exec vitest run tests/subagent-interaction-broker.test.ts
+pnpm --dir apps/codez-cli exec vitest run packages/core/tests/subagent-tool-events.test.ts
 ```
 
 Expected:
@@ -411,8 +411,8 @@ PASS packages/core/tests/subagent-tool-events.test.ts
 **Goal:** core delegate 生成的 `origin` 能穿过 bootstrap protocol broker 到 service；普通权限走 `interaction/requestPermission`，AskUserQuestion/ExitPlanMode 走 `interaction/requestUserInput`，三条路径都保留 parent-routed session 和 child origin。
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/interaction-broker.ts`
-- Test: existing bootstrap protocol tests；必要时新增 `apps/zcode-cli/packages/bootstrap/tests/interaction-broker.test.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/interaction-broker.ts`
+- Test: existing bootstrap protocol tests；必要时新增 `apps/codez-cli/packages/bootstrap/tests/interaction-broker.test.ts`
 
 ### Checklist
 
@@ -422,7 +422,7 @@ PASS packages/core/tests/subagent-tool-events.test.ts
 
 ```ts
 const response = await context.requestClient(
-  zcodeProtocolMethods.interactionRequestPermission,
+  codezProtocolMethods.interactionRequestPermission,
   {
     input: request.input,
     origin: request.origin,
@@ -435,7 +435,7 @@ const response = await context.requestClient(
     toolName: request.toolName,
     turnId: request.turnId,
   },
-  zcodePermissionResponseSchema,
+  codezPermissionResponseSchema,
   withInteractionRequestRecovery(options),
 );
 ```
@@ -446,7 +446,7 @@ const response = await context.requestClient(
 
 ```ts
 const response = await context.requestClient(
-  zcodeProtocolMethods.interactionRequestUserInput,
+  codezProtocolMethods.interactionRequestUserInput,
   {
     input: request.input,
     origin: request.origin,
@@ -459,7 +459,7 @@ const response = await context.requestClient(
     toolName: request.toolName,
     turnId: request.turnId,
   },
-  zcodeUserInputResponseSchema,
+  codezUserInputResponseSchema,
   withInteractionRequestRecovery(options),
 );
 ```
@@ -470,7 +470,7 @@ const response = await context.requestClient(
 
 ```ts
 const response = await context.requestClient(
-  zcodeProtocolMethods.interactionRequestUserInput,
+  codezProtocolMethods.interactionRequestUserInput,
   {
     input: request.input,
     origin: request.origin,
@@ -483,20 +483,20 @@ const response = await context.requestClient(
     toolName: request.toolName,
     turnId: request.turnId,
   },
-  zcodeUserInputResponseSchema,
+  codezUserInputResponseSchema,
   withInteractionRequestRecovery(options),
 );
 ```
 
 - [ ] 如果 TypeScript 提示 `PermissionBrokerRequest` 没有 origin，回到 Phase 1 修 contracts export。
-- [ ] 扩展 `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts` 里的 AskUserQuestion bridge 测试：构造带 `origin.kind="subagent"` 的 broker request，断言 outgoing `interaction/requestUserInput.params.origin` 保留。
+- [ ] 扩展 `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts` 里的 AskUserQuestion bridge 测试：构造带 `origin.kind="subagent"` 的 broker request，断言 outgoing `interaction/requestUserInput.params.origin` 保留。
 - [ ] 扩展 ExitPlanMode bridge/reannounce 测试：断言首次 request 和 reannounce request 都保留相同 `origin`。
 - [ ] 跑 bootstrap 相关测试。
 
 Commands:
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest run packages/bootstrap/tests/subagents.test.ts
+pnpm --dir apps/codez-cli exec vitest run packages/bootstrap/tests/subagents.test.ts
 ```
 
 Expected:
@@ -518,24 +518,24 @@ PASS packages/bootstrap/tests/subagents.test.ts
 **Goal:** service 继续按 parent session/task 记录 pending permission 和 pending user input，同时把 `origin` 投影到 task stream 和 snapshot，支持 UI 与 remote 恢复。
 
 **Files:**
-- Modify: `packages/services/src/zcode-agent/zcodeAgentService.ts`
-- Modify: `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts`
-- Test: `packages/services/test/zcodeAgentService.test.ts`
+- Modify: `packages/services/src/codez-agent/codezAgentService.ts`
+- Modify: `packages/services/src/codez-agent/codezTaskServiceAdapter.ts`
+- Test: `packages/services/test/codezAgentService.test.ts`
 - Test: adapter 相关测试；如果没有现成覆盖，新增 focused test
 
 **Interfaces:**
 
-- Consumes: `ZCodePermissionRequestParams.origin`
-- Consumes: `ZCodeUserInputRequestParams.origin`
-- Produces: `ZCodePermissionRequest.origin`
-- Produces: `ZCodeElicitationRequest.origin`
-- Produces: `ZCodeSessionStateSnapshot.projection.pendingPermissions[].origin`
+- Consumes: `CodezPermissionRequestParams.origin`
+- Consumes: `CodezUserInputRequestParams.origin`
+- Produces: `CodezPermissionRequest.origin`
+- Produces: `CodezElicitationRequest.origin`
+- Produces: `CodezSessionStateSnapshot.projection.pendingPermissions[].origin`
 - Produces: task runtime snapshot `pendingElicitations[].origin`
 
 ### Checklist
 
-- [ ] 在 `zcodeAgentService` 的 `interaction/requestPermission` 分支确认 parsed params 已带 `origin`。
-- [ ] 在 `zcodeAgentService` 的 `interaction/requestUserInput` 分支确认 parsed params 已带 `origin`。
+- [ ] 在 `codezAgentService` 的 `interaction/requestPermission` 分支确认 parsed params 已带 `origin`。
+- [ ] 在 `codezAgentService` 的 `interaction/requestUserInput` 分支确认 parsed params 已带 `origin`。
 - [ ] pending key 仍使用 parsed `sessionId`，也就是 parent-routed session id。
 - [ ] emit event 时保持：
 
@@ -561,7 +561,7 @@ emitSessionEvent(workspace, parsed.data.sessionId, {
 
 - [ ] 若 service 有 snapshot projection 的 pending permission 构造逻辑，确保 origin 从 event payload 或 pending request 保留下来。
 - [ ] 在 `PendingPermissionRequest` 或独立 pending user-input 结构里保存 `request`，让 `pendingUserInputs` 可以在 task snapshot 中恢复成 `pendingElicitations`。
-- [ ] 在 `zcodeTaskServiceAdapter.ts` 的 `permissionRequestToStreamEvent()` 中加：
+- [ ] 在 `codezTaskServiceAdapter.ts` 的 `permissionRequestToStreamEvent()` 中加：
 
 ```ts
 origin: request.origin,
@@ -588,7 +588,7 @@ origin: permission.origin,
 - [ ] 如果采用 task-adapter 本地 map 记录 live pending user inputs，命名建议：
 
 ```ts
-const pendingElicitationsByTaskKey = new Map<string, Map<string, ZCodeElicitationRequest>>();
+const pendingElicitationsByTaskKey = new Map<string, Map<string, CodezElicitationRequest>>();
 ```
 
 并在收到 `userInput.request` 时 upsert，在 `userInput.response`、task terminal、session close 时删除。
@@ -645,13 +645,13 @@ send({
 Commands:
 
 ```bash
-pnpm vitest run packages/services/test/zcodeAgentService.test.ts
+pnpm vitest run packages/services/test/codezAgentService.test.ts
 ```
 
 Expected:
 
 ```text
-PASS packages/services/test/zcodeAgentService.test.ts
+PASS packages/services/test/codezAgentService.test.ts
 ```
 
 **风险点:**
@@ -687,13 +687,13 @@ rg -n "permission_request|PermissionRequest|permissionRequest|pendingPermissions
 ```
 
 - [ ] 确认 UI 对未知 `raw.origin` 不会崩溃。
-- [ ] 确认 UI 对 `ZCodeElicitationRequest.origin` 不会崩溃。
-- [ ] 如果 `ZCodePermissionRequest` 或 `ZCodeElicitationRequest` 是 exhaustively destructured，需要补 `origin` 可选字段。
+- [ ] 确认 UI 对 `CodezElicitationRequest.origin` 不会崩溃。
+- [ ] 如果 `CodezPermissionRequest` 或 `CodezElicitationRequest` 是 exhaustively destructured，需要补 `origin` 可选字段。
 - [ ] 可选展示：在 dialog 的辅助文案里只展示短来源，例如 `来自 subagent: general-purpose`。不要显示 child session id、agent internal id，除非 debug UI 已有类似入口。
 - [ ] 如果添加 UI copy，确认中英文 i18n；不要硬编码单语言可见文案。
 - [ ] 如果添加日志，使用 `packages/ui/src/logger.ts`。
-- [ ] 补 UI test：带 `origin.kind="subagent"` 的 `ZCodePermissionRequest` 能打开 dialog，点击 approve 后调用 parent `taskId/requestId`。
-- [ ] 补 UI test：带 `origin.kind="subagent"` 的 `ZCodeElicitationRequest` 能打开 elicitation dialog，点击 accept/submit 后调用 parent `taskId/requestId`。
+- [ ] 补 UI test：带 `origin.kind="subagent"` 的 `CodezPermissionRequest` 能打开 dialog，点击 approve 后调用 parent `taskId/requestId`。
+- [ ] 补 UI test：带 `origin.kind="subagent"` 的 `CodezElicitationRequest` 能打开 elicitation dialog，点击 accept/submit 后调用 parent `taskId/requestId`。
 - [ ] 跑 UI focused tests。
 
 Commands:
@@ -783,8 +783,8 @@ PASS packages/ui/test/permissionDialog.test.ts
 Commands:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/subagent-interaction-broker.test.ts
-pnpm vitest run packages/services/test/zcodeAgentService.test.ts
+pnpm --filter @codez/core exec vitest run tests/subagent-interaction-broker.test.ts
+pnpm vitest run packages/services/test/codezAgentService.test.ts
 pnpm vitest run packages/ui/test/permissionRequest.test.ts packages/ui/test/permissionDialog.test.ts
 ```
 
@@ -861,16 +861,16 @@ git diff --check
 
 ```bash
 git add docs/superpowers/plans/2026-07-06-subagent-permission-delegation.md \
-  apps/zcode-cli/packages/contracts/src/interfaces/permission.port.ts \
-  apps/zcode-cli/packages/core/src/runtime/helpers/subagent-interaction-broker.ts \
-  apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts \
-  apps/zcode-cli/packages/core/tests/subagent-interaction-broker.test.ts \
-  apps/zcode-cli/packages/bootstrap/src/zcode-protocol/interaction-broker.ts \
-  packages/shared/src/zcode-protocol/index.ts \
-  packages/shared/src/zcode-task-types.ts \
-  packages/services/src/zcode-agent/zcodeAgentService.ts \
-  packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts \
-  packages/services/test/zcodeAgentService.test.ts \
+  apps/codez-cli/packages/contracts/src/interfaces/permission.port.ts \
+  apps/codez-cli/packages/core/src/runtime/helpers/subagent-interaction-broker.ts \
+  apps/codez-cli/packages/core/src/runtime/methods/subagent.ts \
+  apps/codez-cli/packages/core/tests/subagent-interaction-broker.test.ts \
+  apps/codez-cli/packages/bootstrap/src/codez-protocol/interaction-broker.ts \
+  packages/shared/src/codez-protocol/index.ts \
+  packages/shared/src/codez-task-types.ts \
+  packages/services/src/codez-agent/codezAgentService.ts \
+  packages/services/src/codez-agent/codezTaskServiceAdapter.ts \
+  packages/services/test/codezAgentService.test.ts \
   docs/conversation-session-case-catalog.md \
   docs/testing/conversation-session-e2e-coverage-matrix.md \
   packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-subagent-blocking-interaction-delegate.test.ts
@@ -991,7 +991,7 @@ child AgentRuntime
 | Rank | From | Edge | To | Evidence |
 | --- | --- | --- | --- | --- |
 | must-inspect | child runtime event sink | live mirror | parent `ProductProjection` | `runtime/methods/subagent.ts`、`subagent/tool-event-mirror.ts` |
-| must-inspect | parent `PermissionRequested` | creates | `pendingInteractions` | `zcode-protocol-v4/product-projection.ts` |
+| must-inspect | parent `PermissionRequested` | creates | `pendingInteractions` | `codez-protocol-v4/product-projection.ts` |
 | must-inspect | `pendingInteractions` | renders | `V4InteractionDialogs` | `packages/ui/src/v4/V4InteractionDialogs.tsx` |
 | should-inspect | parent `PermissionResolved/Denied` | settles | pending interaction/tool row | `ProductProjection.settlePermission()` |
 | invariant-only | raw child event | persists to | child session only | runtime event store + detached child topic |
@@ -1024,7 +1024,7 @@ createDefaultSubagentPort
 
 现有功能语义图只记录 Subagent 配置表单/Markdown 持久化，没有记录运行时阻塞交互。
 本次把 parent blocking-interaction surface、child runtime owner 和 interaction broker
-写回 `.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml`。
+写回 `.agents/skills/feature-boundary-planner/references/codez-feature-graph.yaml`。
 
 ### 用例剪枝与实现交接
 

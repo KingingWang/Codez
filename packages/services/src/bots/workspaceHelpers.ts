@@ -2,7 +2,7 @@ import {
   ALL_BOT_WORKSPACES,
   type BotConfig,
   type BotWorkspaceRef,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export function getWorkspaceKey(workspacePath: string, workspaceIdentity?: string): string {
   return workspaceIdentity?.trim() || workspacePath;

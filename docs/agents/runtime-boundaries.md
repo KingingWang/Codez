@@ -4,7 +4,7 @@
 
 ## 进程归属
 
-- App 通过子进程 stdio 与 Agent 通信，协议为 `@zcode/protocol`。
+- App 通过子进程 stdio 与 Agent 通信，协议为 `@codez/protocol`。
 - Main 只负责窗口/native dialog、进程 fork、广播中转、日志接收，以及远控鉴权/配对/心跳、payload 透传和 host attachment 调度；session/task、stream、queue、snapshot 业务状态保留在业务 owner。
 - 每个 BrowserWindow 有且只有一个 window-scoped Local Host，通过 MessagePort 直连 renderer。同一窗口的多个本地 workspace tab 共用该 Host，服务按 workspaceKey 隔离；不要把 workspace service scope 变成独立 Host 进程。
 - Local Host 通过 `createLocalServices({ parentPort })` 承载 file/system/terminal/setting/credential/broadcast，并按 workspaceKey 管理本地 Agent CLI。
@@ -66,6 +66,6 @@ Renderer：未提交草稿 + pending optimistic overlay
 ## 运行时证据
 
 - RPC 通道使用 [LoggingChannelServer / LoggingChannelClient](../../packages/rpc/src/logging-middleware.ts) 记录频道、命令和耗时；优先利用已有日志定位调用链。
-- Agent session 轨迹在 `~/.zcode/cli/rollout` 或 `~/.zcode/cli/debug`，CLI 日志在 `~/.zcode/cli/log`。
+- Agent session 轨迹在 `~/.codez/cli/rollout` 或 `~/.codez/cli/debug`，CLI 日志在 `~/.codez/cli/log`。
 - 界面复现优先使用 agent-browser；失败时可直接 CDP 调试，开发默认端口为 9229，连接前核实实际监听端口。
 - 验证分别覆盖受影响的桌面本地和手机远控路径，记录 owner、事件顺序、identity 和 delivery 边界证据；必要环境缺失按根 AGENTS.md 的阻塞规则处理。

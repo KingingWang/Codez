@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RemoteTarget } from "@zcode/shared";
+import type { RemoteTarget } from "@codez/shared";
 import {
   buildRemoteWorkspaceIdentity,
   buildRemoteWorkspaceSessionMutation,
@@ -363,7 +363,7 @@ describe("remoteWorkspaceHistory helpers", () => {
     const workspaceKey = "remote:server:studio-server-01:/srv/project";
     const target: RemoteTarget = {
       kind: "server",
-      url: "https://studio.example.com/zcode/",
+      url: "https://studio.example.com/codez/",
       name: "Studio Server",
       serverId: "Studio Server 01",
       workspacePath: "/srv/project",
@@ -374,7 +374,7 @@ describe("remoteWorkspaceHistory helpers", () => {
     expect(buildRemoteWorkspaceIdentity("\\srv\\project\\", target)).toBe(workspaceKey);
     expect(snapshot).toEqual({
       kind: "server",
-      url: "https://studio.example.com/zcode/",
+      url: "https://studio.example.com/codez/",
       name: "Studio Server",
       serverId: "Studio Server 01",
       workspacePath: "/srv/project",

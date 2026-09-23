@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { IFeedbackService } from "@zcode/services";
+import type { IFeedbackService } from "@codez/services";
 import {
   MAX_SUPPLEMENT_ATTACHMENT_BYTES,
   MAX_SUPPLEMENT_ATTACHMENTS,

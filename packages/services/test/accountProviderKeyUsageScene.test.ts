@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { type ApiClient } from "@zcode/shared";
+import { type ApiClient } from "@codez/shared";
 import { AccountProviderApiClient } from "#src/model-provider/accountProviderApiClient.js";
 import { AccountProviderApiKeyResolver } from "#src/model-provider/accountProviderApiKeyResolver.js";
 import { resolveAccountTeamPlanRuntimeMaterial } from "#src/model-provider/accountProviderTeamPlanRequestKey.js";
@@ -48,7 +48,7 @@ function createApiFixture(existing: boolean, team: boolean) {
   const requests: Array<{ url: string; init?: RequestInit }> = [];
   const entry = {
     apiKey: "key",
-    name: team ? "zcode-team-api-key" : "zcode-api-key",
+    name: team ? "codez-team-api-key" : "codez-api-key",
     keyType: 2,
   };
   const apiClient: ApiClient = {
@@ -101,7 +101,7 @@ function assertRequests(
   expect(creates).toHaveLength(existing ? 0 : 1);
   if (!existing) {
     expect(JSON.parse(String(creates[0]?.init?.body))).toEqual({
-      name: team ? "zcode-team-api-key" : "zcode-api-key",
+      name: team ? "codez-team-api-key" : "codez-api-key",
       ...(team ? { keyType: 2 } : {}),
       usageScene: 1,
     });

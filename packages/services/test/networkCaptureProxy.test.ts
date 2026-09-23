@@ -2,8 +2,8 @@ import { createServer } from "node:http";
 import { connect } from "node:net";
 import { once } from "node:events";
 import { expect, it, vi } from "vitest";
-import { createNodeNetworkCapture } from "@zcode/shared/node";
-import type { NetworkCaptureBatch } from "@zcode/shared";
+import { createNodeNetworkCapture } from "@codez/shared/node";
+import type { NetworkCaptureBatch } from "@codez/shared";
 import { createHostApiNetworkTransport } from "../src/providers/api/nodeApiNetwork.js";
 
 it("Host 原 dispatcher 的 CONNECT 和 noProxy 均正常，只记录目标 HTTP 一次", async () => {

@@ -1,6 +1,6 @@
 # Bots
 
-Bots lets a private third-party chat drive the same ZCode task flow as the UI input box. The v2 model removes the old nested allowed-users shape: each `bot` is a complete access instance with provider, credentials, one bound actor, workspace scope, command policy, current options, and reply mode.
+Bots lets a private third-party chat drive the same Codez task flow as the UI input box. The v2 model removes the old nested allowed-users shape: each `bot` is a complete access instance with provider, credentials, one bound actor, workspace scope, command policy, current options, and reply mode.
 
 ## Files
 
@@ -75,9 +75,9 @@ group authorization, input, queue, delivery and lifecycle contract.
 
 ## Settings UI
 
-The Bots dialog right pane follows the same row structure as Settings General: each setting is a full-width row with the label and description on the left, and the input, select, or button group on the right. Provider setup, allowed workspaces, identity, and reply mode all reuse the shared settings row components so control height and spacing stay consistent. Reply mode shows a dynamic subtitle that explains the currently selected granularity: standard replies focus on assistant text and file changes, full replies include tool-call progress, summary replies only send the final result plus change summary, and streaming card replies update one Feishu / Lark card in place. A Feishu / Lark task using streaming-card replies keeps ordinary Agent output independent from blocking interactions. AskUserQuestion, permission, and Plan approval use one current interaction message. Before an interaction is shown, the current streaming card is sealed: its accumulated content remains visible, its running status is removed, and later Agent output must create a new streaming card. Question progress only replaces the current interaction message and never copies the question, answers, or plan back into either streaming card. A pending AskUserQuestion card lists only previously submitted questions and their answers, followed by a divider and the current unanswered question; draft selections for the current question stay in its controls instead of appearing as answered history. The completed card lists every submitted question and answer. For a Feishu/Lark WebSocket card action, BotService first advances the authoritative interaction state and returns the complete outbound message to the transport. The action handler synchronously renders that exact message as `card.raw`, including accumulated answers, the current question, controls, and the new question token. That synchronous response is the only card write for the click: it does not also call `card_update_token`, PATCH the message, synthesize a card from `zcodeCardText`, send a replacement message, or recall the original. Resolving or cancelling the interaction returns the same card as a button-free, read-only result and retains it in chat. Task termination also retains the last interaction card as a read-only terminal result. Feishu and Lark only show streaming card in this selector because their high-quality bot reply path depends on Card JSON 2.0 updates. Telegram, Weixin, webhook, and all other providers only show standard, full, and summary replies; they never expose streaming card. Feishu and Lark channel names in the Bots dialog and Mobile Remote Control bot-channel cards show the same compact region tags as Welcome Screen: Feishu uses BigModel's `中国` / `CN` tag, and Lark uses Z.AI's `全球` / `Global` tag. These tags are display-only and do not affect provider routing.
+The Bots dialog right pane follows the same row structure as Settings General: each setting is a full-width row with the label and description on the left, and the input, select, or button group on the right. Provider setup, allowed workspaces, identity, and reply mode all reuse the shared settings row components so control height and spacing stay consistent. Reply mode shows a dynamic subtitle that explains the currently selected granularity: standard replies focus on assistant text and file changes, full replies include tool-call progress, summary replies only send the final result plus change summary, and streaming card replies update one Feishu / Lark card in place. A Feishu / Lark task using streaming-card replies keeps ordinary Agent output independent from blocking interactions. AskUserQuestion, permission, and Plan approval use one current interaction message. Before an interaction is shown, the current streaming card is sealed: its accumulated content remains visible, its running status is removed, and later Agent output must create a new streaming card. Question progress only replaces the current interaction message and never copies the question, answers, or plan back into either streaming card. A pending AskUserQuestion card lists only previously submitted questions and their answers, followed by a divider and the current unanswered question; draft selections for the current question stay in its controls instead of appearing as answered history. The completed card lists every submitted question and answer. For a Feishu/Lark WebSocket card action, BotService first advances the authoritative interaction state and returns the complete outbound message to the transport. The action handler synchronously renders that exact message as `card.raw`, including accumulated answers, the current question, controls, and the new question token. That synchronous response is the only card write for the click: it does not also call `card_update_token`, PATCH the message, synthesize a card from `codezCardText`, send a replacement message, or recall the original. Resolving or cancelling the interaction returns the same card as a button-free, read-only result and retains it in chat. Task termination also retains the last interaction card as a read-only terminal result. Feishu and Lark only show streaming card in this selector because their high-quality bot reply path depends on Card JSON 2.0 updates. Telegram, Weixin, webhook, and all other providers only show standard, full, and summary replies; they never expose streaming card. Feishu and Lark channel names in the Bots dialog and Mobile Remote Control bot-channel cards show the same compact region tags as Welcome Screen: Feishu uses BigModel's `中国` / `CN` tag, and Lark uses Z.AI's `全球` / `Global` tag. These tags are display-only and do not affect provider routing.
 
-Provider setup intentionally hides stored secret values. Telegram shows a fixed BotFather QR code alongside the token input before a secret is saved; after saving it automatically advances to the private-chat bind code until the bot is connected. Feishu / Lark start with QR authorization for app credentials, then automatically show the private-chat bind code. Weixin starts with QR login; successful QR login saves the bot token and clears the QR detail panel. Because Weixin QR login returns bot credentials rather than the scanning user's deliverable chat id, the user must send any first message in Weixin to activate the chat. That first activation message receives a welcome/help reply and is not sent to ZCode task flow as a prompt.
+Provider setup intentionally hides stored secret values. Telegram shows a fixed BotFather QR code alongside the token input before a secret is saved; after saving it automatically advances to the private-chat bind code until the bot is connected. Feishu / Lark start with QR authorization for app credentials, then automatically show the private-chat bind code. Weixin starts with QR login; successful QR login saves the bot token and clears the QR detail panel. Because Weixin QR login returns bot credentials rather than the scanning user's deliverable chat id, the user must send any first message in Weixin to activate the chat. That first activation message receives a welcome/help reply and is not sent to Codez task flow as a prompt.
 
 Webhook setup is available from the new bot provider list and provider settings surface. Feishu and Lark are both first-class new bot entries. They share the same provider implementation and registration flow, but the selected provider id must be preserved because it chooses the OpenAPI domain (`open.feishu.cn` for Feishu, `open.larksuite.com` for Lark). DingTalk is shown there only as a coming-soon channel.
 
@@ -98,7 +98,7 @@ Webhook setup is available from the new bot provider list and provider settings 
   A successful empty Selection View clears the in-memory Bot provider menu. Only an actual read
   failure may reuse the last in-memory View; an empty View must not keep deleted or disabled models
   selectable.
-- `/mode` / `/模式`: lists and updates `currentOptions.mode`. This is the same ZCode task mode surface used by the UI composer; provider internals own any sandbox or approval mapping.
+- `/mode` / `/模式`: lists and updates `currentOptions.mode`. This is the same Codez task mode surface used by the UI composer; provider internals own any sandbox or approval mapping.
 - `/think` / `/thoughtLevel` / `/思考`: lists and updates `currentOptions.thoughtLevel`.
 - `/cli`: lists and updates `currentOptions.cli`.
 - `/reply` / `/回复`: lists and updates `replyMode`.
@@ -108,7 +108,7 @@ Configuration commands write to `bot-config.v3.json`, so the next third-party me
 
 Plain messages behave like the UI input:
 
-- In draft mode, or when no active task exists, the message creates a new ZCode task and becomes the first prompt.
+- In draft mode, or when no active task exists, the message creates a new Codez task and becomes the first prompt.
 - Draft model selection invalidates the previously inherited thought level. When the first message creates a task, mode and thought-level validation uses that task's model-specific config options rather than the workspace's previous-model snapshot. Unsupported inherited values are skipped. If initial configuration still fails, the provisional task is deleted before Bot state leaves draft mode, so switching model providers cannot strand an empty active task.
 - In task mode, the message is sent to the active task.
 - Before an ordinary message reuses an active task, query the selected workspace's deleted-task tombstones through its task service (including `workspaceIdentity`). A confirmed deleted task returns the Bot to draft, clears pending permissions/questions/selections, and creates a fresh task for this same message. A task missing from a filtered list, or only archived/pinned, is not evidence of deletion; read failures must not trigger creation.
@@ -157,7 +157,7 @@ Delivery semantics:
 
 ## AskUserQuestion / Elicitation
 
-ZCode Agent AskUserQuestion is bridged through ZCode Protocol elicitation request/response events. Bot runtime stores the pending request in `bot-state.v3.json` with task id, request id, run id, normalized questions, current question index, and collected answers. The response payload matches the UI shape:
+Codez Agent AskUserQuestion is bridged through Codez Protocol elicitation request/response events. Bot runtime stores the pending request in `bot-state.v3.json` with task id, request id, run id, normalized questions, current question index, and collected answers. The response payload matches the UI shape:
 
 ```json
 {
@@ -178,12 +178,12 @@ Provider interaction:
 - Telegram uses inline buttons. Single-select answers submit immediately; multi-select answers toggle options and use `Done` to submit. Callback data only carries short numeric indexes. When interactive text exceeds Telegram's single-message limit, the inline keyboard is attached to the final chunk containing the decision prompt, never an earlier context chunk.
 - Feishu / Lark use one Card JSON 2.0 interactive card for the whole AskUserQuestion lifecycle. The current question is rendered as flat choices instead of dropdowns. Single-select questions use radio-style rows: clicking a preset answer submits it immediately, while clicking `自定义回答` only updates the original card and expands the bottom custom input with submit/cancel controls. Multi-select questions use checkbox-style rows: clicking a preset answer toggles the draft and refreshes the original card, while clicking `自定义回答` toggles the custom input; users submit all checked answers with the form submit button. Submitting the form sends `/elicitation <token> __form__:<payload>` back through the normal callback path, so stale cards are rejected by the same token check as choice callbacks. For multi-select questions, non-empty custom input is appended to the selected checkbox choices. The top `<answers>` section renders completed answers as h4 markdown titles, such as `#### 1/2 Question`, followed by answer text. Answer blocks are separated only by spacing. If a pending card already has answers, a native Card JSON 2.0 `hr` divider separates `<answers>` from the current `#### 提问` area. When all questions are answered, the same card is updated to a final state with the complete answers only: no form, no buttons, and no extra completion copy.
 - Weixin uses numbered plain text. Users reply with a number for single-select, comma-separated numbers or text for multi-select/custom answers, and `0` cancels.
-- Webhook sends structured outbound messages with `type: "zcode.bot.elicitation_request"` and an `elicitation` object containing `requestId`, `taskId`, `runId`, `currentQuestionIndex`, `questions`, and optional `schema`.
+- Webhook sends structured outbound messages with `type: "codez.bot.elicitation_request"` and an `elicitation` object containing `requestId`, `taskId`, `runId`, `currentQuestionIndex`, `questions`, and optional `schema`.
 - Webhook can respond with:
 
 ```json
 {
-  "type": "zcode.bot.elicitation_response",
+  "type": "codez.bot.elicitation_response",
   "botId": "webhook-1",
   "userId": "user-1",
   "requestId": "elicit-1",
@@ -198,12 +198,12 @@ Discord and WeCom remain reserved providers. Future Discord support should use s
 
 ## Attachments
 
-Bots accept inbound attachments from every implemented provider. Provider adapters parse native media payloads into a common bot attachment shape; the service downloads or decodes the bytes, stores them under the ZCode app data directory in `bot-attachments/`, and never writes them into the user workspace.
+Bots accept inbound attachments from every implemented provider. Provider adapters parse native media payloads into a common bot attachment shape; the service downloads or decodes the bytes, stores them under the Codez app data directory in `bot-attachments/`, and never writes them into the user workspace.
 
-Attachment handling follows the ZCode prompt capability model:
+Attachment handling follows the Codez prompt capability model:
 
-- Images become `ZCodePromptAttachment` entries with `kind: "image"` and are sent as ZCode image content when the active Agent supports image prompts.
-- Audio becomes `ZCodePromptAttachment` entries with `kind: "audio"` and is sent as ZCode audio content when the active Agent supports audio prompts.
+- Images become `CodezPromptAttachment` entries with `kind: "image"` and are sent as Codez image content when the active Agent supports image prompts.
+- Audio becomes `CodezPromptAttachment` entries with `kind: "audio"` and is sent as Codez audio content when the active Agent supports audio prompts.
 - Video and generic files are cached locally and appended to the prompt as file context with filename, MIME type, size, and local cache path.
 - A message can include up to 4 attachments, with a 5MB limit per attachment.
 - If the user sends attachments without text, the bot uses the default prompt: `请查看附件并根据内容协助我。`
@@ -215,7 +215,7 @@ Bot user-facing text follows the current app locale from settings. Service-layer
 The existing provider adapters are reused:
 
 - Telegram: host-side long polling; offset is persisted in `bot-state.v3.json` under the bot id. Photo, document, video, audio, and voice messages are parsed as attachments and downloaded with `getFile`.
-- Weixin / 微信: built-in iLink client based on the Tencent openclaw-weixin protocol reference. ZCode starts QR login through `/ilink/bot/get_bot_qrcode`, saves the returned `bot_token` as the bot credential, long-polls `/ilink/bot/getupdates`, sends text with `/ilink/bot/sendmessage` using the `msg.item_list` payload, normalizes outbound multiline replies to hard text line breaks, fetches `typing_ticket` with `/ilink/bot/getconfig` before `/ilink/bot/sendtyping`, and persists `get_updates_buf` plus first-message activation state in `bot-state.v3.json`. Text and recognizable media items in `item_list` are split into message text and attachments. It does not require running an external openclaw-weixin gateway.
+- Weixin / 微信: built-in iLink client based on the Tencent openclaw-weixin protocol reference. Codez starts QR login through `/ilink/bot/get_bot_qrcode`, saves the returned `bot_token` as the bot credential, long-polls `/ilink/bot/getupdates`, sends text with `/ilink/bot/sendmessage` using the `msg.item_list` payload, normalizes outbound multiline replies to hard text line breaks, fetches `typing_ticket` with `/ilink/bot/getconfig` before `/ilink/bot/sendtyping`, and persists `get_updates_buf` plus first-message activation state in `bot-state.v3.json`. Text and recognizable media items in `item_list` are split into message text and attachments. It does not require running an external openclaw-weixin gateway.
 - Webhook: inbound HTTP callback and optional outbound webhook reply.
 - Feishu and Lark are separate bot providers that share the same adapter. The provider id selects the OpenAPI domain (`open.feishu.cn` or `open.larksuite.com`), so bot config does not carry a separate `feishuDomain` field. Both use persistent WebSocket events, Card JSON 2.0 interactive card replies, `Typing` message reactions as the transient typing indicator fallback, and OpenAPI resource downloads for image/file/media attachments. The message API still sends `msg_type: "interactive"` with `content` as a JSON string, while the card payload declares `schema: "2.0"` and stores reply markdown/buttons under `body.elements`.
 
@@ -241,7 +241,7 @@ Forced tool or terminal updates cannot bypass this recovery boundary, and produc
 logs identify the task event that triggered each failed write or opened the
 circuit.
 
-Feishu / Lark does not expose a native bot typing-state API. The provider reads the inbound `message_id`, adds a `Typing` reaction while the ZCode task is running, and removes the reaction when the task completes, errors, stops, or waits on a permission request. If the callback payload lacks `message_id`, typing is skipped instead of sending a misleading chat-level signal.
+Feishu / Lark does not expose a native bot typing-state API. The provider reads the inbound `message_id`, adds a `Typing` reaction while the Codez task is running, and removes the reaction when the task completes, errors, stops, or waits on a permission request. If the callback payload lacks `message_id`, typing is skipped instead of sending a misleading chat-level signal.
 
 Webhook inbound requests continue through:
 

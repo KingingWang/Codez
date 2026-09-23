@@ -117,7 +117,7 @@ describe("会话区 ReadSessionContext 超时边界 E2E", () => {
 
 async function seedReadSessionContextSourceSession() {
   await mkdir(DEFAULT_WORKSPACE, { recursive: true });
-  const dbPath = join(homedir(), ".zcode", "cli", "db", "db.sqlite");
+  const dbPath = join(homedir(), ".codez", "cli", "db", "db.sqlite");
   await mkdir(dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
   const now = Date.now() - 10_000;
@@ -166,7 +166,7 @@ async function seedReadSessionContextSourceSession() {
     saveMessageRow(db, SOURCE_USER_MESSAGE_ID, now, now, {
       role: "user",
       time: { created: now },
-      agent: "zcode-agent",
+      agent: "codez-agent",
       model: { providerID: PROVIDER_ID, modelID: MODEL_ID },
       metadata: { e2eCase: CASE_NAME },
     });
@@ -183,7 +183,7 @@ async function seedReadSessionContextSourceSession() {
       modelID: MODEL_ID,
       providerID: PROVIDER_ID,
       mode: "build",
-      agent: "zcode-agent",
+      agent: "codez-agent",
       path: { cwd: DEFAULT_WORKSPACE, root: DEFAULT_WORKSPACE },
       cost: 0,
       tokens: {

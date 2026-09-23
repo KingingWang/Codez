@@ -1,24 +1,24 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Emitter, type Event } from "@zcode/rpc";
+import { Emitter, type Event } from "@codez/rpc";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   SessionsIndexTopicWireFrame,
-  IZCodeAgentService,
-  ZCodeAgentRuntimeLifecycleEvent,
-  ZCodeAgentSessionTarget,
-} from "../src/zcode-agent/zcodeAgent.js";
+  ICodezAgentService,
+  CodezAgentRuntimeLifecycleEvent,
+  CodezAgentSessionTarget,
+} from "../src/codez-agent/codezAgent.js";
 import { TaskIndexRepo } from "../src/session/taskIndexRepo.js";
 import { setDataBaseDir } from "../src/paths.js";
-import { createZCodeTaskIndexSyncer } from "../src/zcode-agent/zcodeTaskIndexSyncer.js";
+import { createCodezTaskIndexSyncer } from "../src/codez-agent/codezTaskIndexSyncer.js";
 import type {
   ModelSelection,
-  ZCodeSessionStateSnapshot,
-  ZCodeTaskMeta,
-  ZCodeWorkspaceEvent,
-} from "@zcode/shared";
-import { elideSessionSnapshotForIndex, ZCODE_AGENT_PROVIDER_NOT_READY_CODE } from "@zcode/shared";
+  CodezSessionStateSnapshot,
+  CodezTaskMeta,
+  CodezWorkspaceEvent,
+} from "@codez/shared";
+import { elideSessionSnapshotForIndex, CODEZ_AGENT_PROVIDER_NOT_READY_CODE } from "@codez/shared";
 import type {
   SessionSummary,
   ErrorAttribution,
@@ -26,19 +26,19 @@ import type {
   WorkspaceConfigState,
   WorkspaceConfigTopicFrame,
   WorkspaceConfigTopicWireFrame,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import {
   encodeTopicWireFrames,
   PROTOCOL_V4_LIMITS,
   utf8JsonByteLength,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 
 let tempDir: string;
 // 跟踪当前测试的 env，用于 afterEach 清理
 let currentEnv: TestEnv | undefined;
 
 beforeEach(() => {
-  tempDir = mkdtempSync(join(tmpdir(), "zcode-task-index-syncer-"));
+  tempDir = mkdtempSync(join(tmpdir(), "codez-task-index-syncer-"));
   setDataBaseDir(tempDir);
 });
 
@@ -57,10 +57,10 @@ afterEach(async () => {
 });
 
 interface TestEnv {
-  agent: IZCodeAgentService;
+  agent: ICodezAgentService;
   indexEmitter: TestTopicEmitter<SessionsIndexTopicFrame, SessionsIndexTopicWireFrame>;
   configEmitter: TestTopicEmitter<WorkspaceConfigTopicFrame, WorkspaceConfigTopicWireFrame>;
-  lifecycleEmitter: Emitter<ZCodeAgentRuntimeLifecycleEvent>;
+  lifecycleEmitter: Emitter<CodezAgentRuntimeLifecycleEvent>;
   repo: TaskIndexRepo;
 }
 
@@ -99,9 +99,9 @@ function createTestTopicEmitter<
 
 const INDEX_SUBSCRIPTION_ID = "six-test-1";
 const CONFIG_SUBSCRIPTION_ID = "wcs-test-1";
-type IndexSubscribeResult = Awaited<ReturnType<IZCodeAgentService["subscribeSessionsIndexV4"]>>;
-type IndexResyncResult = Awaited<ReturnType<IZCodeAgentService["resyncSessionsIndexV4"]>>;
-type ConfigResyncResult = Awaited<ReturnType<IZCodeAgentService["resyncWorkspaceConfigV4"]>>;
+type IndexSubscribeResult = Awaited<ReturnType<ICodezAgentService["subscribeSessionsIndexV4"]>>;
+type IndexResyncResult = Awaited<ReturnType<ICodezAgentService["resyncSessionsIndexV4"]>>;
+type ConfigResyncResult = Awaited<ReturnType<ICodezAgentService["resyncWorkspaceConfigV4"]>>;
 
 function summaryOf(
   sessionId: string,
@@ -203,8 +203,8 @@ function setupEnv(
     WorkspaceConfigTopicFrame,
     WorkspaceConfigTopicWireFrame
   >();
-  const lifecycleEmitter = new Emitter<ZCodeAgentRuntimeLifecycleEvent>();
-  const agent: IZCodeAgentService = {
+  const lifecycleEmitter = new Emitter<CodezAgentRuntimeLifecycleEvent>();
+  const agent: ICodezAgentService = {
     subscribeSessionsIndexV4: vi.fn(async () => {
       const ack = {
         subscriptionId: INDEX_SUBSCRIPTION_ID,
@@ -244,16 +244,16 @@ function setupEnv(
       },
     })),
     onDynamicWorkspaceConfigFrame: vi.fn(() => configEmitter.event),
-    resumeSession: vi.fn(async (target: ZCodeAgentSessionTarget) =>
+    resumeSession: vi.fn(async (target: CodezAgentSessionTarget) =>
       snapshotWith(target.sessionId, target.workspacePath),
     ),
     listSessions: vi.fn(async () => []),
-    readSession: vi.fn(async (target: ZCodeAgentSessionTarget) =>
+    readSession: vi.fn(async (target: CodezAgentSessionTarget) =>
       snapshotWith(target.sessionId, target.workspacePath),
     ),
     hasActiveCuaOperationTurn: vi.fn(() => false),
     ...(options.runtimeLifecycle ? { onAgentRuntimeLifecycle: lifecycleEmitter.event } : {}),
-  } as unknown as IZCodeAgentService;
+  } as unknown as ICodezAgentService;
   const env = {
     agent,
     indexEmitter,
@@ -274,12 +274,12 @@ async function subscribed(env: TestEnv): Promise<void> {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
-const seedTarget: ZCodeAgentSessionTarget = {
+const seedTarget: CodezAgentSessionTarget = {
   workspacePath: "/repo",
   sessionId: "sess_complete",
 };
 
-async function seedRunningTask(repo: TaskIndexRepo): Promise<ZCodeTaskMeta> {
+async function seedRunningTask(repo: TaskIndexRepo): Promise<CodezTaskMeta> {
   return repo.syncTaskMeta({
     meta: {
       taskId: seedTarget.sessionId,
@@ -304,14 +304,14 @@ function snapshotWith(
     userMessageText?: string;
     assistantMessageText?: string;
     assistantCompletedAt?: number;
-    sessionStatus?: ZCodeSessionStateSnapshot["session"]["status"];
+    sessionStatus?: CodezSessionStateSnapshot["session"]["status"];
     settingsModel?: ModelSelection;
     messageModel?: ModelSelection;
     thoughtLevel?: string;
-    target?: ZCodeSessionStateSnapshot["projection"]["target"];
+    target?: CodezSessionStateSnapshot["projection"]["target"];
     lastError?: { type: string; message: string; attribution?: ErrorAttribution };
   } = {},
-): ZCodeSessionStateSnapshot {
+): CodezSessionStateSnapshot {
   const settingsModel = overrides.settingsModel ?? {
     providerId: "anthropic",
     modelId: "haiku-4.5",
@@ -348,7 +348,7 @@ function snapshotWith(
             ? { completed: overrides.assistantCompletedAt }
             : {}),
         },
-        agent: "zcode",
+        agent: "codez",
         model: messageModel,
         path: { cwd: workspacePath, root: workspacePath },
       },
@@ -362,7 +362,7 @@ function snapshotWith(
     });
   }
   return {
-    protocol: { name: "ZCode Protocol", version: 1 },
+    protocol: { name: "Codez Protocol", version: 1 },
     session: {
       sessionId,
       workspace: { workspacePath, workspaceKey: workspacePath },
@@ -398,21 +398,21 @@ function snapshotWith(
       pendingPermissions: [],
     },
     runtime: { stream: { recovering: false } },
-    messages: messages as unknown as ZCodeSessionStateSnapshot["messages"],
-  } as unknown as ZCodeSessionStateSnapshot;
+    messages: messages as unknown as CodezSessionStateSnapshot["messages"],
+  } as unknown as CodezSessionStateSnapshot;
 }
 
-describe("createZCodeTaskIndexSyncer", () => {
+describe("createCodezTaskIndexSyncer", () => {
   it("writes status: completed on v4 phase running->completedSuccess, broadcasts and emits terminal/ready", async () => {
     const env = setupEnv({
       initialSessions: [summaryOf(seedTarget.sessionId, "running")],
     });
     await seedRunningTask(env.repo);
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const broadcasts: ZCodeWorkspaceEvent[] = [];
+    const broadcasts: CodezWorkspaceEvent[] = [];
     const subscription = syncer.onDynamicWorkspaceEvent({
       workspacePath: seedTarget.workspacePath,
     })((event) => broadcasts.push(event));
@@ -479,11 +479,11 @@ describe("createZCodeTaskIndexSyncer", () => {
         initialSessions: [summaryOf(seedTarget.sessionId, "running", { goalStatus })],
       });
       await seedRunningTask(env.repo);
-      const syncer = createZCodeTaskIndexSyncer({
+      const syncer = createCodezTaskIndexSyncer({
         agentService: env.agent,
         taskIndexRepo: env.repo,
       });
-      const broadcasts: ZCodeWorkspaceEvent[] = [];
+      const broadcasts: CodezWorkspaceEvent[] = [];
       syncer.onDynamicWorkspaceEvent({
         workspacePath: seedTarget.workspacePath,
       })((event) => broadcasts.push(event));
@@ -521,11 +521,11 @@ describe("createZCodeTaskIndexSyncer", () => {
         updatedAt: 120,
       }),
     );
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const broadcasts: ZCodeWorkspaceEvent[] = [];
+    const broadcasts: CodezWorkspaceEvent[] = [];
     syncer.onDynamicWorkspaceEvent({ workspacePath: "/repo" })((event) => broadcasts.push(event));
     syncer.ensureSessionSubscription({
       workspacePath: "/repo",
@@ -569,11 +569,11 @@ describe("createZCodeTaskIndexSyncer", () => {
         updatedAt: 6,
       }),
     );
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const broadcasts: ZCodeWorkspaceEvent[] = [];
+    const broadcasts: CodezWorkspaceEvent[] = [];
     const subscription = syncer.onDynamicWorkspaceEvent({
       workspacePath: seedTarget.workspacePath,
     })((event) => broadcasts.push(event));
@@ -608,11 +608,11 @@ describe("createZCodeTaskIndexSyncer", () => {
       initialSessions: [summaryOf(seedTarget.sessionId, "running")],
     });
     await seedRunningTask(env.repo);
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const broadcasts: ZCodeWorkspaceEvent[] = [];
+    const broadcasts: CodezWorkspaceEvent[] = [];
     const subscription = syncer.onDynamicWorkspaceEvent({
       workspacePath: seedTarget.workspacePath,
     })((event) => broadcasts.push(event));
@@ -644,7 +644,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("falls back to a full snapshot when title arrives before task index row exists", async () => {
     const env = setupEnv();
-    const target: ZCodeAgentSessionTarget = {
+    const target: CodezAgentSessionTarget = {
       workspacePath: "/repo",
       sessionId: "sess_missing",
     };
@@ -654,11 +654,11 @@ describe("createZCodeTaskIndexSyncer", () => {
         updatedAt: 8,
       }),
     );
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const broadcasts: ZCodeWorkspaceEvent[] = [];
+    const broadcasts: CodezWorkspaceEvent[] = [];
     const subscription = syncer.onDynamicWorkspaceEvent({
       workspacePath: "/repo",
     })((event) => broadcasts.push(event));
@@ -704,18 +704,18 @@ describe("createZCodeTaskIndexSyncer", () => {
     const env = setupEnv({
       initialSessions: [summaryOf("sess-promoted", "draft")],
     });
-    const target: ZCodeAgentSessionTarget = {
+    const target: CodezAgentSessionTarget = {
       workspacePath: "/repo",
       sessionId: "sess-promoted",
     };
     vi.mocked(env.agent.readSession).mockResolvedValue(
       snapshotWith("sess-promoted", "/repo", { title: "", updatedAt: 8 }),
     );
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const broadcasts: ZCodeWorkspaceEvent[] = [];
+    const broadcasts: CodezWorkspaceEvent[] = [];
     const subscription = syncer.onDynamicWorkspaceEvent({ workspacePath: "/repo" })((event) =>
       broadcasts.push(event),
     );
@@ -751,11 +751,11 @@ describe("createZCodeTaskIndexSyncer", () => {
     const env = setupEnv({
       initialSessions: [summaryOf("sess_history", "completedSuccess", { title: "历史会话" })],
     });
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const broadcasts: ZCodeWorkspaceEvent[] = [];
+    const broadcasts: CodezWorkspaceEvent[] = [];
     const subscription = syncer.onDynamicWorkspaceEvent({
       workspacePath: "/repo",
     })((event) => broadcasts.push(event));
@@ -790,7 +790,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("keeps dynamic workspace-event consumers passive when no runtime exists", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -815,7 +815,7 @@ describe("createZCodeTaskIndexSyncer", () => {
       initialSessions: [summaryOf(seedTarget.sessionId, "running")],
       runtimeLifecycle: true,
     });
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -906,7 +906,7 @@ describe("createZCodeTaskIndexSyncer", () => {
     vi.useFakeTimers();
     try {
       const env = setupEnv({ runtimeLifecycle: true });
-      const syncer = createZCodeTaskIndexSyncer({
+      const syncer = createCodezTaskIndexSyncer({
         agentService: env.agent,
         taskIndexRepo: env.repo,
       });
@@ -1014,7 +1014,7 @@ describe("createZCodeTaskIndexSyncer", () => {
       { ...snapshotWith("child", "/repo").session, sessionKind: "subagent_child" },
       { ...snapshotWith("fork", "/repo").session, sessionKind: "fork", parentSessionId: "parent" },
     ]);
-    const syncer = createZCodeTaskIndexSyncer({ agentService: env.agent, taskIndexRepo: env.repo });
+    const syncer = createCodezTaskIndexSyncer({ agentService: env.agent, taskIndexRepo: env.repo });
     const changed = vi.fn();
     const listener = syncer.onDynamicWorkspaceEvent("/repo")(changed);
     syncer.ensureWorkspaceSubscription({ workspacePath: "/repo" });
@@ -1053,7 +1053,7 @@ describe("createZCodeTaskIndexSyncer", () => {
         meta: { ...(await seedRunningTask(env.repo)), provider: "glm" },
       });
       let finish:
-        | ((value: Awaited<ReturnType<IZCodeAgentService["listSessions"]>>) => void)
+        | ((value: Awaited<ReturnType<ICodezAgentService["listSessions"]>>) => void)
         | undefined;
       vi.mocked(env.agent.listSessions).mockImplementation(() =>
         failure === "failure"
@@ -1062,7 +1062,7 @@ describe("createZCodeTaskIndexSyncer", () => {
               finish = resolve;
             }),
       );
-      const syncer = createZCodeTaskIndexSyncer({
+      const syncer = createCodezTaskIndexSyncer({
         agentService: env.agent,
         taskIndexRepo: env.repo,
       });
@@ -1081,7 +1081,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("SAT28: child 完整快照不重新写入主列表", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({ agentService: env.agent, taskIndexRepo: env.repo });
+    const syncer = createCodezTaskIndexSyncer({ agentService: env.agent, taskIndexRepo: env.repo });
     const snapshot = snapshotWith("child", "/repo", { userMessageText: "child prompt" });
     snapshot.session.sessionKind = "subagent_child";
     await syncer.syncSnapshotAndBroadcast(snapshot, { broadcastReason: "task_status_changed" });
@@ -1116,7 +1116,7 @@ describe("createZCodeTaskIndexSyncer", () => {
       pinned: true,
       titleOverridden: true,
     });
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1150,7 +1150,7 @@ describe("createZCodeTaskIndexSyncer", () => {
         }),
       ],
     });
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1181,11 +1181,11 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("forwards v4 workspace-config frames as workspace_config_options_update and drops empty catalogs", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const broadcasts: ZCodeWorkspaceEvent[] = [];
+    const broadcasts: CodezWorkspaceEvent[] = [];
     const subscription = syncer.onDynamicWorkspaceEvent({
       workspacePath: "/repo",
     })((event) => broadcasts.push(event));
@@ -1232,11 +1232,11 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("syncSnapshotAndBroadcast writes meta and fires workspace_task_list_changed", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const broadcasts: ZCodeWorkspaceEvent[] = [];
+    const broadcasts: CodezWorkspaceEvent[] = [];
     const subscription = syncer.onDynamicWorkspaceEvent({
       workspacePath: "/repo",
     })((event) => broadcasts.push(event));
@@ -1308,7 +1308,7 @@ describe("createZCodeTaskIndexSyncer", () => {
     const elided = elideSessionSnapshotForIndex(full);
     expect(JSON.stringify(elided).length).toBeLessThan(big.length / 10);
 
-    const capture = async (snapshot: ZCodeSessionStateSnapshot) => {
+    const capture = async (snapshot: CodezSessionStateSnapshot) => {
       const env = setupEnv();
       const writes: unknown[] = [];
       const original = env.repo.syncTaskMeta.bind(env.repo);
@@ -1316,11 +1316,11 @@ describe("createZCodeTaskIndexSyncer", () => {
         writes.push(structuredClone(input));
         return await original(input);
       });
-      const syncer = createZCodeTaskIndexSyncer({
+      const syncer = createCodezTaskIndexSyncer({
         agentService: env.agent,
         taskIndexRepo: env.repo,
       });
-      const broadcasts: ZCodeWorkspaceEvent[] = [];
+      const broadcasts: CodezWorkspaceEvent[] = [];
       const subscription = syncer.onDynamicWorkspaceEvent({ workspacePath: "/repo" })((event) =>
         broadcasts.push(event),
       );
@@ -1346,7 +1346,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("syncSnapshotAndBroadcast prefers structured projection error code in task meta", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1396,7 +1396,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("syncSnapshotAndBroadcast stores the latest message model when settings current is polluted", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1432,7 +1432,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("syncSnapshotAndBroadcast can override task model for explicit model switches", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1468,7 +1468,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("syncSnapshotAndBroadcast can override task thought level for explicit resume", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1497,7 +1497,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("syncTaskModel updates only the persisted task model", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1534,7 +1534,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("syncSnapshotAndBroadcast titles /goal sessions without indexing continuation reminders", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1603,7 +1603,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("syncSnapshotAndBroadcast preserves indexed goal when snapshot omits target", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1670,11 +1670,11 @@ describe("createZCodeTaskIndexSyncer", () => {
     // 此时不应该广播 workspace_task_list_changed，否则侧边栏会先闪一下 "New session" 占位符。
     // sqlite 行仍然要写，让后续 session.titleUpdated (source="first_input") 的 applyAgentPatch 能找到行。
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const broadcasts: ZCodeWorkspaceEvent[] = [];
+    const broadcasts: CodezWorkspaceEvent[] = [];
     const subscription = syncer.onDynamicWorkspaceEvent({
       workspacePath: "/repo",
     })((event) => broadcasts.push(event));
@@ -1730,7 +1730,7 @@ describe("createZCodeTaskIndexSyncer", () => {
     await env.repo.queryGroupedTaskView({
       workspaceScopes: [{ workspacePath: "/repo" }],
     });
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1758,7 +1758,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("does not reorder an existing task when duplicate first-snapshot sync finishes late", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1811,7 +1811,7 @@ describe("createZCodeTaskIndexSyncer", () => {
     // 如果直接用 snapshot.updatedAt 覆盖会让刚被 applyAgentPatch 写入的更新时间倒退，
     // 表现就是新会话第一次 prompt 后又被压到列表底部。
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1852,7 +1852,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("syncSnapshotAndBroadcast does not downgrade newer terminal status with an older running snapshot", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1893,7 +1893,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("syncSnapshotAndBroadcast repairs running status when snapshot has a completed assistant turn", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1935,7 +1935,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("syncSnapshotAndBroadcast keeps idle completed snapshots terminal in sqlite", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -1978,7 +1978,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("only subscribes the workspace once even across many sessions", async () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2034,11 +2034,11 @@ describe("createZCodeTaskIndexSyncer", () => {
         },
       };
     });
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const workspaceEvents: ZCodeWorkspaceEvent[] = [];
+    const workspaceEvents: CodezWorkspaceEvent[] = [];
     const terminalEvents: string[] = [];
     const workspaceSubscription = syncer.onDynamicWorkspaceEvent({ workspacePath: "/repo" })(
       (event) => workspaceEvents.push(event),
@@ -2088,7 +2088,7 @@ describe("createZCodeTaskIndexSyncer", () => {
       initialSessions: [summaryOf(seedTarget.sessionId, "running")],
     });
     await seedRunningTask(env.repo);
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2150,7 +2150,7 @@ describe("createZCodeTaskIndexSyncer", () => {
       initialSessions: [summaryOf(seedTarget.sessionId, "running")],
     });
     await seedRunningTask(env.repo);
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2213,7 +2213,7 @@ describe("createZCodeTaskIndexSyncer", () => {
     vi.mocked(env.agent.subscribeSessionsIndexV4).mockImplementation(
       () => new Promise((resolve) => resolvers.push(resolve)),
     );
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2272,7 +2272,7 @@ describe("createZCodeTaskIndexSyncer", () => {
     vi.mocked(env.agent.subscribeSessionsIndexV4).mockImplementationOnce(
       () => new Promise((resolve) => (resolveIndex = resolve)),
     );
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2310,7 +2310,7 @@ describe("createZCodeTaskIndexSyncer", () => {
     vi.mocked(env.agent.subscribeSessionsIndexV4).mockImplementationOnce(
       () => new Promise((resolve) => (resolveIndex = resolve)),
     );
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2399,7 +2399,7 @@ describe("createZCodeTaskIndexSyncer", () => {
           };
         }),
     );
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2503,11 +2503,11 @@ describe("createZCodeTaskIndexSyncer", () => {
         },
       };
     });
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const workspaceEvents: ZCodeWorkspaceEvent[] = [];
+    const workspaceEvents: CodezWorkspaceEvent[] = [];
     syncer.onDynamicWorkspaceEvent({ workspacePath: "/repo" })((event) =>
       workspaceEvents.push(event),
     );
@@ -2543,11 +2543,11 @@ describe("createZCodeTaskIndexSyncer", () => {
       initialSessions: [summaryOf(seedTarget.sessionId, "running")],
     });
     await seedRunningTask(env.repo);
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const workspaceEvents: ZCodeWorkspaceEvent[] = [];
+    const workspaceEvents: CodezWorkspaceEvent[] = [];
     syncer.onDynamicWorkspaceEvent({ workspacePath: "/repo" })((event) =>
       workspaceEvents.push(event),
     );
@@ -2595,7 +2595,7 @@ describe("createZCodeTaskIndexSyncer", () => {
     vi.mocked(env.agent.resyncSessionsIndexV4).mockImplementationOnce(
       () => new Promise((resolve) => (resolveResync = resolve)),
     );
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2641,7 +2641,7 @@ describe("createZCodeTaskIndexSyncer", () => {
     const env = setupEnv({
       initialSessions: [summaryOf(seedTarget.sessionId, "running")],
     });
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2681,7 +2681,7 @@ describe("createZCodeTaskIndexSyncer", () => {
     vi.mocked(env.agent.resyncWorkspaceConfigV4).mockImplementationOnce(
       () => new Promise((resolve) => (resolveResync = resolve)),
     );
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2724,7 +2724,7 @@ describe("createZCodeTaskIndexSyncer", () => {
       initialSessions: [summaryOf(seedTarget.sessionId, "running")],
     });
     await seedRunningTask(env.repo);
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2783,7 +2783,7 @@ describe("createZCodeTaskIndexSyncer", () => {
         },
       };
     });
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2850,7 +2850,7 @@ describe("createZCodeTaskIndexSyncer", () => {
         ack: { subscriptionId: params.subscriptionId, mode: "resume", logEpoch: "epoch-cfg" },
       };
     });
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2879,7 +2879,7 @@ describe("createZCodeTaskIndexSyncer", () => {
     vi.mocked(env.agent.resyncSessionsIndexV4).mockImplementationOnce(
       () => new Promise((resolve) => (resolveRecovery = resolve)),
     );
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2925,7 +2925,7 @@ describe("createZCodeTaskIndexSyncer", () => {
       ],
       slashCommands: [],
     };
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -2967,12 +2967,12 @@ describe("createZCodeTaskIndexSyncer", () => {
     const env = setupEnv();
     const providerNotReadyError = Object.assign(
       new Error("当前没有可用的模型供应商和模型，请先登录或配置 API Key。"),
-      { code: ZCODE_AGENT_PROVIDER_NOT_READY_CODE },
+      { code: CODEZ_AGENT_PROVIDER_NOT_READY_CODE },
     );
     vi.mocked(env.agent.subscribeSessionsIndexV4).mockRejectedValueOnce(providerNotReadyError);
     vi.mocked(env.agent.subscribeWorkspaceConfigV4).mockRejectedValueOnce(providerNotReadyError);
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -3008,7 +3008,7 @@ describe("createZCodeTaskIndexSyncer", () => {
     vi.mocked(env.agent.subscribeSessionsIndexV4).mockRejectedValue(persistentError);
     vi.mocked(env.agent.subscribeWorkspaceConfigV4).mockRejectedValue(persistentError);
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -3072,7 +3072,7 @@ describe("createZCodeTaskIndexSyncer", () => {
           },
         };
       });
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -3144,7 +3144,7 @@ describe("createZCodeTaskIndexSyncer", () => {
           },
         };
       });
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -3168,7 +3168,7 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("ignores ensureSessionSubscription after disposeAll", () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
@@ -3181,11 +3181,11 @@ describe("createZCodeTaskIndexSyncer", () => {
 
   it("shares the same workspace emitter across getWorkspaceEmitter and onDynamicWorkspaceEvent", () => {
     const env = setupEnv();
-    const syncer = createZCodeTaskIndexSyncer({
+    const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
     });
-    const received: ZCodeWorkspaceEvent[] = [];
+    const received: CodezWorkspaceEvent[] = [];
     const subscription = syncer.onDynamicWorkspaceEvent({
       workspacePath: "/repo",
     })((event) => received.push(event));
@@ -3195,7 +3195,7 @@ describe("createZCodeTaskIndexSyncer", () => {
       type: "workspace_config_options_update",
       workspacePath: "/repo",
       configOptions: [],
-    } as ZCodeWorkspaceEvent);
+    } as CodezWorkspaceEvent);
 
     expect(received.length).toBe(1);
     expect(received[0].type).toBe("workspace_config_options_update");

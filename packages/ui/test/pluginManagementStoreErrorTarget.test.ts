@@ -18,7 +18,7 @@ vi.mock("@/logger.js", () => ({
 const { usePluginManagementStore } = await import("@/store/pluginManagementStore.js");
 
 const WORKSPACE = "/tmp/workspace";
-const CUA_PLUGIN_ID = "computer-use@zcode-plugins-official";
+const CUA_PLUGIN_ID = "computer-use@codez-plugins-official";
 const OTHER_PLUGIN_ID = "some-other-plugin@mp";
 
 function resetStore(overrides: Record<string, unknown> = {}): void {

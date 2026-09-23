@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createPluginSandboxProtocolHandler } from "./protocol.js";
 import { createPluginSandboxRegistry } from "./registry.js";
 
-const fragment = `<html><head><!--__ZCODE_GEN_UI_STYLES__--><script src="__ZCODE_GEN_UI_RUNTIME__"></script></head><body><script>author()</script><!--__ZCODE_GEN_UI_INNER_KIT__--></body></html>`;
+const fragment = `<html><head><!--__CODEZ_GEN_UI_STYLES__--><script src="__CODEZ_GEN_UI_RUNTIME__"></script></head><body><script>author()</script><!--__CODEZ_GEN_UI_INNER_KIT__--></body></html>`;
 function fixture(kind: "gen-ui" | "mcp-app", html = fragment, missing = false) {
   const registry = createPluginSandboxRegistry();
   const instance = { runtimeId: "a", generation: 1, token: "one", appIdentity: "a".repeat(64) };
@@ -42,7 +42,7 @@ function fixture(kind: "gen-ui" | "mcp-app", html = fragment, missing = false) {
     dispose: () => registry.dispose(handle.sandboxId, handle.initId),
     request: (path = "", identity = instance.appIdentity) =>
       handler(
-        new Request(`zcode-sandbox://plugin-${identity}/instance/${handle.sandboxId}/${path}`),
+        new Request(`codez-sandbox://plugin-${identity}/instance/${handle.sandboxId}/${path}`),
       ),
   };
 }
@@ -50,13 +50,13 @@ function fixture(kind: "gen-ui" | "mcp-app", html = fragment, missing = false) {
 describe("Gen UI resource composition", () => {
   it("serves only registered vendor scripts under the authorized Gen UI instance", async () => {
     const genUi = fixture("gen-ui");
-    const path = "__zcode__/vendor/d3-7.9.0.min.js";
+    const path = "__codez__/vendor/d3-7.9.0.min.js";
     const response = await genUi.request(path);
     expect(await response.text()).toBe("/* bundled D3 */");
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(response.headers.get("Content-Type")).toBe("text/javascript; charset=utf-8");
-    expect((await genUi.request("__zcode__/vendor/unknown.js")).status).toBe(404);
-    expect((await genUi.request("__zcode__/vendor/manifest.json")).status).toBe(404);
+    expect((await genUi.request("__codez__/vendor/unknown.js")).status).toBe(404);
+    expect((await genUi.request("__codez__/vendor/manifest.json")).status).toBe(404);
     expect((await genUi.request(path, "b".repeat(64))).status).toBe(404);
     expect((await fixture("mcp-app").request(path)).status).toBe(404);
     genUi.dispose();
@@ -64,20 +64,20 @@ describe("Gen UI resource composition", () => {
   });
   it("does not fall back to the CDN when a declared vendor file is absent", async () => {
     const genUi = fixture("gen-ui");
-    await genUi.request("__zcode__/vendor/unknown.js");
+    await genUi.request("__codez__/vendor/unknown.js");
     genUi.readAsset.mockRejectedValue(new Error("missing vendor file"));
-    expect((await genUi.request("__zcode__/vendor/d3-7.9.0.min.js")).status).toBe(404);
+    expect((await genUi.request("__codez__/vendor/d3-7.9.0.min.js")).status).toBe(404);
   });
   it("loads the canonical CSS and places the bridge before authors and inner kit after them", async () => {
     const { request, readAsset } = fixture("gen-ui");
     const response = await request();
     const html = await response.text();
     expect(response.status).toBe(200);
-    expect(html.indexOf("preset styles")).toBeLessThan(html.indexOf("/__zcode__/gen-ui.js"));
-    expect(html.indexOf("/__zcode__/gen-ui.js")).toBeLessThan(html.indexOf("author()"));
+    expect(html.indexOf("preset styles")).toBeLessThan(html.indexOf("/__codez__/gen-ui.js"));
+    expect(html.indexOf("/__codez__/gen-ui.js")).toBeLessThan(html.indexOf("author()"));
     expect(html.indexOf("author()")).toBeLessThan(html.indexOf("innerKit()"));
     expect(html.indexOf("author()")).toBeLessThan(
-      html.indexOf('id="zcode-gen-ui-document-scrollbar"'),
+      html.indexOf('id="codez-gen-ui-document-scrollbar"'),
     );
     expect(html).toContain("html,body{scrollbar-width:none!important}");
     expect(html).toContain(
@@ -103,9 +103,9 @@ describe("Gen UI resource composition", () => {
   it("does not inject Gen UI resources into an MCP App", async () => {
     const { request, readAsset } = fixture("mcp-app");
     const html = await (await request()).text();
-    expect(html).toContain("/__zcode__/alias.js");
+    expect(html).toContain("/__codez__/alias.js");
     expect(html).not.toContain("innerKit()");
-    expect(html).not.toContain("zcode-gen-ui-document-scrollbar");
+    expect(html).not.toContain("codez-gen-ui-document-scrollbar");
     expect(readAsset).not.toHaveBeenCalled();
   });
   it("returns an explicit failure when the packaged runtime is missing", async () => {

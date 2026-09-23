@@ -3,7 +3,7 @@ import {
   TID_PROMPT_SUGGESTION_PANEL,
   TID_V4_COMPOSER_INPUT,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   setInputValueByTestIdDom,
@@ -17,7 +17,7 @@ type LexicalInputE2EBridge = {
 };
 
 type LexicalInputE2EElement = HTMLElement & {
-  __zcodeLexicalInputE2E?: LexicalInputE2EBridge;
+  __codezLexicalInputE2E?: LexicalInputE2EBridge;
 };
 
 const FILE_MENTION_LABEL = "option-right-repro.ts";
@@ -25,7 +25,7 @@ const FILE_MENTION_PATH = "src/option-right-repro.ts";
 const FILE_MENTION_MARKDOWN = `[${FILE_MENTION_LABEL}](${FILE_MENTION_PATH})`;
 const TYPED_AFTER_MENTION = "继续输入";
 const PLUGIN_NAME = "skill-creator";
-const PLUGIN_STABLE_ID = "skill-creator@zcode-plugins-official";
+const PLUGIN_STABLE_ID = "skill-creator@codez-plugins-official";
 const PLUGIN_OPTION_ID = `plugin:${PLUGIN_STABLE_ID}`;
 
 describe("chat input mention navigation", () => {
@@ -112,7 +112,7 @@ async function startPluginOptionStabilityProbe() {
         panelDisconnected: boolean;
       };
       const probeWindow = window as Window & {
-        __zcodeMentionStabilityProbe?: StabilityProbe;
+        __codezMentionStabilityProbe?: StabilityProbe;
       };
       const panel = document.querySelector(`[data-testid="${panelTestId}"]`);
       const option = document.querySelector(`[data-testid="${optionTestId}"]`);
@@ -131,7 +131,7 @@ async function startPluginOptionStabilityProbe() {
         panelDisconnected: false,
       };
       probe.observer.observe(document.body, { childList: true, subtree: true });
-      probeWindow.__zcodeMentionStabilityProbe = probe;
+      probeWindow.__codezMentionStabilityProbe = probe;
       return true;
     },
     TID_PROMPT_SUGGESTION_PANEL,
@@ -143,15 +143,15 @@ async function startPluginOptionStabilityProbe() {
 async function finishPluginOptionStabilityProbe() {
   return browser.execute(() => {
     const probeWindow = window as Window & {
-      __zcodeMentionStabilityProbe?: {
+      __codezMentionStabilityProbe?: {
         observer: MutationObserver;
         optionDisconnected: boolean;
         panelDisconnected: boolean;
       };
     };
-    const probe = probeWindow.__zcodeMentionStabilityProbe;
+    const probe = probeWindow.__codezMentionStabilityProbe;
     probe?.observer.disconnect();
-    delete probeWindow.__zcodeMentionStabilityProbe;
+    delete probeWindow.__codezMentionStabilityProbe;
     return {
       optionDisconnected: probe?.optionDisconnected ?? true,
       panelDisconnected: probe?.panelDisconnected ?? true,
@@ -164,7 +164,7 @@ function getComposerText() {
     const input = document.querySelector<LexicalInputE2EElement>(
       `[data-testid="${inputTestId}"]`,
     );
-    return input?.__zcodeLexicalInputE2E?.getText() ?? "";
+    return input?.__codezLexicalInputE2E?.getText() ?? "";
   }, TID_V4_COMPOSER_INPUT);
 }
 
@@ -175,7 +175,7 @@ async function setChatInputFileMentionState() {
         const input = document.querySelector<LexicalInputE2EElement>(
           `[data-testid="${inputTestId}"]`,
         );
-        return Boolean(input?.__zcodeLexicalInputE2E);
+        return Boolean(input?.__codezLexicalInputE2E);
       }, TID_V4_COMPOSER_INPUT),
     {
       timeout: 15000,
@@ -242,7 +242,7 @@ async function setChatInputFileMentionState() {
         const input = document.querySelector<LexicalInputE2EElement>(
           `[data-testid="${inputTestId}"]`,
         );
-        const bridge = input?.__zcodeLexicalInputE2E;
+        const bridge = input?.__codezLexicalInputE2E;
         if (!input || !bridge) {
           return { ok: false, reason: "bridge-missing" };
         }
@@ -325,7 +325,7 @@ function getMentionNavigationSnapshot() {
     );
     const selection = window.getSelection();
     return {
-      bridgeText: input?.__zcodeLexicalInputE2E?.getText() ?? "",
+      bridgeText: input?.__codezLexicalInputE2E?.getText() ?? "",
       domText: input?.innerText ?? input?.textContent ?? "",
       mentionCount: input?.querySelectorAll("[data-mention-id]").length ?? 0,
       selection: {

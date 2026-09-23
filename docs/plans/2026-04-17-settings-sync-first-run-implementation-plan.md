@@ -11,7 +11,7 @@
 
 需要在实现中尽早钉死的一条工程约束：
 
-- 各来源配置导入时，只做“最小安全映射”，不追求把来源系统的全部语义一比一复制到 ZCode。
+- 各来源配置导入时，只做“最小安全映射”，不追求把来源系统的全部语义一比一复制到 Codez。
 
 原因：
 
@@ -67,7 +67,7 @@ Batch 1：Task 1 ~ Task 3
 
 ### 验证
 
-- `pnpm typecheck --filter @zcode/shared` 若不支持则走根级 `pnpm typecheck`
+- `pnpm typecheck --filter @codez/shared` 若不支持则走根级 `pnpm typecheck`
 
 ## Task 2：建立 services 骨架与注册链路
 
@@ -190,7 +190,7 @@ Batch 1：Task 1 ~ Task 3
 
 ### 目标
 
-完成 `Providers` 从来源到 ZCode 的安全导入，并遵守“已存在则跳过”。
+完成 `Providers` 从来源到 Codez 的安全导入，并遵守“已存在则跳过”。
 
 ### 修改文件
 
@@ -200,7 +200,7 @@ Batch 1：Task 1 ~ Task 3
 ### 实现步骤
 
 1. 从 discovery 结果读取来源 provider 条目
-2. 和 ZCode 当前 provider 列表做冲突判断
+2. 和 Codez 当前 provider 列表做冲突判断
 3. 只对缺失项调用现有 model provider 落地能力
 4. 不直接在同步服务里写 provider 存储文件
 
@@ -221,7 +221,7 @@ Batch 1：Task 1 ~ Task 3
 
 ### 实现步骤
 
-1. `Skills`：基于现有来源目录规则，把缺失技能复制/镜像到 ZCode 受管位置
+1. `Skills`：基于现有来源目录规则，把缺失技能复制/镜像到 Codez 受管位置
 2. `Plugins`：基于已有插件镜像或 marketplace 安装信息做最小导入
 3. 已存在项统一记 `skipped`
 4. 失败项不阻断其他任务

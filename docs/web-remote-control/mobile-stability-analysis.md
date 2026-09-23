@@ -37,7 +37,7 @@ mobile browser /remote
 - desktop 以 `device` 角色连接 relay。
 - mobile web 以 `terminal` 角色连接同一 relay。
 - 双端使用 `pair_status_query` / `pair_status_ack` 做平均 10 秒、有界 8~12 秒 jitter 心跳；最近一次 ACK 超过 30 秒未更新时由本地 watchdog 触发重连。
-- ZCode 业务消息全部封装在 relay `data.payload`。
+- Codez 业务消息全部封装在 relay `data.payload`。
 - mobile UI 通过 `rpc-frame` 还原为 `IMessagePassingProtocol`，再复用现有 `Root`。
 - 手机端不拥有独立 Agent host process；重连只重建 bridge attachment，不销毁仍在运行的 host/runtime。
 
@@ -359,7 +359,7 @@ mobile 和 desktop 日志用这些 ID 关联一次断线。
 
 可以在远控页面或帮助文档中明确说明：
 
-> 手机 Web 远控适合前台实时操作。切换 App、锁屏或网络切换时，手机浏览器可能暂停连接；回到页面后 ZCode 会自动恢复到最近的 workspace 和 task。为了获得更稳定的体验，远控过程中请尽量保持页面前台打开，并允许保持屏幕常亮。
+> 手机 Web 远控适合前台实时操作。切换 App、锁屏或网络切换时，手机浏览器可能暂停连接；回到页面后 Codez 会自动恢复到最近的 workspace 和 task。为了获得更稳定的体验，远控过程中请尽量保持页面前台打开，并允许保持屏幕常亮。
 
 这比承诺“不断线”更符合移动 Web 的真实边界，也能降低用户误解。
 

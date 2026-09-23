@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { zcodePermissionRequestedEventPayloadSchema } from "../src/zcode-protocol/index.js";
+import { codezPermissionRequestedEventPayloadSchema } from "../src/codez-protocol/index.js";
 import {
   pendingInteractionSchema,
   permissionRequestPayloadSchema,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 describe("v4 permission payload compatibility", () => {
   const preCapabilityGroupStrictRuleSchema = z
@@ -98,7 +98,7 @@ describe("v4 permission payload compatibility", () => {
       permissionUpdates: [
         {
           behavior: "allow" as const,
-          rules: [{ toolName: "zcode:permission-capability:official_cua" }],
+          rules: [{ toolName: "codez:permission-capability:official_cua" }],
           type: "addRules" as const,
         },
       ],
@@ -145,7 +145,7 @@ describe("v4 permission payload compatibility", () => {
               permissionUpdates: [
                 {
                   behavior: "allow",
-                  rules: [{ toolName: "zcode:permission-capability:official_cua" }],
+                  rules: [{ toolName: "codez:permission-capability:official_cua" }],
                   type: "addRules",
                 },
               ],
@@ -177,7 +177,7 @@ describe("v4 permission payload compatibility", () => {
   });
 
   it("keeps the legacy permission.requested event inside the pre-MR strict rule shape", () => {
-    const event = zcodePermissionRequestedEventPayloadSchema.parse({
+    const event = codezPermissionRequestedEventPayloadSchema.parse({
       input: {},
       options: [
         {
@@ -189,7 +189,7 @@ describe("v4 permission payload compatibility", () => {
             permissionUpdates: [
               {
                 behavior: "allow",
-                rules: [{ toolName: "zcode:permission-capability:official_cua" }],
+                rules: [{ toolName: "codez:permission-capability:official_cua" }],
                 type: "addRules",
               },
             ],
@@ -201,7 +201,7 @@ describe("v4 permission payload compatibility", () => {
       suggestedPermissionUpdates: [
         {
           behavior: "allow",
-          rules: [{ toolName: "zcode:permission-capability:official_cua" }],
+          rules: [{ toolName: "codez:permission-capability:official_cua" }],
           type: "addRules",
         },
       ],

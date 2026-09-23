@@ -1,4 +1,4 @@
-package com.example.zcode_mobile.ui
+package com.example.codez_mobile.ui
 
 import android.annotation.SuppressLint
 import android.Manifest
@@ -67,12 +67,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.example.zcode_mobile.BuildConfig
-import com.example.zcode_mobile.R
-import com.example.zcode_mobile.remote.RemoteControlRecentLink
-import com.example.zcode_mobile.remote.RemoteControlUrlPolicy
-import com.example.zcode_mobile.remote.displaySubtitle
-import com.example.zcode_mobile.remote.displayTitle
+import com.example.codez_mobile.BuildConfig
+import com.example.codez_mobile.R
+import com.example.codez_mobile.remote.RemoteControlRecentLink
+import com.example.codez_mobile.remote.RemoteControlUrlPolicy
+import com.example.codez_mobile.remote.displaySubtitle
+import com.example.codez_mobile.remote.displayTitle
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -704,7 +704,7 @@ private fun createRemoteControlWebView(
             allowFileAccess = false
             allowContentAccess = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            userAgentString = "$userAgentString ZCodeAndroid/${BuildConfig.VERSION_NAME}"
+            userAgentString = "$userAgentString CodezAndroid/${BuildConfig.VERSION_NAME}"
         }
         webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
@@ -730,7 +730,7 @@ private fun createRemoteControlWebView(
 
                 val resolved = RemoteControlUrlPolicy.resolve(request.url)
                 if (resolved != null) {
-                    if (request.url.scheme == "zcode") {
+                    if (request.url.scheme == "codez") {
                         view.loadUrl(resolved)
                         return true
                     }

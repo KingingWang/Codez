@@ -9,8 +9,8 @@ import {
   TID_BROWSER_PERMISSION_DISMISS,
   TID_BROWSER_PERMISSION_PROMPTS,
   type EmbeddedBrowserPermissionPromptEvent,
-} from "@zcode/shared";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+} from "@codez/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 // 与组件相同的 "@/..." 说明符：vitest alias 下相对路径与别名会解析成两个模块实例，
 // 导致 setState 与组件订阅落在不同 store 上。
 import { useEmbeddedBrowserPermissionStore } from "@/store/embeddedBrowserPermissionStore.js";
@@ -49,7 +49,7 @@ function renderWithPrompts(
   useEmbeddedBrowserPermissionStore.setState({ prompts });
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(EmbeddedBrowserPermissionPrompts, { guestWebContentsId }),
     ),

@@ -5,7 +5,7 @@ const restoredOAuthCredentials = {
   "oauth:active_provider": "zai",
   "oauth:zai:access_token": "fake-access-token",
   "oauth:zai:user_info": "{}",
-  zcodejwttoken: "fake-zcode-jwt",
+  codezjwttoken: "fake-codez-jwt",
 };
 
 describe("desktop e2e startup credentials", () => {
@@ -18,8 +18,8 @@ describe("desktop e2e startup credentials", () => {
         specs: [spec],
         legacyAuthToken: "fake-auth-token",
         restoredOAuthCredentials,
-      }).zcodejwttoken,
-    ).toBe("fake-zcode-jwt");
+      }).codezjwttoken,
+    ).toBe("fake-codez-jwt");
   });
   it("供应商响应式 spec 保留本地 balance mock 所需的 JWT", () => {
     expect(
@@ -27,8 +27,8 @@ describe("desktop e2e startup credentials", () => {
         specs: ["/repo/packages/desktop/test/e2e/provider-family-responsive.test.ts"],
         legacyAuthToken: "fake-auth-token",
         restoredOAuthCredentials,
-      }).zcodejwttoken,
-    ).toBe("fake-zcode-jwt");
+      }).codezjwttoken,
+    ).toBe("fake-codez-jwt");
   });
   it("纯 Provider 冷恢复 spec 不播种会访问账号控制面的假登录态", () => {
     expect(
@@ -74,7 +74,7 @@ describe("desktop e2e startup credentials", () => {
     ).toEqual({});
   });
 
-  it("普通 spec 保留 OAuth 展示态但不注入会触发失效广播的 zcode JWT", () => {
+  it("普通 spec 保留 OAuth 展示态但不注入会触发失效广播的 codez JWT", () => {
     expect(
       createE2EStartupCredentialSeed({
         specs: [
@@ -106,7 +106,7 @@ describe("desktop e2e startup credentials", () => {
     });
   });
 
-  it("Start Plan 手动领取 spec 保留调用 claim API 所需的 zcode JWT", () => {
+  it("Start Plan 手动领取 spec 保留调用 claim API 所需的 codez JWT", () => {
     expect(
       createE2EStartupCredentialSeed({
         specs: ["/repo/packages/desktop/test/e2e/ui-shell/marketing-touch-entitlement.test.ts"],

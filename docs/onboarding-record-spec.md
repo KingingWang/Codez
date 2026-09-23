@@ -6,7 +6,7 @@
 ## 1. 背景与目标
 
 新用户引导（OccupationOnboarding，三步向导：职业 / 模式 / 偏好）目前只在完成后把偏好写入
-`~/.zcode/v2/setting.json`（`onboardingOccupation` 等字段），没有独立的"引导完成记录"。
+`~/.codez/v2/setting.json`（`onboardingOccupation` 等字段），没有独立的"引导完成记录"。
 产品需要：
 
 1. 把三页收集的信息持久化到**独立的本地 JSON 文件**，后续开放上传给服务器；
@@ -50,7 +50,7 @@ v1 文件不做启动迁移：读取时视为 `decisions: []`，下一次业务�
 
 **跳过语义**：跳过是显式答案。某页被跳过时该字段记 `null`（职业页跳过 → `occupation: null`；模式页跳过 → `interfaceMode: null`；偏好页跳过 → 两个布尔记 `null`），与"明确选择了值"区分。settings 侧跳过仍落保守默认值（职业 `other` / 偏好关），区分度只体现在本记录文件。
 
-存储位置：`getAppConfigDir()/onboarding-record.json`（即 `getDataBaseDir()/.zcode/v2/`，默认 `~/.zcode/v2/`；用户自定义数据目录时跟随 dataBaseDir，与 telemetry-state.json 等设备级数据一致。注意与 setting.json 不同——setting.json 固定留在 home，因为启动引导需要从固定位置读取 dataBaseDir）。原子写。
+存储位置：`getAppConfigDir()/onboarding-record.json`（即 `getDataBaseDir()/.codez/v2/`，默认 `~/.codez/v2/`；用户自定义数据目录时跟随 dataBaseDir，与 telemetry-state.json 等设备级数据一致。注意与 setting.json 不同——setting.json 固定留在 home，因为启动引导需要从固定位置读取 dataBaseDir）。原子写。
 
 ## 3. 关联语义
 

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { DEFAULT_PLUGIN_MARKETPLACES } from "@zcode/shared";
+import { DEFAULT_PLUGIN_MARKETPLACES } from "@codez/shared";
 import { getE2EAppDataPaths } from "./desktop-app.js";
 
 export const PLUGIN_RUNTIME_ENV_MARKETPLACE_ID =
@@ -33,7 +33,7 @@ export async function createPluginRuntimeEnvFixture(
   const pluginRoot = join(marketplaceRoot, "plugins", PLUGIN_RUNTIME_ENV_NAME);
   await rm(marketplaceRoot, { force: true, recursive: true });
 
-  await writeJson(join(pluginRoot, ".zcode-plugin", "plugin.json"), {
+  await writeJson(join(pluginRoot, ".codez-plugin", "plugin.json"), {
     name: PLUGIN_RUNTIME_ENV_NAME,
     version: "1.0.0",
     description: "E2E plugin MCP secret env and agent projection fixture",
@@ -42,7 +42,7 @@ export async function createPluginRuntimeEnvFixture(
       "secret-verifier": {
         type: "stdio",
         command: "node",
-        args: ["${ZCODE_PLUGIN_ROOT}/server.mjs"],
+        args: ["${CODEZ_PLUGIN_ROOT}/server.mjs"],
         env: {
           [PLUGIN_RUNTIME_ENV_VARIABLE]: `\${${PLUGIN_RUNTIME_ENV_VARIABLE}}`,
         },
@@ -86,7 +86,7 @@ export async function createPluginRuntimeEnvFixture(
 async function primeDefaultPluginMarketplacesForE2E(homeDir: string): Promise<void> {
   const path = join(
     homeDir,
-    ".zcode",
+    ".codez",
     "cli",
     "plugins",
     "known_marketplaces.json",

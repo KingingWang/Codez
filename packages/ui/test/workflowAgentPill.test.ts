@@ -5,7 +5,7 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   WorkflowAgentPill,
   avatarColor,
@@ -18,7 +18,7 @@ afterEach(() => {
 function renderPill(props: Parameters<typeof WorkflowAgentPill>[0]) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(WorkflowAgentPill, props),
     ),

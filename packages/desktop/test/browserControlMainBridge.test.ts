@@ -3,7 +3,7 @@ import {
   createBrowserControlMainBridge,
   type BrowserExecuteRequestMessage,
 } from "../src/host/browserControlMainBridge.js";
-import type { BrowserCommand, BrowserCommandResult } from "@zcode/contracts";
+import type { BrowserCommand, BrowserCommandResult } from "@codez/contracts";
 
 const NAV: BrowserCommand = { method: "navigate", url: "https://example.com" };
 
@@ -16,7 +16,7 @@ describe("browserControlMainBridge", () => {
     const [descriptor] = await bridge.list();
     expect(descriptor).toMatchObject({
       type: "iab",
-      name: "ZCode In-app Browser",
+      name: "Codez In-app Browser",
       generation: expect.any(Number),
       capabilities: {
         browser: [expect.objectContaining({ id: "visibility" })],
@@ -88,7 +88,7 @@ describe("browserControlMainBridge", () => {
           startedAt: 1,
           updatedAt: 2,
           artifact: {
-            path: "/tmp/zcode-recording.webm",
+            path: "/tmp/codez-recording.webm",
             mimeType: "video/webm",
             width: 1280,
             height: 720,
@@ -108,7 +108,7 @@ describe("browserControlMainBridge", () => {
       expect.objectContaining({
         outputPath: "recordings/demo.webm",
         workspacePath: "/workspace",
-        localPath: "/tmp/zcode-recording.webm",
+        localPath: "/tmp/codez-recording.webm",
       }),
     );
     bridge.dispose();

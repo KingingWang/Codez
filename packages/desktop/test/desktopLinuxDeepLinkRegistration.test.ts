@@ -28,14 +28,14 @@ describe("desktop Linux deep link registration helpers", () => {
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
 
     const command = resolveLinuxDeepLinkCommand({
-      env: { APPIMAGE: "/home/alice/Downloads/ZCode-2.8.0-linux-x64.AppImage" },
-      executablePath: "/tmp/.mount_ZCode/zcode",
+      env: { APPIMAGE: "/home/alice/Downloads/Codez-2.8.0-linux-x64.AppImage" },
+      executablePath: "/tmp/.mount_Codez/codez",
     });
     const entry = createLinuxDeepLinkDesktopEntry(command);
 
-    expect(command.executablePath).toBe("/home/alice/Downloads/ZCode-2.8.0-linux-x64.AppImage");
-    expect(entry).toContain('Exec="/home/alice/Downloads/ZCode-2.8.0-linux-x64.AppImage" %U');
-    expect(entry).toContain("MimeType=x-scheme-handler/zcode;");
+    expect(command.executablePath).toBe("/home/alice/Downloads/Codez-2.8.0-linux-x64.AppImage");
+    expect(entry).toContain('Exec="/home/alice/Downloads/Codez-2.8.0-linux-x64.AppImage" %U');
+    expect(entry).toContain("MimeType=x-scheme-handler/codez;");
   });
 
   it("keeps AppImage sandbox and GPU launch switches for protocol callbacks", async () => {
@@ -43,16 +43,16 @@ describe("desktop Linux deep link registration helpers", () => {
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
 
     const command = resolveLinuxDeepLinkCommand({
-      env: { APPIMAGE: "/home/alice/Applications/ZCode.AppImage" },
-      executablePath: "/tmp/.mount_ZCode/zcode",
+      env: { APPIMAGE: "/home/alice/Applications/Codez.AppImage" },
+      executablePath: "/tmp/.mount_Codez/codez",
       argv: [
-        "/tmp/.mount_ZCode/zcode",
+        "/tmp/.mount_Codez/codez",
         "--no-sandbox",
         "--disable-gpu",
         "--disable-software-rasterizer",
         "--use-gl=swiftshader",
         "--remote-debugging-port=9229",
-        "zcode://oauth/callback?code=1&state=s",
+        "codez://oauth/callback?code=1&state=s",
         "/home/alice/project",
       ],
     });
@@ -65,7 +65,7 @@ describe("desktop Linux deep link registration helpers", () => {
       "--use-gl=swiftshader",
     ]);
     expect(entry).toContain(
-      'Exec="/home/alice/Applications/ZCode.AppImage" "--no-sandbox" "--disable-gpu" "--disable-software-rasterizer" "--use-gl=swiftshader" %U',
+      'Exec="/home/alice/Applications/Codez.AppImage" "--no-sandbox" "--disable-gpu" "--disable-software-rasterizer" "--use-gl=swiftshader" %U',
     );
     expect(entry).not.toContain("remote-debugging-port");
     expect(entry).not.toContain("oauth/callback");
@@ -78,13 +78,13 @@ describe("desktop Linux deep link registration helpers", () => {
 
     const command = resolveLinuxDeepLinkCommand({
       env: {},
-      executablePath: "/opt/ZCode/zcode",
-      argv: ["/opt/ZCode/zcode", "--no-sandbox", "--disable-gpu"],
+      executablePath: "/opt/Codez/codez",
+      argv: ["/opt/Codez/codez", "--no-sandbox", "--disable-gpu"],
     });
     const entry = createLinuxDeepLinkDesktopEntry(command);
 
-    expect(command).toEqual({ executablePath: "/opt/ZCode/zcode", args: [] });
-    expect(entry).toContain('Exec="/opt/ZCode/zcode" %U');
+    expect(command).toEqual({ executablePath: "/opt/Codez/codez", args: [] });
+    expect(entry).toContain('Exec="/opt/Codez/codez" %U');
   });
 
   it("escapes desktop Exec paths before writing user-level handlers", async () => {
@@ -92,10 +92,10 @@ describe("desktop Linux deep link registration helpers", () => {
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
 
     const entry = createLinuxDeepLinkDesktopEntry({
-      executablePath: '/home/alice/Downloads/ZCode "Nightly".AppImage',
+      executablePath: '/home/alice/Downloads/Codez "Nightly".AppImage',
     });
 
-    expect(entry).toContain('Exec="/home/alice/Downloads/ZCode \\"Nightly\\".AppImage" %U');
+    expect(entry).toContain('Exec="/home/alice/Downloads/Codez \\"Nightly\\".AppImage" %U');
   });
 
   it("writes the Preview product name into the shared Linux protocol handler", async () => {
@@ -103,14 +103,14 @@ describe("desktop Linux deep link registration helpers", () => {
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
 
     const entry = createLinuxDeepLinkDesktopEntry({
-      executablePath: "/opt/ZCode Preview/zcode-preview",
-      productName: "ZCode Preview",
+      executablePath: "/opt/Codez Preview/codez-preview",
+      productName: "Codez Preview",
     });
 
-    expect(entry).toContain("Name=ZCode Preview");
-    expect(entry).toContain("StartupWMClass=ZCode Preview");
-    expect(entry).toContain('Exec="/opt/ZCode Preview/zcode-preview" %U');
-    expect(entry).toContain("MimeType=x-scheme-handler/zcode;");
+    expect(entry).toContain("Name=Codez Preview");
+    expect(entry).toContain("StartupWMClass=Codez Preview");
+    expect(entry).toContain('Exec="/opt/Codez Preview/codez-preview" %U');
+    expect(entry).toContain("MimeType=x-scheme-handler/codez;");
   });
 
   it("escapes AppImage callback switches before writing desktop Exec", async () => {
@@ -118,12 +118,12 @@ describe("desktop Linux deep link registration helpers", () => {
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
 
     const entry = createLinuxDeepLinkDesktopEntry({
-      executablePath: "/home/alice/Downloads/ZCode.AppImage",
+      executablePath: "/home/alice/Downloads/Codez.AppImage",
       args: ['--disable-features=UseOzonePlatform,"Quoted"'],
     });
 
     expect(entry).toContain(
-      'Exec="/home/alice/Downloads/ZCode.AppImage" "--disable-features=UseOzonePlatform,\\"Quoted\\"" %U',
+      'Exec="/home/alice/Downloads/Codez.AppImage" "--disable-features=UseOzonePlatform,\\"Quoted\\"" %U',
     );
   });
 
@@ -132,7 +132,7 @@ describe("desktop Linux deep link registration helpers", () => {
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
     const { installLinuxAppImageDesktopIcon, shouldInstallAppImageDesktopIcon } =
       await import("../src/main/desktopLinuxAppImageIcon.js");
-    const tempRoot = mkdtempSync(join(tmpdir(), "zcode-linux-icon-"));
+    const tempRoot = mkdtempSync(join(tmpdir(), "codez-linux-icon-"));
     const iconSourcePath = join(import.meta.dirname, "..", "build", "icons", "512x512.png");
     const homeDir = join(tempRoot, "home");
     const dataDir = resolveLinuxUserDataDir({ homeDir });
@@ -143,7 +143,7 @@ describe("desktop Linux deep link registration helpers", () => {
 
       expect(
         shouldInstallAppImageDesktopIcon({
-          env: { APPIMAGE: "/home/alice/Applications/ZCode.AppImage" },
+          env: { APPIMAGE: "/home/alice/Applications/Codez.AppImage" },
           iconSourcePath,
         }),
       ).toBe(true);
@@ -160,7 +160,7 @@ describe("desktop Linux deep link registration helpers", () => {
       });
 
       expect(result).toEqual({
-        iconFilePath: join(dataDir, "icons", "hicolor", "512x512", "apps", "zcode.png"),
+        iconFilePath: join(dataDir, "icons", "hicolor", "512x512", "apps", "codez.png"),
         installed: true,
         changed: true,
       });
@@ -195,7 +195,7 @@ describe("desktop Linux deep link registration helpers", () => {
   it("keeps desktop entry registration when optional AppImage icon install fails", async () => {
     const { registerLinuxDeepLinkProtocol } =
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
-    const tempRoot = mkdtempSync(join(tmpdir(), "zcode-linux-registration-"));
+    const tempRoot = mkdtempSync(join(tmpdir(), "codez-linux-registration-"));
     const homeDir = join(tempRoot, "home");
     const badIconSourcePath = join(tempRoot, "icon-source-directory");
     const warnings: unknown[][] = [];
@@ -204,11 +204,11 @@ describe("desktop Linux deep link registration helpers", () => {
     try {
       mkdirSync(badIconSourcePath, { recursive: true });
       registerLinuxDeepLinkProtocol({
-        executablePath: "/tmp/.mount_ZCode/zcode",
+        executablePath: "/tmp/.mount_Codez/codez",
         homeDir,
         iconSourcePath: badIconSourcePath,
-        env: { APPIMAGE: "/home/alice/Applications/ZCode.AppImage" },
-        // 固定系统级目录为空，避免测试机恰好装了 ZCode 系统包时走清理分支。
+        env: { APPIMAGE: "/home/alice/Applications/Codez.AppImage" },
+        // 固定系统级目录为空，避免测试机恰好装了 Codez 系统包时走清理分支。
         systemApplicationDirs: [join(tempRoot, "empty-system-applications")],
         logger: {
           info: () => undefined,
@@ -220,10 +220,10 @@ describe("desktop Linux deep link registration helpers", () => {
         },
       });
 
-      const desktopFilePath = join(homeDir, ".local", "share", "applications", "zcode.desktop");
+      const desktopFilePath = join(homeDir, ".local", "share", "applications", "codez.desktop");
       expect(existsSync(desktopFilePath)).toBe(true);
       expect(readFileSync(desktopFilePath, "utf8")).toContain(
-        'Exec="/home/alice/Applications/ZCode.AppImage" %U',
+        'Exec="/home/alice/Applications/Codez.AppImage" %U',
       );
       expect(
         warnings.some(([message]) => message === "[deep-link] Linux AppImage 图标安装失败，已降级"),
@@ -235,7 +235,7 @@ describe("desktop Linux deep link registration helpers", () => {
         },
         {
           command: "xdg-mime",
-          args: ["default", "zcode.desktop", "x-scheme-handler/zcode"],
+          args: ["default", "codez.desktop", "x-scheme-handler/codez"],
         },
       ]);
     } finally {
@@ -265,19 +265,19 @@ describe("desktop Linux deep link registration helpers", () => {
   it("removes the stale owned user-level entry when a system-level entry exists", async () => {
     const { registerLinuxDeepLinkProtocol } =
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
-    const tempRoot = mkdtempSync(join(tmpdir(), "zcode-linux-system-entry-"));
+    const tempRoot = mkdtempSync(join(tmpdir(), "codez-linux-system-entry-"));
     const homeDir = join(tempRoot, "home");
     const systemApplicationsDir = join(tempRoot, "system", "applications");
-    const desktopFilePath = join(homeDir, ".local", "share", "applications", "zcode.desktop");
+    const desktopFilePath = join(homeDir, ".local", "share", "applications", "codez.desktop");
     const infos: unknown[][] = [];
     const commandCalls: CommandCall[] = [];
 
     try {
-      // 模拟 rpm/deb 安装产物：/usr/share/applications/zcode.desktop。
+      // 模拟 rpm/deb 安装产物：/usr/share/applications/codez.desktop。
       mkdirSync(systemApplicationsDir, { recursive: true });
       writeFileSync(
-        join(systemApplicationsDir, "zcode.desktop"),
-        "[Desktop Entry]\nName=ZCode\nExec=/opt/ZCode/zcode %U\n",
+        join(systemApplicationsDir, "codez.desktop"),
+        "[Desktop Entry]\nName=Codez\nExec=/opt/Codez/codez %U\n",
         "utf8",
       );
       // 模拟旧 AppImage 时代遗留的用户级条目（含归属标记 Comment 行）。
@@ -286,17 +286,17 @@ describe("desktop Linux deep link registration helpers", () => {
         desktopFilePath,
         [
           "[Desktop Entry]",
-          "Name=ZCode",
-          "Comment=ZCode Desktop App",
-          'Exec="/home/alice/Downloads/ZCode-2.8.0-linux-x64.AppImage" %U',
-          "MimeType=x-scheme-handler/zcode;",
+          "Name=Codez",
+          "Comment=Codez Desktop App",
+          'Exec="/home/alice/Downloads/Codez-2.8.0-linux-x64.AppImage" %U',
+          "MimeType=x-scheme-handler/codez;",
           "",
         ].join("\n"),
         "utf8",
       );
 
       registerLinuxDeepLinkProtocol({
-        executablePath: "/opt/ZCode/zcode",
+        executablePath: "/opt/Codez/codez",
         homeDir,
         env: {},
         systemApplicationDirs: [systemApplicationsDir],
@@ -319,7 +319,7 @@ describe("desktop Linux deep link registration helpers", () => {
         },
         {
           command: "xdg-mime",
-          args: ["default", "zcode.desktop", "x-scheme-handler/zcode"],
+          args: ["default", "codez.desktop", "x-scheme-handler/codez"],
         },
       ]);
       expect(
@@ -333,27 +333,27 @@ describe("desktop Linux deep link registration helpers", () => {
   it("keeps a custom user-level entry untouched when a system-level entry exists", async () => {
     const { registerLinuxDeepLinkProtocol } =
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
-    const tempRoot = mkdtempSync(join(tmpdir(), "zcode-linux-custom-entry-"));
+    const tempRoot = mkdtempSync(join(tmpdir(), "codez-linux-custom-entry-"));
     const homeDir = join(tempRoot, "home");
     const systemApplicationsDir = join(tempRoot, "system", "applications");
-    const desktopFilePath = join(homeDir, ".local", "share", "applications", "zcode.desktop");
+    const desktopFilePath = join(homeDir, ".local", "share", "applications", "codez.desktop");
     const warnings: unknown[][] = [];
 
     try {
       mkdirSync(systemApplicationsDir, { recursive: true });
       writeFileSync(
-        join(systemApplicationsDir, "zcode.desktop"),
-        "[Desktop Entry]\nName=ZCode\nExec=/opt/ZCode/zcode %U\n",
+        join(systemApplicationsDir, "codez.desktop"),
+        "[Desktop Entry]\nName=Codez\nExec=/opt/Codez/codez %U\n",
         "utf8",
       );
       // 用户手写的自定义条目：没有我们的归属标记，不应被静默删除。
       mkdirSync(dirname(desktopFilePath), { recursive: true });
       const customEntry =
-        "[Desktop Entry]\nName=ZCode\nComment=Custom wrapper\nExec=/home/alice/wrap.sh %U\n";
+        "[Desktop Entry]\nName=Codez\nComment=Custom wrapper\nExec=/home/alice/wrap.sh %U\n";
       writeFileSync(desktopFilePath, customEntry, "utf8");
 
       registerLinuxDeepLinkProtocol({
-        executablePath: "/opt/ZCode/zcode",
+        executablePath: "/opt/Codez/codez",
         homeDir,
         env: {},
         systemApplicationDirs: [systemApplicationsDir],
@@ -369,7 +369,7 @@ describe("desktop Linux deep link registration helpers", () => {
       expect(
         warnings.some(
           ([message]) =>
-            message === "[deep-link] Linux 用户级 zcode.desktop 非本应用写入，保留不清理",
+            message === "[deep-link] Linux 用户级 codez.desktop 非本应用写入，保留不清理",
         ),
       ).toBe(true);
     } finally {
@@ -380,26 +380,26 @@ describe("desktop Linux deep link registration helpers", () => {
   it("does not shadow a system-level entry for AppImage launches", async () => {
     const { registerLinuxDeepLinkProtocol } =
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
-    const tempRoot = mkdtempSync(join(tmpdir(), "zcode-linux-appimage-system-"));
+    const tempRoot = mkdtempSync(join(tmpdir(), "codez-linux-appimage-system-"));
     const homeDir = join(tempRoot, "home");
     const systemApplicationsDir = join(tempRoot, "system", "applications");
-    const desktopFilePath = join(homeDir, ".local", "share", "applications", "zcode.desktop");
+    const desktopFilePath = join(homeDir, ".local", "share", "applications", "codez.desktop");
     const iconSourcePath = join(import.meta.dirname, "..", "build", "icons", "512x512.png");
     const commandCalls: CommandCall[] = [];
 
     try {
       mkdirSync(systemApplicationsDir, { recursive: true });
       writeFileSync(
-        join(systemApplicationsDir, "zcode.desktop"),
-        "[Desktop Entry]\nName=ZCode\nExec=/opt/ZCode/zcode %U\n",
+        join(systemApplicationsDir, "codez.desktop"),
+        "[Desktop Entry]\nName=Codez\nExec=/opt/Codez/codez %U\n",
         "utf8",
       );
 
       registerLinuxDeepLinkProtocol({
-        executablePath: "/tmp/.mount_ZCode/zcode",
+        executablePath: "/tmp/.mount_Codez/codez",
         homeDir,
         iconSourcePath,
-        env: { APPIMAGE: "/home/alice/Applications/ZCode.AppImage" },
+        env: { APPIMAGE: "/home/alice/Applications/Codez.AppImage" },
         systemApplicationDirs: [systemApplicationsDir],
         logger: { info: () => undefined, warn: () => undefined },
         runCommand: (command, args) => {
@@ -412,7 +412,7 @@ describe("desktop Linux deep link registration helpers", () => {
       expect(existsSync(desktopFilePath)).toBe(false);
       expect(
         existsSync(
-          join(homeDir, ".local", "share", "icons", "hicolor", "512x512", "apps", "zcode.png"),
+          join(homeDir, ".local", "share", "icons", "hicolor", "512x512", "apps", "codez.png"),
         ),
       ).toBe(false);
       expect(commandCalls).toEqual([
@@ -422,7 +422,7 @@ describe("desktop Linux deep link registration helpers", () => {
         },
         {
           command: "xdg-mime",
-          args: ["default", "zcode.desktop", "x-scheme-handler/zcode"],
+          args: ["default", "codez.desktop", "x-scheme-handler/codez"],
         },
       ]);
     } finally {
@@ -433,13 +433,13 @@ describe("desktop Linux deep link registration helpers", () => {
   it("still writes the user-level entry when no system-level entry exists", async () => {
     const { registerLinuxDeepLinkProtocol } =
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
-    const tempRoot = mkdtempSync(join(tmpdir(), "zcode-linux-no-system-"));
+    const tempRoot = mkdtempSync(join(tmpdir(), "codez-linux-no-system-"));
     const homeDir = join(tempRoot, "home");
-    const desktopFilePath = join(homeDir, ".local", "share", "applications", "zcode.desktop");
+    const desktopFilePath = join(homeDir, ".local", "share", "applications", "codez.desktop");
 
     try {
       registerLinuxDeepLinkProtocol({
-        executablePath: "/opt/ZCode/zcode",
+        executablePath: "/opt/Codez/codez",
         homeDir,
         env: {},
         systemApplicationDirs: [join(tempRoot, "empty-system-applications")],
@@ -448,7 +448,7 @@ describe("desktop Linux deep link registration helpers", () => {
       });
 
       expect(existsSync(desktopFilePath)).toBe(true);
-      expect(readFileSync(desktopFilePath, "utf8")).toContain('Exec="/opt/ZCode/zcode" %U');
+      expect(readFileSync(desktopFilePath, "utf8")).toContain('Exec="/opt/Codez/codez" %U');
     } finally {
       rmSync(tempRoot, { force: true, recursive: true });
     }
@@ -457,16 +457,16 @@ describe("desktop Linux deep link registration helpers", () => {
   it("ignores non-regular system-level paths when probing for shadow entries", async () => {
     const { registerLinuxDeepLinkProtocol } =
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
-    const tempRoot = mkdtempSync(join(tmpdir(), "zcode-linux-dir-system-"));
+    const tempRoot = mkdtempSync(join(tmpdir(), "codez-linux-dir-system-"));
     const homeDir = join(tempRoot, "home");
-    // 系统目录下的 zcode.desktop 是一个目录而非普通文件，不得视为有效系统条目。
+    // 系统目录下的 codez.desktop 是一个目录而非普通文件，不得视为有效系统条目。
     const systemApplicationsDir = join(tempRoot, "system", "applications");
-    const desktopFilePath = join(homeDir, ".local", "share", "applications", "zcode.desktop");
+    const desktopFilePath = join(homeDir, ".local", "share", "applications", "codez.desktop");
 
     try {
-      mkdirSync(join(systemApplicationsDir, "zcode.desktop"), { recursive: true });
+      mkdirSync(join(systemApplicationsDir, "codez.desktop"), { recursive: true });
       registerLinuxDeepLinkProtocol({
-        executablePath: "/opt/ZCode/zcode",
+        executablePath: "/opt/Codez/codez",
         homeDir,
         env: {},
         systemApplicationDirs: [systemApplicationsDir],
@@ -484,18 +484,18 @@ describe("desktop Linux deep link registration helpers", () => {
   it("keeps an unreadable user-level entry and continues protocol registration", async () => {
     const { registerLinuxDeepLinkProtocol } =
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
-    const tempRoot = mkdtempSync(join(tmpdir(), "zcode-linux-unreadable-"));
+    const tempRoot = mkdtempSync(join(tmpdir(), "codez-linux-unreadable-"));
     const homeDir = join(tempRoot, "home");
     const systemApplicationsDir = join(tempRoot, "system", "applications");
-    const desktopFilePath = join(homeDir, ".local", "share", "applications", "zcode.desktop");
+    const desktopFilePath = join(homeDir, ".local", "share", "applications", "codez.desktop");
     const warnings: unknown[][] = [];
     const commandCalls: CommandCall[] = [];
 
     try {
       mkdirSync(systemApplicationsDir, { recursive: true });
       writeFileSync(
-        join(systemApplicationsDir, "zcode.desktop"),
-        "[Desktop Entry]\nName=ZCode\nExec=/opt/ZCode/zcode %U\n",
+        join(systemApplicationsDir, "codez.desktop"),
+        "[Desktop Entry]\nName=Codez\nExec=/opt/Codez/codez %U\n",
         "utf8",
       );
       mkdirSync(dirname(desktopFilePath), { recursive: true });
@@ -504,7 +504,7 @@ describe("desktop Linux deep link registration helpers", () => {
       chmodSync(desktopFilePath, 0o000);
 
       registerLinuxDeepLinkProtocol({
-        executablePath: "/opt/ZCode/zcode",
+        executablePath: "/opt/Codez/codez",
         homeDir,
         env: {},
         systemApplicationDirs: [systemApplicationsDir],
@@ -522,7 +522,7 @@ describe("desktop Linux deep link registration helpers", () => {
       expect(
         warnings.some(
           ([message]) =>
-            message === "[deep-link] Linux 用户级 zcode.desktop 非本应用写入，保留不清理",
+            message === "[deep-link] Linux 用户级 codez.desktop 非本应用写入，保留不清理",
         ),
       ).toBe(true);
       // 归属识别失败只降级，协议注册命令仍完整执行。
@@ -533,7 +533,7 @@ describe("desktop Linux deep link registration helpers", () => {
         },
         {
           command: "xdg-mime",
-          args: ["default", "zcode.desktop", "x-scheme-handler/zcode"],
+          args: ["default", "codez.desktop", "x-scheme-handler/codez"],
         },
       ]);
     } finally {
@@ -545,17 +545,17 @@ describe("desktop Linux deep link registration helpers", () => {
   it("recognizes ownership markers with CRLF line endings", async () => {
     const { registerLinuxDeepLinkProtocol } =
       await import("../src/main/desktopLinuxDeepLinkRegistration.js");
-    const tempRoot = mkdtempSync(join(tmpdir(), "zcode-linux-crlf-"));
+    const tempRoot = mkdtempSync(join(tmpdir(), "codez-linux-crlf-"));
     const homeDir = join(tempRoot, "home");
     const systemApplicationsDir = join(tempRoot, "system", "applications");
-    const desktopFilePath = join(homeDir, ".local", "share", "applications", "zcode.desktop");
+    const desktopFilePath = join(homeDir, ".local", "share", "applications", "codez.desktop");
     const infos: unknown[][] = [];
 
     try {
       mkdirSync(systemApplicationsDir, { recursive: true });
       writeFileSync(
-        join(systemApplicationsDir, "zcode.desktop"),
-        "[Desktop Entry]\nName=ZCode\nExec=/opt/ZCode/zcode %U\n",
+        join(systemApplicationsDir, "codez.desktop"),
+        "[Desktop Entry]\nName=Codez\nExec=/opt/Codez/codez %U\n",
         "utf8",
       );
       // 旧版本写出的 LF 条目被 Windows 风格工具改写为 CRLF 后仍应识别为可清理。
@@ -564,17 +564,17 @@ describe("desktop Linux deep link registration helpers", () => {
         desktopFilePath,
         [
           "[Desktop Entry]",
-          "Name=ZCode",
-          "Comment=ZCode Desktop App",
-          'Exec="/home/alice/Downloads/ZCode.AppImage" %U',
-          "MimeType=x-scheme-handler/zcode;",
+          "Name=Codez",
+          "Comment=Codez Desktop App",
+          'Exec="/home/alice/Downloads/Codez.AppImage" %U',
+          "MimeType=x-scheme-handler/codez;",
           "",
         ].join("\r\n"),
         "utf8",
       );
 
       registerLinuxDeepLinkProtocol({
-        executablePath: "/opt/ZCode/zcode",
+        executablePath: "/opt/Codez/codez",
         homeDir,
         env: {},
         systemApplicationDirs: [systemApplicationsDir],
@@ -588,7 +588,7 @@ describe("desktop Linux deep link registration helpers", () => {
       expect(existsSync(desktopFilePath)).toBe(false);
       expect(
         infos.some(
-          ([message]) => message === "[deep-link] 已清理遗留的用户级 zcode.desktop，恢复系统级条目",
+          ([message]) => message === "[deep-link] 已清理遗留的用户级 codez.desktop，恢复系统级条目",
         ),
       ).toBe(true);
     } finally {
@@ -604,32 +604,32 @@ describe("desktop Linux deep link registration helpers", () => {
     async () => {
       const { registerLinuxDeepLinkProtocol } =
         await import("../src/main/desktopLinuxDeepLinkRegistration.js");
-      const tempRoot = mkdtempSync(join(tmpdir(), "zcode-linux-rm-fail-"));
+      const tempRoot = mkdtempSync(join(tmpdir(), "codez-linux-rm-fail-"));
       const homeDir = join(tempRoot, "home");
       const systemApplicationsDir = join(tempRoot, "system", "applications");
       const applicationsDir = join(homeDir, ".local", "share", "applications");
-      const desktopFilePath = join(applicationsDir, "zcode.desktop");
+      const desktopFilePath = join(applicationsDir, "codez.desktop");
       const warnings: unknown[][] = [];
       const commandCalls: CommandCall[] = [];
 
       try {
         mkdirSync(systemApplicationsDir, { recursive: true });
         writeFileSync(
-          join(systemApplicationsDir, "zcode.desktop"),
-          "[Desktop Entry]\nName=ZCode\nExec=/opt/ZCode/zcode %U\n",
+          join(systemApplicationsDir, "codez.desktop"),
+          "[Desktop Entry]\nName=Codez\nExec=/opt/Codez/codez %U\n",
           "utf8",
         );
         mkdirSync(applicationsDir, { recursive: true });
         writeFileSync(
           desktopFilePath,
-          '[Desktop Entry]\nComment=ZCode Desktop App\nExec="/old/ZCode.AppImage" %U\n',
+          '[Desktop Entry]\nComment=Codez Desktop App\nExec="/old/Codez.AppImage" %U\n',
           "utf8",
         );
         // 目录去掉写权限后 rmSync 失败（EPERM）：删除失败必须只降级，不得抛出或阻断注册。
         chmodSync(applicationsDir, 0o500);
 
         registerLinuxDeepLinkProtocol({
-          executablePath: "/opt/ZCode/zcode",
+          executablePath: "/opt/Codez/codez",
           homeDir,
           env: {},
           systemApplicationDirs: [systemApplicationsDir],
@@ -645,7 +645,7 @@ describe("desktop Linux deep link registration helpers", () => {
 
         expect(existsSync(desktopFilePath)).toBe(true);
         expect(
-          warnings.some(([message]) => message === "[deep-link] 清理遗留用户级 zcode.desktop 失败"),
+          warnings.some(([message]) => message === "[deep-link] 清理遗留用户级 codez.desktop 失败"),
         ).toBe(true);
         expect(commandCalls).toEqual([
           {
@@ -654,7 +654,7 @@ describe("desktop Linux deep link registration helpers", () => {
           },
           {
             command: "xdg-mime",
-            args: ["default", "zcode.desktop", "x-scheme-handler/zcode"],
+            args: ["default", "codez.desktop", "x-scheme-handler/codez"],
           },
         ]);
       } finally {

@@ -20,7 +20,7 @@ function storage() {
 }
 
 const selection = { providerId: "provider", modelId: "model", options: { reasoningLevel: "high" } };
-const key = "zcode-model-selection-recent-v1:/repo";
+const key = "codez-model-selection-recent-v1:/repo";
 
 describe("composerRecent", () => {
   it("沿用旧 key 读取纯 ModelSelection，不臆造旧记录的模式", () => {

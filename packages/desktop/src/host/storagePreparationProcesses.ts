@@ -8,10 +8,10 @@ import {
   databaseMigrationFactsSchema,
   type DatabaseMigrationFacts,
   databaseStartupErrorDetailsSchema,
-  zcodeStoragePreparationFrameSchema,
+  codezStoragePreparationFrameSchema,
   type DatabaseStartupState,
-} from "@zcode/shared";
-import { resolveDefaultZCodeAgentCommand } from "@zcode/services/storage-startup";
+} from "@codez/shared";
+import { resolveDefaultCodezAgentCommand } from "@codez/services/storage-startup";
 
 type Phase = NonNullable<DatabaseStartupState["databasePhase"]>;
 const workerMessageSchema = z.discriminatedUnion("type", [
@@ -120,8 +120,8 @@ export async function prepareSessionStorage(options: {
 }): Promise<void> {
   if (options.signal.aborted) throw statusError("transport_closed");
   if (
-    !process.env.ZCODE_AGENT_SERVER_COMMAND?.trim() &&
-    process.env.ZCODE_DESKTOP_RUNTIME?.trim() !== "legacy"
+    !process.env.CODEZ_AGENT_SERVER_COMMAND?.trim() &&
+    process.env.CODEZ_DESKTOP_RUNTIME?.trim() !== "legacy"
   ) {
     // 默认桌面 bridge 不使用旧 session SQLite；不能启动迁移 Worker 或把缺少 CLI 当数据库故障。
     // 原生 executable/bridge 的可用性由实际 Agent 启动校验，Host 存储仍由 prepareHostStorage 准备。
@@ -131,7 +131,7 @@ export async function prepareSessionStorage(options: {
     });
     return;
   }
-  const command = resolveDefaultZCodeAgentCommand({
+  const command = resolveDefaultCodezAgentCommand({
     workspacePath: options.cwd,
     workspaceKey: options.cwd,
     presentationSurface: "desktop",
@@ -175,7 +175,7 @@ export async function prepareSessionStorage(options: {
     lines.on("line", (line) => {
       try {
         if (line.length > 65536) throw statusError("transport_closed");
-        const frame = zcodeStoragePreparationFrameSchema.parse(JSON.parse(line));
+        const frame = codezStoragePreparationFrameSchema.parse(JSON.parse(line));
         clearTimeout(firstStateTimer);
         if (frame.method === "startup/storagePath") {
           if (pathReceived) throw statusError("transport_closed");

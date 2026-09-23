@@ -12,7 +12,7 @@ Z.AI Coding Plan 复用同一组 `/api/biz` 业务接口协议，host 切换到 
 
 ## 套餐配置
 
-套餐配置按 provider 分组，由服务层 `codingPlanSubscriptionService.getStaticProducts()` 从 ZCode client config 拉取，前端只做一天内存缓存、Start 免费 SKU 合并和 `batch-preview` 实时状态合并，不在本地写死 Lite / Pro / Max 描述：
+套餐配置按 provider 分组，由服务层 `codingPlanSubscriptionService.getStaticProducts()` 从 Codez client config 拉取，前端只做一天内存缓存、Start 免费 SKU 合并和 `batch-preview` 实时状态合并，不在本地写死 Lite / Pro / Max 描述：
 
 - `productId`：后端商品 ID，用于和 `batch-preview`、`preview`、购买接口对齐。
 - `productName`：套餐名称，用于 Lite / Pro / Max 分组和卡片标题。
@@ -86,13 +86,13 @@ provider-neutral，BigModel 与 Z.AI 共用同一份免费额度定义：
 
 ### 测试环境
 
-本地开发需要验证测试数据时，使用 `ZCODE_ENV=test` 启动应用。客户端将请求
+本地开发需要验证测试数据时，使用 `CODEZ_ENV=test` 启动应用。客户端将请求
 `https://zcode.z.ai/api/v1/client/configs`，并自动附加 `app_version` 与
 `platform` 参数。本地不再提供独立的 client-config mock 命令或专用环境变量。
 
 ## 接口链路
 
-- BigModel API 主域名跟随环境：生产为 `https://bigmodel.cn`，`ZCODE_ENV=test` 为 `https://bigmodel.cn`。
+- BigModel API 主域名跟随环境：生产为 `https://bigmodel.cn`，`CODEZ_ENV=test` 为 `https://bigmodel.cn`。
 - `POST /api/biz/pay/batch-preview`：读取当前账号可见套餐价格与可购状态。
 - `GET /api/biz/product/info?productId=...`：仅用于维护静态目录时人工拉取商品展示字段，运行时套餐列表不再依赖它。
 - `POST /api/biz/pay/preview`：点击套餐后试算并获取 `bizId`。

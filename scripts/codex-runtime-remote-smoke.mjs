@@ -19,7 +19,7 @@ export async function smokeCodexRemoteBundle(root = codexRemoteRoot) {
   const manifest = JSON.parse(
     await readFile(join(root, "releases", version, `manifest-${target.key}.json`), "utf8"),
   );
-  const directory = await mkdtemp(join(tmpdir(), "zcode-codex-remote-smoke-"));
+  const directory = await mkdtemp(join(tmpdir(), "codez-codex-remote-smoke-"));
   try {
     const consumerModule = pathToFileURL(
       join(codexWorkspaceRoot, "packages/server/src/remote/bundledRemoteAssets.ts"),
@@ -61,16 +61,16 @@ export async function smokeCodexRemoteBundle(root = codexRemoteRoot) {
     const env = {
       PATH: process.env.PATH,
       HOME: directory,
-      ZCODE_DESKTOP_RUNTIME: "codex",
-      ZCODE_DATA_BASE_DIR: join(directory, "data"),
-      ZCODE_CODEX_BRIDGE_HOME: join(directory, "bridge-home"),
-      ZCODE_CODEX_COMMAND: join(directory, "codex/codex"),
-      ZCODE_CODEX_BRIDGE_PATH: join(directory, "codex/bridge.cjs"),
+      CODEZ_DESKTOP_RUNTIME: "codex",
+      CODEZ_DATA_BASE_DIR: join(directory, "data"),
+      CODEZ_CODEX_BRIDGE_HOME: join(directory, "bridge-home"),
+      CODEZ_CODEX_COMMAND: join(directory, "codex/codex"),
+      CODEZ_CODEX_BRIDGE_PATH: join(directory, "codex/bridge.cjs"),
     };
     const binary = join(directory, "node");
     const node = await run(binary, ["--version"], { env, cwd: directory, timeout: 15_000 });
     if (node.stdout.trim() !== "v24.14.0") throw new Error("Remote Node pin mismatch");
-    const server = await run(binary, [join(directory, "zcode-server.cjs"), "--version"], {
+    const server = await run(binary, [join(directory, "codez-server.cjs"), "--version"], {
       env,
       cwd: directory,
       timeout: 15_000,

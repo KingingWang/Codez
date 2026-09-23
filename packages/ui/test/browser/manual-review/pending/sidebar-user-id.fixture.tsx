@@ -1,6 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { WorkspaceSidebarFooter } from "@/WorkspaceSidebarFooter.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import "@/styles.css";
 
@@ -9,7 +9,7 @@ const theme = params.get("theme") === "dark" ? "dark" : "light";
 const locale = params.get("locale") === "en-US" ? "en-US" : "zh-CN";
 document.documentElement.className = `theme-zai-${theme}`;
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale={locale}>
+  <CodezIntlProvider initialLocale={locale}>
     <TooltipProvider>
       <div className="flex h-screen w-64 max-w-full flex-col justify-end bg-sidebar">
         <WorkspaceSidebarFooter
@@ -31,5 +31,5 @@ createRoot(document.getElementById("root")!).render(
         />
       </div>
     </TooltipProvider>
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

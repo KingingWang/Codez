@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { AttachmentRef } from "@zcode/shared/zcode-protocol-v4";
+import type { AttachmentRef } from "@codez/shared/codez-protocol-v4";
 import { BridgeSnapshots } from "../src/bridge-snapshots.js";
 import { InteractionBroker } from "../src/interactions.js";
 import { ThreadStateStore } from "../src/thread-state.js";

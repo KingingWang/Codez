@@ -12,10 +12,10 @@ import {
   resolveMessageStreamdownMode,
 } from "@/components/ai-elements/message.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (selector: (state: unknown) => unknown) =>
+  useCodezStore: (selector: (state: unknown) => unknown) =>
     selector({
       codePreviewSettings: {
         darkTheme: "github-dark",
@@ -44,7 +44,7 @@ describe("resolveMessageStreamdownMode", () => {
   it("invalidates memoized artifact images when their session or reader changes", () => {
     const readAttachment = vi.fn();
     const base = {
-      children: "![CUA](zcode-artifact://session-1/shot)",
+      children: "![CUA](codez-artifact://session-1/shot)",
       sessionId: "session-1",
       readAttachment,
     };
@@ -164,26 +164,26 @@ describe("resolveMessageStreamdownMode", () => {
   it("Assistant citation 使用现有文件链接渲染，普通文件名仍保持原文", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           MessageResponse,
           {
-            renderZCodeFileCitations: true,
+            renderCodezFileCitations: true,
             workspacePath: "/workspace",
             onOpenFileLink: vi.fn(),
           },
           [
             "普通文件 report.pdf。",
-            ':zcode-file-citation{path="docs/年度 报告.pdf" purpose="output" page_number=2}',
-            ':::zcode-file-citation{path="docs/论文.pdf" purpose="source"}',
+            ':codez-file-citation{path="docs/年度 报告.pdf" purpose="output" page_number=2}',
+            ':::codez-file-citation{path="docs/论文.pdf" purpose="source"}',
           ].join("\n\n"),
         ),
       ),
     );
 
     expect(html).toContain("普通文件 report.pdf");
-    expect(html).not.toContain(":zcode-file-citation");
+    expect(html).not.toContain(":codez-file-citation");
     expect(html).toContain("<button");
     expect(html).toContain('title="/workspace/docs/年度 报告.pdf"');
     expect(html).toContain('title="/workspace/docs/论文.pdf"');
@@ -193,17 +193,17 @@ describe("resolveMessageStreamdownMode", () => {
   it("citation 和 Markdown 文件链接支持智能引号且不污染路径", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           MessageResponse,
           {
-            renderZCodeFileCitations: true,
+            renderCodezFileCitations: true,
             workspacePath: "/workspace",
             onOpenFileLink: vi.fn(),
           },
           [
-            '规划完成。已生成 ：:zcode-file-citation{path=“/workspace/冰岛 行程.pdf” purpose="output"}',
+            '规划完成。已生成 ：:codez-file-citation{path=“/workspace/冰岛 行程.pdf” purpose="output"}',
             "[说明](‘docs/说明.md’)",
           ].join("\n\n"),
         ),
@@ -220,7 +220,7 @@ describe("resolveMessageStreamdownMode", () => {
   it("正文文件链接由文字提供真实基线，图标独立居中，并仅在 hover 显示虚线下划线", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           MessageResponse,
@@ -254,12 +254,12 @@ describe("resolveMessageStreamdownMode", () => {
   it("正文公网链接与文件链接使用相同的浏览器式链接交互", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           MessageResponse,
           { onOpenExternalUrl: vi.fn() },
-          "[ZCode](https://zcode-ai.com)",
+          "[Codez](https://codez-ai.com)",
         ),
       ),
     );
@@ -274,36 +274,36 @@ describe("resolveMessageStreamdownMode", () => {
   it("streaming 时隐藏未闭合 citation，异常换行后的正文仍可见", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           MessageResponse,
           {
-            renderZCodeFileCitations: true,
+            renderCodezFileCitations: true,
             streaming: true,
             workspacePath: "/workspace",
             onOpenFileLink: vi.fn(),
           },
-          '正文\n::zcode-file-citation{path="docs/report.pdf"',
+          '正文\n::codez-file-citation{path="docs/report.pdf"',
         ),
       ),
     );
     expect(html).toContain("正文");
-    expect(html).not.toContain("::zcode-file-citation");
+    expect(html).not.toContain("::codez-file-citation");
 
     const malformedHtml = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           MessageResponse,
           {
-            renderZCodeFileCitations: true,
+            renderCodezFileCitations: true,
             streaming: true,
             workspacePath: "/workspace",
             onOpenFileLink: vi.fn(),
           },
-          '正文\n::zcode-file-citation{path="docs/report.pdf"\n后续说明仍然可见',
+          '正文\n::codez-file-citation{path="docs/report.pdf"\n后续说明仍然可见',
         ),
       ),
     );
@@ -316,16 +316,16 @@ describe("resolveMessageStreamdownMode", () => {
   ])("Assistant citation 的 Windows %s 通过 harden 后仍可点击", (_case, path, resolvedPath) => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           MessageResponse,
           {
-            renderZCodeFileCitations: true,
+            renderCodezFileCitations: true,
             workspacePath: "C:\\workspace",
             onOpenFileLink: vi.fn(),
           },
-          `::zcode-file-citation{path="${path}" purpose="output"}`,
+          `::codez-file-citation{path="${path}" purpose="output"}`,
         ),
       ),
     );
@@ -336,12 +336,12 @@ describe("resolveMessageStreamdownMode", () => {
   });
 
   it("越界 citation 保持原文且不生成文件链接", () => {
-    const directive = '::zcode-file-citation{path="foo/../../private.pdf"}';
+    const directive = '::codez-file-citation{path="foo/../../private.pdf"}';
     const html = renderToStaticMarkup(
       createElement(
         MessageResponse,
         {
-          renderZCodeFileCitations: true,
+          renderCodezFileCitations: true,
           workspacePath: "/workspace",
           onOpenFileLink: vi.fn(),
         },
@@ -349,16 +349,16 @@ describe("resolveMessageStreamdownMode", () => {
       ),
     );
 
-    expect(html).toContain("::zcode-file-citation");
+    expect(html).toContain("::codez-file-citation");
     expect(html).not.toContain('title="/workspace/foo/../../private.pdf"');
   });
 
   it("citation 不解析代码节点，并保留 Streamdown 默认 GFM 表格", () => {
-    const directive = '::zcode-file-citation{path="docs/report.pdf"}';
-    const compatibilityDirective = ':zcode-file-citation{path="docs/legacy.pdf"}';
+    const directive = '::codez-file-citation{path="docs/report.pdf"}';
+    const compatibilityDirective = ':codez-file-citation{path="docs/legacy.pdf"}';
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           TooltipProvider,
@@ -366,7 +366,7 @@ describe("resolveMessageStreamdownMode", () => {
           createElement(
             MessageResponse,
             {
-              renderZCodeFileCitations: true,
+              renderCodezFileCitations: true,
               workspacePath: "/workspace",
               onOpenFileLink: vi.fn(),
             },
@@ -383,8 +383,8 @@ describe("resolveMessageStreamdownMode", () => {
       ),
     );
 
-    expect(html).toContain("::zcode-file-citation");
-    expect(html).toContain(":zcode-file-citation");
+    expect(html).toContain("::codez-file-citation");
+    expect(html).toContain(":codez-file-citation");
     expect(html).toContain("<table");
     expect(html).not.toContain('title="/workspace/docs/report.pdf"');
     expect(html).not.toContain('title="/workspace/docs/legacy.pdf"');
@@ -402,7 +402,7 @@ describe("resolveMessageStreamdownMode", () => {
   ])("Windows 绝对 Markdown 链接（%s）通过 harden 后仍可点击", (_case, markdown, path) => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           MessageResponse,
@@ -423,7 +423,7 @@ describe("resolveMessageStreamdownMode", () => {
   it("UNC workspace 中 Windows 绝对 Markdown 链接通过 harden 后仍可点击", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           MessageResponse,
@@ -448,7 +448,7 @@ describe("resolveMessageStreamdownMode", () => {
   ])("Windows 绝对 Markdown 图片（%s）通过 harden 后保留本地路径", (_case, markdown) => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(MessageResponse, { workspacePath: "C:\\workspace" }, markdown),
       ),
@@ -462,7 +462,7 @@ describe("resolveMessageStreamdownMode", () => {
   it("UNC workspace 中 Windows 绝对 Markdown 图片通过 harden 后保留本地路径", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           MessageResponse,
@@ -480,7 +480,7 @@ describe("resolveMessageStreamdownMode", () => {
   it("正文裸文件名保持普通文本且 GFM 表格正常渲染", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           TooltipProvider,
@@ -629,7 +629,7 @@ describe("resolveMessageStreamdownMode", () => {
   it("rewrites assistant artifact images before Streamdown hardening", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           MessageResponse,
@@ -641,14 +641,14 @@ describe("resolveMessageStreamdownMode", () => {
               mediaType: "image/png",
             }),
           },
-          "![CUA](zcode-artifact://session-1/shot)",
+          "![CUA](codez-artifact://session-1/shot)",
         ),
       ),
     );
 
     expect(html).toContain('data-markdown-local-image="loading"');
     expect(html).not.toContain("Image blocked");
-    expect(html).not.toContain("zcode-artifact://");
+    expect(html).not.toContain("codez-artifact://");
   });
 
   it("keeps paired currency dollars as text", () => {
@@ -697,7 +697,7 @@ describe("resolveMessageStreamdownMode", () => {
     ) as { dependencies?: Record<string, string> };
 
     expect(styles).toContain('@import "katex/dist/katex.min.css";');
-    // Bugfix: styles.css 作为 @zcode/ui 的公开入口会被 web/desktop 直接构建，
+    // Bugfix: styles.css 作为 @codez/ui 的公开入口会被 web/desktop 直接构建，
     // 不能依赖 pnpm hoist 偶然把间接依赖 katex 放到根 node_modules。
     expect(packageJson.dependencies?.katex).toBeTruthy();
   });
@@ -714,7 +714,7 @@ it("通用模式回答保留代码容器和复制入口，锁定换行入口且�
   const render = (forceCodeWrap: boolean) =>
     renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           TooltipProvider,

@@ -10,7 +10,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -47,16 +47,16 @@ const PROMPT_MARKER = "E2E_MCP_OAUTH_STATUS_ISOLATION";
 const DIRECT_RESULT = `E2E_MCP_DIRECT_PONG:${PROMPT_MARKER}`;
 const PLAIN_HTTP_RESULT = `E2E_MCP_HTTP_PONG:${PROMPT_MARKER}`;
 const E2E_PATHS = getE2EAppDataPaths();
-const CLI_CONFIG_FILE = join(E2E_PATHS.homeDir, ".zcode", "cli", "config.json");
+const CLI_CONFIG_FILE = join(E2E_PATHS.homeDir, ".codez", "cli", "config.json");
 const INSTALLED_PLUGINS_FILE = join(
   E2E_PATHS.homeDir,
-  ".zcode",
+  ".codez",
   "cli",
   "plugins",
   "installed_plugins.json",
 );
-const PLUGIN_ROOT = join(E2E_PATHS.homeDir, ".zcode", "cli", "e2e-fixtures", PLUGIN_NAME);
-const PLUGIN_MANIFEST_FILE = join(PLUGIN_ROOT, ".zcode-plugin", "plugin.json");
+const PLUGIN_ROOT = join(E2E_PATHS.homeDir, ".codez", "cli", "e2e-fixtures", PLUGIN_NAME);
+const PLUGIN_MANIFEST_FILE = join(PLUGIN_ROOT, ".codez-plugin", "plugin.json");
 const CASE_ROOT = join(E2E_PATHS.workspace, "mcp-oauth-status-isolation-e2e");
 const DIRECT_MCP_CALL_LOG = join(CASE_ROOT, "direct-mcp-calls.ndjson");
 const DIRECT_MCP_SERVER_SCRIPT = resolve(
@@ -322,8 +322,8 @@ async function waitForOpenedAuthorizationUrl(
 async function writeMcpFixtures(mcpUrl: string, plainHttpMcpUrl: string): Promise<void> {
   await mkdir(CASE_ROOT, { recursive: true });
   await rm(DIRECT_MCP_CALL_LOG, { force: true });
-  await mkdir(join(PLUGIN_ROOT, ".zcode-plugin"), { recursive: true });
-  await mkdir(join(E2E_PATHS.homeDir, ".zcode", "cli", "plugins"), {
+  await mkdir(join(PLUGIN_ROOT, ".codez-plugin"), { recursive: true });
+  await mkdir(join(E2E_PATHS.homeDir, ".codez", "cli", "plugins"), {
     recursive: true,
   });
 
@@ -331,13 +331,13 @@ async function writeMcpFixtures(mcpUrl: string, plainHttpMcpUrl: string): Promis
     PLUGIN_MANIFEST_FILE,
     `${JSON.stringify(
       {
-        author: { name: "ZCode E2E" },
+        author: { name: "Codez E2E" },
         description: "E2E fixture plugin with an OAuth-protected MCP server.",
         license: "MIT",
         mcpServers: {
           canva: {
             oauth: {
-              clientName: "ZCode MCP OAuth E2E",
+              clientName: "Codez MCP OAuth E2E",
               scope: "mcp:tools",
               type: "authorization_code",
             },

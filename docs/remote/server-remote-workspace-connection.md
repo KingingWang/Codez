@@ -7,21 +7,21 @@ Window Host，同一窗口内的本地与远端 workspace tab 共用该进程；
 使用 logical session 对应的 dedicated connection。Host 把对应 workspaceKey 的 service/CLI scope 暴露给
 renderer，registry 不跨 BrowserWindow 共享。
 
-Web 模式下的远端 server 已经暴露 `/ws`，通过 `ChannelServer` 把 `ServiceCollection` 交给 Web UI 使用。这个能力可以复用到 Desktop App，但它不是 SSH remote 的同一条链路：Desktop 不应该再部署或启动一个远端 runtime，而应该连接一个已经运行的 ZCode server，并用 App 的界面管理该 server 里的 workspace、task、文件、git 和 terminal。
+Web 模式下的远端 server 已经暴露 `/ws`，通过 `ChannelServer` 把 `ServiceCollection` 交给 Web UI 使用。这个能力可以复用到 Desktop App，但它不是 SSH remote 的同一条链路：Desktop 不应该再部署或启动一个远端 runtime，而应该连接一个已经运行的 Codez server，并用 App 的界面管理该 server 里的 workspace、task、文件、git 和 terminal。
 
 ## 目标
 
-- 新增一种 remote target：`server`，表示连接已运行的 ZCode Web/HTTP server。
+- 新增一种 remote target：`server`，表示连接已运行的 Codez Web/HTTP server。
 - Desktop App 可以像打开 SSH remote workspace 一样打开 server remote workspace。
-- 远端 server 继续持有 workspace runtime、ZCode session/task、agent runtime、文件系统、git、terminal 和 workspace 级能力状态。
+- 远端 server 继续持有 workspace runtime、Codez session/task、agent runtime、文件系统、git、terminal 和 workspace 级能力状态。
 - Desktop 本地只持有窗口、UI shell、server 凭据、连接生命周期和 workspace tab/session 绑定。
 - 不改变现有 SSH / WSL / Docker remote workspace 行为。
 - 不把 mobile `/remote` 的 replayable 恢复语义扩散到 Desktop App 的 continuous 主链路。
 
 ## 非目标
 
-- 不在 Desktop 本机为 server remote 启动新的 ZCode Agent runtime。
-- 不让 Desktop main 解析或保存 ZCode task/session/stream 业务状态。
+- 不在 Desktop 本机为 server remote 启动新的 Codez Agent runtime。
+- 不让 Desktop main 解析或保存 Codez task/session/stream 业务状态。
 - 不把当前裸 `/ws` 作为可公网长期暴露的生产接口。
 - 第一版不承诺断线期间本地排队消息不丢；断线时禁用发送，重连后用远端 snapshot 对齐。
 - 第一版不支持 Desktop App 创建新的 SSH / WSL / Docker session 再嵌套到远端 server；server remote 只连接已有 server。
@@ -40,10 +40,10 @@ Desktop renderer
       -> SocketProtocol
       -> ChannelClient
       -> RemoteServiceAccess
-  -> remote ZCode server
+  -> remote Codez server
       -> ChannelServer
       -> ServiceCollection
-      -> ZCode task/session/agent runtime
+      -> Codez task/session/agent runtime
       -> remote filesystem / git / terminal
 ```
 
@@ -133,7 +133,7 @@ GET /ws
 
 ## 服务归属
 
-server remote 不能完全复用 SSH remote 的 service merge 策略。SSH remote 仍有很多 app-global state 由 Desktop 本地权威管理；server remote 更像连接一个完整运行的远端 ZCode 实例，workspace/runtime 相关状态应以 server 为准。
+server remote 不能完全复用 SSH remote 的 service merge 策略。SSH remote 仍有很多 app-global state 由 Desktop 本地权威管理；server remote 更像连接一个完整运行的远端 Codez 实例，workspace/runtime 相关状态应以 server 为准。
 
 推荐第一版归属：
 
@@ -146,7 +146,7 @@ Local Desktop authority:
 
 Remote server authority:
   - file / git / terminal / file watcher
-  - zcodeTask / zcodeSession / zcodeAgent
+  - codezTask / codezSession / codezAgent
   - skills / plugins / MCP / commands for remote workspace
   - model provider registry used by the remote runtime
   - workspace-level settings and task/session persistence
@@ -172,7 +172,7 @@ Mobile /remote:
 
 第一版发送策略：
 
-- connected 且 task ready：直接走远端 `zcodeTaskService` / `zcodeAgentService` 现有发送路径。
+- connected 且 task ready：直接走远端 `codezTaskService` / `codezAgentService` 现有发送路径。
 - disconnected：禁用发送，不在本地 renderer queue 积压。
 - running task 的流由远端 server 持有；Desktop 断线不会杀远端 runtime。
 - 重连后用远端 session/task snapshot 对齐 UI。
@@ -195,7 +195,7 @@ Remote Connection
 
 - 本地 Vite 开发启动，或 Desktop platform 明确标记 `isLocalDevelopmentRuntime = true`：展示 `Server` 类型卡片。
 - production-mode 打包的 Desktop（包括正式包和预览包）：不展示 `Server` 类型卡片，即使产品环境配置为 `test` 也不放开。
-- 门禁只使用本地开发运行形态，不使用 `ZCODE_ENV` 或内网探测结果；SSH / WSL / Docker 的展示规则不受影响。
+- 门禁只使用本地开发运行形态，不使用 `CODEZ_ENV` 或内网探测结果；SSH / WSL / Docker 的展示规则不受影响。
 
 Server 表单字段：
 

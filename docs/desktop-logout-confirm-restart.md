@@ -2,7 +2,7 @@
 
 ## 背景
 
-桌面端退出登录会改变全局鉴权上下文。现有 ZCode Agent 会话、运行中的 task、后台工具链都依赖当前 provider token 和派生 Start/Coding Plan key。为了避免退出登录后旧会话继续持有失效上下文，桌面端退出登录需要在用户确认后中断当前运行并重启 App。
+桌面端退出登录会改变全局鉴权上下文。现有 Codez Agent 会话、运行中的 task、后台工具链都依赖当前 provider token 和派生 Start/Coding Plan key。为了避免退出登录后旧会话继续持有失效上下文，桌面端退出登录需要在用户确认后中断当前运行并重启 App。
 
 ## 设计
 

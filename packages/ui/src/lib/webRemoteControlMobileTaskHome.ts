@@ -2,8 +2,8 @@ import type {
   WebRemoteControlTaskDisplayStatus,
   WebRemoteControlTaskTarget,
   WebRemoteControlWorkspaceListResult,
-} from "@zcode/shared";
-import { resolveWebRemoteControlWorkspaceKey } from "@zcode/shared";
+} from "@codez/shared";
+import { resolveWebRemoteControlWorkspaceKey } from "@codez/shared";
 import {
   groupWebRemoteControlTasksByWorkspace,
   sortWebRemoteControlTasksByTime,
@@ -40,7 +40,7 @@ interface StorageLike {
 }
 
 const WEB_REMOTE_CONTROL_MOBILE_TASK_HOME_PREFERENCES_STORAGE_KEY =
-  "zcode-web-remote-control-mobile-task-home-preferences";
+  "codez-web-remote-control-mobile-task-home-preferences";
 
 const DEFAULT_WEB_REMOTE_CONTROL_MOBILE_TASK_HOME_PREFERENCES: WebRemoteControlMobileTaskHomePreferences =
   {

@@ -43,7 +43,7 @@ closed, and native config/skills/plugin requests stay on the canonical execution
 
 - Launch the selected native executable with `app-server --listen stdio://`;
   handshake `initialize` then `initialized` exactly once per connection.
-- No shell interpolation, no ZCode-only arguments passed to Codex, no stdin logging.
+- No shell interpolation, no Codez-only arguments passed to Codex, no stdin logging.
 - Explicit experimental opt-in is necessary for queue and structured user input.
 - Validate message envelopes and mapped payloads at runtime. Keep generated
   types bound to the actual pinned executable; version text alone is insufficient.
@@ -157,10 +157,10 @@ explicit legacy/custom resolvers retain their existing selection path. A failed
 auxiliary mutation is never automatically retried. Tests use isolated temporary Git
 repositories and in-memory native responses; they do not write developer settings.
 
-Settings use Codex APIs rather than writing ZCode's old provider/MCP/skill config.
+Settings use Codex APIs rather than writing Codez's old provider/MCP/skill config.
 Show effective configuration and actionable errors. Test fixtures must use an
 isolated temporary Codex home; never mutate the developer's real credentials.
-Preserve legacy ZCode data; never claim text-only import is lossless migration.
+Preserve legacy Codez data; never claim text-only import is lossless migration.
 
 Dynamic workflows, off-peak business behavior, cloud sharing, browser/CUA tools
 and remote deployment require explicit parity evidence. Missing capabilities are
@@ -249,8 +249,8 @@ fixture; ordinary adapter unit tests may skip that test before native staging.
 
 The remote deployment owner remains `packages/server/src/remote`: reuse its pinned
 per-platform release manifest, verified component installer and install-root lock.
-For the Codex product (`ZCODE_DESKTOP_RUNTIME=codex` or compiled Codex flavor), use
-`~/.zcode-codex/server`; explicit `legacy` keeps the existing root and GLM pipeline.
+For the Codex product (`CODEZ_DESKTOP_RUNTIME=codex` or compiled Codex flavor), use
+`~/.codez-codex/server`; explicit `legacy` keeps the existing root and GLM pipeline.
 The `codex-runtime` component mounts at `codex` and must contain `codex`,
 `bridge.cjs`, and `distribution.json`. Its cache/live identity includes archive
 SHA, not only a release tag. Missing files or failed installation cannot produce a
@@ -265,17 +265,17 @@ remote detect → existing deploy lock → pinned manifest / verified components
               → same workspace identity / Host owner / lease
 ```
 
-Startup sets `ZCODE_CODEX_COMMAND=<runtimeRoot>/codex/codex`,
-`ZCODE_CODEX_BRIDGE_PATH=<runtimeRoot>/codex/bridge.cjs`, and
-`ZCODE_CODEX_BRIDGE_HOME=~/.zcode-codex/bridge`, expanding remote home in the remote
-shell, never the desktop home. ZCode application data and bridge metadata are
-isolated under `~/.zcode-codex`; native Codex uses the remote machine's existing
+Startup sets `CODEZ_CODEX_COMMAND=<runtimeRoot>/codex/codex`,
+`CODEZ_CODEX_BRIDGE_PATH=<runtimeRoot>/codex/bridge.cjs`, and
+`CODEZ_CODEX_BRIDGE_HOME=~/.codez-codex/bridge`, expanding remote home in the remote
+shell, never the desktop home. Codez application data and bridge metadata are
+isolated under `~/.codez-codex`; native Codex uses the remote machine's existing
 home/config/auth resolution, without copying local credentials.
 The service resolver consumes the deployed bridge path even without desktop
 presentation context; missing explicit paths fail closed, with no legacy fallback.
 Native model/plan selection, network environment and executable PATH are preserved;
 legacy provider/account/browser/subagent preparation is not a Codex prerequisite.
-Explicit `ZCODE_AGENT_SERVER_COMMAND` and custom legacy resolvers retain precedence.
+Explicit `CODEZ_AGENT_SERVER_COMMAND` and custom legacy resolvers retain precedence.
 Codex hello advertises independent plan state through native collaboration mode,
 but never advertises the unsupported legacy workspace hook review mutation surface.
 

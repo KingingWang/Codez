@@ -6,11 +6,11 @@ import {
   type ModelConfig,
   type ProviderConfig,
   type ProviderConfigLayerSnapshot,
-} from "@zcode/provider";
+} from "@codez/provider";
 import {
   NodePersonalProviderConfigRepository,
   PERSONAL_PROVIDER_CONFIG_FILE_NAME,
-} from "@zcode/provider-node";
+} from "@codez/provider-node";
 import {
   TID_COMPOSER_WORKSPACE_TRIGGER,
   TID_V4_SESSION_PANE,
@@ -18,8 +18,8 @@ import {
   TID_WORKSPACE_PATH,
   ZAI_PROVIDER_ID,
   testId,
-} from "@zcode/shared";
-import type { AppSettings } from "@zcode/shared";
+} from "@codez/shared";
+import type { AppSettings } from "@codez/shared";
 import { collectWindowsE2EProcessTreePids } from "./e2e-process-cleanup.js";
 import {
   collectE2EWebDriverPageHandleCandidates,
@@ -30,17 +30,17 @@ import { sel } from "./selectors.js";
 
 const DEFAULT_E2E_HOME_DIR = resolve(process.cwd(), ".e2e-home");
 const E2E_HOME_DIR =
-  process.env.ZCODE_E2E_HOME_DIR?.trim() ||
-  process.env.ZCODE_DATA_BASE_DIR?.trim() ||
-  process.env.ZCODE_DESKTOP_HOME_DIR?.trim() ||
+  process.env.CODEZ_E2E_HOME_DIR?.trim() ||
+  process.env.CODEZ_DATA_BASE_DIR?.trim() ||
+  process.env.CODEZ_DESKTOP_HOME_DIR?.trim() ||
   // 修复原因：WDIO worker 环境不稳定时，helper 曾回落到真实 HOME，
   // 导致 provider 诊断和清理读写开发者本机配置，而不是当前 e2e sandbox。
   DEFAULT_E2E_HOME_DIR;
 // Bug 根因：storage profile 回滚删除了该共享根字段，但多个 E2E 仍需定位 CLI 数据。
-// 隔离由测试 HOME 保证，目录名保持生产历史语义 .zcode。
-const E2E_STORAGE_ROOT = join(E2E_HOME_DIR, ".zcode");
+// 隔离由测试 HOME 保证，目录名保持生产历史语义 .codez。
+const E2E_STORAGE_ROOT = join(E2E_HOME_DIR, ".codez");
 const E2E_APP_DATA_DIR = join(E2E_STORAGE_ROOT, "v2");
-export const DEFAULT_WORKSPACE = join(E2E_HOME_DIR, "ZCodeProject");
+export const DEFAULT_WORKSPACE = join(E2E_HOME_DIR, "CodezProject");
 export const DEFAULT_CONVERSATION_WORKSPACE = join(E2E_STORAGE_ROOT, "workspace", "default");
 const SETTINGS_FILE = join(E2E_APP_DATA_DIR, "setting.json");
 const CREDENTIALS_FILE = join(E2E_APP_DATA_DIR, "credentials.json");
@@ -50,9 +50,9 @@ const AGENTS_STATE_FILE = join(E2E_APP_DATA_DIR, "agents-state.json");
 const REMOVE_APP_DATA_RETRY_DELAYS_MS = [200, 500, 1000, 2000, 3000];
 const REMOVE_APP_DATA_MAX_ATTEMPTS = REMOVE_APP_DATA_RETRY_DELAYS_MS.length;
 const E2E_USER_PROFILE = {
-  displayName: "ZCode E2E",
-  id: "zcode-e2e-user",
-  username: "zcode-e2e-user",
+  displayName: "Codez E2E",
+  id: "codez-e2e-user",
+  username: "codez-e2e-user",
 };
 
 interface WindowInfo {
@@ -337,7 +337,7 @@ export async function setInputValueByTestIdDom(
   // 修复原因：同一类容器坐标异常会让输入框无法通过 WebDriver 聚焦。
   // 这里使用原生 value setter 并派发 input/change/blur，继续走页面保存逻辑。
   // M5：v4 composer 恢复为 Lexical contenteditable——写入改走编辑器挂载的
-  // __zcodeLexicalInputE2E bridge（驱动真实 editor state，避免 DOM 直改绕过 Lexical）。
+  // __codezLexicalInputE2E bridge（驱动真实 editor state，避免 DOM 直改绕过 Lexical）。
   // bridge 由 E2ELexicalInputBridgePlugin 短轮询补挂，可能晚于节点出现，故带重试。
   await waitForTestIdByDom(testId, { timeout, timeoutMsg });
   type SetInputResult = {
@@ -361,13 +361,13 @@ export async function setInputValueByTestIdDom(
         ) {
           const bridge = (
             element as HTMLElement & {
-              __zcodeLexicalInputE2E?: {
+              __codezLexicalInputE2E?: {
                 focus: () => void;
                 getText: () => string;
                 setText: (text: string) => void;
               };
             }
-          ).__zcodeLexicalInputE2E;
+          ).__codezLexicalInputE2E;
           if (!bridge) {
             return {
               ok: false,
@@ -474,14 +474,14 @@ export async function setInputValueByTestIdDom(
                     document.querySelectorAll<HTMLElement>("[data-testid]"),
                   ).find((item) => item.dataset.testid === currentTestId) as
                     | (HTMLElement & {
-                        __zcodeLexicalInputE2E?: {
+                        __codezLexicalInputE2E?: {
                           focus: () => void;
                           getText: () => string;
                           setText: (text: string) => void;
                         };
                       })
                     | undefined;
-                  const bridge = element?.__zcodeLexicalInputE2E;
+                  const bridge = element?.__codezLexicalInputE2E;
                   if (!element?.isContentEditable || !bridge) {
                     done({ ok: false, reason: "lexical-not-editable" });
                     return;
@@ -558,7 +558,7 @@ export function getE2EAppDataPaths() {
 }
 
 export async function clearAppData() {
-  if (process.env.ZCODE_E2E_DEFER_APP_DATA_CLEANUP === "1") {
+  if (process.env.CODEZ_E2E_DEFER_APP_DATA_CLEANUP === "1") {
     // 修复原因：普通 spec 的 after hook 先 app.quit 会抢在 ChromeDriver
     // deleteSession 前销毁 browsing context，导致每个 worker 都支付断连超时。
     // WDIO afterSession 会在进程退出后删除 app data，此处只交还关闭所有权。
@@ -571,7 +571,7 @@ export async function clearAppData() {
 export async function quitElectronAppGracefully() {
   try {
     const result = (await browser.electron.execute((electron) => {
-      if (electron.app.getName() !== "ZCode E2E") {
+      if (electron.app.getName() !== "Codez E2E") {
         return { quit: false, pid: process.pid };
       }
       // 修复原因：clearAppData 常在 spec after 中运行；如果把 app.quit 延迟
@@ -618,7 +618,7 @@ async function removeAppDataWithRetry() {
       if (!isRetryableRemoveError(error) || attempt === REMOVE_APP_DATA_MAX_ATTEMPTS) {
         if (
           !isRetryableRemoveError(error) ||
-          process.env.ZCODE_E2E_STRICT_APP_DATA_CLEANUP === "1"
+          process.env.CODEZ_E2E_STRICT_APP_DATA_CLEANUP === "1"
         ) {
           throw error;
         } else {
@@ -688,7 +688,7 @@ function listWindowsLeftoverE2EProcessPids() {
     return collectWindowsE2EProcessTreePids(output, {
       currentPid: process.pid,
       homeDir: E2E_HOME_DIR,
-      runId: process.env.ZCODE_E2E_RUN_ID,
+      runId: process.env.CODEZ_E2E_RUN_ID,
     });
   } catch {
     return [];
@@ -882,7 +882,7 @@ export async function snapshotCliConfig(): Promise<CliConfigSnapshot> {
 }
 
 export async function restoreCliConfig(snapshot: CliConfigSnapshot): Promise<void> {
-  // 修复原因：seedCliConfig 写的是隔离 HOME 下的 CLI 全局配置；只清 ~/.zcode/v2
+  // 修复原因：seedCliConfig 写的是隔离 HOME 下的 CLI 全局配置；只清 ~/.codez/v2
   // 会让 WebFetch 临时代理留到同一 E2E session 后续步骤，必须恢复文件级快照。
   if (snapshot.content === null) {
     await rm(CLI_CONFIG_FILE, { force: true });
@@ -905,7 +905,7 @@ export async function seedCredentials(authToken = "mock-token") {
         "oauth:active_provider": ZAI_PROVIDER_ID,
         [`oauth:${ZAI_PROVIDER_ID}:access_token`]: authToken,
         [`oauth:${ZAI_PROVIDER_ID}:user_info`]: JSON.stringify(E2E_USER_PROFILE),
-        zcodejwttoken: authToken,
+        codezjwttoken: authToken,
       },
       null,
       2,
@@ -949,7 +949,7 @@ export function probeWorkspaceAppState(
     (element) => element.dataset.testid === params.workspaceItemTestId,
   );
   const conversationWorkspaceReady =
-    params.expectedPath.replace(/\\/g, "/").endsWith("/.zcode/workspace/default") &&
+    params.expectedPath.replace(/\\/g, "/").endsWith("/.codez/workspace/default") &&
     Boolean(document.querySelector(`[data-testid="${params.composerWorkspaceTriggerTestId}"]`));
   // v4 硬切后聊天区是 v4 session pane（testid 带 paneId 后缀，用前缀匹配）。
   return (workspaceItem || conversationWorkspaceReady) &&
@@ -1471,10 +1471,10 @@ export async function clickAboutMenuItem() {
     const menu = electron.Menu.getApplicationMenu();
     const topMenuLabel = process.platform === "darwin" ? electron.app.name : "Help";
     const topMenu = menu?.items.find((item) => item.label === topMenuLabel);
-    const menuItem = topMenu?.submenu?.items.find((item) => item.label === "About ZCode");
+    const menuItem = topMenu?.submenu?.items.find((item) => item.label === "About Codez");
 
     if (!menuItem) {
-      throw new Error(`未找到 About ZCode 菜单项: ${topMenuLabel}`);
+      throw new Error(`未找到 About Codez 菜单项: ${topMenuLabel}`);
     }
 
     menuItem.click(undefined as never, undefined, undefined as never);

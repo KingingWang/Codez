@@ -2,10 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IZCodeAgentService } from "@zcode/services";
-import type { ZCodeAgentMcpServer, ZCodeSessionStateSnapshot } from "@zcode/shared";
-import { createZCodeSessionService } from "@zcode/services/node";
-import type { ZCodeTaskIndexSyncer } from "../src/zcode-agent/zcodeTaskIndexSyncer.js";
+import type { ICodezAgentService } from "@codez/services";
+import type { CodezAgentMcpServer, CodezSessionStateSnapshot } from "@codez/shared";
+import { createCodezSessionService } from "@codez/services/node";
+import type { CodezTaskIndexSyncer } from "../src/codez-agent/codezTaskIndexSyncer.js";
 import { getLegacyTaskSessionSnapshotPath, setDataBaseDir } from "../src/paths.js";
 
 const tempDirs: string[] = [];
@@ -21,13 +21,13 @@ afterEach(() => {
 });
 
 function useTempDataBaseDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "zcode-session-service-"));
+  const dir = mkdtempSync(join(tmpdir(), "codez-session-service-"));
   tempDirs.push(dir);
   setDataBaseDir(dir);
   return dir;
 }
 
-describe("createZCodeSessionService", () => {
+describe("createCodezSessionService", () => {
   it("injects product CUA helper broker config before desktop-continuous session creation", async () => {
     const snapshot = {
       session: {
@@ -40,14 +40,14 @@ describe("createZCodeSessionService", () => {
       runtime: { eventSeq: 1, stateRevision: 1, pendingRequestIds: [] },
       settings: {},
       messages: [],
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     const agentService = {
       createSession: vi.fn(async () => snapshot),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     // services 只负责建会话前把 MCP 配置交给 producer 的 resolver；改写细节由 producer 自己的测试覆盖。
     // 这里用测试自己的 resolver，不依赖私有 producer 的注入实现（开源占位包不改写配置）。
     const resolver = {
-      resolveMcpServers: vi.fn(async (servers: ZCodeAgentMcpServer[] | undefined) =>
+      resolveMcpServers: vi.fn(async (servers: CodezAgentMcpServer[] | undefined) =>
         servers?.map((server) =>
           "command" in server
             ? {
@@ -55,14 +55,14 @@ describe("createZCodeSessionService", () => {
                 args: [
                   ...(server.args ?? []),
                   "--permission-broker-socket",
-                  "/tmp/zcode-cua/helper.sock",
+                  "/tmp/codez-cua/helper.sock",
                 ],
               }
             : server,
         ),
       ),
     };
-    const service = createZCodeSessionService({
+    const service = createCodezSessionService({
       agentService,
       cuaProductMcpServerResolver: resolver,
     });
@@ -73,12 +73,12 @@ describe("createZCodeSessionService", () => {
         {
           name: "plugin:computer-use:computer-use",
           command: "uvx",
-          args: ["zcode-cua"],
+          args: ["codez-cua"],
           env: [
-            { name: "ZCODE_PLUGIN_ID", value: "computer-use@zcode-plugins-official" },
+            { name: "CODEZ_PLUGIN_ID", value: "computer-use@codez-plugins-official" },
             {
-              name: "ZCODE_CUA_PLUGIN_AUTHORITY",
-              value: "dev.zcode.cua-helper/dev",
+              name: "CODEZ_CUA_PLUGIN_AUTHORITY",
+              value: "dev.codez.cua-helper/dev",
             },
           ],
         },
@@ -89,9 +89,9 @@ describe("createZCodeSessionService", () => {
     const server = createParams?.mcpServers?.[0];
     expect(resolver.resolveMcpServers).toHaveBeenCalledTimes(1);
     expect(server && "command" in server ? server.args : []).toEqual([
-      "zcode-cua",
+      "codez-cua",
       "--permission-broker-socket",
-      "/tmp/zcode-cua/helper.sock",
+      "/tmp/codez-cua/helper.sock",
     ]);
   });
 
@@ -107,12 +107,12 @@ describe("createZCodeSessionService", () => {
     };
     const agentService = {
       createSession: vi.fn(async () => snapshot),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const taskIndexSyncer = {
       ensureSessionSubscription: vi.fn(),
       syncSnapshotAndBroadcast: vi.fn(),
     };
-    const service = createZCodeSessionService({
+    const service = createCodezSessionService({
       agentService,
       taskIndexSyncer: taskIndexSyncer as never,
     });
@@ -125,7 +125,7 @@ describe("createZCodeSessionService", () => {
       }),
     ).resolves.toBe(snapshot);
 
-    // Bugfix: zcodeSessionService 会为 createSession 补 sessionTraceId 贯穿日志链路。
+    // Bugfix: codezSessionService 会为 createSession 补 sessionTraceId 贯穿日志链路。
     // 这个 deferred draft 用例只验证草稿不进入 task index，因此需要显式接受并校验 trace 字段。
     expect(agentService.createSession).toHaveBeenCalledWith({
       workspacePath: "/workspace/app",
@@ -146,16 +146,16 @@ describe("createZCodeSessionService", () => {
           workspaceIdentity: "remote:ssh:dev:/workspace/app",
         },
       },
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     const agentService = {
       createSession: vi.fn(async () => snapshot),
       setModel: vi.fn(async () => snapshot),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const taskIndexSyncer = {
       ensureSessionSubscription: vi.fn(),
       syncSnapshotAndBroadcast: vi.fn(),
-    } as unknown as ZCodeTaskIndexSyncer;
-    const service = createZCodeSessionService({ agentService, taskIndexSyncer });
+    } as unknown as CodezTaskIndexSyncer;
+    const service = createCodezSessionService({ agentService, taskIndexSyncer });
 
     await service.createSession({
       workspacePath: "/workspace/app",
@@ -191,16 +191,16 @@ describe("createZCodeSessionService", () => {
           workspaceIdentity: "remote:ssh:dev:/workspace/app",
         },
       },
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     const agentService = {
       createSession: vi.fn(async () => snapshot),
       setModel: vi.fn(async () => snapshot),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const taskIndexSyncer = {
       ensureSessionSubscription: vi.fn(),
       syncSnapshotAndBroadcast: vi.fn(),
-    } as unknown as ZCodeTaskIndexSyncer;
-    const service = createZCodeSessionService({ agentService, taskIndexSyncer });
+    } as unknown as CodezTaskIndexSyncer;
+    const service = createCodezSessionService({ agentService, taskIndexSyncer });
 
     await service.createSession({
       workspacePath: "/workspace/app",
@@ -247,9 +247,9 @@ describe("createZCodeSessionService", () => {
           workspaceIdentity: "remote:ssh:dev:/workspace/app",
         },
       },
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     let persistence: "deferred" | "immediate" = "deferred";
-    const closeSession: IZCodeAgentService["closeSession"] = vi.fn(async (params) => {
+    const closeSession: ICodezAgentService["closeSession"] = vi.fn(async (params) => {
       if (params.expectedPersistence && params.expectedPersistence !== persistence) {
         return false;
       }
@@ -258,12 +258,12 @@ describe("createZCodeSessionService", () => {
     const agentService = {
       closeSession,
       createSession: vi.fn(async () => snapshot),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const taskIndexSyncer = {
       ensureSessionSubscription: vi.fn(),
       syncSnapshotAndBroadcast: vi.fn(),
-    } as unknown as ZCodeTaskIndexSyncer;
-    const service = createZCodeSessionService({ agentService, taskIndexSyncer });
+    } as unknown as CodezTaskIndexSyncer;
+    const service = createCodezSessionService({ agentService, taskIndexSyncer });
     const target = {
       workspacePath: "/workspace/app",
       workspaceIdentity: "remote:ssh:dev:/workspace/app",
@@ -289,8 +289,8 @@ describe("createZCodeSessionService", () => {
 
   it("only closes a draft when the Agent confirms it is still deferred", async () => {
     const closeSession = vi.fn(async () => false);
-    const agentService = { closeSession } as unknown as IZCodeAgentService;
-    const service = createZCodeSessionService({ agentService });
+    const agentService = { closeSession } as unknown as ICodezAgentService;
+    const service = createCodezSessionService({ agentService });
 
     await expect(
       service.closeDeferredDraftSession({
@@ -312,8 +312,8 @@ describe("createZCodeSessionService", () => {
     const closeSession = vi.fn(async () => {
       throw new Error("Invalid params: expectedPersistence");
     });
-    const agentService = { closeSession } as unknown as IZCodeAgentService;
-    const service = createZCodeSessionService({ agentService });
+    const agentService = { closeSession } as unknown as ICodezAgentService;
+    const service = createCodezSessionService({ agentService });
 
     await expect(
       service.closeDeferredDraftSession({
@@ -329,14 +329,14 @@ describe("createZCodeSessionService", () => {
       initialize: vi.fn(async () => ({
         available: true,
         workspaceKey: "remote:ssh:dev:/workspace/app",
-        protocolName: "ZCode Protocol",
+        protocolName: "Codez Protocol",
         protocolVersion: 1,
         transportKind: "stdio",
       })),
       readSessionMessages: vi.fn(async () => []),
       readSessionEvents: vi.fn(async () => []),
-    } as unknown as IZCodeAgentService;
-    const service = createZCodeSessionService({ agentService });
+    } as unknown as ICodezAgentService;
+    const service = createCodezSessionService({ agentService });
 
     await expect(
       service.initializeWorkspace({
@@ -427,23 +427,23 @@ describe("createZCodeSessionService", () => {
         pendingRequestIds: [],
       },
       messages: [],
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     const repairedSnapshot = {
       ...emptySnapshot,
       messages: [
         { info: { role: "user" }, parts: [{ type: "text", text: "旧问题" }] },
         { info: { role: "assistant" }, parts: [{ type: "text", text: "旧回答" }] },
       ],
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     const agentService = {
       resumeSession: vi.fn(async () => emptySnapshot),
       createSession: vi.fn(async () => repairedSnapshot),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const taskIndexSyncer = {
       ensureSessionSubscription: vi.fn(),
       syncSnapshotAndBroadcast: vi.fn(),
-    } as unknown as ZCodeTaskIndexSyncer;
-    const service = createZCodeSessionService({ agentService, taskIndexSyncer });
+    } as unknown as CodezTaskIndexSyncer;
+    const service = createCodezSessionService({ agentService, taskIndexSyncer });
 
     await expect(service.resumeSession({ workspacePath, sessionId })).resolves.toBe(
       repairedSnapshot,
@@ -527,7 +527,7 @@ describe("createZCodeSessionService", () => {
         { info: { messageId: "msg_import_1", role: "assistant" }, parts: [] },
         { info: { messageId: "msg_import_0", role: "user" }, parts: [] },
       ],
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     const repairedSnapshot = {
       ...corruptedSnapshot,
       messages: [
@@ -540,12 +540,12 @@ describe("createZCodeSessionService", () => {
           parts: [{ type: "text", text: "正确回答" }],
         },
       ],
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     const agentService = {
       resumeSession: vi.fn(async () => corruptedSnapshot),
       createSession: vi.fn(async () => repairedSnapshot),
-    } as unknown as IZCodeAgentService;
-    const service = createZCodeSessionService({ agentService });
+    } as unknown as ICodezAgentService;
+    const service = createCodezSessionService({ agentService });
 
     await expect(service.resumeSession({ workspacePath, sessionId })).resolves.toBe(
       repairedSnapshot,
@@ -614,12 +614,12 @@ describe("createZCodeSessionService", () => {
         pendingRequestIds: [],
       },
       messages: [{ info: { messageId: "msg_ordinary_0", role: "user" }, parts: [] }],
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     const agentService = {
       resumeSession: vi.fn(async () => ordinarySnapshot),
       createSession: vi.fn(),
-    } as unknown as IZCodeAgentService;
-    const service = createZCodeSessionService({ agentService });
+    } as unknown as ICodezAgentService;
+    const service = createCodezSessionService({ agentService });
 
     await expect(service.resumeSession({ workspacePath, sessionId })).resolves.toBe(
       ordinarySnapshot,
@@ -640,7 +640,7 @@ describe("createZCodeSessionService", () => {
     };
     const agentService = {
       createSession: vi.fn(async () => snapshot),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const taskIndexSyncer = {
       ensureSessionSubscription: vi.fn(),
       syncSnapshotAndBroadcast: vi.fn(async () => ({
@@ -653,8 +653,8 @@ describe("createZCodeSessionService", () => {
         mode: "build",
         status: "running",
       })),
-    } as unknown as ZCodeTaskIndexSyncer;
-    const service = createZCodeSessionService({ agentService, taskIndexSyncer });
+    } as unknown as CodezTaskIndexSyncer;
+    const service = createCodezSessionService({ agentService, taskIndexSyncer });
 
     await service.createSession({ workspacePath: "/workspace/app" });
 
@@ -674,7 +674,7 @@ describe("createZCodeSessionService", () => {
 
   it("syncs resume model override into the task index", async () => {
     const snapshot = {
-      protocol: { name: "ZCode Protocol", version: 1 },
+      protocol: { name: "Codez Protocol", version: 1 },
       session: {
         sessionId: "session-1",
         mode: "build",
@@ -697,15 +697,15 @@ describe("createZCodeSessionService", () => {
       runtime: { eventSeq: 1, stateRevision: 1, pendingRequestIds: [] },
       projection: {},
       messages: [],
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     const agentService = {
       resumeSession: vi.fn(async () => snapshot),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const taskIndexSyncer = {
       ensureSessionSubscription: vi.fn(),
       syncSnapshotAndBroadcast: vi.fn(),
-    } as unknown as ZCodeTaskIndexSyncer;
-    const service = createZCodeSessionService({ agentService, taskIndexSyncer });
+    } as unknown as CodezTaskIndexSyncer;
+    const service = createCodezSessionService({ agentService, taskIndexSyncer });
 
     await service.resumeSession({
       workspacePath: "/workspace/app",
@@ -722,7 +722,7 @@ describe("createZCodeSessionService", () => {
   it("replays requested thought level before broadcasting resume snapshot", async () => {
     const makeSnapshot = (thoughtLevel: string) =>
       ({
-        protocol: { name: "ZCode Protocol", version: 1 },
+        protocol: { name: "Codez Protocol", version: 1 },
         session: {
           sessionId: "session-1",
           mode: "build",
@@ -750,18 +750,18 @@ describe("createZCodeSessionService", () => {
         },
         projection: { target: null, lastError: null, pendingPermissions: [] },
         messages: [],
-      }) as unknown as ZCodeSessionStateSnapshot;
+      }) as unknown as CodezSessionStateSnapshot;
     const pollutedSnapshot = makeSnapshot("high");
     const correctedSnapshot = makeSnapshot("max");
     const agentService = {
       resumeSession: vi.fn(async () => pollutedSnapshot),
       setThoughtLevel: vi.fn(async () => correctedSnapshot),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const taskIndexSyncer = {
       ensureSessionSubscription: vi.fn(),
       syncSnapshotAndBroadcast: vi.fn(),
-    } as unknown as ZCodeTaskIndexSyncer;
-    const service = createZCodeSessionService({ agentService, taskIndexSyncer });
+    } as unknown as CodezTaskIndexSyncer;
+    const service = createCodezSessionService({ agentService, taskIndexSyncer });
 
     await expect(
       service.resumeSession({
@@ -787,7 +787,7 @@ describe("createZCodeSessionService", () => {
 
   it("skips resume thought replay when the restored model does not support the requested level", async () => {
     const snapshot = {
-      protocol: { name: "ZCode Protocol", version: 1 },
+      protocol: { name: "Codez Protocol", version: 1 },
       session: {
         sessionId: "session-1",
         mode: "build",
@@ -825,18 +825,18 @@ describe("createZCodeSessionService", () => {
       },
       projection: { target: null, lastError: null, pendingPermissions: [] },
       messages: [],
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     const agentService = {
       resumeSession: vi.fn(async () => snapshot),
       setThoughtLevel: vi.fn(async () => {
         throw new Error("setThoughtLevel should not be called");
       }),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const taskIndexSyncer = {
       ensureSessionSubscription: vi.fn(),
       syncSnapshotAndBroadcast: vi.fn(),
-    } as unknown as ZCodeTaskIndexSyncer;
-    const service = createZCodeSessionService({ agentService, taskIndexSyncer });
+    } as unknown as CodezTaskIndexSyncer;
+    const service = createCodezSessionService({ agentService, taskIndexSyncer });
 
     await expect(
       service.resumeSession({
@@ -856,7 +856,7 @@ describe("createZCodeSessionService", () => {
 
   it("updates only task model when resume snapshot broadcast is disabled", async () => {
     const snapshot = {
-      protocol: { name: "ZCode Protocol", version: 1 },
+      protocol: { name: "Codez Protocol", version: 1 },
       session: {
         sessionId: "session-1",
         mode: "build",
@@ -879,16 +879,16 @@ describe("createZCodeSessionService", () => {
       runtime: { eventSeq: 1, stateRevision: 1, pendingRequestIds: [] },
       projection: {},
       messages: [],
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     const agentService = {
       resumeSession: vi.fn(async () => snapshot),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const taskIndexSyncer = {
       ensureSessionSubscription: vi.fn(),
       syncSnapshotAndBroadcast: vi.fn(),
       syncTaskModel: vi.fn(),
-    } as unknown as ZCodeTaskIndexSyncer;
-    const service = createZCodeSessionService({ agentService, taskIndexSyncer });
+    } as unknown as CodezTaskIndexSyncer;
+    const service = createCodezSessionService({ agentService, taskIndexSyncer });
 
     await service.resumeSession({
       workspacePath: "/workspace/app",
@@ -917,15 +917,15 @@ describe("createZCodeSessionService", () => {
           workspaceKey: "/workspace/app",
         },
       },
-    } as unknown as ZCodeSessionStateSnapshot;
+    } as unknown as CodezSessionStateSnapshot;
     const agentService = {
       setModel: vi.fn(async () => snapshot),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const taskIndexSyncer = {
       ensureSessionSubscription: vi.fn(),
       syncSnapshotAndBroadcast: vi.fn(),
-    } as unknown as ZCodeTaskIndexSyncer;
-    const service = createZCodeSessionService({ agentService, taskIndexSyncer });
+    } as unknown as CodezTaskIndexSyncer;
+    const service = createCodezSessionService({ agentService, taskIndexSyncer });
 
     await expect(
       service.setModel({

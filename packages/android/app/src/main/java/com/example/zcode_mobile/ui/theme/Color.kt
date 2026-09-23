@@ -1,4 +1,4 @@
-package com.example.zcode_mobile.ui.theme
+package com.example.codez_mobile.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

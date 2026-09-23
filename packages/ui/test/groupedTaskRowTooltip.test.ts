@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { ZCodeTaskChangeSummary } from "@zcode/shared";
+import type { CodezTaskChangeSummary } from "@codez/shared";
 import { formatGroupedTaskHoverChangeParts } from "@/workspace-grouped-tasks/task-row-tooltip.js";
 
 function createChangeSummary(
   added: number,
   removed: number,
-): ZCodeTaskChangeSummary {
+): CodezTaskChangeSummary {
   return {
     fileCount: 1,
     added,

@@ -16,7 +16,7 @@ import {
   filterCurrentProcessIdentitiesAsync,
   terminateProcessTree,
   terminateProcessTreeAndWait,
-} from "@zcode/services/process/processTreeTerminator";
+} from "@codez/services/process/processTreeTerminator";
 
 const DOTNET_UNIX_EPOCH_TICKS = 621_355_968_000_000_000n;
 

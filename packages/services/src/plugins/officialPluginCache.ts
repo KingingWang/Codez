@@ -1,20 +1,20 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE = "zcode-plugins-official";
+export const CODEZ_OFFICIAL_PLUGIN_MARKETPLACE = "codez-plugins-official";
 
 /**
- * 与 apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts 的 defaultEnabled 保持一致。
- * services 侧（skills / commands / subagents）共用这一份，避免再出现 zcode-guide 那样某一处漏掉的分叉。
+ * 与 apps/codez-cli/packages/bootstrap/src/app/official-plugin-definitions.ts 的 defaultEnabled 保持一致。
+ * services 侧（skills / commands / subagents）共用这一份，避免再出现 codez-guide 那样某一处漏掉的分叉。
  */
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set([
-  "browser-use@zcode-plugins-official",
-  "document-skills@zcode-plugins-official",
+  "browser-use@codez-plugins-official",
+  "document-skills@codez-plugins-official",
   // 宿主不贡献 skill/command/subagent，列在这里只为与 definitions 的 defaultEnabled 逐一对应
-  // （见 @zcode/shared 的同名集合注释）；这份没有机械对照单测兜着，漏掉只会静默分叉。
-  "node-repl-host@zcode-plugins-official",
-  "skill-creator@zcode-plugins-official",
-  "zcode-guide@zcode-plugins-official",
+  // （见 @codez/shared 的同名集合注释）；这份没有机械对照单测兜着，漏掉只会静默分叉。
+  "node-repl-host@codez-plugins-official",
+  "skill-creator@codez-plugins-official",
+  "codez-guide@codez-plugins-official",
 ]);
 
 export interface OfficialPluginCacheRoot {
@@ -25,14 +25,14 @@ export interface OfficialPluginCacheRoot {
 }
 
 /**
- * 扫描 `<plugins storage>/cache/zcode-plugins-official/<name>/<version>/`。
+ * 扫描 `<plugins storage>/cache/codez-plugins-official/<name>/<version>/`。
  * 内置官方插件由 CLI seed 到这里、没有 installed_plugins.json 记录，services 只读安装记录时会漏掉它们。
  * 版本目录跳过 CLI 的备份 / seed 锁 / 临时目录，并按数字感知降序排序，与 CLI 回退选取一致。
  */
 export async function scanOfficialPluginCacheRoots(
   pluginStorageRoot: string,
 ): Promise<OfficialPluginCacheRoot[]> {
-  const cacheRoot = join(pluginStorageRoot, "cache", ZCODE_OFFICIAL_PLUGIN_MARKETPLACE);
+  const cacheRoot = join(pluginStorageRoot, "cache", CODEZ_OFFICIAL_PLUGIN_MARKETPLACE);
   let pluginEntries;
   try {
     pluginEntries = await readdir(cacheRoot, { withFileTypes: true });

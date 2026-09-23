@@ -1,7 +1,7 @@
 // 冻结基线 0e40230d34 的旧协议/Target，防止新 schema 掩盖混版本破坏性删除回归。
 import { z } from "zod";
-import { modelSelectionSchema } from "@zcode/shared";
-import { providerFamilyConnectionSelectionSettingsSchema } from "@zcode/shared";
+import { modelSelectionSchema } from "@codez/shared";
+import { providerFamilyConnectionSelectionSettingsSchema } from "@codez/shared";
 
 const nonEmptyString = z.string().trim().min(1);
 
@@ -30,7 +30,7 @@ export function isProviderProvisioningAccountCredentialKey(key: string): boolean
   return normalized === key && /^account-provider:.+:api-key$/.test(normalized);
 }
 
-/** Personal Config 的 Envelope；具体字段由 @zcode/provider 在目标 Environment 再校验。 */
+/** Personal Config 的 Envelope；具体字段由 @codez/provider 在目标 Environment 再校验。 */
 export const providerProvisioningPersonalConfigSchema = z
   .object({
     providerConfigRules: z.object({ providerRules: z.array(z.unknown()) }).strict(),

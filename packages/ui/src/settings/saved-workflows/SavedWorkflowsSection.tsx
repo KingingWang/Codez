@@ -7,12 +7,12 @@ import {
   TID_WORKFLOWS_REFRESH,
   isDynamicWorkflowOffered,
   resolveWorkspaceKey,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Spinner } from "@/components/ui/spinner.js";
 import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useTabStore } from "@/store/TabStoreProvider.js";
 import { useDynamicWorkflowAvailability } from "@/hooks/useDynamicWorkflowAvailability.js";
 import { setPendingSettingsSectionIntent } from "@/lib/settingsNavigation.js";
@@ -94,7 +94,7 @@ export function SavedWorkflowsSection({
   openWorkflow,
   onOpenWorkflowConsumed,
 }: SavedWorkflowsSectionProps) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const tabs = useTabStore((store) => store.tabs);
   const openSettingsTab = useTabStore((store) => store.openSettingsTab);
   // launch.md「The hub page」「The user's choice」：标题行的「工作流设置」直达设置 › 常规的模式行，

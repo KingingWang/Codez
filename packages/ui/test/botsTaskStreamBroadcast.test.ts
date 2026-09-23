@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BOT_TASK_STREAM_BROADCAST_CHANNEL } from "@zcode/shared";
+import { BOT_TASK_STREAM_BROADCAST_CHANNEL } from "@codez/shared";
 import { resolveBotTaskStreamBroadcast } from "../src/root/botsTaskStreamBroadcast.js";
 import type { WindowTabState } from "../src/store/tabStore.js";
 

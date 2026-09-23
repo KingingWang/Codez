@@ -107,7 +107,7 @@ Config、Capability snapshot 或 Provider options 通道。
 这些类型描述已发布旧 Provider store，不是当前 Provider Domain。目标边界固定为：
 
 ```text
-@zcode/shared public contracts
+@codez/shared public contracts
         `- 不再导出 Legacy Provider store DTO/helper
 
 packages/services/src/model-provider/legacy-*
@@ -131,7 +131,7 @@ packages/services/src/model-provider/legacy-*
 
 当前 `knip` 与符号级扫描已确认至少以下文件没有生产或测试调用方：
 
-- `packages/ui/src/lib/zcodeDraftThoughtLevelSync.ts`：旧 Draft Session 的字符串 Model/Thought 同步 helper；
+- `packages/ui/src/lib/codezDraftThoughtLevelSync.ts`：旧 Draft Session 的字符串 Model/Thought 同步 helper；
 - `packages/ui/src/lib/modelInputPresentation.ts`：仍依赖 Legacy `ModelProviderModality` 的旧展示 helper；
 - `packages/ui/src/settings/OffPeakToolbarSelect.tsx`：Todo 09 后未再使用的闲时专用选择器。
 
@@ -283,7 +283,7 @@ RuntimeModelFactoryInput.providerOptions            = 0
 Core createRuntimeModel() 调用中的上述字段          = 0
 Shared 当前公共出口中的 Legacy Provider store DTO  = 0
 UI 当前实现对 ModelProviderModality 的依赖          = 0
-zcodeDraftThoughtLevelSync.ts                       = deleted
+codezDraftThoughtLevelSync.ts                       = deleted
 modelInputPresentation.ts                           = deleted
 OffPeakToolbarSelect.tsx                            = deleted
 ```
@@ -327,7 +327,7 @@ OffPeakToolbarSelect.tsx                            = deleted
 - 已发布旧 Provider Store 的 DTO、parser 和 helper 已移入 Services 私有
   `legacyModelProviderSerialized.ts`，Shared 公共出口与旧公共类型测试均删除；Legacy reader/importer 仍保持
   单向迁移能力；
-- `zcodeDraftThoughtLevelSync.ts`、`modelInputPresentation.ts`、`OffPeakToolbarSelect.tsx` 以及 Todo 13 一并证明
+- `codezDraftThoughtLevelSync.ts`、`modelInputPresentation.ts`、`OffPeakToolbarSelect.tsx` 以及 Todo 13 一并证明
   无调用方的旧模型偏好、Snapshot、Runtime Catalog helper 已删除；
 - Feature Graph 中 `ModelConnectionPort`、`ModelRef`、`AiSdkModelRegistry` 和旧 capability seed 已替换为当前
   Registry/ModelFactory/Active Model 入口；

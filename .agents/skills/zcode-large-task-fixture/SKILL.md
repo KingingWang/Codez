@@ -1,16 +1,16 @@
 ---
-name: zcode-large-task-fixture
-description: Generate, verify, or remove large synthetic ZCode task fixtures in local ~/.zcode persistence for UI/session performance testing. Use when testing big conversation/task rendering, task list performance, snapshot recovery, tool-call rendering, reasoning, patches, todos, and model usage without spending time chatting manually.
+name: codez-large-task-fixture
+description: Generate, verify, or remove large synthetic Codez task fixtures in local ~/.codez persistence for UI/session performance testing. Use when testing big conversation/task rendering, task list performance, snapshot recovery, tool-call rendering, reasoning, patches, todos, and model usage without spending time chatting manually.
 disable-model-invocation: true
 ---
 
-# ZCode Large Task Fixture
+# Codez Large Task Fixture
 
-Use this skill to create a large local task that behaves like a long-running ZCode Agent task.
+Use this skill to create a large local task that behaves like a long-running Codez Agent task.
 It writes both persistence layers:
 
-- App task index: `~/.zcode/v2/tasks-index.sqlite`
-- Agent session DB: `~/.zcode/cli/db/db.sqlite`
+- App task index: `~/.codez/v2/tasks-index.sqlite`
+- Agent session DB: `~/.codez/cli/db/db.sqlite`
 
 The generated task is synthetic test data. Always back up before writing and record the manifest path.
 
@@ -19,7 +19,7 @@ The generated task is synthetic test data. Always back up before writing and rec
 From the z-code repository root:
 
 ```bash
-node .agents/skills/zcode-large-task-fixture/scripts/generate-large-task-fixture.mjs \
+node .agents/skills/codez-large-task-fixture/scripts/generate-large-task-fixture.mjs \
   --workspace "$PWD" \
   --turns 3000
 ```
@@ -27,14 +27,14 @@ node .agents/skills/zcode-large-task-fixture/scripts/generate-large-task-fixture
 Verify an existing generated task:
 
 ```bash
-node .agents/skills/zcode-large-task-fixture/scripts/generate-large-task-fixture.mjs \
+node .agents/skills/codez-large-task-fixture/scripts/generate-large-task-fixture.mjs \
   --verify sess_perf_large_YYYYMMDDHHMMSS_xxxxxxxx
 ```
 
 Remove a generated task:
 
 ```bash
-node .agents/skills/zcode-large-task-fixture/scripts/generate-large-task-fixture.mjs \
+node .agents/skills/codez-large-task-fixture/scripts/generate-large-task-fixture.mjs \
   --delete sess_perf_large_YYYYMMDDHHMMSS_xxxxxxxx
 ```
 
@@ -49,8 +49,8 @@ node .agents/skills/zcode-large-task-fixture/scripts/generate-large-task-fixture
 ## Safety
 
 - The script uses SQLite `.backup` before generation unless `--no-backup` is passed.
-- Backups are stored under `~/.zcode/perf-task-backups/<timestamp>/`.
-- Manifests are stored under `~/.zcode/perf-task-manifests/<sessionId>.json`.
+- Backups are stored under `~/.codez/perf-task-backups/<timestamp>/`.
+- Manifests are stored under `~/.codez/perf-task-manifests/<sessionId>.json`.
 - Use `--delete <sessionId>` for generated fixtures. It deletes from `tasks-index.sqlite` and cascades the agent `session` rows.
 - Do not delete manually unless you have checked the manifest and confirmed the task id starts with `sess_perf_large_`.
 

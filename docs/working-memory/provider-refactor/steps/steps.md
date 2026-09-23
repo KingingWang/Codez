@@ -128,8 +128,8 @@ steps/
 │  └─ Legacy Model Catalog、override 和 Reasoning State 退役
 ├─ todo-09-off-peak-model-selection-legacy-projection-retirement.md
 │  └─ Off-Peak 旧模型投影退役并统一 scoped Selection View
-├─ todo-10-zcode-builtin-provider-config-naming-cutover.md
-│  └─ Provider Config 的 official 命名一次性切换为 ZCode Built-in
+├─ todo-10-codez-builtin-provider-config-naming-cutover.md
+│  └─ Provider Config 的 official 命名一次性切换为 Codez Built-in
 ├─ todo-11-provider-runtime-composition-boundary-cleanup.md
 │  └─ Provider Runtime 组合边界、资源 owner 与进程组合根清理的待裁决草案
 ├─ todo-11a-provider-runtime-disposal-functional-fix.md
@@ -144,12 +144,12 @@ steps/
 │  └─ 未规划 Model 抽象残留归零
 ├─ todo-17-provider-registry-settings-authority-boundary-closure.md
 │  └─ Resolver、Registry 与 Settings 权威边界收口
-├─ todo-18-zcode-builtin-client-config-sync-and-lkg.md
-│  └─ ZCode Built-in Release 的远端同步、Environment Active Cache 与刷新消抖
+├─ todo-18-codez-builtin-client-config-sync-and-lkg.md
+│  └─ Codez Built-in Release 的远端同步、Environment Active Cache 与刷新消抖
 ├─ todo-20-account-overlay-atomicity-and-review-closeout.md
 │  └─ Account Overlay 原子发布与 Endpoint Active 隔离；其中 enabled 旧语义已由 Todo 50 取代
-├─ todo-21-zcode-builtin-config-ownership-and-model-activation-order.md
-│  └─ Built-in 配置职责、Model Config 启停、Provider/Model 顺序、设置页与 ZCode V4 Access 归位
+├─ todo-21-codez-builtin-config-ownership-and-model-activation-order.md
+│  └─ Built-in 配置职责、Model Config 启停、Provider/Model 顺序、设置页与 Codez V4 Access 归位
 ├─ todo-22-additional-builtin-providers-and-cloud-access.md
 │  └─ OpenRouter、OpenCode Zen、Azure、Volcano Ark 与 AWS Bedrock 的独立接入草案
 ├─ todo-23-provider-refactor-decision-gap-closure.md
@@ -248,7 +248,7 @@ steps/
 - [`todo-07-account-connection-selection-and-access-context-cutover.md`](./todo-07-account-connection-selection-and-access-context-cutover.md) 记录账号连接结构化选择、Account Built-in Provider Access、Request Auth、Off-Peak 与 Official MCP 的统一收口。
 - [`todo-08-legacy-model-catalog-retirement.md`](./todo-08-legacy-model-catalog-retirement.md) 删除 Legacy Model Catalog、override 与 Reasoning State，并以 Config 驱动保留的请求投影。
 - [`todo-09-off-peak-model-selection-legacy-projection-retirement.md`](./todo-09-off-peak-model-selection-legacy-projection-retirement.md) 删除 Off-Peak 旧模型 DTO 投影，统一使用 scoped Registry Selection View。
-- [`todo-10-zcode-builtin-provider-config-naming-cutover.md`](./todo-10-zcode-builtin-provider-config-naming-cutover.md) 将 Provider Config 的 `official` 领域、代码和物理命名一次性切换为 ZCode Built-in，不保留兼容入口。
+- [`todo-10-codez-builtin-provider-config-naming-cutover.md`](./todo-10-codez-builtin-provider-config-naming-cutover.md) 将 Provider Config 的 `official` 领域、代码和物理命名一次性切换为 Codez Built-in，不保留兼容入口。
 - [`todo-11-provider-runtime-composition-boundary-cleanup.md`](./todo-11-provider-runtime-composition-boundary-cleanup.md) 保存 Provider Runtime 多层包装、Node Config 资源边界和 Host/Agent 两个组合根的现状证据与候选方案；当前仍是不得实施的待裁决草案。
 - [`todo-11a-provider-runtime-disposal-functional-fix.md`](./todo-11a-provider-runtime-disposal-functional-fix.md) 独立修复 Provider Runtime 释放未贯穿 Protocol Agent 生命周期的问题，不等待 Todo 11 的架构裁决。
 - [`todo-12-model-selection-validation-boundary-cutover.md`](./todo-12-model-selection-validation-boundary-cutover.md) 删除用户 Model Selection Facade 的内部执行校验入口，将权威校验归位到 Registry/ModelFactory，并保留 Off-Peak 窄提前检查。
@@ -257,10 +257,10 @@ steps/
 - Todo 15 已标记为废弃，不再作为独立发布验证 Todo；后续上线验证按最终 Release Checklist 另行收口。
 - [`todo-16-unplanned-model-abstraction-residue-cleanup.md`](./todo-16-unplanned-model-abstraction-residue-cleanup.md) 删除首轮规划之外仍存在的 Runtime、Protocol、Legacy Config 和文档抽象残留。
 - [`todo-17-provider-registry-settings-authority-boundary-closure.md`](./todo-17-provider-registry-settings-authority-boundary-closure.md) 收口 Resolver 完整类型、Settings 三层 View、细粒度保存、写入时序和 connectivity；Provider/Model 生命周期、来源与排序的旧裁决已由 Todo 21 取代。
-- [`todo-18-zcode-builtin-client-config-sync-and-lkg.md`](./todo-18-zcode-builtin-client-config-sync-and-lkg.md) 记录已完成的两层 Release、Bundled/Active/LKG 选择、Environment owner、远端同步与落盘 lease。
+- [`todo-18-codez-builtin-client-config-sync-and-lkg.md`](./todo-18-codez-builtin-client-config-sync-and-lkg.md) 记录已完成的两层 Release、Bundled/Active/LKG 选择、Environment owner、远端同步与落盘 lease。
 - Todo 19 已标记为废弃，不再作为独立发布门禁 Todo；如未来确需发布门禁，另立新的、基于当时发布流程的任务。
 - [`todo-20-account-overlay-atomicity-and-review-closeout.md`](./todo-20-account-overlay-atomicity-and-review-closeout.md) 记录 Account Overlay 原子发布、Built-in 来源 revision barrier、Endpoint Active/LKG 隔离，以及 CLI、依赖和孤儿 ZIP 收口；其中 Account `enabled` 旧语义已由 Todo 50 取代。
-- [`todo-21-zcode-builtin-config-ownership-and-model-activation-order.md`](./todo-21-zcode-builtin-config-ownership-and-model-activation-order.md) 已完成 Built-in Provider/Model 配置职责收口：Provider 管理模型成员与顺序，Model Config `enabled` 管理模型执行门禁，Personal 专属 Rule 承载设置页单模型覆盖，Registry/Selection 统一 executable/selectable 语义，同时将官方版本的请求安全校验配置从 Model Config 归位到 Provider Access。
+- [`todo-21-codez-builtin-config-ownership-and-model-activation-order.md`](./todo-21-codez-builtin-config-ownership-and-model-activation-order.md) 已完成 Built-in Provider/Model 配置职责收口：Provider 管理模型成员与顺序，Model Config `enabled` 管理模型执行门禁，Personal 专属 Rule 承载设置页单模型覆盖，Registry/Selection 统一 executable/selectable 语义，同时将官方版本的请求安全校验配置从 Model Config 归位到 Provider Access。
 - [`todo-22-additional-builtin-providers-and-cloud-access.md`](./todo-22-additional-builtin-providers-and-cloud-access.md) 独立设计 OpenRouter、OpenCode Zen、Azure、Volcano Ark 与 AWS Bedrock 的 Built-in 模板、Access 和真实请求验证；不阻塞 Todo 21。
 - [`todo-23-provider-refactor-decision-gap-closure.md`](./todo-23-provider-refactor-decision-gap-closure.md) 已收口同形 ModelRef、Selection 字符串和 Settings 原子事务；其 Access 切片由 Todo 24 取代。
 - Todo 24（文档仅官方版本保留）取代 Todo 23 的 Access 切片：删除账号创建时绑定，收窄 Account Overlay，严格切换 Access Type，并收口官方版本请求安全校验的唯一静态准入事实。

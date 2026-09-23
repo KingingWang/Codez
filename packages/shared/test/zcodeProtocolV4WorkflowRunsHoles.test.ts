@@ -14,9 +14,9 @@ import {
   type WorkflowRunProgressEnvelope,
   type WorkflowRunState,
   type WorkflowRunsState,
-} from "../src/zcode-protocol-v4/index.js";
-import { deriveSessionWorkflowActivity } from "../src/zcode-protocol-v4/index.js";
-import { getZCodeToolFamilyForName, normalizeZCodeToolName } from "../src/tool-identity.js";
+} from "../src/codez-protocol-v4/index.js";
+import { deriveSessionWorkflowActivity } from "../src/codez-protocol-v4/index.js";
+import { getCodezToolFamilyForName, normalizeCodezToolName } from "../src/tool-identity.js";
 
 const RUN_ID = "dwfrun-holes";
 
@@ -129,7 +129,7 @@ describe("display 载荷：holes 与 fill", () => {
     const fill = {
       siteId: "hole#1",
       name: "决定分组",
-      draftPath: ".zcode/workflow-drafts/a.dwf.ts",
+      draftPath: ".codez/workflow-drafts/a.dwf.ts",
       line: 12,
     };
     expect(toolCallCreateWorkflowDisplaySchema.safeParse({ ...display, fill }).success).toBe(true);
@@ -191,7 +191,7 @@ describe("通知载荷：kind = hole", () => {
         name: "决定分组",
         type: "Plan",
         prompt: "p",
-        draftPath: "/w/.zcode/workflow-drafts/flaky.dwf.ts",
+        draftPath: "/w/.codez/workflow-drafts/flaky.dwf.ts",
         line: 12,
         before: "探索",
         after: "执行",
@@ -213,8 +213,8 @@ describe("通知载荷：kind = hole", () => {
 
 describe("tool identity：FillWorkflowHole 属于 workflow family", () => {
   it("按名归一并落到 workflow family（确认窗按 family 选运行确认块）", () => {
-    expect(normalizeZCodeToolName("fillworkflowhole")).toBe("FillWorkflowHole");
-    expect(getZCodeToolFamilyForName("FillWorkflowHole")).toBe("workflow");
+    expect(normalizeCodezToolName("fillworkflowhole")).toBe("FillWorkflowHole");
+    expect(getCodezToolFamilyForName("FillWorkflowHole")).toBe("workflow");
   });
 });
 

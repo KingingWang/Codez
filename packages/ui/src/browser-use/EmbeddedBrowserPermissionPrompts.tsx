@@ -8,7 +8,7 @@ import {
   TID_BROWSER_PERMISSION_PROMPTS,
   type EmbeddedBrowserPermissionPromptEvent,
   type EmbeddedBrowserPermissionResolution,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { BrowserPermissionIcon } from "@/browser-use/BrowserPermissionIcon.js";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
-import { useZCodeIntl } from "@/i18n/index.js";
+import { useCodezIntl } from "@/i18n/index.js";
 import { logger } from "@/logger.js";
 import { useEmbeddedBrowserPermissionStore } from "@/store/embeddedBrowserPermissionStore.js";
 
@@ -103,7 +103,7 @@ export function EmbeddedBrowserPermissionPrompts({
   const platform = usePlatform();
   const {
     intl: { formatMessage },
-  } = useZCodeIntl();
+  } = useCodezIntl();
   const prompts = useEmbeddedBrowserPermissionStore((state) => state.prompts);
   const receivePrompt = useEmbeddedBrowserPermissionStore((state) => state.receivePrompt);
   const dropPrompt = useEmbeddedBrowserPermissionStore((state) => state.dropPrompt);

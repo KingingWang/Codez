@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { resolveEffectiveShortcutBindings } from "../src/shortcuts/bindings.js";
 import { resolveToolbarShortcutAction } from "../src/v4/composer/toolbarShortcuts.js";
-import type { ZCodeConfigOption } from "@zcode/shared";
+import type { CodezConfigOption } from "@codez/shared";
 
 /** 构造工具条关心的键盘事件字段子集。 */
 function toolbarEvent(patch: Partial<Parameters<typeof resolveToolbarShortcutAction>[0]> = {}) {
@@ -20,9 +20,9 @@ function toolbarEvent(patch: Partial<Parameters<typeof resolveToolbarShortcutAct
 }
 
 /** model 类选项（category=model → 归 Ctrl+M 动作）。 */
-const modelOption = { type: "select", category: "model", currentValue: "m1", options: [] } as unknown as ZCodeConfigOption;
-const modeOption = { type: "select", category: "mode", currentValue: "a", options: [] } as unknown as ZCodeConfigOption;
-const thoughtOption = { type: "select", category: "thought_level", currentValue: "low", options: [] } as unknown as ZCodeConfigOption;
+const modelOption = { type: "select", category: "model", currentValue: "m1", options: [] } as unknown as CodezConfigOption;
+const modeOption = { type: "select", category: "mode", currentValue: "a", options: [] } as unknown as CodezConfigOption;
+const thoughtOption = { type: "select", category: "thought_level", currentValue: "low", options: [] } as unknown as CodezConfigOption;
 
 const enabledState = {
   hasAnyOption: true,

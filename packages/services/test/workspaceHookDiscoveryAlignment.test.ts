@@ -8,7 +8,7 @@ import { atomicWriteWorkspaceHookConfig } from "../src/hooks/workspaceHookConfig
 const roots: string[] = [];
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), "zcode-hook-settings-phase1-"));
+  const root = mkdtempSync(join(tmpdir(), "codez-hook-settings-phase1-"));
   roots.push(root);
   return root;
 }
@@ -39,21 +39,21 @@ describe("workspace hook Settings/Runtime discovery alignment", () => {
     expect(grantWorkspaceHookTrust).toHaveBeenCalledWith(target);
   });
 
-  it("Settings 使用权威 snapshot，祖先/zcode.json 只读且 compatibility rows 不进入 snapshot", async () => {
+  it("Settings 使用权威 snapshot，祖先/codez.json 只读且 compatibility rows 不进入 snapshot", async () => {
     const home = makeRoot();
     const repo = join(makeRoot(), "repo");
     const workspace = join(repo, "packages", "app");
     mkdirSync(join(repo, ".git"), { recursive: true });
     mkdirSync(workspace, { recursive: true });
-    writeJson(join(repo, "zcode.json"), {
+    writeJson(join(repo, "codez.json"), {
       hooks: {
         enabled: true,
         events: {
-          Stop: [{ hooks: [{ type: "command", command: "echo zcode-json" }] }],
+          Stop: [{ hooks: [{ type: "command", command: "echo codez-json" }] }],
         },
       },
     });
-    writeJson(join(workspace, ".zcode", "config.json"), {
+    writeJson(join(workspace, ".codez", "config.json"), {
       hooks: {
         enabled: true,
         events: {
@@ -85,12 +85,12 @@ describe("workspace hook Settings/Runtime discovery alignment", () => {
       true,
     ]);
 
-    const projectZCodeHooks = loaded.hooks.filter(
-      (hook) => hook.location?.source === "zcode" && hook.location.scope === "project",
+    const projectCodezHooks = loaded.hooks.filter(
+      (hook) => hook.location?.source === "codez" && hook.location.scope === "project",
     );
-    expect(projectZCodeHooks).toHaveLength(2);
-    expect(projectZCodeHooks.map((hook) => hook.editable)).toEqual([false, true]);
-    expect(projectZCodeHooks.every((hook) => Boolean(hook.workspaceHook))).toBe(true);
+    expect(projectCodezHooks).toHaveLength(2);
+    expect(projectCodezHooks.map((hook) => hook.editable)).toEqual([false, true]);
+    expect(projectCodezHooks.every((hook) => Boolean(hook.workspaceHook))).toBe(true);
 
     const compatibility = loaded.hooks.find((hook) => hook.location?.source === "agents");
     expect(compatibility).toMatchObject({ enabled: false, editable: false });
@@ -100,20 +100,20 @@ describe("workspace hook Settings/Runtime discovery alignment", () => {
       workspacePath: workspace,
       hooks: loaded.hooks,
     });
-    const savedCurrent = JSON.parse(readFileSync(join(workspace, ".zcode", "config.json"), "utf8"));
+    const savedCurrent = JSON.parse(readFileSync(join(workspace, ".codez", "config.json"), "utf8"));
     expect(savedCurrent.hooks.events.SessionStart).toHaveLength(1);
     expect(savedCurrent.hooks.events.Stop).toBeUndefined();
-    expect(readFileSync(join(repo, "zcode.json"), "utf8")).toContain("echo zcode-json");
+    expect(readFileSync(join(repo, "codez.json"), "utf8")).toContain("echo codez-json");
   });
 
   it("Settings 只读 discovery 叠加 exact persistent Trust record", async () => {
     const home = makeRoot();
     const workspace = makeRoot();
     mkdirSync(join(workspace, ".git"));
-    writeJson(join(home, ".zcode", "cli", "config.json"), {
+    writeJson(join(home, ".codez", "cli", "config.json"), {
       hooks: { enabled: true },
     });
-    writeJson(join(workspace, ".zcode", "config.json"), {
+    writeJson(join(workspace, ".codez", "config.json"), {
       hooks: {
         enabled: true,
         events: {
@@ -132,7 +132,7 @@ describe("workspace hook Settings/Runtime discovery alignment", () => {
     // 修复原因：CR-01 后 trust store 使用完整 strict schema（单源在 shared 的
     // workspace-hook-trust-store-file.ts），record 必须包含全部必填字段；旧用例只写
     // identity+digest 恰好依赖了被修复的局部校验 bug，会被 fail-closed 判为 invalid。
-    writeJson(join(home, ".zcode", "security", "workspace-hook-trust-v1.json"), {
+    writeJson(join(home, ".codez", "security", "workspace-hook-trust-v1.json"), {
       schemaVersion: 1,
       records: [
         {
@@ -143,7 +143,7 @@ describe("workspace hook Settings/Runtime discovery alignment", () => {
           grantedAt: "2026-08-17T09:00:00.000Z",
           eventAtGrant: "Stop",
           displayCommandAtGrant: "echo trust",
-          sourcePathAtGrant: ".zcode/config.json",
+          sourcePathAtGrant: ".codez/config.json",
         },
       ],
     });
@@ -158,7 +158,7 @@ describe("workspace hook Settings/Runtime discovery alignment", () => {
     const home = makeRoot();
     const workspace = makeRoot();
     mkdirSync(join(workspace, ".git"));
-    writeJson(join(workspace, ".zcode", "config.json"), {
+    writeJson(join(workspace, ".codez", "config.json"), {
       hooks: {
         events: {
           SessionStart: [{ hooks: [{ type: "command", command: "echo missing-enabled" }] }],
@@ -180,7 +180,7 @@ describe("workspace hook Settings/Runtime discovery alignment", () => {
       },
     });
 
-    writeJson(join(home, ".zcode", "cli", "config.json"), {
+    writeJson(join(home, ".codez", "cli", "config.json"), {
       hooks: { enabled: true, events: {} },
     });
     const enabled = await service.loadHooks({ workspacePath: workspace });
@@ -200,7 +200,7 @@ describe("workspace hook Settings/Runtime discovery alignment", () => {
 describe("workspace hook config atomic mutation", () => {
   it("temp file flush/close 后 atomic rename 成功提交完整 JSON", async () => {
     const root = makeRoot();
-    const path = join(root, ".zcode", "config.json");
+    const path = join(root, ".codez", "config.json");
     await atomicWriteWorkspaceHookConfig(path, {
       hooks: { enabled: true, events: {} },
     });
@@ -211,7 +211,7 @@ describe("workspace hook config atomic mutation", () => {
 
   it("rename 前失败时保留原文件且清理 temp file", async () => {
     const root = makeRoot();
-    const path = join(root, ".zcode", "config.json");
+    const path = join(root, ".codez", "config.json");
     writeJson(path, { hooks: { enabled: false, events: {} } });
 
     await expect(
@@ -229,7 +229,7 @@ describe("workspace hook config atomic mutation", () => {
     expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({
       hooks: { enabled: false, events: {} },
     });
-    const entries = (await import("node:fs/promises")).readdir(join(root, ".zcode"));
+    const entries = (await import("node:fs/promises")).readdir(join(root, ".codez"));
     await expect(entries).resolves.toEqual(["config.json"]);
   });
 });

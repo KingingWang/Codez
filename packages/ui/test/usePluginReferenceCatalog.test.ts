@@ -2,13 +2,13 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type {
-  ZCodePluginReferenceCatalogEntry,
-  ZCodePluginsReferenceCatalogResult,
-} from "@zcode/shared";
+  CodezPluginReferenceCatalogEntry,
+  CodezPluginsReferenceCatalogResult,
+} from "@codez/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getPluginReferenceCatalog =
-  vi.fn<(params: unknown) => Promise<ZCodePluginsReferenceCatalogResult>>();
+  vi.fn<(params: unknown) => Promise<CodezPluginsReferenceCatalogResult>>();
 let runtimeRestartListener: ((event: { workspaceKey: string }) => void) | undefined;
 const runtimeRestartSubscription = { dispose: vi.fn() };
 const onAgentRuntimeRestarted = vi.fn((listener: (event: { workspaceKey: string }) => void) => {
@@ -20,7 +20,7 @@ const resolution = {
     pluginManagementService: {
       getPluginReferenceCatalog,
     },
-    zcodeAgentService: {
+    codezAgentService: {
       onAgentRuntimeRestarted,
     },
   },
@@ -42,7 +42,7 @@ vi.mock("@/logger.js", () => ({
   },
 }));
 
-function plugin(pluginId: string): ZCodePluginReferenceCatalogEntry {
+function plugin(pluginId: string): CodezPluginReferenceCatalogEntry {
   const [name = pluginId, marketplace = "market"] = pluginId.split("@");
   return {
     pluginId,
@@ -74,7 +74,7 @@ describe("usePluginReferenceCatalog", () => {
   });
 
   it("deduplicates only in-flight Session requests and refetches after completion", async () => {
-    const firstRequest = deferred<ZCodePluginsReferenceCatalogResult>();
+    const firstRequest = deferred<CodezPluginsReferenceCatalogResult>();
     getPluginReferenceCatalog.mockReturnValueOnce(firstRequest.promise).mockResolvedValueOnce({
       authority: "session",
       plugins: [plugin("fresh@market")],
@@ -187,8 +187,8 @@ describe("usePluginReferenceCatalog", () => {
   });
 
   it("drops the previous runtime result when it arrives after the restarted runtime", async () => {
-    const runtimeA = deferred<ZCodePluginsReferenceCatalogResult>();
-    const runtimeB = deferred<ZCodePluginsReferenceCatalogResult>();
+    const runtimeA = deferred<CodezPluginsReferenceCatalogResult>();
+    const runtimeB = deferred<CodezPluginsReferenceCatalogResult>();
     getPluginReferenceCatalog
       .mockReturnValueOnce(runtimeA.promise)
       .mockReturnValueOnce(runtimeB.promise);
@@ -227,8 +227,8 @@ describe("usePluginReferenceCatalog", () => {
   });
 
   it("hides the previous authority immediately when workspace/session request identity changes", async () => {
-    const first = deferred<ZCodePluginsReferenceCatalogResult>();
-    const second = deferred<ZCodePluginsReferenceCatalogResult>();
+    const first = deferred<CodezPluginsReferenceCatalogResult>();
+    const second = deferred<CodezPluginsReferenceCatalogResult>();
     getPluginReferenceCatalog
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
@@ -267,8 +267,8 @@ describe("usePluginReferenceCatalog", () => {
   });
 
   it("drops late results and clears cached entries while a remote attachment is unavailable", async () => {
-    const first = deferred<ZCodePluginsReferenceCatalogResult>();
-    const second = deferred<ZCodePluginsReferenceCatalogResult>();
+    const first = deferred<CodezPluginsReferenceCatalogResult>();
+    const second = deferred<CodezPluginsReferenceCatalogResult>();
     getPluginReferenceCatalog
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);

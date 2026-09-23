@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../../../scripts/intranetDefaults.mjs", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   resolveIntranetDepsBaseUrl: () => {
-    throw new Error("Configure ZCODE_DEPS_BASE_URL or INTRANET_MACHINE_HOST");
+    throw new Error("Configure CODEZ_DEPS_BASE_URL or INTRANET_MACHINE_HOST");
   },
 }));
 

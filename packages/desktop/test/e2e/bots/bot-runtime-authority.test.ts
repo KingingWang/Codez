@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { setDataBaseDir } from "@zcode/services/node";
+import { setDataBaseDir } from "@codez/services/node";
 
 import { acquireFeishuWebSocketLock } from "../../../../services/src/bots/channelRuntime.js";
 import {
@@ -23,7 +23,7 @@ describe("Bot runtime authority E2E", () => {
   it("BOT-E2E-RT-01 grants the Feishu runtime lock to only one local host", async () => {
     const fixture = await readBotSyntheticFixture("feishu-runtime-lock.json");
     expect(fixture).toMatchObject({ caseId: "BOT-E2E-RT-01", classification: "synthetic" });
-    dataDir = await mkdtemp(join(tmpdir(), "zcode-e2e-bot-runtime-"));
+    dataDir = await mkdtemp(join(tmpdir(), "codez-e2e-bot-runtime-"));
     setDataBaseDir(dataDir);
     const bot = createFeishuConfig().bots[0]!;
     const firstHostLock = await acquireFeishuWebSocketLock(bot);

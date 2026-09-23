@@ -79,7 +79,7 @@ describe("chatPrepareError", () => {
           code: "model_config_missing",
         },
         message:
-          "Model config is missing. Create ~/.zcode/cli/config.json with an explicit model provider before running ZCode.",
+          "Model config is missing. Create ~/.codez/cli/config.json with an explicit model provider before running Codez.",
       },
       {
         workspacePath: "/repo/demo",
@@ -88,20 +88,20 @@ describe("chatPrepareError", () => {
         attempt: 5,
         maxAttempts: 5,
         displayMessage:
-          "Model config is missing. Create ~/.zcode/cli/config.json with an explicit model provider before running ZCode.",
+          "Model config is missing. Create ~/.codez/cli/config.json with an explicit model provider before running Codez.",
       },
     );
 
     expect(uiError).toMatchObject({
       code: "model_config_missing",
       message:
-        "Model config is missing. Create ~/.zcode/cli/config.json with an explicit model provider before running ZCode.",
+        "Model config is missing. Create ~/.codez/cli/config.json with an explicit model provider before running Codez.",
     });
   });
 
   it("workspace failed 缓存短路时复用结构化错误 code", () => {
     const message =
-      "Model config is missing. Create ~/.zcode/cli/config.json with an explicit model provider before running ZCode.";
+      "Model config is missing. Create ~/.codez/cli/config.json with an explicit model provider before running Codez.";
     const cachedError = buildWorkspacePrepareUiError(
       {
         code: -32603,

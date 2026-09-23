@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AppSettings } from "@zcode/shared";
+import type { AppSettings } from "@codez/shared";
 import {
   WEB_REMOTE_CONTROL_EXTERNAL_RELAY_PASS_HASH_CREDENTIAL_KEY,
   createWebRemoteControlRelayAuthStorageProvider,

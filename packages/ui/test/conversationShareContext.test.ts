@@ -8,8 +8,8 @@ import {
 /** 历史消息里可能残留的 share URL 尾块；写入端已删除，这里只验证读取端能剥干净。 */
 function withShareContextBlock(text: string, payload: Record<string, unknown>): string {
   const block = [
-    "# zcode-share-context:",
-    "```zcode-share-context",
+    "# codez-share-context:",
+    "```codez-share-context",
     JSON.stringify(payload),
     "```",
   ].join("\n");
@@ -36,8 +36,8 @@ describe("conversation share context reference", () => {
       [
         "继续分析",
         "",
-        "# zcode-share-context:",
-        "```zcode-share-context",
+        "# codez-share-context:",
+        "```codez-share-context",
         JSON.stringify({
           contextId: "context-1",
           shareUrl: "https://signed.example/download?token=secret",
@@ -47,7 +47,7 @@ describe("conversation share context reference", () => {
       ].join("\n"),
     );
     expect(parsed.reference).toBeNull();
-    expect(parsed.visibleContent).toContain("# zcode-share-context:");
+    expect(parsed.visibleContent).toContain("# codez-share-context:");
   });
 });
 

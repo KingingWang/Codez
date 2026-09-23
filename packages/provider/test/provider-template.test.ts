@@ -12,7 +12,7 @@ import {
   ProviderTemplate,
   ProviderTemplateMap,
   parseProviderTemplateMap,
-  parseZCodeBuiltinModelConfigRules,
+  parseCodezBuiltinModelConfigRules,
   resolveProviderTemplateName,
 } from "../src/index.js";
 
@@ -122,11 +122,11 @@ describe("Provider Template", () => {
       },
     ]);
     const resolution = new ProviderConfigResolver().resolve({
-      zcodeBuiltinProviders: ProviderConfigMap.empty(),
-      zcodeBuiltinProviderTemplates: new ProviderTemplateMap([["deepseek", template]]),
+      codezBuiltinProviders: ProviderConfigMap.empty(),
+      codezBuiltinProviderTemplates: new ProviderTemplateMap([["deepseek", template]]),
       accountProviders: ProviderConfigMap.empty(),
       personalProviders,
-      zcodeBuiltinModelRules: rules,
+      codezBuiltinModelRules: rules,
       personalModels: ModelConfigRules.empty(),
     });
 
@@ -141,7 +141,7 @@ describe("Provider Template", () => {
   });
 
   it("Built-in Rule 固定按 match、template-model、provider-model 排序", () => {
-    const rules = parseZCodeBuiltinModelConfigRules({
+    const rules = parseCodezBuiltinModelConfigRules({
       modelRules: [{ modelMatch: ".*", config: { enabled: false } }],
       modelApiRules: [],
       providerSiteRules: [],
@@ -170,7 +170,7 @@ describe("Provider Template", () => {
   });
 
   it("Built-in 分组按 model、model+api、site、template、provider 顺序叠加", () => {
-    const rules = parseZCodeBuiltinModelConfigRules({
+    const rules = parseCodezBuiltinModelConfigRules({
       modelRules: [
         { modelMatch: ".*", config: { enabled: false } },
         { modelMatch: ".*GLM-5\\.3.*", config: { enabled: true } },

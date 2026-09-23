@@ -1,8 +1,8 @@
 import { act, createElement, useEffect, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
-import type { IPlatformService } from "@zcode/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { IPlatformService } from "@codez/shared";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
@@ -95,7 +95,7 @@ function installMinimalDom() {
 function makeServices(id: string): IServiceAccessor {
   return {
     __testId: id,
-    zcodeAgentService: {
+    codezAgentService: {
       onDynamicConversationFrame: () => () => ({ dispose: () => {} }),
       onAgentRuntimeRestarted: () => ({ dispose: () => {} }),
     },
@@ -107,7 +107,7 @@ function makeObservableServices(id: string) {
   return {
     services: {
       __testId: id,
-      zcodeAgentService: {
+      codezAgentService: {
         onDynamicConversationFrame,
         onAgentRuntimeRestarted: () => ({ dispose: () => {} }),
       },
@@ -131,7 +131,7 @@ function makePreviewServices(id: string) {
   return {
     services: {
       __testId: id,
-      zcodeAgentService: {
+      codezAgentService: {
         helloConversationV4: vi.fn(async () => ({
           kind: "hello" as const,
           protocolVersion: 3 as const,
@@ -432,7 +432,7 @@ describe("V4ConversationProvider remote readiness", () => {
     const root = createRoot(container);
     mountedRoots.push(root);
     const local = makePreviewServices("local-preview");
-    const createLocalMediaPreviewUrl = vi.fn(() => "zcode-media://local/preview");
+    const createLocalMediaPreviewUrl = vi.fn(() => "codez-media://local/preview");
     const platform = { createLocalMediaPreviewUrl } as unknown as IPlatformService;
     let attachmentRead: V4ConversationContextValue["attachmentRead"] | undefined;
     registerBaseWorkspaceServices(local.services);
@@ -461,7 +461,7 @@ describe("V4ConversationProvider remote readiness", () => {
         ref: "/workspace/local/demo.mp4",
         mediaType: "video/mp4",
       }),
-    ).resolves.toEqual({ url: "zcode-media://local/preview", mediaType: "video/mp4" });
+    ).resolves.toEqual({ url: "codez-media://local/preview", mediaType: "video/mp4" });
     expect(local.attachmentPreviewSourceV4).toHaveBeenCalledOnce();
     expect(local.attachmentReadV4).not.toHaveBeenCalled();
   });
@@ -472,7 +472,7 @@ describe("V4ConversationProvider remote readiness", () => {
     mountedRoots.push(root);
     const baseServices = makeServices("base-remote-preview");
     const remote = makePreviewServices("remote-preview");
-    const createLocalMediaPreviewUrl = vi.fn(() => "zcode-media://local/wrong-host");
+    const createLocalMediaPreviewUrl = vi.fn(() => "codez-media://local/wrong-host");
     const platform = { createLocalMediaPreviewUrl } as unknown as IPlatformService;
     const workspaceIdentity = "remote:ssh:dev:/remote/work";
     const remoteSessionId = "remote-session-preview";

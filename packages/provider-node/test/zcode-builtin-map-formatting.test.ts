@@ -1,12 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { compileModelOptionMap, tokenizeRestrictedCel } from "@zcode/model-option-map";
+import { compileModelOptionMap, tokenizeRestrictedCel } from "@codez/model-option-map";
 
 describe("F98-01 Built-in 源 Map 结构排版", () => {
   it("所有嵌套对象分层展开，简单三目同行，简单单层输出 Map 保持紧凑", async () => {
     const document = JSON.parse(
       await readFile(
-        new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
+        new URL("../../../config/provider/codez-builtin.json", import.meta.url),
         "utf8",
       ),
     );

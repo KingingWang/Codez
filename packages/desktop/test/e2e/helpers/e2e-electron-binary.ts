@@ -125,7 +125,7 @@ function assertValidInstallTimeout(timeoutMs: number) {
     timeoutMs > MAX_CHILD_PROCESS_TIMEOUT_MS
   ) {
     throw new Error(
-      `ZCODE_E2E_ELECTRON_INSTALL_TIMEOUT_MS must be an integer between 1 and ${MAX_CHILD_PROCESS_TIMEOUT_MS}, got: ${timeoutMs}`,
+      `CODEZ_E2E_ELECTRON_INSTALL_TIMEOUT_MS must be an integer between 1 and ${MAX_CHILD_PROCESS_TIMEOUT_MS}, got: ${timeoutMs}`,
     );
   }
 }

@@ -3,14 +3,14 @@ import {
   BUILTIN_MODEL_PROVIDER_IDS,
   MCP_USAGE_QUOTA_LIMIT_TYPE,
   type ApiClient,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { BigModelUsageQuotaProvider } from "../src/usage-stats/providers/bigmodelUsageQuotaProvider.js";
 import {
   buildMcpQuotaAggregateLimit,
   fetchMcpQuotaSnapshot,
   matchesMcpQuotaScope,
   type OfficialMcpCredentialSource,
-} from "../src/usage-stats/providers/zcodeMcpQuotaProvider.js";
+} from "../src/usage-stats/providers/codezMcpQuotaProvider.js";
 
 const MCP_USAGE_PATH = "/api/v1/mcp/usage";
 const QUOTA_LIMIT_PATH = "/api/monitor/usage/quota/limit";
@@ -28,7 +28,7 @@ function createPersonalBigModelCredentialSource(): OfficialMcpCredentialSource {
       ok: true as const,
       snapshot: {
         codingPlanAuthorization: "bigmodel-maas-jwt",
-        jwt: "zcode-jwt",
+        jwt: "codez-jwt",
         planScope: { targetType: "PERSONAL" as const },
         providerFamily: "bigmodel" as const,
         wireScope: { targetType: "PERSONAL" as const },
@@ -198,7 +198,7 @@ describe("官方 Server MCP 额度汇总", () => {
           ok: true as const,
           snapshot: {
             codingPlanAuthorization: "zai-maas-jwt",
-            jwt: "zcode-jwt",
+            jwt: "codez-jwt",
             planScope: {
               organizationId: "org-z",
               projectId: "project-z",
@@ -220,7 +220,7 @@ describe("官方 Server MCP 额度汇总", () => {
 
     expect(requests).toHaveLength(1);
     expect(requests[0]?.headers).toEqual({
-      Authorization: "Bearer zcode-jwt",
+      Authorization: "Bearer codez-jwt",
       "X-Bigmodel-Authorization": "Bearer zai-maas-jwt",
     });
     expect(result?.scope).toEqual({
@@ -270,7 +270,7 @@ describe("entitlement 快照携带官方 Server MCP 额度", () => {
     expect(mcpRequests).toHaveLength(1);
     // 身份头必须与 server MCP 调用完全一致：不改名、不补头、不换通道。
     expect(mcpRequests[0]?.headers).toEqual({
-      Authorization: "Bearer zcode-jwt",
+      Authorization: "Bearer codez-jwt",
       "X-Bigmodel-Authorization": "Bearer bigmodel-maas-jwt",
       "Bigmodel-Target-Type": "PERSONAL",
     });
@@ -478,7 +478,7 @@ describe("entitlement 快照携带官方 Server MCP 额度", () => {
           ok: true as const,
           snapshot: {
             codingPlanAuthorization: "zai-maas-jwt",
-            jwt: "zcode-jwt",
+            jwt: "codez-jwt",
             planScope: { targetType: "PERSONAL" as const },
             providerFamily: "zai" as const,
             wireScope: { targetType: "PERSONAL" as const },

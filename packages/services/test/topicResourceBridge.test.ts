@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createTopicResourceBridge } from "../src/zcode-agent/topicResourceBridge.js";
+import { createTopicResourceBridge } from "../src/codez-agent/topicResourceBridge.js";
 
 const request = {
   requestId: "request-a",

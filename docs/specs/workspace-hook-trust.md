@@ -14,8 +14,8 @@
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 状态      | 已实施；当前交互为 persistent-only + soft-gate，静态与自动化检查完成，最终真实 Desktop 人工验收由产品方执行                                                                                                         |
 | 日期      | 2026-08-07                                                                                                                                                                                                          |
-| 适用范围  | ZCode CLI Runtime、ZCode Protocol v4、Desktop/Web UI、Remote Workspace、Headless CLI                                                                                                                                |
-| 主要对象  | workspace/project 级 `zcode.json` 与 `.zcode/config.json` Hooks                                                                                                                                                     |
+| 适用范围  | Codez CLI Runtime、Codez Protocol v4、Desktop/Web UI、Remote Workspace、Headless CLI                                                                                                                                |
+| 主要对象  | workspace/project 级 `codez.json` 与 `.codez/config.json` Hooks                                                                                                                                                     |
 | 安全基线  | 默认拒绝、显式授权、声明变化按条失效、策略拒绝优先                                                                                                                                                                  |
 | 关联文档  | `docs/security/deep-link-project-trust-boundary.md`；`docs/web-remote-control/web-remote-control-architecture.md`；`docs/web-remote-control/task-realtime-sync.md`；`docs/web-remote-control-task-command-queue.md` |
 | 交互方案  | `设置 → 钩子 → 工作区` 内完成审核；不使用任务页独立 Trust Dialog                                                                                                                                                    |
@@ -61,7 +61,7 @@ route、CLI/Headless、rollout 与 telemetry 已完成，并由 persistent-only 
 
 ### 2.1 当前安全修复
 
-`apps/zcode-cli/packages/adapters/src/config/project-config.adapter.ts` 当前分两条隔离路径处理项目 Hooks：
+`apps/codez-cli/packages/adapters/src/config/project-config.adapter.ts` 当前分两条隔离路径处理项目 Hooks：
 
 1. `loadProjectConfigFile()` 在检测到 `result.config.hooks` 时产生诊断，并把声明保存在独立 candidate/snapshot side-channel：
 
@@ -102,15 +102,15 @@ effectiveRunnable  本次上下文中是否实际允许执行
 在 Git worktree 内，项目配置从当前目录向 worktree root 发现：
 
 ```text
-<dir>/zcode.json
-<dir>/.zcode/config.json
+<dir>/codez.json
+<dir>/.codez/config.json
 ```
 
 并按 root 到 cwd 的顺序合并；显式 `projectConfigPath`（目前主要由测试和少数构造链路透传）在 discovery files 之后追加，属于前向兼容能力，不作为 V1 UI 主路径。
 
 **非 Git 目录的现有行为不同：** `getProjectConfigDirectories()` 最终只返回 `cwd`，不会把途中父目录加入发现范围。Snapshot builder 必须复用这一行为，不能自行实现“非 Git 也向父目录扫描”的另一套规则。
 
-因此 discovery snapshot 不能只代表某一个 `.zcode/config.json` 文件，也不能只 hash 最终 UI 展示文本。完整 bundle 必须覆盖真实发现范围、来源、相对顺序和合并结果；逐条 Trust 的 declaration digest 也必须包含该 Hook 的 source、event、matcher、位置和全部已知执行语义。
+因此 discovery snapshot 不能只代表某一个 `.codez/config.json` 文件，也不能只 hash 最终 UI 展示文本。完整 bundle 必须覆盖真实发现范围、来源、相对顺序和合并结果；逐条 Trust 的 declaration digest 也必须包含该 Hook 的 source、event、matcher、位置和全部已知执行语义。
 
 ### 2.4 Draft prewarm 与真实执行时机不同
 
@@ -131,7 +131,7 @@ V4 composer 会提前创建 draft session，但 draft prewarm 不执行 Hook。
 
 ### 3.1 Workspace Hook / Project Hook
 
-来源于 workspace 项目配置发现范围内 `zcode.json`、`.zcode/config.json` 或显式 `projectConfigPath` 的 Hook。
+来源于 workspace 项目配置发现范围内 `codez.json`、`.codez/config.json` 或显式 `projectConfigPath` 的 Hook。
 
 本文统一称为 **Workspace Hook**；代码来源枚举建议使用 `project`，以保持与现有 `ConfigScope.Project` 一致。
 
@@ -290,7 +290,7 @@ flowchart TD
 
 ### 7.2 审核中 Toggle 的原子替换
 
-审核中的 toggle 不修改旧 immutable snapshot。对于 `editable=true` 的当前 workspace `.zcode/config.json`：
+审核中的 toggle 不修改旧 immutable snapshot。对于 `editable=true` 的当前 workspace `.codez/config.json`：
 
 ```text
 acquire workspace review mutation lock
@@ -449,7 +449,7 @@ V1 不提供 `Always trust this workspace`，也不提供对未来新增 Hook �
 建议逻辑位置：
 
 ```text
-~/.zcode/security/workspace-hook-trust.json
+~/.codez/security/workspace-hook-trust.json
 ```
 
 实际路径必须通过现有用户数据目录/CLI storage root resolver 生成，不能在业务代码中直接硬编码 `$HOME`。
@@ -557,7 +557,7 @@ core flow registry 是 mutation 契约 owner（supersede/validate 语义），�
 镜像消费方时必须消费本函数。事件 order（sequenceNumber）由 product projection 保持，store
 的连接生命周期仍归 store。
 
-**暴露路径约束（2026-08-07 修订，2026-08-10 扩列）：** 直连 subpath 白名单：`@zcode/shared/workspace-hook-review-monotonicity`（裁决函数）、`@zcode/shared/workspace-hook-mutation`（`WorkspaceHookMutationError`/原子写 API，2026-08-10 起 review controller 直连）。全部消费方必须直连声明的 subpath；`workspace-hook-discovery` barrel **禁止 re-export 上述模块**。根因：D16 首版经 discovery barrel 的 `export *` 暴露，packages/ui 的 Desktop 构建链解析该 re-export 边失败，App 重启后无法打开；且 barrel 会形成“同一 API 双暴露路径”，漂移回潮无法被 import 处发现。cli SEA/esbuild 打包侧（`packages/cli/scripts/build.mjs`）必须为**每个** subpath 声明精确 alias——esbuild 按前缀改写，漏声明会被通用 `@zcode/shared` 改写为 `src/index.ts/<subpath>`（文件当目录）导致 pack 失败；alias 顺序由 `build.test.mjs` 锁定。**新增 subpath 三处同步清单：package.json exports / 消费方 import / build.mjs 精确 alias。**
+**暴露路径约束（2026-08-07 修订，2026-08-10 扩列）：** 直连 subpath 白名单：`@codez/shared/workspace-hook-review-monotonicity`（裁决函数）、`@codez/shared/workspace-hook-mutation`（`WorkspaceHookMutationError`/原子写 API，2026-08-10 起 review controller 直连）。全部消费方必须直连声明的 subpath；`workspace-hook-discovery` barrel **禁止 re-export 上述模块**。根因：D16 首版经 discovery barrel 的 `export *` 暴露，packages/ui 的 Desktop 构建链解析该 re-export 边失败，App 重启后无法打开；且 barrel 会形成“同一 API 双暴露路径”，漂移回潮无法被 import 处发现。cli SEA/esbuild 打包侧（`packages/cli/scripts/build.mjs`）必须为**每个** subpath 声明精确 alias——esbuild 按前缀改写，漏声明会被通用 `@codez/shared` 改写为 `src/index.ts/<subpath>`（文件当目录）导致 pack 失败；alias 顺序由 `build.test.mjs` 锁定。**新增 subpath 三处同步清单：package.json exports / 消费方 import / build.mjs 精确 alias。**
 
 **toggle 错误归属约束（2026-08-10，TR27）：** controller.toggle 的 catch 必须按 `WorkspaceHookMutationError.code` 透传（`snapshot_mismatch` ≠ `config_write_failed`）——mismatch 发生在写盘之前，报成“写入失败”会诱导无效重试并掩盖真实原因（UAT 实测：配置写入路径无故障，用户看到的全是误报）。telemetry 的 toggle_failure 必须携带 errorMessage 原文。
 
@@ -565,8 +565,8 @@ core flow registry 是 mutation 契约 owner（supersede/validate 语义），�
 
 `adapters/config/schema.ts` 的 hooksSchema 副本与 `shared/workspace-hook-config.ts` 逐字段等价。曾尝试三项收敛，均被依赖现实阻断：
 
-- re-export shared schema：两个 pnpm workspace 解析出**物理不同的 zod 实例**（adapters 4.4.3 / shared 4.3.6，lockfile 分区），shared schema 嵌入本包 `ZCodeConfigFileSchema` 组合后，dts 引用 foreign zod 内部类型触发 TS2742（"not portable"）；
-- 显式 `typeof` 注解：可命名 re-export 的四个 const，但组合 schema（ZCodeConfigFileSchema）的推断类型仍携带 foreign 引用，注解传染到输出类型循环（TS2502/2456）；
+- re-export shared schema：两个 pnpm workspace 解析出**物理不同的 zod 实例**（adapters 4.4.3 / shared 4.3.6，lockfile 分区），shared schema 嵌入本包 `CodezConfigFileSchema` 组合后，dts 引用 foreign zod 内部类型触发 TS2742（"not portable"）；
+- 显式 `typeof` 注解：可命名 re-export 的四个 const，但组合 schema（CodezConfigFileSchema）的推断类型仍携带 foreign 引用，注解传染到输出类型循环（TS2502/2456）；
 - 统一 zod 版本（^4.4.3）：需要滚动根 pnpm-lock 且 shared 的全部 protocol schema 依赖 zod strict/passthrough 语义，minor 升级存在行为漂移风险与合并成本——**否决，除非产品级决策**。
 
 **采纳（当前落地）：** 副本保留，但位置降级为“配置文件装载诊断专用”——运行时权威校验一律走 shared schema（discovery / trust 装配 / settings service 入口全部 import shared）；`project-config.adapter` 的 `workspaceHooksConfigSchema.parse(hooks)` 保留为**类型桥**（`HooksRuntimeConfigPatch` 与 `WorkspaceHooksConfig` 是两个领域类型，禁止改成 as 断言）；双 builder digest parity 哨兵（services 侧）锁定装配一致。**重审条件：统一 zod 实例后删除副本改 re-export。**
@@ -630,7 +630,7 @@ workspace 级“不要再提示”能力，应作为可见、可撤销的用户�
 | Headless          | 未信任时自动临时放行                        | automation 会成为绕过交互安全边界的通道                                                                              | 仅在 managed policy 控制的封闭环境                      |
 | Headless          | 环境变量永久信任                            | 容易由父进程或 CI 模板静默扩权，审计弱                                                                               | 受保护的短期签名 token                                  |
 | Remote            | 仅按 remote path                            | 不同主机或 container 的相同路径会冲突                                                                                | 永远不建议；至少需要 host/workspace identity            |
-| 持久化            | 写入 `.zcode/config.json`                   | 仓库可以提交自我信任                                                                                                 | 永远不建议                                              |
+| 持久化            | 写入 `.codez/config.json`                   | 仓库可以提交自我信任                                                                                                 | 永远不建议                                              |
 | 持久化            | 复用普通 settings store 并云同步            | 授权可能扩散到未审核机器，安全记录与偏好混合                                                                         | 有设备绑定、加密和跨设备授权设计                        |
 | Digest            | 只 hash command 字符串                      | 忽略 event、matcher、timeout、source、顺序等执行语义                                                                 | 无                                                      |
 | Digest            | hash 整个配置文件原始字节                   | 无关格式或非 Hook 设置变化会重复询问，多文件合并语义不清                                                             | 产品希望任何项目字节变化都重审                          |
@@ -723,7 +723,7 @@ effectiveRunnable =
   AND workspace security revision has been validated
 ```
 
-对于祖先目录、`zcode.json`、显式 projectConfigPath 或其他 settings service 不能安全回写的 project Hook，`editable=false`。`.agents/settings.json`、`.claude/settings.json` 等 compatibility rows 保持 disabled/read-only，但不进入 Runtime Trust snapshot。
+对于祖先目录、`codez.json`、显式 projectConfigPath 或其他 settings service 不能安全回写的 project Hook，`editable=false`。`.agents/settings.json`、`.claude/settings.json` 等 compatibility rows 保持 disabled/read-only，但不进入 Runtime Trust snapshot。
 
 ### 10.4 状态转换
 
@@ -759,7 +759,7 @@ interface WorkspaceHookBundleSnapshot {
     canonicalPath: string;
     baseDir: string;
     discoveryOrder: number;
-    configFileKind: "zcode.json" | ".zcode/config.json" | "explicit";
+    configFileKind: "codez.json" | ".codez/config.json" | "explicit";
     explicitProjectConfig: boolean;
     editable: boolean;
     hooksRoot: {
@@ -1525,7 +1525,7 @@ Trust”以及按钮/开关展示，不得形成第二套安全语义：
 | Config    | Runtime enabled / Source enabled / Hook enabled / Read-only source      |
 | Trust     | Pending persistent Trust / Trusted persistent / Policy denied / Changed |
 | Effective | 仅用于锁定开关，不渲染“将运行/不会运行”徽章                             |
-| Source    | `zcode.json`、`.zcode/config.json`、user、plugin、internal              |
+| Source    | `codez.json`、`.codez/config.json`、user、plugin、internal              |
 
 若当前没有 task/session，Hooks service 可通过只读 Agent control plane 使用同一 discovery resolver
 获取静态 snapshot；点击 Trust 时必须再由 Agent 重验 identity、bundle 与 declaration digest，
@@ -1533,7 +1533,7 @@ Trust”以及按钮/开关展示，不得形成第二套安全语义：
 `user_decides` 可执行 mutation，`deny` / `allow_trusted_only` 必须在任何 Trust store mutation 前
 分别返回 `workspace_hooks_blocked_by_policy` / `workspace_hooks_policy_requires_pretrust`。
 不能由 UI 或 services 直接写 Trust store。UI 必须使用服务层返回的 `editable` 和复合
-`configuredEnabled`。所有 `.zcode/config.json` mutation 使用 temp + fsync/close + atomic rename；
+`configuredEnabled`。所有 `.codez/config.json` mutation 使用 temp + fsync/close + atomic rename；
 写入后由 Runtime discovery 重建权威 snapshot。Compatibility rows 可在普通设置列表中展示，
 但不计入待审核数量。
 
@@ -1564,11 +1564,11 @@ status: skipped_untrusted | skipped_policy | skipped_revoked | executed | failed
 ### 17.1 命令建议
 
 ```text
-zcode hooks trust status [--workspace <path-or-identity>] [--json]
-zcode hooks trust review [--workspace <path-or-identity>] [--json]
-zcode hooks trust grant --workspace <path-or-identity> --hook-digest <sha256> [--hook-digest <sha256> ...]
-zcode hooks trust grant --workspace <path-or-identity> --all-current --bundle-digest <sha256>
-zcode hooks trust revoke --workspace <path-or-identity> [--hook-digest <sha256>|--all]
+codez hooks trust status [--workspace <path-or-identity>] [--json]
+codez hooks trust review [--workspace <path-or-identity>] [--json]
+codez hooks trust grant --workspace <path-or-identity> --hook-digest <sha256> [--hook-digest <sha256> ...]
+codez hooks trust grant --workspace <path-or-identity> --all-current --bundle-digest <sha256>
+codez hooks trust revoke --workspace <path-or-identity> [--hook-digest <sha256>|--all]
 ```
 
 最终命令形状遵循现有 CLI conventions，但必须满足：
@@ -1597,8 +1597,8 @@ zcode hooks trust revoke --workspace <path-or-identity> [--hook-digest <sha256>|
 V1 不支持：
 
 ```text
-ZCODE_TRUST_WORKSPACE_HOOKS=1
-ZCODE_ALWAYS_ALLOW_PROJECT_HOOKS=1
+CODEZ_TRUST_WORKSPACE_HOOKS=1
+CODEZ_ALWAYS_ALLOW_PROJECT_HOOKS=1
 ```
 
 如果未来引入 automation token，必须是短期、绑定 workspace identity 与精确 declaration digest set、可撤销且可审计的能力，而不是全局布尔值。
@@ -1800,11 +1800,11 @@ soft-gate 下 `activate()` 不等待 review；pending 声明直接跳过，turn 
 
 主要位置：
 
-- `apps/zcode-cli/packages/adapters/src/config/project-config.adapter.ts`
-- `apps/zcode-cli/packages/adapters/src/config/config-factory.ts`
-- `apps/zcode-cli/packages/adapters/src/config/config-merger.ts`
-- `apps/zcode-cli/packages/adapters/src/config/schema.ts`
-- `apps/zcode-cli/packages/adapters/tests/config.test.ts`
+- `apps/codez-cli/packages/adapters/src/config/project-config.adapter.ts`
+- `apps/codez-cli/packages/adapters/src/config/config-factory.ts`
+- `apps/codez-cli/packages/adapters/src/config/config-merger.ts`
+- `apps/codez-cli/packages/adapters/src/config/schema.ts`
+- `apps/codez-cli/packages/adapters/tests/config.test.ts`
 
 改动：
 
@@ -1821,8 +1821,8 @@ soft-gate 下 `activate()` 不等待 review；pending 声明直接跳过，turn 
 
 主要位置：
 
-- `apps/zcode-cli/packages/contracts/src/hooks/index.ts`
-- `apps/zcode-cli/packages/core/src/hooks/display-metadata.ts`
+- `apps/codez-cli/packages/contracts/src/hooks/index.ts`
+- `apps/codez-cli/packages/core/src/hooks/display-metadata.ts`
 - Hook lifecycle / product projection contracts
 
 改动：
@@ -1838,9 +1838,9 @@ soft-gate 下 `activate()` 不等待 review；pending 声明直接跳过，turn 
 建议模块：
 
 ```text
-apps/zcode-cli/packages/contracts/src/interfaces/workspace-hook-trust.port.ts
-apps/zcode-cli/packages/adapters/src/security/workspace-hook-trust.adapter.ts
-apps/zcode-cli/packages/core/src/hooks/workspace-hook-admission.ts
+apps/codez-cli/packages/contracts/src/interfaces/workspace-hook-trust.port.ts
+apps/codez-cli/packages/adapters/src/security/workspace-hook-trust.adapter.ts
+apps/codez-cli/packages/core/src/hooks/workspace-hook-admission.ts
 ```
 
 改动：
@@ -1856,11 +1856,11 @@ apps/zcode-cli/packages/core/src/hooks/workspace-hook-admission.ts
 
 主要位置：
 
-- `apps/zcode-cli/packages/core/src/runtime/methods/hooks.ts`
-- `apps/zcode-cli/packages/core/src/runtime/methods/turn.ts`
-- `apps/zcode-cli/packages/core/src/runtime/methods/resume.ts`
-- `apps/zcode-cli/packages/core/src/hooks/configured-runner-input.ts`
-- `apps/zcode-cli/packages/core/src/hooks/runner.ts`
+- `apps/codez-cli/packages/core/src/runtime/methods/hooks.ts`
+- `apps/codez-cli/packages/core/src/runtime/methods/turn.ts`
+- `apps/codez-cli/packages/core/src/runtime/methods/resume.ts`
+- `apps/codez-cli/packages/core/src/hooks/configured-runner-input.ts`
+- `apps/codez-cli/packages/core/src/hooks/runner.ts`
 - Hook registry/executor/session runtime 构建链路
 
 改动：
@@ -1879,12 +1879,12 @@ apps/zcode-cli/packages/core/src/hooks/workspace-hook-admission.ts
 
 主要位置：
 
-- `packages/shared/src/zcode-protocol-v4/transport.ts`
-- `packages/shared/src/zcode-protocol-v4/snapshot.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/interaction-broker.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/interaction-registry.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`
-- `packages/shared/src/zcode-protocol-v4/command.ts` 或实际 owner-command schema
+- `packages/shared/src/codez-protocol-v4/transport.ts`
+- `packages/shared/src/codez-protocol-v4/snapshot.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol/interaction-broker.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/interaction-registry.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`
+- `packages/shared/src/codez-protocol-v4/command.ts` 或实际 owner-command schema
 - conversation projection/delta/snapshot contracts
 - 对应 protocol contracts/method registry
 
@@ -1906,7 +1906,7 @@ apps/zcode-cli/packages/core/src/hooks/workspace-hook-admission.ts
 
 主要位置：
 
-- `packages/services/src/zcode-agent/zcodeAgentService.ts`
+- `packages/services/src/codez-agent/codezAgentService.ts`
 - `packages/services/src/hooks/hooksService.ts`
 - Desktop main ↔ renderer request/event bridge
 - task realtime owner/lease/stale-run route
@@ -1950,7 +1950,7 @@ apps/zcode-cli/packages/core/src/hooks/workspace-hook-admission.ts
 - 删除独立 settings review panel、批量选择与状态徽章；
 - 未信任行只在有效运行开关左侧显示逐条 `信任`；无 session 时走 workspace Agent pretrust RPC；
 - 未信任开关显示关闭且锁定，不改写原始配置；信任成功后按真实 configured 状态恢复；
-- 祖先 `zcode.json`、上游 `.zcode/config.json`、显式 projectConfigPath 等不可安全回写来源显示只读 toggle 与 `Open source config`；
+- 祖先 `codez.json`、上游 `.codez/config.json`、显式 projectConfigPath 等不可安全回写来源显示只读 toggle 与 `Open source config`；
 - `.agents/.claude` compatibility rows 保持 disabled/read-only，且不进入 Trust snapshot；
 - draft pending/invalidation、policy deny、execution status 和 provenance；
 - Desktop 与手机 Web 均实现响应式审核 UI，复用现有设置页 design tokens，避免独立视觉系统。
@@ -1959,7 +1959,7 @@ apps/zcode-cli/packages/core/src/hooks/workspace-hook-admission.ts
 
 主要位置：
 
-- `apps/zcode-cli/packages/cli/src/*`
+- `apps/codez-cli/packages/cli/src/*`
 
 改动：
 
@@ -2115,7 +2115,7 @@ HookRunBlocked
 | CFG13 | 仅 configured gates 变化                                | declaration digest 不变，bundle digest 变化                                          |
 | CFG14 | Settings `hooks.enabled` 缺省                           | 与 Runtime `enabled !== false` 的权威 resolver 一致                                  |
 | CFG15 | root 与 cwd 多配置文件                                  | source 顺序、provenance 与 digest 稳定                                               |
-| CFG16 | 祖先 `zcode.json` / 上游 `.zcode/config.json`           | 进入 snapshot；Settings row `editable=false`                                         |
+| CFG16 | 祖先 `codez.json` / 上游 `.codez/config.json`           | 进入 snapshot；Settings row `editable=false`                                         |
 | CFG17 | `.claude/.agents` compatibility Hook                    | disabled/read-only，不进入 Trust snapshot/pending count                              |
 | CFG18 | 非 Git workspace                                        | 只扫描 cwd，不纳入父目录                                                             |
 | CFG19 | JSON 空白/key 排列变化                                  | digest 不变                                                                          |
@@ -2300,7 +2300,7 @@ Phase 0 安全结论：
 - 复用 timeout/max-output resolver；
 - 将 Runtime discovery resolver 作为 Settings configured state 权威来源；
 - `.agents/.claude` compatibility rows 与 Trust snapshot 隔离；
-- `.zcode/config.json` 原子 mutation primitive。
+- `.codez/config.json` 原子 mutation primitive。
 
 **退出条件：** Settings 与 Runtime 对 `hooks.enabled` 默认值、source、editable、configured gates 完全一致；unknown passthrough 不被 Runtime 消费；项目 Hook 仍不执行。
 
@@ -2308,16 +2308,16 @@ Phase 0 安全结论：
 
 已完成：
 
-- 新增 Node-only `@zcode/shared/workspace-hook-discovery` subpath，CLI Adapter 与 Settings Service 共用配置路径发现、Hook schema、configured gate、timeout/max-output 归一与 digest/snapshot builder；主 `@zcode/shared` browser-safe 入口不导出 Node-only 实现；
-- 自动发现继续遵循现有 root-to-cwd 语义，支持 `zcode.json`、`.zcode/config.json` 与末尾追加的显式 `projectConfigPath`；非 Git workspace 只扫描 cwd，不自行扩大父目录发现范围；
+- 新增 Node-only `@codez/shared/workspace-hook-discovery` subpath，CLI Adapter 与 Settings Service 共用配置路径发现、Hook schema、configured gate、timeout/max-output 归一与 digest/snapshot builder；主 `@codez/shared` browser-safe 入口不导出 Node-only 实现；
+- 自动发现继续遵循现有 root-to-cwd 语义，支持 `codez.json`、`.codez/config.json` 与末尾追加的显式 `projectConfigPath`；非 Git workspace 只扫描 cwd，不自行扩大父目录发现范围；
 - `loadProjectConfigFile()` 将合法 project Hook 声明保存在独立 `hookCandidate` 通道，并产生 `config_project_hooks_pending_trust`；`normalizeProjectConfig()` 继续从 executable patch 剥离 `hooks`，candidate 不进入 `mergeConfigs()`、configured runner 或 callback construction；
 - 实现 versioned `hookDeclarationDigest` 与 `bundleDigest`：declaration digest 覆盖 source identity/order、event、matcher/order、command/process args、command async/shell、resolved timeout 与 max output；`statusMessage`、unknown passthrough 和 configured gates 不进入 declaration digest；configured gates 与 source root 原始值进入 bundle digest；
 - snapshot 通过 contracts schema 二次校验并深冻结；JSON 空白与 key 排列不影响 digest，`timeout`/`timeoutMs` 经相同 resolver 归一后语义等价；
 - configured gate 固化为 `sourceRootEnabled = source.enabled !== false`、`declarationEnabled = hook.enabled !== false`、`runtimeHooksEnabled = merged hooks.enabled === true`，三者共同决定 `configuredEnabled`；仅 gate 变化保持 declaration digest 不变并改变 bundle digest；
 - Core configured runner 复用同一 `resolveWorkspaceHookTimeoutMs()` 与 `resolveWorkspaceHookMaxOutputBytes()`，避免 Trust canonicalization 和真实 runner 的数值边界分叉；
-- Settings `loadHooks()` 返回同一 canonical `workspaceHookSnapshot`，Hook row 暴露 `configuredState`、`workspaceHook` 与 `editable`；只有当前 workspace 的 `.zcode/config.json` 可编辑，ancestor config、`zcode.json` 和显式配置只读；
-- `.agents/.claude` compatibility rows 保持 disabled/read-only，不进入 Trust snapshot、bundle digest 或 pending 数量；保存设置时只写 user config 与当前 workspace `.zcode/config.json`，不会把只读 ancestor/project 声明复制到当前文件；
-- 新增 `.zcode/config.json` 原子 mutation primitive：同目录 temp file 写入、`fsync`、`close` 后 atomic rename；rename 前失败时保留原文件并清理 temp file；
+- Settings `loadHooks()` 返回同一 canonical `workspaceHookSnapshot`，Hook row 暴露 `configuredState`、`workspaceHook` 与 `editable`；只有当前 workspace 的 `.codez/config.json` 可编辑，ancestor config、`codez.json` 和显式配置只读；
+- `.agents/.claude` compatibility rows 保持 disabled/read-only，不进入 Trust snapshot、bundle digest 或 pending 数量；保存设置时只写 user config 与当前 workspace `.codez/config.json`，不会把只读 ancestor/project 声明复制到当前文件；
+- 新增 `.codez/config.json` 原子 mutation primitive：同目录 temp file 写入、`fsync`、`close` 后 atomic rename；rename 前失败时保留原文件并清理 temp file；
 - 本地 Phase 1 identity 暂沿用现有 `workspaceIdentity?.trim() || workspacePath` 语义，并明确不调用 `realpath`。
 
 Phase 1 安全结论：
@@ -2332,7 +2332,7 @@ Phase 1 安全结论：
 
 #### Phase 2 实施决策（2026-08-06 冻结）
 
-- **分层**：纯 Trust evaluation、Policy 与 security revision 位于 `@zcode/core`，dispatch fast path 只读内存；文件路径、锁、原子 JSON 与损坏恢复位于 `@zcode/adapters`；contracts 只承载 versioned data schema。
+- **分层**：纯 Trust evaluation、Policy 与 security revision 位于 `@codez/core`，dispatch fast path 只读内存；文件路径、锁、原子 JSON 与损坏恢复位于 `@codez/adapters`；contracts 只承载 versioned data schema。
 - **Trust store 路径**：使用受信任的 user CLI storage root 下 `security/workspace-hook-trust-v1.json`。只读取 user config 的 `storage.dir`；不得使用 project config、workspace 文件、环境变量或 `resolveWorkspaceStorageDir()` 覆盖安全记录位置。
 - **并发与原子性**：单进程 mutation 串行化；跨进程使用同目录 `wx` lock file，持锁后重新读取 current store，再以 temp file `write -> fsync -> close -> rename` 提交精确 persistent grant 或 revoke，避免 lost update 和部分写入。
 - **权限**：security 目录使用 user-only mode，store/temp/lock 文件使用 `0600`；权限设置失败不得退化为宽松写入。
@@ -2382,7 +2382,7 @@ Phase 2 安全结论：
 #### Phase 3 冻结实施决策（2026-08-06）
 
 1. **异步 Trust store bootstrap 不改变同步 App 构造契约**
-   - `createZCodeApp()` 继续同步返回；Bootstrap 创建一次 `workspaceHookTrustReady` Promise，异步完成 user-only Trust store 路径解析与 `load()`；
+   - `createCodezApp()` 继续同步返回；Bootstrap 创建一次 `workspaceHookTrustReady` Promise，异步完成 user-only Trust store 路径解析与 `load()`；
    - Promise 只在首次 activation admission 前等待。加载成功后 persistent records 与 store status 一次性灌入宿主级 coordinator；加载失败转换为 `corrupt/fail-closed` 内存状态，不阻断 user/plugin/internal Hook 和主任务；
    - 每次 Hook dispatch 禁止等待该 Promise、读取文件、访问网络、重新 discovery 或重新计算 digest。
 
@@ -2399,7 +2399,7 @@ Phase 2 安全结论：
 4. **Shared activation 与 per-dispatch gate 分工**
 
 ```text
-createZCodeApp (sync)
+createCodezApp (sync)
   -> create coordinator
   -> start workspaceHookTrustReady (async store load)
   -> construct Runtime with immutable snapshot + admission port
@@ -2447,7 +2447,7 @@ for each project registration
 - `InMemoryHookRunner` 在 `HookRunStarted`、stdin temp file、ExecutionPort 和 background Promise 之前执行同步 admission gate；blocked async Hook 不产生后台任务；
 - pending/revoked/policy/corrupt/mismatch 使用稳定 reason code 产生 `HookRunBlocked`，descriptor 保持 `sourceKind=project` 与 client-visible；只跳过 project entry，不阻断主任务；
 - mixed-source registrations 按 user → project → internal/plugin 插入，原有来源相对顺序与 mailbox 后注册顺序不变；
-- Bootstrap 新增异步 user-only Trust store bootstrap：`createZCodeApp()` 保持同步，首次 SessionStart activation 等待 store load；失败转为内存 fail-closed，不影响其他来源 Hook；
+- Bootstrap 新增异步 user-only Trust store bootstrap：`createCodezApp()` 保持同步，首次 SessionStart activation 等待 store load；失败转为内存 fail-closed，不影响其他来源 Hook；
 - 单元与 Bootstrap 集成测试覆盖 pending startup、exact persistent、revoke revision、policy hot deny、snapshot mismatch、blocked async、mixed-source 顺序、startup/resume shared guard，以及真实 Trust store pretrust 后执行。
 
 Phase 3 安全结论：
@@ -2477,7 +2477,7 @@ Phase 3 安全结论：
 
 4. **Decision 使用独立 v4 command，不走 `resolveInteraction`**
    - 新增 `respondWorkspaceHookReview` command，payload 必须包含 `workspaceIdentity + bundleDigest + reviewFlowId + generation + interactionId` 与 decision；
-   - handler 只调用 `ZCodeApp.respondWorkspaceHookReview()` 受限 API；Runtime registry 校验 session/workspace/bundle/current generation 后才提交；
+   - handler 只调用 `CodezApp.respondWorkspaceHookReview()` 受限 API；Runtime registry 校验 session/workspace/bundle/current generation 后才提交；
    - unknown、resolved、superseded、expired 或 snapshot mismatch 返回稳定 reason，绝不写 store；同 generation 多端并发只有第一份 commit 成功。
 
 5. **Toggle 只允许改变当前 snapshot 中 editable declaration 的 configured gate**
@@ -2528,7 +2528,7 @@ generation n + bundle Bn
 - `WorkspaceHookRuntimeAdmission` 支持按需 review port 与动态 snapshot replacement/invalidation；activation 不等待 review，无 review port 时继续 blocked-and-continue；
 - Bootstrap 组合单例 Trust store、coordinator、admission、review controller 与 mutation port；Review lifecycle 先落 `SessionEventStore` 再进入 projection；
 - persistent Trust 采用 store-first、memory-second 顺序；关闭、超时或断连不创建授权记录；
-- 共享层新增 exact declaration digest helper 与原子 `.zcode/config.json` toggle primitive，只允许修改 reviewed snapshot 中 editable declaration 的 `enabled` gate，并执行 temp write → fsync/close → atomic rename；
+- 共享层新增 exact declaration digest helper 与原子 `.codez/config.json` toggle primitive，只允许修改 reviewed snapshot 中 editable declaration 的 `enabled` gate，并执行 temp write → fsync/close → atomic rename；
 - Bootstrap 新增 process-global workspace mutation lock，在锁内执行 disk rebuild、`Bn` exact compare、原子写与 `Bn+1` rebuild；并发旧 bundle mutation 在首个 commit 后被拒绝；
 - toggle write commit 后旧 admission 立即 invalidated，旧 generation superseded；rebuild 失败发布 configuration-error，旧 callback 和旧 response 均不能恢复执行；
 - Contracts/Protocol v4 新增 `WorkspaceHookReviewRequested/Settled/Superseded` SessionEvent、专用 pending projection，以及 `respondWorkspaceHookReview`、`toggleWorkspaceHookReviewItem`、`revokeWorkspaceHookTrust` 三条独立命令；不复用通用 Dialog 或 `resolveInteraction`；
@@ -2575,9 +2575,9 @@ Phase 4 安全结论：
 - Hooks Settings 行内 Trust 支持窄屏布局；Desktop/Web 仍共享同一组件、i18n 与语义 token；
 - static exact revoke 在 remote workspace 上携带并校验 `remoteSessionId`；同 path、不同 identity 或 remote session 不共享 Trust；
 - renderer pending-command registry 将 review/toggle/revoke 作为 sensitive digest 记录：网络 ACK 不明时可通过 `commands/query` 对账，但 localStorage 不保存原始 Trust decision，也不会跨 runtime epoch自动重发；
-- 新增 `zcode hooks trust status|review|grant|revoke`：输出 bundle/declaration digest 与稳定 reason code；exact grant 校验当前 digest；`--all-current` 强制 exact bundle digest 并写入逐条 records；revoke 支持 exact/all；没有 `--yes` 或环境变量旁路；
+- 新增 `codez hooks trust status|review|grant|revoke`：输出 bundle/declaration digest 与稳定 reason code；exact grant 校验当前 digest；`--all-current` 强制 exact bundle digest 并写入逐条 records；revoke 支持 exact/all；没有 `--yes` 或环境变量旁路；
 - Headless project Hook 未 Trust 时保持 Hook skipped、任务继续，并在 stderr（JSON 模式为 structured `workspaceHookTrust` 字段）输出 workspace identity、bundle、pending declaration digests 与 pretrust 命令；
-- Trusted embedder 在独立 App 路径可通过 `ZCodeAppOptions.workspaceHookPolicy` 注入静态 managed policy；Protocol Host 必须持有 `WorkspaceHookPolicyProvider`，并将同一实例注入 session Runtime 与无 session Settings pretrust。两者均不从 workspace/project 文件解析，`deny`/`allow_trusted_only` 仍高于 user persistent Trust；
+- Trusted embedder 在独立 App 路径可通过 `CodezAppOptions.workspaceHookPolicy` 注入静态 managed policy；Protocol Host 必须持有 `WorkspaceHookPolicyProvider`，并将同一实例注入 session Runtime 与无 session Settings pretrust。两者均不从 workspace/project 文件解析，`deny`/`allow_trusted_only` 仍高于 user persistent Trust；
 - Workspace Hook CLI/discovery 新路径使用 async read/access/stat；Trust store mutation 继续复用锁、temp write、fsync 与 atomic rename。
 
 Phase 5 路由决策说明：
@@ -2603,7 +2603,7 @@ Phase 5 安全结论：
 
 #### Phase 6 实现记录（2026-08-06）
 
-- `ZCodeAppOptions.workspaceHookTrustEnabled` 成为 trusted bootstrap rollout gate；通用 App 缺省为 false，ZCode Protocol 的 Desktop/Web/Mobile workspace Host 在受信边界显式传 true；workspace/project 配置和环境变量不能设置该值。
+- `CodezAppOptions.workspaceHookTrustEnabled` 成为 trusted bootstrap rollout gate；通用 App 缺省为 false，Codez Protocol 的 Desktop/Web/Mobile workspace Host 在受信边界显式传 true；workspace/project 配置和环境变量不能设置该值。
 - flag 关闭时 Runtime 仍保留 project Hook snapshot/blocked lifecycle，但不创建 Trust store adapter、不读取已有 records、不创建 review request，所有 dispatch 返回 `workspace_hooks_feature_disabled`；Trust 文件原样保留。
 - flag 开启时沿用 Phase 3-5 admission；managed `deny` 继续高于 persistent Trust，并通过 security revision 在下一次 dispatch gate 生效。
 - 使用现有 `Logger` Port 增加稳定 `workspace_hook.*` 结构化 telemetry：review created、selected persistent Trust、timeout、stale/superseded、snapshot mismatch、policy blocked、Trust store failure、toggle/write/rebuild failure 与 feature disabled。
@@ -2620,7 +2620,7 @@ Phase 5 安全结论：
 - 类型与构建检查通过：Shared、Contracts、Adapters、Core、Bootstrap、CLI、Services、UI；Bootstrap 在 telemetry helper 拆分后再次完成 build。
 - 变更范围 lint 与 `git diff --check` 通过。验证环境为 Node `v22.22.2`，仓库声明的 Node `24.14.0` 仅产生 engine warning，不影响上述结果。
 - 实际 CLI smoke 已完成：`status → pending_trust`、exact `grant → trusted_persistent`、exact `revoke → pending_trust`；grant 使用 status 返回的当前 declaration digest，未使用 wildcard 或隐式授权。
-- 最终 Desktop 启动审计发现 CLI esbuild 的通用 `@zcode/shared` alias 会错误吞掉新增 Node-only subpath；已为 `@zcode/shared/workspace-hook-discovery` 增加精确 alias，`pnpm --dir apps/zcode-cli/packages/cli build:desktop-agent` 重新通过。
+- 最终 Desktop 启动审计发现 CLI esbuild 的通用 `@codez/shared` alias 会错误吞掉新增 Node-only subpath；已为 `@codez/shared/workspace-hook-discovery` 增加精确 alias，`pnpm --dir apps/codez-cli/packages/cli build:desktop-agent` 重新通过。
 - 新增无害 UAT fixture generator 与逐步人工验收清单；真实 Desktop 中的逐条 Trust、toggle 与 digest-change 操作由产品方手工执行，不以 UI 自动化替代最终验收。
 - 未将既有、与 Workspace Hook Trust 无关的 core 全量基线失败计入本 Phase 退出条件；本 Phase 的退出判断以列出的聚焦回归、类型/构建、lint 和 CLI smoke 为准。
 
@@ -2630,7 +2630,7 @@ Phase 6 安全结论：关闭 rollout gate 是可逆的 hard block，不会把 f
 
 ### 26.1 Feature flag
 
-使用 trusted runtime feature flag 控制“是否允许进入用户 Trust 流程”。通用 App 工厂默认 false；ZCode Protocol workspace Host 当前在 trusted bootstrap 边界显式开启：
+使用 trusted runtime feature flag 控制“是否允许进入用户 Trust 流程”。通用 App 工厂默认 false；Codez Protocol workspace Host 当前在 trusted bootstrap 边界显式开启：
 
 ```text
 workspaceHookTrustEnabled = false
@@ -2697,7 +2697,7 @@ Trust store schema 升级失败时：
 
 以下问题不改变已经确定的安全语义，但实现前需固化工程参数：
 
-1. **CLI 最终命名**：`zcode hooks trust ...` 或更短命名；TTY 可以使用 index 选择，但最终必须校验 digest。
+1. **CLI 最终命名**：`codez hooks trust ...` 或更短命名；TTY 可以使用 index 选择，但最终必须校验 digest。
 2. **本地 workspace identity 的长期规范化**：Phase 1 暂沿用现有 `workspaceIdentity?.trim() || workspacePath`，且不调用 `realpath`；在 Trust store 落地前仍需决定是否引入 versioned identity resolver 与可验证 migration。
 3. **Trust store 跨 Desktop/CLI storage root 的最终统一**：Phase 2 已实现 user CLI storage root 下 `security/workspace-hook-trust-v1.json`，且 project 不能覆盖；Desktop Host 接入时需确认是否复用同一路径或通过受信任 storage provider 映射到同一设备域。
 4. **审核 timeout 最终值**：当前建议 10 分钟；数值可调整，但到期只让 immutable request 过期，不写用户决定，reconnect 不重置。

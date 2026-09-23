@@ -4,7 +4,7 @@ import {
   TID_AUTOMATION_CREATE_MANUALLY,
   TID_AUTOMATIONS_OPEN,
   TID_OFFPEAK_CREATE_BUTTON,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -167,8 +167,8 @@ describe("Automations 空首页 Figma 布局 E2E", () => {
     assertTemplateGrid(layout.idleGrid, "Idle-time task template", 3);
     assertTemplateGrid(layout.scheduledGrid, "Scheduled task template", 4);
 
-    if (process.env.ZCODE_E2E_VISUAL_CAPTURE === "1") {
-      await browser.saveScreenshot(join(tmpdir(), "zcode-automations-home-4798-2443.png"));
+    if (process.env.CODEZ_E2E_VISUAL_CAPTURE === "1") {
+      await browser.saveScreenshot(join(tmpdir(), "codez-automations-home-4798-2443.png"));
     }
   });
 });

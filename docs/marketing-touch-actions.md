@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | close | 已实现，保持 | 关闭营销内容 |
 | open_url | 已实现，保持 | 打开 HTTP/HTTPS 网页 |
-| claim_zcode_plan | 已实现，保持 | 复用资格、安全校验与领取流程 |
+| claim_codez_plan | 已实现，保持 | 复用资格、安全校验与领取流程 |
 | navigate | 本期新增，客户端已实现 | 设置分区、提供商设置、插件市场与详情导航 |
 | copy_text | 本期新增，客户端已实现 | 复制原始纯文本，不执行 |
 
@@ -241,7 +241,7 @@ POST /api/v1/marketing/touch/action
 Content-Type: application/json
 X-Device-Mid: <合法 UUID>
 X-Client-Language: zh-CN
-X-ZCode-App-Version: <实际 App 版本>
+X-Codez-App-Version: <实际 App 版本>
 Authorization: Bearer <登录时附带>
 ```
 
@@ -337,6 +337,6 @@ confirm/cancel 表示操作事件，不是互斥的最终转化状态。同一�
 - 10个相关单测文件86项通过：Schema、按钮适配、重复复制、复制后关闭、结果弹窗新动作、超时/取消、导航关联、原领取/轮询/缓存回归。
 - macOS Electron 隔离 App E2E 11项通过，run `desktop-e2e-20260911034056333-p11822-7b0e93cb78872140`。包含全部14个设置分区、提供商定位且落盘连接配置不变、市场首页/可信目录详情、缺失提供商/插件失败、真实剪贴板原文与重复写入、模拟权限拒绝、confirm/cancel ledger；保留5项旧投放/领取/ZIP回归。
 - 运行时发现并修正：市场挂在设置层背后不能确认成功；新增动作不沿用领取后立即查询，避免异步上报与旧投放重查竞争。测试 fixture 按单次投放关联，旧上报不能清空新测试数据；原同 campaign 重投放用例不变。
-- `pnpm typecheck`、`pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm architecture:check --changed`、改动文件格式检查通过；`pnpm lint` 为0错误/46条既有警告。
+- `pnpm typecheck`、`pnpm --filter @codez/desktop typecheck:e2e`、`pnpm architecture:check --changed`、改动文件格式检查通过；`pnpm lint` 为0错误/46条既有警告。
 - 按 architecture-governance / React / e2e-case-lifecycle 技能约束保留单一 Controller、窄导航关联、目标组件确认；E2E 保持 manual-review/pending，不自行提升正式套件。
 - 未验证：真实服务端新动作投放和多事件统计、真实安全校验、Windows/Linux/手机实机、双主题窄屏人工视觉验收。本次未修改外部服务端，也不恢复 App Mock 入口；Hero ZIP 保留不变。

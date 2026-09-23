@@ -205,16 +205,16 @@ async function seedRemoteFixture(
   const command = [
     "set -eu",
     `rm -rf -- ${quoteShell(workspacePath)}`,
-    `mkdir -p -- ${quoteShell(posix.join(pluginRoot, ".zcode-plugin"))}`,
+    `mkdir -p -- ${quoteShell(posix.join(pluginRoot, ".codez-plugin"))}`,
     `mkdir -p -- ${quoteShell(posix.join(pluginRoot, "skills", "identity"))}`,
-    `mkdir -p -- ${quoteShell(posix.join(workspacePath, ".zcode"))}`,
+    `mkdir -p -- ${quoteShell(posix.join(workspacePath, ".codez"))}`,
     writeBase64Command(
-      posix.join(pluginRoot, ".zcode-plugin", "plugin.json"),
+      posix.join(pluginRoot, ".codez-plugin", "plugin.json"),
       `${JSON.stringify(manifest, null, 2)}\n`,
     ),
     writeBase64Command(posix.join(pluginRoot, "skills", "identity", "SKILL.md"), skill),
     writeBase64Command(
-      posix.join(workspacePath, ".zcode", "config.json"),
+      posix.join(workspacePath, ".codez", "config.json"),
       `${JSON.stringify(config, null, 2)}\n`,
     ),
   ].join(" && ");
@@ -229,7 +229,7 @@ async function readRemoteWorkspaceConfig(
 ): Promise<string> {
   const result = await runSSHCommand(
     target,
-    `cat -- ${quoteShell(posix.join(workspacePath, ".zcode", "config.json"))}`,
+    `cat -- ${quoteShell(posix.join(workspacePath, ".codez", "config.json"))}`,
   );
   expect(result.code).toBe(0);
   return result.stdout;

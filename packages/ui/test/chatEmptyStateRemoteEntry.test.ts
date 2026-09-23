@@ -58,7 +58,7 @@ vi.mock("@/components/ui/input.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -85,9 +85,9 @@ async function renderMenu(
   vi.doMock("@/hooks/useRemoteConnectionEntryVisibility.js", () => ({
     useRemoteConnectionEntryVisibility: () => showRemoteConnectionEntry,
   }));
-  vi.doMock("@zcode/shared", async () => {
-    const actual = await vi.importActual<typeof import("@zcode/shared")>(
-      "@zcode/shared"
+  vi.doMock("@codez/shared", async () => {
+    const actual = await vi.importActual<typeof import("@codez/shared")>(
+      "@codez/shared"
     );
     return {
       ...actual,
@@ -289,8 +289,8 @@ describe("ChatEmptyWorkspacePreviewMenu", () => {
       getScratchWorkspaceNameErrorKind,
     } = await import("../src/ChatEmptyState.js");
 
-    expect(getScratchWorkspaceLocationHint("")).toBe("~/ZCodeProject/");
-    expect(getScratchWorkspaceLocationHint("demo")).toBe("~/ZCodeProject/demo");
+    expect(getScratchWorkspaceLocationHint("")).toBe("~/CodezProject/");
+    expect(getScratchWorkspaceLocationHint("demo")).toBe("~/CodezProject/demo");
     expect(getScratchWorkspaceNameErrorKind("")).toBe("required");
     expect(getScratchWorkspaceNameErrorKind("bad/name")).toBe("separator");
     expect(getScratchWorkspaceNameErrorKind("bad\\name")).toBe("separator");
@@ -317,10 +317,10 @@ describe("ChatEmptyWorkspacePreviewMenu", () => {
     >;
     const html = renderToStaticMarkup(
       createElement(Menu, {
-        workspacePath: "/Users/tester/.zcode/workspace/default",
+        workspacePath: "/Users/tester/.codez/workspace/default",
         workspaceTabs: [
           {
-            workspacePath: "/Users/tester/.zcode/workspace/default",
+            workspacePath: "/Users/tester/.codez/workspace/default",
             label: "default",
             workspacePurpose: "conversation",
           },
@@ -350,7 +350,7 @@ describe("ChatEmptyWorkspacePreviewMenu", () => {
         workspacePath: "/Users/tester/project",
         workspaceTabs: [
           {
-            workspacePath: "/Users/tester/.zcode/workspace/default",
+            workspacePath: "/Users/tester/.codez/workspace/default",
             label: "default",
             workspacePurpose: "conversation",
           },

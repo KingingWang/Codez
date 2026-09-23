@@ -1,4 +1,4 @@
-package com.example.zcode_mobile.remote
+package com.example.codez_mobile.remote
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -11,8 +11,8 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.example.zcode_mobile.MainActivity
-import com.example.zcode_mobile.R
+import com.example.codez_mobile.MainActivity
+import com.example.codez_mobile.R
 
 class RemoteControlKeepAliveService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
@@ -86,9 +86,9 @@ class RemoteControlKeepAliveService : Service() {
     }
 
     companion object {
-        private const val CHANNEL_ID = "zcode_remote_control"
+        private const val CHANNEL_ID = "codez_remote_control"
         private const val NOTIFICATION_ID = 1001
-        const val EXTRA_REMOTE_URL = "com.example.zcode_mobile.remote.REMOTE_URL"
+        const val EXTRA_REMOTE_URL = "com.example.codez_mobile.remote.REMOTE_URL"
 
         fun start(context: Context, remoteUrl: String) {
             val intent = Intent(context, RemoteControlKeepAliveService::class.java)

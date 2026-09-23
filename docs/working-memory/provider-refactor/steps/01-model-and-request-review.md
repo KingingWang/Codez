@@ -45,7 +45,7 @@ M1 已经建立统一的 `Model` / `ModelRequest` 调用边界，主 Agent、Com
 普通 Runtime 的装配链已经明确：
 
 ```text
-createZCodeApp
+createCodezApp
     |
     v
 Runtime Model Factory
@@ -74,9 +74,9 @@ Direct Expert Workflow 和 Script Workflow Child 则只向新的 `AgentRuntime` 
 
 对应代码位于：
 
-- `apps/zcode-cli/packages/bootstrap/src/app/workflow-facade.ts`
-- `apps/zcode-cli/packages/bootstrap/src/app/script-workflow-child-runtime.ts`
-- `apps/zcode-cli/packages/core/src/runtime/methods/runtime-model.ts`
+- `apps/codez-cli/packages/bootstrap/src/app/workflow-facade.ts`
+- `apps/codez-cli/packages/bootstrap/src/app/script-workflow-child-runtime.ts`
+- `apps/codez-cli/packages/core/src/runtime/methods/runtime-model.ts`
 
 兼容 Model 仍然满足 `Model.generateText()` / `streamText()` 的表面接口，所以常规模型调用扫描不会把它识别成旁路；差异发生在 Model 的形成过程。兼容路径使用宽松缺省值，并在 Adapter 调用时重新查询可变 Registry。只要 `providerId/modelId` 没变，API Key、Endpoint 或物理 Provider 对象的更新就可能影响正在运行的 Workflow Loop。
 

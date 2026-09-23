@@ -7,13 +7,13 @@ Desktop log export keeps recent runtime evidence while avoiding oversized suppor
 Runtime log-like files are filtered by file `mtime` and only exported when they were modified in the last 3 days. This applies to:
 
 - `logs/**`
-- `.zcode/cli/log/**`
+- `.codez/cli/log/**`
 
-Retired proxy traffic capture and provider config directories are not current ZCode runtime log sources. If they still exist on a user's machine, they are treated as legacy data rather than first-class export targets.
+Retired proxy traffic capture and provider config directories are not current Codez runtime log sources. If they still exist on a user's machine, they are treated as legacy data rather than first-class export targets.
 
 ## Excluded Legacy State
 
-Legacy session snapshots, session binding files, and Git checkpoint manifests are skipped entirely. Current ZCode agent diagnostics come from logs, current configuration, sqlite-backed session metadata, and CLI runtime traces; these legacy state directories mostly add bundle size without improving support triage.
+Legacy session snapshots, session binding files, and Git checkpoint manifests are skipped entirely. Current Codez agent diagnostics come from logs, current configuration, sqlite-backed session metadata, and CLI runtime traces; these legacy state directories mostly add bundle size without improving support triage.
 
 Skipped directories:
 
@@ -33,7 +33,7 @@ Skipped file names:
 ## Excluded Agent Runtime and Certificate State
 
 Agent workspace configuration and application CA certificate state are skipped at the
-`~/.zcode/v2` top level before traversal. These directories are runtime state rather than
+`~/.codez/v2` top level before traversal. These directories are runtime state rather than
 diagnostic logs; they may contain sensitive provider configuration, certificate material,
 or large generated files that should not be present in support bundles.
 
@@ -43,7 +43,7 @@ Skipped directories:
 - `certs/**`
 
 This boundary applies to both manual desktop log export and feedback full-log archives.
-Only these top-level `~/.zcode/v2` directories are matched; an unrelated nested directory
+Only these top-level `~/.codez/v2` directories are matched; an unrelated nested directory
 with the same name in another log source is not excluded by this rule.
 
 ## Excluded Debug Directories
@@ -54,7 +54,7 @@ Examples:
 
 - `debug/**`
 - `**/debug/**`
-- `.zcode/cli/debug/**`
+- `.codez/cli/debug/**`
 
 ## Retired Runtime Directories
 
@@ -74,11 +74,11 @@ Generated assets, dependency installs, and runtime caches are skipped entirely b
 Examples:
 
 - `Library/Caches/**`
-- `.zcode/cli/node_modules/**`
-- `.zcode/cli/.tmp/**`
-- `.zcode/cli/tmp/**`
-- `.zcode/cli/skills/**`
-- `.zcode/cli/plugins/**`
+- `.codez/cli/node_modules/**`
+- `.codez/cli/.tmp/**`
+- `.codez/cli/tmp/**`
+- `.codez/cli/skills/**`
+- `.codez/cli/plugins/**`
 
 ## Preserved Files
 
@@ -87,7 +87,7 @@ Configuration and binding files are not filtered by this retention window becaus
 Examples:
 
 - `.claude.json`
-- `.zcode/cli/settings.json`
+- `.codez/cli/settings.json`
 
 ## Redaction Allowlist
 

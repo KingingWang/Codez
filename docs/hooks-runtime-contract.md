@@ -2,11 +2,11 @@
 
 > 状态：Implementation Spec
 >
-> 本文是 ZCode 当前 Hooks 实现、桌面设置页和自动化测试的共同验收依据。
+> 本文是 Codez 当前 Hooks 实现、桌面设置页和自动化测试的共同验收依据。
 
 ## 目标与边界
 
-本期只支持 ZCode 已存在的 7 个事件：
+本期只支持 Codez 已存在的 7 个事件：
 
 - `SessionStart`
 - `UserPromptSubmit`
@@ -47,7 +47,7 @@ HooksService / conversation projection
   -> atomic Trust mutation / supersede / revoke
 ```
 
-- Hook 的执行权只在 `apps/zcode-cli` Agent runtime。
+- Hook 的执行权只在 `apps/codez-cli` Agent runtime。
 - UI 和 `packages/services` 只管理配置和只读来源展示，不执行 Hook。
 - 每个 session 启动时捕获 Hook 配置快照。配置修改只保证新 session
   生效；设置页保存后要关闭尚未使用的 deferred draft session，避免下一次首发继续复用旧快照。
@@ -58,11 +58,11 @@ HooksService / conversation projection
 
 | 来源                           | Runtime 执行 | 设置页编辑 | 生效规则                                               |
 | ------------------------------ | ------------ | ---------- | ------------------------------------------------------ |
-| `~/.zcode/cli/config.json`     | 是           | 是         | user hooks 先执行                                      |
-| workspace `.zcode/config.json` | 条件执行     | 是         | rollout 开启且 exact Trust/policy admission 通过后执行 |
+| `~/.codez/cli/config.json`     | 是           | 是         | user hooks 先执行                                      |
+| workspace `.codez/config.json` | 条件执行     | 是         | rollout 开启且 exact Trust/policy admission 通过后执行 |
 | 已启用插件 hooks               | 是           | 否         | 按现有 plugin 来源规则执行                             |
-| `.agents/settings.json`        | 否           | 否         | 只读展示，可显式导入 `.zcode`                          |
-| `.claude/settings.json`        | 否           | 否         | 只读展示，可显式导入 `.zcode`                          |
+| `.agents/settings.json`        | 否           | 否         | 只读展示，可显式导入 `.codez`                          |
+| `.claude/settings.json`        | 否           | 否         | 只读展示，可显式导入 `.codez`                          |
 
 配置合并约束：
 
@@ -74,7 +74,7 @@ HooksService / conversation projection
 3. 插件 hooks 只在插件启用时注入 runtime；插件关闭后新 session 不再执行。
 4. 每个 `process` / `command` 支持 `enabled?: boolean`，缺省为 `true`。Runner 必须跳过
    `enabled:false`，不能只在 UI 中隐藏或变灰。
-5. UI 只把 `.zcode` hooks 写回原 user/project 文件，不修改 plugin、`.agents` 或 `.claude` 文件。
+5. UI 只把 `.codez` hooks 写回原 user/project 文件，不修改 plugin、`.agents` 或 `.claude` 文件。
 6. 单条 Hook 的未知扩展字段必须在设置服务中往返保留，并由 Agent 配置 schema 接受；runtime
    可以忽略当前版本不识别的字段，不能因此让整个配置文件失效。
 
@@ -113,13 +113,13 @@ Matcher 规则：
 - 缺省、空字符串和 `*`：match all。
 - 只包含字母、数字、下划线和 `|`：按精确名称或精确名称列表匹配。
 - 其他字符串：按 JavaScript 正则匹配；非法正则不执行该 matcher，并记录诊断。
-- tool 事件匹配 `tool_name`，同时兼容 `Agent` / `Task` 等 ZCode alias。
+- tool 事件匹配 `tool_name`，同时兼容 `Agent` / `Task` 等 Codez alias。
 - `SessionStart` 匹配 `source`。
 - `UserPromptSubmit` 和 `Stop` 没有 matcher query；即使配置带 matcher，也执行该组 hooks。
 
 ## Claude 兼容 stdin
 
-所有 Hook stdin 都是单行 JSON 加换行，同时保留 ZCode camelCase 字段和 Claude Code
+所有 Hook stdin 都是单行 JSON 加换行，同时保留 Codez camelCase 字段和 Claude Code
 snake_case 字段。
 
 基础字段：
@@ -144,9 +144,9 @@ snake_case 字段。
 | `Stop`               | `stop_hook_active`、`last_assistant_message`                             |
 
 `PostToolUse.tool_response` 使用工具 handler 的完整结构化输出；`toolResultPreview` 继续作为
-ZCode 扩展字段保留，但不能替代 `tool_response`。
+Codez 扩展字段保留，但不能替代 `tool_response`。
 
-ZCode 当前没有 Claude JSONL transcript 文件，因此 configured runner 为每次 Hook 创建临时
+Codez 当前没有 Claude JSONL transcript 文件，因此 configured runner 为每次 Hook 创建临时
 兼容 transcript：Stop 至少包含最后一条 assistant message，其他事件至少提供存在且可读的
 JSONL 文件。Hook 完成后清理临时目录。
 
@@ -182,9 +182,9 @@ stdout 规则：
 
 - 顶层 `decision:"approve"|"block"`。
 - 顶层 `continue:false` 在 `UserPromptSubmit`、`PreToolUse`、`PermissionRequest` 中阻断。
-- Stop 使用 `decision:"block"`；为兼容已发布的 ZCode 配置，`continue:true` 且带
+- Stop 使用 `decision:"block"`；为兼容已发布的 Codez 配置，`continue:true` 且带
   `additionalContext` 也可继续一轮。
-- `PermissionRequest` 同时接受 Claude 的 `updatedPermissions` 和 ZCode 历史字段
+- `PermissionRequest` 同时接受 Claude 的 `updatedPermissions` 和 Codez 历史字段
   `permissionUpdates`。
 - `suppressOutput:true` 表示不投影 Hook stdout；它不抑制结构化 decision/context。
 
@@ -207,10 +207,10 @@ stdout 规则：
 
 Hooks 设置页必须在 desktop 和 Web UI 使用同一组件，并满足：
 
-- `.zcode` hooks 支持新增、编辑、删除、启停和 user/workspace scope。
+- `.codez` hooks 支持新增、编辑、删除、启停和 user/workspace scope。
 - 表单支持 7 个事件、`process` / `command` 类型、matcher、argv、timeout、`statusMessage`
   和 command async。
-- `.agents` / `.claude` hooks 标记为兼容来源、不可直接编辑或启停，并提供显式导入 `.zcode`。
+- `.agents` / `.claude` hooks 标记为兼容来源、不可直接编辑或启停，并提供显式导入 `.codez`。
 - 插件 hooks 单独分组；列表只读展示 event 与 command，并以分组标题和插件图标表达来源。
   matcher、type、source path 与 effective enabled 状态保留为数据事实，不在列表行重复堆叠。
 - 插件 Hook 的 User / Workspace 分栏只使用 overview 安装记录中的权威 scope。overview
@@ -244,7 +244,7 @@ Hooks 设置页必须在 desktop 和 Web UI 使用同一组件，并满足：
 | HK-06 | `PostToolUseFailure` | 字符串 error、interrupt、recovery context                                         | core + desktop E2E       |
 | HK-07 | `Stop`               | last assistant、transcript、block 续跑上限                                        | core + desktop E2E       |
 | HK-08 | Config/source        | user+project+plugin 顺序、逐 Hook disabled 真跳过                                 | adapter/bootstrap/core   |
-| HK-09 | Settings             | `.zcode` 可写、legacy 可导入、plugin 只读可见                                     | service/UI + desktop E2E |
+| HK-09 | Settings             | `.codez` 可写、legacy 可导入、plugin 只读可见                                     | service/UI + desktop E2E |
 | HK-10 | Executors/async      | process argv、command shell/fire-and-forget、父级取消、后台 lifecycle、错误隔离   | core + desktop E2E       |
 
 完整窗口级 suite 使用 `HK-LC-01`、`HK-EF-01`、`HK-ST-01`、`HK-UP-01`，定义在

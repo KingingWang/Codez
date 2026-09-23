@@ -39,12 +39,12 @@ describe("automation project boundaries", () => {
     const tabs = [
       workspaceTab({
         id: "conversation-default",
-        workspacePath: "/Users/test/.zcode/workspace/default",
+        workspacePath: "/Users/test/.codez/workspace/default",
         workspacePurpose: "conversation",
       }),
       workspaceTab({
         id: "conversation-test-default",
-        workspacePath: "/private/tmp/test/.zcode/workspace/default",
+        workspacePath: "/private/tmp/test/.codez/workspace/default",
         workspacePurpose: "conversation",
       }),
       workspaceTab({
@@ -63,7 +63,7 @@ describe("automation project boundaries", () => {
       }),
     ).toEqual([
       {
-        workspacePath: "/Users/test/.zcode/workspace/default",
+        workspacePath: "/Users/test/.codez/workspace/default",
         label: "default",
         workspacePurpose: "conversation",
       },

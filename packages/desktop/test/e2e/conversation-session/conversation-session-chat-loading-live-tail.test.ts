@@ -60,7 +60,7 @@ interface AssistantHistoryToggleProbe {
 
 declare global {
   interface Window {
-    __zcodeChatLoadingLayoutProbe?: ChatLoadingLayoutProbe;
+    __codezChatLoadingLayoutProbe?: ChatLoadingLayoutProbe;
   }
 }
 
@@ -550,7 +550,7 @@ function assertMonotonicToggleValues(
 
 async function installChatLoadingLayoutProbe() {
   await browser.execute(() => {
-    const existing = window.__zcodeChatLoadingLayoutProbe;
+    const existing = window.__codezChatLoadingLayoutProbe;
     if (
       existing?.animationFrameId !== null &&
       existing?.animationFrameId !== undefined
@@ -567,7 +567,7 @@ async function installChatLoadingLayoutProbe() {
       running: true,
       samples: [],
     };
-    window.__zcodeChatLoadingLayoutProbe = probe;
+    window.__codezChatLoadingLayoutProbe = probe;
 
     const readSample = (): ChatLoadingLayoutSample | null => {
       const timeline = document.querySelector<HTMLElement>(
@@ -578,7 +578,7 @@ async function installChatLoadingLayoutProbe() {
         '[data-v4-running-live-tail="true"]',
       );
       const slot = document.querySelector<HTMLElement>(
-        '[data-zcode-chat-loading-slot="true"]',
+        '[data-codez-chat-loading-slot="true"]',
       );
       const loading = document.querySelector<HTMLElement>(
         '[data-testid="chat-loading"]',
@@ -674,7 +674,7 @@ async function installChatLoadingLayoutProbe() {
 
 async function stopChatLoadingLayoutProbe(): Promise<ChatLoadingLayoutProbeResult> {
   return browser.execute(() => {
-    const probe = window.__zcodeChatLoadingLayoutProbe;
+    const probe = window.__codezChatLoadingLayoutProbe;
     if (!probe) return { resizeSamples: [], samples: [] };
     probe.running = false;
     if (probe.animationFrameId !== null) {

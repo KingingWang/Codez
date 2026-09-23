@@ -26,7 +26,7 @@ import {
   v4ConversationWorkflowRunArtifactsResultSchema,
   workflowRunArtifactSchema,
   workflowRunArtifactSummarySchema,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 function run(overrides: Record<string, unknown> = {}) {
   return {
@@ -332,7 +332,7 @@ describe("v4 conversation workflowRunEvents query", () => {
 // ── dwf run 枚举 query 的摘要形状（docs/dynamic-workflow/launch.md「`/dwf`」）──
 // 新增的 label / updatedAt 是 additive optional：老 CLI 不发这两个键，读侧回落 runId 与
 // 「不显示时间」。这里钉住的正是那个偏斜姿态——schema 两侧同一个模块（服务端
-// v4-gateway.parse 与桌面 zcodeAgentService.parse 共用），加可选键不破任何一侧。
+// v4-gateway.parse 与桌面 codezAgentService.parse 共用），加可选键不破任何一侧。
 describe("v4 conversation workflowRuns query 的 run 摘要", () => {
   function summary(overrides: Record<string, unknown> = {}) {
     return {
@@ -379,7 +379,7 @@ describe("v4 conversation workflowRuns query 的 run 摘要", () => {
     ).toBe(false);
   });
 
-  it("status 是三终态词汇；stopReason 五值可选（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md）", () => {
+  it("status 是三终态词汇；stopReason 五值可选（apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md）", () => {
     for (const status of ["completed", "errored", "pending", "running", "stopped"] as const) {
       expect(v4ConversationWorkflowRunSummarySchema.safeParse(summary({ status })).success).toBe(
         true,
@@ -450,7 +450,7 @@ describe("workflowRuns[].artifacts 状态键", () => {
     for (const extra of [
       { spec: { x: { field: "round" } } },
       { versions: [{ version: 1, publishedAt: 1 }] },
-      { uri: "zcode-artifact://s/a" },
+      { uri: "codez-artifact://s/a" },
       { sourcePath: "out/book.pdf" },
       { description: "一本书" },
     ]) {
@@ -536,7 +536,7 @@ describe("v4 conversation workflowRunArtifacts query", () => {
     title: "注意力之书",
     contentType: "application/pdf",
     bytes: 4_194_304,
-    uri: "zcode-artifact://session-1/tool-result-abc",
+    uri: "codez-artifact://session-1/tool-result-abc",
     sourcePath: "out/book.pdf",
     publishedAt: 1_756_100_000_000,
     ...overrides,

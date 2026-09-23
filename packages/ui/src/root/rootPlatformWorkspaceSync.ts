@@ -1,4 +1,4 @@
-import type { WebRemoteControlWorkspaceTarget } from "@zcode/shared";
+import type { WebRemoteControlWorkspaceTarget } from "@codez/shared";
 import { isWorkspaceTab, type WindowTabState } from "@/store/tabStore.js";
 
 export function buildWebRemoteControlWorkspaceTargets({

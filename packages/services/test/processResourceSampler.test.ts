@@ -46,8 +46,8 @@ describe("process table parsers", () => {
   it("darwin：comm 含空格路径也能解析", () => {
     const rows = parseDarwinProcessTable(
       [
-        "  100     1  2048 0:01.50 /Applications/ZCode.app/Contents/MacOS/ZCode",
-        "  200   100  4096 0:00.25 /Applications/ZCode.app/Contents/Frameworks/ZCode Helper (Renderer).app/Contents/MacOS/ZCode Helper (Renderer)",
+        "  100     1  2048 0:01.50 /Applications/Codez.app/Contents/MacOS/Codez",
+        "  200   100  4096 0:00.25 /Applications/Codez.app/Contents/Frameworks/Codez Helper (Renderer).app/Contents/MacOS/Codez Helper (Renderer)",
         "garbage line",
       ].join("\n"),
     );
@@ -57,7 +57,7 @@ describe("process table parsers", () => {
         ppid: 1,
         rssKb: 2048,
         cpuTimeMs: 1_500,
-        command: "/Applications/ZCode.app/Contents/MacOS/ZCode",
+        command: "/Applications/Codez.app/Contents/MacOS/Codez",
       },
       {
         pid: 200,
@@ -65,7 +65,7 @@ describe("process table parsers", () => {
         rssKb: 4096,
         cpuTimeMs: 250,
         command:
-          "/Applications/ZCode.app/Contents/Frameworks/ZCode Helper (Renderer).app/Contents/MacOS/ZCode Helper (Renderer)",
+          "/Applications/Codez.app/Contents/Frameworks/Codez Helper (Renderer).app/Contents/MacOS/Codez Helper (Renderer)",
       },
     ]);
   });
@@ -81,8 +81,8 @@ describe("process table parsers", () => {
   });
 
   it("windows：WorkingSet 转 KB，100ns 转毫秒，名称保留", () => {
-    expect(parseWindowsProcessTable("1234 100 104857600 15000000 ZCode Helper.exe\r\n")).toEqual([
-      { pid: 1234, ppid: 100, rssKb: 102_400, cpuTimeMs: 1_500, command: "ZCode Helper.exe" },
+    expect(parseWindowsProcessTable("1234 100 104857600 15000000 Codez Helper.exe\r\n")).toEqual([
+      { pid: 1234, ppid: 100, rssKb: 102_400, cpuTimeMs: 1_500, command: "Codez Helper.exe" },
     ]);
   });
 
@@ -175,12 +175,12 @@ describe("attributeHostProcessTree", () => {
   it("按最近已知祖先把 Host 后代归到 cli / 内置插件 / 社区插件 / host 子进程", () => {
     const samples = new Map<number, ProcessResourceSample>([
       sample(1, 0, "launchd"),
-      sample(50, 1, "/Applications/ZCode.app/Contents/MacOS/ZCode"),
-      sample(60, 50, "zcode-host"),
+      sample(50, 1, "/Applications/Codez.app/Contents/MacOS/Codez"),
+      sample(60, 50, "codez-host"),
       sample(70, 60, "/usr/bin/zsh"), // 终端 shell
-      sample(100, 60, "/Applications/ZCode.app/Contents/MacOS/ZCode", 5, 2048), // agent
+      sample(100, 60, "/Applications/Codez.app/Contents/MacOS/Codez", 5, 2048), // agent
       sample(110, 100, "/usr/local/bin/pnpm"), // agent 工具子进程
-      sample(120, 100, "ZCode Helper (Plugin)"), // 内置插件 MCP 根
+      sample(120, 100, "Codez Helper (Plugin)"), // 内置插件 MCP 根
       sample(121, 120, "/usr/bin/node"), // 内置插件的孙进程
       sample(130, 100, "/opt/acme/mcp"), // 社区插件 MCP 根
       sample(140, 100, "uvx"), // custom MCP 根
@@ -212,7 +212,7 @@ describe("attributeHostProcessTree", () => {
 
     expect(rows.map((row) => [row.pid, row.category, row.groupKey, row.name])).toEqual([
       [70, "base", "host", "zsh"],
-      [100, "base", "cli", "zcode-agent-glm-demo"],
+      [100, "base", "cli", "codez-agent-glm-demo"],
       [110, "base", "cli", "pnpm"],
       [120, "builtin-plugin", "builtin:computer-use", "plugin:computer-use:computer-use"],
       [121, "builtin-plugin", "builtin:computer-use", "node"],
@@ -228,7 +228,7 @@ describe("attributeHostProcessTree", () => {
 
   it("CLI 映射缺失时 Agent 全部后代都归 cli；不在 Host 子树下的 Agent 也补进来", () => {
     const samples = new Map<number, ProcessResourceSample>([
-      sample(60, 1, "zcode-host"),
+      sample(60, 1, "codez-host"),
       sample(100, 1, "node"), // ppid 已被重排
       sample(101, 100, "mcp-server"),
     ]);
@@ -238,7 +238,7 @@ describe("attributeHostProcessTree", () => {
       agents: [{ pid: 100, provider: "glm", workspacePath: "C:\\work\\demo", children: [] }],
     });
     expect(rows.map((row) => [row.pid, row.groupKey, row.name])).toEqual([
-      [100, "cli", "zcode-agent-glm-demo"],
+      [100, "cli", "codez-agent-glm-demo"],
       [101, "cli", "mcp-server"],
     ]);
   });

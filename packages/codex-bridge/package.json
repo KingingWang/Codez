@@ -1,5 +1,5 @@
 {
-  "name": "@zcode/codex-bridge",
+  "name": "@codez/codex-bridge",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@zcode/shared": "workspace:*",
+    "@codez/shared": "workspace:*",
     "zod": "4.6.5"
   },
   "devDependencies": {

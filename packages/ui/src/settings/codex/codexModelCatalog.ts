@@ -1,4 +1,4 @@
-import type { CodexModel, ModelSelection } from "@zcode/shared";
+import type { CodexModel, ModelSelection } from "@codez/shared";
 import { readCodexResource, type CodexRequestSender } from "./codexSettingsData.js";
 
 export interface CodexModelCatalog {

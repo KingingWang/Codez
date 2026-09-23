@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared";
 import { waitForDefaultWorkspaceReady } from "./desktop-app.js";
 
 const LABEL = "selection-demo.ts";
@@ -87,9 +87,9 @@ async function seedMentionSelection(position: string) {
       const input = document.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
       const bridge = (
         input as HTMLElement & {
-          __zcodeLexicalInputE2E?: { setEditorStateJson: (s: string) => void; focus: () => void };
+          __codezLexicalInputE2E?: { setEditorStateJson: (s: string) => void; focus: () => void };
         }
-      )?.__zcodeLexicalInputE2E;
+      )?.__codezLexicalInputE2E;
       if (!input || !bridge) throw new Error("Lexical bridge unavailable");
       const text = (value: string) => ({
         type: "text",
@@ -160,8 +160,8 @@ async function seedMentionSelection(position: string) {
 async function readMentionSelection() {
   return browser.execute((testId) => {
     const input = document.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
-    const bridge = (input as HTMLElement & { __zcodeLexicalInputE2E?: { getText: () => string } })
-      ?.__zcodeLexicalInputE2E;
+    const bridge = (input as HTMLElement & { __codezLexicalInputE2E?: { getText: () => string } })
+      ?.__codezLexicalInputE2E;
     return {
       selected: window.getSelection()?.toString(),
       collapsed: window.getSelection()?.isCollapsed,

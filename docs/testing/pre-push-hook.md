@@ -34,7 +34,7 @@ pre-push 直接使用当前 `PATH` 中的 pnpm / Node，不强制依赖 mise。�
 
 pre-push 的单测入口是 `pnpm run test:unit:affected`，默认验证本次 push 新增的变更，而不是固定比较 `origin/main`。base 选择顺序：
 
-- 显式设置 `ZCODE_PRE_PUSH_BASE` / `ZCODE_AFFECTED_TEST_BASE` 时，使用该 base 与 `HEAD` 的 merge-base，便于手动做 MR 范围自检。
+- 显式设置 `CODEZ_PRE_PUSH_BASE` / `CODEZ_AFFECTED_TEST_BASE` 时，使用该 base 与 `HEAD` 的 merge-base，便于手动做 MR 范围自检。
 - Git `pre-push` hook 传入 stdin 时，优先使用其中的 `remote_sha..local_sha`。这对应当前远端跟踪分支到本次推送目标的增量，适合日常 push。
 - 没有 hook stdin 时，使用当前分支的 `@{upstream}..HEAD`，适合手动执行 `pnpm run test:unit:affected`。
 - 新分支或没有 upstream 时，才退回到 `origin/HEAD`、`origin/main`、`origin/master`、`main`、`master` 这类默认分支，并使用 merge-base 计算范围。
@@ -55,4 +55,4 @@ pre-push 的单测入口是 `pnpm run test:unit:affected`，默认验证本次 p
 - 改动测试运行环境、依赖或 TypeScript/Vitest 配置时，退回全量 `pnpm run test:unit`。这些文件包括 `package.json`、`pnpm-lock.yaml`、`vitest.config.*`、`vitest.setup.*`、`tsconfig*.json`、`.husky/pre-push`、`lint-staged.config.mjs` 和 affected-test 脚本自身。
 - 删除 JS/TS/JSON 代码文件时，退回全量 `pnpm run test:unit`。原因是被删除文件无法再作为 `vitest related` 的输入，但依赖它的测试仍需要暴露导入断裂或行为缺失。
 
-该入口只覆盖根 Vitest 单测范围，即 `packages/*/test/**/*.test.ts`，不替代 `apps/zcode-cli` 自身的 Turbo/Vitest 测试，也不替代桌面端 E2E。
+该入口只覆盖根 Vitest 单测范围，即 `packages/*/test/**/*.test.ts`，不替代 `apps/codez-cli` 自身的 Turbo/Vitest 测试，也不替代桌面端 E2E。

@@ -5,7 +5,7 @@ import {
   filterConversationRowsForProfile,
   hookInvocationRowSchema,
   type HookInvocationRow,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 function hookRow(): HookInvocationRow {
   return {
@@ -66,7 +66,7 @@ describe("V4 Hook turn summary schema", () => {
           {
             ...row.executions[0],
             commandDisplay: "node hooks/check.mjs --token secret",
-            sourcePath: "/workspace/.zcode/config.json",
+            sourcePath: "/workspace/.codez/config.json",
           },
         ],
       }),

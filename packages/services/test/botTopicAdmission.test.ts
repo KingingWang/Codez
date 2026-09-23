@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createBotTopicAdmission } from "#src/zcode-agent/botTopicAdmission.js";
+import { createBotTopicAdmission } from "#src/codez-agent/botTopicAdmission.js";
 
 function deferred() {
   let resolve!: () => void;

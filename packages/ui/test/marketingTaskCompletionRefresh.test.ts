@@ -2,7 +2,7 @@
 import { createElement } from "react";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { SessionSummary } from "@zcode/shared/zcode-protocol-v4";
+import type { SessionSummary } from "@codez/shared/codez-protocol-v4";
 const h = vi.hoisted(() => ({
   sessions: [] as Array<{ sessionId: string; phase: string }>,
   status: "live",
@@ -13,7 +13,7 @@ const h = vi.hoisted(() => ({
   service: {},
 }));
 vi.mock("@/hooks/useServices.js", () => ({
-  useServices: () => ({ zcodeAgentService: h.service }),
+  useServices: () => ({ codezAgentService: h.service }),
 }));
 vi.mock("@/v4/sessionsIndexRegistry.js", () => ({
   acquireSessionsIndex: h.acquire,

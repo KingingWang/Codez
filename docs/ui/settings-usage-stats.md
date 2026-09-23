@@ -4,7 +4,7 @@
 
 ## 数据来源
 
-- host 侧新增 `usage-stats` RPC 服务，统一扫描 `~/.zcode/v2/sessions/**` 下的 task 快照
+- host 侧新增 `usage-stats` RPC 服务，统一扫描 `~/.codez/v2/sessions/**` 下的 task 快照
 - UI 不直接读磁盘，只通过 `useUsageStats()` 调服务
 - 历史旧数据没有 usage 字段时，读取侧会回退到 `message.content + thought` 的字符数，以及 `task.meta.model`
 

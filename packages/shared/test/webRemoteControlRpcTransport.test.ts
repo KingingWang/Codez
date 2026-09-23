@@ -24,7 +24,7 @@ function frame(
   overrides: Partial<WebRemoteControlRpcTransportFramePayload> = {},
 ): WebRemoteControlRpcTransportFramePayload {
   return {
-    zcode_type: "rpc-frame",
+    codez_type: "rpc-frame",
     ...identity,
     seq: 1,
     messageSeq: 1,
@@ -62,7 +62,7 @@ describe("mobile raw RPC transport schemas", () => {
     expect(webRemoteControlRpcTransportFrameSchema.safeParse(frame()).success).toBe(true);
     expect(
       webRemoteControlRpcTransportAckSchema.safeParse({
-        zcode_type: "rpc-frame-ack",
+        codez_type: "rpc-frame-ack",
         ...identity,
         ackMessageSeq: 1,
       }).success,
@@ -94,7 +94,7 @@ describe("mobile raw RPC transport schemas", () => {
     }
     expect(
       webRemoteControlRpcTransportAckSchema.safeParse({
-        zcode_type: "rpc-frame-ack",
+        codez_type: "rpc-frame-ack",
         ...identity,
         ackMessageSeq: Number.MAX_SAFE_INTEGER + 1,
       }).success,

@@ -1,4 +1,4 @@
-import { BUILTIN_MODEL_PROVIDER_IDS, type ApiClient } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, type ApiClient } from "@codez/shared";
 import { describe, expect, it, vi } from "vitest";
 import { BigModelUsageQuotaProvider } from "../src/usage-stats/providers/bigmodelUsageQuotaProvider.js";
 
@@ -28,7 +28,7 @@ describe("订阅快照与额度/调用 Key 独立", () => {
       });
       const provider = new BigModelUsageQuotaProvider({
         apiClient: { request },
-        env: { ZCODE_BIGMODEL_USAGE_API_KEY: "personal.secret" },
+        env: { CODEZ_BIGMODEL_USAGE_API_KEY: "personal.secret" },
         accountRequestAuthService: {
           resolveAccessCurrent: vi.fn(),
           resolveCurrent: vi.fn(),
@@ -48,7 +48,7 @@ describe("订阅快照与额度/调用 Key 独立", () => {
     };
     const provider = new BigModelUsageQuotaProvider({
       apiClient,
-      env: { ZCODE_BIGMODEL_USAGE_API_KEY: "personal.secret" },
+      env: { CODEZ_BIGMODEL_USAGE_API_KEY: "personal.secret" },
       accountRequestAuthService: {
         resolveAccessCurrent: vi.fn(),
         resolveCurrent: vi.fn(),

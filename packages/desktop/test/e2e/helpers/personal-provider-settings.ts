@@ -9,8 +9,8 @@ import {
   TID_MODEL_PROVIDER_NAV_ITEM,
   TID_MODEL_PROVIDER_TEMPLATE_ITEM,
   testId,
-} from "@zcode/shared";
-import type { ProviderApiType } from "@zcode/provider";
+} from "@codez/shared";
+import type { ProviderApiType } from "@codez/provider";
 import {
   clickTestIdByDom,
   clickTestIdByWebDriver,

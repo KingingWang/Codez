@@ -52,7 +52,7 @@
           "id": "toolu_tge01_readonly_shell",
           "name": "Bash",
           "input": {
-            "command": "wc -l .zcode-e2e/conversation-session-tool-stage-grouping-live-transition/seed.txt"
+            "command": "wc -l .codez-e2e/conversation-session-tool-stage-grouping-live-transition/seed.txt"
           }
         }
       }

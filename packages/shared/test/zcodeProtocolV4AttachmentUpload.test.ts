@@ -15,8 +15,8 @@ import {
   v4ConversationAttachmentReadResultSchema,
   v4ConversationAttachmentStatParamsSchema,
   v4ConversationAttachmentStatResultSchema,
-} from "../src/zcode-protocol-v4/index.js";
-import { VIDEO_INPUT_MAX_BYTES } from "../src/zcode-media-policy.js";
+} from "../src/codez-protocol-v4/index.js";
+import { VIDEO_INPUT_MAX_BYTES } from "../src/codez-media-policy.js";
 
 const sha256 = `sha256:${"a".repeat(64)}`;
 const VIDEO_INPUT_MAX_MIB = 30;
@@ -126,13 +126,13 @@ describe("v4 chunked attachment protocol", () => {
         uploadId: "upload-1",
         state: "committed",
         nextChunkIndex: 2,
-        ref: "zcode-artifact://one",
+        ref: "codez-artifact://one",
       }),
     ).toEqual({
       uploadId: "upload-1",
       state: "committed",
       nextChunkIndex: 2,
-      ref: "zcode-artifact://one",
+      ref: "codez-artifact://one",
     });
     const terminal = {
       connectionId: "connection-1",
@@ -179,7 +179,7 @@ describe("v4 chunked attachment protocol", () => {
   it("share attachment read accepts non-media text/plain and requires row/index authority", () => {
     const params = {
       sessionId: "session-1",
-      ref: "/Users/test/.zcode/tmp/paste-attachments/pasted.txt",
+      ref: "/Users/test/.codez/tmp/paste-attachments/pasted.txt",
       target: { rowId: 42, entityId: "message-42" },
       attachmentIndex: 0,
       offset: 0,
@@ -200,7 +200,7 @@ describe("v4 chunked attachment protocol", () => {
   it("share attachment stat is metadata-only and keeps row/index authority", () => {
     const params = {
       sessionId: "session-1",
-      ref: "/Users/test/.zcode/tmp/paste-attachments/pasted.txt",
+      ref: "/Users/test/.codez/tmp/paste-attachments/pasted.txt",
       target: { rowId: 42, entityId: "message-42" },
       attachmentIndex: 0,
     };

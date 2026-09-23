@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useStore } from "zustand";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { toast } from "@/components/ui/toast.js";
 import { CloudContentDialog } from "@/components/cloud-content-dialog/CloudContentDialog.js";
 import { MarketingFailureDialog } from "@/components/marketing-touch/MarketingFailureDialog.js";
@@ -14,8 +14,8 @@ export function MarketingDialogs({ controller }: { controller: MarketingTouchCon
     marketingNavigation,
     (state) => state.request?.target.page === "upgrade",
   );
-  const { locale, intl } = useZCodeIntl();
-  const claimError = state.errorAction === "claim_zcode_plan" ? state.error : null;
+  const { locale, intl } = useCodezIntl();
+  const claimError = state.errorAction === "claim_codez_plan" ? state.error : null;
   useEffect(() => {
     if (state.error && !claimError) {
       toast(state.error);
@@ -68,7 +68,7 @@ export function MarketingDialogs({ controller }: { controller: MarketingTouchCon
             },
             claim_plan: async (action) => {
               await controller.dialogAction({
-                type: "claim_zcode_plan",
+                type: "claim_codez_plan",
                 args: { plan_id: action.planId },
               });
             },

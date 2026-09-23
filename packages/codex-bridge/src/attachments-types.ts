@@ -1,4 +1,4 @@
-import type { ConversationRowTarget } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRowTarget } from "@codez/shared/codez-protocol-v4";
 
 /**
  * Attachment slice specification:
@@ -32,7 +32,7 @@ import type { ConversationRowTarget } from "@zcode/shared/zcode-protocol-v4";
  */
 export interface AttachmentStoreOptions {
   cwd: string;
-  /** Trusted host path; defaults to <cwd>/.zcode/codex-bridge/attachments. */
+  /** Trusted host path; defaults to <cwd>/.codez/codex-bridge/attachments. */
   root?: string;
   /** Must check current session user row, target and index, including optional legacy targets. */
   authorizeRead?: (query: AttachmentReadAuthorization) => boolean | Promise<boolean>;

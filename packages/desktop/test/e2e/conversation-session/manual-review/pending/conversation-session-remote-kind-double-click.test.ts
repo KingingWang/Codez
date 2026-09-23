@@ -10,7 +10,7 @@ import {
   TID_SSH_DIALOG,
   TID_SSH_HOST_INPUT,
   TID_WSL_USER_INPUT,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData, clickTestIdByWebDriver } from "../../../helpers/desktop-app.js";
 import { skipOccupationOnboardingIfPresent } from "../../../helpers/occupation-onboarding.js";
 import { prepareV4ConversationE2E } from "../../../helpers/v4-conversation.js";

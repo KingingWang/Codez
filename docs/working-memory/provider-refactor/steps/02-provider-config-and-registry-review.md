@@ -43,7 +43,7 @@ M2 已经基本完成 Provider 事实来源切换。Official、Personal 与 Acco
 | 测试 | 15,441 | 28,237 |
 | Markdown 文档 | 10,036 | 1,053 |
 
-新增生产内容中，`@zcode/provider`、`@zcode/provider-node` 与 Official Config 共 `6,436` 行，其中纯领域与 Node Source/Repository 实现为 `4,120` 行，Official Config 为 `2,316` 行。这部分构成 M2 最集中的新设计骨架。
+新增生产内容中，`@codez/provider`、`@codez/provider-node` 与 Official Config 共 `6,436` 行，其中纯领域与 Node Source/Repository 实现为 `4,120` 行，Official Config 为 `2,316` 行。这部分构成 M2 最集中的新设计骨架。
 
 ## 已经切干净的事实链路
 
@@ -65,7 +65,7 @@ Process Provider Registry
       └-- 请求执行
 ```
 
-生产协议 Entry、Prompt CLI 和 TUI 都会启动进程级 Registry 并传入 `createZCodeApp()`。启用 Registry 时，旧模型列表明确不参与模型候选，旧 `modelCatalog` 也只作为首次迁移输入。旧 `ModelProviderService`、OAuth Preset Repo、Catalog Sources 和 Workspace Provider Catalog 的稳态职责已经删除。
+生产协议 Entry、Prompt CLI 和 TUI 都会启动进程级 Registry 并传入 `createCodezApp()`。启用 Registry 时，旧模型列表明确不参与模型候选，旧 `modelCatalog` 也只作为首次迁移输入。旧 `ModelProviderService`、OAuth Preset Repo、Catalog Sources 和 Workspace Provider Catalog 的稳态职责已经删除。
 
 因此，当前主要问题不是旧 Provider Store 仍在后台决定执行，而是新事实需要经过若干旧接口形状才能到达尚未迁移的消费者。
 
@@ -95,7 +95,7 @@ patch DTO。
 
 ### Core 无 Registry 装配分支已经退出
 
-最终收尾把 `providerRegistry` 改成 `createZCodeApp` 的必填依赖，并迁移了 Bootstrap 测试、Compact /
+最终收尾把 `providerRegistry` 改成 `createCodezApp` 的必填依赖，并迁移了 Bootstrap 测试、Compact /
 Memory E2E 和 Prompt Trajectory。旧 `RuntimeModelConfig / ModelCatalog` 不再承担裸 App Factory 的
 Provider 事实；测试需要自定义模型时显式创建测试 Registry，协议 Entry 继续使用进程 Registry。
 
@@ -106,9 +106,9 @@ Provider 事实；测试需要自定义模型时显式创建测试 Registry，�
 
 这部分约 `200–300` 行，主要位于：
 
-- `apps/zcode-cli/packages/bootstrap/src/app/turn-execution-model-source.ts`
-- `apps/zcode-cli/packages/bootstrap/src/app/turn-model-overlay.ts`
-- `apps/zcode-cli/packages/bootstrap/src/app/runtime-model-factory.ts`
+- `apps/codez-cli/packages/bootstrap/src/app/turn-execution-model-source.ts`
+- `apps/codez-cli/packages/bootstrap/src/app/turn-model-overlay.ts`
+- `apps/codez-cli/packages/bootstrap/src/app/runtime-model-factory.ts`
 
 普通 Provider 已经由新 Registry 提供。闲时任务等临时输入仍通过旧 Turn Overlay 转成 `ExecutionScopedModelSource`：
 
@@ -195,6 +195,6 @@ Account Provider 的连接解析、Personal/Team Key、请求期鉴权与 Accoun
 2. 在 Adapter/Reasoning 阶段继续收敛 AI SDK Runtime Registry 投影，避免业务层重新理解 `providerOptions`。
 3. 兼容窗口结束后删除旧 Personal Config、Account Key 和无作用域 accessId 迁移代码。
 
-生产 `createZCodeApp()` 的 Registry 依赖已经成为必填机械约束，测试 Harness 也必须显式装配 Registry；
+生产 `createCodezApp()` 的 Registry 依赖已经成为必填机械约束，测试 Harness 也必须显式装配 Registry；
 它不再属于后续事项。M2 当前可以进入上线收尾，但不能把“事实源已经统一”误写成“所有旧类型与执行
 机制已经删除”。前者已经成立；后者仍需要上述几个明确、可测量的退役步骤。

@@ -1,8 +1,8 @@
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ModelConfigRules, ProviderConfigMap } from "@zcode/provider";
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { ModelConfigRules, ProviderConfigMap } from "@codez/provider";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createProviderProvisioningTarget as createLegacyTarget } from "./fixtures/provisioning-v1/target.js";
 import { createProviderProvisioningSource } from "../src/model-provider/providerProvisioningSource.js";

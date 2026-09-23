@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { TID_CONFIRM_DIALOG_CONFIRM } from "@zcode/shared";
+import { TID_CONFIRM_DIALOG_CONFIRM } from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -96,7 +96,7 @@ async function clickArchiveActions() {
 }
 
 function readCounts() {
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"), {
+  const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"), {
     readOnly: true,
   });
   try {
@@ -114,7 +114,7 @@ function readCounts() {
 }
 
 function readCliSessionCount() {
-  const database = new DatabaseSync(join(homedir(), ".zcode", "cli", "db", "db.sqlite"), {
+  const database = new DatabaseSync(join(homedir(), ".codez", "cli", "db", "db.sqlite"), {
     readOnly: true,
   });
   try {

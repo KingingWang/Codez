@@ -3,7 +3,7 @@ import {
   codexConfigEditsSchema,
   codexConfigWriteResponseSchema,
   type CodexRequest,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import { Textarea } from "@/components/ui/textarea.js";

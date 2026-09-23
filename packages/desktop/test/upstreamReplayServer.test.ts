@@ -21,7 +21,7 @@ afterEach(async () => {
 
 describe("Upstream replay server", () => {
   it("closes the listener when the initial artifact write fails", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-start-failure-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-start-failure-"));
     tempDirs.push(tempDir);
     const fixturePath = join(tempDir, "fixture.json");
     const artifactPath = join(tempDir, "artifact.json");
@@ -71,11 +71,11 @@ describe("Upstream replay server", () => {
   );
 
   it("expands static fixture variables before matching and replaying", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-replay-vars-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-replay-vars-"));
     tempDirs.push(tempDir);
     const fixturePath = join(tempDir, "fixture.json");
     const artifactPath = join(tempDir, "artifact.json");
-    const runtimeRoot = "C:/e2e-home/ZCodeProject/.zcode-e2e";
+    const runtimeRoot = "C:/e2e-home/CodezProject/.codez-e2e";
     await writeFile(
       fixturePath,
       JSON.stringify(
@@ -143,7 +143,7 @@ describe("Upstream replay server", () => {
   ])(
     "resolves Bash task IDs from actual launch results: $expected",
     async ({ output, expected }) => {
-      const tempDir = await mkdtemp(join(tmpdir(), "zcode-bash-task-replay-"));
+      const tempDir = await mkdtemp(join(tmpdir(), "codez-bash-task-replay-"));
       tempDirs.push(tempDir);
       const fixturePath = join(tempDir, "fixture.json");
       await writeFile(
@@ -491,7 +491,7 @@ describe("Upstream replay server", () => {
 });
 
 async function startFixtureServer(closeMode: "end" | "destroy") {
-  const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-replay-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-replay-"));
   tempDirs.push(tempDir);
   const fixturePath = join(tempDir, "fixture.json");
   const artifactPath = join(tempDir, "artifact.json");
@@ -542,7 +542,7 @@ async function startBrowserVariableFixtureServer(
     artifactWriter?: Parameters<typeof startUpstreamReplayServer>[0]["artifactWriter"];
   } = {},
 ) {
-  const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-browser-variable-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-browser-variable-"));
   tempDirs.push(tempDir);
   const fixturePath = join(tempDir, "fixture.json");
   const artifactPath = join(tempDir, "artifact.json");
@@ -587,7 +587,7 @@ async function startBrowserVariableFixtureServer(
 }
 
 async function startAutomationVariableFixtureServer() {
-  const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-automation-variable-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-automation-variable-"));
   tempDirs.push(tempDir);
   const fixturePath = join(tempDir, "fixture.json");
   const artifactPath = join(tempDir, "artifact.json");
@@ -628,7 +628,7 @@ async function startAutomationVariableFixtureServer() {
 }
 
 async function startBrowserTabVariableFixtureServer() {
-  const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-browser-tab-variable-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-browser-tab-variable-"));
   tempDirs.push(tempDir);
   const fixturePath = join(tempDir, "fixture.json");
   const artifactPath = join(tempDir, "artifact.json");
@@ -677,7 +677,7 @@ async function startBrowserTabVariableFixtureServer() {
 }
 
 async function startLatestToolResultFixtureServer() {
-  const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-tool-result-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-tool-result-"));
   tempDirs.push(tempDir);
   const fixturePath = join(tempDir, "fixture.json");
   const artifactPath = join(tempDir, "artifact.json");
@@ -711,7 +711,7 @@ async function startLatestToolResultFixtureServer() {
 }
 
 async function startBackgroundFixtureServer() {
-  const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-background-fixture-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-background-fixture-"));
   tempDirs.push(tempDir);
   const artifactPath = join(tempDir, "artifact.json");
   const fixturePath = join(

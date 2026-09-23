@@ -1,4 +1,4 @@
-package com.example.zcode_mobile
+package com.example.codez_mobile
 
 import org.junit.Test
 

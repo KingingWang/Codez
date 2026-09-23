@@ -4,10 +4,10 @@ import {
   DesktopCommandIds,
   desktopMenuMessageIds,
   getDesktopMenuMessage,
-  ZCODE_PRODUCT_FLAVOR,
+  CODEZ_PRODUCT_FLAVOR,
   type DesktopCommandId,
   type Locale,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 let desktopTray: Tray | null = null;
 let rebuildDesktopTrayContextMenu: (() => void) | null = null;
@@ -70,7 +70,7 @@ export function createDesktopTray(options: {
     desktopTray?.setContextMenu(
       Menu.buildFromTemplate([
         {
-          label: getLabel(desktopMenuMessageIds.trayOpenZCode),
+          label: getLabel(desktopMenuMessageIds.trayOpenCodez),
           click: showTrayWindow,
         },
         { type: "separator" },
@@ -84,7 +84,7 @@ export function createDesktopTray(options: {
         },
         { type: "separator" },
         // 更新入口跟随产品身份：Preview（含生产后端的 Preview）禁用更新器，托盘也不能露出入口。
-        ...(ZCODE_PRODUCT_FLAVOR !== "preview"
+        ...(CODEZ_PRODUCT_FLAVOR !== "preview"
           ? [
               {
                 label: getLabel(desktopMenuMessageIds.helpCheckForUpdates),

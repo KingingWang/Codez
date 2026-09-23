@@ -1,10 +1,10 @@
 // dwf 实时叠加视图的纯选择器：workflowRuns 的一条 run + 静态因果图 → statuses / animatedEdges，
 // 以及车道 → actor 实例的解析（phase 5 的 transcript 下钻消费它）。
-// 见 docs/dynamic-workflow/presentation.md「Node status」「状态聚合」与 apps/zcode-cli/packages/dynamic-workflow/docs/analysis.md 的
+// 见 docs/dynamic-workflow/presentation.md「Node status」「状态聚合」与 apps/codez-cli/packages/dynamic-workflow/docs/analysis.md 的
 // 「Joining runtime instances」（live view v1 不展开，按 site id 关联并在实例上聚合）以及
 // 「Joining runtime instances」（带 source 的拷贝再按 actor 车道收窄）。
 import { describe, expect, it } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import {
   workflowRunActorsForLane,
   workflowRunOverlay,
@@ -195,7 +195,7 @@ describe("workflowRunOverlay animatedEdges", () => {
 });
 
 // may-set 车道展开后的图：一个站点两张卡片，各归其候选车道，`source` 是它们共同的站点 id。
-// 见 apps/zcode-cli/packages/dynamic-workflow/docs/analysis.md「Joining runtime instances」。
+// 见 apps/codez-cli/packages/dynamic-workflow/docs/analysis.md「Joining runtime instances」。
 const expandedGraph: WorkflowCausalityGraphData = {
   steps: [
     {

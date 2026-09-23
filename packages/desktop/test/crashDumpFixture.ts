@@ -49,8 +49,8 @@ export const CODE_SPACE_OOM_ANNOTATIONS: Record<string, string> = {
   "v8-oom-location": "CALL_AND_RETRY_LAST",
   "v8-oom-stack": [
     "next",
-    "WI in file:///Applications/ZCode.app/Contents/Resources/app.asar/out/renderer/assets/catalogTree-BYrDsScn.js",
-    "kq in file:///Applications/ZCode.app/Contents/Resources/app.asar/out/renderer/assets/styles-DyAcaLKy.js",
+    "WI in file:///Applications/Codez.app/Contents/Resources/app.asar/out/renderer/assets/catalogTree-BYrDsScn.js",
+    "kq in file:///Applications/Codez.app/Contents/Resources/app.asar/out/renderer/assets/styles-DyAcaLKy.js",
     "Aq in =",
   ].join("\n"),
   "v8-oom-last-few-messages": [

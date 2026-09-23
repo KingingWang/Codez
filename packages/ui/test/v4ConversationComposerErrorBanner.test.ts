@@ -1,9 +1,9 @@
 import { createElement, type ComponentType, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ConversationSnapshot } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
 import { ConversationComposer } from "@/v4/ConversationComposer.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const captured = vi.hoisted(() => ({
   chatErrorBannerProps: null as Record<string, unknown> | null,
@@ -161,7 +161,7 @@ function renderComposerWithError(
 ): string {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(AnyConversationComposer, {
         snapshot: null,
@@ -192,7 +192,7 @@ function renderComposerWithSnapshot(
 ): string {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(AnyConversationComposer, {
         snapshot,
@@ -213,7 +213,7 @@ function renderComposerWithSnapshot(
 function renderHighspeedComposer(overrides: Record<string, unknown> = {}): string {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(AnyConversationComposer, {
         snapshot: makeSnapshot(),
@@ -242,7 +242,7 @@ function renderHighspeedComposer(overrides: Record<string, unknown> = {}): strin
 function renderBlockedComposer(): string {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(AnyConversationComposer, {
         snapshot: makeSnapshot(),

@@ -25,7 +25,7 @@ typecheck、desktop typecheck:e2e、architecture、格式检查通过；lint 55 
 
 ### 转正决定（2026-09-12）
 
-推送前全量单测发现 delivery 原有截图路径不符合 E2E runtime 路径门禁。四处截图统一写入 runner 提供的 `ZCODE_E2E_ARTIFACT_DIR`，缺失时明确失败，不写系统临时目录，也不改业务断言；原路径门禁保留作为回归测试。
+推送前全量单测发现 delivery 原有截图路径不符合 E2E runtime 路径门禁。四处截图统一写入 runner 提供的 `CODEZ_E2E_ARTIFACT_DIR`，缺失时明确失败，不写系统临时目录，也不改业务断言；原路径门禁保留作为回归测试。
 
 用户将门槛调整为 90%（排除 Lottie），并明确要求转正。已有同轮 60 项通过及 Renderer 90.07% 证据；该数字不代表全运行域覆盖率。三个 marketing-touch spec 迁至 `packages/desktop/test/e2e/ui-shell/` 正式目录，保留既有隔离 HTTP fixture 和全部断言。正式路径下不依赖 MANUAL_REVIEW 开关，本机 Electron 重新验证，不使用 Docker、不 push。尚未覆盖的平台和历史矩阵剩余边界继续保留，不随转正改为已覆盖。
 
@@ -55,7 +55,7 @@ Main 原始 V8 转换计数存在“未生成源码行计为 1”的实例：同
 
 直接用 `istanbul-lib-instrument` 的 TypeScript/JSX parser 解析原始源码，能排除 import、interface、type，但实验确认不会为运行时 `enum` 生成 statement。因此不能直接将这个结果用作所有运行域的统一可执行行分母。该候选方案未接入统计，不改变既有覆盖报告；后续需验证编译转换及 source map，未识别项保留 unknown。
 
-合并执行当前三个 pending spec，并开启 `ZCODE_E2E_SOURCE_EVIDENCE=1`，核验同轮结果与源码指纹；历史分批通过不等价于同轮全量通过。
+合并执行当前三个 pending spec，并开启 `CODEZ_E2E_SOURCE_EVIDENCE=1`，核验同轮结果与源码指纹；历史分批通过不等价于同轮全量通过。
 
 ### 第十一批：同轮 48 项与覆盖报告恢复
 
@@ -239,7 +239,7 @@ App init(instance A) -> ZIP ready(instance B) -> 忽略 -> 原 ready 超时 -> f
 
 ### 第十批：构建源码证据
 
-显式设置 `ZCODE_E2E_SOURCE_EVIDENCE=1` 时，WDIO 对新 desktop 构建前后分别计算 packages/\*/src 的源码 SHA，并记录实际 staged App 的 JS/CSS/HTML/map 哈希到 `build-source-evidence.json`。两次源码相同且有产物才标 fresh-stable；变化、SKIP_BUILD 或 packaged App 不追认当前源码。仅覆盖 desktop 的 Renderer/Host/Main，不证明随后构建或复用的 CLI。全部 IO 异步，不写入源码和凭据，不输出源码正文。
+显式设置 `CODEZ_E2E_SOURCE_EVIDENCE=1` 时，WDIO 对新 desktop 构建前后分别计算 packages/\*/src 的源码 SHA，并记录实际 staged App 的 JS/CSS/HTML/map 哈希到 `build-source-evidence.json`。两次源码相同且有产物才标 fresh-stable；变化、SKIP_BUILD 或 packaged App 不追认当前源码。仅覆盖 desktop 的 Renderer/Host/Main，不证明随后构建或复用的 CLI。全部 IO 异步，不写入源码和凭据，不输出源码正文。
 
 ```text
 源码指纹 A -> fresh build -> stage App -> 源码指纹 B + staged 产物指纹

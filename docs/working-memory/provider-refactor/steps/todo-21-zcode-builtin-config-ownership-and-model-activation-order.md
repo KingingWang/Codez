@@ -1,4 +1,4 @@
-# 21 ZCode Built-in 配置、模型启停、排序与设置页收口
+# 21 Codez Built-in 配置、模型启停、排序与设置页收口
 
 > 状态：已完成（后续 Todo 23 已删除最后的 Compatibility Config）
 >
@@ -7,7 +7,7 @@
 > 相关任务：[`02`](./todo-02-ai-sdk-execution-registry-retirement.md)、
 > [`07`](./todo-07-account-connection-selection-and-access-context-cutover.md)、
 > [`17`](./todo-17-provider-registry-settings-authority-boundary-closure.md)、
-> [`18`](./todo-18-zcode-builtin-client-config-sync-and-lkg.md)、
+> [`18`](./todo-18-codez-builtin-client-config-sync-and-lkg.md)、
 > [`22`](./todo-22-additional-builtin-providers-and-cloud-access.md)
 >
 > 相关设计：[`design.md`](../design/design.md)、
@@ -20,7 +20,7 @@
 
 ## 0. 任务定位
 
-本 Todo 负责整理现有 ZCode Built-in Provider Config 与 Built-in Model Config Rules，并把 Provider/Model 设置页
+本 Todo 负责整理现有 Codez Built-in Provider Config 与 Built-in Model Config Rules，并把 Provider/Model 设置页
 收口到同一套领域事实。目标不是为旧实现增加兼容层，而是让 Built-in Config 成为模型与 API 静态事实的唯一来源，
 让 Settings 只编辑 Personal Config，让 Registry 只消费最终解析结果。
 
@@ -57,7 +57,7 @@
 
 本次实现验证：Provider 核心定向测试 255 项通过，根 `typecheck`、`lint`、Desktop E2E typecheck、修改文件格式检查和
 `git diff --check` 通过；根单测 12,416 项通过，另有 2 项因当前 Linux 环境缺少外部 `zip` 命令失败，均位于
-`zcode-server-cli` Windows ZIP 打包/安装测试，与 Provider 改动无关。真实请求和正式 E2E 按最终 Release Checklist 执行。
+`codez-server-cli` Windows ZIP 打包/安装测试，与 Provider 改动无关。真实请求和正式 E2E 按最终 Release Checklist 执行。
 
 ## 1. 最终双路配置
 
@@ -65,7 +65,7 @@
 Provider Config 路径                         Model Config 路径
 ====================                       =================
 
-ZCode Built-in Provider Config             ZCode Built-in Model Config Rules
+Codez Built-in Provider Config             Codez Built-in Model Config Rules
               |                                         +
               v                                         |
 Account Built-in Provider Config           Personal Model Config Rules
@@ -115,10 +115,10 @@ DTO。
 
 | Source                            | 可写事实                                                                                      |
 | --------------------------------- | --------------------------------------------------------------------------------------------- |
-| ZCode Built-in Provider Config    | Provider group、身份、展示、API/Access 模板、`builtinModelIds`、Provider 默认状态与声明顺序   |
+| Codez Built-in Provider Config    | Provider group、身份、展示、API/Access 模板、`builtinModelIds`、Provider 默认状态与声明顺序   |
 | Account Built-in Provider Config  | 账号 Provider 的 Access/连接约束、Provider enabled、服务端确实返回时的 `builtinModelIds`      |
 | Personal Provider Config          | `standard-personal` 新 Provider，或已有 Provider 的 API/Access/状态 Overlay；`modelIds/order` |
-| ZCode Built-in Model Config Rules | 完整 Model 默认、模型/API/Provider/Endpoint 特化、官方默认启停                                |
+| Codez Built-in Model Config Rules | 完整 Model 默认、模型/API/Provider/Endpoint 特化、官方默认启停                                |
 | Personal Model Config Rules       | 用户的单模型专属覆盖，以及用户手写的通用 Match Rule                                           |
 
 强约束：
@@ -135,10 +135,10 @@ DTO。
 
 | Source                     | 必须/允许                                                                                                                                                           | 明确禁止                                                                       |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| ZCode Built-in Provider    | 每个根声明必须提供 `standard-builtin`、`zai-family` 或 `bigmodel-family` group；允许 label/logo、enabled、visibility、API、Access 模板、`builtinModelIds`           | `standard-personal`、`modelIds`、`modelOrder`、`providerOrder`                 |
-| Account Built-in Provider  | 只能覆盖已有 ZCode Built-in Family Provider；允许 enabled、结构化 Account Access、接口确实返回时的 `builtinModelIds`                                                | group、展示字段、visibility、API、Personal 成员/顺序、Model Config             |
+| Codez Built-in Provider    | 每个根声明必须提供 `standard-builtin`、`zai-family` 或 `bigmodel-family` group；允许 label/logo、enabled、visibility、API、Access 模板、`builtinModelIds`           | `standard-personal`、`modelIds`、`modelOrder`、`providerOrder`                 |
+| Account Built-in Provider  | 只能覆盖已有 Codez Built-in Family Provider；允许 enabled、结构化 Account Access、接口确实返回时的 `builtinModelIds`                                                | group、展示字段、visibility、API、Personal 成员/顺序、Model Config             |
 | Personal Provider          | 顶层允许 `providerOrder`；已有 Provider Overlay 允许 label、enabled、visibility、API、Access、`modelIds/modelOrder`；Personal-only 根必须 `group=standard-personal` | `builtinModelIds`；已有 Provider 的 group 改写                                 |
-| ZCode Built-in Model Rules | `provider-model` 与 `match`；允许完整 Model Config、官方 enabled 默认和经证据确认的 Built-in-only 窄兼容事实                                                        | Provider 成员、顺序、Access、动态凭据                                          |
+| Codez Built-in Model Rules | `provider-model` 与 `match`；允许完整 Model Config、官方 enabled 默认和经证据确认的 Built-in-only 窄兼容事实                                                        | Provider 成员、顺序、Access、动态凭据                                          |
 | Personal Model Rules       | `provider-model` 与 `match`；允许用户可覆盖的 Model Config 稀疏字段                                                                                                 | Provider 成员/顺序、Access、未允许 Personal 覆盖的产品协议或待定 Compatibility |
 
 结构解析与语义校验分两步：单文件 Parser 严格拒绝未知字段；需要知道“该 ID 是否来自 Built-in”的约束由 Source
@@ -169,7 +169,7 @@ Provider 不保存 `selectable`。
 
 ```text
 standard-builtin
-└─ ZCode 提供模板、用户自行配置的普通 Provider
+└─ Codez 提供模板、用户自行配置的普通 Provider
    └─ 参与“添加供应商”候选与普通 providerOrder
 
 standard-personal
@@ -182,13 +182,13 @@ zai-family / bigmodel-family
    └─ Settings UI 不提供 Provider 启用/停用操作
 ```
 
-Renderer 不再通过 Provider ID 白名单、Access 类型或 Endpoint 推断分组。ZCode Built-in 根声明必须显式提供非 Personal
+Renderer 不再通过 Provider ID 白名单、Access 类型或 Endpoint 推断分组。Codez Built-in 根声明必须显式提供非 Personal
 group；Personal-only Provider 固定为 `standard-personal`；Account/Personal Overlay 无权改变已有 Provider 分组。
 Provider 不再保存额外 `builtin` boolean；完整 `group` 已经同时表达普通 Built-in、Personal-only 和两个账号 Family。
 `visibility` 继续独立表达是否对普通用户可见，`enabled` 继续独立表达能否执行。
 
 普通外部 Built-in Provider 默认 `enabled=false`。用户从“添加供应商”选择它时，立即创建 Personal Overlay 并写
-`enabled=true`。Built-in 只表示由 ZCode 内置维护，不表示使用 ZCode 账号、已经有凭据或默认可用。
+`enabled=true`。Built-in 只表示由 Codez 内置维护，不表示使用 Codez 账号、已经有凭据或默认可用。
 
 不采用 `enabledModelIds`。Provider 只维护模型成员与顺序，模型启停由 Model Config 负责。
 
@@ -196,7 +196,7 @@ Provider 不再保存额外 `builtin` boolean；完整 `group` 已经同时表�
 
 ```text
 builtinModelIds
-└─ ZCode/Account Built-in 拥有的成员
+└─ Codez/Account Built-in 拥有的成员
 
 modelIds
 └─ 用户拥有的 Personal 成员
@@ -322,7 +322,7 @@ interface PersonalProviderConfigFile {
 }
 ```
 
-`providerOrder` 是 Personal Source 自己的集合语义，不参与 Provider 字段 Overlay。ZCode Built-in Provider 基础顺序继续
+`providerOrder` 是 Personal Source 自己的集合语义，不参与 Provider 字段 Overlay。Codez Built-in Provider 基础顺序继续
 来自 Release 中 Provider Map 的声明顺序；Account 不提供顺序。当前分支未发布，现有含义模糊的 `models` 存储字段直接
 改名为 `modelConfigRules`，不为开发中间格式增加 migration；Legacy importer 输出最终字段。
 
@@ -365,7 +365,7 @@ zai-family / bigmodel-family
    └─ Effective Provider 回落到 Built-in/Account 状态，继续留在固定 Family 区域
 ```
 
-系统从不删除 ZCode Built-in Config。通用 Personal Match Rules 不随 Provider 删除。Family 不进入普通“添加供应商”候选，
+系统从不删除 Codez Built-in Config。通用 Personal Match Rules 不随 Provider 删除。Family 不进入普通“添加供应商”候选，
 也不在 UI 提供 Provider enabled 开关；底层字段仍供 Built-in/Account 装配使用，用户手工修改配置形成的特殊状态不属于
 Settings UI 的产品保证范围。
 
@@ -387,7 +387,7 @@ ProviderSettingsView
       └─ enabled / issues / executable / selectable
 ```
 
-不再返回 `isZCodeBuiltin`、`canReorder`、成员冲突 DTO 或把 Provider executable 命名为 selectable。Renderer 根据
+不再返回 `isCodezBuiltin`、`canReorder`、成员冲突 DTO 或把 Provider executable 命名为 selectable。Renderer 根据
 `group` 组织已配置区域，但候选、顺序、成员来源和所有派生状态均由 Host 产生。
 
 Host Mutation 必须覆盖以下领域操作，具体函数名可以服从代码风格，但不得合并语义：
@@ -622,7 +622,7 @@ access.executionProtocol = "off-peak"
 
 兼容裁决：
 
-- OpenAI-compatible reasoning 依赖 canonical 历史与 SDK 原生编码，删除 ZCode 特殊回放；
+- OpenAI-compatible reasoning 依赖 canonical 历史与 SDK 原生编码，删除 Codez 特殊回放；
 - GitHub Copilot `omitMaxOutputTokens` 删除；
 - Snowflake Cortex 当前不支持，删除 `maxOutputTokensRequestField`；
 - 官方版本请求安全校验与 Off-Peak failure/execution protocol 从 Model Config 移入 Access；本轮不重构 Off-Peak 字符串错误；
@@ -632,7 +632,7 @@ access.executionProtocol = "off-peak"
 
 ## 12. Client Config 边界
 
-ZCode Built-in Provider Config 与 Built-in Model Config Rules 作为一个原子 `zcodeBuiltin` Release 发布。仓库/安装包内容
+Codez Built-in Provider Config 与 Built-in Model Config Rules 作为一个原子 `codezBuiltin` Release 发布。仓库/安装包内容
 是拉取前和失败时兜底；每个 Environment 使用自己的 Active/LKG 与 Registry。Remote workspace 由 Remote Host 拉取、
 解析并返回其配置，Renderer 不把 Local Host 配置冒充远程事实。
 
@@ -644,7 +644,7 @@ ZCode Built-in Provider Config 与 Built-in Model Config Rules 作为一个原�
 2. 调整 Config/Protocol/Repository 类型，删除 `enabledModelIds` 候选与 Model visibility；
 3. 实现 `provider-model` 专属 Rule 生命周期和普通 `match` Rule 隔离；
 4. 实现模型 enabled、三段 Model/Provider order、Builtin-wins 与保存规范化；
-5. 整理 `zcode-builtin.json` 的 Provider 和 Rules 顺序，一次性切换 `account:` ID，拆分 Family/普通
+5. 整理 `codez-builtin.json` 的 Provider 和 Rules 顺序，一次性切换 `account:` ID，拆分 Family/普通
    Z.ai/BigModel API Provider 和双 Off-Peak Provider，补齐模型默认 enabled 与官方停用项；
 6. 迁移官方版本请求安全校验与 Off-Peak execution protocol 到 Access，清理已经裁决删除的 Adapter Compatibility；
 7. 重构 Settings Facade、Mutation 与 UI，统一 Local/Remote Host 权威来源；
@@ -657,7 +657,7 @@ ZCode Built-in Provider Config 与 Built-in Model Config Rules 作为一个原�
 ### Config 与 Resolver
 
 - 五个 Source Schema 的允许/拒绝矩阵；
-- ZCode Built-in `group` 必填且不能为 `standard-personal`；Personal-only 固定 `standard-personal`，Overlay 不能改组；
+- Codez Built-in `group` 必填且不能为 `standard-personal`；Personal-only 固定 `standard-personal`，Overlay 不能改组；
 - 普通 Built-in、Personal-only、Z.ai Family、BigModel Family 四组完整且互斥；
 - 两个 Off-Peak Provider 由 Account Overlay 按当前 Family 互斥启用；
 - Personal 禁止写 `builtinModelIds`，禁止正常保存 Built-in 重复 `modelIds`；

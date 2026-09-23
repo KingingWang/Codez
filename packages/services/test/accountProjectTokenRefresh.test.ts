@@ -18,7 +18,7 @@ describe("Desktop PAT 临时故障分类", () => {
           data = {
             organizations: [{ organizationId: "org", projects: [{ projectId: "project" }] }],
           };
-        else if (url.endsWith("api_keys")) data = [{ apiKey: "key", name: "zcode-api-key" }];
+        else if (url.endsWith("api_keys")) data = [{ apiKey: "key", name: "codez-api-key" }];
         else {
           issues++;
           if (issues > 1) {

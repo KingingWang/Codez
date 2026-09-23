@@ -1,4 +1,4 @@
-name: ZCode Codex desktop
+name: Codez desktop
 
 on:
   pull_request:
@@ -31,8 +31,8 @@ jobs:
     permissions:
       contents: read
     env:
-      ZCODE_ENV: production
-      ZCODE_DESKTOP_RUNTIME: codex
+      CODEZ_ENV: production
+      CODEZ_DESKTOP_RUNTIME: codex
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,7 +56,7 @@ jobs:
         run: node scripts/codex-runtime-remote-smoke.mjs
       - name: Real bundled remote deployment and shipped executables (Linux once)
         env:
-          ZCODE_TEST_BUNDLED_REMOTE_ASSETS_DIR: ${{ github.workspace }}/packages/desktop/bundled-resources/codex-remote
+          CODEZ_TEST_BUNDLED_REMOTE_ASSETS_DIR: ${{ github.workspace }}/packages/desktop/bundled-resources/codex-remote
         run: pnpm exec tsx --test --test-name-pattern='actual packaged linux-x64' packages/server/test/codexBundledRemoteAssets.test.ts
       - uses: actions/upload-artifact@v4
         with:
@@ -83,14 +83,14 @@ jobs:
     timeout-minutes: 90
     environment: ${{ inputs.signed && matrix.os != 'linux' && 'codex-signing' || 'codex-unsigned' }}
     env:
-      ZCODE_ENV: production
-      ZCODE_DESKTOP_RUNTIME: codex
-      ZCODE_TARGET_OS: ${{ matrix.os }}
-      ZCODE_TARGET_ARCH: ${{ matrix.arch }}
-      ZCODE_CODEX_SIGNED: ${{ inputs.signed && matrix.os != 'linux' && '1' || '0' }}
-      ZCODE_ENABLE_MAC_SIGN: ${{ inputs.signed && matrix.os == 'darwin' && '1' || '0' }}
+      CODEZ_ENV: production
+      CODEZ_DESKTOP_RUNTIME: codex
+      CODEZ_TARGET_OS: ${{ matrix.os }}
+      CODEZ_TARGET_ARCH: ${{ matrix.arch }}
+      CODEZ_CODEX_SIGNED: ${{ inputs.signed && matrix.os != 'linux' && '1' || '0' }}
+      CODEZ_ENABLE_MAC_SIGN: ${{ inputs.signed && matrix.os == 'darwin' && '1' || '0' }}
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
-      ZCODE_ELECTRON_RUNTIME_MIRROR: https://github.com/electron/electron/releases/download/
+      CODEZ_ELECTRON_RUNTIME_MIRROR: https://github.com/electron/electron/releases/download/
     defaults:
       run:
         shell: bash
@@ -107,7 +107,7 @@ jobs:
           cache: pnpm
       - name: Verify exact native toolchain
         run: |
-          node -e 'if (process.version !== "v24.14.0" || process.platform !== process.env.ZCODE_TARGET_OS || process.arch !== process.env.ZCODE_TARGET_ARCH) throw new Error("Native toolchain mismatch")'
+          node -e 'if (process.version !== "v24.14.0" || process.platform !== process.env.CODEZ_TARGET_OS || process.arch !== process.env.CODEZ_TARGET_ARCH) throw new Error("Native toolchain mismatch")'
           test "$(pnpm --version)" = "10.33.2"
       - run: pnpm install --frozen-lockfile
       - name: Mock distribution regression tests (before network downloads)
@@ -115,10 +115,10 @@ jobs:
       - name: Typecheck, lint, architecture and adapter tests
         run: |
           pnpm typecheck
-          pnpm --filter @zcode/codex-bridge typecheck
+          pnpm --filter @codez/codex-bridge typecheck
           pnpm lint
           pnpm architecture:check
-          pnpm --filter @zcode/codex-bridge test
+          pnpm --filter @codez/codex-bridge test
       - name: Verified native Codex experimental API and isolated handshake
         run: node scripts/codex-runtime-smoke.mjs
       - name: Bundled bridge against verified native runtime (isolated fake model)
@@ -131,7 +131,7 @@ jobs:
         if: matrix.os != 'win32'
         run: node scripts/codex-runtime-remote-smoke.mjs
       - name: Build Codex desktop
-        run: pnpm --filter @zcode/desktop build
+        run: pnpm --filter @codez/desktop build
       - name: Package fork installers (never auto-publish)
         env:
           CSC_LINK: ${{ inputs.signed && (matrix.os == 'darwin' && secrets.MAC_CSC_LINK || secrets.WINDOWS_CSC_LINK) || '' }}
@@ -140,12 +140,12 @@ jobs:
           APPLE_ID: ${{ inputs.signed && secrets.APPLE_ID || '' }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ inputs.signed && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ inputs.signed && secrets.APPLE_TEAM_ID || '' }}
-        run: pnpm --filter @zcode/desktop exec electron-builder --config electron-builder.config.js --${{ matrix.builder }} --${{ matrix.arch }} --publish never
+        run: pnpm --filter @codez/desktop exec electron-builder --config electron-builder.config.js --${{ matrix.builder }} --${{ matrix.arch }} --publish never
       - name: Installer SHA256 manifests
         run: node scripts/codex-runtime-artifacts.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: zcode-codex-${{ matrix.os }}-${{ matrix.arch }}-${{ inputs.signed && matrix.os != 'linux' && 'signed' || 'unsigned' }}
+          name: codez-codex-${{ matrix.os }}-${{ matrix.arch }}-${{ inputs.signed && matrix.os != 'linux' && 'signed' || 'unsigned' }}
           if-no-files-found: error
           retention-days: 14
           path: |
@@ -161,7 +161,7 @@ jobs:
   release:
     needs: build
     if: >-
-      github.repository == 'KingingWang/ZCode' &&
+      github.repository == 'KingingWang/Codez' &&
       (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -177,7 +177,7 @@ jobs:
           node-version: 24.14.0
       - uses: actions/download-artifact@v4
         with:
-          pattern: zcode-codex-*
+          pattern: codez-codex-*
           path: artifacts
       - name: Verify all six targets and publish release
         env:

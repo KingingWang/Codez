@@ -8,11 +8,11 @@ import { buildSessionPluginIconMap } from "@/v4/pluginReferenceIconProjection.js
 import { ConversationUserInputContent } from "@/v4/ConversationUserInputContent.js";
 import { PluginReferenceIconProvider } from "@/v4/pluginReferenceIconContext.js";
 
-const pluginId = "plugin-creator@zcode-plugins-official";
+const pluginId = "plugin-creator@codez-plugins-official";
 const entry = {
   pluginId,
   name: "plugin-creator",
-  marketplace: "zcode-plugins-official",
+  marketplace: "codez-plugins-official",
   enabled: true,
   conflictingPluginIds: [],
   skillQualifiedNames: [],

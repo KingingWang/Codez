@@ -27,7 +27,7 @@ sidebar 外壳，但左侧任务列表区域需要遵守同一远控事实源，
 5. `workspace` 视图的收起/展开全部只控制宽屏远控分组展开状态，不写入或复用桌面 sidebar 的展开状态。
 6. 切换排序、视图、搜索词或归档状态不得改变桌面端任务列表行为。
 7. 普通和置顶任务行在 hover 后展示置顶/取消置顶与归档入口，交互语义对齐桌面端侧栏：置顶直接切换 membership，归档先进入确认态，第二次点击才归档。
-8. 任务操作通过当前 shared-host bridge 可解析到的 `zcodeTaskService` 执行。本地 workspace 走 base services；远端 workspace 只有在已注册 remote session services 时才允许操作，避免把远端 `workspacePath` 误交给本机 host。
+8. 任务操作通过当前 shared-host bridge 可解析到的 `codezTaskService` 执行。本地 workspace 走 base services；远端 workspace 只有在已注册 remote session services 时才允许操作，避免把远端 `workspacePath` 误交给本机 host。
 9. 操作成功后宽屏远控本地任务索引立即按返回的 membership 更新，等待 desktop renderer 后续 task snapshot 同步收敛；失败时保留原索引并提示用户。
 10. 置顶、取消置顶、归档、取消归档属于 task list membership 变化。服务层必须广播明确的 membership reason，desktop renderer 收到后重新刷新对应 task list，不能把这类事件当作普通 `task_meta_changed` 增量保留 membership。
 11. Desktop renderer 把更新后的 Web remote task snapshot 同步给 desktop main 后，desktop main 只通过既有 app payload 通道通知已连接 Web remote 重新采用最新 `WebRemoteControlWorkspaceListResult`。relay 和 main 不新增 task 业务状态，只转发 renderer 已同步的任务索引快照。

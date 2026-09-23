@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { ZCODE_AGENT_RUNTIME } from "@zcode/shared";
+import { CODEZ_AGENT_RUNTIME } from "@codez/shared";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 type RestoreReusableReleaseAssets = (options: {
@@ -42,7 +42,7 @@ let prepareRemoteComponentArtifact: (options: {
   previousComponents?: Map<string, Record<string, unknown>>;
 }) => Record<string, unknown>;
 
-const currentGlmManifestVersion = `v${ZCODE_AGENT_RUNTIME.version}`;
+const currentGlmManifestVersion = `v${CODEZ_AGENT_RUNTIME.version}`;
 
 beforeAll(async () => {
   const moduleUrl = pathToFileURL(
@@ -71,7 +71,7 @@ beforeAll(async () => {
 const tempDirs: string[] = [];
 
 async function makeTempDir() {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-prepare-prebuilds-test-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-prepare-prebuilds-test-"));
   tempDirs.push(dir);
   return dir;
 }
@@ -299,7 +299,7 @@ describe("prepare-prebuilds release asset reuse", () => {
     const platformKey = "linux-x64";
 
     mkdirSync(join(previousReleaseDir, "glm", platformKey), { recursive: true });
-    writeFileSync(join(previousReleaseDir, "glm", platformKey, "zcode.cjs"), "old-glm", "utf8");
+    writeFileSync(join(previousReleaseDir, "glm", platformKey, "codez.cjs"), "old-glm", "utf8");
     writeManifest(previousReleaseDir, platformKey, [
       { id: "glm", version: currentGlmManifestVersion, mount: `glm/${platformKey}` },
     ]);
@@ -316,14 +316,14 @@ describe("prepare-prebuilds release asset reuse", () => {
               id: "glm",
               version: currentGlmManifestVersion,
               mount: `glm/${platformKey}`,
-              requiredPaths: ["zcode.cjs"],
+              requiredPaths: ["codez.cjs"],
             },
           ],
         ],
       ]),
     });
 
-    expect(existsSync(join(currentReleaseDir, "glm", platformKey, "zcode.cjs"))).toBe(false);
+    expect(existsSync(join(currentReleaseDir, "glm", platformKey, "codez.cjs"))).toBe(false);
   });
 
   it("新 app version 应从最近历史 release 复用版本一致且允许复用的资源", async () => {
@@ -341,7 +341,7 @@ describe("prepare-prebuilds release asset reuse", () => {
       "old-rg",
       "utf8",
     );
-    writeFileSync(join(previousReleaseDir, "server", "zcode-server.cjs"), "old-server", "utf8");
+    writeFileSync(join(previousReleaseDir, "server", "codez-server.cjs"), "old-server", "utf8");
     writeDefaultManifest(previousReleaseDir, platformKey);
 
     restoreReusableReleaseAssets({
@@ -379,7 +379,7 @@ describe("prepare-prebuilds release asset reuse", () => {
       readFileSync(join(currentReleaseDir, "tools", platformKey, "ripgrep", "rg"), "utf8"),
     ).toBe("old-rg");
     expect(() =>
-      readFileSync(join(currentReleaseDir, "server", "zcode-server.cjs"), "utf8"),
+      readFileSync(join(currentReleaseDir, "server", "codez-server.cjs"), "utf8"),
     ).toThrow();
   });
 

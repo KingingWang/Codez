@@ -9,7 +9,7 @@
 ```text
 Desktop renderer (desktop-continuous)
   -> window-scoped Local Host
-    -> ZCode CLI runtime
+    -> Codez CLI runtime
       -> provider adapter
         -> local replay HTTP/SSE server
 
@@ -76,7 +76,7 @@ replay capture 只在 response handler 正常结束时回填 `responseEvents`。
 ```bash
 desktop_dir="$PWD/packages/desktop"
 E2E_PROVIDER_REPLAY_FIXTURE_PATH="$desktop_dir/test/e2e/fixtures/upstream/common.json,$desktop_dir/test/e2e/fixtures/upstream/conversation-session/conversation-session-sse-stall-diagnostic.json" \
-  pnpm --filter @zcode/desktop test:e2e:serial -- \
+  pnpm --filter @codez/desktop test:e2e:serial -- \
   --spec ./test/e2e/conversation-session/manual-review/pending/conversation-session-sse-stall-diagnostic.test.ts
 ```
 

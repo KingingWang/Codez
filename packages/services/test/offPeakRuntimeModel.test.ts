@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   BUILTIN_MODEL_PROVIDER_IDS,
   type AppSettings,
-  type ZCodeAccountAccess,
-} from "@zcode/shared";
+  type CodezAccountAccess,
+} from "@codez/shared";
 import {
   OffPeakCodingPlanUnavailableError,
   OffPeakCredentialsUnavailableError,
@@ -18,7 +18,7 @@ describe("buildOffPeakRequestAuth", () => {
   it("只生成逐请求鉴权材料，不携带 Provider 或 Model 静态事实", () => {
     const requestAuth = buildOffPeakRequestAuth({
       credentials: {
-        jwt: "zcode-jwt",
+        jwt: "codez-jwt",
         codingPlanApiKey: "coding-plan-key",
         kind: "bigmodel-personal",
         providerFamily: "bigmodel",
@@ -28,9 +28,9 @@ describe("buildOffPeakRequestAuth", () => {
     });
 
     expect(requestAuth).toEqual({
-      apiKey: "zcode-jwt",
+      apiKey: "codez-jwt",
       headers: {
-        Authorization: "Bearer zcode-jwt",
+        Authorization: "Bearer codez-jwt",
         "X-Coding-Plan-Api-Key": "coding-plan-key",
         "X-Off-Peak-Ticket-ID": "ticket-1",
       },
@@ -61,7 +61,7 @@ type CredentialSettings = Pick<
 
 function accountProvider(
   providerId: string,
-  access: ZCodeAccountAccess,
+  access: CodezAccountAccess,
   apiKey: string,
   baseURL = "https://coding.example.test",
 ): AccountProviderFixture {
@@ -75,12 +75,12 @@ function accountProvider(
 
 interface AccountProviderFixture {
   readonly providerId: string;
-  readonly access: ZCodeAccountAccess;
+  readonly access: CodezAccountAccess;
   readonly apiKey: string;
   readonly baseURL?: string;
 }
 
-function individualAccess(family: "zai" | "bigmodel"): ZCodeAccountAccess {
+function individualAccess(family: "zai" | "bigmodel"): CodezAccountAccess {
   return {
     type: "zhipu-account",
     family,
@@ -110,7 +110,7 @@ function credentialDeps(params: {
             ? (currentProvider?.access.family ?? null)
             : params.activeProvider
           : params.jwt === undefined
-            ? "zcode-jwt"
+            ? "codez-jwt"
             : params.jwt,
     },
     resolveAccountProvider: async () => {
@@ -219,14 +219,14 @@ describe("resolveOffPeakCredentials selected Coding Plan matrix", () => {
                 projectId: scenario.selection.projectId,
               }
             : {}),
-        } as ZCodeAccountAccess,
+        } as CodezAccountAccess,
         scenario.apiKey,
       ),
     });
 
     const credentials = await resolveOffPeakCredentials(deps);
     expect(credentials).toMatchObject({
-      jwt: "zcode-jwt",
+      jwt: "codez-jwt",
       codingPlanApiKey: scenario.apiKey,
       kind: scenario.kind,
       providerFamily: scenario.family,
@@ -244,7 +244,7 @@ describe("resolveOffPeakCredentials selected Coding Plan matrix", () => {
       ticketId: "ticket-1",
     });
     expect(requestAuth.headers).toMatchObject({
-      Authorization: "Bearer zcode-jwt",
+      Authorization: "Bearer codez-jwt",
       "X-Coding-Plan-Api-Key": scenario.apiKey,
       "X-Off-Peak-Ticket-ID": "ticket-1",
     });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import {
   areTaskListItemsEquivalent,
   buildTaskListItemIdentityKey,
@@ -7,7 +7,7 @@ import {
 } from "@/v4/taskListItemStabilization.js";
 import { attachTaskListRowActivity } from "@/v4/taskListRowActivity.js";
 
-function createTask(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
+function createTask(overrides: Partial<CodezTaskMeta> = {}): CodezTaskMeta {
   return {
     taskId: "task-1",
     workspacePath: "/repo",
@@ -16,7 +16,7 @@ function createTask(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
     createdAt: 1,
     updatedAt: 2,
     ...overrides,
-  } as ZCodeTaskMeta;
+  } as CodezTaskMeta;
 }
 
 describe("stabilizeTaskListItems", () => {
@@ -112,21 +112,21 @@ describe("areTaskListItemsEquivalent", () => {
   });
 
   it("顶层 key 顺序不同但内容相同时判为等价", () => {
-    const left = { taskId: "t", workspacePath: "/repo", title: "a" } as ZCodeTaskMeta;
-    const right = { title: "a", workspacePath: "/repo", taskId: "t" } as ZCodeTaskMeta;
+    const left = { taskId: "t", workspacePath: "/repo", title: "a" } as CodezTaskMeta;
+    const right = { title: "a", workspacePath: "/repo", taskId: "t" } as CodezTaskMeta;
 
     expect(areTaskListItemsEquivalent(left, right)).toBe(true);
   });
 
   it("显式 undefined 字段与缺省字段等价（与 JSON 口径一致）", () => {
-    const left = { ...createTask(), workspaceIdentity: undefined } as ZCodeTaskMeta;
+    const left = { ...createTask(), workspaceIdentity: undefined } as CodezTaskMeta;
 
     expect(areTaskListItemsEquivalent(left, createTask())).toBe(true);
   });
 
   it("嵌套数组顺序变化仍判为不等价", () => {
-    const left = { ...createTask(), tags: ["a", "b"] } as unknown as ZCodeTaskMeta;
-    const right = { ...createTask(), tags: ["b", "a"] } as unknown as ZCodeTaskMeta;
+    const left = { ...createTask(), tags: ["a", "b"] } as unknown as CodezTaskMeta;
+    const right = { ...createTask(), tags: ["b", "a"] } as unknown as CodezTaskMeta;
 
     expect(areTaskListItemsEquivalent(left, right)).toBe(false);
   });

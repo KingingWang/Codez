@@ -5,15 +5,15 @@ import {
   type ProjectAccessTokenMaterial,
   resolveBigModelApiOrigin,
   resolveZaiBusinessBaseUrl,
-  type ZCodeAccountAccess,
+  type CodezAccountAccess,
   ZAI_PROVIDER_ID,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ICredentialService } from "#src/credential/credential.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { readApiJson } from "#src/providers/api/apiJson.js";
 
 const log = createServiceLogger("account-provider-team-plan-request-key");
-const ZCODE_JWT_TOKEN_KEY = "zcodejwttoken";
+const CODEZ_JWT_TOKEN_KEY = "codezjwttoken";
 const TEAM_PLAN_RUNTIME_KEY_REQUEST_TIMEOUT_MS = 15_000;
 
 interface TeamPlanRequestKeyDependencies {
@@ -22,7 +22,7 @@ interface TeamPlanRequestKeyDependencies {
   readonly accountIdentity?: string;
   readonly rejectedProjectTokenFingerprint?: string;
   readonly credentialService?: Pick<ICredentialService, "load">;
-  readonly access: Extract<ZCodeAccountAccess, { planKind: "team-coding-plan" }>;
+  readonly access: Extract<CodezAccountAccess, { planKind: "team-coding-plan" }>;
 }
 
 export async function resolveAccountTeamPlanRuntimeApiKey(
@@ -45,10 +45,10 @@ export async function resolveAccountTeamPlanRuntimeMaterial(
     });
     return null;
   }
-  const zcodeJwtToken = (await params.credentialService?.load(ZCODE_JWT_TOKEN_KEY))?.trim() ?? "";
-  if (family === "bigmodel" && zcodeJwtToken && token === zcodeJwtToken) {
-    // BigModel /api/biz 只接受登录 access token，不能使用旧版本误存的 ZCode JWT。
-    log.warn(undefined, "Team Plan runtime key projection skipped: stale zcode JWT token", {
+  const codezJwtToken = (await params.credentialService?.load(CODEZ_JWT_TOKEN_KEY))?.trim() ?? "";
+  if (family === "bigmodel" && codezJwtToken && token === codezJwtToken) {
+    // BigModel /api/biz 只接受登录 access token，不能使用旧版本误存的 Codez JWT。
+    log.warn(undefined, "Team Plan runtime key projection skipped: stale codez JWT token", {
       family,
       projectId,
     });

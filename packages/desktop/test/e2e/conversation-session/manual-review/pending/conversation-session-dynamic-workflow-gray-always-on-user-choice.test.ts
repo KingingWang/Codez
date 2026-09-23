@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { TID_SETTINGS_DYNAMIC_WORKFLOW_MODE_ITEM, testId } from "@zcode/shared";
+import { TID_SETTINGS_DYNAMIC_WORKFLOW_MODE_ITEM, testId } from "@codez/shared";
 import { clearAppData, readSettings, waitForTestIdByDom } from "../../../helpers/desktop-app.js";
 import { prepareV4ConversationE2E, startNewV4Draft } from "../../../helpers/v4-conversation.js";
 import {

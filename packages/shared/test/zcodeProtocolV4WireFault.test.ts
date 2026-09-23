@@ -17,7 +17,7 @@ import {
   TopicWireFrameAssembler,
   WIRE_FAULT_INVALID_PAYLOAD,
   type ConversationTopicWireFrame,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 const TOPIC = "conversation/session-wire-fault";
 const SUBSCRIPTION_ID = "sub-wire-fault";

@@ -1,6 +1,6 @@
 // `/plan` Composer E2E：覆盖 draft 空命令、任务发送、Plan noop 组合和附件拒绝。
 import { clearAppData, setInputValueByTestIdDom } from "../helpers/desktop-app.js";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared";
 import {
   assertVisibleV4UserMessagesNotContaining,
   clickV4Send,

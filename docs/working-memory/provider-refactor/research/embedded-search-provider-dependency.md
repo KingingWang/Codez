@@ -49,7 +49,7 @@ Subagent Runtime
 
 三个调用方最终都只读取 `useEmbeddedSearchBranch`。
 
-判断函数位于 `apps/zcode-cli/packages/core/src/embedded-search/capability.ts`；三处调用分别位于 `runtime/methods/embedded-search-branch.ts`、`tool/executor/call-runner.ts` 和 `runtime/methods/subagent.ts`。
+判断函数位于 `apps/codez-cli/packages/core/src/embedded-search/capability.ts`；三处调用分别位于 `runtime/methods/embedded-search-branch.ts`、`tool/executor/call-runner.ts` 和 `runtime/methods/subagent.ts`。
 
 现有测试要求保留部分 Provider context，理由是未来可能按模型分支；历史设计也明确写过 first-party 当前固定启用，不按 provider、source 或 variant 区分。这些内容证明 Provider Connection 是预留信息，不是当前行为依赖。
 

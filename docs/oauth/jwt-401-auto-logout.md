@@ -1,10 +1,10 @@
-# ZCode 登录凭据 HTTP/业务 401 自动退出
+# Codez 登录凭据 HTTP/业务 401 自动退出
 
 ## 目标
 
 服务端对确认失效的登录凭据返回 HTTP `401`，或 HTTP `200` 且完整 JSON 正文包含数值 `code: 401`。Desktop 服务层通过请求 Authorization 与当前凭据比对，通知 Host 复用现有 OAuth 退出清理、登录过期弹窗及确认重启。
 
-2026-09-08 最小兼容范围：保留现有 ZCode JWT 判断，增加当前唯一 active provider（BigModel 或 ZAI）的业务 `access_token` 判断。新增判断只覆盖当前环境的 `/api/biz/customer/getCustomerInfo`，以及各平台配置的 userinfo URL，兼容裸 Authorization 和 `Bearer <access_token>`。URL 必须同时匹配 origin 与 pathname，查询参数不参与身份判断。
+2026-09-08 最小兼容范围：保留现有 Codez JWT 判断，增加当前唯一 active provider（BigModel 或 ZAI）的业务 `access_token` 判断。新增判断只覆盖当前环境的 `/api/biz/customer/getCustomerInfo`，以及各平台配置的 userinfo URL，兼容裸 Authorization 和 `Bearer <access_token>`。URL 必须同时匹配 origin 与 pathname，查询参数不参与身份判断。
 
 2026-10-08 补充：HTTP `200` 的完整 JSON 响应中，数值 `code: 401` 也表示登录失效。当前平台业务 token 的白名单增加 `/api/biz/subscription/enterprise/v2/pricing` 和 `/api/biz/team/subscribe/product/querySubscribeDetail`，与 customerInfo/userinfo 共用 HTTP 401 和业务 401 判断。
 
@@ -17,7 +17,7 @@
                                     |
                      +--------------+----------------+
                      |                               |
-              当前 ZCode JWT              当前平台身份/定价/订阅详情白名单
+              当前 Codez JWT              当前平台身份/定价/订阅详情白名单
                      |                     + 当前 access_token
                      +--------------+----------------+
                                     |
@@ -30,7 +30,7 @@
 
 ## 兼容边界
 
-旧服务端普通 401 可按请求凭据分类；启动恢复仍负责本地 JWT `exp` 预判，该预判不替代服务端撤销判断。直接绕过 ZCode 请求出口访问官方服务的 API Key 不在本机制的保护范围内。
+旧服务端普通 401 可按请求凭据分类；启动恢复仍负责本地 JWT `exp` 预判，该预判不替代服务端撤销判断。直接绕过 Codez 请求出口访问官方服务的 API Key 不在本机制的保护范围内。
 
 不新增刷新、到期解析、主动探测或历史键清理。HTTP 200 内除数值 `code: 401` 外的业务错误、空正文、HTML、损坏 JSON、403、网络失败不触发本机制。业务 401 观察只在明确的 OAuth 业务接口白名单上运行，副本读取限制为 64 KiB 且每次请求最多等待 1 秒；超时、超限或解析失败会取消观察副本并立即交还原响应，不消费调用方正文。SSE 响应不读取、不等待结束。独立 CLI 账号架构不纳入 Todo103。
 
@@ -45,7 +45,7 @@
   在两种产品环境下分别验证当前地址触发、另一环境地址不触发；测试不依赖真实测试域名与生产域名不同，
   经开源地址改写后仍保留同一组断言。
 - 延迟 401 返回前更新 token 或切换平台，不通知旧会话失效。
-- HTTP 200 其它业务错误、空/损坏正文、SSE、403、500 不触发；原 ZCode JWT 401 测试保持通过。
+- HTTP 200 其它业务错误、空/损坏正文、SSE、403、500 不触发；原 Codez JWT 401 测试保持通过。
 - 隔离 Electron E2E 分别通过真实 Host 请求得到本地 HTTP 401 与 HTTP 200 + 业务 401，确认提示前认证凭据已清理，确认后调用既有重启命令；不使用真实用户凭据或请求真实平台。
 
 业务 401 的原因是服务端以 HTTP 200 封装登录过期；旧观察器只判断 HTTP status，导致项目可用性退化为 unknown、定价抛普通消息、订阅汇总丢失原因，旧登录态继续保留。修复复用同一失效入口、凭据复核及广播，不把临时空响应解释为过期。解析副本期间也可能完成新登录，最终清理仍必须在会话队列内复核；并发接口只产生一次实际清理和提示。观察副本的有界读取保证异常 chunked body 不会改变主请求生命周期。

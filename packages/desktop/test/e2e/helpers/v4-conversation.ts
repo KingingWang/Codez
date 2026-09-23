@@ -62,7 +62,7 @@ import {
   TID_V4_TURN_NAVIGATOR_TOOLTIP,
   encodeCustomModelValue,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clickTestIdByDom,
   dispatchMouseDownByExactTestId,
@@ -362,7 +362,7 @@ export async function getV4ConversationState(): Promise<V4ConversationStateSnaps
 
 /**
  * v4 composer 输入（M5 起为 Lexical contenteditable）：写入走
- * setInputValueByTestIdDom 的 __zcodeLexicalInputE2E bridge 分支（驱动真实 editor state）。
+ * setInputValueByTestIdDom 的 __codezLexicalInputE2E bridge 分支（驱动真实 editor state）。
  */
 export async function sendV4Prompt(prompt: string) {
   await setV4ComposerText(prompt);
@@ -477,7 +477,7 @@ export async function sendV4PromptAndWaitAccepted(
       (paneTestId, inputTestId, sendTestId, timelineTestId, marker) => {
         const pane = document.querySelector<HTMLElement>(`[data-testid="${paneTestId}"]`);
         const input = pane?.querySelector<
-          HTMLElement & { __zcodeLexicalInputE2E?: { getText: () => string } }
+          HTMLElement & { __codezLexicalInputE2E?: { getText: () => string } }
         >(`[data-testid="${inputTestId}"]`);
         const send = pane?.querySelector<HTMLButtonElement>(`[data-testid="${sendTestId}"]`);
         const timeline = pane?.querySelector<HTMLElement>(`[data-testid="${timelineTestId}"]`);
@@ -489,7 +489,7 @@ export async function sendV4PromptAndWaitAccepted(
             (row.innerText || row.textContent || "").includes(marker),
         );
         return {
-          composerText: input?.__zcodeLexicalInputE2E?.getText() ?? null,
+          composerText: input?.__codezLexicalInputE2E?.getText() ?? null,
           paneExists: Boolean(pane),
           sendDisabled: send?.disabled ?? null,
           sessionId: pane?.getAttribute("data-session-id") ?? null,
@@ -1063,13 +1063,13 @@ export function getLatestV4CommandAck(type: string): Promise<{
     const entries =
       (
         window as Window & {
-          __zcodeV4CommandAcksE2E?: Array<{
+          __codezV4CommandAcksE2E?: Array<{
             type: string;
             status: string;
             reasonCode?: string;
           }>;
         }
-      ).__zcodeV4CommandAcksE2E ?? [];
+      ).__codezV4CommandAcksE2E ?? [];
     return [...entries].reverse().find((entry) => entry.type === commandType) ?? null;
   }, type);
 }
@@ -1155,7 +1155,7 @@ export function getV4DraftThoughtState(workspacePath: string): Promise<{
   return browser.execute(
     (path, modelTestId) => {
       const e2eWindow = window as Window & {
-        __zcodeSessionStoreE2E?: {
+        __codezSessionStoreE2E?: {
           getState: () => {
             getWorkspaceState?: (workspacePath: string) => {
               configOptions?: Array<{
@@ -1168,7 +1168,7 @@ export function getV4DraftThoughtState(workspacePath: string): Promise<{
         };
       };
       const options =
-        e2eWindow.__zcodeSessionStoreE2E?.getState().getWorkspaceState?.(path).configOptions ?? [];
+        e2eWindow.__codezSessionStoreE2E?.getState().getWorkspaceState?.(path).configOptions ?? [];
       const model = options.find((option) => option.category === "model");
       const thought = options.find((option) => option.category === "thought_level");
       const v4Config = document.querySelector<HTMLElement>(`[data-testid="${modelTestId}"]`);
@@ -2052,8 +2052,8 @@ export async function closeV4SplitPane() {
 // ── 布局持久化 / 拖拽调宽 / 侧栏分屏入口 ──
 
 /** paneLayoutStore 的 localStorage 键（packages/ui paneLayoutStore.PANE_LAYOUT_STORAGE_KEY，分屏二期 v2）。 */
-export const V4_PANE_LAYOUT_STORAGE_KEY = "zcode-v4-pane-layout:v2";
-export const V4_WORKBENCH_GROUP_STORAGE_KEY = "zcode-v4-session-workbench-groups:v1";
+export const V4_PANE_LAYOUT_STORAGE_KEY = "codez-v4-pane-layout:v2";
+export const V4_WORKBENCH_GROUP_STORAGE_KEY = "codez-v4-session-workbench-groups:v1";
 
 /** v2 持久化载荷形态（与 packages/ui paneLayoutStore PersistedPaneLayoutV2 对偶，e2e 断言/篡改用）。 */
 export interface V4PersistedPaneLayout {
@@ -2288,7 +2288,7 @@ export async function waitForV4PaneById(
 /** pane 作用域内写 composer 文本并点发送（同 sendV4Prompt，但按 paneId 收口）。 */
 export async function sendV4PromptInPane(paneId: string, prompt: string) {
   const paneShellTestId = testId(TID_V4_PANE_SHELL, paneId);
-  // M5：composer 为 Lexical contenteditable——写入走编辑器挂载的 __zcodeLexicalInputE2E
+  // M5：composer 为 Lexical contenteditable——写入走编辑器挂载的 __codezLexicalInputE2E
   // bridge（驱动真实 editor state）；bridge.focus() 同时驱动 Focus 层 → composer 归属该 pane。
   await browser.waitUntil(
     async () =>
@@ -2299,13 +2299,13 @@ export async function sendV4PromptInPane(paneId: string, prompt: string) {
           if (!element) return false;
           const bridge = (
             element as HTMLElement & {
-              __zcodeLexicalInputE2E?: {
+              __codezLexicalInputE2E?: {
                 focus: () => void;
                 getText: () => string;
                 setText: (text: string) => void;
               };
             }
-          ).__zcodeLexicalInputE2E;
+          ).__codezLexicalInputE2E;
           if (!bridge) return false;
           bridge.focus();
           bridge.setText(nextValue);
@@ -2617,8 +2617,8 @@ export function getV4ComposerText(): Promise<string | null> {
   return browser.execute((inputTestId) => {
     const element = document.querySelector<HTMLElement>(`[data-testid="${inputTestId}"]`);
     const bridge = (
-      element as (HTMLElement & { __zcodeLexicalInputE2E?: { getText: () => string } }) | null
-    )?.__zcodeLexicalInputE2E;
+      element as (HTMLElement & { __codezLexicalInputE2E?: { getText: () => string } }) | null
+    )?.__codezLexicalInputE2E;
     return bridge ? bridge.getText() : null;
   }, TID_V4_COMPOSER_INPUT);
 }

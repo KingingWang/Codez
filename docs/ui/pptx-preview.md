@@ -426,7 +426,7 @@ open(N) ───────── late resolve ──────────�
 - 其它 PPTX 读取错误若包含当前源文件路径，用户可见文案只保留文件名；完整路径只允许进入本地日志，
   防止手机 `/remote` 或远程 workspace 把服务端目录暴露到界面。
 - UI 日志统一通过 `packages/ui/src/logger.ts`；不得直接调用 `console.log` 或
-  `window.zcode?.log`。
+  `window.codez?.log`。
 - 高频逐节点渲染信息不落生产日志；第一期只记录一次加载/解析失败。
 
 ## 后续能力预留

@@ -16,18 +16,18 @@ type DesktopBridge = {
 
 async function command(command: string) {
   await browser.execute(async (value) => {
-    await (window as unknown as { zcode: DesktopBridge }).zcode.executeDesktopCommand(value);
+    await (window as unknown as { codez: DesktopBridge }).codez.executeDesktopCommand(value);
   }, command);
 }
 async function available(locale: "zh-CN" | "en-US") {
   return browser.execute(
-    async (value) => (window as unknown as { zcode: DesktopBridge }).zcode.canOpenCommunity(value),
+    async (value) => (window as unknown as { codez: DesktopBridge }).codez.canOpenCommunity(value),
     locale,
   );
 }
 async function english() {
   await browser.execute(async () => {
-    await (window as unknown as { zcode: DesktopBridge }).zcode.setApplicationLocale("en-US");
+    await (window as unknown as { codez: DesktopBridge }).codez.setApplicationLocale("en-US");
   });
 }
 
@@ -60,12 +60,12 @@ describe("帮助配置 client/configs", () => {
     external = await browser.electron.mock("shell", "openExternal");
     await external.mockResolvedValue(undefined);
     server = await startHelpConfigFixture(fixture.remote);
-    await seedSettings({ zcodeEndpointOrigin: server.origin });
+    await seedSettings({ codezEndpointOrigin: server.origin });
   });
   afterEach(async () => {
     await browser.keys("Escape");
     await browser.electron.restoreAllMocks();
-    await seedSettings({ zcodeEndpointOrigin: originalSettings.zcodeEndpointOrigin });
+    await seedSettings({ codezEndpointOrigin: originalSettings.codezEndpointOrigin });
     await server?.close();
   });
   after(async () => {
@@ -73,7 +73,7 @@ describe("帮助配置 client/configs", () => {
     else await writeFile(localPath, originalLocal, "utf8");
     await seedSettings(originalSettings);
     await browser.execute(async (locale) => {
-      await (window as unknown as { zcode: DesktopBridge }).zcode.setApplicationLocale(locale);
+      await (window as unknown as { codez: DesktopBridge }).codez.setApplicationLocale(locale);
     }, originalSettings.locale ?? "en-US");
   });
 
@@ -98,7 +98,7 @@ describe("帮助配置 client/configs", () => {
     await expectExternal(fixture.remote.community_urls!["en-US"]!);
     expect(await available("zh-CN")).toBe(true);
     await browser.execute(async () => {
-      await (window as unknown as { zcode: DesktopBridge }).zcode.setApplicationLocale("zh-CN");
+      await (window as unknown as { codez: DesktopBridge }).codez.setApplicationLocale("zh-CN");
     });
     await command("openCommunity");
     await expectExternal(fixture.remote.community_urls!["zh-CN"]!);
@@ -135,7 +135,7 @@ describe("帮助配置 client/configs", () => {
       feedback_use_external_form: true,
     });
     try {
-      await seedSettings({ zcodeEndpointOrigin: other.origin });
+      await seedSettings({ codezEndpointOrigin: other.origin });
       await command("openFeedback");
       await expectExternal(fixture.remote.feedback_url!);
       expect(other.requests).toHaveLength(1);

@@ -6,7 +6,7 @@ import {
   TID_V4_STOP,
   encodeCustomModelValue,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData, clickTestIdByDom } from "../../../helpers/desktop-app.js";
 import {
   getV4PaneSnapshot,

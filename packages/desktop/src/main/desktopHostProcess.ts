@@ -1,6 +1,6 @@
 import { ingestToolExecResource } from "./desktopResourceTelemetry.js";
 import { ingestMcpResourceSamples } from "./processResourceMcpTelemetrySource.js";
-/* eslint-disable max-lines -- host process 统一处理 main↔host 生命周期、日志、ZCode Agent，拆分前先保持跨进程消息收口。 */
+/* eslint-disable max-lines -- host process 统一处理 main↔host 生命周期、日志、Codez Agent，拆分前先保持跨进程消息收口。 */
 import {
   type HostAgentProcessErrorResponse,
   type HostAgentProcessExceptionResponse,
@@ -13,21 +13,21 @@ import {
   type RemoteTarget,
   type TaskRealtimeHostDeliveryKind,
   type WorkspacePurpose,
-  formatZCodeHostProcessName,
+  formatCodezHostProcessName,
   HostMessageTypes,
   hostResponseMessageSchema,
   HostResponseTypes,
   InternalChannels,
   LAUNCH_MARKS_QUERY_KEY,
-  RUNTIME_ZCODE_DEBUG,
+  RUNTIME_CODEZ_DEBUG,
   serializeLaunchMarks,
-  ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
-} from "@zcode/shared";
+  CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
+} from "@codez/shared";
 import type {
   PluginSandboxHandle,
   PluginSandboxRegisterRequestPayload,
   PluginSandboxRegisterResultPayload,
-} from "@zcode/shared/mcp-apps";
+} from "@codez/shared/mcp-apps";
 import type { UtilityProcess as ElectronUtilityProcess, MessagePortMain } from "electron";
 import {
   app,
@@ -85,8 +85,8 @@ export interface HostInitMessage {
     workspaceIdentity?: string;
   }>;
   agentSpawnFallbackCwd?: string;
-  /** Main 解析后的 ZCode Built-in Provider Config 路径；Host/Services 不感知 Electron 安装布局。 */
-  zcodeBuiltinProviderConfigFilePath: string;
+  /** Main 解析后的 Codez Built-in Provider Config 路径；Host/Services 不感知 Electron 安装布局。 */
+  codezBuiltinProviderConfigFilePath: string;
   /** Main 提前异步采集并过滤的本机 runtime 环境；只允许传给 InitLocal。 */
   runtimeProcessEnvPatch?: Record<string, string>;
 }
@@ -261,26 +261,26 @@ export function spawnHostProcess(
   const hostId = randomUUID();
   const glmBinaryPath = resolveBundledGlmBinaryPath();
   const execArgv = [
-    ...(RUNTIME_ZCODE_DEBUG ? [`--inspect-brk=${RUNTIME_ZCODE_DEBUG}`] : []),
+    ...(RUNTIME_CODEZ_DEBUG ? [`--inspect-brk=${RUNTIME_CODEZ_DEBUG}`] : []),
     "--no-warnings",
   ];
   const child = electronUtilityProcess.fork(hostModulePath, [], {
-    serviceName: formatZCodeHostProcessName(label),
+    serviceName: formatCodezHostProcessName(label),
     execArgv,
     env: {
       ...buildHostProcessEnv(dependencies.hostProcessLocalEnv),
       ...buildHostE2ECoverageEnv(),
-      ZCODE_PROCESS_LABEL: label,
+      CODEZ_PROCESS_LABEL: label,
       // macOS-only: the Computer Use Helper launcher runs inside this forked host utilityProcess, whose
-      // code-signing identity is a nested Electron helper (NOT dev.zcode.app). Publish THIS (main
-      // Electron) process's pid — which IS dev.zcode.app — so helperLauncher passes it as
+      // code-signing identity is a nested Electron helper (NOT dev.codez.app). Publish THIS (main
+      // Electron) process's pid — which IS dev.codez.app — so helperLauncher passes it as
       // `--launcher-pid` and the Helper's signature/peer verification succeeds instead of
       // health-timing out. Env-name mirror of services' LAUNCHER_PID_ENV. Not set on
       // Windows/Linux (CUA is macOS-only; nothing reads it there) to keep the host env pristine.
-      ...(process.platform === "darwin" ? { ZCODE_CUA_LAUNCHER_PID: String(process.pid) } : {}),
+      ...(process.platform === "darwin" ? { CODEZ_CUA_LAUNCHER_PID: String(process.pid) } : {}),
       ...(dependencies.desktopContextPromptEnabled
         ? {
-            [ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV]: dependencies.desktopContextPromptEnabled()
+            [CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV]: dependencies.desktopContextPromptEnabled()
               ? "1"
               : "0",
           }
@@ -694,7 +694,7 @@ export function spawnHostProcess(
           type: HostMessageTypes.BotRemoteWorkspaceRuntimePort,
           requestId: request.requestId,
           ok: false,
-          // Bugfix: 远端 Bot 不能在缺少 runtime bridge 时回落到本地 ZCode Agent，
+          // Bugfix: 远端 Bot 不能在缺少 runtime bridge 时回落到本地 Codez Agent，
           // 否则会把 remote workspace 的任务写到本地并触发错误模型。
           error: "未注入 Bot 远端 workspace runtime 处理器。",
         });
@@ -835,7 +835,7 @@ export function disposeHostProcess(
   }
 
   // host 收到 Dispose 后需要等待 agent 进程树的 SIGTERM/SIGKILL 兜底完成。
-  // 如果 main 仍按 150/300ms 强杀 host，host 会先退出，zcode-cli/app-server 子进程就可能被 init 接管成孤儿。
+  // 如果 main 仍按 150/300ms 强杀 host，host 会先退出，codez-cli/app-server 子进程就可能被 init 接管成孤儿。
   const effectiveForceKillDelayMs = Math.max(forceKillDelayMs, 3_500);
   const killTimer = setTimeout(() => {
     disposingHostProcessTimers.delete(child);

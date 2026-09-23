@@ -14,7 +14,7 @@ const CASE_MARKER = "E2E_CONVERSATION_SHARE_SSH_ARTIFACT_V1";
 
 describe(`${CASE_MARKER}: Desktop SSH 产物分享`, () => {
   const config = readSSHRuntimeConfig(CASE_MARKER);
-  const workspacePath = `${config.workspacePaths[0]}/zcode-share-${Date.now()}`;
+  const workspacePath = `${config.workspacePaths[0]}/codez-share-${Date.now()}`;
 
   after(async () => {
     await runSSHCommand(config, `rm -rf -- '${workspacePath}'`).catch(() => undefined);

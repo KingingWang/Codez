@@ -1,13 +1,13 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DesktopCommandIds, type UpdateStatePayload } from "@zcode/shared";
+import { DesktopCommandIds, type UpdateStatePayload } from "@codez/shared";
 import { useDesktopUpdateMenu } from "@/hooks/useDesktopUpdateMenu.js";
 import { getUpdateMenuLabelId, getUpdateMenuLabelValues } from "@/lib/desktopUpdateMenu.js";
 
-vi.mock("@zcode/shared", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@zcode/shared")>()),
-  ZCODE_PRODUCT_FLAVOR: "production",
+vi.mock("@codez/shared", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@codez/shared")>()),
+  CODEZ_PRODUCT_FLAVOR: "production",
 }));
 
 const mocks = vi.hoisted(() => ({

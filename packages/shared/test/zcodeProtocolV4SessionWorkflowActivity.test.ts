@@ -9,7 +9,7 @@ import {
   type BackgroundWorkSummary,
   type WorkflowRunNode,
   type WorkflowRunState,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 function run(overrides: Partial<WorkflowRunState> & { runId: string }): WorkflowRunState {
   return {

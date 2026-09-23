@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConversationShareSelectionReopenTab } from "@/v4/ConversationShareSelectionReopenTab.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: ({ id }: { id: string }) => id },
   }),
 }));

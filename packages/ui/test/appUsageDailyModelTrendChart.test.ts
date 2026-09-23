@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { AppUsageSnapshot } from "@zcode/shared";
+import type { AppUsageSnapshot } from "@codez/shared";
 import {
   APP_USAGE_TREND_CHART_MARGIN,
   buildAppUsageDailyModelChartViewModel,

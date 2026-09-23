@@ -5,15 +5,15 @@ import {
   jsonDraftToForm,
   serverToForm,
 } from "@/settings/mcpSettingsShared.js";
-import type { ZCodeMcpServer } from "@zcode/shared";
+import type { CodezMcpServer } from "@codez/shared";
 
 describe("mcp settings shared protocolVersion round-trip", () => {
   it("preserves a configured protocolVersion across serverToForm -> formToConfig", () => {
-    const server: ZCodeMcpServer = {
+    const server: CodezMcpServer = {
       config: { protocolVersion: "legacy", type: "http", url: "https://mcp.example.com/mcp" },
       name: "feishu",
       scope: "user",
-    } as ZCodeMcpServer;
+    } as CodezMcpServer;
     const form = serverToForm(server);
     expect(form.protocolVersion).toBe("legacy");
     expect(formToConfig(form)).toMatchObject({ protocolVersion: "legacy", type: "http" });
@@ -42,7 +42,7 @@ describe("mcp settings shared protocolVersion round-trip", () => {
       config: { protocolVersion: "invalid", type: "http", url: "https://mcp.example.com/mcp" },
       name: "feishu",
       scope: "user",
-    } as unknown as ZCodeMcpServer;
+    } as unknown as CodezMcpServer;
     expect(serverToForm(server).protocolVersion).toBe("");
 
     const draft = jsonDraftToForm(

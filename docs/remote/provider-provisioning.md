@@ -119,7 +119,7 @@ snapshot、queue、owner/lease 和 `workspaceIdentity` 边界不变。
 - `providerOrder`；
 - `model-selection.json` 中的 Configured Default。
 
-不复制 ZCode Built-in Provider/Model Release。远端继续使用自己的 Built-in Release；两端
+不复制 Codez Built-in Provider/Model Release。远端继续使用自己的 Built-in Release；两端
 候选集差异可能使默认偏好不可用，按上面的 Host 推荐规则处理，不把它当成配置复制失败。
 
 ### 账号连接状态
@@ -137,7 +137,7 @@ snapshot、queue、owner/lease 和 `workspaceIdentity` 边界不变。
 
 - `oauth:active_provider`；
 - `oauth:zai:*`、`oauth:bigmodel:*` 的 access token、refresh token、user info；
-- `zcodejwttoken`。
+- `codezjwttoken`。
 
 OAuth → Project Token 迁移后，`account-provider:*:api-key` 不再属于同步 allowlist。
 Source 不解密或发送旧账号 Key；Target 不读取、覆盖或删除已有旧/手工 Key。
@@ -195,7 +195,7 @@ Window Host
   ├─ 重新读取 Local Provider Provisioning Source
   └─ Remote Target RPC（SSH/WSL/Docker/Server）
        ↓
-Remote zcode-server
+Remote codez-server
   ├─ Target Store 写入与回滚
   ├─ Remote ProviderRuntime refresh
   └─ Remote Host → Worker Account Config sync
@@ -220,7 +220,7 @@ Remote Target RPC 不复用 Renderer 的 `IProviderSettingsService` 写接口，
   `error` 不直接转抄到 Main 日志或 Renderer。
 
 - 首次连接的旧远端不支持 Provisioning capability 时返回 `unsupported`，不发送 Secret，也不发布 Remote Workspace ready。
-- HTTP `zcode-server` 只有在配置 `ZCODE_SERVER_AUTH_TOKEN` 后才开放受信 Desktop Host 的
+- HTTP `codez-server` 只有在配置 `CODEZ_SERVER_AUTH_TOKEN` 后才开放受信 Desktop Host 的
   Provisioning target；未配置认证时保持“不支持”，避免把跨 Environment 凭据写入口暴露给匿名连接。
 - Remote Workspace 已连接后的自动同步失败只记录结构化 warning，不拆除现有连接，也不改变本地保存成功反馈；本轮不新增 Environment 错误状态、协议、Banner 或设置页入口。这是远程配置独立管理上线前的临时过渡语义。
 - 网络断开导致结果未知时，以 `syncId` 重试；目标端重复收到任意已完成 `syncId` 时返回之前结果，

@@ -7,7 +7,7 @@
     "./test/e2e/fixtures/upstream/conversation-session/conversation-session-tool-group-reasoning-visibility-boundary.json"
   ],
   "fileFixtures": [
-    { "path": ".zcode-e2e/conversation-session-tool-group-reasoning-visibility-boundary", "source": "created-by-spec", "description": "TGE04 Write/Edit 的 case-owned fixture。" }
+    { "path": ".codez-e2e/conversation-session-tool-group-reasoning-visibility-boundary", "source": "created-by-spec", "description": "TGE04 Write/Edit 的 case-owned fixture。" }
   ],
   "requests": [
     { "id": "tge04-execute-a", "kind": "main", "source": "synthetic", "timingPolicy": "recorded-stream", "syntheticReason": "真实 provider 是否在每次工具继续前输出 reasoning 不稳定；固定 reasoning row 才能验证显示设置边界。" },

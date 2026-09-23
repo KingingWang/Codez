@@ -56,7 +56,7 @@ after(async () => {
   await server?.close();
 });
 
-const artifacts = join(tmpdir(), "zcode-start156-browser");
+const artifacts = join(tmpdir(), "codez-start156-browser");
 for (const [width, locale, theme] of [
   [390, "zh-CN", "light"],
   [390, "en-US", "dark"],

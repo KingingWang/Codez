@@ -30,6 +30,6 @@ describe("task query cache render subscription boundary", () => {
     // Bug 原因：目录属于 workspace identity；task 导航若主动清空，session projection
     // 不会替 composer 回填，已知 session 的自定义 slash command 会永久消失。
     expect(source).not.toMatch(/\.setSlashCommands\s*\(/);
-    expect(source).not.toMatch(/const\s+setSlashCommands\s*=\s*useZCodeSessionStore/);
+    expect(source).not.toMatch(/const\s+setSlashCommands\s*=\s*useCodezSessionStore/);
   });
 });

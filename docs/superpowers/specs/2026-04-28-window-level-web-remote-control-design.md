@@ -202,7 +202,7 @@ POST /api/remote-control/windows/:deviceToken/mobile-view-state
 变更类 HTTP API 的连接校验：
 
 ```text
-X-ZCode-Mobile-Connection-Id: <mobileConnectionId>
+X-Codez-Mobile-Connection-Id: <mobileConnectionId>
 ```
 
 Relay 只接受 `activeMobileConnectionId` 匹配且对应 window control socket 仍打开的请求；否则返回 `401 invalid-mobile-connection` 或 `409 session-conflict`。这样第二个浏览器标签页即使知道 `deviceToken`，在 window control socket 被拒后也不能切 bridge 或覆盖 `mobileViewState`。
@@ -450,7 +450,7 @@ Bootstrap 流程：
 4. 建立 `WS /ws/remote-control/window/:deviceToken`。
 5. 收到 relay 下发的 `mobileConnectionId`。
 6. 如果已有 `mobileViewState.activeWorkspaceKey`，优先打开该 workspace；否则打开第一个可用 workspace。
-7. 携带 `X-ZCode-Mobile-Connection-Id` 请求 `workspace-bridge`，拿到 bridge `wsUrl`。
+7. 携带 `X-Codez-Mobile-Connection-Id` 请求 `workspace-bridge`，拿到 bridge `wsUrl`。
 8. 用 bridge `wsUrl` 建立当前 workspace 的 service accessor。
 9. 渲染 `Root`，传入 `initialWorkspaceAbsPath / initialWorkspaceIdentity / initialTaskId`。
 
@@ -465,13 +465,13 @@ Task 点击行为：
 
 1. 同 workspace task：
    - 调 UI 自己的 `onSelectTask()`。
-   - 携带 `X-ZCode-Mobile-Connection-Id` POST `mobile-view-state`。
+   - 携带 `X-Codez-Mobile-Connection-Id` POST `mobile-view-state`。
    - 不通知 desktop renderer 切换。
 2. 跨 workspace task：
-   - 携带 `X-ZCode-Mobile-Connection-Id` POST `workspace-bridge`。
+   - 携带 `X-Codez-Mobile-Connection-Id` POST `workspace-bridge`。
    - 替换当前 bridge service accessor。
    - 更新 web 本地 `activeWorkspaceKey / activeTaskId`。
-   - 携带 `X-ZCode-Mobile-Connection-Id` POST `mobile-view-state`。
+   - 携带 `X-Codez-Mobile-Connection-Id` POST `mobile-view-state`。
    - 不换 `deviceToken`，不跳新的窗口级入口。
 
 第一版可以通过重新挂载 `Root` 来替换 service accessor，避免在 UI 层引入复杂的多 accessor 热切换。重新挂载只发生在手机切 workspace 时，不影响桌面端。

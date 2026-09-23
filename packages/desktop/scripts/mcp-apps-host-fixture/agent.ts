@@ -3,8 +3,8 @@ import { createServer, type Socket } from "node:net";
 import { createInterface } from "node:readline";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { ZCodeProtocolClient } from "../../../services/src/zcode-agent/zcodeProtocolClient.js";
-import { ZCodeStdioTransport } from "../../../services/src/zcode-agent/zcodeStdioTransport.js";
+import { CodezProtocolClient } from "../../../services/src/codez-agent/codezProtocolClient.js";
+import { CodezStdioTransport } from "../../../services/src/codez-agent/codezStdioTransport.js";
 
 export class Events<T> {
   readonly history: T[] = [];
@@ -62,18 +62,18 @@ export async function startAgent(
     cwd: data,
     env: {
       PATH: process.env.PATH,
-      ZCODE_DATA_BASE_DIR: data,
-      ZCODE_SESSION_DB: join(data, "session.sqlite"),
-      ZCODE_STORAGE_DIR: data,
+      CODEZ_DATA_BASE_DIR: data,
+      CODEZ_SESSION_DB: join(data, "session.sqlite"),
+      CODEZ_STORAGE_DIR: data,
       LANG: "en_US.UTF-8",
       ...providerEnv,
     },
     stdio: ["pipe", "pipe", "pipe"],
   });
-  const transport = new ZCodeStdioTransport(child, {
+  const transport = new CodezStdioTransport(child, {
     onStderrLine: (line) => process.stderr.write(line + "\n"),
   });
-  const client = new ZCodeProtocolClient(transport, {
+  const client = new CodezProtocolClient(transport, {
     requireStorageStartup: true,
     requestTimeoutMs: 15_000,
   });

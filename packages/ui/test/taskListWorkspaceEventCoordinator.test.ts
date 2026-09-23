@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import type { ZCodeTaskMeta, ZCodeWorkspaceTaskListChanged } from "@zcode/shared";
+import type { CodezTaskMeta, CodezWorkspaceTaskListChanged } from "@codez/shared";
 import {
   clearTaskListWorkspaceEventCoordinatorForTest,
   handleTaskListWorkspaceEventCacheSync,
@@ -9,11 +9,11 @@ import {
   buildTaskWorkspaceKey,
 } from "@/lib/taskQueryCache.js";
 import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 
 const WORKSPACE_PATH = "/repo/event-coordinator";
 
-function createTask(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
+function createTask(overrides: Partial<CodezTaskMeta> = {}): CodezTaskMeta {
   return {
     createdAt: 1,
     mode: "default",
@@ -42,7 +42,7 @@ function taskIdsFor(queryKey: string): string[] {
   return result?.taskKeys.map((taskKey) => cacheState.taskMetaByEntityKey[taskKey]?.taskId ?? "") ?? [];
 }
 
-function createDeleteEvent(taskId: string): ZCodeWorkspaceTaskListChanged {
+function createDeleteEvent(taskId: string): CodezWorkspaceTaskListChanged {
   return {
     reason: "task_deleted",
     taskId,
@@ -59,7 +59,7 @@ function titleFor(taskId: string): string | undefined {
 afterEach(() => {
   clearTaskListWorkspaceEventCoordinatorForTest();
   useTaskQueryCacheStore.getState().clearAll();
-  useZCodeSessionStore.setState({ workspaces: {} });
+  useCodezSessionStore.setState({ workspaces: {} });
 });
 
 describe("taskListWorkspaceEventCoordinator", () => {
@@ -137,7 +137,7 @@ describe("taskListWorkspaceEventCoordinator", () => {
       queryKey: "archived-archive-once",
       total: 0,
     });
-    const event: ZCodeWorkspaceTaskListChanged = {
+    const event: CodezWorkspaceTaskListChanged = {
       reason: "task_archived",
       taskId: "archive-once",
       taskMeta: task,
@@ -178,14 +178,14 @@ describe("taskListWorkspaceEventCoordinator", () => {
       queryKey: "active-meta-updates",
       total: 1,
     });
-    const firstEvent: ZCodeWorkspaceTaskListChanged = {
+    const firstEvent: CodezWorkspaceTaskListChanged = {
       reason: "task_meta_changed",
       taskId: "meta-updates",
       taskMeta: { ...task, title: "second title" },
       type: "workspace_task_list_changed",
       workspacePath: WORKSPACE_PATH,
     };
-    const secondEvent: ZCodeWorkspaceTaskListChanged = {
+    const secondEvent: CodezWorkspaceTaskListChanged = {
       ...firstEvent,
       taskMeta: { ...task, title: "third title latest" },
     };

@@ -73,7 +73,7 @@ Active Model.optionSpecs.reasoningLevel
 - 不新增 `reasoningLevelPolicy` 或 Provider 特化分支；
 - ModelFactory 只校验和装配，不替调用方静默补执行 Option；
 - 连接测试显式传 `min(5000, optionSpecs.maxOutputTokens.max)`，不依赖 ModelFactory fallback；
-- `x-zcode-session-type` 等 Coding Plan 请求头继续由正式 Access/请求装配链产生，设置页不得自行复制。
+- `x-codez-session-type` 等 Coding Plan 请求头继续由正式 Access/请求装配链产生，设置页不得自行复制。
 
 ### 2.3 测试
 

@@ -1,9 +1,9 @@
-import type { ZCodeConfigOption } from "@zcode/shared";
+import type { CodezConfigOption } from "@codez/shared";
 
-export function applySelectedZCodeMode(
-  options: readonly ZCodeConfigOption[],
+export function applySelectedCodezMode(
+  options: readonly CodezConfigOption[],
   mode: string,
-): ZCodeConfigOption[] {
+): CodezConfigOption[] {
   const normalizedMode = mode.trim();
   if (!normalizedMode) {
     return [...options];

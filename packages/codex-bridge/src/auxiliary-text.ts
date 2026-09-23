@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
-  zcodeWorkspaceGenerateTextParamsSchema,
-  zcodeWorkspaceGenerateTextResultSchema,
-  zcodeWorkspaceCancelGenerateTextParamsSchema,
-  zcodeWorkspaceCancelGenerateTextResultSchema,
-  type ZCodeWorkspaceGenerateTextParams,
-} from "@zcode/shared";
+  codezWorkspaceGenerateTextParamsSchema,
+  codezWorkspaceGenerateTextResultSchema,
+  codezWorkspaceCancelGenerateTextParamsSchema,
+  codezWorkspaceCancelGenerateTextResultSchema,
+  type CodezWorkspaceGenerateTextParams,
+} from "@codez/shared";
 import type { CodexProcess, CodexNotification } from "./contract.js";
 
 export interface AuxiliaryTextOptions {
@@ -113,21 +113,21 @@ export class AuxiliaryText {
 
   async handle(method: string, params: unknown): Promise<unknown> {
     if (method === "workspace/cancelGenerateText") {
-      const p = input(zcodeWorkspaceCancelGenerateTextParamsSchema, params);
+      const p = input(codezWorkspaceCancelGenerateTextParamsSchema, params);
       const op = this.operations.get(p.operationId);
       const cancelled = !!op && !op.terminal && !op.stopped;
       if (cancelled) {
         this.stop(op, error(-32800, "Auxiliary generation cancelled"));
         await this.interrupt(op);
       }
-      return zcodeWorkspaceCancelGenerateTextResultSchema.parse({
+      return codezWorkspaceCancelGenerateTextResultSchema.parse({
         operationId: p.operationId,
         cancelled,
       });
     }
     if (method !== "workspace/generateText")
       throw error(-32601, "Unsupported auxiliary text method");
-    const p = input(zcodeWorkspaceGenerateTextParamsSchema, params);
+    const p = input(codezWorkspaceGenerateTextParamsSchema, params);
     if (p.workspace.workspacePath !== this.options.cwd)
       throw error(-32602, "Auxiliary workspace mismatch");
     if (p.tools?.length || p.messages || p.maxOutputTokens !== undefined)
@@ -158,7 +158,7 @@ export class AuxiliaryText {
     );
     try {
       const text = await Promise.race([this.execute(op, p), op.abort.promise]);
-      return zcodeWorkspaceGenerateTextResultSchema.parse({
+      return codezWorkspaceGenerateTextResultSchema.parse({
         text,
         selection: p.selection,
         finishReason: "stop",
@@ -190,7 +190,7 @@ export class AuxiliaryText {
     if (op.stopped) throw op.stopped;
   }
 
-  private async execute(op: Operation, p: ZCodeWorkspaceGenerateTextParams): Promise<string> {
+  private async execute(op: Operation, p: CodezWorkspaceGenerateTextParams): Promise<string> {
     try {
       const { config } = z
         .object({ config: z.object({ mcp_servers: z.record(z.string(), object).optional() }) })

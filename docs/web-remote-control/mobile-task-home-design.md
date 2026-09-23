@@ -44,7 +44,7 @@
 2. 手机端新建 SSH / WSL / Docker remote session。
 3. 手机端管理桌面窗口外的 workspace。
 4. 多手机同时控制同一 desktop window。
-5. 重做聊天组件、ZCode runtime 或 relay 协议主链路。
+5. 重做聊天组件、Codez runtime 或 relay 协议主链路。
 6. 让桌面端同步切到手机端选择的 task。
 
 ## 2026-05-02 补充：workspace 级新建任务入口
@@ -95,7 +95,7 @@ WebRemoteControlMobileShell
 信息结构：
 
 1. 顶部品牌和设备状态：
-   - `ZCode Remote Control`
+   - `Codez Remote Control`
    - 第一版展示连接状态，不新增设备名称协议字段
 2. 可关闭提示区：
    - 说明本次扫码连接可查看当前设备上的项目、任务和会话
@@ -381,12 +381,12 @@ workflowActivity?: SessionWorkflowActivity;
 
 1. `displayStatus` 由 desktop renderer 在构建 `WebRemoteControlTaskTarget` 快照时计算；
    `buildWebRemoteControlTaskTargets()` 先读取 task 行携带的 sessions-index activity，再按上述顺序
-   fallback 到 Zustand task runtime state 和 `ZCodeTaskMeta.status`。
-2. mobile 首页只消费 `WebRemoteControlTaskTarget.displayStatus`，不能直接读取 ZCode runtime、Repo、Service 或持久化实现。
+   fallback 到 Zustand task runtime state 和 `CodezTaskMeta.status`。
+2. mobile 首页只消费 `WebRemoteControlTaskTarget.displayStatus`，不能直接读取 Codez runtime、Repo、Service 或持久化实现。
 3. 同步链路仍是 renderer `syncWebRemoteControlTasks()` -> desktop main -> relay -> mobile bootstrap/listWorkspaces，不新增 mobile 侧状态查询入口。
 4. sessions-index activity 或兼容 task runtime state 变化都要触发重新构建并同步 task snapshot，避免
    `running` / `completed` / `error` pill 滞后到下一次 task list 刷新。
-5. 该字段只用于手机首页展示，不改变 ZCode runtime 的真实状态来源。旧数据缺失时 mobile 前端 fallback 为 `idle`。
+5. 该字段只用于手机首页展示，不改变 Codez runtime 的真实状态来源。旧数据缺失时 mobile 前端 fallback 为 `idle`。
 
 ### 首页快照推送去重边界
 
@@ -450,7 +450,7 @@ pinned?: boolean;
 1. Desktop renderer 在 `Root` 中分别通过 `useGlobalTaskList({ kind: "pinned" })` 和
    `useGlobalTaskList({ kind: "timeline" })` 读取任务。
 2. `buildWebRemoteControlTaskTargets()` 对 pinned 查询结果标记 `pinned: true`，timeline 查询结果不标记。
-3. Mobile 首页只消费该展示字段进行分区；不直接读取 task repo、sqlite、ZCode service 或 runtime。
+3. Mobile 首页只消费该展示字段进行分区；不直接读取 task repo、sqlite、Codez service 或 runtime。
 4. `workspace_task_list_changed` 携带 task meta 的增量事件只表示标题、时间、状态等元数据变化，不表示
    pinned/archived 成员关系变化。前端缓存更新必须保留现有列表归属，避免状态刷新把置顶任务移出 pinned 分区。
 
@@ -467,22 +467,22 @@ currentMobilePage: "home" | "chat"
 1. 用户点击 task。
 2. task 选择成功。
 3. 设置 `currentMobilePage = "chat"`。
-4. 如果当前 history state 不是 `{ zcodeMobilePage: "chat" }`，补一层 chat history state。
+4. 如果当前 history state 不是 `{ codezMobilePage: "chat" }`，补一层 chat history state。
 
 返回首页：
 
 1. 点击 header 返回按钮。
-2. 如果当前 history state 是 `{ zcodeMobilePage: "chat" }`，调用 `history.back()`，由 `popstate` 回到 home。
+2. 如果当前 history state 是 `{ codezMobilePage: "chat" }`，调用 `history.back()`，由 `popstate` 回到 home。
 3. 如果当前没有 chat history state，直接设置 `currentMobilePage = "home"` 作为兜底。
 4. 保留当前 active task 的选中态。
 
 浏览器返回键：
 
 1. mobile shell 初始进入 `home` 时不写 history，保留扫码入口原始历史栈。
-2. 只有用户从 `home` 点击 task 并成功进入 `chat` 时，调用一次 `history.pushState({ zcodeMobilePage: "chat" }, "")`。
+2. 只有用户从 `home` 点击 task 并成功进入 `chat` 时，调用一次 `history.pushState({ codezMobilePage: "chat" }, "")`。
 3. 如果当前已经是这层 `chat` state，不重复 push，避免同一个 task 多次点击堆叠历史。
-4. `popstate` 命中 `{ zcodeMobilePage: "chat" }` 时设置 `currentMobilePage = "chat"`；从 chat 点返回按钮时用 `history.back()` 回到 home，而不是直接改 state。
-5. `popstate` 回到非 `zcodeMobilePage` state 时设置 `currentMobilePage = "home"`，并放行浏览器后续默认返回行为。
+4. `popstate` 命中 `{ codezMobilePage: "chat" }` 时设置 `currentMobilePage = "chat"`；从 chat 点返回按钮时用 `history.back()` 回到 home，而不是直接改 state。
+5. `popstate` 回到非 `codezMobilePage` state 时设置 `currentMobilePage = "home"`，并放行浏览器后续默认返回行为。
 6. 跨 workspace task 点击成功并重新挂载 Root 后，仍按“用户点击进入 chat”的规则补一层 `chat` state；这层 state 来自点击流程的一次性 `mobileNavigationIntent`，扫码初始 `initialTaskId` 不补这层 state。
 7. mobile shell unmount 时移除 `popstate` listener。
 
@@ -550,7 +550,7 @@ pnpm lint
    - 如新增 `displayStatus`，补 schema/类型兼容测试。
 5. `packages/ui/test/webRemoteControlTaskIndex.test.ts`
    - `buildWebRemoteControlTaskTargets()` 按 sessions-index activity → task runtime →
-     `ZCodeTaskMeta.status` 的优先级计算 `displayStatus`。
+     `CodezTaskMeta.status` 的优先级计算 `displayStatus`。
    - 覆盖 live phase 与 stale runtime/persisted cache 在 running、completed、error 三个方向上的冲突。
    - activity 缺失或为兼容 `draft` 时保持原有 runtime/persisted fallback，持久 `running` 仍不得制造假
      running。

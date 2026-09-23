@@ -21,7 +21,7 @@ import {
 } from "@/components/workflow-timeline/timeline-ledge.js";
 import { timelineWidth } from "@/components/workflow-timeline/timeline-geometry.js";
 import { WorkflowTimeline } from "@/components/workflow-timeline/WorkflowTimeline.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import enUS from "../src/i18n/locales/en-US.js";
 import zhCN from "../src/i18n/locales/zh-CN.js";
 
@@ -208,7 +208,7 @@ describe("WorkflowTimeline ledge", () => {
     const model = buildWorkflowTimeline(GRAPH, undefined);
     return render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(WorkflowTimeline, {
           model,
@@ -268,7 +268,7 @@ describe("WorkflowTimeline ledge", () => {
     const model = buildWorkflowTimeline(GRAPH, undefined);
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement("div", { onClick: onHostClick }, createElement(WorkflowTimeline, { model })),
       ),
@@ -375,7 +375,7 @@ describe("WorkflowTimeline draft ledge", () => {
   it("the pen writes past the viewport: the newest station never folds, and the ledge answers a user scroll", async () => {
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(WorkflowTimeline, { model: draftTimeline(scanWorkflowDraft(DRAFT)) }),
       ),

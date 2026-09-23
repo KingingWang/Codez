@@ -3,7 +3,7 @@ import {
   createUuid,
   type BrowserTabResidencyState,
   type BrowserViewRestoredTabShell,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { PluginUiSidePaneTab } from "@/plugin-ui/contract.js";
 import { inferMediaPreview, isPptxPreviewPath, type CodeViewerSource } from "@/lib/codeViewer.js";
 import { normalizeCodeViewerSource } from "@/lib/codeViewerSource.js";

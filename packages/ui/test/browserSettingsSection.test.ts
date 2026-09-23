@@ -22,7 +22,7 @@ const h = vi.hoisted(() => {
   const pluginState = {
     plugins: [
       {
-        id: "browser-use@zcode-plugins-official",
+        id: "browser-use@codez-plugins-official",
         name: "browser-use",
         enabled: true,
       },
@@ -54,17 +54,17 @@ vi.mock("@/hooks/useServices.js", () => ({
     skillsService: {},
   }),
 }));
-vi.mock("@/hooks/useZCodeSessionService.js", () => ({
-  useZCodeSessionService: () => ({}),
+vi.mock("@/hooks/useCodezSessionService.js", () => ({
+  useCodezSessionService: () => ({}),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
   }),
 }));
-vi.mock("@/lib/zcodeDraftSkillInvalidation.js", () => ({
+vi.mock("@/lib/codezDraftSkillInvalidation.js", () => ({
   invalidateDeferredDraftSessionForSkillChange: vi.fn(async () => {}),
 }));
 vi.mock("@/store/pluginManagementStore.js", () => ({
@@ -215,7 +215,7 @@ describe("BrowserSettingsSection", () => {
 
     await waitFor(() => {
       expect(h.setEnabled).toHaveBeenCalledWith(
-        "browser-use@zcode-plugins-official",
+        "browser-use@codez-plugins-official",
         false,
         expect.anything(),
       );

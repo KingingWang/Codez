@@ -2,7 +2,7 @@
 
 更新日期：2026-08-13
 
-本文说明 zcode-cli 如何把模型级 `maxOutputTokens` 转换为每次请求的输出预算。桌面本地、
+本文说明 codez-cli 如何把模型级 `maxOutputTokens` 转换为每次请求的输出预算。桌面本地、
 远程 workspace 和手机 Web 远控复用同一条 agent 请求链路，策略一致。
 
 ## 模型级预算
@@ -41,7 +41,7 @@ Rule，完整契约见
 
 所有新 Runtime（桌面本地、远程 workspace、手机 shared-host、纯 CLI、子 Agent）统一使用
 `preflight-v1`。不再消费 `client/configs.modelContextBudget.strategy`；兼容旧 Host 的协议字段
-仍接受 `legacy`，但在本版本 Runtime 边界归一到共享常量 `DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY`。
+仍接受 `legacy`，但在本版本 Runtime 边界归一到共享常量 `DEFAULT_CODEZ_MODEL_CONTEXT_BUDGET_STRATEGY`。
 运行中的旧进程不热切换；升级后创建或冷恢复的 Runtime 采用新规则。
 
 `getModelContextBudgetStrategy()` 保留服务兼容接口，但仅返回共享常量，不读缓存、不发请求、

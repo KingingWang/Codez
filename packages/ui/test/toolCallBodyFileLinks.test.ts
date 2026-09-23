@@ -1,7 +1,7 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ToolCallBody } from "@/ToolCallBlocks/ToolCallBody.js";
 import type { ToolDisplayModel } from "@/lib/toolDisplay.js";
 
@@ -42,7 +42,7 @@ describe("ToolCallBody markdown file links", () => {
 
     renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBody, {
           childToolList: null,

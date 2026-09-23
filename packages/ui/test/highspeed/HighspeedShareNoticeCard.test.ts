@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GlobalNoticeEnvelope } from "@/global-notice/globalNoticeStore.js";
 import { HighspeedShareNoticeCard } from "@/highspeed/HighspeedShareNoticeCard.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const notice: GlobalNoticeEnvelope = {
   noticeId: "notice-1",
@@ -35,7 +35,7 @@ afterEach(() => cleanup());
 function renderCard(target: GlobalNoticeEnvelope) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(HighspeedShareNoticeCard, { notice: target, onDismiss: vi.fn() }),
     ),
@@ -51,7 +51,7 @@ describe("HighspeedShareNoticeCard", () => {
     expect(document.querySelector(".highspeed-share-dialog__benefit")).not.toBeNull();
     expect(document.querySelector(".highspeed-share-dialog__chart-bars--baseline")).not.toBeNull();
     expect(document.querySelector(".highspeed-share-dialog__chart-bars--fast")).not.toBeNull();
-    expect(document.body.textContent).toContain("I used the ZCode Highspeed card and saved 480s.");
+    expect(document.body.textContent).toContain("I used the Codez Highspeed card and saved 480s.");
     expect(document.body.textContent).toContain("https://zcode.z.ai");
     expect(document.querySelector('[data-highspeed-share-dialog-card="true"]')).not.toBeNull();
     // Bug 回归锁：Electron 窗口不可见时 animationend 永不触发，Radix 会因等退出动画

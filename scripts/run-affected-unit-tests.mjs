@@ -133,7 +133,7 @@ function resolveDefaultBranchBase(root) {
 }
 
 function resolvePrePushTarget(root) {
-  const entries = parsePrePushInput(process.env.ZCODE_PRE_PUSH_STDIN ?? "");
+  const entries = parsePrePushInput(process.env.CODEZ_PRE_PUSH_STDIN ?? "");
   if (entries.length === 0) {
     return undefined;
   }
@@ -189,7 +189,7 @@ function resolveUpstreamTarget(root) {
 
 function resolveDiffTarget(root) {
   const explicitBase =
-    process.env.ZCODE_PRE_PUSH_BASE?.trim() || process.env.ZCODE_AFFECTED_TEST_BASE?.trim();
+    process.env.CODEZ_PRE_PUSH_BASE?.trim() || process.env.CODEZ_AFFECTED_TEST_BASE?.trim();
   if (explicitBase) {
     if (!hasCommit(root, explicitBase)) {
       throw new Error(`显式 base 不存在或不是 commit: ${explicitBase}`);
@@ -247,7 +247,7 @@ function runLintStaged(root, base, head) {
 
   // lint-staged 面向 pre-commit 设计，会在任务结束后自动 git add 匹配文件。
   // pre-push 只应验证，不应改动真实 index；因此让 lint-staged 在临时 index 上完成内部流程。
-  const tempIndexDir = mkdtempSync(join(tmpdir(), "zcode-lint-staged-index-"));
+  const tempIndexDir = mkdtempSync(join(tmpdir(), "codez-lint-staged-index-"));
   const tempIndexFile = join(tempIndexDir, "index");
 
   try {

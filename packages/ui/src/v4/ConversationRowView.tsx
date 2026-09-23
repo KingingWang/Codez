@@ -44,7 +44,7 @@ import {
   TID_V4_ROW_ATTACHMENTS,
   parseAutomationRunId,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type {
   AttachmentRef,
   ArtifactRow,
@@ -60,7 +60,7 @@ import type {
   TurnHeaderRow,
   UserInputRow,
   V4ConversationFileRewindPreviewResult,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { AssistantPreviewCards } from "@/AssistantPreviewCards.js";
 import { AssistantCodeCommentCards } from "@/AssistantCodeCommentCards.js";
 import { useAssistantCodeCommentFeatureEnabled } from "@/AssistantCodeCommentFeatureProvider.js";
@@ -99,7 +99,7 @@ import {
 } from "@/ToolCallBlocks/renderers/createWorkflowHoleInput.js";
 import { ToolCallBlock } from "@/ToolCallBlocks.js";
 import { resolveWorkflowRunOpenToolCallId } from "@/v4/workflowRunCardJoin.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";
 import { runUserAction, runUserActionAsync } from "@/lib/userActionTelemetry.js";
@@ -223,7 +223,7 @@ type UserInputEditHandler = (
   newText: string,
   attachments?: readonly AttachmentRef[],
   workspaceMode?: "preserve" | "rewind",
-  conversationQuotes?: import("@zcode/shared").ConversationSelectionText[],
+  conversationQuotes?: import("@codez/shared").ConversationSelectionText[],
 ) => Promise<CommandAck | boolean | void> | CommandAck | boolean | void;
 
 type AssistantMessageFeedback = "like" | "dislike";
@@ -321,7 +321,7 @@ const UserInputAttachmentList = memo(function UserInputAttachmentList({
   readAttachment?: NonNullable<ConversationRowRenderContext["readAttachment"]>;
   readAttachmentRange?: NonNullable<ConversationRowRenderContext["readAttachmentRange"]>;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [previewIndex, setPreviewIndex] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [failedRefs, setFailedRefs] = useState<ReadonlySet<string>>(() => new Set());
@@ -939,7 +939,7 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
   editWorkspaceRewindAvailability?: EditWorkspaceRewindAvailability;
   status?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const codexText = useCodexMessages();
   // 引擎尾注折叠：正文只到 epilogueStart，
   // 之后的引擎文本折进气泡底部的披露。提示词上下文解析也只看正文——尾注里没有用户引用。
@@ -1513,7 +1513,7 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
   onFeedbackChange?: AssistantFeedbackHandler;
   className?: string;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const platform = useOptionalPlatform();
   const [localFeedback, setLocalFeedback] = useState<AssistantMessageFeedback | null>(feedback);
   const copyLabel = intl.formatMessage({ id: "chat.message.copy" });
@@ -1606,7 +1606,7 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
             <span
               className={cn(
                 "relative inline-flex",
-                localFeedback === "like" && "zcode-reaction-burst",
+                localFeedback === "like" && "codez-reaction-burst",
               )}
             >
               <ThumbsUpIcon className="size-3.5" />
@@ -1624,7 +1624,7 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
             <span
               className={cn(
                 "relative inline-flex",
-                localFeedback === "dislike" && "zcode-reaction-burst",
+                localFeedback === "dislike" && "codez-reaction-burst",
               )}
             >
               <ThumbsDownIcon className="size-3.5" />
@@ -1708,7 +1708,7 @@ const AssistantTextRowView = memo(function AssistantTextRowView({
         <GenUiMessageResponse
           completed={row.state === "complete"}
           messageKey={`${row.rowId}:${row.entityId ?? ""}`}
-          renderZCodeFileCitations
+          renderCodezFileCitations
           streaming={streaming}
           workspacePath={context.workspacePath}
           workspaceIdentity={context.workspaceIdentity}
@@ -1943,7 +1943,7 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
   row: TimelineMarkerRow;
   context: ConversationRowRenderContext;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const isOfficeMode = useIsOfficeMode();
   const marker = row.marker;
   const modelSelectionView = context.modelSelectionView ?? null;

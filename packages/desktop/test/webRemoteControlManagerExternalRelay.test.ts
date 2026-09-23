@@ -5,8 +5,8 @@ import type {
   WebRemoteControlAppPayload,
   WebRemoteControlTaskTarget,
   WebRemoteControlWorkspaceTarget,
-} from "@zcode/shared";
-import { buildZCodeEndpointUrls, encodeWebRemoteControlRpcTransportMessage } from "@zcode/shared";
+} from "@codez/shared";
+import { buildCodezEndpointUrls, encodeWebRemoteControlRpcTransportMessage } from "@codez/shared";
 import { createWebRemoteControlManager } from "../src/main/webRemoteControlManager.js";
 import { createWebRemoteControlFeatureGate } from "../src/main/webRemoteControlFeatureGate.js";
 
@@ -294,10 +294,10 @@ describe("createWebRemoteControlManager external relay", () => {
   it("returns the desktop's own version before a workspace bridge is attached", async () => {
     const h = createManagerHarness();
     await h.manager.start(1, { workspacePath: localWorkspace.workspacePath });
-    h.deliverPayload({ zcode_type: "bootstrap-request", requestId: "version-check" });
+    h.deliverPayload({ codez_type: "bootstrap-request", requestId: "version-check" });
     expect(h.sentPayloads).toContainEqual(
       expect.objectContaining({
-        zcode_type: "bootstrap-response",
+        codez_type: "bootstrap-response",
         requestId: "version-check",
         result: expect.objectContaining({ desktopAppVersion: "1.5.0" }),
       }),
@@ -409,7 +409,7 @@ describe("createWebRemoteControlManager external relay", () => {
     });
     manager.syncAvailableWorkspaces(1, [remoteWorkspace]);
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "bridge-request-remote",
       bridgeSessionId: "bridge-remote",
       workspaceKey: remoteWorkspace.workspaceIdentity!,
@@ -445,7 +445,7 @@ describe("createWebRemoteControlManager external relay", () => {
     await manager.start(1, { workspacePath: localWorkspace.workspacePath });
     manager.syncAvailableWorkspaces(1, [localWorkspace]);
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "bridge-request-failed",
       bridgeSessionId: "bridge-failed",
       workspaceKey: localWorkspace.workspacePath,
@@ -493,7 +493,7 @@ describe("createWebRemoteControlManager external relay", () => {
 
     sentPayloads.length = 0;
     deliverPayload({
-      zcode_type: "workspace-bridge-open" as const,
+      codez_type: "workspace-bridge-open" as const,
       requestId: "req-1",
       bridgeSessionId: "bridge-1",
       workspaceKey: "remote:ssh:host:/workspace/demo",
@@ -502,7 +502,7 @@ describe("createWebRemoteControlManager external relay", () => {
     await vi.waitFor(() => {
       expect(sentPayloads).toContainEqual(
         expect.objectContaining({
-          zcode_type: "workspace-bridge-ready",
+          codez_type: "workspace-bridge-ready",
           bridgeSessionId: "bridge-1",
           bridge: expect.objectContaining({
             kind: "remote",
@@ -513,7 +513,7 @@ describe("createWebRemoteControlManager external relay", () => {
       );
     });
     const readyPayload = sentPayloads.find(
-      (payload) => payload.zcode_type === "workspace-bridge-ready",
+      (payload) => payload.codez_type === "workspace-bridge-ready",
     );
     expect(JSON.stringify(readyPayload)).not.toContain("bridgeToken");
     expect(JSON.stringify(readyPayload)).not.toContain("wsUrl");
@@ -521,7 +521,7 @@ describe("createWebRemoteControlManager external relay", () => {
 
   it("uses the current endpoint resolver for relay and QR URL on each start", async () => {
     const { getLatestTransportOptions, manager } = createManagerHarness({
-      getEndpointUrls: () => buildZCodeEndpointUrls("http://localhost:3030"),
+      getEndpointUrls: () => buildCodezEndpointUrls("http://localhost:3030"),
     });
 
     await manager.start(1, { workspacePath: "/workspace/demo" });
@@ -702,7 +702,7 @@ describe("createWebRemoteControlManager external relay", () => {
     ]);
 
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-1",
       bridgeSessionId: "bridge-1",
       workspaceKey: "/workspace/demo",
@@ -713,7 +713,7 @@ describe("createWebRemoteControlManager external relay", () => {
     );
 
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-2",
       bridgeSessionId: "bridge-2",
       workspaceKey: "/workspace/demo",
@@ -750,12 +750,12 @@ describe("createWebRemoteControlManager external relay", () => {
     ]);
 
     sentPayloads.length = 0;
-    deliverPayload({ zcode_type: "workspace-list-request", requestId: "list-1" });
+    deliverPayload({ codez_type: "workspace-list-request", requestId: "list-1" });
 
     await vi.waitFor(() =>
       expect(sentPayloads).toContainEqual(
         expect.objectContaining({
-          zcode_type: "workspace-list-response",
+          codez_type: "workspace-list-response",
           result: expect.objectContaining({
             workspaces: expect.arrayContaining([
               expect.objectContaining({
@@ -771,7 +771,7 @@ describe("createWebRemoteControlManager external relay", () => {
 
     sentPayloads.length = 0;
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "bridge-req-1",
       bridgeSessionId: "bridge-disconnected",
       workspaceKey: "remote:ssh:host:/workspace/remote",
@@ -780,7 +780,7 @@ describe("createWebRemoteControlManager external relay", () => {
     await vi.waitFor(() =>
       expect(sentPayloads).toContainEqual(
         expect.objectContaining({
-          zcode_type: "workspace-bridge-error",
+          codez_type: "workspace-bridge-error",
           bridgeSessionId: "bridge-disconnected",
         }),
       ),
@@ -814,7 +814,7 @@ describe("createWebRemoteControlManager external relay", () => {
 
     expect(sentPayloads).toContainEqual(
       expect.objectContaining({
-        zcode_type: "workspace-list-updated",
+        codez_type: "workspace-list-updated",
         result: expect.objectContaining({
           tasks: [
             expect.objectContaining({
@@ -879,7 +879,7 @@ describe("createWebRemoteControlManager external relay", () => {
 
     expect(sentPayloads).toContainEqual(
       expect.objectContaining({
-        zcode_type: "workspace-list-updated",
+        codez_type: "workspace-list-updated",
         result: expect.objectContaining({
           tasks: [expect.objectContaining({ taskId: task.taskId, ...patch })],
         }),
@@ -904,7 +904,7 @@ describe("createWebRemoteControlManager external relay", () => {
 
     expect(sentPayloads).toContainEqual(
       expect.objectContaining({
-        zcode_type: "workspace-list-updated",
+        codez_type: "workspace-list-updated",
         result: expect.objectContaining({
           workspaces: expect.arrayContaining([
             expect.objectContaining({
@@ -924,7 +924,7 @@ describe("createWebRemoteControlManager external relay", () => {
 
     expect(sentPayloads).toContainEqual(
       expect.objectContaining({
-        zcode_type: "workspace-list-updated",
+        codez_type: "workspace-list-updated",
         result: expect.objectContaining({
           tasks: [
             expect.objectContaining({
@@ -963,7 +963,7 @@ describe("createWebRemoteControlManager external relay", () => {
 
     expect(sentPayloads).toContainEqual(
       expect.objectContaining({
-        zcode_type: "workspace-list-updated",
+        codez_type: "workspace-list-updated",
         result: expect.objectContaining({
           tasks: [
             expect.objectContaining({
@@ -985,14 +985,14 @@ describe("createWebRemoteControlManager external relay", () => {
     await manager.start(1, { workspacePath: "/workspace/demo" });
 
     deliverPayload({
-      zcode_type: "workspace-reconnect-request",
+      codez_type: "workspace-reconnect-request",
       requestId: "reconnect-1",
       workspaceKey: "remote:ssh:host:/workspace/demo",
     });
 
     await vi.waitFor(() =>
       expect(sentPayloads).toContainEqual({
-        zcode_type: "workspace-reconnect-response",
+        codez_type: "workspace-reconnect-response",
         requestId: "reconnect-1",
         workspaceKey: "remote:ssh:host:/workspace/demo",
         success: true,
@@ -1029,13 +1029,13 @@ describe("createWebRemoteControlManager external relay", () => {
     ]);
 
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-1",
       bridgeSessionId: "bridge-1",
       workspaceKey: "/workspace/demo",
     });
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-2",
       bridgeSessionId: "bridge-2",
       workspaceKey: "/workspace/demo",
@@ -1058,7 +1058,7 @@ describe("createWebRemoteControlManager external relay", () => {
     expect(
       sentPayloads.filter(
         (payload) =>
-          payload.zcode_type === "workspace-bridge-ready" && payload.bridgeSessionId === "bridge-1",
+          payload.codez_type === "workspace-bridge-ready" && payload.bridgeSessionId === "bridge-1",
       ),
     ).toEqual([]);
   });
@@ -1083,7 +1083,7 @@ describe("createWebRemoteControlManager external relay", () => {
 
     sentPayloads.length = 0;
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-path",
       bridgeSessionId: "bridge-path",
       workspaceKey: "/workspace/demo",
@@ -1092,7 +1092,7 @@ describe("createWebRemoteControlManager external relay", () => {
     await vi.waitFor(() => {
       expect(sentPayloads).toContainEqual(
         expect.objectContaining({
-          zcode_type: "workspace-bridge-error",
+          codez_type: "workspace-bridge-error",
           requestId: "req-path",
         }),
       );
@@ -1117,7 +1117,7 @@ describe("createWebRemoteControlManager external relay", () => {
     ]);
 
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: `req-${code}`,
       bridgeSessionId: `bridge-${code}`,
       workspaceKey: "/workspace/demo",
@@ -1126,7 +1126,7 @@ describe("createWebRemoteControlManager external relay", () => {
     await vi.waitFor(() => {
       expect(sentPayloads).toContainEqual(
         expect.objectContaining({
-          zcode_type: "workspace-bridge-error",
+          codez_type: "workspace-bridge-error",
           requestId: `req-${code}`,
           bridgeSessionId: `bridge-${code}`,
           reason,
@@ -1235,7 +1235,7 @@ describe("createWebRemoteControlManager external relay", () => {
 
     canSendPayload = false;
     deliverPayload({
-      zcode_type: "workspace-list-request",
+      codez_type: "workspace-list-request",
       requestId: "req-buffered",
     });
     expect(sentPayloads).toEqual([]);
@@ -1247,7 +1247,7 @@ describe("createWebRemoteControlManager external relay", () => {
 
     expect(sentPayloads).toContainEqual(
       expect.objectContaining({
-        zcode_type: "workspace-list-response",
+        codez_type: "workspace-list-response",
         requestId: "req-buffered",
       }),
     );
@@ -1270,14 +1270,14 @@ describe("createWebRemoteControlManager external relay", () => {
       { workspacePath: "/workspace/demo", label: "demo", kind: "local" },
     ]);
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-bridge",
       bridgeSessionId: "bridge-1",
       workspaceKey: "/workspace/demo",
     });
     await vi.waitFor(() =>
       expect(sentPayloads).toContainEqual(
-        expect.objectContaining({ zcode_type: "workspace-bridge-ready" }),
+        expect.objectContaining({ codez_type: "workspace-bridge-ready" }),
       ),
     );
 
@@ -1309,14 +1309,14 @@ describe("createWebRemoteControlManager external relay", () => {
       { workspacePath: "/workspace/demo", label: "demo", kind: "local" },
     ]);
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-bridge",
       bridgeSessionId: "bridge-1",
       workspaceKey: "/workspace/demo",
     });
     await vi.waitFor(() =>
       expect(sentPayloads).toContainEqual(
-        expect.objectContaining({ zcode_type: "workspace-bridge-ready" }),
+        expect.objectContaining({ codez_type: "workspace-bridge-ready" }),
       ),
     );
 
@@ -1330,7 +1330,7 @@ describe("createWebRemoteControlManager external relay", () => {
 
     expect(hostPort.postMessage).not.toHaveBeenCalled();
     expect(sentPayloads).toContainEqual({
-      zcode_type: "bridge-degraded",
+      codez_type: "bridge-degraded",
       bridgeSessionId: "bridge-1",
       reason: "rpc-transport-fault",
     });
@@ -1357,14 +1357,14 @@ describe("createWebRemoteControlManager external relay", () => {
     ]);
     emitTransportState("paired");
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-bridge",
       bridgeSessionId: "bridge-1",
       workspaceKey: "/workspace/demo",
     });
     await vi.waitFor(() =>
       expect(sentPayloads).toContainEqual(
-        expect.objectContaining({ zcode_type: "workspace-bridge-ready" }),
+        expect.objectContaining({ codez_type: "workspace-bridge-ready" }),
       ),
     );
 
@@ -1377,8 +1377,8 @@ describe("createWebRemoteControlManager external relay", () => {
     canSendPayload = true;
     emitTransportSendReady("same-socket");
 
-    expect(sentPayloads.filter((payload) => payload.zcode_type === "rpc-frame")).toHaveLength(51);
-    expect(sentPayloads.some((payload) => payload.zcode_type === "bridge-degraded")).toBe(false);
+    expect(sentPayloads.filter((payload) => payload.codez_type === "rpc-frame")).toHaveLength(51);
+    expect(sentPayloads.some((payload) => payload.codez_type === "bridge-degraded")).toBe(false);
   });
 
   it("does not apply the ordinary app buffer timeout to raw bridge frames", async () => {
@@ -1403,14 +1403,14 @@ describe("createWebRemoteControlManager external relay", () => {
     ]);
     emitTransportState("paired");
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-bridge",
       bridgeSessionId: "bridge-1",
       workspaceKey: "/workspace/demo",
     });
     await vi.waitFor(() =>
       expect(sentPayloads).toContainEqual(
-        expect.objectContaining({ zcode_type: "workspace-bridge-ready" }),
+        expect.objectContaining({ codez_type: "workspace-bridge-ready" }),
       ),
     );
 
@@ -1422,8 +1422,8 @@ describe("createWebRemoteControlManager external relay", () => {
     canSendPayload = true;
     emitTransportSendReady("same-socket");
 
-    expect(sentPayloads.filter((payload) => payload.zcode_type === "rpc-frame")).toHaveLength(1);
-    expect(sentPayloads.some((payload) => payload.zcode_type === "bridge-degraded")).toBe(false);
+    expect(sentPayloads.filter((payload) => payload.codez_type === "rpc-frame")).toHaveLength(1);
+    expect(sentPayloads.some((payload) => payload.codez_type === "bridge-degraded")).toBe(false);
   });
 
   it("replays lost-ACK raw frames after same-socket peer readiness and stops after cumulative ACK", async () => {
@@ -1443,41 +1443,41 @@ describe("createWebRemoteControlManager external relay", () => {
     ]);
     emitTransportState("paired");
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-bridge",
       bridgeSessionId: "bridge-1",
       workspaceKey: "/workspace/demo",
     });
     await vi.waitFor(() =>
       expect(sentPayloads).toContainEqual(
-        expect.objectContaining({ zcode_type: "workspace-bridge-ready" }),
+        expect.objectContaining({ codez_type: "workspace-bridge-ready" }),
       ),
     );
 
     sentPayloads.length = 0;
     hostPort.emit("message", { data: new Uint8Array([1, 2, 3]) });
-    expect(sentPayloads.filter((payload) => payload.zcode_type === "rpc-frame")).toHaveLength(1);
+    expect(sentPayloads.filter((payload) => payload.codez_type === "rpc-frame")).toHaveLength(1);
     const firstFrame = sentPayloads[0];
 
     emitTransportSendReady("same-socket");
-    expect(sentPayloads.filter((payload) => payload.zcode_type === "rpc-frame")).toHaveLength(2);
+    expect(sentPayloads.filter((payload) => payload.codez_type === "rpc-frame")).toHaveLength(2);
     expect(sentPayloads[1]).toBe(firstFrame);
 
     deliverPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       bridgeSessionId: "foreign-bridge",
       ackMessageSeq: 1,
     });
     emitTransportSendReady("reconnected-socket");
-    expect(sentPayloads.filter((payload) => payload.zcode_type === "rpc-frame")).toHaveLength(3);
+    expect(sentPayloads.filter((payload) => payload.codez_type === "rpc-frame")).toHaveLength(3);
 
     deliverPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       bridgeSessionId: "bridge-1",
       ackMessageSeq: 1,
     });
     emitTransportSendReady("reconnected-socket");
-    expect(sentPayloads.filter((payload) => payload.zcode_type === "rpc-frame")).toHaveLength(3);
+    expect(sentPayloads.filter((payload) => payload.codez_type === "rpc-frame")).toHaveLength(3);
   });
 
   it("forwards raw adapter saturated/drained edges only to the owning host attachment", async () => {
@@ -1498,30 +1498,30 @@ describe("createWebRemoteControlManager external relay", () => {
     ]);
     emitTransportState("paired");
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-bridge",
       bridgeSessionId: "bridge-flow",
       workspaceKey: "/workspace/demo",
     });
     await vi.waitFor(() =>
       expect(sentPayloads).toContainEqual(
-        expect.objectContaining({ zcode_type: "workspace-bridge-ready" }),
+        expect.objectContaining({ codez_type: "workspace-bridge-ready" }),
       ),
     );
 
     hostPort.emit("message", { data: new Uint8Array(900_000) });
     expect(hostPort.postMessage).toHaveBeenCalledWith({
-      __zcodeRpcControl: "connection-flow-v1",
+      __codezRpcControl: "connection-flow-v1",
       state: "saturated",
     });
 
     deliverPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       bridgeSessionId: "bridge-flow",
       ackMessageSeq: 1,
     });
     expect(hostPort.postMessage).toHaveBeenCalledWith({
-      __zcodeRpcControl: "connection-flow-v1",
+      __codezRpcControl: "connection-flow-v1",
       state: "drained",
     });
   });
@@ -1534,7 +1534,7 @@ describe("createWebRemoteControlManager external relay", () => {
     });
 
     deliverPayload({
-      zcode_type: "mobile-view-state-update",
+      codez_type: "mobile-view-state-update",
       viewState: {
         activeWorkspaceKey: "/workspace/demo",
         activeTaskId: "task-1",
@@ -1600,7 +1600,7 @@ describe("createWebRemoteControlManager external relay", () => {
         remote_kind: "ssh",
       },
     } as const;
-    deliverPayload({ zcode_type: "telemetry-report", event });
+    deliverPayload({ codez_type: "telemetry-report", event });
     expect(reportRendererTelemetryEvent).toHaveBeenCalledExactlyOnceWith(event);
   });
 
@@ -1612,7 +1612,7 @@ describe("createWebRemoteControlManager external relay", () => {
     });
 
     deliverPayload({
-      zcode_type: "mobile-diagnostic",
+      codez_type: "mobile-diagnostic",
       event: "pair-status",
       timestamp: 1710000000000,
       state: "paired",
@@ -1643,7 +1643,7 @@ describe("createWebRemoteControlManager external relay", () => {
     ]);
 
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-cgx",
       bridgeSessionId: "bridge-cgx",
       workspaceKey: "/workspace/cgx-dev-web",
@@ -1652,7 +1652,7 @@ describe("createWebRemoteControlManager external relay", () => {
     await vi.waitFor(() =>
       expect(sentPayloads).toContainEqual(
         expect.objectContaining({
-          zcode_type: "workspace-bridge-ready",
+          codez_type: "workspace-bridge-ready",
           bridgeSessionId: "bridge-cgx",
         }),
       ),
@@ -1697,7 +1697,7 @@ describe("createWebRemoteControlManager external relay", () => {
       },
     ]);
     deliverPayload({
-      zcode_type: "workspace-bridge-open",
+      codez_type: "workspace-bridge-open",
       requestId: "req-1",
       bridgeSessionId: "bridge-1",
       workspaceKey: "remote:ssh:host:/workspace/demo",
@@ -1737,7 +1737,7 @@ describe("createWebRemoteControlManager external relay", () => {
       failure: undefined,
     });
     expect(disposeTransport).not.toHaveBeenCalled();
-    expect(sentPayloads).not.toContainEqual(expect.objectContaining({ zcode_type: "app-error" }));
+    expect(sentPayloads).not.toContainEqual(expect.objectContaining({ codez_type: "app-error" }));
     expect(disposeWorkspaceHostAttachmentsForRemoteSession).toHaveBeenCalledWith(
       "remote-session-1",
       "remote-closed",

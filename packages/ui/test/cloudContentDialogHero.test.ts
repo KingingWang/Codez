@@ -66,7 +66,7 @@ describe("cloud content dialog mock", () => {
         description: { format: "plain_text", text: mockInput.description },
         hero: {
           type: "interactive_bundle",
-          runtime: "zcode-hero-sandbox-v1",
+          runtime: "codez-hero-sandbox-v1",
           resolvedUrl: expect.stringContaining("weekend-plan-hero"),
           viewport: { aspectRatio: "4:3" },
           data: {

@@ -69,9 +69,9 @@ describe("PA158 审批完全访问", () => {
       'button[role="option"][aria-label="完全访问"],button[role="option"][aria-label="Full access"]',
     );
     await fullAccess.waitForDisplayed();
-    if (process.env.ZCODE_E2E_ARTIFACT_DIR) {
+    if (process.env.CODEZ_E2E_ARTIFACT_DIR) {
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR, "permission-full-access.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR, "permission-full-access.png"),
       );
     }
     await fullAccess.click();

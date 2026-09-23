@@ -1,12 +1,12 @@
 import { z } from "zod";
 import {
   formatModelPickerValue,
-  zcodeSessionSettingsStateSchema,
-  zcodeWorkspacePresentationSchema,
-  zcodeSkillsReferenceCatalogResultSchema,
-  type ZCodeSessionSettingsState,
-  type ZCodeWorkspaceRef,
-} from "@zcode/shared";
+  codezSessionSettingsStateSchema,
+  codezWorkspacePresentationSchema,
+  codezSkillsReferenceCatalogResultSchema,
+  type CodezSessionSettingsState,
+  type CodezWorkspaceRef,
+} from "@codez/shared";
 import type { BridgeControlContext } from "./contract.js";
 import { readConfig, readPages } from "./control-common.js";
 
@@ -43,7 +43,7 @@ const skillsResponseSchema = z.object({
 
 export async function readControlModelSettings(
   context: BridgeControlContext,
-): Promise<ZCodeSessionSettingsState> {
+): Promise<CodezSessionSettingsState> {
   const [config, models] = await Promise.all([
     readConfig(context),
     readPages(context, "model/list", modelSchema, { includeHidden: false }),
@@ -67,7 +67,7 @@ export async function readControlModelSettings(
   const current = modelId
     ? { providerId, modelId, ...(reasoningLevel ? { options: { reasoningLevel } } : {}) }
     : undefined;
-  return zcodeSessionSettingsStateSchema.parse({
+  return codezSessionSettingsStateSchema.parse({
     model: {
       ...(current ? { current } : {}),
       available: [
@@ -153,7 +153,7 @@ export async function readControlSkills(context: BridgeControlContext) {
     throw new Error(
       `Codex skill discovery failed: ${entry.errors.map((error) => error.message).join("; ")}`,
     );
-  return zcodeSkillsReferenceCatalogResultSchema.parse({
+  return codezSkillsReferenceCatalogResultSchema.parse({
     authority: "workspace",
     skills: entry.skills
       .filter((skill) => skill.enabled)
@@ -169,7 +169,7 @@ export async function readControlSkills(context: BridgeControlContext) {
 }
 
 export async function readControlPresentation(
-  workspace: ZCodeWorkspaceRef,
+  workspace: CodezWorkspaceRef,
   context: BridgeControlContext,
 ) {
   const [settings, catalog] = await Promise.all([
@@ -198,7 +198,7 @@ export async function readControlPresentation(
     },
   ];
   const names = new Set(builtins.map((command) => command.name));
-  return zcodeWorkspacePresentationSchema.parse({
+  return codezWorkspacePresentationSchema.parse({
     workspace,
     mode: settings.mode.current,
     slashCommands: [

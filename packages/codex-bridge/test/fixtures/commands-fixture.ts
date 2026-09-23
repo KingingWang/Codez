@@ -10,7 +10,7 @@ import {
   parseCommandEnvelope,
   type CommandEnvelope,
   type CommandType,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { CommandRouter, type CommandContext } from "../../src/commands.js";
 import { CommandLedger } from "../../src/command-ledger.js";
 import { ThreadStateStore } from "../../src/thread-state.js";
@@ -110,7 +110,7 @@ export function deferred<T = void>() {
 }
 
 export async function setup(t: TestContext, busy = false) {
-  const root = await mkdtemp(join(tmpdir(), "zcode-command-integration-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-command-integration-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const rpc = new MockRpc();
   const authority = { thread: threadFixture(), queue: [queued("q1"), queued("q2")] };

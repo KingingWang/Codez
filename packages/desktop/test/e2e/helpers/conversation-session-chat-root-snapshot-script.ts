@@ -31,20 +31,20 @@ export function readV4ChatRootSnapshotInBrowser(
   const paneSessionId = pane?.getAttribute("data-session-id") ?? null;
   const taskId = paneSessionId && paneSessionId !== "draft" ? paneSessionId : null;
   const e2eWindow = window as Window & {
-    __zcodeSessionStoreE2E?: {
+    __codezSessionStoreE2E?: {
       getState?: () => { workspaces?: Record<string, BrowserWorkspaceState> };
     };
-    __zcodeTabStoreE2E?: {
+    __codezTabStoreE2E?: {
       getState?: () => {
         activeWorkspaceIdentity?: string | null;
         activeWorkspacePath?: string | null;
       };
     };
   };
-  const tabState = e2eWindow.__zcodeTabStoreE2E?.getState?.();
+  const tabState = e2eWindow.__codezTabStoreE2E?.getState?.();
   const workspaceKey =
     tabState?.activeWorkspaceIdentity?.trim() || tabState?.activeWorkspacePath || null;
-  const sessionState = e2eWindow.__zcodeSessionStoreE2E?.getState?.();
+  const sessionState = e2eWindow.__codezSessionStoreE2E?.getState?.();
   const workspace = workspaceKey ? sessionState?.workspaces?.[workspaceKey] : undefined;
   const taskRuntime = taskId ? workspace?.taskRuntimeByTaskId?.[taskId] : undefined;
   const runtimeStatus = taskId
@@ -52,9 +52,9 @@ export function readV4ChatRootSnapshotInBrowser(
     : workspace?.draftRuntime?.status;
   const bridgeError = !pane
     ? "v4-pane-missing"
-    : !e2eWindow.__zcodeTabStoreE2E?.getState
+    : !e2eWindow.__codezTabStoreE2E?.getState
       ? "tab-store-bridge-missing"
-      : !e2eWindow.__zcodeSessionStoreE2E?.getState
+      : !e2eWindow.__codezSessionStoreE2E?.getState
         ? "session-store-bridge-missing"
         : !workspaceKey
           ? "active-workspace-key-missing"

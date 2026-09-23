@@ -61,7 +61,7 @@
     ".claude/skills",
     ".agents/skills",
     "packages/formal-proof",
-    "apps/zcode-cli",
+    "apps/codez-cli",
     "docs/electron"
   ]
 }

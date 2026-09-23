@@ -4,9 +4,9 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import {
   TID_AUTOMATION_SCHEDULE_ADD,
   TID_AUTOMATION_SCHEDULE_PREVIEW,
-  type ZCodeAutomation,
+  type CodezAutomation,
   type ModelSelection,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const stableHookValues = vi.hoisted(() => ({
@@ -30,7 +30,7 @@ const stableHookValues = vi.hoisted(() => ({
   effectiveSelection: undefined as ModelSelection | null | undefined,
   selectionInputs: [] as Array<{ selection: ModelSelection | null } | undefined>,
   locale: "zh-CN" as "zh-CN" | "en-US",
-  services: { zcodeAgentService: {} },
+  services: { codezAgentService: {} },
 }));
 
 vi.mock("@/components/ui/select.js", async () => {
@@ -190,7 +190,7 @@ vi.mock("@/ChatEmptyState.js", () => ({
 vi.mock("@/hooks/useAutomationProjectOptions.js", () => ({
   useAutomationProjectOptions: () => stableHookValues.projectOptions,
 }));
-vi.mock("@/hooks/useZCodeConfig.js", () => ({
+vi.mock("@/hooks/useCodezConfig.js", () => ({
   useToolbarConfigOptions: () => stableHookValues.configResult,
 }));
 vi.mock("@/hooks/useServices.js", () => ({
@@ -234,7 +234,7 @@ vi.mock("@/hooks/useModelSelectionView.js", () => ({
   },
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => {
         if (id === "automations.edit.titlePlaceholder") {
@@ -272,7 +272,7 @@ const modelSelectionView = {
   ],
 };
 
-const sessionCreatedAutomation: ZCodeAutomation = {
+const sessionCreatedAutomation: CodezAutomation = {
   automationId: "automation-session-created",
   title: "每 10 分钟提醒",
   cronExpr: "*/10 * * * *",
@@ -309,13 +309,13 @@ const sessionCreatedAutomation: ZCodeAutomation = {
   updatedAt: 1,
 };
 
-const uiCreatedAutomation: ZCodeAutomation = {
+const uiCreatedAutomation: CodezAutomation = {
   ...sessionCreatedAutomation,
   automationId: "automation-ui-created",
 };
 delete uiCreatedAutomation.targetTaskId;
 
-const sessionCreatedUiResetAutomation: ZCodeAutomation = {
+const sessionCreatedUiResetAutomation: CodezAutomation = {
   ...sessionCreatedAutomation,
   automationId: "automation-session-created-ui-reset",
   cronExpr: "0 9 * * *",
@@ -482,13 +482,13 @@ describe("AutomationEditView session-created dirty state", () => {
   });
 
   it("编辑无项目任务时继续展示会话侧文案与图标", () => {
-    const conversationWorkspacePath = "/Users/test/.zcode/workspace/default";
+    const conversationWorkspacePath = "/Users/test/.codez/workspace/default";
     stableHookValues.projectOptions.push({
       workspacePath: conversationWorkspacePath,
       label: "default",
       workspacePurpose: "conversation",
     });
-    const conversationAutomation: ZCodeAutomation = {
+    const conversationAutomation: CodezAutomation = {
       ...uiCreatedAutomation,
       workspaceKey: conversationWorkspacePath,
       workspacePath: conversationWorkspacePath,

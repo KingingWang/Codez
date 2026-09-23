@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { PlatformChannels, type WebRemoteControlStatus } from "@zcode/shared";
+import { PlatformChannels, type WebRemoteControlStatus } from "@codez/shared";
 import { sendWebRemoteControlStatusChangedToWindow } from "@desktop/main/webRemoteControlStatusEvents.js";
 
 function createTargetWindow({

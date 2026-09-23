@@ -2,7 +2,7 @@
 
 ## 背景
 
-`Agent` / `Task` 是父 runtime 调度子 agent 的入口。此前 ZCode 在工具层给
+`Agent` / `Task` 是父 runtime 调度子 agent 的入口。此前 Codez 在工具层给
 `Agent` 设置固定 `600000ms` 超时；当前目标是移除这层固定墙钟限制，避免长时间
 但仍健康运行的子 agent 被父工具执行器提前判定为 `tool_timeout`。
 

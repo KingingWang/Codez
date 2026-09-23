@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { OpenInEditorRemoteTarget } from "@zcode/shared";
+import type { OpenInEditorRemoteTarget } from "@codez/shared";
 import { useFileContextActions } from "@/hooks/useFileContextActions.js";
 
 const { mockOpenInEditor, mockOpenInFileManager } = vi.hoisted(() => ({
@@ -17,7 +17,7 @@ vi.mock("@/hooks/usePlatform.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },

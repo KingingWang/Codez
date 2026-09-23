@@ -178,7 +178,7 @@ payload。这里的“已验证”不等于 formal E2E 晋升：新差分 spec �
 
 ### 隔离运行
 
-旧版和当前版本使用独立的 `ZCODE_E2E_HOME_DIR`、network capture、artifact 和 runtime log 目录。
+旧版和当前版本使用独立的 `CODEZ_E2E_HOME_DIR`、network capture、artifact 和 runtime log 目录。
 同一 case 配对串行运行，避免端口、协议注册、provider replay 与机器负载互相干扰。每次 artifact 记录：
 
 - legacy/current git SHA、构建版本和 case ID。

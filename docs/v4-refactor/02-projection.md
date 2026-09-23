@@ -4,7 +4,7 @@
 
 `ConversationProductProjection` 是 CLI 面向 App/Web 的会话读模型。产品语义以
 [conversation-product-protocol.md](../conversation-product-protocol.md) 为准，wire schema 以
-`packages/shared/src/zcode-protocol-v4/` 为准；本文说明当前代码如何从 runtime 事实生成并恢复该投影。
+`packages/shared/src/codez-protocol-v4/` 为准；本文说明当前代码如何从 runtime 事实生成并恢复该投影。
 
 ## 权威链路
 
@@ -20,10 +20,10 @@ runtime SessionEvent / persisted transcript
 
 当前实现入口：
 
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/event-normalizer.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/conversation-topic-publisher.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/transcript-hydration.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/event-normalizer.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/product-projection.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/conversation-topic-publisher.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/transcript-hydration.ts`
 - `packages/ui/src/v4/conversationProjectionStore.ts`
 - `packages/ui/src/v4/sessionDataLayer.ts`
 

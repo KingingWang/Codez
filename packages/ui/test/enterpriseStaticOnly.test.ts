@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 const mocks = vi.hoisted(() => ({
   state: null as any,
   getStaticTeamProducts: vi.fn(),

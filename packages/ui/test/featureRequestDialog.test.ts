@@ -1,12 +1,12 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { IFeedbackService } from "@zcode/services";
+import type { IFeedbackService } from "@codez/services";
 import {
   FeatureRequestDialog,
   buildFeatureRequestDescription,
 } from "@/feedback/FeatureRequestDialog.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const capturedFeatureRequestStore = vi.hoisted(() => ({
   open: true,
@@ -66,7 +66,7 @@ describe("FeatureRequestDialog", () => {
   it("renders a dedicated product request form instead of bug feedback controls", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(FeatureRequestDialog, {
           feedbackService: createFeedbackService(),
@@ -86,7 +86,7 @@ describe("FeatureRequestDialog", () => {
   it("aligns the feature request shell with the feedback dialog style", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(FeatureRequestDialog, {
           feedbackService: createFeedbackService(),
@@ -106,7 +106,7 @@ describe("FeatureRequestDialog", () => {
   it("产品需求输入框使用固定尺寸并允许长连续文本换行", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(FeatureRequestDialog, {
           feedbackService: createFeedbackService(),

@@ -139,7 +139,7 @@ describe("GitActionMenu commit message flow", () => {
     const statusPanelSource = readConversationStatusPanelSource();
     const shellLayoutSource = readWorkspaceShellLayoutSource();
 
-    expect(actionMenuSource).toContain("activeTaskChangeSummary?: ZCodeTaskChangeSummary");
+    expect(actionMenuSource).toContain("activeTaskChangeSummary?: CodezTaskChangeSummary");
     expect(actionMenuSource).toContain("activeTaskChangeSummary,");
     expect(v4ChatPaneSource).toContain(
       "activeTaskChangeSummary={activeTaskChangeSummary}",

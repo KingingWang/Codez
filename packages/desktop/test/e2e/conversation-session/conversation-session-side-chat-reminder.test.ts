@@ -5,7 +5,7 @@ import {
   TID_V4_COMPOSER_SEND,
   TID_V4_SESSION_PANE,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData, getE2EAppDataPaths } from "../helpers/desktop-app.js";
 import {
   getUpstreamRequestEvidence,
@@ -215,7 +215,7 @@ async function openEmptySideChat(): Promise<void> {
 function readMessages(sessionId: string): unknown[] {
   // Node SQLite 只提供同步 API；只读隔离 E2E DB，不改写运行中的 session。
   const db = new DatabaseSync(
-    join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "db", "db.sqlite"),
+    join(getE2EAppDataPaths().homeDir, ".codez", "cli", "db", "db.sqlite"),
     { readOnly: true },
   );
   try {

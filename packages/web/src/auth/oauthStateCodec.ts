@@ -1,6 +1,6 @@
-import { DEFAULT_ZCODE_ENDPOINT_ORIGIN } from "@zcode/shared";
+import { DEFAULT_CODEZ_ENDPOINT_ORIGIN } from "@codez/shared";
 
-const PRODUCTION_WEB_REMOTE_ORIGIN = DEFAULT_ZCODE_ENDPOINT_ORIGIN;
+const PRODUCTION_WEB_REMOTE_ORIGIN = DEFAULT_CODEZ_ENDPOINT_ORIGIN;
 const WEB_REMOTE_PATHS = new Set(["/web-remote", "/web-remote/"]);
 const WEB_CALLBACK_PATHS = new Set(["/web-remote/callback", "/cn/share/callback", "/share/callback"]);
 const SHARE_PATH_PATTERN = /^\/(?:cn\/share|share)\/[A-Za-z0-9._~-]{1,512}$/u;

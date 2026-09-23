@@ -2,7 +2,7 @@
 
 ## 背景
 
-`/` 面板会把 ZCode Agent 的可见 slash command 和已启用 skill 合并展示。内置 command 的描述来自协议命令表，官方插件附带的 command、skill 和 MCP 工具描述来自插件包自身的元数据与 MCP server 注册信息。
+`/` 面板会把 Codez Agent 的可见 slash command 和已启用 skill 合并展示。内置 command 的描述来自协议命令表，官方插件附带的 command、skill 和 MCP 工具描述来自插件包自身的元数据与 MCP server 注册信息。
 
 ## 目标
 

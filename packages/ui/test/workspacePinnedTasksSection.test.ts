@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 
 const { globalTaskListResult, remotePinnedState } = vi.hoisted(() => ({
   globalTaskListResult: {
-    items: [] as ZCodeTaskMeta[],
+    items: [] as CodezTaskMeta[],
     loading: false,
   },
   remotePinnedState: {
-    itemsByWorkspaceKey: {} as Record<string, ZCodeTaskMeta[]>,
+    itemsByWorkspaceKey: {} as Record<string, CodezTaskMeta[]>,
     loadingByWorkspaceKey: {} as Record<string, boolean>,
   },
 }));
@@ -40,7 +40,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => {
         const messages: Record<string, string> = {
@@ -56,7 +56,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
 }));
 
 vi.mock("@/TaskListItem.js", () => ({
-  MemoTaskItem: ({ task }: { task: ZCodeTaskMeta }) =>
+  MemoTaskItem: ({ task }: { task: CodezTaskMeta }) =>
     createElement("li", { "data-testid": "pinned-task-item" }, task.title),
   TaskListItemContextMenuContent: () => null,
 }));
@@ -65,8 +65,8 @@ vi.mock("@/TaskRenameDialog.js", () => ({
   TaskRenameDialog: () => null,
 }));
 
-vi.mock("@/store/zcodeSessionStore.js", () => ({
-  useZCodeSessionStore: (selector: (state: Record<string, unknown>) => unknown) =>
+vi.mock("@/store/codezSessionStore.js", () => ({
+  useCodezSessionStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       removeOptimisticTaskListItem: () => {},
       removeTaskState: () => {},
@@ -108,7 +108,7 @@ vi.mock("@/store/remoteWorkspaceSessionStore.js", () => ({
   ) => selector({ sessionIdByWorkspaceIdentity: {} }),
 }));
 
-function createTask(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
+function createTask(overrides: Partial<CodezTaskMeta> = {}): CodezTaskMeta {
   return {
     createdAt: 1,
     mode: "default",

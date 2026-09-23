@@ -2,7 +2,7 @@
 
 ## 背景
 
-Kimi K3 已进入 Moonshot 官方模型列表。首发时官方 API 文档只开放 `max`，因此 ZCode 最初把它建模为单一固定档位；最新 Kimi Code 模型文档已经开放 `low` / `high` / `max` 三档，旧策略会让用户无法选择新档位。
+Kimi K3 已进入 Moonshot 官方模型列表。首发时官方 API 文档只开放 `max`，因此 Codez 最初把它建模为单一固定档位；最新 Kimi Code 模型文档已经开放 `low` / `high` / `max` 三档，旧策略会让用户无法选择新档位。
 
 2026-07-28 产品模型名调整：
 
@@ -17,7 +17,7 @@ Kimi K3 已进入 Moonshot 官方模型列表。首发时官方 API 文档只开
 - `k3` 与 `kimi-k3` 都使用 `1,048,576` tokens 上下文；
 - `k3-256k` 的上下文窗口固定为 `262,144` tokens，其余能力与 `kimi-k3` 一致；
 - 默认输出上限为 `131,072` tokens；
-- K3 支持 `"low"` / `"high"` / `"max"` 三档；ZCode 保持既有 `"max"` 默认值；
+- K3 支持 `"low"` / `"high"` / `"max"` 三档；Codez 保持既有 `"max"` 默认值；
 - 未知 effort 会返回 HTTP 400；`none` 会关闭 K3 路由并降级到其他模型，因此不作为 K3 档位暴露；
 - K3 不能沿用 K2.x 的 `thinking` 开关参数。
 - Kimi Code 的 OpenAI-compatible 与 Anthropic-compatible endpoint 都支持 K3 三档。
@@ -34,7 +34,7 @@ Kimi K3 已进入 Moonshot 官方模型列表。首发时官方 API 文档只开
 
 - 在中国模型目录与 bundled models.dev snapshot 中维护 `kimi-k3`、`k3` 和
   `k3-256k` 的基础能力。
-- 在 zcode-cli 默认策略和 App 动态 provider overlay 中把三个 K3 模型建模为
+- 在 codez-cli 默认策略和 App 动态 provider overlay 中把三个 K3 模型建模为
   `low` / `high` / `max`，默认 `max`。
 - OpenAI-compatible 请求把所选档位映射为 `openaiCompatible.reasoningEffort`，由 AI SDK 输出顶层 `reasoning_effort`。
 - Anthropic-compatible 请求使用 `anthropic.effort`，由 AI SDK 输出 `output_config.effort`；不注入 K2.x `thinking.type`。
@@ -75,17 +75,17 @@ Anthropic-compatible: anthropic.effort=level ──► output_config.effort="low
 工具 contract: $ref="#/properties/..."
           │  K3 adapter 提升引用目标到根 $defs
           ▼
-provider wire: $defs={zcode_ref_0: ...}, $ref="#/$defs/zcode_ref_0"
+provider wire: $defs={codez_ref_0: ...}, $ref="#/$defs/codez_ref_0"
 ```
 
 模型能力是唯一事实源；UI 只根据 option 数量派生是否可切换，不按模型 ID 硬编码 K3，也不保存额外 React 状态。
 
 ## 实现
 
-1. 更新 `models_catalog_china_llm_zcode_2026-06-03.json`，保留 `kimi-k3` 的
+1. 更新 `models_catalog_china_llm_codez_2026-06-03.json`，保留 `kimi-k3` 的
    1M 上下文，新增同能力的 `k3`，并把 256K 模型改名为 `k3-256k`；三个模型都使用
    多模态输入、131072 输出预算和 `low` / `high` / `max` 三档，默认 `max`。
-2. 更新 `apps/zcode-cli/api.json` 并重新生成 `models-dev-snapshot.ts`，保证纯 CLI
+2. 更新 `apps/codez-cli/api.json` 并重新生成 `models-dev-snapshot.ts`，保证纯 CLI
    catalog 也能取得三个 K3 模型的基础能力。
 3. reasoning/default policy 为 OpenAI-compatible 与 Anthropic-compatible K3 分别生成三档 request patch。
 4. workspace dynamic provider overlay 在读取入站 metadata 前按 transport 收敛 K3 能力，避免旧配置中的单 `max` 或通用 thinking toggle 污染结果。
@@ -124,7 +124,7 @@ provider wire: $defs={zcode_ref_0: ...}, $ref="#/$defs/zcode_ref_0"
 | --------------------------- | ----------------------- | ---------------------------------------- | ----------------------- | ---------------------- | ----------------------- | ----------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------- |
 | 对话模型选择                | V4 composer             | provider registry / model option builder | session 或 draft config | App provider config    | registry 中存在且未禁用 | `switchModelConfig` 或 draft config | Agent runtime / workspace default                        | desktop continuous 与 web remote shared host 共用 registry | 自动化、Subagent、Repo Wiki 草稿 |
 | 自动化、Subagent、Repo Wiki | 各自模型选择器          | 同一 provider registry                   | 各入口本地草稿          | 各入口既有继承规则     | registry 中存在且未禁用 | 各自 service                        | automation record / agent Markdown / generation settings | 不新增平台分支                                             | 当前对话模型                     |
-| 供应商设置                  | Model Provider settings | model provider service                   | provider 编辑草稿       | China LLM catalog      | catalog schema          | provider save                       | `~/.zcode/v2/config.json`                                | 远程 workspace 仍由既有 registry sync                      | session/task 业务状态            |
+| 供应商设置                  | Model Provider settings | model provider service                   | provider 编辑草稿       | China LLM catalog      | catalog schema          | provider save                       | `~/.codez/v2/config.json`                                | 远程 workspace 仍由既有 registry sync                      | session/task 业务状态            |
 
 ### Shared And Divergent Behavior
 
@@ -166,7 +166,7 @@ provider wire: $defs={zcode_ref_0: ...}, $ref="#/$defs/zcode_ref_0"
 | Seed                                           | Query                           | Direct callers / key path                         | Depth | Interpretation                       |
 | ---------------------------------------------- | ------------------------------- | ------------------------------------------------- | ----- | ------------------------------------ |
 | `KIMI_K3_MODEL_ID` / `isKimiK3ModelId`         | explore / affected tests        | default policy、tool transform、workspace overlay | 2     | 必须统一扩展三个模型名               |
-| `loadLocalChinaLlmZCodeCatalog`                | explore / callers               | model provider service、store metadata migration  | 2     | catalog 同时驱动候选与 metadata 补齐 |
+| `loadLocalChinaLlmCodezCatalog`                | explore / callers               | model provider service、store metadata migration  | 2     | catalog 同时驱动候选与 metadata 补齐 |
 | `buildModelSelectGroups` / `useModelProviders` | graph declaration + live source | 对话、自动化、Subagent、Repo Wiki                 | 2     | 共享候选来源，无需修改 UI            |
 
 ### Graph Drift Candidates

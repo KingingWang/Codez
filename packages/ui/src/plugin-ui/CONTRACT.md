@@ -6,10 +6,10 @@ Renderer 模块，层序 `domain → app → adapters → components`；公开�
 - 页面承载容器只负责布局，不接收鼠标命中；webview 显式接收点击。webview 释放后的空容器不能遮挡宿主重载按钮，内联、侧栏与预览共用此规则。
 - 逻辑键包含 workspace identity（本地 fallback 为路径）、session、plugin、server、resource 和逻辑视图。surface 显式共享；普通工具只按明确的 widgetSessionId 与相同权限范围共享，否则按 toolCallId 隔离。禁止同回合同资源推断合并。
 - UI 不接触插件 HTML、数据库和连接凭据。经 `IPluginUiBridgeService` 获取句柄，平台端口只校验 sandboxId/initId；请求与 live 通知绑定 Agent runtimeId/generation/token/appIdentity。
-- 官方 ext-apps 2.0.0 每活页面一个 AppBridge；握手期限 15 秒。保留 `experimental["zcode/…"]` 的 widgetState、resourceSubscribe、surface、CSP 扩展；不模拟完整 OpenAI API。
+- 官方 ext-apps 2.0.0 每活页面一个 AppBridge；握手期限 15 秒。保留 `experimental["codez/…"]` 的 widgetState、resourceSubscribe、surface、CSP 扩展；不模拟完整 OpenAI API。
 - App-provided tools 在 initialized 后发现与登记；认领后用官方 SDK AbortSignal 执行，模型取消沿 live-only delta 到页面。callId 去重，终态结果不可再写入。页面调用 MCP 的目标由宿主固定，复用 Agent 的权限和审批路径，原始结果直接返回。
 - 页面 `availableDisplayModes` 是硬约束；inline/fullscreen 对应内联/侧栏，pip 保持当前模式。高度默认 240px、范围 [80,1200]，hostContext 只回传 width/maxHeight，避免高度回环。布局按帧合并。
-- widgetState 仅接受页面主动提交，唯一内存 store 按逻辑键隔离；重建时在 `hostContext["zcode/widgetState"]` 下发。切位置不复制；手动重试、任务淘汰、来源撤销清除；应用重启为空。
+- widgetState 仅接受页面主动提交，唯一内存 store 按逻辑键隔离；重建时在 `hostContext["codez/widgetState"]` 下发。切位置不复制；手动重试、任务淘汰、来源撤销清除；应用重启为空。
 - 连续离屏 5 分钟回收活页面；侧栏展示或有审批/调用时不回收。Agent 原子确认空闲后才释放。最多 30 个任务和 64 个活页面，容量 admission 串行；无法安全回收时返回错误。任务删除同时取消排队创建。
 - 已获准的主动释放先按原 sandboxId 解除导航/崩溃监听，避免 Main 停止页面的 about:blank 导航误报崩溃；真实运行中的导航/崩溃仍进入 error，重试后重建。
 - 释放顺序：失效凭证、取消调用和登记、有界 resource-teardown、关闭端口/guest、释放 feed/lease。迟到 prepare、注销和锚点清理只作用于捕获的原实例。卡片卸载不切断保活页面的订阅。

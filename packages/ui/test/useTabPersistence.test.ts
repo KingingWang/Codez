@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { createElement, type ReactNode, useCallback } from "react";
 import { act, renderHook } from "@testing-library/react";
-import type { ISettingService } from "@zcode/services";
+import type { ISettingService } from "@codez/services";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildRestoredRecentProjectPaths,
@@ -162,7 +162,7 @@ describe("useTabPersistence", () => {
         lastWorkspaceSession: [
           {
             kind: "local",
-            workspacePath: "/Users/demo/.zcode/workspace/default",
+            workspacePath: "/Users/demo/.codez/workspace/default",
             workspacePurpose: "conversation",
           },
           {
@@ -180,7 +180,7 @@ describe("useTabPersistence", () => {
   });
 
   it("canonical conversation 路径即使旧数据缺少 purpose 也不会进入最近项目", () => {
-    const conversationWorkspacePath = "/Users/demo/.zcode/workspace/default";
+    const conversationWorkspacePath = "/Users/demo/.codez/workspace/default";
 
     expect(
       getRecentProjectPathsFromSettings(
@@ -202,7 +202,7 @@ describe("useTabPersistence", () => {
   });
 
   it("恢复时会清理 recentProjects 里遗留的 canonical conversation 路径", () => {
-    const conversationWorkspacePath = "/Users/demo/.zcode/workspace/default";
+    const conversationWorkspacePath = "/Users/demo/.codez/workspace/default";
 
     expect(
       buildRestoredRecentProjectPaths(

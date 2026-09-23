@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ARMS_CUSTOM_EVENT_PROPERTY_LIMIT } from "@zcode/shared";
+import { ARMS_CUSTOM_EVENT_PROPERTY_LIMIT } from "@codez/shared";
 
 const execFileSyncMock = vi.fn();
 const execFileMock = vi.fn();
@@ -37,9 +37,9 @@ vi.mock("node:os", async (importOriginal) => {
 vi.mock("electron", () => ({
   app: {
     getAppMetrics: getAppMetricsMock,
-    getPath: vi.fn((name: string) => (name === "userData" ? "/tmp/zcode-user" : "/tmp")),
+    getPath: vi.fn((name: string) => (name === "userData" ? "/tmp/codez-user" : "/tmp")),
     isPackaged: false,
-    getAppPath: vi.fn(() => "/tmp/zcode-app"),
+    getAppPath: vi.fn(() => "/tmp/codez-app"),
   },
   BrowserWindow: {
     getAllWindows: getAllWindowsMock,
@@ -734,7 +734,7 @@ describe("desktopResourceTelemetry perf_process_window", () => {
       registerDesktopResourceTelemetry(logger, { reportIntervalMs: REPORT_INTERVAL_MS });
       await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
 
-      const { checkProcessResourceEventProperties } = await import("@zcode/shared");
+      const { checkProcessResourceEventProperties } = await import("@codez/shared");
       for (const event of processWindowEvents()) {
         expect(
           checkProcessResourceEventProperties("perf_process_window", event.properties),
@@ -799,8 +799,8 @@ describe("desktopResourceTelemetry CLI 角色与 Windows 门禁保留行为", ()
 
   it("PERF-RES-01 登记 agent pid 后的周期采样只记录 skipped 审计，不启动外部进程", async () => {
     vi.useFakeTimers();
-    vi.stubEnv("ZCODE_ENV", "test");
-    vi.stubEnv("ZCODE_E2E_RUNTIME_LOG_DIR", "C:\\e2e\\runtime-logs\\desktop");
+    vi.stubEnv("CODEZ_ENV", "test");
+    vi.stubEnv("CODEZ_E2E_RUNTIME_LOG_DIR", "C:\\e2e\\runtime-logs\\desktop");
     const platformSpy = vi.spyOn(process, "platform", "get").mockReturnValue("win32");
     const logger = { info: vi.fn(), warn: vi.fn() };
     const { registerHostAgentProcess, unregisterHostAgentProcess } =
@@ -815,7 +815,7 @@ describe("desktopResourceTelemetry CLI 角色与 Windows 门禁保留行为", ()
       pid: 43210,
       provider: "glm",
       workspacePath: "C:\\repo\\demo",
-      command: "zcode-agent.exe",
+      command: "codez-agent.exe",
       args: ["--stdio"],
       startedAt: 100,
     });
@@ -1076,7 +1076,7 @@ describe("desktopResourceTelemetry CLI 角色与 Windows 门禁保留行为", ()
       ingestCliResourceSample(cliSample({ instanceToken: "chat-secret-token" }), "local");
       await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
 
-      const { checkProcessResourceEventProperties } = await import("@zcode/shared");
+      const { checkProcessResourceEventProperties } = await import("@codez/shared");
       const cliEvents = processWindowEvents().filter((event) =>
         event.properties.process_role?.startsWith("cli_"),
       );
@@ -1280,9 +1280,9 @@ describe("desktopResourceTelemetry memory diagnostics log", () => {
 it.each(["linux", "win32"] as const)(
   "PRT-010: Host 完成通知立即上报 12/10 个白名单属性（%s）",
   async (platform) => {
-    const { Emitter } = await import("@zcode/rpc");
+    const { Emitter } = await import("@codez/rpc");
     const { hostResponseMessageSchema, PERF_TOOL_EXEC_RESOURCE_PROPERTY_KEYS } =
-      await import("@zcode/shared");
+      await import("@codez/shared");
     const { registerHostToolExecResourceTelemetry } =
       await import("../src/host/hostToolExecResourceTelemetry.js");
     const { configureDesktopResourceTelemetry, ingestToolExecResource } = await loadTelemetry();
@@ -1293,7 +1293,7 @@ it.each(["linux", "win32"] as const)(
       platform: "darwin",
     });
     sendCustomMock.mockClear();
-    const emitter = new Emitter<import("@zcode/shared").ZCodeToolExecResource>();
+    const emitter = new Emitter<import("@codez/shared").CodezToolExecResource>();
     const registration = registerHostToolExecResourceTelemetry({
       agentService: { onDynamicToolExecResource: () => emitter.event },
       runtimeSurface: "remote",
@@ -1347,10 +1347,10 @@ it.each(["linux", "win32"] as const)(
 );
 
 it("PRT-032 多个 Host 转发同一完成事实只上报一次，同指标不同命令仍独立", async () => {
-  const { Emitter } = await import("@zcode/rpc");
+  const { Emitter } = await import("@codez/rpc");
   const { registerHostToolExecResourceTelemetry } =
     await import("../src/host/hostToolExecResourceTelemetry.js");
-  const { hostResponseMessageSchema } = await import("@zcode/shared");
+  const { hostResponseMessageSchema } = await import("@codez/shared");
   const { configureDesktopResourceTelemetry, ingestToolExecResource } = await loadTelemetry();
   configureDesktopResourceTelemetry({
     deviceMid: "test",
@@ -1359,7 +1359,7 @@ it("PRT-032 多个 Host 转发同一完成事实只上报一次，同指标不�
     platform: "darwin",
   });
   sendCustomMock.mockClear();
-  const emitter = new Emitter<import("@zcode/shared").ZCodeToolExecResource>();
+  const emitter = new Emitter<import("@codez/shared").CodezToolExecResource>();
   const registrations = Array.from({ length: 2 }, () =>
     registerHostToolExecResourceTelemetry({
       agentService: { onDynamicToolExecResource: () => emitter.event },

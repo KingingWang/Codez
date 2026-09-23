@@ -102,7 +102,7 @@ describe("marketing popup adapter", () => {
         buttons: [
           {
             text: { format: "html", content: "<b>Claim</b><script>bad()</script>" },
-            action: { type: "claim_zcode_plan", args: { plan_id: "plan" } },
+            action: { type: "claim_codez_plan", args: { plan_id: "plan" } },
           },
         ],
       },

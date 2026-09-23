@@ -3,9 +3,9 @@ import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { NetworkSection } from "@/resource-manager/NetworkSection.js";
-import type { NetworkCaptureSnapshot } from "@zcode/shared";
+import type { NetworkCaptureSnapshot } from "@codez/shared";
 const { intl } = vi.hoisted(() => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }));
-vi.mock("@/i18n/index.js", () => ({ useZCodeIntl: () => ({ intl, locale: "zh-CN" }) }));
+vi.mock("@/i18n/index.js", () => ({ useCodezIntl: () => ({ intl, locale: "zh-CN" }) }));
 afterEach(() => {
   cleanup();
   vi.useRealTimers();

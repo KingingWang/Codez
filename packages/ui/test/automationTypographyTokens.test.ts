@@ -123,7 +123,7 @@ describe("automation typography tokens", () => {
       expect(source).toContain('triggerVariant="ghost"');
       expect(source).toContain('triggerSize="default"');
       expect(source).toContain('labelVisibilityClassName="inline-flex min-w-0 truncate text-left"');
-      expect(source).toContain("provider={ZCODE_AGENT_PROVIDER}");
+      expect(source).toContain("provider={CODEZ_AGENT_PROVIDER}");
       expect(source).toContain("restoreFocusSelector={null}");
       expect(source).toContain("w-fit max-w-56 min-w-0 shrink justify-start gap-1 px-2");
     }

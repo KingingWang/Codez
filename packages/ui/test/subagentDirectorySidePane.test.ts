@@ -61,7 +61,7 @@ vi.mock("@/v4/useConversationProjection.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: (descriptor: { id: string }, values?: Record<string, string>) =>
         values ? `${descriptor.id}:${Object.values(values).join("/")}` : descriptor.id,

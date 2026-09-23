@@ -22,7 +22,7 @@ test("public remote preparation defaults to Codex and requires explicit legacy o
     runLegacy: async () => calls.push("legacy"),
   };
   await prepareDesktopRemoteAssets({ ...options, env: {} });
-  await prepareDesktopRemoteAssets({ ...options, env: { ZCODE_DESKTOP_RUNTIME: "legacy" } });
+  await prepareDesktopRemoteAssets({ ...options, env: { CODEZ_DESKTOP_RUNTIME: "legacy" } });
   assert.deepEqual(calls, ["codex", "legacy"]);
   const desktop = JSON.parse(
     await readFile(new URL("../packages/desktop/package.json", import.meta.url), "utf8"),
@@ -52,25 +52,25 @@ test("remote-prod uses fork cache on every OS and refuses upstream CDN selection
     ["win32", "C:\\Users\\test"],
   ]) {
     const codex = buildDesktopRemoteProdEnv({}, platform, home);
-    const legacy = buildDesktopRemoteProdEnv({ ZCODE_DESKTOP_RUNTIME: "legacy" }, platform, home);
-    assert.match(codex.ZCODE_REMOTE_ASSET_CACHE_DIR, /ZCode Codex/);
-    assert.notEqual(codex.ZCODE_REMOTE_ASSET_CACHE_DIR, legacy.ZCODE_REMOTE_ASSET_CACHE_DIR);
-    assert.equal(codex.ZCODE_DEV_REMOTE_ASSET_USE_CDN, "0");
-    assert.equal(legacy.ZCODE_DEV_REMOTE_ASSET_USE_CDN, "1");
-    assert.equal(codex.ZCODE_DESKTOP_RUNTIME, "codex");
+    const legacy = buildDesktopRemoteProdEnv({ CODEZ_DESKTOP_RUNTIME: "legacy" }, platform, home);
+    assert.match(codex.CODEZ_REMOTE_ASSET_CACHE_DIR, /Codez Codex/);
+    assert.notEqual(codex.CODEZ_REMOTE_ASSET_CACHE_DIR, legacy.CODEZ_REMOTE_ASSET_CACHE_DIR);
+    assert.equal(codex.CODEZ_DEV_REMOTE_ASSET_USE_CDN, "0");
+    assert.equal(legacy.CODEZ_DEV_REMOTE_ASSET_USE_CDN, "1");
+    assert.equal(codex.CODEZ_DESKTOP_RUNTIME, "codex");
   }
   assert.throws(
-    () => buildDesktopRemoteProdEnv({ ZCODE_DEV_REMOTE_ASSET_USE_CDN: "1" }),
+    () => buildDesktopRemoteProdEnv({ CODEZ_DEV_REMOTE_ASSET_USE_CDN: "1" }),
     /legacy CDN/,
   );
   assert.throws(
     () =>
-      buildDesktopRemoteProdEnv({ ZCODE_REMOTE_ASSET_CDN_BASE_URL: "https://upstream.invalid" }),
+      buildDesktopRemoteProdEnv({ CODEZ_REMOTE_ASSET_CDN_BASE_URL: "https://upstream.invalid" }),
     /legacy CDN/,
   );
   assert.equal(
-    buildDesktopRemoteProdEnv({ ZCODE_REMOTE_ASSET_CACHE_DIR: "/custom-cache" })
-      .ZCODE_REMOTE_ASSET_CACHE_DIR,
+    buildDesktopRemoteProdEnv({ CODEZ_REMOTE_ASSET_CACHE_DIR: "/custom-cache" })
+      .CODEZ_REMOTE_ASSET_CACHE_DIR,
     "/custom-cache",
     "Main adds the Codex namespace exactly once",
   );

@@ -4,7 +4,7 @@
 > 取代 2026-06 版的「Installed / Marketplace 双 tab + 左侧市场切换栏」信息架构。
 > 旧版 IA、按市场分组限量策略、浏览页布局等章节整体作废（内容见 git history）；
 > 仍然有效并被本版继承的规范：`plugins/describe` 按需组件详情协议、CLI 权威组件枚举
-> （`ZCodePluginInfo.components`）、诚实降级原则、「名称 — 描述」两行体渲染。
+> （`CodezPluginInfo.components`）、诚实降级原则、「名称 — 描述」两行体渲染。
 >
 > 术语以根目录 [CONTEXT.md](../CONTEXT.md) 为准；关键决策见
 > [ADR-0001（listing 放目录层）](./adr/0001-store-listing-in-marketplace-catalog.md)、
@@ -20,31 +20,31 @@
   胶囊、长描述、「MCP 服务器」「技能」等组件分区、「信息」区（开发者/类别/版本/网站/
   隐私政策/服务条款）。
 
-公开分段对应官方市场 `zcode-plugins-official`（内置插件 + CDN zip 插件，目录源
-`https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json`）；个人分段承载其余一切
+公开分段对应官方市场 `codez-plugins-official`（内置插件 + CDN zip 插件，目录源
+`https://cdn-zcode.z.ai/codez/official-plugin/marketplace.json`）；个人分段承载其余一切
 个人来源（claude-plugins-official、用户自加市场、inline）。
 
 ### 官方市场单一身份与合并合同
 
-`zcode-plugins-official` 是 ZCode 官方市场唯一 id。内置插件和 CDN 插件不是两个市场，
-而是同一市场的两个目录分片；不得再注册、展示或生成 `zcode-plugins` 市场及
-`<name>@zcode-plugins` 插件 id。
+`codez-plugins-official` 是 Codez 官方市场唯一 id。内置插件和 CDN 插件不是两个市场，
+而是同一市场的两个目录分片；不得再注册、展示或生成 `codez-plugins` 市场及
+`<name>@codez-plugins` 插件 id。
 
 ```text
 应用内置目录分片 ─┐
-                  ├─ 按 name 合并（CDN 优先）─> zcode-plugins-official/marketplace.json
-CDN 目录分片 ─────┘                    └─ 所有插件 id: <name>@zcode-plugins-official
+                  ├─ 按 name 合并（CDN 优先）─> codez-plugins-official/marketplace.json
+CDN 目录分片 ─────┘                    └─ 所有插件 id: <name>@codez-plugins-official
 ```
 
 边界决策（2026-07-15 用户确认）：
 
 | 边界     | 决策                                                      | 剪枝 / 非目标                                  |
 | -------- | --------------------------------------------------------- | ---------------------------------------------- |
-| 市场身份 | 内置与 CDN 统一使用 `zcode-plugins-official`              | 不保留 `zcode-plugins` alias，不迁移旧测试数据 |
+| 市场身份 | 内置与 CDN 统一使用 `codez-plugins-official`              | 不保留 `codez-plugins` alias，不迁移旧测试数据 |
 | 刷新语义 | 刷新官方市场只替换 CDN 分片，再与当前应用内置分片重新合并 | CDN 刷新不得删除或改写内置插件缓存             |
 | 同名冲突 | CDN 市场条目优先，忽略内置分片中的同名目录条目            | 仅改变合并目录选择，不删除或改写应用内置缓存   |
 | 更新来源 | 内置分片随应用版本更新；CDN 分片由市场刷新更新            | 不把内置插件二进制改成 CDN 热更新              |
-| UI       | 市场源管理只显示一个可刷新的 ZCode 官方市场               | 不显示独立的内置 source 行或 CDN source 行     |
+| UI       | 市场源管理只显示一个可刷新的 Codez 官方市场               | 不显示独立的内置 source 行或 CDN source 行     |
 
 状态所有权与持久化：
 
@@ -52,15 +52,15 @@ CDN 目录分片 ─────┘                    └─ 所有插件 id: <
 | ---------------------- | ---------------------------------------------------------------- | ------------------------------------------------------ | ----------------------- |
 | 内置目录分片           | 当前应用 bundle / SEA assets                                     | 官方市场目录下的内置分片快照                           | seed 单测、cache marker |
 | CDN 目录分片           | 官方 CDN manifest                                                | 官方市场目录下的 CDN 分片快照                          | refresh 单测、网络响应  |
-| 合并目录               | 上述两个分片按 name 合并                                         | `marketplaces/zcode-plugins-official/marketplace.json` | overview / install 单测 |
-| 市场 source 与刷新时间 | `known_marketplaces.json` 中唯一的 `zcode-plugins-official` 记录 | UI marketplace summary                                 | 协议结果、设置页        |
+| 合并目录               | 上述两个分片按 name 合并                                         | `marketplaces/codez-plugins-official/marketplace.json` | overview / install 单测 |
+| 市场 source 与刷新时间 | `known_marketplaces.json` 中唯一的 `codez-plugins-official` 记录 | UI marketplace summary                                 | 协议结果、设置页        |
 
 接受的回归 case：
 
 | Case                      | Setup                        | Action                  | Assertions                                           | Evidence                |
 | ------------------------- | ---------------------------- | ----------------------- | ---------------------------------------------------- | ----------------------- |
 | `official-merge-initial`  | 新 storage，仅应用内置分片   | 打开插件页              | 单一官方市场；内置插件可见；source 指向 CDN          | manifest + overview     |
-| `official-merge-refresh`  | 已有内置分片，CDN 返回新插件 | 刷新官方市场            | 新插件使用 `@zcode-plugins-official`；内置插件仍存在 | manifest + protocol     |
+| `official-merge-refresh`  | 已有内置分片，CDN 返回新插件 | 刷新官方市场            | 新插件使用 `@codez-plugins-official`；内置插件仍存在 | manifest + protocol     |
 | `official-merge-conflict` | CDN 含与内置同名条目         | 刷新官方市场            | 保留 CDN 条目并忽略内置同名目录条目                  | manifest + adapter test |
 | `official-merge-reseed`   | 已缓存 CDN 分片              | 重启/重新 seed 内置插件 | CDN 条目仍存在；合并目录按新内置分片重建             | filesystem test         |
 
@@ -132,7 +132,7 @@ flowchart TD
 
 - 左：无（「插件/技能」tab 不做）。右侧操作组，顺序如下：
   - **刷新**（Manual Refresh）：触发 `plugins/marketplace/update(null)`（全部市场），复用现有 loading 态；不受自动刷新节流限制。
-  - **目录自动刷新**（Catalog Auto-Refresh）：进入商店页后只刷新 `zcode-plugins-official`，
+  - **目录自动刷新**（Catalog Auto-Refresh）：进入商店页后只刷新 `codez-plugins-official`，
     判据为 `now - max(lastUpdated, lastAttemptAt) >= 10 分钟`。`lastUpdated` 来自 Host 用户级
     目录持久化；`lastAttemptAt` 是 Renderer 模块内的尝试时间，发起时占位，跨页面重新挂载保留，
     进程重启清零。窗口内的失败、在途请求不因重进页面重复发起；成功的手动刷新会更新持久时间。
@@ -141,7 +141,7 @@ flowchart TD
     桌面与 Web 共用此 UI 和服务，不改变 user inventory、workspaceIdentity 或请求路由。
   - **齿轮**：进入**市场源管理**——现有 marketplace source 管理能力换位置（列出已有源：
     更新/校验/删除/诊断）。「添加」不放这里。
-    市场源行按以下规则排序：`zcode-plugins-official`、`claude-plugins-official` 固定置顶；
+    市场源行按以下规则排序：`codez-plugins-official`、`claude-plugins-official` 固定置顶；
     其余自定义源按 `lastUpdated` 倒序排列；缺少 `lastUpdated` 的自定义源沉底；同一时间按本地化
     展示名称稳定排序。
   - **New**：使用 `default`、`size="lg"` 的图标加文字按钮，直接打开「添加市场源」，收编现有 AddMarketplacePopover 的
@@ -158,7 +158,7 @@ flowchart TD
 
 ### 2. 标题区
 
-- Display 级大标题「插件」+ 副标题一句（ZCode 措辞，i18n 双语；实施时定稿文案）。
+- Display 级大标题「插件」+ 副标题一句（Codez 措辞，i18n 双语；实施时定稿文案）。
 
 ### 3. 搜索框
 
@@ -268,7 +268,7 @@ flowchart TD
    资源图标必须与各设置列表保持同一语义：MCP 服务器使用 `Server`、技能使用
    `WandSparkles`、命令使用 `Terminal`、子智能体使用 `Bot`、Hooks 使用 `Anchor`；
    详情页不得另建一套近似但不一致的图标映射。
-   - 数据源不变：已安装 → `ZCodePluginInfo.components`（CLI 权威枚举）；
+   - 数据源不变：已安装 → `CodezPluginInfo.components`（CLI 权威枚举）；
      未安装候选 → `plugins/describe` 按需拉取（loading / 失败降级 / 缓存规则沿用 V1：
      失败回退 componentTypes 标签 + 诚实提示，绝不编造）。
 5. **信息区**：标签-值两列：开发者 · 类别 · 版本 · 网站 ↗ · 隐私政策 ↗ · 服务条款 ↗。
@@ -285,8 +285,8 @@ flowchart TD
 ### Claude 官方市场图标补齐
 
 `claude-plugins-official` 的上游目录不保证为每个插件提供 `icon`。刷新该市场时，Agent
-可以从 ZCode CDN 的
-`https://cdn-zcode.z.ai/zcode/official-plugin/assets/icon-sources.json` 获取可选图标映射，
+可以从 Codez CDN 的
+`https://cdn-zcode.z.ai/codez/official-plugin/assets/icon-sources.json` 获取可选图标映射，
 并按插件 `name` 为缺失 `icon` 的目录条目补齐：
 
 - 仅作用于 `claude-plugins-official`；用户自加市场、inline 插件及孤立安装不按名称套用，
@@ -294,7 +294,7 @@ flowchart TD
 - marketplace 条目自带的 `icon` 优先，映射不得覆盖。
 - 映射只消费 `name`、`icon`、`mimeType`、`sha256`；素材溯源字段不得进入协议、日志或 UI。
 - `icon` 必须是安全的相对 PNG 路径，最终 URL 固定落在
-  `https://cdn-zcode.z.ai/zcode/official-plugin/assets/` 下。
+  `https://cdn-zcode.z.ai/codez/official-plugin/assets/` 下。
 - 市场 manifest 是主数据，图标映射是可选增强。映射下载或解析失败不得导致市场刷新失败；
   有旧缓存时继续使用旧缓存，无缓存或未命中时按统一的 Blocks 图标降级。
 - 映射在 marketplace 更新阶段获取并缓存；`plugins/overview` 不为每个条目单独发起图标网络请求。
@@ -362,7 +362,7 @@ existing catalog after upgrade
 
 listing 字段从 adapter 解析层（`PluginMarketplaceEntry`）一路透传：
 
-- `AvailablePluginSummary` / `InstalledPluginSummary`（overview）与 `ZCodePluginInfo`
+- `AvailablePluginSummary` / `InstalledPluginSummary`（overview）与 `CodezPluginInfo`
   （plugins/list）增加可选 listing 字段（displayName/icon/category/author/homepage/
   privacyPolicy/termsOfService/heroImage/examplePrompts）。
 - `PluginsOverviewResult` 的 marketplace 记录增加 `featured?: string[]`。
@@ -376,7 +376,7 @@ listing 字段从 adapter 解析层（`PluginMarketplaceEntry`）一路透传：
 sequenceDiagram
     participant UI as 商店页 (renderer)
     participant Store as pluginManagementStore
-    participant Svc as zcodeAgentService
+    participant Svc as codezAgentService
     participant Boot as bootstrap handlers
     participant Ad as adapters
     participant CDN as cdn-zcode.z.ai
@@ -401,7 +401,7 @@ sequenceDiagram
     Boot-->>UI: 组件「名称 + 描述」/ 诊断降级
 ```
 
-公开/个人分桶规则（纯 UI 层，按市场 id）：`zcode-plugins-official` → 公开；
+公开/个人分桶规则（纯 UI 层，按市场 id）：`codez-plugins-official` → 公开；
 其余（含 `claude-plugins-official`、`inline`、用户自加）→ 个人。
 
 ## 降级矩阵
@@ -454,7 +454,7 @@ sequenceDiagram
 - [ ] 顶栏：刷新触发全市场 update；齿轮打开市场源管理（更新/校验/删除）；New 直接打开「添加市场源」，github/git/URL/本地路径与拖放全可用。
 - [ ] 目录自动刷新：进入商店页自动刷新官方市场且只刷官方市场；10 分钟内重进不再刷新；刷新失败或在飞时重进不重复发起；手动刷新不受节流影响（PLM-LC-018/019）。
 - [ ] 已卸载内置插件出现在公开分段并可恢复安装。
-- [ ] 目录自动刷新：只刷新过期的 ZCode 官方目录；十分钟内重进、失败后重进不重复发起；手动刷新绕过节流（PLM-LC-018/019）。
+- [ ] 目录自动刷新：只刷新过期的 Codez 官方目录；十分钟内重进、失败后重进不重复发起；手动刷新绕过节流（PLM-LC-018/019）。
 
 详情页：
 
@@ -489,7 +489,7 @@ Agent 保留 `source: missing` / `packageStatus: missing` 的记录作为 User/W
 
 ### 文档插件默认排序（2026-09-17）
 
-官方完整 ID `pdf`、`presentations`、`spreadsheets`、`documents`（均来自 `zcode-plugins-official`）
+官方完整 ID `pdf`、`presentations`、`spreadsheets`、`documents`（均来自 `codez-plugins-official`）
 按 PDF → PPT → Excel → Word 排在已安装图标条及管理页预置分组前四位。缺少的插件跳过，停用不影响排序，个人来源同名插件不置顶。
 公开分类及复用其排序的引用选择器，在同一分类内默认按上述顺序优先；服务端显式分类/插件排序仍优先，其余规则保持。
 桌面/手机、中英文及深浅主题使用相同顺序。排序仅改变展示，不改安装、启停、配置或原数组。

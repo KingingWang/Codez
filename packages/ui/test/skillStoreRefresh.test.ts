@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ISkillsService } from "@zcode/services";
+import type { ISkillsService } from "@codez/services";
 import {
-  ZCODE_AGENT_PROVIDER,
+  CODEZ_AGENT_PROVIDER,
   type SkillSummary,
   type SkillsListResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { refreshSharedSkillStoreForWorkspace } from "@/lib/skillStoreRefresh.js";
 import { useSkillStore } from "@/store/skillStore.js";
 
@@ -14,7 +14,7 @@ function createSkill(name: string): SkillSummary {
     name,
     description: `${name} description`,
     body: "",
-    path: `/root/.zcode/skills/${name}/SKILL.md`,
+    path: `/root/.codez/skills/${name}/SKILL.md`,
     scope: "user",
     enabled: true,
   };
@@ -44,8 +44,8 @@ function setLoadedSkillStore(params: {
     workspaceIdentity: params.workspaceIdentity,
     loadedWorkspacePath: params.workspacePath,
     loadedWorkspaceIdentity: params.workspaceIdentity,
-    provider: ZCODE_AGENT_PROVIDER,
-    loadedProvider: ZCODE_AGENT_PROVIDER,
+    provider: CODEZ_AGENT_PROVIDER,
+    loadedProvider: CODEZ_AGENT_PROVIDER,
     skills: params.skills ?? [createSkill("old-skill")],
     capability: { userScopeAvailable: true },
     loading: false,
@@ -60,7 +60,7 @@ describe("refreshSharedSkillStoreForWorkspace", () => {
       workspaceIdentity: null,
       loadedWorkspacePath: null,
       loadedWorkspaceIdentity: null,
-      provider: ZCODE_AGENT_PROVIDER,
+      provider: CODEZ_AGENT_PROVIDER,
       loadedProvider: null,
       skills: [],
       capability: null,
@@ -93,7 +93,7 @@ describe("refreshSharedSkillStoreForWorkspace", () => {
     expect(skillsService.list).toHaveBeenCalledWith({
       workspacePath,
       workspaceIdentity,
-      provider: ZCODE_AGENT_PROVIDER,
+      provider: CODEZ_AGENT_PROVIDER,
     });
     expect(useSkillStore.getState().skills).toEqual([newSkill]);
   });

@@ -2,7 +2,7 @@ import type {
   CodingPlanResetStatusSnapshot,
   CodingPlanResetType,
   UsageQuotaLimit,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 // 进度条从当前占用恢复到 100% 的动画时长，沿用现有 500ms ease-out。
 export const CODING_PLAN_QUOTA_RESET_PROGRESS_DURATION_MS = 500;

@@ -3,8 +3,8 @@ import {
   buildCustomSupplierKey,
   buildGhostSupplierKey,
   encodeCustomModelValue,
-  type ZCodePersistedFileChange,
-} from "@zcode/shared";
+  type CodezPersistedFileChange,
+} from "@codez/shared";
 
 import {
   activatePromptTelemetry,
@@ -49,7 +49,7 @@ describe("messageTelemetry", () => {
   });
 
   it("builds message completion metrics from the active prompt lifecycle", () => {
-    const fileChanges: ZCodePersistedFileChange[] = [
+    const fileChanges: CodezPersistedFileChange[] = [
       {
         turnIndex: 0,
         snapshots: [
@@ -1266,7 +1266,7 @@ describe("messageTelemetry", () => {
         raw: {},
         skillMetadata: {
           qualifiedName: "document-skills:pptx",
-          pluginId: "document-skills@zcode-plugins-official",
+          pluginId: "document-skills@codez-plugins-official",
           source: "plugin",
         },
       },
@@ -1286,7 +1286,7 @@ describe("messageTelemetry", () => {
         raw: {},
         skillMetadata: {
           qualifiedName: "document-skills:pptx",
-          pluginId: "document-skills@zcode-plugins-official",
+          pluginId: "document-skills@codez-plugins-official",
           source: "plugin",
         },
       },
@@ -1296,7 +1296,7 @@ describe("messageTelemetry", () => {
     expect(step?.eventExtraDetail).toMatchObject({
       tool_name: "Skill",
       skill_qualified_name: "document-skills:pptx",
-      skill_plugin_id: "document-skills@zcode-plugins-official",
+      skill_plugin_id: "document-skills@codez-plugins-official",
       skill_source: "plugin",
     });
 
@@ -1314,7 +1314,7 @@ describe("messageTelemetry", () => {
         raw: {},
         skillMetadata: {
           qualifiedName: "document-skills:pptx",
-          pluginId: "document-skills@zcode-plugins-official",
+          pluginId: "document-skills@codez-plugins-official",
           source: "plugin",
         },
       },
@@ -1333,7 +1333,7 @@ describe("messageTelemetry", () => {
         raw: {},
         skillMetadata: {
           qualifiedName: "document-skills:pptx",
-          pluginId: "document-skills@zcode-plugins-official",
+          pluginId: "document-skills@codez-plugins-official",
           source: "plugin",
         },
       },

@@ -6,7 +6,7 @@
 import { createElement, type ComponentProps } from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import {
   ChatStartPlanBalancePanel,
   hasChatStartPlanBalance,
@@ -15,7 +15,7 @@ import { ChatContextUsage } from "../src/chat-input-toolbar/contextUsage.js";
 import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("../src/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "en-US",
     intl: {
       formatMessage: ({ id }: { id: string }) => id,

@@ -5,7 +5,7 @@ import {
   TID_LOGOUT_BUTTON,
   TID_LOGIN_USE_API_KEY_BUTTON,
   TID_LOGIN_API_KEY_SKIP_BUTTON,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   getE2EAppDataPaths,
@@ -14,7 +14,7 @@ import {
 
 const byId = (id: string) => $(`[data-testid="${id}"]`);
 function origin() {
-  const value = process.env.ZCODE_CODING_PLAN_UPGRADE_MOCK_BASE_URL;
+  const value = process.env.CODEZ_CODING_PLAN_UPGRADE_MOCK_BASE_URL;
   if (!value) throw new Error("Missing isolated marketing fixture");
   return value;
 }
@@ -34,7 +34,7 @@ async function reset(options: Record<string, boolean> = {}) {
 async function expectAnonymous() {
   const credentials = JSON.parse(await readFile(getE2EAppDataPaths().credentialsFile, "utf8"));
   // 只判断凭据是否存在，失败输出也不得带出凭据内容。
-  expect(Boolean(credentials.zcodejwttoken)).toBe(false);
+  expect(Boolean(credentials.codezjwttoken)).toBe(false);
 }
 
 describe("Marketing Touch anonymous boundaries", () => {

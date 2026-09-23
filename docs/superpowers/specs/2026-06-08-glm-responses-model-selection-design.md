@@ -6,7 +6,7 @@ GLM Agent now supports OpenAI Responses upstreams. Model provider selection must
 
 ## Current Behavior
 
-The settings page can save a provider with `apiFormat: "openai-responses"` and models that support `responses`. The chat model menu and Bot model selector filter providers by the active ZCode provider before rendering. For `glm`, both filters currently accept only `anthropic` and `openai`, where `openai` means OpenAI-compatible Chat Completions. This hides providers that only expose `/responses`.
+The settings page can save a provider with `apiFormat: "openai-responses"` and models that support `responses`. The chat model menu and Bot model selector filter providers by the active Codez provider before rendering. For `glm`, both filters currently accept only `anthropic` and `openai`, where `openai` means OpenAI-compatible Chat Completions. This hides providers that only expose `/responses`.
 
 ## Required Behavior
 

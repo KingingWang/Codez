@@ -1,6 +1,6 @@
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared";
 import {
   clearAppData,
   setInputValueByTestIdDom,
@@ -219,14 +219,14 @@ async function seedLifecycleMarketplaceCache(
           // install/enable 操作看似卡死。该隔离 HOME 只需声明已刷新，PLG12 不验证公网目录。
           {
             addedAt: "2026-07-31T00:00:00.000Z",
-            description: "Deterministic offline ZCode marketplace marker",
-            id: "zcode-plugins-official",
+            description: "Deterministic offline Codez marketplace marker",
+            id: "codez-plugins-official",
             lastUpdated: "2099-01-01T00:00:00.000Z",
-            name: "zcode-plugins-official",
+            name: "codez-plugins-official",
             pluginCount: 1,
             source: {
               source: "url",
-              url: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
+              url: "https://cdn-zcode.z.ai/codez/official-plugin/marketplace.json",
             },
           },
           {

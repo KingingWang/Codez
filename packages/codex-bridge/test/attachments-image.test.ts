@@ -18,7 +18,7 @@ import {
   PROTOCOL_V4_LIMITS as LIMITS,
   V4_METHODS,
   v4AttachmentCommitResultSchema,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { AttachmentStore } from "../src/attachments.js";
 
 const sessionId = "image-thread";
@@ -29,7 +29,7 @@ const png = Buffer.from(
 const url = `data:image/png;base64,${png.toString("base64")}`;
 
 async function fixture(t: TestContext) {
-  const cwd = await mkdtemp(join(tmpdir(), "zcode image lookup "));
+  const cwd = await mkdtemp(join(tmpdir(), "codez image lookup "));
   const root = join(cwd, "attachments");
   const stores: AttachmentStore[] = [];
   const create = (options = { cwd, root }) => {

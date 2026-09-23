@@ -1,4 +1,4 @@
-import { TID_WORKSPACE_ITEM, formatZCodeAgentProcessName, testId } from "@zcode/shared";
+import { TID_WORKSPACE_ITEM, formatCodezAgentProcessName, testId } from "@codez/shared";
 import {
   countAgentProcessRows,
   listAgentProcessIdentities,
@@ -26,11 +26,11 @@ export async function waitForActiveWorkspacePath(
         return await browser.execute((expectedPath) => {
           const tabStore = (
             window as Window & {
-              __zcodeTabStoreE2E?: {
+              __codezTabStoreE2E?: {
                 getState?: () => { activeWorkspacePath?: string | null };
               };
             }
-          ).__zcodeTabStoreE2E;
+          ).__codezTabStoreE2E;
           return tabStore?.getState?.().activeWorkspacePath === expectedPath;
         }, expectedWorkspacePath);
       } catch {
@@ -180,9 +180,9 @@ export async function assertStableAgentSelection(
   expect(identities).toHaveLength(expectedWorkspacePaths.length);
 
   const expected = new Set(expectedWorkspacePaths);
-  const placeholderPrefix = formatZCodeAgentProcessName("placeholder");
+  const placeholderPrefix = formatCodezAgentProcessName("placeholder");
   for (const workspacePath of allWorkspacePaths) {
-    const formatted = formatZCodeAgentProcessName("placeholder", workspacePath);
+    const formatted = formatCodezAgentProcessName("placeholder", workspacePath);
     const workspaceNameSuffix = formatted.slice(placeholderPrefix.length);
     const actual = await countAgentProcessRows({ workspaceNameSuffix });
     expect(actual).toBe(expected.has(workspacePath) ? 1 : 0);

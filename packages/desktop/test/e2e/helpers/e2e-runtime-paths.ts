@@ -1,8 +1,8 @@
 import { join, posix, resolve } from "node:path";
 
-export const E2E_RUNTIME_RELATIVE_ROOT = ".zcode-e2e";
+export const E2E_RUNTIME_RELATIVE_ROOT = ".codez-e2e";
 export const E2E_RUNTIME_ROOT_REPLAY_TOKEN = "{{e2eRuntimeRoot}}";
-const E2E_AGENT_WORKSPACE_NAME = "ZCodeProject";
+const E2E_AGENT_WORKSPACE_NAME = "CodezProject";
 
 interface ResolveE2EHomeDirOptions {
   cwd?: string;
@@ -14,21 +14,21 @@ export function resolveE2EHomeDir({
   env = process.env,
 }: ResolveE2EHomeDirOptions = {}): string {
   const configuredHome =
-    env.ZCODE_E2E_HOME_DIR?.trim() ||
-    env.ZCODE_DATA_BASE_DIR?.trim() ||
-    env.ZCODE_DESKTOP_HOME_DIR?.trim();
+    env.CODEZ_E2E_HOME_DIR?.trim() ||
+    env.CODEZ_DATA_BASE_DIR?.trim() ||
+    env.CODEZ_DESKTOP_HOME_DIR?.trim();
   return resolve(cwd, configuredHome || ".e2e-home");
 }
 
 export function resolveE2EStorageRoot(e2eHomeDir = resolveE2EHomeDir()): string {
   // Bug 根因：回滚 storage profile 时删除了仍被 E2E 用例依赖的路径 helper。
-  // E2E 继续隔离 HOME，但 CLI 根固定使用历史目录 .zcode，不再区分 dev/stable profile。
-  return join(e2eHomeDir, ".zcode");
+  // E2E 继续隔离 HOME，但 CLI 根固定使用历史目录 .codez，不再区分 dev/stable profile。
+  return join(e2eHomeDir, ".codez");
 }
 
 export function resolveE2ERuntimeRoot(e2eHomeDir = resolveE2EHomeDir()): string {
   // Bug 根因：conversation E2E 的 Agent 实际 cwd 是隔离 HOME 下的
-  // ZCodeProject，而不是 conversation backing workspace。Node 若写到后者，
+  // CodezProject，而不是 conversation backing workspace。Node 若写到后者，
   // Bash 的相对路径就会永远等不到同一个文件，Windows 上还会叠加 shell 路径差异。
   return join(e2eHomeDir, E2E_AGENT_WORKSPACE_NAME, E2E_RUNTIME_RELATIVE_ROOT);
 }

@@ -20,7 +20,7 @@ Historical `remoteControlToken` / `relayOrigin` notes below only describe old
 
 The web runtime stores the same core keys as desktop Z.AI login:
 
-- `zcodejwttoken`
+- `codezjwttoken`
 - `oauth:zai:access_token`
 - `oauth:zai:user_info`
 - `oauth:active_provider`

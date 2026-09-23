@@ -5,7 +5,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { RosterMeter, RosterTally } from "@/components/workflow-timeline/WorkflowRosterParts.js";
 
 afterEach(() => {
@@ -16,7 +16,7 @@ function renderPart(
   element: ReturnType<typeof createElement>,
   locale: "en-US" | "zh-CN" = "en-US",
 ) {
-  return render(createElement(ZCodeIntlProvider, { initialLocale: locale }, element));
+  return render(createElement(CodezIntlProvider, { initialLocale: locale }, element));
 }
 
 describe("RosterTally", () => {

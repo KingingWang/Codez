@@ -992,7 +992,7 @@ function buildScenarios(): ConversationTelemetryParityScenario[] {
     {
       kind: "visible.error",
       errorKey: "tdp17-3007",
-      displayMessage: requestSecurityMessagesEnUS["zcode.error.providerBusiness.3007"],
+      displayMessage: requestSecurityMessagesEnUS["codez.error.providerBusiness.3007"],
       code: "3007",
       traceId: "tdp17-trace",
       sessionId: "tdp17-session",

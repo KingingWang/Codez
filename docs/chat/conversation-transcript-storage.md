@@ -283,7 +283,7 @@ legacy fallback 只在读取侧存在；新写入必须写 `timeline` part。
 本阶段包含：
 
 1. session-store migration、sequence backfill、读写排序。
-2. contracts 和 zcode protocol 增加 `timeline` part 与 message semantics schema。
+2. contracts 和 codez protocol 增加 `timeline` part 与 message semantics schema。
 3. CLI runtime 写入 compact、fork、goal verification、model change timeline。
 4. CLI snapshot / protocol mapper 能读写 timeline part。
 5. legacy 数据 canonicalization 放在 CLI/shared 读路径，保证老数据可读。
@@ -314,13 +314,13 @@ legacy compaction/session_entry/text metadata fallback 先保留，直到 UI 完
 
 | 层 | 文件 |
 | --- | --- |
-| migration | `apps/zcode-cli/packages/adapters/src/storage/session-store/migrations.ts` |
-| rows/repositories | `apps/zcode-cli/packages/adapters/src/storage/session-store/rows.ts`、`repositories/messages.ts` |
-| contracts | `apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts` |
-| runtime writes | `apps/zcode-cli/packages/core/src/runtime/methods/message-persistence.ts`、`compact-persistence.ts`、`session-fork.ts`、`events.ts`、model set path |
-| protocol | `packages/shared/src/zcode-protocol/index.ts`、`apps/zcode-cli/packages/bootstrap/src/zcode-protocol/message-mapper.ts` |
-| shared read compatibility | `packages/shared/src/zcode-session-visible-content.ts`、`packages/shared/src/zcodePersistedMessageMerge.ts` |
-| V4 transcript hydration | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/transcript-hydration.ts`、`product-projection.ts` |
+| migration | `apps/codez-cli/packages/adapters/src/storage/session-store/migrations.ts` |
+| rows/repositories | `apps/codez-cli/packages/adapters/src/storage/session-store/rows.ts`、`repositories/messages.ts` |
+| contracts | `apps/codez-cli/packages/contracts/src/interfaces/session-store.port.ts` |
+| runtime writes | `apps/codez-cli/packages/core/src/runtime/methods/message-persistence.ts`、`compact-persistence.ts`、`session-fork.ts`、`events.ts`、model set path |
+| protocol | `packages/shared/src/codez-protocol/index.ts`、`apps/codez-cli/packages/bootstrap/src/codez-protocol/message-mapper.ts` |
+| shared read compatibility | `packages/shared/src/codez-session-visible-content.ts`、`packages/shared/src/codezPersistedMessageMerge.ts` |
+| V4 transcript hydration | `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/transcript-hydration.ts`、`product-projection.ts` |
 | UI projection | `packages/ui/src/v4/conversationProjectionStore.ts`、`packages/ui/src/v4/sessionDataLayer.ts` |
 
 ## CLI / 数据层实施轨迹

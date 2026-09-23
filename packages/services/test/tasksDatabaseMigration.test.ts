@@ -49,8 +49,8 @@ describe("DB109 App 库统一迁移", () => {
     const insert = db.prepare(
       `INSERT INTO automations(automation_id,cron_expr,prompt,workspace_key,workspace_path,created_at,updated_at,model,provider,thought_level,model_selection) VALUES(?, '* * * * *','正文','ws','/ws',1,2,?,?,?,?)`,
     );
-    insert.run("known", "custom:builtin%3Abigmodel-coding-plan:GLM-5.3", "zcode", "high", "null");
-    insert.run("unknown", "unknown-model", "zcode", "high", "null");
+    insert.run("known", "custom:builtin%3Abigmodel-coding-plan:GLM-5.3", "codez", "high", "null");
+    insert.run("unknown", "unknown-model", "codez", "high", "null");
     insert.run("default", null, null, null, null);
     runTasksDatabaseMigrations(db);
     const known = db.prepare("SELECT * FROM automations WHERE automation_id='known'").get()!;
@@ -61,7 +61,7 @@ describe("DB109 App 库统一迁移", () => {
     });
     expect(known).toMatchObject({
       model: "custom:builtin%3Abigmodel-coding-plan:GLM-5.3",
-      provider: "zcode",
+      provider: "codez",
       thought_level: "high",
       prompt: "正文",
       created_at: 1,
@@ -160,7 +160,7 @@ describe("DB109 App 库统一迁移", () => {
       ALTER TABLE automations DROP COLUMN model_selection;
       ALTER TABLE automations DROP COLUMN scheduled_run_count;
       INSERT INTO automations(automation_id,cron_expr,prompt,workspace_key,workspace_path,created_at,updated_at,model,provider,run_count)
-      VALUES('legacy','* * * * *','旧任务正文','remote:/same','/same',11,12,'p/model','zcode',7);
+      VALUES('legacy','* * * * *','旧任务正文','remote:/same','/same',11,12,'p/model','codez',7);
       CREATE TRIGGER reject_migration BEFORE UPDATE ON automations
       BEGIN SELECT RAISE(ABORT,'injected failure'); END;`);
     expect(() => runTasksDatabaseMigrations(db)).toThrow(/injected failure/);
@@ -182,7 +182,7 @@ describe("DB109 App 库统一迁移", () => {
       created_at: 11,
       updated_at: 12,
       model: "p/model",
-      provider: "zcode",
+      provider: "codez",
       run_count: 7,
       scheduled_run_count: 7,
       model_selection: JSON.stringify({ providerId: "p", modelId: "model" }),
@@ -204,7 +204,7 @@ describe("DB109 App 库统一迁移", () => {
     runTasksDatabaseMigrations(db);
     db.exec("DELETE FROM tasks_schema_migration WHERE id='0002_provider_selection'");
     db.prepare(`INSERT INTO automations(automation_id,cron_expr,prompt,workspace_key,workspace_path,created_at,updated_at,model,provider,thought_level)
-      VALUES('legacy','* * * * *','正文','ws','/ws',1,2,?,'zcode','high')`).run(model);
+      VALUES('legacy','* * * * *','正文','ws','/ws',1,2,?,'codez','high')`).run(model);
     runTasksDatabaseMigrations(db);
     const row = db.prepare("SELECT model,model_selection FROM automations").get()!;
     expect(row.model).toBe(model);
@@ -216,7 +216,7 @@ describe("DB109 App 库统一迁移", () => {
   });
 
   it("DB109-06：两个独立线程同时打开旧库，数据转换只发生一次", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-db109-concurrent-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-db109-concurrent-"));
     const path = join(root, "tasks.sqlite");
     const db = new DatabaseSync(path);
     const workers: Worker[] = [];

@@ -10,7 +10,7 @@ import type {
   FeedbackDeviceInfo,
   FeedbackTicketSeverity,
   FeedbackTicketType,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ICredentialService } from "../src/credential/credential.js";
 import { FeedbackHttpClient } from "../src/feedback/feedbackHttpClient.js";
 import { createFeedbackService } from "../src/feedback/feedbackService.js";
@@ -111,7 +111,7 @@ describe("FeedbackHttpClient", () => {
     vi.unstubAllGlobals();
   });
 
-  it("sends feedback API requests through the injected zcode api client", async () => {
+  it("sends feedback API requests through the injected codez api client", async () => {
     const createdAt = epochSeconds(2026, 6, 25, 10);
     const apiClient: ApiClient = {
       request: vi.fn(async () => {
@@ -209,7 +209,7 @@ describe("FeedbackHttpClient", () => {
         os_category: "darwin",
         os_version: "23.1.0",
         build_commit_id: "abc123",
-        agent_framework: "zcode-agent",
+        agent_framework: "codez-agent",
       });
       expect(body.environment).not.toHaveProperty("module");
 
@@ -235,7 +235,7 @@ describe("FeedbackHttpClient", () => {
       osPlatform: "darwin",
       osVersion: "23.1.0",
       osArch: "arm64",
-      agentFramework: "zcode-agent",
+      agentFramework: "codez-agent",
     };
 
     const ticket = await makeClient().create({
@@ -893,15 +893,15 @@ describe("createFeedbackService", () => {
     vi.unstubAllEnvs();
   });
 
-  it("uses the test ZCode API base by default when ZCODE_ENV=test", async () => {
-    vi.stubEnv("ZCODE_ENV", "test");
-    // Bugfix: 开发机 shell 可能导出 ZCODE_BASE_URL / ZCODE_ENDPOINT_ORIGIN（resolver 最高优先级覆盖），
-    // 会压过 ZCODE_ENV=test 的默认域推断，把「默认 base」用例变成环境敏感；置空恢复封闭性。
-    vi.stubEnv("ZCODE_BASE_URL", "");
-    vi.stubEnv("ZCODE_ENDPOINT_ORIGIN", "");
+  it("uses the test Codez API base by default when CODEZ_ENV=test", async () => {
+    vi.stubEnv("CODEZ_ENV", "test");
+    // Bugfix: 开发机 shell 可能导出 CODEZ_BASE_URL / CODEZ_ENDPOINT_ORIGIN（resolver 最高优先级覆盖），
+    // 会压过 CODEZ_ENV=test 的默认域推断，把「默认 base」用例变成环境敏感；置空恢复封闭性。
+    vi.stubEnv("CODEZ_BASE_URL", "");
+    vi.stubEnv("CODEZ_ENDPOINT_ORIGIN", "");
     const fetchMock = vi.fn(async (url: string | URL | Request) => {
-      // Bugfix: feedback 默认 base 已收敛到统一 ZCode endpoint resolver；
-      // ZCODE_ENV=test 不能继续断言生产域，否则会掩盖测试环境请求边界。
+      // Bugfix: feedback 默认 base 已收敛到统一 Codez endpoint resolver；
+      // CODEZ_ENV=test 不能继续断言生产域，否则会掩盖测试环境请求边界。
       expect(String(url)).toBe("https://zcode.z.ai/api/v1/feedback/ticket");
       return new Response(JSON.stringify({ code: 0, msg: "ok", data: { items: [] } }), {
         status: 200,
@@ -913,7 +913,7 @@ describe("createFeedbackService", () => {
     const service = createFeedbackService({
       apiClient: makeFetchApiClient(),
       credentialService: makeCredentialService((key) => {
-        if (key === "zcodejwttoken") return "shared-backend-jwt";
+        if (key === "codezjwttoken") return "shared-backend-jwt";
         return null;
       }),
       oauthService: makeOAuthService(),
@@ -923,11 +923,11 @@ describe("createFeedbackService", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("uses the production ZCode API base by default when ZCODE_ENV=production", async () => {
-    vi.stubEnv("ZCODE_ENV", "production");
+  it("uses the production Codez API base by default when CODEZ_ENV=production", async () => {
+    vi.stubEnv("CODEZ_ENV", "production");
     // 同上：屏蔽开发机 ambient 覆盖，保持「默认 base」语义封闭
-    vi.stubEnv("ZCODE_BASE_URL", "");
-    vi.stubEnv("ZCODE_ENDPOINT_ORIGIN", "");
+    vi.stubEnv("CODEZ_BASE_URL", "");
+    vi.stubEnv("CODEZ_ENDPOINT_ORIGIN", "");
     const fetchMock = vi.fn(async (url: string | URL | Request) => {
       expect(String(url)).toBe("https://zcode.z.ai/api/v1/feedback/ticket");
       return new Response(JSON.stringify({ code: 0, msg: "ok", data: { items: [] } }), {
@@ -940,7 +940,7 @@ describe("createFeedbackService", () => {
     const service = createFeedbackService({
       apiClient: makeFetchApiClient(),
       credentialService: makeCredentialService((key) => {
-        if (key === "zcodejwttoken") return "shared-backend-jwt";
+        if (key === "codezjwttoken") return "shared-backend-jwt";
         return null;
       }),
       oauthService: makeOAuthService(),
@@ -951,8 +951,8 @@ describe("createFeedbackService", () => {
   });
 
   it("keeps explicit feedback API base above environment defaults", async () => {
-    vi.stubEnv("ZCODE_ENV", "test");
-    vi.stubEnv("ZCODE_FEEDBACK_API_BASE", "https://feedback-override.example.com/api/v1");
+    vi.stubEnv("CODEZ_ENV", "test");
+    vi.stubEnv("CODEZ_FEEDBACK_API_BASE", "https://feedback-override.example.com/api/v1");
     const fetchMock = vi.fn(async (url: string | URL | Request) => {
       expect(String(url)).toBe("https://feedback-override.example.com/api/v1/feedback/ticket");
       return new Response(JSON.stringify({ code: 0, msg: "ok", data: { items: [] } }), {
@@ -965,7 +965,7 @@ describe("createFeedbackService", () => {
     const service = createFeedbackService({
       apiClient: makeFetchApiClient(),
       credentialService: makeCredentialService((key) => {
-        if (key === "zcodejwttoken") return "shared-backend-jwt";
+        if (key === "codezjwttoken") return "shared-backend-jwt";
         return null;
       }),
       oauthService: makeOAuthService(),
@@ -1009,7 +1009,7 @@ describe("createFeedbackService", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     const credentialService = makeCredentialService((key) =>
-      key === "zcodefeedbackclientid" ? "device_legacy_path_hash" : null,
+      key === "codezfeedbackclientid" ? "device_legacy_path_hash" : null,
     );
 
     try {
@@ -1079,7 +1079,7 @@ describe("createFeedbackService", () => {
         apiBaseUrl: "https://zcode.z.ai/api/v1",
         getDeviceMid: () => "desktop-device-mid-222",
         credentialService: makeCredentialService((key) => {
-          if (key === "zcodejwttoken") return "shared-backend-jwt";
+          if (key === "codezjwttoken") return "shared-backend-jwt";
           return null;
         }),
         oauthService: makeOAuthService(),

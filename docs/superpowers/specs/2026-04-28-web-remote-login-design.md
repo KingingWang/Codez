@@ -13,8 +13,8 @@
 | 约束项 | 说明 |
 |--------|------|
 | 部署域名 | `https://zcode.z.ai`（已在 ZAI OAuth 白名单内） |
-| OAuth 提供方 | ZAI（`chat.z.ai/auth`），**不走桌面端 deep-link `zcode://`** |
-| Token 存储 | Web 的 `localStorage`，核心 key 与桌面端保持一致：`zcodejwttoken`、`oauth:zai:access_token`、`oauth:zai:user_info`、`oauth:active_provider` |
+| OAuth 提供方 | ZAI（`chat.z.ai/auth`），**不走桌面端 deep-link `codez://`** |
+| Token 存储 | Web 的 `localStorage`，核心 key 与桌面端保持一致：`codezjwttoken`、`oauth:zai:access_token`、`oauth:zai:user_info`、`oauth:active_provider` |
 | 生产态同域 | 远控页面部署在 `zcode.z.ai` 下，调用 `zcode.z.ai/api/v1/oauth/token` 同源，无 CORS 问题 |
 | 开发态 | 通过环境变量注入本地 origin，ZAI 回调先回到生产域名再转发回局域网 IP；本地 token 交换必须走 Vite proxy 或后端 CORS 白名单，不能假设本地 Vite origin 天然拥有 `/api/v1/oauth/token` |
 
@@ -25,13 +25,13 @@
 1. Web 远控页面未登录时展示登录页。
 2. 发起 ZAI OAuth 登录。
 3. 处理 ZAI OAuth callback。
-4. 将后端返回的 `zcodejwttoken` 与 ZAI OAuth 相关存储写入 `localStorage`。
+4. 将后端返回的 `codezjwttoken` 与 ZAI OAuth 相关存储写入 `localStorage`。
 
 后端同事会补齐以下能力，本设计只预留联调边界，不在本期实现：
 
-1. 凭 `zcodejwttoken` 获取当前账号可连接的设备/远控入口列表。
+1. 凭 `codezjwttoken` 获取当前账号可连接的设备/远控入口列表。
 2. 设备选择后的真实远控连接建立。
-3. relay / server 侧对 `zcodejwttoken` 的鉴权与 session 绑定。
+3. relay / server 侧对 `codezjwttoken` 的鉴权与 session 绑定。
 
 因此，本期前端的 `localStorage` 登录门禁只负责 UI 入口收敛，不等价于完整服务端鉴权。登录成功后的落点按 URL 分流：
 
@@ -47,7 +47,7 @@
 
 这两个参数是当前直连远控 session 的入口参数，不是 ZAI 登录 JWT，也不代表用户身份。加登录功能后它们仍然需要保留：如果用户打开的是带 `remoteControlToken` 的旧远控链接，OAuth 跳转回来后必须还能拿到原始 `remoteControlToken` / `relayOrigin`，否则旧链接会丢失要连接的 relay session。
 
-后续后端设备列表接口完成后，新的“登录后选设备”流程可以不依赖 URL 上预置 `remoteControlToken`，而是由后端按 `zcodejwttoken` 返回可连接设备。但这不影响本期对旧链接参数的兼容。
+后续后端设备列表接口完成后，新的“登录后选设备”流程可以不依赖 URL 上预置 `remoteControlToken`，而是由后端按 `codezjwttoken` 返回可连接设备。但这不影响本期对旧链接参数的兼容。
 
 ## 数据流
 
@@ -70,7 +70,7 @@ POST https://zcode.z.ai/api/v1/oauth/token
   {code, redirect_uri, state}
    ↓
 返回 {code: 0, data: {token: "eyJ...", zai: {access_token: "zai_..."}, user: {...}}}
-   ↓ 存入 localStorage['zcodejwttoken'] = "eyJ..."
+   ↓ 存入 localStorage['codezjwttoken'] = "eyJ..."
    ↓ 存入 localStorage['oauth:zai:access_token'] = "zai_..."
    ↓ 存入 localStorage['oauth:zai:user_info'] = data.user 原始结构，并在恢复展示态时映射为 UserInfo
    ↓ 存入 localStorage['oauth:active_provider'] = "zai"
@@ -240,7 +240,7 @@ Provider 模块，负责 ZAI 协议细节：
 
 Repo 模块，封装浏览器存储，不允许业务层散落读写 `localStorage` / `sessionStorage`：
 
-- `saveTokenSet(tokenSet)` — 保存 `oauth:zai:access_token` 和 `zcodejwttoken`
+- `saveTokenSet(tokenSet)` — 保存 `oauth:zai:access_token` 和 `codezjwttoken`
 - `saveUserInfo(user)` — 保存 `oauth:zai:user_info`
 - `setActiveProvider("zai")`
 - `loadCachedSession()`
@@ -249,7 +249,7 @@ Repo 模块，封装浏览器存储，不允许业务层散落读写 `localStora
 `loadCachedSession()` 成功条件必须同时满足：
 
 1. `oauth:active_provider === "zai"`
-2. `zcodejwttoken` 存在且 trim 后非空
+2. `codezjwttoken` 存在且 trim 后非空
 3. `oauth:zai:access_token` 存在且 trim 后非空
 4. `oauth:zai:user_info` 可解析，并能映射为 `UserInfo`
 
@@ -266,13 +266,13 @@ Service 模块，对应桌面端 `OAuthService` 在 Web runtime 的等价物，�
 
 ### `packages/web/src/auth/WebLoginPage.tsx`
 
-全屏登录 UI 组件，显示 ZCode logo 和“用 ZAI 登录”按钮。
+全屏登录 UI 组件，显示 Codez logo 和“用 ZAI 登录”按钮。
 
 UI 约束：
 
 - 修改或新增 UI 前必须遵守根目录 `DESIGN.md`。
 - 使用语义颜色 token（如 `bg-background`、`text-foreground`、`bg-card`、`border-border`），兼容由 Zai 接管的 Light Theme / Dark Theme。
-- 文案必须兼容 `zh-CN` / `en-US`；因为登录页发生在完整 `ZCodeIntlProvider` 之前，需要提供轻量 locale resolver 或复用已有 i18n 字典。
+- 文案必须兼容 `zh-CN` / `en-US`；因为登录页发生在完整 `CodezIntlProvider` 之前，需要提供轻量 locale resolver 或复用已有 i18n 字典。
 - 按现有按钮体系实现主按钮，不写死临时颜色、圆角、字号。
 - 布局需要适配手机竖屏、桌面宽屏和较长英文文案。
 
@@ -366,7 +366,7 @@ async function bootstrapWebApp() {
 
 | localStorage key | 值 | 用途 |
 |-----------------|-----|------|
-| `zcodejwttoken` | 后端 JWT 字符串，即 `data.token` | 业务 API 鉴权；后续设备列表接口也凭它识别当前用户 |
+| `codezjwttoken` | 后端 JWT 字符串，即 `data.token` | 业务 API 鉴权；后续设备列表接口也凭它识别当前用户 |
 | `oauth:zai:access_token` | ZAI access token，即 `data.zai.access_token` | 与桌面端 ZAI OAuth token set 结构保持一致 |
 | `oauth:zai:user_info` | JSON；优先保存后端 `data.user` 原始结构，恢复展示态时映射为 `UserInfo` | 显示用户名/头像，并兼容现有 `OAuthCredentialRepo` 的 ZAI user_info 恢复逻辑 |
 | `oauth:active_provider` | `"zai"` | 标识当前登录方式 |
@@ -376,7 +376,7 @@ async function bootstrapWebApp() {
 |--------------------|-----|------|
 | `oauth_pending_nonce` | UUID | CSRF 防护 |
 
-> 存储 key 与 `OAuthCredentialRepo` 现有命名一致。前端展示使用 `@zcode/shared` 的 `UserInfo` 类型，不从 `@zcode/ui` 反向导入类型。
+> 存储 key 与 `OAuthCredentialRepo` 现有命名一致。前端展示使用 `@codez/shared` 的 `UserInfo` 类型，不从 `@codez/ui` 反向导入类型。
 
 ## Token 交换接口
 
@@ -472,7 +472,7 @@ const DEV_RETURN_TO = import.meta.env.VITE_DEV_ORIGIN;
 ### 单元测试
 
 - `oauthStateCodec.ts`：正向编解码、非法 base64/JSON 兜底、`-` / `_` / 缺 padding 的 base64url 边界覆盖、`return_to` 私网白名单、`app_return_to` 同源/路径/query allowlist 覆盖
-- `browserOAuthCredentialRepo.ts`：验证 `zcodejwttoken`、`oauth:zai:access_token`、`oauth:zai:user_info`、`oauth:active_provider` 写入/清理；缺任一关键 key 时 `loadCachedSession()` 返回 null 并清理残缺状态
+- `browserOAuthCredentialRepo.ts`：验证 `codezjwttoken`、`oauth:zai:access_token`、`oauth:zai:user_info`、`oauth:active_provider` 写入/清理；缺任一关键 key 时 `loadCachedSession()` 返回 null 并清理残缺状态
 - `webAuthService.ts`：mock `fetch` 响应，验证 token 交换成功/失败路径；缺少 `data.token` 或 `data.zai.access_token` 时不得写入半登录态；登录成功后返回安全的 `appReturnTo`
 - `WebCallbackPage.tsx`：验证 `state.return_to` 中转分支不校验生产 origin 的 sessionStorage，最终本地 callback 才校验 nonce；验证同 origin `return_to` 不会 replace 回自己，而是继续 token 交换；验证 `?error=...&state=...` 能显示登录失败并允许重试
 
@@ -500,4 +500,4 @@ const DEV_RETURN_TO = import.meta.env.VITE_DEV_ORIGIN;
 - 其他 OAuth provider（如 BigModel）
 - 登录状态与桌面端同步（同一浏览器跨端）
 - 后端设备列表接口完成后，登录成功页接入“获取可连接设备 → 选择设备 → 建立远控连接”流程
-- relay / server 侧完成 `zcodejwttoken` 鉴权后，前端把 token 或后端下发的短期连接票据接入 bootstrap / WebSocket 连接流程
+- relay / server 侧完成 `codezjwttoken` 鉴权后，前端把 token 或后端下发的短期连接票据接入 bootstrap / WebSocket 连接流程

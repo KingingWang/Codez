@@ -3,13 +3,13 @@ import {
   providerProvisioningErrorCodeSchema,
   type ProviderProvisioningResult,
   type ProviderProvisioningErrorCode,
-} from "@zcode/shared";
-import type { IProviderProvisioningTargetService, IServiceAccessor } from "@zcode/services";
+} from "@codez/shared";
+import type { IProviderProvisioningTargetService, IServiceAccessor } from "@codez/services";
 import {
   getProviderProvisioningSource,
   type ProviderProvisioningSource,
-} from "@zcode/services/node";
-import type { ServiceCollection } from "@zcode/services";
+} from "@codez/services/node";
+import type { ServiceCollection } from "@codez/services";
 
 export interface RemoteProviderProvisioningExecutor {
   syncLocalToRemote(): Promise<ProviderProvisioningResult>;

@@ -126,7 +126,7 @@ vi.mock("@/components/ui/switch.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, string | number>) => {
         const messages: Record<string, string> = {
@@ -158,7 +158,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
           "settings.skills.import.mode.symlink": "Symlink",
           "settings.skills.import.mode.copy.description": "Copy mode",
           "settings.skills.import.mode.symlink.description": "Symlink mode",
-          "settings.skills.import.importing": "Importing skills into ZCode",
+          "settings.skills.import.importing": "Importing skills into Codez",
           "settings.skills.import.imported": "Imported",
           "settings.skills.import.skipped": "Skipped",
           "settings.skills.import.failed": "Failed",
@@ -173,7 +173,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
           "settings.skills.agent.agents": "Codex",
           "settings.skills.agent.opencode": "OpenCode",
           "settings.skills.agent.gemini": "Gemini",
-          "settings.modelProvider.testModel.agentName.zcode_agent": "ZCode Agent",
+          "settings.modelProvider.testModel.agentName.codez_agent": "Codez Agent",
           "settings.skills.empty": "No skills found",
           "settings.skills.noDescription": "No description",
           "settings.skills.detail.description": "Description",
@@ -202,7 +202,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
           "settings.skills.removeFromCommon": "Remove from Common",
           "settingsSync.action.skip": "Not now",
           "settingsSync.action.rescan": "Scan again",
-          "settingsSync.agent.zcode": "ZCode Agent",
+          "settingsSync.agent.codez": "Codez Agent",
           "settingsSync.agent.claudeCode": "Claude Code",
           "settingsSync.agent.codexCli": "Codex CLI",
           "settingsSync.agent.openCode": "OpenCode",
@@ -241,8 +241,8 @@ vi.mock("@/store/TabStoreProvider.js", () => ({
   },
 }));
 
-vi.mock("@/store/zcodeSessionStore.js", () => ({
-  useZCodeSessionStore: Object.assign(
+vi.mock("@/store/codezSessionStore.js", () => ({
+  useCodezSessionStore: Object.assign(
     (selector: (state: Record<string, unknown>) => unknown) =>
       selector({
         getWorkspaceState: () => ({
@@ -296,7 +296,7 @@ vi.mock("@/hooks/useServices.js", () => ({
       })),
       checkRemoteUserSkillWriteAccess: vi.fn(async () => ({
         ok: true,
-        path: "/home/dev/.zcode/skills",
+        path: "/home/dev/.codez/skills",
       })),
       importSkillsArchive: vi.fn(async () => ({ results: [] })),
     },
@@ -334,7 +334,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
         })),
         checkRemoteUserSkillWriteAccess: vi.fn(async () => ({
           ok: true,
-          path: "/home/dev/.zcode/skills",
+          path: "/home/dev/.codez/skills",
         })),
         importSkillsArchive: vi.fn(async () => ({ results: [] })),
       },
@@ -345,7 +345,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
     rpcReady: true,
   }),
   useWorkspaceServices: () => ({
-    zcodeTaskService: {
+    codezTaskService: {
       createTask: vi.fn(async () => ({
         taskId: "task-1",
         provider: "claude",
@@ -367,7 +367,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
       })),
       checkRemoteUserSkillWriteAccess: vi.fn(async () => ({
         ok: true,
-        path: "/home/dev/.zcode/skills",
+        path: "/home/dev/.codez/skills",
       })),
       importSkillsArchive: vi.fn(async () => ({ results: [] })),
     },
@@ -571,7 +571,7 @@ describe("SkillsSection", () => {
         name: "skill-creator",
         description: "Create skills",
         body: "",
-        path: "/tmp/workspace/.zcode/skills/skill-creator/SKILL.md",
+        path: "/tmp/workspace/.codez/skills/skill-creator/SKILL.md",
         scope: "workspace",
         enabled: true,
       },
@@ -584,7 +584,7 @@ describe("SkillsSection", () => {
       defaultPrevented: false,
     });
 
-    const markdown = "[$skill-creator](/tmp/workspace/.zcode/skills/skill-creator/SKILL.md)";
+    const markdown = "[$skill-creator](/tmp/workspace/.codez/skills/skill-creator/SKILL.md)";
     expect(onCreateTaskMock).toHaveBeenCalledTimes(1);
     expect(onCreateTaskMock).toHaveBeenCalledWith({
       provider: "glm",
@@ -597,7 +597,7 @@ describe("SkillsSection", () => {
         markdown,
         description: "Create skills",
         data: {
-          path: "/tmp/workspace/.zcode/skills/skill-creator/SKILL.md",
+          path: "/tmp/workspace/.codez/skills/skill-creator/SKILL.md",
           scope: "workspace",
         },
       },
@@ -613,13 +613,13 @@ describe("SkillsSection", () => {
         code: "skill_missing_frontmatter",
         severity: "error",
         message: "缺少 frontmatter",
-        path: "/tmp/workspace/.zcode/skills/bad/SKILL.md",
+        path: "/tmp/workspace/.codez/skills/bad/SKILL.md",
       },
       {
         code: "skill_unknown_frontmatter",
         severity: "warning",
         message: "未识别字段: foo",
-        path: "/tmp/workspace/.zcode/skills/other/SKILL.md",
+        path: "/tmp/workspace/.codez/skills/other/SKILL.md",
         skillName: "other",
       },
     ];
@@ -632,7 +632,7 @@ describe("SkillsSection", () => {
     expect(html).toContain("Missing YAML frontmatter");
     expect(html).toContain("Unknown frontmatter key");
     expect(html).toContain("缺少 frontmatter");
-    expect(html).toContain("/tmp/workspace/.zcode/skills/bad/SKILL.md");
+    expect(html).toContain("/tmp/workspace/.codez/skills/bad/SKILL.md");
   });
 
   it("Plugin 只展示当前 scope 且名称后不重复 scope 标签", async () => {
@@ -643,7 +643,7 @@ describe("SkillsSection", () => {
         name: "repo-review",
         description: "review repo",
         body: "",
-        path: "/tmp/workspace/.zcode/skills/repo-review/SKILL.md",
+        path: "/tmp/workspace/.codez/skills/repo-review/SKILL.md",
         scope: "workspace",
         enabled: true,
       },
@@ -652,7 +652,7 @@ describe("SkillsSection", () => {
         name: "global-skill",
         description: "user skill",
         body: "",
-        path: "/Users/dev/.zcode/skills/global-skill/SKILL.md",
+        path: "/Users/dev/.codez/skills/global-skill/SKILL.md",
         scope: "user",
         enabled: true,
       },
@@ -671,7 +671,7 @@ describe("SkillsSection", () => {
       name: "lark-approval",
       description: "approval",
       body: "",
-      path: "/root/.zcode/skills/lark-approval/SKILL.md",
+      path: "/root/.codez/skills/lark-approval/SKILL.md",
       scope: "user" as const,
       enabled: true,
     };
@@ -723,7 +723,7 @@ describe("SkillsSection", () => {
       name: "lark-approval",
       description: "approval",
       body: "",
-      path: "/root/.zcode/skills/lark-approval/SKILL.md",
+      path: "/root/.codez/skills/lark-approval/SKILL.md",
       scope: "user" as const,
       enabled: true,
     };
@@ -732,7 +732,7 @@ describe("SkillsSection", () => {
       name: "local-helper",
       description: "local",
       body: "",
-      path: "/Users/alice/.zcode/skills/local-helper/SKILL.md",
+      path: "/Users/alice/.codez/skills/local-helper/SKILL.md",
       scope: "user" as const,
       enabled: true,
     };

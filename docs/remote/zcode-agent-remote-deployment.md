@@ -1,19 +1,19 @@
-# ZCode Agent Remote Deployment
+# Codez Agent Remote Deployment
 
 ## Scope
 
 For Desktop-attached SSH/Docker/WSL workspaces, Desktop Main starts or reuses a local Electron
-Remote Host utility process. That Remote Host connects to `zcode-server` and the ZCode Agent runtime
+Remote Host utility process. That Remote Host connects to `codez-server` and the Codez Agent runtime
 on the remote machine, where file, git, terminal, and agent execution observe the remote filesystem
 and process environment. The window-scoped Local Host remains a separate process; a remote workspace
 does not replace it or receive a second Local Host.
 
-Current remote deployment only prepares the default ZCode resource set:
+Current remote deployment only prepares the default Codez resource set:
 
 - `server-bundle`
 - `node-runtime`
 - `node-pty`
-- `glm` / ZCode Agent runtime
+- `glm` / Codez Agent runtime
 - `bfs`
 - `ripgrep`
 - `ugrep`
@@ -25,14 +25,14 @@ Retired third-party agent and proxy runtimes are not deployed.
 Remote server base path:
 
 ```text
-~/.zcode/server/
+~/.codez/server/
 ├── node
-├── zcode-server.cjs
+├── codez-server.cjs
 ├── build/Release/pty.node
 ├── agents/glm/
 │   ├── .version
-│   ├── zcode.cjs
-│   └── zcode-agent
+│   ├── codez.cjs
+│   └── codez-agent
 ├── .asset-components/
 │   ├── server-bundle.json
 │   └── glm.json
@@ -52,7 +52,7 @@ Linux SSH、Docker 与 WSL 部署 `bfs 4.1.1-2`、`ugrep 7.8.4-1` 和 Microsoft
 `ripgrep 14.1.1-1` component。Darwin remote 继续只部署历史 `ripgrep 13.0.0-10`
 component；remote producer 按目标平台选择依赖链，不能删除历史 rg13 release 资产。
 
-`deployZCodeAgentRuntime()` treats the `glm` manifest artifact SHA-256 as the
+`deployCodezAgentRuntime()` treats the `glm` manifest artifact SHA-256 as the
 production deployment identity while the desktop App version is unchanged. It
 skips deployment only when `.asset-components/glm.json` records the same SHA and
 platform and the wrapper, bundle, and official plugin assets still exist. The
@@ -183,7 +183,7 @@ remote .asset-components/server-bundle.json
 
 The renderer-facing host collection is mixed:
 
-- Remote proxy: file, git, system, terminal, file watcher, ZCode task/session/agent services,
+- Remote proxy: file, git, system, terminal, file watcher, Codez task/session/agent services,
   workspace-scoped Provider Settings, and workspace-scoped Model Selection.
 - Local implementation: Desktop app-global settings, OAuth UI integration, usage/coding-plan
   presentation, and other window-global state.
@@ -206,7 +206,7 @@ Desktop Entry
     | remote Provider Settings / Model Selection / task commands
     v
 Remote Environment
-├─ ZCode Built-in + Personal + Account Provider Config
+├─ Codez Built-in + Personal + Account Provider Config
 ├─ Credential Store
 ├─ Host Registry
 └─ Core Worker Registry -> ModelFactory -> model request
@@ -344,13 +344,13 @@ component-cache key semantics are unchanged.
 
 ## Resource Package Compatibility
 
-`SSHConnectOptions.resourcePackages.selectedPackageIds` is still accepted as historical input, but current connections ignore retired package choices and use the default ZCode resource set. Linux remote runtime includes `bfs`, `ripgrep`, and `ugrep`; Darwin remote only deploys its supported `ripgrep` component. Old configs cannot disable active runtime tools or re-enable third-party agent runtimes.
+`SSHConnectOptions.resourcePackages.selectedPackageIds` is still accepted as historical input, but current connections ignore retired package choices and use the default Codez resource set. Linux remote runtime includes `bfs`, `ripgrep`, and `ugrep`; Darwin remote only deploys its supported `ripgrep` component. Old configs cannot disable active runtime tools or re-enable third-party agent runtimes.
 
 ## Key Files
 
 - `packages/server/src/remote/deploy.ts`
-- `packages/server/src/remote/zcodeAgentDeploy.ts`
+- `packages/server/src/remote/codezAgentDeploy.ts`
 - `packages/server/src/remote/runtimeToolDeploy.ts`
-- `packages/shared/src/zcode-agent-runtime.ts`
+- `packages/shared/src/codez-agent-runtime.ts`
 - `packages/desktop/src/host/remoteWorkspaceServiceCollection.ts`
 - `docs/ssh-remote-app-global-state-authority.md`

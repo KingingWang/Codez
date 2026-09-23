@@ -214,11 +214,11 @@ describe("app settings", () => {
       releaseDate: "2026-06-23T13:48:54.438Z",
       releaseNotesByLocale: {
         "zh-CN": {
-          title: "ZCode v3.1.4",
+          title: "Codez v3.1.4",
           markdown: "## 新功能\n- 中文说明",
         },
         "en-US": {
-          title: "ZCode v3.1.4",
+          title: "Codez v3.1.4",
           markdown: "## New Features\n- English notes",
         },
       },

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { PluginUiSurfaceEntry } from "@zcode/services";
+import type { PluginUiSurfaceEntry } from "@codez/services";
 import { useOptionalServices } from "@/hooks/useServices.js";
 import { logger } from "@/logger.js";
 import { usePluginStore } from "@/store/pluginStore.js";

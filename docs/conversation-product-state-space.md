@@ -187,7 +187,7 @@ Submission：guide 被接收后，runtime 在 model-step 边界追加 user histo
 运行：
 
 ```sh
-pnpm --filter @zcode/formal-proof dev
+pnpm --filter @codez/formal-proof dev
 ```
 
 打开：

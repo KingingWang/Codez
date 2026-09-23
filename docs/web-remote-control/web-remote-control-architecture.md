@@ -69,16 +69,16 @@ production/default: wss://zcode.z.ai/ws
 test endpoint:       wss://zcode.z.ai/ws
 ```
 
-`ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL` 仍是最高优先级的显式调试覆盖。没有覆盖时，仅当规范化后的
+`CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL` 仍是最高优先级的显式调试覆盖。没有覆盖时，仅当规范化后的
 endpoint origin 为 `https://zcode.z.ai` 才使用测试 relay；production 与 localhost/custom
 endpoint 保持生产 relay，避免扩大自定义 endpoint 的既有语义。二维码页面 URL 仍由 App 版本在
-`/remote/v3` 与 `/remote/v4` 之间派生；`ZCODE_WEB_REMOTE_CONTROL_URL` 只用于显式调试覆盖。
+`/remote/v3` 与 `/remote/v4` 之间派生；`CODEZ_WEB_REMOTE_CONTROL_URL` 只用于显式调试覆盖。
 
 开发时可以把手机页指向本地 web：
 
 ```bash
-ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL=wss://zcode.z.ai/ws \
-ZCODE_WEB_REMOTE_CONTROL_URL=http://localhost:5173/remote \
+CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL=wss://zcode.z.ai/ws \
+CODEZ_WEB_REMOTE_CONTROL_URL=http://localhost:5173/remote \
 pnpm dev:desktop
 ```
 
@@ -95,38 +95,38 @@ v2:
   -> pnpm run build:web-remote-control
   -> packages/web/dist
   -> Dockerfile.web-remote-control
-  -> uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-v2
-  -> zcode/frontend/deployment-remote.yaml
+  -> uhub.service.ucloud.cn/tianqi/codez-remote-mobile-v2
+  -> codez/frontend/deployment-remote.yaml
   -> /remote
 
 v3:
   -> pnpm run build:web-remote-control:v3
   -> packages/web/dist
   -> Dockerfile.web-remote-control-v3
-  -> uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-v3
-  -> zcode/frontend/deployment-remote-v3.yaml
+  -> uhub.service.ucloud.cn/tianqi/codez-remote-mobile-v3
+  -> codez/frontend/deployment-remote-v3.yaml
   -> /remote/v3
 
 v4:
   -> pnpm run build:web-remote-control:v4
   -> packages/web/dist
   -> Dockerfile.web-remote-control-v4
-  -> uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-v4
-  -> 外部基础设施的 zcode/frontend/deployment-remote-v4.yaml
+  -> uhub.service.ucloud.cn/tianqi/codez-remote-mobile-v4
+  -> 外部基础设施的 codez/frontend/deployment-remote-v4.yaml
   -> /remote/v4
 
 test:
   -> pnpm run build:web-remote-control:test
   -> packages/web/dist
   -> Dockerfile.web-remote-control-test
-  -> uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-test
-  -> zcode/frontend/deployment-remote-test.yaml
+  -> uhub.service.ucloud.cn/tianqi/codez-remote-mobile-test
+  -> codez/frontend/deployment-remote-test.yaml
   -> /remote/__test__
 ```
 
 v4 的 test 与 production 线上部署共用同一个 Dockerfile 和 `/remote/v4` 资源基址，但由独立 Jenkins
-Job、镜像和 Deployment 隔离。两个 Job 必须分别显式传入 `ZCODE_ENV=test` 与
-`ZCODE_ENV=production`；Dockerfile 在 builder stage 校验后交给 Vite 注入 endpoint。域名本身不会在
+Job、镜像和 Deployment 隔离。两个 Job 必须分别显式传入 `CODEZ_ENV=test` 与
+`CODEZ_ENV=production`；Dockerfile 在 builder stage 校验后交给 Vite 注入 endpoint。域名本身不会在
 浏览器运行时改写已经编译进 JS 的产品环境：
 
 ```text
@@ -174,7 +174,7 @@ bash scripts/docker-build-and-push-web-remote-control-v4.sh --tag 202604291800
 bash scripts/docker-build-and-push-web-remote-control-test.sh --tag 202604291800
 ```
 
-`zcode/frontend/deployment-remote-v4.yaml` 和 `zcode/frontend/deployment-remote-test.yaml` 都是外部基础设施
+`codez/frontend/deployment-remote-v4.yaml` 和 `codez/frontend/deployment-remote-test.yaml` 都是外部基础设施
 仓库内的约定路径，不在当前仓库，也不由本功能创建。发布脚本默认使用
 `K8S_REPO_DIR=~/workspace/cgx-dev-k8s` 更新对应 deployment 文件并创建 MR；如果传入 `--skip-mr`，
 脚本只构建并推送镜像，不更新外部仓库。
@@ -182,17 +182,17 @@ bash scripts/docker-build-and-push-web-remote-control-test.sh --tag 202604291800
 Desktop 默认二维码 URL 不指向 `/remote/__test__`。需要验证测试资源时，通过环境变量覆盖：
 
 ```bash
-ZCODE_WEB_REMOTE_CONTROL_URL=https://zcode.z.ai/remote/__test__ pnpm dev:desktop
+CODEZ_WEB_REMOTE_CONTROL_URL=https://zcode.z.ai/remote/__test__ pnpm dev:desktop
 ```
 
 nginx 只负责静态资源和 SPA fallback，不代理 relay。浏览器端根据构建时 endpoint 直接连接对应 relay：
 production 使用 `wss://zcode.z.ai/ws`，test 使用 `wss://zcode.z.ai/ws`。Desktop App 正式版本大于等于 `3.4.0` 时，二维码 URL 使用
 `https://zcode.z.ai/remote/v4?...`；低于 `3.4.0`、`3.4.0` 自身的预发布版本或无法解析的版本继续使用
 `https://zcode.z.ai/remote/v3?...`。高于该门槛的预发布版本（例如 `3.5.0-beta.1`）使用 v4；显式
-`ZCODE_WEB_REMOTE_CONTROL_URL` 覆盖值不会被版本逻辑改写。
+`CODEZ_WEB_REMOTE_CONTROL_URL` 覆盖值不会被版本逻辑改写。
 
 四份 `Dockerfile.web-remote-control*` 都使用 Node builder 在容器内执行过滤安装和 Vite 构建：
-`pnpm install --frozen-lockfile --filter @zcode/web... --ignore-scripts`。runtime stage 只保留
+`pnpm install --frozen-lockfile --filter @codez/web... --ignore-scripts`。runtime stage 只保留
 `nginx:alpine` 和静态 `dist`，不包含 Node runtime。发布脚本不在宿主机重复构建，保证最终镜像资源
 只来自 Docker builder。
 
@@ -204,9 +204,9 @@ production 使用 `wss://zcode.z.ai/ws`，test 使用 `wss://zcode.z.ai/ws`。De
 2. mobile web 以 `terminal` 角色连接同一 endpoint，浏览器通过 query `mid=<device_mid>` 传 routing hint
 3. relay 完成 `device_register_init`、`auth_init`、`auth_challenge`、`auth_response`、`auth_ack`
 4. 双端用 `pair_status_query` / `pair_status_ack` 做平均 10 秒、有界 8~12 秒 jitter 心跳；最近一次 ACK 超过 30 秒未更新时由本地 watchdog 触发重连，watchdog 触发的重连再增加小幅随机延迟以避免重连尖峰
-5. ZCode 业务消息全部放在 relay `data.payload`，relay 不解析 payload
+5. Codez 业务消息全部放在 relay `data.payload`，relay 不解析 payload
 
-Task 实时同步也遵守这个边界：relay 只转发 mobile 与 desktop main 之间的 `rpc-frame`，不解析 task、session、workspace 或 ZCode realtime 事件。手机远控页面不拥有独立 Host，也不会启动独立 Agent runtime。desktop main 在收到 `workspace-bridge-open` 后，为手机 bridge 创建新的 `MessagePort` attachment，并挂到目标桌面窗口唯一 Window Host 中对应 local/remote workspaceKey 的 service/CLI scope。relay 只透传 `rpc-frame`，不解析 ZCode task、stream 或 workspace 业务语义。
+Task 实时同步也遵守这个边界：relay 只转发 mobile 与 desktop main 之间的 `rpc-frame`，不解析 task、session、workspace 或 Codez realtime 事件。手机远控页面不拥有独立 Host，也不会启动独立 Agent runtime。desktop main 在收到 `workspace-bridge-open` 后，为手机 bridge 创建新的 `MessagePort` attachment，并挂到目标桌面窗口唯一 Window Host 中对应 local/remote workspaceKey 的 service/CLI scope。relay 只透传 `rpc-frame`，不解析 Codez task、stream 或 workspace 业务语义。
 
 ### 心跳调度与失联恢复
 
@@ -242,7 +242,7 @@ auth_ack / matched
 
 ## App Payload
 
-`data.payload` 使用 `zcode_type` 区分业务消息：
+`data.payload` 使用 `codez_type` 区分业务消息：
 
 - `bootstrap-request` / `bootstrap-response`
 - `workspace-list-request` / `workspace-list-response` / `workspace-list-updated`
@@ -285,7 +285,7 @@ Desktop 和 mobile 收到 relay `data.payload` 后必须先走 `parseWebRemoteCo
 `workspace-list-updated` 只用于 desktop renderer 已经通过 `syncWebRemoteControlTasks` /
 `syncWebRemoteControlWorkspaces` 同步新快照后，把同一份 `WebRemoteControlWorkspaceListResult`
 推给已连接的手机端。它不改变 relay 和 desktop main 的职责：relay 仍只透传 `data.payload`，desktop main
-仍只组合并转发 renderer 已同步的 workspace/task 索引，不持有 ZCode task、stream、queue 或 snapshot 业务状态。
+仍只组合并转发 renderer 已同步的 workspace/task 索引，不持有 Codez task、stream、queue 或 snapshot 业务状态。
 
 ## Desktop Main
 
@@ -297,7 +297,7 @@ Desktop 和 mobile 收到 relay `data.payload` 后必须先走 `parseWebRemoteCo
 4. 为当前 mobile bridge 创建新的 `MessagePort` attachment
 5. 用 shared acknowledged adapter 把 host `MessagePortProtocol` 的 RPC message 编码成有界
    `rpc-frame` fragments，并消费 cumulative ACK
-6. 不解析 ZCode task 业务语义，不参与 task stream、permission 或 workspace task list 的同步逻辑
+6. 不解析 Codez task 业务语义，不参与 task stream、permission 或 workspace task list 的同步逻辑
 
 ### 桌面应用重启后的启用状态恢复
 
@@ -333,7 +333,7 @@ shared host；桌面 renderer 仍保持 `desktop-continuous`，不得把 replaya
 手机远控页面不拥有独立 host process，也不会启动独立 Agent runtime。desktop main 在收到
 `workspace-bridge-open` 后，为手机 bridge 创建一个新的 `MessagePort` attachment，
 并把该 attachment 挂到目标桌面窗口唯一 Window Host 的 local/remote workspace scope。
-relay 只透传 `rpc-frame`，不解析 ZCode task、stream 或 workspace 业务语义。
+relay 只透传 `rpc-frame`，不解析 Codez task、stream 或 workspace 业务语义。
 
 Desktop renderer 和 mobile Web remote control 通过不同 RPC client 连接同一个 host/service/runtime。每个 attachment 由 host 分配独立 `connectionId` 和可信 `clientMode`：本地及 SSH/WSL/Docker 桌面窗口都是 `desktop-continuous`，手机 `/remote` 是 `web-remote-replayable`。host 为每个 attachment 建立 owned-subscription registry；下行帧只能写给拥有该 `subscriptionId` 的 MessagePort，禁止 workspace 广播后让手机丢弃桌面帧。
 
@@ -355,8 +355,8 @@ main/relay 不能指定任意 connectionId；host scope 从 owned subscription �
 remote host relay 对下游 id 做长度前缀 namespace。port close 串行发送 `closed` 后再 dispose owned
 subscriptions，旧 SAT/DRN/timer 不得复活。
 
-`zcode-server /ws` 对所有普通连接固定为 replayable；旧的
-`x-zcode-rpc-client-mode` header 会被忽略，不能把浏览器或普通 WebSocket 升格为
+`codez-server /ws` 对所有普通连接固定为 replayable；旧的
+`x-codez-rpc-client-mode` header 会被忽略，不能把浏览器或普通 WebSocket 升格为
 continuous。desktop server-remote 的 Node host 先通过受现有 server auth middleware
 保护的 `POST /api/rpc-host-capability` 获取短期、一次性随机 capability，再在 Node-only
 header 中携带它连接专用 `/ws/host`。服务端消费成功后才创建 continuous trusted relay

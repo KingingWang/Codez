@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
-import type { WebRemoteControlRelayRole } from "@zcode/shared";
+import type { WebRemoteControlRelayRole } from "@codez/shared";
 
 export interface WebRemoteControlRelayAuthProvider {
   createPassword(): string;

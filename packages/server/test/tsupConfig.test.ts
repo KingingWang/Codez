@@ -7,10 +7,10 @@ import { loadBuiltinProviderConfig } from "../../../scripts/builtin-provider-con
 describe("server tsup config", () => {
   it("embeds the selected environment's Built-in config used by the HTTP entry", async () => {
     const expected = await loadBuiltinProviderConfig();
-    expect(JSON.parse(SERVER_HTTP_DEFINES.__ZCODE_BUILTIN_PROVIDER_CONFIG_JSON__)).toBe(
+    expect(JSON.parse(SERVER_HTTP_DEFINES.__CODEZ_BUILTIN_PROVIDER_CONFIG_JSON__)).toBe(
       expected.content,
     );
-    expect(JSON.parse(SERVER_HTTP_DEFINES.__ZCODE_ENV__)).toBe(expected.environment);
+    expect(JSON.parse(SERVER_HTTP_DEFINES.__CODEZ_ENV__)).toBe(expected.environment);
   });
 
   it("externalizes CommonJS multipart dependencies for the ESM HTTP dev bundle", () => {
@@ -34,7 +34,7 @@ describe("server tsup config", () => {
       dependencies?: Record<string, string>;
     };
 
-    // Bugfix: pnpm 不会把传递依赖暴露给 @zcode/server；HTTP bundle 外置后必须从 server 自身解析。
+    // Bugfix: pnpm 不会把传递依赖暴露给 @codez/server；HTTP bundle 外置后必须从 server 自身解析。
     expect(Object.keys(packageJson.dependencies ?? {})).toEqual(
       expect.arrayContaining(SERVER_HTTP_EXTERNAL_DEPENDENCIES),
     );

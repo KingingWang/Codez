@@ -61,7 +61,7 @@ describe("Automations populated-list Figma contract", () => {
 
     expect(refreshAction).toBeGreaterThanOrEqual(0);
     expect(createAction).toBeGreaterThan(refreshAction);
-    expect(automationsSectionSource).toContain("refresh(zcodeAgentService)");
+    expect(automationsSectionSource).toContain("refresh(codezAgentService)");
     expect(automationsSectionSource).toContain("offPeakRefresh(offPeakTaskService)");
     expect(automationsSectionSource).toMatch(
       /variant="outline"\s+size="icon"\s+aria-label=\{intl\.formatMessage\(\{ id: "automations\.refresh" \}\)\}/,

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { EmbeddedBrowserPermissionPromptEvent } from "@zcode/shared";
+import type { EmbeddedBrowserPermissionPromptEvent } from "@codez/shared";
 
 /**
  * 内置浏览器权限弹窗队列：main 经 IPC 推送请求，用户操作后由组件回传决策并出队。

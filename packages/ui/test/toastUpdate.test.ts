@@ -16,7 +16,7 @@ describe("toast updates", () => {
     // Toast 容器可能还没有完成首帧挂载，更新也必须保留并合并到即将挂载的同一个 item。
     updateToast(id, { message: "正在下载分享文件：0/1", variant: "info" });
     await waitFor(() => {
-      expect(document.querySelector("#zcode-toast-host")?.textContent).toContain(
+      expect(document.querySelector("#codez-toast-host")?.textContent).toContain(
         "正在下载分享文件：0/1",
       );
     });
@@ -25,13 +25,13 @@ describe("toast updates", () => {
     id = toast("正在完成导入", { durationMs: 0, dedupeKey: "share-import" });
     updateToast(id, { message: "已从分享导入：示例会话", durationMs: 10 });
     await waitFor(() => {
-      const hostText = document.querySelector("#zcode-toast-host")?.textContent ?? "";
+      const hostText = document.querySelector("#codez-toast-host")?.textContent ?? "";
       expect(hostText).toContain("已从分享导入：示例会话");
       expect(hostText).not.toContain("正在下载分享文件：0/1");
-      expect(document.querySelectorAll("#zcode-toast-host .rounded-2xl")).toHaveLength(1);
+      expect(document.querySelectorAll("#codez-toast-host .rounded-2xl")).toHaveLength(1);
     });
     await waitFor(
-      () => expect(document.querySelectorAll("#zcode-toast-host .rounded-2xl")).toHaveLength(0),
+      () => expect(document.querySelectorAll("#codez-toast-host .rounded-2xl")).toHaveLength(0),
       { timeout: 1000 },
     );
   });

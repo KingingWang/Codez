@@ -3,7 +3,7 @@
 > 状态：草稿（尚未提交给 modelcontextprotocol/typescript-sdk）。
 > 日期：2026-08-25。
 > 影响包：`@modelcontextprotocol/client` 2.0.0。
-> 关联：`docs/mcp-dual-era-version-negotiation.md`（ZCode 侧不改协商语义，只做
+> 关联：`docs/mcp-dual-era-version-negotiation.md`（Codez 侧不改协商语义，只做
 > `protocol_negotiation_failed` 失败引导 + `protocolVersion: "legacy"` 兼容开关）。
 
 以下为英文 issue 正文草稿。

@@ -6,7 +6,7 @@
 
 ## Constraints
 
-- 不修改 `apps/zcode-cli`、`packages/ui` 或 `product-projection.ts`。
+- 不修改 `apps/codez-cli`、`packages/ui` 或 `product-projection.ts`。
 - 不增加 timeout，不改变 provider 原始错误。
 - 不扩展桌面 `continuous` 或手机 `web-remote-replayable` 语义。
 
@@ -27,5 +27,5 @@
 
 - [x] 原样连续运行两轮 BG26，确认均为 1 passed。
 - [x] 从 capture/log 核对一个 child 429、`maxAttempts=1`、child failed 和父 notification 原始错误。
-- [x] 运行 `pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`。
+- [x] 运行 `pnpm --filter @codez/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`。
 - [ ] 提交 `test(e2e): isolate BG26 failure projection`。

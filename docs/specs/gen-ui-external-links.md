@@ -2,7 +2,7 @@
 
 ## 目标与范围
 
-Gen UI 中的普通 `<a href="https://example.com/subscribe">` 可直接跳转；需要脚本控制时，提供 `window.zcode.openExternal({ href })`，返回 `Promise<void>`。两个入口复用同一条宿主链路，不增加其他页面 API。
+Gen UI 中的普通 `<a href="https://example.com/subscribe">` 可直接跳转；需要脚本控制时，提供 `window.codez.openExternal({ href })`，返回 `Promise<void>`。两个入口复用同一条宿主链路，不增加其他页面 API。
 
 ```mermaid
 sequenceDiagram
@@ -24,7 +24,7 @@ sequenceDiagram
 - 普通链接由页面运行时委托处理，包括动态添加的链接、链接内图标、键盘 Enter 激活、带修饰键的左键和中键点击。`target` 不改变宿主路由；卡片自身不跳转、不创建 guest 窗口。右键仍保留原有行为。
 - 已被页面 `preventDefault()` 的点击不重复处理。空 href 与 `#片段` 保留页内行为。`download` 链接不转成外部打开，本次不提供下载能力。
 - 外部链接须由真实用户操作触发；合成点击不打开，无用户手势的页面加载或定时调用会被拒绝。宿主复用现有近期原生手势消费机制，并在异步校验返回后重新检查页面有效性。
-- 显式 API 参数为 `{ href: string }`，失败时 Promise 拒绝；普通链接失败通过既有 `zcode:error` 事件报告。Promise 确认宿主已调用平台入口，不表示浏览器已加载成功。
+- 显式 API 参数为 `{ href: string }`，失败时 Promise 拒绝；普通链接失败通过既有 `codez:error` 事件报告。Promise 确认宿主已调用平台入口，不表示浏览器已加载成功。
 - 页面宿主声明 `openLinks` 能力并处理标准 `ui/open-link` 请求。外部打开函数通过依赖注入获得，不向页面暴露 Desktop preload，不放宽原有导航、新窗口和下载拦截。
 - 打开动作发生在查看页面的客户端，由 `IPlatformService.openExternal` 决定实际浏览器行为；远程工作区不执行远程打开命令、不发送 Agent 消息、不新增持久状态。
 - Web / 手机未提供 Gen UI 沙箱时继续使用现有 HTML 降级行为；本次不新增 Web 沙箱，也不改变 continuous / replayable 消息链路。无主题、文案或布局变化。

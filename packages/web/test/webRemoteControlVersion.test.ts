@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { WebRemoteControlWindowBootstrapResult } from "@zcode/shared";
+import type { WebRemoteControlWindowBootstrapResult } from "@codez/shared";
 import { createWebRemoteControlVersionGuard } from "../src/webRemoteControlVersion.js";
 
 const bootstrap = (desktopAppVersion?: string): WebRemoteControlWindowBootstrapResult => ({

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DockerContainerInfo, IPlatformService } from "@zcode/shared";
+import type { DockerContainerInfo, IPlatformService } from "@codez/shared";
 import {
   loadRemoteConnectionDockerOptions,
   resolveDockerContainerSelectionAfterRefresh,
@@ -14,7 +14,7 @@ const containers: DockerContainerInfo[] = [
   {
     id: "abc123",
     image: "ubuntu:latest",
-    name: "zcode-dev",
+    name: "codez-dev",
     state: "running",
     status: "Up 2 minutes",
   },
@@ -70,7 +70,7 @@ describe("resolveDockerContainerSelectionAfterRefresh", () => {
   it("clears the selected container when the refreshed running container list no longer contains it", () => {
     expect(
       resolveDockerContainerSelectionAfterRefresh({
-        currentContainer: "zcode-dev",
+        currentContainer: "codez-dev",
         dockerContainers: [],
       }),
     ).toBe("");
@@ -79,10 +79,10 @@ describe("resolveDockerContainerSelectionAfterRefresh", () => {
   it("keeps the selected container when the refreshed running container list still contains its name", () => {
     expect(
       resolveDockerContainerSelectionAfterRefresh({
-        currentContainer: "zcode-dev",
+        currentContainer: "codez-dev",
         dockerContainers: containers,
       }),
-    ).toBe("zcode-dev");
+    ).toBe("codez-dev");
   });
 
   it("keeps the selected container when the refreshed running container list contains its id", () => {

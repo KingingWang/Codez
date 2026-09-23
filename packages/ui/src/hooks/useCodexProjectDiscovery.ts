@@ -86,7 +86,7 @@ export function useCodexProjectDiscovery({
     const current = scopeRef.current;
     if (!current.enabled || !current.rpcReady) return;
     if (inflightRef.current?.scope === current.scope) return inflightRef.current.request;
-    const request = current.services.zcodeSessionService
+    const request = current.services.codezSessionService
       .listSessions({
         workspacePath: current.workspacePath,
         ...(current.workspaceIdentity ? { workspaceIdentity: current.workspaceIdentity } : {}),

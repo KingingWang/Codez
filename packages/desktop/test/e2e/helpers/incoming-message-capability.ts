@@ -1,5 +1,5 @@
-import { ModelConfig, ModelPropertiesConfig } from "@zcode/provider";
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { ModelConfig, ModelPropertiesConfig } from "@codez/provider";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import { getE2EAppDataPaths, seedSettings } from "./desktop-app.js";
 import {
   ensureUpstreamModelForE2E,
@@ -49,7 +49,7 @@ export async function prepareIncomingMessageCapability(
   } finally {
     repository.dispose();
   }
-  await seedSettings({ zcodeInteractionBehavior: interactionBehavior });
+  await seedSettings({ codezInteractionBehavior: interactionBehavior });
   // 冷启动 Host/Worker 形成配置生效屏障，不依赖 watcher 的偶然时序。
   await browser.reloadSession();
   await prepareV4ConversationE2E({ resetDraftBeforeProvider: true, skipProvider: true });

@@ -7,7 +7,7 @@ import {
   TID_BROWSER_MORE_BUTTON,
   TID_BROWSER_OPEN_EXTERNAL_ITEM,
   TID_BROWSER_REFRESH_BUTTON,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clickTestIdByWebDriver } from "./helpers/desktop-app.js";
 import { openFirstBrowserTab } from "./helpers/browser-side-pane.js";
 import { prepareConversationE2E } from "./helpers/conversation-session.js";
@@ -21,7 +21,7 @@ describe("内置浏览器「在默认浏览器中打开」对本地 file URL 的
   let shellOpenPath: ElectronMock;
 
   before(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), "zcode-e2e-file-url-"));
+    tempDir = await mkdtemp(join(tmpdir(), "codez-e2e-file-url-"));
     const assetDir = join(tempDir, "04 素材");
     await mkdir(assetDir);
     await writeFile(

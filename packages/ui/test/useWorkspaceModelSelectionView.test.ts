@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { IModelSelectionService, ModelSelectionView } from "@zcode/services";
+import type { IModelSelectionService, ModelSelectionView } from "@codez/services";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useModelSelectionView } from "@/hooks/useModelSelectionView.js";
 

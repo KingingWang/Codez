@@ -7,7 +7,7 @@
     "types": ["node", "@wdio/globals/types", "@wdio/electron-types", "mocha"],
     "noEmit": true,
     "paths": {
-      "@zcode/e2e-report": ["../e2e-report/src/node/index.ts"]
+      "@codez/e2e-report": ["../e2e-report/src/node/index.ts"]
     }
   },
   "include": ["wdio.conf.ts", "test/e2e"],

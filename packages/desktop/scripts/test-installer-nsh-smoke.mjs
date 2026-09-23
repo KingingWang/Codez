@@ -69,12 +69,12 @@ function readShortcutProperty(shortcutPath, propertyName) {
 
   const command = [
     "$shell = New-Object -ComObject WScript.Shell",
-    "$shortcut = $shell.CreateShortcut($env:ZCODE_SHORTCUT_PATH)",
+    "$shortcut = $shell.CreateShortcut($env:CODEZ_SHORTCUT_PATH)",
     `[Console]::Out.Write(${propertyExpression})`,
   ].join("; ");
   return execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command], {
     encoding: "utf-8",
-    env: { ...process.env, ZCODE_SHORTCUT_PATH: shortcutPath },
+    env: { ...process.env, CODEZ_SHORTCUT_PATH: shortcutPath },
   }).trim();
 }
 
@@ -95,7 +95,7 @@ function compileFixture({
     `/DNSIS_INCLUDE_DIR=${resolve(nsisDir, "Include")}`,
     `/DELECTRON_BUILDER_NSIS_INCLUDE_DIR=${resolve(appBuilderLibDir, "templates/nsis/include")}`,
     `/DNSIS_PLUGIN_DIR=${resolve(nsisResourcesDir, "plugins/x86-unicode")}`,
-    `/DZCODE_INSTALLER_NSH=${installerNshPath}`,
+    `/DCODEZ_INSTALLER_NSH=${installerNshPath}`,
     `/DFIXTURE_EXE=${process.env.ComSpec ?? "C:\\Windows\\System32\\cmd.exe"}`,
     `/DOUTPUT_FILE=${outputPath}`,
     `/DDEFAULT_LOG_PATH=${defaultLogPath}`,
@@ -133,7 +133,7 @@ async function main() {
     getBinFromUrl("nsis-resources-3.4.1", "nsis-resources-3.4.1.7z", NSIS_RESOURCES_CHECKSUM),
   ]);
   const makensisPath = resolve(nsisDir, "makensis.exe");
-  const tempRoot = mkdtempSync(join(tmpdir(), "zcode-installer-nsh-smoke-"));
+  const tempRoot = mkdtempSync(join(tmpdir(), "codez-installer-nsh-smoke-"));
 
   try {
     const uninstallerFixturePath = join(tempRoot, "uninstaller-fixture.exe");
@@ -169,7 +169,7 @@ async function main() {
       runFixture(installerPath, installDir, customLogPath);
       assertInstallerLog(customLogPath ?? join(tempRoot, `${scenario}-default.log`), "silent");
 
-      const appExe = join(installDir, "ZCode.exe");
+      const appExe = join(installDir, "Codez.exe");
       const startMenuLink = join(installDir, "start-menu.lnk");
       const desktopLink = join(installDir, "desktop.lnk");
       const launchLink = readFileSync(join(installDir, "launch-link.txt"), "utf-8");

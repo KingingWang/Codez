@@ -1,6 +1,6 @@
 // 运行历史的归组与呈现（docs/dynamic-workflow/launch.md「Cards」）。
 import { describe, expect, it } from "vitest";
-import type { ZCodeSavedWorkflowRun } from "@zcode/shared";
+import type { CodezSavedWorkflowRun } from "@codez/shared";
 import {
   formatSavedWorkflowRunArgs,
   formatSavedWorkflowTokens,
@@ -9,7 +9,7 @@ import {
   savedWorkflowRunDurationMs,
 } from "@/settings/saved-workflows/savedWorkflowRunHistory.js";
 
-function run(overrides: Partial<ZCodeSavedWorkflowRun> & { runId: string }): ZCodeSavedWorkflowRun {
+function run(overrides: Partial<CodezSavedWorkflowRun> & { runId: string }): CodezSavedWorkflowRun {
   return {
     status: "completed",
     createdAt: 1_000,
@@ -39,7 +39,7 @@ describe("savedWorkflowRunBadgeKind", () => {
     expect(savedWorkflowRunBadgeKind("pending")).toBe("running");
     expect(savedWorkflowRunBadgeKind("running")).toBe("running");
     expect(savedWorkflowRunBadgeKind("completed")).toBe("completed");
-    // 新旧终态词同语义折进同一个徽标（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md）。
+    // 新旧终态词同语义折进同一个徽标（apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md）。
     expect(savedWorkflowRunBadgeKind("failed")).toBe("errored");
     expect(savedWorkflowRunBadgeKind("errored")).toBe("errored");
     expect(savedWorkflowRunBadgeKind("cancelled")).toBe("stopped");

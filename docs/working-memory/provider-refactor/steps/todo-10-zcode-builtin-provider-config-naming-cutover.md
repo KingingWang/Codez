@@ -1,4 +1,4 @@
-# 10 ZCode Built-in Provider Config 命名切换
+# 10 Codez Built-in Provider Config 命名切换
 
 > 状态：已完成
 >
@@ -10,9 +10,9 @@
 
 ## 1. 任务目标
 
-把 Provider Refactor 中仍使用 `official` 表达 ZCode 内置配置的领域、实现和物理命名，一次性切换为
-`zcodeBuiltin` / `zcode-builtin`。切换完成后，ZCode 自带的 Provider/Model 配置只有一个准确名称：
-**ZCode Built-in Provider/Model Config**。
+把 Provider Refactor 中仍使用 `official` 表达 Codez 内置配置的领域、实现和物理命名，一次性切换为
+`codezBuiltin` / `codez-builtin`。切换完成后，Codez 自带的 Provider/Model 配置只有一个准确名称：
+**Codez Built-in Provider/Model Config**。
 
 当前分支的 Provider Refactor 尚未上线，不存在需要继续读取的已发布 Provider Config 协议、环境变量或物理文件。
 因此本 Todo 是原子重命名，不是兼容迁移：不保留 alias、deprecated export、双字段、双读写、旧环境变量
@@ -33,23 +33,23 @@ officialProviders / officialModels
 ProviderConfigService / Resolver / Facade
         |
         +--> Desktop Host init: officialProviderConfigFilePath
-        `--> CLI env / SEA: ZCODE_OFFICIAL_PROVIDER_CONFIG_FILE
+        `--> CLI env / SEA: CODEZ_OFFICIAL_PROVIDER_CONFIG_FILE
 
 目标命名链
 
-config/provider/zcode-builtin.json
+config/provider/codez-builtin.json
         |
         v
-ZCodeBuiltinProviderConfigSource
+CodezBuiltinProviderConfigSource
         |
         v
-zcodeBuiltinProviders / zcodeBuiltinModelRules
+codezBuiltinProviders / codezBuiltinModelRules
         |
         v
 ProviderConfigService / Resolver / Facade
         |
-        +--> Desktop Host init: zcodeBuiltinProviderConfigFilePath
-        `--> CLI env / SEA: ZCODE_BUILTIN_PROVIDER_CONFIG_FILE
+        +--> Desktop Host init: codezBuiltinProviderConfigFilePath
+        `--> CLI env / SEA: CODEZ_BUILTIN_PROVIDER_CONFIG_FILE
 ```
 
 本 Todo 只改变名称，不改变 Overlay 顺序、模型成员、Access、Registry 完整性、设置页行为或模型调用行为。
@@ -59,7 +59,7 @@ ProviderConfigService / Resolver / Facade
 ### 2.1 领域术语
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
         |
         v
 overlay Account Built-in Provider Config
@@ -73,7 +73,7 @@ overlay Personal Provider Config
         v
 Effective Provider Config
 
-ZCode Built-in Model Config Rules
+Codez Built-in Model Config Rules
         +
 Personal Model Config Rules
         |
@@ -88,31 +88,31 @@ Effective Model Config Rules
 
 | 当前名称                                   | 目标名称                                        |
 | ------------------------------------------ | ----------------------------------------------- |
-| `officialProviders`                        | `zcodeBuiltinProviders`                         |
-| `officialModels`                           | `zcodeBuiltinModelRules`                        |
-| `officialSource`                           | `zcodeBuiltinSource`                            |
-| `OfficialProviderConfigSource`             | `ZCodeBuiltinProviderConfigSource`              |
-| `createOfficialProviderConfigSource`       | `createZCodeBuiltinProviderConfigSource`        |
-| `materializeOfficialProviderConfig`        | `materializeZCodeBuiltinProviderConfig`         |
-| `resolveOfficialProviderConfigFilePath`    | `resolveZCodeBuiltinProviderConfigFilePath`     |
-| `officialProviderConfigFilePath`           | `zcodeBuiltinProviderConfigFilePath`            |
-| `isOfficial`                               | `isZCodeBuiltin`                                |
-| `official-provider-config-source.ts`       | `zcode-builtin-provider-config-source.ts`       |
-| `official-provider-config-materializer.ts` | `zcode-builtin-provider-config-materializer.ts` |
-| `config/provider/official.json`            | `config/provider/zcode-builtin.json`            |
-| `ZCODE_OFFICIAL_PROVIDER_CONFIG_FILE`      | `ZCODE_BUILTIN_PROVIDER_CONFIG_FILE`            |
-| SEA `zcode-provider/official.json`         | SEA `zcode-provider/zcode-builtin.json`         |
-| 生成文件 `official-<hash>.json`            | 生成文件 `zcode-builtin-<hash>.json`            |
+| `officialProviders`                        | `codezBuiltinProviders`                         |
+| `officialModels`                           | `codezBuiltinModelRules`                        |
+| `officialSource`                           | `codezBuiltinSource`                            |
+| `OfficialProviderConfigSource`             | `CodezBuiltinProviderConfigSource`              |
+| `createOfficialProviderConfigSource`       | `createCodezBuiltinProviderConfigSource`        |
+| `materializeOfficialProviderConfig`        | `materializeCodezBuiltinProviderConfig`         |
+| `resolveOfficialProviderConfigFilePath`    | `resolveCodezBuiltinProviderConfigFilePath`     |
+| `officialProviderConfigFilePath`           | `codezBuiltinProviderConfigFilePath`            |
+| `isOfficial`                               | `isCodezBuiltin`                                |
+| `official-provider-config-source.ts`       | `codez-builtin-provider-config-source.ts`       |
+| `official-provider-config-materializer.ts` | `codez-builtin-provider-config-materializer.ts` |
+| `config/provider/official.json`            | `config/provider/codez-builtin.json`            |
+| `CODEZ_OFFICIAL_PROVIDER_CONFIG_FILE`      | `CODEZ_BUILTIN_PROVIDER_CONFIG_FILE`            |
+| SEA `codez-provider/official.json`         | SEA `codez-provider/codez-builtin.json`         |
+| 生成文件 `official-<hash>.json`            | 生成文件 `codez-builtin-<hash>.json`            |
 
-实现时若发现同一事实链上的其他 `official*` 符号，按同一规则直接重命名。`zcodeBuiltin` 用于明确表达
-ZCode 产品下发的 Built-in 层；不能简化成会与 Account Built-in 混淆的无来源 `builtin`。
+实现时若发现同一事实链上的其他 `official*` 符号，按同一规则直接重命名。`codezBuiltin` 用于明确表达
+Codez 产品下发的 Built-in 层；不能简化成会与 Account Built-in 混淆的无来源 `builtin`。
 
 ### 2.3 零兼容
 
 以下做法全部禁止：
 
 - 导出旧类名或旧字段名作为 alias；
-- 同时接受 `officialProviderConfigFilePath` 与 `zcodeBuiltinProviderConfigFilePath`；
+- 同时接受 `officialProviderConfigFilePath` 与 `codezBuiltinProviderConfigFilePath`；
 - 同时读取新旧环境变量；
 - 新路径不存在时回退到 `official.json`；
 - SEA 同时打包新旧 asset key；
@@ -137,15 +137,15 @@ ZCode 产品下发的 Built-in 层；不能简化成会与 Account Built-in 混�
 | `packages/services`             |          7 | Service composition、Desktop/Host 注入        |
 | `packages/shared`               |          2 | Host init 严格协议字段                        |
 | `packages/desktop`              |          9 | Main/Host 消息、开发和打包路径                |
-| `apps/zcode-cli`                |          6 | 环境变量、SEA asset、runtime 解包和构建脚本   |
+| `apps/codez-cli`                |          6 | 环境变量、SEA asset、runtime 解包和构建脚本   |
 | `config/provider/official.json` |          1 | 当前物理发布文件                              |
 
 定向扫描命令：
 
 ```bash
 rg -n \
-  'officialProviders|officialModels|officialSource|OfficialProviderConfig|officialProviderConfigFilePath|ZCODE_OFFICIAL_PROVIDER_CONFIG_FILE|config/provider/official\.json|zcode-provider/official\.json' \
-  packages/provider packages/provider-node packages/services packages/shared packages/desktop apps/zcode-cli config
+  'officialProviders|officialModels|officialSource|OfficialProviderConfig|officialProviderConfigFilePath|CODEZ_OFFICIAL_PROVIDER_CONFIG_FILE|config/provider/official\.json|codez-provider/official\.json' \
+  packages/provider packages/provider-node packages/services packages/shared packages/desktop apps/codez-cli config
 ```
 
 本轮环境没有可调用的 codegraph 查询工具；影响面以 Feature Graph 的 `capability.provider-registry`、上述精确
@@ -168,7 +168,7 @@ rg -n \
 
 ```text
 Repository 发布文件
-config/provider/zcode-builtin.json
+config/provider/codez-builtin.json
         |
         +--> Desktop dev/package resolver
         |          |
@@ -188,13 +188,13 @@ Personal Repository、Account Source、Registry Overlay 和 Active Model 不改�
 
 | 状态/事实                     | 权威 owner                           | 本 Todo 结果                        |
 | ----------------------------- | ------------------------------------ | ----------------------------------- |
-| ZCode Built-in 发布内容       | `config/provider/zcode-builtin.json` | 内容不变，只改物理名称              |
-| Node Source snapshot/revision | `ZCodeBuiltinProviderConfigSource`   | watch/reload 行为不变               |
+| Codez Built-in 发布内容       | `config/provider/codez-builtin.json` | 内容不变，只改物理名称              |
+| Node Source snapshot/revision | `CodezBuiltinProviderConfigSource`   | watch/reload 行为不变               |
 | Desktop Host 启动参数         | Shared strict schema                 | 原子改为新字段，不双读              |
-| CLI 显式路径                  | `ZCODE_BUILTIN_PROVIDER_CONFIG_FILE` | 只认新变量                          |
-| SEA 内置资产                  | `zcode-provider/zcode-builtin.json`  | 只打包/读取新 key                   |
+| CLI 显式路径                  | `CODEZ_BUILTIN_PROVIDER_CONFIG_FILE` | 只认新变量                          |
+| SEA 内置资产                  | `codez-provider/codez-builtin.json`  | 只打包/读取新 key                   |
 | Provider Config Snapshot      | Provider Domain                      | 字段改名，解析结果不变              |
-| Settings Built-in 标记        | Settings Facade View                 | 改为 `isZCodeBuiltin`，显示行为不变 |
+| Settings Built-in 标记        | Settings Facade View                 | 改为 `isCodezBuiltin`，显示行为不变 |
 
 ### 4.3 UI Surface Matrix
 
@@ -222,28 +222,28 @@ Personal Repository、Account Source、Registry Overlay 和 Active Model 不改�
 ### B. Provider Domain 与 Node Source
 
 1. 重命名 `ProviderConfigSnapshot`、Resolver input、Service dependency/field/event reason 和 Facade input；
-2. 将 Model 规则字段明确命名为 `zcodeBuiltinModelRules`，避免 `Models` 同时表达成员与 Rule；
+2. 将 Model 规则字段明确命名为 `codezBuiltinModelRules`，避免 `Models` 同时表达成员与 Rule；
 3. 重命名 Node Source、watcher、materializer、runtime dependency、文件名和所有 exports/imports；
-4. 错误信息和测试标题统一使用 `ZCode Built-in Provider Config`。
+4. 错误信息和测试标题统一使用 `Codez Built-in Provider Config`。
 
 ### C. Services、Shared Protocol 与 Desktop
 
-1. 将 Services 组合参数和 Local Host 初始化字段改为 `zcodeBuiltinProviderConfigFilePath`；
+1. 将 Services 组合参数和 Local Host 初始化字段改为 `codezBuiltinProviderConfigFilePath`；
 2. 直接修改 `packages/shared` 的严格运行时 schema，不接受旧字段；
 3. 同步 Desktop main/host 消息、开发路径、bundle/package 路径和测试 fixture；
 4. 验证本地 Desktop 与同窗口 Host 的启动链不变；不修改 remote workspace、mobile attachment 或业务协议。
 
 ### D. CLI、SEA、构建和物理文件
 
-1. 将显式环境变量改为 `ZCODE_BUILTIN_PROVIDER_CONFIG_FILE`；
-2. 将 SEA asset key 改为 `zcode-provider/zcode-builtin.json`；
-3. 将运行时解包和 content-addressed materializer 文件名改为 `zcode-builtin-<hash>.json`；
-4. 原子重命名 `config/provider/official.json` 为 `config/provider/zcode-builtin.json`；
+1. 将显式环境变量改为 `CODEZ_BUILTIN_PROVIDER_CONFIG_FILE`；
+2. 将 SEA asset key 改为 `codez-provider/codez-builtin.json`；
+3. 将运行时解包和 content-addressed materializer 文件名改为 `codez-builtin-<hash>.json`；
+4. 原子重命名 `config/provider/official.json` 为 `config/provider/codez-builtin.json`；
 5. 更新 build/package scripts、manifest、测试和文档引用；旧文件和旧 asset 不保留副本。
 
 ### E. Settings 投影与文档归零
 
-1. 将 Provider Settings View 的 `isOfficial` 改为 `isZCodeBuiltin`；
+1. 将 Provider Settings View 的 `isOfficial` 改为 `isCodezBuiltin`；
 2. 更新 Renderer/Protocol 消费者和测试，不改变可见性与编辑规则；
 3. 将现行 Design、Feature Graph、实施 Todo 和当前开发文档中的 Provider Config 术语改为 Built-in；
 4. 历史 implementation log 若必须保留原始证据，可在明确的历史引文中出现旧名；它不能继续作为当前 API 或
@@ -254,12 +254,12 @@ Personal Repository、Account Source、Registry Overlay 和 Active Model 不改�
 | Case ID | Setup                               | Action                             | Assertions                                                 |
 | ------- | ----------------------------------- | ---------------------------------- | ---------------------------------------------------------- |
 | ZBN-01  | 新发布文件存在                      | Node Source 启动并监听更新         | 正确解析、revision/watch 行为不变                          |
-| ZBN-02  | 同一 Built-in 内容                  | materialize 两次                   | 使用稳定 `zcode-builtin-<hash>.json`，内容与原子写语义不变 |
+| ZBN-02  | 同一 Built-in 内容                  | materialize 两次                   | 使用稳定 `codez-builtin-<hash>.json`，内容与原子写语义不变 |
 | ZBN-03  | Desktop dev/package                 | 创建 Local Host                    | 只通过新 Host init 字段找到配置并构建 Registry             |
 | ZBN-04  | CLI 显式新环境变量                  | 启动 Runtime                       | 读取新路径并生成相同 Provider/Model View                   |
 | ZBN-05  | SEA binary                          | 无显式文件路径启动                 | 只从新 asset key 解包并装配 Built-in Config                |
 | ZBN-06  | 只设置旧环境变量或只提供旧路径      | 启动 Runtime                       | 不读取旧入口，按缺失配置的正式错误失败                     |
-| ZBN-07  | Provider Settings View              | 读取 Built-in 和 Personal Provider | `isZCodeBuiltin` 正确，UI 行为与保存结果不变               |
+| ZBN-07  | Provider Settings View              | 读取 Built-in 和 Personal Provider | `isCodezBuiltin` 正确，UI 行为与保存结果不变               |
 | ZBN-08  | 同一 Built-in/Account/Personal 输入 | 切换前后解析快照                   | Overlay 顺序、Effective Config 和 Registry 候选等价        |
 
 ## 7. 完成门禁
@@ -277,9 +277,9 @@ createOfficialProviderConfigSource
 materializeOfficialProviderConfig
 resolveOfficialProviderConfigFilePath
 officialProviderConfigFilePath
-ZCODE_OFFICIAL_PROVIDER_CONFIG_FILE
+CODEZ_OFFICIAL_PROVIDER_CONFIG_FILE
 config/provider/official.json
-zcode-provider/official.json
+codez-provider/official.json
 isOfficial（仅 Provider Settings Built-in 标记语义）
 ```
 
@@ -317,8 +317,8 @@ exports 没有通过 barrel 残留。
 ## 9. 实现结果
 
 - Domain、Node Source、Services、Shared Host init、Desktop、Server、CLI 与 SEA 已统一使用
-  `zcodeBuiltin` / `zcode-builtin`；
+  `codezBuiltin` / `codez-builtin`；
 - 物理发布文件、运行时物化文件、环境变量和 SEA asset 已一次性切换到最终名称；
-- Provider Settings 的来源标记已改为 `isZCodeBuiltin`，没有保留旧字段；
+- Provider Settings 的来源标记已改为 `isCodezBuiltin`，没有保留旧字段；
 - 旧环境变量仅存在于否定测试，生产代码不读取旧变量、旧路径或旧 asset；
 - Provider、Provider Node、Desktop、Server、CLI 定向测试和全仓 TypeScript 检查通过。

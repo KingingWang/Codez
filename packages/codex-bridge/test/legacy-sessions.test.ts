@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  zcodeSessionCloseResultSchema,
-  zcodeSessionStateSnapshotSchema,
-  zcodeSessionListResultSchema,
-} from "@zcode/shared";
+  codezSessionCloseResultSchema,
+  codezSessionStateSnapshotSchema,
+  codezSessionListResultSchema,
+} from "@codez/shared";
 import { handleLegacySession } from "../src/legacy-sessions.js";
 import { ThreadStateStore } from "../src/thread-state.js";
 import type { CodexRpcPort } from "../src/contract.js";
@@ -27,7 +27,7 @@ test("legacy session close matches the strict desktop response contract", async 
     store,
     "/workspace",
   );
-  assert.deepEqual(zcodeSessionCloseResultSchema.parse(result), { closed: true });
+  assert.deepEqual(codezSessionCloseResultSchema.parse(result), { closed: true });
   assert.deepEqual(calls, ["thread/unsubscribe"]);
 });
 
@@ -50,7 +50,7 @@ test("remote read/resume/list retain identity consumed by the task-index writer"
   ]) {
     const workspace = { workspacePath: cwd, workspaceIdentity };
     for (const method of ["session/read", "session/resume"]) {
-      const snapshot = zcodeSessionStateSnapshotSchema.parse(
+      const snapshot = codezSessionStateSnapshotSchema.parse(
         await handleLegacySession(
           method,
           { workspace, sessionId: thread.id },
@@ -64,7 +64,7 @@ test("remote read/resume/list retain identity consumed by the task-index writer"
         workspaceKey: workspaceIdentity,
       });
     }
-    const listed = zcodeSessionListResultSchema.parse(
+    const listed = codezSessionListResultSchema.parse(
       await handleLegacySession("session/list", { workspace }, rpc, store, workspaceIdentity),
     );
     assert.deepEqual(listed.sessions[0]?.workspace, {
@@ -72,7 +72,7 @@ test("remote read/resume/list retain identity consumed by the task-index writer"
       workspaceKey: workspaceIdentity,
     });
   }
-  const local = zcodeSessionStateSnapshotSchema.parse(
+  const local = codezSessionStateSnapshotSchema.parse(
     await handleLegacySession("session/read", { sessionId: thread.id }, rpc, store, cwd),
   );
   assert.deepEqual(local.session.workspace, { workspacePath: cwd, workspaceKey: cwd });

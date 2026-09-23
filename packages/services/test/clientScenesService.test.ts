@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ApiClient } from "@zcode/shared";
-import { ZCODE_CLIENT_SCENES_URL } from "../src/providers/api/apiEndpoints.js";
+import type { ApiClient } from "@codez/shared";
+import { CODEZ_CLIENT_SCENES_URL } from "../src/providers/api/apiEndpoints.js";
 import { createClientScenesService } from "../src/client-scenes/clientScenesService.js";
 
 describe("ClientScenesService", () => {
@@ -13,7 +13,7 @@ describe("ClientScenesService", () => {
             msg: "",
             data: [
               {
-                namespace: "zcode",
+                namespace: "codez",
                 scene: "ai-slides",
                 options: {
                   template: {
@@ -55,7 +55,7 @@ describe("ClientScenesService", () => {
       msg: "",
       data: [
         expect.objectContaining({
-          namespace: "zcode",
+          namespace: "codez",
           scene: "ai-slides",
           created_at: 1,
           updated_at: 2,
@@ -63,7 +63,7 @@ describe("ClientScenesService", () => {
       ],
     });
     expect(request).toHaveBeenCalledOnce();
-    expect(request).toHaveBeenCalledWith(ZCODE_CLIENT_SCENES_URL, {
+    expect(request).toHaveBeenCalledWith(CODEZ_CLIENT_SCENES_URL, {
       method: "GET",
     });
   });

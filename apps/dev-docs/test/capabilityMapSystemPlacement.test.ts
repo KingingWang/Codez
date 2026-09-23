@@ -11,7 +11,7 @@ describe("能力图顶层区域布局", () => {
     const positions = buildCapabilitySystemPositions([
       { id: "renderer", width: 100, height: 200 },
       { id: "host", width: 120, height: 180 },
-      { id: "zcode-cli", width: 80, height: 220 },
+      { id: "codez-cli", width: 80, height: 220 },
       {
         id: ENGINEERING_INFRASTRUCTURE_SYSTEM_ID,
         width: 160,
@@ -27,7 +27,7 @@ describe("能力图顶层区域布局", () => {
       x: CAPABILITY_MAP_ROOT_PADDING + 100 + CAPABILITY_MAP_SYSTEM_GAP,
       y: CAPABILITY_MAP_ROOT_PADDING,
     });
-    expect(positions.get("zcode-cli")).toEqual({
+    expect(positions.get("codez-cli")).toEqual({
       x:
         CAPABILITY_MAP_ROOT_PADDING +
         100 +

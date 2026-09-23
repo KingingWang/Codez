@@ -17,7 +17,7 @@ vi.mock("node:child_process", () => ({
   spawn: mocks.spawn,
 }));
 
-vi.mock("@zcode/server/remote/wsl-detect.js", () => ({
+vi.mock("@codez/server/remote/wsl-detect.js", () => ({
   isWSLAvailable: mocks.isWSLAvailable,
   listWSLDistros: mocks.listWSLDistros,
 }));
@@ -181,7 +181,7 @@ describe("buildWslArgs", () => {
 
     await backend.disposeAndWait();
 
-    await expect(backend.exec("zcode-server")).rejects.toThrow("WSL backend 已释放");
+    await expect(backend.exec("codez-server")).rejects.toThrow("WSL backend 已释放");
     expect(mocks.spawn).not.toHaveBeenCalled();
   });
 
@@ -196,7 +196,7 @@ describe("buildWslArgs", () => {
         }),
     );
 
-    const executing = backend.exec("zcode-server");
+    const executing = backend.exec("codez-server");
     await vi.waitFor(() => expect(mocks.isWSLAvailable).toHaveBeenCalledTimes(2));
     await backend.disposeAndWait();
     resumeDiscovery(true);
@@ -215,7 +215,7 @@ describe("buildWslArgs", () => {
       });
       const backend = new WSLBackend({ kind: "wsl", distro: "Ubuntu-24.04" });
 
-      await backend.exec("zcode-server");
+      await backend.exec("codez-server");
       vi.useFakeTimers();
       usingFakeTimers = true;
       const disposing = backend.disposeAndWait({ graceTimeoutMs: 300, killWaitTimeoutMs: 100 });
@@ -241,7 +241,7 @@ describe("buildWslArgs", () => {
     });
     const backend = new WSLBackend({ kind: "wsl", distro: "Ubuntu-24.04" });
 
-    await backend.exec("zcode-server");
+    await backend.exec("codez-server");
     await backend.disposeAndWait({ graceTimeoutMs: 300, killWaitTimeoutMs: 100 });
 
     expect(child.kill).not.toHaveBeenCalled();
@@ -454,7 +454,7 @@ describe("buildWslArgs", () => {
     const backend = new WSLBackend({ kind: "wsl", distro: "Ubuntu-24.04" });
     const progress: Array<{ uploadedBytes: number; totalBytes: number }> = [];
 
-    await backend.upload(localPath, "~/.zcode/tmp/attachment.bin", {
+    await backend.upload(localPath, "~/.codez/tmp/attachment.bin", {
       onProgress: (event) => progress.push(event),
     });
 
@@ -468,7 +468,7 @@ describe("buildWslArgs", () => {
         "--",
         "bash",
         "-lc",
-        "mkdir -p '/home/tester/.zcode/tmp' && cat > '/home/tester/.zcode/tmp/attachment.bin'",
+        "mkdir -p '/home/tester/.codez/tmp' && cat > '/home/tester/.codez/tmp/attachment.bin'",
       ],
       expect.any(Object),
     );
@@ -487,7 +487,7 @@ describe("buildWslArgs", () => {
     controller.abort();
 
     await expect(
-      backend.upload(localPath, "~/.zcode/tmp/attachment.bin", {
+      backend.upload(localPath, "~/.codez/tmp/attachment.bin", {
         signal: controller.signal,
       }),
     ).rejects.toMatchObject({ name: "AbortError" });

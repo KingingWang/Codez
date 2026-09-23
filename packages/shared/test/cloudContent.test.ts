@@ -12,7 +12,7 @@ const payload = {
     description: { format: "html", text: "<b>Hello</b>" },
     hero: {
       type: "interactive_bundle",
-      runtime: "zcode-hero-sandbox-v1",
+      runtime: "codez-hero-sandbox-v1",
       bundle: {
         format: "zip",
         url: "https://example.com/hero.zip",

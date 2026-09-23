@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hostResponseMessageSchema, providerProvisioningResultSchema } from "@zcode/shared";
+import { hostResponseMessageSchema, providerProvisioningResultSchema } from "@codez/shared";
 
 describe("Provisioning 安全错误码契约", () => {
   it.each([undefined, "target-refresh-failed"])("兼容结果的可选错误码 %s", (errorCode) => {

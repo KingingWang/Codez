@@ -3,9 +3,9 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import type { IFeedbackService } from "@zcode/services";
-import type { IPlatformService } from "@zcode/shared";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import type { IFeedbackService } from "@codez/services";
+import type { IPlatformService } from "@codez/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 
 function createFeedbackService(): IFeedbackService {
@@ -42,7 +42,7 @@ describe("FeedbackCenter", () => {
 
     renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           TabStoreProvider,

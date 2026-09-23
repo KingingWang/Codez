@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ExecuteOutput } from "@/ToolCallBlocks/renderers/ExecuteOutput.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 afterEach(() => {
   cleanup();
@@ -12,7 +12,7 @@ afterEach(() => {
 
 function view(text: string, running = true) {
   return createElement(
-    ZCodeIntlProvider,
+    CodezIntlProvider,
     { initialLocale: "zh-CN" },
     createElement(ExecuteOutput, { text, running }),
   );

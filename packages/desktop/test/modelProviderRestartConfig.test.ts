@@ -9,7 +9,7 @@ import {
 
 describe("model provider restart config", () => {
   it("把 replay provider 写入唯一的版本化 Personal Config", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-restart-provider-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-restart-provider-"));
     const file = join(root, "config.json");
     const provider: PersonalProviderConfigSeed = {
       id: "restart-provider",

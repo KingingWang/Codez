@@ -2,7 +2,7 @@ import {
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   type WebRemoteControlAppPayload,
   type WebRemoteControlRelayDataMessage,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export type WebRemoteControlPayloadSendResult =
   | { kind: "sent"; bytes: number }

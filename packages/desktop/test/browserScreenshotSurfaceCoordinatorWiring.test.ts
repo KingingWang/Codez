@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { PlatformChannels } from "@zcode/shared";
+import { PlatformChannels } from "@codez/shared";
 import { createDesktopBrowserScreenshotSurfaceCoordinator } from "../src/main/browserView/browserScreenshotSurfaceCoordinatorWiring.js";
 
 function prepareInput(requestId: string) {

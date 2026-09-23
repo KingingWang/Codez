@@ -3,7 +3,7 @@
 // 顺序与 payload；accepted → 导航；rejected → deleteSession 回收 + 结构化错误；createSession 失败不发 start。
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CommandAck, CommandEnvelope } from "@zcode/shared/zcode-protocol-v4";
+import type { CommandAck, CommandEnvelope } from "@codez/shared/codez-protocol-v4";
 
 const sendCommand = vi.fn<[CommandEnvelope], Promise<CommandAck>>();
 const release = vi.fn();

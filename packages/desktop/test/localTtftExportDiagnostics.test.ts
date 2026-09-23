@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { once } from "node:events";
 import { expect, it } from "vitest";
 import { createLocalTtftExporter } from "../src/main/localTtftExporter.js";
-import type { LocalTtftRecord } from "@zcode/shared";
+import type { LocalTtftRecord } from "@codez/shared";
 
 it("最终 OTLP：根未结束也有阶段，重复乱序不重复样本，失败不进入成功分布", async () => {
   const receiver = spawn(
@@ -116,7 +116,7 @@ it("最终 OTLP：根未结束也有阶段，重复乱序不重复样本，失�
       .flatMap((r) => r.data.resourceMetrics ?? [])
       .flatMap((r) => r.scopeMetrics)
       .flatMap((r) => r.metrics)
-      .filter((m) => m.name === "zcode.local_ttft.duration");
+      .filter((m) => m.name === "codez.local_ttft.duration");
     expect(
       histograms
         .flatMap((h) => h.histogram?.dataPoints ?? [])

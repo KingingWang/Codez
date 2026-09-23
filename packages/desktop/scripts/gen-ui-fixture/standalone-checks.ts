@@ -40,18 +40,18 @@ export async function checkStandalone(root: string) {
       await frame.executeJavaScript("Boolean(document.querySelector('viz-calendar').shadowRoot)"),
       true,
     );
-    assert.equal(await frame.executeJavaScript("window.zcode.statePersistence"), "local");
+    assert.equal(await frame.executeJavaScript("window.codez.statePersistence"), "local");
     await frame.executeJavaScript(
-      "window.zcode.setWidgetState({privateContent:{count:7},modelContent:'count:7'})",
+      "window.codez.setWidgetState({privateContent:{count:7},modelContent:'count:7'})",
     );
     frame = await load();
     assert.equal(await frame.executeJavaScript("window.initialCount"), 7);
     assert.equal(await frame.executeJavaScript("d3.version"), "7.9.0");
-    assert.equal(await frame.executeJavaScript("window.zcode.stateModelContext"), "none");
+    assert.equal(await frame.executeJavaScript("window.codez.stateModelContext"), "none");
     assert.equal(await frame.executeJavaScript("typeof globalThis.Tweak"), "undefined");
     assert.equal(
       await frame.executeJavaScript(
-        "window.zcode.sendFollowUpMessage({prompt:'test'}).then(()=>true)",
+        "window.codez.sendFollowUpMessage({prompt:'test'}).then(()=>true)",
       ),
       true,
     );

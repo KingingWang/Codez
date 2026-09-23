@@ -2,7 +2,7 @@
 
 ## 背景
 
-ZCode 桌面端内置 Browser 使用标准 Electron 41 `<webview>`。网页调用 `alert()` / `confirm()` 时，Chromium 原生对话框只展示消息正文，不展示来源站点，用户无法区分“网页内容”和“ZCode 自身提示”。期望形态是对话框带类似 `www.runoob.com says` 的来源标题。
+Codez 桌面端内置 Browser 使用标准 Electron 41 `<webview>`。网页调用 `alert()` / `confirm()` 时，Chromium 原生对话框只展示消息正文，不展示来源站点，用户无法区分“网页内容”和“Codez 自身提示”。期望形态是对话框带类似 `www.runoob.com says` 的来源标题。
 
 标准 Electron 没有为 `<webview>` 原生对话框添加来源标题的开关，因此为 guest 安装固定的隔离 preload，在网页调用原生 `alert` / `confirm` 之前同步请求 main 展示系统 MessageBox。
 
@@ -75,7 +75,7 @@ Agent browser command（automation = active / grace）
 
 ## 平台与兼容性
 
-- macOS、Windows、Linux 共用 Electron `dialog.showMessageBoxSync`，父窗口固定为 guest 所属 ZCode 窗口。
+- macOS、Windows、Linux 共用 Electron `dialog.showMessageBoxSync`，父窗口固定为 guest 所属 Codez 窗口。
 - 图标复用桌面应用图标；系统不支持或图标为空时允许无图标降级。
 - 两种主题均使用系统原生主题，不新增 UI token。
 - guest 保持 `sandbox: true`、`contextIsolation: true`、`nodeIntegration: false`。`nodeIntegrationInSubFrames: true` 只用于让固定 preload 进入每个 iframe 的隔离世界；网页主世界不获得 Node 或 `ipcRenderer`。
@@ -90,6 +90,6 @@ Agent browser command（automation = active / grace）
 3. `confirm()` 的取消、确定分别返回 `false`、`true`。
 4. 网页无法伪造来源标题；修改 `document.title` 不影响标题。
 5. browser 工具触发对话框后，`getDialog()` 仍可读取，`handleDialog()` 仍可接受或拒绝。
-6. `prompt()`、Web/手机端、普通 ZCode 原生对话框行为不变。
+6. `prompt()`、Web/手机端、普通 Codez 原生对话框行为不变。
 7. 关闭定制系统框后，同一个 Dialog 不再出现第二个 Chromium 原生框。
 8. 无 `src`、由父页面 `document.write` 写入的同源结果 iframe 同样只出现一个带 host 的系统框。

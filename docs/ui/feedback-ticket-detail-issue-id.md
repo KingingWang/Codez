@@ -16,7 +16,7 @@
 - 显示文案为 `Issue #<id>`；其中 `<id>` 使用等宽字体，避免长编号阅读困难。
 - 复制按钮放在编号同一行，使用 `Button` 的 `ghost` + `icon-sm` 尺寸和 `CopyIcon`，符合 `DESIGN.md` 对紧凑工具按钮的要求。
 - 复制内容只包含 `<id>`，不包含 `Issue #` 前缀。
-- 复制成功后按钮的可访问标签短暂切换为“已复制”；复制失败时通过 `packages/ui/src/logger.ts` 记录 warn，不直接调用 `console` 或 `window.zcode`。
+- 复制成功后按钮的可访问标签短暂切换为“已复制”；复制失败时通过 `packages/ui/src/logger.ts` 记录 warn，不直接调用 `console` 或 `window.codez`。
 
 ## 兼容性
 

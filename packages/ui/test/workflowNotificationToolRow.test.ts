@@ -6,7 +6,7 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 // CodeBlock 依赖 shiki / CodeViewer 根 provider，静态渲染跑不动；照 submit-result / escalation
 // 的先例替换为桩，好让 json result 分支可断言。
@@ -29,7 +29,7 @@ function render(
 ): string {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(WorkflowNotificationToolRow, {
         runName: "flaky-test-triage",

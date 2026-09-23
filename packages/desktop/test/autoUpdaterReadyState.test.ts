@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { PlatformChannels, desktopMenuMessageIds, formatDesktopMenuMessage } from "@zcode/shared";
+import { PlatformChannels, desktopMenuMessageIds, formatDesktopMenuMessage } from "@codez/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { loggerErrorMock, loggerInfoMock, loggerWarnMock, readFileMock, spawnMock } = vi.hoisted(
@@ -47,7 +47,7 @@ const appListeners = new Map<string, Array<(...args: unknown[]) => void>>();
 const appMock = {
   isPackaged: true,
   getVersion: vi.fn(() => "0.1.24"),
-  getAppPath: vi.fn(() => "/tmp/zcode-app"),
+  getAppPath: vi.fn(() => "/tmp/codez-app"),
   relaunch: vi.fn(),
   exit: vi.fn(),
   on: vi.fn((event: string, listener: (...args: unknown[]) => void) => {
@@ -85,7 +85,7 @@ autoUpdaterMock.setFeedURL = vi.fn();
 autoUpdaterMock.forceDevUpdateConfig = false;
 autoUpdaterMock.currentVersion = null;
 autoUpdaterMock.installerPath =
-  "C:\\Users\\demo\\AppData\\Local\\zcode-updater\\pending\\ZCode-0.1.25-win-x64.exe";
+  "C:\\Users\\demo\\AppData\\Local\\codez-updater\\pending\\Codez-0.1.25-win-x64.exe";
 autoUpdaterMock.autoRunAppAfterInstall = true;
 autoUpdaterMock.installDirectory = null;
 autoUpdaterMock.downloadedUpdateHelper = null;
@@ -221,7 +221,7 @@ describe("autoUpdater ready state sync", () => {
     autoUpdaterMock.forceDevUpdateConfig = false;
     autoUpdaterMock.currentVersion = null;
     autoUpdaterMock.installerPath =
-      "C:\\Users\\demo\\AppData\\Local\\zcode-updater\\pending\\ZCode-0.1.25-win-x64.exe";
+      "C:\\Users\\demo\\AppData\\Local\\codez-updater\\pending\\Codez-0.1.25-win-x64.exe";
     autoUpdaterMock.autoRunAppAfterInstall = true;
     autoUpdaterMock.installDirectory = null;
     autoUpdaterMock.downloadedUpdateHelper = null;
@@ -234,16 +234,16 @@ describe("autoUpdater ready state sync", () => {
     appListeners.clear();
     appMock.getVersion.mockImplementation(() => "0.1.24");
     appMock.getAppPath.mockClear();
-    appMock.getAppPath.mockReturnValue("/tmp/zcode-app");
+    appMock.getAppPath.mockReturnValue("/tmp/codez-app");
     appMock.isPackaged = true;
     Object.defineProperty(process, "resourcesPath", {
-      value: "/tmp/zcode-resources",
+      value: "/tmp/codez-resources",
       configurable: true,
     });
     delete process.env["TEST_UPDATER_ARCH"];
-    delete process.env["ZCODE_UPDATE_FEED_URL"];
-    delete process.env["ZCODE_AUTO_UPDATE_DEV"];
-    delete process.env["ZCODE_AUTO_UPDATE_DEV_VERSION"];
+    delete process.env["CODEZ_UPDATE_FEED_URL"];
+    delete process.env["CODEZ_AUTO_UPDATE_DEV"];
+    delete process.env["CODEZ_AUTO_UPDATE_DEV_VERSION"];
     readFileMock.mockReset();
     readFileMock.mockRejectedValue(new Error("missing update config"));
   });
@@ -262,7 +262,7 @@ describe("autoUpdater ready state sync", () => {
   });
 
   it("Preview 禁用更新器后，漏改的手动检查入口也不能触碰未初始化的 updater", async () => {
-    // Bugfix: 托盘/命令入口若仍按 ZCODE_ENV 放行，会对占位 feed 发真实 checkForUpdates；
+    // Bugfix: 托盘/命令入口若仍按 CODEZ_ENV 放行，会对占位 feed 发真实 checkForUpdates；
     // 禁用语义必须在 autoUpdater 模块内 fail-closed，而不是依赖每个调用点各自判断。
     const win = {
       isDestroyed: () => false,
@@ -319,8 +319,8 @@ describe("autoUpdater ready state sync", () => {
   it("显式开启开发态自动更新时会覆盖本地版本并发起检查", async () => {
     appMock.isPackaged = false;
     appMock.getVersion.mockReturnValue("1.0.0");
-    process.env["ZCODE_AUTO_UPDATE_DEV"] = "1";
-    process.env["ZCODE_AUTO_UPDATE_DEV_VERSION"] = "3.3.1";
+    process.env["CODEZ_AUTO_UPDATE_DEV"] = "1";
+    process.env["CODEZ_AUTO_UPDATE_DEV_VERSION"] = "3.3.1";
 
     const { initAutoUpdater } = await import("../src/main/autoUpdater.js");
     await initAutoUpdater();
@@ -381,7 +381,7 @@ describe("autoUpdater ready state sync", () => {
 
     autoUpdaterMock.emit("update-available", {
       version: "3.3.3",
-      zcodeReleaseChannel: "preview",
+      codezReleaseChannel: "preview",
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -481,7 +481,7 @@ describe("autoUpdater ready state sync", () => {
     autoUpdaterMock.emit("checking-for-update");
     autoUpdaterMock.emit("update-available", {
       version: "3.3.4",
-      zcodeReleaseChannel: "stable",
+      codezReleaseChannel: "stable",
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -505,7 +505,7 @@ describe("autoUpdater ready state sync", () => {
 
     autoUpdaterMock.emit("update-available", {
       version: "3.3.4",
-      zcodeReleaseChannel: "stable",
+      codezReleaseChannel: "stable",
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -516,7 +516,7 @@ describe("autoUpdater ready state sync", () => {
 
     autoUpdaterMock.emit("update-available", {
       version: "3.3.5",
-      zcodeReleaseChannel: "preview",
+      codezReleaseChannel: "preview",
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -552,7 +552,7 @@ describe("autoUpdater ready state sync", () => {
     autoUpdaterMock.emit("checking-for-update");
     autoUpdaterMock.emit("update-available", {
       version: "3.3.4",
-      zcodeReleaseChannel: "stable",
+      codezReleaseChannel: "stable",
     });
     await Promise.resolve();
     await Promise.resolve();
@@ -605,7 +605,7 @@ describe("autoUpdater ready state sync", () => {
 
     autoUpdaterMock.emit("update-available", {
       version: "3.6.4",
-      zcodeReleaseChannel: "stable",
+      codezReleaseChannel: "stable",
       releaseName: "Release v3.6.4",
       releaseNotes: "## Fixes",
     });
@@ -684,7 +684,7 @@ describe("autoUpdater ready state sync", () => {
 
     autoUpdaterMock.emit("update-available", {
       version: "3.3.4",
-      zcodeReleaseChannel: "stable",
+      codezReleaseChannel: "stable",
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
     refreshAutoUpdaterReleaseChannel(false, "test stable setting changed");
@@ -697,7 +697,7 @@ describe("autoUpdater ready state sync", () => {
 
     autoUpdaterMock.emit("update-available", {
       version: "3.3.5",
-      zcodeReleaseChannel: "preview",
+      codezReleaseChannel: "preview",
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -714,12 +714,12 @@ describe("autoUpdater ready state sync", () => {
     expect(
       resolveUpdateFeedSourceFromStartupConfig({
         argv: [
-          "ZCode",
-          "--zcode-update-feed-url",
+          "Codez",
+          "--codez-update-feed-url",
           "https://arg.example.test/api/v1/releases/electron/manifest",
         ],
         env: {
-          ZCODE_UPDATE_FEED_URL: "https://env.example.test/api/v1/releases/electron/manifest",
+          CODEZ_UPDATE_FEED_URL: "https://env.example.test/api/v1/releases/electron/manifest",
         },
       }),
     ).toEqual({
@@ -728,8 +728,8 @@ describe("autoUpdater ready state sync", () => {
     expect(
       resolveUpdateFeedSourceFromStartupConfig({
         argv: [
-          "ZCode",
-          "--zcode-update-feed-url=https://equals.example.test/api/v1/releases/electron/manifest",
+          "Codez",
+          "--codez-update-feed-url=https://equals.example.test/api/v1/releases/electron/manifest",
         ],
         env: {},
       }),
@@ -738,9 +738,9 @@ describe("autoUpdater ready state sync", () => {
     });
     expect(
       resolveUpdateFeedSourceFromStartupConfig({
-        argv: ["ZCode"],
+        argv: ["Codez"],
         env: {
-          ZCODE_UPDATE_FEED_URL: "https://env.example.test/api/v1/releases/electron/manifest",
+          CODEZ_UPDATE_FEED_URL: "https://env.example.test/api/v1/releases/electron/manifest",
         },
       }),
     ).toEqual({
@@ -886,7 +886,7 @@ describe("autoUpdater ready state sync", () => {
   it("开发态缓存包 ready 后的 Squirrel 迟到错误不会关闭待安装状态", async () => {
     mockProcessPlatform("darwin");
     appMock.isPackaged = false;
-    process.env["ZCODE_AUTO_UPDATE_DEV"] = "1";
+    process.env["CODEZ_AUTO_UPDATE_DEV"] = "1";
     const win = {
       isDestroyed: () => false,
       webContents: {
@@ -1534,12 +1534,12 @@ describe("autoUpdater ready state sync", () => {
       releaseDate: new Date("2026-06-23T13:48:54.438Z"),
       releaseNotesByLocale: {
         "zh-CN": {
-          title: "ZCode v0.1.25",
-          markdown: "# ZCode v0.1.25\n\n- 中文说明",
+          title: "Codez v0.1.25",
+          markdown: "# Codez v0.1.25\n\n- 中文说明",
         },
         "en-US": {
-          title: "ZCode v0.1.25",
-          markdown: "# ZCode v0.1.25\n\n- English notes",
+          title: "Codez v0.1.25",
+          markdown: "# Codez v0.1.25\n\n- English notes",
         },
       },
     });
@@ -1553,12 +1553,12 @@ describe("autoUpdater ready state sync", () => {
         releaseDate: "2026-06-23T13:48:54.438Z",
         releaseNotesByLocale: {
           "zh-CN": {
-            title: "ZCode v0.1.25",
-            markdown: "# ZCode v0.1.25\n\n- 中文说明",
+            title: "Codez v0.1.25",
+            markdown: "# Codez v0.1.25\n\n- 中文说明",
           },
           "en-US": {
-            title: "ZCode v0.1.25",
-            markdown: "# ZCode v0.1.25\n\n- English notes",
+            title: "Codez v0.1.25",
+            markdown: "# Codez v0.1.25\n\n- English notes",
           },
         },
       },
@@ -1576,12 +1576,12 @@ describe("autoUpdater ready state sync", () => {
         releaseDate: "2026-06-23T13:48:54.438Z",
         releaseNotesByLocale: {
           "zh-CN": {
-            title: "ZCode v0.1.25",
-            markdown: "# ZCode v0.1.25\n\n- 中文说明",
+            title: "Codez v0.1.25",
+            markdown: "# Codez v0.1.25\n\n- 中文说明",
           },
           "en-US": {
-            title: "ZCode v0.1.25",
-            markdown: "# ZCode v0.1.25\n\n- English notes",
+            title: "Codez v0.1.25",
+            markdown: "# Codez v0.1.25\n\n- English notes",
           },
         },
       },
@@ -1602,12 +1602,12 @@ describe("autoUpdater ready state sync", () => {
         releaseDate: "2026-06-23T13:48:54.438Z",
         releaseNotesByLocale: {
           "zh-CN": {
-            title: "ZCode v0.1.25",
-            markdown: "# ZCode v0.1.25\n\n- 中文说明",
+            title: "Codez v0.1.25",
+            markdown: "# Codez v0.1.25\n\n- 中文说明",
           },
           "en-US": {
-            title: "ZCode v0.1.25",
-            markdown: "# ZCode v0.1.25\n\n- English notes",
+            title: "Codez v0.1.25",
+            markdown: "# Codez v0.1.25\n\n- English notes",
           },
         },
       },
@@ -2241,7 +2241,7 @@ describe("autoUpdater ready state sync", () => {
   it("开发态自动更新安装请求会重启当前 dev app", async () => {
     mockProcessPlatform("darwin");
     appMock.isPackaged = false;
-    process.env["ZCODE_AUTO_UPDATE_DEV"] = "1";
+    process.env["CODEZ_AUTO_UPDATE_DEV"] = "1";
     const onBeforeQuitAndInstall = vi.fn();
     const { initAutoUpdater } = await import("../src/main/autoUpdater.js");
 

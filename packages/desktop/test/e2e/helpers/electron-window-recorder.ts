@@ -65,7 +65,7 @@ export async function startElectronWindowRecording(
 ): Promise<ElectronWindowRecordingSession> {
   const outputPath = resolveElectronRecordingOutputPath(options.outputPath);
   const frameDir = resolve(
-    options.frameDir ?? join(tmpdir(), `zcode-electron-recording-${randomUUID()}`),
+    options.frameDir ?? join(tmpdir(), `codez-electron-recording-${randomUUID()}`),
   );
   const frameIntervalMs = normalizeFrameIntervalMs(options.frameIntervalMs);
   const preRollDurationMs = normalizePreRollDurationMs(options.preRollDurationMs);
@@ -83,7 +83,7 @@ export async function startElectronWindowRecording(
   );
   const frameRate = Math.max(1, Math.round(1000 / frameIntervalMs));
   const ffmpegPath =
-    options.ffmpegPath?.trim() || process.env.ZCODE_E2E_FFMPEG_PATH?.trim() || "ffmpeg";
+    options.ffmpegPath?.trim() || process.env.CODEZ_E2E_FFMPEG_PATH?.trim() || "ffmpeg";
   const captureFrame = options.captureFrame ?? (() => captureElectronWindowFrame(options.browser));
   const encodeVideo = options.encodeVideo ?? encodeElectronWindowVideo;
   const cleanupFrames = options.cleanupFrames ?? true;
@@ -384,7 +384,7 @@ function resolveElectronRecordingOutputPath(value: string | undefined): string {
   return resolve(
     value?.trim() ||
       process.env.CODEX_E2E_VIDEO_PATH?.trim() ||
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR?.trim() || process.cwd(), "electron-repro.webm"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR?.trim() || process.cwd(), "electron-repro.webm"),
   );
 }
 

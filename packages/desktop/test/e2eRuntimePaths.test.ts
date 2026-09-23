@@ -21,7 +21,7 @@ describe("Desktop E2E runtime paths", () => {
   it("keeps runtime files below the isolated Agent execution workspace", () => {
     const e2eHomeDir = resolve("root", "isolated-e2e-home");
 
-    expect(resolveE2ERuntimeRoot(e2eHomeDir)).toBe(join(e2eHomeDir, "ZCodeProject", ".zcode-e2e"));
+    expect(resolveE2ERuntimeRoot(e2eHomeDir)).toBe(join(e2eHomeDir, "CodezProject", ".codez-e2e"));
     expect(resolveE2ERuntimePath("bg25", "release-child-bash")).toBe(
       join(resolveE2ERuntimeRoot(), "bg25", "release-child-bash"),
     );
@@ -32,9 +32,9 @@ describe("Desktop E2E runtime paths", () => {
       resolveE2ERuntimePath("bg25", "continued-work.txt").replaceAll("\\", "/"),
     );
     expect(resolveE2EShellPath("bg25", "release-child-bash")).toBe(
-      ".zcode-e2e/bg25/release-child-bash",
+      ".codez-e2e/bg25/release-child-bash",
     );
-    expect(E2E_RUNTIME_RELATIVE_ROOT).toBe(".zcode-e2e");
+    expect(E2E_RUNTIME_RELATIVE_ROOT).toBe(".codez-e2e");
     expect(E2E_RUNTIME_ROOT_REPLAY_TOKEN).toBe("{{e2eRuntimeRoot}}");
     expect(createE2EReplayFixtureVariables(resolve("root", "fixture-home"))).toEqual({
       e2eRuntimeRoot: resolveE2ERuntimeRoot(resolve("root", "fixture-home")).replaceAll("\\", "/"),
@@ -45,24 +45,24 @@ describe("Desktop E2E runtime paths", () => {
     expect(
       resolveE2EHomeDir({
         cwd: resolve("root", "desktop"),
-        env: { ZCODE_DATA_BASE_DIR: resolve("root", "data-base") },
+        env: { CODEZ_DATA_BASE_DIR: resolve("root", "data-base") },
       }),
     ).toBe(resolve("root", "data-base"));
     expect(
       resolveE2EHomeDir({
         cwd: resolve("root", "desktop"),
         env: {
-          ZCODE_DATA_BASE_DIR: resolve("root", "data-base"),
-          ZCODE_E2E_HOME_DIR: resolve("root", "explicit-home"),
+          CODEZ_DATA_BASE_DIR: resolve("root", "data-base"),
+          CODEZ_E2E_HOME_DIR: resolve("root", "explicit-home"),
         },
       }),
     ).toBe(resolve("root", "explicit-home"));
   });
 
-  it("keeps the E2E CLI storage under the legacy .zcode directory", () => {
+  it("keeps the E2E CLI storage under the legacy .codez directory", () => {
     const homeDir = resolve("root", "isolated-e2e-home");
 
-    expect(resolveE2EStorageRoot(homeDir)).toBe(join(homeDir, ".zcode"));
+    expect(resolveE2EStorageRoot(homeDir)).toBe(join(homeDir, ".codez"));
   });
 
   it("does not allow raw system /tmp paths in Desktop E2E runtime sources", () => {

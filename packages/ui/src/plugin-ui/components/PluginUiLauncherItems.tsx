@@ -1,6 +1,6 @@
 import { PuzzleIcon } from "lucide-react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { OpenPluginUiSideTabRequest } from "@/plugin-ui/contract.js";
 import {
   resolvePluginUiSurfaceTitle,
@@ -28,7 +28,7 @@ export function buildPluginUiLauncherItemId(pluginId: string, surfaceId: string)
  * 旧分组容器会占据一个网格单元，导致插件全部挤在同一列；使用 Fragment 让按钮直接参与父级布局。
  */
 export function PluginUiLauncherItems(props: PluginUiLauncherItemsProps) {
-  const { locale } = useZCodeIntl();
+  const { locale } = useCodezIntl();
   const surfaces = usePluginUiSurfaces({
     workspacePath: props.workspacePath,
     ...(props.workspaceIdentity ? { workspaceIdentity: props.workspaceIdentity } : {}),

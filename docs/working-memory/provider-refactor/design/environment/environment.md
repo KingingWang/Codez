@@ -51,10 +51,10 @@ Desktop、Prompt CLI、TUI 或 Web 只是不同 Entry。它们通过目标 Envir
 Provider 领域接收以下输入：
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
 Account Built-in Provider Config
 Personal Provider Config
-ZCode Built-in Model Config Rules
+Codez Built-in Model Config Rules
 Personal Model Config Rules
 ModelSelection
 请求时鉴权 Service
@@ -75,10 +75,10 @@ Provider 领域不感知配置来自 JSON、数据库、Host 内存、RPC 还是
 
 ## 进程内复用
 
-`zcode-cli` 是物理包和可执行文件，包含三种 Entry/运行角色以及共同的 Core：
+`codez-cli` 是物理包和可执行文件，包含三种 Entry/运行角色以及共同的 Core：
 
 ```text
-zcode-cli package / executable
+codez-cli package / executable
 │
 ├─ Shared Core
 │  └─ Agent、Submission、Registry、Model、Adapter
@@ -149,13 +149,13 @@ Remote Host Server 暴露跨网络能力，负责连接、鉴权和 Worker 生�
 
 文件和命令等高频能力可以与 Agent 部署在同一机房的不同服务集群；是否跨进程由部署决定。Core 依赖能力接口，不把 RPC 形状写入 Agent 执行逻辑。
 
-## ZCode Built-in 配置发布与 Environment 同步
+## Codez Built-in 配置发布与 Environment 同步
 
-服务端通过既有 `/api/v1/client/configs.data.configs.zcodeBuiltin` 原子发布 ZCode Built-in Provider Config
-与 ZCode Built-in Model Config Rules：
+服务端通过既有 `/api/v1/client/configs.data.configs.codezBuiltin` 原子发布 Codez Built-in Provider Config
+与 Codez Built-in Model Config Rules：
 
 ```text
-Bundled / Remote ZCode Built-in Release
+Bundled / Remote Codez Built-in Release
 ├─ Provider Config
 └─ Model Config Rules
         |
@@ -170,7 +170,7 @@ Environment `<platform>/<appVersion>/<endpointKey>/active.json`（同时承担�
 远端刷新，Worker 只消费活动文件。Prompt CLI/TUI 没有 Host 时由自己的 Entry 承担同一职责。服务暂时
 不可用时继续使用 Bundled 或 LKG；版本由 Release revision 排序，客户端不按文件时间猜测新旧。
 
-这里的 Endpoint 是 Environment 当前配置的 ZCode 控制面 Origin，不是模型 API Endpoint。不同 Endpoint
+这里的 Endpoint 是 Environment 当前配置的 Codez 控制面 Origin，不是模型 API Endpoint。不同 Endpoint
 使用不同 Active/LKG 与刷新控制目录，不做跨 Endpoint revision 比较或回退。
 
 这条实现不统一其他 Client Config 请求，也不改变 Personal/Account Overlay、凭据或最终服务端授权。
@@ -228,7 +228,7 @@ Remote Source 发布变化。同步链路不直接构造 Registry、Model 或请
 ## Environment 配置同步
 
 Environment 之间可以显式同步配置。目标 Environment 将同步结果写入自己的配置边界，并使用自己的
-ZCode Built-in Config 和 Account Built-in Provider Config 重新形成 Effective Provider：
+Codez Built-in Config 和 Account Built-in Provider Config 重新形成 Effective Provider：
 
 ```text
 Environment A Personal Config
@@ -236,7 +236,7 @@ Environment A Personal Config
           | explicit sync
           v
 Environment B Provider Config Service
-├─ Environment B ZCode Built-in Config
+├─ Environment B Codez Built-in Config
 ├─ Environment B Account Built-in Provider Config
 └─ synced Personal Config
           |
@@ -250,8 +250,8 @@ Environment B Registry
 
 ```text
 静态选择事实
-├─ ZCode Built-in Provider Config
-├─ ZCode Built-in Model Config Rules
+├─ Codez Built-in Provider Config
+├─ Codez Built-in Model Config Rules
 └─ Account Built-in Provider Config
    └─ enabled + Start 账号模型成员
 

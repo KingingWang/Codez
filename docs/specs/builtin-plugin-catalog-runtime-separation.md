@@ -22,7 +22,7 @@
 3. seed 当前对 suppressed 插件删除 `cache/<official>/<name>/<version>` 并跳过物化。
 4. `plugins/describe` 对未安装插件依赖 Marketplace entry 和 source root；`filesystem/sea` entry 当前只从 `cachePath` 或计算出的 cache 目录读取。
 5. UI 将 suppressed 内置插件重新投影为 `restorable=true`，但详情页仍因 `info` 缺失调用 `plugins/describe`，于是得到 `plugin_not_found` 或 cache missing。
-6. 官方内置分片和 CDN 分片已经按同一 `zcode-plugins-official` 身份合并；ADR-0001 要求 listing 属于 Catalog，而不是安装态。
+6. 官方内置分片和 CDN 分片已经按同一 `codez-plugins-official` 身份合并；ADR-0001 要求 listing 属于 Catalog，而不是安装态。
 
 ### 1.2 推断（Inference）
 
@@ -33,7 +33,7 @@
 ### 1.3 未知 / 明确延后（Unknown / Deferred）
 
 - 当前 config read-modify-write 与 plugin storage lock 之间存在低概率 lost-update 窗口；本次不扩展为跨进程锁重构，记录为后续任务。
-- `ZCodeAvailablePluginSummary.installed` 对活跃内置插件的底层投影仍可能为 false；本次通过 UI join 保证 Marketplace 行为，协议字段修正另行处理。
+- `CodezAvailablePluginSummary.installed` 对活跃内置插件的底层投影仍可能为 false；本次通过 UI join 保证 Marketplace 行为，协议字段修正另行处理。
 
 ## 2. Product Contract
 
@@ -120,7 +120,7 @@
 | View uninstalled builtin detail | `PluginStoreDetailView` | same detail + `plugins/describe` cache | `describeCache` keyed by stable plugin ID | Catalog/cache readable; no runtime `info` required | read-only `plugins/describe` | Agent Catalog + immutable cache | No session/clientMode change | `suppressedBuiltins`, enable/options, data |
 | Uninstall builtin | detail/card/manage menu + confirm dialog | `usePluginUninstall`, management store | operation state in plugin management store | explicit confirmation; builtin is uninstallable | `plugins/uninstall` | user config + data cleanup; Catalog untouched | Desktop local lifecycle only | Marketplace source removal semantics |
 | Restore builtin | Install button on restorable item | `handleInstall`, `restoreBuiltin` | operation state + refreshed overview | `item.restorable === true` | `plugins/restoreBuiltin` | suppression removed; seed self-heals missing cache | Desktop local lifecycle only | ordinary installed record |
-| View installed detail | detail/manage | `ZCodePluginInfo` runtime projection | `item.info` | runtime info available | no mutation for read | discovery outcome | unchanged | catalog-only detail fallback |
+| View installed detail | detail/manage | `CodezPluginInfo` runtime projection | `item.info` | runtime info available | no mutation for read | discovery outcome | unchanged | catalog-only detail fallback |
 
 ## 5. Shared And Divergent Behavior
 
@@ -198,11 +198,11 @@
 
 ### Planned code files
 
-- `apps/zcode-cli/packages/bootstrap/src/app/bundled-plugins.ts`
-- `apps/zcode-cli/packages/bootstrap/src/plugins.ts`
-- `apps/zcode-cli/packages/bootstrap/src/app/startup-marks.ts` (only if suppression parameter is removed)
-- `apps/zcode-cli/packages/ui/src/settings/pluginStoreListing.ts`
-- `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts` only if bundled install routing requires a narrow helper
+- `apps/codez-cli/packages/bootstrap/src/app/bundled-plugins.ts`
+- `apps/codez-cli/packages/bootstrap/src/plugins.ts`
+- `apps/codez-cli/packages/bootstrap/src/app/startup-marks.ts` (only if suppression parameter is removed)
+- `apps/codez-cli/packages/ui/src/settings/pluginStoreListing.ts`
+- `apps/codez-cli/packages/adapters/src/plugins/marketplace.ts` only if bundled install routing requires a narrow helper
 - bootstrap/adapters/services/UI tests covering the accepted cases above
 
 ### Explicitly not changed
@@ -257,7 +257,7 @@ Add `capability.plugin-catalog-runtime-separation` with code seeds for bundled s
 | Feature spec / dossier | this file | complete before code |
 | Existing lifecycle case catalog | `docs/plugin-management-lifecycle-case-catalog.md` | update PLM-LC-006 + add PLM-LC-014/015/016 |
 | Coverage matrix | `docs/testing/plugin-management-lifecycle-e2e-coverage-matrix.md` | add/update rows |
-| Feature graph | `.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml` | add confirmed capability and edges |
+| Feature graph | `.agents/skills/feature-boundary-planner/references/codez-feature-graph.yaml` | add confirmed capability and edges |
 | Formal proof | `packages/formal-proof` | not applicable; no conversation state-space change |
 | E2E handoff | plugin manual-review pending specs | planned after focused tests; no formal promotion in this task |
 

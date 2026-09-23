@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-  coalesceConsecutiveZCodeAssistants,
-  type ZCodePersistedMessage,
+  coalesceConsecutiveCodezAssistants,
+  type CodezPersistedMessage,
 } from "../src/index.js";
 
 function userMessage(
-  overrides: Partial<ZCodePersistedMessage> = {},
-): ZCodePersistedMessage {
+  overrides: Partial<CodezPersistedMessage> = {},
+): CodezPersistedMessage {
   return {
     role: "user",
     content: "hello",
@@ -16,8 +16,8 @@ function userMessage(
 }
 
 function assistantMessage(
-  overrides: Partial<ZCodePersistedMessage> = {},
-): ZCodePersistedMessage {
+  overrides: Partial<CodezPersistedMessage> = {},
+): CodezPersistedMessage {
   return {
     role: "assistant",
     content: "ok",
@@ -27,10 +27,10 @@ function assistantMessage(
   };
 }
 
-describe("coalesceConsecutiveZCodeAssistants", () => {
+describe("coalesceConsecutiveCodezAssistants", () => {
   it("leaves a single user/assistant pair untouched (apart from turnIndex)", () => {
     const input = [userMessage(), assistantMessage()];
-    const result = coalesceConsecutiveZCodeAssistants(input);
+    const result = coalesceConsecutiveCodezAssistants(input);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ role: "user", turnIndex: 0 });
     expect(result[1]).toMatchObject({
@@ -64,7 +64,7 @@ describe("coalesceConsecutiveZCodeAssistants", () => {
       ],
     });
 
-    const result = coalesceConsecutiveZCodeAssistants([
+    const result = coalesceConsecutiveCodezAssistants([
       userMessage(),
       first,
       next,
@@ -92,7 +92,7 @@ describe("coalesceConsecutiveZCodeAssistants", () => {
   });
 
   it("keeps original assistant message ids when merging consecutive assistants", () => {
-    const result = coalesceConsecutiveZCodeAssistants([
+    const result = coalesceConsecutiveCodezAssistants([
       userMessage(),
       assistantMessage({ id: "msg_assistant_1", content: "round1 " }),
       assistantMessage({ id: "msg_assistant_2", content: "round2" }),
@@ -105,7 +105,7 @@ describe("coalesceConsecutiveZCodeAssistants", () => {
   });
 
   it("merges three consecutive assistants (covers the 1s/1s/2s screenshot case)", () => {
-    const result = coalesceConsecutiveZCodeAssistants([
+    const result = coalesceConsecutiveCodezAssistants([
       userMessage({ timestamp: 0 }),
       assistantMessage({ timestamp: 100, durationMs: 1_000, content: "a" }),
       assistantMessage({ timestamp: 1_100, durationMs: 1_000, content: "b" }),
@@ -119,7 +119,7 @@ describe("coalesceConsecutiveZCodeAssistants", () => {
   });
 
   it("returns undefined duration when any round is still in progress", () => {
-    const result = coalesceConsecutiveZCodeAssistants([
+    const result = coalesceConsecutiveCodezAssistants([
       userMessage(),
       assistantMessage({ timestamp: 2_000, durationMs: 500 }),
       assistantMessage({ timestamp: 2_500, durationMs: undefined }),
@@ -144,7 +144,7 @@ describe("coalesceConsecutiveZCodeAssistants", () => {
       },
     });
 
-    const result = coalesceConsecutiveZCodeAssistants([
+    const result = coalesceConsecutiveCodezAssistants([
       userMessage({ timestamp: 1_000 }),
       assistantMessage({
         id: "msg_assistant",
@@ -185,7 +185,7 @@ describe("coalesceConsecutiveZCodeAssistants", () => {
     });
   });
 
-  it("is a no-op on strictly alternating legacy ZCode Agent data", () => {
+  it("is a no-op on strictly alternating legacy Codez Agent data", () => {
     const input = [
       userMessage({ timestamp: 0, turnIndex: 0 }),
       assistantMessage({
@@ -202,7 +202,7 @@ describe("coalesceConsecutiveZCodeAssistants", () => {
         content: "b",
       }),
     ];
-    const result = coalesceConsecutiveZCodeAssistants(input);
+    const result = coalesceConsecutiveCodezAssistants(input);
     expect(result).toHaveLength(4);
     expect(
       result.map((m) => ({ role: m.role, turnIndex: m.turnIndex })),
@@ -215,7 +215,7 @@ describe("coalesceConsecutiveZCodeAssistants", () => {
   });
 
   it("assigns turnIndex by counting user messages across merged sequence", () => {
-    const result = coalesceConsecutiveZCodeAssistants([
+    const result = coalesceConsecutiveCodezAssistants([
       userMessage({ timestamp: 0, content: "u0" }),
       assistantMessage({ timestamp: 1, durationMs: 1 }),
       assistantMessage({ timestamp: 2, durationMs: 1 }),
@@ -226,7 +226,7 @@ describe("coalesceConsecutiveZCodeAssistants", () => {
   });
 
   it("propagates next's interrupted / feedback / model to the merged message", () => {
-    const result = coalesceConsecutiveZCodeAssistants([
+    const result = coalesceConsecutiveCodezAssistants([
       userMessage(),
       assistantMessage({ model: "m1", durationMs: 500, content: "a" }),
       assistantMessage({
@@ -245,14 +245,14 @@ describe("coalesceConsecutiveZCodeAssistants", () => {
   });
 
   it("recomputes characterCount only when at least one round tracked it", () => {
-    const withCount = coalesceConsecutiveZCodeAssistants([
+    const withCount = coalesceConsecutiveCodezAssistants([
       userMessage(),
       assistantMessage({ content: "hello", characterCount: 5 }),
       assistantMessage({ timestamp: 2_500, durationMs: 500, content: "!" }),
     ]);
     expect(withCount[1]!.characterCount).toBe("hello!".length);
 
-    const withoutCount = coalesceConsecutiveZCodeAssistants([
+    const withoutCount = coalesceConsecutiveCodezAssistants([
       userMessage(),
       assistantMessage({ content: "hello" }),
       assistantMessage({ timestamp: 2_500, durationMs: 500, content: "!" }),

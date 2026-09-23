@@ -1,4 +1,4 @@
-package com.example.zcode_mobile.ui.theme
+package com.example.codez_mobile.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

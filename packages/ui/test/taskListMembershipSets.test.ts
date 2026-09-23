@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import {
   armTaskListMembershipRefreshHoldForE2E,
   fetchTaskListMembershipSets,
@@ -7,10 +7,10 @@ import {
   releaseTaskListMembershipRefreshHoldForE2E,
 } from "@/lib/taskListMembershipSets.js";
 
-function task(taskId: string, overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
+function task(taskId: string, overrides: Partial<CodezTaskMeta> = {}): CodezTaskMeta {
   return {
     taskId,
-    traceId: `trace-${taskId}` as ZCodeTaskMeta["traceId"],
+    traceId: `trace-${taskId}` as CodezTaskMeta["traceId"],
     title: taskId,
     workspacePath: "/ws",
     createdAt: 1,

@@ -3,7 +3,7 @@ import {
   TID_CHAT_MODE_SELECT_ITEM,
   TID_V4_COMPOSER_INPUT,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   prepareV4ConversationE2E,

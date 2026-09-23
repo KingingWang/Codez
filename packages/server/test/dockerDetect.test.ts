@@ -30,7 +30,7 @@ describe("docker detect", () => {
         JSON.stringify({
           ID: "931b148d01e8",
           Image: "ubuntu:24.04",
-          Names: "zcode-ssh-linux-amd64",
+          Names: "codez-ssh-linux-amd64",
           State: "running",
           Status: "Up 2 minutes",
         }),
@@ -41,7 +41,7 @@ describe("docker detect", () => {
     expect(containers).toEqual([{
       id: "931b148d01e8",
       image: "ubuntu:24.04",
-      name: "zcode-ssh-linux-amd64",
+      name: "codez-ssh-linux-amd64",
       state: "running",
       status: "Up 2 minutes",
     }]);

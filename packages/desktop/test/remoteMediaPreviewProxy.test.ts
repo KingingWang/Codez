@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { EventEmitter } from "node:events";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { IFileService } from "@zcode/services";
+import type { IFileService } from "@codez/services";
 import {
   createRemoteMediaPreviewProxy,
   waitForDrainOrDisconnect,

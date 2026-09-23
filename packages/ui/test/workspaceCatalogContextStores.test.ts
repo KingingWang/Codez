@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ISubagentsService } from "@zcode/services";
-import type { AgentSummary } from "@zcode/shared";
+import type { ISubagentsService } from "@codez/services";
+import type { AgentSummary } from "@codez/shared";
 import { getSubagentsContextKey, useSubagentsContextStore } from "@/store/subagentsContextStore.js";
 
 function createAgent(workspacePath: string, suffix = "initial"): AgentSummary {
@@ -9,7 +9,7 @@ function createAgent(workspacePath: string, suffix = "initial"): AgentSummary {
     name: `agent-${workspacePath.split("/").at(-1)}-${suffix}`,
     description: workspacePath,
     systemPrompt: suffix,
-    path: `${workspacePath}/.zcode/agents/${suffix}.md`,
+    path: `${workspacePath}/.codez/agents/${suffix}.md`,
     scope: "workspace",
     source: "workspace",
     enabled: true,

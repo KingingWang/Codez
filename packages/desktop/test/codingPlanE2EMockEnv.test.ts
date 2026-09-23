@@ -55,9 +55,9 @@ describe("Coding Plan E2E mock env", () => {
     applyCodingPlanTeamMockEnv(environment, teamBaseUrl);
     clearCodingPlanUpgradeMockEnv(environment, upgradeBaseUrl);
 
-    expect(environment.ZCODE_BASE_URL).toBe(teamBaseUrl);
-    expect(environment.ZCODE_ENDPOINT_ORIGIN).toBe(teamBaseUrl);
-    expect(environment.ZCODE_E2E_CODING_PLAN_MOCK_URL).toBe(teamBaseUrl);
+    expect(environment.CODEZ_BASE_URL).toBe(teamBaseUrl);
+    expect(environment.CODEZ_ENDPOINT_ORIGIN).toBe(teamBaseUrl);
+    expect(environment.CODEZ_E2E_CODING_PLAN_MOCK_URL).toBe(teamBaseUrl);
   });
 
   it("does not clear an active upgrade mock when a non-team worker drops the prepared team mock", () => {
@@ -69,9 +69,9 @@ describe("Coding Plan E2E mock env", () => {
     applyCodingPlanUpgradeMockEnv(environment, upgradeBaseUrl);
     clearCodingPlanTeamMockEnv(environment, teamBaseUrl);
 
-    expect(environment.ZCODE_BASE_URL).toBe(upgradeBaseUrl);
-    expect(environment.ZCODE_ENDPOINT_ORIGIN).toBe(upgradeBaseUrl);
-    expect(environment.ZCODE_E2E_CODING_PLAN_MOCK_URL).toBe(upgradeBaseUrl);
+    expect(environment.CODEZ_BASE_URL).toBe(upgradeBaseUrl);
+    expect(environment.CODEZ_ENDPOINT_ORIGIN).toBe(upgradeBaseUrl);
+    expect(environment.CODEZ_E2E_CODING_PLAN_MOCK_URL).toBe(upgradeBaseUrl);
   });
 
   it("prepares the team mock when the default full-suite glob can select team specs", () => {

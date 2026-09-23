@@ -3,7 +3,7 @@ import {
   TID_OAUTH_LOGIN_BUTTON,
   testId,
   ZAI_PROVIDER_ID,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   getE2EAppDataPaths,
@@ -15,10 +15,10 @@ const EXPIRED_SESSION_CREDENTIAL_KEYS = [
   `oauth:${ZAI_PROVIDER_ID}:access_token`,
   `oauth:${ZAI_PROVIDER_ID}:refresh_token`,
   `oauth:${ZAI_PROVIDER_ID}:user_info`,
-  "zcodejwttoken",
+  "codezjwttoken",
 ] as const;
 
-describe("ZCode JWT 过期后重新认证", () => {
+describe("Codez JWT 过期后重新认证", () => {
   after(async () => {
     await browser.electron.restoreAllMocks();
     await clearAppData();

@@ -1,4 +1,4 @@
-import type { ClientSceneConfig, ClientSceneItem } from "@zcode/services";
+import type { ClientSceneConfig, ClientSceneItem } from "@codez/services";
 import type { AutomationScheduledTemplateIconName } from "@/settings/AutomationScheduledTemplateIcon.js";
 import type { OffPeakTemplateIconName } from "@/settings/OffPeakTemplateIcon.js";
 import { canVisualizeCronInAutomationEditor } from "@/settings/automationFormat.js";

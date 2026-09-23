@@ -1,4 +1,4 @@
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 const en = {
   legacyPreferences:
@@ -24,7 +24,7 @@ const en = {
   submitAnswers: "Submit answers",
   title: "Codex",
   subtitle:
-    "Native account and effective settings for the selected workspace. Legacy ZCode provider settings do not change Codex.",
+    "Native account and effective settings for the selected workspace. Legacy Codez provider settings do not change Codex.",
   workspace:
     "Open a connected workspace to configure Codex. Files, Git and terminal remain available without signing in.",
   account: "Account",
@@ -122,7 +122,7 @@ const zh: Record<keyof typeof en, string> = {
   questionsHelp: "请回答所有问题以继续。答案仅发送至当前原生请求。",
   submitAnswers: "提交答案",
   title: "Codex",
-  subtitle: "所选工作区的原生账户与有效配置。旧 ZCode 模型服务设置不会更改 Codex。",
+  subtitle: "所选工作区的原生账户与有效配置。旧 Codez 模型服务设置不会更改 Codex。",
   workspace: "请打开已连接的工作区以配置 Codex。未登录时仍可使用文件、Git 和终端。",
   account: "账户",
   models: "模型与权限",
@@ -195,5 +195,5 @@ const zh: Record<keyof typeof en, string> = {
   mutations: "更改会影响此 Host 的原生 Codex 配置，也可能影响使用同一 Codex home 的其他工作区。",
 };
 export function useCodexMessages() {
-  return useZCodeIntl().locale === "zh-CN" ? zh : en;
+  return useCodezIntl().locale === "zh-CN" ? zh : en;
 }

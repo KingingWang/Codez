@@ -1,11 +1,11 @@
-import type { ZCodeTimelineMeta } from "@zcode/shared";
+import type { CodezTimelineMeta } from "@codez/shared";
 import type { TaskChatMessage } from "@/lib/taskChatMessageTypes.js";
 
 const RUNNING_CONTEXT_COMPACTION_STATUSES = new Set(["started", "retrying"]);
 const RUNNING_GOAL_VERIFICATION_STATUSES = new Set(["started"]);
 
 export function isRunningGoalVerificationTimeline(
-  timeline: ZCodeTimelineMeta | undefined,
+  timeline: CodezTimelineMeta | undefined,
 ): boolean {
   return (
     timeline?.type === "goal_verification" &&
@@ -17,7 +17,7 @@ export function isRunningGoalVerificationTimeline(
   );
 }
 
-export function isRunningZCodeTimeline(timeline: ZCodeTimelineMeta | undefined): boolean {
+export function isRunningCodezTimeline(timeline: CodezTimelineMeta | undefined): boolean {
   if (!timeline) {
     return false;
   }
@@ -30,8 +30,8 @@ export function isRunningZCodeTimeline(timeline: ZCodeTimelineMeta | undefined):
   return false;
 }
 
-export function hasRunningZCodeTimeline(messages: readonly TaskChatMessage[]): boolean {
-  return messages.some((message) => isRunningZCodeTimeline(message.syntheticTimeline));
+export function hasRunningCodezTimeline(messages: readonly TaskChatMessage[]): boolean {
+  return messages.some((message) => isRunningCodezTimeline(message.syntheticTimeline));
 }
 
 export function hasRunningContextCompactionTimeline(

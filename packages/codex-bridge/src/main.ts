@@ -11,14 +11,14 @@ import { describeBridgeFailure, type BridgeFailureOrigin } from "./diagnostics.j
 async function main(): Promise<void> {
   // Windows 的 cwd 可保留 junction/短路径拼写；执行路径统一为物理目录，身份仍由 Host 指定。
   const cwd = await realpath(process.cwd());
-  const workspaceId = process.env.ZCODE_WORKSPACE_IDENTITY?.trim() || cwd;
+  const workspaceId = process.env.CODEZ_WORKSPACE_IDENTITY?.trim() || cwd;
   const scope = createHash("sha256").update(workspaceId).digest("hex");
   const stateRoot = join(
-    process.env.ZCODE_CODEX_BRIDGE_HOME || join(homedir(), ".zcode-codex", "bridge"),
+    process.env.CODEZ_CODEX_BRIDGE_HOME || join(homedir(), ".codez-codex", "bridge"),
     scope,
   );
   const rpc = createCodexProcess({
-    executable: process.env.ZCODE_CODEX_COMMAND?.trim() || "codex",
+    executable: process.env.CODEZ_CODEX_COMMAND?.trim() || "codex",
     cwd,
   });
   let runtime: BridgeRuntime | undefined;
@@ -54,7 +54,7 @@ async function main(): Promise<void> {
     process.stderr.write(
       `Codex desktop bridge failure: ${JSON.stringify(describeBridgeFailure(error, origin))}\n`,
     );
-    if (process.env.ZCODE_CODEX_BRIDGE_TEST_DIAGNOSTICS === "1")
+    if (process.env.CODEZ_CODEX_BRIDGE_TEST_DIAGNOSTICS === "1")
       process.stderr.write(`${error.stack}\n`);
     void stop(true);
   };

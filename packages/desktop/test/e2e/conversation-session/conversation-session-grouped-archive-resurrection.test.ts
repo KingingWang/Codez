@@ -78,7 +78,7 @@ describe("TSL37：Group 连续归档不被旧 membership 快照复活", () => {
 async function activateGroupedView() {
   await browser.execute(() => {
     localStorage.setItem(
-      "zcode-sidebar-task-preferences",
+      "codez-sidebar-task-preferences",
       JSON.stringify({ organizeBy: "grouped", sortBy: "updated" }),
     );
     location.reload();

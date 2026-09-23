@@ -26,7 +26,7 @@ before(async () => {
           if (id.endsWith("/hooks/useWorkspaceServices.tsx"))
             return 'import {useServices} from "@/hooks/useServices.js"; export function useWorkspaceServicesResolution(){ return {services:useServices(),rpcReady:true,remoteSessionId:"attachment"}; }';
           if (id.endsWith("/v4/activeTaskProvider.ts"))
-            return 'export function useChatViewActiveTaskProvider(){return "zcode";}';
+            return 'export function useChatViewActiveTaskProvider(){return "codez";}';
           for (const [file, fn] of [
             ["fileMentionProvider", "useFileMentionProvider"],
             ["sessionsMentionProvider", "useSessionsMentionProvider"],
@@ -78,7 +78,7 @@ after(async () => {
   await server?.close();
 });
 
-const official = "zcode-plugins-official";
+const official = "codez-plugins-official";
 const plugin = (name, category, extra = {}) => ({
   pluginId: `${name}@${official}`,
   name,
@@ -172,7 +172,7 @@ for (const [width, locale, theme] of [
       assert.equal(requests, 1);
       assert.equal(
         await page
-          .locator('[data-option-id="plugin:conflict@zcode-plugins-official"]')
+          .locator('[data-option-id="plugin:conflict@codez-plugins-official"]')
           .getAttribute("data-disabled"),
         "true",
       );
@@ -202,14 +202,14 @@ for (const [width, locale, theme] of [
       await editor.fill("@");
       await options().first().waitFor();
       await page.waitForFunction(
-        () => !!document.querySelector('[data-option-id="plugin:new@zcode-plugins-official"]'),
+        () => !!document.querySelector('[data-option-id="plugin:new@codez-plugins-official"]'),
       );
       assert.ok(calls.some((x) => x.sessionId === "frozen-session"));
       assert.ok(calls.some((x) => !x.sessionId));
       assert.deepEqual(errors, []);
-      await mkdir(join(tmpdir(), "zcode-plugin-picker-order"), { recursive: true });
+      await mkdir(join(tmpdir(), "codez-plugin-picker-order"), { recursive: true });
       await page.screenshot({
-        path: join(tmpdir(), "zcode-plugin-picker-order", `${width}-${locale}.png`),
+        path: join(tmpdir(), "codez-plugin-picker-order", `${width}-${locale}.png`),
       });
     } catch (error) {
       console.error(error, { errors, calls, requests }, await page.locator("body").innerText());
@@ -241,7 +241,7 @@ for (const width of [1200, 390]) {
           const editor = page.getByTestId("editor");
           await editor.fill("@");
           const option = page.locator(
-            '[role="option"][data-option-id="plugin:plugin-creator@zcode-plugins-official"]',
+            '[role="option"][data-option-id="plugin:plugin-creator@codez-plugins-official"]',
           );
           await option.waitFor();
           const image = option.locator("img");
@@ -252,7 +252,7 @@ for (const width of [1200, 390]) {
           });
           await option.click();
           const token = editor.locator(
-            '[data-mention-id="plugin:plugin-creator@zcode-plugins-official"]',
+            '[data-mention-id="plugin:plugin-creator@codez-plugins-official"]',
           );
           await token.waitFor();
           assert.match(

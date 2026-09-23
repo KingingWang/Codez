@@ -8,9 +8,9 @@
 的纯组件；状态编排与写路径全部 v4（读投影 `snapshot.config`、写 v4 命令、无桥、新不调旧）。
 
 参考基线：z-code-2（线上老版）`packages/ui/src/chat-input-toolbar/*`、`packages/ui/src/lib/*`、
-`packages/ui/src/ChatInputToolbar.tsx`、`apps/zcode-cli/packages/*`。
+`packages/ui/src/ChatInputToolbar.tsx`、`apps/codez-cli/packages/*`。
 现状载体：`packages/ui/src/v4/composer/V4ComposerToolbar.tsx`、`SessionPane.tsx`、
-`apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/model-config.ts`。
+`apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/model-config.ts`。
 
 > M5 composer 还原时「壳老芯新」是对的，但只对齐了「选择器长什么样 + 值从投影读」，
 > **围绕选择器的选型逻辑（持久化 / 兜底 / entitlement 门控 / 连接方式 / 跨 provider 凭据解析）
@@ -21,7 +21,7 @@
 
 1. **范围 = 全量对齐**，含 Phase 1（CLI provider 凭据解析）+ Phase 4b（连接方式切换）。
    不做这层，coding-plan 列表「点了不换」、选任意别的 provider 的模型都是摆设。
-2. **「记住上次选择」= 恢复老版全局语义**：ZCode-Agent 模型跨 workspace 全局记住，
+2. **「记住上次选择」= 恢复老版全局语义**：Codez-Agent 模型跨 workspace 全局记住，
    custom provider per-workspace；含 legacy 键迁移。
 3. **实施隔离**：在独立 worktree `z-code-m6-model`（分支 `m6-model-selection`，
    基于 feature/v4-vertical-slice 52fb19e61）改+提交+测，主目录另有并发 session，回头 cherry-pick/merge。
@@ -31,9 +31,9 @@
 ### A. 记住上次选择（持久化）— 真缺口
 | 能力 | 老版来源 | v4 现状 |
 |---|---|---|
-| last-model 持久化（全局键 `zcode-last-agent-model`，ZCode-Agent `__global__`、custom per-workspace） | `lib/zcodeModelPreference.ts:15,50,230,289` | ✗ 仅 workspace-default（per-workspace）`useDraftConfigControl.ts:221` |
-| legacy 键迁移（workspace-scoped / path-only → global） | `zcodeModelPreference.ts:246-286` | ✗ |
-| thought-level 持久化 + GLM-5.2 default-max | `zcodeModelPreference.ts:16,327,505-553,571` | ✗ |
+| last-model 持久化（全局键 `codez-last-agent-model`，Codez-Agent `__global__`、custom per-workspace） | `lib/codezModelPreference.ts:15,50,230,289` | ✗ 仅 workspace-default（per-workspace）`useDraftConfigControl.ts:221` |
+| legacy 键迁移（workspace-scoped / path-only → global） | `codezModelPreference.ts:246-286` | ✗ |
+| thought-level 持久化 + GLM-5.2 default-max | `codezModelPreference.ts:16,327,505-553,571` | ✗ |
 | 启动作种子 + 对目录再校验 | `chat-input-toolbar/modelSelection.ts:609-660` | 部分：草稿回落 workspace-default `V4ComposerToolbar.tsx:146-150`，无全局种子/再校验 |
 
 ### B. 兜底 / 自动定位（fallback）— 真缺口
@@ -69,13 +69,13 @@
 
 - **Phase 1（D）**：CLI `switchModelConfig` 加 provider/凭据/连接解析（权威，不回端解析）；`command.ts` payload additive `connection?`；凭据缺失→结构化 failed ACK；`applyRequestedSessionConfig` 同步。L2 + e2e。
 - **Phase 2（B）**：CLI resume 校验失效自愈 + 客户端 `useV4ModelAutoPosition` hook（移植 `modelSelection.ts` 纯函数：synthetic/登录首模/水合延迟/失效派发 switchModelConfig）。L1 + e2e。
-- **Phase 3（A）**：移植 `zcodeModelPreference` 全局层（键作用域/迁移/thought/GLM-5.2 default-max）；`useDraftConfigControl` 作草稿种子；workspace-default 保留 per-workspace 层。L1 + e2e（切 workspace 后仍是上次全局选择）。
+- **Phase 3（A）**：移植 `codezModelPreference` 全局层（键作用域/迁移/thought/GLM-5.2 default-max）；`useDraftConfigControl` 作草稿种子；workspace-default 保留 per-workspace 层。L1 + e2e（切 workspace 后仍是上次全局选择）。
 - **Phase 4（C）**：4a entitlement 门控（最轻，数据在手）；4b 连接方式 Select（依赖 1）；4c 用量面板 + breakdown/cache-hit（对齐 `m5-composer-parity §六`）。各带 L1/e2e。
 - **Phase 5（E）**：manage-models、运行中锁、日志清理；压缩守卫留裁决。
 
 ## 三、验收口径
 - 每 Phase 带 L1/L2 + e2e，先补 `docs/conversation-session-case-catalog.md` 与 `docs/testing/conversation-session-e2e-coverage-matrix.md` 再写 case。
-- 纪律：`zcode-protocol-v4/` 无桥；新写不调旧协议；协议 additive + 同步 `10-protocol-spec.md`；能删的旧路径标死期并删。
+- 纪律：`codez-protocol-v4/` 无桥；新写不调旧协议；协议 additive + 同步 `10-protocol-spec.md`；能删的旧路径标死期并删。
 - 跑 e2e 前：`node scripts/build-desktop-agent-cli.mjs` 重建 CLI bundle；`unset ELECTRON_RUN_AS_NODE`。
 
 ### 模型触发器身份一致性（2026-07-13）
@@ -146,5 +146,5 @@ snapshot model identity 不变 -> setThoughtLevel(用户显式值) -> 成功发�
 - [~] **Phase 5 — polish**：manage-models、运行中锁已完成；模型触发器 identity/显示同源修复已完成，其他 polish 待收尾。
 
 ### 遗留/待跟踪
-- Phase 3 已覆盖：草稿选择/会话中途切→写全局；新草稿→种子回放（跨 workspace）。**e2e 待补**（切 workspace 后 ZCode-Agent 模型仍是上次全局选择），先补 case catalog + coverage matrix。
+- Phase 3 已覆盖：草稿选择/会话中途切→写全局；新草稿→种子回放（跨 workspace）。**e2e 待补**（切 workspace 后 Codez-Agent 模型仍是上次全局选择），先补 case catalog + coverage matrix。
 - Phase 4a 的 team-plan 豁免依赖 `useSettings` 的 `modelProviderFamilySelectedKeys`（存活配置面）；连接方式切换本身归 Phase 4b。

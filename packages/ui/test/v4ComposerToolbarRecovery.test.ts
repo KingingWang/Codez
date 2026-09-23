@@ -2,8 +2,8 @@ import { act, createElement, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
-import type { ProviderSettingsView } from "@zcode/services";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
+import type { ProviderSettingsView } from "@codez/services";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { V4ComposerModelControls } from "@/v4/composer/V4ComposerToolbar.js";
 import type { ModelConfigSelect } from "@/ModelConfigSelect.js";
@@ -177,7 +177,7 @@ vi.mock("@/hooks/useUsageEntitlement.js", () => ({
   }),
 }));
 
-vi.mock("@/hooks/useZCodeConfig.js", () => ({
+vi.mock("@/hooks/useCodezConfig.js", () => ({
   useToolbarConfigOptions: () => ({
     configOptions: mocks.configOptions,
     loading: false,
@@ -186,7 +186,7 @@ vi.mock("@/hooks/useZCodeConfig.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -509,7 +509,7 @@ describe("V4ComposerModelControls recovery", () => {
       /title="chat.highspeed.remainingTime"[^>]*data-highspeed-countdown="true"/,
     );
     expect(html).toMatch(/data-highspeed-countdown-value="true"[^>]*@max-xl\/composer:hidden/);
-    expect(html).not.toContain("animate-zcode-alarm-ring");
+    expect(html).not.toContain("animate-codez-alarm-ring");
     expect(html).not.toMatch(/data-highspeed-countdown="true"[^>]*text-icon-purple/);
   });
 

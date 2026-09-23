@@ -1,18 +1,18 @@
 import {
-  getZCodeToolFamilyForName,
+  getCodezToolFamilyForName,
   isTodoPlanToolName,
-  isZCodeFileContentWriteToolName,
-  normalizeZCodeToolName,
-  type ZCodeKnownToolName,
-  type ZCodeToolFamily,
-} from "@zcode/shared";
+  isCodezFileContentWriteToolName,
+  normalizeCodezToolName,
+  type CodezKnownToolName,
+  type CodezToolFamily,
+} from "@codez/shared";
 import {
   normalizeAskUserQuestionInput,
   readAskUserQuestionInput,
 } from "@/lib/askUserQuestion.js";
 
 export type ToolCallPresentationFamily =
-  | ZCodeToolFamily
+  | CodezToolFamily
   | "plan-guidance"
   | "switch-mode"
   | "explore"
@@ -23,7 +23,7 @@ export type ToolCallIdentitySource =
   | "kind"
   | "title"
   | "raw"
-  | "raw-zcode-meta"
+  | "raw-codez-meta"
   | "raw-claude-meta"
   | "legacy-kind"
   | "legacy-title"
@@ -31,7 +31,7 @@ export type ToolCallIdentitySource =
   | "unknown";
 
 export interface ToolCallIdentity {
-  toolName: ZCodeKnownToolName | string | null;
+  toolName: CodezKnownToolName | string | null;
   family: ToolCallPresentationFamily;
   source: ToolCallIdentitySource;
   isLegacy: boolean;
@@ -89,11 +89,11 @@ function identityFromKnownToolName(
   value: string | null | undefined,
   source: ToolCallIdentitySource,
 ): ToolCallIdentity | null {
-  const toolName = normalizeZCodeToolName(value);
+  const toolName = normalizeCodezToolName(value);
   if (!toolName) {
     return null;
   }
-  const family = getZCodeToolFamilyForName(toolName);
+  const family = getCodezToolFamilyForName(toolName);
   if (!family) {
     return null;
   }
@@ -124,7 +124,7 @@ function readRawToolNameCandidates(raw: unknown) {
       readNestedString(raw, ["toolName"]) ??
       readNestedString(raw, ["tool_name"]) ??
       readNestedString(raw, ["name"]),
-    zcode: readNestedString(raw, ["_meta", "zcode", "toolName"]),
+    codez: readNestedString(raw, ["_meta", "codez", "toolName"]),
     claudeCode: readNestedString(raw, ["_meta", "claudeCode", "toolName"]),
     rawKind: readNestedString(raw, ["kind"]),
     rawTitle: readNestedString(raw, ["title"]),
@@ -138,14 +138,14 @@ function isLegacyAgentTool(
   const kind = normalizeLegacyToken(toolCall.kind);
   const title = normalizeLegacyToken(toolCall.title);
   const rawDirect = normalizeLegacyToken(rawNames.direct);
-  const rawZCode = normalizeLegacyToken(rawNames.zcode);
+  const rawCodez = normalizeLegacyToken(rawNames.codez);
   const rawClaude = normalizeLegacyToken(rawNames.claudeCode);
 
   return (
     rawClaude === "agent" ||
     rawClaude === "task" ||
-    rawZCode === "agent" ||
-    rawZCode === "spawn_agent" ||
+    rawCodez === "agent" ||
+    rawCodez === "spawn_agent" ||
     rawDirect === "agent" ||
     rawDirect === "spawn_agent" ||
     kind === "agent" ||
@@ -240,7 +240,7 @@ export function resolveToolCallIdentity(
     { value: toolCall.toolName, source: "toolName" as const },
     { value: toolCall.kind, source: "kind" as const },
     { value: rawNames.direct, source: "raw" as const },
-    { value: rawNames.zcode, source: "raw-zcode-meta" as const },
+    { value: rawNames.codez, source: "raw-codez-meta" as const },
   ]) {
     const identity = identityFromKnownToolName(
       candidate.value,
@@ -253,13 +253,13 @@ export function resolveToolCallIdentity(
 
   if (isLegacyAgentTool(toolCall, rawNames)) {
     return identityFromLegacyFamily(
-      rawNames.direct ?? rawNames.zcode ?? rawNames.claudeCode ?? "Agent",
+      rawNames.direct ?? rawNames.codez ?? rawNames.claudeCode ?? "Agent",
       "agent",
       "legacy-payload",
     );
   }
 
-  // `Task` 现在是现役 Claude 兼容工具名，但历史 ZCode Agent 投影会用
+  // `Task` 现在是现役 Claude 兼容工具名，但历史 Codez Agent 投影会用
   // kind="think" + title="Task" 表示子 agent 活动。title 只是展示名，必须放在
   // legacy payload 判断之后，避免把旧会话误升级成非 legacy 工具身份。
   const titleIdentity = identityFromKnownToolName(toolCall.title, "title");
@@ -316,14 +316,14 @@ export function resolveToolCallIdentity(
   }
 
   if (
-    // 当前 ZCode Agent 传给 app 的 plan mode 退出工具是 ExitPlanMode，
+    // 当前 Codez Agent 传给 app 的 plan mode 退出工具是 ExitPlanMode，
     // normalize 后没有下划线；旧兼容只认 switch_mode / Exited Plan Mode，导致计划卡片走 fallback。
     [
       toolCall.toolName,
       toolCall.kind,
       toolCall.title,
       rawNames.direct,
-      rawNames.zcode,
+      rawNames.codez,
       rawNames.claudeCode,
       rawNames.rawKind,
       rawNames.rawTitle,
@@ -397,7 +397,7 @@ export function isFileContentWriteToolCall(
   if (identity.family !== "file-write") {
     return false;
   }
-  if (isZCodeFileContentWriteToolName(identity.toolName)) {
+  if (isCodezFileContentWriteToolName(identity.toolName)) {
     return true;
   }
   const legacyKind = normalizeLegacyToken(toolCall.kind);

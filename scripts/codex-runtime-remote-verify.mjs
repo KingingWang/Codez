@@ -39,7 +39,7 @@ export async function verifyCodexRemoteAssets({
       contract.node?.archiveSha256 !== node.assets[key]
     )
       throw new Error(`Stale remote runtime ${key}; regenerate Codex remote assets`);
-    if (serverSha256 && contract.files?.["zcode-server.cjs"] !== serverSha256)
+    if (serverSha256 && contract.files?.["codez-server.cjs"] !== serverSha256)
       throw new Error(`Stale remote server ${key}; regenerate Codex remote assets`);
     const toolIds = key.startsWith("darwin-") ? ["ripgrep"] : ["bfs", "ripgrep", "ugrep"];
     const mounts = {

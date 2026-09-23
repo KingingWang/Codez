@@ -1,7 +1,7 @@
-import type { ZCodeConfigOption } from "@zcode/shared";
+import type { CodezConfigOption } from "@codez/shared";
 
 function readCurrentSelectValue(
-  options: readonly ZCodeConfigOption[],
+  options: readonly CodezConfigOption[],
   category: "model" | "thought_level",
 ): string | null {
   const option = options.find(
@@ -11,16 +11,16 @@ function readCurrentSelectValue(
   return value || null;
 }
 
-export function readCurrentAgentModel(options: readonly ZCodeConfigOption[]): string | null {
+export function readCurrentAgentModel(options: readonly CodezConfigOption[]): string | null {
   return readCurrentSelectValue(options, "model");
 }
 
-export function readCurrentAgentThoughtLevel(options: readonly ZCodeConfigOption[]): string | null {
+export function readCurrentAgentThoughtLevel(options: readonly CodezConfigOption[]): string | null {
   return readCurrentSelectValue(options, "thought_level");
 }
 
 export function isAgentThoughtLevelAvailable(
-  options: readonly ZCodeConfigOption[],
+  options: readonly CodezConfigOption[],
   thoughtLevel: string | null | undefined,
 ): boolean {
   const normalized = thoughtLevel?.trim();

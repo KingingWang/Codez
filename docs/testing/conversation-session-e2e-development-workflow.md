@@ -27,7 +27,7 @@ E2E 落地回答“怎么稳定测”：
 6. 跑本地 default replay。
 7. 需要进入 Docker suite 时，先单 spec 跑 `replay-isolated`，通过后再登记进 Docker preset。
 8. 常规 Docker 回归按 suite 批量运行，复用同一个镜像、容器和 WDIO 构建入口。
-9. MR 与 GitLab Web pipeline 通过手动 optional job 跑正式目录下的 default replay：共享 macOS 与专用 macOS runner job 都是单实例执行，只有 Windows job 使用四个 GitLab/WDIO 原生 shard。三条入口都复用 `ZCODE_E2E_SPEC=./test/e2e/conversation-session/*.test.ts` 等 direct-root glob；这些 glob 是非递归的，只收已经转正到正式目录的 spec，不收 `manual-review/pending`。
+9. MR 与 GitLab Web pipeline 通过手动 optional job 跑正式目录下的 default replay：共享 macOS 与专用 macOS runner job 都是单实例执行，只有 Windows job 使用四个 GitLab/WDIO 原生 shard。三条入口都复用 `CODEZ_E2E_SPEC=./test/e2e/conversation-session/*.test.ts` 等 direct-root glob；这些 glob 是非递归的，只收已经转正到正式目录的 spec，不收 `manual-review/pending`。
 10. Docker CI 只收已经自动化稳定的 suite。
 
 ## 共享初始化合同
@@ -89,21 +89,21 @@ packages/desktop/test/e2e/fixtures/cases/conversation-session/<case-name>.json
 
 ### 跨平台运行时路径合同
 
-`.e2e-home` 是 Desktop E2E 的隔离用户目录，不应把 case 文件散落到系统 `/tmp`。spec 在运行时创建、读取、修改或等待的文件统一放到 Agent 实际执行 workspace `ZCodeProject` 下的 `.zcode-e2e/<case>`：
+`.e2e-home` 是 Desktop E2E 的隔离用户目录，不应把 case 文件散落到系统 `/tmp`。spec 在运行时创建、读取、修改或等待的文件统一放到 Agent 实际执行 workspace `CodezProject` 下的 `.codez-e2e/<case>`：
 
 ```text
-.e2e-home/ZCodeProject/               Agent workspace cwd
-└── .zcode-e2e/<case>/                case-owned runtime files
+.e2e-home/CodezProject/               Agent workspace cwd
+└── .codez-e2e/<case>/                case-owned runtime files
 ```
 
 - Node 文件操作使用共享 helper 生成的原生绝对路径。
 - provider fixture 的 Read/Write/Edit/Glob/Grep 等绝对路径使用 `{{e2eRuntimeRoot}}/<case>/...`；replay server 在请求匹配前展开变量。
-- Bash command 使用 `.zcode-e2e/<case>/...` workspace-relative POSIX 路径，禁止依赖 `/tmp`、Windows drive 到 Git Bash mount 的隐式转换或用户 TEMP 目录。
+- Bash command 使用 `.codez-e2e/<case>/...` workspace-relative POSIX 路径，禁止依赖 `/tmp`、Windows drive 到 Git Bash mount 的隐式转换或用户 TEMP 目录。
 - case manifest 的 `fileFixtures[].path` 使用 workspace-relative 路径。
 
 ```text
 spec native path ─────────────┐
-fixture absolute tool path ───┼─> ZCodeProject/.zcode-e2e/<case>/file
+fixture absolute tool path ───┼─> CodezProject/.codez-e2e/<case>/file
 Bash relative path ───────────┘
 ```
 
@@ -180,18 +180,18 @@ pending case 已有 case-local fixture 时，可以在转正前直接检查合�
 同时要求两个 fixture JSON 的 `spec` 指向 canonical formal target：
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- \
+pnpm --filter @codez/desktop e2e:fixture:check -- \
   --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts
 ```
 
 pending manual-review 会按 case 是否已有 case-local fixture 自动隔离模式：已有 fixture 时使用 replay，
 缺 fixture 时使用 live/capture。需要临时覆盖 fixture 集合时仍可显式传入 fixture 路径；该变量同时把
-provider transport 切到 replay，但仍保留 `ZCODE_E2E_MANUAL_REVIEW=1` 的 pending spec 运行边界，
+provider transport 切到 replay，但仍保留 `CODEZ_E2E_MANUAL_REVIEW=1` 的 pending spec 运行边界，
 避免把回放证据误当成真实 provider capture：
 
 ```bash
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/<case>.json \
-  pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec \
+  pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec \
   './test/e2e/conversation-session/manual-review/pending/<case>.test.ts'
 ```
 
@@ -217,7 +217,7 @@ E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/com
 review 已确认的 pending case 使用 promotion 工具做机械转正：
 
 ```bash
-pnpm --filter @zcode/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts --reviewed --apply
+pnpm --filter @codez/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts --reviewed --apply
 ```
 
 promotion 工具只做确定性脚手架：
@@ -237,12 +237,12 @@ formal audit，开发者必须在 pending 阶段根据人工 review 和请求分
 manifest 与 provider fixture 的 `spec` 都指向 canonical formal target；audit 未通过时不会完成转正。转正后再运行：
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/<case>.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/<case>.test.ts
 
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/<case>.json \
-  pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/<case>.test.ts'
+  pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/<case>.test.ts'
 
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/<case>.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/<case>.test.ts'
 ```
 
 第一条 replay 命令显式只加载 common + case-local fixture，用来证明正式 case 不依赖 legacy `provider-basic.json` 的专用兜底。
@@ -257,7 +257,7 @@ E2E_SPEC=./test/e2e/conversation-session/<case>.test.ts \
 通过后再登记进 `conversation-session-verified`：
 
 ```bash
-pnpm --filter @zcode/desktop e2e:docker:admit -- \
+pnpm --filter @codez/desktop e2e:docker:admit -- \
   --spec ./test/e2e/conversation-session/<case>.test.ts \
   --verified \
   --artifact packages/desktop/.e2e-artifacts/<run-id> \

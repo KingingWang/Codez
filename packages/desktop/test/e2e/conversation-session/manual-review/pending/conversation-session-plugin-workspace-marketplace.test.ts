@@ -30,7 +30,7 @@ describe("WPL-009 Global Plugin Marketplace install E2E", () => {
 
     const fixture = await createPluginLifecycleFixture("1.0.0");
     const { storageRoot, workspace } = getE2EAppDataPaths();
-    const workspaceConfigPath = join(workspace, ".zcode", "config.json");
+    const workspaceConfigPath = join(workspace, ".codez", "config.json");
     const userConfigPath = join(storageRoot, "cli", "config.json");
     const knownMarketplacesPath = pluginStoragePath("known_marketplaces.json");
     const marketplaceCachePath = pluginStoragePath("marketplaces", PLUGIN_LIFECYCLE_MARKETPLACE_ID);

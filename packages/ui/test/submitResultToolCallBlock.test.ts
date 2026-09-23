@@ -6,8 +6,8 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { getZCodeToolFamilyForName, normalizeZCodeToolName } from "@zcode/shared";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { getCodezToolFamilyForName, normalizeCodezToolName } from "@codez/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { resolveToolCallIdentity } from "@/lib/toolIdentity.js";
 
 // CodeBlock 依赖 shiki / CodeViewer / Tooltip 根 provider，静态渲染跑不动；照
@@ -96,7 +96,7 @@ function renderBlock(
 ): string {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(SubmitResultToolCallBlock, buildContext(toolCall, contextOverrides)),
     ),
@@ -112,8 +112,8 @@ const REJECTION_TEXT = [
 describe("submit_result 路由", () => {
   it("submit_result 是已知工具名，归 workflow family", () => {
     // wire 名就是 snake_case 的 `submit_result`——下划线必须字面在场。
-    expect(normalizeZCodeToolName("submit_result")).toBe("submit_result");
-    expect(getZCodeToolFamilyForName("submit_result")).toBe("workflow");
+    expect(normalizeCodezToolName("submit_result")).toBe("submit_result");
+    expect(getCodezToolFamilyForName("submit_result")).toBe("workflow");
     expect(resolveToolCallIdentity({ toolName: "submit_result" })).toMatchObject({
       toolName: "submit_result",
       family: "workflow",
@@ -133,7 +133,7 @@ describe("submit_result 路由", () => {
     // 同时钉住两个面。
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {

@@ -5,9 +5,9 @@ import {
   commandsQueryResultSchema,
   conversationInputIntentSchema,
   queueItemSchema,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
-describe("ZCode Protocol v4 authoritative input intent", () => {
+describe("Codez Protocol v4 authoritative input intent", () => {
   const baseIntent = {
     sourceCommandId: "cmd-input-1",
     queueItemId: "queue-1",
@@ -88,7 +88,7 @@ describe("ZCode Protocol v4 authoritative input intent", () => {
   });
 });
 
-describe("ZCode Protocol v4 commands/query", () => {
+describe("Codez Protocol v4 commands/query", () => {
   const key = (index: number, sessionId: string | null = "session-1") => ({
     sessionId,
     commandId: `command-${index}`,

@@ -3,12 +3,12 @@
 // 先让 Host 重发策略，再重读快照；首次读到的值只是基线，不发信号。多次变化按顺序串行。
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ICodingPlanSubscriptionService } from "@zcode/services";
+import type { ICodingPlanSubscriptionService } from "@codez/services";
 import {
   applyDynamicWorkflowUserMode,
   createDynamicWorkflowClientConfig,
   type DynamicWorkflowMode,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { useDynamicWorkflowUserModeSync } from "@/hooks/useDynamicWorkflowAvailability.js";
 import {
   resetDynamicWorkflowAvailabilityStoreForTests,
@@ -24,7 +24,7 @@ const OFFER = createDynamicWorkflowClientConfig("alwaysOn", "remote");
 function setup() {
   const events: string[] = [];
   let currentChoice: DynamicWorkflowMode | undefined;
-  const zcodeAgentService = {
+  const codezAgentService = {
     syncDynamicWorkflowUserMode: vi.fn(async (params: { mode?: DynamicWorkflowMode }) => {
       events.push(`sync:${params.mode ?? "follow"}`);
     }),
@@ -40,13 +40,13 @@ function setup() {
       currentChoice = props.userMode;
       useDynamicWorkflowUserModeSync({
         ...props,
-        zcodeAgentService,
+        codezAgentService,
         codingPlanSubscriptionService,
       });
     },
     { initialProps: { settingsLoaded: false, userMode: undefined } },
   );
-  return { events, hook, zcodeAgentService };
+  return { events, hook, codezAgentService };
 }
 
 describe("useDynamicWorkflowUserModeSync（DWG-22）", () => {
@@ -93,8 +93,8 @@ describe("useDynamicWorkflowUserModeSync（DWG-22）", () => {
   });
 
   it("Host 同步失败也会重读快照（快照以 Host 当前结果为准）", async () => {
-    const { events, hook, zcodeAgentService } = setup();
-    zcodeAgentService.syncDynamicWorkflowUserMode.mockRejectedValueOnce(new Error("host gone"));
+    const { events, hook, codezAgentService } = setup();
+    codezAgentService.syncDynamicWorkflowUserMode.mockRejectedValueOnce(new Error("host gone"));
     hook.rerender({ settingsLoaded: true, userMode: undefined });
     hook.rerender({ settingsLoaded: true, userMode: "disabled" });
     await waitFor(() => expect(events).toEqual(["reload"]));

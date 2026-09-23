@@ -1,4 +1,4 @@
-import type { ModelSelection } from "@zcode/shared";
+import type { ModelSelection } from "@codez/shared";
 import type { CodexModelCatalogRead } from "@/hooks/useCodexModelCatalog.js";
 import { Button } from "@/components/ui/button.js";
 import {

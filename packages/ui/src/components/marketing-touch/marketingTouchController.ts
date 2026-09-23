@@ -1,6 +1,6 @@
 import { createStore } from "zustand/vanilla";
-import type { IMarketingTouchService } from "@zcode/services";
-import type { MarketingAction, MarketingDelivery } from "@zcode/shared";
+import type { IMarketingTouchService } from "@codez/services";
+import type { MarketingAction, MarketingDelivery } from "@codez/shared";
 import type { CloudDialogHero } from "@/components/cloud-content-dialog/cloudContentDialogTypes.js";
 import type { PreparedMarketingHero } from "@/components/marketing-touch/marketingResources.js";
 import { logger } from "@/logger.js";
@@ -206,7 +206,7 @@ export function createMarketingTouchController(options: {
       disposed ||
       state.pending ||
       state.dialog ||
-      (state.errorAction === "claim_zcode_plan" && state.error) ||
+      (state.errorAction === "claim_codez_plan" && state.error) ||
       !options.canOpen()
     )
       return;
@@ -233,7 +233,7 @@ export function createMarketingTouchController(options: {
       if (disposed) return;
       if (result.status !== "success") {
         if (
-          (action.type === "claim_zcode_plan" || action.type === "open_url") &&
+          (action.type === "claim_codez_plan" || action.type === "open_url") &&
           (result.terminal || result.status === "uncertain")
         ) {
           completed = true;

@@ -45,7 +45,7 @@ export function createE2EStartupCredentialSeed(
     return {};
   }
   const restoredOAuthCredentials = { ...options.restoredOAuthCredentials };
-  const requiresZCodeJwt = options.specs?.some((spec) => {
+  const requiresCodezJwt = options.specs?.some((spec) => {
     const fileName = spec.replaceAll("\\", "/").split("/").at(-1);
     return (
       // 营销投放 spec 按主题拆成 marketing-touch-delivery*.test.ts，领取用例都需要本地 JWT。
@@ -62,7 +62,7 @@ export function createE2EStartupCredentialSeed(
   });
   // 合并时遗漏了普通 E2E 的 JWT 隔离：假的 JWT 会访问真实套餐接口并弹出登录失效提示。
   // 保留 OAuth 展示态；只有认证专项、本地 mock 的领取与响应式用例需要 JWT。
-  if (!requiresZCodeJwt) delete restoredOAuthCredentials.zcodejwttoken;
+  if (!requiresCodezJwt) delete restoredOAuthCredentials.codezjwttoken;
   return {
     auth_token: options.legacyAuthToken,
     ...restoredOAuthCredentials,

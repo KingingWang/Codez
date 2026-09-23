@@ -1,14 +1,14 @@
 # Browser Use 运行时语义收口规格
 
 > 状态：已实现；真实 Chrome/remote/三平台 E2E 仍按第 7 节保留待验证项。
-> ZCode 基准：`e420d6bbb8`（`feat/browser-use-cdp`）。
+> Codez 基准：`e420d6bbb8`（`feat/browser-use-cdp`）。
 > 目标：修复 URL 支持声明冲突，并把当前 IAB 的 CUA、DOM CUA、Playwright 同名能力收敛到本规格冻结的动态有效行为。
 
 ## 1. 需求与澄清记录
 
 | 轮次 | 问题 | 用户结论 | 固定边界 |
 | --- | --- | --- | --- |
-| 1 | URL 冲突与全部中优先级行为应如何取舍 | 严格按第 2 节冻结语义实现 | 以第 2 节冻结的动态文档、运行时黑盒和可观察命令行为为裁决，不以上游 Playwright 或 ZCode 既有 UX 为裁决 |
+| 1 | URL 冲突与全部中优先级行为应如何取舍 | 严格按第 2 节冻结语义实现 | 以第 2 节冻结的动态文档、运行时黑盒和可观察命令行为为裁决，不以上游 Playwright 或 Codez 既有 UX 为裁决 |
 
 本轮包含：
 
@@ -31,11 +31,11 @@
 - `file:` 可以参与多 backend 的本地目标选择，但不能直接传给 `Tab.goto()`。
 - 其它 `about:*`、`javascript:`、`data:`、`file:` 必须在 backend action 前拒绝。
 
-因此 ZCode skill 不再宣称 `file://` 是可导航 local target；`getForUrl(fileUrl)` 的选择纯函数与 `goto(fileUrl)` 的导航权限是两个不同合同。
+因此 Codez skill 不再宣称 `file://` 是可导航 local target；`getForUrl(fileUrl)` 的选择纯函数与 `goto(fileUrl)` 的导航权限是两个不同合同。
 
 ### 2.2 CUA / DOM CUA
 
-| API | 冻结语义 | ZCode 实现要求 |
+| API | 冻结语义 | Codez 实现要求 |
 | --- | --- | --- |
 | `cua.drag({path, keys})` | 非空 path；按原始点序列移动，首点按下、末点释放 | 协议保留完整 path，不再只取首尾并重新插值 |
 | `cua.scroll({x,y,scrollX,scrollY,keypress})` | 鼠标先移到 `(x,y)`，再用 `Input.synthesizeScrollGesture` 按 delta 滚动 | 锚点、delta 和 modifier 不丢失；Electron `<webview>` guest 使用等价的 CDP `mouseWheel` transport，规避 Chromium 146 静默不执行 synthesized gesture |
@@ -51,24 +51,24 @@ IAB 动态 API 不暴露 CUA/DOM CUA `downloadMedia`。这两个 helper 在静�
 - `PlaywrightLocator.downloadMedia()` 仍是当前 IAB 有效 API。它解析命中元素自身或邻近
   `img/video/source/a[href]` 的 `currentSrc/src/href`，在 isolated world 创建临时 `<a download>` 并点击；
   找不到 URL 时明确失败，不能降级成普通 locator click。
-- `elementInfo()`、`elementScreenshot()` 在静态 API manifest 中存在但 `documented: false`。ZCode 保留
+- `elementInfo()`、`elementScreenshot()` 在静态 API manifest 中存在但 `documented: false`。Codez 保留
   runtime helper 兼容，同时从有效文档隐藏，并在 isolated world 执行 DOM 探测/overlay。
-- `TextMatcher` 类型与当前 ZCode Browser guidance 都允许 `RegExp`。实现不能用当前 Realm 的
+- `TextMatcher` 类型与当前 Codez Browser guidance 都允许 `RegExp`。实现不能用当前 Realm 的
   `instanceof RegExp` 判断 matcher，否则 Node REPL VM 创建的 RegExp 会被错误拒绝。
 - `waitForLoadState({state:"networkidle"})` 和 `waitForURL(...,{waitUntil:"networkidle"})` 最终都进入同一
-  backend load-state handler并明确报 unsupported。ZCode 保持该错误，不伪造网络空闲。
+  backend load-state handler并明确报 unsupported。Codez 保持该错误，不伪造网络空闲。
 - `expectNavigation(action)` 无 URL 时，会先建立 `waitForLoadState`，但若旧页面已经 `load`
-  可以立即完成，而不是等待 500ms 超时。ZCode 保持这一
+  可以立即完成，而不是等待 500ms 超时。Codez 保持这一
   当前行为；需要严格等待新导航时必须传 `url`，文档不得再宣称“无 URL 也能排除旧页面状态”。
 
 ## 3. 领域、状态所有者与跨端边界
 
 | 领域 | 状态所有者 | 本轮作用 |
 | --- | --- | --- |
-| Agent Browser facade | `apps/zcode-cli/packages/core` | 参数校验、动态对象图、命令映射 |
+| Agent Browser facade | `apps/codez-cli/packages/core` | 参数校验、动态对象图、命令映射 |
 | 严格协议 | `packages/shared/src/browser-use` | 完整表达 path、scroll anchor/delta、keypress |
 | IAB 执行 | `packages/desktop/src/main/browserView` | CDP trusted input、isolated world、下载动作 |
-| 插件文档 | `apps/zcode-cli/packages/browser-use-plugin` | URL、正则、networkidle、expectNavigation 和有效 API 指引 |
+| 插件文档 | `apps/codez-cli/packages/browser-use-plugin` | URL、正则、networkidle、expectNavigation 和有效 API 指引 |
 | shared-host 路由 | host/services/main 既有 context | 不改变 `workspaceIdentity`、`remoteSessionId`、`clientMode` |
 
 不为手机端新增 runtime。`desktop-continuous` 与 `web-remote-replayable` 都通过同一 shared-host
@@ -141,7 +141,7 @@ BrowserControl 链路执行相同 browser command；本轮命令不引入 task s
 
 运行时边界：
 
-- 当前运行中的 ZCode Dev 实例仍挂有用户 IAB 页面，未为本轮强制重启以免破坏用户状态；因此真实
+- 当前运行中的 Codez Dev 实例仍挂有用户 IAB 页面，未为本轮强制重启以免破坏用户状态；因此真实
   Chromium drag/scroll/download、手机 shared-host、SSH/WSL/Docker 和 Windows/Linux modifier 行为继续标为待补 E2E。
 
 2026-08-03 滚动兼容性修正：

@@ -4,7 +4,7 @@ import {
   MCP_APPS_SURFACE_EXPERIMENTAL_KEY,
   MCP_APPS_WIDGET_STATE_EXPERIMENTAL_KEY,
   buildMcpAppsCspExperimentalCapability,
-} from "@zcode/shared/mcp-apps";
+} from "@codez/shared/mcp-apps";
 
 /** 宿主实例真实可用的交互；缺省项对应的能力不声明，插件据此降级。 */
 export interface PluginUiHostCapabilityInput {
@@ -16,13 +16,13 @@ export interface PluginUiHostCapabilityInput {
   canSubscribeResources: boolean;
   /** 平台有 saveFile（桌面）才声明 downloadFile。 */
   canDownloadFile: boolean;
-  /** 常驻面板实例：宣告 `experimental["zcode/surface"]: { id }`，页面据此判断自己运行在面板里。 */
+  /** 常驻面板实例：宣告 `experimental["codez/surface"]: { id }`，页面据此判断自己运行在面板里。 */
   surfaceId?: string;
 }
 
 /**
  * hostCapabilities 的唯一构造点。声明与 handler 一一对应：没有会话动作绑定就不声明 message，没有 composer 就不声明
- * updateModelContext。ZCode 扩展（widgetState、resourceSubscribe、surface、csp 放宽）一律放 `experimental["zcode/…"]`，
+ * updateModelContext。Codez 扩展（widgetState、resourceSubscribe、surface、csp 放宽）一律放 `experimental["codez/…"]`，
  * 官方 SDK 的 zod 会剥掉标准位之外的未知能力键。
  */
 export function buildPluginUiHostCapabilities(

@@ -11,17 +11,17 @@ import {
 } from "@/v4/featureSuggestedPromptRotation.js";
 /* oxlint-disable eslint(max-lines) -- 推荐 Prompt 同时收口 latest-wins、取消、可信解析、操作反馈和 Composer 收尾，拆分会打散这条状态机。 */
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@zcode/shared";
+import { CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@codez/shared";
 import { cn } from "@/components/lib/utils.js";
 import { toast } from "@/components/ui/toast.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import type { AutomationsNavigationTab } from "@/lib/taskNavigationHistory.js";
 import { reportPromptTemplateClick } from "@/lib/promptTemplateTelemetry.js";
-import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/zcodeDraftSkillInvalidation.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/codezDraftSkillInvalidation.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import {
   ConversationDraftSuggestedPrompts,
   type DraftSuggestedPromptItem,
@@ -81,7 +81,7 @@ export function ConversationDraftSuggestedPromptsContainer({
   isDesktop = false,
   isWebRemoteControl = false,
 }: Props) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const platform = usePlatform();
   const isOfficeMode = useIsOfficeMode();
   const { update } = useSettings();
@@ -216,7 +216,7 @@ export function ConversationDraftSuggestedPromptsContainer({
       // 推荐流程的状态与展示图标都由目标 Host 的同一次可信解析返回；当前不存在
       // workspace 级 Plugin，再读取 referenceCatalog 会重复校验并引入额外 RPC。
       const mention = buildDraftSuggestedPluginMention(plugin, icon);
-      return useZCodeSessionStore
+      return useCodezSessionStore
         .getState()
         .requestComposerTextInsert(
           workspacePath,
@@ -238,7 +238,7 @@ export function ConversationDraftSuggestedPromptsContainer({
       ) {
         return null;
       }
-      return useZCodeSessionStore
+      return useCodezSessionStore
         .getState()
         .requestComposerTextInsert(workspacePath, prompt, workspaceIdentity);
     },
@@ -266,13 +266,13 @@ export function ConversationDraftSuggestedPromptsContainer({
         const text = hasTarget
           ? prompt
           : `${buildDraftSuggestedPluginMention(plugin, icon).markdown} ${prompt}`;
-        return useZCodeSessionStore
+        return useCodezSessionStore
           .getState()
           .requestComposerTextInsert(workspacePath, text, workspaceIdentity);
       }
       const mention = buildDraftSuggestedPluginMention(plugin, icon);
       const text = prompt.trim() ? `${mention.markdown} ${prompt.trim()}` : mention.markdown;
-      return useZCodeSessionStore
+      return useCodezSessionStore
         .getState()
         .requestComposerTextInsert(workspacePath, text, workspaceIdentity, mention);
     },
@@ -282,7 +282,7 @@ export function ConversationDraftSuggestedPromptsContainer({
   const revalidateAndPrependPlugin = useCallback(
     async (current: DraftSuggestedPluginFlow, requestVersion: number) => {
       await invalidateDeferredDraftSessionForSkillChange({
-        zcodeSessionService: resolution.services.zcodeSessionService,
+        codezSessionService: resolution.services.codezSessionService,
         workspacePath,
         workspaceIdentity,
         reason: "suggested-prompt-plugin-change",
@@ -303,7 +303,7 @@ export function ConversationDraftSuggestedPromptsContainer({
       isWebRemoteControl,
       prependResolvedPlugin,
       resolution.services.pluginManagementService,
-      resolution.services.zcodeSessionService,
+      resolution.services.codezSessionService,
       targetParams,
       workspaceIdentity,
       workspacePath,
@@ -371,7 +371,7 @@ export function ConversationDraftSuggestedPromptsContainer({
         requestVersion !== requestVersionRef.current ||
         (kind === "install" &&
           (!flow.result?.pluginName ||
-            flow.result.marketplace !== ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID ||
+            flow.result.marketplace !== CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID ||
             flow.result.sourceTrust !== "official"))
       ) {
         return;

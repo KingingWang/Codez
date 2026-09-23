@@ -4,20 +4,20 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import {
-  buildZCodeDataSizeArmsPayload,
-  createZCodeDataSizeTelemetryScheduler,
-  type ZCodeDataSizeTelemetryState,
-} from "../src/main/desktopZCodeDataSizeTelemetry.js";
+  buildCodezDataSizeArmsPayload,
+  createCodezDataSizeTelemetryScheduler,
+  type CodezDataSizeTelemetryState,
+} from "../src/main/desktopCodezDataSizeTelemetry.js";
 import {
-  scanZCodeDataDirectory,
-  type ZCodeDataSizeScanResult,
-} from "../src/main/zcodeDataSizeScanner.js";
+  scanCodezDataDirectory,
+  type CodezDataSizeScanResult,
+} from "../src/main/codezDataSizeScanner.js";
 import {
-  readZCodeDataSizeTelemetryState,
-  writeZCodeDataSizeTelemetryState,
-} from "../src/main/zcodeDataSizeTelemetryState.js";
+  readCodezDataSizeTelemetryState,
+  writeCodezDataSizeTelemetryState,
+} from "../src/main/codezDataSizeTelemetryState.js";
 
-const COMPLETE_RESULT: ZCodeDataSizeScanResult = {
+const COMPLETE_RESULT: CodezDataSizeScanResult = {
   bytes: 42,
   directoriesScanned: 2,
   durationMs: 15,
@@ -38,11 +38,11 @@ const TEST_TIMING = {
   startupMinDelayMs: 0,
 };
 
-describe("scanZCodeDataDirectory", () => {
+describe("scanCodezDataDirectory", () => {
   let rootPath = "";
 
   beforeEach(async () => {
-    rootPath = await mkdtemp(join(tmpdir(), "zcode-data-size-"));
+    rootPath = await mkdtemp(join(tmpdir(), "codez-data-size-"));
   });
 
   afterEach(async () => {
@@ -56,7 +56,7 @@ describe("scanZCodeDataDirectory", () => {
     await writeFile(join(rootPath, "root.txt"), "12345");
     await writeFile(join(rootPath, "cli", "log", "agent.log"), "1234567");
 
-    const result = await scanZCodeDataDirectory({
+    const result = await scanCodezDataDirectory({
       maxDurationMs: 30_000,
       maxFiles: 200_000,
       rootPath,
@@ -76,7 +76,7 @@ describe("scanZCodeDataDirectory", () => {
     await writeFile(join(rootPath, "one.txt"), "111");
     await writeFile(join(rootPath, "two.txt"), "2222");
 
-    const result = await scanZCodeDataDirectory({
+    const result = await scanCodezDataDirectory({
       maxDurationMs: 30_000,
       maxFiles: 1,
       rootPath,
@@ -91,7 +91,7 @@ describe("scanZCodeDataDirectory", () => {
   it("达到时间保护后返回 time_limit partial", async () => {
     await writeFile(join(rootPath, "one.txt"), "111");
 
-    const result = await scanZCodeDataDirectory({
+    const result = await scanCodezDataDirectory({
       maxDurationMs: 0,
       maxFiles: 200_000,
       rootPath,
@@ -106,7 +106,7 @@ describe("scanZCodeDataDirectory", () => {
   });
 });
 
-describe("createZCodeDataSizeTelemetryScheduler", () => {
+describe("createCodezDataSizeTelemetryScheduler", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-27T00:00:00.000Z"));
@@ -124,8 +124,8 @@ describe("createZCodeDataSizeTelemetryScheduler", () => {
     idleSeconds?: number;
     onScan?: () => void;
     onWriteState?: () => void;
-    readState?: () => Promise<ZCodeDataSizeTelemetryState | null>;
-    state?: ZCodeDataSizeTelemetryState | null;
+    readState?: () => Promise<CodezDataSizeTelemetryState | null>;
+    state?: CodezDataSizeTelemetryState | null;
     writeStateError?: Error;
   }) {
     let appBackground = options?.appBackground ?? true;
@@ -138,18 +138,18 @@ describe("createZCodeDataSizeTelemetryScheduler", () => {
       return COMPLETE_RESULT;
     });
     const readState = vi.fn(options?.readState ?? (async () => state));
-    const writeState = vi.fn(async (next: ZCodeDataSizeTelemetryState) => {
+    const writeState = vi.fn(async (next: CodezDataSizeTelemetryState) => {
       options?.onWriteState?.();
       if (options?.writeStateError) {
         throw options.writeStateError;
       }
       state = next;
     });
-    const scheduler = createZCodeDataSizeTelemetryScheduler({
+    const scheduler = createCodezDataSizeTelemetryScheduler({
       deviceMid: options?.deviceMid ?? "device-1",
       getSystemIdleTimeSeconds: () => idleSeconds,
       isAppBackground: () => appBackground,
-      isZCodeBusy: () => busy,
+      isCodezBusy: () => busy,
       logger: { info: vi.fn(), warn: vi.fn() },
       readState,
       report,
@@ -317,17 +317,17 @@ describe("createZCodeDataSizeTelemetryScheduler", () => {
     const report = vi.fn();
     const scan = vi.fn(
       ({ signal }: { signal: AbortSignal }) =>
-        new Promise<ZCodeDataSizeScanResult>((_resolve, reject) => {
+        new Promise<CodezDataSizeScanResult>((_resolve, reject) => {
           signal.addEventListener("abort", () => {
             reject(new DOMException("aborted", "AbortError"));
           });
         }),
     );
-    const scheduler = createZCodeDataSizeTelemetryScheduler({
+    const scheduler = createCodezDataSizeTelemetryScheduler({
       deviceMid: "device-1",
       getSystemIdleTimeSeconds: () => 300,
       isAppBackground: () => true,
-      isZCodeBusy: () => busy,
+      isCodezBusy: () => busy,
       logger: { info: vi.fn(), warn: vi.fn() },
       readState: async () => null,
       report,
@@ -376,11 +376,11 @@ describe("createZCodeDataSizeTelemetryScheduler", () => {
   });
 });
 
-describe("ZCode data size telemetry state", () => {
+describe("Codez data size telemetry state", () => {
   let rootPath = "";
 
   beforeEach(async () => {
-    rootPath = await mkdtemp(join(tmpdir(), "zcode-data-size-state-"));
+    rootPath = await mkdtemp(join(tmpdir(), "codez-data-size-state-"));
   });
 
   afterEach(async () => {
@@ -392,11 +392,11 @@ describe("ZCode data size telemetry state", () => {
   it("原子持久化最近成功上报时间供重启后限频", async () => {
     const stateFile = join(rootPath, "nested", "telemetry.json");
 
-    await writeZCodeDataSizeTelemetryState(stateFile, {
+    await writeCodezDataSizeTelemetryState(stateFile, {
       lastReportedAt: 1_777_777_777_777,
     });
 
-    await expect(readZCodeDataSizeTelemetryState(stateFile)).resolves.toEqual({
+    await expect(readCodezDataSizeTelemetryState(stateFile)).resolves.toEqual({
       lastReportedAt: 1_777_777_777_777,
     });
   });
@@ -404,18 +404,18 @@ describe("ZCode data size telemetry state", () => {
   it("原子持久化发送前 reservation 供崩溃恢复后限频", async () => {
     const stateFile = join(rootPath, "nested", "telemetry-reservation.json");
 
-    await writeZCodeDataSizeTelemetryState(stateFile, {
+    await writeCodezDataSizeTelemetryState(stateFile, {
       reportReservedAt: 1_777_777_777_777,
     });
 
-    await expect(readZCodeDataSizeTelemetryState(stateFile)).resolves.toEqual({
+    await expect(readCodezDataSizeTelemetryState(stateFile)).resolves.toEqual({
       reportReservedAt: 1_777_777_777_777,
     });
   });
 
   it("状态文件不存在时显式返回无历史状态", async () => {
     await expect(
-      readZCodeDataSizeTelemetryState(join(rootPath, "missing.json")),
+      readCodezDataSizeTelemetryState(join(rootPath, "missing.json")),
     ).resolves.toBeNull();
   });
 
@@ -423,22 +423,22 @@ describe("ZCode data size telemetry state", () => {
     const stateFile = join(rootPath, "corrupted.json");
     await writeFile(stateFile, '{"lastReportedAt":');
 
-    await expect(readZCodeDataSizeTelemetryState(stateFile)).rejects.toThrow();
+    await expect(readCodezDataSizeTelemetryState(stateFile)).rejects.toThrow();
   });
 
   it("状态字段格式非法时不降级为无历史状态", async () => {
     const stateFile = join(rootPath, "invalid.json");
     await writeFile(stateFile, '{"lastReportedAt":"invalid"}');
 
-    await expect(readZCodeDataSizeTelemetryState(stateFile)).rejects.toThrow(
+    await expect(readCodezDataSizeTelemetryState(stateFile)).rejects.toThrow(
       "Invalid lastReportedAt",
     );
   });
 });
 
-describe("buildZCodeDataSizeArmsPayload", () => {
+describe("buildCodezDataSizeArmsPayload", () => {
   it("把 partial 下界和扫描质量写入独立事件且不携带本地路径", () => {
-    const payload = buildZCodeDataSizeArmsPayload({
+    const payload = buildCodezDataSizeArmsPayload({
       context: {
         appVersion: "3.9.3",
         armsEnv: "prod",
@@ -459,16 +459,16 @@ describe("buildZCodeDataSizeArmsPayload", () => {
 
     expect(payload).toEqual({
       group: "resource",
-      name: "perf_resource_zcode_data_size",
+      name: "perf_resource_codez_data_size",
       properties: {
         app_version: "3.9.3",
         arms_env: "prod",
         data_root_kind: "custom",
         device_mid: "device-1",
         directories_scanned: "20",
-        event_name: "perf_resource_zcode_data_size",
+        event_name: "perf_resource_codez_data_size",
         files_scanned: "200000",
-        metric_kind: "zcode_data_bytes",
+        metric_kind: "codez_data_bytes",
         metric_value: "1024",
         partial_reason: "file_limit",
         platform: "macos",
@@ -476,7 +476,7 @@ describe("buildZCodeDataSizeArmsPayload", () => {
         scan_error_count: "2",
         scan_status: "partial",
         schema_version: "1",
-        zcode_data_bytes: "1024",
+        codez_data_bytes: "1024",
       },
       type: "custom",
       value: 1024,

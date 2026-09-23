@@ -2,7 +2,7 @@
 
 > Status: Accepted architecture; V1 implementation and local pending E2E evidence recorded; mobile remains focused integration only and formal admission is pending
 > Date: 2026-08-19
-> Decision: 采用 User/Workspace 两级配置形态；不做 Local scope，并采用 ZCode 已确认的开放 Plugin 安全策略
+> Decision: 采用 User/Workspace 两级配置形态；不做 Local scope，并采用 Codez 已确认的开放 Plugin 安全策略
 > Target: Desktop local、SSH/WSL/Docker workspace Agent Host、mobile `/remote` shared-host attachment
 
 ## 1. Final decision
@@ -10,13 +10,13 @@
 Workspace-level Plugin 的含义是：Plugin 的启用状态和运行时 options 可以由当前 Workspace 的项目配置决定。配置 scope 与 Skill、Command、Hook 保持一致，只支持两级：
 
 ```text
-User       ~/.zcode/cli/config.json
-Workspace  <workspace>/.zcode/config.json
+User       ~/.codez/cli/config.json
+Workspace  <workspace>/.codez/config.json
 ```
 
 不实现以下内容：
 
-- `<workspace>/.zcode/config.local.json`；
+- `<workspace>/.codez/config.local.json`；
 - Host 外部 `plugins/assignments/workspaces/<hash>.json`；
 - Workspace 独立 package/cache/data；
 - 打开项目时自动安装 Plugin；
@@ -81,7 +81,7 @@ Workspace 配置只覆盖自己声明的字段，其余字段继续继承 User �
 权威文件：
 
 ```text
-<workspace>/.zcode/config.json
+<workspace>/.codez/config.json
 ```
 
 支持的 Plugin 配置包括：
@@ -97,13 +97,13 @@ Workspace 配置不保存 package bytes、安装完成态、Marketplace cache、
 ### 3.2 User/Host state
 
 ```text
-~/.zcode/cli/config.json
+~/.codez/cli/config.json
   plugins.enabledPlugins
   plugins.options
   plugins.suppressedBuiltins
   user-level plugins.dirs
 
-~/.zcode/cli/plugins/
+~/.codez/cli/plugins/
   known_marketplaces.json
   installed_plugins.json
   marketplaces/
@@ -127,7 +127,7 @@ Plugin package、安装、更新、卸载、缓存和 data 仍是目标 Agent Ho
 读取 User config
           |
           v
-读取 <workspace>/.zcode/config.json
+读取 <workspace>/.codez/config.json
           |
           v
 按 Plugin ID/key 合并 effective enabled/options
@@ -222,10 +222,10 @@ Source: User / Workspace
 
 ```text
 User scope:
-  patch ~/.zcode/cli/config.json#plugins.enabledPlugins[id]
+  patch ~/.codez/cli/config.json#plugins.enabledPlugins[id]
 
 Workspace scope:
-  patch <workspace>/.zcode/config.json#plugins.enabledPlugins[id]
+  patch <workspace>/.codez/config.json#plugins.enabledPlugins[id]
 ```
 
 Workspace 页面提供“恢复 User 配置”，行为是删除 Workspace 中的 key，而不是写入第三种 sentinel。
@@ -303,7 +303,7 @@ one window-scoped Local Host
 文件读写使用执行语义：
 
 ```text
-<target workspacePath>/.zcode/config.json
+<target workspacePath>/.codez/config.json
 ```
 
 缓存、Session、异步请求和状态隔离使用：
@@ -322,7 +322,7 @@ UI 不直接写文件，保持：
 
 ```text
 UI -> PluginManagementStore -> IPluginManagementService
-   -> ZCode Protocol -> Agent config loader/runtime
+   -> Codez Protocol -> Agent config loader/runtime
 ```
 
 接口显式携带 scope 和 Workspace 上下文：
@@ -455,7 +455,7 @@ promotion、Docker admission 和三平台 CI。`WPL-005` 当前只用 Skill+MCP 
 ## 10. Acceptance gates
 
 1. Plugin 页面存在 User/Workspace selector，行为与 Skill/Command scope 一致。
-2. Workspace 配置写入 `<workspace>/.zcode/config.json`，不创建 Local 文件。
+2. Workspace 配置写入 `<workspace>/.codez/config.json`，不创建 Local 文件。
 3. Workspace `enabledPlugins` 对新 Session 生效，缺包不自动安装。
 4. Workspace options 按 option key 覆盖 User；普通、credential、secret 均可生效。
 5. sensitive 值允许持久化，但 UI、日志、diagnostic、provider capture、mobile replay 不泄露。
@@ -495,7 +495,7 @@ Workspace Plugin config loads without Workspace trust
         +--> Plugin MCP starts without separate approval
 ```
 
-这是明确的 Plugin 域例外。tracked `.zcode/config.json` 可能包含明文 secret，也可能改变 Plugin runtime 参数或启动 Plugin MCP；产品不阻止该行为，只保留 schema/path/protocol validation 和输出脱敏。
+这是明确的 Plugin 域例外。tracked `.codez/config.json` 可能包含明文 secret，也可能改变 Plugin runtime 参数或启动 Plugin MCP；产品不阻止该行为，只保留 schema/path/protocol validation 和输出脱敏。
 
 | Boundary                               | Decision                                            |
 | -------------------------------------- | --------------------------------------------------- |
@@ -510,7 +510,7 @@ Workspace Plugin config loads without Workspace trust
 
 当前实现和验证边界包括：
 
-- 项目配置由现有 `.zcode/config.json` discovery 链加载；
+- 项目配置由现有 `.codez/config.json` discovery 链加载；
 - Plugin startup、`mcp/list` 和 Settings overview 必须统一到同一 effective resolver；
 - Plugin package/installed record 当前是目标 Host 用户级；
 - `workspaceKey = workspaceIdentity?.trim() || workspacePath` 是状态隔离合同；

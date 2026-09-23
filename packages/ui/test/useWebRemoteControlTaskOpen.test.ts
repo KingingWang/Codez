@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { WebRemoteControlTaskTarget } from "@zcode/shared";
+import type { WebRemoteControlTaskTarget } from "@codez/shared";
 import { openWebRemoteControlTask } from "@/hooks/useWebRemoteControlTaskOpen.js";
 
 function createTask(overrides: Partial<WebRemoteControlTaskTarget>): WebRemoteControlTaskTarget {

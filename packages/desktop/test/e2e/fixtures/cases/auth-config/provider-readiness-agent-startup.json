@@ -8,7 +8,7 @@
   "fileFixtures": [
     {
       "kind": "cli-session-seed",
-      "path": "~/.zcode/cli/db/db.sqlite",
+      "path": "~/.codez/cli/db/db.sqlite",
       "purpose": "只预置 interactive Agent 历史；tasks-index 由冷启动 sessions-index baseline 自行补齐。"
     }
   ],

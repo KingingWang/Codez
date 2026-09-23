@@ -1,5 +1,5 @@
-import { ServiceChannels, hostPluginSandboxRegisterResultMessageSchema } from "@zcode/shared";
-import type { PluginSandboxHandle } from "@zcode/shared/mcp-apps";
+import { ServiceChannels, hostPluginSandboxRegisterResultMessageSchema } from "@codez/shared";
+import type { PluginSandboxHandle } from "@codez/shared/mcp-apps";
 import { describe, expect, it } from "vitest";
 import { examplePrepareAndMount, exampleReadBlob } from "./contract.example.js";
 import { IPluginUiBridgeService } from "./contract.js";
@@ -22,7 +22,7 @@ describe("plugin-ui-bridge contract", () => {
       },
       sandboxId: "sb-01",
       initId: 1,
-      shellUrl: "zcode-sandbox://shell-sb-01/",
+      shellUrl: "codez-sandbox://shell-sb-01/",
       partition: "persist:plugin-sandbox-v1-0123456789abcdef",
       resourceMeta: {
         prefersBorder: true,
@@ -56,7 +56,7 @@ describe("plugin-ui-bridge contract", () => {
         },
         sandboxId: `sb-${params.scopeId}`,
         initId: 1,
-        shellUrl: `zcode-sandbox://shell-sb-${params.scopeId}/`,
+        shellUrl: `codez-sandbox://shell-sb-${params.scopeId}/`,
         partition: `plugin-sandbox:sb-${params.scopeId}`,
       }),
       callTool: async () => ({ content: [] }),
@@ -72,7 +72,7 @@ describe("plugin-ui-bridge contract", () => {
       listSurfaces: async () => [],
     };
     await expect(examplePrepareAndMount(bridge)).resolves.toEqual({
-      src: "zcode-sandbox://shell-sb-tool:call_1/",
+      src: "codez-sandbox://shell-sb-tool:call_1/",
       partition: "plugin-sandbox:sb-tool:call_1",
       initId: 1,
     });

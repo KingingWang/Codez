@@ -5,7 +5,7 @@ import {
 } from "../../../helpers/desktop-app.js";
 import {
   connectSSHWorkspaceAndSendFirstTurn,
-  listRemoteZCodeServerPids,
+  listRemoteCodezServerPids,
   prepareSSHLifecycle,
   readTaskRowInWorkspace,
   reconnectSSHWorkspace,
@@ -19,7 +19,7 @@ import { readHostProcesses, waitForRemoteTab } from "../../../helpers/ssh-remote
 
 const CASE_MARKER = "E2E_SSH_P0_SERVER_FAULT";
 
-describe(`${CASE_MARKER}: SSH zcode-server fault and grouped reconnect`, () => {
+describe(`${CASE_MARKER}: SSH codez-server fault and grouped reconnect`, () => {
   let provider: SSHLifecycleProvider | null = null;
 
   after(async () => {
@@ -29,12 +29,12 @@ describe(`${CASE_MARKER}: SSH zcode-server fault and grouped reconnect`, () => {
     await clearAppData();
   });
 
-  it("SSH-P0-LIFE-02 只终止本 case 新建的 zcode-server 后，重连 A 恢复 A/B", async function () {
+  it("SSH-P0-LIFE-02 只终止本 case 新建的 codez-server 后，重连 A 恢复 A/B", async function () {
     this.timeout(35 * 60_000);
     const prepared = await prepareSSHLifecycle(CASE_MARKER);
     provider = prepared.provider;
     const [workspaceA, workspaceB] = prepared.config.workspacePaths;
-    const serverPidsBefore = await listRemoteZCodeServerPids(prepared.config);
+    const serverPidsBefore = await listRemoteCodezServerPids(prepared.config);
     const taskA = await connectSSHWorkspaceAndSendFirstTurn({
       caseMarker: CASE_MARKER,
       config: prepared.config,
@@ -50,7 +50,7 @@ describe(`${CASE_MARKER}: SSH zcode-server fault and grouped reconnect`, () => {
       workspacePath: workspaceB,
     });
     const hostBeforeFault = await readHostProcesses();
-    expect(await listRemoteZCodeServerPids(prepared.config)).toEqual(
+    expect(await listRemoteCodezServerPids(prepared.config)).toEqual(
       expect.arrayContaining(serverPidsBefore),
     );
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { uuidv7 } from "@zcode/shared";
+import { uuidv7 } from "@codez/shared";
 import { uuidv7 as commandUuidv7 } from "../src/v4/commandFactory.js";
 
 describe("shared main-turn UUID v7", () => {

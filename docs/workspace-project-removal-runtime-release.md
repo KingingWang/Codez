@@ -2,7 +2,7 @@
 
 ## 背景
 
-Windows 会把进程当前工作目录和打开的文件句柄视为目录占用。用户在 ZCode 侧边栏移除项目并退出应用后，如果该项目对应的 Agent、终端、文件监听或远端 runtime 仍未释放，项目目录可能仍无法删除或重命名。
+Windows 会把进程当前工作目录和打开的文件句柄视为目录占用。用户在 Codez 侧边栏移除项目并退出应用后，如果该项目对应的 Agent、终端、文件监听或远端 runtime 仍未释放，项目目录可能仍无法删除或重命名。
 
 另一个 Windows 兼容风险是保留设备名文件。`nul`、`con`、`aux`、`com1`、`lpt1` 等名字在 Windows Win32 路径解析中不是普通文件名；一旦项目内存在这类文件，用户后续在资源管理器或普通 PowerShell 命令里删除、重命名项目目录时可能遇到 “MS-DOS 功能无效”。
 
@@ -32,9 +32,9 @@ Windows 会把进程当前工作目录和打开的文件句柄视为目录占用
        -> 用户取消：不移除
        -> 用户确认：继续
   -> closeTab(tab.id)
-  -> zcodeTaskService.releaseWorkspacePreparation({ workspacePath, workspaceIdentity?, provider })
-       -> zcodeAgentService.disposeWorkspace(...)
-       -> zcodeAgentProcessManager.disposeWorkspace(...)
+  -> codezTaskService.releaseWorkspacePreparation({ workspacePath, workspaceIdentity?, provider })
+       -> codezAgentService.disposeWorkspace(...)
+       -> codezAgentProcessManager.disposeWorkspace(...)
        -> Windows taskkill /T /F 清理 Agent 子进程树
   -> invalidateTaskQueryCacheByScopes(...)
   -> 异步轻量扫描 Windows 保留设备名文件并提示风险
@@ -42,13 +42,13 @@ Windows 会把进程当前工作目录和打开的文件句柄视为目录占用
 
 约束：
 
-- 运行中 chat/runtime 检查只读取 ZCode 当前 workspace UI/runtime 状态，不扫描磁盘，允许同步阻塞移除。
+- 运行中 chat/runtime 检查只读取 Codez 当前 workspace UI/runtime 状态，不扫描磁盘，允许同步阻塞移除。
 - 有运行中 chat/runtime 时必须由用户确认后才能继续移除。
 - runtime 释放是 best-effort，不阻塞 UI 移除项目。
 - 必须传递 `workspaceIdentity`，避免远程 workspace 与同路径本地 workspace 混淆。
 - 释放失败只记录日志，不能把已移除的项目重新显示回来。
 - 不归档、不删除 task 历史；移除项目只移除入口和 runtime 占用。
-- Windows 保留设备名检查不是用户系统删除失败诊断，也不承诺项目一定可删除；它只对 ZCode/Agent 可能触达的常见项目文件做轻量风险提示。
+- Windows 保留设备名检查不是用户系统删除失败诊断，也不承诺项目一定可删除；它只对 Codez/Agent 可能触达的常见项目文件做轻量风险提示。
 - Windows 保留设备名检查异步执行，不阻塞项目从侧边栏移除。
 - 默认跳过 `.git`、`node_modules`、`dist`、`build`、`.next`、`out`、`coverage`、`.cache`、`.turbo`、`.vite` 等高成本低相关目录。
 - Windows 保留设备名检查需要限量，找到前若干个风险路径即可提示，扫描失败只记录日志。

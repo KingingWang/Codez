@@ -18,8 +18,8 @@ import type {
   McpUiAppCapabilities,
   McpUiHostContext,
 } from "@modelcontextprotocol/ext-apps/app-bridge";
-import type { PluginSandboxHandle } from "@zcode/shared/mcp-apps";
-import { buildPluginSandboxScopeId } from "@zcode/shared/mcp-apps";
+import type { PluginSandboxHandle } from "@codez/shared/mcp-apps";
+import { buildPluginSandboxScopeId } from "@codez/shared/mcp-apps";
 import { clearPluginUiSurfaceFeed } from "../app/pluginUiSurfaceFeedStore.js";
 import {
   PLUGIN_UI_CARD_DEFAULT_HEIGHT_PX,
@@ -30,8 +30,8 @@ import { buildPluginUiHostCapabilities } from "../domain/buildPluginUiHostCapabi
 import { buildPluginUiHostContext } from "../domain/buildPluginUiHostContext.js";
 
 import { acquireWorkspaceConnection } from "@/v4/workspaceConnectionRegistry.js";
-import type { IServiceAccessor } from "@zcode/services";
-import type { IPlatformService } from "@zcode/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { IPlatformService } from "@codez/shared";
 import { buildPluginUiSessionKey } from "../contract.js";
 import type { Page, UsePluginUiHostInput, UsePluginUiHostResult } from "./pluginUiHostTypes.js";
 import { createPluginUiPagePlane } from "./pluginUiPagePlane.js";
@@ -124,7 +124,7 @@ export function createPage(
       // 页面独立持有已有 workspace 连接租约；卡片或 pane 退出不会让后台页面失联。
       const connection = acquireWorkspaceConnection(
         latest.current.scope,
-        services.zcodeAgentService,
+        services.codezAgentService,
         platform.createLocalMediaPreviewUrl,
       );
       releaseLease = () => connection.release();
@@ -273,7 +273,7 @@ export function createPage(
     controller.start();
   }
   const task = buildPluginUiSessionKey(input.scope);
-  const workspaceEvents = services.zcodeTaskService.onDynamicWorkspaceEvent({
+  const workspaceEvents = services.codezTaskService.onDynamicWorkspaceEvent({
     workspacePath: input.scope.workspacePath,
     workspaceIdentity: input.scope.workspaceIdentity,
   })((event) => {

@@ -4,11 +4,11 @@ import {
   TID_CHAT_ERROR_DETAILS_BUTTON,
   TID_CHAT_ERROR_HOOK_ICON,
   type IPlatformService,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { describe, expect, it, vi } from "vitest";
 import { ChatErrorBanner } from "@/ChatErrorBanner.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 vi.mock("@/components/ui/toast.js", () => ({
   toast: vi.fn(),
@@ -22,7 +22,7 @@ describe("ChatErrorBanner Hook errors", () => {
   it("renders the Hook icon and details action for a blocked Hook error", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           PlatformProvider,

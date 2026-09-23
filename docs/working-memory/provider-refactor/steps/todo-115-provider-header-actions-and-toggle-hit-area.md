@@ -53,4 +53,4 @@
 - Switch 有中英文下一步动作 aria-label 和 Tooltip。浏览器截图复审额外发现 Tooltip data-state 覆盖 Switch、共享扩展热区伸到菜单：已用局部包装隔离状态属性、仅此处横向热区缩为 4px，未改共享控件。
 - 与 Todo132 合跑：109 项单测通过（含取消/确认删除走现有 confirmAndDeleteModelProvider、名称保存不改 enabled）；6 项真实浏览器组件用例通过。390 中文浅色/1200 英文深色覆盖焦点、长名称、热区不相交、菜单、开关状态及无横向溢出。
 - 根 typecheck、lint（0 errors / 41 warnings）通过。Electron 既有创建/重命名用例已适配菜单和显式失焦，不冒充已实跑 Electron；真实手机 shared-host/Pro 待整批验证。Linux 本次中文字形缺失，中文文案 DOM/交互通过，不宣称中文字体视觉验收通过。
-- 截图与计算样式：`/tmp/zcode-provider-settings-batch/header-options-*.png`、`header-options-*.json`。复审确认只改操作布局/名称提交边界，不新增状态源、权限、持久化字段或执行资格判断。
+- 截图与计算样式：`/tmp/codez-provider-settings-batch/header-options-*.png`、`header-options-*.json`。复审确认只改操作布局/名称提交边界，不新增状态源、权限、持久化字段或执行资格判断。

@@ -46,7 +46,7 @@ describe("Provider Settings 表单边界", () => {
     expect(source).not.toMatch(
       /\b(?:endpoints|defaultKind|kinds|modalities|ProviderOptionsPatch|createdAt|updatedAt)\b/u,
     );
-    expect(source).not.toContain('from "@zcode/shared"');
+    expect(source).not.toContain('from "@codez/shared"');
   });
 
   it("API 格式展示不再保留模型级 kind 与 endpoint 编辑旁路", async () => {

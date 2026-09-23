@@ -11,7 +11,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TID_OAUTH_CANCEL, TID_OAUTH_ERROR, TID_OAUTH_LOGIN_BUTTON } from "@zcode/shared";
+import { TID_OAUTH_CANCEL, TID_OAUTH_ERROR, TID_OAUTH_LOGIN_BUTTON } from "@codez/shared";
 
 const oauthState = vi.hoisted(() => ({
   status: "idle" as "idle" | "waiting" | "error",
@@ -55,7 +55,7 @@ vi.mock("@/hooks/useOAuth.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -63,7 +63,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (selector: (state: unknown) => unknown) =>
+  useCodezStore: (selector: (state: unknown) => unknown) =>
     selector({
       user: null,
       oauthError: storeState.oauthError,

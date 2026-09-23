@@ -370,7 +370,7 @@ function createLiveStdioTrafficFrame(sequence: number, timestamp: string): Stdio
       sessionId: "sess_6b6a",
       summary: "provider heartbeat",
       bytes: 96,
-      raw: `[zcode-agent] provider heartbeat seq=${eventSeq} status=streaming`,
+      raw: `[codez-agent] provider heartbeat seq=${eventSeq} status=streaming`,
     };
   }
 
@@ -488,7 +488,7 @@ export function App() {
                 <Network className="size-4 text-brand" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-ui-lg font-medium">ZCode Developer Docs</h1>
+                <h1 className="text-ui-lg font-medium">Codez Developer Docs</h1>
                 <p className="text-ui-sm text-foreground-subtle">{viewDescription}</p>
               </div>
             </div>
@@ -619,7 +619,7 @@ export function App() {
                 <SummaryCard
                   icon={<Hash className="size-4" />}
                   title="sessionId"
-                  body="会话主键，server 生成。UI/task 进入 ZCode Protocol 前必须拿到它。"
+                  body="会话主键，server 生成。UI/task 进入 Codez Protocol 前必须拿到它。"
                   conceptId="sessionId"
                   onSelect={setActiveConceptId}
                 />
@@ -1031,7 +1031,7 @@ function ProtocolPanel({
     <section className="rounded-lg border border-card-border bg-card p-3">
       <div className="mb-3 flex items-center gap-2 text-ui-sm font-medium text-brand">
         <Network className="size-4" />
-        @zcode/protocol
+        @codez/protocol
       </div>
       <div className="space-y-2">
         {protocolSurfaces.map((surface) => (
@@ -1067,7 +1067,7 @@ function StdioTrafficView() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState("--:--:--.---");
   const [realTraffic, setRealTraffic] = useState<RealTrafficState>({
     status: "loading",
-    logDir: "~/.zcode/v2/dev/stdio-traffic",
+    logDir: "~/.codez/v2/dev/stdio-traffic",
     records: [],
   });
   const liveSequenceRef = useRef(0);
@@ -1243,7 +1243,7 @@ function StdioTrafficView() {
   const sourcePath =
     trafficSourceMode === "mock"
       ? "mock replay"
-      : (realTraffic.filePath ?? realTraffic.logDir ?? "~/.zcode/v2/dev/stdio-traffic");
+      : (realTraffic.filePath ?? realTraffic.logDir ?? "~/.codez/v2/dev/stdio-traffic");
   const emptyTrafficMessage =
     trafficSourceMode === "mock"
       ? "mock replay 暂无 frame。"

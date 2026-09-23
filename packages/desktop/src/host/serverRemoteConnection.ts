@@ -1,5 +1,5 @@
 import { WebSocket, type RawData } from "ws";
-import { connectViaProtocol } from "@zcode/client";
+import { connectViaProtocol } from "@codez/client";
 import {
   Emitter,
   SocketProtocol,
@@ -7,16 +7,16 @@ import {
   ChannelServer,
   type IServerChannel,
   type ISocket,
-} from "@zcode/rpc";
-import type { IServiceAccessor } from "@zcode/services";
+} from "@codez/rpc";
+import type { IServiceAccessor } from "@codez/services";
 import {
-  ZCODE_RPC_HOST_CAPABILITY_HEADER,
+  CODEZ_RPC_HOST_CAPABILITY_HEADER,
   TOPIC_RESOURCE_RELAY_CHANNEL,
   serverRemoteHostCapabilitySchema,
   serverRemoteInfoSchema,
   type ServerConnectOptions,
   type ServerRemoteInfo,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export interface ServerRemoteEndpoints {
   infoUrl: string;
@@ -213,7 +213,7 @@ function connectNodeWebSocket(
     const socket = new WebSocket(authenticatedUrl(wsUrl, target), {
       headers: {
         ...(token ? { authorization: `Bearer ${token}` } : {}),
-        [ZCODE_RPC_HOST_CAPABILITY_HEADER]: capability,
+        [CODEZ_RPC_HOST_CAPABILITY_HEADER]: capability,
       },
     });
     let settled = false;

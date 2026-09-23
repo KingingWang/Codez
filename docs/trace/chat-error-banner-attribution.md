@@ -41,13 +41,13 @@ HTTP status/provider code，也把 `source` 视为 provider；请求准备阶段
   受控文案；裸 `Model request failed.` / `openai_error` 仍不得臆测；
 - 已有 `source=provider`、但 reason 为空或 `unknown` 的旧事件，如果同时携带 EPIPE 等强网络证据，
   强证据必须原子地产生 `network/network_error`，不能让较粗粒度 source 覆盖它；
-- `ZCode Protocol session stopped` 是 ZCode 自身生成的历史取消信号，cold hydration 必须恢复为
+- `Codez Protocol session stopped` 是 Codez 自身生成的历史取消信号，cold hydration 必须恢复为
   cancelled，不得重新形成可见错误。`off-peak-ticket-expired` 在 UI 尚不知道 requeue 是否成功，
   本轮只归为 `runtime/offpeak_ticket_expired`，不按文案隐藏 Banner。
 
 Builtin 终态额度码 `1304` / `1308` / `1310` / `1313` 等在 adapter 中仍可沿用
 `rate_limited` 作为运行时失败/重试分类；`chat_error_banner` 的 telemetry reason 统一规范为
-`quota_exhausted`。该例外只接受 trusted builtin provider identity，或 ZCode 历史记录中严格匹配的
+`quota_exhausted`。该例外只接受 trusted builtin provider identity，或 Codez 历史记录中严格匹配的
 `[code][message][request-id]` envelope，不把自定义 provider 的同名数字 code 当作官方业务码。
 
 2026-08-19 第二轮 `failure_reason=unknown` 累计检查只继续收敛能够由独立低基数证据证明的错误：
@@ -161,6 +161,6 @@ ARMS 上报失败仍由现有旁路处理，不能阻断 UI 或模型请求。
 - 断言非 `unknown` 的既有 reason 不变。
 - 断言 trusted builtin 终态额度码只改变 telemetry reason，不改变 adapter retry / UI action。
 - 断言 source 缺失时，明确的 network/runtime reason 仍进入正确 source，歧义 reason 保持空值。
-- 断言历史 `ZCode Protocol session stopped` 恢复为 cancelled，相似 provider 文案仍是错误。
+- 断言历史 `Codez Protocol session stopped` 恢复为 cancelled，相似 provider 文案仍是错误。
 - 断言 `error_message`、`error_code`、provider/model 脱敏字段不变。
 - 运行 UI 聚焦测试、`pnpm typecheck`、`pnpm lint`。

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ZCodePluginInfo } from "@zcode/shared";
+import type { CodezPluginInfo } from "@codez/shared";
 import { clearAppData, getE2EAppDataPaths } from "../../../helpers/desktop-app.js";
 import {
   PLUGIN_CDN_ZIP_ARCHIVE_PATH,
@@ -52,7 +52,7 @@ describe("PLM-LC-007 Desktop official CDN ZIP plugin UI lifecycle", () => {
     await installPluginThroughUi(PLUGIN_CDN_ZIP_ID);
 
     const paths = getE2EAppDataPaths();
-    const pluginStorageRoot = join(paths.homeDir, ".zcode", "cli", "plugins");
+    const pluginStorageRoot = join(paths.homeDir, ".codez", "cli", "plugins");
     const cacheRoot = join(
       pluginStorageRoot,
       "cache",
@@ -104,7 +104,7 @@ function assertInstalledRecord(pluginStorageRoot: string, cacheRoot: string): vo
   expect(record?.source?.sha256 ?? "").toMatch(/^[a-f0-9]{64}$/u);
 }
 
-function componentNames(plugin: ZCodePluginInfo | undefined, kind: "command" | "skill"): string[] {
+function componentNames(plugin: CodezPluginInfo | undefined, kind: "command" | "skill"): string[] {
   return (
     plugin?.components?.find((group) => group.kind === kind)?.items.map((item) => item.name) ?? []
   );

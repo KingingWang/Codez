@@ -86,10 +86,10 @@ M2 将第一阶段的兼容装配收敛成正式 Registry：
 
 ```text
 ProviderConfigService
-├─ ZCode Built-in Provider Config
+├─ Codez Built-in Provider Config
 ├─ Account Provider Config
 ├─ Personal Provider Config
-├─ ZCode Built-in Model Config Rules
+├─ Codez Built-in Model Config Rules
 └─ Personal Model Config Rules
                    |
                    v
@@ -169,7 +169,7 @@ M4 删除未发布的 `executionOnly`、Runtime Provider Overlay 和临时 `setM
 Provider Refactor 已完成单个 Environment 内配置的物理存储边界和 Built-in 装配：
 
 - Personal 配置的持久化与外部修改监听。
-- ZCode Built-in 配置通过唯一发布文件、Node Source、watch/revision 和 Desktop/CLI 启动装配进入 Registry。
+- Codez Built-in 配置通过唯一发布文件、Node Source、watch/revision 和 Desktop/CLI 启动装配进入 Registry。
 - Host、Prompt CLI 与 TUI 在各自目标 Environment 内使用相同配置读写实现。
 - 旧 CLI Config 与当前 Environment Config 的迁移和清理。
 

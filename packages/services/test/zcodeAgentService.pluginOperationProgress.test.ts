@@ -1,27 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  zcodeProtocolMethods,
-  zcodeProtocolNotifications,
-  type ZCodePluginOperationProgressNotification,
-} from "@zcode/shared";
+  codezProtocolMethods,
+  codezProtocolNotifications,
+  type CodezPluginOperationProgressNotification,
+} from "@codez/shared";
 
-describe("zcodeAgentService Plugin operation progress", () => {
+describe("codezAgentService Plugin operation progress", () => {
   it("projects a validated Agent progress notification by operationId", async () => {
     let notificationListener:
       | ((notification: { method: string; params?: unknown }) => void)
       | null = null;
     const request = vi.fn(async (method: string) => {
-      if (method !== zcodeProtocolMethods.pluginsResolveSuggestedReference) {
+      if (method !== codezProtocolMethods.pluginsResolveSuggestedReference) {
         throw new Error(`Unexpected request method: ${method}`);
       }
       notificationListener?.({
-        method: zcodeProtocolNotifications.pluginOperationProgress,
+        method: codezProtocolNotifications.pluginOperationProgress,
         params: { operationId: "suggested-progress", state: "refreshing" },
       });
       return {
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@codez-plugins-official",
         status: "missing",
-        marketplace: "zcode-plugins-official",
+        marketplace: "codez-plugins-official",
         pluginName: "document-skills",
         sourceTrust: "official",
         diagnostics: [],
@@ -29,8 +29,8 @@ describe("zcodeAgentService Plugin operation progress", () => {
     });
 
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class {
         onRuntimeLifecycle() {
           return { dispose() {} };
         }
@@ -55,9 +55,9 @@ describe("zcodeAgentService Plugin operation progress", () => {
         async disposeAllAndWait() {}
       },
     }));
-    const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-    const service = createZCodeAgentService();
-    const received: ZCodePluginOperationProgressNotification[] = [];
+    const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+    const service = createCodezAgentService();
+    const received: CodezPluginOperationProgressNotification[] = [];
     const subscription = service.onDynamicPluginOperationProgress("suggested-progress")((event) =>
       received.push(event),
     );
@@ -65,7 +65,7 @@ describe("zcodeAgentService Plugin operation progress", () => {
     try {
       await service.resolveSuggestedPluginReference({
         workspacePath: "/workspace",
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@codez-plugins-official",
         operationId: "suggested-progress",
         clientMode: "desktop-continuous",
         deliveryKind: "desktop-continuous",
@@ -74,7 +74,7 @@ describe("zcodeAgentService Plugin operation progress", () => {
       expect(received).toEqual([{ operationId: "suggested-progress", state: "refreshing" }]);
 
       notificationListener?.({
-        method: zcodeProtocolNotifications.pluginOperationProgress,
+        method: codezProtocolNotifications.pluginOperationProgress,
         params: {
           operationId: "suggested-progress",
           state: "refreshing",

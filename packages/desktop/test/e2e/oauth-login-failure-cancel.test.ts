@@ -4,16 +4,16 @@ import {
   TID_OAUTH_CANCEL,
   TID_OAUTH_ERROR,
   TID_OAUTH_LOGIN_BUTTON,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData, clickTestIdByDom, waitForTestIdByDom } from "./helpers/desktop-app.js";
 
 const CASE_TIMEOUT_MS = 240_000;
-// PlatformChannels.OAuthCallback 的 channel 值(main 进程 execute 里无法 import @zcode/shared,
+// PlatformChannels.OAuthCallback 的 channel 值(main 进程 execute 里无法 import @codez/shared,
 // 与 packages/shared/src/channels.ts 保持一致)
-const OAUTH_CALLBACK_CHANNEL = "zcode:oauth-callback";
+const OAUTH_CALLBACK_CHANNEL = "codez:oauth-callback";
 // state 不匹配的回调:oauthService.handleCallback 在无 pending flow 时会抛
 // "OAuth state 不匹配或已过期",复现 OAuth deep link 失败的真实链路。
-const TAMPERED_OAUTH_CALLBACK_URL = "zcode://oauth/callback?state=e2e-tampered-state&code=e2e-code";
+const TAMPERED_OAUTH_CALLBACK_URL = "codez://oauth/callback?state=e2e-tampered-state&code=e2e-code";
 
 describe("OAuth 登录失败态的取消交互", () => {
   after(async () => {

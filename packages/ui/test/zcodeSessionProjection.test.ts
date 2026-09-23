@@ -2,25 +2,25 @@ import { describe, expect, it, vi } from "vitest";
 import {
   encodeCustomModelValue,
   formatModelPickerValue as formatSharedModelSelection,
-  ZCODE_PROTOCOL_NAME,
-  ZCODE_PROTOCOL_VERSION,
-  type ZCodeSessionEvent,
-  type ZCodeMessagePart,
-  type ZCodeMessageWithParts,
-  type ZCodeSessionSettingsState,
-  type ZCodeSessionStateSnapshot,
-} from "@zcode/shared";
+  CODEZ_PROTOCOL_NAME,
+  CODEZ_PROTOCOL_VERSION,
+  type CodezSessionEvent,
+  type CodezMessagePart,
+  type CodezMessageWithParts,
+  type CodezSessionSettingsState,
+  type CodezSessionStateSnapshot,
+} from "@codez/shared";
 import {
   formatModelPickerValue as formatProjectedModelSelection,
   parseModelPickerValue,
-  type ZCodeSessionEventProjectionState,
-  zcodeSessionEventToZCodeStreamEvents,
-  zcodeSessionSettingsToConfigOptions,
-  zcodeSessionSnapshotToZCodeTaskSnapshot,
-  zcodeStateUpdatedToZCodeStreamEvents,
-  zcodeUserInputRequestToZCodeStreamEvent,
-  zcodeUserInputResponseToZCodeStreamEvent,
-} from "@/lib/zcodeSessionProjection.js";
+  type CodezSessionEventProjectionState,
+  codezSessionEventToCodezStreamEvents,
+  codezSessionSettingsToConfigOptions,
+  codezSessionSnapshotToCodezTaskSnapshot,
+  codezStateUpdatedToCodezStreamEvents,
+  codezUserInputRequestToCodezStreamEvent,
+  codezUserInputResponseToCodezStreamEvent,
+} from "@/lib/codezSessionProjection.js";
 
 const workspace = {
   workspacePath: "/workspace/app",
@@ -54,7 +54,7 @@ const settings = {
   mode: {
     current: "build",
   },
-} satisfies ZCodeSessionSettingsState;
+} satisfies CodezSessionSettingsState;
 
 const settingsWithDefaultThoughtLevel = {
   ...settings,
@@ -67,13 +67,13 @@ const settingsWithDefaultThoughtLevel = {
       { value: "max", label: "Max" },
     ],
   },
-} satisfies ZCodeSessionSettingsState;
+} satisfies CodezSessionSettingsState;
 
-function createSnapshot(): ZCodeSessionStateSnapshot {
+function createSnapshot(): CodezSessionStateSnapshot {
   return {
     protocol: {
-      name: ZCODE_PROTOCOL_NAME,
-      version: ZCODE_PROTOCOL_VERSION,
+      name: CODEZ_PROTOCOL_NAME,
+      version: CODEZ_PROTOCOL_VERSION,
     },
     session: {
       sessionId: "sess_1",
@@ -122,7 +122,7 @@ function createSnapshot(): ZCodeSessionStateSnapshot {
           sessionId: "sess_1",
           role: "user",
           time: { created: 1 },
-          agent: "zcode-agent",
+          agent: "codez-agent",
           model,
         },
         parts: [
@@ -142,7 +142,7 @@ function createSnapshot(): ZCodeSessionStateSnapshot {
           role: "assistant",
           parentMessageId: "msg_user",
           time: { created: 2, completed: 12 },
-          agent: "zcode-agent",
+          agent: "codez-agent",
           model,
           path: { cwd: "/workspace/app", root: "/workspace/app" },
           cost: 0,
@@ -192,21 +192,21 @@ function createSnapshot(): ZCodeSessionStateSnapshot {
   };
 }
 
-describe("zcodeSessionProjection", () => {
+describe("codezSessionProjection", () => {
   it.each(["desktop-continuous", "web-remote-replayable"] as const)(
     "%s 历史缺少模型来源时保留消息，不伪造模型",
     (deliveryKind) => {
       const snapshot = createSnapshot();
       snapshot.runtime.deliveryKind = deliveryKind;
       for (const message of snapshot.messages) delete message.info.model;
-      const projected = zcodeSessionSnapshotToZCodeTaskSnapshot(snapshot);
+      const projected = codezSessionSnapshotToCodezTaskSnapshot(snapshot);
       expect(projected.messages).toHaveLength(snapshot.messages.length);
       expect(projected.messages.every((message) => message.model === undefined)).toBe(true);
       expect(projected.messages[0]?.content).toBe("hello");
     },
   );
   it("preserves structured attribution when projecting a failed turn to task_error", () => {
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_turn_failed_attribution",
         seq: 8,
@@ -247,7 +247,7 @@ describe("zcodeSessionProjection", () => {
   it("preserves completed tool display metadata in snapshot raw output", () => {
     const base = createSnapshot();
     const assistant = base.messages[1]!;
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       messages: [
         base.messages[0]!,
@@ -292,7 +292,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("falls back to a valid thought level when session settings carry a stale current value", () => {
-    const options = zcodeSessionSettingsToConfigOptions({
+    const options = codezSessionSettingsToConfigOptions({
       ...settings,
       thoughtLevel: {
         enabled: true,
@@ -310,13 +310,13 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("uses thought defaultLevel before the first available level when current is empty", () => {
-    const options = zcodeSessionSettingsToConfigOptions(settingsWithDefaultThoughtLevel);
+    const options = codezSessionSettingsToConfigOptions(settingsWithDefaultThoughtLevel);
 
     expect(options.find((option) => option.category === "thought_level")?.currentValue).toBe("max");
   });
 
   it("uses thought defaultLevel in model state updates when current is empty", () => {
-    const events = zcodeStateUpdatedToZCodeStreamEvents({
+    const events = codezStateUpdatedToCodezStreamEvents({
       notification: {
         type: "state.updated",
         scope: "session",
@@ -343,7 +343,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("maps server-owned session snapshots into the current chat projection", () => {
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot(createSnapshot());
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot(createSnapshot());
 
     expect(snapshot.meta).toMatchObject({
       taskId: "sess_1",
@@ -394,13 +394,13 @@ describe("zcodeSessionProjection", () => {
       source: "fork",
       visibility: "user-visible",
     };
-    const forkNotice: ZCodeMessageWithParts = {
+    const forkNotice: CodezMessageWithParts = {
       info: {
         messageId: "msg_fork_notice",
         sessionId: "sess_1",
         role: "user",
         time: { created: 3 },
-        agent: "zcode-agent",
+        agent: "codez-agent",
         model,
         metadata: forkMetadata,
         source: "fork",
@@ -420,7 +420,7 @@ describe("zcodeSessionProjection", () => {
       ],
     };
 
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       messages: [...base.messages, forkNotice],
     });
@@ -443,14 +443,14 @@ describe("zcodeSessionProjection", () => {
 
   it("projects persisted session_fork timeline parts after cold snapshot restore", () => {
     const base = createSnapshot();
-    const timelineMessage: ZCodeMessageWithParts = {
+    const timelineMessage: CodezMessageWithParts = {
       info: {
         messageId: "msg_fork_timeline",
         sessionId: "sess_1",
         role: "assistant",
         parentMessageId: "msg_assistant",
         time: { created: 4, completed: 4 },
-        agent: "zcode-agent",
+        agent: "codez-agent",
         model,
         path: { cwd: "/workspace/app", root: "/workspace/app" },
         cost: 0,
@@ -478,7 +478,7 @@ describe("zcodeSessionProjection", () => {
       ],
     };
 
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       messages: [...base.messages, timelineMessage],
     });
@@ -506,14 +506,14 @@ describe("zcodeSessionProjection", () => {
       source: "fork",
       visibility: "model-only",
     };
-    const timelineMessage: ZCodeMessageWithParts = {
+    const timelineMessage: CodezMessageWithParts = {
       info: {
         messageId: "msg_fork_timeline",
         sessionId: "sess_1",
         role: "assistant",
         parentMessageId: "msg_assistant",
         time: { created: 4, completed: 4 },
-        agent: "zcode-agent",
+        agent: "codez-agent",
         model,
         path: { cwd: "/workspace/app", root: "/workspace/app" },
         cost: 0,
@@ -540,13 +540,13 @@ describe("zcodeSessionProjection", () => {
         },
       ],
     };
-    const rawNotice: ZCodeMessageWithParts = {
+    const rawNotice: CodezMessageWithParts = {
       info: {
         messageId: "msg_fork_raw_notice",
         sessionId: "sess_1",
         role: "user",
         time: { created: 5 },
-        agent: "zcode-agent",
+        agent: "codez-agent",
         model,
         metadata: forkMetadata,
         semantics: {
@@ -574,7 +574,7 @@ describe("zcodeSessionProjection", () => {
       ],
     };
 
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       messages: [...base.messages, timelineMessage, rawNotice],
     });
@@ -604,7 +604,7 @@ describe("zcodeSessionProjection", () => {
         role: "assistant",
         parentMessageId: "msg_user",
         time: { created: 2, completed: 12 },
-        agent: "zcode-agent",
+        agent: "codez-agent",
         model,
       },
       parts: [
@@ -625,7 +625,7 @@ describe("zcodeSessionProjection", () => {
             title: "Agent",
             metadata: {
               _meta: {
-                zcode: {
+                codez: {
                   backgroundAgent: {
                     runInBackground: true,
                     outputFile: "/tmp/background-agent.output",
@@ -638,14 +638,14 @@ describe("zcodeSessionProjection", () => {
           },
         },
       ],
-    } satisfies ZCodeSessionStateSnapshot["messages"][number];
+    } satisfies CodezSessionStateSnapshot["messages"][number];
     const notificationMessage = {
       info: {
         messageId: "msg_task_notification",
         sessionId: "sess_1",
         role: "user",
         time: { created: 13 },
-        agent: "zcode-agent",
+        agent: "codez-agent",
         model,
         visibility: "model-only",
       },
@@ -668,9 +668,9 @@ describe("zcodeSessionProjection", () => {
           ].join("\n"),
         },
       ],
-    } satisfies ZCodeSessionStateSnapshot["messages"][number];
+    } satisfies CodezSessionStateSnapshot["messages"][number];
 
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       messages: [base.messages[0]!, assistantMessage, notificationMessage],
     });
@@ -678,7 +678,7 @@ describe("zcodeSessionProjection", () => {
     expect(snapshot.messages).toHaveLength(2);
     expect(snapshot.messages[1]?.tools?.[0]?.raw).toMatchObject({
       _meta: {
-        zcode: {
+        codez: {
           taskNotification: {
             outputFile: "/tmp/background-agent.output",
             result: "Background agent result & summary",
@@ -712,7 +712,7 @@ describe("zcodeSessionProjection", () => {
           role: "assistant",
           parentMessageId: "msg_user",
           time: { created: 2, completed: 12 },
-          agent: "zcode-agent",
+          agent: "codez-agent",
           model,
         },
         parts: [
@@ -734,7 +734,7 @@ describe("zcodeSessionProjection", () => {
               title: "Agent",
               metadata: {
                 _meta: {
-                  zcode: {
+                  codez: {
                     backgroundAgent: {
                       runInBackground: true,
                       outputFile: "/tmp/background-agent.output",
@@ -747,14 +747,14 @@ describe("zcodeSessionProjection", () => {
             },
           },
         ],
-      } satisfies ZCodeSessionStateSnapshot["messages"][number];
+      } satisfies CodezSessionStateSnapshot["messages"][number];
       const notificationMessage = {
         info: {
           messageId: "msg_failed_task_notification",
           sessionId: "sess_1",
           role: "user",
           time: { created: 13 },
-          agent: "zcode-agent",
+          agent: "codez-agent",
           model,
           visibility: "model-only",
         },
@@ -778,9 +778,9 @@ describe("zcodeSessionProjection", () => {
             ].join("\n"),
           },
         ],
-      } satisfies ZCodeSessionStateSnapshot["messages"][number];
+      } satisfies CodezSessionStateSnapshot["messages"][number];
 
-      const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+      const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
         ...base,
         messages: [base.messages[0]!, assistantMessage, notificationMessage],
       });
@@ -791,7 +791,7 @@ describe("zcodeSessionProjection", () => {
         output: "Async agent launched successfully.\noutput_file: /tmp/background-agent.output",
         raw: {
           _meta: {
-            zcode: {
+            codez: {
               taskNotification: {
                 status: notificationStatus,
                 summary: `Agent general-purpose task "Review" ${notificationStatus}.`,
@@ -807,7 +807,7 @@ describe("zcodeSessionProjection", () => {
 
   it("maps pending ExitPlanMode approvals into pending elicitations", () => {
     const base = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       projection: {
         ...base.projection,
@@ -862,7 +862,7 @@ describe("zcodeSessionProjection", () => {
           tool: "Read",
           state: {
             status: "completed",
-            input: { file_path: "/tmp/zcode-e2e-tool-action-guard.txt" },
+            input: { file_path: "/tmp/codez-e2e-tool-action-guard.txt" },
             output: "E2E_TOOL_FILE_CONTENT",
             title: "Read",
             metadata: {},
@@ -871,7 +871,7 @@ describe("zcodeSessionProjection", () => {
           },
         },
       ],
-    } satisfies ZCodeSessionStateSnapshot["messages"][number];
+    } satisfies CodezSessionStateSnapshot["messages"][number];
     const finalAssistant = {
       ...base.messages[1]!,
       info: {
@@ -889,9 +889,9 @@ describe("zcodeSessionProjection", () => {
           text: "deepseek-e2e-ok",
         },
       ],
-    } satisfies ZCodeSessionStateSnapshot["messages"][number];
+    } satisfies CodezSessionStateSnapshot["messages"][number];
 
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       session: {
         ...base.session,
@@ -928,7 +928,7 @@ describe("zcodeSessionProjection", () => {
 
   it("restores user image, video, and PDF attachments from protocol file parts", () => {
     const base = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       messages: [
         {
@@ -947,7 +947,7 @@ describe("zcodeSessionProjection", () => {
               mime: "image/png",
               type: "file",
               url: "data:image/png;base64,aW1hZ2U=",
-            } satisfies ZCodeMessagePart,
+            } satisfies CodezMessagePart,
             {
               partId: "part_video",
               sessionId: "sess_1",
@@ -961,7 +961,7 @@ describe("zcodeSessionProjection", () => {
               mime: "video/mp4",
               type: "file",
               url: "data:video/mp4;base64,dmlkZW8=",
-            } satisfies ZCodeMessagePart,
+            } satisfies CodezMessagePart,
             {
               partId: "part_pdf",
               sessionId: "sess_1",
@@ -973,8 +973,8 @@ describe("zcodeSessionProjection", () => {
               },
               mime: "application/pdf; charset=binary",
               type: "file",
-              url: "zcode-artifact://sess_1/pdf-1",
-            } satisfies ZCodeMessagePart,
+              url: "codez-artifact://sess_1/pdf-1",
+            } satisfies CodezMessagePart,
           ],
         },
       ],
@@ -1037,10 +1037,10 @@ describe("zcodeSessionProjection", () => {
           url: "inline:data-url",
         },
       ],
-    } satisfies ZCodeSessionStateSnapshot["messages"][number];
+    } satisfies CodezSessionStateSnapshot["messages"][number];
     const originalParts = structuredClone(rawMessage.parts);
 
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       messages: [rawMessage],
     });
@@ -1066,7 +1066,7 @@ describe("zcodeSessionProjection", () => {
 
   it("maps idle session snapshots with a completed assistant turn to completed task status", () => {
     const base = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       session: {
         ...base.session,
@@ -1089,7 +1089,7 @@ describe("zcodeSessionProjection", () => {
 
   it("keeps an idle tool-calls assistant turn without a task terminal status", () => {
     const base = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       session: {
         ...base.session,
@@ -1123,7 +1123,7 @@ describe("zcodeSessionProjection", () => {
 
   it("keeps an empty idle session without a task terminal status", () => {
     const base = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       session: {
         ...base.session,
@@ -1147,26 +1147,26 @@ describe("zcodeSessionProjection", () => {
 
   it("preserves protocol projection error type as task error code", () => {
     const base = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       projection: {
         ...base.projection,
         lastError: {
           message: "历史任务使用的模型已不可用，请从当前模型列表中选择一个可用模型后继续。",
-          type: "ZCODE_RUNTIME_MODEL_UNAVAILABLE",
+          type: "CODEZ_RUNTIME_MODEL_UNAVAILABLE",
         },
       },
     });
 
     expect(snapshot.meta.lastError).toEqual({
-      code: "ZCODE_RUNTIME_MODEL_UNAVAILABLE",
+      code: "CODEZ_RUNTIME_MODEL_UNAVAILABLE",
       message: "历史任务使用的模型已不可用，请从当前模型列表中选择一个可用模型后继续。",
     });
   });
 
   it("prefers structured projection error code over wrapper error type in task meta", () => {
     const base = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       projection: {
         ...base.projection,
@@ -1198,7 +1198,7 @@ describe("zcodeSessionProjection", () => {
 
   it("prioritizes projection lastError over a completed previous assistant turn", () => {
     const base = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       session: {
         ...base.session,
@@ -1238,7 +1238,7 @@ describe("zcodeSessionProjection", () => {
       modelId: "deepseek-v4-flash",
     };
     const base = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...base,
       settings: {
         ...base.settings,
@@ -1261,7 +1261,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("maps persisted session todos into task runtime plan", () => {
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...createSnapshot(),
       todos: [
         { content: "实现 Lexer", priority: "high", status: "completed" },
@@ -1276,7 +1276,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("maps derived goal stats and grouped todos into task runtime", () => {
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...createSnapshot(),
       runtime: {
         ...createSnapshot().runtime,
@@ -1359,7 +1359,7 @@ describe("zcodeSessionProjection", () => {
 
   it("adds persisted goal verification lifecycle as a synthetic divider on snapshot restore", () => {
     const baseSnapshot = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       runtime: {
         ...baseSnapshot.runtime,
@@ -1390,7 +1390,7 @@ describe("zcodeSessionProjection", () => {
     expect(snapshot.runtime?.goalVerificationTimeline).toHaveLength(1);
     expect(snapshot.messages).toHaveLength(3);
     expect(snapshot.messages[2]).toMatchObject({
-      id: "zcode-goal-verification-target_1-2",
+      id: "codez-goal-verification-target_1-2",
       role: "assistant",
       content: "",
       timestamp: 20,
@@ -1408,7 +1408,7 @@ describe("zcodeSessionProjection", () => {
   it("anchors goal verification dividers to assistant messages that were coalesced", () => {
     const objective = "写一篇短篇科幻小说";
     const baseSnapshot = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       projection: {
         ...baseSnapshot.projection,
@@ -1455,7 +1455,7 @@ describe("zcodeSessionProjection", () => {
             sessionId: "sess_1",
             role: "user",
             time: { created: 100 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
           },
           parts: [
@@ -1475,7 +1475,7 @@ describe("zcodeSessionProjection", () => {
             role: "assistant",
             parentMessageId: "msg_goal_user",
             time: { created: 200, completed: 210 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
           },
           parts: [
@@ -1495,7 +1495,7 @@ describe("zcodeSessionProjection", () => {
             role: "assistant",
             parentMessageId: "msg_assistant_first",
             time: { created: 220, completed: 230 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
           },
           parts: [
@@ -1514,7 +1514,7 @@ describe("zcodeSessionProjection", () => {
             sessionId: "sess_1",
             role: "user",
             time: { created: 300 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
           },
           parts: [
@@ -1533,7 +1533,7 @@ describe("zcodeSessionProjection", () => {
     expect(snapshot.messages.map((message) => message.id)).toEqual([
       "msg_goal_user",
       "msg_assistant_first",
-      "zcode-goal-verification-goal_1-1",
+      "codez-goal-verification-goal_1-1",
       "msg_followup_user",
     ]);
     expect(snapshot.messages[1]?.mergedMessageIds).toEqual([
@@ -1544,7 +1544,7 @@ describe("zcodeSessionProjection", () => {
 
   it("uses runtime context usage when restored projection has no usage yet", () => {
     const baseSnapshot = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       projection: {
         ...baseSnapshot.projection,
@@ -1581,7 +1581,7 @@ describe("zcodeSessionProjection", () => {
 
   it("maps snapshot runtime apiRetry into legacy task runtime", () => {
     const baseSnapshot = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       runtime: {
         ...baseSnapshot.runtime,
@@ -1608,7 +1608,7 @@ describe("zcodeSessionProjection", () => {
 
   it("maps projection background jobs into runtime background bash jobs", () => {
     const baseSnapshot = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       projection: {
         ...baseSnapshot.projection,
@@ -1640,7 +1640,7 @@ describe("zcodeSessionProjection", () => {
     const internalSummary =
       "This session is being continued from a previous conversation that was compacted.";
     const baseSnapshot = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       messages: [
         {
@@ -1650,7 +1650,7 @@ describe("zcodeSessionProjection", () => {
             role: "assistant",
             parentMessageId: "msg_user",
             time: { created: 20, completed: 21 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
             cost: 0,
             tokens: {
@@ -1675,7 +1675,7 @@ describe("zcodeSessionProjection", () => {
                 timelineStatus: "completed",
                 trigger: "auto",
               },
-            } as unknown as ZCodeMessagePart,
+            } as unknown as CodezMessagePart,
           ],
         },
       ],
@@ -1699,7 +1699,7 @@ describe("zcodeSessionProjection", () => {
 
   it("does not synthesize a compact divider from summary user compaction metadata", () => {
     const baseSnapshot = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       messages: [
         {
@@ -1708,7 +1708,7 @@ describe("zcodeSessionProjection", () => {
             sessionId: "sess_1",
             role: "user",
             time: { created: 30 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
           },
           parts: [
@@ -1736,7 +1736,7 @@ describe("zcodeSessionProjection", () => {
     const baseSnapshot = createSnapshot();
     const summaryText =
       "This session is being continued from a previous conversation that ran out of context.";
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       messages: [
         {
@@ -1746,7 +1746,7 @@ describe("zcodeSessionProjection", () => {
             role: "assistant",
             parentMessageId: "msg_user",
             time: { created: 20, completed: 21 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
             cost: 0,
             tokens: {
@@ -1780,7 +1780,7 @@ describe("zcodeSessionProjection", () => {
             sessionId: "sess_1",
             role: "user",
             time: { created: 22 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
             summary: {
               title: "Compact summary",
@@ -1832,7 +1832,7 @@ describe("zcodeSessionProjection", () => {
 
   it("adds a fallback fork divider for legacy fork snapshots without synthetic notice", () => {
     const baseSnapshot = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       session: {
         ...baseSnapshot.session,
@@ -1842,7 +1842,7 @@ describe("zcodeSessionProjection", () => {
 
     expect(snapshot.messages).toHaveLength(3);
     expect(snapshot.messages[2]).toMatchObject({
-      id: "zcode-timeline-fork-parent-session-",
+      id: "codez-timeline-fork-parent-session-",
       role: "user",
       content: "",
       syntheticTimeline: {
@@ -1865,7 +1865,7 @@ describe("zcodeSessionProjection", () => {
       "</system-reminder>",
     ].join("\n");
     const baseSnapshot = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       session: {
         ...baseSnapshot.session,
@@ -1893,7 +1893,7 @@ describe("zcodeSessionProjection", () => {
             sessionId: "sess_1",
             role: "user",
             time: { created: 100 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
           },
           parts: [
@@ -1913,7 +1913,7 @@ describe("zcodeSessionProjection", () => {
             role: "assistant",
             parentMessageId: "msg_goal_internal",
             time: { created: 200, completed: 300 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
             path: { cwd: "/workspace/app", root: "/workspace/app" },
             cost: 0,
@@ -1960,7 +1960,7 @@ describe("zcodeSessionProjection", () => {
   it("keeps verifier-bounded goal continuation assistant messages split by goal iteration in snapshots", () => {
     const objective = "优化性能到 60fps";
     const baseSnapshot = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       projection: {
         ...baseSnapshot.projection,
@@ -2006,7 +2006,7 @@ describe("zcodeSessionProjection", () => {
             sessionId: "sess_1",
             role: "user",
             time: { created: 100 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
           },
           parts: [
@@ -2026,7 +2026,7 @@ describe("zcodeSessionProjection", () => {
             role: "assistant",
             parentMessageId: "msg_user_goal",
             time: { created: 200, completed: 250 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
             path: { cwd: "/workspace/app", root: "/workspace/app" },
             cost: 0,
@@ -2054,7 +2054,7 @@ describe("zcodeSessionProjection", () => {
             sessionId: "sess_1",
             role: "user",
             time: { created: 300 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
             synthetic: true,
             source: "goal-continuation",
@@ -2083,7 +2083,7 @@ describe("zcodeSessionProjection", () => {
             role: "assistant",
             parentMessageId: "msg_goal_continue",
             time: { created: 400, completed: 450 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
             path: { cwd: "/workspace/app", root: "/workspace/app" },
             cost: 0,
@@ -2133,7 +2133,7 @@ describe("zcodeSessionProjection", () => {
   it("restores /goal prefix for persisted objective user messages", () => {
     const objective = "优化性能到 60fps";
     const baseSnapshot = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       projection: {
         ...baseSnapshot.projection,
@@ -2157,7 +2157,7 @@ describe("zcodeSessionProjection", () => {
             sessionId: "sess_1",
             role: "user",
             time: { created: 100 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
           },
           parts: [
@@ -2184,7 +2184,7 @@ describe("zcodeSessionProjection", () => {
   it("does not add /goal to earlier normal user messages with the same text", () => {
     const objective = "优化性能到 60fps";
     const baseSnapshot = createSnapshot();
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...baseSnapshot,
       projection: {
         ...baseSnapshot.projection,
@@ -2208,7 +2208,7 @@ describe("zcodeSessionProjection", () => {
             sessionId: "sess_1",
             role: "user",
             time: { created: 100 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
           },
           parts: [
@@ -2230,9 +2230,9 @@ describe("zcodeSessionProjection", () => {
     });
   });
 
-  it("maps ZCode Protocol context projection updates to legacy usage_update events", () => {
+  it("maps Codez Protocol context projection updates to legacy usage_update events", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_usage",
           sessionId: "sess_1",
@@ -2261,7 +2261,7 @@ describe("zcodeSessionProjection", () => {
 
   it("preserves goal target run action patches", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_goal_run_started",
           sessionId: "sess_1",
@@ -2331,7 +2331,7 @@ describe("zcodeSessionProjection", () => {
       type: "model.streaming" as const,
     };
 
-    const startEvents = zcodeSessionEventToZCodeStreamEvents({
+    const startEvents = codezSessionEventToCodezStreamEvents({
       event: {
         ...common,
         eventId: "evt_tool_input_start",
@@ -2353,7 +2353,7 @@ describe("zcodeSessionProjection", () => {
       }),
     ]);
 
-    const deltaEvents = zcodeSessionEventToZCodeStreamEvents({
+    const deltaEvents = codezSessionEventToCodezStreamEvents({
       event: {
         ...common,
         eventId: "evt_tool_input_delta",
@@ -2378,7 +2378,7 @@ describe("zcodeSessionProjection", () => {
       }),
     ]);
 
-    const nextDeltaEvents = zcodeSessionEventToZCodeStreamEvents({
+    const nextDeltaEvents = codezSessionEventToCodezStreamEvents({
       event: {
         ...common,
         eventId: "evt_tool_input_delta_2",
@@ -2394,7 +2394,7 @@ describe("zcodeSessionProjection", () => {
     expect(nextDeltaEvents).toEqual([]);
     expect(state.streamingToolInputById?.get("call_write")?.rawInput).toContain("\\nline 3");
 
-    const endEvents = zcodeSessionEventToZCodeStreamEvents({
+    const endEvents = codezSessionEventToCodezStreamEvents({
       event: {
         ...common,
         eventId: "evt_tool_input_end",
@@ -2419,7 +2419,7 @@ describe("zcodeSessionProjection", () => {
     expect(endEvents[0]).not.toHaveProperty("input");
     expect(state.streamingToolInputById?.get("call_write")?.rawInput).toContain("\\nline 3");
 
-    const completeEvents = zcodeSessionEventToZCodeStreamEvents({
+    const completeEvents = codezSessionEventToCodezStreamEvents({
       event: {
         ...common,
         eventId: "evt_tool_call",
@@ -2450,7 +2450,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("maps scheduled tool tombstones without rematerializing input", () => {
-    const state: ZCodeSessionEventProjectionState = {
+    const state: CodezSessionEventProjectionState = {
       streamingToolInputById: new Map(),
       toolNameById: new Map<string, string>(),
     };
@@ -2471,7 +2471,7 @@ describe("zcodeSessionProjection", () => {
           file_path: "/tmp/generated.html",
         },
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
     const scheduledTombstone = {
       eventId: "evt_tool_scheduled",
       sessionId: "sess_1",
@@ -2488,10 +2488,10 @@ describe("zcodeSessionProjection", () => {
         inputOmitted: true,
         inputRef: "model_stream",
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: streamingToolCall,
         state,
         taskId: "sess_1",
@@ -2502,7 +2502,7 @@ describe("zcodeSessionProjection", () => {
         toolId: "call_write",
       }),
     ]);
-    const scheduledEvents = zcodeSessionEventToZCodeStreamEvents({
+    const scheduledEvents = codezSessionEventToCodezStreamEvents({
       event: scheduledTombstone,
       state,
       taskId: "sess_1",
@@ -2521,7 +2521,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("clears streaming raw input when complete tool input is remembered", () => {
-    const state: ZCodeSessionEventProjectionState = {
+    const state: CodezSessionEventProjectionState = {
       streamingToolInputById: new Map(),
       toolNameById: new Map<string, string>(),
     };
@@ -2539,7 +2539,7 @@ describe("zcodeSessionProjection", () => {
         toolName: "Write",
         delta: '{"file_path":"/tmp/generated.html","content":"hello"',
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
     const scheduledWithCompleteInput = {
       eventId: "evt_tool_scheduled",
       sessionId: "sess_1",
@@ -2557,16 +2557,16 @@ describe("zcodeSessionProjection", () => {
           file_path: "/tmp/generated.html",
         },
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
 
-    zcodeSessionEventToZCodeStreamEvents({
+    codezSessionEventToCodezStreamEvents({
       event: streamingDelta,
       state,
       taskId: "sess_1",
     });
     expect(state.streamingToolInputById?.get("call_write")?.rawInput).toContain("generated.html");
 
-    zcodeSessionEventToZCodeStreamEvents({
+    codezSessionEventToCodezStreamEvents({
       event: scheduledWithCompleteInput,
       state,
       taskId: "sess_1",
@@ -2580,7 +2580,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("creates missing streaming input state so foreground Write deltas accumulate", () => {
-    const state: ZCodeSessionEventProjectionState = {
+    const state: CodezSessionEventProjectionState = {
       toolNameById: new Map<string, string>(),
     };
     const common = {
@@ -2591,7 +2591,7 @@ describe("zcodeSessionProjection", () => {
       type: "model.streaming" as const,
     };
 
-    zcodeSessionEventToZCodeStreamEvents({
+    codezSessionEventToCodezStreamEvents({
       event: {
         ...common,
         eventId: "evt_tool_input_start",
@@ -2604,7 +2604,7 @@ describe("zcodeSessionProjection", () => {
       state,
       taskId: "sess_1",
     });
-    zcodeSessionEventToZCodeStreamEvents({
+    codezSessionEventToCodezStreamEvents({
       event: {
         ...common,
         eventId: "evt_tool_input_delta",
@@ -2618,7 +2618,7 @@ describe("zcodeSessionProjection", () => {
       taskId: "sess_1",
     });
 
-    const nextDeltaEvents = zcodeSessionEventToZCodeStreamEvents({
+    const nextDeltaEvents = codezSessionEventToCodezStreamEvents({
       event: {
         ...common,
         eventId: "evt_tool_input_delta_2",
@@ -2635,7 +2635,7 @@ describe("zcodeSessionProjection", () => {
     expect(state.streamingToolInputById?.get("call_write")?.deltaCount).toBe(2);
     expect(nextDeltaEvents).toEqual([]);
 
-    const endEvents = zcodeSessionEventToZCodeStreamEvents({
+    const endEvents = codezSessionEventToCodezStreamEvents({
       event: {
         ...common,
         eventId: "evt_tool_input_end",
@@ -2660,7 +2660,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("infers Write for streamed file inputs when the delta arrives without cached tool metadata", () => {
-    const streamEvents = zcodeSessionEventToZCodeStreamEvents({
+    const streamEvents = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_tool_input_delta_no_name",
         sessionId: "sess_1",
@@ -2692,7 +2692,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("keeps background streaming tool input as a tombstone until materialization", () => {
-    const state: ZCodeSessionEventProjectionState = {
+    const state: CodezSessionEventProjectionState = {
       streamingToolInputById: new Map(),
       toolNameById: new Map<string, string>(),
     };
@@ -2704,7 +2704,7 @@ describe("zcodeSessionProjection", () => {
       type: "model.streaming" as const,
     };
 
-    const startEvents = zcodeSessionEventToZCodeStreamEvents({
+    const startEvents = codezSessionEventToCodezStreamEvents({
       event: {
         ...common,
         eventId: "evt_tool_input_start",
@@ -2718,7 +2718,7 @@ describe("zcodeSessionProjection", () => {
       state,
       taskId: "sess_1",
     });
-    const deltaEvents = zcodeSessionEventToZCodeStreamEvents({
+    const deltaEvents = codezSessionEventToCodezStreamEvents({
       event: {
         ...common,
         eventId: "evt_tool_input_delta",
@@ -2740,7 +2740,7 @@ describe("zcodeSessionProjection", () => {
       rawInput: '{"file_path":"src/app.ts","content":"line 1\\nline 2',
     });
 
-    const completeEvents = zcodeSessionEventToZCodeStreamEvents({
+    const completeEvents = codezSessionEventToCodezStreamEvents({
       event: {
         ...common,
         eventId: "evt_tool_call",
@@ -2775,7 +2775,7 @@ describe("zcodeSessionProjection", () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(1_000);
-      const state: ZCodeSessionEventProjectionState = {
+      const state: CodezSessionEventProjectionState = {
         streamingToolInputById: new Map(),
         toolNameById: new Map<string, string>(),
       };
@@ -2787,7 +2787,7 @@ describe("zcodeSessionProjection", () => {
         type: "model.streaming" as const,
       };
 
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           ...common,
           eventId: "evt_tool_input_start",
@@ -2803,7 +2803,7 @@ describe("zcodeSessionProjection", () => {
 
       let materializedCount = 0;
       for (let index = 0; index < 100; index += 1) {
-        const events = zcodeSessionEventToZCodeStreamEvents({
+        const events = codezSessionEventToCodezStreamEvents({
           event: {
             ...common,
             eventId: `evt_tool_input_delta_${index}`,
@@ -2823,7 +2823,7 @@ describe("zcodeSessionProjection", () => {
       expect(materializedCount).toBe(1);
 
       vi.setSystemTime(2_000);
-      const intervalEvents = zcodeSessionEventToZCodeStreamEvents({
+      const intervalEvents = codezSessionEventToCodezStreamEvents({
         event: {
           ...common,
           eventId: "evt_tool_input_delta_interval",
@@ -2844,7 +2844,7 @@ describe("zcodeSessionProjection", () => {
 
   it("maps goal completion verifier model results to goal verification updates", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_goal_verify",
           sessionId: "sess_1",
@@ -2898,7 +2898,7 @@ describe("zcodeSessionProjection", () => {
 
   it("does not synthesize nextAction when goal completion verifier JSON is invalid", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_goal_verify_invalid",
           sessionId: "sess_1",
@@ -2929,7 +2929,7 @@ describe("zcodeSessionProjection", () => {
 
   it("maps goal verification lifecycle payloads to synthetic divider chunks", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_goal_verify_started",
           sessionId: "sess_1",
@@ -2953,9 +2953,9 @@ describe("zcodeSessionProjection", () => {
         type: "agent_message_chunk",
         taskId: "sess_1",
         traceId: "trace_goal_verify",
-        messageId: "zcode-goal-verification-target_1-2",
+        messageId: "codez-goal-verification-target_1-2",
         content: "",
-        zcodeTimeline: {
+        codezTimeline: {
           version: 1,
           kind: "synthetic",
           type: "goal_verification",
@@ -2975,7 +2975,7 @@ describe("zcodeSessionProjection", () => {
 
   it("maps completed goal verification lifecycle payloads with verifier result", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_goal_verify_completed",
           sessionId: "sess_1",
@@ -3002,9 +3002,9 @@ describe("zcodeSessionProjection", () => {
         type: "agent_message_chunk",
         taskId: "sess_1",
         traceId: "trace_goal_verify",
-        messageId: "zcode-goal-verification-target_1-3",
+        messageId: "codez-goal-verification-target_1-3",
         content: "",
-        zcodeTimeline: {
+        codezTimeline: {
           version: 1,
           kind: "synthetic",
           type: "goal_verification",
@@ -3024,7 +3024,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it.each(["plan", "edit"] as const)("maps %s mode updates without replacing historical values", (mode) => {
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_mode",
         sessionId: "sess_1",
@@ -3060,7 +3060,7 @@ describe("zcodeSessionProjection", () => {
 
   it("maps main turn model usage with context window to legacy usage_update events", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_model_usage",
           sessionId: "sess_1",
@@ -3127,7 +3127,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("maps model network status payloads to task network debug events", () => {
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_network_debug",
         sessionId: "sess_1",
@@ -3194,7 +3194,7 @@ describe("zcodeSessionProjection", () => {
 
   it("maps aggregate main turn cache hit usage from protocol payload", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_model_usage_average",
           sessionId: "sess_1",
@@ -3268,7 +3268,7 @@ describe("zcodeSessionProjection", () => {
 
   it("prefers real main turn model usage over projected context used", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_model_usage_projection",
           sessionId: "sess_1",
@@ -3319,7 +3319,7 @@ describe("zcodeSessionProjection", () => {
 
   it("does not map sidecar model usage to context usage", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_title_usage",
           sessionId: "sess_1",
@@ -3359,8 +3359,8 @@ describe("zcodeSessionProjection", () => {
     ]);
   });
 
-  it("maps ZCode model retry status updates to apiRetry events", () => {
-    const events = zcodeSessionEventToZCodeStreamEvents({
+  it("maps Codez model retry status updates to apiRetry events", () => {
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_retry",
         sessionId: "sess_1",
@@ -3409,13 +3409,13 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("keeps adapter retry visible until the retry attempt produces progress", () => {
-    const state: ZCodeSessionEventProjectionState = {
+    const state: CodezSessionEventProjectionState = {
       streamedTurnKeys: new Set<string>(),
       toolNameById: new Map<string, string>(),
     };
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_retry_scheduled",
           sessionId: "sess_1",
@@ -3448,7 +3448,7 @@ describe("zcodeSessionProjection", () => {
       },
     });
 
-    const retryStartedEvents = zcodeSessionEventToZCodeStreamEvents({
+    const retryStartedEvents = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_retry_started",
         sessionId: "sess_1",
@@ -3486,7 +3486,7 @@ describe("zcodeSessionProjection", () => {
     });
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_retry_progress",
           sessionId: "sess_1",
@@ -3520,7 +3520,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("maps core stream recovery request starts to apiRetry events", () => {
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_stream_recovery_retry",
         sessionId: "sess_1",
@@ -3574,7 +3574,7 @@ describe("zcodeSessionProjection", () => {
 
   it("maps core stream recovery progress to apiRetry events", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_stream_recovery_progress",
           sessionId: "sess_1",
@@ -3612,7 +3612,7 @@ describe("zcodeSessionProjection", () => {
 
   it("maps private apiRetry meta updates and clear patches", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_retry_meta",
           sessionId: "sess_1",
@@ -3622,7 +3622,7 @@ describe("zcodeSessionProjection", () => {
           type: "session.updated",
           payload: {
             _meta: {
-              zcode: {
+              codez: {
                 apiRetry: {
                   kind: "api_retry",
                   attempt: 2,
@@ -3653,7 +3653,7 @@ describe("zcodeSessionProjection", () => {
       },
     ]);
 
-    const clearEvents = zcodeSessionEventToZCodeStreamEvents({
+    const clearEvents = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_retry_clear",
         sessionId: "sess_1",
@@ -3691,7 +3691,7 @@ describe("zcodeSessionProjection", () => {
 
   it("maps projection background job updates to runtime stream events", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_background_bash",
           sessionId: "sess_1",
@@ -3733,8 +3733,8 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("maps single background task payloads into cached background job updates", () => {
-    const state: ZCodeSessionEventProjectionState = {};
-    const bashEvents = zcodeSessionEventToZCodeStreamEvents({
+    const state: CodezSessionEventProjectionState = {};
+    const bashEvents = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_background_bash_started",
         sessionId: "sess_1",
@@ -3755,7 +3755,7 @@ describe("zcodeSessionProjection", () => {
       state,
       taskId: "sess_1",
     });
-    const agentEvents = zcodeSessionEventToZCodeStreamEvents({
+    const agentEvents = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_background_agent_started",
         sessionId: "sess_1",
@@ -3816,7 +3816,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("projects live task notification turns back onto the matching background Agent tool", () => {
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_task_notification_started",
         sessionId: "sess_1",
@@ -3856,7 +3856,7 @@ describe("zcodeSessionProjection", () => {
         content: "Background Agent live result",
         raw: expect.objectContaining({
           _meta: expect.objectContaining({
-            zcode: expect.objectContaining({
+            codez: expect.objectContaining({
               taskNotification: {
                 outputFile: "/tmp/background-agent.output",
                 result: "Background Agent live result",
@@ -3873,7 +3873,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("projects failed live task notifications with the original provider error", () => {
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_failed_task_notification_started",
         sessionId: "sess_1",
@@ -3914,7 +3914,7 @@ describe("zcodeSessionProjection", () => {
         error: backgroundAgentProviderError,
         raw: expect.objectContaining({
           _meta: expect.objectContaining({
-            zcode: expect.objectContaining({
+            codez: expect.objectContaining({
               taskNotification: expect.objectContaining({
                 error: backgroundAgentProviderError,
                 status: "failed",
@@ -3930,7 +3930,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("projects killed task notification turns as stopped tool updates", () => {
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_task_notification_stopped",
         sessionId: "sess_1",
@@ -3969,7 +3969,7 @@ describe("zcodeSessionProjection", () => {
         content: "Agent task was stopped.",
         raw: expect.objectContaining({
           _meta: expect.objectContaining({
-            zcode: expect.objectContaining({
+            codez: expect.objectContaining({
               taskNotification: expect.objectContaining({
                 status: "killed",
                 summary: "Agent task was stopped.",
@@ -3983,7 +3983,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("maps direct user input requests into elicitation requests", () => {
-    const event = zcodeUserInputRequestToZCodeStreamEvent("sess_1", {
+    const event = codezUserInputRequestToCodezStreamEvent("sess_1", {
       requestId: "ask_1",
       sessionId: "sess_1",
       turnId: "turn_1",
@@ -4033,9 +4033,9 @@ describe("zcodeSessionProjection", () => {
     });
   });
 
-  it("maps nested ZCode Protocol projection context usage", () => {
+  it("maps nested Codez Protocol projection context usage", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_projection_usage",
           sessionId: "sess_1",
@@ -4066,7 +4066,7 @@ describe("zcodeSessionProjection", () => {
 
   it("does not emit legacy usage_update for zero context usage", () => {
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_zero_usage",
           sessionId: "sess_1",
@@ -4089,7 +4089,7 @@ describe("zcodeSessionProjection", () => {
       sessionId: "sess_1",
       role: "assistant" as const,
       parentMessageId: "msg_user",
-      agent: "zcode-agent",
+      agent: "codez-agent",
       model,
       path: { cwd: "/workspace/app", root: "/workspace/app" },
       cost: 0,
@@ -4101,7 +4101,7 @@ describe("zcodeSessionProjection", () => {
         cache: { read: 0, write: 0 },
       },
     };
-    const snapshot = zcodeSessionSnapshotToZCodeTaskSnapshot({
+    const snapshot = codezSessionSnapshotToCodezTaskSnapshot({
       ...createSnapshot(),
       messages: [
         {
@@ -4110,7 +4110,7 @@ describe("zcodeSessionProjection", () => {
             sessionId: "sess_1",
             role: "user",
             time: { created: 100 },
-            agent: "zcode-agent",
+            agent: "codez-agent",
             model,
           },
           parts: [
@@ -4231,7 +4231,7 @@ describe("zcodeSessionProjection", () => {
         turnNumber: 1,
         inputId: "t-sess_1-run",
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
     const streamingEvent = {
       eventId: "evt_stream",
       sessionId: "sess_1",
@@ -4245,7 +4245,7 @@ describe("zcodeSessionProjection", () => {
         delta: "hel",
         assistantMessageId: "msg_a",
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
     const completeEvent = {
       eventId: "evt_done",
       sessionId: "sess_1",
@@ -4262,7 +4262,7 @@ describe("zcodeSessionProjection", () => {
         inputId: "t-sess_1-run",
         resultType: "success",
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
     const toolEvent = {
       eventId: "evt_tool",
       sessionId: "sess_1",
@@ -4277,10 +4277,10 @@ describe("zcodeSessionProjection", () => {
         toolName: "Read",
         input: { filePath: "/repo/app.ts" },
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: turnStartedEvent,
         state,
         taskId: "sess_1",
@@ -4299,7 +4299,7 @@ describe("zcodeSessionProjection", () => {
     // projection 需要记录 active input，后续 chunk/tool/complete 才能归到同一轮 trace。
     expect(state.activePromptInputIdBySession?.get("sess_1")).toBe("t-sess_1-run");
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: streamingEvent,
         state,
         taskId: "sess_1",
@@ -4315,7 +4315,7 @@ describe("zcodeSessionProjection", () => {
       },
     ]);
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           ...streamingEvent,
           eventId: "evt_parent_stream",
@@ -4339,7 +4339,7 @@ describe("zcodeSessionProjection", () => {
       },
     ]);
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: toolEvent,
         state,
         taskId: "sess_1",
@@ -4355,7 +4355,7 @@ describe("zcodeSessionProjection", () => {
       },
     ]);
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: completeEvent,
         state,
         taskId: "sess_1",
@@ -4374,7 +4374,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("does not render conversation rewind command ack as an assistant chunk", () => {
-    const state: ZCodeSessionEventProjectionState = {
+    const state: CodezSessionEventProjectionState = {
       activePromptInputIdBySession: new Map<string, string>(),
       streamedTurnKeys: new Set<string>(),
     };
@@ -4391,7 +4391,7 @@ describe("zcodeSessionProjection", () => {
         inputId: "input_rewind",
         turnNumber: 2,
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
     const completed = {
       eventId: "evt_rewind_done",
       sessionId: "sess_1",
@@ -4405,10 +4405,10 @@ describe("zcodeSessionProjection", () => {
         inputId: "input_rewind",
         resultType: "success",
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: started,
         state,
         taskId: "sess_1",
@@ -4416,7 +4416,7 @@ describe("zcodeSessionProjection", () => {
     ).toMatchObject([{ type: "task_run_started" }]);
     expect(state.rewindControlTurnKeys?.has("sess_1:turn_rewind")).toBe(true);
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: completed,
         state,
         taskId: "sess_1",
@@ -4447,7 +4447,7 @@ describe("zcodeSessionProjection", () => {
     };
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         taskId: "sess_1",
         state,
         event: {
@@ -4459,7 +4459,7 @@ describe("zcodeSessionProjection", () => {
           traceId: "trace_session",
           type: "permission.resolved",
           payload,
-        } satisfies ZCodeSessionEvent,
+        } satisfies CodezSessionEvent,
       }),
     ).toEqual([
       {
@@ -4492,7 +4492,7 @@ describe("zcodeSessionProjection", () => {
     const state = {
       activePromptInputIdBySession: new Map([["sess_1", "input_1"]]),
       toolNameById: new Map<string, string>(),
-    } satisfies ZCodeSessionEventProjectionState;
+    } satisfies CodezSessionEventProjectionState;
     const startedPayload = {
       toolCallId: "tool_subagent_agent_1_call_search",
       parentToolCallId: "call_parent_agent",
@@ -4512,7 +4512,7 @@ describe("zcodeSessionProjection", () => {
     };
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         taskId: "sess_1",
         state,
         event: {
@@ -4524,7 +4524,7 @@ describe("zcodeSessionProjection", () => {
           traceId: "trace_session",
           type: "tool.updated",
           payload: startedPayload,
-        } satisfies ZCodeSessionEvent,
+        } satisfies CodezSessionEvent,
       }),
     ).toEqual([
       {
@@ -4544,7 +4544,7 @@ describe("zcodeSessionProjection", () => {
     expect(state.toolNameById.get("tool_subagent_agent_1_call_search")).toBe("WebSearch");
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         taskId: "sess_1",
         state,
         event: {
@@ -4556,7 +4556,7 @@ describe("zcodeSessionProjection", () => {
           traceId: "trace_session",
           type: "tool.updated",
           payload: resultPayload,
-        } satisfies ZCodeSessionEvent,
+        } satisfies CodezSessionEvent,
       }),
     ).toEqual([
       {
@@ -4602,7 +4602,7 @@ describe("zcodeSessionProjection", () => {
         activePromptInputIdBySession: new Map([["sess_1", "input_1"]]),
         streamingToolInputById: new Map(),
         toolNameById: new Map<string, string>(),
-      } satisfies ZCodeSessionEventProjectionState;
+      } satisfies CodezSessionEventProjectionState;
       const toolCallId = `tool_subagent_agent_1_call_${testCase.toolName.toLowerCase()}`;
       const scheduledPayload = {
         toolCallId,
@@ -4624,7 +4624,7 @@ describe("zcodeSessionProjection", () => {
       };
 
       expect(
-        zcodeSessionEventToZCodeStreamEvents({
+        codezSessionEventToCodezStreamEvents({
           taskId: "sess_1",
           state,
           event: {
@@ -4636,7 +4636,7 @@ describe("zcodeSessionProjection", () => {
             traceId: "trace_session",
             type: "tool.updated",
             payload: scheduledPayload,
-          } satisfies ZCodeSessionEvent,
+          } satisfies CodezSessionEvent,
         }),
       ).toEqual([
         expect.objectContaining({
@@ -4650,7 +4650,7 @@ describe("zcodeSessionProjection", () => {
       ]);
 
       expect(
-        zcodeSessionEventToZCodeStreamEvents({
+        codezSessionEventToCodezStreamEvents({
           taskId: "sess_1",
           state,
           event: {
@@ -4662,7 +4662,7 @@ describe("zcodeSessionProjection", () => {
             traceId: "trace_session",
             type: "tool.updated",
             payload: resultPayload,
-          } satisfies ZCodeSessionEvent,
+          } satisfies CodezSessionEvent,
         }),
       ).toEqual([
         expect.objectContaining({
@@ -4686,7 +4686,7 @@ describe("zcodeSessionProjection", () => {
       activePromptInputIdBySession: new Map([["sess_1", "input_1"]]),
       streamingToolInputById: new Map(),
       toolNameById: new Map<string, string>(),
-    } satisfies ZCodeSessionEventProjectionState;
+    } satisfies CodezSessionEventProjectionState;
     const scheduledPayload = {
       toolCallId: "tool_subagent_agent_1_call_bash",
       parentToolCallId: "call_parent_agent",
@@ -4706,8 +4706,8 @@ describe("zcodeSessionProjection", () => {
       toolName: "Bash",
       kind: "started",
     };
-    const project = (event: ZCodeSessionEvent) =>
-      zcodeSessionEventToZCodeStreamEvents({
+    const project = (event: CodezSessionEvent) =>
+      codezSessionEventToCodezStreamEvents({
         taskId: "sess_1",
         state,
         event,
@@ -4803,7 +4803,7 @@ describe("zcodeSessionProjection", () => {
     };
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         taskId: "sess_1",
         state,
         event: {
@@ -4819,7 +4819,7 @@ describe("zcodeSessionProjection", () => {
             decision: "deny",
             reason: "User declined",
           },
-        } satisfies ZCodeSessionEvent,
+        } satisfies CodezSessionEvent,
       }),
     ).toEqual([
       {
@@ -4840,7 +4840,7 @@ describe("zcodeSessionProjection", () => {
     };
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         taskId: "sess_1",
         state,
         event: {
@@ -4857,7 +4857,7 @@ describe("zcodeSessionProjection", () => {
             toolName: "ExitPlanMode",
             reason: "Exit plan mode",
           },
-        } satisfies ZCodeSessionEvent,
+        } satisfies CodezSessionEvent,
       }),
     ).toEqual([]);
     expect(state.toolNameById.get("call_exit_plan")).toBe("ExitPlanMode");
@@ -4870,7 +4870,7 @@ describe("zcodeSessionProjection", () => {
     };
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         taskId: "sess_1",
         state,
         event: {
@@ -4886,7 +4886,7 @@ describe("zcodeSessionProjection", () => {
             decision: "deny",
             reason: "Please add tests first",
           },
-        } satisfies ZCodeSessionEvent,
+        } satisfies CodezSessionEvent,
       }),
     ).toEqual([
       {
@@ -4901,7 +4901,7 @@ describe("zcodeSessionProjection", () => {
   });
 
   it("maps model-only goal continuation turn starts to goal iteration boundaries", () => {
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       taskId: "task-goal",
       event: {
         eventId: "evt_goal_start",
@@ -4966,7 +4966,7 @@ describe("zcodeSessionProjection", () => {
           prompt: "Find the project shape",
         },
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
     const subagentToolCall = {
       eventId: "evt_subagent_tool",
       sessionId: "sess_1",
@@ -4988,7 +4988,7 @@ describe("zcodeSessionProjection", () => {
         childToolCallId: "call_1",
         description: "Inspect workspace",
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
     const parentToolResult = {
       eventId: "evt_parent_agent_result",
       sessionId: "sess_1",
@@ -5011,10 +5011,10 @@ describe("zcodeSessionProjection", () => {
           }),
         },
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: parentToolCall,
         state,
         taskId: "sess_1",
@@ -5028,7 +5028,7 @@ describe("zcodeSessionProjection", () => {
       },
     ]);
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: subagentToolCall,
         state,
         taskId: "sess_1",
@@ -5042,7 +5042,7 @@ describe("zcodeSessionProjection", () => {
       },
     ]);
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: parentToolResult,
         state,
         taskId: "sess_1",
@@ -5065,7 +5065,7 @@ describe("zcodeSessionProjection", () => {
       streamedTurnKeys: new Set<string>(),
       toolNameById: new Map<string, string>(),
     };
-    zcodeSessionEventToZCodeStreamEvents({
+    codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_parent_agent",
         sessionId: "sess_1",
@@ -5084,12 +5084,12 @@ describe("zcodeSessionProjection", () => {
             run_in_background: true,
           },
         },
-      } satisfies ZCodeSessionEvent,
+      } satisfies CodezSessionEvent,
       state,
       taskId: "sess_1",
     });
 
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_parent_agent_result",
         sessionId: "sess_1",
@@ -5112,7 +5112,7 @@ describe("zcodeSessionProjection", () => {
             ].join("\n"),
           },
         },
-      } satisfies ZCodeSessionEvent,
+      } satisfies CodezSessionEvent,
       state,
       taskId: "sess_1",
     });
@@ -5132,7 +5132,7 @@ describe("zcodeSessionProjection", () => {
       streamedTurnKeys: new Set<string>(),
       toolNameById: new Map<string, string>(),
     };
-    zcodeSessionEventToZCodeStreamEvents({
+    codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_parent_task",
         sessionId: "sess_1",
@@ -5150,7 +5150,7 @@ describe("zcodeSessionProjection", () => {
             prompt: "Find the project shape",
           },
         },
-      } satisfies ZCodeSessionEvent,
+      } satisfies CodezSessionEvent,
       state,
       taskId: "sess_1",
     });
@@ -5172,7 +5172,7 @@ describe("zcodeSessionProjection", () => {
     ];
 
     for (const [index, content] of acknowledgementContents.entries()) {
-      const events = zcodeSessionEventToZCodeStreamEvents({
+      const events = codezSessionEventToCodezStreamEvents({
         event: {
           eventId: `evt_parent_task_result_${index}`,
           sessionId: "sess_1",
@@ -5190,7 +5190,7 @@ describe("zcodeSessionProjection", () => {
               content,
             },
           },
-        } satisfies ZCodeSessionEvent,
+        } satisfies CodezSessionEvent,
         state,
         taskId: "sess_1",
       });
@@ -5230,7 +5230,7 @@ describe("zcodeSessionProjection", () => {
           ],
         },
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
     const subagentTodoCall = {
       eventId: "evt_subagent_todo",
       sessionId: "sess_1",
@@ -5257,7 +5257,7 @@ describe("zcodeSessionProjection", () => {
         childToolCallId: "call_todo",
         description: "Inspect workspace",
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
     const subagentTodoResult = {
       eventId: "evt_subagent_todo_result",
       sessionId: "sess_1",
@@ -5286,17 +5286,17 @@ describe("zcodeSessionProjection", () => {
         childToolCallId: "call_todo",
         description: "Inspect workspace",
       },
-    } satisfies ZCodeSessionEvent;
+    } satisfies CodezSessionEvent;
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: mainTodoCall,
         state,
         taskId: "sess_1",
       }).map((event) => event.type),
     ).toEqual(["tool_call", "plan"]);
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: subagentTodoCall,
         state,
         taskId: "sess_1",
@@ -5309,7 +5309,7 @@ describe("zcodeSessionProjection", () => {
       },
     ]);
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: subagentTodoResult,
         state,
         taskId: "sess_1",
@@ -5329,7 +5329,7 @@ describe("zcodeSessionProjection", () => {
       toolNameById: new Map<string, string>(),
     };
 
-    zcodeSessionEventToZCodeStreamEvents({
+    codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_start",
         sessionId: "sess_1",
@@ -5349,7 +5349,7 @@ describe("zcodeSessionProjection", () => {
     });
 
     expect(
-      zcodeSessionEventToZCodeStreamEvents({
+      codezSessionEventToCodezStreamEvents({
         event: {
           eventId: "evt_stream_other",
           sessionId: "sess_2",
@@ -5385,7 +5385,7 @@ describe("zcodeSessionProjection", () => {
       toolNameById: new Map<string, string>(),
     };
 
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_compact_started",
         sessionId: "sess_1",
@@ -5403,7 +5403,7 @@ describe("zcodeSessionProjection", () => {
           preCompactTokenCount: 1200,
           startedAt: 100,
         },
-      } satisfies ZCodeSessionEvent,
+      } satisfies CodezSessionEvent,
       state,
       taskId: "sess_1",
     });
@@ -5416,7 +5416,7 @@ describe("zcodeSessionProjection", () => {
         inputId: "input-compact",
         messageId: "msg-compact-1",
         content: "",
-        zcodeTimeline: {
+        codezTimeline: {
           version: 1,
           kind: "synthetic",
           type: "context_compaction",
@@ -5439,7 +5439,7 @@ describe("zcodeSessionProjection", () => {
       toolNameById: new Map<string, string>(),
     };
 
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_compact_retrying",
         sessionId: "sess_1",
@@ -5458,7 +5458,7 @@ describe("zcodeSessionProjection", () => {
           maxAttempts: 3,
           reason: "Failed to generate compact summary",
         },
-      } satisfies ZCodeSessionEvent,
+      } satisfies CodezSessionEvent,
       state,
       taskId: "sess_1",
     });
@@ -5470,7 +5470,7 @@ describe("zcodeSessionProjection", () => {
       inputId: "input-compact",
       messageId: "msg-compact-1",
       content: "",
-      zcodeTimeline: {
+      codezTimeline: {
         type: "context_compaction",
         operationId: "cmp-1",
         status: "retrying",
@@ -5489,7 +5489,7 @@ describe("zcodeSessionProjection", () => {
       toolNameById: new Map<string, string>(),
     };
 
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_compact_skipped",
         sessionId: "sess_1",
@@ -5505,7 +5505,7 @@ describe("zcodeSessionProjection", () => {
           trigger: "manual",
           display: "separator",
         },
-      } satisfies ZCodeSessionEvent,
+      } satisfies CodezSessionEvent,
       state,
       taskId: "sess_1",
     });
@@ -5517,7 +5517,7 @@ describe("zcodeSessionProjection", () => {
       inputId: "input-compact",
       messageId: "msg-compact-skipped",
       content: "",
-      zcodeTimeline: {
+      codezTimeline: {
         type: "context_compaction",
         operationId: "cmp-skipped",
         status: "skipped",
@@ -5533,7 +5533,7 @@ describe("zcodeSessionProjection", () => {
       toolNameById: new Map<string, string>(),
     };
 
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_fork_notice",
         sessionId: "forked-session",
@@ -5558,7 +5558,7 @@ describe("zcodeSessionProjection", () => {
             },
           },
         },
-      } satisfies ZCodeSessionEvent,
+      } satisfies CodezSessionEvent,
       state,
       taskId: "forked-session",
     });
@@ -5570,7 +5570,7 @@ describe("zcodeSessionProjection", () => {
         traceId: "trace_fork",
         messageId: "msg_fork_notice",
         content: "",
-        zcodeTimeline: {
+        codezTimeline: {
           version: 1,
           kind: "synthetic",
           type: "session_fork",
@@ -5590,7 +5590,7 @@ describe("zcodeSessionProjection", () => {
       toolNameById: new Map<string, string>(),
     };
 
-    const events = zcodeSessionEventToZCodeStreamEvents({
+    const events = codezSessionEventToCodezStreamEvents({
       event: {
         eventId: "evt_compact_failed",
         sessionId: "sess_1",
@@ -5607,7 +5607,7 @@ describe("zcodeSessionProjection", () => {
             type: "compact_failed",
           },
         },
-      } satisfies ZCodeSessionEvent,
+      } satisfies CodezSessionEvent,
       state,
       taskId: "sess_1",
     });
@@ -5618,7 +5618,7 @@ describe("zcodeSessionProjection", () => {
       taskId: "sess_1",
       traceId: "input-compact",
       inputId: "input-compact",
-      zcodeTimeline: {
+      codezTimeline: {
         type: "context_compaction",
         status: "failed",
         inputId: "input-compact",
@@ -5627,9 +5627,9 @@ describe("zcodeSessionProjection", () => {
     });
   });
 
-  it("projects ZCode settings updates to model and mode state events", () => {
-    const options = zcodeSessionSettingsToConfigOptions(settings);
-    const events = zcodeStateUpdatedToZCodeStreamEvents({
+  it("projects Codez settings updates to model and mode state events", () => {
+    const options = codezSessionSettingsToConfigOptions(settings);
+    const events = codezStateUpdatedToCodezStreamEvents({
       notification: {
         type: "state.updated",
         scope: "session",
@@ -5670,7 +5670,7 @@ describe("zcodeSessionProjection", () => {
     });
   });
 
-  it("parses UI model values into strict ZCode model refs", () => {
+  it("parses UI model values into strict Codez model refs", () => {
     expect(parseModelPickerValue("glm/glm-4.6")).toEqual({
       providerId: "glm",
       modelId: "glm-4.6",
@@ -5705,7 +5705,7 @@ describe("zcodeSessionProjection", () => {
 
   it("projects web remote user input response to elicitation response", () => {
     expect(
-      zcodeUserInputResponseToZCodeStreamEvent("sess_1", {
+      codezUserInputResponseToCodezStreamEvent("sess_1", {
         requestId: "input-1",
         action: "accept",
         content: { answers: { answer_0: "a" } },

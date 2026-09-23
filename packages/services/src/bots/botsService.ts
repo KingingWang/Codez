@@ -21,41 +21,41 @@ import {
   isGroupOwnerCommand,
   canAnswerGroupQuestion,
 } from "./groupSessions.js";
-/* eslint-disable max-lines -- Bots 服务仍复用原 RPC 文件名，先把鉴权、命令路由、ZCode Agent 桥接收口集中在同一服务内。 */
+/* eslint-disable max-lines -- Bots 服务仍复用原 RPC 文件名，先把鉴权、命令路由、Codez Agent 桥接收口集中在同一服务内。 */
 import { Buffer } from "node:buffer";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import type { IDisposable } from "@zcode/rpc";
-import { completeNewModelSelection } from "@zcode/provider";
+import type { IDisposable } from "@codez/rpc";
+import { completeNewModelSelection } from "@codez/provider";
 import {
   ALL_BOT_WORKSPACES,
   CONVERSATION_SELECTION_MAX_TEXT_LENGTH,
   generateTraceId,
-  normalizeAgentProviderToZCodeAgent,
-  ZCODE_AGENT_PROVIDER,
+  normalizeAgentProviderToCodezAgent,
+  CODEZ_AGENT_PROVIDER,
   BOT_TASK_BROADCAST_CHANNEL,
   BOT_TASK_STREAM_BROADCAST_CHANNEL,
   appendAssistantMessagePart,
-  buildZCodeAssistantPresentation,
+  buildCodezAssistantPresentation,
   decodeCustomModelValue,
   encodeCustomModelValue,
   getPermissionRequestPreview,
   getSupportedBotReplyGranularities,
   normalizeBotReplyGranularity,
-  type ZCodeConfigOption,
-  type ZCodeElicitationRequest,
-  type ZCodeElicitationQuestion,
-  type ZCodePermissionOption,
-  type ZCodePermissionRequest,
-  type ZCodePromptAttachment,
-  type ZCodeTaskMode,
-  type ZCodeAssistantMessagePart,
-  type ZCodeAutomationBotDeliveryTarget,
-  type ZCodeProvider,
-  type ZCodeStreamEvent,
+  type CodezConfigOption,
+  type CodezElicitationRequest,
+  type CodezElicitationQuestion,
+  type CodezPermissionOption,
+  type CodezPermissionRequest,
+  type CodezPromptAttachment,
+  type CodezTaskMode,
+  type CodezAssistantMessagePart,
+  type CodezAutomationBotDeliveryTarget,
+  type CodezProvider,
+  type CodezStreamEvent,
   type TaskStreamMirrorableEvent,
-  type ZCodeTaskMeta,
+  type CodezTaskMeta,
   type BotActor,
   type BotTaskBroadcastPayload,
   type BotTaskStreamBroadcastPayload,
@@ -81,8 +81,8 @@ import {
   type BotsConfigFile,
   type Locale,
   type SelectionPrompt,
-} from "@zcode/shared";
-import type { IZCodeTaskService } from "../session/zcodeTaskService.js";
+} from "@codez/shared";
+import type { ICodezTaskService } from "../session/codezTaskService.js";
 import { resolveProviderModeIdFromConfigOptions } from "#src/session/sessionModeOptions.js";
 import { deriveSessionTitle as deriveTaskTitle } from "#src/session/sessionTitle.js";
 import type { IBroadcastService } from "../broadcast/broadcast.js";
@@ -93,7 +93,7 @@ import type {
   IModelSelectionService,
   ModelSelectionView,
 } from "../model-provider/providerFacadeServices.js";
-import type { ZCodeAgentAppRuntimePreferences } from "../zcode-agent/zcodeAgent.js";
+import type { CodezAgentAppRuntimePreferences } from "../codez-agent/codezAgent.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import type {
   BotBindCodeResult,
@@ -189,7 +189,7 @@ const botsLogger = createServiceLogger("bots");
 
 function formatBotModelSelectionValue(selection: ModelSelection | undefined): string | undefined {
   if (!selection) return undefined;
-  return selection.providerId === ZCODE_AGENT_PROVIDER
+  return selection.providerId === CODEZ_AGENT_PROVIDER
     ? selection.modelId
     : encodeCustomModelValue(selection.providerId, selection.modelId);
 }
@@ -206,7 +206,7 @@ function parseBotModelOptionValue(value: string): ModelSelection | undefined {
       modelId: value.slice(separatorIndex + 1),
     };
   }
-  return value.trim() ? { providerId: ZCODE_AGENT_PROVIDER, modelId: value.trim() } : undefined;
+  return value.trim() ? { providerId: CODEZ_AGENT_PROVIDER, modelId: value.trim() } : undefined;
 }
 
 const BOT_REPLY_GRANULARITY_OPTIONS = [
@@ -302,7 +302,7 @@ function validateBotConfig(config: BotsConfigFile, candidate: BotConfig): void {
 
 interface BotsServiceDeps {
   credentialService: ICredentialService;
-  zcodeTaskService: IZCodeTaskService;
+  codezTaskService: ICodezTaskService;
   broadcastService?: IBroadcastService;
   settingService?: ISettingService;
   modelSelectionService: Pick<IModelSelectionService, "getView">;
@@ -326,11 +326,11 @@ interface BotRemoteWorkspaceReconnectResult {
 interface BotRemoteWorkspaceService {
   isConnected(target: BotRemoteWorkspaceTarget): Promise<boolean>;
   ensureConnected(target: BotRemoteWorkspaceTarget): Promise<BotRemoteWorkspaceReconnectResult>;
-  getZCodeTaskService?(target: BotRemoteWorkspaceTarget): Promise<IZCodeTaskService | null>;
+  getCodezTaskService?(target: BotRemoteWorkspaceTarget): Promise<ICodezTaskService | null>;
   getModelSelectionService?(
     target: BotRemoteWorkspaceTarget,
   ): Promise<Pick<IModelSelectionService, "getView"> | null>;
-  syncAppRuntimePreferences?(preferences: ZCodeAgentAppRuntimePreferences): Promise<void>;
+  syncAppRuntimePreferences?(preferences: CodezAgentAppRuntimePreferences): Promise<void>;
 }
 
 interface PreparedTopicMessage {
@@ -341,7 +341,7 @@ interface PreparedTopicMessage {
 
 interface PreparedBotMessageContent {
   content: string;
-  zcodeAttachments: ZCodePromptAttachment[];
+  codezAttachments: CodezPromptAttachment[];
 }
 
 type BotAuthorizedCommand =
@@ -380,7 +380,7 @@ interface BotModelProviderOption {
 }
 
 interface BotTaskSelectionEntry {
-  task: ZCodeTaskMeta;
+  task: CodezTaskMeta;
   workspacePath: string;
   workspaceIdentity?: string;
 }
@@ -524,7 +524,7 @@ function createOutbound(
 function groupCardFor(
   actor: BotActor,
   context: BotContextState,
-): import("@zcode/shared").BotGroupCard {
+): import("@codez/shared").BotGroupCard {
   const group = context.group!;
   const threadId = actor.threadId ?? group.threadId;
   return {
@@ -538,7 +538,7 @@ function groupCardFor(
 
 function resolveAutomationBotDeliveryTarget(
   actor: BotActor,
-): ZCodeAutomationBotDeliveryTarget | undefined {
+): CodezAutomationBotDeliveryTarget | undefined {
   if (actor.provider !== "feishu" && actor.provider !== "lark" && actor.provider !== "weixin") {
     return undefined;
   }
@@ -583,7 +583,7 @@ const BOT_PERMISSION_OPTION_PRIORITY = {
 } as const satisfies Record<BotPermissionOptionDisplayKind, number>;
 
 function getBotPermissionOptionDisplayKind(
-  option: ZCodePermissionOption,
+  option: CodezPermissionOption,
 ): BotPermissionOptionDisplayKind {
   const text = `${option.optionId} ${option.kind} ${option.name}`.toLowerCase();
   const isAlways =
@@ -601,8 +601,8 @@ function getBotPermissionOptionDisplayKind(
 }
 
 function sortBotPermissionOptions(
-  options: readonly ZCodePermissionOption[],
-): ZCodePermissionOption[] {
+  options: readonly CodezPermissionOption[],
+): CodezPermissionOption[] {
   return [...options].sort((left, right) => {
     const leftPriority = BOT_PERMISSION_OPTION_PRIORITY[getBotPermissionOptionDisplayKind(left)];
     const rightPriority = BOT_PERMISSION_OPTION_PRIORITY[getBotPermissionOptionDisplayKind(right)];
@@ -610,7 +610,7 @@ function sortBotPermissionOptions(
   });
 }
 
-function formatBotPermissionOptionLabel(option: ZCodePermissionOption, locale?: Locale): string {
+function formatBotPermissionOptionLabel(option: CodezPermissionOption, locale?: Locale): string {
   const displayKind = getBotPermissionOptionDisplayKind(option);
   if (locale === "en-US") {
     switch (displayKind) {
@@ -641,8 +641,8 @@ function formatBotPermissionOptionLabel(option: ZCodePermissionOption, locale?: 
 }
 
 function formatBotPermissionOptionDescription(
-  option: ZCodePermissionOption,
-  request: Pick<ZCodePermissionRequest, "title" | "description" | "kind" | "raw">,
+  option: CodezPermissionOption,
+  request: Pick<CodezPermissionRequest, "title" | "description" | "kind" | "raw">,
   locale?: Locale,
 ): string | undefined {
   const displayKind = getBotPermissionOptionDisplayKind(option);
@@ -690,7 +690,7 @@ function formatBotPermissionOptionDescription(
       : "后续相同权限请求也会直接拒绝";
 }
 
-function isBotPermissionRejectOption(option: ZCodePermissionOption): boolean {
+function isBotPermissionRejectOption(option: CodezPermissionOption): boolean {
   const displayKind = getBotPermissionOptionDisplayKind(option);
   return displayKind === "rejectOnce" || displayKind === "rejectAlways";
 }
@@ -722,7 +722,7 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const DEFAULT_BOT_ZCODE_PROVIDER: ZCodeProvider = ZCODE_AGENT_PROVIDER;
+const DEFAULT_BOT_CODEZ_PROVIDER: CodezProvider = CODEZ_AGENT_PROVIDER;
 // Bot 模式硬锁 yolo：所有 bot task 一律免交互权限，且禁止通过 /mode 切换运行模式。
 const BOT_FORCED_MODE = "yolo";
 const BOT_TYPING_INTERVAL_MS = 4_000;
@@ -751,7 +751,7 @@ export function createBotsService(
     string,
     IDisposable & { automation(runId?: string): void; imInput(): void }
   >();
-  const taskStreamHub = createBotTaskStreamHub<ZCodeStreamEvent | TaskStreamMirrorableEvent>();
+  const taskStreamHub = createBotTaskStreamHub<CodezStreamEvent | TaskStreamMirrorableEvent>();
   const failedPrivateDeliveries = new Map<
     string,
     {
@@ -1499,7 +1499,7 @@ export function createBotsService(
     }
     if (!valid || !bot || !context || !signature || privateWatches.has(botId)) return;
     if (!(await isRemoteWorkspaceConnected(context))) return;
-    const taskService = await resolveZCodeTaskServiceForContext(context);
+    const taskService = await resolveCodezTaskServiceForContext(context);
     const deleted = await taskService.listDeletedTaskIds?.({
       workspacePath: context.workspacePath,
       workspaceIdentity: context.workspaceIdentity,
@@ -2033,7 +2033,7 @@ export function createBotsService(
       );
     }
     const rawAttachments = (message.attachments ?? []).slice(0, BOT_MAX_ATTACHMENTS_PER_MESSAGE);
-    const zcodeAttachments: ZCodePromptAttachment[] = [];
+    const codezAttachments: CodezPromptAttachment[] = [];
     const fileLines: string[] = [];
     for (const rawAttachment of rawAttachments) {
       const resolved = await resolveAttachmentBytes(bot, rawAttachment, message.actor);
@@ -2056,7 +2056,7 @@ export function createBotsService(
       const dataBase64 = Buffer.from(resolved.data).toString("base64");
       if (isGroup) {
         // 旧兼容入口只把文件路径拼进正文，既丢失 V4 附件又破坏末尾引用块；群输入只走标准寄存。
-        zcodeAttachments.push({
+        codezAttachments.push({
           kind: cached.kind === "image" || cached.kind === "audio" ? cached.kind : "file",
           filename: cached.filename,
           mimeType: cached.mimeType,
@@ -2067,16 +2067,16 @@ export function createBotsService(
         continue;
       }
       if (cached.kind === "image" || cached.kind === "audio") {
-        zcodeAttachments.push({
+        codezAttachments.push({
           kind: cached.kind,
           filename: cached.filename,
           mimeType: cached.mimeType,
           dataBase64,
-          // Bugfix：Bot 已把附件缓存到本地，ZCodePromptAttachment 也必须携带该路径。
+          // Bugfix：Bot 已把附件缓存到本地，CodezPromptAttachment 也必须携带该路径。
           // 只在 prompt 文本里描述路径会让下游附件策略无法选择本地文件读取。
           localPath: cached.localPath,
         });
-        // Bugfix: bot 附件已经被 gateway 下载并缓存到本地。只把图片作为 ZCode Agent image block 传入时，
+        // Bugfix: bot 附件已经被 gateway 下载并缓存到本地。只把图片作为 Codez Agent image block 传入时，
         // 下游 agent 可能把内部临时 URL 再 curl 到 /tmp，导致重复下载、额外权限请求和模型安全拦截。
         // 因此同时把本地缓存路径写进 prompt，明确后续工具操作只能围绕本地文件进行。
         fileLines.push(
@@ -2093,7 +2093,7 @@ export function createBotsService(
       trimmed || (rawAttachments.length > 0 ? msg(locale, "attachmentOnlyPrompt") : "");
     return {
       content: [baseContent, ...fileLines].filter(Boolean).join("\n\n"),
-      zcodeAttachments,
+      codezAttachments,
     };
   }
 
@@ -2144,20 +2144,20 @@ export function createBotsService(
     });
   }
 
-  async function resolveZCodeTaskServiceForContext(
+  async function resolveCodezTaskServiceForContext(
     context: Pick<BotContextState, "workspacePath" | "workspaceIdentity">,
-  ): Promise<IZCodeTaskService> {
+  ): Promise<ICodezTaskService> {
     if (!context.workspaceIdentity) {
-      return deps.zcodeTaskService;
+      return deps.codezTaskService;
     }
-    const remoteZCodeTaskService = await deps.remoteWorkspaceService?.getZCodeTaskService?.({
+    const remoteCodezTaskService = await deps.remoteWorkspaceService?.getCodezTaskService?.({
       workspacePath: context.workspacePath,
       workspaceIdentity: context.workspaceIdentity,
     });
-    if (remoteZCodeTaskService) {
-      return remoteZCodeTaskService;
+    if (remoteCodezTaskService) {
+      return remoteCodezTaskService;
     }
-    // Bugfix: 远端 workspace 的 bot 请求不能缺 runtime 时静默走本地 zcodeTaskService。
+    // Bugfix: 远端 workspace 的 bot 请求不能缺 runtime 时静默走本地 codezTaskService。
     // 否则 /root 这类远端路径会在 macOS/Windows 本地 host 创建任务，模型和文件系统都错位。
     throw new BotAdminRequiredError(
       "remote",
@@ -2257,7 +2257,7 @@ export function createBotsService(
 
   async function listUserConfigOptions(
     _params: BotUserConfigOptionsParams,
-  ): Promise<ZCodeConfigOption[]> {
+  ): Promise<CodezConfigOption[]> {
     return [];
   }
   async function ensureBotStorageMigrated(): Promise<void> {
@@ -2276,26 +2276,26 @@ export function createBotsService(
   async function listActiveTaskConfigOptions(
     context: Pick<BotContextState, "workspacePath" | "workspaceIdentity">,
     taskId: string,
-  ): Promise<ZCodeConfigOption[]> {
-    const zcodeTaskService = await resolveZCodeTaskServiceForContext(context);
-    return zcodeTaskService.getTaskConfigOptions({ taskId });
+  ): Promise<CodezConfigOption[]> {
+    const codezTaskService = await resolveCodezTaskServiceForContext(context);
+    return codezTaskService.getTaskConfigOptions({ taskId });
   }
 
   function findSelectConfigOption(
-    options: readonly ZCodeConfigOption[],
+    options: readonly CodezConfigOption[],
     configId: "model" | "mode" | "thoughtLevel",
-  ): (ZCodeConfigOption & { type: "select" }) | undefined {
+  ): (CodezConfigOption & { type: "select" }) | undefined {
     const category = configId === "thoughtLevel" ? "thought_level" : configId;
     return options.find(
-      (item): item is ZCodeConfigOption & { type: "select" } =>
+      (item): item is CodezConfigOption & { type: "select" } =>
         item.type === "select" && (item.category === category || item.id === category),
     );
   }
 
   function listConfigSelectOptions(
-    options: readonly ZCodeConfigOption[],
+    options: readonly CodezConfigOption[],
     configId: "model" | "mode" | "thoughtLevel",
-    context: { locale?: Locale; provider?: ZCodeProvider } = {},
+    context: { locale?: Locale; provider?: CodezProvider } = {},
   ): BotModelOption[] {
     const option = findSelectConfigOption(options, configId);
     return (option?.options ?? []).map((item) => {
@@ -2322,14 +2322,14 @@ export function createBotsService(
 
   function getModeDisplayLabel(
     locale: Locale | undefined,
-    provider: ZCodeProvider | undefined,
+    provider: CodezProvider | undefined,
     option: Pick<BotModelOption, "id" | "label">,
   ): string {
     if (!provider) {
       return option.label;
     }
     const isEnglish = locale === "en-US";
-    const labels: Partial<Record<ZCodeProvider, Record<string, string>>> = {
+    const labels: Partial<Record<CodezProvider, Record<string, string>>> = {
       glm: {
         default: isEnglish ? "Default" : "默认",
         yolo: "Yolo",
@@ -2344,7 +2344,7 @@ export function createBotsService(
     context: {
       configId: "model" | "mode" | "thoughtLevel";
       locale?: Locale;
-      provider?: ZCodeProvider;
+      provider?: CodezProvider;
     },
   ): string {
     if (context.configId !== "mode") {
@@ -2396,15 +2396,15 @@ export function createBotsService(
   }
 
   async function listModelProviderOptionsForActiveTask(
-    task: Pick<ZCodeTaskMeta, "model" | "workspacePath" | "workspaceIdentity">,
-    _activeProvider: ZCodeProvider,
+    task: Pick<CodezTaskMeta, "model" | "workspacePath" | "workspaceIdentity">,
+    _activeProvider: CodezProvider,
   ): Promise<BotModelProviderOption[]> {
     return listModelSelectionProviderOptions(task);
   }
 
   async function listModelOptionsForProviderFromActiveTask(
-    task: Pick<ZCodeTaskMeta, "model" | "workspacePath" | "workspaceIdentity">,
-    activeProvider: ZCodeProvider,
+    task: Pick<CodezTaskMeta, "model" | "workspacePath" | "workspaceIdentity">,
+    activeProvider: CodezProvider,
     providerId: string,
   ): Promise<BotModelOption[]> {
     return (
@@ -2426,8 +2426,8 @@ export function createBotsService(
   }
 
   async function listAllModelOptionsForActiveTask(
-    task: Pick<ZCodeTaskMeta, "model" | "workspacePath" | "workspaceIdentity">,
-    activeProvider: ZCodeProvider,
+    task: Pick<CodezTaskMeta, "model" | "workspacePath" | "workspaceIdentity">,
+    activeProvider: CodezProvider,
   ): Promise<BotModelOption[]> {
     return (await listModelProviderOptionsForActiveTask(task, activeProvider)).flatMap(
       (provider) => provider.models,
@@ -2435,8 +2435,8 @@ export function createBotsService(
   }
 
   function readCurrentActiveTaskModel(
-    task: Pick<ZCodeTaskMeta, "model">,
-    options: readonly ZCodeConfigOption[],
+    task: Pick<CodezTaskMeta, "model">,
+    options: readonly CodezConfigOption[],
   ): string | undefined {
     return readConfigSelectCurrentValue(options, "model") ?? task.model;
   }
@@ -2473,9 +2473,9 @@ export function createBotsService(
   }
 
   async function readCurrentModelProviderId(
-    task: Pick<ZCodeTaskMeta, "model" | "workspacePath" | "workspaceIdentity">,
-    options: readonly ZCodeConfigOption[],
-    activeProvider: ZCodeProvider,
+    task: Pick<CodezTaskMeta, "model" | "workspacePath" | "workspaceIdentity">,
+    options: readonly CodezConfigOption[],
+    activeProvider: CodezProvider,
   ): Promise<string | undefined> {
     const currentValue = readCurrentActiveTaskModel(task, options);
     if (!currentValue) {
@@ -2493,7 +2493,7 @@ export function createBotsService(
   }
 
   function resolveCustomModelRuntimeModelId(
-    _activeProvider: ZCodeProvider,
+    _activeProvider: CodezProvider,
     customModel: { providerId: string; modelName?: string },
   ): string | undefined {
     if (!customModel.modelName) {
@@ -2503,7 +2503,7 @@ export function createBotsService(
   }
 
   function readConfigSelectCurrentValue(
-    options: readonly ZCodeConfigOption[],
+    options: readonly CodezConfigOption[],
     configId: "model" | "mode" | "thoughtLevel",
   ): string | undefined {
     const currentValue = findSelectConfigOption(options, configId)?.currentValue;
@@ -2511,9 +2511,9 @@ export function createBotsService(
   }
 
   function resolveSupportedDraftMode(
-    options: readonly ZCodeConfigOption[],
+    options: readonly CodezConfigOption[],
     mode: string | undefined,
-    provider: ZCodeProvider,
+    provider: CodezProvider,
   ): string | undefined {
     if (!mode) {
       return undefined;
@@ -2528,9 +2528,9 @@ export function createBotsService(
   }
 
   function readConfigSelectCurrentLabel(
-    options: readonly ZCodeConfigOption[],
+    options: readonly CodezConfigOption[],
     configId: "model" | "mode" | "thoughtLevel",
-    context: { locale?: Locale; provider?: ZCodeProvider } = {},
+    context: { locale?: Locale; provider?: CodezProvider } = {},
   ): string | undefined {
     const currentValue = readConfigSelectCurrentValue(options, configId);
     if (!currentValue) {
@@ -2544,10 +2544,10 @@ export function createBotsService(
   }
 
   function readConfigSelectLabelForValue(
-    options: readonly ZCodeConfigOption[],
+    options: readonly CodezConfigOption[],
     configId: "model" | "mode" | "thoughtLevel",
     value: string | undefined,
-    context: { locale?: Locale; provider?: ZCodeProvider } = {},
+    context: { locale?: Locale; provider?: CodezProvider } = {},
   ): string | undefined {
     if (!value) {
       return undefined;
@@ -2559,16 +2559,16 @@ export function createBotsService(
   }
 
   function readCurrentActiveTaskMode(
-    task: Pick<ZCodeTaskMeta, "mode">,
-    options: readonly ZCodeConfigOption[],
+    task: Pick<CodezTaskMeta, "mode">,
+    options: readonly CodezConfigOption[],
   ): string | undefined {
     return readConfigSelectCurrentValue(options, "mode") ?? task.mode;
   }
 
   async function listProviderConfigOptionsForActiveTask(
-    task: Pick<ZCodeTaskMeta, "workspacePath" | "workspaceIdentity">,
-    activeProvider: ZCodeProvider,
-  ): Promise<ZCodeConfigOption[]> {
+    task: Pick<CodezTaskMeta, "workspacePath" | "workspaceIdentity">,
+    activeProvider: CodezProvider,
+  ): Promise<CodezConfigOption[]> {
     return listUserConfigOptions({
       workspacePath: task.workspacePath,
       workspaceIdentity: task.workspaceIdentity,
@@ -2578,22 +2578,22 @@ export function createBotsService(
 
   function normalizeBotDraftOptions(draftOptions: BotDraftOptions): BotDraftOptions {
     // Bugfix: bot-state 里可能还残留旧三方 CLI 草稿 provider。
-    // 如果直接复用，/new 后首条消息会重新创建第三方 runtime，绕过 ZCode Agent 单一事实源。
+    // 如果直接复用，/new 后首条消息会重新创建第三方 runtime，绕过 Codez Agent 单一事实源。
     return {
       ...draftOptions,
-      provider: normalizeAgentProviderToZCodeAgent(draftOptions.provider),
+      provider: normalizeAgentProviderToCodezAgent(draftOptions.provider),
     };
   }
 
   async function buildInitializedDraftOptions(
     context: Pick<BotContextState, "workspacePath" | "workspaceIdentity">,
-    provider?: ZCodeProvider,
+    provider?: CodezProvider,
   ): Promise<BotDraftOptions> {
-    const requestedProvider = normalizeAgentProviderToZCodeAgent(
-      provider ?? DEFAULT_BOT_ZCODE_PROVIDER,
+    const requestedProvider = normalizeAgentProviderToCodezAgent(
+      provider ?? DEFAULT_BOT_CODEZ_PROVIDER,
     );
     if (context.workspaceIdentity && !(await isRemoteWorkspaceConnected(context))) {
-      // Bugfix: 远端断连时初始化草稿也不能偷偷申请远端 ZCode Agent runtime。
+      // Bugfix: 远端断连时初始化草稿也不能偷偷申请远端 Codez Agent runtime。
       // 只有 /reconnect 能恢复连接；草稿先保留最小默认值，重连成功后再刷新。
       return { provider: requestedProvider };
     }
@@ -2614,7 +2614,7 @@ export function createBotsService(
     const configOptions = await listActiveTaskConfigOptions(context, context.activeTaskId).catch(
       () => [],
     );
-    const resolvedProvider = normalizeAgentProviderToZCodeAgent(activeTask.provider);
+    const resolvedProvider = normalizeAgentProviderToCodezAgent(activeTask.provider);
     // Bot 硬锁 yolo：继承当前 task 时也强制 yolo，不沿用原 task 的 mode。
     const forcedMode = resolveSupportedDraftMode(
       configOptions,
@@ -2623,7 +2623,7 @@ export function createBotsService(
     );
     // 继承的是领域选择，不是菜单显示值；显示值中的 $max 曾被误存为 modelId。
     // 由同一工作区的任务服务读取真实选择，保留 Provider、模型和显式思考等级。
-    const taskService = await resolveZCodeTaskServiceForContext(context);
+    const taskService = await resolveCodezTaskServiceForContext(context);
     const modelSelection = await taskService.getTaskModelSelection({
       taskId: context.activeTaskId,
     });
@@ -2678,7 +2678,7 @@ export function createBotsService(
     context: BotContextState,
     draftOptions: BotDraftOptions,
     resolvedView?: ModelSelectionView | null,
-  ): Promise<ZCodeConfigOption[]> {
+  ): Promise<CodezConfigOption[]> {
     const view =
       resolvedView === undefined
         ? await readModelSelectionView(context, draftOptions.modelSelection)
@@ -2727,13 +2727,13 @@ export function createBotsService(
       draftOptions.provider,
     );
     if ((modeOption?.id && forcedDraftMode) || context.group) {
-      const zcodeTaskService = await resolveZCodeTaskServiceForContext(context);
-      await zcodeTaskService.setMode({
+      const codezTaskService = await resolveCodezTaskServiceForContext(context);
+      await codezTaskService.setMode({
         taskId,
-        mode: (forcedDraftMode ?? "default") as ZCodeTaskMode,
+        mode: (forcedDraftMode ?? "default") as CodezTaskMode,
       });
     } else if (modeOption?.id) {
-      // provider 不支持 yolo（非 ZCode Agent）：保持其自身默认模式，避免首条消息回调失败。
+      // provider 不支持 yolo（非 Codez Agent）：保持其自身默认模式，避免首条消息回调失败。
       botsLogger.debug(
         traceId,
         `skip forced yolo mode unsupported provider=${draftOptions.provider}`,
@@ -3279,7 +3279,7 @@ export function createBotsService(
     typingIntervals.delete(taskId);
   }
 
-  function updateLiveStatusProgress(event: ZCodeStreamEvent): void {
+  function updateLiveStatusProgress(event: CodezStreamEvent): void {
     if (event.type === "agent_message_chunk" || event.type === "agent_thought_chunk") {
       const text = normalizeStatusProgressText(event.content);
       if (!text) {
@@ -3338,7 +3338,7 @@ export function createBotsService(
 
   async function broadcastTaskStreamEvent(
     context: Pick<BotContextState, "workspacePath" | "workspaceIdentity">,
-    event: ZCodeStreamEvent,
+    event: CodezStreamEvent,
   ): Promise<void> {
     const payload: BotTaskStreamBroadcastPayload = {
       workspacePath: context.workspacePath,
@@ -3467,9 +3467,9 @@ export function createBotsService(
   async function readTaskMeta(
     context: Pick<BotContextState, "workspacePath" | "workspaceIdentity">,
     taskId: string,
-  ): Promise<ZCodeTaskMeta | null> {
-    const zcodeTaskService = await resolveZCodeTaskServiceForContext(context);
-    const tasks = await zcodeTaskService.listTasks({
+  ): Promise<CodezTaskMeta | null> {
+    const codezTaskService = await resolveCodezTaskServiceForContext(context);
+    const tasks = await codezTaskService.listTasks({
       workspacePath: context.workspacePath,
       workspaceIdentity: context.workspaceIdentity,
     });
@@ -3508,8 +3508,8 @@ export function createBotsService(
       await Promise.all(
         workspaces.map(async (workspace) => {
           if (context.group && !(await isRemoteWorkspaceConnected(workspace))) return [];
-          const zcodeTaskService = await resolveZCodeTaskServiceForContext(workspace);
-          const tasks = await zcodeTaskService
+          const codezTaskService = await resolveCodezTaskServiceForContext(workspace);
+          const tasks = await codezTaskService
             .listTasks({
               workspacePath: workspace.workspacePath,
               workspaceIdentity: workspace.workspaceIdentity,
@@ -3573,7 +3573,7 @@ export function createBotsService(
 
   async function readContextActiveTaskMeta(
     context: BotContextState,
-  ): Promise<ZCodeTaskMeta | null> {
+  ): Promise<CodezTaskMeta | null> {
     if (!context.activeTaskId) {
       return null;
     }
@@ -3584,7 +3584,7 @@ export function createBotsService(
     return (
       (
         await (
-          await resolveZCodeTaskServiceForContext(context)
+          await resolveCodezTaskServiceForContext(context)
         )
           .getTaskSnapshot({
             taskId: context.activeTaskId,
@@ -3606,8 +3606,8 @@ export function createBotsService(
     | {
         ok: true;
         taskId: string;
-        task: ZCodeTaskMeta;
-        configOptions: ZCodeConfigOption[];
+        task: CodezTaskMeta;
+        configOptions: CodezConfigOption[];
       }
     | { ok: false; reply: BotOutboundMessage[] }
   > {
@@ -3639,9 +3639,9 @@ export function createBotsService(
   async function broadcastTaskConfigSync(params: {
     context: BotContextState;
     taskId: string;
-    task?: ZCodeTaskMeta | null;
-    provider?: ZCodeProvider;
-    configOptions?: ZCodeConfigOption[];
+    task?: CodezTaskMeta | null;
+    provider?: CodezProvider;
+    configOptions?: CodezConfigOption[];
   }): Promise<void> {
     await broadcastTaskListChange(params.context, params.taskId, "updated", {
       ...(params.task ? { task: params.task } : {}),
@@ -3651,7 +3651,7 @@ export function createBotsService(
   }
 
   function isTerminalTaskMeta(
-    task: ZCodeTaskMeta | null,
+    task: CodezTaskMeta | null,
     eventType: "task_complete" | "task_error",
   ): boolean {
     if (!task) {
@@ -3667,7 +3667,7 @@ export function createBotsService(
     context: Pick<BotContextState, "workspacePath" | "workspaceIdentity">,
     taskId: string,
     eventType: "task_complete" | "task_error",
-  ): Promise<ZCodeTaskMeta | null> {
+  ): Promise<CodezTaskMeta | null> {
     let latestTask = await readTaskMeta(context, taskId).catch(() => null);
     if (isTerminalTaskMeta(latestTask, eventType)) {
       return latestTask;
@@ -3727,7 +3727,7 @@ export function createBotsService(
       // 只信服务记录，外部回调不能声称已接收来跳过首次材料准备。
       materialPayload = {
         ...payload,
-        zcodeTopicHasAcceptedInput: Object.values(topic?.group?.inputs ?? {}).some(
+        codezTopicHasAcceptedInput: Object.values(topic?.group?.inputs ?? {}).some(
           (input) => input.admission === "accepted",
         ),
       };
@@ -3736,17 +3736,17 @@ export function createBotsService(
       ? ((await adapter
           .prepareCallbackPayload?.(callbackBot, materialPayload)
           .catch((error: unknown) => ({
-            zcodeCallbackPrepareError: error instanceof Error ? error.message : String(error),
+            codezCallbackPrepareError: error instanceof Error ? error.message : String(error),
           }))) ?? payload)
       : payload;
     if (
       isRecord(preparedPayload) &&
-      typeof preparedPayload.zcodeCallbackPrepareError === "string"
+      typeof preparedPayload.codezCallbackPrepareError === "string"
     ) {
       return {
         ok: false,
         replies: [],
-        responseBody: { error: preparedPayload.zcodeCallbackPrepareError },
+        responseBody: { error: preparedPayload.codezCallbackPrepareError },
         status: 401,
       };
     }
@@ -3765,7 +3765,7 @@ export function createBotsService(
       callbackBot &&
       isFeishuBotProvider(provider) &&
       isRecord(preparedPayload) &&
-      preparedPayload.zcodeBotRemoved === true
+      preparedPayload.codezBotRemoved === true
     ) {
       const event = isRecord(preparedPayload.event) ? preparedPayload.event : preparedPayload;
       const chatId = readNestedString(event, "chat_id");
@@ -3791,7 +3791,7 @@ export function createBotsService(
     }
     let parsePayload =
       isFeishuBotProvider(provider) && isRecord(preparedPayload)
-        ? { ...preparedPayload, zcodeProvider: provider }
+        ? { ...preparedPayload, codezProvider: provider }
         : preparedPayload;
     if (callbackBot && isFeishuBotProvider(provider) && isRecord(parsePayload)) {
       const event = isRecord(parsePayload.event) ? parsePayload.event : parsePayload;
@@ -3804,7 +3804,7 @@ export function createBotsService(
           states.bots[
             getBotConversationKey({ botId: callbackBot.id, chatType: "group", chatId: cardChatId })
           ];
-        if (group?.group) parsePayload = { ...parsePayload, zcodeChatType: "group" };
+        if (group?.group) parsePayload = { ...parsePayload, codezChatType: "group" };
       }
     }
     const parsedInboundMessages = adapter.parseCallback(parsePayload);
@@ -3956,10 +3956,10 @@ export function createBotsService(
         const handledByFeishuSynchronousCardAction =
           isFeishuBotProvider(provider) &&
           isRecord(preparedPayload) &&
-          ((preparedPayload.zcodeFeishuSynchronousCardAction === true &&
+          ((preparedPayload.codezFeishuSynchronousCardAction === true &&
             !(
-              isRecord(preparedPayload.zcodeFeishuCardResponseState) &&
-              preparedPayload.zcodeFeishuCardResponseState.deferred === true
+              isRecord(preparedPayload.codezFeishuCardResponseState) &&
+              preparedPayload.codezFeishuCardResponseState.deferred === true
             ) &&
             Boolean(outbound[0])) ||
             (inboundMessage.groupCardAction === true && outbound[0]?.callbackToastOnly === true));
@@ -4087,14 +4087,14 @@ export function createBotsService(
   }
 
   function createAssistantReplyBlocks(
-    parts: readonly ZCodeAssistantMessagePart[],
+    parts: readonly CodezAssistantMessagePart[],
     toolCalls: ReadonlyMap<string, BotReplyToolCallState>,
     mode: BotReplyGranularity | undefined,
-    changeSummary: ZCodeTaskMeta["changeSummary"] | null | undefined,
+    changeSummary: CodezTaskMeta["changeSummary"] | null | undefined,
   ): BotAssistantReplyBlock[] {
     const blocks: BotAssistantReplyBlock[] = [];
     const resolvedMode = mode ?? getDefaultBotReplyGranularity();
-    const presentation = buildZCodeAssistantPresentation({
+    const presentation = buildCodezAssistantPresentation({
       content: "",
       toolCalls: [...toolCalls.values()].map((toolCall) => ({
         ...toolCall,
@@ -4135,9 +4135,9 @@ export function createBotsService(
   }
 
   function normalizeBotElicitationQuestions(
-    event: Extract<ZCodeStreamEvent, { type: "elicitation_request" }>,
+    event: Extract<CodezStreamEvent, { type: "elicitation_request" }>,
     locale: Locale | undefined,
-  ): ZCodeElicitationQuestion[] {
+  ): CodezElicitationQuestion[] {
     const schema = isRecord(event.schema) ? event.schema : null;
     const isPlanApproval = schema?.interaction === "plan_approval";
     if (isPlanApproval) {
@@ -4179,7 +4179,7 @@ export function createBotsService(
   }
 
   function readBotElicitationRenderContext(
-    event: Extract<ZCodeStreamEvent, { type: "elicitation_request" }>,
+    event: Extract<CodezStreamEvent, { type: "elicitation_request" }>,
   ): BotPendingElicitation["renderContext"] {
     const schema = isRecord(event.schema) ? event.schema : null;
     if (
@@ -4251,7 +4251,7 @@ export function createBotsService(
   }
 
   function mergeElicitationFormValues(
-    question: ZCodeElicitationQuestion,
+    question: CodezElicitationQuestion,
     selectedValues: readonly string[],
     formValues: readonly string[],
   ): string[] {
@@ -4285,7 +4285,7 @@ export function createBotsService(
   }
 
   function resolveElicitationQuestionValue(
-    question: ZCodeElicitationQuestion,
+    question: CodezElicitationQuestion,
     value: string,
     options: { includeSubmit?: boolean } = {},
   ): string {
@@ -4375,7 +4375,7 @@ export function createBotsService(
 
   function createBotElicitationRequestSnapshot(
     pending: BotPendingElicitation,
-  ): ZCodeElicitationRequest {
+  ): CodezElicitationRequest {
     const currentQuestion = pending.questions[pending.currentQuestionIndex] ?? pending.questions[0];
     const answerDrafts = Object.fromEntries(
       Object.entries(pending.answers).map(([index, values]) => [`answer_${index}`, values]),
@@ -4600,8 +4600,8 @@ export function createBotsService(
     if (pending.handledAt) {
       return [createOutbound(actor, msg(auth.locale, "elicitationHandled"))];
     }
-    const zcodeTaskService = await resolveZCodeTaskServiceForContext(auth.context);
-    const submitted = await zcodeTaskService.respondElicitation({
+    const codezTaskService = await resolveCodezTaskServiceForContext(auth.context);
+    const submitted = await codezTaskService.respondElicitation({
       taskId: pending.taskId,
       workspacePath: auth.context.workspacePath,
       workspaceIdentity: auth.context.workspaceIdentity,
@@ -4750,7 +4750,7 @@ export function createBotsService(
         answers: { ...pending.answers, [answerKey]: nextValues },
       };
       await writeContext({ ...auth.context, pendingElicitation: nextPending });
-      // Bugfix: 多选题在 Bot 里 toggle 后不会触发 ZCode Agent response，必须主动同步草稿给 UI。
+      // Bugfix: 多选题在 Bot 里 toggle 后不会触发 Codez Agent response，必须主动同步草稿给 UI。
       await broadcastPendingElicitationProgress(auth.context, nextPending);
       return createElicitationReply(actor, nextPending, auth.locale);
     }
@@ -4841,7 +4841,7 @@ export function createBotsService(
     user: BotConfig,
     actor: BotActor,
     context: BotContextState,
-    event: Extract<ZCodeStreamEvent, { type: "elicitation_request" }>,
+    event: Extract<CodezStreamEvent, { type: "elicitation_request" }>,
     mentionedUserIds?: string[],
   ): Promise<void> {
     const locale = await readMessageLocale();
@@ -4865,7 +4865,7 @@ export function createBotsService(
         ? { renderContext: readBotElicitationRenderContext(event) }
         : {}),
     };
-    // Bugfix: Bot 原先只消费 permission_request，没有把 ZCode Agent 的
+    // Bugfix: Bot 原先只消费 permission_request，没有把 Codez Agent 的
     // AskUserQuestion/elicitation_request 转成第三方可回答消息，任务会一直卡在等待用户输入。
     if (context.pendingElicitation) {
       clearPendingElicitationSelection(context.pendingElicitation);
@@ -4999,11 +4999,11 @@ export function createBotsService(
           getWorkspaceKey(context.workspacePath, context.workspaceIdentity),
       );
     };
-    const zcodeTaskService = await resolveZCodeTaskServiceForContext(context);
+    const codezTaskService = await resolveCodezTaskServiceForContext(context);
     if (context.group) {
       // Bug 原因：旧会话尚未冷恢复时建立结果订阅会耗尽重试；先读取权威状态，
       // 再监听未来事件，避免新请求执行结束后无人消费结果。这里不提交历史输入。
-      await zcodeTaskService.getBotGroupTaskBlockReason?.({
+      await codezTaskService.getBotGroupTaskBlockReason?.({
         taskId: context.activeTaskId,
         workspacePath: context.workspacePath,
         workspaceIdentity: context.workspaceIdentity,
@@ -5110,7 +5110,7 @@ export function createBotsService(
         privateDeliveryFailed = true;
       }
     };
-    let assistantParts: ZCodeAssistantMessagePart[] = [];
+    let assistantParts: CodezAssistantMessagePart[] = [];
     let assistantReplyBuffer = "";
     let sentAnyAssistantReply = false;
     const assistantPartToolIds = new Set<string>();
@@ -5366,7 +5366,7 @@ export function createBotsService(
       }
     };
     const handleStreamEventImpl = async (
-      event: ZCodeStreamEvent | TaskStreamMirrorableEvent,
+      event: CodezStreamEvent | TaskStreamMirrorableEvent,
       shouldBroadcast = true,
     ): Promise<void> => {
       if (disposed) return;
@@ -5637,7 +5637,7 @@ export function createBotsService(
         await broadcastTaskListChange(context, event.taskId, "permission_request", {
           permissionRequest: event,
         });
-        // Bugfix: UI 会把 ZCode Agent 原始权限选项规整成“允许/始终允许/拒绝”的固定顺序和文案；
+        // Bugfix: UI 会把 Codez Agent 原始权限选项规整成“允许/始终允许/拒绝”的固定顺序和文案；
         // 机器人之前直接展示 provider 原始英文 name，还额外加取消按钮，导致同一个权限请求在飞书和 UI 看起来不一致。
         const permissionOptions = sortBotPermissionOptions(event.options);
         const permissionSelection: SelectionPrompt = {
@@ -5773,7 +5773,7 @@ export function createBotsService(
                 ),
           );
         }
-        // Bugfix: ZCode Agent 终态事件可能先于 task index/meta 落盘广播到 Bots。
+        // Bugfix: Codez Agent 终态事件可能先于 task index/meta 落盘广播到 Bots。
         // 如果这里立刻用旧 meta 更新 sidebar，随后列表再刷新到终态 meta，会出现状态/摘要跳一下。
         // 因此终态广播前短重试读取一次稳定 meta，尽量用同一帧完成 UI 增量更新。
         const completedTask = await readTerminalTaskMeta(context, event.taskId, event.type).catch(
@@ -5823,7 +5823,7 @@ export function createBotsService(
         }
         const mode = getMode();
         const locale = await readMessageLocale();
-        const completedSnapshot = await zcodeTaskService
+        const completedSnapshot = await codezTaskService
           .getTaskSnapshot({
             taskId: event.taskId,
             workspacePath: context.workspacePath,
@@ -5897,7 +5897,7 @@ export function createBotsService(
       }
     };
     const handleStreamEvent = async (
-      event: ZCodeStreamEvent | TaskStreamMirrorableEvent,
+      event: CodezStreamEvent | TaskStreamMirrorableEvent,
       shouldBroadcast = true,
     ): Promise<void> => {
       try {
@@ -5938,14 +5938,14 @@ export function createBotsService(
     };
     let streamEventQueue: Promise<void> = Promise.resolve();
     const enqueueStreamEvent = (
-      event: ZCodeStreamEvent | TaskStreamMirrorableEvent,
+      event: CodezStreamEvent | TaskStreamMirrorableEvent,
     ): Promise<void> => {
       const shouldBroadcast = !forwardedTaskEvents.has(event);
       forwardedTaskEvents.add(event);
       const nextStreamEvent = streamEventQueue.then(() =>
         handleStreamEvent(event, shouldBroadcast),
       );
-      // Bugfix: ZCode Agent 事件分发不保证等待 async listener。微信这类离散消息如果并发发送，
+      // Bugfix: Codez Agent 事件分发不保证等待 async listener。微信这类离散消息如果并发发送，
       // task_complete 的 Change summary 可能抢在前面正文 flush 之前到达客户端，所以这里按任务串行消费。
       streamEventQueue = nextStreamEvent.catch((error: unknown) => {
         botsLogger.warn(
@@ -5958,7 +5958,7 @@ export function createBotsService(
       return streamEventQueue;
     };
     const dynamicTaskEvent = (
-      zcodeTaskService as Partial<Pick<IZCodeTaskService, "onDynamicTaskEvent">>
+      codezTaskService as Partial<Pick<ICodezTaskService, "onDynamicTaskEvent">>
     ).onDynamicTaskEvent;
     // Bugfix: 远控/共享 host 场景会通过 workspace+task mirror 分发流事件。
     // 这里优先订阅 workspace 级事件，避免只监听本地 taskId relay 时漏掉 channel 回复。
@@ -5979,7 +5979,7 @@ export function createBotsService(
               // 这里使用 bot 专属 continuous 订阅，避免远控恢复逻辑影响飞书/微信等 channel。
               deliveryKind: "bot-channel-continuous",
             })(receive)
-          : zcodeTaskService.onDynamicStreamEvent(context.activeTaskId!)(receive),
+          : codezTaskService.onDynamicStreamEvent(context.activeTaskId!)(receive),
       enqueueStreamEvent,
     );
     streamSubscriptions.set(streamSubscriptionKey, {
@@ -6578,8 +6578,8 @@ export function createBotsService(
         }),
       ].join("\n");
     }
-    const zcodeTaskService = await resolveZCodeTaskServiceForContext(context);
-    const tasks = await zcodeTaskService.listTasks({
+    const codezTaskService = await resolveCodezTaskServiceForContext(context);
+    const tasks = await codezTaskService.listTasks({
       workspacePath: context.workspacePath,
       workspaceIdentity: context.workspaceIdentity,
     });
@@ -6587,7 +6587,7 @@ export function createBotsService(
       ? tasks.find((task) => task.taskId === context.activeTaskId)
       : null;
     const activeTaskSnapshot = context.activeTaskId
-      ? await zcodeTaskService
+      ? await codezTaskService
           .getTaskSnapshot({
             taskId: context.activeTaskId,
             workspacePath: context.workspacePath,
@@ -6718,7 +6718,7 @@ export function createBotsService(
   ) {
     const messageId = message.actor.providerMessageId!;
     if (!context.group) return {};
-    let topicContext: import("@zcode/shared").BotTopicHistoryBatch | undefined;
+    let topicContext: import("@codez/shared").BotTopicHistoryBatch | undefined;
     let historyError: unknown;
 
     const generation = historyGeneration(context);
@@ -6796,7 +6796,7 @@ export function createBotsService(
   ): Promise<BotOutboundMessage[]> {
     if (!context.group || !context.activeTaskId || !isFeishuBotProvider(bot.provider))
       throw new Error("Group context is missing");
-    const service = await resolveZCodeTaskServiceForContext(context);
+    const service = await resolveCodezTaskServiceForContext(context);
     if (!service.submitBotGroupInput)
       throw new Error("Runtime does not support group input admission");
     const messageId = message.actor.providerMessageId;
@@ -6817,7 +6817,7 @@ export function createBotsService(
     )
       throw new Error("Group authorization changed before input admission");
     let attachmentOffset = 0;
-    const admittedAttachments: ZCodePromptAttachment[] = [];
+    const admittedAttachments: CodezPromptAttachment[] = [];
     // 多个回调可能在首次接收前已各自准备根引用；提交时再按权威记录去重。
     let rootIncluded = Object.values(admissionContext.group.inputs ?? {}).some(
       (input) => input.admission === "accepted",
@@ -6828,7 +6828,7 @@ export function createBotsService(
       const includeQuote = quote && !(isRoot && rootIncluded);
       const attachmentIndexes: number[] = [];
       let hasRootAttachment = false;
-      material.zcodeAttachments.forEach((attachment, index) => {
+      material.codezAttachments.forEach((attachment, index) => {
         const resourceMessageId =
           original.attachments?.[index]?.providerMetadata?.resourceMessageId;
         const rootAttachment = !!inputRootMessageId && resourceMessageId === inputRootMessageId;
@@ -6838,7 +6838,7 @@ export function createBotsService(
         attachmentIndexes.push(admittedAttachments.length);
         admittedAttachments.push(attachment);
       });
-      attachmentOffset += material.zcodeAttachments.length;
+      attachmentOffset += material.codezAttachments.length;
       if ((isRoot && includeQuote) || hasRootAttachment) rootIncluded = true;
       return {
         messageId: original.actor.providerMessageId!,
@@ -6852,7 +6852,7 @@ export function createBotsService(
       };
     });
     // 历史文本附件在各条原始附件之后追加，保留它且不归给后续消息。
-    if (topicBatch) admittedAttachments.push(...prepared.zcodeAttachments.slice(attachmentOffset));
+    if (topicBatch) admittedAttachments.push(...prepared.codezAttachments.slice(attachmentOffset));
     const source = {
       authorizationId: context.group.authorizationId,
       botIdentity: { name: bot.name, ...(message.botOpenId ? { openId: message.botOpenId } : {}) },
@@ -6896,7 +6896,7 @@ export function createBotsService(
         : message.referencedMessage
           ? { conversationQuotes: [message.referencedMessage] }
           : {}),
-      attachments: topicBatch ? admittedAttachments : prepared.zcodeAttachments,
+      attachments: topicBatch ? admittedAttachments : prepared.codezAttachments,
       source: {
         ...runtimeSource,
         ...(archive
@@ -7099,7 +7099,7 @@ export function createBotsService(
         },
       ];
     }
-    const taskService = await resolveZCodeTaskServiceForContext(auth.context);
+    const taskService = await resolveCodezTaskServiceForContext(auth.context);
     if (!taskService.cancelBotGroupInput) throw new Error("Runtime cannot cancel queued input");
     const ack = await taskService.cancelBotGroupInput({
       taskId: input.taskId,
@@ -7134,8 +7134,8 @@ export function createBotsService(
     taskId: string,
     traceId: string,
     content: string,
-    attachments: ZCodePromptAttachment[],
-    botDeliveryTarget?: ZCodeAutomationBotDeliveryTarget,
+    attachments: CodezPromptAttachment[],
+    botDeliveryTarget?: CodezAutomationBotDeliveryTarget,
     modelSelection?: ModelSelection,
   ): void {
     privateImTraces.add(JSON.stringify([taskStreamKey(context, actor), traceId]));
@@ -7146,9 +7146,9 @@ export function createBotsService(
     // Bugfix: Telegram polling 是单循环顺序处理 update。如果这里 await session/prompt，
     // 权限按钮 callback 会一直排队到整轮任务结束，导致用户点 inline keyboard 没反应。
     // 因此 prompt 必须后台跑，polling loop 才能继续接收 /permission 回调。
-    void resolveZCodeTaskServiceForContext(context)
-      .then((zcodeTaskService) =>
-        zcodeTaskService.sendPrompt({
+    void resolveCodezTaskServiceForContext(context)
+      .then((codezTaskService) =>
+        codezTaskService.sendPrompt({
           taskId,
           traceId,
           content,
@@ -7192,7 +7192,7 @@ export function createBotsService(
     ]);
     const existing = topicStops.get(key);
     if (existing) return existing;
-    const stopping = resolveZCodeTaskServiceForContext(context).then(async (service) => {
+    const stopping = resolveCodezTaskServiceForContext(context).then(async (service) => {
       if (!service.stopBotTopicExecution) throw new Error("Topic stop is unavailable");
       await service.stopBotTopicExecution({
         taskId,
@@ -7262,7 +7262,7 @@ export function createBotsService(
       );
     }
     if (context?.activeTaskId) {
-      const service = await resolveZCodeTaskServiceForContext(context);
+      const service = await resolveCodezTaskServiceForContext(context);
       if (!service.invalidateBotTopicInputs)
         throw new Error("Topic preparation cancellation is unavailable");
       await service.invalidateBotTopicInputs({
@@ -7366,7 +7366,7 @@ export function createBotsService(
         readRunningRun: async () => {
           const context = await current();
           if (!context?.activeTaskId) return undefined;
-          const service = await resolveZCodeTaskServiceForContext(context);
+          const service = await resolveCodezTaskServiceForContext(context);
           if (!service.readBotTopicExecution)
             throw new Error("Topic runtime control is unavailable");
           const execution = await service.readBotTopicExecution({
@@ -7637,7 +7637,7 @@ export function createBotsService(
     }
     let deletedTaskId: string | undefined;
     if (auth.context.mode === "task" && auth.context.activeTaskId) {
-      const taskService = await resolveZCodeTaskServiceForContext(auth.context);
+      const taskService = await resolveCodezTaskServiceForContext(auth.context);
       const deletedTaskIds = await taskService.listDeletedTaskIds({
         workspacePath: auth.context.workspacePath,
         workspaceIdentity: auth.context.workspaceIdentity,
@@ -7669,7 +7669,7 @@ export function createBotsService(
       preparedMessage = topicBatch
         ? {
             content: message.text,
-            zcodeAttachments: topicBatch.flatMap((entry) => entry.prepared.zcodeAttachments),
+            codezAttachments: topicBatch.flatMap((entry) => entry.prepared.codezAttachments),
           }
         : await prepareBotMessageContent(auth.bot, message, auth.locale);
       const historyMaterial = history.topicContext;
@@ -7683,7 +7683,7 @@ export function createBotsService(
           ),
           auth.context.group.topicTitle || auth.context.group.name,
         );
-        if (attachment) preparedMessage.zcodeAttachments.push(attachment);
+        if (attachment) preparedMessage.codezAttachments.push(attachment);
       }
     } catch (error) {
       return [
@@ -7721,8 +7721,8 @@ export function createBotsService(
             : {}),
         },
       };
-      const zcodeTaskService = await resolveZCodeTaskServiceForContext(auth.context);
-      const task = await zcodeTaskService.createTask({
+      const codezTaskService = await resolveCodezTaskServiceForContext(auth.context);
+      const task = await codezTaskService.createTask({
         workspacePath: auth.context.workspacePath,
         workspaceIdentity: auth.context.workspaceIdentity,
         provider: draftOptions.provider,
@@ -7741,7 +7741,7 @@ export function createBotsService(
               ? [auth.context.group.topicTitle || auth.context.group.threadId]
               : []),
           ].join(" · ")
-        : deriveTaskTitle(preparedMessage.content, preparedMessage.zcodeAttachments);
+        : deriveTaskTitle(preparedMessage.content, preparedMessage.codezAttachments);
       const broadcastTask = taskTitle ? { ...task, title: taskTitle } : task;
       const traceId = generateTraceId(task.taskId);
       try {
@@ -7753,7 +7753,7 @@ export function createBotsService(
       } catch (error) {
         // Bugfix: 初始配置失败时旧流程已把 context 切到 task，留下无法继续的空任务。
         // 在持久化 Bot task 状态前完成配置，并删除临时 task，让用户修正配置后可以直接重试。
-        await zcodeTaskService
+        await codezTaskService
           .deleteTask({
             taskId: task.taskId,
             workspacePath: auth.context.workspacePath,
@@ -7808,8 +7808,8 @@ export function createBotsService(
         prompt: {
           content: preparedMessage.content,
           attachments:
-            preparedMessage.zcodeAttachments.length > 0
-              ? preparedMessage.zcodeAttachments
+            preparedMessage.codezAttachments.length > 0
+              ? preparedMessage.codezAttachments
               : undefined,
           messageId: `bot-${traceId}`,
           sentAt: Date.now(),
@@ -7822,7 +7822,7 @@ export function createBotsService(
         task.taskId,
         traceId,
         preparedMessage.content,
-        preparedMessage.zcodeAttachments,
+        preparedMessage.codezAttachments,
         resolveAutomationBotDeliveryTarget(message.actor),
         submissionDraftOptions.modelSelection,
       );
@@ -7839,15 +7839,15 @@ export function createBotsService(
         topicBatch,
         isCurrent,
       );
-    const zcodeTaskService = await resolveZCodeTaskServiceForContext(auth.context);
-    await zcodeTaskService.resumeTask({
+    const codezTaskService = await resolveCodezTaskServiceForContext(auth.context);
+    await codezTaskService.resumeTask({
       taskId: auth.context.activeTaskId,
       workspacePath: auth.context.workspacePath,
       workspaceIdentity: auth.context.workspaceIdentity,
     });
     // Bot 只是同一 Session 的输入端。菜单可能过滤无效值，不能拿它反推原选择，
     // 更不能重新套用 Bot 创建默认值。解析只确定本次输入，不在此改写 Session。
-    const originalSelection = await zcodeTaskService.getTaskModelSelection({
+    const originalSelection = await codezTaskService.getTaskModelSelection({
       taskId: auth.context.activeTaskId,
     });
     const selectionView = originalSelection
@@ -7865,8 +7865,8 @@ export function createBotsService(
       prompt: {
         content: preparedMessage.content,
         attachments:
-          preparedMessage.zcodeAttachments.length > 0
-            ? preparedMessage.zcodeAttachments
+          preparedMessage.codezAttachments.length > 0
+            ? preparedMessage.codezAttachments
             : undefined,
         messageId: `bot-${traceId}`,
         sentAt: Date.now(),
@@ -7879,7 +7879,7 @@ export function createBotsService(
       auth.context.activeTaskId,
       traceId,
       preparedMessage.content,
-      preparedMessage.zcodeAttachments,
+      preparedMessage.codezAttachments,
       resolveAutomationBotDeliveryTarget(message.actor),
       effectiveSelection,
     );
@@ -7960,8 +7960,8 @@ export function createBotsService(
     }
     // 群历史必须封闭，不能用任意 taskId 绕过候选列表读取其他会话。
     if (context.group) return null;
-    const zcodeTaskService = await resolveZCodeTaskServiceForContext(context);
-    const snapshot = await zcodeTaskService
+    const codezTaskService = await resolveCodezTaskServiceForContext(context);
+    const snapshot = await codezTaskService
       .getTaskSnapshot({
         taskId: value.trim(),
         workspacePath: context.workspacePath,
@@ -7988,7 +7988,7 @@ export function createBotsService(
     if (context.group) {
       if (context.workspaceIdentity && !(await isRemoteWorkspaceConnected(context)))
         return "groupTaskDisconnected";
-      const taskService = await resolveZCodeTaskServiceForContext(context);
+      const taskService = await resolveCodezTaskServiceForContext(context);
       if (!taskService.getBotGroupTaskBlockReason)
         throw new Error("Runtime cannot verify group queue state");
       const reason = await taskService.getBotGroupTaskBlockReason({
@@ -8028,8 +8028,8 @@ export function createBotsService(
       // 断连时把内存 running 状态视为不可确认，交给显式 /reconnect 后再恢复查询。
       return null;
     }
-    const zcodeTaskService = await resolveZCodeTaskServiceForContext(context);
-    const activeTaskSnapshot = await zcodeTaskService
+    const codezTaskService = await resolveCodezTaskServiceForContext(context);
+    const activeTaskSnapshot = await codezTaskService
       .getTaskSnapshot({
         taskId: context.activeTaskId,
         workspacePath: context.workspacePath,
@@ -8041,7 +8041,7 @@ export function createBotsService(
       activeTaskSnapshot?.meta.status === "error"
     ) {
       // Bugfix: Bots 进程内 runningTasks 可能因重启/流式终态事件丢失而和持久化状态不一致。
-      // ZCode Agent 历史任务的 status 为空也可能只是旧数据，不代表 UI 仍在运行；只有本进程确实发起
+      // Codez Agent 历史任务的 status 为空也可能只是旧数据，不代表 UI 仍在运行；只有本进程确实发起
       // 且尚未观察到终态的 task 才阻止 /task、/new 等上下文切换。
       runningTasks.delete(context.activeTaskId);
       stopTyping(context.activeTaskId);
@@ -8051,7 +8051,7 @@ export function createBotsService(
   }
 
   function warnAutomationDeliveryOnce(params: {
-    target: ZCodeAutomationBotDeliveryTarget;
+    target: CodezAutomationBotDeliveryTarget;
     reason: string;
   }): void {
     const key = `${params.target.provider}:${params.target.botId}:${params.reason}`;
@@ -8465,7 +8465,7 @@ export function createBotsService(
         state.bots[
           getBotConversationKey({ botId: params.botId, chatId: params.chatId, chatType: "group" })
         ];
-      const service = await resolveZCodeTaskServiceForContext({ ...context, ...workspace });
+      const service = await resolveCodezTaskServiceForContext({ ...context, ...workspace });
       const summaries =
         (await service.readBotTopicSummaries?.({
           taskId: params.taskId,
@@ -8723,7 +8723,7 @@ export function createBotsService(
             if (!alias) continue;
             // 默认会话可能已切换工作区；迁移检查必须使用旧任务自己的完整工作区身份。
             const workspace = group.taskWorkspaces?.[alias.taskId] ?? candidate;
-            const service = await resolveZCodeTaskServiceForContext({ ...candidate, ...workspace });
+            const service = await resolveCodezTaskServiceForContext({ ...candidate, ...workspace });
             if (
               !service.getBotGroupTaskBlockReason ||
               (await service.getBotGroupTaskBlockReason({
@@ -9002,7 +9002,7 @@ export function createBotsService(
             }
             const active = await requireActiveTask(message, auth);
             if (!active.ok) return active.reply;
-            const activeProvider = normalizeAgentProviderToZCodeAgent(active.task.provider);
+            const activeProvider = normalizeAgentProviderToCodezAgent(active.task.provider);
             if (!activeProvider) {
               return [createOutbound(message.actor, msg(auth.locale, "modelProviderMissing"))];
             }
@@ -9091,7 +9091,7 @@ export function createBotsService(
             }
             const active = await requireActiveTask(message, auth);
             if (!active.ok) return active.reply;
-            const activeProvider = normalizeAgentProviderToZCodeAgent(active.task.provider);
+            const activeProvider = normalizeAgentProviderToCodezAgent(active.task.provider);
             if (!activeProvider) {
               return [createOutbound(message.actor, msg(auth.locale, "modelProviderMissing"))];
             }
@@ -9176,7 +9176,7 @@ export function createBotsService(
             }
             const active = await requireActiveTask(message, auth);
             if (!active.ok) return active.reply;
-            const activeProvider = normalizeAgentProviderToZCodeAgent(active.task.provider);
+            const activeProvider = normalizeAgentProviderToCodezAgent(active.task.provider);
             if (!activeProvider) {
               return [createOutbound(message.actor, msg(auth.locale, "modelProviderMissing"))];
             }
@@ -9210,8 +9210,8 @@ export function createBotsService(
             if (!targetModelSelection)
               return [createOutbound(message.actor, msg(auth.locale, "modelMissing"))];
             const traceId = generateTraceId(active.taskId);
-            const zcodeTaskService = await resolveZCodeTaskServiceForContext(active.task);
-            const configOptions = await zcodeTaskService.setModel({
+            const codezTaskService = await resolveCodezTaskServiceForContext(active.task);
+            const configOptions = await codezTaskService.setModel({
               taskId: active.taskId,
               traceId,
               modelSelection: targetModelSelection,
@@ -9292,7 +9292,7 @@ export function createBotsService(
               commandName === "mode" && active.task.provider
                 ? await listProviderConfigOptionsForActiveTask(
                     active.task,
-                    normalizeAgentProviderToZCodeAgent(active.task.provider),
+                    normalizeAgentProviderToCodezAgent(active.task.provider),
                   )
                 : active.configOptions;
             const currentValue =
@@ -9303,16 +9303,16 @@ export function createBotsService(
               commandName === "mode"
                 ? readConfigSelectLabelForValue(optionSource, commandName, currentValue, {
                     locale: auth.locale,
-                    provider: normalizeAgentProviderToZCodeAgent(active.task.provider),
+                    provider: normalizeAgentProviderToCodezAgent(active.task.provider),
                   })
                 : readConfigSelectCurrentLabel(active.configOptions, commandName, {
                     locale: auth.locale,
-                    provider: normalizeAgentProviderToZCodeAgent(active.task.provider),
+                    provider: normalizeAgentProviderToCodezAgent(active.task.provider),
                   });
             const selectOption = findSelectConfigOption(optionSource, commandName);
             const options = listConfigSelectOptions(optionSource, commandName, {
               locale: auth.locale,
-              provider: normalizeAgentProviderToZCodeAgent(active.task.provider),
+              provider: normalizeAgentProviderToCodezAgent(active.task.provider),
             });
             if (options.length === 0) {
               return [
@@ -9451,8 +9451,8 @@ export function createBotsService(
               ];
             }
             const traceId = generateTraceId(active.taskId);
-            const zcodeTaskService = await resolveZCodeTaskServiceForContext(auth.context);
-            const configOptions = await zcodeTaskService.setConfigOption({
+            const codezTaskService = await resolveCodezTaskServiceForContext(auth.context);
+            const configOptions = await codezTaskService.setConfigOption({
               taskId: active.taskId,
               traceId,
               configId: selectOption.id,
@@ -9566,7 +9566,7 @@ export function createBotsService(
               await repo.writeState(state);
             });
             if (auth.context.activeTaskId) {
-              const service = await resolveZCodeTaskServiceForContext(auth.context);
+              const service = await resolveCodezTaskServiceForContext(auth.context);
               const target = {
                 taskId: auth.context.activeTaskId,
                 workspacePath: auth.context.workspacePath,
@@ -9594,17 +9594,17 @@ export function createBotsService(
               return [createOutbound(message.actor, msg(auth.locale, "noActiveTask"))];
             }
             try {
-              const zcodeTaskService = await resolveZCodeTaskServiceForContext(auth.context);
+              const codezTaskService = await resolveCodezTaskServiceForContext(auth.context);
               if (auth.context.group?.threadId) {
-                if (!zcodeTaskService.readBotTopicExecution)
+                if (!codezTaskService.readBotTopicExecution)
                   throw new Error("Topic runtime control is unavailable");
-                const executionId = await zcodeTaskService.readBotTopicExecution({
+                const executionId = await codezTaskService.readBotTopicExecution({
                   taskId: auth.context.activeTaskId,
                   workspacePath: auth.context.workspacePath,
                   workspaceIdentity: auth.context.workspaceIdentity,
                 });
                 if (executionId) await stopTopicRun(auth.context, executionId.executionId);
-              } else await zcodeTaskService.stopGeneration({ taskId: auth.context.activeTaskId });
+              } else await codezTaskService.stopGeneration({ taskId: auth.context.activeTaskId });
             } catch (error) {
               const messageText = error instanceof Error ? error.message : String(error);
               return [
@@ -9639,8 +9639,8 @@ export function createBotsService(
               return [createOutbound(message.actor, msg(auth.locale, "permissionExpired"))];
             if (option.handledAt)
               return [createOutbound(message.actor, msg(auth.locale, "permissionHandled"))];
-            const zcodeTaskService = await resolveZCodeTaskServiceForContext(auth.context);
-            const submitted = await zcodeTaskService.respondPermission({
+            const codezTaskService = await resolveCodezTaskServiceForContext(auth.context);
+            const submitted = await codezTaskService.respondPermission({
               taskId: auth.context.activeTaskId,
               requestId: option.requestId,
               optionId: option.optionId,
@@ -9719,8 +9719,8 @@ export function createBotsService(
             if (!pendingOption) {
               return [createOutbound(message.actor, msg(auth.locale, "permissionHandled"))];
             }
-            const zcodeTaskService = await resolveZCodeTaskServiceForContext(auth.context);
-            const submitted = await zcodeTaskService.respondPermission({
+            const codezTaskService = await resolveCodezTaskServiceForContext(auth.context);
+            const submitted = await codezTaskService.respondPermission({
               taskId: auth.context.activeTaskId,
               requestId: command.requestId,
               optionId: command.optionId,
@@ -9747,8 +9747,8 @@ export function createBotsService(
             const pendingOption = auth.context.pendingPermissionOptions?.find(
               (option) => option.requestId === command.requestId && option.command === "deny",
             );
-            const zcodeTaskService = await resolveZCodeTaskServiceForContext(auth.context);
-            const submitted = await zcodeTaskService.respondPermission({
+            const codezTaskService = await resolveCodezTaskServiceForContext(auth.context);
+            const submitted = await codezTaskService.respondPermission({
               taskId: auth.context.activeTaskId,
               requestId: command.requestId,
               optionId: "deny",
@@ -9835,7 +9835,7 @@ export function createBotsService(
           pendingTopicKeys.map(async (key) => {
             const context = states[key];
             if (!context?.activeTaskId) return;
-            const taskService = await resolveZCodeTaskServiceForContext(context);
+            const taskService = await resolveCodezTaskServiceForContext(context);
             await taskService.invalidateBotTopicInputs?.({
               taskId: context.activeTaskId,
               workspacePath: context.workspacePath,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { WEB_REMOTE_CONTROL_RELAY_AUTH_PROOF_VECTORS } from "@zcode/shared";
+import { WEB_REMOTE_CONTROL_RELAY_AUTH_PROOF_VECTORS } from "@codez/shared";
 import { calculateBrowserWebRemoteControlProof } from "../src/webRemoteControlRelayAuthProvider.js";
 
 describe("calculateBrowserWebRemoteControlProof", () => {

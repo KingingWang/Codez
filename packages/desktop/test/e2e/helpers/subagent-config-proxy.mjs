@@ -17,7 +17,7 @@ if (process.argv.includes("app-server") && process.argv.includes("--stdio")) {
       NODE_OPTIONS: (process.env.NODE_OPTIONS ?? "").replace(preload, "").trim(),
     },
   });
-  const root = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const root = process.env.CODEZ_E2E_ARTIFACT_DIR;
   const control = join(root, "subagent-config-control.json");
   const log = join(root, `subagent-config-rpc-${child.pid}.jsonl`);
   const pending = new Map();

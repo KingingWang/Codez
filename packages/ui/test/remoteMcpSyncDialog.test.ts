@@ -1,7 +1,7 @@
 import { createElement, isValidElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { IMcpSyncService } from "@zcode/services";
+import type { IMcpSyncService } from "@codez/services";
 import {
   buildRemoteMcpSyncRows,
   buildRemoteMcpSyncImportParams,
@@ -76,7 +76,7 @@ vi.mock("@/components/ui/dialog.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: (
         { id }: { id: string },
@@ -125,7 +125,7 @@ function createMcpSyncServiceStub(): IMcpSyncService {
     })),
     checkRemoteUserMcpWriteAccess: vi.fn(async () => ({
       ok: true,
-      path: "/home/dev/.zcode/cli",
+      path: "/home/dev/.codez/cli",
     })),
     importMcpServers: vi.fn(async () => ({ results: [] })),
   };
@@ -143,8 +143,8 @@ describe("RemoteMcpSyncDialog helpers", () => {
               name: "filesystem",
               config: { type: "stdio", command: "npx" },
               enabled: true,
-              source: "zcode",
-              path: "/Users/alice/.zcode/cli/config.json",
+              source: "codez",
+              path: "/Users/alice/.codez/cli/config.json",
             },
           ],
         },
@@ -168,16 +168,16 @@ describe("RemoteMcpSyncDialog helpers", () => {
           name: "context7",
           config: { type: "stdio", command: "npx" },
           enabled: true,
-          source: "zcode",
-          path: "/Users/me/.zcode/cli/config.json",
+          source: "codez",
+          path: "/Users/me/.codez/cli/config.json",
         },
         {
           id: "docs-id",
           name: "docs",
           config: { type: "http", url: "https://mcp.example.com/mcp" },
           enabled: true,
-          source: "zcode",
-          path: "/Users/me/.zcode/cli/config.json",
+          source: "codez",
+          path: "/Users/me/.codez/cli/config.json",
         },
       ],
       [{ name: "docs", exists: true }],
@@ -305,8 +305,8 @@ describe("RemoteMcpSyncDialog", () => {
           name: "filesystem",
           config: { type: "stdio", command: "npx" },
           enabled: true,
-          source: "zcode",
-          path: "/Users/me/.zcode/cli/config.json",
+          source: "codez",
+          path: "/Users/me/.codez/cli/config.json",
         },
       ],
       [],
@@ -323,7 +323,7 @@ describe("RemoteMcpSyncDialog", () => {
     expect(html).toContain("grid gap-2");
     expect(html).toContain("rounded-lg border border-border bg-surface");
     expect(html).toContain('aria-labelledby="remote-mcp-sync-filesystem-id-label"');
-    expect(html).toContain("/Users/me/.zcode/cli/config.json");
+    expect(html).toContain("/Users/me/.codez/cli/config.json");
     expect(html).not.toContain("divide-y divide-border");
   });
 

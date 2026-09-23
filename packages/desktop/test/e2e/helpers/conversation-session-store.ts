@@ -74,7 +74,7 @@ export function getV4ComposerDraftScopeSnapshot(
     (workspacePathArg, taskIdArg, workspaceIdentityArg) => {
       const scopeId = taskIdArg ?? "__draft__";
       const workspaceKey = workspaceIdentityArg?.trim() || workspacePathArg;
-      const storageKey = `zcode-v4-composer-drafts:v1:${encodeURIComponent(workspaceKey)}`;
+      const storageKey = `codez-v4-composer-drafts:v1:${encodeURIComponent(workspaceKey)}`;
       let draft: Record<string, unknown> | null = null;
       try {
         const raw = window.localStorage.getItem(storageKey);

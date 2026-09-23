@@ -59,7 +59,7 @@ const windowsNativeSearchCmake = readFileSync(
 
 // 内网依赖源由环境显式配置；用中性主机，测试不依赖仓库默认的内网地址（开源导出里默认地址为空）。
 const INTRANET_ENV = { INTRANET_MACHINE_HOST: "intranet-deps.example" };
-const INTRANET_DEPS_BASE_URL = "http://intranet-deps.example:12345/zcode/deps";
+const INTRANET_DEPS_BASE_URL = "http://intranet-deps.example:12345/codez/deps";
 
 describe("native search build", () => {
   it("通过简洁的 host-target producer 命令打包原生搜索工具", () => {
@@ -300,13 +300,13 @@ describe("native search build", () => {
     ).toBe("https://example.test/ripgrep");
     expect(
       resolveNativeSearchRipgrepDownloadBaseUrl({
-        ZCODE_DEPS_BASE_URL: "https://deps.example.test/zcode/deps/",
+        CODEZ_DEPS_BASE_URL: "https://deps.example.test/codez/deps/",
       }),
-    ).toBe("https://deps.example.test/zcode/deps/native-search-tools/ripgrep-v14.1.1-1");
+    ).toBe("https://deps.example.test/codez/deps/native-search-tools/ripgrep-v14.1.1-1");
   });
 
   it("producer 按下载契约生成稳定的 tar.gz 与 Windows zip", async () => {
-    const root = mkdtempSync(join(tmpdir(), "zcode-native-search-package-test-"));
+    const root = mkdtempSync(join(tmpdir(), "codez-native-search-package-test-"));
     try {
       for (const [platform, arch] of [
         ["darwin", "arm64"],
@@ -365,7 +365,7 @@ describe("native search build", () => {
   });
 
   it("producer 可以生成候选归档，固定摘要由发布边界校验", async () => {
-    const root = mkdtempSync(join(tmpdir(), "zcode-native-search-unpinned-release-test-"));
+    const root = mkdtempSync(join(tmpdir(), "codez-native-search-unpinned-release-test-"));
     try {
       const prebuiltPlan = resolveNativeSearchPrebuiltPlan({
         platform: "linux",
@@ -393,7 +393,7 @@ describe("native search build", () => {
   });
 
   it("Windows zip producer 在不同时区生成相同字节", () => {
-    const root = mkdtempSync(join(tmpdir(), "zcode-native-search-zip-timezone-test-"));
+    const root = mkdtempSync(join(tmpdir(), "codez-native-search-zip-timezone-test-"));
     try {
       const prebuiltPlan = resolveNativeSearchPrebuiltPlan({
         platform: "win32",
@@ -542,7 +542,7 @@ describe("native search build", () => {
     ["win32", "x64", "ugrep", "ugrep.exe"],
     ["win32", "x64", "ripgrep", "rg.exe"],
   ] as const)("为 %s-%s 生成 %s sidecar 路径", (platform, arch, toolId, binaryName) => {
-    const outputDir = join(tmpdir(), `zcode-native-search-${platform}-${arch}`);
+    const outputDir = join(tmpdir(), `codez-native-search-${platform}-${arch}`);
     const plan = resolveNativeSearchBuildPlan({ platform, arch, outputDir });
 
     expect(plan.platformKey).toBe(`${platform}-${arch}`);
@@ -611,8 +611,8 @@ describe("native search build", () => {
   });
 
   it("bfs 构建 flags 不记录随机临时目录", () => {
-    const sourcePath = "/tmp/zcode-native-search-build-random/sources/bfs";
-    const prefix = "/tmp/zcode-native-search-build-random/prefix";
+    const sourcePath = "/tmp/codez-native-search-build-random/sources/bfs";
+    const prefix = "/tmp/codez-native-search-build-random/prefix";
     const config = resolveNativeUnixBuildConfig({
       platform: "darwin",
       arch: "arm64",
@@ -630,7 +630,7 @@ describe("native search build", () => {
     expect(env.EXTRA_LDLIBS).toBe("-lonig");
     expect(env.PKG_CONFIG).toBe("true");
     expect(env.VERSION).toBe("4.1.1");
-    expect(Object.values(env).join(" ")).not.toContain("zcode-native-search-build-random");
+    expect(Object.values(env).join(" ")).not.toContain("codez-native-search-build-random");
   });
 
   it("Linux verifier 应拒绝 bfs/ugrep 动态依赖 C++ runtime", () => {
@@ -794,7 +794,7 @@ describe("native search build", () => {
     expect(x64Config).not.toHaveProperty("cargo");
     expect(arm64Config).not.toHaveProperty("cargo");
     expect(windowsNativeSearchCmake).toMatch(
-      /target_compile_options\(zcode_ugrep_contract INTERFACE[\s\S]*?\/utf-8[\s\S]*?\n\)/,
+      /target_compile_options\(codez_ugrep_contract INTERFACE[\s\S]*?\/utf-8[\s\S]*?\n\)/,
     );
     expect(() =>
       resolveNativeWindowsBuildConfig({
@@ -807,7 +807,7 @@ describe("native search build", () => {
   });
 
   it("Windows verifier 读取 PE machine/import table 并拒绝动态 CRT", () => {
-    const root = mkdtempSync(join(tmpdir(), "zcode-native-search-pe-test-"));
+    const root = mkdtempSync(join(tmpdir(), "codez-native-search-pe-test-"));
     try {
       const validPath = join(root, "valid-ugrep.exe");
       const validArm64Path = join(root, "valid-arm64-ugrep.exe");
@@ -882,7 +882,7 @@ describe("native search build", () => {
   });
 
   it("下载侧静态 verifier 应按 Mach-O、ELF 与 PE header 拒绝错误目标架构", () => {
-    const root = mkdtempSync(join(tmpdir(), "zcode-native-search-target-verifier-test-"));
+    const root = mkdtempSync(join(tmpdir(), "codez-native-search-target-verifier-test-"));
     try {
       const machoPath = join(root, "darwin-arm64");
       const elfPath = join(root, "linux-x64");

@@ -142,7 +142,7 @@ Windows/Linux 复用同一内联窗控组件，28px 按钮、16px 图标、2px �
 
 - 2026-09-04 终端独立外框：39 项相关单测、7 项 Electron E2E、typecheck 与 lint 通过；E2E 验证终端位于会话框外、同属左列、间距 4px，以及三面板深浅主题背景一致。运行 ID：`desktop-e2e-20260904104922835-p29510-089fd6229a80617c`。Windows 原生边缘逻辑保留，Windows/Linux 和手机独立视觉验证待补。
 - 2026-09-04：相关 8 个单测文件，51 项通过、1 项已有跳过。新增 Header 归属与控制区预留用例先失败后通过。
-- `pnpm typecheck`、`pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm lint` 通过；Lint 41 个已有警告、0 错误。
+- `pnpm typecheck`、`pnpm --filter @codez/desktop typecheck:e2e`、`pnpm lint` 通过；Lint 41 个已有警告、0 错误。
 - macOS Electron 最终 4px 版本：7/7 通过；运行 ID `desktop-e2e-20260904084050358-p6937-68e000533efda13e`。
 - 运行时验证包含：4px 间距、上下对齐、双 xl 外框、Header 归属、真实指针拖动改变宽度、底部终端独立外框、关闭后宽度恢复、标签栏开关与缩放交互，以及浅色/深色背景一致性。两种主题截图已检查。
 - Windows/Linux caption 和手机远控路径有单测覆盖，尚未执行这些平台的独立视觉 E2E；截图中的透明窗口底层不等同于操作系统最终合成的 vibrancy 材质。
@@ -155,7 +155,7 @@ Windows/Linux 复用同一内联窗控组件，28px 按钮、16px 图标、2px �
 
 工作区图标与名称同行，名称下方显示路径并与名称左边缘对齐。路径使用次级前景与 text-ui-sm；只有属于当前工作区所在主机的 home 目录时缩写为 `~`，未取得 home 时显示原路径。下方显示当前会话最近活动，分支前增加 border-border/50 分隔线；非 Git 工作区不显示分支或分隔线。
 
-排版验证：相关单测 7/7、macOS Electron TTL01–TTL07 7/7，路径实测 `~/ZCodeProject`；typecheck、lint 通过（46 个已有警告）。运行记录：`desktop-e2e-20260907080616432-p60066-d11800800bd11757`。
+排版验证：相关单测 7/7、macOS Electron TTL01–TTL07 7/7，路径实测 `~/CodezProject`；typecheck、lint 通过（46 个已有警告）。运行记录：`desktop-e2e-20260907080616432-p60066-d11800800bd11757`。
 
 - 2026-09-10 MR !2586 CR-01：修复 macOS 窗口状态查询被 hook 守卫跳过。新增两条真实 hook 回归先失败后通过；26 项相关单测、typecheck、lint（44 个既有警告、0 错误）通过。Windows Electron SPT-E2E-000 通过，运行 ID desktop-e2e-20260910-040930-907。macOS 原生视觉与手机实机未验证。
 

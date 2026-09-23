@@ -233,7 +233,7 @@ describe("ContextQuotaResetOpportunityReminderContent", () => {
     );
     expect(html).toContain("codingPlan.quotaReset.contextReminder.expiresIn");
     expect(html).toContain("lucide-alarm-clock");
-    expect(html).toContain("animate-zcode-alarm-ring");
+    expect(html).toContain("animate-codez-alarm-ring");
     expect(html).toContain("motion-reduce:animate-none");
     expect(html).toContain("text-warning");
     expect(html).toContain("bg-warning/10");

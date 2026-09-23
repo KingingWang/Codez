@@ -6,9 +6,9 @@ import {
   v4ConversationUsageParamsSchema,
   v4ConversationUsageResultSchema,
   v4UsageStatsParamsSchema,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
-describe("zcode protocol v4 usage query", () => {
+describe("codez protocol v4 usage query", () => {
   it("freezes the v4 usage method names", () => {
     // 方法名是 wire 契约：变更 = 破坏性协议改动，必须走新增方法而非改名。
     expect(V4_METHODS.usageStats).toBe("v4/usage/stats");

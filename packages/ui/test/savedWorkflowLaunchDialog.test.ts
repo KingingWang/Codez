@@ -10,9 +10,9 @@ import {
   TID_WORKFLOW_LAUNCH_SUBMIT,
   TID_WORKFLOW_LAUNCH_TARGET,
   testId,
-  type ZCodeSavedWorkflowEntry,
-} from "@zcode/shared";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+  type CodezSavedWorkflowEntry,
+} from "@codez/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   resolveAutomationWorkspaceSelectionKey,
   type AutomationWorkspaceOption,
@@ -20,11 +20,11 @@ import {
 import { SavedWorkflowLaunchDialog } from "@/settings/saved-workflows/SavedWorkflowLaunchDialog.js";
 import type { SavedWorkflowLaunchError } from "@/settings/saved-workflows/useSavedWorkflowLauncher.js";
 
-const ENTRY: ZCodeSavedWorkflowEntry = {
+const ENTRY: CodezSavedWorkflowEntry = {
   name: "release-check",
   description: "发布前检查",
   scope: "project",
-  path: "/repo/.zcode/workflows/release-check.dwf.ts",
+  path: "/repo/.codez/workflows/release-check.dwf.ts",
   args: {
     branch: { type: "string", required: true, description: "目标分支" },
     count: { type: "number", default: 3 },
@@ -33,11 +33,11 @@ const ENTRY: ZCodeSavedWorkflowEntry = {
   },
 };
 
-const GLOBAL_ENTRY: ZCodeSavedWorkflowEntry = {
+const GLOBAL_ENTRY: CodezSavedWorkflowEntry = {
   name: "deep-research",
   description: "深度调研",
   scope: "global",
-  path: "/home/.zcode/workflows/deep-research.dwf.ts",
+  path: "/home/.codez/workflows/deep-research.dwf.ts",
 };
 
 const ALPHA: AutomationWorkspaceOption = { workspacePath: "/repo/alpha", label: "Alpha" };
@@ -58,7 +58,7 @@ afterEach(() => {
 });
 
 function mount(
-  entry: ZCodeSavedWorkflowEntry | null,
+  entry: CodezSavedWorkflowEntry | null,
   extra: {
     targets?: readonly AutomationWorkspaceOption[];
     defaultTargetKey?: string | null;
@@ -73,7 +73,7 @@ function mount(
   const { scope, projectLabel, ...rest } = extra;
   render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(SavedWorkflowLaunchDialog, {
         entry,

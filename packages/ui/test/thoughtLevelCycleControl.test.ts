@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ThoughtLevelCycleControl } from "@/chat-input-toolbar/ThoughtLevelCycleControl.js";
 import { getNextThoughtLevelValue } from "@/chat-input-toolbar/thoughtLevelOptions.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import type { ZCodeConfigOption } from "@zcode/shared";
+import type { CodezConfigOption } from "@codez/shared";
 
 const zhIntl = {
   formatMessage({ id }: { id: string }) {
@@ -75,7 +75,7 @@ describe("ThoughtLevelCycleControl", () => {
   );
 
   it("单档位只读展示，不渲染可展开的选择器", () => {
-    const option: ZCodeConfigOption = {
+    const option: CodezConfigOption = {
       id: "thought_level",
       category: "thought_level",
       type: "select",
@@ -99,7 +99,7 @@ describe("ThoughtLevelCycleControl", () => {
   });
 
   it("非法历史值遇到单档模型时仍渲染选择器以便修正", () => {
-    const option: ZCodeConfigOption = {
+    const option: CodezConfigOption = {
       id: "thought_level",
       category: "thought_level",
       type: "select",
@@ -125,7 +125,7 @@ describe("ThoughtLevelCycleControl", () => {
   });
 
   it("显示当前思考阶梯文案", () => {
-    const option: ZCodeConfigOption = {
+    const option: CodezConfigOption = {
       id: "thought_level",
       category: "thought_level",
       type: "select",
@@ -150,7 +150,7 @@ describe("ThoughtLevelCycleControl", () => {
   });
 
   it("进度条仅在 sm 到 xl 的中间宽度显示", () => {
-    const option: ZCodeConfigOption = {
+    const option: CodezConfigOption = {
       id: "thought_level",
       category: "thought_level",
       type: "select",
@@ -175,7 +175,7 @@ describe("ThoughtLevelCycleControl", () => {
   });
 
   it("允许 composer 先隐藏箭头并在超窄宽度收成正方形", () => {
-    const option: ZCodeConfigOption = {
+    const option: CodezConfigOption = {
       id: "thought_level",
       category: "thought_level",
       type: "select",
@@ -207,7 +207,7 @@ describe("ThoughtLevelCycleControl", () => {
   });
 
   it("文字收起时仍保留当前阶梯文案用于 tooltip 和可访问信息", () => {
-    const option: ZCodeConfigOption = {
+    const option: CodezConfigOption = {
       id: "thought_level",
       category: "thought_level",
       type: "select",
@@ -234,7 +234,7 @@ describe("ThoughtLevelCycleControl", () => {
   });
 
   it("保留 cycle 模式用于恢复旧版点击循环交互", () => {
-    const option: ZCodeConfigOption = {
+    const option: CodezConfigOption = {
       id: "thought_level",
       category: "thought_level",
       type: "select",
@@ -261,7 +261,7 @@ describe("ThoughtLevelCycleControl", () => {
   });
 
   it("Ctrl+T 快速切换按展示顺序选择下一个思考档位", () => {
-    const option: ZCodeConfigOption = {
+    const option: CodezConfigOption = {
       id: "thought_level",
       category: "thought_level",
       type: "select",

@@ -1,7 +1,7 @@
 // 编译反馈的稿号联接（docs/dynamic-workflow/presentation.md「Compiler feedback」）：行窗口一遍建成，
 // 这里穷举「谱系 × 同轮 × 编过即重置 × 无 display 透明 × 跨轮被替代」几条规则。
 import { describe, expect, it } from "vitest";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 import { buildWorkflowDraftByToolCallId } from "@/v4/workflowDraftJoin.js";
 
 let seq = 0;

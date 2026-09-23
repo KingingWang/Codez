@@ -1,7 +1,7 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TID_V4_SUBAGENT_OPEN_SIDE_PANE, testId } from "@zcode/shared";
+import { TID_V4_SUBAGENT_OPEN_SIDE_PANE, testId } from "@codez/shared";
 import { SubagentSessionSidePane } from "@/app-shell/SubagentSessionSidePane.js";
 import {
   closeVisibleSidePaneTabs,

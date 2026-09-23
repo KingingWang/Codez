@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { TID_CHAT_ATTACHMENT_BUTTON, TID_V4_COMPOSER_INPUT } from "@zcode/shared";
+import { TID_CHAT_ATTACHMENT_BUTTON, TID_V4_COMPOSER_INPUT } from "@codez/shared";
 import { clearAppData, setInputValueByTestIdDom } from "../../../helpers/desktop-app.js";
 import {
   getV4ComposerText,
@@ -82,7 +82,7 @@ describe("PLUS composer context menu", () => {
 
   it("PLUS01/03 shares the enabled plugin candidate with @ and supports Escape", async () => {
     await clearDraft("@skill-creator");
-    const plugin = '[data-option-id="plugin:skill-creator@zcode-plugins-official"]';
+    const plugin = '[data-option-id="plugin:skill-creator@codez-plugins-official"]';
     await $(`[data-trigger="@"] ${plugin}`).waitForDisplayed({ timeout: 30000 });
     await browser.keys("Escape");
     await clearDraft("E2E_PLUS_MENU ");
@@ -91,7 +91,7 @@ describe("PLUS composer context menu", () => {
     await $(`${panel} ${plugin}`).click();
     await browser.waitUntil(
       async () =>
-        (await getV4ComposerText())?.includes("plugin://skill-creator@zcode-plugins-official") ===
+        (await getV4ComposerText())?.includes("plugin://skill-creator@codez-plugins-official") ===
         true,
     );
     expect(await getV4ComposerText()).toContain("E2E_PLUS_MENU ");
@@ -105,14 +105,14 @@ describe("PLUS composer context menu", () => {
   it("PLUS02 inserts into the current draft after the saved selection becomes stale", async () => {
     await clearDraft("E2E_PLUS_MENU old draft");
     await openMenu();
-    const plugin = `${panel} [data-option-id="plugin:skill-creator@zcode-plugins-official"]`;
+    const plugin = `${panel} [data-option-id="plugin:skill-creator@codez-plugins-official"]`;
     await $(plugin).waitForDisplayed({ timeout: 30000 });
     // 通过现有 E2E bridge 模拟程序回填；菜单应关闭，重开后使用新草稿。
     await browser.execute((testId) => {
       const input = document.querySelector(`[data-testid="${testId}"]`) as HTMLElement & {
-        __zcodeLexicalInputE2E: { setText: (text: string) => void };
+        __codezLexicalInputE2E: { setText: (text: string) => void };
       };
-      input.__zcodeLexicalInputE2E.setText("E2E_PLUS_MENU replacement ");
+      input.__codezLexicalInputE2E.setText("E2E_PLUS_MENU replacement ");
     }, TID_V4_COMPOSER_INPUT);
     await browser.waitUntil(
       async () => (await getV4ComposerText()) === "E2E_PLUS_MENU replacement ",
@@ -122,7 +122,7 @@ describe("PLUS composer context menu", () => {
     await $(plugin).click();
     await browser.waitUntil(
       async () =>
-        (await getV4ComposerText())?.includes("plugin://skill-creator@zcode-plugins-official") ===
+        (await getV4ComposerText())?.includes("plugin://skill-creator@codez-plugins-official") ===
         true,
     );
     expect(await getV4ComposerText()).toContain("E2E_PLUS_MENU replacement ");
@@ -156,7 +156,7 @@ describe("PLUS composer context menu", () => {
       await clearDraft();
       await openMenu();
       await $(
-        `${panel} [data-option-id="plugin:skill-creator@zcode-plugins-official"]`,
+        `${panel} [data-option-id="plugin:skill-creator@codez-plugins-official"]`,
       ).waitForDisplayed({ timeout: 30000 });
       // 候选异步加载且 Popover 有打开动画，需等待实际列表扩展后再检查布局。
       await browser.waitUntil(async () => (await readLayout()).listHeight > 224, {

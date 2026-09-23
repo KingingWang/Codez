@@ -25,7 +25,7 @@ Desktop CI 不再定义 `build:web-remote-control:image` 和 `deploy:web-remote-
 - `validate`：approve 放行后自动校验六个平台 `latest.yml` 的版本、日志、引用文件、size/sha512，并校验 remote component sha256；upload 只能在本阶段成功后执行
 - `upload`：上传当前纳入正式发布的 macOS / Windows / Linux 版本化构建产物，以及 remote manifest/components 到 OSS；Electron 产物写入 `<version>/<platform>-<arch>/`，例如 `v3.3.3/macos-arm64/`，本阶段解析更新元数据生成 `release-meta-*.json`，但不覆盖 stable feed。
 - `preload`：`release:preload:cdn` 在 upload 成功后自动预热版本化平台/架构产物和 remote components；该阶段必须成功后才允许进入 publish，避免服务端 manifest 发布后客户端拉到尚未预热的安装包或 blockmap。
-- `publish`：`release:publish:gray` 在预热成功后自动执行。job 先直接调用后端灰度控制接口 `https://zcode-api.z.ai/api-admin/v1/releases/gray`（可由 `ROLLOUT_API_URL` 或 `ZCODE_RELEASE_GRAY_API_URL` 覆盖）并携带 `Authorization: Bearer $ROLLOUT_ADMIN_TOKEN`，将灰度开关重置为关闭且比例归零；重置成功后才调用后端 release API 写入 `status=3`，避免新版本继承上一轮灰度策略。`release:publish:stable` 位于同一 stage，通过 `needs` 等待 gray，人工触发后复用同一批 `release-meta-*.json` 写入 `status=1`；`ci*` 分支默认只允许自动验证到 gray，脚本会阻止它默认写正式 stable 状态。
+- `publish`：`release:publish:gray` 在预热成功后自动执行。job 先直接调用后端灰度控制接口 `https://codez-api.z.ai/api-admin/v1/releases/gray`（可由 `ROLLOUT_API_URL` 或 `CODEZ_RELEASE_GRAY_API_URL` 覆盖）并携带 `Authorization: Bearer $ROLLOUT_ADMIN_TOKEN`，将灰度开关重置为关闭且比例归零；重置成功后才调用后端 release API 写入 `status=3`，避免新版本继承上一轮灰度策略。`release:publish:stable` 位于同一 stage，通过 `needs` 等待 gray，人工触发后复用同一批 `release-meta-*.json` 写入 `status=1`；`ci*` 分支默认只允许自动验证到 gray，脚本会阻止它默认写正式 stable 状态。
 - `release-notify`：手动读取共享目录 `macos-arm64/latest.yml` 中由 infra 编辑的 `releaseNotes`，发送飞书发版成功通知
 
 Linux 桌面构建与 `notify:feishu:linux:*` 已启用；正式 tag 的 macOS、Windows、Linux x64/arm64 都进入主 upload、preload、publish 链路。sandbox/test-tag 验证链路仍维持现有 macOS arm64 上传范围。Linux 相关远程 runtime 仍由 `build:remote:assets` 作为 manifest/components 产出。
@@ -49,7 +49,7 @@ Linux 桌面构建与 `notify:feishu:linux:*` 已启用；正式 tag 的 macOS�
 | job                                          | 触发           | 职责                                                                                                                                                   |
 | -------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `approve:merge-request`                      | 手动、blocking | 放行当前 MR 的 production 验收包 DAG                                                                                                                   |
-| `build:preview`                              | 手动、optional | 启动同一 MR commit 的 Preview child pipeline；不继承 parent 默认变量，只显式传递 Preview 控制变量，固定 `ZCODE_ENV=test`，不阻塞 production 验收包 DAG |
+| `build:preview`                              | 手动、optional | 启动同一 MR commit 的 Preview child pipeline；不继承 parent 默认变量，只显式传递 Preview 控制变量，固定 `CODEZ_ENV=test`，不阻塞 production 验收包 DAG |
 | `test:e2e:conversation-session:auto`         | 手动、optional | 在共享 `macos + e2e` Runner 上单 job 执行正式 conversation/plugin/workspace-file-tree replay 集合                                                      |
 | `test:e2e:conversation-session:auto:windows` | 手动、optional | 生成四个 WDIO 原生 shard，调度到 `windows-e2e + e2e` Runner 池                                                                                         |
 | `test:e2e:conversation-session:auto:mac`     | 手动、optional | 只生成一个 job，并调度到专用标签的 darwin/arm64 Runner                                                                            |
@@ -72,10 +72,10 @@ Linux 桌面构建与 `notify:feishu:linux:*` 已启用；正式 tag 的 macOS�
 - `ci*` 分支 push：非 tag 的真实 release 链路验证入口，产物目录为 `@electron/ci/$CI_COMMIT_REF_SLUG/`，上传路径为 `OSS_PATH_PREFIX_SANDBOX/$CI_COMMIT_REF_SLUG`；`release:approve` 放行后自动执行 validate、upload、preload 和 gray publish，stable promote / release-notify 为手动。默认不允许 `ci*` 把验证包发布为正式 `status=1`；只有发布负责人明确批准演练时才可临时设置 `ALLOW_CI_RELEASE_STABLE_PUBLISH=1`。
 - Merge Request 到 `main` / `staging`：默认 production 打包验证，产物目录为 `@electron/dev/$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/`
 - Merge Request 到 `main` / `staging`：`approve-mr` 阶段额外展示 `build:preview`；不点击时不阻塞现有 MR 流水线，点击后以相同 MR ref/SHA 启动子流水线，Preview 产物目录为 `@electron-preview/$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/`
-- MR、GitLab Run pipeline、Pipeline Trigger API 或普通 API pipeline 显式传入 `ZCODE_ENV=test` 时，同样在 workflow 创建 job graph 时切换到 `@electron-preview/<branch>/`；未传或使用 `production` 时继续写入 `@electron/dev/<branch>/`。tag 与 `ci/*` 发布验证路径保持不变。
+- MR、GitLab Run pipeline、Pipeline Trigger API 或普通 API pipeline 显式传入 `CODEZ_ENV=test` 时，同样在 workflow 创建 job graph 时切换到 `@electron-preview/<branch>/`；未传或使用 `production` 时继续写入 `@electron/dev/<branch>/`。tag 与 `ci/*` 发布验证路径保持不变。
 - 源分支为 `staging` 或 `chore/ci` 的 MR：允许跑 CI
-- GitLab Web UI / Pipeline Trigger API / 普通 API 手动触发：production 产物目录为 `@electron/dev/$CI_COMMIT_REF_NAME/`，显式传入 `ZCODE_ENV=test` 时使用 Preview 路径。Trigger API 可以传 `ZCODE_BUILD_PLATFORMS=macos-arm64,windows-x64` 只自动打指定平台；未选平台保留非阻塞手动 job。
-- CUA Helper 双架构 job 跟随对应 macOS 平台选择规则；未传 `ZCODE_BUILD_PLATFORMS` 时双架构自动运行，传入列表后未选架构保留非阻塞手动入口。
+- GitLab Web UI / Pipeline Trigger API / 普通 API 手动触发：production 产物目录为 `@electron/dev/$CI_COMMIT_REF_NAME/`，显式传入 `CODEZ_ENV=test` 时使用 Preview 路径。Trigger API 可以传 `CODEZ_BUILD_PLATFORMS=macos-arm64,windows-x64` 只自动打指定平台；未选平台保留非阻塞手动 job。
+- CUA Helper 双架构 job 跟随对应 macOS 平台选择规则；未传 `CODEZ_BUILD_PLATFORMS` 时双架构自动运行，传入列表后未选架构保留非阻塞手动入口。
 - MR 与 GitLab Web UI 手动触发的 pipeline 会展示 `test:e2e:conversation-session:auto`、`test:e2e:conversation-session:auto:windows` 和 `test:e2e:conversation-session:auto:mac` 三个手动 optional E2E 入口；未点击或执行失败都不阻塞 `build:*`。tag 和 `ci*` release 验证链路不创建这些 job。
 
 专用 macOS Runner 的分片与调度关系：
@@ -91,8 +91,8 @@ Preview 手动链路：
 MR parent pipeline
   `-- build:preview [manual, optional]
         +-- inherit parent default variables: false
-        +-- forward: ZCODE_PREVIEW_PIPELINE / ZCODE_ENV / TARGET_OUTPUT_DIR
-        `-- child pipeline [same MR ref/SHA, ZCODE_ENV=test]
+        +-- forward: CODEZ_PREVIEW_PIPELINE / CODEZ_ENV / TARGET_OUTPUT_DIR
+        `-- child pipeline [same MR ref/SHA, CODEZ_ENV=test]
               +-- resolve temp/cache paths from child runner CI_PROJECT_DIR
               +-- desktop app + macOS/Windows/Linux + Computer Use Helper + remote assets
               +-- artifact notifications
@@ -102,8 +102,8 @@ MR parent pipeline
 ## Computer Use Helper 测试包固定流程
 
 CUA / broker / permission 相关测试包必须走 `ci*` 分支或含 `test` 的 tag，产物放在
-`/zcode/@electron/ci/<test-build-name>/` 或 sandbox 路径，不能放到
-`/zcode/@electron/release/`。`release/` 只给正式版本目录使用。
+`/codez/@electron/ci/<test-build-name>/` 或 sandbox 路径，不能放到
+`/codez/@electron/release/`。`release/` 只给正式版本目录使用。
 
 推荐优先使用 `ci*` 分支验证 producer 链路，因为它不需要创建 tag，也能跑真实签名、
 公证、staple 和共享目录同步：
@@ -128,39 +128,39 @@ glab ci list --ref "${CI_BRANCH}" --sha "$(git rev-parse HEAD)"
 两个 `build:cua-helper:*` job 都随 build DAG 自动调度，不需要在 GitLab UI 中逐个点击运行。Helper 构建失败会按普通 build job 语义使流水线失败，避免 macOS 验收包在未产出同流水线 Helper 的情况下继续成为可交付结果。
 
 `build:macos:<arch>` 通过 `needs`（`optional`）依赖同架构的 `build:cua-helper:<arch>` artifact。strict
-release 的产物验收（`scripts/notarize-macos.sh` → `doctor-macos-release-app.sh`，`ZCODE_CUA_REQUIRE_HELPER=1`）
-会定位最终 `ZCode.app/Contents/Resources/cua-helper/ZCode Computer Use.app` 并设
-`ZCODE_CUA_HELPER_APP_PATH`，因此校验的是实际随 DMG 交付的内嵌副本，而不是中间 artifact 或 runner 上
-`${ZCODE_HOME:-$HOME/.zcode}` 的残留状态。包内 Helper 缺失会 fail-closed。
+release 的产物验收（`scripts/notarize-macos.sh` → `doctor-macos-release-app.sh`，`CODEZ_CUA_REQUIRE_HELPER=1`）
+会定位最终 `Codez.app/Contents/Resources/cua-helper/Codez Computer Use.app` 并设
+`CODEZ_CUA_HELPER_APP_PATH`，因此校验的是实际随 DMG 交付的内嵌副本，而不是中间 artifact 或 runner 上
+`${CODEZ_HOME:-$HOME/.codez}` 的残留状态。包内 Helper 缺失会 fail-closed。
 
 成功后固定下载入口如下，其中 `<slug>` 是 GitLab 的 `$CI_COMMIT_REF_SLUG`：
 
 ```text
-http://intranet.example.invalid:12345/zcode/@electron/ci/<slug>/macos-arm64/ZCode-<version>-mac-arm64.dmg
-http://intranet.example.invalid:12345/zcode/@electron/ci/<slug>/macos-arm64/ZCode-<version>-mac-arm64.zip
-http://intranet.example.invalid:12345/zcode/@electron/ci/<slug>/macos-x64/ZCode-<version>-mac-x64.dmg
-http://intranet.example.invalid:12345/zcode/@electron/ci/<slug>/macos-x64/ZCode-<version>-mac-x64.zip
+http://intranet.example.invalid:12345/codez/@electron/ci/<slug>/macos-arm64/Codez-<version>-mac-arm64.dmg
+http://intranet.example.invalid:12345/codez/@electron/ci/<slug>/macos-arm64/Codez-<version>-mac-arm64.zip
+http://intranet.example.invalid:12345/codez/@electron/ci/<slug>/macos-x64/Codez-<version>-mac-x64.dmg
+http://intranet.example.invalid:12345/codez/@electron/ci/<slug>/macos-x64/Codez-<version>-mac-x64.zip
 
-http://intranet.example.invalid:12345/zcode/@electron/ci/<slug>/pipeline-<pipeline-id>/cua-helper-macos-arm64/ZCode-CUA-Helper-<version>-mac-arm64.zip
-http://intranet.example.invalid:12345/zcode/@electron/ci/<slug>/pipeline-<pipeline-id>/cua-helper-macos-x64/ZCode-CUA-Helper-<version>-mac-x64.zip
+http://intranet.example.invalid:12345/codez/@electron/ci/<slug>/pipeline-<pipeline-id>/cua-helper-macos-arm64/Codez-CUA-Helper-<version>-mac-arm64.zip
+http://intranet.example.invalid:12345/codez/@electron/ci/<slug>/pipeline-<pipeline-id>/cua-helper-macos-x64/Codez-CUA-Helper-<version>-mac-x64.zip
 
 （`pipeline-<pipeline-id>` 是候选 Helper 的隔离目录；Helper plist 的
-`ZCODECUAHelperBuildId` 形如 `pipeline-<pipeline-id>-<short-sha>`，按 build id
+`CODEZCUAHelperBuildId` 形如 `pipeline-<pipeline-id>-<short-sha>`，按 build id
 中的 pipeline id 定位下载目录。）
 ```
 
 The Helper jobs also sync the resolver-friendly default dependency URL:
 
 ```text
-http://intranet.example.invalid:12345/zcode/deps/zcode-cua-helper-<version>/ZCode-CUA-Helper-<version>-mac-arm64.zip
-http://intranet.example.invalid:12345/zcode/deps/zcode-cua-helper-<version>/ZCode-CUA-Helper-<version>-mac-x64.zip
+http://intranet.example.invalid:12345/codez/deps/codez-cua-helper-<version>/Codez-CUA-Helper-<version>-mac-arm64.zip
+http://intranet.example.invalid:12345/codez/deps/codez-cua-helper-<version>/Codez-CUA-Helper-<version>-mac-x64.zip
 ```
 
 Record SHA-256 for every package that will be handed to testers:
 
 ```bash
-shasum -a 256 ZCode-<version>-mac-arm64.zip \
-  ZCode-CUA-Helper-<version>-mac-arm64.zip
+shasum -a 256 Codez-<version>-mac-arm64.zip \
+  Codez-CUA-Helper-<version>-mac-arm64.zip
 ```
 
 Minimum producer evidence before sending the package:
@@ -174,8 +174,8 @@ glab api 'projects/:fullpath/jobs/<helper-job-id>/trace' \
 ```
 
 For release-quality CUA validation, do not stop at package production. Install the
-standalone Helper under `${ZCODE_HOME:-$HOME/.zcode}/computer-use/ZCode Computer Use.app`,
-launch the matching ZCode.app, and run the zcode-cua consumer gates. Product broker
+standalone Helper under `${CODEZ_HOME:-$HOME/.codez}/computer-use/Codez Computer Use.app`,
+launch the matching Codez.app, and run the codez-cua consumer gates. Product broker
 sockets are minted as random `broker-<hex>.sock` files; do not hard-code
 `broker.sock` in new validation scripts.
 
@@ -200,25 +200,25 @@ sockets are minted as random `broker-<hex>.sock` files; do not hard-code
 
 三个平台的正式打包 job 都不得调用 runtime 行为 E2E。native-search 的 Bash toolcall E2E 和 SEA 单文件 runtime-tools E2E 继续保留为独立测试命令；其中 SEA 只验证 CLI 单文件交付，不是 desktop Electron 打包的前置条件。
 
-三个平台的打包 job 都会在 `prepare:desktop-runtime` 前执行 `ci:ensure-native-search-deps`，并作为授权的共享 deps 写入入口显式设置 `ZCODE_NATIVE_SEARCH_ALLOW_PUBLISH=1`。该步骤直接检查共享根的 `deps/native-search-tools`：Microsoft `rg` 缺失时立即失败；自产 `bfs` / `ugrep` 缺失时，在当前平台 runner 构建并发布。相同 `platform-arch` 的 job 通过 `resource_group` 跨 pipeline 串行。所有 producer 归档都必须配置 SHA-256，并在发布、HTTP prepare 和解包前通过校验；摘要缺失或不匹配时立即失败。发布后仍由正式 HTTP prepare 路径重新下载、解包和验证，不能直接消费 job 临时目录。脚本本身仍保持默认拒绝写入，因此本地或其他 CI 入口不会因为归档缺失而自动发布。
+三个平台的打包 job 都会在 `prepare:desktop-runtime` 前执行 `ci:ensure-native-search-deps`，并作为授权的共享 deps 写入入口显式设置 `CODEZ_NATIVE_SEARCH_ALLOW_PUBLISH=1`。该步骤直接检查共享根的 `deps/native-search-tools`：Microsoft `rg` 缺失时立即失败；自产 `bfs` / `ugrep` 缺失时，在当前平台 runner 构建并发布。相同 `platform-arch` 的 job 通过 `resource_group` 跨 pipeline 串行。所有 producer 归档都必须配置 SHA-256，并在发布、HTTP prepare 和解包前通过校验；摘要缺失或不匹配时立即失败。发布后仍由正式 HTTP prepare 路径重新下载、解包和验证，不能直接消费 job 临时目录。脚本本身仍保持默认拒绝写入，因此本地或其他 CI 入口不会因为归档缺失而自动发布。
 
 ### 共享产物根路径（macOS / Linux / upload）
 
 - **macOS shell / `build:remote:assets` / upload 读盘**：
-  默认 **`ZCODE_CI_SHARED_ROOT=/Users/dev/shared/zcode`**，完整路径为  
-  **`${ZCODE_CI_SHARED_ROOT}/${TARGET_OUTPUT_DIR}`**  
-  例如：`/Users/dev/shared/zcode/@electron/dev/my-branch/`。macOS 安装包只写入 **`macos-arm64/`**、**`macos-x64/`**；根目录只保留 remote assets 的 `manifest-*.json` 和 `components/`，由 macOS arm64 upload job 通过额外来源目录附带上传。
+  默认 **`CODEZ_CI_SHARED_ROOT=/Users/dev/shared/codez`**，完整路径为  
+  **`${CODEZ_CI_SHARED_ROOT}/${TARGET_OUTPUT_DIR}`**  
+  例如：`/Users/dev/shared/codez/@electron/dev/my-branch/`。macOS 安装包只写入 **`macos-arm64/`**、**`macos-x64/`**；根目录只保留 remote assets 的 `manifest-*.json` 和 `components/`，由 macOS arm64 upload job 通过额外来源目录附带上传。
 - **Linux Docker**  
-  与常见 runner 配置 **`volumes = ["/Users/dev/shared/zcode:/output", ...]`** 对齐：容器内写入  
-  **`${ZCODE_CI_LINUX_CONTAINER_OUT}/${TARGET_OUTPUT_DIR}`**（默认 **`ZCODE_CI_LINUX_CONTAINER_OUT=/output`**），宿主机上即 **`/Users/dev/shared/zcode/${TARGET_OUTPUT_DIR}`**。  
-  若挂载点不是 `/output`，可在 GitLab CI/CD 变量中覆盖 **`ZCODE_CI_LINUX_CONTAINER_OUT`**，或仅用 **`LINUX_SHARED_OUTPUT_ROOT`** 覆盖收集根目录。x64/arm64 并行构建会先写入当前 job 工作区的 `.tmp/linux-<arch>-collect` 临时目录，再同步到 **`linux-x64/`**、**`linux-arm64/`** 架构隔离子目录，正式 upload 只读取对应子目录，避免两个架构统一命名后的 `latest.yml` 互相覆盖导致发布元数据或更新 feed 串架构。
+  与常见 runner 配置 **`volumes = ["/Users/dev/shared/codez:/output", ...]`** 对齐：容器内写入  
+  **`${CODEZ_CI_LINUX_CONTAINER_OUT}/${TARGET_OUTPUT_DIR}`**（默认 **`CODEZ_CI_LINUX_CONTAINER_OUT=/output`**），宿主机上即 **`/Users/dev/shared/codez/${TARGET_OUTPUT_DIR}`**。  
+  若挂载点不是 `/output`，可在 GitLab CI/CD 变量中覆盖 **`CODEZ_CI_LINUX_CONTAINER_OUT`**，或仅用 **`LINUX_SHARED_OUTPUT_ROOT`** 覆盖收集根目录。x64/arm64 并行构建会先写入当前 job 工作区的 `.tmp/linux-<arch>-collect` 临时目录，再同步到 **`linux-x64/`**、**`linux-arm64/`** 架构隔离子目录，正式 upload 只读取对应子目录，避免两个架构统一命名后的 `latest.yml` 互相覆盖导致发布元数据或更新 feed 串架构。
 - **Windows**  
-  默认 **`ZCODE_CI_WINDOWS_SHARED_ROOT=//172.16.0.10/shared/zcode`**，拼接规则同 mac。x64/arm64 并行构建会先写入当前 job 工作区的 `.tmp/windows-<arch>-collect` 临时目录，再同步到 **`windows-x64/`**、**`windows-arm64/`** 架构隔离子目录，正式 upload 只读取对应子目录，避免两个架构的 `latest.yml` 互相覆盖导致发布元数据或更新 feed 串架构。
+  默认 **`CODEZ_CI_WINDOWS_SHARED_ROOT=//172.16.0.10/shared/codez`**，拼接规则同 mac。x64/arm64 并行构建会先写入当前 job 工作区的 `.tmp/windows-<arch>-collect` 临时目录，再同步到 **`windows-x64/`**、**`windows-arm64/`** 架构隔离子目录，正式 upload 只读取对应子目录，避免两个架构的 `latest.yml` 互相覆盖导致发布元数据或更新 feed 串架构。
 - 以上变量均可在 GitLab **CI/CD 变量**中按环境覆盖。
 
 ## Linux 安装包格式与 glibc 基线
 
-Linux 打包产出 `AppImage`、`deb`、`rpm` 三种安装包，x64 / arm64 双架构。`deb` 与 `rpm` 的 packageName 均按 flavor 拆分（`zcode` / `zcode-preview`），避免系统包管理器把另一 flavor 的安装当成升级替换。`latest.yml` 与 electron-updater 在 Linux 上固定以 AppImage 作为更新产物，`deb` / `rpm` 只做首次安装分发，不参与自更新；`upload-oss.sh` 解析更新元数据时也强制校验更新产物必须是 AppImage。
+Linux 打包产出 `AppImage`、`deb`、`rpm` 三种安装包，x64 / arm64 双架构。`deb` 与 `rpm` 的 packageName 均按 flavor 拆分（`codez` / `codez-preview`），避免系统包管理器把另一 flavor 的安装当成升级替换。`latest.yml` 与 electron-updater 在 Linux 上固定以 AppImage 作为更新产物，`deb` / `rpm` 只做首次安装分发，不参与自更新；`upload-oss.sh` 解析更新元数据时也强制校验更新产物必须是 AppImage。
 
 rpm 面向 RHEL 8+（glibc 2.28）基线。整包 glibc 下限按 ELF `GLIBC_*` symbol version 实测：随包 node-pty prebuild 与 `bfs` / `ugrep` 为 2.28，Electron 41 主二进制为 2.25，`rg` 为 musl 静态无 glibc 依赖，整体 floor = 2.28；Ubuntu 20.04+、Debian 10+、RHEL 8+/9 均满足，CentOS 7、Ubuntu 18.04、Amazon Linux 2 不在支持范围。rpm 产物文件名复用统一 `artifactName` 模板，electron-builder 对 rpm/deb 使用包管理器架构名（`x86_64` / `amd64` / `aarch64`）落盘，Preview flavor 带 `_TEST` 后缀；`ci-collect-artifacts` 收集阶段统一归一化为 `-linux-x64` / `-linux-arm64` 命名（扩展名无关，`.rpm` 同样生效），`upload-oss.sh` 按归一化名收集，其扩展名 pattern 均已包含 `.rpm`。
 
@@ -227,34 +227,34 @@ rpm Requires 在 electron-builder 默认集（gtk3、nss、libnotify、libXScrnS
 ## 关键 CI 变量
 
 - `TARGET_OUTPUT_DIR`：当前流水线写入共享目录的相对路径，由 `workflow.rules` 统一计算
-  - MR/Preview child 的 `ZCODE_ENV=test`：`@electron-preview/$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/`
-  - web/API/trigger 的 `ZCODE_ENV=test`：`@electron-preview/$CI_COMMIT_REF_NAME/`
+  - MR/Preview child 的 `CODEZ_ENV=test`：`@electron-preview/$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME/`
+  - web/API/trigger 的 `CODEZ_ENV=test`：`@electron-preview/$CI_COMMIT_REF_NAME/`
   - MR/web/API/trigger 的 production：`@electron/dev/<branch>/`
-- `ZCODE_CI_TMPDIR` / `NPM_CONFIG_CACHE` / `ELECTRON_CACHE` / `ELECTRON_BUILDER_CACHE`：引用 runner checkout 的 job-local 路径。Preview trigger 不转发 parent 中这些默认变量，避免 trigger 阶段缺少 job-only `CI_PROJECT_DIR` 时把路径固化为 `/.tmp`、`/.npm-cache` 等根目录；child job 使用自己 pipeline 的默认定义重新解析。
-- `ZCODE_CI_SHARED_ROOT`：macOS / upload 使用的宿主机共享根（默认 `/Users/dev/shared/zcode`）
-- `ZCODE_CI_TEST_REMOTE_ASSET_ROOT`：`ZCODE_ENV=test` 时 SSH remote runtime 资源的固定共享根
+- `CODEZ_CI_TMPDIR` / `NPM_CONFIG_CACHE` / `ELECTRON_CACHE` / `ELECTRON_BUILDER_CACHE`：引用 runner checkout 的 job-local 路径。Preview trigger 不转发 parent 中这些默认变量，避免 trigger 阶段缺少 job-only `CI_PROJECT_DIR` 时把路径固化为 `/.tmp`、`/.npm-cache` 等根目录；child job 使用自己 pipeline 的默认定义重新解析。
+- `CODEZ_CI_SHARED_ROOT`：macOS / upload 使用的宿主机共享根（默认 `/Users/dev/shared/codez`）
+- `CODEZ_CI_TEST_REMOTE_ASSET_ROOT`：`CODEZ_ENV=test` 时 SSH remote runtime 资源的固定共享根
   （默认 `/Users/dev/shared/ssh-remote-assets`），CI 会把 `manifest-*.json` 和 `components/`
-  同步到 `${ZCODE_CI_TEST_REMOTE_ASSET_ROOT}/${VERSION}`，对应访问地址为
+  同步到 `${CODEZ_CI_TEST_REMOTE_ASSET_ROOT}/${VERSION}`，对应访问地址为
   `http://intranet.example.invalid:12345/ssh-remote-assets/${VERSION}`
-- `ZCODE_CI_LINUX_CONTAINER_OUT`：Linux Docker 容器内共享挂载点（默认 `/output`）
-- `ZCODE_CI_WINDOWS_SHARED_ROOT`：Windows SMB 根路径（默认 `//172.16.0.10/shared/zcode`）
-- `ZCODE_NATIVE_SEARCH_DEPS_ROOT`：`ci:ensure-native-search-deps` 使用的共享 deps 根。平台 job 分别从上述 macOS、Linux container 与 Windows 根自动推导，通常不需要单独配置
-- `ZCODE_NATIVE_SEARCH_ALLOW_PUBLISH`：显式补产开关。三个平台打包 template 已设为 `1`；其他调用方只应在确认具有共享 deps 写入职责时设置。protected ref 即使未设置也可补齐缺失的自产归档
+- `CODEZ_CI_LINUX_CONTAINER_OUT`：Linux Docker 容器内共享挂载点（默认 `/output`）
+- `CODEZ_CI_WINDOWS_SHARED_ROOT`：Windows SMB 根路径（默认 `//172.16.0.10/shared/codez`）
+- `CODEZ_NATIVE_SEARCH_DEPS_ROOT`：`ci:ensure-native-search-deps` 使用的共享 deps 根。平台 job 分别从上述 macOS、Linux container 与 Windows 根自动推导，通常不需要单独配置
+- `CODEZ_NATIVE_SEARCH_ALLOW_PUBLISH`：显式补产开关。三个平台打包 template 已设为 `1`；其他调用方只应在确认具有共享 deps 写入职责时设置。protected ref 即使未设置也可补齐缺失的自产归档
 - `LINUX_SHARED_OUTPUT_ROOT`（可选，仅 Linux Docker）：覆盖容器内产物收集根目录
-- `OSS_BUCKET` / `OSS_PATH_PREFIX` / `CDN_DOMAIN`：OSS 上传与主 CDN URL 生成所需变量（仓库 `.gitlab-ci.yml` 默认：`cgx-public`、`zcode/electron/releases`、`cdn-zcode.z.ai`；可在 GitLab CI/CD 设置中覆盖）。CI URL 校验、upload 和 preload 脚本的域名兜底也统一为 `cdn-zcode.z.ai`。`CDN_DOMAIN` 和 `OSS_BUCKET` 支持逗号列表并按顺序对应；`OSS_PATH_PREFIX` 支持单值复用，也可配置同样数量的逗号列表。upload/publish 阶段会展开全部目标；桌面包不再把这些变量写入可配置的旧 generic feed。
+- `OSS_BUCKET` / `OSS_PATH_PREFIX` / `CDN_DOMAIN`：OSS 上传与主 CDN URL 生成所需变量（仓库 `.gitlab-ci.yml` 默认：`cgx-public`、`codez/electron/releases`、`cdn-zcode.z.ai`；可在 GitLab CI/CD 设置中覆盖）。CI URL 校验、upload 和 preload 脚本的域名兜底也统一为 `cdn-zcode.z.ai`。`CDN_DOMAIN` 和 `OSS_BUCKET` 支持逗号列表并按顺序对应；`OSS_PATH_PREFIX` 支持单值复用，也可配置同样数量的逗号列表。upload/publish 阶段会展开全部目标；桌面包不再把这些变量写入可配置的旧 generic feed。
 - `OSS_CONFIG_FILE`：可选，控制每组 OSS 目标调用 `ossutil` 时使用的配置文件。支持单值复用，或配置为与 `CDN_DOMAIN` 等长的逗号列表；为空时使用 runner 默认 ossutil 配置。新旧 OSS AK/SK 或 region 不一致时，应把 AK/SK 和 region 写入对应配置文件，并按 `CDN_DOMAIN` 顺序配置文件路径。
 - `CDN_PRELOAD_PROFILE` / `ALIYUN_CDN_PROFILE`：可选，控制 `cdn-preload.sh` 调用阿里云 CDN OpenAPI 时使用的 aliyun CLI profile。`CDN_PRELOAD_PROFILE` 优先级更高；支持单值复用，或配置为与 `CDN_DOMAIN` 等长的逗号列表。预热脚本不显式传 `--region`，region 由对应 profile 或 aliyun CLI 默认配置决定，避免覆盖多账号迁移时每个 profile 自带的 endpoint 配置。
 - `CDN_PRELOAD_DOMAINS`：历史兼容变量；当前 upload/preload 链路不再读取，新 OSS/CDN 迁移通过 `CDN_DOMAIN` 列表展开预热域名。
-- `ZCODE_UPDATE_FEED_URL`：可选运行时诊断变量，用完整服务端 manifest 接口 URL 覆盖默认更新检查接口。客户端仍会写入当前 `platform` / `device_mid` / `channel` 查询参数和对应 header，不切换到旧 generic feed。
-- `ZCODE_ENV`：可选，`production` 打正式包，`test` 打测试包。测试包文件名会追加 `_TEST`，构建产物飞书通知会把环境标识放进卡片标题；测试环境标题背景色使用红色，正式环境使用默认蓝色。`publish-release.sh` 会拒绝 `ZCODE_ENV=test` 调用正式 release API。
+- `CODEZ_UPDATE_FEED_URL`：可选运行时诊断变量，用完整服务端 manifest 接口 URL 覆盖默认更新检查接口。客户端仍会写入当前 `platform` / `device_mid` / `channel` 查询参数和对应 header，不切换到旧 generic feed。
+- `CODEZ_ENV`：可选，`production` 打正式包，`test` 打测试包。测试包文件名会追加 `_TEST`，构建产物飞书通知会把环境标识放进卡片标题；测试环境标题背景色使用红色，正式环境使用默认蓝色。`publish-release.sh` 会拒绝 `CODEZ_ENV=test` 调用正式 release API。
 - `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID`：macOS notarytool 公证凭据
 - `APPLE_SIGNING_IDENTITY` 或 `CSC_NAME`：macOS 签名身份
 - `APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64` / `APPLE_DEVELOPER_ID_APPLICATION_P12_PASSWORD`：macOS Developer ID Application p12。配置后 macOS build job 会为当前 job 创建一次性 keychain 并导入 p12，runtime 预签名和 electron-builder 最终签名都显式使用该 keychain，避免多个 job 共享 runner login keychain 时触发 `errSecInternalComponent`
 - `CSC_LINK` / `CSC_KEY_PASSWORD`：Windows 证书环境变量，由 `electron-builder` 直接消费
-- `ZCODE_FEISHU_NOTIFY_TOKEN`：必配，构建产物 Card 2.0 通知经 zcode-internal 通用飞书通知服务发送所需的服务令牌，需与服务端配置同值；可选 `ZCODE_FEISHU_NOTIFY_BASE_URL` 覆盖服务地址（默认 `http://intranet.example.invalid:3011`）
+- `CODEZ_FEISHU_NOTIFY_TOKEN`：必配，构建产物 Card 2.0 通知经 codez-internal 通用飞书通知服务发送所需的服务令牌，需与服务端配置同值；可选 `CODEZ_FEISHU_NOTIFY_BASE_URL` 覆盖服务地址（默认 `http://intranet.example.invalid:3011`）
 - `FEISHU_RECEIVE_ID` / `FEISHU_RECEIVE_ID_TYPE`：构建产物通知的接收方，作为显式收件人传给通知服务；未配置时回落到服务端配置的场景默认收件人
 - `ZARA_RELEASE_NOTIFY_*`：发版成功通知的 Zara/飞书发送配置，仅在正式 tag 发布并通过 `release:approve` 放行后的 `release:notify:feishu` 中使用；CI 默认配置接收群和远端发送目录
-- `RELEASE_API_KEY` / `RELEASE_API_URL` / `RELEASE_API_KEY_TEST` / `RELEASE_API_URL_TEST` / `RELEASE_API_IDEMPOTENCY_KEY` / `RELEASE_API_CONNECT_TIMEOUT` / `RELEASE_API_MAX_TIME` / `RELEASE_API_TEST_RETRY_ATTEMPTS` / `RELEASE_API_RETRY_DELAY_SECONDS` / `RELEASE_STATUS`：`publish-release.sh` 调用后端发版接口所需变量（`RELEASE_API_URL` 默认 `https://zcode.z.ai/api/v1/releases`，`RELEASE_STATUS` 默认 `3`）。`release:publish:gray` 在调用发版接口前还会执行 `reset-release-rollout.sh`，该脚本需要受保护、masked 的 `ROLLOUT_ADMIN_TOKEN`，默认调用 `https://zcode-api.z.ai/api-admin/v1/releases/gray`，也可通过 `ROLLOUT_API_URL` 或 `ZCODE_RELEASE_GRAY_API_URL` 覆盖；该请求必须走 HTTPS 受保护后端入口并发送 `Authorization: Bearer $ROLLOUT_ADMIN_TOKEN`。脚本会先读取当前灰度配置，再提交完整 `{ disabled: true, percentage: 0, device_mid_allowlist? }`，避免后端灰度接口拒绝 partial payload。配置 `RELEASE_API_URL_TEST` 时必须同时配置受保护、masked 的 `RELEASE_API_KEY_TEST`；脚本不会把生产 `RELEASE_API_KEY` 发送到测试域名。同一份 release request body 会在主 `RELEASE_API_URL` 成功后继续尽力 POST 到测试 release API；两个 endpoint 使用相同 `Idempotency-Key` header，默认值由 release body 与 status 派生，也可通过 `RELEASE_API_IDEMPOTENCY_KEY` 覆盖。测试接口默认重试 `3` 次，重试间隔按 `RELEASE_API_RETRY_DELAY_SECONDS`（默认 `5` 秒）指数退避。脚本会在第一次网络请求前校验纯配置错误：`RELEASE_API_TEST_RETRY_ATTEMPTS` 允许 `1..5`，`RELEASE_API_RETRY_DELAY_SECONDS` 允许 `0..300`，`RELEASE_API_CONNECT_TIMEOUT` 允许 `1..60`，`RELEASE_API_MAX_TIME` 允许 `1..600`。任一接口最终返回非 2xx 或 curl 传输失败都会让 publish job 失败并阻断后续 CI，但脚本不会自动回滚已经成功的主 release API，发布负责人需要按同一份 release metadata 和幂等键做人工补偿。每次 POST 默认连接超时 `10` 秒、总耗时上限 `60` 秒；响应体写入每次脚本执行独占的 `mktemp -d` 临时目录并在退出时清理，避免共享 runner 上并发 publish job 互相删除或串读响应文件。`RELEASE_STATUS` 只允许单个数字状态，灰度 job 固定传 `3`，全量 job 固定传 `1`，禁止通过列表在同一个 publish job 内同时发布多个状态。`CI_RELEASE_BRANCH=1` 且 `RELEASE_STATUS=1` 默认失败；仅在明确批准的 release rehearsal 中设置 `ALLOW_CI_RELEASE_STABLE_PUBLISH=1`。
+- `RELEASE_API_KEY` / `RELEASE_API_URL` / `RELEASE_API_KEY_TEST` / `RELEASE_API_URL_TEST` / `RELEASE_API_IDEMPOTENCY_KEY` / `RELEASE_API_CONNECT_TIMEOUT` / `RELEASE_API_MAX_TIME` / `RELEASE_API_TEST_RETRY_ATTEMPTS` / `RELEASE_API_RETRY_DELAY_SECONDS` / `RELEASE_STATUS`：`publish-release.sh` 调用后端发版接口所需变量（`RELEASE_API_URL` 默认 `https://zcode.z.ai/api/v1/releases`，`RELEASE_STATUS` 默认 `3`）。`release:publish:gray` 在调用发版接口前还会执行 `reset-release-rollout.sh`，该脚本需要受保护、masked 的 `ROLLOUT_ADMIN_TOKEN`，默认调用 `https://codez-api.z.ai/api-admin/v1/releases/gray`，也可通过 `ROLLOUT_API_URL` 或 `CODEZ_RELEASE_GRAY_API_URL` 覆盖；该请求必须走 HTTPS 受保护后端入口并发送 `Authorization: Bearer $ROLLOUT_ADMIN_TOKEN`。脚本会先读取当前灰度配置，再提交完整 `{ disabled: true, percentage: 0, device_mid_allowlist? }`，避免后端灰度接口拒绝 partial payload。配置 `RELEASE_API_URL_TEST` 时必须同时配置受保护、masked 的 `RELEASE_API_KEY_TEST`；脚本不会把生产 `RELEASE_API_KEY` 发送到测试域名。同一份 release request body 会在主 `RELEASE_API_URL` 成功后继续尽力 POST 到测试 release API；两个 endpoint 使用相同 `Idempotency-Key` header，默认值由 release body 与 status 派生，也可通过 `RELEASE_API_IDEMPOTENCY_KEY` 覆盖。测试接口默认重试 `3` 次，重试间隔按 `RELEASE_API_RETRY_DELAY_SECONDS`（默认 `5` 秒）指数退避。脚本会在第一次网络请求前校验纯配置错误：`RELEASE_API_TEST_RETRY_ATTEMPTS` 允许 `1..5`，`RELEASE_API_RETRY_DELAY_SECONDS` 允许 `0..300`，`RELEASE_API_CONNECT_TIMEOUT` 允许 `1..60`，`RELEASE_API_MAX_TIME` 允许 `1..600`。任一接口最终返回非 2xx 或 curl 传输失败都会让 publish job 失败并阻断后续 CI，但脚本不会自动回滚已经成功的主 release API，发布负责人需要按同一份 release metadata 和幂等键做人工补偿。每次 POST 默认连接超时 `10` 秒、总耗时上限 `60` 秒；响应体写入每次脚本执行独占的 `mktemp -d` 临时目录并在退出时清理，避免共享 runner 上并发 publish job 互相删除或串读响应文件。`RELEASE_STATUS` 只允许单个数字状态，灰度 job 固定传 `3`，全量 job 固定传 `1`，禁止通过列表在同一个 publish job 内同时发布多个状态。`CI_RELEASE_BRANCH=1` 且 `RELEASE_STATUS=1` 默认失败；仅在明确批准的 release rehearsal 中设置 `ALLOW_CI_RELEASE_STABLE_PUBLISH=1`。
 
 ## 关键脚本
 
@@ -282,5 +282,5 @@ rpm Requires 在 electron-builder 默认集（gtk3、nss、libnotify、libXScrnS
 - 如果 `build:remote:assets` 失败，优先检查 `packages/desktop/mock-cdn/releases/<version>/` 下是否存在 `node/<platform-arch>`，以及 runner 对上游二进制下载源的网络访问
 - 如果 macOS 公证失败，先确认 `APPLE_*` 三个变量是否完整，以及 runner 上是否能执行 `xcrun notarytool`
 - 如果 upload 阶段报错缺少更新元数据，优先检查共享目录里是否存在对应平台目录下的 `latest.yml`
-- 如果某个平台没有产物，优先检查 `packages/desktop/dist` 下文件名是否仍符合 `ZCode-{version}-{os}-{arch}` 约定
+- 如果某个平台没有产物，优先检查 `packages/desktop/dist` 下文件名是否仍符合 `Codez-{version}-{os}-{arch}` 约定
 - 如果共享目录里缺少文件，先确认 build job 的 `CI_ARTIFACT_OUTPUT_DIR` 是否指向 runner 实际挂载的共享路径

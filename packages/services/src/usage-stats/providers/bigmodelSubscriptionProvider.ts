@@ -1,4 +1,4 @@
-import type { ApiClient, ProviderFamilyDomain } from "@zcode/shared";
+import type { ApiClient, ProviderFamilyDomain } from "@codez/shared";
 import {
   fetchPersonalCodingPlanEntitlement,
   fetchTeamCodingPlanEntitlement,

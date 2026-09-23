@@ -1,6 +1,6 @@
-import type { IBotsService, ServiceCollection } from "@zcode/services";
-import { createTopicResourceRelayChannel } from "@zcode/services/node";
-import type { WindowHostAttachmentScope, ZCodeTopicResourceRelayRequest } from "@zcode/shared";
+import type { IBotsService, ServiceCollection } from "@codez/services";
+import { createTopicResourceRelayChannel } from "@codez/services/node";
+import type { WindowHostAttachmentScope, CodezTopicResourceRelayRequest } from "@codez/shared";
 
 /** 反向请求必须属于发起它的物理连接，并仍绑定当前 logical session，不能只比较文件路径。 */
 export function createWindowTopicResourceRelay(deps: {
@@ -10,7 +10,7 @@ export function createWindowTopicResourceRelay(deps: {
 }) {
   const resolve = (
     request: Pick<
-      ZCodeTopicResourceRelayRequest,
+      CodezTopicResourceRelayRequest,
       "remoteSessionId" | "workspaceIdentity" | "workspacePath"
     >,
   ) => {

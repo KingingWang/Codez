@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ClientSceneConfig } from "@zcode/services";
+import type { ClientSceneConfig } from "@codez/services";
 import {
   appendLocalCustomizeTemplate,
   materializeOffPeakTemplateDraft,
@@ -12,7 +12,7 @@ import {
 function createScenes(cronExpr = "0 9 * * 1-5"): ClientSceneConfig[] {
   return [
     {
-      namespace: "zcode",
+      namespace: "codez",
       scene: "scheduled-task",
       options: {
         prompts: {
@@ -56,7 +56,7 @@ function createScenes(cronExpr = "0 9 * * 1-5"): ClientSceneConfig[] {
       updated_at: 0,
     },
     {
-      namespace: "zcode",
+      namespace: "codez",
       scene: "off-peak-task",
       options: {
         prompts: {

@@ -204,7 +204,7 @@ describe("Plugin settings section", () => {
     );
     expect(scopeMenuSource).not.toContain('const userLabel = "User"');
     expect(scopeMenuSource).not.toContain("<Badge");
-    expect(scopeMenuSource).not.toContain("~/.zcode");
+    expect(scopeMenuSource).not.toContain("~/.codez");
     expect(scopeMenuSource).toContain('size="default"');
     expect(scopeMenuSource).toMatch(
       /data-plugin-scope-trigger="true"\s+data-plugin-scope-key=\{selectedScopeKey\}\s+className="rounded-full"/,

@@ -1,5 +1,5 @@
 import { dirname } from "node:path";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,

@@ -16,7 +16,7 @@ describe("releaseWorkspaceRuntimeAfterProjectRemoval", () => {
       tab: {
         workspacePath: "C:/repo/demo",
       },
-      zcodeTaskService: { releaseWorkspacePreparation },
+      codezTaskService: { releaseWorkspacePreparation },
     });
     await Promise.resolve();
 
@@ -33,7 +33,7 @@ describe("releaseWorkspaceRuntimeAfterProjectRemoval", () => {
         workspacePath: "/repo/demo",
         workspaceIdentity: "remote:ssh:dev:/repo/demo",
       },
-      zcodeTaskService: { releaseWorkspacePreparation },
+      codezTaskService: { releaseWorkspacePreparation },
     });
     await Promise.resolve();
 
@@ -54,7 +54,7 @@ describe("releaseWorkspaceRuntimeAfterProjectRemoval", () => {
         workspacePath: "C:/repo/locked",
         workspaceIdentity: "  ",
       },
-      zcodeTaskService: { releaseWorkspacePreparation },
+      codezTaskService: { releaseWorkspacePreparation },
     });
     await Promise.resolve();
     await Promise.resolve();

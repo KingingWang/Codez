@@ -2,13 +2,13 @@
 
 ## Scope
 
-The adapter and distribution live entirely in ZCode. The sibling Codex checkout
+The adapter and distribution live entirely in Codez. The sibling Codex checkout
 was used read-only; its worktree remained clean. The runtime is pinned to
 `KingingWang/codex` release `codex-20260921-084453`, commit `40b83ea62f`, with six
 per-target SHA256 values in `scripts/codex-runtime-manifest.json`.
 
 Validated production source: `a1dcf9d162af4e2705bf96841df98fbffcc72c38` on
-`KingingWang/ZCode`, branch `feat/codex-desktop-adapter`. Any later documentation-only
+`KingingWang/Codez`, branch `feat/codex-desktop-adapter`. Any later documentation-only
 acceptance commit does not change the code used to produce these installers.
 
 Tests that exercise native execution use temporary Codex homes, synthetic input
@@ -68,7 +68,7 @@ OS/architecture combinations and uploads installers plus SHA256 manifests.
 Every matrix job must pass on the final production source commit before claiming all-platform
 acceptance. Local Linux packaging does not validate macOS or Windows packaging.
 
-GitHub Actions run: `KingingWang/ZCode` / `35713167778`, source `a1dcf9d`.
+GitHub Actions run: `KingingWang/Codez` / `35713167778`, source `a1dcf9d`.
 Final workflow conclusion: **success**. The remote-assets job and all six native
 build jobs completed successfully, including their real Codex smoke checks.
 All six installer artifacts were confirmed present, nonempty, unexpired and backed
@@ -77,19 +77,19 @@ per-file SHA256 manifest. Desktop artifacts have a 14-day retention period.
 
 | Target        | Installers    | Artifact                            |
 | ------------- | ------------- | ----------------------------------- |
-| macOS x64     | DMG, ZIP      | `zcode-codex-darwin-x64-unsigned`   |
-| macOS arm64   | DMG, ZIP      | `zcode-codex-darwin-arm64-unsigned` |
-| Windows x64   | NSIS EXE      | `zcode-codex-win32-x64-unsigned`    |
-| Windows arm64 | NSIS EXE      | `zcode-codex-win32-arm64-unsigned`  |
-| Linux x64     | AppImage, DEB | `zcode-codex-linux-x64-unsigned`    |
-| Linux arm64   | AppImage, DEB | `zcode-codex-linux-arm64-unsigned`  |
+| macOS x64     | DMG, ZIP      | `codez-codex-darwin-x64-unsigned`   |
+| macOS arm64   | DMG, ZIP      | `codez-codex-darwin-arm64-unsigned` |
+| Windows x64   | NSIS EXE      | `codez-codex-win32-x64-unsigned`    |
+| Windows arm64 | NSIS EXE      | `codez-codex-win32-arm64-unsigned`  |
+| Linux x64     | AppImage, DEB | `codez-codex-linux-x64-unsigned`    |
+| Linux arm64   | AppImage, DEB | `codez-codex-linux-arm64-unsigned`  |
 
 The additional `codex-remote-assets` artifact contains the four remote native
 target sets. No release/tag or upstream update was published by this delivery.
 The workflow's release job is intentionally skipped for this feature-branch push.
 
 The final local production Linux x64 AppImage and DEB were built successfully,
-with root version `3.14.0` and independent product name `ZCode Codex`. Native code
+with root version `3.14.0` and independent product name `Codez Codex`. Native code
 and the bridge are outside ASAR; all 2,765 packaged application output files
 matched the freshly built output. The four remote target sets contain 32 verified
 manifest-selected resource files.
@@ -111,7 +111,7 @@ Local build SHA256 receipts (CI builds publish their own checksum manifests):
 
 Real bundled remote deployment is checked separately by running
 `packages/server/test/codexBundledRemoteAssets.test.ts` with
-`ZCODE_TEST_BUNDLED_REMOTE_ASSETS_DIR` pointing at the produced archives. This uses
+`CODEZ_TEST_BUNDLED_REMOTE_ASSETS_DIR` pointing at the produced archives. This uses
 the real materializer and local-upload installer against a temporary remote home,
 then executes the shipped Node, server, bridge and Codex resources.
 

@@ -1,15 +1,15 @@
 import {
-  zcodeSessionStateSnapshotSchema,
-  type ZCodeMessagePart,
-  type ZCodeMessageWithParts,
-  type ZCodeSessionStateSnapshot,
-  type ZCodeToolState,
-} from "@zcode/shared";
-import type { ConversationRow, ToolCallRow } from "@zcode/shared/zcode-protocol-v4";
+  codezSessionStateSnapshotSchema,
+  type CodezMessagePart,
+  type CodezMessageWithParts,
+  type CodezSessionStateSnapshot,
+  type CodezToolState,
+} from "@codez/shared";
+import type { ConversationRow, ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import { codexThreadSchema, type CodexThread } from "./codex-types.js";
 import { projectRows } from "./projection-rows.js";
 
-function toolState(row: ToolCallRow, completedAt: number): ZCodeToolState {
+function toolState(row: ToolCallRow, completedAt: number): CodezToolState {
   const input =
     row.input !== null && typeof row.input === "object" && !Array.isArray(row.input)
       ? (row.input as Record<string, unknown>)
@@ -45,7 +45,7 @@ function toolState(row: ToolCallRow, completedAt: number): ZCodeToolState {
   };
 }
 
-function messagePart(row: ConversationRow, thread: CodexThread): ZCodeMessagePart | undefined {
+function messagePart(row: ConversationRow, thread: CodexThread): CodezMessagePart | undefined {
   const base = { partId: `${row.entityId}:part`, messageId: row.entityId!, sessionId: thread.id };
   if (row.kind === "userInput" || row.kind === "assistantText")
     return { ...base, type: "text", text: row.text };
@@ -67,8 +67,8 @@ function messages(
   thread: CodexThread,
   rows: readonly ConversationRow[],
   workspacePath: string,
-): ZCodeMessageWithParts[] {
-  const result: ZCodeMessageWithParts[] = [];
+): CodezMessageWithParts[] {
+  const result: CodezMessageWithParts[] = [];
   let parentMessageId: string | undefined;
   for (const row of rows) {
     const part = messagePart(row, thread);
@@ -126,7 +126,7 @@ function messages(
 export function projectLegacySnapshot(
   thread: unknown,
   workspacePath: string,
-): ZCodeSessionStateSnapshot {
+): CodezSessionStateSnapshot {
   const source = codexThreadSchema.parse(thread);
   const rows = projectRows(source);
   const last = source.turns.at(-1);
@@ -157,8 +157,8 @@ export function projectLegacySnapshot(
         }
       : undefined;
   const parentSessionId = source.forkedFromId ?? source.parentThreadId;
-  return zcodeSessionStateSnapshotSchema.parse({
-    protocol: { name: "ZCode Protocol", version: 1 },
+  return codezSessionStateSnapshotSchema.parse({
+    protocol: { name: "Codez Protocol", version: 1 },
     session: {
       sessionId: source.id,
       workspace: { workspacePath, workspaceKey: workspacePath },

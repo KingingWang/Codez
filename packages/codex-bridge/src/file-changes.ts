@@ -1,7 +1,7 @@
 import {
   v4ConversationFileChangesResultSchema,
   type V4ConversationFileChangesResult,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { array, object, string } from "./json.js";
 
 type Patch = V4ConversationFileChangesResult["items"][number]["patches"][number];

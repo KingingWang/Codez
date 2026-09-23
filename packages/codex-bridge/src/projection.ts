@@ -10,7 +10,7 @@ import {
   type SessionsIndexSnapshot,
   type SessionUsageState,
   type SessionActionAvailability,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { codexThreadSchema, isCodexKnownItem, type CodexThread } from "./codex-types.js";
 import { projectRows } from "./projection-rows.js";
 import { projectQueue, type QueueAdmissionFacts } from "./projection-queue.js";

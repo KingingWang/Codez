@@ -5,7 +5,7 @@ import {
 } from "../../../helpers/subagent-refresh-conversation.js";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_PROJECT_ADD } from "@zcode/shared";
+import { TID_PROJECT_ADD } from "@codez/shared";
 import { clearAppData, getE2EAppDataPaths } from "../../../helpers/desktop-app.js";
 import {
   saveRefreshProfile,
@@ -70,7 +70,7 @@ describe("Subagent 多实际 workspace CLI", () => {
     await turn("A_SEED");
     const a = (await getV4PaneSnapshot()).sessionId!;
     const workspaceB = join(getE2EAppDataPaths().homeDir, "subagent-workspace-b");
-    await mkdir(join(workspaceB, ".zcode", "agents"), { recursive: true });
+    await mkdir(join(workspaceB, ".codez", "agents"), { recursive: true });
     const dialog = await browser.electron.mock("dialog", "showOpenDialog");
     await dialog.mockResolvedValueOnce({ canceled: false, filePaths: [workspaceB] });
     await $(`[data-testid="${TID_PROJECT_ADD}"]`).click();
@@ -95,7 +95,7 @@ describe("Subagent 多实际 workspace CLI", () => {
     await started("B_HOLD");
     // 真实文件系统故障：B 的 agents 根目录暂时变成文件，读取必定 ENOTDIR，跨平台一致。
     // 此时两轮已经取到快照；用户配置保存不应再遍历 B。
-    const blockedRoot = join(workspaceB, ".zcode", "agents");
+    const blockedRoot = join(workspaceB, ".codez", "agents");
     async function blockProject() {
       const removed = await subagentUpdateCursor();
       await rename(blockedRoot, blockedRoot + "-saved");

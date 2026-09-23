@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  zcodeProtocolMethods,
+  codezProtocolMethods,
   OFF_PEAK_PROVIDER_IDS,
   buildRemoteWorkspaceIdentity,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { OffPeakClientConfig } from "../src/coding-plan-subscription/codingPlanSubscription.js";
 import { offPeakSelectionView } from "./fixtures/offPeakSelection.js";
 
@@ -34,7 +34,7 @@ async function setup(params: {
       })),
   );
   const request = vi.fn(async (method: string, requestParams?: unknown) => {
-    if (method === zcodeProtocolMethods.workspaceUpdateOffPeakToolPolicy) {
+    if (method === codezProtocolMethods.workspaceUpdateOffPeakToolPolicy) {
       if (params.policyResponse) return params.policyResponse(requestParams);
       return requestParams;
     }
@@ -48,14 +48,14 @@ async function setup(params: {
     onClose: () => ({ dispose() {} }),
   }));
   vi.resetModules();
-  vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-    ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+  vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+    CodezAgentProcessManager: class extends MockProcessManagerBase {
       getClient = getClient;
       disposeAll() {}
     },
   }));
-  const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-  const service = createZCodeAgentService({
+  const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+  const service = createCodezAgentService({
     modelSelectionReadinessSource: { getView: async () => offPeakSelectionView() },
     ...(params.offPeakEnabled === undefined
       ? {}
@@ -78,7 +78,7 @@ async function setup(params: {
 
 function policyCalls(request: ReturnType<typeof vi.fn>) {
   return request.mock.calls.filter(
-    ([method]) => method === zcodeProtocolMethods.workspaceUpdateOffPeakToolPolicy,
+    ([method]) => method === codezProtocolMethods.workspaceUpdateOffPeakToolPolicy,
   );
 }
 

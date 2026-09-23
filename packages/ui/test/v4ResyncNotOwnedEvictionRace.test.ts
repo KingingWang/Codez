@@ -1,4 +1,4 @@
-// fault.subscription.notOwned 线上竞态（zcode-logs-full-20260730-204321 三起事件）的机制层还原
+// fault.subscription.notOwned 线上竞态（codez-logs-full-20260730-204321 三起事件）的机制层还原
 // 与修复验证。
 //
 // 竞态时序（renderer ⇄ host 为异步链路，远程 SSH workspace 下窗口达数百 ms）：
@@ -25,17 +25,17 @@
 //      属于已换代丢弃的恢复流，静默忽略，S2 保持 live；
 //   2. 若 notOwned 命中的是"仍属当前订阅"的 recovery（如错位 unsubscribe 造成的
 //      ownership 分歧），store 携当前水位 fresh subscribe 自愈，不落 error。
-import { Emitter } from "@zcode/rpc";
-import type { LocalTtftFacts } from "@zcode/shared";
+import { Emitter } from "@codez/rpc";
+import type { LocalTtftFacts } from "@codez/shared";
 import type {
   ConversationTopicFrame,
   ConversationTopicWireFrame,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import {
-  createZCodeAgentConnectionScope,
-  readTrustedZCodeAgentV4Connection,
-  type IZCodeAgentService,
-} from "@zcode/services";
+  createCodezAgentConnectionScope,
+  readTrustedCodezAgentV4Connection,
+  type ICodezAgentService,
+} from "@codez/services";
 import { describe, expect, it, vi } from "vitest";
 import { createAgentConversationTransport } from "@/v4/agentConversationTransport.js";
 import { ConversationProjectionStore } from "@/v4/conversationProjectionStore.js";
@@ -52,7 +52,7 @@ function setupBase() {
   const runtimeRestarts = new Emitter<{ workspaceKey: string }>();
   const nextSerialByConnection = new Map<string, number>();
   const nextId = (params: unknown) => {
-    const connection = readTrustedZCodeAgentV4Connection(params);
+    const connection = readTrustedCodezAgentV4Connection(params);
     if (!connection) throw new Error("missing trusted connection");
     const serial = (nextSerialByConnection.get(connection.connectionId) ?? 0) + 1;
     nextSerialByConnection.set(connection.connectionId, serial);
@@ -91,14 +91,14 @@ function setupBase() {
     setConnectionFlowStateV4: vi.fn(async () => {}),
   };
   return {
-    base: mocks as unknown as IZCodeAgentService,
+    base: mocks as unknown as ICodezAgentService,
     mocks,
     conversationFrames,
   };
 }
 
 // ── RPC 延迟闸门：模拟 renderer→host 链路上的在途请求（远程 SSH 下真实存在的时延）──
-function createRpcGate(service: IZCodeAgentService) {
+function createRpcGate(service: ICodezAgentService) {
   const holding = new Set<string>();
   const held = new Map<string, Array<() => void>>();
   const proxy = new Proxy(service as unknown as Record<string, unknown>, {
@@ -119,7 +119,7 @@ function createRpcGate(service: IZCodeAgentService) {
         });
       };
     },
-  }) as unknown as IZCodeAgentService;
+  }) as unknown as ICodezAgentService;
   return {
     service: proxy,
     hold(method: string) {
@@ -167,7 +167,7 @@ function onlineDeltasWire(
 describe("v4 resync notOwned eviction race（真实 store + transport + connectionScope）", () => {
   it("换代 subscribe ACK 静默驱逐旧 ownership 后，迟到 resync 的 notOwned 被静默忽略，S2 保持 live", async () => {
     const { base, mocks, conversationFrames } = setupBase();
-    const scope = createZCodeAgentConnectionScope(base, {
+    const scope = createCodezAgentConnectionScope(base, {
       connectionId: "conn-1",
       clientMode: "desktop-continuous",
     });
@@ -230,7 +230,7 @@ describe("v4 resync notOwned eviction race（真实 store + transport + connecti
 
   it("错位 unsubscribe 造成 ownership 分歧时，resync notOwned 自动携水位重订阅自愈", async () => {
     const { base, mocks, conversationFrames } = setupBase();
-    const scope = createZCodeAgentConnectionScope(base, {
+    const scope = createCodezAgentConnectionScope(base, {
       connectionId: "conn-3",
       clientMode: "desktop-continuous",
     });
@@ -273,7 +273,7 @@ describe("v4 resync notOwned eviction race（真实 store + transport + connecti
 
   it("对照：resync(S1) 先于 subscribe(S2) ACK 抵达 host 时不触发 notOwned", async () => {
     const { base, mocks, conversationFrames } = setupBase();
-    const scope = createZCodeAgentConnectionScope(base, {
+    const scope = createCodezAgentConnectionScope(base, {
       connectionId: "conn-2",
       clientMode: "desktop-continuous",
     });

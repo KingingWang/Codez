@@ -4,13 +4,13 @@ Assistant file preview cards render inside the latest terminal assistant row,
 above message actions and before the per-turn change summary. Assistant body text
 keeps the existing Streamdown behavior: plain file-name mentions are not
 automatically rewritten into clickable links. A complete
-`::zcode-file-citation{...}` directive is a separate, explicit projection and is
+`::codez-file-citation{...}` directive is a separate, explicit projection and is
 rendered with the same file-link UI and opening behavior as a Markdown
 `[label](path)` link.
 
-`::zcode-file-citation{...}` remains the canonical syntax emitted by prompts and
+`::codez-file-citation{...}` remains the canonical syntax emitted by prompts and
 Skills. The renderer also accepts the model compatibility form
-`:zcode-file-citation{...}` with one missing leading colon. This tolerance is
+`:codez-file-citation{...}` with one missing leading colon. This tolerance is
 limited to file citations: both forms share the same parameter parsing, path
 validation, body-link projection, and preview-card eligibility, while other
 directives such as `::code-comment{...}` remain strict.
@@ -51,7 +51,7 @@ directives such as `::code-comment{...}` remain strict.
 - Plain file-name mentions in Assistant body text are not auto-linked. Existing
   explicit Markdown-link handling remains outside this card feature and keeps
   its pre-existing behavior.
-- `zcode-file-citation` accepts `path`, `purpose`, and `artifact_kind` as its
+- `codez-file-citation` accepts `path`, `purpose`, and `artifact_kind` as its
   current common parameters. `path` is required; `purpose` is parsed but does not
   change presentation or opening behavior. Other syntactically valid parameters
   are tolerated and ignored by this projection.
@@ -106,7 +106,7 @@ agent-side metadata.
 ```text
 assistantText rows (desktop continuous / mobile replayable hydration)
   |
-  +-- complete zcode-file-citation
+  +-- complete codez-file-citation
   |     +-- body: render leaf-name link through existing MessageFileLink
   |     `-- cards: admit only compatible docx/xlsx/pptx/pdf references
   |

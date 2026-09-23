@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { createBotWorkerIntegration } from "../helpers/bot-worker-integration.js";
 import { installBotPlatformFixture } from "../helpers/bot-platform-fixture.js";
 import { startConversationModelProviderReplayServer } from "../helpers/model-provider-replay.js";
-import type { BotInboundMessage } from "@zcode/shared";
+import type { BotInboundMessage } from "@codez/shared";
 
 const actor = {
   botId: "bot-worker",
@@ -28,7 +28,7 @@ describe("BOT-E2E-TP-04/05 real topic worker", () => {
       const order: string[] = [];
       const stop = host.task.stopBotTopicExecution!;
       const submit = host.task.submitBotGroupInput!;
-      Object.assign(host.bot.zcodeTaskService, {
+      Object.assign(host.bot.codezTaskService, {
         stopBotTopicExecution: async (...args: Parameters<typeof stop>) => {
           order.push("stop");
           await stop(...args);
@@ -78,7 +78,7 @@ describe("BOT-E2E-TP-04/05 real topic worker", () => {
       platform.add("om_other", "@Other Bot handle the outline");
       await host.bot.service.handleProviderCallback("feishu", {
         botId: actor.botId,
-        zcodeBotOpenId: "ou_current_bot",
+        codezBotOpenId: "ou_current_bot",
         event: {
           sender: { sender_type: "user", sender_id: { open_id: "ou_e2e_user" } },
           message: {
@@ -103,7 +103,7 @@ describe("BOT-E2E-TP-04/05 real topic worker", () => {
       platform.add("om_next", "E2E_BOT_TOPIC_NEXT");
       const payload = {
         botId: actor.botId,
-        zcodeBotOpenId: "ou_current_bot",
+        codezBotOpenId: "ou_current_bot",
         event: {
           sender: { sender_type: "bot", sender_id: { open_id: "ou_other_bot" } },
           message: {
@@ -246,7 +246,7 @@ describe("BOT-E2E-TP-04/05 real topic worker", () => {
       );
       const entered = Promise.withResolvers<void>();
       const releaseBatch = Promise.withResolvers<void>();
-      Object.assign(host.bot.zcodeTaskService, {
+      Object.assign(host.bot.codezTaskService, {
         stopBotTopicExecution: async (...args: Parameters<typeof stop>) => {
           entered.resolve();
           await releaseBatch.promise;
@@ -336,7 +336,7 @@ describe("BOT-E2E-TP-04/05 real topic worker", () => {
       expect(host.reverseResources).toHaveLength(1);
       const taskId = host.bot.readState().bots[key]!.activeTaskId!;
       // Node SQLite 只提供同步查询；只读隔离 CLI 持久工具结果并立即关闭。
-      const database = new DatabaseSync(join(host.home, ".zcode/cli/db/db.sqlite"), {
+      const database = new DatabaseSync(join(host.home, ".codez/cli/db/db.sqlite"), {
         readOnly: true,
       });
       let resource: { fileName: string; path: string; bytes: number };

@@ -3,8 +3,8 @@ import type {
   HighspeedMessageMeta,
   HighspeedPrepareTurnResult,
   ModelSelection,
-} from "@zcode/shared";
-import type { CommandPayloadMap } from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared";
+import type { CommandPayloadMap } from "@codez/shared/codez-protocol-v4";
 
 /** 与协议 payload 同源，避免 Renderer 再维护一份执行材料形状。 */
 type HighspeedModelExecution = NonNullable<CommandPayloadMap["sendText"]["modelExecution"]>;

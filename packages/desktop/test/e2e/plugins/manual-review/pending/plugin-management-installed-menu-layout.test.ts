@@ -13,7 +13,7 @@ import {
 
 // 内置插件默认已安装，只需在 Workspace 配置里显式启用即可得到 enabledSource=workspace，
 // 让已安装列表行内「…」菜单出现「恢复 User 默认」项，不依赖额外 Marketplace fixture。
-const BUILTIN_ID = "skill-creator@zcode-plugins-official";
+const BUILTIN_ID = "skill-creator@codez-plugins-official";
 const MENU_LAYOUT_TIMEOUT_MS = 240000;
 const RESTORE_USER_DEFAULT_PATTERN = /恢复 User 默认|Restore User default/u;
 
@@ -119,8 +119,8 @@ describe("PLM-LC-017 已安装列表行内菜单布局 E2E", () => {
 
 async function seedWorkspacePluginOverride(): Promise<void> {
   const { workspace } = getE2EAppDataPaths();
-  const configPath = join(workspace, ".zcode", "config.json");
-  await mkdir(join(workspace, ".zcode"), { recursive: true });
+  const configPath = join(workspace, ".codez", "config.json");
+  await mkdir(join(workspace, ".codez"), { recursive: true });
   const existing = existsSync(configPath)
     ? (JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>)
     : {};

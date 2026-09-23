@@ -15,7 +15,7 @@ import {
   terminateProcessTreeAndWait,
   type ProcessIdentity,
   type ProcessTreeSnapshot,
-} from "@zcode/services/process/processTreeTerminator";
+} from "@codez/services/process/processTreeTerminator";
 
 const activeChildren = new Set<ChildProcessWithoutNullStreams>();
 const tempDirs = new Set<string>();
@@ -172,7 +172,7 @@ afterEach(async () => {
 
 describe("terminateProcessTree", () => {
   it("回收 runtime wrapper 时会一并结束其派生子进程", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-runtime-terminator-"));
+    const dir = await mkdtemp(join(tmpdir(), "codez-runtime-terminator-"));
     tempDirs.add(dir);
     const grandchildPidPath = join(dir, "grandchild.pid");
     const child = spawn(
@@ -201,7 +201,7 @@ setInterval(() => {}, 1000);
     const grandchildPid = await readReportedPid(child, grandchildPidPath);
     expect(isPidAlive(grandchildPid)).toBe(true);
 
-    // Bugfix: 用户反馈退出 ZCode 后仍残留 bun 版本的 Agent 子进程。
+    // Bugfix: 用户反馈退出 Codez 后仍残留 bun 版本的 Agent 子进程。
     // 这里用 wrapper -> grandchild 的结构复现，要求关闭 wrapper 时整棵进程树都被回收。
     terminateProcessTree(child);
 
@@ -215,7 +215,7 @@ setInterval(() => {}, 1000);
   it.runIf(process.platform !== "win32")(
     "关闭 runtime wrapper 时先给进程处理 SIGTERM 的窗口",
     async () => {
-      const dir = await mkdtemp(join(tmpdir(), "zcode-runtime-terminator-"));
+      const dir = await mkdtemp(join(tmpdir(), "codez-runtime-terminator-"));
       tempDirs.add(dir);
       const markerPath = join(dir, "graceful-exit.txt");
       const child = spawn(
@@ -256,7 +256,7 @@ setInterval(() => {}, 1000);
   it.runIf(process.platform !== "win32")(
     "POSIX 下会兜底清理脱离原进程组的后代进程",
     async () => {
-      const dir = await mkdtemp(join(tmpdir(), "zcode-runtime-terminator-"));
+      const dir = await mkdtemp(join(tmpdir(), "codez-runtime-terminator-"));
       tempDirs.add(dir);
       const grandchildPidPath = join(dir, "detached-grandchild.pid");
       const child = spawn(
@@ -417,7 +417,7 @@ setInterval(() => {}, 1000);
       await readFirstStdoutLine(child);
 
       // Bugfix: app 关闭时 host 不能只安排一个 unref 的 SIGKILL 兜底就退出；
-      // 遇到忽略 SIGTERM 的 zcode-cli/app-server 时，必须等兜底执行完再让 host 结束。
+      // 遇到忽略 SIGTERM 的 codez-cli/app-server 时，必须等兜底执行完再让 host 结束。
       const result = await terminateProcessTreeAndWait(child, {
         forceAfterMs: 20,
         waitAfterForceMs: 20,

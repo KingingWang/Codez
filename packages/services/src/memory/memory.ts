@@ -1,5 +1,5 @@
-import type { Memory, MemoryConfig } from "@zcode/shared";
-import { ServiceChannels } from "@zcode/shared";
+import type { Memory, MemoryConfig } from "@codez/shared";
+import { ServiceChannels } from "@codez/shared";
 import { createServiceDescriptor } from "../descriptors.js";
 
 export const PROJECT_MEMORY_PREVIEW_LIMIT_EXCEEDED_ERROR_CODE =

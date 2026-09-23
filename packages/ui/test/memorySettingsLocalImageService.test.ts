@@ -2,10 +2,10 @@
 import { createElement } from "react";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
+import type { IServiceAccessor } from "@codez/services";
 import { MarkdownImage } from "@/components/ai-elements/markdown-image.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 function createServices(
   readMediaPreview: ReturnType<typeof vi.fn>,
@@ -30,7 +30,7 @@ describe("Project Memory local image service boundary", () => {
 
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,

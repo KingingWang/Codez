@@ -11,7 +11,7 @@ import {
 const temporaryDirectories: string[] = [];
 
 async function createStore(options?: { maxPageStates?: number; maxTotalBytes?: number }) {
-  const directory = await mkdtemp(join(tmpdir(), "zcode-browser-recovery-"));
+  const directory = await mkdtemp(join(tmpdir(), "codez-browser-recovery-"));
   temporaryDirectories.push(directory);
   const filePath = join(directory, "browser-tab-recovery.json");
   return {

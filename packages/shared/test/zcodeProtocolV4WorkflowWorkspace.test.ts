@@ -9,7 +9,7 @@ import {
   v4ConversationWorkflowRunWorkspaceParamsSchema,
   v4ConversationWorkflowRunWorkspaceResultSchema,
   workflowRunWorkspaceNodeSchema,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 function node(overrides: Record<string, unknown> = {}) {
   return {

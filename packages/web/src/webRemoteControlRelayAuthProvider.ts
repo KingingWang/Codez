@@ -1,4 +1,4 @@
-import type { WebRemoteControlRelayRole } from "@zcode/shared";
+import type { WebRemoteControlRelayRole } from "@codez/shared";
 
 function base64UrlNoPadding(bytes: Uint8Array): string {
   const base64 = btoa(String.fromCharCode(...bytes));

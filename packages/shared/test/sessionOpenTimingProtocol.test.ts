@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { v4ConversationSubscribeResultSchema } from "../src/zcode-protocol-v4/transport.js";
+import { v4ConversationSubscribeResultSchema } from "../src/codez-protocol-v4/transport.js";
 
 describe("v4 conversation subscribe open timing", () => {
   it("accepts additive timing metadata only on the conversation subscribe ACK", () => {

@@ -117,7 +117,7 @@ Side Pane 启动页 / 顶部 + 菜单 / 主 composer `/side`、`/btw`
   `{ text }` 数组追加到 `# userselect:`、语言标签为 `userselect` 的结构块，避免把 session、row、content type
   和内部 id 暴露给模型。timeline 解析后仅显示正文与引用 chips，已发送 chip 的 hover 只展示已持久化
   的选中文字。
-- 旧 `# Conversation selections:`、语言标签为 `zcode-conversation-selections` 的完整结构块继续只读解析，保证
+- 旧 `# Conversation selections:`、语言标签为 `codez-conversation-selections` 的完整结构块继续只读解析，保证
   既有历史 chip 可见；新消息不再写旧格式，也不迁移已落盘消息。与 Web element context 同时存在时，
   先解析末尾 Web element block，再解析 selection block。
 
@@ -177,7 +177,7 @@ wire (MCS / non-MCS): user [<system-reminder>boundary</system-reminder>, questio
 ```
 
 ```bash
-pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/conversation-session-side-chat-reminder.test.ts'
+pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/conversation-session-side-chat-reminder.test.ts'
 ```
 
 正式回归仅保留 UI、持久化和 provider 请求断言；运行报告与网络证据由共享 E2E runner

@@ -80,7 +80,7 @@ describe("ProviderConfigResolver", () => {
         { providerId: "account", enabled, config: new ProviderConfig({}) },
       ]);
       const result = new ProviderConfigResolver().resolve({
-        zcodeBuiltinProviders: providers,
+        codezBuiltinProviders: providers,
         personalProviders: parseProviderConfigMap(personal.toJSON()),
         accountProviders: new ProviderConfigMap([
           ["account", new ProviderConfig({ access: new ZhipuAccountAccessConfig({ entitled }) })],
@@ -89,7 +89,7 @@ describe("ProviderConfigResolver", () => {
           account: { availability: entitled ? "available" : "unavailable", entitled, current },
         },
         personalModels: ModelConfigRules.empty(),
-        zcodeBuiltinModelRules: new ModelConfigRules([
+        codezBuiltinModelRules: new ModelConfigRules([
           { type: "model", modelMatch: ".*", config: completeModelConfig() },
         ]),
       });
@@ -120,13 +120,13 @@ describe("ProviderConfigResolver", () => {
           models: ["m"],
         });
         const result = new ProviderConfigResolver().resolve({
-          zcodeBuiltinProviders: new ProviderConfigMap([["account", account]]),
+          codezBuiltinProviders: new ProviderConfigMap([["account", account]]),
           personalProviders: new ProviderConfigMap([
             { providerId: "account", enabled: false, config: new ProviderConfig({}) },
           ]),
           accountProviders: ProviderConfigMap.empty(),
           personalModels: ModelConfigRules.empty(),
-          zcodeBuiltinModelRules: new ModelConfigRules([
+          codezBuiltinModelRules: new ModelConfigRules([
             {
               type: "model",
               modelMatch: ".*",
@@ -157,11 +157,11 @@ describe("ProviderConfigResolver", () => {
         models: ["m"],
       });
       const result = new ProviderConfigResolver().resolve({
-        zcodeBuiltinProviders: ProviderConfigMap.empty(),
+        codezBuiltinProviders: ProviderConfigMap.empty(),
         accountProviders: ProviderConfigMap.empty(),
         personalProviders: new ProviderConfigMap([{ providerId: "p", enabled, config }]),
         personalModels: ModelConfigRules.empty(),
-        zcodeBuiltinModelRules: new ModelConfigRules([
+        codezBuiltinModelRules: new ModelConfigRules([
           {
             type: "model",
             modelMatch: ".*",
@@ -189,10 +189,10 @@ describe("ProviderConfigResolver", () => {
       ],
     ]);
     const result = new ProviderConfigResolver().resolve({
-      zcodeBuiltinProviders: providers,
+      codezBuiltinProviders: providers,
       personalProviders: ProviderConfigMap.empty(),
       personalModels: ModelConfigRules.empty(),
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         { type: "model", modelMatch: ".*", config: completeModelConfig() },
       ]),
       accountProviders: resolveAccountProviderConfigs({
@@ -223,7 +223,7 @@ describe("ProviderConfigResolver", () => {
       api: new ProviderApiConfig({ type: "anthropic-messages", baseUrl: "https://example.com" }),
     };
     const result = new ProviderConfigResolver().resolve({
-      zcodeBuiltinProviders: new ProviderConfigMap([
+      codezBuiltinProviders: new ProviderConfigMap([
         [
           "account",
           new ProviderConfig({
@@ -253,7 +253,7 @@ describe("ProviderConfigResolver", () => {
       ]),
       personalProviders: ProviderConfigMap.empty(),
       personalModels: ModelConfigRules.empty(),
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         { type: "model", modelMatch: ".*", config: completeModelConfig() },
       ]),
       accountProviders: new ProviderConfigMap(
@@ -295,7 +295,7 @@ describe("ProviderConfigResolver", () => {
   it("两个成员集合重名时 Built-in-wins，Personal 专属 Rule 继续后置覆盖", () => {
     const builtin = completeModelConfig({ contextWindow: 100_000 });
     const result = new ProviderConfigResolver().resolve({
-      zcodeBuiltinProviders: new ProviderConfigMap([
+      codezBuiltinProviders: new ProviderConfigMap([
         [
           "provider-a",
           new ProviderConfig({
@@ -312,7 +312,7 @@ describe("ProviderConfigResolver", () => {
       personalProviders: new ProviderConfigMap([
         ["provider-a", new ProviderConfig({ personalModelIds: ["model-a"] })],
       ]),
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         { type: "provider-model", providerId: "provider-a", modelId: "model-a", config: builtin },
       ]),
       personalModels: new ModelConfigRules([
@@ -370,9 +370,9 @@ describe("ProviderConfigResolver", () => {
       ],
     });
     const result = new ProviderConfigResolver().resolve({
-      zcodeBuiltinProviders: ProviderConfigMap.empty(),
+      codezBuiltinProviders: ProviderConfigMap.empty(),
       personalProviders,
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         { type: "model", modelMatch: ".*", config: completeModelConfig() },
       ]),
       personalModels: ModelConfigRules.empty(),
@@ -388,8 +388,8 @@ describe("ProviderConfigResolver", () => {
 
   it("引用不存在 Template 的 Provider 不进入 Registry，并在全局诊断中保留问题", () => {
     const result = new ProviderConfigResolver().resolve({
-      zcodeBuiltinProviders: ProviderConfigMap.empty(),
-      zcodeBuiltinProviderTemplates: ProviderTemplateMap.empty(),
+      codezBuiltinProviders: ProviderConfigMap.empty(),
+      codezBuiltinProviderTemplates: ProviderTemplateMap.empty(),
       personalProviders: new ProviderConfigMap([
         {
           providerId: "missing-template-provider",
@@ -397,7 +397,7 @@ describe("ProviderConfigResolver", () => {
           config: new ProviderConfig({ group: "standard-personal", personalModelIds: ["model-a"] }),
         },
       ]),
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         { type: "model", modelMatch: ".*", config: completeModelConfig() },
       ]),
       personalModels: ModelConfigRules.empty(),
@@ -419,7 +419,7 @@ describe("ProviderConfigResolver", () => {
 
   it("隐藏 Provider 的启用模型仍进入 Registry，禁用模型只保留在 Settings Resolution", () => {
     const result = new ProviderConfigResolver().resolve({
-      zcodeBuiltinProviders: new ProviderConfigMap([
+      codezBuiltinProviders: new ProviderConfigMap([
         [
           "provider-a",
           new ProviderConfig({
@@ -435,7 +435,7 @@ describe("ProviderConfigResolver", () => {
         ],
       ]),
       personalProviders: ProviderConfigMap.empty(),
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         { type: "model", modelMatch: ".*", config: completeModelConfig() },
         { type: "model", modelMatch: "disabled", config: new ModelConfig({ enabled: false }) },
       ]),
@@ -462,9 +462,9 @@ describe("ProviderConfigResolver", () => {
     });
     const modelConfig = completeModelConfig();
     const result = new ProviderConfigResolver().resolve({
-      zcodeBuiltinProviders: new ProviderConfigMap([["provider-a", providerConfig]]),
+      codezBuiltinProviders: new ProviderConfigMap([["provider-a", providerConfig]]),
       personalProviders: ProviderConfigMap.empty(),
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         { type: "model", modelMatch: "model-a", config: modelConfig },
       ]),
       personalModels: ModelConfigRules.empty(),
@@ -488,7 +488,7 @@ describe("ProviderConfigResolver", () => {
   it("Built-in 规则按完整字符串匹配，并让后命中的规则覆盖前面的字段", () => {
     const resolver = new ProviderConfigResolver();
     const result = resolver.resolve({
-      zcodeBuiltinProviders: new ProviderConfigMap([
+      codezBuiltinProviders: new ProviderConfigMap([
         [
           "zai",
           new ProviderConfig({
@@ -503,7 +503,7 @@ describe("ProviderConfigResolver", () => {
         ],
       ]),
       personalProviders: ProviderConfigMap.empty(),
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         { type: "model", modelMatch: ".*", config: completeModelConfig() },
         {
           type: "model",
@@ -536,7 +536,7 @@ describe("ProviderConfigResolver", () => {
 
   it("用 Effective Provider baseURL 解析 Endpoint 特化规则", () => {
     const result = new ProviderConfigResolver().resolve({
-      zcodeBuiltinProviders: new ProviderConfigMap([
+      codezBuiltinProviders: new ProviderConfigMap([
         [
           "provider-a",
           new ProviderConfig({
@@ -552,7 +552,7 @@ describe("ProviderConfigResolver", () => {
       ]),
       accountProviders: ProviderConfigMap.empty(),
       personalProviders: ProviderConfigMap.empty(),
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         { type: "model", modelMatch: ".*", config: completeModelConfig() },
         {
           type: "provider-site",
@@ -572,7 +572,7 @@ describe("ProviderConfigResolver", () => {
   it("先应用模型通用 Option，再按 Provider 的 apiFormat 覆盖原始请求 map", () => {
     const resolver = new ProviderConfigResolver();
     const result = resolver.resolve({
-      zcodeBuiltinProviders: new ProviderConfigMap([
+      codezBuiltinProviders: new ProviderConfigMap([
         [
           "anthropic-provider",
           new ProviderConfig({
@@ -599,7 +599,7 @@ describe("ProviderConfigResolver", () => {
         ],
       ]),
       personalProviders: ProviderConfigMap.empty(),
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         {
           type: "model",
           modelMatch: "kimi-k3",
@@ -664,7 +664,7 @@ describe("ProviderConfigResolver", () => {
       builtinModelIds: ["m1", "m2"],
     };
     const result = resolver.resolve({
-      zcodeBuiltinProviders: new ProviderConfigMap([
+      codezBuiltinProviders: new ProviderConfigMap([
         ["account", new ProviderConfig(providerBase)],
         [
           "api",
@@ -683,7 +683,7 @@ describe("ProviderConfigResolver", () => {
           }),
         ],
       ]),
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         { type: "model", modelMatch: ".*", config: completeModelConfig() },
       ]),
       personalModels: ModelConfigRules.empty(),
@@ -724,7 +724,7 @@ describe("ProviderConfigResolver", () => {
       builtinModelIds: ["m1"],
     };
     const result = resolver.resolve({
-      zcodeBuiltinProviders: new ProviderConfigMap([
+      codezBuiltinProviders: new ProviderConfigMap([
         ["missing-key", new ProviderConfig(providerBase)],
         ["configured", new ProviderConfig(providerBase)],
         ["account", new ProviderConfig(providerBase)],
@@ -737,7 +737,7 @@ describe("ProviderConfigResolver", () => {
           }),
         ],
       ]),
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         { type: "model", modelMatch: ".*", config: completeModelConfig() },
       ]),
       personalModels: ModelConfigRules.empty(),
@@ -771,7 +771,7 @@ describe("ProviderConfigResolver", () => {
   it("只把完整 Provider 与启用 Model 发布到 Registry，并保留解析问题", () => {
     const resolver = new ProviderConfigResolver();
     const result = resolver.resolve({
-      zcodeBuiltinProviders: new ProviderConfigMap([
+      codezBuiltinProviders: new ProviderConfigMap([
         [
           "valid",
           new ProviderConfig({
@@ -787,7 +787,7 @@ describe("ProviderConfigResolver", () => {
         ["incomplete", new ProviderConfig({ group: "standard-personal", builtinModelIds: ["ok"] })],
       ]),
       personalProviders: ProviderConfigMap.empty(),
-      zcodeBuiltinModelRules: new ModelConfigRules([
+      codezBuiltinModelRules: new ModelConfigRules([
         { type: "model", modelMatch: "ok", config: completeModelConfig() },
       ]),
       personalModels: ModelConfigRules.empty(),

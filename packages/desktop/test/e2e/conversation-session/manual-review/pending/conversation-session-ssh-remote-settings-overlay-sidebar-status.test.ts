@@ -5,7 +5,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_WORKSPACE_ITEM,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,

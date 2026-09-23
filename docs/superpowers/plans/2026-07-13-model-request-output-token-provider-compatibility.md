@@ -2,7 +2,7 @@
 
 > 状态：产品边界已确认，可按本文执行。本文只处理模型输出预算与标准请求字段，不改变模型返回结果的完成态、错误态或重试语义。
 
-**Goal:** 统一模型输出预算计算与已验证的 provider 兼容逻辑，同时保持 ZCode 当前默认请求上限为 64,000：用户 provider config 中的 `limit.output` 表示模型能力上限并优先于 catalog；正常模型请求按独立的全局请求上限裁剪，并通过 AI SDK 向 OpenAI Compatible、OpenAI Responses 和 Anthropic 发送各自的标准字段；对已验证组合省略请求上限，并在 Snowflake Cortex 最终请求边界改写字段名。
+**Goal:** 统一模型输出预算计算与已验证的 provider 兼容逻辑，同时保持 Codez 当前默认请求上限为 64,000：用户 provider config 中的 `limit.output` 表示模型能力上限并优先于 catalog；正常模型请求按独立的全局请求上限裁剪，并通过 AI SDK 向 OpenAI Compatible、OpenAI Responses 和 Anthropic 发送各自的标准字段；对已验证组合省略请求上限，并在 Snowflake Cortex 最终请求边界改写字段名。
 
 **Architecture:** App 侧 `modelProviderService` 负责保证用户配置优先、catalog 只补缺失；core 用内部 `maxOutputTokensSource` 区分正常模型能力预算与 Compact 的内部派生预算；adapter 集中计算正常请求的有效输出预算，并在 AI SDK 序列化前应用小范围 provider 兼容规则；AI SDK 负责把保留下来的通用 `maxOutputTokens` 映射为不同协议的最终字段。
 
@@ -13,7 +13,7 @@
 当前实现同时存在两个问题：
 
 1. core 和 adapter 都会把模型输出能力预先截断到 64,000；OpenAI Compatible 的 `runtime-default` 又会在 adapter 中被省略，因此自定义网关可能回退到供应商的小默认值。
-2. App 读取 `~/.zcode/v2/config.json` 时，catalog 的 `maxOutputTokens` 可以覆盖用户已经配置的 `model.limit.output`，与已确认的配置优先级相反。
+2. App 读取 `~/.codez/v2/config.json` 时，catalog 的 `maxOutputTokens` 可以覆盖用户已经配置的 `model.limit.output`，与已确认的配置优先级相反。
 
 请求预算逻辑是：
 
@@ -24,21 +24,21 @@ effectiveMaxOutputTokens = Math.min(
 );
 ```
 
-ZCode 为减少行为变化，继续使用现有 64K 作为默认值，并提供独立环境变量覆盖。
+Codez 为减少行为变化，继续使用现有 64K 作为默认值，并提供独立环境变量覆盖。
 
 ## 已确认边界
 
 ### 纳入本次修复
 
 - 用户 provider config 的 `model.limit.output` 优先；catalog/models.dev 只补缺失能力事实。
-- 新增独立全局请求上限 `ZCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`，仅接受正整数，未配置或非法时默认 64,000。
+- 新增独立全局请求上限 `CODEZ_EXPERIMENTAL_OUTPUT_TOKEN_MAX`，仅接受正整数，未配置或非法时默认 64,000。
 - 正常请求的有效预算为 `min(modelLimit ?? globalCap, globalCap)`。
 - 主轮次和 Target Completion Verification 都属于正常模型请求，使用相同预算策略。
 - OpenAI Compatible、OpenAI Responses、Anthropic 都通过通用 `maxOutputTokens` 进入 AI SDK，并验证最终请求体字段。
 - OpenAI Compatible 默认发送 `max_tokens`；仅对 provider id 包含 `github-copilot` 的 GPT 模型，在 adapter 请求参数边界省略。
 - provider id 精确为 `openai` 时，在 AI SDK 序列化前省略 `maxOutputTokens`；其他使用 Responses 协议的自定义 provider 保持发送标准 `max_output_tokens`。
 - `snowflake-cortex` 在最终 JSON request body 边界把 `max_tokens` 改名为 `max_completion_tokens`；字段不存在时不重写 body。
-- Anthropic fixed thinking 继续沿用现有“先从可见输出预算扣除 thinking budget，再由 SDK 形成协议请求”的换算，这是 ZCode 保留的协议适配差异。
+- Anthropic fixed thinking 继续沿用现有“先从可见输出预算扣除 thinking budget，再由 SDK 形成协议请求”的换算，这是 Codez 保留的协议适配差异。
 
 ### 不纳入本次修复
 
@@ -65,7 +65,7 @@ catalog 只填充缺失值，不覆盖用户已经显式配置的值；缺失 me
 ### 请求预算
 
 ```ts
-const globalCap = positiveInteger(adapterEnv.ZCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX) ?? 64_000;
+const globalCap = positiveInteger(adapterEnv.CODEZ_EXPERIMENTAL_OUTPUT_TOKEN_MAX) ?? 64_000;
 const modelLimit = positiveInteger(model.maxOutputTokens);
 const effectiveMaxOutputTokens = Math.min(modelLimit ?? globalCap, globalCap);
 ```
@@ -121,7 +121,7 @@ const effectiveMaxOutputTokens = Math.min(modelLimit ?? globalCap, globalCap);
 pnpm exec vitest run packages/services/test/modelProviderService.test.ts
 ```
 
-- [x] 从 `readZCodeConfigProviders` 移除 `maxOutputTokens` catalog override 白名单；删除仅服务于该覆盖行为的类型、常量和条件分支，使 `applyCatalogModelMetadata` 对该字段恢复 fill-only。
+- [x] 从 `readCodezConfigProviders` 移除 `maxOutputTokens` catalog override 白名单；删除仅服务于该覆盖行为的类型、常量和条件分支，使 `applyCatalogModelMetadata` 对该字段恢复 fill-only。
 - [x] 保持旧 `model-providers.json` 迁移路径和其他 metadata 补缺逻辑不变。
 - [x] 重跑目标 service 测试并确认通过。
 
@@ -129,18 +129,18 @@ pnpm exec vitest run packages/services/test/modelProviderService.test.ts
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/contracts/src/model/index.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/turn-model-step.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/model.ts`
-- Delete: `apps/zcode-cli/packages/core/src/runtime/methods/model-output-tokens.ts`
-- Add: `apps/zcode-cli/packages/core/src/runtime/methods/compact-output-tokens.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/compact-active.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/target-completion-verification.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/model/model-request-output-tokens.ts`
-- Test: `apps/zcode-cli/packages/adapters/tests/runner-options.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-model-anomaly.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/model/index.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/turn-model-step.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/model.ts`
+- Delete: `apps/codez-cli/packages/core/src/runtime/methods/model-output-tokens.ts`
+- Add: `apps/codez-cli/packages/core/src/runtime/methods/compact-output-tokens.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/compact-active.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/target-completion-verification.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/model-request-output-tokens.ts`
+- Test: `apps/codez-cli/packages/adapters/tests/runner-options.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-model-anomaly.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
 
 - [x] 先为 adapter 增加预算真值表测试，generate/stream 共用同一组期望：
   - 模型 32,768 + 默认全局 64,000 → 32,768；
@@ -148,12 +148,12 @@ pnpm exec vitest run packages/services/test/modelProviderService.test.ts
   - 模型 131,072 + 环境变量 131,072 → 131,072；
   - 模型未配置 + 默认全局 64,000 → 64,000；
   - 环境变量为 `0`、负数、非数字或非整数时 → 回退 64,000。
-- [x] 扩展内部来源类型为 `"runtime-default" | "model-capability"`，同步 TypeScript 类型和 JSON schema；该字段仍只属于 core→adapter 内部模型请求，不修改外部 ZCode Protocol。
+- [x] 扩展内部来源类型为 `"runtime-default" | "model-capability"`，同步 TypeScript 类型和 JSON schema；该字段仍只属于 core→adapter 内部模型请求，不修改外部 Codez Protocol。
 - [x] 主轮次设置 `maxOutputTokensSource: "model-capability"`。
 - [x] Target Completion Verification 改为传递原始模型能力值并设置 `maxOutputTokensSource: "model-capability"`，不再在 core 预先截断到 64K。
 - [x] `model.ts` 对 `model-capability` 不再调用 core 的固定 64K precap，让 adapter 统一计算；其他未标记调用保持现状。
 - [x] 将原有固定 cap 收窄为 `compact-output-tokens.ts` 中的 Compact 专用 64K 保护；普通请求不再复用该常量。
-- [x] 在 adapter 中集中解析 `ZCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`，按行为契约计算正常请求预算；不要根据 `providerKind` 省略 `openai`、`openai-compatible`、`gateway` 或 `custom` 的正常预算。
+- [x] 在 adapter 中集中解析 `CODEZ_EXPERIMENTAL_OUTPUT_TOKEN_MAX`，按行为契约计算正常请求预算；不要根据 `providerKind` 省略 `openai`、`openai-compatible`、`gateway` 或 `custom` 的正常预算。
 - [x] Anthropic 在有效预算计算完成后继续执行现有 fixed thinking budget 扣减；默认环境下现有 64K 行为不变。
 - [x] `compact-active.ts` 仅改为调用 Compact 专用裁剪函数，并用 compact 测试确认 summary budget 仍为 20,000、来源仍为 `runtime-default`。
 - [x] 用 core 测试确认主轮次和 Target Completion Verification 的来源均为 `model-capability`，并确认现有模型异常处理断言没有变化。
@@ -161,15 +161,15 @@ pnpm exec vitest run packages/services/test/modelProviderService.test.ts
 目标测试：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/adapters test -- runner-options
-pnpm --dir apps/zcode-cli --filter @zcode/core test -- runtime-model-anomaly runtime-tool-loop runtime-compact
+pnpm --dir apps/codez-cli --filter @codez/adapters test -- runner-options
+pnpm --dir apps/codez-cli --filter @codez/core test -- runtime-model-anomaly runtime-tool-loop runtime-compact
 ```
 
 ### Task 4：验证三种协议的最终请求体
 
 **Files:**
 
-- Add: `apps/zcode-cli/packages/adapters/tests/model-output-tokens-wire.test.ts`
+- Add: `apps/codez-cli/packages/adapters/tests/model-output-tokens-wire.test.ts`
 - Modify only if reusable setup is needed: existing adapter test helpers
 
 - [x] 使用本地 fake fetch 捕获 AI SDK 最终 JSON request body，不只断言 `runner-options` 中间对象。
@@ -182,16 +182,16 @@ pnpm --dir apps/zcode-cli --filter @zcode/core test -- runtime-model-anomaly run
 Run:
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/adapters test -- model-output-tokens-wire
+pnpm --dir apps/codez-cli --filter @codez/adapters test -- model-output-tokens-wire
 ```
 
 ### Task 4.1：加入已验证的 provider 例外
 
 **Files:**
 
-- Add: `apps/zcode-cli/packages/adapters/src/model/model-request-output-token-compat.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/model/runner-options.ts`
-- Add: `apps/zcode-cli/packages/adapters/tests/model-output-token-provider-compat.test.ts`
+- Add: `apps/codez-cli/packages/adapters/src/model/model-request-output-token-compat.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/runner-options.ts`
+- Add: `apps/codez-cli/packages/adapters/tests/model-output-token-provider-compat.test.ts`
 
 - [x] 增加 provider/model family 的精确行为用例。
 - [x] generate/stream 在同一 adapter 兼容函数中应用规则：
@@ -203,11 +203,11 @@ pnpm --dir apps/zcode-cli --filter @zcode/adapters test -- model-output-tokens-w
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/adapters/src/model/model-request-output-token-compat.ts`
-- Add: `apps/zcode-cli/packages/adapters/src/model/model-request-body-compat.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/model/registry.ts`
-- Modify: `apps/zcode-cli/packages/adapters/tests/model-output-token-provider-compat.test.ts`
-- Modify: `apps/zcode-cli/packages/adapters/tests/model-output-tokens-wire.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/model-request-output-token-compat.ts`
+- Add: `apps/codez-cli/packages/adapters/src/model/model-request-body-compat.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/registry.ts`
+- Modify: `apps/codez-cli/packages/adapters/tests/model-output-token-provider-compat.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/tests/model-output-tokens-wire.test.ts`
 
 - [x] provider id 精确为 `openai` 时省略 `maxOutputTokens`；相似但不相等的 provider id 保持发送。
 - [x] `snowflake-cortex` 只在最终 JSON body 存在 `max_tokens` 时改名为 `max_completion_tokens`。
@@ -218,9 +218,9 @@ pnpm --dir apps/zcode-cli --filter @zcode/adapters test -- model-output-tokens-w
 目标测试：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/adapters test -- model-output-token-provider-compat
-pnpm --dir apps/zcode-cli --filter @zcode/adapters test
-pnpm --dir apps/zcode-cli typecheck
+pnpm --dir apps/codez-cli --filter @codez/adapters test -- model-output-token-provider-compat
+pnpm --dir apps/codez-cli --filter @codez/adapters test
+pnpm --dir apps/codez-cli typecheck
 ```
 
 ### Task 5：全量验证与提交
@@ -229,9 +229,9 @@ pnpm --dir apps/zcode-cli typecheck
 
 ```bash
 pnpm exec vitest run packages/services/test/modelProviderService.test.ts
-pnpm --dir apps/zcode-cli --filter @zcode/adapters test
-pnpm --dir apps/zcode-cli --filter @zcode/core test
-pnpm --dir apps/zcode-cli --filter @zcode/contracts test
+pnpm --dir apps/codez-cli --filter @codez/adapters test
+pnpm --dir apps/codez-cli --filter @codez/core test
+pnpm --dir apps/codez-cli --filter @codez/contracts test
 ```
 
 - [x] 执行两个 workspace 的机械检查：
@@ -239,8 +239,8 @@ pnpm --dir apps/zcode-cli --filter @zcode/contracts test
 ```bash
 pnpm typecheck
 pnpm lint
-pnpm --dir apps/zcode-cli typecheck
-pnpm --dir apps/zcode-cli lint
+pnpm --dir apps/codez-cli typecheck
+pnpm --dir apps/codez-cli lint
 ```
 
 - [x] 最终 diff 检查必须满足：
@@ -256,7 +256,7 @@ pnpm --dir apps/zcode-cli lint
 ## 验收标准
 
 - 用户配置 `limit.output = 131072` 时，App 不再把它改写成 catalog 的 64000。
-- 默认全局上限下，模型能力 131072 的正常请求发送 64000；设置 `ZCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX=131072` 后发送 131072。
+- 默认全局上限下，模型能力 131072 的正常请求发送 64000；设置 `CODEZ_EXPERIMENTAL_OUTPUT_TOKEN_MAX=131072` 后发送 131072。
 - 未提供模型能力时，正常请求发送默认 64000。
 - OpenAI Compatible、OpenAI Responses、Anthropic 的最终请求体分别出现正确标准字段。
 - 已验证的 OpenAI Compatible provider/model 组合以及 provider id 为 `openai` 的请求省略输出上限；通用 OpenAI Compatible 和自定义 Responses provider 保持发送。

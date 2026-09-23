@@ -13,7 +13,7 @@ describe("launchMarks", () => {
   });
 
   it("query key 常量稳定", () => {
-    expect(LAUNCH_MARKS_QUERY_KEY).toBe("zcodeLaunchMarks");
+    expect(LAUNCH_MARKS_QUERY_KEY).toBe("codezLaunchMarks");
   });
 
   it("非法输入返回 null", () => {

@@ -4,7 +4,7 @@ import {
   codexCancelLoginResponseSchema,
   codexLoginResponseSchema,
   type CodexLoginResponse,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import { usePlatform } from "@/hooks/usePlatform.js";

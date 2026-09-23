@@ -4,7 +4,7 @@
 >
 > Telemetry Schema Version：6。
 >
-> 适用范围：`apps/zcode-cli` 内部的 Agent、模型、工具、命令和上下文压缩链路。
+> 适用范围：`apps/codez-cli` 内部的 Agent、模型、工具、命令和上下文压缩链路。
 
 本文定义 CLI Agent Trace 的数据模型、链路拓扑、设计约束、接入方式、隐私边界和基本查询。
 完整字段、底层运行时和 OpenTelemetry 概念分别由专题参考展开。本文与专题参考及 TypeScript
@@ -13,7 +13,7 @@ Contracts 共同构成 Telemetry Schema：方法签名和类型约束以 Contrac
 
 ## 1. OpenTelemetry 数据模型
 
-ZCode 使用以下 OpenTelemetry 数据模型描述 Agent 执行：
+Codez 使用以下 OpenTelemetry 数据模型描述 Agent 执行：
 
 ```text
 Resource：Telemetry 生产者（CLI 版本、产品版本、构建、运行面、安装实例）
@@ -58,9 +58,9 @@ agent_turn
 `model_attempt` 为统计对象；工具成功率以 `tool_execution` 为统计对象；Shell/Git 退出码以
 `command_execution` 为统计对象。
 
-Resource、Context、SpanContext、Parent、Link、Event、Baggage 和 Metric 的定义及其在 ZCode
+Resource、Context、SpanContext、Parent、Link、Event、Baggage 和 Metric 的定义及其在 Codez
 中的使用约束，详见
-[OpenTelemetry 概念与 ZCode 取舍](./reference/otel-concepts.md)。
+[OpenTelemetry 概念与 Codez 取舍](./reference/otel-concepts.md)。
 
 ## 2. 观测设施边界
 
@@ -78,12 +78,12 @@ Trace 不写入本地日志，也不通过 RUM 上报。即使这些数据最终
 
 ## 3. 设计原则
 
-### 3.1 OTel 表达结构，ZCode 定义业务语义
+### 3.1 OTel 表达结构，Codez 定义业务语义
 
 Parent、Link、Context、Span、Event、Status、Resource 使用 OTel 原生能力；Turn、Step、
-Attempt、Reasoning、Cache、Tool Outcome 等业务语义使用完整的 `zcode.*` 字段。
+Attempt、Reasoning、Cache、Tool Outcome 等业务语义使用完整的 `codez.*` 字段。
 
-`zcode.*` 是内部查询的唯一权威字段。`gen_ai.*`、`http.*`、`server.*`、`process.*` 是从同一
+`codez.*` 是内部查询的唯一权威字段。`gen_ai.*`、`http.*`、`server.*`、`process.*` 是从同一
 事实投影出的兼容别名，用于外部工具理解，不能反过来决定业务 API 或内部报表。
 
 ### 3.2 在事实来源处记录
@@ -192,7 +192,7 @@ Trace A: triggering span -- Link ----> Trace B: detached_operation(root)
 
 ### 5.1 使用 Typed Writer
 
-业务代码依赖 `@zcode/contracts/telemetry` 中的窄接口。Writer 的每个 Setter 对应一个明确事实，
+业务代码依赖 `@codez/contracts/telemetry` 中的窄接口。Writer 的每个 Setter 对应一个明确事实，
 内部负责 Attribute Key、校验、脱敏、Event、Metric 和外部兼容别名。
 
 ```ts
@@ -352,7 +352,7 @@ workspace_generate_text
 1. 定义开始和结束边界；
 2. 定义 Parent 或 Root + Link；
 3. 在 Contracts 中增加专属 Start 类型和 Writer；
-4. 在 Runtime 中显式写 Canonical `zcode.<span_name>.*` Key；
+4. 在 Runtime 中显式写 Canonical `codez.<span_name>.*` Key；
 5. 定义 outcomes、failure stages、events 和隐私；
 6. 更新 [Schema 字典](./reference/schema-reference.md)；
 7. 添加拓扑、终态、异常隔离、隐私和 Metric 测试。
@@ -425,8 +425,8 @@ Endpoint、错误信息和身份字段的脱敏算法，以及导出预算、容
 Trace 在 ARMS 应用监控/调用链分析中查询，不是在 RUM 体验看板中查询。基本过滤条件：
 
 ```text
-serviceName : zcode-cli-agent
-and resources.zcode.telemetry.schema_version : 5
+serviceName : codez-cli-agent
+and resources.codez.telemetry.schema_version : 5
 ```
 
 常用查询：
@@ -437,27 +437,27 @@ spanName : agent_turn
 
 # 失败的物理模型请求
 spanName : model_attempt
-and attributes.zcode.model_attempt.outcome : failed
+and attributes.codez.model_attempt.outcome : failed
 
 # 某个 Turn 的关键节点
-attributes.zcode.execution.turn_id : <turn-id>
+attributes.codez.execution.turn_id : <turn-id>
 
 # 某个安装实例的模型请求
 spanName : model_attempt
-and resources.zcode.device.installation_id : <installation-id>
+and resources.codez.device.installation_id : <installation-id>
 
 # 某个逻辑调用的全部 Retry Attempt
-attributes.zcode.execution.logical_call_id : <logical-call-id>
+attributes.codez.execution.logical_call_id : <logical-call-id>
 ```
 
 错误查询使用：
 
-- HTTP 429/500：`attributes.zcode.model_attempt.http_status_code`；
-- Provider 原始错误码：`attributes.zcode.model_attempt.provider_error_code`；
+- HTTP 429/500：`attributes.codez.model_attempt.http_status_code`；
+- Provider 原始错误码：`attributes.codez.model_attempt.provider_error_code`；
 - Provider 原始错误信息（已脱敏）：
-  `attributes.zcode.model_attempt.provider_error_message`；
+  `attributes.codez.model_attempt.provider_error_message`；
 - 终止 Attempt 的 Error（通常是 Transport/SDK 异常）：
-  `attributes.zcode.model_attempt.error_message`；
+  `attributes.codez.model_attempt.error_message`；
 - 请求地址：`provider_origin` 与 `provider_route`，不使用原始 URL。
 
 准确成功率、QPS、Token 和 P95/P99 优先使用 OTLP Metric；Trace 用于定位具体执行样本。完整
@@ -482,14 +482,14 @@ Tests
 
 主要代码位置：
 
-- Contracts：`apps/zcode-cli/packages/contracts/src/telemetry/`；
-- Writer Runtime：`apps/zcode-cli/packages/telemetry/src/agent-trace-runtime.ts`；
-- Context 与终态基类：`apps/zcode-cli/packages/telemetry/src/agent-trace-support.ts`；
-- Model Status 到 Writer：`apps/zcode-cli/packages/telemetry/src/model-api-recorder.ts`；
-- Compatibility Adapter：`apps/zcode-cli/packages/telemetry/src/compatibility-adapters.ts`；
-- Metric：`apps/zcode-cli/packages/telemetry/src/agent-metrics.ts`；
-- OTLP Owner/Exporter：`apps/zcode-cli/packages/telemetry/src/otlp-exporter.ts`；
-- 业务 Facade：`apps/zcode-cli/packages/core/src/telemetry/runtime-telemetry.ts`。
+- Contracts：`apps/codez-cli/packages/contracts/src/telemetry/`；
+- Writer Runtime：`apps/codez-cli/packages/telemetry/src/agent-trace-runtime.ts`；
+- Context 与终态基类：`apps/codez-cli/packages/telemetry/src/agent-trace-support.ts`；
+- Model Status 到 Writer：`apps/codez-cli/packages/telemetry/src/model-api-recorder.ts`；
+- Compatibility Adapter：`apps/codez-cli/packages/telemetry/src/compatibility-adapters.ts`；
+- Metric：`apps/codez-cli/packages/telemetry/src/agent-metrics.ts`；
+- OTLP Owner/Exporter：`apps/codez-cli/packages/telemetry/src/otlp-exporter.ts`；
+- 业务 Facade：`apps/codez-cli/packages/core/src/telemetry/runtime-telemetry.ts`。
 
 维护规则：
 
@@ -505,10 +505,10 @@ Tests
 
 | 含义                     | 字段                             | 当前来源                               |
 | ------------------------ | -------------------------------- | -------------------------------------- |
-| CLI Telemetry 生产者版本 | `service.version`                | `apps/zcode-cli/package.json` 构建注入 |
-| Desktop/产品版本         | `zcode.product.version`          | 产品构建元数据；文档和代码不硬编码版本 |
-| 数据契约版本             | `zcode.telemetry.schema_version` | Contracts 常量，当前为 5               |
-| 精确构建身份             | `zcode.build.commit_id`          | 可信 CI/Git 构建元数据                 |
+| CLI Telemetry 生产者版本 | `service.version`                | `apps/codez-cli/package.json` 构建注入 |
+| Desktop/产品版本         | `codez.product.version`          | 产品构建元数据；文档和代码不硬编码版本 |
+| 数据契约版本             | `codez.telemetry.schema_version` | Contracts 常量，当前为 5               |
+| 精确构建身份             | `codez.build.commit_id`          | 可信 CI/Git 构建元数据                 |
 
 报表比较发布效果时应同时保留 Schema Version、CLI Version、Product Version 和 Build Commit，
 不能把它们当作同一个版本字段。

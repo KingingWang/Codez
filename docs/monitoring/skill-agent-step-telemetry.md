@@ -15,7 +15,7 @@
 | 字段                   | 说明                                                          | 来源                                  |
 | ---------------------- | ------------------------------------------------------------- | ------------------------------------- |
 | `skill_qualified_name` | 规范化 skill 名，例如 `document-skills:pptx`                  | `SkillContent.metadata.qualifiedName` |
-| `skill_plugin_id`      | 完整 plugin id，例如 `document-skills@zcode-plugins-official` | `LoadedPlugin.id`                     |
+| `skill_plugin_id`      | 完整 plugin id，例如 `document-skills@codez-plugins-official` | `LoadedPlugin.id`                     |
 | `skill_source`         | 现有 `SkillSource` 枚举值                                     | `SkillContent.metadata.source`        |
 
 三个字段都可选；metadata 缺失时省略，不根据名字字符串猜测来源。

@@ -1,4 +1,4 @@
-package com.example.zcode_mobile
+package com.example.codez_mobile
 
 import android.Manifest
 import android.content.Intent
@@ -12,12 +12,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.example.zcode_mobile.remote.RemoteControlKeepAliveService
-import com.example.zcode_mobile.remote.RemoteControlRecentLink
-import com.example.zcode_mobile.remote.RemoteControlRecentLinksStore
-import com.example.zcode_mobile.remote.RemoteControlUrlPolicy
-import com.example.zcode_mobile.ui.RemoteControlApp
-import com.example.zcode_mobile.ui.theme.ZcodemobileTheme
+import com.example.codez_mobile.remote.RemoteControlKeepAliveService
+import com.example.codez_mobile.remote.RemoteControlRecentLink
+import com.example.codez_mobile.remote.RemoteControlRecentLinksStore
+import com.example.codez_mobile.remote.RemoteControlUrlPolicy
+import com.example.codez_mobile.ui.RemoteControlApp
+import com.example.codez_mobile.ui.theme.ZcodemobileTheme
 
 class MainActivity : ComponentActivity() {
     private var remoteUrl by mutableStateOf<String?>(null)

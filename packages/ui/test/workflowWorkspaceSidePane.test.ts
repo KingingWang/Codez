@@ -12,7 +12,7 @@ import type {
   V4ConversationWorkflowRunNodeResultResult,
   V4ConversationWorkflowRunWorkspaceResult,
   WorkflowRunState,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import type { WorkflowWorkspaceSidePaneTab } from "@/lib/workspaceSidePane.js";
 
 vi.mock("@/logger.js", () => ({
@@ -37,7 +37,7 @@ vi.mock("@/v4/useConversationProjection.js", () => ({
 }));
 
 // eslint-disable-next-line import/first -- 必须在全部 mock 之后再引入被测组件。
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 // eslint-disable-next-line import/first
 import { WorkflowWorkspaceSidePane } from "@/app-shell/WorkflowWorkspaceSidePane.js";
 // eslint-disable-next-line import/first
@@ -178,7 +178,7 @@ const NODES: V4ConversationWorkflowRunWorkspaceResult["nodes"] = [
 function renderPane(tab = tabOf(), locale: "en-US" | "zh-CN" = "en-US") {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(WorkflowWorkspaceSidePane, { tab, focused: true, onOpenCodeViewer }),
     ),

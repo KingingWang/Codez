@@ -1,10 +1,10 @@
-# ZCode 官方 Server MCP：不可用时的输入框提示（额度耗尽 / 无 Coding Plan 权益）规格
+# Codez 官方 Server MCP：不可用时的输入框提示（额度耗尽 / 无 Coding Plan 权益）规格
 
 - 状态：T1（服务端错误码 → 输入框提示）已实现；T2（退登换 API Key 的本地分类）未实现，见 §10.2
-- 当前统一鉴权与 scope 事实见 `zcode-official-server-mcp-auth-spec.md`；本文只维护 quota/banner 产品行为。
-- 前置：`zcode-official-server-mcp-client-phase-1-spec.md`（下称 "phase-1"）。信任判定口径、身份头集合、
+- 当前统一鉴权与 scope 事实见 `codez-official-server-mcp-auth-spec.md`；本文只维护 quota/banner 产品行为。
+- 前置：`codez-official-server-mcp-client-phase-1-spec.md`（下称 "phase-1"）。信任判定口径、身份头集合、
   凭证解析与失败分类全部沿用 phase-1，本文不重复
-- 涉及仓库：`z-code`（客户端）与 `zcode-server`（服务端），两侧共用同一组 tool error code
+- 涉及仓库：`z-code`（客户端）与 `codez-server`（服务端），两侧共用同一组 tool error code
 - 驱动需求：官方 Server MCP 有权益门槛与每日配额。两者任一不通过时，用户在界面上得不到任何解释，
   只能看到模型"工具调用失败了"然后自行猜测
 - 文中行号取自 2026-08-20 的 staging，仅用于定位，会随代码漂移；§4 的契约以服务端
@@ -54,7 +54,7 @@ MCP 的 in-band `isError: true` 在 CLI 侧算**成功执行**：`turn-tools.ts:
 工具不进注册表，模型也就无从调用。
 
 ⇒ 服务端的权益错误码在这条路径上**永远到不了客户端**。而该失败分类目前只写进日志
-（`apps/zcode-cli/packages/adapters/src/mcp/index.ts:898`），没有进入 `McpServerStatus`，UI 取不到。
+（`apps/codez-cli/packages/adapters/src/mcp/index.ts:898`），没有进入 `McpServerStatus`，UI 取不到。
 
 ### 2.4 MCP 路由不验套餐
 
@@ -86,7 +86,7 @@ MCP 的 in-band `isError: true` 在 CLI 侧算**成功执行**：`turn-tools.ts:
 ## 4. 协议契约：tool error content 里的 `error_code`
 
 > 本节已按服务端 2026-08-20 的实现修正。设计初稿曾假设标识放在 `CallToolResult._meta` 的
-> `com.zcode/mcp-unavailable` 键上；服务端最终选择把它渲染进 **tool error content 的 JSON 文本**，
+> `com.codez/mcp-unavailable` 键上；服务端最终选择把它渲染进 **tool error content 的 JSON 文本**，
 > 客户端按后者实现。
 
 ### 4.1 形态
@@ -122,7 +122,7 @@ tool error 的 text content 下发（`IsError: true`）：
 - 客户端遇到未知 `code`、字段缺失或类型不符时**整体忽略**，不做兜底猜测，也不弹提示；
 - `IsError` 仍为 `true`、`content` 仍带同一段文本——模型侧行为不变，标识只是附加信息。
 
-## 5. 服务端实现（`zcode-server`，已完成）
+## 5. 服务端实现（`codez-server`，已完成）
 
 ### 5.1 `ToolError` 统一承载
 
@@ -173,23 +173,23 @@ v4 row schema（校验 code）、UI（按 code 决定文案与动作）。
 
 | 形态 | 结果产出方 | 能否伪造 `error_code` | 是否置位 |
 | --- | --- | --- | --- |
-| `http` + `auth.type=zcode_official` | ZCode 后端（连接存活即意味着逐请求 origin 校验通过且 fail closed） | 不能——插件只能把请求打到真实 ZCode，响应体不由它写 | ✓ |
-| `stdio` + `auth.type=zcode_official` | 插件进程自己 | **能**，任意字符串 | ✗ |
+| `http` + `auth.type=codez_official` | Codez 后端（连接存活即意味着逐请求 origin 校验通过且 fail closed） | 不能——插件只能把请求打到真实 Codez，响应体不由它写 | ✓ |
+| `stdio` + `auth.type=codez_official` | 插件进程自己 | **能**，任意字符串 | ✗ |
 | 其它 | 第三方 server | 能 | ✗ |
 
 **刻意不按"插件是否来自官方 marketplace"判定**：那会让非官方安装源（本地自测、
-zcode-plugins-test）的官方插件直接失效，而它也不是真实屏障（详见 `isOfficialMcpOriginTrusted`
+codez-plugins-test）的官方插件直接失效，而它也不是真实屏障（详见 `isOfficialMcpOriginTrusted`
 的"已知残留风险"一节）。
 
 已知代价：stdio 官方插件（video-agent-kit）的失败不再触发提示。实际不构成能力损失——它输出的是
-自己的错误文案（`[ERROR] zcode_speech transcription failed: …`），本来就不匹配
+自己的错误文案（`[ERROR] codez_speech transcription failed: …`），本来就不匹配
 `parseOfficialMcpToolError` 的严格解析。若将来 stdio 确实要透传服务端的结构化失败，需要另设一条
 经宿主背书的通道，而不是放宽这里。
 
-- `apps/zcode-cli/packages/adapters/src/mcp/index.ts`：`normalizeMcpToolDescriptor` 调用处按
-  `config.type === "http" && config.auth?.type === ZCODE_OFFICIAL_MCP_AUTH_TYPE` 传入 official；
+- `apps/codez-cli/packages/adapters/src/mcp/index.ts`：`normalizeMcpToolDescriptor` 调用处按
+  `config.type === "http" && config.auth?.type === CODEZ_OFFICIAL_MCP_AUTH_TYPE` 传入 official；
   `descriptor.ts` 透传；
-- `apps/zcode-cli/packages/core/src/mcp/index.ts` 把标记带进 `mcpPresentation`；
+- `apps/codez-cli/packages/core/src/mcp/index.ts` 把标记带进 `mcpPresentation`；
 - `core/src/tool/types.ts` 的 `mcpPresentation` 同步加字段。
 
 ### 6.3 结果级 display → v4 row
@@ -199,8 +199,8 @@ zcode-plugins-test）的官方插件直接失效，而它也不是真实屏障�
   追加 `unavailable: { code }`。`createToolResultDisplay` 把结果透传进去（`call-runner.ts` 已经
   拿 `output` 调它，无需改调用方）；
 - **两个 `.strict()` schema 同步加同一字段**，否则 row 会被校验拒掉：
-  `apps/zcode-cli/packages/contracts/src/tools/tool-result-metadata.ts`（`mcpToolResultDisplayPayloadSchema`）
-  与 `packages/shared/src/zcode-protocol-v4/rows.ts`（`toolCallMcpDisplaySchema`）；两处的 code
+  `apps/codez-cli/packages/contracts/src/tools/tool-result-metadata.ts`（`mcpToolResultDisplayPayloadSchema`）
+  与 `packages/shared/src/codez-protocol-v4/rows.ts`（`toolCallMcpDisplaySchema`）；两处的 code
   枚举都取自 §6.1 的单一声明；
 - `product-projection.ts` 已经把 `payload.result.display` 整体透传进 `toolCall` row，投影层零改动。
 
@@ -247,7 +247,7 @@ i18n key 已补 en-US / zh-CN 双份。
 
 - shared：`packages/shared/test/officialMcpToolError.test.ts` —— 正常解析、可选字段缺省、
   `internal_error` 与未知 code 不识别、非 JSON 文本不做文案兜底；
-- core：`apps/zcode-cli/packages/core/tests/tool-result-display.test.ts` —— 两种 code 的产出并过
+- core：`apps/codez-cli/packages/core/tests/tool-result-display.test.ts` —— 两种 code 的产出并过
   strict schema、**非官方来源必须忽略**、未知 code / 非 JSON / 成功结果都不产出标识；
 - ui：`packages/ui/test/v4SessionQuotaBannerState.test.ts` —— 按 code 分流、不阻断输入、
   模型额度 kind 优先级更高、dismiss key 跟随 server 与 rowId、`resolveMcpUnavailableNotice`
@@ -258,7 +258,7 @@ i18n key 已补 en-US / zh-CN 双份。
 1. 服务端：`go test ./internal/domain/servermcp/... ./internal/interfaces/web/controller/...`；
 2. 客户端：`pnpm typecheck`（改了两个 strict schema，注意跨包编译）+ `pnpm lint` + 上述 vitest；
 3. **配额**：把某个桶的每日额度配小（`internal/config` 的 mcp quota 配置）→ 本地起服务端 →
-   在 zcode 里把该桶的官方 MCP 工具调到超限 → 输入框上方出现提示并点名 server；关闭后不再重复弹；
+   在 codez 里把该桶的官方 MCP 工具调到超限 → 输入框上方出现提示并点名 server；关闭后不再重复弹；
    之后再触发一次新的失败会重新弹；
 4. **权益**：让 `CheckEligibility` 失败（去掉 Coding Plan 上下文或让 verify 失败）→ 提示切换为
    "需要 Coding Plan"，并带升级入口；

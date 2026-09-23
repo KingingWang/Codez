@@ -4,7 +4,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -17,10 +17,10 @@ const OAUTH_CREDENTIAL_KEYS = [
   "oauth:active_provider",
   "oauth:zai:access_token",
   "oauth:zai:user_info",
-  "zcodejwttoken",
+  "codezjwttoken",
 ] as const;
 
-describe("ZCode JWT 401 自动退出", () => {
+describe("Codez JWT 401 自动退出", () => {
   after(async () => {
     await browser.electron.restoreAllMocks();
     await clearAppData();

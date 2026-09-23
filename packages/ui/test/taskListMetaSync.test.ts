@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { ZCodeTaskGoal, ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskGoal, CodezTaskMeta } from "@codez/shared";
 import {
   initializeBackgroundTaskInTaskCaches,
   insertTaskIntoTaskCaches,
@@ -15,8 +15,8 @@ import {
 import {
   getTaskMeta,
   getTaskRuntimeState,
-  useZCodeSessionStore,
-} from "@/store/zcodeSessionStore.js";
+  useCodezSessionStore,
+} from "@/store/codezSessionStore.js";
 import {
   upsertTaskQueryCacheTaskMeta,
   useTaskQueryCacheStore,
@@ -25,7 +25,7 @@ import {
 const WORKSPACE_PATH = "/repo/goal-clear-cache";
 const TASK_ID = "task-goal-clear-cache";
 
-function createGoal(): ZCodeTaskGoal {
+function createGoal(): CodezTaskGoal {
   return {
     objective: "清理残留目标面板",
     sessionID: "session-goal-clear-cache",
@@ -42,7 +42,7 @@ function createGoal(): ZCodeTaskGoal {
   };
 }
 
-function createTaskMeta(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
+function createTaskMeta(overrides: Partial<CodezTaskMeta> = {}): CodezTaskMeta {
   return {
     createdAt: 1,
     mode: "default",
@@ -57,7 +57,7 @@ function createTaskMeta(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
 }
 
 beforeEach(() => {
-  useZCodeSessionStore.setState((state) => ({
+  useCodezSessionStore.setState((state) => ({
     ...state,
     workspaces: {},
   }));
@@ -67,7 +67,7 @@ beforeEach(() => {
 describe("patchTaskMetaInTaskCaches", () => {
   it("同步更新当前 task 的 optimistic、列表和查询缓存", () => {
     const task = createTaskMeta({ target: createGoal() });
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setTaskListCache(WORKSPACE_PATH, [task]);
     store.upsertOptimisticTaskListItem(WORKSPACE_PATH, task);
     upsertTaskQueryCacheTaskMeta(task);
@@ -81,7 +81,7 @@ describe("patchTaskMetaInTaskCaches", () => {
       }),
     });
 
-    const workspaceState = useZCodeSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
+    const workspaceState = useCodezSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
     const entityKey = `${buildTaskWorkspaceKey(WORKSPACE_PATH)}::${TASK_ID}`;
 
     expect(patched?.target).toBeNull();
@@ -108,7 +108,7 @@ describe("patchTaskMetaInTaskCaches", () => {
       expanded: true,
     });
     const queryKey = "workspace-updated-query";
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setTaskListCache(WORKSPACE_PATH, [olderTask, targetTask]);
     store.upsertOptimisticTaskListItem(WORKSPACE_PATH, olderTask);
     store.upsertOptimisticTaskListItem(WORKSPACE_PATH, targetTask);
@@ -144,7 +144,7 @@ describe("patchTaskMetaInTaskCaches", () => {
       title: "用户首条 query",
       updatedAt: 20,
     });
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setTaskListCache(WORKSPACE_PATH, [firstPromptTask]);
     store.upsertOptimisticTaskListItem(WORKSPACE_PATH, firstPromptTask);
     upsertTaskQueryCacheTaskMeta(firstPromptTask);
@@ -159,7 +159,7 @@ describe("patchTaskMetaInTaskCaches", () => {
       }),
     });
 
-    const workspaceState = useZCodeSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
+    const workspaceState = useCodezSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
     const entityKey = `${buildTaskWorkspaceKey(WORKSPACE_PATH)}::${TASK_ID}`;
 
     expect(patched?.title).toBe("用户首条 query");
@@ -178,7 +178,7 @@ describe("patchTaskMetaInTaskCaches", () => {
       titleOverridden: true,
       updatedAt: 20,
     });
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setTaskListCache(WORKSPACE_PATH, [renamedTask]);
     store.upsertOptimisticTaskListItem(WORKSPACE_PATH, renamedTask);
     upsertTaskQueryCacheTaskMeta(renamedTask);
@@ -193,7 +193,7 @@ describe("patchTaskMetaInTaskCaches", () => {
       }),
     });
 
-    const workspaceState = useZCodeSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
+    const workspaceState = useCodezSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
     const entityKey = `${buildTaskWorkspaceKey(WORKSPACE_PATH)}::${TASK_ID}`;
 
     expect(patched?.title).toBe("首页重构");
@@ -225,7 +225,7 @@ describe("patchTaskMetaInTaskCaches", () => {
       expanded: true,
     });
     const queryKey = "web-remote-expanded-timeline-query";
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setTaskListCache(WORKSPACE_PATH, [olderTask]);
     store.upsertOptimisticTaskListItem(WORKSPACE_PATH, olderTask);
     useTaskQueryCacheStore.getState().setQueryResult({
@@ -271,7 +271,7 @@ describe("syncTaskMetaToTaskCaches", () => {
       expanded: true,
     });
     const queryKey = "background-first-send-query";
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setTaskListCache(WORKSPACE_PATH, [existingTask]);
     useTaskQueryCacheStore.getState().setQueryResult({
       queryKey,
@@ -288,7 +288,7 @@ describe("syncTaskMetaToTaskCaches", () => {
       activeInputId: "input-background-first-send",
     });
 
-    const workspaceState = useZCodeSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
+    const workspaceState = useCodezSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
     const runtime = getTaskRuntimeState(workspaceState, TASK_ID);
     const cacheState = useTaskQueryCacheStore.getState();
     const result = cacheState.resultsByQueryKey[queryKey];
@@ -328,7 +328,7 @@ describe("syncTaskMetaToTaskCaches", () => {
       visibleLimit: 5,
     });
     const queryKey = "collapsed-workspace-query";
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setTaskListCache(WORKSPACE_PATH, existingTasks);
     for (const task of existingTasks) {
       store.upsertOptimisticTaskListItem(WORKSPACE_PATH, task);
@@ -369,7 +369,7 @@ describe("syncTaskMetaToTaskCaches", () => {
       title: "New session",
       updatedAt: 10,
     });
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setTaskListCache(WORKSPACE_PATH, [optimisticTask]);
     store.upsertOptimisticTaskListItem(WORKSPACE_PATH, optimisticTask);
     upsertTaskQueryCacheTaskMeta(optimisticTask);
@@ -380,7 +380,7 @@ describe("syncTaskMetaToTaskCaches", () => {
       membership: { pinned: false, archived: false },
     });
 
-    const workspaceState = useZCodeSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
+    const workspaceState = useCodezSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
     const entityKey = `${buildTaskWorkspaceKey(WORKSPACE_PATH)}::${TASK_ID}`;
 
     expect(getTaskMeta(workspaceState, TASK_ID)?.title).toBe("首发问题标题");
@@ -409,7 +409,7 @@ describe("syncTaskMetaToTaskCaches", () => {
       task: rawSnapshotTask,
     });
 
-    const workspaceState = useZCodeSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
+    const workspaceState = useCodezSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
     const workspaceTask = getTaskMeta(workspaceState, TASK_ID);
     const queryTask = useTaskQueryCacheStore.getState().taskMetaByEntityKey[entityKey];
 
@@ -548,7 +548,7 @@ describe("syncTaskMembershipEventToTaskCaches", () => {
       sortBy: "updated",
       expanded: true,
     });
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setTaskListCache(WORKSPACE_PATH, [task]);
     store.upsertOptimisticTaskListItem(WORKSPACE_PATH, task);
     useTaskQueryCacheStore.getState().setQueryResult({
@@ -582,7 +582,7 @@ describe("syncTaskMembershipEventToTaskCaches", () => {
       ),
     ).toEqual(["remote-archive"]);
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(WORKSPACE_PATH).taskListCache,
+      useCodezSessionStore.getState().getWorkspaceState(WORKSPACE_PATH).taskListCache,
     ).toEqual([]);
   });
 });
@@ -599,7 +599,7 @@ describe("removeTaskFromTaskCaches", () => {
       sortBy: "updated",
       expanded: true,
     });
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setTaskListCache(WORKSPACE_PATH, [task]);
     store.upsertOptimisticTaskListItem(WORKSPACE_PATH, task);
     useTaskQueryCacheStore.getState().setQueryResult({
@@ -615,7 +615,7 @@ describe("removeTaskFromTaskCaches", () => {
       taskId: "delete-from-caches",
     });
 
-    const workspaceState = useZCodeSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
+    const workspaceState = useCodezSessionStore.getState().getWorkspaceState(WORKSPACE_PATH);
 
     expect(removed).toBe(true);
     expect(workspaceState.taskListCache).toEqual([]);

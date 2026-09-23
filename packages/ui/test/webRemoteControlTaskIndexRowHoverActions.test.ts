@@ -1,7 +1,7 @@
 import { act, createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { WebRemoteControlTaskTarget } from "@zcode/shared";
+import type { WebRemoteControlTaskTarget } from "@codez/shared";
 
 type TestEvent = {
   bubbles?: boolean;

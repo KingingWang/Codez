@@ -1,6 +1,6 @@
-# ZCode Protocol（当前事实）
+# Codez Protocol（当前事实）
 
-ZCode Protocol 是 App、Host Process 与 `zcode-cli` 之间唯一的 Agent 协议。当前聊天主链路使用 V4 conversation topic、权威 projection 与 command inbox；`packages/shared/src/zcode-protocol/index.ts` 中仍保留的旧 session schema 只服务尚未删除的兼容调用，不是新增功能入口。
+Codez Protocol 是 App、Host Process 与 `codez-cli` 之间唯一的 Agent 协议。当前聊天主链路使用 V4 conversation topic、权威 projection 与 command inbox；`packages/shared/src/codez-protocol/index.ts` 中仍保留的旧 session schema 只服务尚未删除的兼容调用，不是新增功能入口。
 
 ## 核心约束
 
@@ -19,7 +19,7 @@ Renderer
 Host Process
   │ stdio NDJSON
   ▼
-zcode-cli app-server
+codez-cli app-server
   ├─ command inbox
   ├─ ProductProjection reducer
   └─ conversation topic publisher
@@ -56,7 +56,7 @@ subscribe(topic, baseSeq, baseLogEpoch)
 row-targeting 命令还要求 `baseLogEpoch`；重试必须复用原 `commandId`。CLI 用 command inbox 做幂等、
 epoch、CAS 和 product guard 裁决。
 
-当前命令全集以 `packages/shared/src/zcode-protocol-v4/command.ts` 为唯一类型事实源，主要分组如下：
+当前命令全集以 `packages/shared/src/codez-protocol-v4/command.ts` 为唯一类型事实源，主要分组如下：
 
 | 分组          | 命令                                                                                    |
 | ------------- | --------------------------------------------------------------------------------------- |
@@ -104,10 +104,10 @@ Remote Host 承载。所有 Host 都以 `workspaceKey = workspaceIdentity?.trim(
 App
   └─ workspace window
       ├─ Local Host
-      │  ├─ workspaceKey A ── zcode-cli A
-      │  └─ workspaceKey B ── zcode-cli B
+      │  ├─ workspaceKey A ── codez-cli A
+      │  └─ workspaceKey B ── codez-cli B
       └─ Remote Host(s)
-          └─ remoteSessionId / attachment ── workspaceKey C ── zcode-cli C
+          └─ remoteSessionId / attachment ── workspaceKey C ── codez-cli C
 ```
 
 `workspacePath` 只用于文件系统与命令 cwd；身份、缓存、队列、会话绑定和跨进程关联必须使用 workspaceKey。远程 workspace 必须贯穿传递 `workspaceIdentity` 和 `remoteSessionId`。
@@ -137,7 +137,7 @@ desktop-continuous 或 web-remote-replayable 的投递与恢复边界。
 
 ## 修改规则
 
-- 修改协议前先改 `packages/shared/src/zcode-protocol-v4/` 的 schema、纯函数和 spec。
+- 修改协议前先改 `packages/shared/src/codez-protocol-v4/` 的 schema、纯函数和 spec。
 - 协议变更必须同时验证 CLI reducer、Host transport、desktop continuous 与 mobile replayable。
 - 禁止在 UI、relay 或 Electron main 中复制 session/task/stream/queue/snapshot 业务状态。
-- 旧 `packages/shared/src/zcode-protocol/index.ts` 只能缩减兼容面，不能承接新的聊天能力。
+- 旧 `packages/shared/src/codez-protocol/index.ts` 只能缩减兼容面，不能承接新的聊天能力。

@@ -5,8 +5,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { TID_AUTOMATIONS_PAGE_TAB, testId } from "@zcode/shared";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { TID_AUTOMATIONS_PAGE_TAB, testId } from "@codez/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   AutomationsPageTitleSwitch,
   type AutomationsPageTab,
@@ -19,7 +19,7 @@ import {
 function Harness({ initial = "automation" }: { initial?: AutomationsPageTab }) {
   const [tab, setTab] = useState<AutomationsPageTab>(initial);
   return createElement(
-    ZCodeIntlProvider,
+    CodezIntlProvider,
     { initialLocale: "zh-CN" },
     createElement(AutomationsPageTitleSwitch, { value: tab, onValueChange: setTab }),
   );
@@ -99,8 +99,8 @@ describe("automationsPageTabMemory", () => {
     expect(readAutomationsPageTab()).toBe("workflow");
     // 只用一个 key，与活动项目无关。
     expect(sessionStorage.length).toBe(1);
-    expect(sessionStorage.getItem("zcode-automations-page-tab")).toBe("workflow");
-    sessionStorage.setItem("zcode-automations-page-tab", "bogus");
+    expect(sessionStorage.getItem("codez-automations-page-tab")).toBe("workflow");
+    sessionStorage.setItem("codez-automations-page-tab", "bogus");
     expect(readAutomationsPageTab()).toBe("automation");
     writeAutomationsPageTab("automation");
     expect(readAutomationsPageTab()).toBe("automation");

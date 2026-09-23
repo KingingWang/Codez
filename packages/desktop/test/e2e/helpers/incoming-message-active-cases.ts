@@ -1,6 +1,6 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_V4_SESSION_PANE, testId } from "@zcode/shared";
+import { TID_V4_SESSION_PANE, testId } from "@codez/shared";
 import { waitForDefaultWorkspaceReady } from "./desktop-app.js";
 import {
   INCOMING_MESSAGE_MODES,
@@ -288,7 +288,7 @@ export function registerIncomingMessageActiveCases(): void {
               trajectory.filter((request) => request.fixtureId === `${fixture}-${stage}`),
             ).toHaveLength(1);
           }
-          const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+          const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
           if (artifactDir) {
             await mkdir(join(artifactDir, "incoming-message-wire"), { recursive: true });
             await writeFile(

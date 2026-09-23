@@ -3,7 +3,7 @@
 // ⚠ 术语：artifact = 脚本经 `artifact.*` 发布给用户看的产出，不是引擎的 `RunSettlement.artifact`。
 //
 // 钉四件事：
-//   1. 落点：~/.zcode/tmp/workflow-artifacts/<runId>-<digest>/<artifactId>-<digest>/v<N>/<name>，一版一份；
+//   1. 落点：~/.codez/tmp/workflow-artifacts/<runId>-<digest>/<artifactId>-<digest>/v<N>/<name>，一版一份；
 //   2. 只在路径为空时写——一版的字节永不变，已有副本要么同字节要么是用户自己的编辑，都保留；
 //   3. 渲染器给的每个路径片段都清洗过，写不出这个目录；
 //   4. 形状与上限（20 MiB，同 `artifact.file`）在宿主侧再校验一次。
@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { dirname, join, relative, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { setDataBaseDir } from "@zcode/services/node";
+import { setDataBaseDir } from "@codez/services/node";
 import {
   WORKFLOW_ARTIFACT_FILE_MAX_BYTES,
   materializeWorkflowArtifactFile,
@@ -21,7 +21,7 @@ import {
 let tempRoot = "";
 
 function artifactsRoot(): string {
-  return join(tempRoot, ".zcode", "tmp", "workflow-artifacts");
+  return join(tempRoot, ".codez", "tmp", "workflow-artifacts");
 }
 
 /** run / 产物目录名：清洗后的 id 加原始 id 的 sha256 前 8 位（与实现同一规则）。 */
@@ -34,7 +34,7 @@ function bytesOf(text: string): Uint8Array {
 }
 
 beforeEach(async () => {
-  tempRoot = await mkdtemp(join(tmpdir(), "zcode-dwf-artifact-file-"));
+  tempRoot = await mkdtemp(join(tmpdir(), "codez-dwf-artifact-file-"));
   setDataBaseDir(tempRoot);
 });
 
@@ -247,6 +247,6 @@ describe("materializeWorkflowArtifactFile", () => {
         /invalid/u,
       );
     }
-    await expect(readdir(join(tempRoot, ".zcode"))).rejects.toThrow();
+    await expect(readdir(join(tempRoot, ".codez"))).rejects.toThrow();
   });
 });

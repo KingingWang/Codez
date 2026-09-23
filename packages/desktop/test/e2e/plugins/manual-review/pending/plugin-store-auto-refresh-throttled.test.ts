@@ -1,5 +1,5 @@
 import { clearAppData, clickTestIdByDom } from "../../../helpers/desktop-app.js";
-import { TID_SETTINGS_BACK_BUTTON } from "@zcode/shared";
+import { TID_SETTINGS_BACK_BUTTON } from "@codez/shared";
 import {
   PLUGIN_CDN_ZIP_ID,
   PLUGIN_CDN_ZIP_MARKETPLACE_ID,

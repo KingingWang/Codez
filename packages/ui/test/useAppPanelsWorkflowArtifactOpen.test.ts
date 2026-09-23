@@ -11,7 +11,7 @@
 //   3. 任何一条判据不成立、出处查不到、查询本身失败 ⇒ 退回产物 tab，点击绝不落空。
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { V4ConversationWorkflowRunArtifactsResult } from "@zcode/shared/zcode-protocol-v4";
+import type { V4ConversationWorkflowRunArtifactsResult } from "@codez/shared/codez-protocol-v4";
 import { useAppPanels } from "@/hooks/useAppPanels.js";
 import { shouldOpenWorkflowArtifactInBrowser } from "@/lib/workflowArtifactOpen.js";
 import { clearTaskSidePaneMemoryStateForTest } from "@/lib/taskSidePaneMemory.js";
@@ -28,8 +28,8 @@ const { conversationWorkflowRunArtifactsV4 } = vi.hoisted(() => ({
 
 vi.mock("@/hooks/useServices.js", () => ({
   useServices: () => ({
-    zcodeAgentService: { conversationWorkflowRunArtifactsV4 },
-    zcodeSessionService: { closeSession: vi.fn(async () => {}) },
+    codezAgentService: { conversationWorkflowRunArtifactsV4 },
+    codezSessionService: { closeSession: vi.fn(async () => {}) },
   }),
 }));
 
@@ -39,7 +39,7 @@ vi.mock("@/logger.js", () => ({
 
 const WORKSPACE_PATH = "/repo";
 const SESSION_ID = "sess-a";
-const REPORT_URL = "file:///repo/.zcode/workflow-runs/run-1/report.html";
+const REPORT_URL = "file:///repo/.codez/workflow-runs/run-1/report.html";
 
 function renderPanels(options?: { supportsEmbeddedBrowser?: boolean; sidePaneOwnerId?: string }) {
   return renderHook(() =>
@@ -130,7 +130,7 @@ describe("useAppPanels 打开工作流产物", () => {
 
   it("html 产物直接开 browser tab，不再开产物 tab", async () => {
     conversationWorkflowRunArtifactsV4.mockResolvedValue(
-      journalResult(".zcode/workflow-runs/run-1/report.html"),
+      journalResult(".codez/workflow-runs/run-1/report.html"),
     );
     const { result, unmount } = renderPanels();
 
@@ -159,7 +159,7 @@ describe("useAppPanels 打开工作流产物", () => {
 
   it("再点一次复用同一个 browser tab，并重新发导航请求", async () => {
     conversationWorkflowRunArtifactsV4.mockResolvedValue(
-      journalResult(".zcode/workflow-runs/run-1/report.html"),
+      journalResult(".codez/workflow-runs/run-1/report.html"),
     );
     const { result, unmount } = renderPanels();
 
@@ -290,7 +290,7 @@ describe("useAppPanels 打开工作流产物", () => {
 
     act(() => {
       result.current.handleOpenWorkflowArtifact(
-        artifactRequest({ sourcePath: ".zcode/workflow-runs/run-1/report.html" }),
+        artifactRequest({ sourcePath: ".codez/workflow-runs/run-1/report.html" }),
       );
     });
     await flush();
@@ -314,7 +314,7 @@ describe("useAppPanels 打开工作流产物", () => {
 
     act(() => {
       result.current.handleOpenWorkflowArtifact(
-        artifactRequest({ sourcePath: ".zcode/workflow-runs/run-1/report.html" }),
+        artifactRequest({ sourcePath: ".codez/workflow-runs/run-1/report.html" }),
       );
     });
     await flush();

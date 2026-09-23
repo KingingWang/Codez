@@ -2,7 +2,7 @@
 
 ## 背景
 
-当前 ZCode 的 `ExitPlanMode` 仍通过 tool input 的 `plan` 字段承载完整 plan。若 `ExitPlanMode` 审批后很快触发 compact，summary 可能没有保留完整 plan，compact/resume 后模型无法稳定拿回已批准 plan。
+当前 Codez 的 `ExitPlanMode` 仍通过 tool input 的 `plan` 字段承载完整 plan。若 `ExitPlanMode` 审批后很快触发 compact，summary 可能没有保留完整 plan，compact/resume 后模型无法稳定拿回已批准 plan。
 
 ## 目标
 
@@ -13,7 +13,7 @@
 plan file 路径为：
 
 ```text
-${workspaceRoot}/.zcode/plans/plan-${sanitizedSessionId}.md
+${workspaceRoot}/.codez/plans/plan-${sanitizedSessionId}.md
 ```
 
 `workspaceRoot` 表示工作区根路径；不能使用可能被 Bash `cd` 改变的 `workingDirectory`。`sanitizedSessionId` 只保留 `A-Z`、`a-z`、`0-9`、`.`、`_`、`-`，其他字符替换成 `-`，并去掉首尾 `-`。
@@ -45,5 +45,5 @@ If this plan is relevant to the current work and not already complete, continue 
 - 不改变 `ExitPlanMode` output shape。
 - 不新增 UI 展示。
 - 不把 plan file 加入 generic read-state reminder。
-- 不处理用户手动删除 `.zcode/plans` 后的恢复。
+- 不处理用户手动删除 `.codez/plans` 后的恢复。
 - 不在本次 compact continuity 改造内实现默认 plan file retention cleanup；若后续实现，应由保留周期配置驱动并清理默认 plans 目录下的过期 `.md`，不是 `ExitPlanMode`、compact 或 session 结束时的即时删除。

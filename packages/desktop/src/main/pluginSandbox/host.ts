@@ -1,6 +1,6 @@
-import type { Locale } from "@zcode/shared";
-import { PlatformChannels } from "@zcode/shared";
-import type { PluginSandboxHandle, PluginSandboxRegisterInput } from "@zcode/shared/mcp-apps";
+import type { Locale } from "@codez/shared";
+import { PlatformChannels } from "@codez/shared";
+import type { PluginSandboxHandle, PluginSandboxRegisterInput } from "@codez/shared/mcp-apps";
 import {
   BrowserWindow,
   clipboard,
@@ -47,7 +47,7 @@ export function getPluginSandboxHost(): PluginSandboxHost | null {
 
 /**
  * 在 app ready 后安装一次：创建注册表、注册 renderer 可调的两条 IPC（dispose / 手势消费，按 sender 归属校验）。
- * scheme 的 privileged 注册必须在 app ready 前、与 zcode-media 同一次调用完成，不在这里。
+ * scheme 的 privileged 注册必须在 app ready 前、与 codez-media 同一次调用完成，不在这里。
  */
 export function installPluginSandboxHost(input: {
   preloadPath: string;
@@ -124,7 +124,7 @@ export function installPluginSandboxHost(input: {
     registry,
     async prompt({ record, permissions: pending }) {
       const text = formatPluginSandboxPermissionDialogText(
-        { serverName: record.serverName ?? "ZCode Gen UI", permissions: pending },
+        { serverName: record.serverName ?? "Codez Gen UI", permissions: pending },
         resolveLocale(),
       );
       const owner = electronWebContents.fromId(record.ownerWebContentsId);

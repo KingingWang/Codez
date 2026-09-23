@@ -195,9 +195,9 @@ E2E 先更新对应 catalog/matrix，按 `e2e-case-lifecycle` 维护 pending、�
 
 新增 `provider-settings-write-recovery.test.ts` 保持 manual-review/pending，跑通不等于人工审核或晋级正式门禁。扩展的 Start 用例沿用已有动态模型管理场景，不增加真实模型请求。
 
-最终 Electron 证据（MacBook Pro，隔离工作区 `/Users/dev/zcode-todo88-pro-e2e`）：
+最终 Electron 证据（MacBook Pro，隔离工作区 `/Users/dev/codez-todo88-pro-e2e`）：
 
-- 全组命令：`ZCODE_E2E_MANUAL_REVIEW=1 ZCODE_E2E_SKIP_AGENT_BUILD=1 pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec ./test/e2e/start-plan-manual-claim-experience.test.ts --spec ./test/e2e/settings/manual-review/pending/provider-settings-write-recovery.test.ts --spec ./test/e2e/settings/settings-ui-polish.test.ts`。
+- 全组命令：`CODEZ_E2E_MANUAL_REVIEW=1 CODEZ_E2E_SKIP_AGENT_BUILD=1 pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec ./test/e2e/start-plan-manual-claim-experience.test.ts --spec ./test/e2e/settings/manual-review/pending/provider-settings-write-recovery.test.ts --spec ./test/e2e/settings/settings-ui-polish.test.ts`。
 - 最终报告：`packages/desktop/.e2e-artifacts/desktop-e2e-20260908-062431-556/summary.md`；12 passed、1 skipped，3 spec 文件通过。跳过项为无 SSH 目标的既有用例。
 - Start 刷新修复单独复跑：`/tmp/todo89-start-repeat.log`，4 passed；随后增加 W10 保护后再次运行上述全组通过。
 - 每次重建实际 desktop main/host/renderer。Agent 无代码改动，使用已有构建；配置和计费接口用隔离测试 fixture，不使用真实用户数据或凭据。

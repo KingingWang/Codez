@@ -21,7 +21,7 @@ describe("main log retention", () => {
   });
 
   async function createTempDir(): Promise<string> {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-log-retention-"));
+    const dir = await mkdtemp(join(tmpdir(), "codez-log-retention-"));
     tempDirs.push(dir);
     return dir;
   }

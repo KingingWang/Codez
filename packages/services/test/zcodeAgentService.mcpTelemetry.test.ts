@@ -1,9 +1,9 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ZCodeMcpTelemetryEvent, ZCodeMcpResourceSample } from "@zcode/shared";
+import type { CodezMcpTelemetryEvent, CodezMcpResourceSample } from "@codez/shared";
 import { afterEach, describe, expect, it } from "vitest";
-import { createZCodeAgentService } from "../src/zcode-agent/zcodeAgentService.js";
+import { createCodezAgentService } from "../src/codez-agent/codezAgentService.js";
 
 const MCP_TELEMETRY_FAKE_AGENT = `
 let buffer = "";
@@ -44,7 +44,7 @@ process.stdin.on("data", (chunk) => {
 });
 `;
 
-describe("ZCodeAgentService MCP telemetry", () => {
+describe("CodezAgentService MCP telemetry", () => {
   const tempDirs: string[] = [];
 
   afterEach(() => {
@@ -52,14 +52,14 @@ describe("ZCodeAgentService MCP telemetry", () => {
   });
 
   it("strictly validates MCP telemetry before publishing the process-level event", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-mcp-telemetry-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-mcp-telemetry-"));
     tempDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "mcp-telemetry-agent.cjs");
     writeFileSync(scriptPath, MCP_TELEMETRY_FAKE_AGENT);
-    const service = createZCodeAgentService({
+    const service = createCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
-    const events: ZCodeMcpTelemetryEvent[] = [];
+    const events: CodezMcpTelemetryEvent[] = [];
     const subscription = service.onDynamicMcpTelemetry()((event) => events.push(event));
 
     try {
@@ -89,14 +89,14 @@ describe("ZCodeAgentService MCP telemetry", () => {
     }
   });
   it("通过真实 stdio 解析资源数组，丢弃含 PID 的通知", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-mcp-resources-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-mcp-resources-"));
     tempDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "agent.cjs");
     writeFileSync(scriptPath, MCP_TELEMETRY_FAKE_AGENT);
-    const service = createZCodeAgentService({
+    const service = createCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
     });
-    const batches: ZCodeMcpResourceSample[][] = [];
+    const batches: CodezMcpResourceSample[][] = [];
     const subscription = service.onDynamicMcpResourceSamples()((samples) => batches.push(samples));
     try {
       await service.listSessions({ workspacePath });

@@ -16,8 +16,8 @@ import {
   TID_WORKFLOW_PROJECT_GROUP,
   resolveWorkspaceKey,
   testId,
-} from "@zcode/shared";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+} from "@codez/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   resetDynamicWorkflowAvailabilityStoreForTests,
   useDynamicWorkflowAvailabilityStore,
@@ -210,7 +210,7 @@ function mount(props: Partial<Parameters<typeof SavedWorkflowsSection>[0]> = {})
   const onOpenWorkflowRun = vi.fn();
   const utils = render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(SavedWorkflowsSection, {
         workspacePath: tabStoreState.activeWorkspacePath,

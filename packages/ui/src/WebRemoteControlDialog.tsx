@@ -5,8 +5,8 @@ import type {
   BotProvider,
   WebRemoteControlFailure,
   WebRemoteControlStatus,
-} from "@zcode/shared";
-import { resolveWebRemoteControlWorkspaceKey } from "@zcode/shared";
+} from "@codez/shared";
+import { resolveWebRemoteControlWorkspaceKey } from "@codez/shared";
 import {
   Bot as BotIcon,
   CopyIcon,
@@ -30,7 +30,7 @@ import {
 import { toast } from "@/components/ui/toast.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { getBotProviderRegionTagLabelId } from "@/botsUi.js";
 
@@ -103,7 +103,7 @@ export function isReusableWebRemoteControlSession(
 
 function getStatusLabel(
   status: WebRemoteControlStatus,
-  formatMessage: ReturnType<typeof useZCodeIntl>["intl"]["formatMessage"],
+  formatMessage: ReturnType<typeof useCodezIntl>["intl"]["formatMessage"],
 ): string {
   switch (status.status) {
     case "starting":
@@ -123,7 +123,7 @@ function getStatusLabel(
 
 function getStatusDetail(
   status: WebRemoteControlStatus,
-  formatMessage: ReturnType<typeof useZCodeIntl>["intl"]["formatMessage"],
+  formatMessage: ReturnType<typeof useCodezIntl>["intl"]["formatMessage"],
 ): string {
   switch (status.status) {
     case "starting":
@@ -156,7 +156,7 @@ function getStatusDotClassName(status: WebRemoteControlStatus): string {
 
 export function getWebRemoteControlStatusTagLabel(
   status: WebRemoteControlStatus,
-  formatMessage: ReturnType<typeof useZCodeIntl>["intl"]["formatMessage"],
+  formatMessage: ReturnType<typeof useCodezIntl>["intl"]["formatMessage"],
 ): string {
   const deviceName =
     status.mobileDeviceInfo?.browserPlatform?.trim() ||
@@ -211,7 +211,7 @@ function isSameWebRemoteControlStatus(
 
 function getFailureDescription(
   failure: WebRemoteControlFailure | undefined,
-  formatMessage: ReturnType<typeof useZCodeIntl>["intl"]["formatMessage"],
+  formatMessage: ReturnType<typeof useCodezIntl>["intl"]["formatMessage"],
 ): string | null {
   if (!failure) {
     return null;
@@ -273,7 +273,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
 }) {
   const platform = usePlatform();
   const confirmDialog = useConfirmDialog();
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [status, setStatus] = useState<WebRemoteControlStatus>({
     status: "idle",
   });

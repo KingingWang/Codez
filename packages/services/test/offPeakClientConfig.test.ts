@@ -1,4 +1,4 @@
-import type { ModelSelectionView } from "@zcode/provider";
+import type { ModelSelectionView } from "@codez/provider";
 import { describe, expect, it } from "vitest";
 import { resolveOffPeakClientConfig } from "../src/coding-plan-subscription/bigmodelCodingPlanSubscriptionProvider.js";
 
@@ -68,7 +68,7 @@ describe("resolveOffPeakClientConfig", () => {
     expect(
       resolveOffPeakClientConfig(
         {} as never,
-        { ZCODE_OFFPEAK_MOCK: "1" } as NodeJS.ProcessEnv,
+        { CODEZ_OFFPEAK_MOCK: "1" } as NodeJS.ProcessEnv,
         modelSelectionView,
       ),
     ).toEqual({ enabled: true, modelSelectionView, codingPlanActive: true });
@@ -78,7 +78,7 @@ describe("resolveOffPeakClientConfig", () => {
     expect(
       resolveOffPeakClientConfig(
         {} as never,
-        { ZCODE_OFFPEAK_MOCK: "1", ZCODE_OFFPEAK_MOCK_NO_PLAN: "1" } as NodeJS.ProcessEnv,
+        { CODEZ_OFFPEAK_MOCK: "1", CODEZ_OFFPEAK_MOCK_NO_PLAN: "1" } as NodeJS.ProcessEnv,
         modelSelectionView,
       ).codingPlanActive,
     ).toBe(false);

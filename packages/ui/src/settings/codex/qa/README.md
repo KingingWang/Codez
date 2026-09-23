@@ -11,7 +11,7 @@ and the pinned Linux native binary referenced by `scripts/codex-runtime-manifest
 Start only the renderer dev server for current unbuilt UI edits:
 
 ```sh
-ZCODE_DESKTOP_RUNTIME=codex ZCODE_ENV=production pnpm --filter @zcode/desktop exec vite --host 127.0.0.1 --port 5174 --strictPort
+CODEZ_DESKTOP_RUNTIME=codex CODEZ_ENV=production pnpm --filter @codez/desktop exec vite --host 127.0.0.1 --port 5174 --strictPort
 node packages/ui/src/settings/codex/qa/desktop-probe.mjs
 node packages/ui/src/settings/codex/qa/desktop-check.mjs
 ```
@@ -77,9 +77,9 @@ CODEX_UI_QA_PACKAGED=1 CODEX_UI_QA_MOCK=1 node packages/ui/src/settings/codex/qa
 CODEX_UI_QA_PACKAGED=1 CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/qa/desktop-conversation-check.mjs
 ```
 
-This launches the actual `linux-unpacked/zcode-codex` from an isolated temporary
+This launches the actual `linux-unpacked/codez-codex` from an isolated temporary
 cwd. The allowlisted environment contains no `ELECTRON_RENDERER_URL`,
-`ELECTRON_RUN_AS_NODE`, `ZCODE_CODEX_BRIDGE_PATH`, or `ZCODE_CODEX_COMMAND`. Packaged
+`ELECTRON_RUN_AS_NODE`, `CODEZ_CODEX_BRIDGE_PATH`, or `CODEZ_CODEX_COMMAND`. Packaged
 resolution must find its own ASAR and `resources/codex` binaries. Dedicated CDP
 9230 accepts only this checkout's exact
 `resources/app.asar/out/renderer/index.html` file URL, allowing bootstrap query/hash;

@@ -2,10 +2,10 @@
 
 > 当前有效设计；Provider Template 切换已纳入本文。
 
-Provider 配置由 ZCode Built-in、Account Built-in 和 Personal 三层组成。三层共享字段级 Overlay 语言。
+Provider 配置由 Codez Built-in、Account Built-in 和 Personal 三层组成。三层共享字段级 Overlay 语言。
 正常装配按字段含义维护成员：Account Built-in 更新 Built-in 集合，Personal 更新 Personal 集合。五个输入来源各自
 通过严格边界 Schema 验证字段所有权，再进入共同领域 Overlay 类型；Runtime 不复制五套配置类型。
-ZCode Built-in 与 Personal 提供 Model Config Rules，Account Built-in 不提供模型静态能力。
+Codez Built-in 与 Personal 提供 Model Config Rules，Account Built-in 不提供模型静态能力。
 
 设计层不建立“配置文档”领域概念。Config Map、Rules 和 Effective Config 是领域对象；JSON 外壳、
 `schemaVersion`、文件名、缓存和序列化格式属于 Source/Repository 实现。
@@ -14,22 +14,22 @@ ZCode Built-in 与 Personal 提供 Model Config Rules，Account Built-in 不提�
 
 | 来源                              | 所有者           | 持久化 | 主要内容                                                   |
 | --------------------------------- | ---------------- | ------ | ---------------------------------------------------------- |
-| ZCode Built-in Provider Config    | ZCode 产品发布   | 是     | Account Provider 定义与 Provider Template                  |
+| Codez Built-in Provider Config    | Codez 产品发布   | 是     | Account Provider 定义与 Provider Template                  |
 | Account Built-in Provider Config  | 当前账号连接状态 | 否     | Built-in account Provider 的 Account Access 与动态模型成员 |
 | Personal Provider Config          | 用户             | 是     | 自定义 Provider、API Key、对已有 Provider 的最终覆盖       |
-| ZCode Built-in Model Config Rules | ZCode 产品发布   | 是     | 模型静态事实、缺省 Options、per-option raw-body map        |
+| Codez Built-in Model Config Rules | Codez 产品发布   | 是     | 模型静态事实、缺省 Options、per-option raw-body map        |
 | Personal Model Config Rules       | 用户             | 是     | 对具体 Provider/Model 的稀疏覆盖                           |
 
 Catalog、Preset、Provider Family、远端 `builtinProviders/builtinModels` 和业务 hardcode 不能成为额外
-Registry Source。仍有效的系统事实迁入 ZCode Built-in Config/Rules；用户显式配置迁入 Personal；账号
+Registry Source。仍有效的系统事实迁入 Codez Built-in Config/Rules；用户显式配置迁入 Personal；账号
 连接事实进入 Account Built-in Config。
 
-### ZCode Built-in 的内容组织
+### Codez Built-in 的内容组织
 
-ZCode Built-in 在物理上继续使用一份完整、原子的 JSON，不拆成按 Provider、模型或规则层级划分的多份
+Codez Built-in 在物理上继续使用一份完整、原子的 JSON，不拆成按 Provider、模型或规则层级划分的多份
 源文件，也不引入额外的生成/拼装流水线。Provider Map 的声明顺序和 Model Config Rules 的数组顺序就是
 发布内容的一部分；具体 Rule 类型、物理写作顺序、Endpoint 特化、证据和默认启用目录规范见
-[`zcode-builtin-provider-config.md`](./zcode-builtin-provider-config.md)。这些规范不新增 Rule priority 或动态重排。
+[`codez-builtin-provider-config.md`](./codez-builtin-provider-config.md)。这些规范不新增 Rule priority 或动态重排。
 
 Built-in Release 按以下产品来源组织：
 
@@ -53,12 +53,12 @@ Provider Template；Template 不是 Provider，不进入 Registry，也不具备
 这一顺序首先服务于配置可读性和稳定的默认展示顺序；设置页将来是否增加显式分组属于独立交互设计，不能
 反向改变 Provider 身份、Registry 成员或 Model Rule 解析。
 
-### ZCode Built-in Release 与活动缓存
+### Codez Built-in Release 与活动缓存
 
 Bundled、Remote 与 Environment Active Cache 使用同一个两层 Release 契约：
 
 ```ts
-interface ZCodeBuiltinRelease {
+interface CodezBuiltinRelease {
   schemaVersion: 3;
   revision: number;
   config: {
@@ -84,8 +84,8 @@ Provider 与 Personal Rule 的应用顺序直观可见。Template 名称按当�
 和 Rules。已发布的同一 revision 必须对应唯一内容，内容回滚也要发布更高 revision。
 
 Environment 在
-`<config-root>/provider/zcode-builtin/<platform>/<appVersion>/<endpointKey>/active.json` 保存当前活动
-Release；该文件同时承担 LKG。`endpointKey` 由规范化后的 ZCode 控制面 Origin 确定性生成，Active 与
+`<config-root>/provider/codez-builtin/<platform>/<appVersion>/<endpointKey>/active.json` 保存当前活动
+Release；该文件同时承担 LKG。`endpointKey` 由规范化后的 Codez 控制面 Origin 确定性生成，Active 与
 `refresh-control.json` 必须位于同一个 Endpoint 目录。启动时严格解析 Bundled 与当前 Endpoint 的 Active，选择 revision 更高的兼容候选并物化到
 Active。Active 是可丢弃的缓存/LKG，不是启动前提：Active 缺失、损坏、更旧、与 Bundled 的同 revision
 内容冲突，或 Active 目录的锁、监听、读取、删除、写入失败时，都直接使用可信 Bundled 完成 ready；能够写入时
@@ -109,7 +109,7 @@ fallback 重新选择；Configured Default 不能阻断 Registry、Model Selecti
 ## Provider Overlay
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
               |
               v
 overlay Account Built-in Provider Config
@@ -125,11 +125,11 @@ Effective Built-in Provider Config
 ```
 
 ```ts
-effectiveBuiltinProviders = zcodeBuiltinProviders.overlay(accountBuiltinProviders);
+effectiveBuiltinProviders = codezBuiltinProviders.overlay(accountBuiltinProviders);
 effectiveProviders = effectiveBuiltinProviders.overlay(personalProviders);
 ```
 
-优先级是 `Personal > Account Built-in > ZCode Built-in`。
+优先级是 `Personal > Account Built-in > Codez Built-in`。
 
 ### 有序 Map
 
@@ -138,7 +138,7 @@ ProviderConfigMap 是有序 Map：
 - 后层覆盖已有 providerId 时保留原位置；
 - 后层新增 providerId 时按后层顺序追加；
 - Personal-only Provider 因此排在 Built-in Provider 之后；
-- Account Built-in 不改变 ZCode Built-in Provider 的基础顺序。
+- Account Built-in 不改变 Codez Built-in Provider 的基础顺序。
 
 Account Built-in 对每个账号 Provider 显式写入 `access.entitled`：有权益为 `true`，无权益为 `false`；未知状态有
 上一份成功 Overlay 时保留上一份，没有时以 `entitled=false` fail-closed。Start Plan 账号接口返回的非空
@@ -191,11 +191,11 @@ Personal Config 始终保持稀疏，Effective View 不得反向展开并污染 
 Provider 模型成员按所有权拆分：
 
 ```text
-ZCode Built-in builtinModelIds
-└─ ZCode 在线配置声明的成员
+Codez Built-in builtinModelIds
+└─ Codez 在线配置声明的成员
 
 Account Built-in builtinModelIds（存在时）
-└─ 当前账号接口返回的动态成员，整体替换 ZCode Built-in
+└─ 当前账号接口返回的动态成员，整体替换 Codez Built-in
 
 Personal modelIds
 └─ 用户自行添加、删除和排序的成员
@@ -220,7 +220,7 @@ Account 返回的 `builtinModelIds` 不是客户端不可绕过的授权白名�
 
 ## Account Built-in Provider Config
 
-AccountProviderService 的输入必须是 ZCode Built-in Provider Config，而不是已经叠加 Personal 的集合。
+AccountProviderService 的输入必须是 Codez Built-in Provider Config，而不是已经叠加 Personal 的集合。
 它只处理 Built-in 声明的账号 Provider：
 
 - 只根据当前结构化连接设置匹配的 Start、Individual 或 Team Built-in Provider 的 `access.entitled`；
@@ -263,7 +263,7 @@ Provider 根声明使用 `zai-family` 或 `bigmodel-family`；Template 创建与
 Effective Provider、Registry Config 与 Settings DTO 中，`group` 必须完整。Provider 不另存 `builtin` boolean 或
 顶层 `enabled`。
 
-这是一份共同领域字段全集。ZCode Built-in 与 Account Built-in 的正常代码维护 `builtinModelIds`，Personal
+这是一份共同领域字段全集。Codez Built-in 与 Account Built-in 的正常代码维护 `builtinModelIds`，Personal
 正常代码维护 `modelIds`，Effective Provider 保留两者。Source 边界使用各自严格 Schema 拒绝越权字段；进入领域后
 仍复用共同 Provider Config/Overlay，不建立五套 Runtime 类型。
 
@@ -316,7 +316,7 @@ Registry。它与 `api.type` 正交：`access.type` 描述访问材料来源，`
 
 #### zhipu-account
 
-ZCode Built-in Provider 固定声明 `accountType + mode`；Start、Individual、Team 分别是独立 Provider。Account
+Codez Built-in Provider 固定声明 `accountType + mode`；Start、Individual、Team 分别是独立 Provider。Account
 Connection Resolver 使用这些字段、结构化 Settings 选择、当前账号与权益，只投影 `access.entitled` 以及 Start
 接口确实返回的模型成员。Model 创建时固定 Built-in 声明的 `family + mode`。
 
@@ -357,7 +357,7 @@ Visibility 是 presentation/option-source 配置，不是安全门禁。Registry
 Effective Rules 在领域边界确定性组合：Built-in 保留发布顺序，Personal `provider-model` 保留内部顺序并统一后置：
 
 ```ts
-effectiveModelRules = ModelConfigRules.composeEffective(zcodeBuiltinModelRules, personalModelRules);
+effectiveModelRules = ModelConfigRules.composeEffective(codezBuiltinModelRules, personalModelRules);
 ```
 
 Built-in 与 Personal 使用共同的 Rule 结构：
@@ -381,7 +381,7 @@ type ModelConfigRule =
 ```
 
 匹配是声明式配置能力，不等于业务代码中的具体模型特判。Rules 按顺序应用；后命中字段覆盖前面。
-ZCode Built-in 通用规则补齐所有模型必需事实，具体规则覆盖差异，Personal 精确规则最后覆盖。
+Codez Built-in 通用规则补齐所有模型必需事实，具体规则覆盖差异，Personal 精确规则最后覆盖。
 
 GLM-5.3 系列当前包含 `glm-5.3` 与 `glm-5.3-flash`。Flash 必须进入全部 Z.ai/BigModel Provider：API
 Provider 遵循现有小写 wire ID，账号套餐与 Off-Peak Provider 遵循现有 `GLM-*` 展示/线路 ID。它继承
@@ -410,7 +410,7 @@ ASCII 大小写不敏感匹配；它只影响配置解析，不改写发给 Prov
 通过对整个 URL 使用忽略大小写匹配来掩盖 Host 的大小写差异。
 
 `provider-model` 可以出现在 Built-in 或 Personal Source，精确声明一个 Provider/Model 组合。Built-in 专属 Rule 由
-ZCode Built-in Release 管理；Personal 专属 Rule 由 Settings 管理。`match` 负责让一条声明式 Rule 覆盖一组模型，
+Codez Built-in Release 管理；Personal 专属 Rule 由 Settings 管理。`match` 负责让一条声明式 Rule 覆盖一组模型，
 不是远端配置 matcher，也不会在业务代码中触发某个模型的专属分支。设置页写入单个 Provider/模型时只创建结构化
 `type="provider-model"`，不把 ID 编码成正则。
 
@@ -433,7 +433,7 @@ Renderer、Shared、协议和 Adapter 不通过字符串 helper 猜测某个模�
 
 ### Built-in Model Rules 的写作与排列
 
-ZCode Built-in Rules 继续保存在同一个数组中，但不再按“所有模型事实 / 所有 API 特化 / 所有 Provider
+Codez Built-in Rules 继续保存在同一个数组中，但不再按“所有模型事实 / 所有 API 特化 / 所有 Provider
 特化”拆成相距很远的全局区段。除完整兜底和真正跨模型的服务规则外，属于同一模型家族的规则连续排列，
 让维护者能够在一个位置看到该模型的完整声明。数组后命中规则覆盖前命中规则，因此排列顺序同时是可读性
 规范和运行语义：
@@ -460,7 +460,7 @@ Cross-model Provider / Service Rules（仅在无法归入单一模型家族时�
 ```
 
 模型家族的稳定阅读顺序跟随前述 Provider 产品顺序：先 GLM，再依次排列 GPT、Claude、Grok、Kimi、
-MiniMax、DeepSeek、Qwen 和 MiMo；新增模型家族追加到相应产品位置。GLM 家族同时承载 ZCode 产品使用的
+MiniMax、DeepSeek、Qwen 和 MiMo；新增模型家族追加到相应产品位置。GLM 家族同时承载 Codez 产品使用的
 GLM 模型与公开 GLM 模型的共同事实，但账号、Endpoint 或 API Schema 差异仍由更窄规则表达。
 
 每个家族内部按以下覆盖层级连续书写：
@@ -502,7 +502,7 @@ Cross-model 区域。
 整理 Built-in 时按以下证据优先级核对：
 
 ```text
-ZCode 产品/账号服务契约
+Codez 产品/账号服务契约
         >
 厂商 Models API 的实时成功响应
         >
@@ -618,7 +618,7 @@ ModelFactory 创建 Active Model 时编译 Map；Adapter 在 AI SDK 已序列化
 Map 结果，不进入 Core，也不再经过独立 `reasoningMapping` 或 AI SDK Provider Options。完整契约见
 [`../model/model-option-map.md`](../model/model-option-map.md)。
 
-所有按具体模型识别 Reasoning 强度的旧代码都应退出。有效差异进入 ZCode Built-in Model Config Rules。
+所有按具体模型识别 Reasoning 强度的旧代码都应退出。有效差异进入 Codez Built-in Model Config Rules。
 
 ## 完整性校验
 
@@ -700,19 +700,19 @@ validation issues
 领域 Service 只消费普通 Config Snapshot，不感知文件、数据库或远端服务：
 
 ```text
-ZCode Built-in Config Source ─┐
+Codez Built-in Config Source ─┐
 Personal Config Repository ───┼─> ProviderConfigService
                               └─> ProviderRegistry
 
 Account Built-in Config Source ───> ProviderRegistry
 ```
 
-Built-in 发布文件统一命名为 `config/provider/zcode-builtin.json`。Desktop、CLI/TUI、测试和 SEA 各自显式
-注入可访问的 Source 路径或普通对象，`@zcode/provider` 不读取文件。Provider Config 链不保留
+Built-in 发布文件统一命名为 `config/provider/codez-builtin.json`。Desktop、CLI/TUI、测试和 SEA 各自显式
+注入可访问的 Source 路径或普通对象，`@codez/provider` 不读取文件。Provider Config 链不保留
 `official.json`、旧环境变量或旧协议字段兼容；原子切换计划见
-[`../../steps/todo-10-zcode-builtin-provider-config-naming-cutover.md`](../../steps/todo-10-zcode-builtin-provider-config-naming-cutover.md)。
+[`../../steps/todo-10-codez-builtin-provider-config-naming-cutover.md`](../../steps/todo-10-codez-builtin-provider-config-naming-cutover.md)。
 
-Personal Config 使用当前 Environment 的 `.zcode/v2/provider_config.json`，与其他综合配置文件物理隔离。
+Personal Config 使用当前 Environment 的 `.codez/v2/provider_config.json`，与其他综合配置文件物理隔离。
 Repository 提供读取、变化通知和原子 `update()`；文件锁、原子写、重试和 content-revision 轮询属于
 Repository 实现。
 
@@ -749,14 +749,14 @@ importer 的版本，或者产品明确接受更早版本用户重新配置后�
 ## Provider 与模型调序
 
 设置页只允许拖动 Personal-only Provider。Built-in/Account Built-in Provider 保持 Built-in 顺序；
-Personal 对它们的覆盖不改变位置。模型拖动只重排 `modelIds`；`builtinModelIds` 保持 ZCode/Account
+Personal 对它们的覆盖不改变位置。模型拖动只重排 `modelIds`；`builtinModelIds` 保持 Codez/Account
 Built-in 的管理顺序。模型拖动不修改 Model Config Rules 的优先级顺序。
 
 ## 不变量
 
 - 领域层没有“Config Document”中间概念。
-- Provider Overlay 是 ZCode Built-in -> Account Built-in -> Personal。
-- Account Built-in 只处理 ZCode Built-in account Provider。
+- Provider Overlay 是 Codez Built-in -> Account Built-in -> Personal。
+- Account Built-in 只处理 Codez Built-in account Provider。
 - Model Rules 是 Built-in + Personal，并作用于 Effective Provider。
 - Sparse Rule 只存在于 Overlay 之前；Registry 只发布 `requireComplete` 成功后的静态完整 Config。
 - 完整暴露的单个配置项整体替代；多层分别拥有成员的集合必须拆分数据结构并定义组合语义。

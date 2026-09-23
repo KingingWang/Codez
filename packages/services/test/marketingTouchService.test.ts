@@ -41,7 +41,7 @@ describe("MarketingTouchService", () => {
       "550e8400-e29b-41d4-a716-446655440000",
     );
     expect(new Headers(init.headers).get("X-Client-Language")).toBe("en-US");
-    expect(new Headers(init.headers).get("X-ZCode-App-Version")).toBe("3.11.2");
+    expect(new Headers(init.headers).get("X-Codez-App-Version")).toBe("3.11.2");
     expect(JSON.parse(String(init.body))).toEqual({
       campaign_id: "193001",
       action_type: "confirm",

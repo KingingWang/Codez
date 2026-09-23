@@ -4,10 +4,10 @@
 
 - 2026-07-06：V1 支持用户级 inline plugin，通过 archive 复制目录到 SSH 远端。
 - 2026-07-07：补充已安装 marketplace plugin 同步。该能力通过远端重装同名 marketplace plugin 实现，不复制 cache，不做隐式 fallback。
-- 2026-07-07：明确 builtin plugin 不做手动同步。远端应通过 ZCode Agent resource 原生携带官方插件资产；远端资源包构建与部署校验必须覆盖 `packages/*-plugin`。
+- 2026-07-07：明确 builtin plugin 不做手动同步。远端应通过 Codez Agent resource 原生携带官方插件资产；远端资源包构建与部署校验必须覆盖 `packages/*-plugin`。
 - 2026-07-08：补充本地 `file` / `directory` / `settings` marketplace source 的 SSH 同步方案。该能力镜像 marketplace source 到远端后仍由远端执行 marketplace install，不复制本机 cache。
 - 2026-07-08：补充同步过程可视化 UX：同步期间保留插件 card，逐项展示进度、hover 日志和单项 stop；stop 会先让 UI 停止等待当前插件并继续后续插件，若当前步骤是带 operationId 的 marketplace add/install，则进一步向远端发协议级取消请求。
-- 2026-07-08：补充协议级单项取消：远程同步弹窗为 marketplace add/install 生成一次性 operationId，stop 时只取消该 operationId 对应的远端 plugin 管理操作；未传 operationId 的本地插件设置页安装、市场添加和其它 ZCode Protocol 请求保持原行为。
+- 2026-07-08：补充协议级单项取消：远程同步弹窗为 marketplace add/install 生成一次性 operationId，stop 时只取消该 operationId 对应的远端 plugin 管理操作；未传 operationId 的本地插件设置页安装、市场添加和其它 Codez Protocol 请求保持原行为。
 - 2026-07-08：补充 `plugins.options` 的安全子集同步：只同步本机已显式配置、非敏感、非 file/directory 且远端 schema 兼容的 primitive options；写入远端前与远端已有 options merge，不做全量覆盖。
 - 2026-07-10：补充 builtin plugin 远端资源归档的跨平台权限约束：本地下载上传和开发态上传生成 tar 时，目录条目统一使用 POSIX `0755`，不得透传 Windows `stat.mode` 中缺少执行位的伪 POSIX 权限；检测到旧 builtin 资产不可达时，部署需先恢复产品目录的 owner `rwX`，再执行替换。
 - 2026-07-09：补充 `browser` 官方插件资产边界：它是默认启用的内容型官方插件，但除 `skills` 外还携带 `docs/` runtime 文档资源，远端/桌面打包白名单必须一并覆盖。
@@ -15,7 +15,7 @@
 
 ## 背景
 
-当前 SSH 远端已经支持用户级 Skill 和用户级 MCP 同步。Skill 同步复制本机用户 skill 目录到远端 `~/.zcode/skills`，MCP 同步把本机用户 MCP 配置导入远端 `~/.zcode/cli/config.json`。两者都遵循显式、单向、不覆盖的同步模型。
+当前 SSH 远端已经支持用户级 Skill 和用户级 MCP 同步。Skill 同步复制本机用户 skill 目录到远端 `~/.codez/skills`，MCP 同步把本机用户 MCP 配置导入远端 `~/.codez/cli/config.json`。两者都遵循显式、单向、不覆盖的同步模型。
 
 Plugin 比 Skill/MCP 更复杂：它不是单一资源，而是插件目录、`plugins.dirs`、enabled/options、marketplace cache、installed records、builtin suppression、plugin data、skills/commands/hooks/MCP 运行时投影的组合。因此 SSH 同步必须分类型处理，避免把本机运行状态误当作可移植配置。
 
@@ -23,11 +23,11 @@ Plugin 比 Skill/MCP 更复杂：它不是单一资源，而是插件目录、`p
 
 ### 用户级 inline plugin
 
-- 来源：本机用户级 `~/.zcode/cli/config.json` 中 `plugins.dirs` 指向的 inline plugin。
-- manifest：支持 `.zcode-plugin/plugin.json`、`.claude-plugin/plugin.json`、`.codex-plugin/plugin.json`。
+- 来源：本机用户级 `~/.codez/cli/config.json` 中 `plugins.dirs` 指向的 inline plugin。
+- manifest：支持 `.codez-plugin/plugin.json`、`.claude-plugin/plugin.json`、`.codex-plugin/plugin.json`。
 - plugin id：统一按 `<manifest.name>@inline` 生成。
-- 同步方式：本机 `pluginSyncService` 导出 archive，SSH 远端 `pluginSyncService` 导入到 `~/.zcode/plugins/<plugin-dir>`。
-- 配置写入：导入成功后把远端绝对路径追加到远端 `~/.zcode/cli/config.json` 的 `plugins.dirs`。
+- 同步方式：本机 `pluginSyncService` 导出 archive，SSH 远端 `pluginSyncService` 导入到 `~/.codez/plugins/<plugin-dir>`。
+- 配置写入：导入成功后把远端绝对路径追加到远端 `~/.codez/cli/config.json` 的 `plugins.dirs`。
 - enabled 状态：如果本机 `plugins.enabledPlugins[pluginId]` 是 boolean，则同步到远端用户配置。
 - options 状态：如果本机存在 `plugins.options[pluginId]`，只同步 manifest `userConfig` 中声明的非 sensitive、非 `file` / `directory` primitive 配置；远端导入后重新读取远端 plugin schema，只有远端同 key、同类型兼容时才通过 `plugins/configure` 写入，并与远端已有 options merge。
 - 冲突策略：远端已有同 plugin id 或目标目录已存在时跳过，不覆盖。
@@ -40,20 +40,20 @@ Plugin 比 Skill/MCP 更复杂：它不是单一资源，而是插件目录、`p
 - scope：支持 `user` 和 `workspace` scope，远端安装时沿用本机 scope。
 - 同步方式：不复制本机 cache；在远端调用 `installPlugin({ marketplace, pluginName, scope })`，由远端 marketplace resolver 重新安装同名 plugin。
 - marketplace source：如果远端缺少同名 marketplace，且本机 marketplace source 可序列化为 `github`、`git` 或 `url`，先在远端调用 `addPluginMarketplace`，再安装 plugin。
-- 本地 marketplace source：如果远端缺少同名 marketplace，且本机 marketplace source 是 `file`、`directory` 或可完整导出的 `settings`，先把选中 plugin 及同 marketplace 依赖闭包需要的 source mirror 到远端 `~/.zcode/plugins/marketplace-sources/<marketplace-id>-<hash>`，再用该远端目录调用 `addPluginMarketplace`，最后执行安装。
+- 本地 marketplace source：如果远端缺少同名 marketplace，且本机 marketplace source 是 `file`、`directory` 或可完整导出的 `settings`，先把选中 plugin 及同 marketplace 依赖闭包需要的 source mirror 到远端 `~/.codez/plugins/marketplace-sources/<marketplace-id>-<hash>`，再用该远端目录调用 `addPluginMarketplace`，最后执行安装。
 - enabled 状态：远端安装成功后调用 `setPluginEnabled`，对齐本机 enabled 状态。
 - options 状态：远端安装成功后重新读取远端 plugin schema，按与 inline 相同的安全子集规则同步 `plugins.options[pluginId]`；不传 sensitive、路径类或远端 schema 不兼容的 key。
 - 冲突策略：远端已存在同 plugin id 时认为已安装，不重复安装、不覆盖、不升级。
 
 ### builtin / official plugin
 
-- 来源：ZCode 随包内置的 official plugin，当前包括 `android-emulator`、`browser`、`document-skills`、`ios-simulator`、`restore-legacy-sessions`、`skill-creator`、`zcode-guide`。
-- plugin id：统一为 `<name>@zcode-plugins-official`。
-- 同步策略：不通过插件同步弹窗手动复制。builtin plugin 是产品原生能力，SSH 远端必须随远端 ZCode Agent resource 部署。
-- 远端资源布局：`glm/<platform>/packages/<plugin-package>` 打进远端资源包，部署到 `~/.zcode/server/agents/glm/packages/<plugin-package>`。
-- seed 过程：远端 agent 启动时复用现有 official plugin filesystem seed，把这些资源物化到远端 `~/.zcode/plugins/cache/zcode-plugins-official/<name>/<version>`。
-- 资源白名单：官方插件的 `.zcode-plugin`、`skills`、`commands`、`hooks`、`.mcp.json` 和 `docs` 都属于可 seed 资源。`browser` 没有 MCP runtime，但 `runtimeFeatures.browserDocumentationRoot` 指向 `docs/`，缺失时 `agent.browsers.documentation()` 会退化。
-- 部署校验：远端已有 `zcode.cjs` 和 wrapper 但缺 `packages/*-plugin/.zcode-plugin/plugin.json` 时，不能跳过 ZCode Agent 部署，必须刷新 `glm` 组件并补齐 packages。
+- 来源：Codez 随包内置的 official plugin，当前包括 `android-emulator`、`browser`、`document-skills`、`ios-simulator`、`restore-legacy-sessions`、`skill-creator`、`codez-guide`。
+- plugin id：统一为 `<name>@codez-plugins-official`。
+- 同步策略：不通过插件同步弹窗手动复制。builtin plugin 是产品原生能力，SSH 远端必须随远端 Codez Agent resource 部署。
+- 远端资源布局：`glm/<platform>/packages/<plugin-package>` 打进远端资源包，部署到 `~/.codez/server/agents/glm/packages/<plugin-package>`。
+- seed 过程：远端 agent 启动时复用现有 official plugin filesystem seed，把这些资源物化到远端 `~/.codez/plugins/cache/codez-plugins-official/<name>/<version>`。
+- 资源白名单：官方插件的 `.codez-plugin`、`skills`、`commands`、`hooks`、`.mcp.json` 和 `docs` 都属于可 seed 资源。`browser` 没有 MCP runtime，但 `runtimeFeatures.browserDocumentationRoot` 指向 `docs/`，缺失时 `agent.browsers.documentation()` 会退化。
+- 部署校验：远端已有 `codez.cjs` 和 wrapper 但缺 `packages/*-plugin/.codez-plugin/plugin.json` 时，不能跳过 Codez Agent 部署，必须刷新 `glm` 组件并补齐 packages。
 - 归档权限：本地下载上传和开发态上传会在桌面侧重新生成 tar；目录条目必须使用跨平台稳定的 `0755`，不能直接使用本地 `stat.mode`。Windows 只实现有限的读写权限语义，直接透传会把目录写成不含执行位的 mode，远端解包后无法遍历或删除。
 - 损坏迁移：旧版本已经生成的 `0644` packages 会让新版本在解包前的 `rm -rf` 继续失败。部署检测到 builtin manifest 不可达且 packages 根存在时，必须先对该产品自有目录执行 owner `rwX` 修复，再刷新资源；不得递归修改用户 plugin 目录。
 - 手动同步边界：不新增“手动同步 builtin plugin”入口，避免把 builtin 误导入为 inline plugin 或让每台远端都依赖用户手动修复。
@@ -62,7 +62,7 @@ Plugin 比 Skill/MCP 更复杂：它不是单一资源，而是插件目录、`p
 
 - plugin 同步完成后刷新远端 plugin management store，确保设置页立即看到最新安装状态。
 - 刷新远端 workspace 的 shared skill store，并 invalidate deferred draft session，确保 `$` 技能列表和后续会话准备能看到新 plugin skills。
-- 直接调用远端 `commandsService.list` 并写回当前远端 workspace 的 `zcodeSessionStore.slashCommands`，确保输入框 `/` 菜单不依赖切换会话或打开命令设置页才能看到新 plugin commands。
+- 直接调用远端 `commandsService.list` 并写回当前远端 workspace 的 `codezSessionStore.slashCommands`，确保输入框 `/` 菜单不依赖切换会话或打开命令设置页才能看到新 plugin commands。
 - 重新加载远端 MCP store 的用户目录来源，确保 plugin 贡献的 MCP 相关状态在 UI 中刷新。
 
 ## 数据流
@@ -73,14 +73,14 @@ inline:
   -> listLocalUserPluginCandidates()
   -> exportPluginsArchive(pluginIds)
   -> SSH remote pluginSyncService.importPluginsArchive(archive)
-  -> 远端 ~/.zcode/plugins/<plugin-dir>
-  -> 远端 ~/.zcode/cli/config.json plugins.dirs / enabledPlugins
+  -> 远端 ~/.codez/plugins/<plugin-dir>
+  -> 远端 ~/.codez/cli/config.json plugins.dirs / enabledPlugins
 
 marketplace installed:
-本机 base zcodeAgentService
+本机 base codezAgentService
   -> getPluginsOverview() / listPlugins()
   -> 已安装 marketplace candidates
-远端 zcodeAgentService
+远端 codezAgentService
   -> getPluginsOverview()
   -> addPluginMarketplace(source)    # 仅 github/git/url 且远端缺 marketplace 时
   -> pluginSyncService export/import source archive
@@ -92,17 +92,17 @@ marketplace installed:
 
 builtin official:
 远端 resource build
-  -> glm/<platform>/zcode.cjs
+  -> glm/<platform>/codez.cjs
   -> glm/<platform>/packages/*-plugin
 SSH deploy
-  -> ~/.zcode/server/agents/glm/zcode.cjs
-  -> ~/.zcode/server/agents/glm/packages/*-plugin
+  -> ~/.codez/server/agents/glm/codez.cjs
+  -> ~/.codez/server/agents/glm/packages/*-plugin
 远端 agent 启动
   -> filesystem seed
-  -> ~/.zcode/plugins/cache/zcode-plugins-official/<name>/<version>
+  -> ~/.codez/plugins/cache/codez-plugins-official/<name>/<version>
 ```
 
-UI 始终用 base services 做本机枚举和导出，用当前 workspace services 做远端状态检查和导入。远端 workspace 的 service collection 必须把 `pluginSyncService` 和 `zcodeAgentService` 透传为远端服务，避免导入或安装写回本机。
+UI 始终用 base services 做本机枚举和导出，用当前 workspace services 做远端状态检查和导入。远端 workspace 的 service collection 必须把 `pluginSyncService` 和 `codezAgentService` 透传为远端服务，避免导入或安装写回本机。
 
 ## 安全与冲突策略
 
@@ -127,7 +127,7 @@ UI 始终用 base services 做本机枚举和导出，用当前 workspace servic
 | marketplace cache fallback / 直接复制 `installed_plugins.json` | 未实现，且当前设计刻意不做 | 本机 `canva@claude-plugins-official` cache 里有已下载代码，但远端网络不可用。当前会安装失败，不会把本机 cache 打包过去 | 默认不应该支持。cache 可能包含本机生成物、绝对路径、旧 resolver 产物或平台相关文件，复制后不一定等价于远端安装 | 如确实需要离线模式，做显式“离线镜像同步”：用户选择后才复制 cache，校验 manifest/source/sha/版本，写远端 installed record，并标明不等价于 marketplace reinstall |
 | `plugins.options` 全量同步 | 已支持安全子集；不支持 sensitive、`file`、`directory`、远端 schema 缺失/不兼容的 key，也不把 default 当作用户配置同步 | 本机 `region="cn"` 会同步；`token` 标记 sensitive 或 `workspaceDir="/Users/dev/project"` 不会自动同步 | 需要继续支持路径映射和 credential store，但不能默认全量复制 | 后续增加 options diff 详情、路径映射确认和 credential store 写入；当前只做非敏感 primitive merge |
 | plugin `data/` | 未实现 | 插件在本机 `data/` 里保存索引、session cache、token、临时文件；远端运行时应该重新生成 | 大多数场景不应该支持 | 仅给有明确迁移语义的插件提供 opt-in 数据迁移；由插件声明可迁移文件和版本，主程序只负责执行受控导入 |
-| builtin / restorable builtin / suppressed builtin 状态 | 资产随远端 resource 原生部署；用户状态同步未实现 | 本机禁用了 `android-emulator@zcode-plugins-official`，但远端是 Linux，没有同样的 iOS/Android 运行环境；同步禁用状态可能隐藏远端可用工具 | 资产必须支持；启停/suppressed 状态可选支持，不应混入普通 plugin 同步 | 当前先修远端资源包构建与部署校验。后续如要同步状态，单独做“内置插件启停状态同步”；只在远端存在同 id、同来源且兼容时写 enabled/suppressed 状态 |
+| builtin / restorable builtin / suppressed builtin 状态 | 资产随远端 resource 原生部署；用户状态同步未实现 | 本机禁用了 `android-emulator@codez-plugins-official`，但远端是 Linux，没有同样的 iOS/Android 运行环境；同步禁用状态可能隐藏远端可用工具 | 资产必须支持；启停/suppressed 状态可选支持，不应混入普通 plugin 同步 | 当前先修远端资源包构建与部署校验。后续如要同步状态，单独做“内置插件启停状态同步”；只在远端存在同 id、同来源且兼容时写 enabled/suppressed 状态 |
 | 未安装 marketplace 候选 plugin | 未实现 | Discover 页能看到 `formatter@team-market`，但本机没有安装。当前同步弹窗不会把它列为候选 | 通常不需要。同步语义是“把本机已使用的 plugin 带到远端”，不是批量安装市场候选 | 若要支持，应做 marketplace source 同步或远端 Discover 安装入口，而不是放进“本地 plugin 同步” |
 | marketplace 版本完全一致 | 实现不完整，只保证同 marketplace + 同 plugin name 安装成功并返回同 plugin id | 本机是 `demo@team-market` 1.0.0；远端 marketplace 已更新到 1.1.0。当前远端可能装到 1.1.0 | 需要支持，尤其是复现实验环境时 | 协议增加 version/source lock/sha 参数；本机候选携带 installed record 的 source/sha；远端按 lock 安装，安装后校验 version/source/sha，不一致则失败 |
 | `file` / `directory` / `settings` marketplace source 自动带到远端 | 已支持 source mirror；不保证替换远端已有同名 marketplace，也不保证所有 synthetic `settings` source 都能还原本地 source root | 本机 marketplace 指向 `/Users/dev/plugins/marketplace.json`；远端没有这个路径。同步时把所选 plugin 的 source mirror 到远端，再让远端 install | 需要支持，但不能猜远端路径 | 已采用显式 source mirror：只打包所选 plugin 和同 marketplace 依赖闭包；远端已有同名 marketplace 时不替换，`settings` 中无法定位 source root 的本地相对 source 仍失败，不从 cache fallback |
@@ -146,7 +146,7 @@ UI 始终用 base services 做本机枚举和导出，用当前 workspace servic
 
 不应混入当前 plugin 同步主流程的是未安装 marketplace 候选和 builtin/suppressed builtin 状态。未安装候选更像远端 Discover 安装或 marketplace source 同步；builtin 状态则和远端操作系统、内置插件可用性相关，应单独做兼容性判断后再同步启停状态。
 
-对于 builtin plugin，最新结论是：资产缺失属于远端资源包构建/部署问题，不属于用户手动同步问题。远端理论上应原生支持 builtin plugin；如果远端插件页显示 0 个内置插件，根因应优先检查 `~/.zcode/server/agents/glm/packages/*-plugin` 是否随 `zcode.cjs` 一起部署。手动同步 builtin 会把产品原生能力变成用户补救步骤，还容易把官方插件误导入成 inline 插件，因此当前不做。
+对于 builtin plugin，最新结论是：资产缺失属于远端资源包构建/部署问题，不属于用户手动同步问题。远端理论上应原生支持 builtin plugin；如果远端插件页显示 0 个内置插件，根因应优先检查 `~/.codez/server/agents/glm/packages/*-plugin` 是否随 `codez.cjs` 一起部署。手动同步 builtin 会把产品原生能力变成用户补救步骤，还容易把官方插件误导入成 inline 插件，因此当前不做。
 
 ## UI 行为
 
@@ -178,7 +178,7 @@ UI 始终用 base services 做本机枚举和导出，用当前 workspace servic
 
 | ID | 场景 | 断言 |
 | --- | --- | --- |
-| RPS-INLINE-01 | 本机 `plugins.dirs` 有合法 inline plugin，远端缺失 | 导入到远端 `~/.zcode/plugins/<dir>`，远端 config 追加路径 |
+| RPS-INLINE-01 | 本机 `plugins.dirs` 有合法 inline plugin，远端缺失 | 导入到远端 `~/.codez/plugins/<dir>`，远端 config 追加路径 |
 | RPS-INLINE-02 | 远端已有同 inline plugin id | 返回 skipped，不覆盖目录，不重复写 config |
 | RPS-INLINE-03 | 远端目标目录存在 | 返回 skipped，不覆盖目录 |
 | RPS-INLINE-04 | 本机 inline plugin 含 symlink | 导出失败，避免把任意宿主路径打包进远端 |
@@ -200,11 +200,11 @@ UI 始终用 base services 做本机枚举和导出，用当前 workspace servic
 | RPS-UX-02 | 同步过程中点击某个 plugin 的 stop | 该 plugin 结果变为 stopped，队列继续后续 plugin；若当前步骤是 marketplace add/install，则发送对应 operationId 的远端取消请求 |
 | RPS-UX-03 | 同步完成页展示失败项 | 右侧结果状态使用紧凑状态徽标，不使用高窄按钮状容器 |
 | RPS-UX-04 | 同步日志较长 | 日志浮层可滚动，不使用非交互 tooltip 承载长日志 |
-| RPS-BUILTIN-01 | 生产远端资源包构建 | `glm/<platform>` 同时包含 `zcode.cjs` 和 `packages/*-plugin/.zcode-plugin/plugin.json` |
-| RPS-BUILTIN-02 | 远端已有同版本 `zcode.cjs` 但缺 builtin packages | 部署不能跳过 ZCode Agent；必须补齐 `~/.zcode/server/agents/glm/packages/*-plugin` |
-| RPS-BUILTIN-03 | 开发态 SSH 部署本地 `zcode.cjs` | 同步上传本地官方插件 packages，远端 `plugins list` 能发现 `source:"official"` 插件 |
-| RPS-BUILTIN-04 | Windows / macOS / Linux 桌面侧为 SSH 本地上传重打 builtin packages tar | tar 中所有目录条目均为 `0755`；远端解包后 `rm -rf ~/.zcode/server/agents/glm/packages` 可正常更新资源 |
-| RPS-BUILTIN-05 | 远端遗留不可遍历的 `~/.zcode/server/agents/glm/packages`，builtin manifest 检查失败 | 部署先执行 owner `rwX` 修复，再进入正常 packages 刷新，用户无需手工 chmod |
+| RPS-BUILTIN-01 | 生产远端资源包构建 | `glm/<platform>` 同时包含 `codez.cjs` 和 `packages/*-plugin/.codez-plugin/plugin.json` |
+| RPS-BUILTIN-02 | 远端已有同版本 `codez.cjs` 但缺 builtin packages | 部署不能跳过 Codez Agent；必须补齐 `~/.codez/server/agents/glm/packages/*-plugin` |
+| RPS-BUILTIN-03 | 开发态 SSH 部署本地 `codez.cjs` | 同步上传本地官方插件 packages，远端 `plugins list` 能发现 `source:"official"` 插件 |
+| RPS-BUILTIN-04 | Windows / macOS / Linux 桌面侧为 SSH 本地上传重打 builtin packages tar | tar 中所有目录条目均为 `0755`；远端解包后 `rm -rf ~/.codez/server/agents/glm/packages` 可正常更新资源 |
+| RPS-BUILTIN-05 | 远端遗留不可遍历的 `~/.codez/server/agents/glm/packages`，builtin manifest 检查失败 | 部署先执行 owner `rwX` 修复，再进入正常 packages 刷新，用户无需手工 chmod |
 
 ## 测试计划
 
@@ -218,6 +218,6 @@ UI 始终用 base services 做本机枚举和导出，用当前 workspace servic
 - `packages/ui/test/remoteSyncActions.test.ts` 覆盖 SSH-only plugin 同步入口和 dialog 注入。
 - `packages/desktop/test/*remote*Services.test.ts` 覆盖 remote service collection 使用远端 `pluginSyncService` 和远端 Agent plugin 协议。
 - `packages/server/test/remoteDeploy.test.ts` 覆盖 remote bundle marker 包含 `plugin-sync`。
-- `packages/server/test/remoteDeploy.test.ts` 覆盖 ZCode Agent 部署安装 builtin `packages` 目录，以及远端缺 builtin packages 时不会跳过部署。
+- `packages/server/test/remoteDeploy.test.ts` 覆盖 Codez Agent 部署安装 builtin `packages` 目录，以及远端缺 builtin packages 时不会跳过部署。
 - `packages/desktop/test/runtime-asset-scripts.test.ts` 覆盖 remote asset 构建脚本把 official plugin packages stage 到 `glm/<platform>/packages`。
 - 手工验证：SSH 到 macOS/Linux 远端，分别同步 inline plugin、Claude 官方 marketplace plugin、自定义 github/git/url marketplace plugin，检查远端 `installed_plugins.json`、`config.json.plugins.enabledPlugins` 和 plugin cache。

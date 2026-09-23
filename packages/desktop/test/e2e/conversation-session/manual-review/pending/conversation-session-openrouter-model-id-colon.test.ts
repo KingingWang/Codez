@@ -1,4 +1,4 @@
-import { TID_SETTINGS_BACK_BUTTON, encodeCustomModelValue } from "@zcode/shared";
+import { TID_SETTINGS_BACK_BUTTON, encodeCustomModelValue } from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,

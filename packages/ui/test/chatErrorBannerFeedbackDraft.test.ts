@@ -1,11 +1,11 @@
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatErrorBanner } from "@/ChatErrorBanner.js";
 import { useFeedbackStore } from "@/feedback/feedbackStore.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const buttonMock = vi.hoisted(() => ({
   props: [] as Array<Record<string, unknown>>,
@@ -45,7 +45,7 @@ function resetFeedbackStore() {
 function renderErrorBanner() {
   renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(
         PlatformProvider,

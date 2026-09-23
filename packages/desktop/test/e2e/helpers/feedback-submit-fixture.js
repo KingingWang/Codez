@@ -6,7 +6,7 @@ import {
   getFeedbackSubmissionJobsSnapshot,
 } from "@/feedback/feedbackSubmissionJob.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 // 仅用于隔离窗口：真实表单/helper/job 调用内存服务，不创建真实工单或读取本机日志。
 const calls = { create: 0, prepare: 0, upload: [], cleanup: 0 };
@@ -44,7 +44,7 @@ let generation = 0;
 function mount(submissionJobId) {
   root.render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(
         TabStoreProvider,

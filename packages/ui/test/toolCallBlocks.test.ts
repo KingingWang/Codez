@@ -4,9 +4,9 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import type { ToolCallRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import { ToolCallBlock } from "../src/ToolCallBlocks.js";
 import { ToolCallBody } from "../src/ToolCallBlocks/ToolCallBody.js";
 import { readRawToolCallFileSummaries } from "../src/ToolCallBlocks/shared.js";
@@ -130,7 +130,7 @@ describe("ToolCallBlock agent routing", () => {
 
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           TooltipProvider,
@@ -172,7 +172,7 @@ describe("ToolCallBlock agent routing", () => {
 
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: toolCallRowToLegacyNode(row),
@@ -221,7 +221,7 @@ describe("ToolCallBlock agent routing", () => {
 
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: toolCallRowToLegacyNode(row),
@@ -269,7 +269,7 @@ describe("ToolCallBlock agent routing", () => {
 
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: toolCallRowToLegacyNode(row),
@@ -319,7 +319,7 @@ describe("ToolCallBlock agent routing", () => {
 
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: toolCallRowToLegacyNode(row),
@@ -363,7 +363,7 @@ describe("ToolCallBlock agent routing", () => {
 
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           TooltipProvider,
@@ -403,7 +403,7 @@ describe("ToolCallBlock agent routing", () => {
     const toolCall = toolCallRowToLegacyNode(row).toolCall;
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBody, {
           childToolList: null,
@@ -437,7 +437,7 @@ describe("ToolCallBlock agent routing", () => {
     const toolCall = toolCallRowToLegacyNode(row).toolCall;
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBody, {
           childToolList: null,
@@ -455,7 +455,7 @@ describe("ToolCallBlock agent routing", () => {
   it("routes Task tool calls to the agent renderer", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -484,7 +484,7 @@ describe("ToolCallBlock agent routing", () => {
   it("routes GLM Agent tool calls to the agent renderer", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -517,7 +517,7 @@ describe("ToolCallBlock agent routing", () => {
   it("routes spawn_agent tool calls to the agent renderer", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -537,7 +537,7 @@ describe("ToolCallBlock agent routing", () => {
               raw: {
                 name: "spawn_agent",
                 _meta: {
-                  zcode: {
+                  codez: {
                     toolName: "spawn_agent",
                     nickname: "Locke",
                   },
@@ -562,7 +562,7 @@ describe("readRawToolCallFileSummaries", () => {
         kind: "read",
         status: "completed",
         rawInput: {
-          file_path: "/Users/dev/ZCodeProject/demo/snake/index.html",
+          file_path: "/Users/dev/CodezProject/demo/snake/index.html",
         },
         content: [
           {
@@ -578,7 +578,7 @@ describe("readRawToolCallFileSummaries", () => {
         kind: "read",
         title: "Read snake/index.html",
         input: {
-          file_path: "/Users/dev/ZCodeProject/demo/snake/index.html",
+          file_path: "/Users/dev/CodezProject/demo/snake/index.html",
         },
       },
     );
@@ -589,7 +589,7 @@ describe("readRawToolCallFileSummaries", () => {
   it("routes read tools to the read renderer even if raw summaries exist", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -598,7 +598,7 @@ describe("readRawToolCallFileSummaries", () => {
               kind: "read",
               title: "Read snake/index.html",
               input: {
-                file_path: "/Users/dev/ZCodeProject/demo/snake/index.html",
+                file_path: "/Users/dev/CodezProject/demo/snake/index.html",
               },
               output: {
                 content: "function deleteFood() { return writeScore(); }",
@@ -607,13 +607,13 @@ describe("readRawToolCallFileSummaries", () => {
               raw: {
                 kind: "read",
                 changes: {
-                  "/Users/dev/ZCodeProject/demo/snake/index.html": {
+                  "/Users/dev/CodezProject/demo/snake/index.html": {
                     type: "add",
                     content: "unexpected",
                   },
                 },
                 rawInput: {
-                  file_path: "/Users/dev/ZCodeProject/demo/snake/index.html",
+                  file_path: "/Users/dev/CodezProject/demo/snake/index.html",
                 },
               },
             },
@@ -665,7 +665,7 @@ describe("readRawToolCallFileSummaries", () => {
         kind: "explore",
         title: "Read snake/game.ts",
         input: {
-          file_path: "/Users/dev/ZCodeProject/demo/snake/game.ts",
+          file_path: "/Users/dev/CodezProject/demo/snake/game.ts",
         },
       },
     );
@@ -673,7 +673,7 @@ describe("readRawToolCallFileSummaries", () => {
     expect(summaries).toEqual([]);
   });
 
-  it("reads multi-file ZCode tool display summaries", () => {
+  it("reads multi-file Codez tool display summaries", () => {
     const summaries = readRawToolCallFileSummaries(
       {
         display: {
@@ -730,13 +730,13 @@ describe("readRawToolCallFileSummaries", () => {
       {
         kind: "execute",
         changes: {
-          "/Users/dev/ZCodeProject/demo/snake/game.ts": {
+          "/Users/dev/CodezProject/demo/snake/game.ts": {
             type: "delete",
             oldText: "console.log('legacy');",
           },
         },
         rawInput: {
-          path: "/Users/dev/ZCodeProject/demo/snake/game.ts",
+          path: "/Users/dev/CodezProject/demo/snake/game.ts",
         },
       },
       {
@@ -756,7 +756,7 @@ describe("readRawToolCallFileSummaries", () => {
       {
         status: "completed",
         rawInput: {
-          file_path: "/Users/dev/ZCodeProject/demo/snake/game.ts",
+          file_path: "/Users/dev/CodezProject/demo/snake/game.ts",
           description: "Delete legacy fallback after inspection",
         },
       },
@@ -764,7 +764,7 @@ describe("readRawToolCallFileSummaries", () => {
         kind: "explore",
         title: "Inspect game.ts",
         input: {
-          file_path: "/Users/dev/ZCodeProject/demo/snake/game.ts",
+          file_path: "/Users/dev/CodezProject/demo/snake/game.ts",
           description: "Delete legacy fallback after inspection",
         },
       },
@@ -797,7 +797,7 @@ describe("readRawToolCallFileSummaries", () => {
     expect(summaries[0]?.patch).toContain("+++ b/demo.ts");
   });
 
-  it("builds write summaries from ZCode protocol input payloads", () => {
+  it("builds write summaries from Codez protocol input payloads", () => {
     const summaries = readRawToolCallFileSummaries(
       {
         toolName: "Write",
@@ -825,7 +825,7 @@ describe("readRawToolCallFileSummaries", () => {
     expect(summaries[0]?.changeStat).toEqual({ added: 1, removed: 0 });
   });
 
-  it("builds edit summaries from ZCode protocol input payloads", () => {
+  it("builds edit summaries from Codez protocol input payloads", () => {
     const summaries = readRawToolCallFileSummaries(
       {
         toolName: "Edit",
@@ -945,7 +945,7 @@ describe("readRawToolCallFileSummaries", () => {
   it("keeps read-like explore nodes out of edit renderer", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -954,7 +954,7 @@ describe("readRawToolCallFileSummaries", () => {
               kind: "explore",
               title: "Read snake/game.ts",
               input: {
-                file_path: "/Users/dev/ZCodeProject/demo/snake/game.ts",
+                file_path: "/Users/dev/CodezProject/demo/snake/game.ts",
               },
               output: "...",
               status: "completed",
@@ -994,7 +994,7 @@ describe("readRawToolCallFileSummaries", () => {
   it("keeps execute tools with delete-like raw changes out of edit renderer", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -1012,7 +1012,7 @@ describe("readRawToolCallFileSummaries", () => {
               raw: {
                 kind: "execute",
                 changes: {
-                  "/Users/dev/ZCodeProject/demo/snake/game.ts": {
+                  "/Users/dev/CodezProject/demo/snake/game.ts": {
                     type: "delete",
                     oldText: "console.log('legacy');",
                   },
@@ -1038,7 +1038,7 @@ describe("readRawToolCallFileSummaries", () => {
     // 和它的详情页入口在生产里根本不存在。装配这一层必须自己被钉住。
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -1071,7 +1071,7 @@ describe("readRawToolCallFileSummaries", () => {
   it("routes switch_mode tool calls to the dedicated renderer", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -1102,7 +1102,7 @@ describe("readRawToolCallFileSummaries", () => {
   it("routes Exited Plan Mode titles to the switch mode renderer even when kind is other", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -1133,7 +1133,7 @@ describe("readRawToolCallFileSummaries", () => {
   it("routes current ExitPlanMode tool calls to the switch mode renderer", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -1165,7 +1165,7 @@ describe("readRawToolCallFileSummaries", () => {
   it("routes EnterPlanMode titles to the plan guidance renderer", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -1199,7 +1199,7 @@ describe("readRawToolCallFileSummaries", () => {
   it("routes TodoWrite to the todo renderer instead of the file write renderer", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -1258,7 +1258,7 @@ describe("readRawToolCallFileSummaries", () => {
   it("routes fixed AskUserQuestion tools without renaming the tool identity", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -1304,7 +1304,7 @@ describe("readRawToolCallFileSummaries", () => {
   it("shows an automatic-continuation history label for explicit empty answers", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -1343,7 +1343,7 @@ describe("readRawToolCallFileSummaries", () => {
   it("routes Agent tool calls to the dedicated renderer", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@zcode/ui";
+import { Button } from "@codez/ui";
 import { getWebAuthCopy } from "./webAuthLocale.js";
 
 interface WebLoginPageProps {

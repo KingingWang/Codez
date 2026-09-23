@@ -16,7 +16,7 @@ import {
   type ProviderProvisioningTrigger,
   type WindowHostRemoteWorkspaceDescriptor,
   type WebRemoteControlFailure,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type {
   RemoteConnectionStats,
   RemoteDisconnectReason,

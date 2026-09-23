@@ -1,24 +1,24 @@
-import { ChannelClient, ChannelServer, createQueuePair, Emitter, ProxyChannel } from "@zcode/rpc";
-import type { AgentLaneResourceSample } from "@zcode/shared";
+import { ChannelClient, ChannelServer, createQueuePair, Emitter, ProxyChannel } from "@codez/rpc";
+import type { AgentLaneResourceSample } from "@codez/shared";
 import { describe, expect, it } from "vitest";
-import { IZCodeAgentService } from "#src/zcode-agent/zcodeAgent.js";
+import { ICodezAgentService } from "#src/codez-agent/codezAgent.js";
 
-describe("ZCode Agent resource telemetry RPC", () => {
+describe("Codez Agent resource telemetry RPC", () => {
   it("uses an explicit dynamic event across remote RPC without conversation state", async () => {
     const emitter = new Emitter<AgentLaneResourceSample>();
     const [serverProtocol, clientProtocol] = createQueuePair();
     const server = new ChannelServer(serverProtocol, "test");
     const client = new ChannelClient(clientProtocol);
     server.registerChannel(
-      IZCodeAgentService.channelName,
+      ICodezAgentService.channelName,
       ProxyChannel.fromService({
         onDynamicProcessResourceSample() {
           return emitter.event;
         },
       }),
     );
-    const service = ProxyChannel.toService<IZCodeAgentService>(
-      client.getChannel(IZCodeAgentService.channelName),
+    const service = ProxyChannel.toService<ICodezAgentService>(
+      client.getChannel(ICodezAgentService.channelName),
     );
     // lane 与 heap 等新字段必须原样穿过 RPC：远端 workspace 的样本靠这条链路回到 main。
     const sample: AgentLaneResourceSample = {

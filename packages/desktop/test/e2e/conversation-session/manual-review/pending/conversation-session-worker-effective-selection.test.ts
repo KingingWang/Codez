@@ -1,6 +1,6 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { BUILTIN_MODEL_PROVIDER_IDS, encodeCustomModelValue, generateTraceId } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, encodeCustomModelValue, generateTraceId } from "@codez/shared";
 import { createWorkerSelectionIntegration } from "../../../helpers/worker-selection-integration.js";
 import {
   createBotsServiceHarness,
@@ -134,7 +134,7 @@ describe("Todo99 Worker 有效选择真实执行", () => {
         modelSelectionService: host.modelSelectionService,
       });
       // 只替换测试 harness 的 task port；以下读取、命令、发送、订阅均为生产 adapter。
-      Object.assign(harness.zcodeTaskService, host.task);
+      Object.assign(harness.codezTaskService, host.task);
       const sendBot = (text: string) =>
         harness.service.handleInboundMessage({
           botId: "feishu-e2e",
@@ -146,7 +146,7 @@ describe("Todo99 Worker 有效选择真实执行", () => {
           },
           text,
         });
-      const debugDir = join(host.home, ".zcode/cli/debug");
+      const debugDir = join(host.home, ".codez/cli/debug");
       async function waitRequest(marker: string) {
         let result: ModelIoRecord | undefined;
         await browser.waitUntil(
@@ -317,7 +317,7 @@ describe("Todo99 Worker 有效选择真实执行", () => {
         timeoutMsg: "桌面 V4 没有收到执行错误",
       });
       expect(
-        (await readModelIoRecords(join(host.home, ".zcode/cli/debug"))).some((record) =>
+        (await readModelIoRecords(join(host.home, ".codez/cli/debug"))).some((record) =>
           JSON.stringify(record.request).includes("E2E_W99_LAG_REJECT"),
         ),
       ).toBe(false);
@@ -334,7 +334,7 @@ describe("Todo99 Worker 有效选择真实执行", () => {
       let records: ModelIoRecord[] = [];
       await browser.waitUntil(
         async () => {
-          records = await readModelIoRecords(join(host.home, ".zcode/cli/debug"));
+          records = await readModelIoRecords(join(host.home, ".codez/cli/debug"));
           return records.some(
             (record) =>
               record.querySource === "main_turn" &&

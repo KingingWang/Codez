@@ -47,7 +47,7 @@ async function fixture(t) {
     root,
     bridgePath,
     manifest,
-    target: resolveCodexTarget({ ZCODE_TARGET_OS: "linux", ZCODE_TARGET_ARCH: "x64" }),
+    target: resolveCodexTarget({ CODEZ_TARGET_OS: "linux", CODEZ_TARGET_ARCH: "x64" }),
     fetchImpl: async () => new Response(bytes),
     env: {},
   };
@@ -60,7 +60,7 @@ test("manifest pins exactly six native binaries with release digests", async () 
   assert.equal(Object.keys(manifest.assets).length, 6);
   for (const os of ["darwin", "linux", "win32"]) {
     for (const arch of ["x64", "arm64"]) {
-      const target = resolveCodexTarget({ ZCODE_TARGET_OS: os, ZCODE_TARGET_ARCH: arch });
+      const target = resolveCodexTarget({ CODEZ_TARGET_OS: os, CODEZ_TARGET_ARCH: arch });
       const asset = selectCodexAsset(manifest, target);
       assert.match(asset.sha256, /^[a-f0-9]{64}$/);
       assert.ok(asset.size > 1_000_000);
@@ -73,16 +73,16 @@ test("manifest pins exactly six native binaries with release digests", async () 
 
 test("target aliases normalize; shell and traversal input fail closed", () => {
   assert.equal(
-    resolveCodexTarget({ ZCODE_TARGET_OS: "Windows", ZCODE_TARGET_ARCH: "aarch64" }).key,
+    resolveCodexTarget({ CODEZ_TARGET_OS: "Windows", CODEZ_TARGET_ARCH: "aarch64" }).key,
     "win32-arm64",
   );
   assert.equal(
-    resolveCodexTarget({ ZCODE_TARGET_OS: "macos", ZCODE_TARGET_ARCH: "amd64" }).key,
+    resolveCodexTarget({ CODEZ_TARGET_OS: "macos", CODEZ_TARGET_ARCH: "amd64" }).key,
     "darwin-x64",
   );
   for (const value of ["../linux", "linux; touch sentinel", "$(whoami)", "", "ia32"]) {
-    assert.throws(() => resolveCodexTarget({ ZCODE_TARGET_OS: value }));
-    assert.throws(() => resolveCodexTarget({ ZCODE_TARGET_ARCH: value }));
+    assert.throws(() => resolveCodexTarget({ CODEZ_TARGET_OS: value }));
+    assert.throws(() => resolveCodexTarget({ CODEZ_TARGET_ARCH: value }));
   }
 });
 
@@ -132,7 +132,7 @@ test("all six targets stage only their native executable filename", async (t) =>
   const options = await fixture(t);
   for (const key of Object.keys(options.manifest.assets)) {
     const [os, arch] = key.split("-");
-    const target = resolveCodexTarget({ ZCODE_TARGET_OS: os, ZCODE_TARGET_ARCH: arch });
+    const target = resolveCodexTarget({ CODEZ_TARGET_OS: os, CODEZ_TARGET_ARCH: arch });
     options.manifest.assets[key].sha256 = sha256;
     options.manifest.assets[key].size = bytes.length;
     const directory = await stageCodexRuntime({ ...options, target });
@@ -193,9 +193,9 @@ test("bridge changes during download cannot publish a mixed version", async (t) 
 });
 
 test("schema output rejects outside paths and symlink escapes before executing", async (t) => {
-  await assert.rejects(generateCodexSchema("../codex/generated"), /inside ZCode/);
+  await assert.rejects(generateCodexSchema("../codex/generated"), /inside Codez/);
   const options = await fixture(t);
-  const localParent = new URL("../.zcode-runtime/", import.meta.url);
+  const localParent = new URL("../.codez-runtime/", import.meta.url);
   await mkdir(localParent, { recursive: true });
   const local = await mkdtemp(new URL("schema-path-test-", localParent));
   t.after(() => rm(local, { recursive: true, force: true }));
@@ -228,21 +228,21 @@ test("unsafe manifest names, missing digests and local overrides are rejected", 
   delete manifest.assets["linux-x64"].sha256;
   assert.throws(() => selectCodexAsset(manifest, options.target));
   await assert.rejects(
-    stageCodexRuntime({ ...options, env: { CI: "true", ZCODE_CODEX_BINARY: "/tmp/untrusted" } }),
+    stageCodexRuntime({ ...options, env: { CI: "true", CODEZ_CODEX_BINARY: "/tmp/untrusted" } }),
     /override/,
   );
 });
 
 test("Codex product identity never collides with upstream", () => {
   const codex = resolveDesktopProductIdentity({
-    ZCODE_DESKTOP_RUNTIME: "codex",
-    ZCODE_ENV: "production",
+    CODEZ_DESKTOP_RUNTIME: "codex",
+    CODEZ_ENV: "production",
   });
   const upstream = resolveDesktopProductIdentity({
-    ZCODE_ENV: "production",
-    ZCODE_DESKTOP_RUNTIME: "legacy",
+    CODEZ_ENV: "production",
+    CODEZ_DESKTOP_RUNTIME: "legacy",
   });
-  assert.equal(codex.productName, "ZCode Codex");
+  assert.equal(codex.productName, "Codez Codex");
   for (const field of ["appId", "linuxExecutableName", "linuxPackageName"])
     assert.notEqual(codex[field], upstream[field]);
 });
@@ -250,18 +250,18 @@ test("Codex product identity never collides with upstream", () => {
 test("bare desktop entrypoints default to Codex and only explicit legacy retains upstream", () => {
   assert.equal(resolveDesktopRuntime({}), "codex");
   assert.equal(resolveDesktopProductIdentity({}).flavor, "codex");
-  assert.equal(resolveDesktopProductIdentity({ ZCODE_ENV: "production" }).flavor, "codex");
+  assert.equal(resolveDesktopProductIdentity({ CODEZ_ENV: "production" }).flavor, "codex");
   assert.equal(
-    resolveDesktopProductIdentity({ ZCODE_DESKTOP_RUNTIME: "legacy", ZCODE_ENV: "production" })
+    resolveDesktopProductIdentity({ CODEZ_DESKTOP_RUNTIME: "legacy", CODEZ_ENV: "production" })
       .flavor,
     "production",
   );
   assert.throws(
-    () => resolveDesktopRuntime({ ZCODE_DESKTOP_RUNTIME: "typo" }),
+    () => resolveDesktopRuntime({ CODEZ_DESKTOP_RUNTIME: "typo" }),
     /expected codex or legacy/,
   );
   const [step] = createDesktopProductionBuildPlan({ cwd: "/fixture", baseEnv: {} });
-  for (const build of step.parallel) assert.equal(build.env.ZCODE_DESKTOP_RUNTIME, "codex");
+  for (const build of step.parallel) assert.equal(build.env.CODEZ_DESKTOP_RUNTIME, "codex");
 });
 
 test("remote Node pins cover four targets; corrupted downloads preserve the previous binary", async (t) => {
@@ -297,7 +297,7 @@ test("remote assembly publishes existing manifest schema, genuine Codex mounts a
     outputRoot,
     publishComponents: true,
     prepareServerImpl: async (dir) => {
-      for (const name of ["zcode-server.cjs", "THIRD-PARTY-NOTICES.md"])
+      for (const name of ["codez-server.cjs", "THIRD-PARTY-NOTICES.md"])
         await writeFile(join(dir, name), "fixture");
     },
     prepareNodeImpl: async ({ directory }) => {
@@ -369,10 +369,10 @@ test("artifact checksums require each native installer and exclude unrelated fil
   const extensions = { darwin: ["dmg", "zip"], win32: ["exe"], linux: ["AppImage", "deb"] }[
     target.os
   ];
-  const suffix = process.env.ZCODE_CODEX_SIGNED === "1" ? "" : "-unsigned";
+  const suffix = process.env.CODEZ_CODEX_SIGNED === "1" ? "" : "-unsigned";
   const files = extensions.map((ext) => {
     const arch = target.key === "linux-x64" ? (ext === "deb" ? "amd64" : "x86_64") : target.arch;
-    return `ZCode Codex-1.0.0-${platform}-${arch}${suffix}.${ext}`;
+    return `Codez Codex-1.0.0-${platform}-${arch}${suffix}.${ext}`;
   });
   for (const name of files) await writeFile(join(root, name), bytes);
   await writeFile(join(root, "unrelated.exe"), "do not publish");
@@ -396,8 +396,8 @@ test("remote producer archives Codex resources and separates consumer integratio
   assert.equal(Object.hasOwn(descriptor, "missingConsumers"), false);
   assert.deepEqual(descriptor.transportValidation, { ssh: "not-run", wsl: "not-run" });
   assert.equal(descriptor.nodeVersion, "24.14.0");
-  assert.equal(descriptor.runtimeRoot, "~/.zcode-codex/server");
-  assert.match(descriptor.requiredEnv.ZCODE_CODEX_BRIDGE_PATH, /\/codex\/bridge.cjs$/);
+  assert.equal(descriptor.runtimeRoot, "~/.codez-codex/server");
+  assert.match(descriptor.requiredEnv.CODEZ_CODEX_BRIDGE_PATH, /\/codex\/bridge.cjs$/);
   const { stdout } = await runCodexTar({
     mode: "list",
     archivePath: join(outputRoot, descriptor.artifactPath),
@@ -412,7 +412,7 @@ test("remote producer archives Codex resources and separates consumer integratio
   await assert.rejects(
     prepareCodexRemoteComponent({
       ...options,
-      target: resolveCodexTarget({ ZCODE_TARGET_OS: "win32", ZCODE_TARGET_ARCH: "arm64" }),
+      target: resolveCodexTarget({ CODEZ_TARGET_OS: "win32", CODEZ_TARGET_ARCH: "arm64" }),
       outputRoot,
     }),
     /Remote Codex targets/,

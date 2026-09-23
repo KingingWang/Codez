@@ -9,7 +9,7 @@ import {
   codexModelSchema,
   codexPluginsResponseSchema,
   type CodexRequest,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   codexAuthorizationUrl,
   codexModelEdits,

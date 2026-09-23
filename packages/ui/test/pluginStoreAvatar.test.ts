@@ -19,8 +19,8 @@ describe("PluginStoreAvatar", () => {
         }),
       );
 
-    expect(render(`${name}@zcode-plugins-official`)).toContain(assetName);
-    expect(render(`${name}@zcode-plugins-official`)).not.toContain(staleIcon);
+    expect(render(`${name}@codez-plugins-official`)).toContain(assetName);
+    expect(render(`${name}@codez-plugins-official`)).not.toContain(staleIcon);
     expect(render(`${name}@personal`)).toContain(staleIcon);
   });
 
@@ -32,8 +32,8 @@ describe("PluginStoreAvatar", () => {
           item: { id, name: "plugin-creator", listing: { icon } },
         }),
       );
-    expect(render("plugin-creator@zcode-plugins-official")).toContain("plugin-creator.png");
-    expect(render("plugin-creator@zcode-plugins-official")).not.toContain(icon);
+    expect(render("plugin-creator@codez-plugins-official")).toContain("plugin-creator.png");
+    expect(render("plugin-creator@codez-plugins-official")).not.toContain(icon);
     expect(render("plugin-creator@personal")).toContain(icon);
   });
 

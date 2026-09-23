@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { IPluginsService } from "@zcode/services";
+import type { IPluginsService } from "@codez/services";
 import { usePluginStore } from "../src/store/pluginStore.js";
 
 function deferredPromise<T>() {

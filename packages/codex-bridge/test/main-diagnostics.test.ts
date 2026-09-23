@@ -16,7 +16,7 @@ for (const rejectClose of [false, true])
       skip: process.platform === "win32", // Existing fake executable uses a POSIX shebang.
     },
     async (t) => {
-      const directory = await mkdtemp(join(tmpdir(), "zcode-fatal-diagnostic-"));
+      const directory = await mkdtemp(join(tmpdir(), "codez-fatal-diagnostic-"));
       const executable = join(directory, "fake-codex");
       await copyFile(new URL("./fixtures/fake-codex.mjs", import.meta.url), executable);
       await chmod(executable, 0o700);
@@ -36,8 +36,8 @@ for (const rejectClose of [false, true])
             PATH: process.env.PATH,
             HOME: directory,
             CODEX_HOME: directory,
-            ZCODE_CODEX_COMMAND: executable,
-            ZCODE_CODEX_BRIDGE_HOME: join(directory, "bridge"),
+            CODEZ_CODEX_COMMAND: executable,
+            CODEZ_CODEX_BRIDGE_HOME: join(directory, "bridge"),
             FAKE_CODEX_TRACE: join(directory, "trace"),
           },
           stdio: "pipe",

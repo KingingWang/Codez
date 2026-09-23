@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RemoteWorkspaceSessionEntry } from "@zcode/shared";
+import type { RemoteWorkspaceSessionEntry } from "@codez/shared";
 import { buildSshConnectionHistorySuggestions } from "@/remote-connection/sshHistorySuggestions.js";
 
 describe("buildSshConnectionHistorySuggestions", () => {

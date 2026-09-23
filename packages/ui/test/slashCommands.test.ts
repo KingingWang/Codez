@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { ZCodeSlashCommand } from "@zcode/shared";
+import type { CodezSlashCommand } from "@codez/shared";
 import {
   extractActiveSlashQuery,
   filterSlashCommands,
   replaceActiveSlashCommand,
 } from "../src/lib/slashCommands.js";
 
-const commands: ZCodeSlashCommand[] = [
+const commands: CodezSlashCommand[] = [
   {
     name: "agent-browser",
     description: "Browser automation CLI for AI agents",

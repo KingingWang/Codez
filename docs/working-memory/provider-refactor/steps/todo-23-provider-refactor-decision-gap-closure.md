@@ -15,7 +15,7 @@
 > [`14`](./todo-14-post-refactor-mechanical-zero.md)、
 > [`15`](./todo-15-provider-release-validation.md)、
 > [`20`](./todo-20-account-overlay-atomicity-and-review-closeout.md)、
-> [`21`](./todo-21-zcode-builtin-config-ownership-and-model-activation-order.md)
+> [`21`](./todo-21-codez-builtin-config-ownership-and-model-activation-order.md)
 
 ## 0. 任务定位
 

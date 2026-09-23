@@ -11,9 +11,9 @@ import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { WebSocketServer } from "ws";
-import { ChannelServer, Emitter, Event, SocketProtocol, VSBuffer } from "@zcode/rpc";
-import { IBroadcastService, ISettingService } from "@zcode/services";
-import { setDataBaseDir } from "@zcode/services/node";
+import { ChannelServer, Emitter, Event, SocketProtocol, VSBuffer } from "@codez/rpc";
+import { IBroadcastService, ISettingService } from "@codez/services";
+import { setDataBaseDir } from "@codez/services/node";
 import { createOnboardingRecordService } from "../../../../../services/src/onboarding/onboardingRecordService.js";
 import {
   createRemoteWorkspaceServiceCollection,
@@ -37,7 +37,7 @@ const broadcastService = { onMessage: Event.None, send: async () => {} };
 const connectionServices = new Proxy(
   {
     onboardingRecordService: serverRecord,
-    zcodeAgentService: { onDynamicSessionRuntimePreferencesRequest: () => Event.None },
+    codezAgentService: { onDynamicSessionRuntimePreferencesRequest: () => Event.None },
   },
   { get: (target, key) => target[key] ?? {} },
 );
@@ -51,7 +51,7 @@ const collections = {
     parentPort: null,
     createRemotePromptAttachmentTaskService: passthrough,
     createRemotePromptAttachmentSessionService: passthrough,
-    createReportingRemoteZCodeTaskService: passthrough,
+    createReportingRemoteCodezTaskService: passthrough,
     promptAttachmentTransferService: {},
     runtimePreferencesBridge: {
       onError: (error) => {
@@ -74,12 +74,12 @@ const entryId = resolve(repoRoot, "packages/desktop/onboarding-e2e-entry.js");
 const entry = `
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { connectViaWebSocket } from '@zcode/client';
-import { Event } from '@zcode/rpc';
+import { connectViaWebSocket } from '@codez/client';
+import { Event } from '@codez/rpc';
 import { ServiceProvider } from '@/hooks/useServices.js';
 import { PlatformProvider } from '@/hooks/usePlatform.js';
 import { StoreProvider } from '@/store/StoreProvider.js';
-import { ZCodeIntlProvider } from '@/i18n/IntlProvider.js';
+import { CodezIntlProvider } from '@/i18n/IntlProvider.js';
 import { OccupationOnboarding } from '@/onboarding/OccupationOnboarding.js';
 import '@/styles.css';
 const h = React.createElement;
@@ -95,7 +95,7 @@ function Fixture() {
     h('button', {onClick: open}, '新建远程任务'),
     bridge && h(ServiceProvider, {key: bridge.id, services: bridge.services},
       h(PlatformProvider, {platform}, h(StoreProvider, {broadcastService: broadcast},
-        h(ZCodeIntlProvider, null,
+        h(CodezIntlProvider, null,
           h(OccupationOnboarding, null, h('div', {'data-testid': 'task-draft', 'data-bridge-id': bridge.id}, '远程任务草稿')))))));
 }
 createRoot(document.getElementById('root')).render(h(Fixture));

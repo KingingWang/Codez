@@ -3,8 +3,8 @@ import {
   completeModelPropertiesDataSchema,
   modelPropertiesDataSchema,
   completeEnumOptionSpecDataSchema,
-} from "@zcode/shared/model-config";
-import { zcodeModelFormatPropertiesSchema } from "../src/zcode-protocol/index.js";
+} from "@codez/shared/model-config";
+import { codezModelFormatPropertiesSchema } from "../src/codez-protocol/index.js";
 
 describe("共享 Model 数据合同", () => {
   it("拒绝未发布的旧格式名字，不双读、不静默丢字段", () => {
@@ -25,11 +25,11 @@ describe("共享 Model 数据合同", () => {
   });
   it("协议只投影媒体格式，直接复用同一字段 schema，不复制约束", () => {
     for (const key of ["inputFormat", "outputFormat"] as const) {
-      expect(zcodeModelFormatPropertiesSchema.shape[key]).toBe(
+      expect(codezModelFormatPropertiesSchema.shape[key]).toBe(
         completeModelPropertiesDataSchema.shape[key],
       );
     }
-    expect(Object.keys(zcodeModelFormatPropertiesSchema.shape)).toEqual([
+    expect(Object.keys(codezModelFormatPropertiesSchema.shape)).toEqual([
       "inputFormat",
       "outputFormat",
     ]);

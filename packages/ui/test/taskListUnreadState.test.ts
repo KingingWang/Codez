@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import type { TaskListRowActivity } from "@/v4/taskListRowActivity.js";
 import { deriveTaskLeadingIndicator } from "../src/TaskList.js";
 
-function createTaskMeta(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
+function createTaskMeta(overrides: Partial<CodezTaskMeta> = {}): CodezTaskMeta {
   return {
     taskId: "task-1",
     traceId: "trace-1",

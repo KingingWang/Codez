@@ -5,9 +5,9 @@ import { act, cleanup, fireEvent, render, within } from "@testing-library/react"
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowDraftPosition, WorkflowRunCardSummary } from "@/ToolCallBlocks/shared.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 vi.mock("@/components/ai-elements/code-block.js", () => ({
   CodeBlockHeader: () => null,
@@ -104,7 +104,7 @@ function createBlock(
   locale: "en-US" | "zh-CN" = "en-US",
 ) {
   return createElement(
-    ZCodeIntlProvider,
+    CodezIntlProvider,
     { initialLocale: locale },
     createElement(CreateWorkflowToolCallBlock, {
       toolCallNode: {
@@ -456,7 +456,7 @@ describe("CreateWorkflowToolCallBlock 静态形态（编过、未联接 run）",
         saved: {
           name: "fan-out-review",
           scope: "project",
-          path: "/workspace/.zcode/workflows/fan-out-review.dwf.ts",
+          path: "/workspace/.codez/workflows/fan-out-review.dwf.ts",
         },
       },
       raw: { display: { ...OK_DISPLAY, causalityGraph: FLAT_GRAPH } },
@@ -606,7 +606,7 @@ describe("CreateWorkflowToolCallBlock 编译反馈", () => {
           saved: {
             name: "release-notes",
             scope: "project",
-            path: ".zcode/workflows/release-notes.ts",
+            path: ".codez/workflows/release-notes.ts",
           },
         },
       },
@@ -1918,14 +1918,14 @@ describe("CreateWorkflowToolCallBlock as AmendWorkflow", () => {
     // `path` 修订（docs/dynamic-workflow/launch.md「Script files」的常态）同样不带 `script`，但它交上来的
     // 是一份**改过的**脚本：说「脚本不变」就是对用户撒谎。
     expect(
-      readWorkflowAmendScriptInherited({ run_id: "r", path: ".zcode/workflow-drafts/x.dwf.ts" }),
+      readWorkflowAmendScriptInherited({ run_id: "r", path: ".codez/workflow-drafts/x.dwf.ts" }),
     ).toBe(false);
     // 沿用脚本且前驱的文件仍可记：回填的入参同时带 `path` 与 flag，flag 说了算。
     expect(
       readWorkflowAmendScriptInherited({
         run_id: "r",
         script: "x",
-        path: "/abs/.zcode/workflow-drafts/x.dwf.ts",
+        path: "/abs/.codez/workflow-drafts/x.dwf.ts",
         predecessor: { status: "completed", script_inherited: true },
       }),
     ).toBe(true);
@@ -2006,7 +2006,7 @@ describe("CreateWorkflowToolCallBlock as AmendWorkflow", () => {
     [{ run_id: "r", max_concurrency: null }, { runId: "r", requested: null }],
     // 带了脚本来源：这次修订要编译，不是就地生效的形状。
     [{ run_id: "r", max_concurrency: 4, script: "phase('a')" }, undefined],
-    [{ run_id: "r", max_concurrency: 4, path: ".zcode/workflow-drafts/x.dwf.ts" }, undefined],
+    [{ run_id: "r", max_concurrency: 4, path: ".codez/workflow-drafts/x.dwf.ts" }, undefined],
     // 还改了模型或名字：那要换一条 run，不是就地生效。
     [{ run_id: "r", max_concurrency: 4, subagent_model: "zhipu/glm-5.3" }, undefined],
     [{ run_id: "r", max_concurrency: 4, name: "Research pipeline" }, undefined],
@@ -2067,7 +2067,7 @@ describe("ConversationRowView 把工具卡的产物药丸变成打开请求", ()
     });
     return render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           PlatformProvider,
@@ -2186,7 +2186,7 @@ describe("ConversationRowView 把工具卡的产物药丸变成打开请求", ()
     });
     return render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           PlatformProvider,
@@ -2358,7 +2358,7 @@ describe("ConversationRowView 把稿号交给编译反馈行", () => {
     });
     return render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           PlatformProvider,

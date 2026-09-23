@@ -16,7 +16,7 @@ import {
   type WorkflowRunProgressEnvelope,
   type WorkflowRunState,
   type WorkflowRunsState,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 const RUN_ID = "dwfrun-b";
 

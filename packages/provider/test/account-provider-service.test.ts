@@ -47,9 +47,9 @@ function configSnapshot(
 ): ProviderConfigSnapshot {
   return {
     revision,
-    zcodeBuiltinRevision: revision,
+    codezBuiltinRevision: revision,
     personalRevision: "personal-1",
-    zcodeBuiltinProviders: new ProviderConfigMap([
+    codezBuiltinProviders: new ProviderConfigMap([
       [
         "account-plan",
         createAccountProviderConfig({
@@ -69,7 +69,7 @@ function configSnapshot(
       ],
     ]),
     personalProviders: ProviderConfigMap.empty(),
-    zcodeBuiltinModelRules: ModelConfigRules.empty(),
+    codezBuiltinModelRules: ModelConfigRules.empty(),
     personalModels: ModelConfigRules.empty(),
   };
 }
@@ -83,7 +83,7 @@ describe("AccountProviderService", () => {
     await service.read();
     const published: string[] = [];
     service.onDidChange(() => {
-      void service.read().then((snapshot) => published.push(snapshot.basedOnZCodeBuiltinRevision));
+      void service.read().then((snapshot) => published.push(snapshot.basedOnCodezBuiltinRevision));
     });
     resolve.mockImplementationOnce(async () => {
       await new Promise<void>((done) => {
@@ -98,11 +98,11 @@ describe("AccountProviderService", () => {
     configSource.emit("builtin-update");
     release();
     await pending;
-    expect((await service.read()).basedOnZCodeBuiltinRevision).toBe("config-3");
+    expect((await service.read()).basedOnCodezBuiltinRevision).toBe("config-3");
     expect(published).toEqual(["config-3"]);
     service.dispose();
   });
-  it("只从 ZCode Built-in Provider Config 解析 Account Provider Config", async () => {
+  it("只从 Codez Built-in Provider Config 解析 Account Provider Config", async () => {
     const configSource = new MutableConfigSource(configSnapshot("config-1", ["model-a"]));
     const resolve = vi.fn(async ({ configuredProviders, reasons }) => {
       expect(reasons).toEqual(["start"]);
@@ -134,7 +134,7 @@ describe("AccountProviderService", () => {
         access: { type: "zhipu-account", entitled: true },
       },
     });
-    expect(snapshot.basedOnZCodeBuiltinRevision).toBe("config-1");
+    expect(snapshot.basedOnCodezBuiltinRevision).toBe("config-1");
     service.dispose();
   });
 
@@ -215,7 +215,7 @@ describe("AccountProviderService", () => {
       });
     });
     expect(changed).toHaveBeenCalledWith("config:personal-saved");
-    expect((await service.read()).basedOnZCodeBuiltinRevision).toBe("config-2");
+    expect((await service.read()).basedOnCodezBuiltinRevision).toBe("config-2");
     service.dispose();
   });
 
@@ -243,7 +243,7 @@ describe("AccountProviderService", () => {
     configSource.emit("remote-updated");
 
     await vi.waitFor(async () =>
-      expect((await service.read()).basedOnZCodeBuiltinRevision).toBe("builtin-2"),
+      expect((await service.read()).basedOnCodezBuiltinRevision).toBe("builtin-2"),
     );
     expect((await service.read()).revision).not.toBe(initial.revision);
     expect(changed).toHaveBeenCalledOnce();
@@ -335,7 +335,7 @@ describe("AccountProviderService", () => {
     const offPeakProviderId = "account:zai-offpeak-idle-plan";
     const configSource = new MutableConfigSource({
       ...initial,
-      zcodeBuiltinProviders: initial.zcodeBuiltinProviders.set(
+      codezBuiltinProviders: initial.codezBuiltinProviders.set(
         offPeakProviderId,
         new ProviderConfig({
           group: "zai-family",
@@ -356,7 +356,7 @@ describe("AccountProviderService", () => {
     service.onDidRefreshError(refreshError);
 
     await expect(service.read()).resolves.toMatchObject({
-      basedOnZCodeBuiltinRevision: "config-1",
+      basedOnCodezBuiltinRevision: "config-1",
       providers: expect.any(ProviderConfigMap),
     });
     expect((await service.read()).providers.get("account-plan")?.access).toMatchObject({
@@ -379,7 +379,7 @@ describe("AccountProviderService", () => {
     const offPeakProviderId = "account:zai-offpeak-idle-plan";
     const configSource = new MutableConfigSource({
       ...initial,
-      zcodeBuiltinProviders: initial.zcodeBuiltinProviders.set(
+      codezBuiltinProviders: initial.codezBuiltinProviders.set(
         offPeakProviderId,
         new ProviderConfig({
           group: "zai-family",

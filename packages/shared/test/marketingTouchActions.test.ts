@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { marketingActionSchema } from "@zcode/shared";
+import { marketingActionSchema } from "@codez/shared";
 
 describe("marketing navigation and copy contract", () => {
   it.each([

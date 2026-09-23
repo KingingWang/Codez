@@ -6,18 +6,18 @@
 | --- | --- |
 | Change | 将 Desktop SSH remote workspace 从“一 workspace 一 Remote Host”调整为“同一 Electron 窗口内，同一 SSH 连接配置共享一个 Remote Host”。 |
 | User-visible surfaces | SSH 连接、远程目录选择、远程 workspace tab、断线与重连、Renderer reload、手机 `/remote` 进入 SSH workspace。 |
-| Existing docs | `docs/architecture/zcode-code-architecture-overview.md`、`docs/architecture/message-flow.md`、`docs/remote-workspace-session-unified-settings.md`、`docs/ssh-remote-app-global-state-authority.md`、`docs/web-remote-control/web-remote-control-architecture.md`、`docs/web-remote-control/task-realtime-sync.md`、`docs/web-remote-control-task-command-queue.md`、`docs/remote/desktop-remote-session-renderer-reattach.md`。 |
+| Existing docs | `docs/architecture/codez-code-architecture-overview.md`、`docs/architecture/message-flow.md`、`docs/remote-workspace-session-unified-settings.md`、`docs/ssh-remote-app-global-state-authority.md`、`docs/web-remote-control/web-remote-control-architecture.md`、`docs/web-remote-control/task-realtime-sync.md`、`docs/web-remote-control-task-command-queue.md`、`docs/remote/desktop-remote-session-renderer-reattach.md`。 |
 | Existing code owners | `packages/desktop/src/main/desktopRemoteSessions.ts`、`packages/desktop/src/main/desktopHostProcess.ts`、`packages/desktop/src/host/index.ts`、`packages/desktop/src/renderer/src/main.tsx`、`packages/ui/src/store/remoteWorkspaceSessionStore.ts`、`packages/ui/src/root/useRemoteWorkspaceHistory.ts`、`packages/ui/src/root/useRemoteWorkspaceTabLifecycle.ts`。 |
 | Out of scope | WSL/Docker Host 共享、跨 Electron 窗口共享、SSH Profile 数据模型、Host 级断开 UI、远端常驻 Daemon、App 冷启动自动重连。 |
 
 ## 背景与当前问题
 
-当前 Desktop 本地窗口只创建一个 Local Host。一个 Local Host 内的 `ZCodeAgentService` 按
+当前 Desktop 本地窗口只创建一个 Local Host。一个 Local Host 内的 `CodezAgentService` 按
 `workspaceKey` 管理多个 Agent 进程，因此同一窗口内的多个本地 workspace 共享 Host 进程。
 
 SSH remote workspace 当前不同：`createRemoteWorkspaceSession()` 每次都会生成新的
 `remoteSessionId`，fork 一个新的 Remote Workspace Host，建立一条新的 SSH 连接，并在远端启动一个新的
-`zcode-server`。即使两个 workspace 使用完全相同的 SSH 登录配置，也会重复执行 SSH 握手、远端环境探测、
+`codez-server`。即使两个 workspace 使用完全相同的 SSH 登录配置，也会重复执行 SSH 握手、远端环境探测、
 资源部署检查和 server 启动。
 
 当前实现把三种身份耦合在一起：
@@ -29,15 +29,15 @@ remoteSessionId
   = Web Remote Control shared-host attachment 的查找身份
 ```
 
-远端 `zcode-server` 本身并没有“一进程只能服务一个 workspace”的限制。它通过
-`createLocalServices()` 创建的 `ZCodeAgentService`、`ZCodeSessionService`、task index 和 provider registry
+远端 `codez-server` 本身并没有“一进程只能服务一个 workspace”的限制。它通过
+`createLocalServices()` 创建的 `CodezAgentService`、`CodezSessionService`、task index 和 provider registry
 状态都已经按 `workspaceKey = workspaceIdentity?.trim() || workspacePath` 隔离。真正需要调整的是 Desktop
 Main 的 Host/session 生命周期和 MessagePort 路由，而不是重写远端 Agent 协议。
 
 ## 目标
 
 - 同一 Electron 窗口内，使用同一标准化 SSH 连接配置的多个 remote workspace 只创建一个 Remote Host。
-- 一个共享 Remote Host 只持有一条 SSH 连接并只启动一个远端 `zcode-server`。
+- 一个共享 Remote Host 只持有一条 SSH 连接并只启动一个远端 `codez-server`。
 - 每个 workspace 继续拥有独立 `remoteSessionId`、MessagePort、`workspaceIdentity` 和 `workspaceKey`。
 - 关闭或移除 workspace 时只解除 workspace session 和 RPC attachment；即使绑定数归零，ready Host 仍缓存到窗口关闭。
 - Host 意外断开时，所有关联 workspace 一起进入断开状态。
@@ -52,10 +52,10 @@ Main 的 Host/session 生命周期和 MessagePort 路由，而不是重写远端
 - 不修改 WSL、Docker 的“一 workspace 一 Host”模型。
 - 不新增 SSH Profile ID，不迁移现有 remote workspace 历史或凭据存储结构。
 - 不新增用户可见的 Host 级“断开 SSH 配置”入口。
-- 不把远端 `zcode-server` 改造成监听端口或 Unix socket 的常驻 Daemon。
+- 不把远端 `codez-server` 改造成监听端口或 Unix socket 的常驻 Daemon。
 - 不持久化 Host pool、Host readiness、attachment 或 `remoteSessionId`。
 - 不在 App 冷启动时自动连接 SSH。
-- 不修改 App 与 Agent 之间的 `@zcode/protocol`。
+- 不修改 App 与 Agent 之间的 `@codez/protocol`。
 - 不改变 task、stream、queue、snapshot、permission、elicitation 或 owner/lease 的产品语义。
 - 不把 task/session/realtime 业务状态下沉到 Desktop Main 或 Relay。
 
@@ -87,13 +87,13 @@ Main 的 Host/session 生命周期和 MessagePort 路由，而不是重写远端
 | Remote kind | 仅 SSH 进入 Host pool。 | SSH password/private-key/agent auth。 | WSL/Docker。 | user |
 | UI | 不新增 Host 级断开入口。 | 现有 workspace/tab 行为。 | 新 UI 和样式。 | user |
 | 持久化 | Host pool 纯内存。 | 现有 remote workspace history。 | Host/Profile schema migration。 | design |
-| 协议 | 只调整 Desktop 内部 channel/platform 消息。 | Main ↔ Host、Renderer ↔ Main。 | `@zcode/protocol`。 | architecture |
+| 协议 | 只调整 Desktop 内部 channel/platform 消息。 | Main ↔ Host、Renderer ↔ Main。 | `@codez/protocol`。 | architecture |
 
 ## Domain Scope
 
 | Domain | Include? | Why it can change behavior | Primary sources |
 | --- | --- | --- | --- |
-| Architecture/process boundary | yes | Main、Remote Host、Renderer MessagePort 与远端 server 的进程所有权发生变化。 | `docs/architecture/zcode-code-architecture-overview.md`、`docs/architecture/message-flow.md` |
+| Architecture/process boundary | yes | Main、Remote Host、Renderer MessagePort 与远端 server 的进程所有权发生变化。 | `docs/architecture/codez-code-architecture-overview.md`、`docs/architecture/message-flow.md` |
 | Workspace identity/remote runtime | yes | Host 共享不能削弱 `workspaceIdentity/workspaceKey` 隔离。 | `docs/remote-workspace-session-unified-settings.md`、`docs/ssh-remote-app-global-state-authority.md` |
 | Mobile remote/replayable realtime | yes | 多个逻辑 session 将 attach 到同一进程，必须保留 mobile replayable 边界。 | `docs/web-remote-control/web-remote-control-architecture.md`、`docs/web-remote-control/task-realtime-sync.md` |
 | Model/provider/runtime config | yes | Registry 内容同源，但远端 applied revision 仍按 workspaceKey。 | `docs/ssh-remote-app-global-state-authority.md` |
@@ -126,7 +126,7 @@ Main 的 Host/session 生命周期和 MessagePort 路由，而不是重写远端
 | `createRemoteWorkspaceServiceCollection()` | 组合本地 app-global service、远端 service 和 wrapper。 | `packages/desktop/src/host/remoteWorkspaceServiceCollection.ts` |
 | `connectRemote()` | 一次 SSH backend、远端 server stdio 与 RPC client 的完整连接。 | `packages/server/src/remote/connect.ts` |
 | `createLocalServices()` | 远端 server 的多 workspace service owner。 | `packages/services/src/node.ts` |
-| `ZCodeAgentProcessManager` | 已按 workspaceKey 复用/隔离 Agent 进程。 | `packages/services/src/zcode-agent/zcodeAgentProcessManager.ts` |
+| `CodezAgentProcessManager` | 已按 workspaceKey 复用/隔离 Agent 进程。 | `packages/services/src/codez-agent/codezAgentProcessManager.ts` |
 | `remoteWorkspaceSessionStore` | Renderer 按 remoteSessionId 注册 services，再按 identity/path 绑定 workspace。 | `packages/ui/src/store/remoteWorkspaceSessionStore.ts` |
 | `webRemoteControlSharedHostAttachments` | 手机 attachment 需要从逻辑 session 找到共享进程。 | `packages/desktop/src/main/webRemoteControlSharedHostAttachments.ts` |
 | `TaskRealtimeBus` | Host delivery scope、owner/lease 与 session route 的 Main 侧路由器。 | `packages/desktop/src/main/taskRealtimeBus.ts` |
@@ -143,7 +143,7 @@ Main 的 Host/session 生命周期和 MessagePort 路由，而不是重写远端
 | RPC attachment | Remote Host attachment map | Main session `attachmentId` | Attach/DetachServicePort |
 | workspace context | Renderer tab/history, bound into Main session | Host realtime scope | workspacePath + workspaceIdentity |
 | workspace isolation key | `resolveWorkspaceKey(context)` | Agent/task/provider maps | workspaceKey |
-| remote Agent process | 远端 `ZCodeAgentProcessManager` | process lifecycle reports | process by workspaceKey |
+| remote Agent process | 远端 `CodezAgentProcessManager` | process lifecycle reports | process by workspaceKey |
 | Provider registry applied revision | 远端 workspace runtime | UI sync coordinator | appliedProviderRevision by workspaceKey |
 | task/session/stream state | 远端 Agent/session services | desktop projection/mobile replay mirror | protocol events/snapshots |
 
@@ -292,7 +292,7 @@ attachedSessionsById: Map<
 
 不采用原因：Host 内需要新增连接路由、故障隔离和多 service graph，显著扩大进程职责和回归面。
 
-### 方案 C：远端常驻 `zcode-server` Daemon（不采用）
+### 方案 C：远端常驻 `codez-server` Daemon（不采用）
 
 多个本地 Host 通过远端 socket/port 连接同一个 server。
 
@@ -328,7 +328,7 @@ AttachServicePort { attachmentId }
 DetachServicePort { attachmentId }
 ```
 
-`InitRemoteSshHost` 只建立 SSH、执行部署检查、启动远端 `zcode-server` 并创建一次共享 ServiceCollection。它不绑定 workspace，也不把初始化端口作为第一个 workspace 的特殊通道。
+`InitRemoteSshHost` 只建立 SSH、执行部署检查、启动远端 `codez-server` 并创建一次共享 ServiceCollection。它不绑定 workspace，也不把初始化端口作为第一个 workspace 的特殊通道。
 
 Host ready 后，所有 logical session 一律走 `AttachServicePort`。Host 内维护：
 
@@ -420,8 +420,8 @@ Main 删除该窗口所有 pool entry，释放所有 session/attachment，向每
 
 ### 远端 stdio server 退出
 
-SSH transport 关闭会让远端 `zcode-server` 的 stdin 收到 `end` / `error`，或者让进程收到
-`SIGHUP` / `SIGTERM` / `SIGINT`。远端 server 是其内部 `ZCodeAgentProcessManager` 的进程所有者，
+SSH transport 关闭会让远端 `codez-server` 的 stdin 收到 `end` / `error`，或者让进程收到
+`SIGHUP` / `SIGTERM` / `SIGINT`。远端 server 是其内部 `CodezAgentProcessManager` 的进程所有者，
 因此不能在该事件里直接 `process.exit()`；必须先停止 RPC，再等待所有 workspace Agent 的
 graceful + force cleanup 完成，最后退出 server：
 
@@ -485,13 +485,13 @@ cleanup Promise，直接以 `1` 退出。deadline timer 必须保持 ref，确�
 共享 Remote Host 中只创建一次本地混合 ServiceCollection：
 
 - 本地权威：setting、credential、OAuth、model provider、usage stats、coding plan、broadcast 等。
-- 本地 wrapper：ZCode Task、ZCode Session、Repo Wiki 等。
+- 本地 wrapper：Codez Task、Codez Session、Repo Wiki 等。
 - 远端实现：file、git、terminal、file watcher、Agent、skills、MCP/plugin sync 等。
 
-远端 `zcode-server` 内继续按 workspaceKey 管理：
+远端 `codez-server` 内继续按 workspaceKey 管理：
 
 ```text
-zcode-server
+codez-server
 ├── workspaceKey A
 │   ├── Agent A
 │   └── appliedProviderRevision A
@@ -561,7 +561,7 @@ owner/lease、owner command、pending permission/elicitation/command 和 stale r
 - 新 remote session、registry revision 变化、强制刷新或 pending 重试已经明确要求下发 Provider
   Registry 时，禁止在下发前调用 `getWorkspaceRuntimeIdentity`。Registry 应用成功后再读取 runtime
   identity；只有同 session、同 revision 的 unchanged 判定才允许先探测 identity 以发现 Agent 重建。
-- Registry 应用后的 identity 探针仍返回 `ZCODE_AGENT_PROVIDER_NOT_READY` 时，保留一次有界重放保护；
+- Registry 应用后的 identity 探针仍返回 `CODEZ_AGENT_PROVIDER_NOT_READY` 时，保留一次有界重放保护；
   该错误表示应用回包后 runtime 被替换，不再属于正常冷启动路径。
 - Node `ExperimentalWarning` / `DeprecationWarning` / `Warning` 由 host 结构化为一条 `warn`；默认
   stderr/console 路径不得再额外上报一条 `error`。
@@ -667,7 +667,7 @@ owner/lease、owner command、pending permission/elicitation/command 和 stale r
 
 | File | Change |
 | --- | --- |
-| `docs/architecture/zcode-code-architecture-overview.md` | 更新 SSH Remote Host 为窗口内按 remoteHostKey 共享。 |
+| `docs/architecture/codez-code-architecture-overview.md` | 更新 SSH Remote Host 为窗口内按 remoteHostKey 共享。 |
 | `docs/architecture/message-flow.md` | 更新多 workspace 到共享 Host/server 的 MessagePort 和 stdio 流。 |
 | `docs/remote-workspace-session-unified-settings.md` | 说明 persisted workspace history 与 runtime Host pool 分离。 |
 | `docs/ssh-remote-app-global-state-authority.md` | 说明一个 Host 多 workspace 时 registry 内容同源、应用状态仍按 workspaceKey。 |
@@ -732,7 +732,7 @@ owner/lease、owner command、pending permission/elicitation/command 和 stale r
 
 1. 在同一窗口通过同一配置打开两个远端目录。
 2. 进程监控确认本地只有一个 SSH Remote Host PID。
-3. 远端确认只有一个对应 `zcode-server`，并可按两个 workspaceKey 启动独立 Agent。
+3. 远端确认只有一个对应 `codez-server`，并可按两个 workspaceKey 启动独立 Agent。
 4. 两个 workspace 分别执行 file、Git、terminal、task 和 Provider 操作。
 5. 关闭一个 workspace，确认另一个正常且 Host PID 不变。
 6. 关闭最后一个 workspace再打开同配置目录，确认没有新 SSH 握手/server PID。

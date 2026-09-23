@@ -20,7 +20,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { E2ENetworkCaptureArtifact } from "../helpers/network-capture-proxy.js";
 import {
   clearAppData,
@@ -102,8 +102,8 @@ const SECOND_PROJECT_MEMORY_ROOT = join(
 const SECOND_PROJECT_MEMORY_INDEX = join(SECOND_PROJECT_MEMORY_ROOT, "MEMORY.md");
 const SECOND_PROJECT_MEMORY_FACT = join(SECOND_PROJECT_MEMORY_ROOT, "incident-review-policy.md");
 const REFRESHED_FILE = join(SECOND_PROJECT_MEMORY_ROOT, "manual-refresh.md");
-const PROFILE_FILE = join(DEFAULT_WORKSPACE, ".zcode", "agents", `${PROFILE_NAME}.md`);
-const CUSTOM_MEMORY_ROOT = join(DEFAULT_WORKSPACE, ".zcode", "agent-memory", PROFILE_NAME);
+const PROFILE_FILE = join(DEFAULT_WORKSPACE, ".codez", "agents", `${PROFILE_NAME}.md`);
+const CUSTOM_MEMORY_ROOT = join(DEFAULT_WORKSPACE, ".codez", "agent-memory", PROFILE_NAME);
 const CUSTOM_MEMORY_FILE = join(CUSTOM_MEMORY_ROOT, "review-convention.md");
 let providerCaptureStartIndex = 0;
 
@@ -124,7 +124,7 @@ describe("Desktop Memory continuous 链路 WDIO", () => {
     await browser.electron.restoreAllMocks();
     await rm(PROJECT_MEMORY_ROOT, { force: true, recursive: true });
     await rm(SECOND_PROJECT_MEMORY_ROOT, { force: true, recursive: true });
-    await rm(join(DEFAULT_WORKSPACE, ".zcode"), {
+    await rm(join(DEFAULT_WORKSPACE, ".codez"), {
       force: true,
       recursive: true,
     });
@@ -784,7 +784,7 @@ async function readMainMemoryFixture(): Promise<string> {
   const content = normalizeTextFixtureLineEndings(
     await readFile(
       new URL(
-        "../../../../../apps/zcode-cli/packages/core/tests/fixtures/memory/main-memory-default-index.md",
+        "../../../../../apps/codez-cli/packages/core/tests/fixtures/memory/main-memory-default-index.md",
         import.meta.url,
       ),
       "utf8",
@@ -797,7 +797,7 @@ async function readMainMemoryIndexFixture(): Promise<string> {
   const content = normalizeTextFixtureLineEndings(
     await readFile(
       new URL(
-        "../../../../../apps/zcode-cli/packages/core/tests/fixtures/memory/main-memory-index.md",
+        "../../../../../apps/codez-cli/packages/core/tests/fixtures/memory/main-memory-index.md",
         import.meta.url,
       ),
       "utf8",

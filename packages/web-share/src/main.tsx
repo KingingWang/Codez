@@ -26,7 +26,7 @@ const root = createRoot(document.getElementById("root")!);
 const webAuthService = createWebAuthService();
 
 function resolveThemePreference(): Theme {
-  const saved = localStorage.getItem("zcode-theme");
+  const saved = localStorage.getItem("codez-theme");
   return resolveWebRemoteControlInitialTheme({ storedTheme: saved, defaultTheme: "zai-light" });
 }
 
@@ -58,7 +58,7 @@ function renderCallback(): void {
 async function renderShare(): Promise<void> {
   const locale = resolveConversationShareRouteLocale(window.location.pathname);
   document.documentElement.lang = locale;
-  document.title = locale === "zh-CN" ? "ZCode 会话分享" : "ZCode Conversation Share";
+  document.title = locale === "zh-CN" ? "Codez 会话分享" : "Codez Conversation Share";
 
   const shareCode = resolveConversationShareCodeFromPath(window.location.pathname);
   if (!shareCode) {
@@ -72,7 +72,7 @@ async function renderShare(): Promise<void> {
   }
 
   const endpointOrigin =
-    import.meta.env.VITE_ZCODE_BASE_URL?.trim().replace(/\/+$/u, "") || window.location.origin;
+    import.meta.env.VITE_CODEZ_BASE_URL?.trim().replace(/\/+$/u, "") || window.location.origin;
   const mockMode =
     import.meta.env.DEV && import.meta.env.VITE_CONVERSATION_SHARE_PREVIEW_MOCK === "true";
   const client = mockMode
@@ -81,7 +81,7 @@ async function renderShare(): Promise<void> {
       ).MockConversationSharePreviewClient()
     : new ConversationSharePreviewClient({ baseUrl: `${endpointOrigin}/api/v1` });
   const getMockToken = () =>
-    mockMode && window.sessionStorage.getItem("zcode:share:mock-auth") === "owner"
+    mockMode && window.sessionStorage.getItem("codez:share:mock-auth") === "owner"
       ? "mock-owner-token"
       : null;
 
@@ -89,10 +89,10 @@ async function renderShare(): Promise<void> {
     <ConversationShareLandingLoader
       shareCode={shareCode}
       client={client}
-      getAccessToken={() => getMockToken() ?? webAuthService.getZCodeJwtToken()}
+      getAccessToken={() => getMockToken() ?? webAuthService.getCodezJwtToken()}
       onLogin={(provider) => {
         if (mockMode) {
-          window.sessionStorage.setItem("zcode:share:mock-auth", "owner");
+          window.sessionStorage.setItem("codez:share:mock-auth", "owner");
           window.location.reload();
           return;
         }
@@ -104,7 +104,7 @@ async function renderShare(): Promise<void> {
         });
       }}
       onLogout={() => {
-        if (mockMode) window.sessionStorage.removeItem("zcode:share:mock-auth");
+        if (mockMode) window.sessionStorage.removeItem("codez:share:mock-auth");
         void webAuthService.logout();
         window.location.reload();
       }}

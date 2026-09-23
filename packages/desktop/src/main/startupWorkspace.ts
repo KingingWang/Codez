@@ -5,7 +5,7 @@ import {
   formatZodError,
   resolveStartupLocalWorkspaceSessionIndex,
   type WorkspacePurpose,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 interface StartupWorkspaceLogger {
   info?: (...args: unknown[]) => void;
@@ -39,7 +39,7 @@ export interface StartupWorkspaceWarmupTarget {
 
 // 修复原因：会话 CLI 没有 idle 回收，启动预热 3 个会让每个窗口常驻 3 份 Agent 进程内存；
 // 切到最近项目的冷启动收益抵不上常驻成本，收敛为只预热 active workspace。
-// 与 @zcode/protocol 的 init-local `agentWarmupTargets.max(1)` 保持一致。
+// 与 @codez/protocol 的 init-local `agentWarmupTargets.max(1)` 保持一致。
 export const STARTUP_AGENT_WARMUP_LIMIT = 1;
 
 export interface StartupWindowBootstrap {
@@ -163,7 +163,7 @@ export async function resolveStartupWindowBootstrap({
   }
 
   // UI 可以没有项目，但 Agent 必须始终有真实 cwd。首次启动统一预热
-  // app-managed conversation backing workspace，不能再创建会被误认成项目的 ZCodeProject。
+  // app-managed conversation backing workspace，不能再创建会被误认成项目的 CodezProject。
   await mkdir(conversationWorkspaceDir, { recursive: true });
   logger?.info?.("[startup-workspace] using conversation workspace:", conversationWorkspaceDir);
   return {

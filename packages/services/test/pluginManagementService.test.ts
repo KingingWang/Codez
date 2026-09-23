@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { createPluginManagementService } from "../src/plugins/pluginManagementService.js";
-import type { IZCodeAgentService } from "../src/zcode-agent/zcodeAgent.js";
+import type { ICodezAgentService } from "../src/codez-agent/codezAgent.js";
 
 describe("pluginManagementService suggested prompt operations", () => {
   it("forwards trusted resolution and cancellation to the selected Agent service", async () => {
     const progressEvent = vi.fn();
     const onDynamicPluginOperationProgress = vi.fn(() => progressEvent);
     const resolveSuggestedPluginReference = vi.fn(async () => ({
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@codez-plugins-official",
       status: "missing" as const,
-      marketplace: "zcode-plugins-official",
+      marketplace: "codez-plugins-official",
       pluginName: "document-skills",
       sourceTrust: "official" as const,
       diagnostics: [],
@@ -19,11 +19,11 @@ describe("pluginManagementService suggested prompt operations", () => {
       cancelled: true,
     }));
     const service = createPluginManagementService({
-      zcodeAgentService: {
+      codezAgentService: {
         resolveSuggestedPluginReference,
         cancelPluginOperation,
         onDynamicPluginOperationProgress,
-      } as unknown as IZCodeAgentService,
+      } as unknown as ICodezAgentService,
     });
 
     expect(service.onDynamicPluginOperationProgress("suggested-1")).toBe(progressEvent);
@@ -33,7 +33,7 @@ describe("pluginManagementService suggested prompt operations", () => {
         workspacePath: "/remote/workspace",
         workspaceIdentity: "ssh://host/remote/workspace",
         remoteSessionId: "remote-session-1",
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@codez-plugins-official",
         operationId: "suggested-1",
         clientMode: "web-remote-replayable",
         deliveryKind: "web-remote-replayable",
@@ -47,7 +47,7 @@ describe("pluginManagementService suggested prompt operations", () => {
       workspacePath: "/remote/workspace",
       workspaceIdentity: "ssh://host/remote/workspace",
       remoteSessionId: "remote-session-1",
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@codez-plugins-official",
       operationId: "suggested-1",
       clientMode: "web-remote-replayable",
       deliveryKind: "web-remote-replayable",

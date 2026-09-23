@@ -5,7 +5,7 @@ import {
   shouldBareEnterFallThroughToNewline,
   type ComposerEffectiveBindings,
 } from "../src/shortcuts/composerShortcuts.js";
-import { getDefaultShortcutBindings } from "@zcode/shared";
+import { getDefaultShortcutBindings } from "@codez/shared";
 
 /** 构造 Enter 族键盘事件（composer 插件收到的就是真实 KeyboardEvent 的字段子集）。 */
 function enterEvent(patch: Partial<ShortcutBindingEvent> = {}): ShortcutBindingEvent {

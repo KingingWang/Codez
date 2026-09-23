@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createMemoryDiagnosticsRegistry } from "@zcode/shared";
+import { createMemoryDiagnosticsRegistry } from "@codez/shared";
 import {
   readRendererHeapSnapshot,
   startMemoryDiagnosticsLogger,
@@ -188,8 +188,8 @@ describe("logger.logMemoryDiagnostics", () => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
-    delete (globalThis as { __ZCODE_RENDERER_DISABLE_LOGGING__?: boolean })
-      .__ZCODE_RENDERER_DISABLE_LOGGING__;
+    delete (globalThis as { __CODEZ_RENDERER_DISABLE_LOGGING__?: boolean })
+      .__CODEZ_RENDERER_DISABLE_LOGGING__;
   });
 
   async function importLogger() {
@@ -200,7 +200,7 @@ describe("logger.logMemoryDiagnostics", () => {
   it("MEM-010 生产构建仍经桌面桥写 info", async () => {
     vi.stubEnv("NODE_ENV", "production");
     const bridgeLog = vi.fn();
-    vi.stubGlobal("window", { zcode: { log: bridgeLog } });
+    vi.stubGlobal("window", { codez: { log: bridgeLog } });
     const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
 
     const { logMemoryDiagnostics } = await importLogger();
@@ -223,10 +223,10 @@ describe("logger.logMemoryDiagnostics", () => {
 
   it("全局禁用开关关闭时不输出", async () => {
     const bridgeLog = vi.fn();
-    vi.stubGlobal("window", { zcode: { log: bridgeLog } });
+    vi.stubGlobal("window", { codez: { log: bridgeLog } });
     (
-      globalThis as { __ZCODE_RENDERER_DISABLE_LOGGING__?: boolean }
-    ).__ZCODE_RENDERER_DISABLE_LOGGING__ = true;
+      globalThis as { __CODEZ_RENDERER_DISABLE_LOGGING__?: boolean }
+    ).__CODEZ_RENDERER_DISABLE_LOGGING__ = true;
 
     const { logMemoryDiagnostics } = await importLogger();
     logMemoryDiagnostics("[memory] role=renderer reason=first");

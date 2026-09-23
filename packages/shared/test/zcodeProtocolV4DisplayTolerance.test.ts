@@ -21,7 +21,7 @@ import {
   workflowLaunchMetaSchema,
   type ConversationTopicFrame,
   type ConversationTopicWireFrame,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 const TOPIC = "conversation/session-display-tolerance";
 const SUBSCRIPTION_ID = "sub-display-tolerance";

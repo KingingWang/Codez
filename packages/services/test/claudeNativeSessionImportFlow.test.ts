@@ -14,7 +14,7 @@ function makeTempDir(prefix: string): string {
 
 afterEach(async () => {
   process.env.HOME = originalHome;
-  delete process.env.ZCODE_DATA_BASE_DIR;
+  delete process.env.CODEZ_DATA_BASE_DIR;
   vi.doUnmock("node:os");
   // Windows:等待一下让文件句柄释放
   await new Promise((resolve) => setTimeout(resolve, 50));
@@ -31,10 +31,10 @@ afterEach(async () => {
 });
 
 describe("Claude native import flow", () => {
-  it("将 Claude jsonl 归一为 ZCodeSessionFile 并写入 legacy snapshot", async () => {
-    const home = makeTempDir("zcode-claude-import-flow-");
+  it("将 Claude jsonl 归一为 CodezSessionFile 并写入 legacy snapshot", async () => {
+    const home = makeTempDir("codez-claude-import-flow-");
     process.env.HOME = home;
-    process.env.ZCODE_DATA_BASE_DIR = home;
+    process.env.CODEZ_DATA_BASE_DIR = home;
 
     vi.resetModules();
     vi.doMock("node:os", async () => {
@@ -148,10 +148,10 @@ describe("Claude native import flow", () => {
 
   // Windows 上跳过此测试：路径编码逻辑与 Unix 不兼容，需要重构路径处理逻辑
   if (process.platform !== "win32") {
-    it("导入为真实 ZCode session，保留续聊和切模型能力", async () => {
-      const home = makeTempDir("zcode-claude-import-live-");
+    it("导入为真实 Codez session，保留续聊和切模型能力", async () => {
+      const home = makeTempDir("codez-claude-import-live-");
       process.env.HOME = home;
-      process.env.ZCODE_DATA_BASE_DIR = home;
+      process.env.CODEZ_DATA_BASE_DIR = home;
 
       vi.resetModules();
       vi.doMock("node:os", async () => {
@@ -159,7 +159,7 @@ describe("Claude native import flow", () => {
         return { ...actual, homedir: () => home };
       });
 
-      const workspacePath = makeTempDir("zcode-claude-import-workspace-");
+      const workspacePath = makeTempDir("codez-claude-import-workspace-");
       // Windows 上 workspacePath 是 C:\...格式，用posix 路径格式避免 Windows 路径解析问题
       const encodedWorkspace = "ws_" + workspacePath.replace(/[\/\\]/g, "_");
       const sessionId= "session-live";
@@ -287,9 +287,9 @@ items: [expect.objectContaining({ taskId: "sess_imported_live" })],
   }
 
   it("保留 Claude 原生日志里的 API Error assistant 消息", async () => {
-    const home = makeTempDir("zcode-claude-import-api-error-");
+    const home = makeTempDir("codez-claude-import-api-error-");
     process.env.HOME = home;
-    process.env.ZCODE_DATA_BASE_DIR = home;
+    process.env.CODEZ_DATA_BASE_DIR = home;
 
     vi.resetModules();
     vi.doMock("node:os", async () => {

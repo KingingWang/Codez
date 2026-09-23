@@ -1,11 +1,11 @@
-# ZCode 官方 Server MCP：stdio Plugin 经 `_meta` 取身份头（第二阶段，历史 Decision Log）
+# Codez 官方 Server MCP：stdio Plugin 经 `_meta` 取身份头（第二阶段，历史 Decision Log）
 
-> 当前实现事实统一见 `zcode-official-server-mcp-auth-spec.md`。本文只保留 stdio 方案的历史背景。
+> 当前实现事实统一见 `codez-official-server-mcp-auth-spec.md`。本文只保留 stdio 方案的历史背景。
 
 - 状态：已实现；当前事实已合并到统一规格
-- 前置：`zcode-official-server-mcp-client-phase-1-spec.md`（下称"phase-1"）。本文只描述增量，
+- 前置：`codez-official-server-mcp-client-phase-1-spec.md`（下称"phase-1"）。本文只描述增量，
   未提及的一切（信任判定口径、身份头集合、凭证解析、in-flight 去重、日志约束）全部沿用 phase-1
-- 驱动需求：`video-agent-kit` 插件的 `transcribe` / `tts_generate` 要改调 `zcode-server` 的
+- 驱动需求：`video-agent-kit` 插件的 `transcribe` / `tts_generate` 要改调 `codez-server` 的
   `speech_transcribe` / `speech_synthesize`（group `video_edit`），去掉用户手配的火山引擎 key
 
 ## 1. 目标
@@ -32,7 +32,7 @@ phase-1 只解决了 `type:"http"`：宿主在 fetch wrapper 里逐请求注入�
 
 ### 3.1 范围内
 
-- `McpStdioServerConfig` 支持 `auth: { type: "zcode_official", provider: "jwt_token" }`；
+- `McpStdioServerConfig` 支持 `auth: { type: "codez_official", provider: "jwt_token" }`；
 - 对声明了该 auth 的 stdio server，**每次 `tools/call`** 在 `params._meta` 上附带当前身份头；
 - stdio 场景的 targetOrigin 解析口径与失败语义；
 - 相应的 Plugin loader 解析、adapter 注入、测试。
@@ -44,10 +44,10 @@ phase-1 只解决了 `type:"http"`：宿主在 fetch wrapper 里逐请求注入�
   会话，JWT 一轮换就必然 401 且无法自救。这正是本方案要避开的问题，故显式否决；
 - 让宿主代发插件的整个 HTTP 请求（凭证完全不出宿主）。它是 phase-1 §5.1 残留风险 3 指出的更彻底
   方向，但需要宿主转发数百 MiB 的分片流量，成本与收益不匹配，留待后续；
-- server→client 反向自定义请求（如 `zcode/officialMcpAuthHeaders`）。新鲜度更强（单次 tool call
+- server→client 反向自定义请求（如 `codez/officialMcpAuthHeaders`）。新鲜度更强（单次 tool call
   内可重取），但 Python SDK 的 `send_request` 是 typed union，发非标准 method 要绕到裸 JSON-RPC 层
   自行对 id，且其它 MCP 宿主一律 Method not found。第二阶段不做，见 §7 的已知缺口；
-- 后端改动。`zcode-server` 侧零改动。
+- 后端改动。`codez-server` 侧零改动。
 
 ## 4. 配置合同
 
@@ -58,46 +58,46 @@ phase-1 只解决了 `type:"http"`：宿主在 fetch wrapper 里逐请求注入�
       "type": "stdio",
       "command": "python3",
       "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/video_edit_server.py"],
-      "auth": { "type": "zcode_official", "provider": "jwt_token" },
+      "auth": { "type": "codez_official", "provider": "jwt_token" },
       "timeoutMs": 900000
     }
   }
 }
 ```
 
-- `auth` 的严格解析完全复用 phase-1 §4.2 的 `parseZCodeOfficialAuth`：精确值、区分大小写、
+- `auth` 的严格解析完全复用 phase-1 §4.2 的 `parseCodezOfficialAuth`：精确值、区分大小写、
   不接受别名，形状不合法即 `plugin_mcp_server_disabled`；
 - **stdio 上没有 `url`**，因此也没有"插件声明的 origin"。这不是缺陷而是收紧：见 §5；
-- `oauth` 与 `zcode_official` 并存仍是配置错误（stdio 本来就不支持 oauth，属无效声明，一并拒绝）；
+- `oauth` 与 `codez_official` 并存仍是配置错误（stdio 本来就不支持 oauth，属无效声明，一并拒绝）；
 - `official` provenance 仍由宿主生成（`pluginId` / `mcpKey` / `source`），`.mcp.json` 里写了也被覆盖；
 - 静态保留头黑名单（phase-1 §5.2）对 stdio 不适用——它没有 `headers` 字段。stdio 的 `env` **不**纳入
   黑名单：插件通过 env 自带第三方凭证是既有合法用法（如降级回退路径），与身份头注入通道无关。
 
 ## 5. 信任模型：origin 不再由配置提供
 
-phase-1 的判定是"`URL.origin` === 运行时 ZCode API origin"。stdio 没有 URL，改为：
+phase-1 的判定是"`URL.origin` === 运行时 Codez API origin"。stdio 没有 URL，改为：
 
 ```text
-targetOrigin := resolveRuntimeZCodeEndpointOrigin(env)     # 客户端自行解析，不读任何插件配置
+targetOrigin := resolveRuntimeCodezEndpointOrigin(env)     # 客户端自行解析，不读任何插件配置
 ```
 
-口径与 `zcode-protocol-entrypoint.ts` 现有的 4 处调用一致（`ZCODE_BASE_URL` 由宿主
+口径与 `codez-protocol-entrypoint.ts` 现有的 4 处调用一致（`CODEZ_BASE_URL` 由宿主
 `resolveSpawnEnv` 下发权威值，见 commit `9c9d1683`）。
 
 **为什么这比 http 路径更严**：http 路径下插件能写 url，判定的作用是"把它挡回官方 origin"；
-stdio 路径下插件根本没有表达 origin 的渠道，身份头只可能被解析为"当前 ZCode API origin 的凭证"。
-`isOfficialMcpOriginTrusted` 的调用照旧保留（同一份 `@zcode/shared` 实现），此时它退化为一条
+stdio 路径下插件根本没有表达 origin 的渠道，身份头只可能被解析为"当前 Codez API origin 的凭证"。
+`isOfficialMcpOriginTrusted` 的调用照旧保留（同一份 `@codez/shared` 实现），此时它退化为一条
 恒真断言——**仍要调用**，因为它同时校验 https 与不带 username/password，且 dev loopback 开关
-（`ZCODE_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS`）必须继续生效。
+（`CODEZ_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS`）必须继续生效。
 
-host 侧二次校验（`zcodeAgentService` 在读取凭据**之前**用同一份 registry 校验三元组）不变：
+host 侧二次校验（`codezAgentService` 在读取凭据**之前**用同一份 registry 校验三元组）不变：
 agent 上报的 `targetOrigin` 就是它自己解析出的那个值，未命中即 `official_mcp_origin_untrusted`，
 `resolveHeaders` 零调用。
 
 **新增的残留风险**：phase-1 的三条残留风险全部继续成立，另加一条——**身份头会进入插件的进程内存**。
 http 路径下凭证只在 agent 进程的 fetch wrapper 里出现，插件拿不到；stdio 路径下插件读到的是明文
 `Authorization`，它可以拿去打别的地址。这与 phase-1 §5.1 残留风险 2/3 属同一类（能在插件里跑代码
-的人本来就能读 `~/.zcode` 下的同一份凭证），因此定位仍是**防御纵深**而非防已被攻破的插件。
+的人本来就能读 `~/.codez` 下的同一份凭证），因此定位仍是**防御纵深**而非防已被攻破的插件。
 要彻底解决只能走 §3.2 的"宿主代发"方向。
 
 ## 6. 下发通道：复用既有的 `_meta` 注入点
@@ -108,13 +108,13 @@ http 路径下凭证只在 agent 进程的 fetch wrapper 里出现，插件拿�
 
 ### 6.1 载荷形状
 
-只放命名空间键，不放扁平键（与 `com.zcode/request-context` 的扁平+命名空间双写不同——身份头
+只放命名空间键，不放扁平键（与 `com.codez/request-context` 的扁平+命名空间双写不同——身份头
 不需要兼容任何既有消费者，少一处出现就少一处泄漏面）：
 
 ```json
 {
   "_meta": {
-    "com.zcode/official-mcp-auth": {
+    "com.codez/official-mcp-auth": {
       "ok": true,
       "headers": {
         "Authorization": "Bearer <jwt>",
@@ -131,13 +131,13 @@ http 路径下凭证只在 agent 进程的 fetch wrapper 里出现，插件拿�
 失败：
 
 ```json
-{ "_meta": { "com.zcode/official-mcp-auth": { "ok": false, "reason": "official_auth_plan_required" } } }
+{ "_meta": { "com.codez/official-mcp-auth": { "ok": false, "reason": "official_auth_plan_required" } } }
 ```
 
 - `headers` 的键集合、Team 成对原子性、`Bigmodel-Target-Type` 的取值，全部由
   `buildOfficialMcpAuthHeaders` 单点产出，与 http 路径同源（phase-1 §6.1）；
 - `reason` 为 `OfficialMcpAuthFailureReason` 枚举，不发自由文本（禁止按文本分流）；
-- 该键**只**出现在声明了 `zcode_official` 的 stdio server 的请求上。普通 stdio server 的 `_meta`
+- 该键**只**出现在声明了 `codez_official` 的 stdio server 的请求上。普通 stdio server 的 `_meta`
   里不得出现——否则等于把身份头广播给任意第三方插件。
 
 ### 6.2 新鲜度
@@ -175,7 +175,7 @@ phase-1 §6.3.3 对 http 是全 fail closed。stdio 路径改为**把 `{ok:false
 
 ### 6.4 OAuth 隔离
 
-phase-1 §6.3.1 的短路（`resolveAuthorizationCodeOAuthConfig` 遇 `zcode_official` 返回 undefined）
+phase-1 §6.3.1 的短路（`resolveAuthorizationCodeOAuthConfig` 遇 `codez_official` 返回 undefined）
 对 stdio 天然成立（stdio 不走 OAuth 分支），但仍要保证 `isOfficialAuthConfig(config)` 的既有
 短路点不因新增 stdio 分支而被绕过。
 
@@ -190,20 +190,20 @@ phase-1 §6.3.1 的短路（`resolveAuthorizationCodeOAuthConfig` 遇 `zcode_off
 
 | 职责 | 文件 |
 | --- | --- |
-| stdio 配置类型 | `apps/zcode-cli/packages/contracts/src/interfaces/mcp.port.ts`（`McpStdioServerConfig` 加 `auth?` / `official?`） |
-| Plugin loader 解析 | `apps/zcode-cli/packages/adapters/src/plugins/mcp.ts`（`officialAuth && type !== "http"` 改为只拒 `sse`；stdio 分支带上 auth + provenance） |
-| 身份头解析与注入 | `apps/zcode-cli/packages/adapters/src/mcp/index.ts`（`callTool` 的 `_meta` 注入点；`mcpRequestMeta` 扩参） |
+| stdio 配置类型 | `apps/codez-cli/packages/contracts/src/interfaces/mcp.port.ts`（`McpStdioServerConfig` 加 `auth?` / `official?`） |
+| Plugin loader 解析 | `apps/codez-cli/packages/adapters/src/plugins/mcp.ts`（`officialAuth && type !== "http"` 改为只拒 `sse`；stdio 分支带上 auth + provenance） |
+| 身份头解析与注入 | `apps/codez-cli/packages/adapters/src/mcp/index.ts`（`callTool` 的 `_meta` 注入点；`mcpRequestMeta` 扩参） |
 | 凭证解析 / 身份头构造 | 复用 `packages/services/src/official-mcp/officialMcpCredentials.ts`，零改动 |
 | 信任判定 | 复用 `packages/shared/src/official-mcp-auth.ts`，零改动 |
-| host 二次校验 | 复用 `packages/services/src/zcode-agent/zcodeAgentService.ts`，零改动 |
+| host 二次校验 | 复用 `packages/services/src/codez-agent/codezAgentService.ts`，零改动 |
 
 不需要改 `SANITIZED_RUNTIME_ENV_KEYS`：身份头不进 env，没有新的子进程泄漏面。
 
 ## 8. 验收标准
 
 - 声明 `auth` 的 stdio Plugin MCP 能正常装载，`official` provenance 由宿主生成且不可由 `.mcp.json` 伪造；
-- `sse` + `zcode_official` 仍被 `plugin_mcp_server_disabled` 拒绝；
-- 对该 server 的每次 `tools/call`，`_meta["com.zcode/official-mcp-auth"].headers` 含 phase-1 §6.1
+- `sse` + `codez_official` 仍被 `plugin_mcp_server_disabled` 拒绝；
+- 对该 server 的每次 `tools/call`，`_meta["com.codez/official-mcp-auth"].headers` 含 phase-1 §6.1
   规定的头集合；Team 场景 org/project 成对出现；
 - `resolveHeaders` 失败时下发 `{ok:false, reason:<枚举>}`，且**不含** `headers` 键；连接不置 failed；
 - 普通 stdio server 的 `_meta` 里不出现该键；

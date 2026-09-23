@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  zcodeProtocolMethods,
-  zcodeProtocolNotifications,
+  codezProtocolMethods,
+  codezProtocolNotifications,
   requiresRequestVerification,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { AccountRequestAuthMaterial } from "../src/model-provider/accountRequestAuthService.js";
 import { offPeakSelectionView } from "./fixtures/offPeakSelection.js";
 
@@ -27,8 +27,8 @@ async function setup(
   let notify: ((message: unknown) => void) | undefined;
   const respond = vi.fn(async () => {});
   vi.resetModules();
-  vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-    ZCodeAgentProcessManager: class {
+  vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+    CodezAgentProcessManager: class {
       onRuntimeLifecycle() {
         return { dispose() {} };
       }
@@ -58,8 +58,8 @@ async function setup(
       }
     },
   }));
-  const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
-  const service = createZCodeAgentService({
+  const { createCodezAgentService } = await import("../src/codez-agent/codezAgentService.js");
+  const service = createCodezAgentService({
     modelSelectionReadinessSource: { getView: async () => offPeakSelectionView() },
     accountRequestAuthService: {
       resolveCurrent,
@@ -76,7 +76,7 @@ async function setup(
   ) =>
     receive?.({
       id: "protocol-1",
-      method: zcodeProtocolMethods.interactionRequestProviderRuntimeHeaders,
+      method: codezProtocolMethods.interactionRequestProviderRuntimeHeaders,
       params: {
         requestId: target.requestId,
         sessionId: target.sessionId,
@@ -91,7 +91,7 @@ async function setup(
     });
   const cancel = () =>
     notify?.({
-      method: zcodeProtocolNotifications.providerRuntimeHeadersCancelled,
+      method: codezProtocolNotifications.providerRuntimeHeadersCancelled,
       params: { requestId: target.requestId, sessionId: target.sessionId, workspace },
     });
   return { service, fire, cancel, respond, resolveCurrent };

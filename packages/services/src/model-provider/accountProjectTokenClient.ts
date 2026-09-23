@@ -3,7 +3,7 @@ import {
   ProjectAccessTokenClient,
   ProjectAccessTokenTransientError,
   type ApiClient,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ICredentialService } from "#src/credential/credential.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { readApiJson } from "#src/providers/api/apiJson.js";

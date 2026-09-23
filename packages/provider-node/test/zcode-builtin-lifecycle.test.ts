@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NodeProviderConfigRuntime } from "../src/provider-config-runtime.js";
-import { decodeZCodeBuiltinRelease } from "../src/zcode-builtin-release.js";
+import { decodeCodezBuiltinRelease } from "../src/codez-builtin-release.js";
 
 const release = {
   schemaVersion: 1,
@@ -40,24 +40,24 @@ async function setup(
   fetchRelease: (
     endpoint: string,
     signal: AbortSignal,
-  ) => Promise<ReturnType<typeof decodeZCodeBuiltinRelease> | null>,
+  ) => Promise<ReturnType<typeof decodeCodezBuiltinRelease> | null>,
 ) {
   const root = await mkdtemp(join(tmpdir(), "builtin-lifecycle-"));
   roots.push(root);
   const bundled = join(root, "bundled.json");
   await writeFile(bundled, JSON.stringify(release));
   const runtime = new NodeProviderConfigRuntime({
-    zcodeBuiltinFilePath: bundled,
-    zcodeBuiltinActiveFilePath: join(root, "active.json"),
+    codezBuiltinFilePath: bundled,
+    codezBuiltinActiveFilePath: join(root, "active.json"),
     personalFilePath: join(root, "personal.json"),
     watch: false,
     personalPollingIntervalMs: false,
-    zcodeBuiltinRemote: {
+    codezBuiltinRemote: {
       controlFilePath: join(root, "control.json"),
       resolveEndpointKey: () => "https://example.com",
       fetchRelease,
     },
-    onZCodeBuiltinRefreshError: () => {},
+    onCodezBuiltinRefreshError: () => {},
   });
   disposers.push(() => runtime.dispose());
   return runtime;
@@ -69,9 +69,9 @@ describe("Built-in 环境生命周期检查", () => {
     const fetchRelease = vi.fn(async () => null);
     const runtime = await setup(fetchRelease);
     const recovery = vi.fn(async () => {});
-    runtime.onDidCheckZCodeBuiltin(recovery);
+    runtime.onDidCheckCodezBuiltin(recovery);
     await runtime.start();
-    await runtime.refreshZCodeBuiltin();
+    await runtime.refreshCodezBuiltin();
     await vi.waitFor(() => expect(recovery).toHaveBeenCalledTimes(1));
     expect(fetchRelease).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(60_000);
@@ -79,7 +79,7 @@ describe("Built-in 环境生命周期检查", () => {
     expect(fetchRelease).toHaveBeenCalledTimes(1);
     for (let minute = 0; minute < 59; minute++) {
       await vi.advanceTimersByTimeAsync(60_000);
-      await runtime.refreshZCodeBuiltin();
+      await runtime.refreshCodezBuiltin();
     }
     await vi.waitFor(() => expect(fetchRelease).toHaveBeenCalledTimes(2));
     runtime.dispose();
@@ -94,13 +94,13 @@ describe("Built-in 环境生命周期检查", () => {
     });
     const runtime = await setup(fetchRelease);
     const recovery = vi.fn(async () => {});
-    runtime.onDidCheckZCodeBuiltin(recovery);
+    runtime.onDidCheckCodezBuiltin(recovery);
     await runtime.start();
-    await runtime.refreshZCodeBuiltin().catch(() => {});
+    await runtime.refreshCodezBuiltin().catch(() => {});
     await vi.waitFor(() => expect(recovery).toHaveBeenCalledTimes(1));
     await vi.advanceTimersByTimeAsync(60_000);
     await vi.waitFor(() => expect(fetchRelease).toHaveBeenCalledTimes(2));
-    await runtime.refreshZCodeBuiltin().catch(() => {});
+    await runtime.refreshCodezBuiltin().catch(() => {});
     await vi.advanceTimersByTimeAsync(60_000);
     await vi.waitFor(() => expect(recovery).toHaveBeenCalledTimes(3));
     expect(fetchRelease).toHaveBeenCalledTimes(2);

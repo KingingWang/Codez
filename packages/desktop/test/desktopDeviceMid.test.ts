@@ -7,7 +7,7 @@ import { ensureDesktopDeviceMidSync } from "../src/main/desktopDeviceMid.js";
 const tempDirs: string[] = [];
 
 function makeTempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "zcode-device-mid-"));
+  const dir = mkdtempSync(join(tmpdir(), "codez-device-mid-"));
   tempDirs.push(dir);
   return dir;
 }
@@ -82,10 +82,10 @@ describe("ensureDesktopDeviceMidSync", () => {
       createId: () => "shared-device-uuid",
     });
 
-    // telemetryCore 用 homeDir 定位 state 文件：{homeDir}/.zcode/v2/telemetry-state.json
+    // telemetryCore 用 homeDir 定位 state 文件：{homeDir}/.codez/v2/telemetry-state.json
     // 让该路径正好等于本测试的 configDir，验证两侧读同一字段。
     const home = makeTempDir();
-    const sharedDir = join(home, ".zcode", "v2");
+    const sharedDir = join(home, ".codez", "v2");
     mkdirSync(sharedDir, { recursive: true });
     writeFileSync(
       join(sharedDir, "telemetry-state.json"),
@@ -93,7 +93,7 @@ describe("ensureDesktopDeviceMidSync", () => {
       "utf-8",
     );
 
-    const { createTelemetryCore } = await import("@zcode/services/node");
+    const { createTelemetryCore } = await import("@codez/services/node");
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
     const service = createTelemetryCore({
       homeDir: home,

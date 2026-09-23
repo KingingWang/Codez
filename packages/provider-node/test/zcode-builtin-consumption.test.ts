@@ -10,12 +10,12 @@ import {
   ProviderConfigMap,
   ModelConfig,
   ModelPropertiesConfig,
-} from "@zcode/provider";
+} from "@codez/provider";
 import { expect, it, vi } from "vitest";
 import {
   NodeProviderRegistryRuntime,
-  NodeZCodeBuiltinProviderConfigSource,
-  decodeZCodeBuiltinRelease,
+  NodeCodezBuiltinProviderConfigSource,
+  decodeCodezBuiltinRelease,
 } from "../src/index.js";
 
 it("更新只改变后续 Registry 消费，Personal 覆盖/历史选择与已取得模型配置不被代写", async () => {
@@ -24,14 +24,14 @@ it("更新只改变后续 Registry 消费，Personal 覆盖/历史选择与已�
   const active = join(root, "active.json");
   const personal = join(root, "personal.json");
   const release = JSON.parse(
-    await readFile(new URL("../../../config/provider/zcode-builtin.json", import.meta.url), "utf8"),
+    await readFile(new URL("../../../config/provider/codez-builtin.json", import.meta.url), "utf8"),
   );
   release.config.modelConfigRules.modelRules.push({
     modelMatch: "test-model-.*",
     config: { properties: { contextWindow: 500_000 } },
   });
   await writeFile(bundled, JSON.stringify(release));
-  const source = new NodeZCodeBuiltinProviderConfigSource({
+  const source = new NodeCodezBuiltinProviderConfigSource({
     bundledFilePath: bundled,
     activeFilePath: active,
     watch: false,
@@ -39,7 +39,7 @@ it("更新只改变后续 Registry 消费，Personal 覆盖/历史选择与已�
   await source.read();
   let account!: AccountProviderService;
   const runtime = new NodeProviderRegistryRuntime({
-    zcodeBuiltinFilePath: active,
+    codezBuiltinFilePath: active,
     personalFilePath: personal,
     personalPollingIntervalMs: false,
     createAccountSource(configSource) {
@@ -88,7 +88,7 @@ it("更新只改变后续 Registry 消费，Personal 覆盖/历史选择与已�
     expect(old.config.properties.contextWindow).toBe(500_000);
     release.revision += 1;
     release.config.modelConfigRules.modelRules.at(-1).config.properties.contextWindow = 700_000;
-    await source.applyRemoteRelease(decodeZCodeBuiltinRelease(release));
+    await source.applyRemoteRelease(decodeCodezBuiltinRelease(release));
     await vi.waitFor(() =>
       expect(
         runtime.registryService.getModel("manual", "test-model-inherit")!.config.properties

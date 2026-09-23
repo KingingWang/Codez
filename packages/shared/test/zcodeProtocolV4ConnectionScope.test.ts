@@ -12,9 +12,9 @@ import {
   v4ConversationUnsubscribeParamsSchema,
   v4SessionsIndexSubscribeResultSchema,
   v4WorkspaceConfigSubscribeResultSchema,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
-describe("ZCode Protocol V4 trusted connection scope", () => {
+describe("Codez Protocol V4 trusted connection scope", () => {
   it("connection flow RPC 只接受 trusted connectionId 与三态控制", () => {
     expect(V4_METHODS.connectionFlow).toBe("v4/connection/flow");
     for (const state of ["saturated", "drained", "closed"] as const) {

@@ -2,7 +2,7 @@ import {
   TID_CHAT_ASSISTANT_HISTORY_TRIGGER,
   TID_CHAT_TOOL_CALL_BLOCK,
   TID_TOOL_SUMMARY_TRIGGER,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   prepareConversationE2E,

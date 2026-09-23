@@ -31,7 +31,7 @@ describe("workbench pointer drag/drop bridge", () => {
     const onPreview = vi.fn();
     const onDrop = vi.fn();
     const payload = {
-      kind: "zcode/session" as const,
+      kind: "codez/session" as const,
       workspacePath: "/repo",
       workspaceIdentity: "ssh:host:/repo",
       remoteSessionId: "remote-1",
@@ -72,7 +72,7 @@ describe("workbench pointer drag/drop bridge", () => {
       onPreview,
     });
     const payload = {
-      kind: "zcode/session" as const,
+      kind: "codez/session" as const,
       workspacePath: "/repo",
       sessionId: "task-1",
     };

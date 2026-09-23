@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { TID_TASK_ITEM, TID_V4_COMPOSER_INPUT, testId } from "@zcode/shared";
+import { TID_TASK_ITEM, TID_V4_COMPOSER_INPUT, testId } from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -146,7 +146,7 @@ async function waitForSingleProjectRow(
 function readWorkspaceTaskIds(): string[] {
   // Node 当前内置 SQLite 只提供 DatabaseSync；E2E 轮询每次都立即关闭只读句柄。
   const database = new DatabaseSync(
-    join(homedir(), ".zcode", "v2", "tasks-index.sqlite"),
+    join(homedir(), ".codez", "v2", "tasks-index.sqlite"),
     {
       readOnly: true,
     },
@@ -176,7 +176,7 @@ function readCliSession(sessionId: string): {
 } | null {
   // Node 当前内置 SQLite 只提供 DatabaseSync；E2E 只读一次并立即关闭句柄。
   const database = new DatabaseSync(
-    join(homedir(), ".zcode", "cli", "db", "db.sqlite"),
+    join(homedir(), ".codez", "cli", "db", "db.sqlite"),
     {
       readOnly: true,
     },

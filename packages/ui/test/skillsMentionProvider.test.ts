@@ -62,7 +62,7 @@ describe("skills mention provider", () => {
       id: "builtin-pdf",
       name: "pdf",
       description: "专业 PDF 工具集",
-      path: "/cache/zcode-plugins-official/document-skills/0.1.0/skills/pdf/SKILL.md",
+      path: "/cache/codez-plugins-official/document-skills/0.1.0/skills/pdf/SKILL.md",
       scope: "plugin" as const,
       pluginName: "document-skills",
     };
@@ -89,7 +89,7 @@ describe("skills mention provider", () => {
       "Plugin · Run pure GUI black-box tests",
     );
     expect(mapSkillsToMentionItemsForTest([skill], "zh-CN")[0]?.description).toContain(
-      "插件 · 使用 ZCode Browser Use 对网页和本地 Web 前端执行纯 GUI 黑盒测试",
+      "插件 · 使用 Codez Browser Use 对网页和本地 Web 前端执行纯 GUI 黑盒测试",
     );
   });
 });

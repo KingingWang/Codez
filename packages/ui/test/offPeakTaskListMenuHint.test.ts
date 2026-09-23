@@ -3,7 +3,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ZCodeOffPeakTask, ZCodeOffPeakTaskStatus } from "@zcode/shared";
+import type { CodezOffPeakTask, CodezOffPeakTaskStatus } from "@codez/shared";
 import { OffPeakTaskList } from "@/settings/OffPeakTaskList.js";
 
 const tooltipCalls = vi.hoisted(
@@ -50,14 +50,14 @@ vi.mock("@/components/ui/dropdown-menu.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
   }),
 }));
 
-function createTask(status: ZCodeOffPeakTaskStatus): ZCodeOffPeakTask {
+function createTask(status: CodezOffPeakTaskStatus): CodezOffPeakTask {
   return {
     offPeakTaskId: `task-${status}`,
     title: `Task ${status}`,

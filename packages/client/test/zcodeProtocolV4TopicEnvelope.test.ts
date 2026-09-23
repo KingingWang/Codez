@@ -1,11 +1,11 @@
-import { BufferWriter, ProtocolMessage, ProtocolMessageType, serialize } from "@zcode/rpc";
+import { BufferWriter, ProtocolMessage, ProtocolMessageType, serialize } from "@codez/rpc";
 import {
   PROTOCOL_V4_LIMITS,
   encodeTopicWireFrames,
   measureTopicNotificationEnvelopeBytes,
   type ConversationTopicFrame,
   type ConversationTopicWireFrame,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { describe, expect, it } from "vitest";
 
 const MAX_EVENT_ID = Number.MAX_SAFE_INTEGER;
@@ -47,7 +47,7 @@ function actualEnvelopeBytes(wire: ConversationTopicWireFrame) {
     JSON.stringify({
       type: "data",
       payload: {
-        zcode_type: "rpc-frame",
+        codez_type: "rpc-frame",
         bridgeSessionId: transportId,
         bridgeGeneration: Number.MAX_SAFE_INTEGER,
         recoveryId: transportId,

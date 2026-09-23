@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
-  deriveZCodeTaskStatusFromSessionSnapshot,
+  deriveCodezTaskStatusFromSessionSnapshot,
   elideSessionSnapshotForIndex,
   getConversationMessageProjectionPolicy,
-  getZCodeUserVisibleMessages,
-  resolveZCodeVisibleSessionTitle,
-  zcodeMessageWithPartsSchema,
-  zcodeSessionReadParamsSchema,
-  type ZCodeMessageWithParts,
-  type ZCodeSessionStateSnapshot,
+  getCodezUserVisibleMessages,
+  resolveCodezVisibleSessionTitle,
+  codezMessageWithPartsSchema,
+  codezSessionReadParamsSchema,
+  type CodezMessageWithParts,
+  type CodezSessionStateSnapshot,
 } from "../src/index.js";
 
 const SESSION_ID = "sess_idx";
@@ -18,9 +18,9 @@ const BIG = "x".repeat(2 * 1024 * 1024);
 function user(
   messageId: string,
   created: number,
-  parts: ZCodeMessageWithParts["parts"],
+  parts: CodezMessageWithParts["parts"],
   patch: Record<string, unknown> = {},
-): ZCodeMessageWithParts {
+): CodezMessageWithParts {
   return {
     info: {
       messageId,
@@ -32,15 +32,15 @@ function user(
       ...patch,
     },
     parts,
-  } as ZCodeMessageWithParts;
+  } as CodezMessageWithParts;
 }
 
 function assistant(
   messageId: string,
   created: number,
-  parts: ZCodeMessageWithParts["parts"],
+  parts: CodezMessageWithParts["parts"],
   patch: Record<string, unknown> = {},
-): ZCodeMessageWithParts {
+): CodezMessageWithParts {
   return {
     info: {
       messageId,
@@ -57,7 +57,7 @@ function assistant(
       ...patch,
     },
     parts,
-  } as ZCodeMessageWithParts;
+  } as CodezMessageWithParts;
 }
 
 function base(messageId: string, partId: string) {
@@ -65,7 +65,7 @@ function base(messageId: string, partId: string) {
 }
 
 /** 覆盖 task index 所有判定分支会看的 part 类型与 metadata 形态。 */
-function fixtureMessages(): ZCodeMessageWithParts[] {
+function fixtureMessages(): CodezMessageWithParts[] {
   return [
     user("m_u1", 10, [
       { ...base("m_u1", "p1"), type: "text", text: "帮我实现订单查询" },
@@ -181,7 +181,7 @@ function fixtureMessages(): ZCodeMessageWithParts[] {
   ];
 }
 
-function fixtureSnapshot(): ZCodeSessionStateSnapshot {
+function fixtureSnapshot(): CodezSessionStateSnapshot {
   return {
     session: {
       sessionId: SESSION_ID,
@@ -193,10 +193,10 @@ function fixtureSnapshot(): ZCodeSessionStateSnapshot {
     runtime: {},
     settings: { model: { current: model } },
     messages: fixtureMessages(),
-  } as unknown as ZCodeSessionStateSnapshot;
+  } as unknown as CodezSessionStateSnapshot;
 }
 
-function structureOf(snapshot: ZCodeSessionStateSnapshot) {
+function structureOf(snapshot: CodezSessionStateSnapshot) {
   return snapshot.messages.map((message) => ({
     info: message.info,
     parts: message.parts.map((part) => ({
@@ -219,7 +219,7 @@ describe("elideSessionSnapshotForIndex", () => {
     expect(JSON.stringify(elided).length).toBeLessThan(10_000);
     expect(JSON.stringify(full).length).toBeGreaterThan(BIG.length * 10);
     for (const message of elided.messages) {
-      expect(() => zcodeMessageWithPartsSchema.parse(message)).not.toThrow();
+      expect(() => codezMessageWithPartsSchema.parse(message)).not.toThrow();
     }
     const parts = elided.messages.flatMap((message) => message.parts);
     const byId = new Map(parts.map((part) => [part.partId, part]));
@@ -247,20 +247,20 @@ describe("elideSessionSnapshotForIndex", () => {
     const full = fixtureSnapshot();
     const elided = elideSessionSnapshotForIndex(full);
 
-    const visibleIds = (snapshot: ZCodeSessionStateSnapshot) =>
-      getZCodeUserVisibleMessages(snapshot.messages).map((message) => message.info.messageId);
+    const visibleIds = (snapshot: CodezSessionStateSnapshot) =>
+      getCodezUserVisibleMessages(snapshot.messages).map((message) => message.info.messageId);
     expect(visibleIds(elided)).toEqual(visibleIds(full));
     expect(visibleIds(full)).toEqual(["m_u1", "m_a1", "m_a2"]);
 
     expect(elided.messages.map(getConversationMessageProjectionPolicy)).toEqual(
       full.messages.map(getConversationMessageProjectionPolicy),
     );
-    const title = (snapshot: ZCodeSessionStateSnapshot) =>
-      resolveZCodeVisibleSessionTitle({ title: "", messages: snapshot.messages, target: null });
+    const title = (snapshot: CodezSessionStateSnapshot) =>
+      resolveCodezVisibleSessionTitle({ title: "", messages: snapshot.messages, target: null });
     expect(title(elided)).toBe(title(full));
     expect(title(full)).toBe("帮我实现订单查询");
-    expect(deriveZCodeTaskStatusFromSessionSnapshot(elided)).toBe(
-      deriveZCodeTaskStatusFromSessionSnapshot(full),
+    expect(deriveCodezTaskStatusFromSessionSnapshot(elided)).toBe(
+      deriveCodezTaskStatusFromSessionSnapshot(full),
     );
   });
 
@@ -276,16 +276,16 @@ describe("elideSessionSnapshotForIndex", () => {
 
 describe("session/read contentProfile", () => {
   it("接受 full / index，缺省兼容旧调用，拒绝未知值", () => {
-    expect(zcodeSessionReadParamsSchema.parse({ sessionId: "s" })).toEqual({ sessionId: "s" });
+    expect(codezSessionReadParamsSchema.parse({ sessionId: "s" })).toEqual({ sessionId: "s" });
     expect(
-      zcodeSessionReadParamsSchema.parse({ sessionId: "s", contentProfile: "index" })
+      codezSessionReadParamsSchema.parse({ sessionId: "s", contentProfile: "index" })
         .contentProfile,
     ).toBe("index");
     expect(
-      zcodeSessionReadParamsSchema.parse({ sessionId: "s", contentProfile: "full" }).contentProfile,
+      codezSessionReadParamsSchema.parse({ sessionId: "s", contentProfile: "full" }).contentProfile,
     ).toBe("full");
     expect(() =>
-      zcodeSessionReadParamsSchema.parse({ sessionId: "s", contentProfile: "tiny" }),
+      codezSessionReadParamsSchema.parse({ sessionId: "s", contentProfile: "tiny" }),
     ).toThrow();
   });
 });

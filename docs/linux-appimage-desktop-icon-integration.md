@@ -7,16 +7,16 @@ Linux AppImage 直跑不会像 deb 安装包一样稳定写入系统级 `.deskto
 ## 目标
 
 - 仅增强 Linux AppImage 直跑体验，不影响 deb、Windows、macOS、本地开发和远控链路。
-- 启动时刷新用户级 `zcode.desktop`，让 `zcode://` 协议回调继续指向当前 AppImage 路径——仅在 `XDG_DATA_DIRS`（默认 `/usr/local/share:/usr/share`）中不存在系统级 `zcode.desktop` 普通文件时才写用户级；存在系统级条目（已装 rpm/deb）时跳过用户级写入与图标安装，避免遮蔽系统安装，系统安装形态还会清理带 `Comment=ZCode Desktop App` 标记的遗留用户级条目（详见 `docs/desktop/linux-appimage-deep-link.md`）。
-- 启动时把包内 512x512 PNG 安装到用户级 hicolor 图标主题，提升 `Icon=zcode` 被任务栏/Dock 命中的概率。
+- 启动时刷新用户级 `codez.desktop`，让 `codez://` 协议回调继续指向当前 AppImage 路径——仅在 `XDG_DATA_DIRS`（默认 `/usr/local/share:/usr/share`）中不存在系统级 `codez.desktop` 普通文件时才写用户级；存在系统级条目（已装 rpm/deb）时跳过用户级写入与图标安装，避免遮蔽系统安装，系统安装形态还会清理带 `Comment=Codez Desktop App` 标记的遗留用户级条目（详见 `docs/desktop/linux-appimage-deep-link.md`）。
+- 启动时把包内 512x512 PNG 安装到用户级 hicolor 图标主题，提升 `Icon=codez` 被任务栏/Dock 命中的概率。
 
 ## 实现
 
-Linux 打包态启动时，`registerDeepLinkProtocol` 传入当前包内 512x512 图标路径。`registerLinuxDeepLinkProtocol` 解析用户数据目录时优先使用 `XDG_DATA_HOME`，未设置时回退到 `~/.local/share`。仅在检测到 `APPIMAGE` 环境变量、图标源文件存在、且 `XDG_DATA_DIRS` 中不存在系统级 `zcode.desktop` 普通文件时，才写入：
+Linux 打包态启动时，`registerDeepLinkProtocol` 传入当前包内 512x512 图标路径。`registerLinuxDeepLinkProtocol` 解析用户数据目录时优先使用 `XDG_DATA_HOME`，未设置时回退到 `~/.local/share`。仅在检测到 `APPIMAGE` 环境变量、图标源文件存在、且 `XDG_DATA_DIRS` 中不存在系统级 `codez.desktop` 普通文件时，才写入：
 
 ```text
-$XDG_DATA_HOME/icons/hicolor/512x512/apps/zcode.png
-$XDG_DATA_HOME/applications/zcode.desktop
+$XDG_DATA_HOME/icons/hicolor/512x512/apps/codez.png
+$XDG_DATA_HOME/applications/codez.desktop
 ```
 
 写入后以 best-effort 方式刷新：
@@ -24,7 +24,7 @@ $XDG_DATA_HOME/applications/zcode.desktop
 ```text
 gtk-update-icon-cache -f -t $XDG_DATA_HOME/icons/hicolor
 update-desktop-database $XDG_DATA_HOME/applications
-xdg-mime default zcode.desktop x-scheme-handler/zcode
+xdg-mime default codez.desktop x-scheme-handler/codez
 ```
 
 刷新命令不存在、失败或超时时只记录 `warn`。外部命令必须设置短超时，图标未变化时跳过 `gtk-update-icon-cache`，不得无界阻塞应用启动。

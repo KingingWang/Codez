@@ -5,23 +5,23 @@
 ## 桌面 stdio Agent 字节码试验
 
 `pnpm dev:desktop:bytecode` 复用普通 Dev 的完整构建，然后用当前安装的 Electron
-Node 模式预编译 `apps/zcode-cli/packages/cli/dist/zcode.cjs`，生成同目录的
-`zcode.bytecode.cjs` 加载器、`zcode.bytecode-<sha256>.jsc` 和
-`zcode.bytecode-runtime-<sha256>.cjs`。普通 `pnpm dev:desktop` 继续运行 JS，
+Node 模式预编译 `apps/codez-cli/packages/cli/dist/codez.cjs`，生成同目录的
+`codez.bytecode.cjs` 加载器、`codez.bytecode-<sha256>.jsc` 和
+`codez.bytecode-runtime-<sha256>.cjs`。普通 `pnpm dev:desktop` 继续运行 JS，
 用于同一版本、同一工作负载下的 A/B 比较。仅重新生成字节码可执行
 `pnpm build:desktop-agent:bytecode`（先确保普通 CLI bundle 已更新）。
 
 构建/字节码格式由 desktop 构建脚本持有；入口选择仍由既有 Agent command resolver
-持有。Dev 启动器通过 `ZCODE_DESKTOP_AGENT_BYTECODE=1` 向 Host 传递选项；它只影响
+持有。Dev 启动器通过 `CODEZ_DESKTOP_AGENT_BYTECODE=1` 向 Host 传递选项；它只影响
 Electron 内的工作区 CLI bundle，不影响显式 Agent command、SSH/WSL 的原生 Agent
 或正式打包流程。该变量不是 CLI 的产品功能参数，完整约定见
-[Agent Server spec](../../apps/zcode-cli/docs/design/v2/zcode-protocol-agent-server.md)。
+[Agent Server spec](../../apps/codez-cli/docs/design/v2/codez-protocol-agent-server.md)。
 
 ```text
-Dev 构建 → 普通 zcode.cjs → 匹配的 Electron Node 编译 → 字节码 + 加载器
+Dev 构建 → 普通 codez.cjs → 匹配的 Electron Node 编译 → 字节码 + 加载器
 Host command resolver → Electron Node 加载器 → 原 app-server --stdio
                                          └→ 原 session/queue/stream owner
-Host storage Worker → 普通 zcode.cjs --prepare-storage → 原存储启动门禁
+Host storage Worker → 普通 codez.cjs --prepare-storage → 原存储启动门禁
 ```
 
 加载器必须在执行 CLI 前校验 Electron/Node/V8、平台、架构、V8 缓存标识及字节码摘要；
@@ -72,9 +72,9 @@ pnpm bundle:desktop -- win arm64
 如果不方便传 CLI 参数，也可以使用环境变量：
 
 ```bash
-ZCODE_TARGET_OS=linux ZCODE_TARGET_ARCH=x64 pnpm bundle:desktop
+CODEZ_TARGET_OS=linux CODEZ_TARGET_ARCH=x64 pnpm bundle:desktop
 
-正式发版打包不再注入可配置的 generic update feed。新版客户端运行时使用服务端 manifest provider；`electron-builder` 的 generic `publish.url` 只保留本地占位，真实更新检查接口由默认 endpoint 或 `ZCODE_UPDATE_FEED_URL` 覆盖。
+正式发版打包不再注入可配置的 generic update feed。新版客户端运行时使用服务端 manifest provider；`electron-builder` 的 generic `publish.url` 只保留本地占位，真实更新检查接口由默认 endpoint 或 `CODEZ_UPDATE_FEED_URL` 覆盖。
 ```
 
 ## 预检查
@@ -97,7 +97,7 @@ pnpm bundle:desktop -- --os mac --arch arm64 --skip-prepare --skip-build
 等价环境变量：
 
 ```bash
-ZCODE_SKIP_PREPARE=1 ZCODE_SKIP_BUILD=1 pnpm bundle:desktop
+CODEZ_SKIP_PREPARE=1 CODEZ_SKIP_BUILD=1 pnpm bundle:desktop
 ```
 
 ## 生产产物安全收口

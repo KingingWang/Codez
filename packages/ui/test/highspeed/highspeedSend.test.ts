@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { HighspeedPrepareTurnResult, HighspeedTurnExecution } from "@zcode/shared";
+import type { HighspeedPrepareTurnResult, HighspeedTurnExecution } from "@codez/shared";
 import {
   HIGHSPEED_REGULAR_TPS_WAIT_BUDGET_MS,
   HIGHSPEED_SEND_WAIT_BUDGET_MS,

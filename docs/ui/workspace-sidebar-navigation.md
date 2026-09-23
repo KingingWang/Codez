@@ -30,7 +30,7 @@
 
 ## 排序规则
 
-- “项目 / 任务”二级分区通过专用手柄拖拽排序，顺序与各自展开态一起持久化到 renderer-local `zcode-sidebar-purpose-section-preferences`；默认顺序是“项目 → 任务”。
+- “项目 / 任务”二级分区通过专用手柄拖拽排序，顺序与各自展开态一起持久化到 renderer-local `codez-sidebar-purpose-section-preferences`；默认顺序是“项目 → 任务”。
 - 左侧 workspace 列表支持拖拽排序，顺序复用 `tabStore` 中的 `workspaceTabs` 子序列。
 - workspace 开始拖拽后，仅被拖项目的 task 列表临时收起，并通过独立 drag overlay 展示项目头；drop 或 cancel 后恢复拖拽前的展开语义。临时收起是 renderer-local 拖拽派生态，不写入 `expandedWorkspacePaths` 或 `localStorage`。
 - 项目排序的兄弟让位距离固定按完全收起后的几何计算：项目行 `32px` 加项目间距 `8px`，让位为 `40px`；不得使用展开 task 列表后的整行高度，否则向上拖拽会先把上方项目推到旧位置再回跳。

@@ -9,7 +9,7 @@ import type {
   ToolCallRow,
   TurnHeaderRow,
   UserInputRow,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import {
   buildConversationTurnRenderUnits,
   resolveNextHighspeedExpiryMs,
@@ -1041,7 +1041,7 @@ describe("buildConversationTurnRenderUnits", () => {
       mimeType: "application/pdf",
       sizeBytes: 10,
       sha256: "a".repeat(64),
-      ref: "zcode-artifact://share/artifact-1",
+      ref: "codez-artifact://share/artifact-1",
       state: "current" as const,
     };
     const [unit] = buildConversationTurnRenderUnits([

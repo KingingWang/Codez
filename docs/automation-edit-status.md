@@ -435,7 +435,7 @@ AutomationService / Repo ---------------------------> internal database allowed
   不承诺阻止 Bash 访问 `tasks-index.sqlite`，也不能把命令字符串检查描述成文件访问安全边界。
 - `ExecutionSandboxPolicy` 只保留 Bash 原有的通用 sandbox 配置，不携带 automation 专用资源信息；
   `dangerouslyDisableSandbox` 的语义也不得被 automation 功能改写。
-- 若未来需要对 `~/.zcode` 建立强安全边界，应先形成独立的跨平台执行隔离设计，明确桌面、Web 远控、
+- 若未来需要对 `~/.codez` 建立强安全边界，应先形成独立的跨平台执行隔离设计，明确桌面、Web 远控、
   macOS、Windows、Linux、容器和 remote workspace 的兼容性，再由产品级能力统一接入，不能从
   automation 功能局部注入到所有 Bash 请求。
 
@@ -530,7 +530,7 @@ CronUpdate recurrence patch
   `CronDelete`，允许通过领域服务修改任务；`cronAutomationId` 只用于归属和展示，不能兼任工具权限。
 - automation 定义的受支持修改路径是 `CronList` / `CronUpdate` / `CronDelete` 和
   `AutomationService`，由领域服务确保 cron、`scheduleRule`、`nextRunAt`、retry 与生命周期原子重算。
-  Bash 直改 `~/.zcode/v2/tasks-index.sqlite` 属于不受支持的行为，但本版本不在 Bash handler 中用命令
+  Bash 直改 `~/.codez/v2/tasks-index.sqlite` 属于不受支持的行为，但本版本不在 Bash handler 中用命令
   文本匹配声称能够机械阻止它。
 
 ```text

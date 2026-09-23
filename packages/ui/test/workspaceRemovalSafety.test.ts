@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { FileEntry } from "@zcode/shared";
+import type { FileEntry } from "@codez/shared";
 import {
   hasRunningWorkspaceChat,
   isWindowsReservedDevicePathSegment,

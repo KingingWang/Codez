@@ -2,14 +2,14 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@zcode/shared";
+import { CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@codez/shared";
 import type { PluginStoreActions } from "../src/settings/PluginStoreCard.js";
 import type { StorePluginItem } from "../src/settings/pluginStoreListing.js";
 
 const state = vi.hoisted(() => ({ locale: "zh-CN" }));
 vi.mock("@/hooks/useInterfaceMode.js", () => ({ useIsOfficeMode: () => false }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: state.locale,
     intl: { formatMessage: ({ id }: { id: string }) => id },
   }),
@@ -32,7 +32,7 @@ describe.each(["zh-CN", "en-US"])("plugin groups in %s", (locale) => {
     "shows all %s cards by default and retains manual toggling",
     async (segment) => {
       state.locale = locale;
-      const marketplace = segment === "public" ? ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID : "my-market";
+      const marketplace = segment === "public" ? CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID : "my-market";
       const items: StorePluginItem[] = Array.from({ length: 8 }, (_, index) => ({
         id: `item-${index}@${marketplace}`,
         name: `item-${index}`,

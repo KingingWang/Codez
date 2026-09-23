@@ -1,4 +1,4 @@
-import { channelReplyHostRequestSchema, type ChannelReplyHostRequest } from "@zcode/shared";
+import { channelReplyHostRequestSchema, type ChannelReplyHostRequest } from "@codez/shared";
 // v4 conversation 通道 host 转发面测试（M3 竖切，docs/v4-refactor/01-topology §host 通道层）。
 // 验证 host 只做透传：subscribe/unsubscribe/command 转发给 CLI v4 方法，
 // v4/conversation/frame 通知按 workspace fan-out 给 onDynamicConversationFrame 订阅者。
@@ -13,12 +13,12 @@ import {
   type ConversationTopicWireFrame,
   type SessionsIndexTopicWireCandidate,
   type WorkspaceConfigTopicWireCandidate,
-} from "@zcode/shared/zcode-protocol-v4";
-import { createZCodeAgentConnectionScope } from "../src/zcode-agent/zcodeAgentConnectionScope.js";
+} from "@codez/shared/codez-protocol-v4";
+import { createCodezAgentConnectionScope } from "../src/codez-agent/codezAgentConnectionScope.js";
 import {
-  createZCodeAgentService,
+  createCodezAgentService,
   supportsLegacyRemoteTaskAllowlist,
-} from "../src/zcode-agent/zcodeAgentService.js";
+} from "../src/codez-agent/codezAgentService.js";
 import { setDataBaseDir } from "../src/paths.js";
 import { TaskIndexRepo } from "../src/session/taskIndexRepo.js";
 
@@ -234,7 +234,7 @@ process.stdin.on("data", (chunk) => {
       send({ id: msg.id, result: { uploadId: msg.params.uploadId, nextChunkIndex: msg.params.chunkIndex + 1 } });
     }
     if (msg.method === "v4/attachment/commit" && msg.id !== undefined) {
-      send({ id: msg.id, result: { ref: "zcode-artifact://upload/one" } });
+      send({ id: msg.id, result: { ref: "codez-artifact://upload/one" } });
     }
     if (msg.method === "v4/attachment/abort" && msg.id !== undefined) {
       send({ id: msg.id, result: {} });
@@ -242,7 +242,7 @@ process.stdin.on("data", (chunk) => {
     if (msg.method === "v4/attachment/previewSource" && msg.id !== undefined) {
       send({ id: msg.id, result: {
         kind: "local_path",
-        path: "/tmp/.zcode/video-cache/demo.mp4",
+        path: "/tmp/.codez/video-cache/demo.mp4",
         mediaType: "video/mp4"
       } });
     }
@@ -327,7 +327,7 @@ function readRequests(logPath: string): Array<{ method: string; params: Record<s
     .map((line) => JSON.parse(line) as { method: string; params: Record<string, unknown> });
 }
 
-describe("zcodeAgentService v4 conversation channel", () => {
+describe("codezAgentService v4 conversation channel", () => {
   const createdDirs: string[] = [];
 
   afterEach(() => {
@@ -335,7 +335,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
     for (const dir of createdDirs.splice(0).reverse()) {
       // 根因：Windows 不允许删除仍有打开句柄的目录，而 runtime/子进程与 watcher 的句柄
       // 是异步收口的；`force: true` 只吞 ENOENT，不做任何重试。于是 afterEach 稳定抛
-      // `EPERM, Permission denied: \\?\C:\...\Temp\zcode-agent-v4-xxxx`，把已经通过断言
+      // `EPERM, Permission denied: \\?\C:\...\Temp\codez-agent-v4-xxxx`，把已经通过断言
       // 的用例判成失败（POSIX 允许删除仍被打开的 inode，所以只在 Windows 上出现）。
       // 先用 rm 自带的有界重试等句柄释放；真的等不到也不该让清理决定用例成败，
       // 临时目录由操作系统回收。
@@ -357,14 +357,14 @@ describe("zcodeAgentService v4 conversation channel", () => {
       providerReady?: boolean;
       authorizeLocalMediaPreviewPath?: (path: string) => Promise<string>;
       channelReplyExecutor?: NonNullable<
-        Parameters<typeof createZCodeAgentService>[0]
+        Parameters<typeof createCodezAgentService>[0]
       >["channelReplyExecutor"];
       topicResourceExecutor?: NonNullable<
-        Parameters<typeof createZCodeAgentService>[0]
+        Parameters<typeof createCodezAgentService>[0]
       >["topicResourceExecutor"];
     } = {},
   ) {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-v4-"));
+    const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-v4-"));
     createdDirs.push(workspacePath);
     setDataBaseDir(workspacePath);
     const scriptPath = join(workspacePath, "v4-fake-agent.cjs");
@@ -374,7 +374,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
       command: process.execPath,
       args: [scriptPath, logPath],
     }));
-    const service = createZCodeAgentService({
+    const service = createCodezAgentService({
       commandResolver,
       topicResourceExecutor: options.topicResourceExecutor,
       channelReplyExecutor: options.channelReplyExecutor,
@@ -424,7 +424,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
         ...scope,
         sessionId: "channel-reply-source",
         envelope: { requestId: "transport-request" },
-        __zcodeTrustedV4Connection: { connectionId: "test-connection" },
+        __codezTrustedV4Connection: { connectionId: "test-connection" },
       };
       try {
         await service.subscribeConversationV4(target);
@@ -483,7 +483,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
     "session debug remains read-only and workspace-scoped on %s",
     async (clientMode) => {
       const { service, workspacePath, commandResolver, logPath } = setupService();
-      const scope = createZCodeAgentConnectionScope(service, { connectionId: "debug", clientMode });
+      const scope = createCodezAgentConnectionScope(service, { connectionId: "debug", clientMode });
       const target = {
         workspacePath,
         workspaceIdentity: "ssh://debug/workspace",
@@ -586,7 +586,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
       // 修复原因：只读 topic 已经登记 active client，旧 fast path 会直接返回它并绕过
       // provider/model 门禁。createSession 必须仍在写入协议前确定性拒绝。
       await expect(service.createSession({ workspacePath })).rejects.toMatchObject({
-        code: "ZCODE_AGENT_PROVIDER_NOT_READY",
+        code: "CODEZ_AGENT_PROVIDER_NOT_READY",
         data: expect.objectContaining({ reason: "provider_not_ready" }),
       });
 
@@ -632,7 +632,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
     "background Bash query stays existing-only on %s",
     async (clientMode) => {
       const { service, workspacePath, commandResolver, logPath } = setupService();
-      const scope = createZCodeAgentConnectionScope(service, {
+      const scope = createCodezAgentConnectionScope(service, {
         connectionId: "bash-query",
         clientMode,
       });
@@ -693,7 +693,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
           workspacePath,
           runtimePolicy: "existing-only",
         }),
-      ).rejects.toMatchObject({ code: "ZCODE_AGENT_RUNTIME_UNAVAILABLE" });
+      ).rejects.toMatchObject({ code: "CODEZ_AGENT_RUNTIME_UNAVAILABLE" });
       expect(commandResolver).not.toHaveBeenCalled();
       expect(lifecycle).toEqual([]);
 
@@ -726,7 +726,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
     "subscribe 的 workflowRunDeltas 只由 clientHello 声明决定（declared=%s）",
     async (declared) => {
       const { service, workspacePath, logPath } = setupService();
-      const scope = createZCodeAgentConnectionScope(service, {
+      const scope = createCodezAgentConnectionScope(service, {
         connectionId: "workflow-run-deltas",
         clientMode: "desktop-continuous",
       });
@@ -865,7 +865,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
 
   it("labels mobile input from the trusted attachment instead of caller metadata", async () => {
     const { service, workspacePath, logPath } = setupService();
-    const scope = createZCodeAgentConnectionScope(service, {
+    const scope = createCodezAgentConnectionScope(service, {
       connectionId: "group-mobile-origin",
       clientMode: "web-remote-replayable",
     });
@@ -1009,7 +1009,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
 
   it("forwards connection flow only through the non-RPC trusted scope control", async () => {
     const { service, workspacePath, logPath } = setupService();
-    const scope = createZCodeAgentConnectionScope(service, {
+    const scope = createCodezAgentConnectionScope(service, {
       connectionId: "mobile-flow",
       clientMode: "web-remote-replayable",
     });
@@ -1055,7 +1055,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
         checksum: `sha256:${"0".repeat(64)}`,
       }),
     ).rejects.toThrow("fault.attachment.connectionUntrusted");
-    const scope = createZCodeAgentConnectionScope(service, {
+    const scope = createCodezAgentConnectionScope(service, {
       connectionId: "mobile-upload",
       clientMode: "web-remote-replayable",
     });
@@ -1082,7 +1082,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
         dataBase64: Buffer.alloc(512 * 1024).toString("base64"),
       });
       await expect(scope.service.attachmentCommitV4(common)).resolves.toEqual({
-        ref: "zcode-artifact://upload/one",
+        ref: "codez-artifact://upload/one",
       });
       await scope.service.attachmentAbortV4(common);
 
@@ -1105,11 +1105,11 @@ describe("zcodeAgentService v4 conversation channel", () => {
     const { service, workspacePath, logPath } = setupService({
       authorizeLocalMediaPreviewPath,
     });
-    const desktop = createZCodeAgentConnectionScope(service, {
+    const desktop = createCodezAgentConnectionScope(service, {
       connectionId: "desktop-preview",
       clientMode: "desktop-continuous",
     });
-    const mobile = createZCodeAgentConnectionScope(service, {
+    const mobile = createCodezAgentConnectionScope(service, {
       connectionId: "mobile-preview",
       clientMode: "web-remote-replayable",
     });
@@ -1140,7 +1140,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
       });
       expect(authorizeLocalMediaPreviewPath).toHaveBeenCalledOnce();
       expect(authorizeLocalMediaPreviewPath).toHaveBeenCalledWith(
-        "/tmp/.zcode/video-cache/demo.mp4",
+        "/tmp/.codez/video-cache/demo.mp4",
       );
       await expect(mobile.service.attachmentPreviewSourceV4(input)).resolves.toEqual({
         kind: "chunked",
@@ -1173,7 +1173,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
         throw new Error("preview path authorization failed");
       },
     });
-    const desktop = createZCodeAgentConnectionScope(service, {
+    const desktop = createCodezAgentConnectionScope(service, {
       connectionId: "desktop-preview-failed",
       clientMode: "desktop-continuous",
     });
@@ -1216,7 +1216,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
     "routes %s through service → owned facade → assembler typed fault",
     async (sessionId, reasonCode) => {
       const { service, workspacePath } = setupService();
-      const scope = createZCodeAgentConnectionScope(service, {
+      const scope = createCodezAgentConnectionScope(service, {
         connectionId: `test-${sessionId}`,
         clientMode: "desktop-continuous",
       });
@@ -1416,7 +1416,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
   it("PV4-24 web-remote replayable 在 shared host 原样透传组合 rewind 命令", async () => {
     const { service, workspacePath, logPath, commandResolver } = setupService();
     const workspaceIdentity = "ssh://rewind-e2e/workspace";
-    const scope = createZCodeAgentConnectionScope(service, {
+    const scope = createCodezAgentConnectionScope(service, {
       connectionId: "mobile-rewind",
       clientMode: "web-remote-replayable",
     });
@@ -1493,7 +1493,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
       sessionId: index === 0 ? null : "s1",
       commandId: `command-${index}`,
     }));
-    const scope = createZCodeAgentConnectionScope(service, {
+    const scope = createCodezAgentConnectionScope(service, {
       connectionId: "query-wire",
       clientMode: "web-remote-replayable",
     });
@@ -1748,7 +1748,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
       await service.unsubscribeConversationV4({
         workspacePath,
         subscriptionId: config.ack.subscriptionId,
-        __zcodeTrustedV4UnsubscribeRoute: {
+        __codezTrustedV4UnsubscribeRoute: {
           topic: configSubscribe?.params.topic,
           connectionId: configSubscribe?.params.connectionId,
         },

@@ -38,11 +38,11 @@ open(url?, { reuseTab = true } = {}):
 
 | 文件 | 内容 |
 |---|---|
-| `apps/zcode-cli/packages/core/src/browser-client/selection.ts` | 新增纯函数 `selectTabForUrl()`（与 `selectBrowserForUrl` 共享 `urlMatchRank`） |
-| `apps/zcode-cli/packages/core/src/browser-client/facade.ts` | `BrowserTabs.reuse(url)`（单次 list + activateTab）；`open()` 接入并整体降级 |
-| `apps/zcode-cli/packages/core/src/browser-client/documentation.ts` | fallback 文档：`open()` 教成默认导航入口 |
-| `apps/zcode-cli/packages/browser-use-plugin/skills/control-browser/SKILL.md`、`docs/overview.md` | 模型指引同步 |
-| `apps/zcode-cli/packages/core/tests/browser-client.test.ts` | 新增 9 用例（TDD）：精确/同域/父子域/无匹配/list 失败降级/无 url/reuseTab:false/active 优先/最新兜底 |
+| `apps/codez-cli/packages/core/src/browser-client/selection.ts` | 新增纯函数 `selectTabForUrl()`（与 `selectBrowserForUrl` 共享 `urlMatchRank`） |
+| `apps/codez-cli/packages/core/src/browser-client/facade.ts` | `BrowserTabs.reuse(url)`（单次 list + activateTab）；`open()` 接入并整体降级 |
+| `apps/codez-cli/packages/core/src/browser-client/documentation.ts` | fallback 文档：`open()` 教成默认导航入口 |
+| `apps/codez-cli/packages/browser-use-plugin/skills/control-browser/SKILL.md`、`docs/overview.md` | 模型指引同步 |
+| `apps/codez-cli/packages/core/tests/browser-client.test.ts` | 新增 9 用例（TDD）：精确/同域/父子域/无匹配/list 失败降级/无 url/reuseTab:false/active 优先/最新兜底 |
 
 ## 验证
 

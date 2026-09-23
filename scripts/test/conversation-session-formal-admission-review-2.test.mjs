@@ -15,7 +15,7 @@ after(async () => {
 });
 
 async function makeRoot() {
-  const root = await mkdtemp(join(tmpdir(), "zcode-formal-review-2-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-formal-review-2-"));
   temporaryRoots.push(root);
   return root;
 }

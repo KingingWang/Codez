@@ -1,5 +1,5 @@
 import type { Session, Streams } from "electron";
-import type { EmbeddedBrowserPermissionDeviceOption } from "@zcode/shared";
+import type { EmbeddedBrowserPermissionDeviceOption } from "@codez/shared";
 import { readDeviceOptions } from "./embeddedBrowserDeviceOptions.js";
 import {
   getEmbeddedBrowserSitePermission,

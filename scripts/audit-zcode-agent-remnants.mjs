@@ -26,7 +26,7 @@ const textExtensions = new Set([
 
 const defaultRoots = [
   "packages",
-  "apps/zcode-cli/packages",
+  "apps/codez-cli/packages",
   "scripts",
 ];
 
@@ -52,11 +52,11 @@ const categoryRules = [
   {
     category: "runtime-blocker",
     patterns: [
-      /^packages\/shared\/src\/zcode-agent-runtime\.ts$/u,
+      /^packages\/shared\/src\/codez-agent-runtime\.ts$/u,
       /^packages\/desktop\/scripts\/ensure-local-runtime-assets\.mjs$/u,
       /^packages\/desktop\/electron-builder\.config\.js$/u,
       /^packages\/desktop\/wdio\.conf\.ts$/u,
-      /^packages\/server\/src\/remote\/zcodeAgentDeploy\.ts$/u,
+      /^packages\/server\/src\/remote\/codezAgentDeploy\.ts$/u,
       /^scripts\/(?:download-glm|prepare-prebuilds|sign-macos-runtime-binaries)\.(?:mjs|sh)$/u,
       /^packages\/services\/src\/providers\/(?:claude|codex|gemini)/u,
       /^packages\/services\/src\/model-provider\/modelProviderServiceApply\.ts$/u,
@@ -70,7 +70,7 @@ const categoryRules = [
     category: "protocol-bridge",
     patterns: [
       /^packages\/services\/src\/session\/legacyTaskService\.ts$/u,
-      /^packages\/services\/src\/zcode-agent\/zcodeLegacyTaskCompatService\.ts$/u,
+      /^packages\/services\/src\/codez-agent\/codezLegacyTaskCompatService\.ts$/u,
       /^packages\/services\/src\/bots\/botRemoteWorkspaceBridge\.ts$/u,
       /^packages\/services\/src\/bots\//u,
       /^packages\/client\/src\/remoteServiceAccess\.ts$/u,
@@ -86,7 +86,7 @@ const categoryRules = [
       /^packages\/shared\/src\/acp-types\.ts$/u,
       /^packages\/shared\/src\/task-realtime\.ts$/u,
       /^packages\/shared\/src\/tool-plan-adapter\.ts$/u,
-      /^packages\/shared\/src\/(?:assistant-message-parts|assistant-presentation|channels|errors|index|mcp|model-selection-key|model-selection-types|permission-request-preview|protocol|subagents-types|test-ids|web-remote-control|zcode-agent-model-state|zcode-agent-policy)\.ts$/u,
+      /^packages\/shared\/src\/(?:assistant-message-parts|assistant-presentation|channels|errors|index|mcp|model-selection-key|model-selection-types|permission-request-preview|protocol|subagents-types|test-ids|web-remote-control|codez-agent-model-state|codez-agent-policy)\.ts$/u,
       /^packages\/services\/src\/session\//u,
       /^packages\/services\/src\/usage-stats\//u,
       /^packages\/services\/src\/git\/repo\/gitCheckpointRepo\.ts$/u,
@@ -94,8 +94,8 @@ const categoryRules = [
       /^packages\/ui\/src\//u,
       /^packages\/web\/src\//u,
       /^packages\/ui\/src\/hooks\/useAcp/u,
-      /^packages\/ui\/src\/lib\/zcodeSessionProjection\.ts$/u,
-      /^packages\/ui\/src\/store\/zcodeSessionStore/u,
+      /^packages\/ui\/src\/lib\/codezSessionProjection\.ts$/u,
+      /^packages\/ui\/src\/store\/codezSessionStore/u,
     ],
   },
   {
@@ -117,9 +117,9 @@ const categoryRules = [
       /^packages\/services\/src\/(?:index|node)\.ts$/u,
       /^packages\/ui\/src\/settings\/(?:commands|mcp|model-provider|Skills)/u,
       /^packages\/ui\/src\/lib\/skillSourceFilter\.ts$/u,
-      /^apps\/zcode-cli\/packages\/(?:adapters|bootstrap|cli|contracts|core)\/src\//u,
-      /^apps\/zcode-cli\/packages\/cli\/scripts\//u,
-      /^packages\/shared\/src\/(?:command-types|model-provider-types|plugin-marketplaces|settings-sync|zcode-protocol\/index)\.ts$/u,
+      /^apps\/codez-cli\/packages\/(?:adapters|bootstrap|cli|contracts|core)\/src\//u,
+      /^apps\/codez-cli\/packages\/cli\/scripts\//u,
+      /^packages\/shared\/src\/(?:command-types|model-provider-types|plugin-marketplaces|settings-sync|codez-protocol\/index)\.ts$/u,
     ],
   },
 ];
@@ -182,7 +182,7 @@ function parseLimit(arg, prefix) {
 }
 
 function printHelp() {
-  console.log(`Usage: node scripts/audit-zcode-agent-remnants.mjs [options]
+  console.log(`Usage: node scripts/audit-codez-agent-remnants.mjs [options]
 
 Options:
   --json                         Print machine-readable JSON
@@ -204,7 +204,7 @@ function isTestPath(relativePath) {
 }
 
 function shouldSkipPath(relativePath, options) {
-  if (relativePath === "scripts/audit-zcode-agent-remnants.mjs") {
+  if (relativePath === "scripts/audit-codez-agent-remnants.mjs") {
     return true;
   }
   const segments = relativePath.split("/");
@@ -339,7 +339,7 @@ function assertLimits(report, options) {
 }
 
 function printTextReport(report, failures) {
-  console.log("ZCode Agent remnant audit");
+  console.log("Codez Agent remnant audit");
   console.log(`roots: ${report.roots.join(", ")}`);
   console.log(`files: ${report.totalFiles}, matches: ${report.totalMatches}`);
   console.log("");

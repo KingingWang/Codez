@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import { setDataBaseDir } from "#src/paths.js";
 import { TaskIndexRepo } from "#src/session/taskIndexRepo.js";
 import { OffPeakTaskRepo } from "#src/session/offPeakTaskRepo.js";
@@ -14,7 +14,7 @@ let repo: TaskIndexRepo;
 let tempDir: string;
 
 beforeEach(() => {
-  tempDir = mkdtempSync(join(tmpdir(), "zcode-task-index-off-peak-marker-"));
+  tempDir = mkdtempSync(join(tmpdir(), "codez-task-index-off-peak-marker-"));
   setDataBaseDir(tempDir);
   repo = new TaskIndexRepo();
 });
@@ -27,7 +27,7 @@ afterEach(async () => {
   rmSync(tempDir, { recursive: true, force: true });
 });
 
-function task(params: { taskId: string; offPeakTaskId?: string }): ZCodeTaskMeta {
+function task(params: { taskId: string; offPeakTaskId?: string }): CodezTaskMeta {
   return {
     taskId: params.taskId,
     traceId: `trace-${params.taskId}`,
@@ -173,7 +173,7 @@ describe("TaskIndexRepo off-peak marker (D48)", () => {
 // D48-A：首次获得标记时归入闲时系统分组（照抄 ensureCronGroupMembership），
 // 以及 bootstrap 对 MR1 列回填存量的成员关系补齐。
 describe("TaskIndexRepo off-peak group membership (D48-A)", () => {
-  const OFF_PEAK_GROUP_ID = "zcode-default-group-off-peak";
+  const OFF_PEAK_GROUP_ID = "codez-default-group-off-peak";
 
   function membershipRow(taskId: string): { group_id: string } | undefined {
     return getRepoDatabase(repo)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SERVER_REMOTE_PROTOCOL_VERSION, serverRemoteInfoSchema } from "@zcode/shared";
+import { SERVER_REMOTE_PROTOCOL_VERSION, serverRemoteInfoSchema } from "@codez/shared";
 
 const serverInfo = {
   serverId: "remote-server",

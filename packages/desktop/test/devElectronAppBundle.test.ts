@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 describe("dev Electron app bundle", () => {
-  it("adds a product identity and zcode URL scheme to the raw Electron plist", () => {
+  it("adds a product identity and codez URL scheme to the raw Electron plist", () => {
     const source = `<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0">
 <dict>
@@ -45,11 +45,11 @@ describe("dev Electron app bundle", () => {
   it("derives a stable ignored bundle path per Electron version and architecture", () => {
     expect(
       resolveDevElectronAppBundlePath({
-        runtimeRoot: "/tmp/zcode-runtime",
+        runtimeRoot: "/tmp/codez-runtime",
         electronVersion: "41.0.3",
         arch: "arm64",
       }),
-    ).toBe("/tmp/zcode-runtime/41.0.3-arm64/ZCode Dev.app");
+    ).toBe("/tmp/codez-runtime/41.0.3-arm64/Codez Dev.app");
   });
 
   it("makes the macOS dev launcher use the prepared bundle executable", async () => {
@@ -61,7 +61,7 @@ describe("dev Electron app bundle", () => {
   });
 
   it("copies the runtime and patches only the Dev bundle plist", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-dev-bundle-test-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-dev-bundle-test-"));
     tempRoots.push(root);
     const sourceApp = join(root, "source", "Electron.app");
     const sourceContents = join(sourceApp, "Contents");
@@ -84,20 +84,20 @@ describe("dev Electron app bundle", () => {
       arch: "arm64",
     });
 
-    expect(result.appPath).toBe(`${outputRoot}/41.0.3-arm64/ZCode Dev.app`);
+    expect(result.appPath).toBe(`${outputRoot}/41.0.3-arm64/Codez Dev.app`);
     expect(result.executablePath).toBe(
-      `${outputRoot}/41.0.3-arm64/ZCode Dev.app/Contents/MacOS/Electron`,
+      `${outputRoot}/41.0.3-arm64/Codez Dev.app/Contents/MacOS/Electron`,
     );
     const plist = await readFile(join(result.appPath, "Contents", "Info.plist"), "utf8");
-    expect(plist).toContain("dev.zcode.app.development");
-    expect(plist).toContain("<string>zcode</string>");
+    expect(plist).toContain("dev.codez.app.development");
+    expect(plist).toContain("<string>codez</string>");
   });
 
   // Windows 普通用户无符号链接权限（需开发者模式），fs.symlink EPERM；覆盖由 CI Linux 承担。
   it.skipIf(process.platform === "win32")(
     "keeps framework symlinks relative so sandboxed helpers stay inside the bundle",
     async () => {
-      const root = await mkdtemp(join(tmpdir(), "zcode-dev-bundle-symlink-test-"));
+      const root = await mkdtemp(join(tmpdir(), "codez-dev-bundle-symlink-test-"));
       tempRoots.push(root);
       const sourceApp = join(root, "source", "Electron.app");
       const sourceContents = join(sourceApp, "Contents");
@@ -139,7 +139,7 @@ describe("dev Electron app bundle", () => {
   );
 
   it("rebuilds a cached bundle whose stamp predates the current layout format", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-dev-bundle-format-test-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-dev-bundle-format-test-"));
     tempRoots.push(root);
     const sourceApp = join(root, "source", "Electron.app");
     const sourceContents = join(sourceApp, "Contents");
@@ -163,7 +163,7 @@ describe("dev Electron app bundle", () => {
       electronVersion: "41.0.3",
       arch: "arm64",
     });
-    const stampPath = join(outputRoot, "41.0.3-arm64", ".zcode-dev-electron-source.json");
+    const stampPath = join(outputRoot, "41.0.3-arm64", ".codez-dev-electron-source.json");
     const stamp = JSON.parse(await readFile(stampPath, "utf8"));
     expect(stamp.format).toBe(DEV_ELECTRON_BUNDLE_FORMAT);
     // 模拟旧版脚本留下的缓存：没有 format 字段，源二进制指纹却仍然匹配。
@@ -187,7 +187,7 @@ describe("dev Electron app bundle", () => {
   });
 
   it("rebuilds the ignored bundle when the source Electron launcher changes", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-dev-bundle-refresh-test-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-dev-bundle-refresh-test-"));
     tempRoots.push(root);
     const sourceApp = join(root, "source", "Electron.app");
     const sourceContents = join(sourceApp, "Contents");
@@ -226,7 +226,7 @@ describe("dev Electron app bundle", () => {
   });
 
   it("reuses the ignored bundle when the source Electron launcher is unchanged", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-dev-bundle-reuse-test-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-dev-bundle-reuse-test-"));
     tempRoots.push(root);
     const sourceApp = join(root, "source", "Electron.app");
     const sourceContents = join(sourceApp, "Contents");

@@ -3,7 +3,7 @@ import {
   userInputRowSchema,
   v4AttachmentReadResultSchema,
   PROTOCOL_V4_LIMITS,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 describe("V4 attachment source across row transport", () => {
   it("accepts text preview responses and keeps the text attachment size limit", () => {
@@ -28,7 +28,7 @@ describe("V4 attachment source across row transport", () => {
     "preserves %s on the executed user row",
     (sourceKind) => {
       const attachment = {
-        ref: "zcode-artifact://history",
+        ref: "codez-artifact://history",
         fileName: "history.txt",
         mime: "text/plain",
         bytes: 84,

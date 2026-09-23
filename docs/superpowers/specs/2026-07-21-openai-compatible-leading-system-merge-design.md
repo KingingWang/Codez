@@ -6,7 +6,7 @@
 | --- | --- |
 | Change | OpenAI-compatible 请求发出前，将开头连续的多条 system message 合并为一条 |
 | User-visible surfaces | 无直接 UI 变化；旧式 chat template 不再因多条前置 system 报错或只保留最后一条 |
-| Existing code owners | `apps/zcode-cli/packages/adapters/src/model/transform.ts`、`system-message-compat.ts` |
+| Existing code owners | `apps/codez-cli/packages/adapters/src/model/transform.ts`、`system-message-compat.ts` |
 | Evidence | adapter 单测与真实 `@ai-sdk/openai-compatible` fake-fetch wire body |
 | Out of scope | Anthropic、OpenAI Responses、gateway/custom provider、core ContextBuilder、会话中段 system 语义 |
 
@@ -61,7 +61,7 @@ user ... system(mid-conversation) ───────────────�
 | Conversation/session behavior | limited | 只保护消息顺序，不修改 session/history/persistence |
 | Mobile remote/replayable | no | desktop 与 mobile 最终共用 agent adapter；不改变 delivery 语义 |
 | Workspace identity | no | 不读取 workspace 相关字段 |
-| Protocol/schema | no | `ModelInputMessage` 与 `@zcode/protocol` 均不变化 |
+| Protocol/schema | no | `ModelInputMessage` 与 `@codez/protocol` 均不变化 |
 
 高风险交叉项只有 provider kind × system 位置 × system 数量。客户端、workspace、stream/generate
 均由相同 adapter 归一化函数折叠，不扩展成独立产品状态。
@@ -104,5 +104,5 @@ adapter 前决定 transport 或 runtime 归属，不改变本设计的纯 messag
 
 - `model-transform.test.ts`：OCS-01 至 OCS-05。
 - `openai-compatible-system-messages-wire.test.ts`：真实 SDK fake fetch，断言最终 `messages`。
-- `pnpm --filter @zcode/adapters typecheck`。
+- `pnpm --filter @codez/adapters typecheck`。
 - 根目录 `pnpm typecheck` 与 `pnpm lint`。

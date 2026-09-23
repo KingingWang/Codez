@@ -13,7 +13,7 @@ describe("workspace sidebar new-task routing", () => {
     const source = readUiSource("WorkspaceSidebarItem.tsx");
 
     expect(source).toContain("onStartDraftInWorkspace(");
-    expect(source).not.toMatch(/const\s+startDraft\s*=\s*useZCodeSessionStore/);
+    expect(source).not.toMatch(/const\s+startDraft\s*=\s*useCodezSessionStore/);
   });
 
   it("桌面端统一新建路径先退出 group/split pane，再创建显式草稿", () => {

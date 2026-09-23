@@ -20,7 +20,7 @@ interface CodexModelCatalogScopeState {
   inflight?: Promise<CodexModelCatalog>;
 }
 
-const CODEX_CATALOG_INVALIDATED_EVENT = "zcode:codex-catalog-invalidated";
+const CODEX_CATALOG_INVALIDATED_EVENT = "codez:codex-catalog-invalidated";
 
 export function invalidateCodexModelCatalog(): void {
   window.dispatchEvent(new CustomEvent(CODEX_CATALOG_INVALIDATED_EVENT));
@@ -75,7 +75,7 @@ export function useCodexModelCatalog({
       throw new Error("Codex workspace is not connected");
     if (current.inflight) return current.inflight;
     const request = readCodexModelCatalog(workspacePath, (request) =>
-      services.zcodeAgentService.codexRequest({ workspacePath, workspaceIdentity, request }),
+      services.codezAgentService.codexRequest({ workspacePath, workspaceIdentity, request }),
     ).then(
       (catalog) => {
         if (scopeStateRef.current !== current || !current.valid)
@@ -119,7 +119,7 @@ export function useCodexModelCatalog({
   }, [enabled, rpcReady, workspacePath, readCurrent, scope]);
   useEffect(() => {
     if (!enabled || !rpcReady) return;
-    const subscription = services.zcodeAgentService.onAgentRuntimeRestarted((event) => {
+    const subscription = services.codezAgentService.onAgentRuntimeRestarted((event) => {
       if (event.workspaceKey === (workspaceIdentity?.trim() || workspacePath)) reloadNow();
     });
     const refresh = () => reloadNow();

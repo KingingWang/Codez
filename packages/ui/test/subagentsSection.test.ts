@@ -5,8 +5,8 @@ import { createElement, type ChangeEvent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TID_SUBAGENT_BUILT_IN_MODEL_TRIGGER, TID_SUBAGENT_ROW, testId } from "@zcode/shared";
-import { encodeCustomModelValue } from "../src/lib/zcodeCustomModelValue.js";
+import { TID_SUBAGENT_BUILT_IN_MODEL_TRIGGER, TID_SUBAGENT_ROW, testId } from "@codez/shared";
+import { encodeCustomModelValue } from "../src/lib/codezCustomModelValue.js";
 
 const capturedButtons: Array<Record<string, unknown>> = [];
 const capturedModelConfigSelects: Array<Record<string, unknown>> = [];
@@ -317,7 +317,7 @@ vi.mock("@/hooks/useModelSelectionView.js", () => {
   };
 });
 
-vi.mock("@/hooks/useZCodeConfig.js", () => ({
+vi.mock("@/hooks/useCodezConfig.js", () => ({
   useToolbarConfigOptions: () => ({
     configOptions: mockToolbarConfigState.configOptions,
     loading: mockToolbarConfigState.status === "loading",
@@ -336,7 +336,7 @@ vi.mock("@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js", 
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, string | number>) => {
         const messages: Record<string, string> = {
@@ -491,7 +491,7 @@ describe("SubagentsSection", () => {
         scope: "workspace",
         source: "plugin",
         enabled: true,
-        pluginId: "computer-use@zcode-plugins-official",
+        pluginId: "computer-use@codez-plugins-official",
         pluginName: "computer-use",
       },
       {
@@ -503,14 +503,14 @@ describe("SubagentsSection", () => {
         scope: "workspace",
         source: "plugin",
         enabled: true,
-        pluginId: "zcode-cua@custom-marketplace",
-        pluginName: "zcode-cua",
+        pluginId: "codez-cua@custom-marketplace",
+        pluginName: "codez-cua",
       },
     ]);
 
     expect(groups.map(([key, items]) => [key, items[0]?.id])).toEqual([
-      ["computer-use@zcode-plugins-official", "official-agent"],
-      ["zcode-cua@custom-marketplace", "custom-agent"],
+      ["computer-use@codez-plugins-official", "official-agent"],
+      ["codez-cua@custom-marketplace", "custom-agent"],
     ]);
   });
 
@@ -931,14 +931,14 @@ describe("SubagentsSection", () => {
       options: { reasoningLevel: "high" },
     };
     const pluginAgent = {
-      id: "plugin:document-skills@zcode-plugins-official:judge",
+      id: "plugin:document-skills@codez-plugins-official:judge",
       name: "document-skills:judge",
       description: "Visual acceptance reviewer",
       systemPrompt: "Judge.",
       path: "/cache/document-skills/0.1.4/agents/judge.md",
       scope: "user",
       source: "plugin",
-      pluginId: "document-skills@zcode-plugins-official",
+      pluginId: "document-skills@codez-plugins-official",
       pluginName: "document-skills",
       enabled: true,
       readOnly: true,

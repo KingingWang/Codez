@@ -67,7 +67,7 @@ Todo126 新增两个 coding plan vision badge 用例：相同双尺寸/主题下
 | provider batch 390/zh-CN/light | 手机宽度、浅色、中文 | 四智谱模板分组与顺序、页面无横向溢出；有 Key／无 Key 均只有一个获取 API Key 入口，点击交付模板主 URL；启停写外层字段、Key 保留；横拖 x 不变；删除失败重试原操作；连接成功提示可关闭 |
 | provider batch 1200/en-US/dark | 桌面宽度、深色、英文 | 同一组行为，验证共享组件和本地化，不创建第二套 Web Provider 判断                                                                                                                    |
 
-2026-09-10 原用例两条通过；2026-09-11 按 Todo116 将双入口断言改为上述单入口及空 Key 断言，新结果以 Todo116 为准。截图位于测试输出临时目录 `zcode-provider-settings-batch`。保持 pending 分类，未擅自晋级正式 Electron 回归。
+2026-09-10 原用例两条通过；2026-09-11 按 Todo116 将双入口断言改为上述单入口及空 Key 断言，新结果以 Todo116 为准。截图位于测试输出临时目录 `codez-provider-settings-batch`。保持 pending 分类，未擅自晋级正式 Electron 回归。
 
 运行：`CHROME_EXECUTABLE_PATH=<Chromium> node --test packages/ui/test/browser/manual-review/pending/provider-settings-batch.test.mjs`。Linux 需 Chromium 运行依赖及中文字库。本次使用环境已有隔离共享库和临时官方发行版 Noto CJK 字库。
 
@@ -84,7 +84,7 @@ Todo138 新增两项先红后绿；全文件22项中21项首次通过，手机 p
 
 在既有真实编辑器浏览器用例上补充：390px 中文浅色、1200px 英文深色，基础字段顺序、标题区智能开关、底部重置／取消／保存、文本锁定勾选框、无卡片及无横向溢出；展开收起保留局部草稿，推理等级／映射错误重复展开聚焦，基础最大输出错误不展开；重置不落盘、保存中标题开关不可操作、重开默认收起。继续覆盖原有手动配置、个人覆盖与异步过期结果，不改输入法实现，不把浏览器夹具当作桌面／手机真实 RPC 联合验收。
 
-本轮完整批次 **26/26 通过**，含 Todo141 四例（其中推理等级校验覆盖 reduced motion）。截图已补齐 Noto CJK 字库并查看，字段间距实测 16px；保留 `/tmp/zcode-provider-settings-batch/todo141-{390,1200}.zip` 交互 trace 和基础／高级截图。两入口、普通／减弱动画、重复错误、局部编辑保留、重开及联合保存通过。原生 E2E 选择器和文案已对齐，本轮仅通过类型检查，未重跑 Mac Electron／真实手机远控；不改变 pending 分类。
+本轮完整批次 **26/26 通过**，含 Todo141 四例（其中推理等级校验覆盖 reduced motion）。截图已补齐 Noto CJK 字库并查看，字段间距实测 16px；保留 `/tmp/codez-provider-settings-batch/todo141-{390,1200}.zip` 交互 trace 和基础／高级截图。两入口、普通／减弱动画、重复错误、局部编辑保留、重开及联合保存通过。原生 E2E 选择器和文案已对齐，本轮仅通过类型检查，未重跑 Mac Electron／真实手机远控；不改变 pending 分类。
 
 ## Todo143 勾选框颜色回归
 

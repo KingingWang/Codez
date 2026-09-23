@@ -18,10 +18,10 @@
 // resolvePermissionBlockKind 里按名字判定的那两段注释。
 
 import { cleanup, render, screen } from "@testing-library/react";
-import type { ZCodePermissionRequest } from "@zcode/shared";
+import type { CodezPermissionRequest } from "@codez/shared";
 import { createElement, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 // 只改 family 判定，其余行为保持真实实现。
 vi.mock("@/lib/toolIdentity.js", async (importOriginal) => {
@@ -169,15 +169,15 @@ describe("saved-workflow dispatch precedence over tool family", () => {
         name: "release-check",
         description: "发布前检查",
         script: SCRIPT,
-        path: "/workspace/.zcode/workflows/release-check.dwf.ts",
+        path: "/workspace/.codez/workflows/release-check.dwf.ts",
         overwrite: false,
         scope: "project",
       },
-    } as ZCodePermissionRequest;
+    } as CodezPermissionRequest;
 
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(PermissionDialog, {
           request,

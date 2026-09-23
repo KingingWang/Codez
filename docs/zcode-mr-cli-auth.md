@@ -1,4 +1,4 @@
-# zcode-mr 的 CLI 认证与创建契约
+# codez-mr 的 CLI 认证与创建契约
 
 `setup`、`mr`、`create` 统一使用目标 GitLab host 的 glab 登录状态；凭据来源由 glab 自己管理，helper 不读取环境 Token、凭据文件或自行发送 HTTP 请求。
 

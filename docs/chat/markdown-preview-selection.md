@@ -36,7 +36,7 @@ workspaceKey 严格使用 workspaceIdentity?.trim() || workspacePath；预览来
 - 相关 UI 单测 80 条通过：包含来源/序列化/限额、触控 selectionchange、窄屏定位、草稿与远程 identity 隔离、源/目标变化及关闭行为，以及既有预览与对话选区回归。
 - macOS Desktop E2E 通过：从项目文件树打开真实 Markdown 文件，选中文字、添加引用、保留草稿、去重、移除；全程保持 draft，不自动发送。
 - E2E artifact：`desktop-e2e-20260904025826214-p12794-fec18ab46a7b3c1d`；已核对 `markdown-selection-tooltip.png` 和 `markdown-selection-composer.png`（暗色主题）。
-- `pnpm typecheck`、`pnpm --filter @zcode/desktop typecheck:e2e` 通过；`pnpm lint` 无错误，仓库既有 40 条 warning。
+- `pnpm typecheck`、`pnpm --filter @codez/desktop typecheck:e2e` 通过；`pnpm lint` 无错误，仓库既有 40 条 warning。
 - 待补环境验证：手机真机原生长按、真实远程 attachment 链路、Windows/Linux 和浅色主题目视。手机事件/窄屏与身份隔离有单测；两种主题使用现有语义 token，中英文复用现有文案。无 host/runtime/协议改动。
 - 新增 E2E 仍为 pending 候选，未进行正式用例转正或 Docker suite 准入。
 

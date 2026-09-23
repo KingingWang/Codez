@@ -1,8 +1,8 @@
-# ZCode Agent UI 状态收口记录
+# Codez Agent UI 状态收口记录
 
 ## 目标
 
-UI 层只保留视图状态和必要的短期乐观态，session/runtime 的真实状态由 ZCode Agent 与 ZCode Protocol V4 projection 持有。新改动不得围绕旧协议命名扩展。
+UI 层只保留视图状态和必要的短期乐观态，session/runtime 的真实状态由 Codez Agent 与 Codez Protocol V4 projection 持有。新改动不得围绕旧协议命名扩展。
 
 ## 当前收口
 
@@ -15,5 +15,5 @@ UI 层只保留视图状态和必要的短期乐观态，session/runtime 的真�
 
 ## 后续方向
 
-- `configOptions` 后续继续对齐 `ZCodeSessionSettingsState`，UI 不再新增独立的模型、模式、思考级别镜像字段。
-- `queuedPromptsByTaskId` 和 replayable mirror 状态后续迁到 ZCode session runtime / host command queue。
+- `configOptions` 后续继续对齐 `CodezSessionSettingsState`，UI 不再新增独立的模型、模式、思考级别镜像字段。
+- `queuedPromptsByTaskId` 和 replayable mirror 状态后续迁到 Codez session runtime / host command queue。

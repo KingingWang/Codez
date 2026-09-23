@@ -16,7 +16,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   encodeCustomModelValue,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clickTestIdByDom,
   waitForTestIdByDom,
@@ -172,7 +172,7 @@ async function selectProfileModel(profile: Pick<RefreshProfile, "provider" | "mo
 
 async function submitProfile(name: string, previousName?: string, workspacePath?: string) {
   const root = workspacePath
-    ? join(workspacePath, ".zcode", "agents")
+    ? join(workspacePath, ".codez", "agents")
     : join(getE2EAppDataPaths().storageRoot, "agents");
   const exists = await stat(root).then(
     () => true,

@@ -1,4 +1,4 @@
-package com.example.zcode_mobile.remote
+package com.example.codez_mobile.remote
 
 import android.content.Context
 import android.net.Uri
@@ -13,7 +13,7 @@ data class RemoteControlRecentLink(
 )
 
 object RemoteControlRecentLinksStore {
-    private const val PREFS_NAME = "zcode_remote_control_recent_links"
+    private const val PREFS_NAME = "codez_remote_control_recent_links"
     private const val KEY_LINKS = "links_v1"
     private const val MAX_LINKS = 5
 
@@ -65,7 +65,7 @@ object RemoteControlRecentLinksStore {
 fun RemoteControlRecentLink.displayTitle(): String {
     val uri = Uri.parse(url)
     val name = uri.getQueryParameter("name")?.takeIf { it.isNotBlank() }
-    return name ?: uri.host.orEmpty().ifBlank { "ZCode Remote" }
+    return name ?: uri.host.orEmpty().ifBlank { "Codez Remote" }
 }
 
 fun RemoteControlRecentLink.displaySubtitle(context: Context): String {

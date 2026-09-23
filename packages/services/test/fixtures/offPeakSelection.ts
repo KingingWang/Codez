@@ -1,5 +1,5 @@
-import type { ModelSelectionView } from "@zcode/provider";
-import { OFF_PEAK_PROVIDER_IDS } from "@zcode/shared";
+import type { ModelSelectionView } from "@codez/provider";
+import { OFF_PEAK_PROVIDER_IDS } from "@codez/shared";
 
 /** 两个域同时存在，用于锁定工具只能选择当前账号域，不能按 Provider 顺序猜。 */
 export function offPeakSelectionView(

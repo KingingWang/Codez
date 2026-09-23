@@ -72,9 +72,9 @@ function modelConfig(contextWindow = 200_000): ModelConfig {
 function configSnapshot(revision: string, modelId: string): ProviderConfigSnapshot {
   return {
     revision,
-    zcodeBuiltinRevision: revision,
+    codezBuiltinRevision: revision,
     personalRevision: "personal-1",
-    zcodeBuiltinProviders: new ProviderConfigMap([
+    codezBuiltinProviders: new ProviderConfigMap([
       [
         "local",
         createApiKeyProviderConfig({
@@ -86,7 +86,7 @@ function configSnapshot(revision: string, modelId: string): ProviderConfigSnapsh
       ],
     ]),
     personalProviders: ProviderConfigMap.empty(),
-    zcodeBuiltinModelRules: new ModelConfigRules([
+    codezBuiltinModelRules: new ModelConfigRules([
       { type: "model", modelMatch: modelId, config: modelConfig() },
     ]),
     personalModels: ModelConfigRules.empty(),
@@ -95,9 +95,9 @@ function configSnapshot(revision: string, modelId: string): ProviderConfigSnapsh
 
 function accountSnapshot(
   revision = "account-1",
-  basedOnZCodeBuiltinRevision = "config-1",
+  basedOnCodezBuiltinRevision = "config-1",
 ): AccountProviderConfigSnapshot {
-  return { revision, basedOnZCodeBuiltinRevision, providers: ProviderConfigMap.empty() };
+  return { revision, basedOnCodezBuiltinRevision, providers: ProviderConfigMap.empty() };
 }
 
 function deferred<T>() {
@@ -130,7 +130,7 @@ describe("ProviderRegistryService", () => {
     const accountSource = new MutableAccountProviderConfigSource();
     accountSource.replace({
       revision: "account-1",
-      basedOnZCodeBuiltinRevision: "config-1",
+      basedOnCodezBuiltinRevision: "config-1",
       providers: ProviderConfigMap.empty(),
     });
     const service = new ProviderRegistryService({ configSource, accountSource });
@@ -139,7 +139,7 @@ describe("ProviderRegistryService", () => {
     accountSource.replace(
       {
         revision: "account-2",
-        basedOnZCodeBuiltinRevision: "config-1",
+        basedOnCodezBuiltinRevision: "config-1",
         providers: new ProviderConfigMap([
           [
             "account-provider",
@@ -289,7 +289,7 @@ describe("ProviderRegistryService", () => {
 
     configSource.current = {
       ...configSnapshot("combined-2", "model-a"),
-      zcodeBuiltinRevision: "config-1",
+      codezBuiltinRevision: "config-1",
       personalRevision: "personal-2",
     };
     const next = await service.refresh("personal-updated");

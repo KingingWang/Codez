@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import { useAppPanels } from "@/hooks/useAppPanels.js";
 import {
   buildTaskSidePaneMemoryKey,
@@ -16,7 +16,7 @@ const { closeSessionMock } = vi.hoisted(() => ({
 
 vi.mock("@/hooks/useServices.js", () => ({
   useServices: () => ({
-    zcodeSessionService: { closeSession: closeSessionMock },
+    codezSessionService: { closeSession: closeSessionMock },
   }),
 }));
 

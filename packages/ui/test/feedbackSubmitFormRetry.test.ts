@@ -2,8 +2,8 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { IFeedbackService } from "@zcode/services";
-import type { IPlatformService } from "@zcode/shared";
+import type { IFeedbackService } from "@codez/services";
+import type { IPlatformService } from "@codez/shared";
 import { FeedbackSubmitForm } from "@/feedback/FeedbackSubmitForm.js";
 import type {
   FeedbackSubmissionJob,
@@ -96,7 +96,7 @@ vi.mock("@/feedback/feedbackSubmitSubmission.js", () => ({
   startSimplifiedFeedbackSubmission: formCapture.startSubmission,
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: ({ id }: { id: string }) => id },
     locale: "en-US",
   }),
@@ -105,9 +105,9 @@ vi.mock("@/store/TabStoreProvider.js", () => ({
   useTabStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ activeWorkspaceIdentity: null, activeWorkspacePath: null }),
 }));
-vi.mock("@/store/zcodeSessionStore.js", () => ({
-  selectWorkspaceZCodeState: () => null,
-  useZCodeSessionStore: (selector: (state: Record<string, unknown>) => unknown) => selector({}),
+vi.mock("@/store/codezSessionStore.js", () => ({
+  selectWorkspaceCodezState: () => null,
+  useCodezSessionStore: (selector: (state: Record<string, unknown>) => unknown) => selector({}),
 }));
 
 const mountedRoots: Root[] = [];

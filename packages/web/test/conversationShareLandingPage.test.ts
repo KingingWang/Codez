@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { ConversationSharePreview } from "@zcode/shared";
+import type { ConversationSharePreview } from "@codez/shared";
 import {
   ConversationShareLandingPage,
   ConversationShareLandingStatus,
@@ -74,7 +74,7 @@ describe("ConversationShareLandingPage", () => {
     expect(html).not.toContain("absolute inset-x-0 bottom-0");
     expect(html).toContain("bg-background backdrop-blur");
     expect(html).not.toContain("bg-background/95");
-    expect(html).toContain("ZCode");
+    expect(html).toContain("Codez");
     expect(html).toContain("sticky");
     expect(html).toContain("text-left");
     expect(html).not.toContain("grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]");
@@ -88,28 +88,28 @@ describe("ConversationShareLandingPage", () => {
     expect(html).toContain('data-share-scroll-viewport="true"');
     expect(html).toContain('data-markdown-table-layout-root="true"');
     expect(html).toContain("overflow-y-auto");
-    expect(html).toContain("去 ZCode 继续");
+    expect(html).toContain("去 Codez 继续");
     expect(html).toContain('data-share-theme-toggle="true"');
     expect(html).toContain("切换到深色主题");
     expect(html.match(/data-share-continue-link="true"/g)?.length).toBe(2);
     expect(html).toContain('data-share-continue-footer="true"');
-    expect(html.match(/href="zcode:\/\/share\/import\?code=share-1"/g)?.length).toBe(2);
+    expect(html.match(/href="codez:\/\/share\/import\?code=share-1"/g)?.length).toBe(2);
     expect(html.indexOf('data-share-continue-footer="true"')).toBeGreaterThan(
       html.indexOf("data-conversation-share-timeline"),
     );
     expect(html).toContain("rounded-xl");
     expect(html).toContain("bg-primary");
     expect(html).toContain("text-primary-foreground");
-    expect(html).not.toContain("ZCode 会话分享");
+    expect(html).not.toContain("Codez 会话分享");
     expect(html).not.toContain("data-share-flag");
-    expect(html).not.toContain("下载 ZCode");
+    expect(html).not.toContain("下载 Codez");
     expect(html).not.toContain("Sign out");
-    expect(html).toContain("zcode://share/import?code=share-1");
+    expect(html).toContain("codez://share/import?code=share-1");
   });
 
   it("counts only artifact rows and excludes user input attachment manifests", () => {
-    const inputRef = "zcode-artifact://share/input-1";
-    const resultRef = "zcode-artifact://share/result-1";
+    const inputRef = "codez-artifact://share/input-1";
+    const resultRef = "codez-artifact://share/result-1";
     const mixedPreview: ConversationSharePreview = {
       ...preview,
       rows: [
@@ -202,7 +202,7 @@ describe("ConversationShareLandingPage", () => {
           kind: "userInput" as const,
           attachments: [
             {
-              ref: "zcode-artifact://share/input-only",
+              ref: "codez-artifact://share/input-only",
               fileName: "input.txt",
               mime: "text/plain",
               bytes: 5,
@@ -218,7 +218,7 @@ describe("ConversationShareLandingPage", () => {
           producer_product_turn_id: "share-product-turn-1",
           artifact_version: 1 as const,
           state: "current" as const,
-          ref: "zcode-artifact://share/input-only",
+          ref: "codez-artifact://share/input-only",
           artifact_type: "text" as const,
           display_name: "input.txt",
           extension: "txt",
@@ -248,9 +248,9 @@ describe("ConversationShareLandingPage", () => {
         locale: "en-US",
       }),
     );
-    expect(html).not.toContain("zcode://share/import");
-    expect(html).not.toContain("Open in ZCode");
-    expect(html).not.toContain("去 ZCode 继续");
+    expect(html).not.toContain("codez://share/import");
+    expect(html).not.toContain("Open in Codez");
+    expect(html).not.toContain("去 Codez 继续");
     expect(html).toContain('data-share-theme-toggle="true"');
     expect(html).not.toContain('data-share-continue-footer="true"');
     expect(html).toContain('data-share-continue-measure="true"');

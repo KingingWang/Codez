@@ -99,7 +99,7 @@ describe("OffPeakTaskService 编排", () => {
     });
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "zcode-off-peak-service-"));
+    tempDir = mkdtempSync(join(tmpdir(), "codez-off-peak-service-"));
     setDataBaseDir(tempDir);
     repo = new OffPeakTaskRepo();
     client = new FakeClient();
@@ -140,7 +140,7 @@ describe("OffPeakTaskService 编排", () => {
 
   const makeLegacySelectionRow = async (offPeakTaskId: string) => {
     repo.close();
-    const db = new DatabaseSync(join(tempDir!, ".zcode", "v2", "tasks-index.sqlite"));
+    const db = new DatabaseSync(join(tempDir!, ".codez", "v2", "tasks-index.sqlite"));
     db.prepare(
       `UPDATE off_peak_tasks
        SET model = 'GLM-5.2', thought_level = 'high', model_selection = NULL
@@ -169,7 +169,7 @@ describe("OffPeakTaskService 编排", () => {
   it("list：损坏配置不影响内容，也不从旧字段恢复执行选择", async () => {
     const created = await createTask();
     repo.close();
-    const db = new DatabaseSync(join(tempDir!, ".zcode", "v2", "tasks-index.sqlite"));
+    const db = new DatabaseSync(join(tempDir!, ".codez", "v2", "tasks-index.sqlite"));
     db.prepare(
       `UPDATE off_peak_tasks
        SET model = 'GLM-5.2', thought_level = 'high', model_selection = '{invalid'

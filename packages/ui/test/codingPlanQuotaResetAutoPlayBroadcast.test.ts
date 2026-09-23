@@ -4,8 +4,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BroadcastMessage, IBroadcastService, IUsageStatsService } from "@zcode/services";
-import type { CodingPlanResetStatusSnapshot, ZCodeAccountAccess } from "@zcode/shared";
+import type { BroadcastMessage, IBroadcastService, IUsageStatsService } from "@codez/services";
+import type { CodingPlanResetStatusSnapshot, CodezAccountAccess } from "@codez/shared";
 import { StoreContext } from "@/store/StoreProvider.js";
 
 const mocks = vi.hoisted(() => ({
@@ -18,7 +18,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: ({ id }: { id: string }) => id },
     locale: "zh-CN",
   }),
@@ -32,10 +32,10 @@ import { useCodingPlanQuotaResetUi } from "@/hooks/useCodingPlanQuotaResetUi.js"
 import { coordinateCodingPlanQuotaResetAutoPlay } from "@/chat-input-toolbar/codingPlanQuotaResetAutoPlay.js";
 import { pruneCodingPlanQuotaResetConfettiArms } from "@/lib/codingPlanQuotaResetUi.js";
 import { CODING_PLAN_QUOTA_RESET_AUTO_PLAYED_CHANNEL } from "@/store/codingPlanQuotaResetState.js";
-import { createZCodeStore } from "@/store/index.js";
-import type { ZCodeStore } from "@/store/index.js";
+import { createCodezStore } from "@/store/index.js";
+import type { CodezStore } from "@/store/index.js";
 
-const TEST_ACCOUNT_ACCESS: ZCodeAccountAccess = {
+const TEST_ACCOUNT_ACCESS: CodezAccountAccess = {
   type: "zhipu-account",
   family: "bigmodel",
   planKind: "individual-coding-plan",
@@ -135,7 +135,7 @@ function createUsageStatsService(overrides: Partial<IUsageStatsService> = {}): I
   };
 }
 
-function wrapperFor(store: ZCodeStore) {
+function wrapperFor(store: CodezStore) {
   return ({ children }: { children: ReactNode }) =>
     createElement(StoreContext.Provider, { value: store }, children);
 }
@@ -143,7 +143,7 @@ function wrapperFor(store: ZCodeStore) {
 describe("coding plan quota reset autoplay broadcast (store)", () => {
   it("status 写入只记录 observation，非 Composer 入口不占用播放资格", () => {
     const harness = createBroadcastHarness();
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
 
     act(() => {
       store
@@ -163,7 +163,7 @@ describe("coding plan quota reset autoplay broadcast (store)", () => {
 
   it("Composer reservation winner 在 commit 前不写 played、不广播", async () => {
     const harness = createBroadcastHarness();
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
     act(() => {
       store
         .getState()
@@ -208,7 +208,7 @@ describe("coding plan quota reset autoplay broadcast (store)", () => {
 
   it("Composer acquire busy 保留 observed_at，不把占用误当成 played", async () => {
     const harness = createBroadcastHarness({ claimStatus: "busy" });
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
     act(() => {
       store
         .getState()
@@ -226,7 +226,7 @@ describe("coding plan quota reset autoplay broadcast (store)", () => {
 
   it("reservation 释放时不写 played，后续窗口仍可继续争抢", async () => {
     const harness = createBroadcastHarness();
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
     act(() => {
       store
         .getState()
@@ -249,7 +249,7 @@ describe("coding plan quota reset autoplay broadcast (store)", () => {
 
   it("手动完成不会被 claim 成自动播放", async () => {
     const harness = createBroadcastHarness();
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
     act(() => {
       store
         .getState()
@@ -264,7 +264,7 @@ describe("coding plan quota reset autoplay broadcast (store)", () => {
 
   it("收到跨窗口广播后抑制本窗口正在等待 claim 的同 used_at 自动完成", () => {
     const harness = createBroadcastHarness();
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
 
     act(() => {
       store
@@ -292,7 +292,7 @@ describe("coding plan quota reset autoplay broadcast (store)", () => {
 
   it("本地回声（无 sourceWindowId）不抑制 winner 的播放", async () => {
     const harness = createBroadcastHarness();
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
     act(() => {
       store
         .getState()
@@ -329,7 +329,7 @@ describe("coding plan quota reset autoplay broadcast (store)", () => {
 
   it("旧广播晚到不会把较新的 played 记录回退", () => {
     const harness = createBroadcastHarness();
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
     act(() => {
       store.setState({
         codingPlanQuotaResetAutoPlayedBySource: {
@@ -352,7 +352,7 @@ describe("coding plan quota reset autoplay broadcast (store)", () => {
 
   it("used_at 不匹配的广播只合并 played 记录，不改写 entry", () => {
     const harness = createBroadcastHarness();
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
     act(() => {
       store
         .getState()
@@ -377,7 +377,7 @@ describe("coding plan quota reset autoplay broadcast (store)", () => {
 
   it("非法 payload 的广播被忽略", () => {
     const harness = createBroadcastHarness();
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
 
     expect(() => {
       act(() => {
@@ -495,7 +495,7 @@ describe("coding plan quota reset autoplay broadcast (hook)", () => {
 
   it("played 记录已存在时，轮询进入完成态但不播放提示", async () => {
     const harness = createBroadcastHarness();
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
     const usedAt = 12_345;
     act(() => {
       store.setState({
@@ -535,7 +535,7 @@ describe("coding plan quota reset autoplay broadcast (hook)", () => {
 
   it("Hook 观察完成后不自动占用，Composer 显式 claim 才播放", async () => {
     const harness = createBroadcastHarness();
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
     const usedAt = 23_456;
     mocks.services = {
       usageStatsService: createUsageStatsService({
@@ -579,7 +579,7 @@ describe("coding plan quota reset autoplay broadcast (hook)", () => {
 
   it("Hook acquire busy 时保留自动完成候选", async () => {
     const harness = createBroadcastHarness({ claimStatus: "busy" });
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
     const usedAt = 34_567;
     mocks.services = {
       usageStatsService: createUsageStatsService({
@@ -615,7 +615,7 @@ describe("coding plan quota reset autoplay broadcast (hook)", () => {
 
   it("观察到未读完成后立即上报 history/read，不等待 entitlement 刷新", async () => {
     const harness = createBroadcastHarness();
-    const store = createZCodeStore(harness.service);
+    const store = createCodezStore(harness.service);
     const usedAt = 45_678;
     const markCodingPlanResetHistoryRead = vi.fn(async () => undefined);
     mocks.services = {

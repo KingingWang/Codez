@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import {
   ChatCodingPlanUsageRemainingPanel,
   hasChatCodingPlanUsageRemaining,
@@ -110,7 +110,7 @@ describe("context usage access refresh", () => {
 });
 
 vi.mock("../src/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "en-US",
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
@@ -258,23 +258,23 @@ describe("ChatCodingPlanUsageRemainingPanel reset action", () => {
 });
 
 describe("ChatCodingPlanUsageRemainingPanel MCP 额度", () => {
-  it("ZCode MCP tooltip 使用精简的每日合计额度说明", () => {
-    expect(zhMessages["sidebar.usage.plan.zcodeMcpDescription"]).toBe(
-      "ZCode 预置插件 MCP 每日合计额度",
+  it("Codez MCP tooltip 使用精简的每日合计额度说明", () => {
+    expect(zhMessages["sidebar.usage.plan.codezMcpDescription"]).toBe(
+      "Codez 预置插件 MCP 每日合计额度",
     );
-    expect(enMessages["sidebar.usage.plan.zcodeMcpDescription"]).toBe(
-      "Daily aggregate quota for ZCode built-in plugin MCPs",
+    expect(enMessages["sidebar.usage.plan.codezMcpDescription"]).toBe(
+      "Daily aggregate quota for Codez built-in plugin MCPs",
     );
   });
 
-  it("ZCode MCP 文字保持普通前景色，进度条复用图表黄色", () => {
+  it("Codez MCP 文字保持普通前景色，进度条复用图表黄色", () => {
     const styles = readFileSync("packages/ui/src/styles.css", "utf8");
 
     expect(styles).toContain("--color-usage-chart-5: #e07b00;");
     expect(styles).toContain("--color-usage-chart-5: #ff8a30;");
-    expect(styles).not.toContain("--zcode-mcp-progress");
-    expect(styles).not.toContain("--zcode-mcp-gradient-");
-    expect(styles).not.toContain("zcode-mcp-gradient-text");
+    expect(styles).not.toContain("--codez-mcp-progress");
+    expect(styles).not.toContain("--codez-mcp-gradient-");
+    expect(styles).not.toContain("codez-mcp-gradient-text");
   });
 
   it("三张主额度占满首行时，官方 Server MCP 在下一行横跨三列", () => {
@@ -344,16 +344,16 @@ describe("ChatCodingPlanUsageRemainingPanel MCP 额度", () => {
       "ml-auto min-w-0 shrink overflow-hidden text-ellipsis whitespace-nowrap",
     );
     expect(html).not.toContain("rounded-lg bg-surface px-2 py-1.5");
-    expect(html).toContain("sidebar.usage.plan.zcodeMcp");
+    expect(html).toContain("sidebar.usage.plan.codezMcp");
     expect(html).toContain('data-context-mcp-info="true"');
-    expect(html).toContain('aria-label="sidebar.usage.plan.zcodeMcpDescription"');
+    expect(html).toContain('aria-label="sidebar.usage.plan.codezMcpDescription"');
     expect(html).toContain(
-      '<span class="min-w-0 truncate text-foreground-subtle">sidebar.usage.plan.zcodeMcp</span>',
+      '<span class="min-w-0 truncate text-foreground-subtle">sidebar.usage.plan.codezMcp</span>',
     );
     expect(html).not.toContain(
-      '<span class="font-medium text-foreground">sidebar.usage.plan.zcodeMcp</span>',
+      '<span class="font-medium text-foreground">sidebar.usage.plan.codezMcp</span>',
     );
-    expect(html).not.toContain("zcode-mcp-gradient-text");
+    expect(html).not.toContain("codez-mcp-gradient-text");
     expect(html).toContain("background-color:var(--color-usage-chart-5)");
     // percentage 是已使用占比，展示时反转成剩余。
     expect(html).toContain("75%");
@@ -412,7 +412,7 @@ describe("ChatCodingPlanUsageRemainingPanel MCP 额度", () => {
       createElement(ChatCodingPlanMcpUsageMeter, {
         color: "var(--color-usage-chart-5)",
         description: "description",
-        label: "ZCode MCP",
+        label: "Codez MCP",
         percentage: 75,
         primaryQuotaCount: 2,
         value: "75%",
@@ -1640,8 +1640,8 @@ describe("Start Plan context balance panel", () => {
               identityMasked: null,
               details: [
                 {
-                  productId: "zcode-v3-start-plan",
-                  productName: "ZCode Start Plan",
+                  productId: "codez-v3-start-plan",
+                  productName: "Codez Start Plan",
                   purchaseTime: null,
                   beginTime: null,
                   renewTime: new Date(2026, 5, 13, 10, 0).toISOString(),
@@ -1728,8 +1728,8 @@ describe("Start Plan context balance panel", () => {
                 identityMasked: null,
                 details: [
                   {
-                    productId: "zcode-v3-start-plan",
-                    productName: "ZCode Start Plan",
+                    productId: "codez-v3-start-plan",
+                    productName: "Codez Start Plan",
                     purchaseTime: null,
                     beginTime: null,
                     renewTime: null,

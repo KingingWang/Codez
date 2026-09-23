@@ -40,7 +40,7 @@ describe("CloudContentDialog", () => {
             ...payload.dialog,
             hero: {
               type: "interactive_bundle",
-              runtime: "zcode-hero-sandbox-v1",
+              runtime: "codez-hero-sandbox-v1",
               resolvedUrl: "https://example.com/hero.html",
               data: {},
             },
@@ -190,7 +190,7 @@ describe("CloudContentDialog", () => {
             ...payload.dialog,
             hero: {
               type: "interactive_bundle",
-              runtime: "zcode-hero-sandbox-v1",
+              runtime: "codez-hero-sandbox-v1",
               resolvedUrl: "https://example.com/hero.html",
               data: {},
             },

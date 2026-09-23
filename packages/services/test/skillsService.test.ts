@@ -10,15 +10,15 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MAX_SKILL_SCAN_DEPTH } from "@zcode/shared";
+import { MAX_SKILL_SCAN_DEPTH } from "@codez/shared";
 import type { ISkillsService } from "../src/skills/skills.js";
 
 const originalHome = process.env.HOME;
-const originalProcessLabel = process.env.ZCODE_PROCESS_LABEL;
+const originalProcessLabel = process.env.CODEZ_PROCESS_LABEL;
 const tempHomes: string[] = [];
 
 function makeTempHome(): string {
-  const home = mkdtempSync(join(tmpdir(), "zcode-skills-home-"));
+  const home = mkdtempSync(join(tmpdir(), "codez-skills-home-"));
   tempHomes.push(home);
   return home;
 }
@@ -46,11 +46,11 @@ function writeSkillMeta(basePath: string, folder: string, metadata: unknown): vo
 }
 
 function workspaceSkillRoot(workspacePath: string): string {
-  return join(workspacePath, ".zcode", "skills");
+  return join(workspacePath, ".codez", "skills");
 }
 
 function userSkillRoot(home: string): string {
-  return join(home, ".zcode", "skills");
+  return join(home, ".codez", "skills");
 }
 
 function userAgentsSkillRoot(home: string): string {
@@ -60,11 +60,11 @@ function userAgentsSkillRoot(home: string): string {
 function officialPluginRoot(home: string, pluginName: string, version = "0.1.0"): string {
   return join(
     home,
-    ".zcode",
+    ".codez",
     "cli",
     "plugins",
     "cache",
-    "zcode-plugins-official",
+    "codez-plugins-official",
     pluginName,
     version,
   );
@@ -78,7 +78,7 @@ function marketplacePluginRoot(
 ): string {
   return join(
     home,
-    ".zcode",
+    ".codez",
     "cli",
     "plugins",
     "cache",
@@ -89,9 +89,9 @@ function marketplacePluginRoot(
 }
 
 function writePluginManifest(pluginRoot: string, manifest: Record<string, unknown>): void {
-  mkdirSync(join(pluginRoot, ".zcode-plugin"), { recursive: true });
+  mkdirSync(join(pluginRoot, ".codez-plugin"), { recursive: true });
   writeFileSync(
-    join(pluginRoot, ".zcode-plugin", "plugin.json"),
+    join(pluginRoot, ".codez-plugin", "plugin.json"),
     JSON.stringify(manifest, null, 2),
     "utf-8",
   );
@@ -115,7 +115,7 @@ function writeInstalledPluginRecord(
     version?: string;
   },
 ): void {
-  const pluginsRoot = join(home, ".zcode", "cli", "plugins");
+  const pluginsRoot = join(home, ".codez", "cli", "plugins");
   mkdirSync(pluginsRoot, { recursive: true });
   writeFileSync(
     join(pluginsRoot, "installed_plugins.json"),
@@ -144,14 +144,14 @@ function writeInstalledPluginRecord(
 }
 
 function writeCliConfig(home: string, config: Record<string, unknown>): void {
-  const configPath = join(home, ".zcode", "cli", "config.json");
-  mkdirSync(join(home, ".zcode", "cli"), { recursive: true });
+  const configPath = join(home, ".codez", "cli", "config.json");
+  mkdirSync(join(home, ".codez", "cli"), { recursive: true });
   writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
 }
 
 afterEach(() => {
   process.env.HOME = originalHome;
-  process.env.ZCODE_PROCESS_LABEL = originalProcessLabel;
+  process.env.CODEZ_PROCESS_LABEL = originalProcessLabel;
   vi.doUnmock("node:fs/promises");
   vi.resetModules();
   while (tempHomes.length > 0) {
@@ -163,7 +163,7 @@ afterEach(() => {
 });
 
 describe("skillsService", () => {
-  it("workspace 同层合并读取 .zcode 与 .agents，并忽略废弃和 Claude 技能目录", async () => {
+  it("workspace 同层合并读取 .codez 与 .agents，并忽略废弃和 Claude 技能目录", async () => {
     const home = makeTempHome();
     const workspacePath = join(home, "workspace");
     writeSkill(
@@ -171,12 +171,12 @@ describe("skillsService", () => {
       "repo-review",
       `---
 name: repo-review
-description: from zcode
+description: from codez
 ---
-zcode-body`,
+codez-body`,
     );
     writeSkill(
-      join(workspacePath, ".zcode", "cli", "skills"),
+      join(workspacePath, ".codez", "cli", "skills"),
       "old-glm",
       `---
 name: old-glm
@@ -213,14 +213,14 @@ claude-body`,
       enabled: true,
     });
     expect(result.skills.find((skill) => skill.name === "repo-review")).toMatchObject({
-      description: "from zcode",
+      description: "from codez",
       scope: "workspace",
       enabled: true,
     });
   });
 
   it.skipIf(process.platform === "win32")(
-    "workspace .zcode/skills 软链导入的技能可被 / 和 $ 面板发现",
+    "workspace .codez/skills 软链导入的技能可被 / 和 $ 面板发现",
     async () => {
       const home = makeTempHome();
       const workspacePath = join(home, "workspace");
@@ -406,15 +406,15 @@ body`,
     });
   });
 
-  it("桌面 runtime 同时读取用户级 ~/.zcode/skills 和 ~/.agents/skills", async () => {
+  it("桌面 runtime 同时读取用户级 ~/.codez/skills 和 ~/.agents/skills", async () => {
     const home = makeTempHome();
     const workspacePath = join(home, "workspace");
     writeSkill(
       userSkillRoot(home),
-      "zcode-global",
+      "codez-global",
       `---
-name: zcode-global
-description: user zcode
+name: codez-global
+description: user codez
 ---
 body`,
     );
@@ -432,9 +432,9 @@ body`,
       "copied-global",
       `---
 name: copied-global
-description: copied into zcode
+description: copied into codez
 ---
-zcode-body`,
+codez-body`,
     );
     writeSkill(
       userAgentsSkillRoot(home),
@@ -450,9 +450,9 @@ agents-body`,
       "current-review",
       `---
 name: shared-review
-description: zcode version
+description: codez version
 ---
-zcode-review-body`,
+codez-review-body`,
     );
     writeSkill(
       userAgentsSkillRoot(home),
@@ -464,7 +464,7 @@ description: agents version
 agents-review-body`,
     );
     writeSkill(
-      join(home, ".zcode", "cli", "skills"),
+      join(home, ".codez", "cli", "skills"),
       "old-global",
       `---
 name: old-global
@@ -481,16 +481,16 @@ body`,
       "agents-global",
       "copied-global",
       "shared-review",
-      "zcode-global",
+      "codez-global",
     ]);
     expect(result.skills.find((skill) => skill.name === "copied-global")?.path)
-      .toContain(join(home, ".zcode", "skills", "copied-global"));
+      .toContain(join(home, ".codez", "skills", "copied-global"));
     expect(result.skills.find((skill) => skill.name === "shared-review")?.path)
-      .toContain(join(home, ".zcode", "skills", "current-review"));
+      .toContain(join(home, ".codez", "skills", "current-review"));
     expect(result.skills.every((skill) => skill.scope === "user")).toBe(true);
   });
 
-  it("桌面 runtime 用户级 ~/.zcode/skills 没有技能时 fallback 到 ~/.agents/skills", async () => {
+  it("桌面 runtime 用户级 ~/.codez/skills 没有技能时 fallback 到 ~/.agents/skills", async () => {
     const home = makeTempHome();
     const workspacePath = join(home, "workspace");
     writeSkill(
@@ -515,7 +515,7 @@ body`,
     const workspacePath = join(home, "workspace");
     const browserUsePluginRoot = officialPluginRoot(home, "browser-use");
     const documentPluginRoot = officialPluginRoot(home, "documents");
-    const zcodeGuidePluginRoot = officialPluginRoot(home, "zcode-guide");
+    const codezGuidePluginRoot = officialPluginRoot(home, "codez-guide");
     const iosPluginRoot = officialPluginRoot(home, "ios-simulator");
     const androidPluginRoot = officialPluginRoot(home, "android-emulator");
     writePluginManifest(browserUsePluginRoot, {
@@ -528,8 +528,8 @@ body`,
       skills: "skills",
       version: "0.1.0",
     });
-    writePluginManifest(zcodeGuidePluginRoot, {
-      name: "zcode-guide",
+    writePluginManifest(codezGuidePluginRoot, {
+      name: "codez-guide",
       skills: "skills",
       version: "0.1.0",
     });
@@ -571,7 +571,7 @@ description: pdf skill
 pdf-body`,
     );
     writeSkill(
-      join(zcodeGuidePluginRoot, "skills"),
+      join(codezGuidePluginRoot, "skills"),
       "diagnosing-plugins",
       `---
 name: diagnosing-plugins
@@ -600,7 +600,7 @@ android-body`,
     writeCliConfig(home, {
       plugins: {
         enabledPlugins: {
-          "ios-simulator@zcode-plugins-official": true,
+          "ios-simulator@codez-plugins-official": true,
         },
       },
     });
@@ -627,7 +627,7 @@ android-body`,
       "documents",
       "documents",
       "ios-simulator",
-      "zcode-guide",
+      "codez-guide",
     ]);
     expect(result.skills.find((skill) => skill.name === "android-emulator")).toBeUndefined();
   });
@@ -638,7 +638,7 @@ android-body`,
     const browserUsePluginRoot = officialPluginRoot(home, "browser-use");
     const documentPluginRoot = officialPluginRoot(home, "documents");
     const skillCreatorPluginRoot = officialPluginRoot(home, "skill-creator");
-    const zcodeGuidePluginRoot = officialPluginRoot(home, "zcode-guide");
+    const codezGuidePluginRoot = officialPluginRoot(home, "codez-guide");
     writePluginManifest(browserUsePluginRoot, {
       name: "browser-use",
       skills: "skills",
@@ -654,8 +654,8 @@ android-body`,
       skills: "skills",
       version: "0.1.0",
     });
-    writePluginManifest(zcodeGuidePluginRoot, {
-      name: "zcode-guide",
+    writePluginManifest(codezGuidePluginRoot, {
+      name: "codez-guide",
       skills: "skills",
       version: "0.1.0",
     });
@@ -687,7 +687,7 @@ description: skill creator skill
 creator-body`,
     );
     writeSkill(
-      join(zcodeGuidePluginRoot, "skills"),
+      join(codezGuidePluginRoot, "skills"),
       "diagnosing-plugins",
       `---
 name: diagnosing-plugins
@@ -695,13 +695,13 @@ description: Diagnose plugin discovery and enablement problems
 ---
 diagnosing-body`,
     );
-    // browser、documents 和 zcode-guide 被卸载（suppressed），skill-creator 保持默认启用。
+    // browser、documents 和 codez-guide 被卸载（suppressed），skill-creator 保持默认启用。
     writeCliConfig(home, {
       plugins: {
         suppressedBuiltins: [
-          "browser-use@zcode-plugins-official",
-          "documents@zcode-plugins-official",
-          "zcode-guide@zcode-plugins-official",
+          "browser-use@codez-plugins-official",
+          "documents@codez-plugins-official",
+          "codez-guide@codez-plugins-official",
         ],
       },
     });
@@ -715,7 +715,7 @@ diagnosing-body`,
     expect(result.skills.find((skill) => skill.name === "diagnosing-plugins")).toBeUndefined();
     expect(result.skills.find((skill) => skill.pluginName === "browser")).toBeUndefined();
     expect(result.skills.find((skill) => skill.pluginName === "documents")).toBeUndefined();
-    expect(result.skills.find((skill) => skill.pluginName === "zcode-guide")).toBeUndefined();
+    expect(result.skills.find((skill) => skill.pluginName === "codez-guide")).toBeUndefined();
   });
 
   it("读取已安装 marketplace plugin 声明的技能目录", async () => {
@@ -843,10 +843,10 @@ bundle-root-body`,
     const workspacePath = join(home, "workspace");
     writeSkill(
       userSkillRoot(home),
-      "zcode-global",
+      "codez-global",
       `---
-name: zcode-global
-description: user zcode
+name: codez-global
+description: user codez
 ---
 body`,
     );
@@ -905,7 +905,7 @@ body`,
       provider: "glm",
     });
     const config = JSON.parse(
-      readFileSync(join(home, ".zcode", "cli", "config.json"), "utf-8"),
+      readFileSync(join(home, ".codez", "cli", "config.json"), "utf-8"),
     ) as { skills?: Record<string, { enable?: boolean }> };
     expect(disabled.skills[0]?.enabled).toBe(false);
     expect(enabled.skills[0]?.enabled).toBe(false);
@@ -926,7 +926,7 @@ body`,
       provider: "glm",
     });
     const reenabledConfig = JSON.parse(
-      readFileSync(join(home, ".zcode", "cli", "config.json"), "utf-8"),
+      readFileSync(join(home, ".codez", "cli", "config.json"), "utf-8"),
     ) as { skills?: Record<string, { enable?: boolean }> };
     expect(reenabled.skills[0]?.enabled).toBe(true);
     expect(reenabledConfig.skills?.[skill.path]).toBeUndefined();
@@ -936,8 +936,8 @@ body`,
     const home = makeTempHome();
     const workspacePath = join(home, "workspace");
     const legacySkillId = "workspace:legacy-skill";
-    const legacyStatePath = join(home, ".zcode", "v2", "skills-state.json");
-    mkdirSync(join(home, ".zcode", "v2"), { recursive: true });
+    const legacyStatePath = join(home, ".codez", "v2", "skills-state.json");
+    mkdirSync(join(home, ".codez", "v2"), { recursive: true });
     writeFileSync(
       legacyStatePath,
       JSON.stringify({ disabledByWorkspace: { [workspacePath]: [legacySkillId] } }),
@@ -951,7 +951,7 @@ body`,
       disabledByWorkspace?: Record<string, string[]>;
     };
     expect(state.disabledByWorkspace).toEqual({ [workspacePath]: [legacySkillId] });
-    expect(existsSync(join(home, ".zcode", "cli", "config.json"))).toBe(false);
+    expect(existsSync(join(home, ".codez", "cli", "config.json"))).toBe(false);
   });
 
   it("buildPromptContext 只注入启用且被提及的技能正文", async () => {
@@ -988,7 +988,7 @@ plan-body`,
     expect(context.prompt).toContain("review-body");
     expect(context.prompt).not.toContain("plan-body");
     expect(context.activatedSkillNames).toEqual(["code-review"]);
-    expect(existsSync(join(home, ".zcode", "v2", "skills-audit.log"))).toBe(true);
+    expect(existsSync(join(home, ".codez", "v2", "skills-audit.log"))).toBe(true);
   });
 
   it("被禁用的技能即便被提及也不会注入", async () => {
@@ -1168,7 +1168,7 @@ second-body`,
     ).toBe(false);
   });
 
-  it("worktree 内子目录扫描会向上汇集祖先 .zcode/skills", async () => {
+  it("worktree 内子目录扫描会向上汇集祖先 .codez/skills", async () => {
     const home = makeTempHome();
     const repoRoot = join(home, "repo");
     mkdirSync(join(repoRoot, ".git"), { recursive: true });
@@ -1201,7 +1201,7 @@ body`,
     ]);
   });
 
-  it("deleteSkill 删除 .zcode/skills 工作区技能目录", async () => {
+  it("deleteSkill 删除 .codez/skills 工作区技能目录", async () => {
     const home = makeTempHome();
     const workspacePath = join(home, "workspace");
     const skillDir = join(workspaceSkillRoot(workspacePath), "repo-review");
@@ -1228,7 +1228,7 @@ body`,
   });
 
   it.skipIf(process.platform === "win32")(
-    "deleteSkill 删除用户级 ~/.zcode/skills 软链技能：只删链接、保留外部目标",
+    "deleteSkill 删除用户级 ~/.codez/skills 软链技能：只删链接、保留外部目标",
     async () => {
       const home = makeTempHome();
       const workspacePath = join(home, "workspace");
@@ -1265,7 +1265,7 @@ body`,
   );
 
   it.skipIf(process.platform === "win32")(
-    "deleteSkill 删除工作区 .zcode/skills 软链技能：只删链接、保留外部目标",
+    "deleteSkill 删除工作区 .codez/skills 软链技能：只删链接、保留外部目标",
     async () => {
       const home = makeTempHome();
       const workspacePath = join(home, "workspace");
@@ -1300,7 +1300,7 @@ body`,
   it.skipIf(process.platform === "win32")(
     "deleteSkill 拒绝经由“软链祖先目录”删除，保护外部目标数据",
     async () => {
-      // 用户把一整个外部目录软链进 ~/.zcode/skills（分组软链），
+      // 用户把一整个外部目录软链进 ~/.codez/skills（分组软链），
       // 其下的技能扫描时会被发现。删除时若顺着分组软链 rm，会删掉外部真实目录里的子技能——数据丢失。
       // 本用例断言这种情况被安全拦截：抛错、且外部目标完好。
       const home = makeTempHome();
@@ -1316,7 +1316,7 @@ description: nested under a symlinked group dir
 body`,
       );
       mkdirSync(userSkillRoot(home), { recursive: true });
-      // ~/.zcode/skills/mygroup -> /external-agent/group
+      // ~/.codez/skills/mygroup -> /external-agent/group
       symlinkSync(externalGroup, join(userSkillRoot(home), "mygroup"), "dir");
 
       const service = await createSkillsServiceInEnv(home, { isDesktopRuntime: true });

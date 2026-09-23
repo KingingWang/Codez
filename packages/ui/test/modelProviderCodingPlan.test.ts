@@ -11,7 +11,7 @@ import {
   TID_MODEL_PROVIDER_ADD_MODEL_BUTTON,
   TID_MODEL_PROVIDER_MODEL_DELETE_BUTTON,
   type UsageEntitlementSnapshot,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   resolveCodingPlanProviderSyncAttemptKey,
   shouldRetryUnchangedCodingPlanProviderSync,
@@ -82,7 +82,7 @@ import {
 } from "@/settings/model-provider-section/useStartPlanPreview.js";
 import { type ModelProviderNavGroup } from "@/settings/model-provider-section/constants.js";
 import type { ModelProviderNavItem } from "@/settings/model-provider-section/constants.js";
-import type { ProviderSettingsView } from "@zcode/services";
+import type { ProviderSettingsView } from "@codez/services";
 
 it("Start 独立后移除套餐数量快捷入口与切换按钮", () => {
   const item = (
@@ -214,7 +214,7 @@ function renderWithTooltipProvider(element: ReactElement) {
 }
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: intlMockState.locale,
     intl: {
       formatMessage: (descriptor: { id: string }, values?: Record<string, string>) => {
@@ -2044,7 +2044,7 @@ describe("model provider coding plan", () => {
                 identityMasked: null,
                 details: [
                   {
-                    productId: "zcode-v3-start-plan",
+                    productId: "codez-v3-start-plan",
                     productName: "Start Plan",
                     purchaseTime: null,
                     beginTime: null,
@@ -2137,7 +2137,7 @@ describe("model provider coding plan", () => {
                 identityMasked: null,
                 details: [
                   {
-                    productId: "zcode-v3-start-plan",
+                    productId: "codez-v3-start-plan",
                     productName: "Start Plan",
                     purchaseTime: null,
                     beginTime: null,
@@ -2249,7 +2249,7 @@ describe("model provider coding plan", () => {
                 identityMasked: null,
                 details: [
                   {
-                    productId: "zcode-v3-start-plan",
+                    productId: "codez-v3-start-plan",
                     productName: "Start Plan",
                     purchaseTime: null,
                     beginTime: null,
@@ -2534,8 +2534,8 @@ describe("model provider coding plan", () => {
     const html = renderToStaticMarkup(
       createElement(StartPlanCard, {
         preview: {
-          planId: "zcode-v3-start-plan",
-          name: "ZCode V3 Start Plan",
+          planId: "codez-v3-start-plan",
+          name: "Codez V3 Start Plan",
           entitlements: [
             {
               grantUnits: 3_000_000,
@@ -2557,7 +2557,7 @@ describe("model provider coding plan", () => {
     );
 
     expect(html).toContain("settings.modelProvider.startPlan.quotaSectionTitle");
-    expect(html).toContain("ZCode V3 Start Plan");
+    expect(html).toContain("Codez V3 Start Plan");
     expect(html).toContain("7 Million");
     expect(html).toContain("tokens per day");
     expect(html).toContain("GLM-5.2");
@@ -2575,8 +2575,8 @@ describe("model provider coding plan", () => {
     const html = renderToStaticMarkup(
       createElement(StartPlanCard, {
         preview: {
-          planId: "zcode-v3-start-plan",
-          name: "ZCode V3 Start Plan",
+          planId: "codez-v3-start-plan",
+          name: "Codez V3 Start Plan",
           entitlements: [
             {
               grantUnits: 10_000_000,
@@ -2606,8 +2606,8 @@ describe("model provider coding plan", () => {
     const html = renderToStaticMarkup(
       createElement(StartPlanCard, {
         preview: {
-          planId: "zcode-v3-start-plan",
-          name: "ZCode V3 Start Plan",
+          planId: "codez-v3-start-plan",
+          name: "Codez V3 Start Plan",
           entitlements: [
             {
               grantUnits: 5_000_000,
@@ -2631,8 +2631,8 @@ describe("model provider coding plan", () => {
     const html = renderToStaticMarkup(
       createElement(StartPlanCard, {
         preview: {
-          planId: "zcode-v3-start-plan",
-          name: "ZCode V3 Start Plan",
+          planId: "codez-v3-start-plan",
+          name: "Codez V3 Start Plan",
           entitlements: [],
         },
       }),
@@ -2650,8 +2650,8 @@ describe("model provider coding plan", () => {
       const html = renderToStaticMarkup(
         createElement(StartPlanCard, {
           preview: {
-            planId: "zcode-v3-start-plan",
-            name: "ZCode V3 Start Plan",
+            planId: "codez-v3-start-plan",
+            name: "Codez V3 Start Plan",
             entitlements: [
               {
                 grantUnits: 30_000_000,
@@ -2688,8 +2688,8 @@ describe("model provider coding plan", () => {
       const html = renderToStaticMarkup(
         createElement(StartPlanCard, {
           preview: {
-            planId: "zcode-v3-start-plan",
-            name: "ZCode V3 Start Plan",
+            planId: "codez-v3-start-plan",
+            name: "Codez V3 Start Plan",
             entitlements: [
               {
                 grantUnits: 5_000_000,
@@ -2764,8 +2764,8 @@ describe("model provider coding plan", () => {
 
   it("Z.ai Start 详情不显示体验套餐推广横幅", () => {
     primeStartPlanPreviewCacheForTest({
-      planId: "zcode-v3-start-plan",
-      name: "ZCode V3 Start Plan",
+      planId: "codez-v3-start-plan",
+      name: "Codez V3 Start Plan",
       entitlements: [
         {
           grantUnits: 5_000_000,
@@ -2790,7 +2790,7 @@ describe("model provider coding plan", () => {
       statusActive: false,
     });
 
-    expect(html).not.toContain("ZCode V3 Start Plan");
+    expect(html).not.toContain("Codez V3 Start Plan");
     expect(html).not.toContain("5 Million");
     expect(html).not.toContain("Daily quota · GLM-5.2 5M");
     expect(html).not.toContain("settings.modelProvider.codingPlan.purchaseBanner.personalTitle");
@@ -3376,7 +3376,7 @@ describe("model provider coding plan", () => {
           createProvider({
             id: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
             name: "Z.ai - Coding Plan",
-            apiKey: "zcode-jwt",
+            apiKey: "codez-jwt",
           }),
         ],
         entitledAccountProviderIds: new Set([
@@ -3409,8 +3409,8 @@ describe("model provider coding plan", () => {
                 identityMasked: null,
                 details: [
                   {
-                    productId: "zcode-v3-start-plan",
-                    productName: "ZCode V3 Start Plan",
+                    productId: "codez-v3-start-plan",
+                    productName: "Codez V3 Start Plan",
                     purchaseTime: null,
                     beginTime: null,
                     billingCycle: "daily",
@@ -3452,7 +3452,7 @@ describe("model provider coding plan", () => {
     });
     expect(zaiStartPlan).toMatchObject({
       status: "purchased",
-      currentProductId: "zcode-v3-start-plan",
+      currentProductId: "codez-v3-start-plan",
       statusActive: true,
     });
   });
@@ -3686,11 +3686,11 @@ describe("model provider coding plan", () => {
           providerName: "Z.ai",
           provider: createProvider({
             id: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
-            apiKey: "zcode-jwt",
+            apiKey: "codez-jwt",
           }),
           status: "purchased",
           planLevel: "Free",
-          currentProductId: "zcode-v3-start-plan",
+          currentProductId: "codez-v3-start-plan",
           subscriptionBillingCycle: null,
           subscriptionRenewTime: null,
           subscriptionExpireTime: null,
@@ -3859,11 +3859,11 @@ describe("model provider coding plan", () => {
           providerName: "Z.ai",
           provider: createProvider({
             id: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
-            apiKey: "zcode-jwt",
+            apiKey: "codez-jwt",
           }),
           status: "purchased",
           planLevel: "Free",
-          currentProductId: "zcode-v3-start-plan",
+          currentProductId: "codez-v3-start-plan",
           subscriptionBillingCycle: null,
           subscriptionRenewTime: null,
           subscriptionExpireTime: null,
@@ -4287,7 +4287,7 @@ describe("model provider coding plan", () => {
           createProvider({
             id: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
             name: "Z.ai - Coding Plan",
-            apiKey: "zcode-jwt",
+            apiKey: "codez-jwt",
           }),
         ],
         entitledAccountProviderIds: new Set([BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan]),
@@ -4303,8 +4303,8 @@ describe("model provider coding plan", () => {
                 identityMasked: null,
                 details: [
                   {
-                    productId: "zcode-v3-start-plan",
-                    productName: "ZCode V3 Start Plan",
+                    productId: "codez-v3-start-plan",
+                    productName: "Codez V3 Start Plan",
                     purchaseTime: null,
                     beginTime: null,
                     billingCycle: "daily",
@@ -5638,8 +5638,8 @@ describe("model provider coding plan", () => {
       // 生产数据形态：purchased 快照必带 active 套餐详情，额度桶带 plan_id。
       subscriptionDetails: [
         {
-          productId: "zcode-v3-start-plan",
-          productName: "ZCode V3 Start Plan",
+          productId: "codez-v3-start-plan",
+          productName: "Codez V3 Start Plan",
           purchaseTime: null,
           beginTime: null,
           billingCycle: "daily",
@@ -5649,8 +5649,8 @@ describe("model provider coding plan", () => {
       ],
       quotaLimits: [
         {
-          type: "ent_zcode_v3_glm_52",
-          planId: "zcode-v3-start-plan",
+          type: "ent_codez_v3_glm_52",
+          planId: "codez-v3-start-plan",
           number: 3_000_000,
           usage: 500_000,
           remaining: 2_500_000,
@@ -5658,8 +5658,8 @@ describe("model provider coding plan", () => {
           usageDetails: [{ modelCode: "glm-5.2", displayName: "GLM-5.2", usage: 500_000 }],
         },
         {
-          type: "ent_zcode_v3_glm_5turbo",
-          planId: "zcode-v3-start-plan",
+          type: "ent_codez_v3_glm_5turbo",
+          planId: "codez-v3-start-plan",
           number: 1_000_000,
           usage: 0,
           remaining: 1_000_000,
@@ -5673,8 +5673,8 @@ describe("model provider coding plan", () => {
           ],
         },
         {
-          type: "ent_zcode_v3_glm_coding_lite",
-          planId: "zcode-v3-start-plan",
+          type: "ent_codez_v3_glm_coding_lite",
+          planId: "codez-v3-start-plan",
           number: 2_000_000,
           usage: 0,
           remaining: 2_000_000,
@@ -5899,8 +5899,8 @@ describe("model provider coding plan", () => {
       // 生产数据形态：purchased 快照必带 active 套餐详情，额度桶带 plan_id。
       subscriptionDetails: [
         {
-          productId: "zcode-v3-start-plan",
-          productName: "ZCode V3 Start Plan",
+          productId: "codez-v3-start-plan",
+          productName: "Codez V3 Start Plan",
           purchaseTime: null,
           beginTime: null,
           billingCycle: "daily",
@@ -5910,8 +5910,8 @@ describe("model provider coding plan", () => {
       ],
       quotaLimits: [
         {
-          type: "ent_zcode_v3_glm_52",
-          planId: "zcode-v3-start-plan",
+          type: "ent_codez_v3_glm_52",
+          planId: "codez-v3-start-plan",
           number: 3_000_000,
           remaining: 2_734_000,
           usageDetails: [{ modelCode: "glm-5.2", displayName: "GLM-5.2", usage: 0 }],
@@ -5992,8 +5992,8 @@ describe("model provider coding plan", () => {
     // 否则违背 spec「无匹配 plan_id 的桶不得附着到任何卡片」。
     const quotaLimits = [
       {
-        type: "ent_zcode_v3_glm_52",
-        planId: "zcode-v3-start-plan",
+        type: "ent_codez_v3_glm_52",
+        planId: "codez-v3-start-plan",
         number: 3_000_000,
         remaining: 2_734_000,
         usageDetails: [{ modelCode: "glm-5.2", displayName: "GLM-5.2", usage: 0 }],
@@ -6138,8 +6138,8 @@ describe("model provider coding plan", () => {
     "BigModel Start Plan %s 详情隐藏远端体验套餐推广",
     (status) => {
       primeStartPlanPreviewCacheForTest({
-        planId: "zcode-v3-start-plan",
-        name: "ZCode V3 Start Plan",
+        planId: "codez-v3-start-plan",
+        name: "Codez V3 Start Plan",
         entitlements: [
           {
             grantUnits: 10_000_000,
@@ -6178,7 +6178,7 @@ describe("model provider coding plan", () => {
         statusActive: false,
       });
 
-      expect(html).not.toContain("ZCode V3 Start Plan");
+      expect(html).not.toContain("Codez V3 Start Plan");
       expect(html).not.toContain("30 Million");
       expect(html).not.toContain("tokens per day");
       expect(html).not.toContain("Daily quota · GLM-5.2 / GLM-5.1 / GLM-5-Turbo 10M each");
@@ -6223,8 +6223,8 @@ describe("model provider coding plan", () => {
   it("BigModel Start Plan 中文详情不显示推广额度", () => {
     intlMockState.locale = "zh-CN";
     primeStartPlanPreviewCacheForTest({
-      planId: "zcode-v3-start-plan",
-      name: "ZCode V3 Start Plan",
+      planId: "codez-v3-start-plan",
+      name: "Codez V3 Start Plan",
       entitlements: [
         {
           grantUnits: 5_000_000,
@@ -6249,7 +6249,7 @@ describe("model provider coding plan", () => {
       statusActive: false,
     });
 
-    expect(html).not.toContain("ZCode V3 Start Plan");
+    expect(html).not.toContain("Codez V3 Start Plan");
     expect(html).not.toContain("500万");
     expect(html).not.toContain("tokens/日");
     expect(html).not.toContain("每日额度 · GLM-5.2 500万");
@@ -6261,7 +6261,7 @@ describe("model provider coding plan", () => {
   it("BigModel Start Plan 中文详情保留标题且不显示体验推广", () => {
     intlMockState.locale = "zh-CN";
     primeStartPlanPreviewCacheForTest({
-      planId: "zcode-v3-start-plan",
+      planId: "codez-v3-start-plan",
       name: "Start Plan",
       entitlements: [
         {
@@ -6350,8 +6350,8 @@ describe("model provider coding plan", () => {
       resolveCodingPlanStatusCardTitle({
         isPurchased: true,
         isStartPlanProvider: true,
-        rawPlanLevel: "ZCode V3 Start Plan",
-        displayPlanLevel: "ZCode V3 Start Plan",
+        rawPlanLevel: "Codez V3 Start Plan",
+        displayPlanLevel: "Codez V3 Start Plan",
         startPlanTitle: "Start Plan",
         codingPlanTitle: "Coding Plan",
       }),
@@ -6757,8 +6757,8 @@ describe("model provider coding plan", () => {
         // 生产数据形态：purchased 快照必带 active 套餐详情，额度桶带 plan_id。
         subscriptionDetails: [
           {
-            productId: "zcode-v3-start-plan",
-            productName: "ZCode V3 Start Plan",
+            productId: "codez-v3-start-plan",
+            productName: "Codez V3 Start Plan",
             purchaseTime: null,
             beginTime: null,
             billingCycle: "daily",
@@ -6768,8 +6768,8 @@ describe("model provider coding plan", () => {
         ],
         quotaLimits: [
           {
-            type: "ent_zcode_v3_glm_52",
-            planId: "zcode-v3-start-plan",
+            type: "ent_codez_v3_glm_52",
+            planId: "codez-v3-start-plan",
             number: 3_000_000,
             usage: 500_000,
             remaining: 2_500_000,

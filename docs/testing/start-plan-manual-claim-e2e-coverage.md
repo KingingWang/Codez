@@ -88,13 +88,13 @@ claim response settled
 暂停条件。该轮询仍是 desktop/web 共用 Renderer 的只读曝光逻辑，不改变 desktop continuous 或手机端
 replayable task 恢复语义。
 
-环境判定同时读取 Vite 构建模式与编译期 `ZCODE_ENV`：只有 production build 且
-`ZCODE_ENV=production` 使用 10 分钟；Vite development 或 `ZCODE_ENV=test` 均使用 30 秒。
-Desktop E2E 虽使用 production bundle，但必须因 `ZCODE_ENV=test` 命中 30 秒周期。
+环境判定同时读取 Vite 构建模式与编译期 `CODEZ_ENV`：只有 production build 且
+`CODEZ_ENV=production` 使用 10 分钟；Vite development 或 `CODEZ_ENV=test` 均使用 30 秒。
+Desktop E2E 虽使用 production bundle，但必须因 `CODEZ_ENV=test` 命中 30 秒周期。
 
 ### E2E 登录与安全校验 fixture 契约
 
-正式领取用例必须由 WDIO 启动凭据种子保留 fake `zcodejwttoken`。普通 E2E 会主动删除该字段，
+正式领取用例必须由 WDIO 启动凭据种子保留 fake `codezjwttoken`。普通 E2E 会主动删除该字段，
 避免 fake JWT 访问真实套餐接口；但本 spec 的 Coding Plan endpoint 已固定指向 shard-owned 本地 mock，
 且 `claimManualPlan` 在发出 HTTP 请求前会先读取该 JWT。不能依赖一次性的 legacy `auth_token` 迁移：
 同一 spec 使用 `reloadSession` 重建 Electron 后，迁移源可能已经被消费，导致服务层直接返回 401，
@@ -102,8 +102,8 @@ Desktop E2E 虽使用 production bundle，但必须因 `ZCODE_ENV=test` 命中 3
 
 ```text
 WDIO startup credential seed
-  -> preserve fake zcodejwttoken for start-plan-manual-claim-experience
-  -> Electron reload restores authenticated ZCode session
+  -> preserve fake codezjwttoken for start-plan-manual-claim-experience
+  -> Electron reload restores authenticated Codez session
   -> deterministic verification success
   -> claimManualPlan reads JWT
   -> POST local /api/v1/zcode-plan/billing/claim
@@ -244,7 +244,7 @@ Desktop Renderer 使用不同的 instrumentation/source-map 粒度，不能直�
 - Provider fixture：不需要；case 不发送模型 prompt。
 - File-system fixture：隔离 E2E HOME 中的 credential、provider config、settings。
 - Timing：`fast-text`；安全校验超时升级只在 fake-timer unit 验证。
-- Coverage：运行 spec 时设置 `ZCODE_E2E_COVERAGE=1`，保存 Renderer Istanbul 报告；严格分支差异行覆盖率使用 focused Vitest V8 报告审计，避免混合不同 instrumentation 的 statement id。
+- Coverage：运行 spec 时设置 `CODEZ_E2E_COVERAGE=1`，保存 Renderer Istanbul 报告；严格分支差异行覆盖率使用 focused Vitest V8 报告审计，避免混合不同 instrumentation 的 statement id。
 - Promotion：2026-08-27 经人工确认后转入正式路径；该 auth/config/UI case 不依赖 provider replay fixture，正式运行继续使用确定性的本地 Coding Plan mock。
 
 # 2026-09-10 迁移说明

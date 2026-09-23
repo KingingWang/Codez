@@ -19,7 +19,7 @@ import {
   TID_CHAT_MODEL_SELECT_TRIGGER,
   TID_CHAT_THOUGHT_LEVEL_SELECT_TRIGGER,
   TID_V4_COMPOSER_INPUT,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clickV4SlashOption,
   getV4ComposerText,
@@ -41,7 +41,7 @@ import {
 
 const CUSTOM_SLASH_COMMAND_NAME = "e2e-draft-catalog";
 const CUSTOM_SLASH_OPTION_ID = `slash:${CUSTOM_SLASH_COMMAND_NAME}`;
-const CUSTOM_SLASH_COMMAND_DIR = join(getE2EAppDataPaths().homeDir, ".zcode", "commands");
+const CUSTOM_SLASH_COMMAND_DIR = join(getE2EAppDataPaths().homeDir, ".codez", "commands");
 const CUSTOM_SLASH_COMMAND_PATH = join(CUSTOM_SLASH_COMMAND_DIR, `${CUSTOM_SLASH_COMMAND_NAME}.md`);
 const COMPOSER_PICKER_TRIGGER_IDS = {
   mode: TID_CHAT_MODE_SELECT_TRIGGER,
@@ -293,8 +293,8 @@ describe("v4 M5 门禁：composer 工具条与 slash 候选面板", () => {
         const acks = await browser
           .execute(() =>
             JSON.stringify(
-              (window as Window & { __zcodeV4CommandAcksE2E?: unknown[] })
-                .__zcodeV4CommandAcksE2E ?? [],
+              (window as Window & { __codezV4CommandAcksE2E?: unknown[] })
+                .__codezV4CommandAcksE2E ?? [],
             ),
           )
           .catch(() => "acks unavailable");

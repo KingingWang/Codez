@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { zcodeSessionSendParamsSchema } from "../src/zcode-protocol/index.js";
-import { commandPayloadSchemas } from "../src/zcode-protocol-v4/command.js";
+import { codezSessionSendParamsSchema } from "../src/codez-protocol/index.js";
+import { commandPayloadSchemas } from "../src/codez-protocol-v4/command.js";
 
 describe("附件与文本发送的模型合同", () => {
   const modelSelection = {
@@ -15,7 +15,7 @@ describe("附件与文本发送的模型合同", () => {
     subagents: { foregroundModel: "submission", background: "deny" },
   };
   it("两种发送保留相同 Selection 与执行约束", () => {
-    const legacy = zcodeSessionSendParamsSchema.parse({
+    const legacy = codezSessionSendParamsSchema.parse({
       sessionId: "session",
       content: "hi",
       attachments: [],
@@ -32,11 +32,11 @@ describe("附件与文本发送的模型合同", () => {
   });
   it("缺 Selection 或非法执行范围不能通过附件入口绕过校验", () => {
     expect(
-      zcodeSessionSendParamsSchema.safeParse({ sessionId: "s", content: "hi", modelExecution })
+      codezSessionSendParamsSchema.safeParse({ sessionId: "s", content: "hi", modelExecution })
         .success,
     ).toBe(false);
     expect(
-      zcodeSessionSendParamsSchema.safeParse({
+      codezSessionSendParamsSchema.safeParse({
         sessionId: "s",
         content: "hi",
         modelSelection,

@@ -1,7 +1,7 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
+import type { IServiceAccessor } from "@codez/services";
 
 // 回归背景（docs/remote-workspace-provider-sync-hang.md）：3.8.1 中 onSelectProject 的
 // Promise 永久 pending 会让向导「选择目录」按钮永远停在加载中。修复保证该 Promise 必定
@@ -13,7 +13,7 @@ const captured = vi.hoisted(() => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSnapshotDedupeKey } from "../src/hooks/useZCodeTaskService.js";
+import { buildSnapshotDedupeKey } from "../src/hooks/useCodezTaskService.js";
 
 describe("buildSnapshotDedupeKey", () => {
   it("separates replayable snapshots by historical model hint", () => {

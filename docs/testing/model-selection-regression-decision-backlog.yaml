@@ -1709,7 +1709,7 @@ entries:
     recommendation: "当前实现倾向拒绝整份 release；补充 remote、active、bundled 三种来源的一致证据。"
     evidence:
       [
-        "runtime: decodeZCodeBuiltinRelease rejects RETIRED_ZAPI_PROVIDER_ID",
+        "runtime: decodeCodezBuiltinRelease rejects RETIRED_ZAPI_PROVIDER_ID",
         "code comment: prevent re-publishing retired provider through Host Registry",
       ]
     blockingCases: [MSR-REG-019, MSR-MIGRATION-007]
@@ -1790,7 +1790,7 @@ entries:
     evidence:
       [
         "runtime: applyRemoteRelease implements updated/unchanged/stale and same-revision conflict",
-        "tests: packages/provider-node/test/zcode-builtin-release.test.ts",
+        "tests: packages/provider-node/test/codez-builtin-release.test.ts",
       ]
     blockingCases: [MSR-REG-017, MSR-REMOTE-009]
 

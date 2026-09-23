@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ZCodeTaskMeta, ZCodeWorkspaceTaskListChanged } from "@zcode/shared";
+import type { CodezTaskMeta, CodezWorkspaceTaskListChanged } from "@codez/shared";
 import {
   resetTaskStatusUnreadSyncForTest,
   shouldMarkStatusEventTaskUnread,
@@ -10,10 +10,10 @@ import {
   buildTaskListCacheDescriptor,
   buildTaskListCacheKeyFromDescriptor,
 } from "@/lib/taskQueryCache.js";
-import { getTaskUnreadIndicator, useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { getTaskUnreadIndicator, useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";
 
-function createTaskMeta(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
+function createTaskMeta(overrides: Partial<CodezTaskMeta> = {}): CodezTaskMeta {
   return {
     taskId: "task-1",
     traceId: "trace-1",
@@ -28,9 +28,9 @@ function createTaskMeta(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
 }
 
 function createStatusEvent(
-  taskMeta: ZCodeTaskMeta,
-  overrides: Partial<ZCodeWorkspaceTaskListChanged> = {},
-): ZCodeWorkspaceTaskListChanged {
+  taskMeta: CodezTaskMeta,
+  overrides: Partial<CodezWorkspaceTaskListChanged> = {},
+): CodezWorkspaceTaskListChanged {
   return {
     type: "workspace_task_list_changed",
     workspacePath: taskMeta.workspacePath,
@@ -62,7 +62,7 @@ function createService() {
   };
 }
 
-function seedQueryTask(task: ZCodeTaskMeta): string {
+function seedQueryTask(task: CodezTaskMeta): string {
   const descriptor = buildTaskListCacheDescriptor({
     kind: "workspace",
     workspaceScopes: [
@@ -85,7 +85,7 @@ function seedQueryTask(task: ZCodeTaskMeta): string {
   return queryKey;
 }
 
-function getQueryTask(task: ZCodeTaskMeta): ZCodeTaskMeta | undefined {
+function getQueryTask(task: CodezTaskMeta): CodezTaskMeta | undefined {
   return useTaskQueryCacheStore.getState().taskMetaByEntityKey[buildTaskEntityKey(task)];
 }
 
@@ -108,14 +108,14 @@ function syncStatusEvent(
 describe("task status unread sync", () => {
   afterEach(() => {
     resetTaskStatusUnreadSyncForTest();
-    useZCodeSessionStore.setState({ workspaces: {} });
+    useCodezSessionStore.setState({ workspaces: {} });
     useTaskQueryCacheStore.getState().clearAll();
   });
 
   it("inactive terminal status event marks the query row unread before persistence settles", async () => {
     const task = createTaskMeta({ status: "completed" });
     const service = createService();
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     seedQueryTask(task);
     store.setActiveTaskId("/repo/demo", "other-task");
 
@@ -132,7 +132,7 @@ describe("task status unread sync", () => {
     expect(getQueryTask(task)?.unreadAt).toEqual(expect.any(Number));
     expect(
       getTaskUnreadIndicator(
-        useZCodeSessionStore.getState().getWorkspaceState("/repo/demo"),
+        useCodezSessionStore.getState().getWorkspaceState("/repo/demo"),
         "task-1",
       ),
     ).toBe(true);
@@ -148,18 +148,18 @@ describe("task status unread sync", () => {
 
   it("keeps the unread overlay when an older membership result arrives in flight", async () => {
     const task = createTaskMeta({ status: "completed" });
-    let resolvePersistence!: (taskMeta: ZCodeTaskMeta) => void;
+    let resolvePersistence!: (taskMeta: CodezTaskMeta) => void;
     const service = {
       setTaskUnread: vi.fn(
         () =>
-          new Promise<ZCodeTaskMeta>((resolve) => {
+          new Promise<CodezTaskMeta>((resolve) => {
             resolvePersistence = resolve;
           }),
       ),
     };
     const queryKey = seedQueryTask(task);
     const descriptor = useTaskQueryCacheStore.getState().resultsByQueryKey[queryKey]!.descriptor;
-    useZCodeSessionStore.getState().setActiveTaskId("/repo/demo", "other-task");
+    useCodezSessionStore.getState().setActiveTaskId("/repo/demo", "other-task");
 
     syncStatusEvent({ event: createStatusEvent(task), service });
     const optimisticUnreadAt = getQueryTask(task)?.unreadAt;
@@ -200,16 +200,16 @@ describe("task status unread sync", () => {
 
   it("stores the overlay before a newly created task row is published", async () => {
     const task = createTaskMeta({ status: "completed" });
-    let resolvePersistence!: (taskMeta: ZCodeTaskMeta) => void;
+    let resolvePersistence!: (taskMeta: CodezTaskMeta) => void;
     const service = {
       setTaskUnread: vi.fn(
         () =>
-          new Promise<ZCodeTaskMeta>((resolve) => {
+          new Promise<CodezTaskMeta>((resolve) => {
             resolvePersistence = resolve;
           }),
       ),
     };
-    useZCodeSessionStore.getState().setActiveTaskId("/repo/demo", "other-task");
+    useCodezSessionStore.getState().setActiveTaskId("/repo/demo", "other-task");
 
     syncStatusEvent({ event: createStatusEvent(task), service });
 
@@ -235,7 +235,7 @@ describe("task status unread sync", () => {
   it("active terminal status event stays read", () => {
     const task = createTaskMeta({ status: "completed" });
     const service = createService();
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     seedQueryTask(task);
     store.setActiveTaskId("/repo/demo", "task-1");
 
@@ -248,7 +248,7 @@ describe("task status unread sync", () => {
     expect(getQueryTask(task)?.unreadAt).toBeUndefined();
     expect(
       getTaskUnreadIndicator(
-        useZCodeSessionStore.getState().getWorkspaceState("/repo/demo"),
+        useCodezSessionStore.getState().getWorkspaceState("/repo/demo"),
         "task-1",
       ),
     ).toBe(false);
@@ -260,7 +260,7 @@ describe("task status unread sync", () => {
     seedQueryTask(task);
     // 切换 workspace 不会清掉旧 workspace 保存的 activeTaskId；全局焦点已经离开时，
     // 这个 task 的终态仍应被视为后台完成。
-    useZCodeSessionStore.getState().setActiveTaskId("/repo/demo", task.taskId);
+    useCodezSessionStore.getState().setActiveTaskId("/repo/demo", task.taskId);
 
     syncStatusEvent({
       event: createStatusEvent(task),
@@ -290,7 +290,7 @@ describe("task status unread sync", () => {
     const task = createTaskMeta({ status: "completed" });
     const service = createService();
     seedQueryTask(task);
-    useZCodeSessionStore.getState().setActiveTaskId("/repo/demo", "other-task");
+    useCodezSessionStore.getState().setActiveTaskId("/repo/demo", "other-task");
 
     syncStatusEvent({
       event: createStatusEvent(task, { unreadSignal: undefined }),
@@ -305,7 +305,7 @@ describe("task status unread sync", () => {
     const task = createTaskMeta({ status: "error", updatedAt: 9 });
     const event = createStatusEvent(task);
     const service = createService();
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     seedQueryTask(task);
     store.setActiveTaskId("/repo/demo", "other-task");
 
@@ -323,7 +323,7 @@ describe("task status unread sync", () => {
         throw new Error("write failed");
       }),
     };
-    useZCodeSessionStore.getState().setActiveTaskId("/repo/demo", "other-task");
+    useCodezSessionStore.getState().setActiveTaskId("/repo/demo", "other-task");
 
     syncStatusEvent({ event: createStatusEvent(task), service });
     expect(getQueryTask(task)?.unreadAt).toEqual(expect.any(Number));
@@ -334,7 +334,7 @@ describe("task status unread sync", () => {
       expect(useTaskQueryCacheStore.getState().resultsByQueryKey[queryKey]?.stale).toBe(true);
       expect(
         getTaskUnreadIndicator(
-          useZCodeSessionStore.getState().getWorkspaceState("/repo/demo"),
+          useCodezSessionStore.getState().getWorkspaceState("/repo/demo"),
           task.taskId,
         ),
       ).toBe(false);
@@ -353,7 +353,7 @@ describe("task status unread sync", () => {
     seedQueryTask(firstTask);
     seedQueryTask(siblingTask);
     const service = createService();
-    useZCodeSessionStore
+    useCodezSessionStore
       .getState()
       .setActiveTaskId(firstTask.workspacePath, "other-task", firstTask.workspaceIdentity);
 

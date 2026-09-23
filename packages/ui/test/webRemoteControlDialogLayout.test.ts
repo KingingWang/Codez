@@ -79,7 +79,7 @@ vi.mock("@/hooks/useConfirmDialog.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (selector: (state: { theme: string }) => unknown) =>
+  useCodezStore: (selector: (state: { theme: string }) => unknown) =>
     selector({ theme: "zai-dark" }),
 }));
 
@@ -90,7 +90,7 @@ const intlMock = vi.hoisted(() => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => intlMock,
+  useCodezIntl: () => intlMock,
 }));
 
 vi.mock("@/logger.js", () => ({

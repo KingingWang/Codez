@@ -6,7 +6,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "zh-CN",
   }),
 }));
@@ -35,7 +35,7 @@ const items: DraftSuggestedPromptItem[] = [
       en: "Create a PDF from the workspace.",
     },
     plugin: {
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@codez-plugins-official",
       label: { cn: "文档技能", en: "Document skills" },
     },
   },
@@ -128,15 +128,15 @@ describe("ConversationDraftSuggestedPrompts", () => {
     render(createElement(ConversationDraftSuggestedPrompts, { items }));
     const rows = screen.getAllByRole("button");
 
-    expect(rows[0]?.classList.contains("zcode-draft-prompt-waterfall")).toBe(true);
-    expect(rows[1]?.classList.contains("zcode-draft-prompt-waterfall")).toBe(true);
-    expect(rows[0]?.style.getPropertyValue("--zcode-draft-prompt-waterfall-delay")).toBe("0ms");
-    expect(rows[1]?.style.getPropertyValue("--zcode-draft-prompt-waterfall-delay")).toBe("65ms");
-    expect(stylesSource).toContain("@keyframes zcode-draft-prompt-waterfall");
+    expect(rows[0]?.classList.contains("codez-draft-prompt-waterfall")).toBe(true);
+    expect(rows[1]?.classList.contains("codez-draft-prompt-waterfall")).toBe(true);
+    expect(rows[0]?.style.getPropertyValue("--codez-draft-prompt-waterfall-delay")).toBe("0ms");
+    expect(rows[1]?.style.getPropertyValue("--codez-draft-prompt-waterfall-delay")).toBe("65ms");
+    expect(stylesSource).toContain("@keyframes codez-draft-prompt-waterfall");
     expect(stylesSource).toContain("clip-path: inset(0 0 100% 0)");
     expect(stylesSource).toContain("transform: translateY(-12px)");
     expect(stylesSource).toMatch(
-      /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.zcode-draft-prompt-waterfall[\s\S]*?animation: none/u,
+      /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.codez-draft-prompt-waterfall[\s\S]*?animation: none/u,
     );
   });
 
@@ -187,7 +187,7 @@ describe("ConversationDraftSuggestedPrompts", () => {
     expect(onSelect).toHaveBeenCalledOnce();
     expect(onSelect).toHaveBeenCalledWith(items[1]);
     expect(items[0]?.plugin).toBeUndefined();
-    expect(items[1]?.plugin?.stableId).toBe("document-skills@zcode-plugins-official");
+    expect(items[1]?.plugin?.stableId).toBe("document-skills@codez-plugins-official");
 
     view.rerender(createElement(ConversationDraftSuggestedPrompts, { items }));
     expect(() => fireEvent.click(screen.getAllByRole("button")[0]!)).not.toThrow();
@@ -300,7 +300,7 @@ describe("ConversationDraftSuggestedPrompts", () => {
     expect(componentSource).toContain("duration: 0.2");
     expect(componentSource).toContain("ease: [0.4, 0, 0.2, 1]");
     expect(componentSource).toContain("useReducedMotion");
-    expect(stylesSource).not.toContain("zcode-draft-plugin-success-flip");
+    expect(stylesSource).not.toContain("codez-draft-plugin-success-flip");
     expect(screen.queryByRole("button", { name: "确认" })).toBeNull();
   });
 

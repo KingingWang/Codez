@@ -6,20 +6,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 describe("desktop main logger", () => {
   afterEach(async () => {
     vi.restoreAllMocks();
-    const services = await import("@zcode/services/node");
+    const services = await import("@codez/services/node");
     services.resetProcessFsFaultInjectorForTests();
     services.setDataBaseDir(null);
     vi.resetModules();
   });
 
   it("swallows injected append faults for main and dedicated log files", async () => {
-    const tempRoot = await mkdtemp(join(tmpdir(), "zcode-desktop-log-fault-"));
+    const tempRoot = await mkdtemp(join(tmpdir(), "codez-desktop-log-fault-"));
     vi.spyOn(console, "log").mockImplementation(() => undefined);
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     try {
       vi.resetModules();
-      const services = await import("@zcode/services/node");
+      const services = await import("@codez/services/node");
       services.setDataBaseDir(tempRoot);
       services.setFsFaultInjectorForTests(
         services.createFsFaultInjector([
@@ -38,7 +38,7 @@ describe("desktop main logger", () => {
       expect(() => logger.info("main log append fault")).not.toThrow();
       expect(() => webRemoteControlRelayLogger.warn("relay log append fault")).not.toThrow();
 
-      const logDir = join(tempRoot, ".zcode", "v2", "logs");
+      const logDir = join(tempRoot, ".codez", "v2", "logs");
       await expect(readdir(logDir)).resolves.toEqual(["web-remote-control"]);
       await expect(readdir(join(logDir, "web-remote-control"))).resolves.toEqual([]);
 

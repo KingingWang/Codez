@@ -28,8 +28,8 @@ export function resolveTaskTitleMarqueeDatabasePath(
 export function seedTaskTitleMarqueeFixture(options: SeedTaskTitleMarqueeFixtureOptions): void {
   seedProviderReadinessHistoryFixture(options);
   // Bug 根因：fixture 若自行拼接 storage profile，上游回滚开发态目录后会继续
-  // 写到已废弃的 `.zcode-dev`。统一复用 runtime path helper，跟随当前 E2E
-  // 固定 `.zcode` 合同；Node 当前仅提供同步 SQLite API，这里仍只在 Host 启动前执行。
+  // 写到已废弃的 `.codez-dev`。统一复用 runtime path helper，跟随当前 E2E
+  // 固定 `.codez` 合同；Node 当前仅提供同步 SQLite API，这里仍只在 Host 启动前执行。
   const database = new DatabaseSync(resolveTaskTitleMarqueeDatabasePath(options.e2eHomeDir));
   database.exec(`
     CREATE TABLE IF NOT EXISTS task_groups (

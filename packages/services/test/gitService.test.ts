@@ -18,7 +18,7 @@ import type {
   GitDiffResult,
   GitFileChange,
   GitRepositorySummary,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { GitCommitMessageGenerator } from "../src/git/gitCommitMessageGenerator.js";
 import { createGitService } from "../src/git/gitService.js";
 import type { GitCliRepo } from "../src/git/repo/gitCliRepo.js";
@@ -127,7 +127,7 @@ function resolveGitPath(repoPath: string, gitPath: string): string {
 }
 
 function createRepoTemplate(): string {
-  const repoPath = mkdtempSync(join(tmpdir(), "zcode-git-template-"));
+  const repoPath = mkdtempSync(join(tmpdir(), "codez-git-template-"));
   const workspacePath = join(repoPath, "packages", "app");
   mkdirSync(workspacePath, { recursive: true });
   mkdirSync(join(repoPath, "packages", "other"), { recursive: true });
@@ -137,7 +137,7 @@ function createRepoTemplate(): string {
 
   runGit(repoPath, ["init"]);
   runGit(repoPath, ["branch", "-M", "main"]);
-  runGit(repoPath, ["config", "user.name", "ZCode Tester"]);
+  runGit(repoPath, ["config", "user.name", "Codez Tester"]);
   runGit(repoPath, ["config", "user.email", "tester@example.com"]);
   runGit(repoPath, ["config", "commit.gpgsign", "false"]);
   runGit(repoPath, ["config", "core.autocrlf", "false"]);
@@ -155,14 +155,14 @@ async function createRepo(options?: { withRemote?: boolean }) {
 
   // Bugfix: 每个 case 原本都通过 8 个同步 Git 子进程从零建库；related 测试并发时会耗尽
   // macOS 的进程启动队列。复用一次性模板并复制独立工作树，保留真实 Git 行为与 case 隔离。
-  const repoContainer = makeTempDir("zcode-git-repo-");
+  const repoContainer = makeTempDir("codez-git-repo-");
   const repoPath = join(repoContainer, "repo");
   await cp(repoTemplatePath, repoPath, { recursive: true });
   const workspacePath = join(repoPath, "packages", "app");
 
   let remotePath: string | null = null;
   if (options?.withRemote) {
-    remotePath = makeTempDir("zcode-git-remote-");
+    remotePath = makeTempDir("codez-git-remote-");
     runGit(undefined, ["init", "--bare", remotePath]);
     runGit(repoPath, ["remote", "add", "origin", remotePath]);
     runGit(repoPath, ["push", "-u", "origin", "main"]);
@@ -260,11 +260,11 @@ describeIfGit("gitService", () => {
       "commit-tree",
       "HEAD^{tree}",
       "-m",
-      "zcode checkpoint hidden",
+      "codez checkpoint hidden",
     ]);
     runGit(repoPath, [
       "update-ref",
-      "refs/zcode/checkpoints/test-workspace/hidden",
+      "refs/codez/checkpoints/test-workspace/hidden",
       hiddenCheckpointOid,
     ]);
 
@@ -272,7 +272,7 @@ describeIfGit("gitService", () => {
 
     expect(graph.hasMore).toBe(false);
     expect(graph.commits.map((commit) => commit.subject)).not.toContain(
-      "zcode checkpoint hidden",
+      "codez checkpoint hidden",
     );
     expect(graph.commits[0]).toMatchObject({
       subject: "merge graph branch",
@@ -623,7 +623,7 @@ describeIfGit("gitService", () => {
     expect(summary.isRepository).toBe(true);
 
     const identity = await service.getIdentity({ workspacePath });
-    expect(identity.userName).toBe("ZCode Tester");
+    expect(identity.userName).toBe("Codez Tester");
     expect(identity.userEmail).toBe("tester@example.com");
     expect(identity.nameSource).toContain(".git/config");
     expect(identity.scopeLabel).toBe("local");
@@ -661,7 +661,7 @@ describeIfGit("gitService", () => {
       includeIdentity: true,
     });
     expect(refresh.summary.isDirty).toBe(true);
-    expect(refresh.identity?.userName).toBe("ZCode Tester");
+    expect(refresh.identity?.userName).toBe("Codez Tester");
     expect(
       refresh.unstagedChanges
         .map((change) => `${change.section}:${change.workspaceRelativePath}`)

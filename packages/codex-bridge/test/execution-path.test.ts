@@ -16,7 +16,7 @@ test("windows verbatim spellings normalize to the same path", () => {
 });
 
 test("alias and physical spellings of one directory compare equal", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-execution-path-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-execution-path-"));
   const physical = join(root, "physical");
   const alias = join(root, "alias");
   const foreign = join(root, "foreign");

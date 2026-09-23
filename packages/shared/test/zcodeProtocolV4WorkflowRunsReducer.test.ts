@@ -12,7 +12,7 @@ import {
   workflowRunsStateSchema,
   type WorkflowRunProgressEnvelope,
   type WorkflowRunsState,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 const RUN_ID = "dwfrun-1";
 
@@ -401,7 +401,7 @@ describe("reduceWorkflowRunsState：resumable 状态位", () => {
     expect(explicit?.runs[0]?.resumable).toBeUndefined();
   });
 
-  // 停止原因（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md）：只在 stopped 上搬运，闭集之外与其余
+  // 停止原因（apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md）：只在 stopped 上搬运，闭集之外与其余
   // 终态上的 stopReason 一律丢弃——reducer 不替 CLI 编原因。
   it("run-settled 的 stopReason 只在 stopped 上搬运，且只收四个值", () => {
     const progress = progressLog();
@@ -853,7 +853,7 @@ describe("reduceWorkflowRunsState：幂等重放", () => {
   });
 });
 
-// ── 升级问答（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md）──────────────────────────────
+// ── 升级问答（apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md）──────────────────────────────
 // 两个事件维护同一张「现在还欠谁一个答案」的表：raised 加、resolved 减。身份是 qid（全局唯一、
 // 跨 run），不是站点实例——升级没有 site 身份，不写 dwf_node 行、不占 maxNodes。
 describe("reduceWorkflowRunsState：升级问答", () => {
@@ -1690,7 +1690,7 @@ describe("reduceWorkflowRunsState：用户面产物", () => {
     title: "注意力之书",
     contentType: "application/pdf",
     bytes: 4_194_304,
-    uri: "zcode-artifact://session-1/tool-result-abc",
+    uri: "codez-artifact://session-1/tool-result-abc",
     sourcePath: "out/book.pdf",
     publishedAt: PUBLISHED_AT,
     ...overrides,
@@ -2358,7 +2358,7 @@ describe("workflowRuns reducer · phaseName（实例的出生阶段）", () => {
   });
 });
 
-describe("run-launched：发起锚点事件只抬水位（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md「Token telemetry for subagents」）", () => {
+describe("run-launched：发起锚点事件只抬水位（apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md「Token telemetry for subagents」）", () => {
   it("run-started 之后的 run-launched 不改状态，只推进 lastEventSequence", () => {
     const progress = progressLog();
     const started = step(

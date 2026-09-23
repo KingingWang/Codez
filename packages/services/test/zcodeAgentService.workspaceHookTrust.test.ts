@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { zcodeProtocolMethods } from "@zcode/shared";
+import { codezProtocolMethods } from "@codez/shared";
 
-describe("ZCodeAgentService workspace Hook Trust", () => {
+describe("CodezAgentService workspace Hook Trust", () => {
   it("没有 task/provider 时只启动 read-only Agent 并发送 workspace grant", async () => {
     const request = vi.fn(async (method: string) => {
-      if (method === zcodeProtocolMethods.workspaceHookTrustGrant) {
+      if (method === codezProtocolMethods.workspaceHookTrustGrant) {
         return { accepted: true };
       }
       throw new Error(`Unexpected method ${method}`);
@@ -17,8 +17,8 @@ describe("ZCodeAgentService workspace Hook Trust", () => {
       onClose: () => ({ dispose() {} }),
     }));
     vi.resetModules();
-    vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class {
+    vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+      CodezAgentProcessManager: class {
         getClient = getClient;
         onRuntimeLifecycle() {
           return { dispose() {} };
@@ -29,10 +29,10 @@ describe("ZCodeAgentService workspace Hook Trust", () => {
         disposeAll() {}
       },
     }));
-    const { createZCodeAgentService } = await import(
-      "../src/zcode-agent/zcodeAgentService.js"
+    const { createCodezAgentService } = await import(
+      "../src/codez-agent/codezAgentService.js"
     );
-    const service = createZCodeAgentService();
+    const service = createCodezAgentService();
 
     await expect(
       service.grantWorkspaceHookTrust({
@@ -45,7 +45,7 @@ describe("ZCodeAgentService workspace Hook Trust", () => {
     ).resolves.toEqual({ accepted: true });
     expect(getClient).toHaveBeenCalledTimes(1);
     expect(request).toHaveBeenCalledWith(
-      zcodeProtocolMethods.workspaceHookTrustGrant,
+      codezProtocolMethods.workspaceHookTrustGrant,
       {
         workspace: {
           workspacePath: "/repo",

@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 // toolCall 与 toolOutput 两条 union 共用同一个成员 schema，所以从导出的那一条进就够了。
-import { toolCallDisplaySchema } from "../src/zcode-protocol-v4/index.js";
+import { toolCallDisplaySchema } from "../src/codez-protocol-v4/index.js";
 
 /** CLI 侧 createGetWorkflowRunDisplay 在一个情势完整的 run 上会发出的载荷。 */
 const CARD = {

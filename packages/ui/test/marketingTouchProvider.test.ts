@@ -51,7 +51,7 @@ vi.mock("@/hooks/useProviderSettingsView.js", () => ({
 vi.mock("@/hooks/useServices.js", () => ({ useServices: () => h.services }));
 vi.mock("@/hooks/usePlatform.js", () => ({ usePlatform: () => h.platform }));
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (selector: (state: typeof h.store) => unknown) => selector(h.store),
+  useCodezStore: (selector: (state: typeof h.store) => unknown) => selector(h.store),
 }));
 vi.mock("@/store/TabStoreProvider.js", () => ({
   useTabStore: (selector: (state: typeof h.tabs) => unknown) => selector(h.tabs),
@@ -65,7 +65,7 @@ vi.mock("@/settings/CodingPlanUpgradeDialogProvider.js", () => ({
 }));
 vi.mock("@/rewards/RewardsProvider.js", () => ({ useOpenRewards: () => h.rewards }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: h.intl, locale: "en-US" }),
+  useCodezIntl: () => ({ intl: h.intl, locale: "en-US" }),
 }));
 vi.mock("@/components/cloud-content-dialog/useCloudHeroEnvironment.js", () => ({
   useCloudHeroEnvironment: () => ({ dark: false }),

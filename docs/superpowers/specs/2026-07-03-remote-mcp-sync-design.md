@@ -2,16 +2,16 @@
 
 ## 背景
 
-ZCode 当前已经支持把本地用户级 Skills 同步到 SSH 远端主机。MCP 的运行链路与 Skills 有相似处：本地设置页读取本机用户目录中的 MCP 配置，创建或恢复 ZCode Agent session 时把启用的 MCP 配置显式下发给 agent，agent 再在其所在运行时启动 stdio MCP 或连接 HTTP / SSE MCP。
+Codez 当前已经支持把本地用户级 Skills 同步到 SSH 远端主机。MCP 的运行链路与 Skills 有相似处：本地设置页读取本机用户目录中的 MCP 配置，创建或恢复 Codez Agent session 时把启用的 MCP 配置显式下发给 agent，agent 再在其所在运行时启动 stdio MCP 或连接 HTTP / SSE MCP。
 
-这意味着 SSH 远程 workspace 里，MCP 进程实际运行在远端 zcode-server 所在主机上。当前本地用户级 MCP 可以通过 session 参数临时传给远端 runtime，但远端用户目录并不会持久化这批 MCP 配置。用户在远端主机上重新打开 workspace、手机端通过 shared-host 进入同一远端 workspace、或远端 runtime 自行读取配置时，仍然缺少远端 `~/.zcode/cli/config.json` 中的用户级 MCP 配置。
+这意味着 SSH 远程 workspace 里，MCP 进程实际运行在远端 codez-server 所在主机上。当前本地用户级 MCP 可以通过 session 参数临时传给远端 runtime，但远端用户目录并不会持久化这批 MCP 配置。用户在远端主机上重新打开 workspace、手机端通过 shared-host 进入同一远端 workspace、或远端 runtime 自行读取配置时，仍然缺少远端 `~/.codez/cli/config.json` 中的用户级 MCP 配置。
 
 ## 目标
 
-- 允许用户在已连接 SSH 远程 workspace 中，把本机用户级 ZCode Agent MCP 配置同步到该 SSH 主机的远端用户级 `~/.zcode/cli/config.json`。
+- 允许用户在已连接 SSH 远程 workspace 中，把本机用户级 Codez Agent MCP 配置同步到该 SSH 主机的远端用户级 `~/.codez/cli/config.json`。
 - 本机候选只包含用户级 MCP，不包含 workspace 级 MCP、plugin MCP、系统内置 MCP 或外部 Agent 原始来源。
-- 候选发现语义与本地 MCP 设置保持一致：优先读取 `~/.zcode/cli/config.json` 的 `mcp.servers`；当该 scope 下没有 ZCode MCP server 时，兼容读取 `~/.agents/mcp.json` 的 `mcpServers`。
-- 远端导入写入 `~/.zcode/cli/config.json` 的 `mcp.servers`，不写 `.agents`。
+- 候选发现语义与本地 MCP 设置保持一致：优先读取 `~/.codez/cli/config.json` 的 `mcp.servers`；当该 scope 下没有 Codez MCP server 时，兼容读取 `~/.agents/mcp.json` 的 `mcpServers`。
+- 远端导入写入 `~/.codez/cli/config.json` 的 `mcp.servers`，不写 `.agents`。
 - 远端已存在同名 MCP 时默认跳过，不覆盖。
 - stdio / context7 这类命令型 MCP 可直接复制配置；不检查远端是否已经安装命令、包管理器或依赖。
 - HTTP / SSE MCP 直接复制 URL、headers、token 等 secret 字段，允许 secret 写入远端配置文件。
@@ -24,7 +24,7 @@ ZCode 当前已经支持把本地用户级 Skills 同步到 SSH 远端主机。M
 - 首版不同步 workspace 级 MCP。workspace 配置属于项目文件，应该通过代码仓库、远端文件编辑或单独的 workspace 配置同步设计处理。
 - 首版不迁移 plugin MCP。plugin MCP 来源于插件安装状态，不能当作用户级配置复制。
 - 首版不验证远端环境可用性。context7、npx、uvx、自定义命令是否存在，由远端运行时在实际 mcp/list 或 session 启动时暴露状态。
-- 首版不把远端 `.agents/mcp.json` 迁移为 `.zcode/cli/config.json`；若远端已经有效存在同名 server，同步结果显示 skipped。
+- 首版不把远端 `.agents/mcp.json` 迁移为 `.codez/cli/config.json`；若远端已经有效存在同名 server，同步结果显示 skipped。
 - 不新增通用远端文件写入 API。
 
 ## MCP 本地运行逻辑
@@ -32,14 +32,14 @@ ZCode 当前已经支持把本地用户级 Skills 同步到 SSH 远端主机。M
 本地 MCP 读取发生在 renderer 的 MCP store：
 
 1. `mcpStore.loadMcpFromUserDirectory()` 通过 `IPlatformService.loadMcpFromUserDirectory()` 读取宿主用户目录。
-2. desktop platform 的实现读取 workspace scope，再读取 user scope；每个 scope 先读 `.zcode`，如果没有 server 再读 `.agents`。
-3. UI 内存里得到 `ZCodeMcpServer[]`，用户可启用、禁用、编辑或删除。
-4. 创建 / 恢复 task 前，`getEnabledMcpServersForZCode()` 把启用的 `zcodeagentmcp` 配置转成 ZCode Protocol 的 `mcpServers` 参数。
-5. service adapter 把 `mcpServers` 传给 zcode-agent create/resume session。
-6. zcode-server / bootstrap 把 protocol MCP 转成 runtime config，agent runtime 再调用 MCP adapter。
+2. desktop platform 的实现读取 workspace scope，再读取 user scope；每个 scope 先读 `.codez`，如果没有 server 再读 `.agents`。
+3. UI 内存里得到 `CodezMcpServer[]`，用户可启用、禁用、编辑或删除。
+4. 创建 / 恢复 task 前，`getEnabledMcpServersForCodez()` 把启用的 `codezagentmcp` 配置转成 Codez Protocol 的 `mcpServers` 参数。
+5. service adapter 把 `mcpServers` 传给 codez-agent create/resume session。
+6. codez-server / bootstrap 把 protocol MCP 转成 runtime config，agent runtime 再调用 MCP adapter。
 7. stdio MCP 使用 agent runtime 所在机器的 `command` / `args` 启动；HTTP / SSE MCP 使用 URL 和 headers 连接远端服务。
 
-因此 SSH remote 下的 MCP 运行位置是远端 zcode-server 所在机器。本地配置直接传给远端 runtime 可以临时生效，但不能代表远端用户目录已经持久化。
+因此 SSH remote 下的 MCP 运行位置是远端 codez-server 所在机器。本地配置直接传给远端 runtime 可以临时生效，但不能代表远端用户目录已经持久化。
 
 ## 服务边界
 
@@ -48,9 +48,9 @@ ZCode 当前已经支持把本地用户级 Skills 同步到 SSH 远端主机。M
 - `IMcpSyncService.listLocalUserMcpCandidates()`：在调用方所在机器列出用户级 MCP 候选。renderer 通过 base services 调用时读取本机用户目录；通过 remote services 调用时读取远端用户目录。
 - `IMcpSyncService.listRemoteUserMcpStatuses({ names })`：在远端查询同名 server 是否已存在。
 - `IMcpSyncService.exportMcpServers({ serverIds })`：本机按候选 id 导出 MCP 配置 DTO，并带上本机 home 路径用于路径改写。
-- `IMcpSyncService.importMcpServers({ servers, localHomeDir, remoteWorkspacePath, localWorkspacePath?, overwrite: false })`：远端写入 `~/.zcode/cli/config.json`，同名存在时跳过；filesystem MCP 在写入前执行路径改写。
+- `IMcpSyncService.importMcpServers({ servers, localHomeDir, remoteWorkspacePath, localWorkspacePath?, overwrite: false })`：远端写入 `~/.codez/cli/config.json`，同名存在时跳过；filesystem MCP 在写入前执行路径改写。
 
-服务需要像 skill-sync 一样注册到本地 host 和远端 zcode-server service collection。桌面 renderer 合并 remote workspace services 时，`mcpSyncService` 必须覆盖为 remote service；否则导入会写回本机用户目录。
+服务需要像 skill-sync 一样注册到本地 host 和远端 codez-server service collection。桌面 renderer 合并 remote workspace services 时，`mcpSyncService` 必须覆盖为 remote service；否则导入会写回本机用户目录。
 
 ## 数据同步内容
 
@@ -63,7 +63,7 @@ ZCode 当前已经支持把本地用户级 Skills 同步到 SSH 远端主机。M
   - HTTP / SSE: `type`、`url`、`headers`、`http_headers`、`timeout` / `timeoutMs` 等字段。
   - provider-specific secret 字段，例如 `apiKey`、`personalAccessToken`、`Authorization` header。
 
-不直接同步文件内容、二进制包、npm / uv / pip 依赖、环境变量引用所指向的宿主环境，也不复制 workspace `.zcode/config.json`。
+不直接同步文件内容、二进制包、npm / uv / pip 依赖、环境变量引用所指向的宿主环境，也不复制 workspace `.codez/config.json`。
 
 ## filesystem MCP 路径改写
 
@@ -150,7 +150,7 @@ filesystem MCP 识别规则：
 - 本地 workspace 读写本机用户目录 / workspace 目录。
 - SSH remote workspace 读写 SSH 主机上的用户目录 / workspace 目录。
 - 页面顶部显示当前 remote context，避免把远端配置误认为本机配置。
-- 创建 / 恢复 / 队列续跑 ZCode task 前，MCP store 必须通过当前 workspace services 刷新；SSH remote task 只能把远端 MCP 配置传给远端 agent runtime。
+- 创建 / 恢复 / 队列续跑 Codez task 前，MCP store 必须通过当前 workspace services 刷新；SSH remote task 只能把远端 MCP 配置传给远端 agent runtime。
 
 在 SSH remote context 顶部显示 `同步 MCP 到此 SSH 主机` 图标按钮。点击后打开 `RemoteMcpSyncDialog`：
 
@@ -189,8 +189,8 @@ filesystem MCP 识别规则：
 ## 测试与验证
 
 - 单元测试：
-  - 候选列表读取本机 `~/.zcode/cli/config.json` 用户级 `mcp.servers`。
-  - `.zcode` 用户级没有 server 时读取 `~/.agents/mcp.json` 的 `mcpServers` fallback。
+  - 候选列表读取本机 `~/.codez/cli/config.json` 用户级 `mcp.servers`。
+  - `.codez` 用户级没有 server 时读取 `~/.agents/mcp.json` 的 `mcpServers` fallback。
   - 导入 HTTP MCP 时保留 URL、headers 和 secret。
   - 导入 context7 / stdio MCP 时直接复制 command / args / env。
   - 导入 filesystem MCP 时把本地 home 路径改写为远端 home 路径。

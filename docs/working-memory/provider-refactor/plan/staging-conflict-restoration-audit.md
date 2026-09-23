@@ -64,7 +64,7 @@
 | R09  | SessionPane 发送时模型/mode/附件一致，切换最新值、草稿持久化：0ed79bae57                                             | 旧 config CAS 的发送目的已由原子 Submission 取代，不能整段导回旧 scheduler；查到 `/goal` 独立遗漏                                                 | sendText、预热、firstInput、附件和队列保留冻结的 Submission；但 slash goal 在等待后重读 Composer。新增用例先失败（low 被 high 覆盖），再把同一 Submission 传入 slash 分发；continuity 8/8 通过。Side Conversation/分叉及 D01/D02 另列核实，不扩大自动选模                                                                                                                                |
 | D01  | 发送前强制远端 Registry 同步及 notInRegistry 重试：f0edfd69cf、0ed79 删除                                            | **已裁决：不恢复**                                                                                                                                | 保留连接/保存触发的现有同步；发送不等待最新配置，不新增 Renderer 同步或 notInRegistry 重试                                                                                                                                                                                                                                                                                               |
 | D02  | 账号切换后自动改已有会话模型：6ce53c6ec4、0ed79 删除                                                                 | **已完成：Todo 87 统一有效选择解析**                                                                                                              | 普通账号按当前连接匹配同模型/同档位；有效结果临时派生，原意图不随读取改写。公共层/Composer/Automation/Bot/Wiki 已分别提交及验证；闲时仅保护原意图。不恢复旧批量切模或 Account-first，显式 Subagent 按本轮裁决排除；证据见最终审阅入口                                                                                                                                                    |
-| R10  | Output token 相关请求与测试                                                                                          | 当前是等价架构替换，不恢复旧字段二次改写                                                                                                          | 正式 Built-in Map 在 zcode-builtin.json:1802/1814 分别为 Anthropic max_tokens、OpenAI Chat max_completion_tokens。OTB fixture 是 OpenAI Chat，断言与其 Map 一致；adapter 的 model-output-tokens-wire 测试证明不会按 Snowflake 名称偷偷改写 body。本轮与 Session 测试合跑 50/50 通过；不展开 Todo80                                                                                       |
+| R10  | Output token 相关请求与测试                                                                                          | 当前是等价架构替换，不恢复旧字段二次改写                                                                                                          | 正式 Built-in Map 在 codez-builtin.json:1802/1814 分别为 Anthropic max_tokens、OpenAI Chat max_completion_tokens。OTB fixture 是 OpenAI Chat，断言与其 Map 一致；adapter 的 model-output-tokens-wire 测试证明不会按 Snowflake 名称偷偷改写 body。本轮与 Session 测试合跑 50/50 通过；不展开 Todo80                                                                                       |
 | R11  | Markdown 选择/来源、浏览器隔离、插件 UI、配额标题等已移植功能                                                        | 固定范围的独立生产实现已保留；未发现应再整文件还原的差异                                                                                          | 检查 70a2e4d5dc、39f4f614ce、b30c53df5d、626f939c29、dad6ad8856、52684e5fa0、c4bd934a37、24f6e1e191、ec9b6d05bd、b12864b981 的最终文件。Markdown 引用/面板、browserGuestManager/弹窗隔离、opencode-session、空 reasoning blocks 与固定 staging 相同；插件 UI 与 2ee9 恢复后相同。StatusCards 配额字号保留，变化为新 access/Team 身份等适配。13 文件 234/234 通过；不以此冒充桌面行为验收 |
 | R12  | 其他人工冲突处理及混合 node.ts                                                                                       | 已逐 hunk 阅读 node.ts 对固定 staging 的差异；唯一确认的独立遗漏为 R04 CUA                                                                        | ProviderRuntime/Config/Provisioning、账号请求鉴权、Bot 新 Selection 迁移属于现架构；旧 ZAPI probe/signing 删除符合既定产品裁决。Git/RepoWiki 使用目标 Host 选择、Official MCP/Off-Peak 使用当前凭据边界；Hook/trust 仍保留。不要把 node.ts 整体回滚，不把后续 WSL/Installer/Help 变更算此次遗漏                                                                                          |
 
@@ -135,12 +135,12 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 - 16:54 E2E 启动凭据、领取 mock、消息气泡单测：3 文件 51/51 通过。
 - 先前 Hook 定向 19/19 通过；全链类型检查被 project-memory-recall.ts 的 supportsJsonSchemaOutput 缺失阻断，尚未归因，不能标全量通过。
 - Air 当前 /Users/dev/Desktop/projects/z-code-e2e 位于 fed3705326，含 7 条未提交/未跟踪改动，不能 reset 或覆盖。需用独立验证工作树；Node 通过 /Users/dev/.local/share/mise/shims。
-- 为恢复固定 CUA producer 创建临时目录 /tmp/zcode-todo85-producer-1N45YP；不修改用户账号数据。
+- 为恢复固定 CUA producer 创建临时目录 /tmp/codez-todo85-producer-1N45YP；不修改用户账号数据。
 - 17:06 领取/余额相关测试 146/146 通过；恢复前服务时间测试 5 失败/94 通过。不是仅改断言，生产边界现统一输出毫秒 serverTime，effectiveAt/startsAt 仍为 Unix 秒。
 - CUA producer 拉取：本机代理 HTTPS 握手失败，直连与 Air 连接超时；尚未改 pin，继续其他独立恢复。无系统网络配置变更。
 - root `pnpm typecheck` 已通过；`pnpm lint` 0 error、40 条既有 warning。先前 CLI core 检查缺 supportsJsonSchemaOutput 是待重建声明：Air 按标准构建 shared-types/contracts/core/adapters/bootstrap 后已通过，不修改正确的接口源码。
 - MCP 全文件 45/45 通过；已确认卸载/探测隔离不只是四条专项通过。
-- Air 隔离工作树：`/Users/dev/Desktop/projects/zcode-todo85-verify.ljqwZv/repo`，基于 a43049c265 加当前受测 diff；原 E2E 工作树与日常应用数据未覆盖。安装使用 `pnpm install --offline --frozen-lockfile`；源 bundle/patch 位于同级目录，本机快照在 `/tmp/zcode-todo85-air-snapshot-17aUUe`。标准构建已成功。
+- Air 隔离工作树：`/Users/dev/Desktop/projects/codez-todo85-verify.ljqwZv/repo`，基于 a43049c265 加当前受测 diff；原 E2E 工作树与日常应用数据未覆盖。安装使用 `pnpm install --offline --frozen-lockfile`；源 bundle/patch 位于同级目录，本机快照在 `/tmp/codez-todo85-air-snapshot-17aUUe`。标准构建已成功。
 - Air 首轮 `desktop-e2e-20260906-171733-561`：3 specs 失败。领取 spec 加载发现已删除的 Start 数量快捷入口常量；Hook/附件因测试仅写 Recent、当前持久草稿仍为空而无法发送。不能降低断言：恢复快捷入口上下游；公共 prepare helper 在新草稿上真实选择模型及档位，skipProvider 分支不变。第二轮验证中。
 - Start 数量快捷入口恢复：原固定 staging 的 Header、Detail、文案和测试一起被删除。已加新架构下的显式数量 props，复用现有 onSelectNavItem，不恢复 API mode 或 enabled 标签。新增显示条件测试先红后绿；完整 modelProviderCodingPlan 197/197 通过。
 - Air 第二轮 172426：7 条仍失败，Hook 首发错误进一步定位为 `fault.command.executionFailed`。第三轮隔离 HK-LC-01，Agent 日志确认 Registry 有 2 个 Provider，但新建 Runtime 强制要求 Configured Default；与当前“无默认选择也可打开空白会话、提交前显式选择”的规则冲突。R09 补齐创建/提交边界：允许未绑定 Runtime，执行校验保持，不自动补模型或 reasoning。新增测试修复前 1 失败/8 通过；正在验证修复。
@@ -177,7 +177,7 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 - R02 已提交 `6f0eaeaf66`，附件布局完整 E2E 通过；R09 `/goal` 冻结提交已提交 `e406c20fbf`，真实首条请求的 low 档位断言通过。
 - R04 已提交 `b09a43f2b9`。Air 安装相同 producer 后，原生模块构建成功，CUA 两文件 35/35，并完成新的 Desktop/CLI 标准构建。Air 的 Git keychain 鉴权失败，使用官方仓库已核实 Git 对象的 bundle、本次隔离目录内 bare mirror 和单条安装命令的 URL 重写完成安装；未修改全局 Git 配置、未传送凭据、未改变依赖 pin。
 - `desktop-e2e-20260907-023559-026` 单独领取综合用例已通过之前的弹窗位置，最终失败是 count 断言仅接受英文 Start Plan、页面实际为中文“体验套餐”；调整为接受两种语言，数量仍必须为 2。首轮轮询后成功弹窗缺失未再次复现，不能宣称已定位或用这次文案修订解释它；保留失败时页面状态采集。
-- 新构建运行 `desktop-e2e-20260907-023950-099`：领取整组 **4/4**、Hook 整组 **6/6**，两个 spec 全部通过，没有重试。产物位于 Air `/Users/dev/Desktop/projects/zcode-todo85-verify.ljqwZv/repo/packages/desktop/.e2e-artifacts/desktop-e2e-20260907-023950-099/summary.md`。因此 R06/R07/R08 的前轮桌面阻塞已解除，但本次通过不等于穷尽所有账号场景。
+- 新构建运行 `desktop-e2e-20260907-023950-099`：领取整组 **4/4**、Hook 整组 **6/6**，两个 spec 全部通过，没有重试。产物位于 Air `/Users/dev/Desktop/projects/codez-todo85-verify.ljqwZv/repo/packages/desktop/.e2e-artifacts/desktop-e2e-20260907-023950-099/summary.md`。因此 R06/R07/R08 的前轮桌面阻塞已解除，但本次通过不等于穷尽所有账号场景。
 - 本轮 Provider/领取相邻模块实际重跑 23 文件 **567/567**；与前轮 25 文件 581/581 分开记录，不混用次数。
 - 当前未提交：R07/R08 领取、时间、账号实时状态和设置导航组；需要后续最终 review 与独立提交。D01/D02 仍待用户决定。此次三个代码提交均未 push；未合入后续 staging，未处理 Todo80/86 或原有无关工作区改动。
 - 用户要求“干完手头的活先停一下”。已等上述正在运行的领取/Hook 测试结束，仅补记结果后暂停；不再启动新测试或修复，Goal 不标完成。
@@ -233,16 +233,16 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 
 | 文件                                                                                                      | 所属功能    |
 | --------------------------------------------------------------------------------------------------------- | ----------- |
-| `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts`                           | R01         |
-| `apps/zcode-cli/packages/bootstrap/tests/product-projection.test.ts`                                      | R01         |
-| `apps/zcode-cli/packages/contracts/src/hooks/index.ts`                                                    | R01         |
-| `apps/zcode-cli/packages/core/src/hooks/configured-runner-callback.ts`                                    | R01         |
-| `apps/zcode-cli/packages/core/src/hooks/index.ts`                                                         | R01         |
-| `apps/zcode-cli/packages/core/src/hooks/runner.ts`                                                        | R01         |
-| `apps/zcode-cli/packages/core/src/hooks/types.ts`                                                         | R01         |
-| `apps/zcode-cli/packages/core/tests/hook-runner-dispatch-admission.test.ts`                               | R01         |
-| `apps/zcode-cli/packages/core/tests/hook-runner-lifecycle.test.ts`                                        | R01         |
-| `apps/zcode-cli/packages/zcode-cua-plugin/upstream.json`                                                  | R04         |
+| `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/product-projection.ts`                           | R01         |
+| `apps/codez-cli/packages/bootstrap/tests/product-projection.test.ts`                                      | R01         |
+| `apps/codez-cli/packages/contracts/src/hooks/index.ts`                                                    | R01         |
+| `apps/codez-cli/packages/core/src/hooks/configured-runner-callback.ts`                                    | R01         |
+| `apps/codez-cli/packages/core/src/hooks/index.ts`                                                         | R01         |
+| `apps/codez-cli/packages/core/src/hooks/runner.ts`                                                        | R01         |
+| `apps/codez-cli/packages/core/src/hooks/types.ts`                                                         | R01         |
+| `apps/codez-cli/packages/core/tests/hook-runner-dispatch-admission.test.ts`                               | R01         |
+| `apps/codez-cli/packages/core/tests/hook-runner-lifecycle.test.ts`                                        | R01         |
+| `apps/codez-cli/packages/codez-cua-plugin/upstream.json`                                                  | R04         |
 | `docs/chat/conversation-hook-turn-summary.md`                                                             | R01         |
 | `docs/chat/user-message-attachment-layout.md`                                                             | R02         |
 | `docs/cua-permission-broker/2026-09-02-helper-lifecycle-agent-runtime-isolation-spec.md`                  | R04         |
@@ -265,7 +265,7 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 | `packages/shared/src/coding-plan-subscription.ts`                                                         | R07         |
 | `packages/shared/src/test-ids.ts`                                                                         | R01/R06/R07 |
 | `packages/shared/src/usage-stats.ts`                                                                      | R07         |
-| `packages/shared/src/zcode-protocol-v4/rows.ts`                                                           | R01         |
+| `packages/shared/src/codez-protocol-v4/rows.ts`                                                           | R01         |
 | `packages/ui/src/ChatErrorBanner.tsx`                                                                     | R01         |
 | `packages/ui/src/WorkspaceSidebar.tsx`                                                                    | R07         |
 | `packages/ui/src/components/manual-claim-plan/ManualClaimPlanResultActions.tsx`                           | R07         |
@@ -289,10 +289,10 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 | `packages/desktop/src/main/desktopStabilityTelemetry.ts`                                                  | R03         |
 | `packages/desktop/test/e2e/plugins/manual-review/pending/plugin-management-installed-menu-layout.test.ts` | R03         |
 | `packages/services/src/process/runtimeProcessLifecycle.ts`                                                | R03         |
-| `packages/services/src/zcode-agent/zcodeAgentProcessManager.ts`                                           | R03         |
-| `packages/services/src/zcode-agent/zcodeAgentService.ts`                                                  | R03         |
-| `packages/services/src/zcode-agent/zcodeProtocolClient.ts`                                                | R03         |
-| `packages/services/test/zcodeAgentService.test.ts`                                                        | R03         |
+| `packages/services/src/codez-agent/codezAgentProcessManager.ts`                                           | R03         |
+| `packages/services/src/codez-agent/codezAgentService.ts`                                                  | R03         |
+| `packages/services/src/codez-agent/codezProtocolClient.ts`                                                | R03         |
+| `packages/services/test/codezAgentService.test.ts`                                                        | R03         |
 | `packages/shared/src/validation.ts`                                                                       | R03         |
 | `packages/ui/src/components/ui/dropdown-menu.tsx`                                                         | R03         |
 | `packages/ui/src/settings/PluginStoreCard.tsx`                                                            | R03         |

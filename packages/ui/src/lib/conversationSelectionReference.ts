@@ -4,7 +4,7 @@ import {
   CONVERSATION_SELECTION_MAX_COUNT,
   CONVERSATION_SELECTION_MAX_TOTAL_LENGTH,
   type ConversationSelectionText,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export {
   buildPromptWithConversationSelections,
@@ -12,7 +12,7 @@ export {
   CONVERSATION_SELECTION_MAX_COUNT,
   CONVERSATION_SELECTION_MAX_TOTAL_LENGTH,
   type ConversationSelectionText,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export type ConversationSelectionContentType = "user" | "assistant" | "reasoning" | "tool";
 
@@ -57,10 +57,10 @@ export type ConversationSelectionAppendResult =
     }
   | { ok: false; reason: ConversationSelectionLimitReason };
 
-const ADD_EVENT = "zcode:conversation-selection-add";
+const ADD_EVENT = "codez:conversation-selection-add";
 const USER_SELECT_BLOCK_PATTERN = /(?:\n\n)?# userselect:\n```userselect\n([\s\S]*?)\n```\s*$/;
 const LEGACY_BLOCK_PATTERN =
-  /(?:\n\n)?# Conversation selections:\n```zcode-conversation-selections\n([\s\S]*?)\n```\s*$/;
+  /(?:\n\n)?# Conversation selections:\n```codez-conversation-selections\n([\s\S]*?)\n```\s*$/;
 const referencesByScope = new Map<string, readonly ConversationSelectionReference[]>();
 const limitReasonByScope = new Map<string, ConversationSelectionLimitReason>();
 

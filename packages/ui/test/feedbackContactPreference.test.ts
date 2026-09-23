@@ -28,7 +28,7 @@ function createMemoryStorage(initial?: Record<string, string>): Storage {
 describe("feedback contact preference", () => {
   it("reads the saved contact from local storage", () => {
     const storage = createMemoryStorage({
-      "zcode.feedback.contact": "user@example.com",
+      "codez.feedback.contact": "user@example.com",
     });
 
     expect(readFeedbackContactPreference(storage)).toBe("user@example.com");
@@ -40,7 +40,7 @@ describe("feedback contact preference", () => {
     persistFeedbackContactPreference("  user@example.com  ", storage);
 
     expect(storage.setItem).toHaveBeenCalledWith(
-      "zcode.feedback.contact",
+      "codez.feedback.contact",
       "user@example.com",
     );
     expect(readFeedbackContactPreference(storage)).toBe("user@example.com");
@@ -53,7 +53,7 @@ describe("feedback contact preference", () => {
 
     expect(nextValue).toBe("  user@example.com  ");
     expect(storage.setItem).toHaveBeenCalledWith(
-      "zcode.feedback.contact",
+      "codez.feedback.contact",
       "user@example.com",
     );
     expect(readFeedbackContactPreference(storage)).toBe("user@example.com");
@@ -61,12 +61,12 @@ describe("feedback contact preference", () => {
 
   it("clears the saved contact when the submitted value is empty", () => {
     const storage = createMemoryStorage({
-      "zcode.feedback.contact": "user@example.com",
+      "codez.feedback.contact": "user@example.com",
     });
 
     persistFeedbackContactPreference("   ", storage);
 
-    expect(storage.removeItem).toHaveBeenCalledWith("zcode.feedback.contact");
+    expect(storage.removeItem).toHaveBeenCalledWith("codez.feedback.contact");
     expect(readFeedbackContactPreference(storage)).toBe("");
   });
 

@@ -4,25 +4,25 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { Emitter } from "@zcode/rpc";
-import { appSettingsSchema, resolveWorkspaceKey, type ZCodeProtocolMessage } from "@zcode/shared";
+import { Emitter } from "@codez/rpc";
+import { appSettingsSchema, resolveWorkspaceKey, type CodezProtocolMessage } from "@codez/shared";
 import { createLocalServices, disposeServiceResourcesAndWait } from "../src/node.js";
 import { ProviderRuntime } from "../src/model-provider/providerRuntime.js";
 import type { ISettingService } from "../src/setting/setting.js";
 import { setDataBaseDir } from "../src/paths.js";
-import { IZCodeAgentService } from "../src/zcode-agent/zcodeAgent.js";
+import { ICodezAgentService } from "../src/codez-agent/codezAgent.js";
 import {
-  ZCodeAgentProcessManager,
-  type ZCodeAgentProcessManagerOptions,
-} from "../src/zcode-agent/zcodeAgentProcessManager.js";
-import { ZCodeProtocolClient } from "../src/zcode-agent/zcodeProtocolClient.js";
+  CodezAgentProcessManager,
+  type CodezAgentProcessManagerOptions,
+} from "../src/codez-agent/codezAgentProcessManager.js";
+import { CodezProtocolClient } from "../src/codez-agent/codezProtocolClient.js";
 
 test("only default local Codex startup skips legacy provider/account/tool prerequisites", async (t) => {
   const savedEnv = { ...process.env };
-  delete process.env.ZCODE_AGENT_SERVER_COMMAND;
+  delete process.env.CODEZ_AGENT_SERVER_COMMAND;
   // CI 明确选择 Codex 产品；此测试逐项验证默认/显式分流，不能继承外层 runtime override。
-  delete process.env.ZCODE_DESKTOP_RUNTIME;
-  process.env.ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED = "1";
+  delete process.env.CODEZ_DESKTOP_RUNTIME;
+  process.env.CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED = "1";
   let starts = 0;
   let networkCalls = 0;
   let accountPreparations = 0;
@@ -32,10 +32,10 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
     throw legacyError;
   });
   let spawnEnv: Record<string, string> | undefined;
-  const messages = new Emitter<ZCodeProtocolMessage>();
+  const messages = new Emitter<CodezProtocolMessage>();
   const closes = new Emitter<{ reason?: string }>();
   const wireMethods: string[] = [];
-  const client = new ZCodeProtocolClient({
+  const client = new CodezProtocolClient({
     kind: "memory",
     onMessage: messages.event,
     onClose: closes.event,
@@ -51,14 +51,14 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
     },
   });
   t.mock.method(
-    ZCodeAgentProcessManager.prototype,
+    CodezAgentProcessManager.prototype,
     "getClient",
     async function (
-      this: ZCodeAgentProcessManager,
+      this: CodezAgentProcessManager,
       workspace: { workspacePath: string; workspaceIdentity?: string },
     ) {
       // Exercise the callback actually installed by createLocalServices without launching an engine.
-      const manager = this as unknown as Pick<ZCodeAgentProcessManagerOptions, "resolveSpawnEnv">;
+      const manager = this as unknown as Pick<CodezAgentProcessManagerOptions, "resolveSpawnEnv">;
       spawnEnv = await manager.resolveSpawnEnv?.({
         ...workspace,
         workspaceKey: resolveWorkspaceKey(workspace),
@@ -75,9 +75,9 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
       "remote",
       "headless",
     ] as const) {
-      const root = await mkdtemp(join(tmpdir(), "zcode-codex-host-"));
+      const root = await mkdtemp(join(tmpdir(), "codez-codex-host-"));
       setDataBaseDir(root);
-      process.env.ZCODE_DESKTOP_HOME_DIR = root;
+      process.env.CODEZ_DESKTOP_HOME_DIR = root;
       const settings: ISettingService = {
         async get() {
           return appSettingsSchema.parse({
@@ -96,18 +96,18 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
           assert.fail("fixture must not create projects");
         },
       };
-      if (mode === "explicit-env") process.env.ZCODE_AGENT_SERVER_COMMAND = "/legacy/agent";
-      else delete process.env.ZCODE_AGENT_SERVER_COMMAND;
+      if (mode === "explicit-env") process.env.CODEZ_AGENT_SERVER_COMMAND = "/legacy/agent";
+      else delete process.env.CODEZ_AGENT_SERVER_COMMAND;
       if (mode === "deployed-codex")
-        process.env.ZCODE_CODEX_BRIDGE_PATH = "/remote/codex/bridge.cjs";
-      else delete process.env.ZCODE_CODEX_BRIDGE_PATH;
+        process.env.CODEZ_CODEX_BRIDGE_PATH = "/remote/codex/bridge.cjs";
+      else delete process.env.CODEZ_CODEX_BRIDGE_PATH;
       wireMethods.length = 0;
       const before = starts;
       const services = createLocalServices({
         settingService: settings,
         runtimeProcessEnvPatch: { PATH: savedEnv.PATH ?? "" },
-        zcodeBuiltinProviderConfigFilePath: fileURLToPath(
-          new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
+        codezBuiltinProviderConfigFilePath: fileURLToPath(
+          new URL("../../../config/provider/codez-builtin.json", import.meta.url),
         ),
         ...(mode === "headless"
           ? {}
@@ -123,7 +123,7 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
                     : ("desktop_local_host" as const),
               },
             }),
-        ...(mode === "custom-resolver" ? { zcodeAgentCommandResolver: () => null } : {}),
+        ...(mode === "custom-resolver" ? { codezAgentCommandResolver: () => null } : {}),
         prepareLegacyAccountConnections: async () => {
           accountPreparations += 1;
           throw new Error("must not prepare Zai account for Codex");
@@ -138,7 +138,7 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
         },
       });
       try {
-        const agent = services.get(IZCodeAgentService);
+        const agent = services.get(ICodezAgentService);
         const request = agent.codexRequest({
           workspacePath: root,
           workspaceIdentity: "remote-identity-kept",
@@ -159,12 +159,12 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
             HTTP_PROXY: "http://127.0.0.1:19080",
             HTTPS_PROXY: "http://127.0.0.1:19080",
             ALL_PROXY: "http://127.0.0.1:19080",
-            ZCODE_HTTP_PROXY: "http://127.0.0.1:19080",
+            CODEZ_HTTP_PROXY: "http://127.0.0.1:19080",
             NO_PROXY: "localhost",
             no_proxy: "localhost",
-            ZCODE_NO_PROXY: "localhost",
+            CODEZ_NO_PROXY: "localhost",
             NODE_EXTRA_CA_CERTS: join(root, "example-ca.pem"),
-            ZCODE_AGENT_CA_CERT: join(root, "example-ca.pem"),
+            CODEZ_AGENT_CA_CERT: join(root, "example-ca.pem"),
           });
         } else {
           await assert.rejects(request, (error) => error === legacyError);

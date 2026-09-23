@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { formatModelPickerValue } from "@zcode/shared";
+import { formatModelPickerValue } from "@codez/shared";
 import {
   workspaceConfigSnapshotSchema,
   type ConversationSnapshot,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import type { BridgeControlContext } from "./contract.js";
 import { DeletedThreadError, type ThreadStateStore } from "./thread-state.js";
 import type { InteractionBroker } from "./interactions.js";

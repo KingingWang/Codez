@@ -42,7 +42,7 @@ async function setup(send: (name: string, message: any) => Promise<unknown>) {
     Tweak: context.Tweak,
     container: new Element(),
     globals: (value: unknown) =>
-      listeners.get("zcode:set_globals")?.({
+      listeners.get("codez:set_globals")?.({
         detail: { globals: { visualizationAnnotation: value } },
       }),
   };

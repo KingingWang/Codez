@@ -1,12 +1,12 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { BUILTIN_MODEL_PROVIDER_IDS, marketingPopupSchema } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, marketingPopupSchema } from "@codez/shared";
 import { waitForDefaultWorkspaceReady, getE2EAppDataPaths } from "../helpers/desktop-app.js";
 
 const byId = (id: string) => $(`[data-testid="${id}"]`);
 // 原截图写入系统临时目录，违反运行目录隔离；统一归档到本轮报告目录。
 const screenshotPath = (name: string) => {
-  const directory = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const directory = process.env.CODEZ_E2E_ARTIFACT_DIR;
   if (!directory) throw new Error("Missing E2E artifact directory");
   return join(directory, name);
 };
@@ -15,7 +15,7 @@ const bannerAction = () =>
 const bannerClose = () =>
   byId("marketing-banner").$('button[aria-label="Close"], button[aria-label="关闭"]');
 const origin = () => {
-  const value = process.env.ZCODE_CODING_PLAN_UPGRADE_MOCK_BASE_URL;
+  const value = process.env.CODEZ_CODING_PLAN_UPGRADE_MOCK_BASE_URL;
   if (!value) throw new Error("Missing isolated marketing fixture");
   return value;
 };
@@ -474,7 +474,7 @@ describe("Marketing Touch delivery", () => {
     await browser.switchFrame(await frame);
     try {
       await browser.execute((instanceId) => {
-        const base = { channel: "zcode-cloud-hero-v1", instanceId };
+        const base = { channel: "codez-cloud-hero-v1", instanceId };
         for (const message of [
           null,
           { ...base, type: "error", code: "wrong-instance", instanceId: `${instanceId}-other` },
@@ -508,7 +508,7 @@ describe("Marketing Touch delivery", () => {
     const instanceId = await frame.getAttribute("data-instance-id");
     await browser.executeAsync((instanceId, done) => {
       window.postMessage(
-        { channel: "zcode-cloud-hero-v1", instanceId, type: "error", code: "forged" },
+        { channel: "codez-cloud-hero-v1", instanceId, type: "error", code: "forged" },
         "*",
       );
       // 等待浏览器消息派发后的绘制，不用固定延迟代替状态同步。
@@ -722,7 +722,7 @@ describe("Marketing Touch delivery", () => {
     await byId("cloud-content-dialog").$("button=Run action").click();
     await byId("cloud-content-dialog").waitForExist({ reverse: true, timeout: 15_000 });
     await browser.waitUntil(async () => (await ledger()).events.length === baseline + 1);
-    expect(await browser.execute(() => localStorage.getItem("zcode-settings-last-section"))).toBe(
+    expect(await browser.execute(() => localStorage.getItem("codez-settings-last-section"))).toBe(
       "appearance",
     );
     expect((await ledger()).events[baseline]).toEqual({

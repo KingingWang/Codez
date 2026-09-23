@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import { MemoTaskItem as TaskItem } from "@/TaskListItem.js";
 import { attachTaskListRowActivity } from "@/v4/taskListRowActivity.js";
 
@@ -18,7 +18,7 @@ vi.mock("@/useTaskListItemContextActions.js", () => ({
   }),
 }));
 
-function createTaskMeta(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
+function createTaskMeta(overrides: Partial<CodezTaskMeta> = {}): CodezTaskMeta {
   return {
     taskId: "task-permission",
     traceId: "trace-permission",
@@ -61,7 +61,7 @@ function createIntl() {
 
 function renderTaskItem(
   params: {
-    task?: Partial<ZCodeTaskMeta>;
+    task?: Partial<CodezTaskMeta>;
     permissionCount?: number;
     userInputCount?: number;
     variant?: "default" | "timeline";

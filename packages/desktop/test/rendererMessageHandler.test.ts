@@ -17,27 +17,27 @@ vi.mock("react-dom/client", () => ({
   createRoot: createRootMock,
 }));
 
-vi.mock("@zcode/ui", () => ({
+vi.mock("@codez/ui", () => ({
   AppErrorBoundary: ({ children }: { children: unknown }) => children,
   Root: () => null,
-  ZCodeIntlProvider: ({ children }: { children: unknown }) => children,
+  CodezIntlProvider: ({ children }: { children: unknown }) => children,
   registerBaseWorkspaceServices: vi.fn(),
   registerRemoteWorkspaceSession: vi.fn(),
   playTaskNotificationSound: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock("@zcode/client", () => ({
+vi.mock("@codez/client", () => ({
   connectViaMessagePort: vi.fn(() => ({
     settingService: {},
   })),
 }));
 
-// 模拟 window.zcode
+// 模拟 window.codez
 vi.stubGlobal("window", {
   ...globalThis.window,
   location: { search: "" },
   matchMedia: () => ({ matches: true }),
-  zcode: {
+  codez: {
     selectDirectory: vi.fn(),
     activateOrSetWorkspace: vi.fn(),
     connectRemote: vi.fn(),
@@ -106,7 +106,7 @@ describe("renderer main.tsx 防重复 createRoot", () => {
       "utf-8",
     );
 
-    expect(source).toContain("window.zcode.onOpenWorkspace?.(handler) ?? (() => {})");
+    expect(source).toContain("window.codez.onOpenWorkspace?.(handler) ?? (() => {})");
   });
 
   it("remote workspace service port 早于 base ServicePort 时会暂存并在 base ready 后 flush", () => {

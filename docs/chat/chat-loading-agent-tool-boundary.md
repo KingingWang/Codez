@@ -80,7 +80,7 @@ timeline scroll viewport
 
 ## 多端边界
 
-该规则只修改 UI 对 V4 turn `isRunning` 的展示投影，不修改 ZCode Protocol、snapshot、stream mirror、queue、owner 或 runtime 状态：
+该规则只修改 UI 对 V4 turn `isRunning` 的展示投影，不修改 Codez Protocol、snapshot、stream mirror、queue、owner 或 runtime 状态：
 
 - 桌面端仍使用 `desktop-continuous` direct realtime。
 - 手机远控仍使用 `web-remote-replayable` snapshot / gap 恢复。

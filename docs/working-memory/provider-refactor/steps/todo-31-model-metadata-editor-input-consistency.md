@@ -107,4 +107,4 @@ Enter
 - 本轮修改文件格式检查和 `git diff --check` 通过。
 
 全仓 `pnpm fmt:check` 仍被仓库内 Electron 文档的既有非法 HTML 和
-`apps/zcode-cli/tests/gb2312.js` 的读取问题阻断；本轮文件已单独通过 `oxfmt --check`。
+`apps/codez-cli/tests/gb2312.js` 的读取问题阻断；本轮文件已单独通过 `oxfmt --check`。

@@ -10,7 +10,7 @@ import {
 import { setDataBaseDir } from "../src/paths.js";
 import {
   unpackWorkspaceFileEntries,
-} from "@zcode/shared/workspaceFileEntriesCodec";
+} from "@codez/shared/workspaceFileEntriesCodec";
 import type { IFileService } from "../src/file/file.js";
 
 // 分块拉全量（测试语义等价旧单次 listWorkspaceFiles）。
@@ -84,7 +84,7 @@ describe("fileService", () => {
 
   describe("readdir", () => {
     it("lists directory entries, filters hidden files, sorts directories first then alphabetically", async () => {
-      const rootPath = makeTempDir("zcode-readdir-");
+      const rootPath = makeTempDir("codez-readdir-");
       mkdirSync(join(rootPath, "src"));
       mkdirSync(join(rootPath, "assets"));
       mkdirSync(join(rootPath, ".hidden-dir"));
@@ -124,7 +124,7 @@ describe("fileService", () => {
     });
 
     it("includes hidden files when requested", async () => {
-      const rootPath = makeTempDir("zcode-readdir-hidden-");
+      const rootPath = makeTempDir("codez-readdir-hidden-");
       mkdirSync(join(rootPath, ".github"));
       mkdirSync(join(rootPath, "src"));
       writeFileSync(join(rootPath, ".gitignore"), "node_modules");
@@ -162,7 +162,7 @@ describe("fileService", () => {
     });
 
     it("classifies symlinks to directories as directories", async () => {
-      const rootPath = makeTempDir("zcode-readdir-symlink-dir-");
+      const rootPath = makeTempDir("codez-readdir-symlink-dir-");
       const targetPath = join(rootPath, "target");
       const linkPath = join(rootPath, "linked-dir");
       mkdirSync(targetPath);
@@ -180,7 +180,7 @@ describe("fileService", () => {
     });
 
     it("marks symlink metadata for directory entries", async () => {
-      const rootPath = makeTempDir("zcode-readdir-symlink-meta-");
+      const rootPath = makeTempDir("codez-readdir-symlink-meta-");
       const targetPath = join(rootPath, "target");
       const linkPath = join(rootPath, "linked-dir");
       mkdirSync(targetPath);
@@ -206,7 +206,7 @@ describe("fileService", () => {
     });
 
     it("returns empty array for an empty directory", async () => {
-      const rootPath = makeTempDir("zcode-readdir-empty-");
+      const rootPath = makeTempDir("codez-readdir-empty-");
       const service = createFileService();
       const entries = await service.readdir({ path: rootPath });
       expect(entries).toEqual([]);
@@ -217,7 +217,7 @@ describe("fileService", () => {
 
   describe("stat", () => {
     it("distinguishes files from directories", async () => {
-      const rootPath = makeTempDir("zcode-stat-");
+      const rootPath = makeTempDir("codez-stat-");
       const filePath = join(rootPath, "readme.md");
       writeFileSync(filePath, "# Hello");
 
@@ -238,7 +238,7 @@ describe("fileService", () => {
 
   describe("checkFilesExist", () => {
     it("并发返回文件存在性并把目录和缺失路径判为不可预览", async () => {
-      const rootPath = makeTempDir("zcode-file-exists-");
+      const rootPath = makeTempDir("codez-file-exists-");
       const filePath = join(rootPath, "report.pdf");
       const directoryPath = join(rootPath, "docs");
       const missingPath = join(rootPath, "missing.pdf");
@@ -258,7 +258,7 @@ describe("fileService", () => {
 
     it("正负结果缓存一分钟，过期后重新读取文件状态", async () => {
       const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
-      const rootPath = makeTempDir("zcode-file-exists-cache-");
+      const rootPath = makeTempDir("codez-file-exists-cache-");
       const filePath = join(rootPath, "later.pdf");
       const service = createFileService();
 
@@ -293,10 +293,10 @@ describe("fileService", () => {
 
   describe("ensureConversationWorkspace", () => {
     it("creates the managed conversation workspace under the configured data root", async () => {
-      const dataBaseDir = makeTempDir("zcode-conversation-workspace-");
+      const dataBaseDir = makeTempDir("codez-conversation-workspace-");
       setDataBaseDir(dataBaseDir);
       const service = createFileService();
-      const workspacePath = join(dataBaseDir, ".zcode", "workspace", "default");
+      const workspacePath = join(dataBaseDir, ".codez", "workspace", "default");
 
       await expect(service.ensureConversationWorkspace()).resolves.toEqual({
         path: workspacePath,
@@ -315,9 +315,9 @@ describe("fileService", () => {
     });
 
     it("rejects a file collision without returning a half-created workspace", async () => {
-      const dataBaseDir = makeTempDir("zcode-conversation-workspace-file-");
+      const dataBaseDir = makeTempDir("codez-conversation-workspace-file-");
       setDataBaseDir(dataBaseDir);
-      const workspaceRoot = join(dataBaseDir, ".zcode", "workspace");
+      const workspaceRoot = join(dataBaseDir, ".codez", "workspace");
       mkdirSync(workspaceRoot, { recursive: true });
       writeFileSync(join(workspaceRoot, "default"), "not a directory");
 
@@ -330,8 +330,8 @@ describe("fileService", () => {
   // ── createScratchWorkspace ───────────────────────────────────────
 
   describe("createScratchWorkspace", () => {
-    const scratchRoot = join(homedir(), "ZCodeProject");
-    const testWorkspaceName = `zcode-file-service-test-${Date.now()}`;
+    const scratchRoot = join(homedir(), "CodezProject");
+    const testWorkspaceName = `codez-file-service-test-${Date.now()}`;
     const testWorkspacePath = join(scratchRoot, testWorkspaceName);
 
     afterEach(() => {
@@ -378,7 +378,7 @@ describe("fileService", () => {
 
   describe("readTextFile", () => {
     it("reads full content of a small text file", async () => {
-      const rootPath = makeTempDir("zcode-readtext-");
+      const rootPath = makeTempDir("codez-readtext-");
       const filePath = join(rootPath, "hello.txt");
       writeFileSync(filePath, "Hello, world!");
 
@@ -394,7 +394,7 @@ describe("fileService", () => {
     });
 
     it("returns empty content when offset exceeds file size", async () => {
-      const rootPath = makeTempDir("zcode-readtext-offset-");
+      const rootPath = makeTempDir("codez-readtext-offset-");
       const filePath = join(rootPath, "small.txt");
       writeFileSync(filePath, "abc");
 
@@ -409,7 +409,7 @@ describe("fileService", () => {
     });
 
     it("reads a slice with offset and length", async () => {
-      const rootPath = makeTempDir("zcode-readtext-slice-");
+      const rootPath = makeTempDir("codez-readtext-slice-");
       const filePath = join(rootPath, "data.txt");
       writeFileSync(filePath, "abcdefghij");
 
@@ -425,7 +425,7 @@ describe("fileService", () => {
     });
 
     it("detects binary files and returns empty content", async () => {
-      const rootPath = makeTempDir("zcode-readtext-binary-");
+      const rootPath = makeTempDir("codez-readtext-binary-");
       const filePath = join(rootPath, "image.bin");
       // 构造含大量 null 字节的二进制内容
       const binaryContent = Buffer.alloc(64, 0);
@@ -440,7 +440,7 @@ describe("fileService", () => {
     });
 
     it("truncates when file is larger than default read size", async () => {
-      const rootPath = makeTempDir("zcode-readtext-large-");
+      const rootPath = makeTempDir("codez-readtext-large-");
       const filePath = join(rootPath, "large.txt");
       // 默认读取上限 128KB，写入 256KB 的内容
       const largeContent = "x".repeat(256 * 1024);
@@ -456,7 +456,7 @@ describe("fileService", () => {
     });
 
     it("clamps length to MAX_TEXT_READ_BYTES (256KB)", async () => {
-      const rootPath = makeTempDir("zcode-readtext-clamp-");
+      const rootPath = makeTempDir("codez-readtext-clamp-");
       const filePath = join(rootPath, "huge.txt");
       const content = "y".repeat(512 * 1024);
       writeFileSync(filePath, content);
@@ -470,7 +470,7 @@ describe("fileService", () => {
     });
 
     it("throws when path is not a file", async () => {
-      const rootPath = makeTempDir("zcode-readtext-dir-");
+      const rootPath = makeTempDir("codez-readtext-dir-");
 
       const service = createFileService();
       await expect(service.readTextFile({ path: rootPath })).rejects.toThrow(/not a file/);
@@ -481,7 +481,7 @@ describe("fileService", () => {
 
   describe("readFileRange", () => {
     it("reads raw bytes at the requested offset", async () => {
-      const rootPath = makeTempDir("zcode-readrange-");
+      const rootPath = makeTempDir("codez-readrange-");
       const filePath = join(rootPath, "doc.pdf");
       writeFileSync(filePath, Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]));
 
@@ -493,7 +493,7 @@ describe("fileService", () => {
     });
 
     it("returns a short array when the range crosses EOF", async () => {
-      const rootPath = makeTempDir("zcode-readrange-eof-");
+      const rootPath = makeTempDir("codez-readrange-eof-");
       const filePath = join(rootPath, "doc.pdf");
       writeFileSync(filePath, Buffer.alloc(10, 7));
 
@@ -504,7 +504,7 @@ describe("fileService", () => {
     });
 
     it("returns an empty array when offset exceeds file size", async () => {
-      const rootPath = makeTempDir("zcode-readrange-offset-");
+      const rootPath = makeTempDir("codez-readrange-offset-");
       const filePath = join(rootPath, "doc.pdf");
       writeFileSync(filePath, Buffer.alloc(3, 1));
 
@@ -515,7 +515,7 @@ describe("fileService", () => {
     });
 
     it("clamps length to MAX_BINARY_READ_BYTES (1MB)", async () => {
-      const rootPath = makeTempDir("zcode-readrange-clamp-");
+      const rootPath = makeTempDir("codez-readrange-clamp-");
       const filePath = join(rootPath, "large.pdf");
       writeFileSync(filePath, Buffer.alloc(1536 * 1024, 2));
 
@@ -530,7 +530,7 @@ describe("fileService", () => {
     });
 
     it("throws when path is not a file", async () => {
-      const rootPath = makeTempDir("zcode-readrange-dir-");
+      const rootPath = makeTempDir("codez-readrange-dir-");
 
       const service = createFileService();
       await expect(service.readFileRange({ path: rootPath, offset: 0, length: 8 })).rejects.toThrow(
@@ -543,7 +543,7 @@ describe("fileService", () => {
 
   describe("readMediaPreview", () => {
     it("reads image files as base64 previews with inferred media type", async () => {
-      const rootPath = makeTempDir("zcode-readmedia-");
+      const rootPath = makeTempDir("codez-readmedia-");
       const filePath = join(rootPath, "preview.png");
       writeFileSync(filePath, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
 
@@ -559,7 +559,7 @@ describe("fileService", () => {
     });
 
     it("rejects media previews that exceed the configured size limit", async () => {
-      const rootPath = makeTempDir("zcode-readmedia-large-");
+      const rootPath = makeTempDir("codez-readmedia-large-");
       const filePath = join(rootPath, "large.png");
       writeFileSync(filePath, Buffer.alloc(32, 1));
 
@@ -582,7 +582,7 @@ describe("fileService", () => {
       ["song.flac", "audio/flac"],
       ["song.weba", "audio/webm"],
     ])("infers %s as %s", async (filename, mediaType) => {
-      const rootPath = makeTempDir("zcode-readmedia-format-");
+      const rootPath = makeTempDir("codez-readmedia-format-");
       const filePath = join(rootPath, filename);
       writeFileSync(filePath, Buffer.from([1, 2, 3]));
 
@@ -596,7 +596,7 @@ describe("fileService", () => {
 
   describe("readBinaryPreview", () => {
     it("reads bounded binary files as base64 previews", async () => {
-      const rootPath = makeTempDir("zcode-readbinary-");
+      const rootPath = makeTempDir("codez-readbinary-");
       const filePath = join(rootPath, "workbook.xlsx");
       const content = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
       writeFileSync(filePath, content);
@@ -612,7 +612,7 @@ describe("fileService", () => {
     });
 
     it("rejects binary previews before reading files above the configured limit", async () => {
-      const rootPath = makeTempDir("zcode-readbinary-large-");
+      const rootPath = makeTempDir("codez-readbinary-large-");
       const filePath = join(rootPath, "large.docx");
       writeFileSync(filePath, Buffer.alloc(32, 1));
 
@@ -624,7 +624,7 @@ describe("fileService", () => {
     });
 
     it("clamps custom binary preview limits to the 25 MB hard limit", async () => {
-      const rootPath = makeTempDir("zcode-readbinary-hard-limit-");
+      const rootPath = makeTempDir("codez-readbinary-hard-limit-");
       const filePath = join(rootPath, "oversized.xlsx");
       writeFileSync(filePath, Buffer.alloc(25 * 1024 * 1024 + 1, 1));
 
@@ -639,7 +639,7 @@ describe("fileService", () => {
     });
 
     it("rejects directories", async () => {
-      const rootPath = makeTempDir("zcode-readbinary-dir-");
+      const rootPath = makeTempDir("codez-readbinary-dir-");
       const service = createFileService();
 
       await expect(service.readBinaryPreview({ path: rootPath })).rejects.toThrow(/not a file/);
@@ -659,7 +659,7 @@ describe("fileService", () => {
     });
 
     it("traverses hidden directories while keeping default excluded directories pruned", async () => {
-      const rootPath = makeTempDir("zcode-file-service-");
+      const rootPath = makeTempDir("codez-file-service-");
       mkdirSync(join(rootPath, "src"));
       mkdirSync(join(rootPath, "node_modules"));
       mkdirSync(join(rootPath, ".git"));
@@ -711,7 +711,7 @@ describe("fileService", () => {
     });
 
     it("skips common generated cache and dependency directories across ecosystems", async () => {
-      const rootPath = makeTempDir("zcode-file-service-generated-dirs-");
+      const rootPath = makeTempDir("codez-file-service-generated-dirs-");
       const skippedDirectories = [
         ["__pycache__", "module.cpython-312.pyc"],
         ["coverage", "lcov.info"],
@@ -763,7 +763,7 @@ describe("fileService", () => {
     });
 
     it("skips standalone compiled and cache file artifacts", async () => {
-      const rootPath = makeTempDir("zcode-file-service-generated-files-");
+      const rootPath = makeTempDir("codez-file-service-generated-files-");
       const skippedFileNames = [
         "module.pyc",
         "module.pyo",
@@ -804,7 +804,7 @@ describe("fileService", () => {
     });
 
     it("keeps user-maintained directories and distributable assets searchable", async () => {
-      const rootPath = makeTempDir("zcode-file-service-user-maintained-");
+      const rootPath = makeTempDir("codez-file-service-user-maintained-");
       const includedDirectories = [
         "vendor",
         "env",
@@ -842,8 +842,8 @@ describe("fileService", () => {
     });
 
     it("classifies directory symlinks before filtering without traversing them", async () => {
-      const rootPath = makeTempDir("zcode-file-service-symlink-");
-      const targetPath = makeTempDir("zcode-file-service-symlink-target-");
+      const rootPath = makeTempDir("codez-file-service-symlink-");
+      const targetPath = makeTempDir("codez-file-service-symlink-target-");
       const linkPath = join(rootPath, "linked-dir");
       writeFileSync(join(targetPath, "outside.ts"), "");
       symlinkSync(targetPath, linkPath, process.platform === "win32" ? "junction" : "dir");
@@ -871,13 +871,13 @@ describe("fileService", () => {
     });
 
     it("uses an injected filter as a complete replacement for the default filter", async () => {
-      const rootPath = makeTempDir("zcode-file-service-custom-filter-");
+      const rootPath = makeTempDir("codez-file-service-custom-filter-");
       mkdirSync(join(rootPath, "node_modules"));
       writeFileSync(join(rootPath, "node_modules", "package.js"), "");
       writeFileSync(join(rootPath, ".env"), "SECRET=123");
-      // 预置空 .zcodeignore 隔离掉 ignore 规则层：本用例专测"注入 filter 完整替换内置过滤"
-      // 的旧契约；.zcodeignore 剪枝行为由独立用例覆盖。
-      writeFileSync(join(rootPath, ".zcodeignore"), "\n");
+      // 预置空 .codezignore 隔离掉 ignore 规则层：本用例专测"注入 filter 完整替换内置过滤"
+      // 的旧契约；.codezignore 剪枝行为由独立用例覆盖。
+      writeFileSync(join(rootPath, ".codezignore"), "\n");
 
       const service = createFileService({
         workspaceFileSearchFilter: {
@@ -897,7 +897,7 @@ describe("fileService", () => {
     });
 
     it("allows an injected filter to exclude every entry", async () => {
-      const rootPath = makeTempDir("zcode-file-service-exclude-filter-");
+      const rootPath = makeTempDir("codez-file-service-exclude-filter-");
       mkdirSync(join(rootPath, "src"));
       writeFileSync(join(rootPath, "src", "index.ts"), "");
 
@@ -911,7 +911,7 @@ describe("fileService", () => {
     });
 
     it("returns empty array when hidden directory descendants and env files provide no candidates", async () => {
-      const rootPath = makeTempDir("zcode-file-service-hidden-");
+      const rootPath = makeTempDir("codez-file-service-hidden-");
       mkdirSync(join(rootPath, ".vscode"));
       writeFileSync(join(rootPath, ".env"), "SECRET=123");
 
@@ -922,7 +922,7 @@ describe("fileService", () => {
     });
 
     it("sorts results by relativePath", async () => {
-      const rootPath = makeTempDir("zcode-file-service-sort-");
+      const rootPath = makeTempDir("codez-file-service-sort-");
       mkdirSync(join(rootPath, "b"));
       mkdirSync(join(rootPath, "a"));
       writeFileSync(join(rootPath, "b", "z.ts"), "");
@@ -936,10 +936,10 @@ describe("fileService", () => {
       expect(relativePaths).toEqual(["a", "b", "a/x.ts", "b/z.ts", "root.ts"]);
     });
 
-    // .zcodeignore 单一真相源（spec 2026-09-15 增补）：目录排除的唯一规则来源。
-    describe(".zcodeignore", () => {
+    // .codezignore 单一真相源（spec 2026-09-15 增补）：目录排除的唯一规则来源。
+    describe(".codezignore", () => {
       it("prunes gitignored build directories like obj and bin (ZCT-2096811705629528064)", async () => {
-        const rootPath = makeTempDir("zcode-file-service-dotnet-");
+        const rootPath = makeTempDir("codez-file-service-dotnet-");
         writeFileSync(join(rootPath, ".gitignore"), "obj/\nbin/\n");
         mkdirSync(join(rootPath, "obj", "Debug"), { recursive: true });
         mkdirSync(join(rootPath, "bin", "Release"), { recursive: true });
@@ -959,11 +959,11 @@ describe("fileService", () => {
           "src/Program.cs",
         ]);
         // 规则文件自身是工具配置，不进入候选。
-        expect(existsSync(join(rootPath, ".zcodeignore"))).toBe(false);
+        expect(existsSync(join(rootPath, ".codezignore"))).toBe(false);
       });
 
-      it("uses .gitignore plus builtin defaults without creating .zcodeignore", async () => {
-        const rootPath = makeTempDir("zcode-file-service-create-");
+      it("uses .gitignore plus builtin defaults without creating .codezignore", async () => {
+        const rootPath = makeTempDir("codez-file-service-create-");
         writeFileSync(join(rootPath, ".gitignore"), "dist/\n");
         mkdirSync(join(rootPath, "node_modules", "pkg"), { recursive: true });
         mkdirSync(join(rootPath, "dist"));
@@ -975,11 +975,11 @@ describe("fileService", () => {
 
         // .gitignore 未声明 node_modules：内存默认段仍剪枝（行为兼容）。
         expect(entries.map((e) => e.relativePath)).toEqual([".gitignore"]);
-        expect(existsSync(join(rootPath, ".zcodeignore"))).toBe(false);
+        expect(existsSync(join(rootPath, ".codezignore"))).toBe(false);
       });
 
       it("dedupes builtin defaults against gitignore rules on creation", async () => {
-        const rootPath = makeTempDir("zcode-file-service-create-dedupe-");
+        const rootPath = makeTempDir("codez-file-service-create-dedupe-");
         // .gitignore 声明了 node_modules/（含尾斜杠差异写法各测一条）。
         writeFileSync(join(rootPath, ".gitignore"), "node_modules/\ncoverage\n");
         mkdirSync(join(rootPath, "node_modules"));
@@ -993,15 +993,15 @@ describe("fileService", () => {
 
         // 去重：gitignore 区已有 node_modules/ 与 coverage，默认段不再重复写这两条
         // ——文件中每条规则最多一份，删除 gitignore 区那一行即完全放开。
-        const created = readFileSync(join(rootPath, ".zcodeignore"), "utf8");
+        const created = readFileSync(join(rootPath, ".codezignore"), "utf8");
         expect(created.match(/^node_modules\/$/gm)).toHaveLength(1);
         expect(created.match(/^coverage\/?$/gm)).toHaveLength(1);
         // 剪枝仍然生效（gitignore 区那条在起作用）；.gitignore 自身保持可搜。
         expect(entries.map((e) => e.relativePath)).toEqual([".gitignore", "keep.ts"]);
       });
 
-      it("uses builtin defaults without creating .zcodeignore when no .gitignore exists", async () => {
-        const rootPath = makeTempDir("zcode-file-service-create-no-gitignore-");
+      it("uses builtin defaults without creating .codezignore when no .gitignore exists", async () => {
+        const rootPath = makeTempDir("codez-file-service-create-no-gitignore-");
         mkdirSync(join(rootPath, "node_modules"));
         writeFileSync(join(rootPath, "node_modules", "x.js"), "");
         writeFileSync(join(rootPath, "keep.ts"), "");
@@ -1010,16 +1010,16 @@ describe("fileService", () => {
         const entries = unpackWorkspaceFileEntries(await readAllPacked(service, rootPath), rootPath);
 
         expect(entries.map((e) => e.relativePath)).toEqual(["keep.ts"]);
-        expect(existsSync(join(rootPath, ".zcodeignore"))).toBe(false);
+        expect(existsSync(join(rootPath, ".codezignore"))).toBe(false);
       });
 
       it("honors gitignore semantics: negation, anchored patterns and directory suffix", async () => {
-        const rootPath = makeTempDir("zcode-file-service-semantics-");
+        const rootPath = makeTempDir("codez-file-service-semantics-");
         mkdirSync(join(rootPath, "logs"));
         mkdirSync(join(rootPath, "sub", "build"), { recursive: true });
         mkdirSync(join(rootPath, "build"));
         writeFileSync(
-          join(rootPath, ".zcodeignore"),
+          join(rootPath, ".codezignore"),
           ["logs/*", "!logs/keep.log", "/build", "*.tmp"].join("\n"),
         );
         writeFileSync(join(rootPath, "logs", "keep.log"), "");
@@ -1044,12 +1044,12 @@ describe("fileService", () => {
         ]);
       });
 
-      it("lets users re-include builtin defaults by editing .zcodeignore (single source of truth)", async () => {
-        const rootPath = makeTempDir("zcode-file-service-reinclude-");
+      it("lets users re-include builtin defaults by editing .codezignore (single source of truth)", async () => {
+        const rootPath = makeTempDir("codez-file-service-reinclude-");
         mkdirSync(join(rootPath, "node_modules", "pkg"), { recursive: true });
         writeFileSync(join(rootPath, "node_modules", "pkg", "index.js"), "");
         // 用户显式反选内置默认排除：node_modules 必须恢复为可搜（无代码级并集）。
-        writeFileSync(join(rootPath, ".zcodeignore"), "!node_modules/\n");
+        writeFileSync(join(rootPath, ".codezignore"), "!node_modules/\n");
 
         const service = createFileService();
         const entries = unpackWorkspaceFileEntries(await readAllPacked(service, rootPath), rootPath);
@@ -1062,7 +1062,7 @@ describe("fileService", () => {
       });
 
       it("reads and writes the ignore file via service RPC methods", async () => {
-        const rootPath = makeTempDir("zcode-file-service-rpc-");
+        const rootPath = makeTempDir("codez-file-service-rpc-");
         writeFileSync(join(rootPath, ".gitignore"), "out/\n");
 
         const service = createFileService();
@@ -1070,7 +1070,7 @@ describe("fileService", () => {
         // 尚未落盘：预览初始内容（gitignore 拷贝 + 默认段）。
         expect(initial.source).toBe("template");
         expect(initial.content).toContain("out/");
-        expect(existsSync(join(rootPath, ".zcodeignore"))).toBe(false);
+        expect(existsSync(join(rootPath, ".codezignore"))).toBe(false);
 
         await service.writeWorkspaceFileSearchIgnore({ rootPath, content: "custom/\n" });
         const afterWrite = await service.readWorkspaceFileSearchIgnore({ rootPath });
@@ -1086,7 +1086,7 @@ describe("fileService", () => {
       });
 
       it("syncs only the gitignore section while keeping defaults and custom rules", async () => {
-        const rootPath = makeTempDir("zcode-file-service-section-sync-");
+        const rootPath = makeTempDir("codez-file-service-section-sync-");
         writeFileSync(join(rootPath, ".gitignore"), "out/\n");
 
         const service = createFileService();
@@ -1112,7 +1112,7 @@ describe("fileService", () => {
       });
 
       it("resets only the defaults section while keeping gitignore and custom rules", async () => {
-        const rootPath = makeTempDir("zcode-file-service-section-reset-");
+        const rootPath = makeTempDir("codez-file-service-section-reset-");
         writeFileSync(join(rootPath, ".gitignore"), "out/\n");
 
         const service = createFileService();
@@ -1134,7 +1134,7 @@ describe("fileService", () => {
       });
 
       it("reset re-adds builtin rule after it was removed from .gitignore", async () => {
-        const rootPath = makeTempDir("zcode-file-service-reset-readd-");
+        const rootPath = makeTempDir("codez-file-service-reset-readd-");
         // 创建时 gitignore 声明了 node_modules/ → 默认段去重未写入。
         writeFileSync(join(rootPath, ".gitignore"), "node_modules/\n");
         const service = createFileService();
@@ -1152,10 +1152,10 @@ describe("fileService", () => {
       });
 
       it("falls back to full template rebuild when section markers are missing", async () => {
-        const rootPath = makeTempDir("zcode-file-service-section-fallback-");
+        const rootPath = makeTempDir("codez-file-service-section-fallback-");
         writeFileSync(join(rootPath, ".gitignore"), "out/\n");
         // 用户删掉了分区标记（旧格式/手动清理），无法结构化定位分区。
-        writeFileSync(join(rootPath, ".zcodeignore"), "legacy-rules/\n");
+        writeFileSync(join(rootPath, ".codezignore"), "legacy-rules/\n");
 
         const service = createFileService();
         const synced = await service.applyWorkspaceFileSearchIgnoreTransform({

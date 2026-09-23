@@ -9,8 +9,8 @@ import {
   TID_V4_FEEDBACK_DISLIKE,
   TID_V4_FEEDBACK_LIKE,
   testId,
-} from "@zcode/shared";
-import type { AssistantTextRow, ReasoningRow, UserInputRow } from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared";
+import type { AssistantTextRow, ReasoningRow, UserInputRow } from "@codez/shared/codez-protocol-v4";
 import type { CodeCommentComposerAttachment } from "@/lib/codeCommentContext.js";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
 import type { ConversationSelectionReference } from "@/lib/conversationSelectionReference.js";
@@ -22,7 +22,7 @@ import {
 import { ConversationRowView } from "@/v4/ConversationRowView.js";
 import type { ConversationRowRenderContext } from "@/v4/conversationRowContext.js";
 import { serializeComposerPromptContexts } from "@/v4/composer/composerPromptContexts.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const {
   attachmentPropsById,
@@ -423,7 +423,7 @@ describe("ConversationRowView reasoning summary", () => {
     const row = userInputRow({
       attachments: [
         {
-          ref: "zcode-artifact://history",
+          ref: "codez-artifact://history",
           fileName: "topic-history.txt",
           mime: "text/plain",
           bytes: 30,
@@ -436,7 +436,7 @@ describe("ConversationRowView reasoning summary", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, { context: { ...rowContext, readAttachment }, row }),
         ),
@@ -449,7 +449,7 @@ describe("ConversationRowView reasoning summary", () => {
       await (props.onOpen as () => Promise<void>)();
     });
     expect(readAttachment).toHaveBeenCalledWith(
-      expect.objectContaining({ sessionId: "session-1", ref: "zcode-artifact://history" }),
+      expect.objectContaining({ sessionId: "session-1", ref: "codez-artifact://history" }),
     );
     await act(async () => root.unmount());
   });
@@ -460,7 +460,7 @@ describe("ConversationRowView reasoning summary", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, { context: rowContext, row }),
         ),
@@ -512,7 +512,7 @@ describe("ConversationRowView user query editing", () => {
       await act(async () => {
         root.render(
           createElement(
-            ZCodeIntlProvider,
+            CodezIntlProvider,
             { initialLocale: "zh-CN" },
             createElement(ConversationRowView, {
               context: { ...rowContext, compactForRemoteControl },
@@ -561,7 +561,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, { context: rowContext, row }),
         ),
@@ -598,7 +598,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -643,7 +643,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -692,7 +692,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -795,7 +795,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: { ...rowContext, readAttachment },
@@ -930,7 +930,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: { ...rowContext, readAttachment },
@@ -1011,7 +1011,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: { ...rowContext, readAttachment },
@@ -1117,7 +1117,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: { ...rowContext, readAttachment },
@@ -1178,7 +1178,7 @@ describe("ConversationRowView user query editing", () => {
 
   it("opens a Desktop local media URL without creating or revoking a Blob URL", async () => {
     const readAttachment = vi.fn().mockResolvedValue({
-      url: "zcode-media://local/desktop-video",
+      url: "codez-media://local/desktop-video",
       mediaType: "video/mp4",
     });
     const createObjectUrl = vi.spyOn(URL, "createObjectURL");
@@ -1191,7 +1191,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: { ...rowContext, readAttachment },
@@ -1212,7 +1212,7 @@ describe("ConversationRowView user query editing", () => {
       signal: expect.any(AbortSignal),
     });
     expect(attachmentPropsById.get(`${row.rowId}-0`)).toMatchObject({
-      data: { url: "zcode-media://local/desktop-video" },
+      data: { url: "codez-media://local/desktop-video" },
     });
     const openPreview = attachmentPropsById.get(`${row.rowId}-0`)?.onOpen;
     expect(openPreview).toBeTypeOf("function");
@@ -1230,7 +1230,7 @@ describe("ConversationRowView user query editing", () => {
           alt: "demo.mp4",
           filename: "demo.mp4",
           mediaType: "video/mp4",
-          src: "zcode-media://local/desktop-video",
+          src: "codez-media://local/desktop-video",
           loading: false,
           error: false,
         },
@@ -1269,7 +1269,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: { ...rowContext, readAttachment },
@@ -1338,7 +1338,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: { ...rowContext, readAttachment },
@@ -1372,7 +1372,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: { ...rowContext, readAttachment },
@@ -1407,7 +1407,7 @@ describe("ConversationRowView user query editing", () => {
       await act(async () => {
         root.render(
           createElement(
-            ZCodeIntlProvider,
+            CodezIntlProvider,
             { initialLocale: locale },
             createElement(ConversationRowView, {
               context: rowContext,
@@ -1440,7 +1440,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: { ...rowContext, compactForRemoteControl: true },
@@ -1472,7 +1472,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: { ...rowContext, compactForRemoteControl: true },
@@ -1526,7 +1526,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -1555,7 +1555,7 @@ describe("ConversationRowView user query editing", () => {
       await act(async () => {
         root.render(
           createElement(
-            ZCodeIntlProvider,
+            CodezIntlProvider,
             { initialLocale: "zh-CN" },
             createElement(ConversationRowView, {
               context: rowContext,
@@ -1590,7 +1590,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: {
@@ -1610,7 +1610,7 @@ describe("ConversationRowView user query editing", () => {
     expect(messageResponseProps[0]?.onOpenExternalUrl).toBe(onOpenBrowserUrl);
     expect(messageResponseProps[0]?.onOpenCodeViewer).toBe(onOpenCodeViewer);
     expect(messageResponseProps[0]?.onOpenFileLink).toBe(onOpenFileLink);
-    expect(messageResponseProps[0]?.renderZCodeFileCitations).toBe(true);
+    expect(messageResponseProps[0]?.renderCodezFileCitations).toBe(true);
     // 回归根因：artifact 图片读取能力必须由行级生产接线继续传入 Markdown。
     expect(messageResponseProps[0]?.sessionId).toBe("session-1");
     expect(messageResponseProps[0]?.readAttachment).toBe(readAttachment);
@@ -1642,7 +1642,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -1728,7 +1728,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -1764,7 +1764,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -1795,7 +1795,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -1823,7 +1823,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -1894,7 +1894,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -1980,7 +1980,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -2028,7 +2028,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -2082,7 +2082,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -2145,7 +2145,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -2195,7 +2195,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,
@@ -2277,7 +2277,7 @@ describe("ConversationRowView user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, {
             context: rowContext,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { zcodeSessionEventSchema } from "../src/zcode-protocol/index.js";
-import { conversationRowSchema } from "../src/zcode-protocol-v4/index.js";
+import { codezSessionEventSchema } from "../src/codez-protocol/index.js";
+import { conversationRowSchema } from "../src/codez-protocol-v4/index.js";
 
 const display = {
   kind: "bash_output",
@@ -35,7 +35,7 @@ function parseBoth(value: unknown) {
     status: "success",
     output: { text: "model preview", display: value },
   };
-  return [zcodeSessionEventSchema.safeParse(event), conversationRowSchema.safeParse(row)];
+  return [codezSessionEventSchema.safeParse(event), conversationRowSchema.safeParse(row)];
 }
 describe("Bash output display wire contract", () => {
   it("preserves display on the legacy event and V4 row", () => {
@@ -46,10 +46,10 @@ describe("Bash output display wire contract", () => {
   });
   // 两条通道对"读不懂的 display"给出同一个产品结果——**这张卡没有载荷**——但拒收的位置不同，
   // 而位置决定代价：
-  //   v3 `session/event`：整条事件被丢，consumer 记 zod issues 后继续（zcodeAgentService.ts）。
+  //   v3 `session/event`：整条事件被丢，consumer 记 zod issues 后继续（codezAgentService.ts）。
   //   v4 row：display 在信封层不设门（`.catch(undefined)`），载荷被丢、row/帧照常投影。
   // v4 曾经也在信封层拒收，但那一层的"拒"是拒整帧，会连带打掉订阅（见
-  // zcodeProtocolV4DisplayTolerance.test.ts 的事故说明）。有界性没有放松：越界载荷同样到不了 UI。
+  // codezProtocolV4DisplayTolerance.test.ts 的事故说明）。有界性没有放松：越界载荷同样到不了 UI。
   it.each([
     { ...display, output: "x".repeat(150001) },
     { ...display, truncated: "true" },

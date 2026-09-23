@@ -9,7 +9,7 @@ import {
   TID_OFFPEAK_FORM_TITLE,
   TID_OFFPEAK_TAB,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -195,7 +195,7 @@ async function waitForOffPeakScenarioCompletion(): Promise<OffPeakMockRequestRec
 }
 
 async function readOffPeakMockRequests(): Promise<OffPeakMockRequestRecord[]> {
-  const port = Number(process.env.ZCODE_OFFPEAK_MOCK_PORT ?? "45197");
+  const port = Number(process.env.CODEZ_OFFPEAK_MOCK_PORT ?? "45197");
   try {
     const response = await fetch(`http://127.0.0.1:${port}/__e2e/off-peak/requests`);
     if (!response.ok) return [];

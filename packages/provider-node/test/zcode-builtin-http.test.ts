@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import type { AddressInfo } from "node:net";
 import { expect, it, vi } from "vitest";
-import { downloadZCodeBuiltinRelease } from "../src/zcode-builtin-download.js";
+import { downloadCodezBuiltinRelease } from "../src/codez-builtin-download.js";
 
 it("真实 HTTP 响应头已返回但正文不结束时，20 秒总预算关闭连接且下一次可重试", async () => {
   let closed = false;
@@ -56,11 +56,11 @@ it("真实 HTTP 响应头已返回但正文不结束时，20 秒总预算关闭�
   };
   try {
     const start = Date.now();
-    await expect(downloadZCodeBuiltinRelease(options)).rejects.toThrow("cdn: timeout");
+    await expect(downloadCodezBuiltinRelease(options)).rejects.toThrow("cdn: timeout");
     expect(Date.now() - start).toBeLessThan(23_000);
     await vi.waitFor(() => expect(closed).toBe(true));
     finish = true;
-    await expect(downloadZCodeBuiltinRelease(options)).resolves.toMatchObject({ revision: 1 });
+    await expect(downloadCodezBuiltinRelease(options)).resolves.toMatchObject({ revision: 1 });
   } finally {
     server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));

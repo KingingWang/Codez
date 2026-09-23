@@ -5,10 +5,10 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { createElement, Profiler, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowRunCardSummary } from "@/ToolCallBlocks/shared.js";
 import type { TimelinePill } from "@/components/workflow-timeline/timeline-model.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 // 提示只渲染 children（不改 DOM 形状），但把 title / description 记下来：Stop 钮的第二行
 // 「停止后可以随时恢复」只活在提示里，是这次改名要钉住的那半句话。
@@ -145,7 +145,7 @@ function renderDigest(
 ) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(WorkflowRunDigest, {
         graph: LOOP_GRAPH as unknown as WorkflowRunDigestProps["graph"],
@@ -677,7 +677,7 @@ describe("WorkflowRunDigest Stop run", () => {
         Profiler,
         { id: "digest", onRender: () => (commits += 1) },
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "en-US" },
           createElement(WorkflowRunDigest, {
             graph: LOOP_GRAPH as unknown as WorkflowRunDigestProps["graph"],
@@ -712,7 +712,7 @@ describe("WorkflowRunDigest Stop run", () => {
     fireEvent.click(view.getByTestId("workflow-digest-cancel"));
     view.rerender(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(WorkflowRunDigest, {
           graph: LOOP_GRAPH as unknown as WorkflowRunDigestProps["graph"],
@@ -832,7 +832,7 @@ describe("ConversationWorkflowDigests 把药丸变成打开请求", () => {
     const summary = joined({ status: "completed", artifacts: ARTIFACTS });
     return render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(ConversationWorkflowDigests, {
           turnKey: "t",

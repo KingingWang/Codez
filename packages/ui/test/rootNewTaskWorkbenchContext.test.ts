@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useRootWorkspaceActions } from "@/root/useRootWorkspaceActions.js";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import {
   INITIAL_PANE_LAYOUT,
   V4_PRIMARY_PANE_ID,
@@ -90,7 +90,7 @@ function resetState(): void {
       root.unmount();
     });
   }
-  useZCodeSessionStore.setState((state) => ({
+  useCodezSessionStore.setState((state) => ({
     ...state,
     workspaces: {},
   }));
@@ -182,7 +182,7 @@ function renderRootActions({
 }
 
 function workspaceState(workspacePath: string, workspaceIdentity?: string) {
-  return useZCodeSessionStore
+  return useCodezSessionStore
     .getState()
     .getWorkspaceState(workspacePath, workspaceIdentity);
 }
@@ -192,7 +192,7 @@ describe("root new task workbench context", () => {
   afterEach(resetState);
 
   it("creates the draft in the focused read-only subagent pane workspace and exits split view", () => {
-    useZCodeSessionStore.getState().setActiveTaskId("/workspace-a", "main-session");
+    useCodezSessionStore.getState().setActiveTaskId("/workspace-a", "main-session");
     useWorkbenchGroupStore.getState().splitSessionIntoGroup(
       V4_PRIMARY_PANE_ID,
       "right",
@@ -229,7 +229,7 @@ describe("root new task workbench context", () => {
   });
 
   it("creates the draft in a focused ordinary split pane workspace and resets to one panel", () => {
-    useZCodeSessionStore.getState().setActiveTaskId("/workspace-a", "main-session");
+    useCodezSessionStore.getState().setActiveTaskId("/workspace-a", "main-session");
     usePaneLayoutStore.getState().splitPaneWithBinding(V4_PRIMARY_PANE_ID, "right", {
       workspaceScope: { workspacePath: "/workspace-b" },
       sessionId: "session-b",
@@ -326,10 +326,10 @@ describe("root new task workbench context", () => {
     const { addTab, getHandleSelectConversationWorkspace } = renderRootActions();
 
     act(() => {
-      getHandleSelectConversationWorkspace()("/Users/demo/.zcode/workspace/default");
+      getHandleSelectConversationWorkspace()("/Users/demo/.codez/workspace/default");
     });
 
-    expect(addTab).toHaveBeenCalledWith("/Users/demo/.zcode/workspace/default", {
+    expect(addTab).toHaveBeenCalledWith("/Users/demo/.codez/workspace/default", {
       workspacePurpose: "conversation",
     });
   });

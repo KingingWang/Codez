@@ -1,6 +1,6 @@
 import { readSourceTextAsync } from "./readSourceText.js";
 import { describe, expect, it } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import {
   buildCodingPlanModelLineChartSeries,
   buildCodingPlanToolLineChartSeries,
@@ -35,7 +35,7 @@ describe("CodingPlanUsagePanel", () => {
     expect(formatSummaryCompactTokenUsage("en-US", 370_000_000)).toBe("370M");
   });
 
-  it("Usage stats 和模型设置的 ZCode MCP 卡片都提供统一 info tooltip", async () => {
+  it("Usage stats 和模型设置的 Codez MCP 卡片都提供统一 info tooltip", async () => {
     const [usageSource, modelSettingsSource] = await Promise.all([
       readSourceTextAsync(
         new URL("../src/settings/usage-stats/CodingPlanUsagePanel.tsx", import.meta.url),
@@ -47,19 +47,19 @@ describe("CodingPlanUsagePanel", () => {
       ),
     ]);
 
-    expect(usageSource).toContain('data-zcode-mcp-info="usage-stats"');
-    expect(modelSettingsSource).toContain('data-zcode-mcp-info="model-settings"');
-    expect(usageSource).toContain('id: "sidebar.usage.plan.zcodeMcpDescription"');
-    expect(modelSettingsSource).toContain('id: "sidebar.usage.plan.zcodeMcpDescription"');
+    expect(usageSource).toContain('data-codez-mcp-info="usage-stats"');
+    expect(modelSettingsSource).toContain('data-codez-mcp-info="model-settings"');
+    expect(usageSource).toContain('id: "sidebar.usage.plan.codezMcpDescription"');
+    expect(modelSettingsSource).toContain('id: "sidebar.usage.plan.codezMcpDescription"');
   });
 
-  it("统一使用工具调用和 ZCode MCP 的额度名称", () => {
+  it("统一使用工具调用和 Codez MCP 的额度名称", () => {
     expect(zhMessages["settings.usage.entitlementMonthlyMcpUsage"]).toBe("工具调用");
     expect(enMessages["settings.usage.entitlementMonthlyMcpUsage"]).toBe("Tool calls");
-    expect(zhMessages["settings.usage.entitlementServerMcpUsage"]).toBe("ZCode MCP");
-    expect(enMessages["settings.usage.entitlementServerMcpUsage"]).toBe("ZCode MCP");
-    expect(zhMessages["sidebar.usage.plan.mcp"]).toBe("ZCode MCP");
-    expect(enMessages["sidebar.usage.plan.mcp"]).toBe("ZCode MCP");
+    expect(zhMessages["settings.usage.entitlementServerMcpUsage"]).toBe("Codez MCP");
+    expect(enMessages["settings.usage.entitlementServerMcpUsage"]).toBe("Codez MCP");
+    expect(zhMessages["sidebar.usage.plan.mcp"]).toBe("Codez MCP");
+    expect(enMessages["sidebar.usage.plan.mcp"]).toBe("Codez MCP");
   });
 
   it("个人套餐来源使用 Account Access，而不是请求凭据", () => {
@@ -362,7 +362,7 @@ describe("CodingPlanUsagePanel", () => {
       "utf8",
     );
 
-    expect(source).not.toContain("selectWorkspaceZCodeState");
+    expect(source).not.toContain("selectWorkspaceCodezState");
     expect(source).not.toContain("parseCustomProviderIdFromSupplierKey");
     expect(source).not.toContain("resolveSidebarCurrentCodingPlanUsageSource");
     expect(source).toContain("selectedSource");

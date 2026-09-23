@@ -1,4 +1,4 @@
-import { createUuid } from "@zcode/shared";
+import { createUuid } from "@codez/shared";
 
 export const REQUEST_ID_HEADER_NAME = "x-request-id";
 

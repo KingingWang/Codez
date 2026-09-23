@@ -58,33 +58,33 @@ import type {
   UpdateCheckResultPayload,
   UpdateStatePayload,
   OpenInEditorOptions,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 /**
- * window.zcode 类型定义 —— 仅包含需要 main 进程参与的平台操作
+ * window.codez 类型定义 —— 仅包含需要 main 进程参与的平台操作
  *
  * 凭据管理已迁移到 ICredentialService（通过 RPC），不再经过此接口。
  */
 declare global {
   interface Window {
     /** 插件 UI 沙箱 preload 命名空间；旧 preload 下为 undefined。 */
-    zcodePluginSandbox?: {
+    codezPluginSandbox?: {
       supportsRetainedMove?: boolean;
       copyImage?(
-        input: import("@zcode/shared/mcp-apps").PluginSandboxCaptureRequest,
+        input: import("@codez/shared/mcp-apps").PluginSandboxCaptureRequest,
       ): Promise<void>;
       getOwnerWebContentsId(): Promise<number>;
       disposeSandbox(sandboxId: string, initId?: number): Promise<void>;
       consumeUserGesture(sandboxId: string): Promise<boolean>;
     };
-    zcode: {
+    codez: {
       connectRemote(
         options: RemoteTarget,
         requestId?: string,
         context?: {
           workspacePath: string;
           workspaceIdentity?: string;
-          connectTrigger?: import("@zcode/shared").RemoteWorkspaceConnectTrigger;
+          connectTrigger?: import("@codez/shared").RemoteWorkspaceConnectTrigger;
         },
       ): Promise<{ success: boolean; error?: string; sessionId?: string }>;
       /** 取消当前窗口尚未建立完成的远程连接 */
@@ -131,16 +131,16 @@ declare global {
       selectFiles?(): Promise<string[]>;
       /** 通过系统原生另存为对话框保存文件 */
       saveFile?(
-        payload: import("@zcode/shared").SaveFileRequest,
-      ): Promise<import("@zcode/shared").SaveFileResult>;
+        payload: import("@codez/shared").SaveFileRequest,
+      ): Promise<import("@codez/shared").SaveFileResult>;
       /** 将当前页面的 print 媒体版面导出为 PDF（Chromium 打印引擎，矢量文本） */
-      printPageToPdf?(): Promise<import("@zcode/shared").PrintPageToPdfResult>;
+      printPageToPdf?(): Promise<import("@codez/shared").PrintPageToPdfResult>;
       /** 从系统拖拽/文件输入得到的 Web File 解析真实本地路径 */
       getPathForFile?(file: File): string | null;
       /** dwf 产物「作为文件打开」：把某一版的字节落成本机副本，返回其路径 */
       materializeWorkflowArtifactFile(
-        payload: import("@zcode/shared").MaterializeWorkflowArtifactFileRequest,
-      ): Promise<import("@zcode/shared").MaterializeWorkflowArtifactFileResult>;
+        payload: import("@codez/shared").MaterializeWorkflowArtifactFileRequest,
+      ): Promise<import("@codez/shared").MaterializeWorkflowArtifactFileResult>;
       /** 订阅当前窗口内远程连接过程日志，返回 disposer */
       onRemoteConnectionLog(handler: (entry: RemoteConnectionRuntimeLog) => void): () => void;
       /** 订阅远程 workspace session 关闭事件，返回 disposer */
@@ -169,7 +169,7 @@ declare global {
       /** 同步需要 main 进程即时感知的应用设置 */
       syncAppSettings?(patch: Partial<AppSettings>): void;
       /** 查询关闭驻留托盘能力（Linux 置灰判断；spec：docs/desktop/linux-close-to-tray.md） */
-      getCloseToTrayCapability?(): Promise<import("@zcode/shared").DesktopCloseToTrayCapability>;
+      getCloseToTrayCapability?(): Promise<import("@codez/shared").DesktopCloseToTrayCapability>;
       /** 注册 main 进程要求聚焦指定 workspace tab 的回调，返回 disposer */
       onFocusTab(handler: (path: string) => void): () => void;
       /** 注册 main 进程触发新建 tab 的回调，返回 disposer */
@@ -265,7 +265,7 @@ declare global {
       openInFileManager(path: string): Promise<{ success: boolean; error?: string }>;
       /** 使用系统默认应用打开本地文件 */
       openExternalFile(path: string): Promise<{ success: boolean; error?: string }>;
-      /** 打开 ZCode Computer Use 完整权限引导 */
+      /** 打开 Codez Computer Use 完整权限引导 */
       openCuaPermissionOnboarding?(
         options?: OpenCuaPermissionOnboardingOptions,
       ): Promise<CuaAccessibilitySettingsResult>;
@@ -299,7 +299,7 @@ declare global {
       reportRendererHeapSample?(sample: RendererHeapSample): void;
       /** 触发任务状态对应的系统通知 */
       showTaskNotification(payload: TaskNotificationPayload): void;
-      /** 导出日志：打包 ~/.zcode/v2 及外部 agent 日志为 zip 并在 Finder 中显示 */
+      /** 导出日志：打包 ~/.codez/v2 及外部 agent 日志为 zip 并在 Finder 中显示 */
       exportLogs(): Promise<{
         success: boolean;
         path?: string;
@@ -332,7 +332,7 @@ declare global {
       }): Promise<void>;
       /** 从自动发现的 Chrome Profile 一次性导入内置浏览器数据。 */
       importChromeBrowserData?(
-        options?: import("@zcode/shared").ChromeBrowserDataImportOptions,
+        options?: import("@codez/shared").ChromeBrowserDataImportOptions,
       ): Promise<ChromeBrowserDataImportResult>;
       /** 清理内置浏览器缓存或全部站点数据。 */
       clearEmbeddedBrowserData?(mode: "cache" | "all"): Promise<EmbeddedBrowserDataClearResult>;

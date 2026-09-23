@@ -3,7 +3,7 @@ import {
   ModelConfig,
   ModelConfigRules,
   ModelPropertiesConfig,
-  parseZCodeBuiltinModelConfigRules,
+  parseCodezBuiltinModelConfigRules,
   parseModelConfig,
   parsePersonalModelConfigRules,
   extractManualModelConfig,
@@ -161,8 +161,8 @@ describe("ModelConfigRules", () => {
         },
       ],
     };
-    const rules = parseZCodeBuiltinModelConfigRules(source);
-    expect(rules.toZCodeBuiltinJSON()).toEqual(source);
+    const rules = parseCodezBuiltinModelConfigRules(source);
+    expect(rules.toCodezBuiltinJSON()).toEqual(source);
   });
 
   it("Personal 手动配置通过所属集合表达模式，往返不混回智能组", () => {
@@ -205,7 +205,7 @@ describe("ModelConfigRules", () => {
   });
 
   it("provider-model 使用结构化精确身份并按来源层合成", () => {
-    const builtin = parseZCodeBuiltinModelConfigRules({
+    const builtin = parseCodezBuiltinModelConfigRules({
       ...emptyBuiltin,
       modelRules: [{ modelMatch: "model-a", config: { enabled: false } }],
     });
@@ -262,7 +262,7 @@ describe("ModelConfigRules", () => {
 
   it("持久化不接受 type 或混合两种 Rule 字段", () => {
     expect(() =>
-      parseZCodeBuiltinModelConfigRules({
+      parseCodezBuiltinModelConfigRules({
         ...emptyBuiltin,
         modelRules: [{ type: "model", modelMatch: "model-a", config: { enabled: true } }],
       }),

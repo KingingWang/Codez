@@ -15,10 +15,10 @@ import {
   SlidersHorizontalIcon,
   SquareIcon,
 } from "lucide-react";
-import type { WorkflowRunState, WorkflowRunUsage } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState, WorkflowRunUsage } from "@codez/shared/codez-protocol-v4";
 import { Button } from "@/components/ui/button.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { workflowRunResultView } from "@/app-shell/workflowRunPanel.js";
 import { workflowRunConcurrencyChip } from "@/app-shell/workflowRunThrottle.js";
 import { WorkflowRunStatus } from "@/components/workflow-timeline/WorkflowCardChrome.js";
@@ -122,7 +122,7 @@ export const WorkflowRunStatusHeader = memo(function WorkflowRunStatusHeader({
   title: string;
   usage: WorkflowRunUsage | undefined;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const saveChip = saveSlots?.leading ?? null;
   const saveVerb = saveSlots?.trailing ?? null;
   const cancelLabel = intl.formatMessage({ id: "chat.toolCall.workflow.run.cancel" });
@@ -377,7 +377,7 @@ export const WorkflowRunResultSections = memo(function WorkflowRunResultSections
 }: {
   result: ReturnType<typeof workflowRunResultView>;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
 
   return (
     <>

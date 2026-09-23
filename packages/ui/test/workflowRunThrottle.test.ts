@@ -2,7 +2,7 @@
 // run 头的并发/冷却读数、事件日志的三条行、以及相位到图上四值的映射。
 // 全部无 jsdom：这些是纯规则，时钟由参数注入。
 import { describe, expect, it } from "vitest";
-import type { WorkflowRunNode, WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunNode, WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import enUS from "@/i18n/locales/en-US.js";
 import zhCN from "@/i18n/locales/zh-CN.js";
 import { workflowRunEventLines } from "@/app-shell/workflowRunPanel.js";

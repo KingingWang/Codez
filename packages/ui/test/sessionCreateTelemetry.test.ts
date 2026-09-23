@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildRemoteWorkspaceIdentity } from "@zcode/shared";
+import { buildRemoteWorkspaceIdentity } from "@codez/shared";
 import { createSessionCreateReporter } from "@/lib/sessionCreateTelemetry.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 
 describe("session_create", () => {
   it.each(["group", "project", "session"] as const)(
@@ -86,7 +86,7 @@ describe("session_create", () => {
   });
 
   it("默认空态为 session，Project 入口和 Group 重定位保存各自来源", () => {
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     expect(store.getWorkspaceState("/telemetry-source-test").draftCreateSource).toBe("session");
     store.startDraft("/telemetry-source-test", undefined, undefined, { createSource: "project" });
     expect(store.getWorkspaceState("/telemetry-source-test").draftCreateSource).toBe("project");

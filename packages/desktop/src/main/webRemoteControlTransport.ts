@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import {
   WebRemoteControlRelayPayloadSerializer,
   type WebRemoteControlPayloadSendResult,
-} from "@zcode/client";
+} from "@codez/client";
 import {
   WEB_REMOTE_CONTROL_HEARTBEAT_ACK_TIMEOUT_MS,
   WEB_REMOTE_CONTROL_HEARTBEAT_INTERVAL_MS,
@@ -18,7 +18,7 @@ import {
   type WebRemoteControlRelayDeviceMeta,
   type WebRemoteControlRelayIncomingMessage,
   type WebRemoteControlRelayOutgoingMessage,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { WebRemoteControlRelayAuthProvider } from "./webRemoteControlRelayAuthProvider.js";
 import {
   noteWebRemoteRelayConnectAttempt,
@@ -102,7 +102,7 @@ function safePayloadMetadata(payload: unknown): Record<string, string | undefine
   }
   const record = payload as Record<string, unknown>;
   return {
-    zcode_type: typeof record.zcode_type === "string" ? record.zcode_type : undefined,
+    codez_type: typeof record.codez_type === "string" ? record.codez_type : undefined,
     requestId: typeof record.requestId === "string" ? record.requestId : undefined,
     bridgeSessionId:
       typeof record.bridgeSessionId === "string" ? record.bridgeSessionId : undefined,
@@ -111,7 +111,7 @@ function safePayloadMetadata(payload: unknown): Record<string, string | undefine
 
 function isRawTransportCandidate(payload: unknown): boolean {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
-  const type = (payload as { zcode_type?: unknown }).zcode_type;
+  const type = (payload as { codez_type?: unknown }).codez_type;
   return type === "rpc-frame" || type === "rpc-frame-ack";
 }
 
@@ -706,7 +706,7 @@ export class WebRemoteControlDeviceTransport {
   }
 
   private enterWaitingForPairAfterRelayError(error: Error): void {
-    // Bugfix: zcode-remote-hub 在已认证连接上转发 data 找不到对端时只返回 INTERNAL，
+    // Bugfix: codez-remote-hub 在已认证连接上转发 data 找不到对端时只返回 INTERNAL，
     // 不会关闭当前 device WS。这里不能把“手机端暂时不在”升级成桌面全局 WS 断开，
     // 只暂停业务发送并继续用 pair_status_query 等待 terminal 重新 matched。
     this.options.onError(error);

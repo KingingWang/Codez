@@ -1,6 +1,6 @@
-# OpenTelemetry 概念与 ZCode 取舍
+# OpenTelemetry 概念与 Codez 取舍
 
-> 本文说明 CLI Agent Trace 使用的 OpenTelemetry 概念、结构关系和 ZCode 建模约束。整体设计
+> 本文说明 CLI Agent Trace 使用的 OpenTelemetry 概念、结构关系和 Codez 建模约束。整体设计
 > 与接入方式见 [CLI Agent Telemetry 设计与开发规范](../cli-agent-telemetry.md)。
 
 ## 1. 总体模型
@@ -25,7 +25,7 @@ Resource
                       `-- Parent/Child 拓扑
 
 Context
-    进程内传播当前 Active Span 和 ZCode 私有关联快照
+    进程内传播当前 Active Span 和 Codez 私有关联快照
 
 Metric
     独立于单条 Trace 的跨请求聚合信号
@@ -54,9 +54,9 @@ deployment.environment.name
 process.runtime.name
 os.type
 host.arch
-zcode.telemetry.schema_version
-zcode.product.version
-zcode.runtime.surface
+codez.telemetry.schema_version
+codez.product.version
+codez.runtime.surface
 ```
 
 它适合回答“哪一个服务、版本、进程和运行面产生了数据”。Session、Turn、登录用户会变化，不
@@ -65,7 +65,7 @@ zcode.runtime.surface
 同一个 Resource 会附在许多 Span 上，但不是业务代码给每个 Span 重复调用 Setter。OTel SDK
 在导出时组合 Resource 与 Span 数据。
 
-Trace Resource 包含 `service.instance.id` 和 `zcode.device.installation_id`，便于单次诊断。
+Trace Resource 包含 `service.instance.id` 和 `codez.device.installation_id`，便于单次诊断。
 Metric Resource 刻意去掉这两个高基数值，否则每个短生命周期 CLI 进程都会制造新的时序。
 
 ### 2.2 TracerProvider 与 Tracer
@@ -76,7 +76,7 @@ Owner，其中包含一个 TracerProvider 和一个 MeterProvider。
 Tracer 通过 Instrumentation Scope 标识“哪个库创建了这些 Span”：
 
 ```text
-name    = @zcode/cli-agent-telemetry
+name    = @codez/cli-agent-telemetry
 version = Telemetry Schema Version
 ```
 
@@ -90,7 +90,7 @@ version = Telemetry Schema Version
 Trace 是共享同一 `traceId` 的 Span 集合。它不是一个需要单独创建的对象：创建 Root Span 时
 产生 traceId，Child Span 继承它。
 
-ZCode 通常以一个主 Agent Turn 为一条 Trace。后台任务或 Workflow 有独立生命周期时创建另一条
+Codez 通常以一个主 Agent Turn 为一条 Trace。后台任务或 Workflow 有独立生命周期时创建另一条
 Trace，通过 Link 保留因果关系。
 
 ### 3.2 Span
@@ -104,7 +104,7 @@ spanContext
 parentSpanId（如果是 Child）
 ```
 
-Span Name 是稳定、低基数的节点类型，例如 `agent_step`、`model_attempt`。ZCode 不再额外维护一个
+Span Name 是稳定、低基数的节点类型，例如 `agent_step`、`model_attempt`。Codez 不再额外维护一个
 和 Span Name 重复的 `span_type` Attribute，也不把 Step Index 或 Model Name拼入 Span Name。
 
 `SpanKind.INTERNAL` 用于 Turn、Step、Tool、Command、Compaction、Call 等进程内工作；
@@ -145,7 +145,7 @@ scope.run(callback)
     `-- callback 结束后恢复调用者 Context
 ```
 
-ZCode 在同一个 OTel Context 中还保存 Runtime 私有的 `ActiveWriterContext`，用于传递不可变的
+Codez 在同一个 OTel Context 中还保存 Runtime 私有的 `ActiveWriterContext`，用于传递不可变的
 Execution Correlation、当前 Writer 和 Tool Call ID。业务代码不能访问私有 Context Key，也不
 应层层透传 Session/Turn/Provider 等字段。
 
@@ -193,12 +193,12 @@ Span 偷偷成为 Parent。
 当前 Link Attribute：
 
 ```text
-zcode.link.relation = spawned_by | triggered_by | resumed_from
+codez.link.relation = spawned_by | triggered_by | resumed_from
 ```
 
 ### 5.3 `AgentTelemetryCausation`
 
-ZCode 用一个严格类型保存延迟任务需要的因果引用：
+Codez 用一个严格类型保存延迟任务需要的因果引用：
 
 ```ts
 interface AgentTelemetryCausation {
@@ -276,7 +276,7 @@ model_attempt
 
 ### 6.3 Status 与业务 Outcome
 
-OTel Status 只有 `UNSET/OK/ERROR`，不足以表达业务结果。ZCode 使用 Span 专属 `outcome`：
+OTel Status 只有 `UNSET/OK/ERROR`，不足以表达业务结果。Codez 使用 Span 专属 `outcome`：
 
 | Outcome        | OTel Status | 含义                        |
 | -------------- | ----------- | --------------------------- |
@@ -296,7 +296,7 @@ OTel Status 只有 `UNSET/OK/ERROR`，不足以表达业务结果。ZCode 使用
 Trace 回答“哪一次为什么失败”，Metric 回答“总体失败率和 P95 是多少”。Metric Series 由
 Instrument 名和 Label 组合决定，高基数 Label 会造成成本与正确性问题。
 
-ZCode Writer 在事实确定时同时记录 Metric，不从导出的 Trace 离线猜测：
+Codez Writer 在事实确定时同时记录 Metric，不从导出的 Trace 离线猜测：
 
 ```text
 Writer Setter / Terminal Latch
@@ -330,7 +330,7 @@ CLI Agent 当前不使用业务 Baggage：
 5. **用 Event 统计独立耗时。** Event 没有独立终态；需要 SLO 就建 Child Span。
 6. **把日志、Trace 和 Metric 混为一体。** 三者采集方式、隐私、基数和查询用途不同。
 7. **同时把动态值放进 Span Name。** 使用稳定 Span Name，动态事实进入受控 Attribute。
-8. **把 GenAI 字段当内部 Schema。** `zcode.*` 是权威字段，兼容字段由 Adapter 投影。
+8. **把 GenAI 字段当内部 Schema。** `codez.*` 是权威字段，兼容字段由 Adapter 投影。
 
 ## 10. 进一步阅读
 

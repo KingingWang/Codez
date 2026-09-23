@@ -47,7 +47,7 @@ function makeTempDir(prefix: string): string {
 }
 
 function prependFakeWindowsShells(commands: string[]): string {
-  const dir = makeTempDir("zcode-terminal-shells-");
+  const dir = makeTempDir("codez-terminal-shells-");
   for (const command of commands) {
     const shellPath = join(dir, command);
     writeFileSync(shellPath, "");
@@ -129,7 +129,7 @@ afterEach(() => {
 
 describe("terminalService", () => {
   it("should fall back to a usable shell when SHELL points to a missing executable", () => {
-    const invalidShell = join(tmpdir(), `zcode-missing-shell-${Date.now()}`);
+    const invalidShell = join(tmpdir(), `codez-missing-shell-${Date.now()}`);
     process.env.SHELL = invalidShell;
 
     const shell = resolveTerminalShell();
@@ -155,16 +155,16 @@ describe("terminalService", () => {
   });
 
   it("should keep the provided cwd when it still exists", () => {
-    const cwd = makeTempDir("zcode-terminal-cwd-");
+    const cwd = makeTempDir("codez-terminal-cwd-");
 
     expect(resolveTerminalCwd(cwd)).toBe(cwd);
   });
 
   it("should fall back to HOME when the provided cwd is gone", () => {
-    const home = makeTempDir("zcode-terminal-home-");
+    const home = makeTempDir("codez-terminal-home-");
     process.env.HOME = home;
 
-    const cwd = resolveTerminalCwd(join(tmpdir(), `zcode-missing-cwd-${Date.now()}`));
+    const cwd = resolveTerminalCwd(join(tmpdir(), `codez-missing-cwd-${Date.now()}`));
 
     expect(cwd).toBe(home);
   });
@@ -215,7 +215,7 @@ describe("terminalService", () => {
   });
 
   it("should keep interactive terminal capabilities when spawning the terminal", async () => {
-    const home = makeTempDir("zcode-terminal-home-");
+    const home = makeTempDir("codez-terminal-home-");
     process.env.HOME = home;
     process.env.SHELL = process.platform === "win32" ? "powershell.exe" : "/bin/sh";
     process.env.TERM = "dumb";
@@ -238,7 +238,7 @@ describe("terminalService", () => {
   });
 
   it("should keep an inherited UTF-8 locale when spawning the terminal", async () => {
-    const home = makeTempDir("zcode-terminal-home-");
+    const home = makeTempDir("codez-terminal-home-");
     process.env.HOME = home;
     process.env.SHELL = process.platform === "win32" ? "powershell.exe" : "/bin/sh";
     process.env.LANG = "zh_CN.UTF-8";
@@ -261,7 +261,7 @@ describe("terminalService", () => {
   });
 
   it("should return the resolved terminal font profile", async () => {
-    const home = makeTempDir("zcode-terminal-home-");
+    const home = makeTempDir("codez-terminal-home-");
     process.env.HOME = home;
     process.env.SHELL = process.platform === "win32" ? "powershell.exe" : "/bin/sh";
 
@@ -275,12 +275,12 @@ describe("terminalService", () => {
   });
 
   it("should use resolved shell and cwd before spawning the terminal", async () => {
-    const home = makeTempDir("zcode-terminal-home-");
+    const home = makeTempDir("codez-terminal-home-");
     process.env.HOME = home;
-    process.env.SHELL = join(tmpdir(), `zcode-missing-shell-${Date.now()}`);
+    process.env.SHELL = join(tmpdir(), `codez-missing-shell-${Date.now()}`);
 
     const service = createTestTerminalService();
-    await service.create({ cols: 80, rows: 24, cwd: join(tmpdir(), `zcode-missing-cwd-${Date.now()}`) });
+    await service.create({ cols: 80, rows: 24, cwd: join(tmpdir(), `codez-missing-cwd-${Date.now()}`) });
 
     expect(spawnMock).toHaveBeenCalledOnce();
     expect(spawnMock).toHaveBeenCalledWith(
@@ -296,7 +296,7 @@ describe("terminalService", () => {
   });
 
   it("should wrap spawn failures with shell and cwd details", async () => {
-    const home = makeTempDir("zcode-terminal-home-");
+    const home = makeTempDir("codez-terminal-home-");
     process.env.HOME = home;
     process.env.SHELL =
       process.platform === "win32" ? "/bin/sh" : "/bin/sh";
@@ -315,7 +315,7 @@ describe("terminalService", () => {
   it("should fall back to system conpty when useConptyDll fails on Windows", async () => {
     setProcessPlatform("win32");
     prependFakeWindowsShells(["powershell.exe"]);
-    const home = makeTempDir("zcode-terminal-home-");
+    const home = makeTempDir("codez-terminal-home-");
     process.env.HOME = home;
     const fallbackPty = createMockPty();
     spawnMock
@@ -353,7 +353,7 @@ describe("terminalService", () => {
   it("should not fall back when Windows spawn fails for non-conpty reasons", async () => {
     setProcessPlatform("win32");
     prependFakeWindowsShells(["powershell.exe"]);
-    const home = makeTempDir("zcode-terminal-home-");
+    const home = makeTempDir("codez-terminal-home-");
     process.env.HOME = home;
     spawnMock.mockImplementationOnce(() => {
       throw new Error("powershell.exe not found");
@@ -368,7 +368,7 @@ describe("terminalService", () => {
   });
 
   it("should kill all active terminals when disposing the service", async () => {
-    const home = makeTempDir("zcode-terminal-home-");
+    const home = makeTempDir("codez-terminal-home-");
     process.env.HOME = home;
     process.env.SHELL = "/bin/sh";
     const firstPty = createMockPty();

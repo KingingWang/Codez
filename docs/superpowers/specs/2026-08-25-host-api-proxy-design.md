@@ -95,7 +95,7 @@ TLS 信任。继续清理用户 shell 的标准代理和 CA 变量。
 
 **原因**：与现有 app/provider 网络隔离规则一致，避免从启动 shell 获得不可见、不可诊断的行为。
 
-**未选择**：取消 `sanitizeZCodeRuntimeEnv` 对标准网络变量的清理；使用 `NODE_USE_ENV_PROXY`。
+**未选择**：取消 `sanitizeCodezRuntimeEnv` 对标准网络变量的清理；使用 `NODE_USE_ENV_PROXY`。
 
 ### 决策 D2：使用请求级 dispatcher，不设置进程全局 dispatcher
 
@@ -123,7 +123,7 @@ localhost 请求，要求额外产品决策和回归矩阵。
 
 ### 决策 D4：先重写 endpoint，再选择出口
 
-**选择**：`NodeApiClient` 先按现有规则把默认 ZCode endpoint 重写为当前有效 endpoint，再对最终 URL 执行
+**选择**：`NodeApiClient` 先按现有规则把默认 Codez endpoint 重写为当前有效 endpoint，再对最终 URL 执行
 No Proxy 和 dispatcher 选择。
 
 **原因**：No Proxy 必须匹配真实目标，不能匹配重写前的生产域名。
@@ -240,7 +240,7 @@ OAuth code、token 或 header value。
 
 | Candidate ID | State                                 | Event                           | Target/surface                | Expected guard/effect                               | Status   | Notes                  |
 | ------------ | ------------------------------------- | ------------------------------- | ----------------------------- | --------------------------------------------------- | -------- | ---------------------- |
-| HAP-001      | no explicit policy                    | API request                     | ZCode endpoint                | direct, existing behavior                           | accepted | baseline               |
+| HAP-001      | no explicit policy                    | API request                     | Codez endpoint                | direct, existing behavior                           | accepted | baseline               |
 | HAP-002      | explicit proxy                        | OAuth callback                  | final token URL               | exactly one proxied request                         | accepted | core ticket            |
 | HAP-003      | proxy + matching No Proxy             | API request                     | exact/suffix/host:port target | direct, CA still applies                            | accepted | bypass semantics       |
 | HAP-004      | unreachable proxy                     | API request                     | external endpoint             | structured failure, zero direct fallback            | accepted | security invariant     |

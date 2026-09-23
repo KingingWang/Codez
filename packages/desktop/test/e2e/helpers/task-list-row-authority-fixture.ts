@@ -36,7 +36,7 @@ export function seedTaskIndexRowAuthorityFixture(
 
   // Node 当前内置 SQLite 只提供 DatabaseSync；fixture 在 Electron/Host 启动前执行，
   // 没有与产品进程争用句柄，写完立即关闭。
-  const database = new DatabaseSync(join(options.e2eHomeDir, ".zcode", "v2", "tasks-index.sqlite"));
+  const database = new DatabaseSync(join(options.e2eHomeDir, ".codez", "v2", "tasks-index.sqlite"));
   const insert = database.prepare(`
     INSERT INTO tasks (
       workspace_key, workspace_path, workspace_identity, task_id, title, task_status,

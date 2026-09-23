@@ -4,7 +4,7 @@
 
 **Goal:** Add an isolated `/remote/__test__` static deployment path for Web remote-control test assets while leaving `/remote`, `/remote/v3`, and the desktop default QR URL unchanged.
 
-**Architecture:** Keep test assets on a third parallel static deployment chain that shares the existing `packages/web` Vite SPA but uses its own Vite `base`, Dockerfile, nginx config, local smoke test, image name, and k8s deployment update script. The Web app already derives the QR route from `import.meta.env.BASE_URL`, so implementation only needs a route regression test and deployment artifacts. Desktop testing uses `ZCODE_WEB_REMOTE_CONTROL_URL=https://zcode.z.ai/remote/__test__`; no desktop default URL changes are part of this plan.
+**Architecture:** Keep test assets on a third parallel static deployment chain that shares the existing `packages/web` Vite SPA but uses its own Vite `base`, Dockerfile, nginx config, local smoke test, image name, and k8s deployment update script. The Web app already derives the QR route from `import.meta.env.BASE_URL`, so implementation only needs a route regression test and deployment artifacts. Desktop testing uses `CODEZ_WEB_REMOTE_CONTROL_URL=https://zcode.z.ai/remote/__test__`; no desktop default URL changes are part of this plan.
 
 **Tech Stack:** pnpm, Vite, nginx, Docker, bash, Vitest, TypeScript, oxlint.
 
@@ -18,7 +18,7 @@
 - Create `Dockerfile.web-remote-control-test` — package prebuilt `packages/web/dist` into an nginx image serving `/remote/__test__`.
 - Create `nginx.web-remote-control-test.conf` — static nginx config scoped to `/remote/__test__`.
 - Create `scripts/test-web-remote-control-test-docker-build.sh` — build and smoke-test the test image locally.
-- Create `scripts/docker-build-and-push-web-remote-control-test.sh` — build, push, and create a cgx-dev-k8s MR that updates `zcode/frontend/deployment-remote-test.yaml`.
+- Create `scripts/docker-build-and-push-web-remote-control-test.sh` — build, push, and create a cgx-dev-k8s MR that updates `codez/frontend/deployment-remote-test.yaml`.
 - Modify `docs/web-remote-control/web-remote-control-architecture.md` — document the third static deployment chain and verification commands.
 
 ### Task 1: Route And Build Script
@@ -45,7 +45,7 @@ In `packages/desktop/test/root-build-scripts.test.ts`, add this case after the e
 ```ts
   it("pnpm build:web-remote-control:test 应使用 /remote/__test__/ base 构建测试远控资源", () => {
     expect(rootPackageJson.scripts["build:web-remote-control:test"]).toBe(
-      "pnpm --filter @zcode/web exec vite build --base=/remote/__test__/",
+      "pnpm --filter @codez/web exec vite build --base=/remote/__test__/",
     );
   });
 ```
@@ -65,10 +65,10 @@ Expected: FAIL because `rootPackageJson.scripts["build:web-remote-control:test"]
 In `package.json`, add the test script immediately after `build:web-remote-control:v3`:
 
 ```json
-    "build:web-remote-control": "pnpm --filter @zcode/web exec vite build --base=/remote/",
-    "build:web-remote-control:v3": "pnpm --filter @zcode/web exec vite build --base=/remote/v3/",
-    "build:web-remote-control:test": "pnpm --filter @zcode/web exec vite build --base=/remote/__test__/",
-    "build:bootstrap": "pnpm -r --filter \"./packages/*\" --filter \"!@zcode/desktop\" build && pnpm --filter @zcode/desktop build:no-runtime-assets",
+    "build:web-remote-control": "pnpm --filter @codez/web exec vite build --base=/remote/",
+    "build:web-remote-control:v3": "pnpm --filter @codez/web exec vite build --base=/remote/v3/",
+    "build:web-remote-control:test": "pnpm --filter @codez/web exec vite build --base=/remote/__test__/",
+    "build:bootstrap": "pnpm -r --filter \"./packages/*\" --filter \"!@codez/desktop\" build && pnpm --filter @codez/desktop build:no-runtime-assets",
 ```
 
 - [ ] **Step 4: Run tests and verify the green state**
@@ -320,8 +320,8 @@ Create `scripts/test-web-remote-control-test-docker-build.sh`:
 
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-zcode-remote-mobile-test}"
-CONTAINER_NAME="${CONTAINER_NAME:-zcode-remote-mobile-test}"
+IMAGE_NAME="${IMAGE_NAME:-codez-remote-mobile-test}"
+CONTAINER_NAME="${CONTAINER_NAME:-codez-remote-mobile-test}"
 PORT="${PORT:-8082}"
 DOCKERFILE="${DOCKERFILE:-Dockerfile.web-remote-control-test}"
 
@@ -477,25 +477,25 @@ Add this test after the smoke-script test:
 ```ts
   it("remote test 发布脚本应只更新 deployment-remote-test.yaml", () => {
     expect(webRemoteControlTestPublishScriptSource).toContain(
-      'IMAGE_NAME="${DOCKER_IMAGE_NAME:-uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-test}"',
+      'IMAGE_NAME="${DOCKER_IMAGE_NAME:-uhub.service.ucloud.cn/tianqi/codez-remote-mobile-test}"',
     );
     expect(webRemoteControlTestPublishScriptSource).toContain(
       'DOCKERFILE="${DOCKERFILE:-Dockerfile.web-remote-control-test}"',
     );
     expect(webRemoteControlTestPublishScriptSource).toContain(
-      'K8S_DEPLOYMENT_FILE="${K8S_DEPLOYMENT_FILE:-zcode/frontend/deployment-remote-test.yaml}"',
+      'K8S_DEPLOYMENT_FILE="${K8S_DEPLOYMENT_FILE:-codez/frontend/deployment-remote-test.yaml}"',
     );
     expect(webRemoteControlTestPublishScriptSource).toContain(
-      'local branch_name="${K8S_BRANCH_NAME:-deploy/zcode-remote-mobile-test-$TAG}"',
+      'local branch_name="${K8S_BRANCH_NAME:-deploy/codez-remote-mobile-test-$TAG}"',
     );
     expect(webRemoteControlTestPublishScriptSource).toContain(
-      'local mr_title="chore: update zcode remote test image to $TAG"',
+      'local mr_title="chore: update codez remote test image to $TAG"',
     );
     expect(webRemoteControlTestPublishScriptSource).toContain(
       "pnpm run build:web-remote-control:test",
     );
     expect(webRemoteControlTestPublishScriptSource).not.toContain("deployment-remote-v3.yaml");
-    expect(webRemoteControlTestPublishScriptSource).not.toContain("zcode-remote-mobile-v3");
+    expect(webRemoteControlTestPublishScriptSource).not.toContain("codez-remote-mobile-v3");
   });
 ```
 
@@ -522,13 +522,13 @@ REGISTRY="${DOCKER_REGISTRY:-uhub.service.ucloud.cn}"
 USERNAME="${DOCKER_REGISTRY_USERNAME:-dev@example.com}"
 DEFAULT_PASSWORD="123456"
 PASSWORD="${DOCKER_REGISTRY_PASSWORD:-$DEFAULT_PASSWORD}"
-IMAGE_NAME="${DOCKER_IMAGE_NAME:-uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-test}"
+IMAGE_NAME="${DOCKER_IMAGE_NAME:-uhub.service.ucloud.cn/tianqi/codez-remote-mobile-test}"
 DOCKERFILE="${DOCKERFILE:-Dockerfile.web-remote-control-test}"
 PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 K8S_REPO_DIR="${K8S_REPO_DIR:-$HOME/workspace/cgx-dev-k8s}"
 K8S_REMOTE="${K8S_REMOTE:-origin}"
 K8S_BASE_BRANCH="${K8S_BASE_BRANCH:-main}"
-K8S_DEPLOYMENT_FILE="${K8S_DEPLOYMENT_FILE:-zcode/frontend/deployment-remote-test.yaml}"
+K8S_DEPLOYMENT_FILE="${K8S_DEPLOYMENT_FILE:-codez/frontend/deployment-remote-test.yaml}"
 K8S_BRANCH_NAME="${K8S_BRANCH_NAME:-}"
 TAG=""
 SKIP_LOGIN=false
@@ -548,12 +548,12 @@ Environment:
   DOCKER_REGISTRY_PASSWORD  Docker registry password. Defaults to 123456 for compatibility with the old manual publish command.
   DOCKER_REGISTRY           Registry host. Default: uhub.service.ucloud.cn
   DOCKER_REGISTRY_USERNAME  Registry username.
-  DOCKER_IMAGE_NAME         Full image name. Default: uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-test
+  DOCKER_IMAGE_NAME         Full image name. Default: uhub.service.ucloud.cn/tianqi/codez-remote-mobile-test
   DOCKER_PLATFORM           Build platform. Default: linux/amd64
   K8S_REPO_DIR              cgx-dev-k8s repo path. Default: ~/workspace/cgx-dev-k8s
   K8S_REMOTE                cgx-dev-k8s git remote. Default: origin
   K8S_BASE_BRANCH           Target branch to update from and merge into. Default: main
-  K8S_DEPLOYMENT_FILE       Deployment YAML path relative to K8S_REPO_DIR. Default: zcode/frontend/deployment-remote-test.yaml
+  K8S_DEPLOYMENT_FILE       Deployment YAML path relative to K8S_REPO_DIR. Default: codez/frontend/deployment-remote-test.yaml
   K8S_BRANCH_NAME           Optional branch name for the deployment MR.
 USAGE
 }
@@ -627,7 +627,7 @@ stash_dirty_git_repo() {
     printf '%s\n' "$status" >&2
     # Bugfix: 发布脚本需要临时切到 main 并创建部署分支；目标仓库不干净时直接退出会中断发布。
     # 这里把 tracked、staged 和 untracked 改动全部 stash 起来，避免 checkout/pull 覆盖用户本地工作。
-    git -C "$repo_dir" stash push -u -m "auto-stash before zcode remote test image update $TAG"
+    git -C "$repo_dir" stash push -u -m "auto-stash before codez remote test image update $TAG"
   fi
 }
 
@@ -635,8 +635,8 @@ update_k8s_deployment_and_create_mr() {
   local image_tag="$1"
   local repo_dir="$K8S_REPO_DIR"
   local deployment_file="$repo_dir/$K8S_DEPLOYMENT_FILE"
-  local branch_name="${K8S_BRANCH_NAME:-deploy/zcode-remote-mobile-test-$TAG}"
-  local mr_title="chore: update zcode remote test image to $TAG"
+  local branch_name="${K8S_BRANCH_NAME:-deploy/codez-remote-mobile-test-$TAG}"
+  local mr_title="chore: update codez remote test image to $TAG"
   local push_output
   local mr_url
 
@@ -795,7 +795,7 @@ Run:
 pnpm vitest run packages/desktop/test/root-build-scripts.test.ts
 ```
 
-Expected: PASS. The root build-script tests prove the test publish script uses `zcode-remote-mobile-test`, `Dockerfile.web-remote-control-test`, `deployment-remote-test.yaml`, and `pnpm run build:web-remote-control:test`, while avoiding v3 deployment strings.
+Expected: PASS. The root build-script tests prove the test publish script uses `codez-remote-mobile-test`, `Dockerfile.web-remote-control-test`, `deployment-remote-test.yaml`, and `pnpm run build:web-remote-control:test`, while avoiding v3 deployment strings.
 
 - [ ] **Step 6: Run shell parse checks**
 
@@ -835,8 +835,8 @@ test:
   -> pnpm run build:web-remote-control:test
   -> packages/web/dist
   -> Dockerfile.web-remote-control-test
-  -> uhub.service.ucloud.cn/tianqi/zcode-remote-mobile-test
-  -> zcode/frontend/deployment-remote-test.yaml
+  -> uhub.service.ucloud.cn/tianqi/codez-remote-mobile-test
+  -> codez/frontend/deployment-remote-test.yaml
   -> /remote/__test__
 ```
 
@@ -868,7 +868,7 @@ After the publish block, add:
 Desktop 默认二维码 URL 不指向 `/remote/__test__`。需要验证测试资源时，通过环境变量覆盖：
 
 ```bash
-ZCODE_WEB_REMOTE_CONTROL_URL=https://zcode.z.ai/remote/__test__ pnpm dev:desktop
+CODEZ_WEB_REMOTE_CONTROL_URL=https://zcode.z.ai/remote/__test__ pnpm dev:desktop
 ```
 ````
 

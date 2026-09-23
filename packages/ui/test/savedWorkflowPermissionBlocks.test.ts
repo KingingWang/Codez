@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { ZCodePermissionRequest } from "@zcode/shared";
+import type { CodezPermissionRequest } from "@codez/shared";
 import { createElement, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 // 与 workflowPermissionBlock.test.ts 同一组桩：CodeBlock 换成可断言的 <pre>。时间线是纯 DOM，
 // 不需要桩。
@@ -22,7 +22,7 @@ import { PermissionDialog } from "@/PermissionDialog.js";
 
 const SCRIPT =
   'const x = 1;\nconst r = await agent("a").ask<string>("检查 " + String(args.target));';
-const SAVED_PATH = "/workspace/.zcode/workflows/release-check.dwf.ts";
+const SAVED_PATH = "/workspace/.codez/workflows/release-check.dwf.ts";
 // CLI 侧的 ask reason 是协议诊断文案，两个确认窗都必须不展示它。
 const SAVE_CLI_REASON = "saveWorkflow.confirmation: user must confirm writing the workflow file";
 
@@ -48,7 +48,7 @@ const STANDARD_OPTIONS = [
   { optionId: "deny", kind: "deny", name: "Deny", response: { decision: "deny" } },
 ];
 
-function buildRunRequest(overrides: Partial<ZCodePermissionRequest> = {}): ZCodePermissionRequest {
+function buildRunRequest(overrides: Partial<CodezPermissionRequest> = {}): CodezPermissionRequest {
   return {
     type: "permission_request",
     taskId: "task-1",
@@ -67,11 +67,11 @@ function buildRunRequest(overrides: Partial<ZCodePermissionRequest> = {}): ZCode
     },
     raw: { name: "Release check", script: SCRIPT },
     ...overrides,
-  } as ZCodePermissionRequest;
+  } as CodezPermissionRequest;
 }
 
 /** saved 源启动：归一化入参在 `script` 之外多一个 `saved`，display 形状一个字节没变。 */
-function buildSavedRunRequest(saved: Record<string, unknown> = {}): ZCodePermissionRequest {
+function buildSavedRunRequest(saved: Record<string, unknown> = {}): CodezPermissionRequest {
   return buildRunRequest({
     raw: {
       name: "Release check",
@@ -87,7 +87,7 @@ function buildSavedRunRequest(saved: Record<string, unknown> = {}): ZCodePermiss
   });
 }
 
-function buildSaveRequest(overrides: Record<string, unknown> = {}): ZCodePermissionRequest {
+function buildSaveRequest(overrides: Record<string, unknown> = {}): CodezPermissionRequest {
   return {
     type: "permission_request",
     taskId: "task-1",
@@ -112,17 +112,17 @@ function buildSaveRequest(overrides: Record<string, unknown> = {}): ZCodePermiss
       scope: "project",
       ...overrides,
     },
-  } as ZCodePermissionRequest;
+  } as CodezPermissionRequest;
 }
 
 function renderDialog(
-  request: ZCodePermissionRequest,
+  request: CodezPermissionRequest,
   locale: "en-US" | "zh-CN" = "en-US",
   onRespond: (requestId: string, option: unknown) => void = () => {},
 ) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(PermissionDialog, { request, onRespond, workspacePath: "/workspace" }),
     ),
@@ -317,7 +317,7 @@ describe("SaveWorkflowPermissionBlock", () => {
     renderDialog({
       ...buildSaveRequest(),
       raw: { name: "release-check" },
-    } as ZCodePermissionRequest);
+    } as CodezPermissionRequest);
 
     expect(screen.getByText("Save this workflow to the project?")).toBeTruthy();
     expect(screen.getByText("release-check")).toBeTruthy();

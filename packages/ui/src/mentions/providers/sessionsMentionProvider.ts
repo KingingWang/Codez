@@ -1,10 +1,10 @@
-// composer parity：`#` 会话候选的数据源从旧 zcodeSessionStore/taskQueryCache/remote*
+// composer parity：`#` 会话候选的数据源从旧 codezSessionStore/taskQueryCache/remote*
 // 店面切到 v4 sessions-index（useWorkspaceSessionsIndexItems，侧栏同源）。
 // 旧店面在 v4 shell 下不再被会话列表填充，继续读会得到空面板；序列化与排序语义不变
 // （collectSessionMentionItems 保留，供单测与聚合复用）。
 import { useMemo } from "react";
-import type { IServiceAccessor } from "@zcode/services";
-import type { ZCodeProvider, ZCodeTaskMeta } from "@zcode/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { CodezProvider, CodezTaskMeta } from "@codez/shared";
 import { buildSessionMentionMarkdown } from "@/mentions/mentionMarkdown.js";
 import { filterMentionItemsWithOptions } from "@/mentions/mentionSearch.js";
 import type {
@@ -37,8 +37,8 @@ interface SessionMentionItem extends MentionItem {
 }
 
 function compareSessionTasks(
-  left: ZCodeTaskMeta,
-  right: ZCodeTaskMeta,
+  left: CodezTaskMeta,
+  right: CodezTaskMeta,
   currentWorkspaceKey?: string,
 ) {
   if (currentWorkspaceKey) {
@@ -57,19 +57,19 @@ function compareSessionTasks(
   return left.title.localeCompare(right.title);
 }
 
-function getSessionLabel(task: ZCodeTaskMeta): string {
+function getSessionLabel(task: CodezTaskMeta): string {
   const title = task.title.replace(/^#sess_[a-zA-Z0-9._-]+\s*/, "").trim();
   return title || "Untitled session";
 }
 
-function getWorkspaceLabel(task: ZCodeTaskMeta): string {
+function getWorkspaceLabel(task: CodezTaskMeta): string {
   const raw = task.workspacePath.trim() || task.workspaceIdentity?.trim() || "";
   return raw.split(/[\\/]/).filter(Boolean).at(-1) ?? raw;
 }
 
 function mapTaskToMentionItem(
-  task: ZCodeTaskMeta,
-  provider: ZCodeProvider,
+  task: CodezTaskMeta,
+  provider: CodezProvider,
 ): SessionMentionItem {
   const sessionId = task.taskId;
   const itemProvider = task.provider ?? provider;
@@ -96,8 +96,8 @@ function mapTaskToMentionItem(
 }
 
 export function collectSessionMentionItems(
-  tasks: ZCodeTaskMeta[],
-  provider: ZCodeProvider,
+  tasks: CodezTaskMeta[],
+  provider: CodezProvider,
   options: {
     workspacePath?: string;
     workspaceIdentity?: string;
@@ -106,7 +106,7 @@ export function collectSessionMentionItems(
   const currentWorkspaceKey = options.workspacePath
     ? buildTaskWorkspaceKey(options.workspacePath, options.workspaceIdentity)
     : undefined;
-  const taskBySessionId = new Map<string, ZCodeTaskMeta>();
+  const taskBySessionId = new Map<string, CodezTaskMeta>();
   for (const task of tasks) {
     if (task.migrationSource) {
       continue;
@@ -151,7 +151,7 @@ function buildSessionMentionScopes(params: {
     return [];
   }
 
-  const currentAgentService = params.currentServices.zcodeAgentService;
+  const currentAgentService = params.currentServices.codezAgentService;
   const scopes: WorkspaceSessionsIndexScope[] = [];
   const seenWorkspaceKeys = new Set<string>();
   const candidates: Array<
@@ -191,7 +191,7 @@ function buildSessionMentionScopes(params: {
     // 未连接 remote 也会在 resolver 处返回 null，不能回退到本地 base service。
     if (
       !resolved ||
-      resolved.services.zcodeAgentService !== currentAgentService
+      resolved.services.codezAgentService !== currentAgentService
     ) {
       continue;
     }
@@ -205,7 +205,7 @@ function buildSessionMentionScopes(params: {
       ...(resolved.remoteSessionId
         ? { endpointKey: resolved.remoteSessionId }
         : {}),
-      agentService: resolved.services.zcodeAgentService,
+      agentService: resolved.services.codezAgentService,
     });
   }
 
@@ -213,7 +213,7 @@ function buildSessionMentionScopes(params: {
 }
 
 export function useSessionsMentionProvider(
-  provider: ZCodeProvider,
+  provider: CodezProvider,
   workspacePath: string,
   workspaceIdentity: string | undefined,
   query: string,
@@ -264,7 +264,7 @@ export function useSessionsMentionProvider(
           ...(workspaceIdentity ? { workspaceIdentity } : {}),
           ...(remoteSessionId ? { endpointKey: remoteSessionId } : {}),
           // 远端必须显式携带已解析 endpoint 的 service，不能让本机 Host 查询远端路径。
-          agentService: workspaceServices.zcodeAgentService,
+          agentService: workspaceServices.codezAgentService,
         },
       ];
     }

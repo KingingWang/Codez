@@ -1,6 +1,6 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared";
 import {
   getE2EAppDataPaths,
   setInputValueByTestIdDom,
@@ -9,8 +9,8 @@ import {
 } from "../../../helpers/desktop-app.js";
 
 const marker = "E2E_MFH01_HOST_SEARCH";
-const relativePath = `.zcode-e2e/file-mention-host-search/${marker}.ts`;
-const root = join(getE2EAppDataPaths().workspace, ".zcode-e2e", "file-mention-host-search");
+const relativePath = `.codez-e2e/file-mention-host-search/${marker}.ts`;
+const root = join(getE2EAppDataPaths().workspace, ".codez-e2e", "file-mention-host-search");
 
 describe("MFH01：@ 文件候选由 Host 查询", () => {
   before(async () => {

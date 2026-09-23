@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { AgentSummary } from "@zcode/shared";
+import type { AgentSummary } from "@codez/shared";
 
 const mockSubagentsState = vi.hoisted(() => ({
   agents: [] as AgentSummary[],

@@ -15,12 +15,12 @@ export interface HostFaultControl {
   released?: string[];
 }
 export async function setHostFaults(control: HostFaultControl) {
-  const path = join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "host-fault-control.json");
+  const path = join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "host-fault-control.json");
   await writeFile(path + ".tmp", JSON.stringify(control));
   await rename(path + ".tmp", path);
 }
 export async function readHostBoundary() {
-  const root = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+  const root = process.env.CODEZ_E2E_ARTIFACT_DIR!;
   return (
     await Promise.all(
       (
@@ -76,7 +76,7 @@ export async function openSubagentHostWindow() {
         electron.utilityProcess.fork = originalFork;
         const child = originalFork(preload, [path, ...(args ?? [])], {
           ...options,
-          env: { ...options?.env, ZCODE_E2E_HOST_FAULT_ROOT: root },
+          env: { ...options?.env, CODEZ_E2E_HOST_FAULT_ROOT: root },
         });
         didFork();
         return child;
@@ -92,7 +92,7 @@ export async function openSubagentHostWindow() {
       }
     },
     fileURLToPath(new URL("./subagent-host-faults.cjs", import.meta.url)),
-    process.env.ZCODE_E2E_ARTIFACT_DIR!,
+    process.env.CODEZ_E2E_ARTIFACT_DIR!,
   );
   let handle = "";
   await browser.waitUntil(

@@ -15,7 +15,7 @@ vi.mock("#src/process/processTreeTerminator.js", async (importOriginal) => ({
   terminateProcessTreeAndWait: terminateProcessTreeAndWaitMock,
 }));
 
-import { ZCodeStdioTransport } from "../src/zcode-agent/zcodeStdioTransport.js";
+import { CodezStdioTransport } from "../src/codez-agent/codezStdioTransport.js";
 
 const activeChildren = new Set<ReturnType<typeof spawn>>();
 
@@ -38,7 +38,7 @@ afterEach(async () => {
   activeChildren.clear();
 });
 
-describe("ZCodeStdioTransport process tree result", () => {
+describe("CodezStdioTransport process tree result", () => {
   it("等待器确认 OS 进程树已退出时不被滞后的 ChildProcess 状态改判为残留", async () => {
     vi.spyOn(process, "platform", "get").mockReturnValue("win32");
     vi.spyOn(Date, "now").mockReturnValue(10_000);
@@ -47,7 +47,7 @@ describe("ZCodeStdioTransport process tree result", () => {
       windowsHide: true,
     });
     activeChildren.add(child);
-    const transport = new ZCodeStdioTransport(child);
+    const transport = new CodezStdioTransport(child);
     const startedAt = performance.now();
 
     // Bug 回归：Windows taskkill 已完成且 waiter 根据 OS 存活事实返回成功时，

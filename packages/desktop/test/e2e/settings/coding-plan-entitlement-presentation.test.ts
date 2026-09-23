@@ -7,7 +7,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,
@@ -21,7 +21,7 @@ import type { EntitlementPresentation } from "../fixtures/entitlement-presentati
 
 const paths = getE2EAppDataPaths();
 const base = () => {
-  const value = process.env.ZCODE_CODING_PLAN_TEAM_MOCK_BASE_URL;
+  const value = process.env.CODEZ_CODING_PLAN_TEAM_MOCK_BASE_URL;
   if (!value) throw new Error("missing business mock");
   return value;
 };
@@ -45,7 +45,7 @@ async function prepare(
 ) {
   await browser.execute(() => {
     for (const key of Object.keys(localStorage)) {
-      if (key.startsWith("zcode:usage-entitlement:")) localStorage.removeItem(key);
+      if (key.startsWith("codez:usage-entitlement:")) localStorage.removeItem(key);
     }
   });
   await quitElectronAppGracefully();
@@ -62,7 +62,7 @@ async function prepare(
             username: "bigmodel-e2e-user",
           })
         : "",
-      zcodejwttoken: connected ? "e2e-zcode-jwt" : "",
+      codezjwttoken: connected ? "e2e-codez-jwt" : "",
     }),
   );
   const file = join(paths.appDataDir, "setting.json");
@@ -162,10 +162,10 @@ describe("套餐权益展示与购买入口", () => {
   afterEach(async function () {
     if (this.currentTest?.state === "failed") {
       console.log("[entitlement-presentation] visible page:", await $("body").getText());
-      if (process.env.ZCODE_E2E_ARTIFACT_DIR)
+      if (process.env.CODEZ_E2E_ARTIFACT_DIR)
         await browser.saveScreenshot(
           join(
-            process.env.ZCODE_E2E_ARTIFACT_DIR,
+            process.env.CODEZ_E2E_ARTIFACT_DIR,
             `${this.currentTest.title.replace(/[^a-zA-Z0-9-]/g, "_")}.png`,
           ),
         );
@@ -239,7 +239,7 @@ describe("套餐权益展示与购买入口", () => {
   it("CTP-18: 同时存在过期和有效 Start，仅显示有效计划", async function () {
     this.timeout(120000);
     await prepare({ ...empty, start: "mixed" }, "start");
-    await textVisible("ZCode V3 Start Plan");
+    await textVisible("Codez V3 Start Plan");
     await textVisible("Today's balance");
     await textVisible("E2E_EXPIRED_PLAN", false);
     await textVisible("E2E_EXPIRED_BALANCE", false);
@@ -260,7 +260,7 @@ describe("套餐权益展示与购买入口", () => {
           `coding-plan:${BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan}`,
         ),
       );
-      await textVisible("ZCode V3 Start Plan");
+      await textVisible("Codez V3 Start Plan");
       await models(true);
       await banners(false);
       await textVisible("Upgrade", false);

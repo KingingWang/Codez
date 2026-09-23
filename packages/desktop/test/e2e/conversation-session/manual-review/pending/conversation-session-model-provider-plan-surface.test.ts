@@ -16,7 +16,7 @@ import {
   TID_AUTOMATION_FREQUENCY_OPTION,
   encodeCustomModelValue,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -204,7 +204,7 @@ async function prepareBigModelCatalogWorkspace(model: string): Promise<void> {
 }
 
 async function setCatalogMode(mode: "full" | "partial" | "unavailable"): Promise<void> {
-  const baseUrl = process.env.ZCODE_CODING_PLAN_TEAM_MOCK_BASE_URL?.trim();
+  const baseUrl = process.env.CODEZ_CODING_PLAN_TEAM_MOCK_BASE_URL?.trim();
   if (!baseUrl) throw new Error("Coding Plan mock URL 未配置，无法切换模型目录状态");
   const response = await fetch(`${baseUrl}/__e2e/coding-plan/catalog-mode`, {
     method: "POST",

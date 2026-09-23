@@ -9,7 +9,7 @@ import type {
   RemoteTarget,
   SSHConfigAliasOption,
   WSLDistro,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 type MockSelectProps = {
   children?: ReactNode;
@@ -59,7 +59,7 @@ vi.mock("@/components/ui/popover.js", async () => {
 });
 
 import { PlatformProvider } from "@/hooks/usePlatform.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { RemoteConnectionFields } from "@/RemoteConnectionFields.js";
 
 type RemoteConnectionFieldsTestProps = {
@@ -134,7 +134,7 @@ const dockerContainers: DockerContainerInfo[] = [
   {
     id: "abc123",
     image: "ubuntu:latest",
-    name: "zcode-dev",
+    name: "codez-dev",
     state: "running",
     status: "Up 2 minutes",
   },
@@ -210,7 +210,7 @@ function renderDockerFields({
       PlatformProvider,
       { platform },
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(Component, props),
       ),
@@ -267,14 +267,14 @@ describe("RemoteConnectionFields Docker refresh", () => {
 
   it("renders an independent manual container input without replacing the selected container label", () => {
     const html = renderDockerFields({
-      dockerContainer: "zcode-dev",
+      dockerContainer: "codez-dev",
       manualDockerContainer: "manual-dev",
       refreshDockerContainers: vi.fn(),
     });
 
     expect(html).toContain('data-testid="docker-container-input"');
     expect(html).toContain('value="manual-dev"');
-    expect(html).toContain("zcode-dev");
+    expect(html).toContain("codez-dev");
   });
 
   it("shows a helper hint when the manual Docker container input is empty", () => {

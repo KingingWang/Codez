@@ -1,24 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
-  getZCodeGoalActiveIterationCount,
-  getZCodeGoalIterationByAssistantMessageId,
-  getZCodeUserVisibleMessages,
+  getCodezGoalActiveIterationCount,
+  getCodezGoalIterationByAssistantMessageId,
+  getCodezUserVisibleMessages,
   getConversationMessageProjectionPolicy,
   getConversationModelOnlyTurnTriggerSource,
-  isZCodeModelOnlySyntheticUserMessage,
-  resolveZCodeVisibleSessionTitle,
-  type ZCodeMessagePart,
-  type ZCodeMessageWithParts,
+  isCodezModelOnlySyntheticUserMessage,
+  resolveCodezVisibleSessionTitle,
+  type CodezMessagePart,
+  type CodezMessageWithParts,
 } from "../src/index.js";
 
 const model = {
   providerId: "glm",
   modelId: "glm-4.6",
 };
-type ZCodeUserMessageInfo = Extract<ZCodeMessageWithParts["info"], { role: "user" }>;
-type ZCodeUserMessageInfoPatch = Partial<
+type CodezUserMessageInfo = Extract<CodezMessageWithParts["info"], { role: "user" }>;
+type CodezUserMessageInfoPatch = Partial<
   Pick<
-    ZCodeUserMessageInfo,
+    CodezUserMessageInfo,
     "metadata" | "semantics" | "source" | "synthetic" | "time" | "visibility"
   >
 >;
@@ -26,11 +26,11 @@ type ZCodeUserMessageInfoPatch = Partial<
 function userMessage(
   messageId: string,
   text: string,
-  partPatch: Partial<Extract<ZCodeMessagePart, { type: "text" }>> = {},
+  partPatch: Partial<Extract<CodezMessagePart, { type: "text" }>> = {},
   createdAt = 1,
-  infoPatch: ZCodeUserMessageInfoPatch = {},
-): ZCodeMessageWithParts {
-  const part: Extract<ZCodeMessagePart, { type: "text" }> = {
+  infoPatch: CodezUserMessageInfoPatch = {},
+): CodezMessageWithParts {
+  const part: Extract<CodezMessagePart, { type: "text" }> = {
     partId: `part_${messageId}`,
     sessionId: "sess_1",
     messageId,
@@ -44,7 +44,7 @@ function userMessage(
       sessionId: "sess_1",
       role: "user",
       time: { created: createdAt },
-      agent: "zcode-agent",
+      agent: "codez-agent",
       model,
       ...infoPatch,
     },
@@ -56,14 +56,14 @@ function assistantMessage(
   messageId: string,
   text: string,
   createdAt: number,
-): ZCodeMessageWithParts {
+): CodezMessageWithParts {
   return {
     info: {
       messageId,
       sessionId: "sess_1",
       role: "assistant",
       time: { created: createdAt, completed: createdAt + 10 },
-      agent: "zcode-agent",
+      agent: "codez-agent",
       model,
       path: { cwd: "/workspace/app", root: "/workspace/app" },
       cost: 0,
@@ -87,7 +87,7 @@ function assistantMessage(
   };
 }
 
-describe("ZCode session visible content", () => {
+describe("Codez session visible content", () => {
   it("only advances failed verifier iteration counts for active goals", () => {
     const failedTimeline = [
       {
@@ -108,13 +108,13 @@ describe("ZCode session visible content", () => {
     ];
 
     expect(
-      getZCodeGoalActiveIterationCount({
+      getCodezGoalActiveIterationCount({
         targetStatus: "active",
         timeline: failedTimeline,
       }),
     ).toBe(2);
     expect(
-      getZCodeGoalActiveIterationCount({
+      getCodezGoalActiveIterationCount({
         targetStatus: "paused",
         timeline: cancelledTimeline,
       }),
@@ -137,8 +137,8 @@ describe("ZCode session visible content", () => {
       },
     );
 
-    expect(isZCodeModelOnlySyntheticUserMessage(notification)).toBe(true);
-    expect(getZCodeUserVisibleMessages([realUserMessage, notification])).toEqual([realUserMessage]);
+    expect(isCodezModelOnlySyntheticUserMessage(notification)).toBe(true);
+    expect(getCodezUserVisibleMessages([realUserMessage, notification])).toEqual([realUserMessage]);
   });
 
   it("filters legacy synthetic task notification text without metadata", () => {
@@ -150,18 +150,18 @@ describe("ZCode session visible content", () => {
       },
     );
 
-    expect(isZCodeModelOnlySyntheticUserMessage(notification)).toBe(true);
-    expect(getZCodeUserVisibleMessages([notification])).toEqual([]);
+    expect(isCodezModelOnlySyntheticUserMessage(notification)).toBe(true);
+    expect(getCodezUserVisibleMessages([notification])).toEqual([]);
   });
 
   it("filters compact summary user messages from user-visible messages", () => {
-    const summary: ZCodeMessageWithParts = {
+    const summary: CodezMessageWithParts = {
       info: {
         messageId: "msg_summary",
         sessionId: "sess_1",
         role: "user",
         time: { created: 10 },
-        agent: "zcode-agent",
+        agent: "codez-agent",
         model,
       },
       parts: [
@@ -180,7 +180,7 @@ describe("ZCode session visible content", () => {
       ],
     };
 
-    expect(getZCodeUserVisibleMessages([summary])).toEqual([]);
+    expect(getCodezUserVisibleMessages([summary])).toEqual([]);
   });
 
   it("filters background subagent notifications from user-visible messages", () => {
@@ -193,8 +193,8 @@ describe("ZCode session visible content", () => {
       },
     );
 
-    expect(isZCodeModelOnlySyntheticUserMessage(notification)).toBe(true);
-    expect(getZCodeUserVisibleMessages([notification])).toEqual([]);
+    expect(isCodezModelOnlySyntheticUserMessage(notification)).toBe(true);
+    expect(getCodezUserVisibleMessages([notification])).toEqual([]);
   });
 
   it("filters canonical and source-only subagent messages from visible content and titles", () => {
@@ -229,10 +229,10 @@ describe("ZCode session visible content", () => {
     const realUserMessage = userMessage("msg_real_after_subagent_message", "真实用户问题", {}, 4);
 
     expect(
-      getZCodeUserVisibleMessages([canonical, infoSourceOnly, partSourceOnly, realUserMessage]),
+      getCodezUserVisibleMessages([canonical, infoSourceOnly, partSourceOnly, realUserMessage]),
     ).toEqual([realUserMessage]);
     expect(
-      resolveZCodeVisibleSessionTitle({
+      resolveCodezVisibleSessionTitle({
         messages: [infoSourceOnly, partSourceOnly, realUserMessage],
         target: null,
       }),
@@ -266,9 +266,9 @@ describe("ZCode session visible content", () => {
     );
 
     expect(getConversationMessageProjectionPolicy(pluginReference)).toBe("providerContextOnly");
-    expect(isZCodeModelOnlySyntheticUserMessage(pluginReference)).toBe(true);
+    expect(isCodezModelOnlySyntheticUserMessage(pluginReference)).toBe(true);
     expect(getConversationModelOnlyTurnTriggerSource(pluginReference)).toBeNull();
-    expect(getZCodeUserVisibleMessages([pluginReference])).toEqual([]);
+    expect(getCodezUserVisibleMessages([pluginReference])).toEqual([]);
   });
 
   it("uses the target fallback when a subagent message is the only user-like input", () => {
@@ -281,7 +281,7 @@ describe("ZCode session visible content", () => {
     );
 
     expect(
-      resolveZCodeVisibleSessionTitle({
+      resolveCodezVisibleSessionTitle({
         messages: [sourceOnly],
         target: {
           createdAt: 1,
@@ -314,8 +314,8 @@ describe("ZCode session visible content", () => {
       },
     );
 
-    expect(isZCodeModelOnlySyntheticUserMessage(notification)).toBe(true);
-    expect(getZCodeUserVisibleMessages([notification])).toEqual([]);
+    expect(isCodezModelOnlySyntheticUserMessage(notification)).toBe(true);
+    expect(getCodezUserVisibleMessages([notification])).toEqual([]);
   });
 
   it("filters model-only goal continuation reminders from user-visible messages", () => {
@@ -336,8 +336,8 @@ describe("ZCode session visible content", () => {
       },
     );
 
-    expect(isZCodeModelOnlySyntheticUserMessage(continuation)).toBe(true);
-    expect(getZCodeUserVisibleMessages([realUserMessage, continuation])).toEqual([realUserMessage]);
+    expect(isCodezModelOnlySyntheticUserMessage(continuation)).toBe(true);
+    expect(getCodezUserVisibleMessages([realUserMessage, continuation])).toEqual([realUserMessage]);
   });
 
   it("filters model-only goal state change reminders from user-visible messages", () => {
@@ -356,8 +356,8 @@ describe("ZCode session visible content", () => {
       },
     );
 
-    expect(isZCodeModelOnlySyntheticUserMessage(reminder)).toBe(true);
-    expect(getZCodeUserVisibleMessages([realUserMessage, reminder])).toEqual([realUserMessage]);
+    expect(isCodezModelOnlySyntheticUserMessage(reminder)).toBe(true);
+    expect(getCodezUserVisibleMessages([realUserMessage, reminder])).toEqual([realUserMessage]);
   });
 
   it("filters legacy goal continuation reminders without metadata", () => {
@@ -372,10 +372,10 @@ describe("ZCode session visible content", () => {
       ].join("\n"),
     );
 
-    expect(isZCodeModelOnlySyntheticUserMessage(continuation)).toBe(true);
-    expect(getZCodeUserVisibleMessages([continuation])).toEqual([]);
+    expect(isCodezModelOnlySyntheticUserMessage(continuation)).toBe(true);
+    expect(getCodezUserVisibleMessages([continuation])).toEqual([]);
     expect(
-      resolveZCodeVisibleSessionTitle({
+      resolveCodezVisibleSessionTitle({
         messages: [continuation],
         target: {
           createdAt: 1,
@@ -432,8 +432,8 @@ describe("ZCode session visible content", () => {
       400,
     );
 
-    expect(isZCodeModelOnlySyntheticUserMessage(stateReminder)).toBe(true);
-    const iterations = getZCodeGoalIterationByAssistantMessageId(
+    expect(isCodezModelOnlySyntheticUserMessage(stateReminder)).toBe(true);
+    const iterations = getCodezGoalIterationByAssistantMessageId(
       [continuation, firstAssistant, stateReminder, followupAssistant],
       {
         target: {
@@ -475,7 +475,7 @@ describe("ZCode session visible content", () => {
     );
     const assistant = assistantMessage("msg_goal_assistant_1", "第一轮。", 200);
 
-    const iterations = getZCodeGoalIterationByAssistantMessageId(
+    const iterations = getCodezGoalIterationByAssistantMessageId(
       [visibleGoalInput, continuation, assistant],
       {
         target: {
@@ -500,7 +500,7 @@ describe("ZCode session visible content", () => {
     const visibleGoalInput = userMessage("msg_visible_goal", "增加单测覆盖率，直到 90%", {}, 101);
     const assistant = assistantMessage("msg_goal_assistant_1", "第一轮。", 200);
 
-    const iterations = getZCodeGoalIterationByAssistantMessageId([visibleGoalInput, assistant], {
+    const iterations = getCodezGoalIterationByAssistantMessageId([visibleGoalInput, assistant], {
       target: {
         createdAt: 100,
         objective: "增加单测覆盖率，直到 90%",
@@ -554,7 +554,7 @@ describe("ZCode session visible content", () => {
     );
     const secondAssistant = assistantMessage("msg_goal_assistant_2", "继续处理。", 400);
 
-    const iterations = getZCodeGoalIterationByAssistantMessageId(
+    const iterations = getCodezGoalIterationByAssistantMessageId(
       [firstContinuation, firstAssistant, secondContinuation, secondAssistant],
       {
         maxGoalIteration: 1,
@@ -587,7 +587,7 @@ describe("ZCode session visible content", () => {
       500,
     );
 
-    const iterations = getZCodeGoalIterationByAssistantMessageId(
+    const iterations = getCodezGoalIterationByAssistantMessageId(
       [visibleGoalInput, goalAssistant, followupUser, followupAssistant],
       {
         maxGoalIteration: 1,
@@ -620,7 +620,7 @@ describe("ZCode session visible content", () => {
       500,
     );
 
-    const iterations = getZCodeGoalIterationByAssistantMessageId(
+    const iterations = getCodezGoalIterationByAssistantMessageId(
       [visibleGoalInput, goalAssistant, followupUser, followupAssistant],
       {
         maxGoalIteration: 1,
@@ -662,8 +662,8 @@ describe("ZCode session visible content", () => {
     );
 
     expect(getConversationMessageProjectionPolicy(notification)).toBe("timelineOnly");
-    expect(isZCodeModelOnlySyntheticUserMessage(notification)).toBe(false);
-    expect(getZCodeUserVisibleMessages([notification])).toEqual([notification]);
+    expect(isCodezModelOnlySyntheticUserMessage(notification)).toBe(false);
+    expect(getCodezUserVisibleMessages([notification])).toEqual([notification]);
   });
 
   it("classifies model-only fork notices as provider context", () => {
@@ -701,7 +701,7 @@ describe("ZCode session visible content", () => {
     );
 
     expect(getConversationMessageProjectionPolicy(notification)).toBe("providerContextOnly");
-    expect(getZCodeUserVisibleMessages([notification])).toEqual([]);
+    expect(getCodezUserVisibleMessages([notification])).toEqual([]);
   });
 
   it("classifies model-only synthetic users as provider context", () => {
@@ -711,7 +711,7 @@ describe("ZCode session visible content", () => {
     });
 
     expect(getConversationMessageProjectionPolicy(notification)).toBe("providerContextOnly");
-    expect(getZCodeUserVisibleMessages([notification])).toEqual([]);
+    expect(getCodezUserVisibleMessages([notification])).toEqual([]);
   });
 
   it("does not treat unknown synthetic users as real user input", () => {
@@ -724,19 +724,19 @@ describe("ZCode session visible content", () => {
     );
 
     expect(getConversationMessageProjectionPolicy(notification)).toBe("hiddenSynthetic");
-    expect(getZCodeUserVisibleMessages([notification])).toEqual([]);
+    expect(getCodezUserVisibleMessages([notification])).toEqual([]);
   });
 
   it("classifies plain user text as real user input", () => {
     const message = userMessage("msg_real_input", "真实用户输入");
 
     expect(getConversationMessageProjectionPolicy(message)).toBe("realUserInput");
-    expect(getZCodeUserVisibleMessages([message])).toEqual([message]);
+    expect(getCodezUserVisibleMessages([message])).toEqual([message]);
   });
 
   it("classifies a persisted visible assistant response as visible assistant content", () => {
     const base = assistantMessage("msg_visible_assistant", "已完成首轮回复", 2);
-    const message: ZCodeMessageWithParts = {
+    const message: CodezMessageWithParts = {
       ...base,
       info: {
         ...base.info,
@@ -751,7 +751,7 @@ describe("ZCode session visible content", () => {
     };
 
     expect(getConversationMessageProjectionPolicy(message)).toBe("visibleAssistant");
-    expect(getZCodeUserVisibleMessages([message])).toEqual([message]);
+    expect(getCodezUserVisibleMessages([message])).toEqual([message]);
   });
 
   it("does not treat plain user text as a task notification", () => {
@@ -760,8 +760,8 @@ describe("ZCode session visible content", () => {
       "<task-notification>为什么这里显示出来了？</task-notification>",
     );
 
-    expect(isZCodeModelOnlySyntheticUserMessage(message)).toBe(false);
-    expect(getZCodeUserVisibleMessages([message])).toEqual([message]);
+    expect(isCodezModelOnlySyntheticUserMessage(message)).toBe(false);
+    expect(getCodezUserVisibleMessages([message])).toEqual([message]);
   });
 
   it("does not use background task notifications as the visible session title", () => {
@@ -776,7 +776,7 @@ describe("ZCode session visible content", () => {
     const realUserMessage = userMessage("msg_real", "修复登录按钮");
 
     expect(
-      resolveZCodeVisibleSessionTitle({
+      resolveCodezVisibleSessionTitle({
         messages: [notification, realUserMessage],
       }),
     ).toBe("修复登录按钮");

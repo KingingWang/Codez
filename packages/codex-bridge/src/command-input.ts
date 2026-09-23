@@ -1,5 +1,5 @@
-import type { ModelSelection } from "@zcode/shared";
-import type { AttachmentRef } from "@zcode/shared/zcode-protocol-v4";
+import type { ModelSelection } from "@codez/shared";
+import type { AttachmentRef } from "@codez/shared/codez-protocol-v4";
 import { array, object, unsupported, type JsonObject } from "./json.js";
 
 /** The native edit replaces the entire input array; retain media when editing only text. */

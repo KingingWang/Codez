@@ -1,7 +1,7 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { IPromptAttachmentTransferService } from "@zcode/services";
+import type { IPromptAttachmentTransferService } from "@codez/services";
 import { useComposerAttachmentUploadStore } from "@/store/composerAttachmentUploadStore.js";
 import {
   useComposerAttachments,
@@ -31,7 +31,7 @@ vi.mock("@/hooks/useServices.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -176,6 +176,6 @@ describe("useComposerAttachments add-to-chat 门控", () => {
   });
 
   it("事件常量与监听名保持稳定", () => {
-    expect(WHITEBOARD_ADD_TO_CHAT_EVENT).toBe("zcode:add-whiteboard-to-chat");
+    expect(WHITEBOARD_ADD_TO_CHAT_EVENT).toBe("codez:add-whiteboard-to-chat");
   });
 });

@@ -14,7 +14,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   testId,
   type ProviderFamilyConnectionSelection,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -32,7 +32,7 @@ import { skipOccupationOnboardingIfPresent } from "./helpers/occupation-onboardi
 
 // 修复原因：WDIO 为每个 run 注入隔离 HOME，但 os.homedir() 在 Node 进程中不会
 // 随环境变量动态变化。沿用 homedir() 会把场景设置和 provider seed 写到开发机的
-// ~/.zcode，Electron 读取的却是本轮隔离 HOME；同时新版 Personal Config 文件名是
+// ~/.codez，Electron 读取的却是本轮隔离 HOME；同时新版 Personal Config 文件名是
 // provider_config.json，不是旧的 config.json。统一复用 desktop-app 的路径合同，确保
 // 测试写入和应用读取的是同一份 fixture。
 const E2E_APP_DATA_PATHS = getE2EAppDataPaths();
@@ -72,7 +72,7 @@ describe("Team Plan 设置与使用统计 E2E", () => {
   it("CTP-13: Start balance 限流显示重试，恢复后展示套餐", async function () {
     this.timeout(120000);
     const evidenceDir =
-      process.env.ZCODE_E2E_ARTIFACT_DIR || join(process.cwd(), ".e2e-artifacts", "coding-plan");
+      process.env.CODEZ_E2E_ARTIFACT_DIR || join(process.cwd(), ".e2e-artifacts", "coding-plan");
     await mkdir(evidenceDir, { recursive: true });
     await prepareScenario(
       "personalOnly",
@@ -521,11 +521,11 @@ describe("Team Plan 设置与使用统计 E2E", () => {
     await assertContextReminderHiddenInSettings("urgent");
     const alarmAnimation = await browser.execute(() => {
       const icon = document.querySelector<HTMLElement>(
-        '[data-context-reset-reminder="urgent"] .animate-zcode-alarm-ring',
+        '[data-context-reset-reminder="urgent"] .animate-codez-alarm-ring',
       );
       return icon ? window.getComputedStyle(icon).animationName : null;
     });
-    expect(alarmAnimation).toBe("zcode-alarm-ring");
+    expect(alarmAnimation).toBe("codez-alarm-ring");
   });
 
   it("QR-E2E-04: Composer Dialog 打开期间应保持 HoverCard 生命周期", async function () {
@@ -587,11 +587,11 @@ describe("Team Plan 设置与使用统计 E2E", () => {
         request.body.reset_type === "FIVE_HOUR",
       "五小时重置没有发送 reset_type=FIVE_HOUR",
     );
-    // 双 JWT 契约：Authorization 传 Bearer zcode JWT，X-Bigmodel-Authorization 直传 MaaS JWT。
+    // 双 JWT 契约：Authorization 传 Bearer codez JWT，X-Bigmodel-Authorization 直传 MaaS JWT。
     const useRequest = (await readMockRequests()).find((request) =>
       request.path.endsWith("/api/v1/coding-plan/reset/use"),
     );
-    expect(useRequest?.headers.authorization).toBe("Bearer e2e-zcode-jwt");
+    expect(useRequest?.headers.authorization).toBe("Bearer e2e-codez-jwt");
     expect(useRequest?.headers["x-bigmodel-authorization"]).toBe("e2e-bigmodel-oauth-token");
     // 时序约束：客户端 use 后的 status 确认重试窗口只有约 2.5 秒，confirm 前的每次检查
     // 必须是单次 execute 往返，不能逐按钮发 WebDriver 命令，否则慢机器上会先触发客户端
@@ -728,8 +728,8 @@ async function prepareScenario(
       id: "bigmodel-e2e-user",
       username: "bigmodel-e2e-user",
     }),
-    zcodejwttoken:
-      resetScenario === "none" && !faultMode.startsWith("startBalance") ? "" : "e2e-zcode-jwt",
+    codezjwttoken:
+      resetScenario === "none" && !faultMode.startsWith("startBalance") ? "" : "e2e-codez-jwt",
   });
   const connectionSelection = parseBigModelConnectionSelection(bigmodelSelectedKey);
   await writeSettings({
@@ -802,7 +802,7 @@ async function clearUsageEntitlementCache() {
   // 导致下一次打开 Usage 页时 Coding Plan tab 被误判为不存在。
   try {
     await browser.execute(() => {
-      const prefix = "zcode:usage-entitlement:";
+      const prefix = "codez:usage-entitlement:";
       for (const key of Object.keys(window.localStorage)) {
         if (key.startsWith(prefix)) {
           window.localStorage.removeItem(key);
@@ -1469,9 +1469,9 @@ async function readMockRequests(): Promise<MockRequest[]> {
 }
 
 function getMockBaseUrl() {
-  const baseUrl = process.env.ZCODE_E2E_CODING_PLAN_MOCK_URL?.trim();
+  const baseUrl = process.env.CODEZ_E2E_CODING_PLAN_MOCK_URL?.trim();
   if (!baseUrl) {
-    throw new Error("ZCODE_E2E_CODING_PLAN_MOCK_URL 未配置");
+    throw new Error("CODEZ_E2E_CODING_PLAN_MOCK_URL 未配置");
   }
   return baseUrl;
 }
@@ -1573,7 +1573,7 @@ interface MockRequest {
 }
 
 type ReminderNavigationWindow = Window & {
-  __zcodeTabStoreE2E: {
+  __codezTabStoreE2E: {
     getState(): {
       activeTabId: string | null;
       openSettingsTab(): void;
@@ -1585,7 +1585,7 @@ type ReminderNavigationWindow = Window & {
 async function assertContextReminderHiddenInSettings(phase: "initial" | "urgent") {
   // 通过真实导航 store 切层，避免打开入口的 pointerdown 把提醒预先标已读，掩盖 Portal 泄漏。
   const workspaceTabId = await browser.execute(() => {
-    const store = (window as unknown as ReminderNavigationWindow).__zcodeTabStoreE2E;
+    const store = (window as unknown as ReminderNavigationWindow).__codezTabStoreE2E;
     const id = store.getState().activeTabId;
     store.getState().openSettingsTab();
     return id;
@@ -1603,7 +1603,7 @@ async function assertContextReminderHiddenInSettings(phase: "initial" | "urgent"
   );
   await browser.execute(
     (id) =>
-      (window as unknown as ReminderNavigationWindow).__zcodeTabStoreE2E
+      (window as unknown as ReminderNavigationWindow).__codezTabStoreE2E
         .getState()
         .activateTab(id!),
     workspaceTabId,

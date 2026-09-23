@@ -10,7 +10,7 @@ interface SidebarTaskPreferences {
 }
 
 export const SIDEBAR_TASK_PREFERENCES_STORAGE_KEY =
-  "zcode-sidebar-task-preferences";
+  "codez-sidebar-task-preferences";
 
 const DEFAULT_SIDEBAR_TASK_PREFERENCES: SidebarTaskPreferences = {
   organizeBy: "project",

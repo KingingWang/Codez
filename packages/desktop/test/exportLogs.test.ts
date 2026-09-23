@@ -387,7 +387,7 @@ describe("export logs archive", () => {
     });
   });
 
-  it("导出日志时应额外带上 zcode-cli 用户日志", async () => {
+  it("导出日志时应额外带上 codez-cli 用户日志", async () => {
     const originalHome = process.env["HOME"];
     try {
       await withTempDir(async (tempDir) => {
@@ -399,11 +399,11 @@ describe("export logs archive", () => {
           await import("@desktop/main/exportLogs.js");
 
         const sourceDir = join(tempDir, "source");
-        const zcodeCliLogDir = join(fakeHome, ".zcode", "cli", "log");
+        const codezCliLogDir = join(fakeHome, ".codez", "cli", "log");
         await mkdir(join(sourceDir, "logs"), { recursive: true });
-        await mkdir(zcodeCliLogDir, { recursive: true });
+        await mkdir(codezCliLogDir, { recursive: true });
         await writeFile(join(sourceDir, "logs", "main.log"), "main-log", "utf-8");
-        await writeFile(join(zcodeCliLogDir, "agent.log"), "zcode-cli-agent-log", "utf-8");
+        await writeFile(join(codezCliLogDir, "agent.log"), "codez-cli-agent-log", "utf-8");
 
         const artifacts = await createLogArchiveArtifacts(sourceDir);
         const zipPath = join(tempDir, "logs-with-external-agents.zip");
@@ -411,7 +411,7 @@ describe("export logs archive", () => {
 
         const entries = await readZipEntries(zipPath);
         expect(entries.get("logs/main.log")).toBe("main-log");
-        expect(entries.get(".zcode/cli/log/agent.log")).toBe("zcode-cli-agent-log");
+        expect(entries.get(".codez/cli/log/agent.log")).toBe("codez-cli-agent-log");
       });
     } finally {
       if (originalHome == null) {
@@ -423,7 +423,7 @@ describe("export logs archive", () => {
     }
   });
 
-  it("导出日志应带上 zcode-cli 的 config.json、rollout 且排除 debug 目录", async () => {
+  it("导出日志应带上 codez-cli 的 config.json、rollout 且排除 debug 目录", async () => {
     const originalHome = process.env["HOME"];
     try {
       await withTempDir(async (tempDir) => {
@@ -435,13 +435,13 @@ describe("export logs archive", () => {
           await import("@desktop/main/exportLogs.js");
 
         const sourceDir = join(tempDir, "source");
-        const zcodeCliDir = join(fakeHome, ".zcode", "cli");
-        const rolloutDir = join(zcodeCliDir, "rollout");
-        const debugDir = join(zcodeCliDir, "debug");
+        const codezCliDir = join(fakeHome, ".codez", "cli");
+        const rolloutDir = join(codezCliDir, "rollout");
+        const debugDir = join(codezCliDir, "debug");
         await mkdir(join(sourceDir, "logs"), { recursive: true });
         await mkdir(rolloutDir, { recursive: true });
         await mkdir(debugDir, { recursive: true });
-        await writeFile(join(zcodeCliDir, "config.json"), '{"model":"glm"}', "utf-8");
+        await writeFile(join(codezCliDir, "config.json"), '{"model":"glm"}', "utf-8");
         await writeFile(join(rolloutDir, "model-io-recent.jsonl"), "rollout-recent", "utf-8");
         await writeFile(join(debugDir, "model-io-old.jsonl"), "debug-old", "utf-8");
         // 故意把 rollout 文件改成远超 3 天窗口的旧时间，验证 rollout 不参与时间过滤。
@@ -454,9 +454,9 @@ describe("export logs archive", () => {
         await writeLogArchiveZip(zipPath, artifacts, createWriteZipTestOptions(tempDir));
 
         const entries = await readZipEntries(zipPath);
-        expect(entries.get(".zcode/cli/config.json")).toBe('{"model":"glm"}');
-        expect(entries.get(".zcode/cli/rollout/model-io-recent.jsonl")).toBe("rollout-recent");
-        expect(entries.has(".zcode/cli/debug/model-io-old.jsonl")).toBe(false);
+        expect(entries.get(".codez/cli/config.json")).toBe('{"model":"glm"}');
+        expect(entries.get(".codez/cli/rollout/model-io-recent.jsonl")).toBe("rollout-recent");
+        expect(entries.has(".codez/cli/debug/model-io-old.jsonl")).toBe(false);
       });
     } finally {
       if (originalHome == null) {
@@ -471,7 +471,7 @@ describe("export logs archive", () => {
   it("导出日志应带上 Computer Use Helper 诊断日志但绝不带 .tokens 凭据", async () => {
     // Bugfix 取证：一次真实反馈日志包里 grep "background keyboard begin rejected" 命中 0，
     // 而那次会话 begin 确实被拒两次 —— Helper 的结构化诊断写在
-    // ~/.zcode/computer-use/run/*.sock.exit.log，既不在 app data 也不在 ~/.zcode/cli 下。
+    // ~/.codez/computer-use/run/*.sock.exit.log，既不在 app data 也不在 ~/.codez/cli 下。
     const originalHome = process.env["HOME"];
     try {
       await withTempDir(async (tempDir) => {
@@ -483,13 +483,13 @@ describe("export logs archive", () => {
           await import("@desktop/main/exportLogs.js");
 
         const sourceDir = join(tempDir, "source");
-        const runDir = join(fakeHome, ".zcode", "computer-use", "run");
+        const runDir = join(fakeHome, ".codez", "computer-use", "run");
         const tokenDir = join(runDir, ".tokens");
         await mkdir(join(sourceDir, "logs"), { recursive: true });
         await mkdir(tokenDir, { recursive: true });
         await writeFile(
           join(runDir, "standalone-abc123.sock.exit.log"),
-          '{"scope":"zcode-cua-helper","level":"warn","event":"macOS background keyboard begin rejected"}',
+          '{"scope":"codez-cua-helper","level":"warn","event":"macOS background keyboard begin rejected"}',
           "utf-8",
         );
         // 同目录下的 broker 凭据：反馈包会被用户转发出去，绝不能带。
@@ -505,11 +505,11 @@ describe("export logs archive", () => {
         await writeLogArchiveZip(zipPath, artifacts, createWriteZipTestOptions(tempDir));
 
         const entries = await readZipEntries(zipPath);
-        expect(entries.get(".zcode/computer-use/run/standalone-abc123.sock.exit.log")).toContain(
+        expect(entries.get(".codez/computer-use/run/standalone-abc123.sock.exit.log")).toContain(
           "begin rejected",
         );
-        expect(entries.has(".zcode/computer-use/run/.tokens/broker.token")).toBe(false);
-        expect(entries.has(".zcode/computer-use/run/standalone-abc123.sock")).toBe(false);
+        expect(entries.has(".codez/computer-use/run/.tokens/broker.token")).toBe(false);
+        expect(entries.has(".codez/computer-use/run/standalone-abc123.sock")).toBe(false);
         // 防呆：凭据内容不得以任何路径出现在包里。
         expect([...entries.values()].join("\n")).not.toContain("super-secret-token");
       });
@@ -536,15 +536,15 @@ describe("export logs archive", () => {
 
         const sourceDir = join(tempDir, "source");
         const feedbackLogDir = join(tempDir, "feedback-logs");
-        const zcodeCliDir = join(fakeHome, ".zcode", "cli");
+        const codezCliDir = join(fakeHome, ".codez", "cli");
         await mkdir(join(sourceDir, "logs"), { recursive: true });
         await mkdir(join(sourceDir, "agent-config", "codex", "workspace-a"), {
           recursive: true,
         });
         await mkdir(join(sourceDir, "certs"), { recursive: true });
-        await mkdir(join(zcodeCliDir, "log"), { recursive: true });
-        await mkdir(join(zcodeCliDir, "rollout"), { recursive: true });
-        await mkdir(join(zcodeCliDir, "debug"), { recursive: true });
+        await mkdir(join(codezCliDir, "log"), { recursive: true });
+        await mkdir(join(codezCliDir, "rollout"), { recursive: true });
+        await mkdir(join(codezCliDir, "debug"), { recursive: true });
 
         await writeFile(join(sourceDir, "logs", "main.log"), "main-log", "utf-8");
         await writeFile(join(sourceDir, "credentials.json"), '{"token":"app-secret"}', "utf-8");
@@ -554,9 +554,9 @@ describe("export logs archive", () => {
           "utf-8",
         );
         await writeFile(join(sourceDir, "certs", "app-ca.pem"), "certificate-state", "utf-8");
-        await writeFile(join(zcodeCliDir, "log", "agent.log"), "agent-log", "utf-8");
+        await writeFile(join(codezCliDir, "log", "agent.log"), "agent-log", "utf-8");
         await writeFile(
-          join(zcodeCliDir, "config.json"),
+          join(codezCliDir, "config.json"),
           JSON.stringify({
             model: "glm",
             apiKey: "config-secret",
@@ -570,18 +570,18 @@ describe("export logs archive", () => {
           }),
           "utf-8",
         );
-        await writeFile(join(zcodeCliDir, "rollout", "trace.jsonl"), "rollout-today", "utf-8");
-        await writeFile(join(zcodeCliDir, "rollout", "old-trace.jsonl"), "rollout-old", "utf-8");
-        await writeFile(join(zcodeCliDir, "debug", "trace.jsonl"), "debug", "utf-8");
+        await writeFile(join(codezCliDir, "rollout", "trace.jsonl"), "rollout-today", "utf-8");
+        await writeFile(join(codezCliDir, "rollout", "old-trace.jsonl"), "rollout-old", "utf-8");
+        await writeFile(join(codezCliDir, "debug", "trace.jsonl"), "debug", "utf-8");
 
         const progressEvents: Array<{ processedBytes: number; totalBytes: number }> = [];
         const feedbackDate = new Date("2026-06-15T01:02:03");
         await utimes(join(sourceDir, "logs", "main.log"), feedbackDate, feedbackDate);
-        await utimes(join(zcodeCliDir, "log", "agent.log"), feedbackDate, feedbackDate);
-        await utimes(join(zcodeCliDir, "rollout", "trace.jsonl"), feedbackDate, feedbackDate);
+        await utimes(join(codezCliDir, "log", "agent.log"), feedbackDate, feedbackDate);
+        await utimes(join(codezCliDir, "rollout", "trace.jsonl"), feedbackDate, feedbackDate);
         const oldRolloutDate = new Date("2026-06-14T23:59:59");
         await utimes(
-          join(zcodeCliDir, "rollout", "old-trace.jsonl"),
+          join(codezCliDir, "rollout", "old-trace.jsonl"),
           oldRolloutDate,
           oldRolloutDate,
         );
@@ -605,8 +605,8 @@ describe("export logs archive", () => {
         expect(entries.has("credentials.json")).toBe(false);
         expect(entries.has("agent-config/codex/workspace-a/config.toml")).toBe(false);
         expect(entries.has("certs/app-ca.pem")).toBe(false);
-        expect(entries.get(".zcode/cli/log/agent.log")).toBe("agent-log");
-        const configEntry = entries.get(".zcode/cli/config.json");
+        expect(entries.get(".codez/cli/log/agent.log")).toBe("agent-log");
+        const configEntry = entries.get(".codez/cli/config.json");
         expect(configEntry).toContain('"model":"glm"');
         expect(configEntry).toContain('"enabledPlugins"');
         expect(configEntry).toContain('"example-plugin@example":true');
@@ -614,9 +614,9 @@ describe("export logs archive", () => {
         expect(configEntry).not.toContain("plugin-secret");
         expect(configEntry).not.toContain('"options"');
         expect(configEntry).toContain('"locale":"zh-CN"');
-        expect(entries.get(".zcode/cli/rollout/trace.jsonl")).toBe("rollout-today");
-        expect(entries.has(".zcode/cli/rollout/old-trace.jsonl")).toBe(false);
-        expect(entries.has(".zcode/cli/debug/trace.jsonl")).toBe(false);
+        expect(entries.get(".codez/cli/rollout/trace.jsonl")).toBe("rollout-today");
+        expect(entries.has(".codez/cli/rollout/old-trace.jsonl")).toBe(false);
+        expect(entries.has(".codez/cli/debug/trace.jsonl")).toBe(false);
       });
     } finally {
       if (originalHome == null) {
@@ -677,13 +677,13 @@ describe("export logs archive", () => {
           oldTime,
         );
         await writeTimedFile(
-          join(fakeHome, ".zcode", "cli", "log", "recent.log"),
-          "recent-zcode-cli-log",
+          join(fakeHome, ".codez", "cli", "log", "recent.log"),
+          "recent-codez-cli-log",
           recentTime,
         );
         await writeTimedFile(
-          join(fakeHome, ".zcode", "cli", "log", "old.log"),
-          "old-zcode-cli-log",
+          join(fakeHome, ".codez", "cli", "log", "old.log"),
+          "old-codez-cli-log",
           oldTime,
         );
 
@@ -693,7 +693,7 @@ describe("export logs archive", () => {
         const archivePaths = artifacts.files.map((file) => file.archivePath);
 
         expect(archivePaths).toEqual(
-          expect.arrayContaining(["logs/recent.log", ".zcode/cli/log/recent.log"]),
+          expect.arrayContaining(["logs/recent.log", ".codez/cli/log/recent.log"]),
         );
         expect(archivePaths).not.toContain("logs/old.log");
         expect(archivePaths).not.toContain("agent-config/codex/workspace-a/sessions/recent.jsonl");
@@ -702,7 +702,7 @@ describe("export logs archive", () => {
         expect(archivePaths).not.toContain("agent-config/claude/workspace-a/debug/old.txt");
         expect(archivePaths).not.toContain("sessions/recent.json");
         expect(archivePaths).not.toContain("sessions/old.json");
-        expect(archivePaths).not.toContain(".zcode/cli/log/old.log");
+        expect(archivePaths).not.toContain(".codez/cli/log/old.log");
       });
     } finally {
       if (originalHome == null) {
@@ -1062,7 +1062,7 @@ describe("export logs archive", () => {
       const result = await exportLogs({
         ...createExportLogTestDirs(tempDir),
         now: () => new Date("2026-04-20T01:02:03"),
-        getZCodeDataDir: () => sourceDir,
+        getCodezDataDir: () => sourceDir,
         createLogArchiveArtifacts: async () => {
           await rm(transientFile, { force: true });
           return {
@@ -1137,7 +1137,7 @@ describe("export logs archive", () => {
       });
 
       try {
-        // Bugfix: exportLogs 会额外扫描 ~/.zcode/cli/log。
+        // Bugfix: exportLogs 会额外扫描 ~/.codez/cli/log。
         // 这里如果沿用真实 HOME，测试耗时会被本机调试日志体积放大，full suite 下容易踩到默认 5s 超时。
         // 固定到临时 HOME 后，测试只验证“不可读目录应被跳过”这一条行为，避免环境耦合导致的随机超时。
         process.env["HOME"] = fakeHome;
@@ -1145,7 +1145,7 @@ describe("export logs archive", () => {
         const result = await exportLogs({
           ...createExportLogTestDirs(tempDir),
           now: () => new Date("2026-04-20T01:02:03"),
-          getZCodeDataDir: () => sourceDir,
+          getCodezDataDir: () => sourceDir,
         });
 
         expect(result.success).toBe(true);
@@ -1211,7 +1211,7 @@ describe("export logs archive", () => {
         const result = await exportLogs({
           ...createExportLogTestDirs(tempDir),
           now: () => new Date("2026-04-20T01:02:03"),
-          getZCodeDataDir: () => sourceDir,
+          getCodezDataDir: () => sourceDir,
           createLogArchiveArtifacts: async () => ({
             files: [
               { absolutePath: stableFile, archivePath: "logs/stable.log" },
@@ -1265,7 +1265,7 @@ describe("export logs archive", () => {
       const result = await exportLogs({
         ...createExportLogTestDirs(tempDir),
         now: () => new Date("2026-04-20T01:02:03"),
-        getZCodeDataDir: () => sourceDir,
+        getCodezDataDir: () => sourceDir,
         createLogArchiveArtifacts: async () => ({
           files: [{ absolutePath: sourceFile, archivePath: "logs/main.log" }],
           aboutContent: "about-fallback",

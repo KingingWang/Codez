@@ -7,7 +7,7 @@ import type { Stats } from "node:fs";
 import { EventEmitter, on } from "node:events";
 import { watch } from "chokidar";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as shared from "@zcode/shared";
+import * as shared from "@codez/shared";
 import { createSubagentRuntimeConfigCache } from "../src/subagents/subagentRuntimeConfig.js";
 import { createSubagentConfigScope } from "../src/subagents/subagentConfigScope.js";
 
@@ -31,7 +31,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
     }),
   };
 });
-vi.mock("@zcode/shared", { spy: true });
+vi.mock("@codez/shared", { spy: true });
 const readiness = vi.hoisted(() => ({ automatic: true }));
 const watched = vi.hoisted(() => new Set<EventEmitter>());
 vi.mock("chokidar", () => ({
@@ -129,7 +129,7 @@ describe("Host incremental subagent snapshots", () => {
     const watchedPaths = vi.mocked(watch).mock.calls.map(([path]) => path);
     expect(watchedPaths.sort()).toEqual([f.userRoot, join(f.root, "state"), f.root].sort());
     const parentWatcher = initialWatcherFor(f.root);
-    const project = join(f.workspace.workspacePath, ".zcode", "agents");
+    const project = join(f.workspace.workspacePath, ".codez", "agents");
     await mkdir(project, { recursive: true });
     const path = join(project, "a.md"),
       temporary = join(project, "temporary.md");
@@ -171,7 +171,7 @@ describe("Host incremental subagent snapshots", () => {
     const f = await fixture();
     const preparing = f.cache.prepare(f.workspace);
     await until(() => expect(watched.size).toBe(3));
-    const project = join(f.workspace.workspacePath, ".zcode", "agents");
+    const project = join(f.workspace.workspacePath, ".codez", "agents");
     await mkdir(project, { recursive: true });
     await writeFile(join(project, "a.md"), markdown("aaa"));
     for (const watcher of watched) watcher.emit("ready");
@@ -197,7 +197,7 @@ describe("Host incremental subagent snapshots", () => {
     async (action) => {
       const f = await fixture();
       await f.cache.prepare(f.workspace);
-      const project = join(f.workspace.workspacePath, ".zcode", "agents");
+      const project = join(f.workspace.workspacePath, ".codez", "agents");
       const path = join(project, "a.md");
       await mkdir(project, { recursive: true });
       await writeFile(path, markdown("aaa", "discard"));
@@ -461,7 +461,7 @@ describe("Host incremental subagent snapshots", () => {
       const before = await f.read();
       const gate = Promise.withResolvers<string>();
       const others = ["b", "c"].map((name) => ({ workspacePath: join(f.root, name) }));
-      const projectPath = join(others[0]!.workspacePath, ".zcode", "agents", "b.md");
+      const projectPath = join(others[0]!.workspacePath, ".codez", "agents", "b.md");
       await mkdir(dirname(projectPath), { recursive: true });
       await writeFile(projectPath, markdown("bbb", "project"));
       const project = Promise.withResolvers<string>();
@@ -607,7 +607,7 @@ describe("Host incremental subagent snapshots", () => {
 
   it("isolates project failure and workspace identities, ignores nested profiles and preserves duplicate precedence", async () => {
     const f = await fixture();
-    const project = join(f.workspace.workspacePath, ".zcode", "agents");
+    const project = join(f.workspace.workspacePath, ".codez", "agents");
     await mkdir(project, { recursive: true });
     await writeFile(join(project, "a.md"), markdown("same", "project"));
     const nestedDirectories = [join(project, "deep"), join(f.userRoot, "deep")];

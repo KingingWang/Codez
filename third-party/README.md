@@ -4,9 +4,9 @@
 
 用户取得声明的入口：
 
-- Desktop：安装目录的 `resources/THIRD-PARTY-NOTICES.md`；macOS 为 `ZCode.app/Contents/Resources/THIRD-PARTY-NOTICES.md`。`Resources/licenses/electron/` 另外保存目标平台 Electron 原文、Chromium 汇总及校验清单。
+- Desktop：安装目录的 `resources/THIRD-PARTY-NOTICES.md`；macOS 为 `Codez.app/Contents/Resources/THIRD-PARTY-NOTICES.md`。`Resources/licenses/electron/` 另外保存目标平台 Electron 原文、Chromium 汇总及校验清单。
 - Web：部署根目录的 `THIRD-PARTY-NOTICES.md`；构建后的 HTML 带 `rel="license"` 链接。
-- 发行 CLI：`dist/THIRD-PARTY-NOTICES.md` 作为伴随文件随构建产出，`pnpm build:zcode` 的统一分发包复制到 `agent/THIRD-PARTY-NOTICES.md`。`zcode --licenses` 入口与 SEA 内嵌 Node 精确版本许可尚未接入：SEA 基底取构建机 Node 版本，而 `runtime/sources.json` 只登记 22.16.0 与 24.14.0，CI 浮动 Node 24 时会因缺少对应原文而无法构建。开发态 `tsx src/main.ts` 不经过发行入口。
+- 发行 CLI：`dist/THIRD-PARTY-NOTICES.md` 作为伴随文件随构建产出，`pnpm build:codez` 的统一分发包复制到 `agent/THIRD-PARTY-NOTICES.md`。`codez --licenses` 入口与 SEA 内嵌 Node 精确版本许可尚未接入：SEA 基底取构建机 Node 版本，而 `runtime/sources.json` 只登记 22.16.0 与 24.14.0，CI 浮动 Node 24 时会因缺少对应原文而无法构建。开发态 `tsx src/main.ts` 不经过发行入口。
 - 搜索工具：准备后的每个工具目录包含 `THIRD-PARTY-NOTICES.txt` 和 `SOURCES.json`（内网镜像下载与仓库归档两条准备路径都写入，缓存命中也刷新）。SEA 同时嵌入这些材料。producer 打出的 tar/zip 仍只含二进制，保持与已固定 SHA-256 的归档逐字节一致。
 - 远端 Node 和独立 Server 的 node-runtime 组件：`LICENSE.node.txt` 与 `NODE-SOURCES.json`。缓存命中也刷新材料。Server、Agent、插件与搜索工具的独立组件分别附带适用声明，在计算组件哈希前完成复制。
 
@@ -65,7 +65,7 @@ ugrep 的 BSD-3-Clause 版权、条件和免责声明完整保留。ripgrep 保�
 
 Knip 文档镜像现已登记：原始导入的 169 个文件与上游 Knip 6.0.6 的固定参考提交逐一匹配，补齐 ISC 原文；随镜像复制的 Source Sans Pro 与 Hack 字体按字体内版本单独登记原始许可。来源、版本与本地改动说明见 [镜像 README](../docs/knip/docs/README.md)。
 
-Apache-2.0 复制内容中的 148 个已确认改编文件包含文件内来源和 `Modified by ZCode:` 声明，并登记到 `modifiedFiles`；生成时校验该声明仍存在。Markdown frontmatter、脚本 shebang 和 JavaScript directive 保持有效。未确认源自上游的自有文件不追加上游归属。
+Apache-2.0 复制内容中的 148 个已确认改编文件包含文件内来源和 `Modified by Codez:` 声明，并登记到 `modifiedFiles`；生成时校验该声明仍存在。Markdown frontmatter、脚本 shebang 和 JavaScript directive 保持有效。未确认源自上游的自有文件不追加上游归属。
 
 | 内容                                  | 本地范围                                                                                           | 上游许可与修改说明                                                                                                                                   |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -82,6 +82,6 @@ Apache-2.0 复制内容中的 148 个已确认改编文件包含文件内来源�
 - React Best Practices：上游 `vercel-labs/agent-skills` 的固定参考 `063bee94c3f4df8453406c830b0a7df0f2860278` 中，根 README 与技能 frontmatter 声明 MIT，但树中无完整 LICENSE 文件。保留本地 Shu Ding / Vercel 署名；未编造上游版权年份或许可证原文。现已登记到 `copied-components.json`，参与输入哈希和严格门禁。来源：[README](https://github.com/vercel-labs/agent-skills/blob/063bee94c3f4df8453406c830b0a7df0f2860278/README.md)、[技能声明](https://github.com/vercel-labs/agent-skills/blob/063bee94c3f4df8453406c830b0a7df0f2860278/skills/react-best-practices/SKILL.md)。
 - `webfetch-processing.ts` 的清单判词称其提示词来自 Gemini CLI，但本次取得的上游 `cfbcaa8df13ea4610bb379b377b56d62980c0032` 的 `web-fetch.ts` 未找到被指认的句子；无法据此添加 Google 归属并宣称问题解决。
 - Windows 浏览器导入中的解密实现、混合来源技能描述、商标资产和兼容层的授权/来源问题，需要各自的证据，不能通过追加通用 NOTICE 关闭。
-- 原清单提及 `apps/zcode-cli/.agents/skills/` 下的技能，但该目录在当前 checkout 中不存在；锁文件中残留来源信息不代表还分发那些文件。
+- 原清单提及 `apps/codez-cli/.agents/skills/` 下的技能，但该目录在当前 checkout 中不存在；锁文件中残留来源信息不代表还分发那些文件。
 
 待核验条目以当前 `inventory.json` 的 `reviewRequired` 为准。其余来源疑点尚未证明属于第三方复制，不凭相似性推定权利人；需要另行核对。基础声明新鲜度检查通过不代表这些边界问题已经解决。具体规则与验收见 [SPEC.md](SPEC.md)。

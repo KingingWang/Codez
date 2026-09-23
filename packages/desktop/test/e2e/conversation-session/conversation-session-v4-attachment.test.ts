@@ -8,7 +8,7 @@ import {
   TID_V4_EDIT_SUBMIT,
   TID_V4_ROW_ATTACHMENTS,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData, clickTestIdByDom } from "../helpers/desktop-app.js";
 import {
   beginFirstV4UserQueryEdit,

@@ -10,7 +10,7 @@ import {
   WorkspaceSidebarFooterPlanBadge,
 } from "@/WorkspaceSidebarFooterUsageSummary.js";
 import { resolveSidebarCurrentCodingPlanUsageSource } from "@/lib/codingPlanUsageSources.js";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 
 const mockFooterSettings = vi.hoisted(() => ({
   current: {
@@ -41,7 +41,7 @@ vi.mock("@/hooks/usePlatform.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "zh-CN",
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
@@ -50,7 +50,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (selector: (state: { isRestoringOAuthSession: boolean }) => unknown) =>
+  useCodezStore: (selector: (state: { isRestoringOAuthSession: boolean }) => unknown) =>
     selector({ isRestoringOAuthSession: false }),
 }));
 

@@ -40,7 +40,7 @@ function splitRunnerArgs(args) {
 }
 
 function isTargetedRun(args, env) {
-  const requestedSpec = env.ZCODE_E2E_SPEC?.trim();
+  const requestedSpec = env.CODEZ_E2E_SPEC?.trim();
   return (
     Boolean(requestedSpec) ||
     args.some(
@@ -54,8 +54,8 @@ function isTargetedRun(args, env) {
 
 function isManualReviewRun(args, env) {
   return (
-    env.ZCODE_E2E_MANUAL_REVIEW?.trim() === "1" ||
-    args.concat(env.ZCODE_E2E_SPEC ?? "").some((arg) => arg.includes("/manual-review/"))
+    env.CODEZ_E2E_MANUAL_REVIEW?.trim() === "1" ||
+    args.concat(env.CODEZ_E2E_SPEC ?? "").some((arg) => arg.includes("/manual-review/"))
   );
 }
 
@@ -79,9 +79,9 @@ export function resolveWindowsE2EShardTotal({
     return explicitShardTotal;
   }
 
-  const envShardTotal = env.ZCODE_E2E_SHARD_TOTAL?.trim();
+  const envShardTotal = env.CODEZ_E2E_SHARD_TOTAL?.trim();
   if (envShardTotal) {
-    return readPositiveInteger(envShardTotal, "ZCODE_E2E_SHARD_TOTAL");
+    return readPositiveInteger(envShardTotal, "CODEZ_E2E_SHARD_TOTAL");
   }
 
   // 修复原因：按机器资源自动启用多 shard 会让无参数命令产生隐式并发，既不便于
@@ -166,10 +166,10 @@ function createBuildEnv(env) {
   return {
     ...buildEnv,
     PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: "false",
-    VITE_ZCODE_E2E_STORE_BRIDGE: "1",
+    VITE_CODEZ_E2E_STORE_BRIDGE: "1",
     // Windows full E2E 反复执行时复用 Turbo 内容缓存；冷缓存仍按依赖图构建，
     // targeted/non-Windows 路径不会经过父 runner 的 sharded build env。
-    ZCODE_DESKTOP_AGENT_BUILD_MODE: env.ZCODE_DESKTOP_AGENT_BUILD_MODE ?? "turbo",
+    CODEZ_DESKTOP_AGENT_BUILD_MODE: env.CODEZ_DESKTOP_AGENT_BUILD_MODE ?? "turbo",
   };
 }
 
@@ -189,16 +189,16 @@ export function createWindowsE2EShardPlan({
   // 修复原因：只有 ISO 毫秒的自动 ID 会让同毫秒启动的 runner 共享 HOME/artifact/network。
   // 显式 ID 保持原语义；自动 ID 同时加入 PID 和随机熵，测试可注入固定值稳定验证。
   const runId =
-    env.ZCODE_E2E_RUN_ID?.trim() ||
+    env.CODEZ_E2E_RUN_ID?.trim() ||
     createWindowsE2ERunId({
       entropy: runIdEntropy ?? randomBytes(8).toString("hex"),
       processId,
       timestamp: runIdTimestamp,
     });
   const artifactRoot = resolve(
-    env.ZCODE_E2E_ARTIFACT_DIR?.trim() || join(desktopDir, ".e2e-artifacts", runId),
+    env.CODEZ_E2E_ARTIFACT_DIR?.trim() || join(desktopDir, ".e2e-artifacts", runId),
   );
-  const explicitHomeRoot = env.ZCODE_E2E_HOME_DIR?.trim();
+  const explicitHomeRoot = env.CODEZ_E2E_HOME_DIR?.trim();
   // 修复原因：单 shard runner 也可能并发启动；默认 HOME 若固定为 `.e2e-home`，
   // 不同 runId 会互相清理进程和状态。显式 HOME 保持调用方语义，默认 HOME 才追加 runId。
   const homeRoot = resolve(explicitHomeRoot || join(desktopDir, `.e2e-home-${runId}`));
@@ -249,22 +249,22 @@ export function createWindowsE2EShardPlan({
         : join(desktopDir, `.e2e-home-${runId}`);
     const childEnv = {
       ...env,
-      ZCODE_E2E_HOME_DIR: childHomeDir,
-      ZCODE_E2E_RUN_ID: childRunId,
-      ZCODE_E2E_ARTIFACT_DIR: artifactDir,
-      ZCODE_E2E_NETWORK_CAPTURE_DIR: sharded
+      CODEZ_E2E_HOME_DIR: childHomeDir,
+      CODEZ_E2E_RUN_ID: childRunId,
+      CODEZ_E2E_ARTIFACT_DIR: artifactDir,
+      CODEZ_E2E_NETWORK_CAPTURE_DIR: sharded
         ? join(artifactDir, "network-capture")
         : resolve(
-            env.ZCODE_E2E_NETWORK_CAPTURE_DIR?.trim() || join(artifactDir, "network-capture"),
+            env.CODEZ_E2E_NETWORK_CAPTURE_DIR?.trim() || join(artifactDir, "network-capture"),
           ),
       ...(sharded
         ? {
-            ZCODE_E2E_SKIP_BUILD: "1",
-            ZCODE_E2E_SKIP_AGENT_BUILD: "1",
+            CODEZ_E2E_SKIP_BUILD: "1",
+            CODEZ_E2E_SKIP_AGENT_BUILD: "1",
           }
         : {}),
       ...(useWeightedSpecBuckets
-        ? { ZCODE_E2E_SPEC: weightedSpecBuckets[offset].specs.join(",") }
+        ? { CODEZ_E2E_SPEC: weightedSpecBuckets[offset].specs.join(",") }
         : {}),
     };
 

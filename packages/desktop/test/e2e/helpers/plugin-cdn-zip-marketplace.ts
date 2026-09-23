@@ -13,8 +13,8 @@ export const PLUGIN_CDN_ZIP_OFFLINE_LAST_UPDATED = "2099-01-01T00:00:00.000Z";
 // 远古时间让「进入商店页即刷新官方市场」用例必然落在节流窗口之外（且 pluginCount>0，
 // 确保走的是节流路径而不是「从未加载过」路径）。
 export const PLUGIN_STORE_AUTO_REFRESH_STALE_LAST_UPDATED = "2000-01-01T00:00:00.000Z";
-export const PLUGIN_CDN_ZIP_MARKETPLACE_ID = "zcode-plugins-official";
-export const PLUGIN_CDN_ZIP_MARKETPLACE_NAME = "ZCode Official Plugins";
+export const PLUGIN_CDN_ZIP_MARKETPLACE_ID = "codez-plugins-official";
+export const PLUGIN_CDN_ZIP_MARKETPLACE_NAME = "Codez Official Plugins";
 export const PLUGIN_CDN_ZIP_NAME = "e2e-cdn-zip-plugin";
 export const PLUGIN_CDN_ZIP_ID = `${PLUGIN_CDN_ZIP_NAME}@${PLUGIN_CDN_ZIP_MARKETPLACE_ID}`;
 export const PLUGIN_CDN_ZIP_VERSION = "7.8.9";
@@ -103,7 +103,7 @@ export function seedPluginCdnZipMarketplaceFixture(input: {
   server: PluginCdnZipFixtureServer;
   lastUpdated?: string;
 }): void {
-  const pluginStorageRoot = join(input.e2eHomeDir, ".zcode", "cli", "plugins");
+  const pluginStorageRoot = join(input.e2eHomeDir, ".codez", "cli", "plugins");
   const marketplaceSourceRoot = join(
     input.e2eHomeDir,
     "fixtures",
@@ -136,7 +136,7 @@ export function seedPluginCdnZipMarketplaceFixture(input: {
         id: PLUGIN_CDN_ZIP_MARKETPLACE_ID,
         source: {
           source: "url",
-          url: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
+          url: "https://cdn-zcode.z.ai/codez/official-plugin/marketplace.json",
         },
         name: PLUGIN_CDN_ZIP_MARKETPLACE_NAME,
         description: manifest.description,

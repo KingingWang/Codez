@@ -21,7 +21,7 @@
 - Support previous, next, Enter, and Shift+Enter with identical repeated-navigation semantics.
 - Preserve existing DOM-mutation scroll deduplication.
 - Use absolute `@/` imports and Chinese bug-cause comments.
-- Run `pnpm --filter @zcode/desktop typecheck:e2e`, `pnpm typecheck`, and `pnpm lint` before completion.
+- Run `pnpm --filter @codez/desktop typecheck:e2e`, `pnpm typecheck`, and `pnpm lint` before completion.
 
 ---
 
@@ -110,7 +110,7 @@ Run the Task 1 Vitest command. Expected: all tests pass.
 - Create: `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-chat-find-refocus.test.ts`
 
 **Interfaces:**
-- Consumes: WDIO-only `window.__zcodeSessionStoreE2E` bridge.
+- Consumes: WDIO-only `window.__codezSessionStoreE2E` bridge.
 - Produces: `CFR` pending manual-review evidence for catalog `CF01`; no provider requests.
 
 - [x] **Step 1: Write the E2E reproduction**
@@ -120,7 +120,7 @@ Use the WDIO-only Zustand store bridge to create a completed task with one long 
 - [x] **Step 2: Run the case**
 
 ```bash
-ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/conversation-session-chat-find-refocus.test.ts'
+CODEZ_E2E_MANUAL_REVIEW=1 pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/conversation-session-chat-find-refocus.test.ts'
 ```
 
 Expected: PASS after Task 2. The spec stays pending until human review; do not promote it automatically.
@@ -134,7 +134,7 @@ Expected: PASS after Task 2. The spec stays pending until human review; do not p
 
 ```bash
 pnpm exec vitest run packages/ui/test/conversationFindSearch.test.ts
-pnpm --filter @zcode/desktop typecheck:e2e
+pnpm --filter @codez/desktop typecheck:e2e
 pnpm typecheck
 pnpm lint
 git diff --check
@@ -142,7 +142,7 @@ git diff --check
 
 - [x] **Step 2: Review diff and repository state**
 
-Confirm no unrelated tracked files or the pre-existing untracked `.agents/skills/zcode-rum-crash-triage/` are staged.
+Confirm no unrelated tracked files or the pre-existing untracked `.agents/skills/codez-rum-crash-triage/` are staged.
 
 - [x] **Step 3: Commit implementation**
 
@@ -195,7 +195,7 @@ Run the Task 5 Vitest command. Expected: all tests pass.
 - Modify: `docs/testing/conversation-session-e2e-coverage-matrix.md`
 
 **Interfaces:**
-- Keeps: the existing provider-free `CFR` pending case and `window.__zcodeSessionStoreE2E` conversation injection.
+- Keeps: the existing provider-free `CFR` pending case and `window.__codezSessionStoreE2E` conversation injection.
 - Adds: a case-local Git workspace file with one file-change marker and enough lines to prove scroll-away/re-center behavior.
 - Produces: manual-review evidence for both accepted catalog cases CF01 and CF02 without promotion or replay fixture admission.
 
@@ -210,7 +210,7 @@ Keep CF01/CF02 status `planned`, record that CFR now provides pending manual-rev
 - [x] **Step 3: Run the pending case**
 
 ```bash
-ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/conversation-session-chat-find-refocus.test.ts'
+CODEZ_E2E_MANUAL_REVIEW=1 pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/conversation-session-chat-find-refocus.test.ts'
 ```
 
 Expected: both conversation and file-change scenarios pass. Keep the spec under `manual-review/pending/` until a human explicitly approves promotion.
@@ -219,7 +219,7 @@ Expected: both conversation and file-change scenarios pass. Keep the spec under 
 
 ```bash
 pnpm exec vitest run packages/ui/test/conversationFindSearch.test.ts packages/ui/test/taskFindNavigationState.test.ts packages/ui/test/taskFindDialogNavigation.test.ts packages/ui/test/chatViewConversation.test.ts packages/ui/test/gitPaneVirtualList.test.ts packages/ui/test/linuxDesktopTitlebarOverlay.test.ts
-pnpm --filter @zcode/desktop typecheck:e2e
+pnpm --filter @codez/desktop typecheck:e2e
 pnpm typecheck
 pnpm lint
 git diff --check
@@ -328,8 +328,8 @@ State that mobile Web reuses the same navigation behavior but needs a distinct D
 
 ```bash
 pnpm exec vitest run packages/ui/test/webRemoteControlMobileShell.test.ts packages/ui/test/workspaceShellRemoteMobileLayout.test.ts packages/ui/test/taskFindDialogNavigation.test.ts packages/ui/test/taskFindNavigationState.test.ts packages/ui/test/conversationFindSearch.test.ts packages/ui/test/chatViewConversation.test.ts packages/ui/test/gitPaneVirtualList.test.ts
-ZCODE_GIT_BINARY=/usr/bin/git ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/conversation-session-chat-find-refocus.test.ts'
-pnpm --filter @zcode/desktop typecheck:e2e
+CODEZ_GIT_BINARY=/usr/bin/git CODEZ_E2E_MANUAL_REVIEW=1 pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/conversation-session-chat-find-refocus.test.ts'
+pnpm --filter @codez/desktop typecheck:e2e
 pnpm typecheck
 pnpm lint
 git diff --check

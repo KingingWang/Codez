@@ -29,7 +29,7 @@ import {
 const PROVIDER_ID = "e2e-plugin-reference-append-only";
 const PROVIDER_NAME = "Plugin Reference Append Only E2E";
 const MODEL_ID = "plugin-reference-append-only-model";
-const PLUGIN_STABLE_ID = "skill-creator@zcode-plugins-official";
+const PLUGIN_STABLE_ID = "skill-creator@codez-plugins-official";
 const U1_MARKER = "E2E_PLUGIN_APPEND_ONLY_U1";
 const U2_MARKER = "E2E_PLUGIN_APPEND_ONLY_U2";
 const U3_MARKER = "E2E_PLUGIN_APPEND_ONLY_U3_HOT";

@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { TodoPanel } from "../src/TodoPanel.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },

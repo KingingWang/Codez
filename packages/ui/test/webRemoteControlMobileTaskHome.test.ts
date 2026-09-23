@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import type {
   WebRemoteControlTaskTarget,
   WebRemoteControlWorkspaceListResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   WebRemoteControlMobileTaskHome,
   buildWebRemoteControlMobileTaskHomeModel,
@@ -16,7 +16,7 @@ import {
 import { hasWebRemoteControlMobileTaskHomeActiveTaskMatch } from "@/lib/webRemoteControlMobileTaskHome.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "zh-CN",
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, string>) =>
@@ -33,7 +33,7 @@ vi.mock("@/logger.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (
+  useCodezStore: (
     selector: (state: { theme: string; setTheme: (theme: string) => void }) => unknown,
   ) => selector({ theme: "dark", setTheme: vi.fn() }),
 }));

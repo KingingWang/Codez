@@ -2,7 +2,7 @@ import type {
   BotConfig,
   BotProviderCallbackResult,
   BotsConfigFile,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ICredentialService } from "../credential/credential.js";
 import type { BotProviderAdapter } from "./providers/types.js";
 import {
@@ -130,7 +130,7 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
           provider: "telegram",
           status: "idle",
           messageId: "bots.runtime.telegramLongPollingHandledElsewhere",
-          message: "Telegram long polling is handled by another ZCode window.",
+          message: "Telegram long polling is handled by another Codez window.",
           offset: await deps.readTelegramOffset(bot.id),
         });
         await waitFor(BOT_RUNTIME_LOCK_RETRY_MS, signal);

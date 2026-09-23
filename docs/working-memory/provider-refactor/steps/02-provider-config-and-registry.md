@@ -95,7 +95,7 @@ ProviderConfigResolver
 └─ 变化通知
 ```
 
-这一切片建立在新的纯领域包 `@zcode/provider` 中。后续切片已经让 Host、Worker、Prompt CLI 和 TUI 复用这套代码；文件监听、远端管理配置和账号接口继续由各自 Source Service 负责。
+这一切片建立在新的纯领域包 `@codez/provider` 中。后续切片已经让 Host、Worker、Prompt CLI 和 TUI 复用这套代码；文件监听、远端管理配置和账号接口继续由各自 Source Service 负责。
 
 这一节只记录首个领域切片当时的边界，不代表 M2 最终交付范围。后续切片已经接入 Host、Worker、设置页、模型选择和模型执行；Adapter reasoning 映射仍保持原有执行语义。
 
@@ -105,7 +105,7 @@ ProviderConfigResolver
 ## 实施切片与结果
 
 ```text
-M2.1  @zcode/provider 包                                      [完成]
+M2.1  @codez/provider 包                                      [完成]
       + ConfigOverlay、ProviderConfig、ModelConfigRules 与解析测试
 
 M2.2  ProviderConfigResolver
@@ -140,7 +140,7 @@ M2.3c 生产 Official / Personal Config Source                         [完成]
       + Provider Config schemaVersion 4 与相邻版本迁移 [未发布开发历史，已完成]
       + 以 `access.type` 表达访问方式，以 `api.type` 表达公开 API；Model Config 使用
         `apiMatch + reasoningMapping` 表达模型/API 组合行为 [完成]
-      + Personal Config 使用既有 `~/.zcode/v2/config.json` 路径；迁移前完整备份原文件，
+      + Personal Config 使用既有 `~/.codez/v2/config.json` 路径；迁移前完整备份原文件，
         备份失败不覆盖，转换成功后原子替换同一路径 [完成]
       + 最终完整 Schema 作为首次发布的 `schemaVersion: 1`；未发布的开发期
         v1–v5 迁移分支不进入长期兼容链路 [完成]
@@ -252,7 +252,7 @@ M2.4  Host Settings / Selection Facade 使用唯一 Registry
       + 草稿启动门禁优先使用 Model Selection Service [完成]
       + V4 草稿启动门禁删除旧 Provider Registry Snapshot fallback，只使用
         Model Selection View 作为可选模型事实 [完成]
-      + ZCode Agent 的最近选择/当前回包 Provider 可用性裁决改读 Model Selection View，
+      + Codez Agent 的最近选择/当前回包 Provider 可用性裁决改读 Model Selection View，
         不再读取旧 ModelProviderConfig 全局快照 [完成]
       + OAuth 登录后与启动恢复的 Family Selection 删除未参与裁决的旧
         ModelProviderConfig 读取，只使用权益、Team Products 与当前选择状态 [完成]
@@ -264,10 +264,10 @@ M2.4  Host Settings / Selection Facade 使用唯一 Registry
         Registry，不再在 Renderer 按 Provider 调用旧 refreshCodingPlanApiKey [完成]
       + 模型切换提示、时间线与发送埋点只从 Model Selection View 读取 Provider
         label/baseURL，不再使用旧 Provider 快照兜底 [完成]
-      + Workspace 模型偏好裁决直接消费 Model Selection View，删除非 ZCode Agent
+      + Workspace 模型偏好裁决直接消费 Model Selection View，删除非 Codez Agent
         分支对旧 ModelProviderConfig Snapshot 的可选性判断 [完成]
       + Workspace reload 删除旧多 Agent Provider 配置裁决器；历史 provider 标识在边界
-        归一到当前唯一 ZCode Agent，模型回显只使用 prepare 回包、App Recent 与
+        归一到当前唯一 Codez Agent，模型回显只使用 prepare 回包、App Recent 与
         Model Selection View，不再读取 workspace 下的旧 GLM Provider Config [完成]
       + V4 custom provider 恢复删除旧 ModelProviderConfig fallback，只从
         Model Selection View 选择首个模型 [完成]
@@ -397,7 +397,7 @@ M2.8  退出 Host -> Worker 完整 Registry Snapshot 和旧 Provider 事实链�
       + 本地 Bot 切换 custom model 只提交 modelRef，不再 apply Provider 或下发旧完整
         Registry Snapshot；desktop-attached remote 暂时保留兼容同步 [完成]
       + Repo Wiki 直接消费所属 Environment 的 ModelSelectionView；旧
-        ZCodeProviderRegistrySnapshot 投影、反向解析器与 readiness resolver 已删除 [完成]
+        CodezProviderRegistrySnapshot 投影、反向解析器与 readiness resolver 已删除 [完成]
       + 闲时任务套餐判断和派发凭据解析退出旧 Provider 列表与完整 Registry Snapshot；
         Account Overlay 提供固定 accessId/baseURL，请求时由 Account Request Auth Resolver
         取得当前动态凭据 [完成]

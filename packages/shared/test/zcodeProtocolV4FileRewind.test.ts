@@ -5,9 +5,9 @@ import {
   v4ConversationFileChangesResultSchema,
   v4ConversationFileRewindPreviewParamsSchema,
   v4ConversationFileRewindPreviewResultSchema,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
-describe("zcode-protocol-v4 file summary queries", () => {
+describe("codez-protocol-v4 file summary queries", () => {
   it("defines fileChanges and fileRewindPreview v4 methods", () => {
     expect(V4_METHODS.conversationFileChanges).toBe("v4/conversation/fileChanges");
     expect(V4_METHODS.conversationFileRewindPreview).toBe(

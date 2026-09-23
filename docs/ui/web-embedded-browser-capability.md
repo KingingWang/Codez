@@ -12,7 +12,7 @@
 - Web app / 手机远控不显示“浏览器”标签入口。
 - 命令中心不注册 `toggle-preview` 和 `add-browser-tab` 这类浏览器命令。
 - 深层 browser tab 创建回调在不支持内嵌浏览器的壳层中不创建 side pane browser tab。
-- 普通外链点击仍可在 Web 浏览器新标签中打开，不等同于 ZCode 内嵌浏览器功能。
+- 普通外链点击仍可在 Web 浏览器新标签中打开，不等同于 Codez 内嵌浏览器功能。
 
 ## 状态链路
 

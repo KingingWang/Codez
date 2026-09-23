@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type {
   ConversationSharePreflightResult,
   ConversationShareTurnPreflightResult,
-} from "@zcode/services";
+} from "@codez/services";
 import {
   aggregateConversationShareBlockingIssues,
   buildConversationSharePreflightCacheEntries,

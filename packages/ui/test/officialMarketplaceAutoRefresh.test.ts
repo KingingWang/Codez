@@ -43,14 +43,14 @@ describe("official marketplace auto refresh throttle", () => {
   });
 
   it("claim 通过后同一市场在窗口内不再放行，不同市场互不影响", () => {
-    expect(claimMarketplaceAutoRefresh("zcode-plugins-official", undefined, NOW)).toBe(true);
-    expect(claimMarketplaceAutoRefresh("zcode-plugins-official", undefined, NOW + 1_000)).toBe(
+    expect(claimMarketplaceAutoRefresh("codez-plugins-official", undefined, NOW)).toBe(true);
+    expect(claimMarketplaceAutoRefresh("codez-plugins-official", undefined, NOW + 1_000)).toBe(
       false,
     );
     expect(claimMarketplaceAutoRefresh("other-marketplace", undefined, NOW + 1_000)).toBe(true);
     expect(
       claimMarketplaceAutoRefresh(
-        "zcode-plugins-official",
+        "codez-plugins-official",
         undefined,
         NOW + OFFICIAL_MARKETPLACE_AUTO_REFRESH_INTERVAL_MS,
       ),
@@ -58,12 +58,12 @@ describe("official marketplace auto refresh throttle", () => {
   });
 
   it("手动刷新成功后 lastUpdated 变新，窗口以其为准重置", () => {
-    expect(claimMarketplaceAutoRefresh("zcode-plugins-official", minutesAgo(30), NOW)).toBe(true);
+    expect(claimMarketplaceAutoRefresh("codez-plugins-official", minutesAgo(30), NOW)).toBe(true);
     // 5 分钟后手动刷新成功，lastUpdated 更新到 NOW+5min；再过 6 分钟进入商店页：
     // 距 attempt 已 11 分钟但距 lastUpdated 仅 6 分钟，应跳过。
     const manualRefreshAt = new Date(NOW + 5 * 60_000).toISOString();
     expect(
-      claimMarketplaceAutoRefresh("zcode-plugins-official", manualRefreshAt, NOW + 11 * 60_000),
+      claimMarketplaceAutoRefresh("codez-plugins-official", manualRefreshAt, NOW + 11 * 60_000),
     ).toBe(false);
   });
 });

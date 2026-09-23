@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { VIDEO_INPUT_MAX_BYTES } from "@zcode/shared";
-import { PROTOCOL_V4_LIMITS } from "@zcode/shared/zcode-protocol-v4";
+import { VIDEO_INPUT_MAX_BYTES } from "@codez/shared";
+import { PROTOCOL_V4_LIMITS } from "@codez/shared/codez-protocol-v4";
 import {
   MissingInlineImageContentError,
   OversizedInlineImageAttachmentError,
@@ -58,7 +58,7 @@ describe("serializeChatComposerAttachment", () => {
     ).toMatchObject({ sourceKind: "topic-history", messageCount: 2, textContent: "original text" });
   });
   it("文本文件会作为普通 file 附件序列化，并保留可读内容", async () => {
-    const file = new File(["hello zcode"], "notes.txt", {
+    const file = new File(["hello codez"], "notes.txt", {
       type: "text/plain",
     });
 
@@ -69,7 +69,7 @@ describe("serializeChatComposerAttachment", () => {
       filename: "notes.txt",
       mimeType: "text/plain",
       sizeBytes: file.size,
-      textContent: "hello zcode",
+      textContent: "hello codez",
     });
     expect(attachment.dataBase64).toBeUndefined();
   });
@@ -130,7 +130,7 @@ describe("serializeChatComposerAttachment", () => {
   });
 
   it("带本地路径的拖拽普通文件只序列化路径引用", async () => {
-    const file = new File(["hello zcode"], "notes.txt", {
+    const file = new File(["hello codez"], "notes.txt", {
       type: "text/plain",
     });
 
@@ -147,7 +147,7 @@ describe("serializeChatComposerAttachment", () => {
     });
   });
 
-  it("图片仍保持 ZCode Agent image 附件格式", async () => {
+  it("图片仍保持 Codez Agent image 附件格式", async () => {
     const file = new File(["png-bytes"], "image.png", {
       type: "image/png",
     });
@@ -366,7 +366,7 @@ describe("clipboard text attachments", () => {
     const attachment = await serializeChatComposerAttachment(
       createClipboardTextPathComposerAttachment(text, {
         filename: "pasted-text-20260630-104512-a1b2c3.txt",
-        localPath: "/Users/test/.zcode/tmp/paste-attachments/2026-06-30/pasted-text.txt",
+        localPath: "/Users/test/.codez/tmp/paste-attachments/2026-06-30/pasted-text.txt",
         mimeType: "text/plain",
         sizeBytes: Buffer.byteLength(text, "utf8"),
       }),
@@ -375,7 +375,7 @@ describe("clipboard text attachments", () => {
     expect(attachment).toEqual({
       kind: "file",
       filename: "pasted-text-20260630-104512-a1b2c3.txt",
-      localPath: "/Users/test/.zcode/tmp/paste-attachments/2026-06-30/pasted-text.txt",
+      localPath: "/Users/test/.codez/tmp/paste-attachments/2026-06-30/pasted-text.txt",
       mimeType: "text/plain",
       sourceKind: "clipboard-text",
       sizeBytes: 15_360,

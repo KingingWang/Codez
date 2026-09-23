@@ -8,7 +8,7 @@ import {
   setPluginUiWidgetState,
   clearPluginUiWidgetState,
 } from "../../../ui/src/plugin-ui/app/pluginUiWidgetStateStore.js";
-import type { PluginSandboxHandle, PluginSandboxPortsEvent } from "@zcode/shared/mcp-apps";
+import type { PluginSandboxHandle, PluginSandboxPortsEvent } from "@codez/shared/mcp-apps";
 import { createPluginUiMessagePortTransport } from "../../../ui/src/plugin-ui/adapters/messagePortTransport.js";
 import { createPluginUiPagePlane } from "../../../ui/src/plugin-ui/adapters/pluginUiPagePlane.js";
 const harness = (window as any).harness;
@@ -41,7 +41,7 @@ let portHandler: ((event: PluginSandboxPortsEvent) => void) | undefined;
 let ready = Promise.withResolvers<void>();
 (window as any).harnessReady = ready.promise;
 window.addEventListener("message", (event) => {
-  if (event.data?.type !== "zcode:plugin-sandbox-ports" || event.ports.length !== 1) return;
+  if (event.data?.type !== "codez:plugin-sandbox-ports" || event.ports.length !== 1) return;
   portHandler?.({ ...event.data, port: event.ports[0] });
 });
 const plane = createPluginUiPagePlane({
@@ -135,7 +135,7 @@ async function start() {
     getHostCapabilities: () => ({
       serverTools: {},
       serverResources: {},
-      experimental: { "zcode/widgetState": {} },
+      experimental: { "codez/widgetState": {} },
     }),
     onUpdateWidgetState: async (value) => {
       setPluginUiWidgetState("fixture", value);

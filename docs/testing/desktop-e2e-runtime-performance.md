@@ -20,7 +20,7 @@ spec、case、断言和 replay 时间边界语义的前提下，让优化后的�
 当前默认值以 `resolveWindowsE2EShardTotal()` 和
 `listDefaultFormalE2ESpecs()` 的可执行结果为准：不传分片参数时，所有平台和资源档位
 都使用 1 shard；普通全量运行只有显式传入 `--shards=N` 或
-`ZCODE_E2E_SHARD_TOTAL=N` 才启用多个隔离 shard，每个 shard 仍为 `maxInstances=1`。
+`CODEZ_E2E_SHARD_TOTAL=N` 才启用多个隔离 shard，每个 shard 仍为 `maxInstances=1`。
 WDIO native `--shard`、targeted spec、manual-review 和 capture 模式始终优先保持单 shard，
 不会被显式分片参数扩成多个 child。默认 formal 范围由
 `listDefaultFormalE2ESpecs()` 动态发现，不以会随 case 增删变化的固定数量作为门禁。
@@ -131,15 +131,15 @@ spec after -> 不抢占 session 关闭所有权
 98.5%、P95 100%，但内存仍有约 16 GiB 空闲。四分片两轮分别只能达到
 38.1% 和 44.3% 提速。历史性能验收曾采用资源分级默认值，但高并发下存在
 session/清理不稳定，因此当前默认收敛为 1 shard；需要性能并行时，由调用方根据
-机器资源显式传入 `--shards=N` 或 `ZCODE_E2E_SHARD_TOTAL=N`。
+机器资源显式传入 `--shards=N` 或 `CODEZ_E2E_SHARD_TOTAL=N`。
 
 所有显式并行配置继续满足：
 
 - 每 shard 独立 HOME/run id/artifact/network/Chromium profile；
 - 每 shard `maxInstances=1`；
 - WDIO native `--shard`、capture、manual-review、targeted run 保持单 shard，并优先于
-  `--shards` 和 `ZCODE_E2E_SHARD_TOTAL`；
-- 普通全量运行的显式 `--shards` 优先于 `ZCODE_E2E_SHARD_TOTAL`；
+  `--shards` 和 `CODEZ_E2E_SHARD_TOTAL`；
+- 普通全量运行的显式 `--shards` 优先于 `CODEZ_E2E_SHARD_TOTAL`；
 - 所有 shard 的 spec 并集与默认正式范围完全一致且无重复。
 
 单纯从 2 提到 4 因父级 build 固定成本不能严格减半，所以必须与 P0 生命周期
@@ -161,7 +161,7 @@ session/清理不稳定，因此当前默认收敛为 1 shard；需要性能并�
 
 父 runner 的 agent build 默认使用已有 Turbo 内容缓存：冷缓存仍按依赖图完整构建，
 warm cache 实测从约一分钟级降到 `1,664 ms`。显式
-`ZCODE_DESKTOP_AGENT_BUILD_MODE` 继续可以覆盖该默认值。
+`CODEZ_DESKTOP_AGENT_BUILD_MODE` 继续可以覆盖该默认值。
 
 后续完整轮次：
 
@@ -225,12 +225,12 @@ beforeSession，仍由 onComplete 兜底，不遗留用户数据。
 内容指纹缓存。指纹覆盖 desktop/UI/shared/services/client/rpc 的生产源码、各 package
 manifest、desktop 构建脚本/配置、根 lockfile、Git HEAD 及 E2E build 环境；任一变化
 必须重建，只有输入完全相同且主进程/renderer 产物仍存在时才复用。显式
-`ZCODE_E2E_FORCE_DESKTOP_BUILD=1` 可强制失效，不能复用仅靠文件存在判断的旧产物。
+`CODEZ_E2E_FORCE_DESKTOP_BUILD=1` 可强制失效，不能复用仅靠文件存在判断的旧产物。
 
 缓存正确性补充（2026-07-17）：fingerprint 必须描述最终 bundle 的完整语义，不能只靠
-Git HEAD 和一份手写源码目录清单。默认输入从 `@zcode/desktop` 沿
+Git HEAD 和一份手写源码目录清单。默认输入从 `@codez/desktop` 沿
 `pnpm-workspace.yaml` 的 workspace 依赖图递归收集各 package manifest 与 `src`，因此
-`@zcode/server` 等被 tsup 内联的依赖与后续新增 workspace 依赖都会自动进入 key；根目录
+`@codez/server` 等被 tsup 内联的依赖与后续新增 workspace 依赖都会自动进入 key；根目录
 `.env`、`.env.local`、`.env.production`、`.env.production.local` 也作为 Vite/tsup
 生产构建的实际配置文件参与哈希。构建期环境至少覆盖 coverage、endpoint、OAuth、CDN、
 环境门禁和 build metadata 变量，并区分“未设置”和“显式空值”。控制流保持：
@@ -242,7 +242,7 @@ workspace 依赖图源码 ─┐
 Git HEAD / lock / config ┘
 ```
 
-回归测试必须分别证明切换 `ZCODE_E2E_COVERAGE`、修改 `packages/server/src` 和修改
+回归测试必须分别证明切换 `CODEZ_E2E_COVERAGE`、修改 `packages/server/src` 和修改
 根目录 `.env` 会改变 fingerprint；不能以“同一 commit”作为未提交源码或环境切换的替代。
 
 共享 build cache 还必须把“检查、构建、产物校验、stamp 提交”收敛为同一个跨进程
@@ -448,7 +448,7 @@ WebdriverIO 原生请求配置。保留新 LPT profile、硬链接 staging、构
 app-data 所有权收敛和 HLP02 装置优化；这些改动不会让后台 CDP 操作越过生命周期边界。
 下一轮继续要求 82 个 test result 与减半墙钟同时满足。
 
-后续环境核对修正了上述归因：本机没有设置 `ZCODE_E2E_FAILURE_ARTIFACTS=1`，因此
+后续环境核对修正了上述归因：本机没有设置 `CODEZ_E2E_FAILURE_ARTIFACTS=1`，因此
 `E2EFailureArtifactCollector.start/complete` 全程 no-op，10 秒或 60 秒外层上限都没有
 进入实际等待；不存在后台录屏 promise 与下一 worker 重叠。失败产物默认恢复并保留
 60 秒，真正产生 `933,828 ms` 和 `1,013,926 ms` 两次默认过线成绩的是 WebDriver
@@ -573,7 +573,7 @@ launcher/capability 合同，并把旧 service 吞掉的初始化失败提升为
 4. 历史中间阶段将 Windows 非 targeted 默认改为 4 shard，补 runner 纯单测，再跑完整全量；
    后续实验曾继续提高到 10/4/2 资源分级，当前已改为默认 1、显式参数选择并行数。
 5. 若完整墙钟仍高于首次基线 50%，按 P2 顺序回到归因与方案设计。
-6. 最终执行 `pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm typecheck`、
+6. 最终执行 `pnpm --filter @codez/desktop typecheck:e2e`、`pnpm typecheck`、
    `pnpm lint`，并检查没有 E2E Electron/host/agent/Chromedriver 遗留进程。
 
 ## 验收门槛

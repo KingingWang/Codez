@@ -6,7 +6,7 @@ import {
   isProtectedStoragePath,
   type StorageCatalogContext,
 } from "../src/storage/domain/storageCatalog.js";
-import { STORAGE_CATEGORY_IDS } from "@zcode/shared";
+import { STORAGE_CATEGORY_IDS } from "@codez/shared";
 
 const home: StorageCatalogContext = { rootId: "home", hasCustomDataBaseDir: false };
 
@@ -27,7 +27,7 @@ describe("classifyStoragePath", () => {
     ["v2/dev/stdio-traffic/abc/x.ndjson", "devTraces", "v2/dev/stdio-traffic"],
     ["v2/acp-traffic-proxy/captures/t.ndjson", "devTraces", "v2/acp-traffic-proxy/captures"],
     ["v2/logs/2026-09-04.log", "logs", "v2/logs/2026-09-04.log"],
-    ["cli/log/zcode-2026-09-04.jsonl", "logs", "cli/log/zcode-2026-09-04.jsonl"],
+    ["cli/log/codez-2026-09-04.jsonl", "logs", "cli/log/codez-2026-09-04.jsonl"],
     ["v2/crash/archive/x.dmp", "logs", "v2/crash/archive"],
     ["feedback/logs/a.zip", "logs", "feedback/logs/a.zip"],
     ["feedback/attachments/a.png", "exports", "feedback/attachments"],
@@ -47,7 +47,7 @@ describe("classifyStoragePath", () => {
     ["v2/setting.json.codex-perf-backup-1", "backups", "v2/setting.json.codex-perf-backup-1"],
     ["v2/config.json.pre-provider-v1-abc.bak", "backups", "v2/config.json.pre-provider-v1-abc.bak"],
     ["cli/config.json.bak-2026", "backups", "cli/config.json.bak-2026"],
-    ["export-log/zcode-logs-1/a.zip", "exports", "export-log/zcode-logs-1"],
+    ["export-log/codez-logs-1/a.zip", "exports", "export-log/codez-logs-1"],
     ["export-log-stage/stage-x/a", "exports", "export-log-stage/stage-x"],
     ["cli/exec/sess_1/out.txt", "toolOutputs", "cli/exec/sess_1"],
     ["cli/image-cache/sess_1/a.png", "toolOutputs", "cli/image-cache/sess_1"],
@@ -121,7 +121,7 @@ describe("cleanability, protection and clean scopes", () => {
       "v2/setting.json.lock",
       "v2/credentials.json",
       "computer-use/run/.tokens",
-      "v2/dev/zcode-stdio-tap.json",
+      "v2/dev/codez-stdio-tap.json",
       "v2/crash/live/current.dmp",
     ]) {
       expect(isProtectedStoragePath(path), path).toBe(true);

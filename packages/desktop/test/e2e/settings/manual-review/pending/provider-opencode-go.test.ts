@@ -1,4 +1,4 @@
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import {
   TID_MODEL_PROVIDER_ADD_PROVIDER_BUTTON,
   TID_MODEL_PROVIDER_TEMPLATE_ITEM,
@@ -9,7 +9,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,

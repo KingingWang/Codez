@@ -1,28 +1,28 @@
-# ZCode Built-in Provider Config 维护设计
+# Codez Built-in Provider Config 维护设计
 
 > 状态：当前有效设计
 >
-> 本文规定 `config/provider/zcode-builtin.json` 的长期维护方式。字段契约、Overlay 和 Registry
+> 本文规定 `config/provider/codez-builtin.json` 的长期维护方式。字段契约、Overlay 和 Registry
 > 完整语义分别以 [`configuration.md`](./configuration.md)、
 > [`provider-and-model-configuration-overview.md`](./provider-and-model-configuration-overview.md) 为准。
 
-正式环境源文件沿用 `zcode-builtin.json`，测试环境使用同目录 `zcode-builtin.test.json`。
-两份遵循相同维护规范，按 `ZCODE_ENV` 打包；选择与缓存契约见
+正式环境源文件沿用 `codez-builtin.json`，测试环境使用同目录 `codez-builtin.test.json`。
+两份遵循相同维护规范，按 `CODEZ_ENV` 打包；选择与缓存契约见
 [双环境打包](../../../../builtin-provider-config-build-environments.md)。
 
 ## 1. 目标与边界
 
-ZCode Built-in Release 原子发布两类内容：
+Codez Built-in Release 原子发布两类内容：
 
 ```text
-ZCode Built-in Release
+Codez Built-in Release
 ├─ Account Provider Config Map
 ├─ Provider Template Map
 │  └─ Template 元数据壳 + Provider Config Overlay
 └─ Model Config Rules
 ```
 
-Account Provider Config Map 声明 ZCode 维护的账号 Provider 身份与调用配置。Provider Template Map 为普通 API
+Account Provider Config Map 声明 Codez 维护的账号 Provider 身份与调用配置。Provider Template Map 为普通 API
 Provider 提供创建基线；每个 Template 以领域壳保存多语言 `nameMap` 和复用的 Provider Config Overlay，不进入
 Registry。Model Config Rules 声明模型事实、API/Endpoint 请求能力、Option Specs、
 per-option raw-body map 和 Provider/Model 产品事实。
@@ -248,7 +248,7 @@ Protocol、Settings 和测试必须一次性改名，不保留双字段或 Runti
 | 分类     | 含义                                                       | 可配置范围                               |
 | -------- | ---------------------------------------------------------- | ---------------------------------------- |
 | 官方确认 | 厂商当前模型/API 文档明确声明                              | 对应 Model、Schema 或 Endpoint           |
-| 产品确认 | ZCode 产品服务、账号接口或内部正式契约明确声明             | 对应 Built-in Provider 产品事实          |
+| 产品确认 | Codez 产品服务、账号接口或内部正式契约明确声明             | 对应 Built-in Provider 产品事实          |
 | 协议推断 | 为第三方兼容服务提供的保守通用结果，尚无官方 Endpoint 证明 | 不确定能力为 `false`，允许 Personal 覆盖 |
 
 ### 6.1 Models API 是发布证据，不是新的运行时配置层
@@ -282,13 +282,13 @@ Base URL + API Schema + 当前访问材料
 - Account 或 Plan 的账号特定模型集合仍归 Account Overlay；通用 Models API 不覆盖产品权益接口。
 
 Models API 只进入发布验证、差异报告或用户主动导入流程。它不在应用启动或普通请求期间直接覆盖
-ZCode Built-in、Account 或 Personal Config，不形成第四层 Config，也不让瞬时网络失败改变 Registry。
+Codez Built-in、Account 或 Personal Config，不形成第四层 Config，也不让瞬时网络失败改变 Registry。
 
 官网写“Structured Output”“Search”或“Tools”不足以跨 Schema、Endpoint 扩散。官方资料缺失时可以补齐三种
 Schema 的保守规则，但不能凭同家族、相似名称或营销术语开启高风险能力。
 
 能力证据还必须区分“服务接受输入”与“模型消费输入”。请求携带未知字段、图片或其他内容而未报错，可能只是
-服务端容忍或忽略，不能据此把对应能力设为 `true`。媒体能力至少需要官方明确声明、ZCode 产品服务契约，或能证明
+服务端容忍或忽略，不能据此把对应能力设为 `true`。媒体能力至少需要官方明确声明、Codez 产品服务契约，或能证明
 内容确实参与模型回答的协议级实测。
 
 官网未列出但第三方兼容服务可能提供的模型，可以有完整的保守 Model Rules；只有官方文档、实时 Models API

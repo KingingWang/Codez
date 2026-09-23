@@ -22,7 +22,7 @@ MiMo Anthropic-compatible 请求在启用 `thinking.type = "enabled"` 时，AI S
 ## 方案
 
 fixed thinking budget 必须小于最终 `max_tokens`，即限制为 `min(configuredBudget, max_tokens - 1)`。
-ZCode 通过 AI SDK 发送请求，而 AI SDK 会把 `maxOutputTokens` 与 thinking budget 相加，因此在
+Codez 通过 AI SDK 发送请求，而 AI SDK 会把 `maxOutputTokens` 与 thinking budget 相加，因此在
 adapter 请求选项构造阶段统一投影两个请求值：
 
 ```text

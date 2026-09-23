@@ -4,7 +4,7 @@ import {
   PROTOCOL_V4_LIMITS as limits,
   conversationSnapshotSchema,
   type ToolCallRow,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import type { CodexThreadItem } from "../src/codex-types.js";
 import { projectInputText, projectLegacySnapshot, projectThread } from "../src/projection.js";
 import { threadFixture } from "./projection-fixtures.test.js";

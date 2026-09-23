@@ -18,7 +18,7 @@ Zustand、本地偏好及窗口广播机制。分类归属仍来自 marketplace 
 
 ### 分类调整（2026-09-15）
 
-- 取消 `guides` 类目，内置 `zcode-guide` 的目录定义改为 `utilities`。客户端把旧缓存
+- 取消 `guides` 类目，内置 `codez-guide` 的目录定义改为 `utilities`。客户端把旧缓存
   `guides` 归并到 `utilities`，保留插件、安装状态及行为。
 - 新增 `legal` 已知分类，中文“法律”、英文“Legal”；暂不新增插件。
 - 测试环境 Code / Work 排序移除 `guides`，加入 `legal`。空分类沿用不展示规则；
@@ -37,15 +37,15 @@ Zustand、本地偏好及窗口广播机制。分类归属仍来自 marketplace 
   "code": {
     "categoryOrder": ["developer-tools", "productivity"],
     "pluginOrder": {
-      "productivity": ["lark-cli@zcode-plugins-official"]
+      "productivity": ["lark-cli@codez-plugins-official"]
     }
   },
   "work": {
     "categoryOrder": ["productivity", "finance", "other"],
     "pluginOrder": {
       "productivity": [
-        "tencent-meeting-cli@zcode-plugins-official",
-        "lark-cli@zcode-plugins-official"
+        "tencent-meeting-cli@codez-plugins-official",
+        "lark-cli@codez-plugins-official"
       ]
     }
   }
@@ -84,7 +84,7 @@ flowchart LR
 
 ## 服务端落点
 
-zcode-server 已支持 `ClientConfigItem.Value:any`，Nacos 更新解析成功后替换快照。
+codez-server 已支持 `ClientConfigItem.Value:any`，Nacos 更新解析成功后替换快照。
 `GetClientConfigs` 合并数据库固定配置和条件配置；相同 key 后命中的条件配置整体覆盖，
 不是嵌套合并。两种模式放同一个 value 原子发布，不能用两个同名 key 各放一个模式。
 无需新增 Go 业务接口或迁移；服务端提供 Nacos 示例与对象顺序透传回归测试。
@@ -139,7 +139,7 @@ CodeGraph：两个工作区均无 `.codegraph/`，按约定跳过索引，以 rg
 
 ## 恢复旧版会话插件退出市场展示
 
-- `restore-legacy-sessions@zcode-plugins-official` 不再出现在商店精选、分类（含展开）、搜索及已安装快捷条中；Code / Work、桌面与手机 Web 使用同一规则。
+- `restore-legacy-sessions@codez-plugins-official` 不再出现在商店精选、分类（含展开）、搜索及已安装快捷条中；Code / Work、桌面与手机 Web 使用同一规则。
 - 由共享 `PluginStoreListView` 在分类、精选、搜索等派生前统一过滤完整插件 ID，旧目录缓存或服务端精选名单不能使其重新出现；个人来源的同名插件不受影响。
 - 本次仅移除市场展示入口，保留插件包、已安装状态与插件管理页，避免隐藏入口导致已有安装无法管理。排序配置不承担上下架职责，当前下发配置未引用该插件，无需改动 Nacos。
 - 浏览器回归覆盖官方插件已安装且被列入精选、两种模式、搜索和个人来源同名插件。
@@ -152,8 +152,8 @@ CodeGraph：两个工作区均无 `.codegraph/`，按约定跳过索引，以 rg
   hook、Zustand 模式偏好及 DOM 顺序，包含配置延迟、失败、撤销与展开状态保留。
 - `pnpm typecheck` 通过；`pnpm lint` 无错误，43 条既有警告；架构检查零违规。
 - 功能图新增节点、边、代码种子校验通过；图谱基线已有 4 条悬空边，本次新增 0 条。
-- zcode-server 的 config 和 application/client_config 包测试通过。
-- 2026-09-15 已完成真实测试环境链路：MSE `zcode_test / ZCODE / client_config.yaml`
+- codez-server 的 config 和 application/client_config 包测试通过。
+- 2026-09-15 已完成真实测试环境链路：MSE `codez_test / CODEZ / client_config.yaml`
   仅追加 `pluginStoreOrder`，原 14 项配置内容保持不变；带原 MD5 发布并精确回读成功。
   在线测试后端 `/api/v1/client/configs` 随即返回完全一致的对象，服务端未重启。
 - 当前工作区 `mise run dev` 启动 Electron，真实 Host 配置 RPC 经商店手动刷新取得新配置。

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { PassThrough } from "node:stream";
-import type { IDisposable, Event } from "@zcode/rpc";
-import type { ZCodePromptAttachment } from "@zcode/shared";
+import type { IDisposable, Event } from "@codez/rpc";
+import type { CodezPromptAttachment } from "@codez/shared";
 import {
   REMOTE_PROMPT_ATTACHMENT_ROOT,
   buildRemotePromptAttachmentPath,
@@ -40,8 +40,8 @@ describe("remote prompt attachment materialization", () => {
       .mockResolvedValueOnce(createClosedStream())
       .mockResolvedValueOnce(createClosedStream());
     const hostPath =
-      "C:\\Users\\tester\\.zcode\\tmp\\paste-attachments\\pasted-text.txt";
-    const attachments: ZCodePromptAttachment[] = [
+      "C:\\Users\\tester\\.codez\\tmp\\paste-attachments\\pasted-text.txt";
+    const attachments: CodezPromptAttachment[] = [
       {
         kind: "file",
         filename: "pasted text.txt",
@@ -70,7 +70,7 @@ describe("remote prompt attachment materialization", () => {
 
     const remotePath = upload.mock.calls[0]?.[1] ?? "";
     expect(remotePath).toMatch(
-      /^\/home\/tester\/\.zcode\/tmp\/prompt-attachments\/trace-abc-123\/[A-Za-z0-9._-]+\/01-pasted-text\.txt$/,
+      /^\/home\/tester\/\.codez\/tmp\/prompt-attachments\/trace-abc-123\/[A-Za-z0-9._-]+\/01-pasted-text\.txt$/,
     );
     expect(upload).toHaveBeenCalledWith(hostPath, remotePath);
     expect(exec.mock.calls[0]?.[0]).toBe('printf %s "$HOME"');
@@ -94,7 +94,7 @@ describe("remote prompt attachment materialization", () => {
     );
     const exec = vi.fn(async (_command: string) => createClosedStream());
     const remotePath = `${REMOTE_PROMPT_ATTACHMENT_ROOT}/trace/01-image.png`;
-    const attachments: ZCodePromptAttachment[] = [
+    const attachments: CodezPromptAttachment[] = [
       {
         kind: "image",
         filename: "image.png",
@@ -120,8 +120,8 @@ describe("remote prompt attachment materialization", () => {
       async (_localPath: string, _remotePath: string) => undefined,
     );
     const exec = vi.fn(async (_command: string) => createClosedStream("/home/tester"));
-    const remotePath = "/home/tester/.zcode/tmp/prompt-attachments/trace/01-image.png";
-    const attachments: ZCodePromptAttachment[] = [
+    const remotePath = "/home/tester/.codez/tmp/prompt-attachments/trace/01-image.png";
+    const attachments: CodezPromptAttachment[] = [
       {
         kind: "image",
         filename: "image.png",
@@ -185,10 +185,10 @@ describe("remote prompt attachment materialization", () => {
   });
 
   it("materializes desktop-continuous session prompts before calling the remote session service", async () => {
-    const remoteAttachment: ZCodePromptAttachment = {
+    const remoteAttachment: CodezPromptAttachment = {
       kind: "file",
       filename: "pasted.txt",
-      localPath: "/home/tester/.zcode/tmp/prompt-attachments/input/01-pasted.txt",
+      localPath: "/home/tester/.codez/tmp/prompt-attachments/input/01-pasted.txt",
       mimeType: "text/plain",
       sizeBytes: 5,
       sourceKind: "clipboard-text",
@@ -224,16 +224,16 @@ describe("remote prompt attachment materialization", () => {
       sessionId: "task-1",
       inputId: "input-1",
       content:
-        "read /home/tester/.zcode/tmp/prompt-attachments/input/01-pasted.txt",
+        "read /home/tester/.codez/tmp/prompt-attachments/input/01-pasted.txt",
       attachments: [remoteAttachment],
     });
   });
 
   it("materializes web-remote queued task commands before calling the remote task service", async () => {
-    const remoteAttachment: ZCodePromptAttachment = {
+    const remoteAttachment: CodezPromptAttachment = {
       kind: "file",
       filename: "pasted.txt",
-      localPath: "/home/tester/.zcode/tmp/prompt-attachments/input/01-pasted.txt",
+      localPath: "/home/tester/.codez/tmp/prompt-attachments/input/01-pasted.txt",
       mimeType: "text/plain",
       sizeBytes: 5,
       sourceKind: "clipboard-text",
@@ -273,7 +273,7 @@ describe("remote prompt attachment materialization", () => {
       traceId: "input-1",
       type: "send_prompt",
       content:
-        "read /home/tester/.zcode/tmp/prompt-attachments/input/01-pasted.txt",
+        "read /home/tester/.codez/tmp/prompt-attachments/input/01-pasted.txt",
       attachments: [remoteAttachment],
     });
   });

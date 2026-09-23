@@ -7,7 +7,7 @@ describe("ARMS Browser init config", () => {
   });
 
   it("本地开发态使用 production 产品环境时仍标记为 local", async () => {
-    vi.stubGlobal("__ZCODE_ENV__", "production");
+    vi.stubGlobal("__CODEZ_ENV__", "production");
     const { buildArmsBrowserInitConfig } = await import("../src/shared/armsRumShared.js");
 
     expect(buildArmsBrowserInitConfig("development").env).toBe("local");

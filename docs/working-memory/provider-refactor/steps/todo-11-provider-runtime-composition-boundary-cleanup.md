@@ -8,7 +8,7 @@
 >
 > 相关设计：[`../design/registry/runtime.md`](../design/registry/runtime.md)、[`../design/environment/environment.md`](../design/environment/environment.md)、[`../design/registry/configuration.md`](../design/registry/configuration.md)
 >
-> 关联任务：[`06`](./todo-06-config-storage-envelope-repository-privatization.md)、[`08`](./todo-08-legacy-model-catalog-retirement.md)、[`10`](./todo-10-zcode-builtin-provider-config-naming-cutover.md)
+> 关联任务：[`06`](./todo-06-config-storage-envelope-repository-privatization.md)、[`08`](./todo-08-legacy-model-catalog-retirement.md)、[`10`](./todo-10-codez-builtin-provider-config-naming-cutover.md)
 
 ## 0. 草案边界
 
@@ -42,7 +42,7 @@ Facade 和执行进程的装配，是否因为抽象边界没有贯彻到底而�
 
 | 当前对象                         | 实际拥有或装配的内容                                                                                    | 当前调用情况                                                   | 审查事实                                                                            |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `NodeProviderConfigRuntime`      | ZCode Built-in 文件 Source、Personal Repository、`ProviderConfigService`、watcher/dispose               | 被其上两层使用；`createNodeProviderConfigRuntime()` 无生产调用 | 主要是 Node IO 资源集合；`start()` 只调用 `configService.read()`，没有独立运行状态  |
+| `NodeProviderConfigRuntime`      | Codez Built-in 文件 Source、Personal Repository、`ProviderConfigService`、watcher/dispose               | 被其上两层使用；`createNodeProviderConfigRuntime()` 无生产调用 | 主要是 Node IO 资源集合；`start()` 只调用 `configService.read()`，没有独立运行状态  |
 | `NodeProviderRegistryRuntime`    | 上述 Config Runtime、`ProviderRegistryService`、可选 Account Source                                     | 生产上由 Agent 的 process root 使用；factory 无生产调用        | 又包一层 Registry 生命周期，并内置第二份 Empty Account fallback                     |
 | Services `ProviderConfigRuntime` | Node Config Runtime、Personal 缺省路径、Legacy Personal importer                                        | Host 生产组合根使用                                            | 文件注释已明确它是“兼容装配层”；Legacy 读取边界实际退役后，长期职责可能只剩路径解析 |
 | Services `ProviderRuntime`       | Config、Registry、Settings/Selection Facade、RPC service adapter、ready promise、Account Source dispose | Host 生产组合根使用；通用 factory 主要由测试使用               | Host 行为是真实需求，但名称和公开表面把 Host 专属装配描述成了通用 Runtime           |
@@ -177,9 +177,9 @@ owner 暴露造成的具体 bug candidate，不只是命名偏好。
 
 ### 4.1 候选包含内容
 
-- Node ZCode Built-in 只读文件 Source：严格解析、内容 revision、watch/change event、dispose；
+- Node Codez Built-in 只读文件 Source：严格解析、内容 revision、watch/change event、dispose；
 - Node Personal Repository：read/update、文件锁、原子私有写、revision、watch 去重、dispose；
-- `ProviderConfigService`：组合 ZCode Built-in 与 Personal 两层，提供分层读取和 Personal mutation；
+- `ProviderConfigService`：组合 Codez Built-in 与 Personal 两层，提供分层读取和 Personal mutation；
 - 上述资源的唯一对称 dispose；
 - Repository 私有的 schema/migration；Legacy importer 只在兼容期限内临时存在。
 

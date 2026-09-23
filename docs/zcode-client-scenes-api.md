@@ -1,9 +1,9 @@
-# ZCode Client Scenes 接口
+# Codez Client Scenes 接口
 
 ## 目标
 
-App 服务层注册 ZCode Client Scenes 接口，供后续场景消费方通过统一的
-`ApiClient` 请求出口读取服务端场景配置，避免业务代码硬编码测试域名或绕过 ZCode
+App 服务层注册 Codez Client Scenes 接口，供后续场景消费方通过统一的
+`ApiClient` 请求出口读取服务端场景配置，避免业务代码硬编码测试域名或绕过 Codez
 通参注入。
 
 ## 请求契约
@@ -11,9 +11,9 @@ App 服务层注册 ZCode Client Scenes 接口，供后续场景消费方通过�
 - 方法：`GET`
 - 路径：`/api/v1/client/scenes`
 - 测试环境示例：`https://zcode.z.ai/api/v1/client/scenes`
-- URL 必须通过 `buildRuntimeZCodeApiUrl(process.env, path)` 构造，使生产、测试以及
+- URL 必须通过 `buildRuntimeCodezApiUrl(process.env, path)` 构造，使生产、测试以及
   运行时 endpoint override 继续遵循现有环境切换规则。
-- 调用方必须使用注入的 `ApiClient` 发起请求。`NodeApiClient` 在请求命中当前 ZCode
+- 调用方必须使用注入的 `ApiClient` 发起请求。`NodeApiClient` 在请求命中当前 Codez
   endpoint 时统一注入来源通参、设备标识和 request id；调用方不得重复手写这些
   headers。
 - 本接口不要求新增 query 参数或 Authorization header。
@@ -94,7 +94,7 @@ React consumer mount / workspace attachment change
   -> useClientScenesResource(service authority)
      -> cache hit --------------------------> 立即返回 last-known-good scenes
      -> cold miss -> SWR dedupe -> clientScenesService.list()
-                                  -> Host ApiClient + ZCode 通参
+                                  -> Host ApiClient + Codez 通参
                                   -> GET /api/v1/client/scenes
   <- success: 更新共享内存缓存 -> 各消费方独立映射自己的 scene
   <- failure: 热缓存保持旧值；冷缓存返回空目录

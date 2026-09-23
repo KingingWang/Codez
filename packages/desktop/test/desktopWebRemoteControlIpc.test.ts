@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PlatformChannels, type WebRemoteControlContext } from "@zcode/shared";
+import { PlatformChannels, type WebRemoteControlContext } from "@codez/shared";
 import type { WebRemoteControlStartAuthorization } from "../src/main/webRemoteControlManager.js";
 
 type IpcHandler = (...args: unknown[]) => unknown;

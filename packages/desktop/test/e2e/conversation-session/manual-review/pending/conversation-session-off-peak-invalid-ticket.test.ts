@@ -6,7 +6,7 @@ import {
   TID_OFFPEAK_EDIT_SUBMIT,
   TID_OFFPEAK_FORM_INSTRUCTIONS,
   TID_OFFPEAK_FORM_TITLE,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -96,7 +96,7 @@ async function waitForInvalidTicketResponse(): Promise<{
   invalidTicketRequests: number;
   requests: unknown[];
 }> {
-  const port = Number(process.env.ZCODE_OFFPEAK_MOCK_PORT ?? "45197");
+  const port = Number(process.env.CODEZ_OFFPEAK_MOCK_PORT ?? "45197");
   let latest = { invalidTicketRequests: 0, requests: [] as unknown[] };
   await browser.waitUntil(
     async () => {

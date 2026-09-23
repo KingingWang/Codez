@@ -15,11 +15,11 @@ import {
   type ConversationSnapshot,
   type ConversationTopicFrame,
   type ConversationTopicWireFrame,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 import {
-  ZCODE_PROTOCOL_V4_WIRE_VERSION,
-  ZCODE_PROTOCOL_VERSION,
-} from "../src/zcode-protocol/index.js";
+  CODEZ_PROTOCOL_V4_WIRE_VERSION,
+  CODEZ_PROTOCOL_VERSION,
+} from "../src/codez-protocol/index.js";
 
 const TOPIC = "conversation/session-wire";
 const SUBSCRIPTION_ID = "sub-wire";
@@ -168,11 +168,11 @@ function frameAtCompletePhysicalBytes(targetBytes: number): ConversationTopicFra
   return frame;
 }
 
-describe("ZCode Protocol V4 wire v3", () => {
+describe("Codez Protocol V4 wire v3", () => {
   it("硬切 V4 wire/hello 到 v3，但不改变 legacy 主协议版本", () => {
     expect(V4_WIRE_PROTOCOL_VERSION).toBe(3);
-    expect(ZCODE_PROTOCOL_V4_WIRE_VERSION).toBe(3);
-    expect(ZCODE_PROTOCOL_VERSION).toBe(1);
+    expect(CODEZ_PROTOCOL_V4_WIRE_VERSION).toBe(3);
+    expect(CODEZ_PROTOCOL_VERSION).toBe(1);
     expect(
       helloMessageSchema.safeParse({
         kind: "hello",
@@ -313,7 +313,7 @@ describe("ZCode Protocol V4 wire v3", () => {
   });
 
   // file_diff 仍然不是本端开放的 wire display kind——但"不开放"的代价只是这张卡没有载荷，
-  // 不再是整条 row 被拒（display 在信封层不设门，见 zcodeProtocolV4DisplayTolerance.test.ts）。
+  // 不再是整条 row 被拒（display 在信封层不设门，见 codezProtocolV4DisplayTolerance.test.ts）。
   it("ToolCallRow wire 丢弃未开放的 file_diff display，但不拒整条 row", () => {
     const parsed = toolCallRowSchema.safeParse({
       rowId: 1,
