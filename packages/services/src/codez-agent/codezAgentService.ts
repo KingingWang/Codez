@@ -38,6 +38,9 @@ import {
   codezPluginsConfigureResultSchema,
   codezPluginsInstallResultSchema,
   codezPluginsListResultSchema,
+  codezAgentsListResultSchema,
+  codezAgentsWriteResultSchema,
+  codezAgentsDeleteResultSchema,
   codezPluginsMarketplaceMutationResultSchema,
   codezPluginsOverviewResultSchema,
   codezProcessChildProcessesResultSchema,
@@ -193,6 +196,8 @@ import type {
   CodezAgentDescribePluginParams,
   CodezAgentListMcpServerStatusesParams,
   CodezAgentWorkspaceTarget,
+  CodezAgentDeleteAgentRoleParams,
+  CodezAgentWriteAgentRoleParams,
   CodezAgentCuaPermissionObservation,
   CodezAgentCreateAutomationParams,
   CodezAgentUpdateAutomationParams,
@@ -3919,6 +3924,48 @@ export function createCodezAgentService(
         // 这里对幂等的列表请求重试一次，让设置页可从重新拉起的 app-server 自动恢复。
         return await requestPluginsList();
       }
+    },
+
+    // Codex 子智能体（agent roles）文件管理。载体铁律：agents/* 一律走真实
+    // workspace carrier（getReadOnlyClient/getOrStartReadOnlyClient），绝不走
+    // getPluginManagementClient——其合成 cwd 会被 bridge 的 workspace 校验拒绝
+    // （project scope 解析 <attachment cwd>/.codex/agents），且管理进程永远是本机
+    // 进程，远程 workspace 会静默改到错误的机器。user scope 的 CODEX_HOME 也由
+    // 该 workspace 对应的 bridge 进程环境解析（远程即远端 CODEX_HOME）。
+    async listAgentRoles(params: CodezAgentWorkspaceTarget) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.agentsList,
+        { workspace: buildWorkspaceRef(params) },
+        codezAgentsListResultSchema,
+      );
+    },
+
+    async writeAgentRole(params: CodezAgentWriteAgentRoleParams) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.agentsWrite,
+        {
+          workspace: buildWorkspaceRef(params),
+          scope: params.scope,
+          ...(params.originalName ? { originalName: params.originalName } : {}),
+          role: params.role,
+        },
+        codezAgentsWriteResultSchema,
+      );
+    },
+
+    async deleteAgentRole(params: CodezAgentDeleteAgentRoleParams) {
+      const client = await getReadOnlyClient(params);
+      await client.request(
+        codezProtocolMethods.agentsDelete,
+        {
+          workspace: buildWorkspaceRef(params),
+          scope: params.scope,
+          name: params.name,
+        },
+        codezAgentsDeleteResultSchema,
+      );
     },
 
     async getPluginReferenceCatalog(params: CodezAgentPluginReferenceCatalogParams) {

@@ -3557,6 +3557,90 @@ export const codezOffPeakListResultSchema = z
   .strict();
 export type CodezOffPeakListProtocolResult = z.infer<typeof codezOffPeakListResultSchema>;
 
+// ── Agent roles（Codex 子智能体文件管理）──
+// agents/* 是 bridge 控制面方法族，绝不进入 codex/request 原生白名单：codex app-server
+// 没有 agents RPC；bridge 直接读写 `${CODEX_HOME}/agents` 与 `<cwd>/.codex/agents` 下的
+// 角色 TOML。spec：specs/codex-desktop-subagents.md。
+export const codezAgentRoleScopeSchema = z.enum(["user", "project"]);
+export type CodezAgentRoleScope = z.infer<typeof codezAgentRoleScopeSchema>;
+
+export const codezAgentRoleSummarySchema = z
+  .object({
+    scope: codezAgentRoleScopeSchema,
+    // effective name：文件内声明的 name，缺省回退文件名主干（与 Codex 加载语义一致）。
+    name: nonEmptyString,
+    description: z.string().optional(),
+    model: z.string().optional(),
+    modelReasoningEffort: z.string().optional(),
+    // 独立角色文件按 Codex 规则必须非空；缺失文件仍可列出，用 diagnostics 标注。
+    developerInstructions: z.string().optional(),
+    nicknameCandidates: z.array(nonEmptyString).optional(),
+    // 相对托管目录的 posix 路径（可能含子目录；Codex 递归发现 agents/ 下的 *.toml）。
+    fileName: nonEmptyString,
+  })
+  .strict();
+export type CodezAgentRoleSummary = z.infer<typeof codezAgentRoleSummarySchema>;
+
+export const codezAgentRoleDiagnosticSchema = z
+  .object({
+    code: z.string(),
+    message: z.string(),
+    severity: z.enum(["warning", "error"]).optional(),
+    scope: codezAgentRoleScopeSchema.optional(),
+    fileName: z.string().optional(),
+  })
+  .strict();
+export type CodezAgentRoleDiagnostic = z.infer<typeof codezAgentRoleDiagnosticSchema>;
+
+export const codezAgentsListParamsSchema = z
+  .object({ workspace: codezWorkspaceRefSchema })
+  .strict();
+export const codezAgentsListResultSchema = z
+  .object({
+    roles: z.array(codezAgentRoleSummarySchema),
+    diagnostics: z.array(codezAgentRoleDiagnosticSchema),
+  })
+  .strict();
+export type CodezAgentsListResult = z.infer<typeof codezAgentsListResultSchema>;
+
+// 写入承载完整托管字段集：缺省的可选字段 = 从文件中移除该 key；
+// 未知 TOML key 由 bridge 解析→合并→回序列化保留。
+export const codezAgentRoleWriteInputSchema = z
+  .object({
+    name: nonEmptyString,
+    description: z.string().optional(),
+    model: z.string().optional(),
+    modelReasoningEffort: z.string().optional(),
+    developerInstructions: nonEmptyString,
+    nicknameCandidates: z.array(z.string()).optional(),
+  })
+  .strict();
+export type CodezAgentRoleWriteInput = z.infer<typeof codezAgentRoleWriteInputSchema>;
+
+export const codezAgentsWriteParamsSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    scope: codezAgentRoleScopeSchema,
+    // 提供 = 更新既有角色（按 effective name 定位，文件必须存在；不支持改名——删除+新建）。
+    // 缺省 = 新建（同 effective name 的文件必须不存在）。
+    originalName: nonEmptyString.optional(),
+    role: codezAgentRoleWriteInputSchema,
+  })
+  .strict();
+export const codezAgentsWriteResultSchema = z
+  .object({ role: codezAgentRoleSummarySchema })
+  .strict();
+export type CodezAgentsWriteResult = z.infer<typeof codezAgentsWriteResultSchema>;
+
+export const codezAgentsDeleteParamsSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    scope: codezAgentRoleScopeSchema,
+    name: nonEmptyString,
+  })
+  .strict();
+export const codezAgentsDeleteResultSchema = z.object({}).strict();
+
 export const codezProtocolMethods = {
   codexRequest: "codex/request",
   runtimeCapabilities: "runtime/capabilities",
@@ -3639,6 +3723,10 @@ export const codezProtocolMethods = {
   pluginsResetConfig: "plugins/resetConfig",
   pluginsValidate: "plugins/validate",
   pluginsDescribe: "plugins/describe",
+  // Codex 子智能体（agent roles）文件管理：bridge 控制面方法族，非原生 RPC。
+  agentsList: "agents/list",
+  agentsWrite: "agents/write",
+  agentsDelete: "agents/delete",
   automationCreate: "automation/create",
   automationUpdate: "automation/update",
   automationCheckTaskBinding: "automation/checkTaskBinding",
