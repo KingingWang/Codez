@@ -9,10 +9,12 @@ The fork publishes Codez desktop builds from KingingWang/Codez. Preserve
 upstream history and license notices. Use an independent application identity,
 desktop data directory and update feed; do not update a fork install to upstream.
 
-Pin the Codex release and SHA256 for each of darwin/linux/win32 × x64/arm64.
-Download only the selected target asset, validate before atomic staging, and
-package it outside ASAR. A local explicit override is allowed for development;
-release CI must use pinned, validated artifacts. No adjacent checkout dependency.
+Each workflow run resolves the latest KingingWang/codex release and its GitHub
+asset digests into a run-scoped manifest shared by all jobs; incomplete or
+malformed releases fail closed. Download only the selected target asset,
+validate before atomic staging, and package it outside ASAR. The checked-in
+manifest remains the local-development fallback; CI must use the run-resolved,
+validated manifest. No adjacent checkout dependency.
 
 CI uses Node 24.14.0 and pnpm 10.33.2, frozen dependency installation, typecheck,
 lint, architecture and adapter tests. Build six native targets with fail-fast

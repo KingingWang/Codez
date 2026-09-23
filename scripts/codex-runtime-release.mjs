@@ -159,11 +159,22 @@ export async function publishCodexRelease({
     return identity;
   }
   if (!release) {
+    // 发布说明里标注本次内置的 Codex 运行时版本，方便追溯；清单缺失时跳过不阻塞发布。
+    let codexRuntimeNote = "Installers bundle the fork's latest verified Codex release and remote components.";
+    try {
+      const codexManifest = JSON.parse(
+        await readFile(join(directory, "codez-manifest", "codex-manifest.json"), "utf8"),
+      );
+      if (/^codex-\d{8}-\d{6}$/.test(codexManifest?.tag ?? ""))
+        codexRuntimeNote = `Installers bundle Codex runtime ${codexManifest.tag} (latest KingingWang/codex release at build time) and verified remote components.`;
+    } catch {
+      // 清单缺失或损坏不影响发布；资产完整性由 SHA256SUMS 校验兜底。
+    }
     const notes = [
       "Independent community Codez build; not an official OpenAI product.",
       `Source commit: ${sha}. Source ref: ${env.GITHUB_REF}.`,
       `Build evidence: https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}`,
-      "All six native desktop builds and Codex smoke checks passed. Installers include pinned Codex and verified remote components. SHA256 checksums are verified before publication.",
+      `All six native desktop builds and Codex smoke checks passed. ${codexRuntimeNote} SHA256 checksums are verified before publication.`,
       "Unsigned installers are labelled accordingly. Automatic application updates remain disabled. Live external SSH/WSL, real account OAuth and plugin installs are not certified by native package smoke tests.",
     ].join("\n\n");
     // 创建接口直接返回权威对象。草稿刚创建时按 tag 的接口必然 404，分页列表也可能
