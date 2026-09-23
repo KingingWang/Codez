@@ -1670,13 +1670,15 @@ export function SettingsPage({
                             initialPanel={
                               activeSection === "skill"
                                 ? "skills"
-                                : activeSection === "mcp"
-                                  ? "mcp"
-                                  : activeSection === "plugin"
-                                    ? "plugins"
-                                    : activeSection === "modelProvider"
-                                      ? "models"
-                                      : "account"
+                                : activeSection === "subagents"
+                                  ? "agents"
+                                  : activeSection === "mcp"
+                                    ? "mcp"
+                                    : activeSection === "plugin"
+                                      ? "plugins"
+                                      : activeSection === "modelProvider"
+                                        ? "models"
+                                        : "account"
                             }
                           />
                         ) : isDesktop && isCodexUnsupportedSection(activeSection) ? (
