@@ -105,6 +105,16 @@ Bridge metadata and Codez application data are isolated under `~/.codez-codex`.
 Local real-archive deployment is covered by tests; actual external SSH and WSL
 transport acceptance still requires suitable target environments.
 
+The agent launcher wrapper and prompt-attachment staging follow the same flavor
+layout. Wrappers resolve `runtime_root` from the flavor server root
+(`~/.codez-codex/server` for Codex, `~/.codez/server` for legacy) for both the
+node binary and the agent bundle, and deployments rewrite the wrapper whenever
+its content differs, on every backend (SSH/Docker/WSL). Prompt attachments stage
+under `<data-base>/tmp/prompt-attachments` (`~/.codez-codex` for Codex).
+References pointing at the pre-isolation legacy root (`~/.codez`) are still
+recognized and cleaned up so in-flight attachments keep working; orphaned tmp
+files uploaded before the switch are left in place and are not migrated.
+
 ## Verification and distribution
 
 ```sh
