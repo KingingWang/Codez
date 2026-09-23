@@ -5419,6 +5419,9 @@ const enUS: Record<string, string> = {
   "chat.error.feedbackOpened": "Feedback opened with the error context attached",
   "chat.error.noAvailableModel": "No model available. Upgrade or set a custom model.",
   "chat.error.sendFailed": "Failed to send. Try again later.",
+  "chat.writerConflict.banner":
+    "This session is held by another window or process and is read-only. Fork it to continue.",
+  "chat.writerConflict.retry": "Retry connection",
   "chat.error.modelSettings": "Model settings",
   "chat.error.setModels": "Set",
 

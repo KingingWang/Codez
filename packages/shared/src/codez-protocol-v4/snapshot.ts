@@ -505,6 +505,10 @@ export const conversationSnapshotSchema = z.object({
   // 旧快照/旧发送端不携带此字段 → 解析得 null,不破坏兼容性(遵守冻结规则)。
   // pendingCount === 0 时投影层置 null(提示条消失)。
   workspaceHookAdmission: workspaceHookAdmissionStateSchema.nullable().default(null),
+  // writer-conflict 降级只读：additive optional，遵守冻结规则——旧快照/旧发送端缺字段视为可写。
+  // Codex 线程被另一进程持有写锁时，bridge 用 lock-free 的 thread/read + turns/list
+  // 构建只读投影并置此标记；写命令由 guard.codex.writerConflict 拒绝，fork 豁免。
+  writerConflict: z.object({ readOnly: z.literal(true) }).optional(),
   // B 区
   rows: rowsWindowSchema,
 });

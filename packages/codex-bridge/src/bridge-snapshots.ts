@@ -73,17 +73,30 @@ export class BridgeSnapshots {
     if (state.thread.collaborationMode)
       snapshot.config.planEnabled = object(state.thread.collaborationMode).mode === "plan";
     const allowed = { allowed: true as const };
+    // writer-conflict 只读：另一进程持有写锁。fork 保持 idle 门禁不变（逃生通道）；
+    // 其余写操作的 availability 与命令层的 deny guard 同一 reasonCode，UI 直接禁用。
+    const writerConflict = state.readOnly === "writer-conflict";
+    if (writerConflict) snapshot.writerConflict = { readOnly: true };
+    const writerBlocked = { allowed: false as const, reasonCode: "guard.codex.writerConflict" };
     snapshot.availability = {
       ...snapshot.availability,
       fork: idle ? allowed : { allowed: false, reasonCode: "guard.codex.activeTurn" },
-      compact: idle ? allowed : { allowed: false, reasonCode: "guard.codex.activeTurn" },
-      switchModelConfig: allowed,
-      queueEdit: allowed,
-      sendQueuedNow: idle ? allowed : { allowed: false, reasonCode: "guard.codex.activeTurn" },
+      compact: writerConflict
+        ? writerBlocked
+        : idle
+          ? allowed
+          : { allowed: false, reasonCode: "guard.codex.activeTurn" },
+      switchModelConfig: writerConflict ? writerBlocked : allowed,
+      queueEdit: writerConflict ? writerBlocked : allowed,
+      sendQueuedNow: writerConflict
+        ? writerBlocked
+        : idle
+          ? allowed
+          : { allowed: false, reasonCode: "guard.codex.activeTurn" },
     };
     for (const row of snapshot.rows.window) {
       if (idle && row.kind === "assistantText") row.actions = { canFork: true };
-      if (idle && row.kind === "userInput")
+      if (idle && !writerConflict && row.kind === "userInput")
         row.actions = { canEdit: true, canRetry: true, editDisposition: "rewind" };
       if (row.kind === "turnHeader") {
         const turn = array(state.thread.turns)
