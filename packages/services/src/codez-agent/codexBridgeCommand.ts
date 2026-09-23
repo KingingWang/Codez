@@ -58,7 +58,7 @@ export function resolveCodexBridgeCommand(
   }
   if (!bridge) {
     throw new Error(
-      "Codez Codex bridge missing. Run node scripts/build-codex-bridge.mjs or reinstall the packaged app.",
+      "Codez bridge missing. Run node scripts/build-codex-bridge.mjs or reinstall the packaged app.",
     );
   }
   const nativeOverride = env.CODEZ_CODEX_COMMAND?.trim();

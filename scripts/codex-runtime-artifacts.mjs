@@ -16,7 +16,7 @@ export async function writeCodexArtifactChecksums(directory) {
   const files = (await readdir(directory))
     .filter(
       (file) =>
-        file.startsWith("Codez Codex-") &&
+        file.startsWith("Codez-") &&
         targetName.test(file) &&
         file.includes("-unsigned.") !== signed &&
         extensions.some((ext) => file.endsWith(ext)),

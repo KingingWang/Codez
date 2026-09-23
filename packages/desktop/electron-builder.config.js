@@ -490,15 +490,15 @@ export default {
     ...(isCodexBuild
       ? {
           name: "codez-codex",
-          productName: "Codez Codex",
+          productName: "Codez",
           description:
-            "Codez Codex — independent community desktop, not an official OpenAI product",
+            "Codez — independent community desktop, not an official OpenAI product",
         }
       : {}),
     codezProductFlavor: desktopProductIdentity.flavor,
     homepage: isCodexBuild ? "https://github.com/KingingWang/Codez" : "https://zcode.z.ai",
     author: {
-      name: isCodexBuild ? "Codez Codex community" : "Codez",
+      name: isCodexBuild ? "Codez community" : "Codez",
       email: isCodexBuild ? "KingingWang@users.noreply.github.com" : "dev@zcode.z.ai",
     },
   },
@@ -781,7 +781,7 @@ export default {
     executableName: desktopProductIdentity.linuxExecutableName,
     category: "Development",
     maintainer: isCodexBuild
-      ? "Codez Codex community <KingingWang@users.noreply.github.com>"
+      ? "Codez community <KingingWang@users.noreply.github.com>"
       : "Codez <dev@zcode.z.ai>",
   },
   deb: {

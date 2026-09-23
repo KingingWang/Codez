@@ -34,7 +34,9 @@ const PREVIEW_IDENTITY = Object.freeze({
 const CODEX_IDENTITY = Object.freeze({
   flavor: "codex",
   appId: "io.github.kingingwang.codez.codex",
-  productName: "Codez Codex",
+  // 用户可见产品名统一为 Codez；Linux 可执行名/包名保留 codez-codex，
+  // 避免已安装用户升级时出现 dpkg 覆盖冲突，并与上游注册保持隔离。
+  productName: "Codez",
   linuxExecutableName: "codez-codex",
   linuxPackageName: "codez-codex",
   cuaHelperInstallVariant: "codex",

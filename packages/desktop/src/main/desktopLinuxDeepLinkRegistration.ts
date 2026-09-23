@@ -16,9 +16,12 @@ import {
 const LINUX_DEEP_LINK_DESKTOP_FILE = `${desktopIntegrationName}.desktop`;
 const LINUX_DEEP_LINK_MIME_TYPE = `x-scheme-handler/${desktopProtocolScheme}`;
 // 归属标记：用于识别用户级 codez.desktop 是否由本应用写入（历史所有版本都带这行 Comment）。
-const LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER = isCodexDesktop
-  ? "Comment=Codez Codex Desktop App"
-  : "Comment=Codez Desktop App";
+// 产品更名后新写入统一为 Codez Desktop App；同时接受旧 Codez Codex 标记，
+// 保证更名前写入的 codez-codex.desktop 仍能被识别并清理。
+const LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKERS = isCodexDesktop
+  ? ["Comment=Codez Desktop App", "Comment=Codez Codex Desktop App"]
+  : ["Comment=Codez Desktop App"];
+const LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER = LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKERS[0];
 
 type LinuxDesktopEnv = {
   APPIMAGE?: string;
@@ -116,7 +119,7 @@ function createLinuxDeepLinkDesktopEntry(params: {
   productName?: string;
   iconName?: string;
 }): string {
-  const productName = params.productName ?? (isCodexDesktop ? "Codez Codex" : "Codez");
+  const productName = params.productName ?? "Codez";
   const iconName = params.iconName ?? desktopIntegrationName;
   const command = {
     executablePath: params.executablePath,
@@ -181,7 +184,9 @@ function isOwnedDesktopEntry(path: string): boolean {
     // 避免可清理的遗留条目被误判为用户自定义条目而永久残留。
     return content
       .split("\n")
-      .some((line) => line.replaceAll("\r", "").trim() === LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER);
+      .some((line) =>
+        LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKERS.includes(line.replaceAll("\r", "").trim()),
+      );
   } catch {
     return false;
   }

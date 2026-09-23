@@ -107,8 +107,8 @@ test("runtime identities, settings and data roots are disjoint and idempotent", 
     t,
     "packages/desktop/src/main/desktopProductRuntime.ts",
   );
-  assert.equal(runtime.resolveDesktopApplicationName("codex", true), "Codez Codex");
-  assert.equal(runtime.resolveDesktopApplicationName("codex", false), "Codez Codex Dev");
+  assert.equal(runtime.resolveDesktopApplicationName("codex", true), "Codez");
+  assert.equal(runtime.resolveDesktopApplicationName("codex", false), "Codez Dev");
   const base = join(directory, ".codez-codex");
   assert.equal(runtime.resolveDesktopDataBaseDir(undefined, directory), base);
   assert.equal(runtime.resolveDesktopDataBaseDir(base, directory), base);
@@ -178,7 +178,7 @@ test("Linux registration neither replaces nor deletes the upstream desktop entry
   await writeFile(upstream, "Comment=Codez Desktop App\nupstream sentinel\n");
   const calls = [];
   module.registerLinuxDeepLinkProtocol({
-    executablePath: "/opt/Codez Codex/codez-codex",
+    executablePath: "/opt/Codez/codez-codex",
     homeDir: directory,
     systemApplicationDirs: [],
     env: {},
@@ -209,7 +209,7 @@ test("Finder workflow has a separate name, bundle id and protocol", async (t) =>
     refreshServicesIndex() {},
     logger: { info() {}, warn() {} },
   });
-  const contents = join(directory, "Library/Services/Open in Codez Codex.workflow/Contents");
+  const contents = join(directory, "Library/Services/Open in Codez.workflow/Contents");
   assert.match(
     await readFile(join(contents, "Info.plist"), "utf8"),
     /io.github.kingingwang.codez.codex.finder-open-workflow/,
@@ -273,7 +273,7 @@ test("macOS development bundle uses Codex identity and protocol", async (t) => {
   const plist =
     "<plist><dict><key>CFBundleDisplayName</key><string>Electron</string><key>CFBundleIdentifier</key><string>com.github.Electron</string><key>CFBundleName</key><string>Electron</string></dict></plist>";
   const patched = module.patchDevElectronInfoPlist(plist);
-  assert.match(patched, /Codez Codex Dev/);
+  assert.match(patched, /Codez Dev/);
   assert.match(patched, /io.github.kingingwang.codez.codex.development/);
   assert.match(patched, /<string>codez-codex<\/string>/);
 });
