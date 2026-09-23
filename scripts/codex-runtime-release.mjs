@@ -4,9 +4,9 @@ import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { sha256File } from "./codex-runtime.mjs";
+import { resolveCodexUpdaterAssetPlan } from "./codex-runtime-artifacts.mjs";
 
 const exec = promisify(execFile);
-const formats = { darwin: [".dmg"], linux: [".AppImage", ".deb"], win32: [".exe"] };
 const platformNames = { darwin: "mac", linux: "linux", win32: "win" };
 
 export function releaseIdentity(env) {
@@ -36,9 +36,13 @@ export async function collectReleaseAssets(directory) {
   const folders = await readdir(directory, { withFileTypes: true });
   const result = [];
   const seen = new Set();
-  for (const [os, extensions] of Object.entries(formats)) {
+  for (const os of Object.keys(platformNames)) {
     for (const arch of ["x64", "arm64"]) {
       const key = `${os}-${arch}`;
+      // 资产模型与 scripts/codex-runtime-artifacts.mjs 同源：安装包 + 差分 blockmap
+      // + per-arch channel yml 一个都不能少，release 只接受这个精确集合。
+      const plan = resolveCodexUpdaterAssetPlan(os, arch);
+      const expectedCount = plan.installers.length + plan.blockmapped.length + 1;
       const matches = folders.filter((entry) =>
         new RegExp(`^codez-${key}-(un)?signed$`).test(entry.name),
       );
@@ -48,7 +52,7 @@ export async function collectReleaseAssets(directory) {
       const checksum = join(dir, `SHA256SUMS-${key}.txt`);
       await asset(checksum);
       const lines = (await readFile(checksum, "utf8")).trim().split("\n");
-      if (lines.length !== extensions.length) throw new Error(`Incomplete installer set: ${key}`);
+      if (lines.length !== expectedCount) throw new Error(`Incomplete installer set: ${key}`);
       const foundExtensions = new Set();
       const manifest = [];
       const archNames = arch === "x64" ? "x64|x86_64|amd64" : "arm64|aarch64";
@@ -56,11 +60,22 @@ export async function collectReleaseAssets(directory) {
         `-${platformNames[os]}-(?:${archNames})(?:_TEST)?(?:-unsigned)?\\.`,
       );
       for (const line of lines) {
-        const match = /^([a-f0-9]{64})  (Codez-[A-Za-z0-9 ._+-]+)$/.exec(line);
-        if (!match || !targetPattern.test(match[2]))
-          throw new Error(`Unsafe or foreign checksum entry: ${key}`);
+        const match = /^([a-f0-9]{64})  ([A-Za-z0-9 ._+-]+)$/.exec(line);
+        if (!match) throw new Error(`Unsafe or foreign checksum entry: ${key}`);
         const [, expected, originalName] = match;
-        const extension = extensions.find((ext) => originalName.endsWith(ext));
+        let extension;
+        if (originalName === plan.channelYml) {
+          // channel yml 不以 Codez- 开头；只接受本目标的精确文件名，其余 yml 一律视为外来条目。
+          extension = ".yml";
+        } else {
+          if (!originalName.startsWith("Codez-") || !targetPattern.test(originalName))
+            throw new Error(`Unsafe or foreign checksum entry: ${key}`);
+          extension =
+            plan.installers.find((ext) => originalName.endsWith(ext)) ??
+            plan.blockmapped
+              .map((ext) => `${ext}.blockmap`)
+              .find((ext) => originalName.endsWith(ext));
+        }
         if (!extension || foundExtensions.has(extension))
           throw new Error(`Duplicate or unexpected installer: ${key}`);
         foundExtensions.add(extension);
@@ -160,7 +175,8 @@ export async function publishCodexRelease({
   }
   if (!release) {
     // 发布说明里标注本次内置的 Codex 运行时版本，方便追溯；清单缺失时跳过不阻塞发布。
-    let codexRuntimeNote = "Installers bundle the fork's latest verified Codex release and remote components.";
+    let codexRuntimeNote =
+      "Installers bundle the fork's latest verified Codex release and remote components.";
     try {
       const codexManifest = JSON.parse(
         await readFile(join(directory, "codez-manifest", "codex-manifest.json"), "utf8"),
@@ -175,7 +191,7 @@ export async function publishCodexRelease({
       `Source commit: ${sha}. Source ref: ${env.GITHUB_REF}.`,
       `Build evidence: https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}`,
       `All six native desktop builds and Codex smoke checks passed. ${codexRuntimeNote} SHA256 checksums are verified before publication.`,
-      "Unsigned installers are labelled accordingly. Automatic application updates remain disabled. Live external SSH/WSL, real account OAuth and plugin installs are not certified by native package smoke tests.",
+      "Unsigned installers are labelled accordingly. Installed Codex builds auto-update from this release once it is published and marked Latest; updates are verified against the SHA512 checksums in the release updater metadata and are not code-signature gated. Builds older than the first updater-enabled release cannot discover it and must be installed manually once. Live external SSH/WSL, real account OAuth and plugin installs are not certified by native package smoke tests.",
     ].join("\n\n");
     // 创建接口直接返回权威对象。草稿刚创建时按 tag 的接口必然 404，分页列表也可能
     // 短暂不可见；重新查询会把一次成功的创建误判成身份不明，并留下一个空草稿。
