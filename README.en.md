@@ -1,24 +1,32 @@
 # Codez
 
-This community fork defaults to the **Codex CLI / app-server** for desktop execution.
+Codez is an AI coding workspace with a desktop app, Web interface, and terminal
+Agent. This is a community fork, not an official OpenAI desktop application.
+
+This fork defaults to the **Codex CLI / app-server** for desktop execution.
 `packages/codex-bridge` adapts the existing desktop protocol without changing Codex
-or requiring an adjacent checkout. This is not an official OpenAI desktop application.
+or requiring an adjacent checkout. Installers bundle the matching runtime. Use
+**Settings → Codex** for accounts, models, permissions, MCP, skills, and plugins.
+See [Codex desktop documentation](docs/codex-desktop.md) for builds, behavior
+differences, and limitations.
+
+For first-time desktop development, run these commands from the repository root:
 
 ```sh
-pnpm install --frozen-lockfile
+pnpm bootstrap
 pnpm dev:desktop
 ```
 
-Development prepares a pinned native Codex and the bridge. Installers bundle the
-matching runtime. Use **Settings → Codex** for accounts, models, permissions,
-MCP, skills and plugins. See [Codex desktop documentation](docs/codex-desktop.md)
-for builds and explicit capability differences. The **Codez desktop** workflow
-builds Windows, macOS and Linux x64 / arm64 installers. Without signing credentials,
-artifacts are labeled unsigned; upstream automatic updates are disabled.
+`pnpm bootstrap` installs workspace dependencies, prepares local desktop runtime
+assets, and runs the baseline build. It skips remote runtime assets by default;
+use `pnpm bootstrap:with-remote` for SSH / WSL workspaces or remote distribution
+validation. The **Codez desktop** workflow builds Windows, macOS, and Linux x64 /
+arm64 installers. Without signing credentials, artifacts are labeled unsigned and
+upstream automatic updates are disabled.
 
-The upstream overview below is retained for the legacy CLI and standalone Web.
-Its Agent runtime instructions do not describe this fork's default desktop engine.
-`CODEZ_DESKTOP_RUNTIME=legacy` explicitly selects the old desktop runtime.
+The development guide below covers the Desktop, Web, and Agent CLI entry points.
+The desktop does not use the legacy Agent runtime by default; set
+`CODEZ_DESKTOP_RUNTIME=legacy` to test it explicitly.
 
 <div align="center">
   <img src="public/logo/icons/1024x1024.png" alt="Codez" width="128" height="128" />
@@ -31,7 +39,9 @@ Its Agent runtime instructions do not describe this fork's default desktop engin
   <a href="README.md">简体中文</a> | English
 </p>
 
-Codez is an AI coding workspace with desktop, browser, and terminal interfaces. This repository contains the clients, backend services, shared UI, and Agent CLI and runtime source code.
+This repository contains the clients, backend services, shared UI, and Agent CLI and runtime source code.
+
+## Choose an entry point
 
 | Interface                    | Purpose                                                                                   | Development command            |
 | ---------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------ |
@@ -39,7 +49,7 @@ Codez is an AI coding workspace with desktop, browser, and terminal interfaces. 
 | Web / Codez CLI distribution | Terminal and browser workspace; packages the TUI, Web client, backend, and Agent together | `pnpm dev:web`                 |
 | Agent CLI                    | The `codez` terminal interface, which also provides the Agent runtime for Desktop and Web | `pnpm --filter @codez/cli dev` |
 
-## Setup
+## Quick start
 
 Install Git, Node.js **24.14.0**, and pnpm **10.33.2**. [mise.toml](mise.toml) is the source of truth for tool versions. Run all development and packaging commands below from the repository root.
 
@@ -56,7 +66,7 @@ Additional setup and build commands:
 | Command                        | Purpose                                                                                                                             |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `pnpm install`                 | Install dependencies                                                                                                                |
-| `pnpm prepare:desktop-runtime` | Prepare desktop runtime assets, including remote assets by default                                                                  |
+| `pnpm prepare:desktop-runtime` | Prepare desktop runtime assets; set `CODEZ_SKIP_REMOTE_ASSETS=1` to skip remote assets                                              |
 | `pnpm prepare:remote-assets`   | Prepare remote runtime assets separately                                                                                            |
 | `pnpm bootstrap:with-remote`   | Set up dependencies and local and remote assets, then build the relevant packages sequentially; skip the desktop application bundle |
 | `pnpm build`                   | Recursively run each workspace package's build script, including its asset preparation steps                                        |
@@ -152,7 +162,8 @@ Runtime variables can be set explicitly in the environment of the startup comman
 
 ## Packaging
 
-See [third-party/README.md](third-party/README.md) for notice generation, distribution checks, and where the notices are included in each distribution.
+See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for third-party notices and
+[NOTICE.md](NOTICE.md) for project behavior, data handling, and execution risks.
 
 ### Desktop
 
@@ -228,6 +239,19 @@ Open `http://127.0.0.1:3030` to validate the complete flow, with one backend ser
 | `apps/codez-cli`                                     | Agent CLI, TUI, runtime, and tools                                                      |
 | `scripts`, `config`, `third-party`                   | Build and maintenance scripts, built-in configuration, and third-party notice materials |
 
+## Pre-submit checks
+
+After changing code or build configuration, run these commands from the repository root:
+
+```sh
+pnpm fmt:check
+pnpm lint
+pnpm typecheck
+pnpm architecture:check --changed
+```
+
 ## Project Notice
 
-See [NOTICE.md](NOTICE.md) for feature and promotion scope, maintenance policy, execution and data risks, licensing, and third-party copyright information.
+See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for
+licensing and third-party copyright information. See [NOTICE.md](NOTICE.md) for
+feature scope, maintenance policy, execution risks, and data handling.

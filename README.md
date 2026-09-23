@@ -1,21 +1,27 @@
 # Codez
 
-本 fork 的桌面端默认使用 **Codex CLI / app-server**，通过本仓库中的
-`packages/codex-bridge` 适配原有桌面协议；不需要修改或克隆相邻的 Codex 源码。
+Codez 是一个包含桌面应用、Web 界面和终端 Agent 的 AI 编程工作台。
 这是社区适配版，不是 OpenAI 官方桌面应用。
 
+本 fork 的桌面端默认使用 **Codex CLI / app-server**，通过本仓库中的
+`packages/codex-bridge` 适配现有桌面协议，不需要修改或克隆相邻的 Codex 源码。
+桌面安装包内置对应平台运行时；账户、模型、权限、MCP、技能和插件请使用「设置 → Codex」。
+构建、行为差异和限制见 [Codex 桌面说明](docs/codex-desktop.md)。
+
+首次开发桌面端时，从仓库根目录执行：
+
 ```bash
-pnpm install --frozen-lockfile
+pnpm bootstrap
 pnpm dev:desktop
 ```
 
-开发入口会准备固定版本 Codex 和适配层。桌面安装包内置对应平台运行时；
-账户、模型、权限、MCP、技能和插件请使用「设置 → Codex」。
-构建、行为差异和限制见 [Codex 桌面说明](docs/codex-desktop.md)。
-GitHub Actions 的 **Codez desktop** 工作流生成 Windows、macOS、Linux
-的 x64 / arm64 安装包。未配置签名时产物标记为 unsigned，不会自动安装上游更新。
+`pnpm bootstrap` 会安装 workspace 依赖、准备本地桌面运行资源并执行基础构建。
+它默认跳过远程运行资源；需要 SSH / WSL 或验证远程发行资源时，使用
+`pnpm bootstrap:with-remote`。GitHub Actions 的 **Codez desktop** 工作流生成
+Windows、macOS、Linux 的 x64 / arm64 安装包。未配置签名时产物标记为 unsigned，
+不会自动安装上游更新。
 
-下方保留上游项目说明。旧 Agent CLI / 独立 Web 的开发说明不代表桌面仍使用旧运行时；
+下方的开发说明同时覆盖桌面、Web 和 Agent CLI。桌面默认不是旧 Agent 运行时；
 需要显式测试旧桌面运行时可设置 `CODEZ_DESKTOP_RUNTIME=legacy`。
 
 <div align="center">
@@ -29,7 +35,9 @@ GitHub Actions 的 **Codez desktop** 工作流生成 Windows、macOS、Linux
   简体中文 | <a href="README.en.md">English</a>
 </p>
 
-Codez 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Agent。本仓库包含客户端、后端服务、共享 UI，以及 Agent CLI 与运行时源码。
+本仓库包含客户端、后端服务、共享 UI，以及 Agent CLI 与运行时源码。
+
+## 选择开发入口
 
 | 入口                 | 用途                                                           | 开发命令                       |
 | -------------------- | -------------------------------------------------------------- | ------------------------------ |
@@ -37,7 +45,7 @@ Codez 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Age
 | Web / Codez 命令行版 | 终端与浏览器工作台；将 TUI、Web、后端和 Agent 组装为独立运行包 | `pnpm dev:web`                 |
 | Agent CLI            | 在终端中使用 `codez`，也为 Desktop 和 Web 提供 Agent 运行时    | `pnpm --filter @codez/cli dev` |
 
-## 初始化
+## 快速开始
 
 准备 Git、Node.js **24.14.0** 和 pnpm **10.33.2**，版本以 [mise.toml](mise.toml) 为准。以下开发和打包命令均在仓库根目录执行。
 
@@ -51,13 +59,13 @@ Agent CLI 与运行时源码位于 [apps/codez-cli/](apps/codez-cli/)，作为�
 
 根据需要选择其他初始化或构建入口：
 
-| 命令                           | 用途                                                              |
-| ------------------------------ | ----------------------------------------------------------------- |
-| `pnpm install`                 | 安装依赖                                                          |
-| `pnpm prepare:desktop-runtime` | 准备桌面运行资源，默认包含远程资源准备                            |
-| `pnpm prepare:remote-assets`   | 单独准备远程运行资源                                              |
-| `pnpm bootstrap:with-remote`   | 初始化依赖、本地与远程资源，并串行构建相关包；跳过桌面应用 bundle |
-| `pnpm build`                   | 递归执行各 workspace 包的构建脚本，包括包内的资源准备步骤         |
+| 命令                           | 用途                                                               |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `pnpm install`                 | 安装依赖                                                           |
+| `pnpm prepare:desktop-runtime` | 准备桌面运行资源；设置 `CODEZ_SKIP_REMOTE_ASSETS=1` 可跳过远程资源 |
+| `pnpm prepare:remote-assets`   | 单独准备远程运行资源                                               |
+| `pnpm bootstrap:with-remote`   | 初始化依赖、本地与远程资源，并串行构建相关包；跳过桌面应用 bundle  |
+| `pnpm build`                   | 递归执行各 workspace 包的构建脚本，包括包内的资源准备步骤          |
 
 默认 `bootstrap` 跳过远程资源准备，适合本地桌面开发。使用远程工作区或验证远程发行资源时，再运行对应准备命令。
 
@@ -154,7 +162,8 @@ node apps/codez-cli/packages/cli/dist/codez.cjs --help
 
 ## 打包
 
-第三方声明生成、发行校验流程及声明在发行物中的位置见 [third-party/README.md](third-party/README.md)。
+第三方声明和发行物中的许可材料见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)；
+项目功能、数据处理和运行风险见 [NOTICE.md](NOTICE.md)。
 
 ### 桌面版
 
@@ -236,6 +245,18 @@ node dist/codez/debug/codez/bin/codez.mjs --web \
 | `apps/codez-cli`                                     | Agent CLI、TUI、运行时与工具               |
 | `scripts`、`config`、`third-party`                   | 构建维护脚本、内置配置与第三方声明材料     |
 
+## 提交前验证
+
+修改代码或构建配置后，建议在仓库根目录执行：
+
+```bash
+pnpm fmt:check
+pnpm lint
+pnpm typecheck
+pnpm architecture:check --changed
+```
+
 ## 项目声明
 
-功能与优惠范围、维护规则、执行与数据风险，以及许可和第三方版权说明，详见 [NOTICE.md](NOTICE.md)。
+许可和第三方版权说明详见 [LICENSE](LICENSE) 与 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)；
+功能范围、维护规则、执行与数据风险详见 [NOTICE.md](NOTICE.md)。
