@@ -54,9 +54,11 @@ async function fixture(t) {
 }
 
 test("manifest pins exactly six native binaries with release digests", async () => {
-  const manifest = await loadCodexManifest();
+  // 固定清单是本地开发的回退；CI 每次运行会解析 fork 最新 release 并通过
+  // CODEZ_CODEX_MANIFEST 覆盖。这里显式传空环境，确保读的是仓库内的回退清单。
+  const manifest = await loadCodexManifest({});
   assert.equal(manifest.repository, "KingingWang/codex");
-  assert.equal(manifest.tag, "codex-20260921-084453");
+  assert.match(manifest.tag, /^codex-\d{8}-\d{6}$/);
   assert.equal(Object.keys(manifest.assets).length, 6);
   for (const os of ["darwin", "linux", "win32"]) {
     for (const arch of ["x64", "arm64"]) {
