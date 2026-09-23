@@ -14,15 +14,19 @@ pnpm dev:desktop
 ```
 
 The desktop starts a workspace-scoped bridge, which starts `codex app-server
---listen stdio://`. The development entry builds the bridge and prepares the pinned,
+--listen stdio://`. The development entry builds the bridge and prepares the
 checksum-verified native executable automatically. Set `CODEZ_CODEX_COMMAND` to
 an absolute executable path to explicitly select another development installation.
 Packaged applications use the verified bundled executable.
 
-The release manifest is `scripts/codex-runtime-manifest.json`. It pins the six
-native artifacts from `KingingWang/codex`, release `codex-20260921-084453`, rather
-than downloading a mutable `latest` binary. Queue APIs require the experimental
-app-server handshake. Generated schemas can be inspected with:
+Every CI run resolves the latest `KingingWang/codex` release into a run-scoped
+manifest (`scripts/codex-runtime-resolve-latest.mjs`), using GitHub's per-asset
+SHA256 digests; all six native builds share that manifest via the
+`codez-manifest` artifact and the `CODEZ_CODEX_MANIFEST` environment variable.
+The checked-in `scripts/codex-runtime-manifest.json` is only the
+local-development fallback and can be refreshed with the same script. Queue APIs
+require the experimental app-server handshake. Generated schemas can be
+inspected with:
 
 ```sh
 node scripts/codex-runtime-schema.mjs packages/codex-bridge/dist/schema

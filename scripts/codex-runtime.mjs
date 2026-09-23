@@ -22,10 +22,14 @@ export const defaultCodexBridgePath = resolve(
 );
 export const defaultCodexStageRoot = resolve(codexWorkspaceRoot, "packages/desktop/bundled-agents");
 
-export async function loadCodexManifest() {
-  return JSON.parse(
-    await readFile(new URL("./codex-runtime-manifest.json", import.meta.url), "utf8"),
-  );
+export async function loadCodexManifest(env = process.env) {
+  // CI 发布通过 CODEZ_CODEX_MANIFEST 指向本次 run 解析出的 fork 最新 release 清单；
+  // 本地开发默认使用仓库内固定的回退清单（见 codex-runtime-resolve-latest.mjs）。
+  const override = env.CODEZ_CODEX_MANIFEST?.trim();
+  const source = override
+    ? resolve(override)
+    : new URL("./codex-runtime-manifest.json", import.meta.url);
+  return JSON.parse(await readFile(source, "utf8"));
 }
 
 export function resolveCodexTarget(env = process.env) {

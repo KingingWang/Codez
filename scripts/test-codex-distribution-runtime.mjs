@@ -50,6 +50,19 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   );
   assert.equal(build.strategy["fail-fast"], false);
   assert.equal(build.needs, "remote-assets");
+  // 每次 run 由 remote-assets 解析 fork 最新 Codex release，六个构建共享同一份清单。
+  assert.ok(
+    workflow.jobs["remote-assets"].steps.some(
+      (step) => step.run === "node scripts/codex-runtime-resolve-latest.mjs codex-manifest.json",
+    ),
+  );
+  assert.ok(
+    build.steps.some(
+      (step) =>
+        step.uses?.startsWith("actions/download-artifact") &&
+        step.with?.name === "codez-manifest",
+    ),
+  );
   const nativeSmoke = build.steps.findIndex(
     (step) => step.run === "node scripts/codex-runtime-smoke.mjs",
   );
