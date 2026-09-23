@@ -15,8 +15,9 @@ export function resolveCodexUpdaterAssetPlan(os, arch) {
   const linuxArchSuffix = os === "linux" && arch !== "x64" ? `-${arch}` : "";
   return {
     installers: { darwin: [".dmg", ".zip"], linux: [".AppImage", ".deb"], win32: [".exe"] }[os],
-    // electron-builder 只为可差分更新的产物（dmg/zip/nsis/AppImage）生成 blockmap，deb 没有。
-    blockmapped: { darwin: [".dmg", ".zip"], linux: [".AppImage"], win32: [".exe"] }[os],
+    // electron-builder 只为 dmg/zip（ArchiveTarget）与 nsis 生成差分 blockmap；
+    // AppImage 把更新信息嵌进二进制本体、deb 走系统包管理器，两者都没有 blockmap。
+    blockmapped: { darwin: [".dmg", ".zip"], linux: [], win32: [".exe"] }[os],
     channelYml: `${arch}-latest${channelSuffix}${linuxArchSuffix}.yml`,
   };
 }

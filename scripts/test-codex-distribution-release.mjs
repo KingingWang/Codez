@@ -147,8 +147,8 @@ test("release identity is exact-commit/run-scoped and rejects PRs and foreign re
 
 test("all six targets yield their exact installer plus updater asset sets", async (t) => {
   const assets = await collectReleaseAssets(await fixture(t));
-  // mac: dmg+zip+2 blockmap+yml(5) ×2 arch；win: exe+blockmap+yml(3) ×2；linux: AppImage+deb+blockmap+yml(4) ×2。
-  assert.equal(assets.length, 24);
+  // mac: dmg+zip+2 blockmap+yml(5) ×2 arch；win: exe+blockmap+yml(3) ×2；linux: AppImage+deb+yml(3) ×2（AppImage 无 blockmap）。
+  assert.equal(assets.length, 22);
   assert.deepEqual(assets.map((asset) => asset.name).sort(), [...allAssetNames].sort());
   // per-arch channel yml 的精确命名契约（含 linux arm64 的 -linux-arm64 双后缀）。
   for (const yml of [
@@ -216,7 +216,7 @@ test("publish verifies all uploads before making release public and main Latest"
   const github = fakeGithub();
   await publishCodexRelease({ directory: await fixture(t), env, run: github.run });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 24);
+  assert.equal(github.state.release.assets.length, 22);
   assert.ok(github.state.calls.find(isCreate).includes(`target_commitish=${sha}`));
   assert.ok(github.state.calls.at(-1).includes("--latest=true"));
   assert.ok(github.state.calls.some((args) => args[1].endsWith("/releases/123")));
@@ -226,7 +226,7 @@ test("created draft identity survives release-list read-after-write lag", async 
   const github = fakeGithub({ hideCreated: true });
   await publishCodexRelease({ directory: await fixture(t), env, run: github.run });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 24);
+  assert.equal(github.state.release.assets.length, 22);
   // 身份必须来自创建接口的返回体；创建后不能再依赖一次可能滞后的列表查询。
   assert.equal(github.state.calls.filter(isList).length, 1);
 });
@@ -265,8 +265,8 @@ test("transient upload resets are retried and still fully verified", async (t) =
     retryDelay: async () => {},
   });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 24);
-  assert.equal(github.state.uploadAttempts, 26);
+  assert.equal(github.state.release.assets.length, 22);
+  assert.equal(github.state.uploadAttempts, 24);
 });
 
 test("older main and feature results do not become Latest", async (t) => {
