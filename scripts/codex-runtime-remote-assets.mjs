@@ -44,13 +44,13 @@ export async function prepareCodexRemoteAssets({
       if (!codexRemoteTargets.includes(key))
         throw new Error(`Unsupported Codex remote target: ${key}`);
       const [os, arch] = key.split("-");
-      const target = resolveCodexTarget({ ZCODE_TARGET_OS: os, ZCODE_TARGET_ARCH: arch });
+      const target = resolveCodexTarget({ CODEZ_TARGET_OS: os, CODEZ_TARGET_ARCH: arch });
       console.log(`[codex-remote-assets] preparing ${key}`);
       results.push(
         await prepareCodexRemotePackage({
           ...options,
           prepareServerImpl: async (directory) => {
-            for (const file of ["zcode-server.cjs", "THIRD-PARTY-NOTICES.md"])
+            for (const file of ["codez-server.cjs", "THIRD-PARTY-NOTICES.md"])
               await copyFile(join(inputs, file), join(directory, file));
           },
           target,

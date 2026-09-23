@@ -5,26 +5,26 @@ import {
 } from "./sessionCreateTelemetry.js";
 /* eslint-disable max-lines -- 运行时 schema 当前集中在共享包入口，外部 relay payload 校验加入后先保持单一导出面。 */
 import { z } from "zod";
-import { zcodeProcessDiagnosticSchema } from "./process-diagnostic.js";
+import { codezProcessDiagnosticSchema } from "./process-diagnostic.js";
 import { browserCommandSchema } from "./browser-use/commands.js";
 import { browserCommandResultSchema } from "./browser-use/result.js";
 import { REMOTE_ASSET_INSTALL_MODES } from "./remoteAssetInstallMode.js";
 import { PROCESS_RESOURCE_CLI_LANES } from "./processResourceTelemetry.js";
 import { isKnownRemoteResourcePackageId } from "./remoteResourcePackages.js";
-import { zcodeProviderSchema } from "./providers.js";
-import { zcodeAgentProviderSchema } from "./zcode-agent-policy.js";
+import { codezProviderSchema } from "./providers.js";
+import { codezAgentProviderSchema } from "./codez-agent-policy.js";
 import { modelSelectionSchema } from "./model-selection.js";
 import { providerProvisioningTriggerSchema } from "./provider-provisioning.js";
 import {
-  zcodeMcpTelemetryEventSchema,
-  zcodeMcpResourceSamplesSchema,
-  zcodeToolExecResourceSchema,
-  zcodeProcessResourceSampleSchema,
-} from "./zcode-protocol/index.js";
-import { zcodeTaskModeSchema } from "./zcode-task-mode-schema.js";
-import { PROTOCOL_V4_LIMITS } from "./zcode-protocol-v4/core.js";
-import { errorAttributionSchema } from "./zcode-protocol-v4/snapshot.js";
-import { sessionWorkflowActivitySchema } from "./zcode-protocol-v4/sessions-index-workflow-activity.js";
+  codezMcpTelemetryEventSchema,
+  codezMcpResourceSamplesSchema,
+  codezToolExecResourceSchema,
+  codezProcessResourceSampleSchema,
+} from "./codez-protocol/index.js";
+import { codezTaskModeSchema } from "./codez-task-mode-schema.js";
+import { PROTOCOL_V4_LIMITS } from "./codez-protocol-v4/core.js";
+import { errorAttributionSchema } from "./codez-protocol-v4/snapshot.js";
+import { sessionWorkflowActivitySchema } from "./codez-protocol-v4/sessions-index-workflow-activity.js";
 import {
   taskOwnerCommandDeliverySchema,
   taskOwnerCommandRequestSchema,
@@ -40,7 +40,7 @@ import {
 } from "./task-realtime-core.js";
 
 export { WSL_USER_MAX_LENGTH, isValidWslUser, wslUserSchema } from "./wslUserValidation.js";
-export { zcodeTaskModeSchema } from "./zcode-task-mode-schema.js";
+export { codezTaskModeSchema } from "./codez-task-mode-schema.js";
 import { wslUserSchema } from "./wslUserValidation.js";
 export {
   appSettingsOccupationEnum,
@@ -100,7 +100,7 @@ export const remoteTargetSchema = z.discriminatedUnion("kind", [
 ]);
 
 export const helloMessageSchema = z.object({
-  type: z.literal("zcode-hello"),
+  type: z.literal("codez-hello"),
   version: z.string(),
   platform: z.string(),
   arch: z.string(),
@@ -108,7 +108,7 @@ export const helloMessageSchema = z.object({
 });
 
 export const helloAckMessageSchema = z.object({
-  type: z.literal("zcode-hello-ack"),
+  type: z.literal("codez-hello-ack"),
   version: z.string(),
   clientId: nonEmptyStringSchema,
 });
@@ -189,7 +189,7 @@ export const hostInitLocalMessageSchema = z.object({
   workspaceIdentity: nonEmptyStringSchema.optional(),
   agentWarmupTargets: z.array(hostAgentWarmupTargetSchema).max(3).optional(),
   agentSpawnFallbackCwd: nonEmptyStringSchema.optional(),
-  zcodeBuiltinProviderConfigFilePath: nonEmptyStringSchema,
+  codezBuiltinProviderConfigFilePath: nonEmptyStringSchema,
   runtimeProcessEnvPatch: z
     .record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string())
     .optional(),
@@ -409,7 +409,7 @@ export const hostOffPeakRunMessageSchema = z.object({
   workspacePath: nonEmptyStringSchema,
   workspaceIdentity: z.string().optional(),
   prompt: nonEmptyStringSchema,
-  // 权限四档映射现有 ZCodeTaskMode；与 cron-run 的 mode 同样按宽松 string 传输
+  // 权限四档映射现有 CodezTaskMode；与 cron-run 的 mode 同样按宽松 string 传输
   permissionMode: nonEmptyStringSchema,
   modelSelection: modelSelectionSchema,
   conversationId: z.string().optional(),
@@ -547,16 +547,16 @@ export const hostLogResponseSchema = z.object({
   message: z.string(),
 });
 
-export { zcodeProviderSchema };
+export { codezProviderSchema };
 
-export const zcodeTaskMigrationSourceSchema = z.enum(["claudeCode"]);
+export const codezTaskMigrationSourceSchema = z.enum(["claudeCode"]);
 
 export const hostAgentProcessSpawnedResponseSchema = z.object({
   type: z.literal("agent-process-spawned"),
   /** 进程泳道（mcp-status 等），旧 Host 不带该字段。 */
   lane: nonEmptyStringSchema.optional(),
   pid: z.number().int().positive(),
-  provider: zcodeProviderSchema,
+  provider: codezProviderSchema,
   workspacePath: nonEmptyStringSchema,
   command: z.string(),
   args: z.array(z.string()),
@@ -571,7 +571,7 @@ export const hostAgentProcessReadyResponseSchema = z.object({
   /** 进程泳道（mcp-status 等），旧 Host 不带该字段。 */
   lane: nonEmptyStringSchema.optional(),
   pid: z.number().int().positive(),
-  provider: zcodeProviderSchema,
+  provider: codezProviderSchema,
   workspacePath: nonEmptyStringSchema,
   readyAt: z.number().int().nonnegative(),
   startupDurationMs: z.number().int().nonnegative(),
@@ -585,7 +585,7 @@ export const hostAgentProcessExitedResponseSchema = z.object({
   /** 进程泳道（mcp-status 等），旧 Host 不带该字段。 */
   lane: nonEmptyStringSchema.optional(),
   pid: z.number().int().positive(),
-  provider: zcodeProviderSchema,
+  provider: codezProviderSchema,
   workspacePath: nonEmptyStringSchema,
   exitCode: z.number().int().nullable(),
   signal: z.string().nullable(),
@@ -608,7 +608,7 @@ export const hostAgentProcessErrorResponseSchema = z.object({
   /** 进程泳道（mcp-status 等），旧 Host 不带该字段。 */
   lane: nonEmptyStringSchema.optional(),
   pid: z.number().int().positive().nullable(),
-  provider: zcodeProviderSchema,
+  provider: codezProviderSchema,
   workspacePath: nonEmptyStringSchema,
   command: z.string(),
   args: z.array(z.string()),
@@ -628,11 +628,11 @@ export const hostAgentProcessExceptionResponseSchema = z
     type: z.literal("agent-process-exception"),
     lane: nonEmptyStringSchema.optional(),
     pid: z.number().int().positive(),
-    provider: zcodeProviderSchema,
+    provider: codezProviderSchema,
     workspacePath: nonEmptyStringSchema,
     runtimeGeneration: z.number().int().positive(),
     runtimeInstanceId: nonEmptyStringSchema,
-    diagnostic: zcodeProcessDiagnosticSchema,
+    diagnostic: codezProcessDiagnosticSchema,
   })
   .strict();
 export type HostAgentProcessExceptionResponse = z.infer<
@@ -647,7 +647,7 @@ export type HostAgentProcessExceptionResponse = z.infer<
  * 会被协议层直接拒绝。`lane` 可选是为了兼容版本落后、还没打标的远端 server。
  */
 export const processResourceCliLaneSchema = z.enum(PROCESS_RESOURCE_CLI_LANES);
-export const agentLaneResourceSampleSchema = zcodeProcessResourceSampleSchema
+export const agentLaneResourceSampleSchema = codezProcessResourceSampleSchema
   .extend({ lane: processResourceCliLaneSchema.optional() })
   .strict();
 export type AgentLaneResourceSample = z.infer<typeof agentLaneResourceSampleSchema>;
@@ -674,7 +674,7 @@ export const nodeSelfResourceSampleSchema = z
   .object({
     /**
      * 整机归一化 CPU 百分比，100 表示所有逻辑核占满。
-     * 上限刻意放宽（与 CLI 的 `zcodeProcessResourceSampleSchema` 同口径）：读数异常时宁可让
+     * 上限刻意放宽（与 CLI 的 `codezProcessResourceSampleSchema` 同口径）：读数异常时宁可让
      * 样本带着离谱数值上去、由平台侧数值异常规则暴露，也不在客户端静默丢样本。
      */
     cpuPercent: z.number().finite().nonnegative().max(100_000),
@@ -710,7 +710,7 @@ export const hostMcpResourceSamplesResponseSchema = z
     type: z.literal("mcp-resource-samples"),
     runtimeSurface: z.enum(["local", "remote"]),
     environmentKey: resourceTelemetryEnvironmentKeySchema.optional(),
-    samples: zcodeMcpResourceSamplesSchema,
+    samples: codezMcpResourceSamplesSchema,
   })
   .strict();
 export type HostMcpResourceSamplesResponse = z.infer<typeof hostMcpResourceSamplesResponseSchema>;
@@ -719,7 +719,7 @@ export const hostToolExecResourceResponseSchema = z
   .object({
     type: z.literal("tool-exec-resource"),
     runtimeSurface: z.enum(["local", "remote"]),
-    sample: zcodeToolExecResourceSchema,
+    sample: codezToolExecResourceSchema,
   })
   .strict();
 export type HostToolExecResourceResponse = z.infer<typeof hostToolExecResourceResponseSchema>;
@@ -728,7 +728,7 @@ export const hostMcpTelemetryResponseSchema = z
   .object({
     type: z.literal("mcp-telemetry"),
     runtimeSurface: z.enum(["local", "remote"]),
-    event: zcodeMcpTelemetryEventSchema,
+    event: codezMcpTelemetryEventSchema,
   })
   .strict();
 export type HostMcpTelemetryResponse = z.infer<typeof hostMcpTelemetryResponseSchema>;
@@ -1035,9 +1035,9 @@ export const hostResponseMessageSchema = z.discriminatedUnion("type", [
   hostOffPeakSchedulerWakeRequestResponseSchema,
 ]);
 
-export const zcodeTaskPersistStatusSchema = z.enum(["running", "completed", "error"]);
+export const codezTaskPersistStatusSchema = z.enum(["running", "completed", "error"]);
 
-export const zcodePromptImageAttachmentSchema = z.object({
+export const codezPromptImageAttachmentSchema = z.object({
   kind: z.literal("image"),
   filename: z.string(),
   mimeType: z.string(),
@@ -1048,7 +1048,7 @@ export const zcodePromptImageAttachmentSchema = z.object({
 
 // 附件 TypeScript 联合类型新增 video 后，手写的持久化运行时 schema 未同步，
 // session 恢复解析会拒绝含视频的用户消息。字段与 image 的 inline/local 引用语义保持一致。
-export const zcodePromptVideoAttachmentSchema = z.object({
+export const codezPromptVideoAttachmentSchema = z.object({
   kind: z.literal("video"),
   filename: z.string(),
   mimeType: z.string(),
@@ -1057,7 +1057,7 @@ export const zcodePromptVideoAttachmentSchema = z.object({
   localPath: z.string().optional(),
 });
 
-export const zcodePromptPdfAttachmentSchema = z.object({
+export const codezPromptPdfAttachmentSchema = z.object({
   kind: z.literal("pdf"),
   filename: z.string(),
   mimeType: z.string(),
@@ -1066,7 +1066,7 @@ export const zcodePromptPdfAttachmentSchema = z.object({
   localPath: z.string().optional(),
 });
 
-export const zcodePromptFileAttachmentSchema = z.object({
+export const codezPromptFileAttachmentSchema = z.object({
   kind: z.literal("file"),
   filename: z.string(),
   mimeType: z.string(),
@@ -1076,14 +1076,14 @@ export const zcodePromptFileAttachmentSchema = z.object({
   localPath: z.string().optional(),
 });
 
-export const zcodePromptAttachmentSchema = z.discriminatedUnion("kind", [
-  zcodePromptImageAttachmentSchema,
-  zcodePromptVideoAttachmentSchema,
-  zcodePromptPdfAttachmentSchema,
-  zcodePromptFileAttachmentSchema,
+export const codezPromptAttachmentSchema = z.discriminatedUnion("kind", [
+  codezPromptImageAttachmentSchema,
+  codezPromptVideoAttachmentSchema,
+  codezPromptPdfAttachmentSchema,
+  codezPromptFileAttachmentSchema,
 ]);
 
-export const zcodePersistedToolCallSchema = z.object({
+export const codezPersistedToolCallSchema = z.object({
   toolName: z.string().optional(),
   title: z.string().optional(),
   kind: z.string().optional(),
@@ -1105,7 +1105,7 @@ export const zcodePersistedToolCallSchema = z.object({
     .optional(),
 });
 
-const zcodePersistedMessagePartSchema = z.discriminatedUnion("type", [
+const codezPersistedMessagePartSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("content"), content: z.string() }),
   z.object({ type: z.literal("thought"), content: z.string() }),
   z.object({
@@ -1114,7 +1114,7 @@ const zcodePersistedMessagePartSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-export const zcodePersistedMessageSchema = z.object({
+export const codezPersistedMessageSchema = z.object({
   id: z.string().optional(),
   role: z.enum(["user", "assistant"]),
   content: z.string(),
@@ -1127,10 +1127,10 @@ export const zcodePersistedMessageSchema = z.object({
   durationMs: z.number().int().nonnegative().optional(),
   interrupted: z.boolean().optional(),
   feedback: z.enum(["like", "dislike"]).optional(),
-  attachments: z.array(zcodePromptAttachmentSchema).optional(),
-  tools: z.array(zcodePersistedToolCallSchema).optional(),
+  attachments: z.array(codezPromptAttachmentSchema).optional(),
+  tools: z.array(codezPersistedToolCallSchema).optional(),
   thought: z.string().optional(),
-  parts: z.array(zcodePersistedMessagePartSchema).optional(),
+  parts: z.array(codezPersistedMessagePartSchema).optional(),
   checkpointState: z.enum(["partial"]).optional(),
   checkpointReason: z.enum(["tool_completed", "part_boundary", "periodic"]).optional(),
   checkpointUpdatedAt: z.number().int().nonnegative().optional(),
@@ -1158,9 +1158,9 @@ export const zcodePersistedMessageSchema = z.object({
     .optional(),
 });
 
-export const zcodeTaskGoalStatusSchema = z.enum(["active", "paused", "budget_limited", "complete"]);
+export const codezTaskGoalStatusSchema = z.enum(["active", "paused", "budget_limited", "complete"]);
 
-export const zcodeTaskTargetChangedActionSchema = z.enum([
+export const codezTaskTargetChangedActionSchema = z.enum([
   "set",
   "status_updated",
   "cleared",
@@ -1170,16 +1170,16 @@ export const zcodeTaskTargetChangedActionSchema = z.enum([
   "summary_updated",
 ]);
 
-export const zcodeTaskTargetChangedSourceSchema = z.enum(["command", "tool", "runtime"]);
+export const codezTaskTargetChangedSourceSchema = z.enum(["command", "tool", "runtime"]);
 
-export const zcodeTaskGoalSchema = z.object({
+export const codezTaskGoalSchema = z.object({
   sessionID: nonEmptyStringSchema,
   targetID: nonEmptyStringSchema,
   objective: nonEmptyStringSchema,
   // 2.15.0 之前的 /goal 历史任务没有写 summaryTitle。
   // 读取 task index 老数据时要补成 null，否则整个任务列表会被运行时 schema 拒绝。
   summaryTitle: z.string().min(1).nullable().default(null),
-  status: zcodeTaskGoalStatusSchema,
+  status: codezTaskGoalStatusSchema,
   tokenBudget: z.number().int().positive().nullable(),
   tokensUsed: z.number().int().nonnegative(),
   timeUsedSeconds: z.number().int().nonnegative(),
@@ -1192,18 +1192,18 @@ export const zcodeTaskGoalSchema = z.object({
   }),
 });
 
-export const zcodeTaskGoalChangedPatchSchema = z.object({
-  action: zcodeTaskTargetChangedActionSchema,
-  source: zcodeTaskTargetChangedSourceSchema,
-  target: zcodeTaskGoalSchema.nullable(),
-  previousTarget: zcodeTaskGoalSchema.nullable().optional(),
+export const codezTaskGoalChangedPatchSchema = z.object({
+  action: codezTaskTargetChangedActionSchema,
+  source: codezTaskTargetChangedSourceSchema,
+  target: codezTaskGoalSchema.nullable(),
+  previousTarget: codezTaskGoalSchema.nullable().optional(),
 });
 
-export const zcodeTaskTargetStatusSchema = zcodeTaskGoalStatusSchema;
-export const zcodeTaskTargetSchema = zcodeTaskGoalSchema;
-export const zcodeTaskTargetChangedPatchSchema = zcodeTaskGoalChangedPatchSchema;
+export const codezTaskTargetStatusSchema = codezTaskGoalStatusSchema;
+export const codezTaskTargetSchema = codezTaskGoalSchema;
+export const codezTaskTargetChangedPatchSchema = codezTaskGoalChangedPatchSchema;
 
-export const zcodeTaskMetaSchema = z.object({
+export const codezTaskMetaSchema = z.object({
   taskId: nonEmptyStringSchema,
   traceId: nonEmptyStringSchema,
   title: z.string(),
@@ -1213,12 +1213,12 @@ export const zcodeTaskMetaSchema = z.object({
   workspacePurpose: z.enum(["project", "conversation"]).optional(),
   createdAt: z.number().int().nonnegative(),
   updatedAt: z.number().int().nonnegative(),
-  mode: zcodeTaskModeSchema,
+  mode: codezTaskModeSchema,
   model: z.string().optional(),
   thoughtLevel: nonEmptyStringSchema.optional(),
   runtimeEpoch: z.number().int().nonnegative().optional(),
-  provider: zcodeAgentProviderSchema.optional(),
-  migrationSource: zcodeTaskMigrationSourceSchema.optional(),
+  provider: codezAgentProviderSchema.optional(),
+  migrationSource: codezTaskMigrationSourceSchema.optional(),
   forkedFromTaskId: nonEmptyStringSchema.optional(),
   // cron automation 身份：随 meta_json 一起持久化（单一来源），同时在写入时投影到 tasks 表
   // cron_automation_id 索引列，供按 automation 反查 session。runId 属于 automation_runs /
@@ -1228,7 +1228,7 @@ export const zcodeTaskMetaSchema = z.object({
   // off_peak_task_id 索引投影列（兜底/反查）。
   offPeakTaskId: nonEmptyStringSchema.optional(),
   unreadAt: z.number().int().nonnegative().optional(),
-  status: zcodeTaskPersistStatusSchema.optional(),
+  status: codezTaskPersistStatusSchema.optional(),
   lastError: z
     .object({
       code: z.string().optional(),
@@ -1255,20 +1255,20 @@ export const zcodeTaskMetaSchema = z.object({
       ),
     })
     .optional(),
-  target: zcodeTaskGoalSchema.nullable().optional(),
+  target: codezTaskGoalSchema.nullable().optional(),
 });
 
-export const zcodeTaskIndexEntrySchema = z.object({
+export const codezTaskIndexEntrySchema = z.object({
   workspaceHash: nonEmptyStringSchema,
   taskId: nonEmptyStringSchema,
 });
 
-export const zcodePinnedTasksFileSchema = z.object({
+export const codezPinnedTasksFileSchema = z.object({
   version: z.literal("1"),
-  tasks: z.array(zcodeTaskIndexEntrySchema),
+  tasks: z.array(codezTaskIndexEntrySchema),
 });
 
-const zcodePersistedFileSnapshotSchema = z.object({
+const codezPersistedFileSnapshotSchema = z.object({
   path: z.string(),
   beforeContent: z.string().nullable(),
   afterContent: z.string(),
@@ -1286,21 +1286,21 @@ const zcodePersistedFileSnapshotSchema = z.object({
     .optional(),
 });
 
-const zcodePersistedFileChangeSchema = z.object({
+const codezPersistedFileChangeSchema = z.object({
   turnIndex: z.number().int().nonnegative(),
-  snapshots: z.array(zcodePersistedFileSnapshotSchema),
+  snapshots: z.array(codezPersistedFileSnapshotSchema),
   fileState: z.enum(["applied", "reverted"]).optional(),
 });
 
-const zcodePersistedTurnCheckpointSchema = z.object({
+const codezPersistedTurnCheckpointSchema = z.object({
   turnIndex: z.number().int().nonnegative(),
   baseFileCheckpointId: nonEmptyStringSchema,
   resultFileCheckpointId: nonEmptyStringSchema.optional(),
 });
 
-export const zcodeSessionFileSchema = z.object({
-  meta: zcodeTaskMetaSchema,
-  messages: z.array(zcodePersistedMessageSchema),
-  fileChanges: z.array(zcodePersistedFileChangeSchema).optional(),
-  turnCheckpoints: z.array(zcodePersistedTurnCheckpointSchema).optional(),
+export const codezSessionFileSchema = z.object({
+  meta: codezTaskMetaSchema,
+  messages: z.array(codezPersistedMessageSchema),
+  fileChanges: z.array(codezPersistedFileChangeSchema).optional(),
+  turnCheckpoints: z.array(codezPersistedTurnCheckpointSchema).optional(),
 });

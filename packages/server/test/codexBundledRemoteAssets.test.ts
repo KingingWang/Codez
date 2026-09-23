@@ -6,12 +6,12 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
-import { remoteAssetDirsSchema, ZCODE_VERSION } from "@zcode/shared";
+import { remoteAssetDirsSchema, CODEZ_VERSION } from "@codez/shared";
 import { createTarGzArchive } from "../src/remote/localTarGz.js";
 import { resolvePosixHomePath } from "../src/remote/posixShell.js";
 import type { IRemoteBackend } from "../src/remote/backend.js";
 
-process.env.ZCODE_DESKTOP_RUNTIME = "codex";
+process.env.CODEZ_DESKTOP_RUNTIME = "codex";
 const { createBundledRemoteAssetSource } = await import("../src/remote/bundledRemoteAssets.js");
 const { computeFileSha256 } = await import("../src/remote/remoteAssetCache.js");
 const { deployServer } = await import("../src/remote/deploy.js");
@@ -67,7 +67,7 @@ test("Host validation preserves the bundled root", () => {
 });
 
 test("real archives materialize codex mount in isolated target/SHA caches, with repair and concurrency", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-bundled-test-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-bundled-test-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const cache = join(root, "cache");
   const paths = new Set<string>();
@@ -94,7 +94,7 @@ test("real archives materialize codex mount in isolated target/SHA caches, with 
 });
 
 test("bundled manifest, path, mount and SHA failures are closed without network fallback", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-bundled-reject-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-bundled-reject-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const cache = join(root, "cache");
   const f = await fixture(root, "linux-x64");
@@ -121,14 +121,14 @@ test("bundled manifest, path, mount and SHA failures are closed without network 
   }
 });
 
-const realBundledRoot = process.env.ZCODE_TEST_BUNDLED_REMOTE_ASSETS_DIR;
+const realBundledRoot = process.env.CODEZ_TEST_BUNDLED_REMOTE_ASSETS_DIR;
 test(
   "actual packaged linux-x64 archives pass consumer, real installer and shipped executables",
   {
     skip: !realBundledRoot || process.platform !== "linux" || process.arch !== "x64",
   },
   async (t) => {
-    const temporary = await mkdtemp(join(tmpdir(), "zcode-bundled-native-"));
+    const temporary = await mkdtemp(join(tmpdir(), "codez-bundled-native-"));
     t.after(() => rm(temporary, { recursive: true, force: true }));
     const metadata: { version: string } = JSON.parse(
       await readFile(new URL("../../../package.json", import.meta.url), "utf8"),
@@ -151,7 +151,7 @@ test(
       ),
     );
     const node = join(release, "node", target, "node");
-    const server = join(release, "server/zcode-server.cjs");
+    const server = join(release, "server/codez-server.cjs");
     for (const [file, expected] of Object.entries(contract.files)) {
       const materialized = file.startsWith("codex/")
         ? file
@@ -168,9 +168,9 @@ test(
     const env = {
       PATH: process.env.PATH,
       HOME: temporary,
-      ZCODE_DESKTOP_RUNTIME: "codex",
-      ZCODE_DATA_BASE_DIR: join(temporary, "data"),
-      ZCODE_CODEX_BRIDGE_HOME: join(temporary, "bridge-home"),
+      CODEZ_DESKTOP_RUNTIME: "codex",
+      CODEZ_DATA_BASE_DIR: join(temporary, "data"),
+      CODEZ_CODEX_BRIDGE_HOME: join(temporary, "bridge-home"),
     };
     const backend: IRemoteBackend = {
       async detect() {
@@ -222,9 +222,9 @@ test(
       await mkdir(dirname(archive), { recursive: true });
       await copyFile(join(realBundledRoot!, component.artifactPath), archive);
     }
-    const testManifest = join(testRoot, "releases", ZCODE_VERSION, `manifest-${target}.json`);
+    const testManifest = join(testRoot, "releases", CODEZ_VERSION, `manifest-${target}.json`);
     await mkdir(dirname(testManifest), { recursive: true });
-    await writeFile(testManifest, JSON.stringify({ ...manifest, appVersion: ZCODE_VERSION }));
+    await writeFile(testManifest, JSON.stringify({ ...manifest, appVersion: CODEZ_VERSION }));
     assert.equal(
       await deployServer(
         backend,
@@ -246,8 +246,8 @@ test(
       ),
       true,
     );
-    const installedRoot = join(temporary, ".zcode-codex/server");
-    for (const name of ["node", "zcode-server.cjs", "codex/codex", "codex/bridge.cjs"])
+    const installedRoot = join(temporary, ".codez-codex/server");
+    for (const name of ["node", "codez-server.cjs", "codex/codex", "codex/bridge.cjs"])
       assert.equal(await computeFileSha256(join(installedRoot, name)), contract.files[name], name);
     const run = promisify(execFile);
     assert.equal(
@@ -258,7 +258,7 @@ test(
       (
         await run(
           join(installedRoot, "node"),
-          [join(installedRoot, "zcode-server.cjs"), "--version"],
+          [join(installedRoot, "codez-server.cjs"), "--version"],
           { env, cwd: installedRoot, timeout: 15_000 },
         )
       ).stdout.trim(),
@@ -270,7 +270,7 @@ test(
       /codex/i,
     );
     await run(node, ["--check", join(installedRoot, "codex/bridge.cjs")], { env, timeout: 15_000 });
-    assert.equal(await computeFileSha256(server), contract.files["zcode-server.cjs"]);
+    assert.equal(await computeFileSha256(server), contract.files["codez-server.cjs"]);
     t.diagnostic(
       `real bundled consumer + installer: ${target}; Node v24.14.0, server ${metadata.version}, native Codex executable and bridge hashes verified`,
     );

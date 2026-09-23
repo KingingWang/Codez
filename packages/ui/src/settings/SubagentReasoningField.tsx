@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { CircleHelp, Loader2 } from "lucide-react";
-import { ZCODE_AGENT_PROVIDER, type ZCodeConfigOption } from "@zcode/shared";
+import { CODEZ_AGENT_PROVIDER, type CodezConfigOption } from "@codez/shared";
 import { ThoughtLevelCycleControl } from "@/chat-input-toolbar/ThoughtLevelCycleControl.js";
-import type { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import type { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 export type SubagentReasoningFieldState =
   | { kind: "not-applicable" }
   | { kind: "unknown"; status: "loading" | "unavailable" }
   | { kind: "unsupported" }
-  | { kind: "supported"; option: ZCodeConfigOption };
+  | { kind: "supported"; option: CodezConfigOption };
 
 export function SubagentReasoningField({
   disabled,
@@ -18,7 +18,7 @@ export function SubagentReasoningField({
   state,
 }: {
   disabled: boolean;
-  intl: ReturnType<typeof useZCodeIntl>["intl"];
+  intl: ReturnType<typeof useCodezIntl>["intl"];
   labelVisibilityClassName: string;
   onValueCommit: (value: string) => void;
   state: SubagentReasoningFieldState;
@@ -66,7 +66,7 @@ export function SubagentReasoningField({
     <ThoughtLevelCycleControl
       intl={intl}
       option={state.option}
-      provider={ZCODE_AGENT_PROVIDER}
+      provider={CODEZ_AGENT_PROVIDER}
       onCurrentValueCommit={onValueCommit}
       showInvalidCurrentValue
       disabled={!interactive}

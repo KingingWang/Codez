@@ -40,8 +40,8 @@ export function resolveCodexTarget(env = process.env) {
     win32: "win32",
   };
   const archAliases = { x64: "x64", amd64: "x64", x86_64: "x64", arm64: "arm64", aarch64: "arm64" };
-  const rawOs = (env.ZCODE_TARGET_OS ?? process.platform).toLowerCase();
-  const rawArch = (env.ZCODE_TARGET_ARCH ?? process.arch).toLowerCase();
+  const rawOs = (env.CODEZ_TARGET_OS ?? process.platform).toLowerCase();
+  const rawArch = (env.CODEZ_TARGET_ARCH ?? process.arch).toLowerCase();
   const os = Object.hasOwn(osAliases, rawOs) ? osAliases[rawOs] : null;
   const arch = Object.hasOwn(archAliases, rawArch) ? archAliases[rawArch] : null;
   if (!os || !arch) throw new Error(`Unsupported Codex target: ${rawOs}-${rawArch}`);
@@ -251,7 +251,7 @@ export async function stageCodexBinary({
   fetchImpl = fetch,
   env = process.env,
 } = {}) {
-  if (env.ZCODE_CODEX_BINARY || env.CODEX_BINARY_PATH)
+  if (env.CODEZ_CODEX_BINARY || env.CODEX_BINARY_PATH)
     throw new Error("Distribution does not accept a local Codex binary override");
   manifest ??= await loadCodexManifest();
   const asset = selectCodexAsset(manifest, target);
@@ -325,7 +325,7 @@ export async function stageCodexRuntime({
   fetchImpl = fetch,
   env = process.env,
 } = {}) {
-  if (env.ZCODE_CODEX_BINARY || env.CODEX_BINARY_PATH)
+  if (env.CODEZ_CODEX_BINARY || env.CODEX_BINARY_PATH)
     throw new Error("Distribution does not accept a local Codex binary override");
   const plan = await resolveCodexStaging({ root, bridgePath, target, manifest });
   try {

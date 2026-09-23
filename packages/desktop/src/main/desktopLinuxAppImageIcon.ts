@@ -58,7 +58,7 @@ function installLinuxAppImageDesktopIcon(params: {
 
   mkdirSync(dirname(iconFilePath), { recursive: true });
   const changed = copyFileIfChanged(params.iconSourcePath, iconFilePath);
-  // AppImage 直跑不会像 deb 安装包一样把 Icon=zcode 写入 hicolor 图标主题。
+  // AppImage 直跑不会像 deb 安装包一样把 Icon=codez 写入 hicolor 图标主题。
   // 这里在用户级 hicolor 目录补齐同名图标，让任务栏/Dock 有机会按 desktop entry 命中真实图标。
   if (!changed) {
     return { iconFilePath, installed: true, changed };

@@ -9,7 +9,7 @@ import {
   v4ConversationSubscribeResultSchema,
   v4ConversationResyncResultSchema,
   type RoutedTopicWireFrame,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { BridgeSubscriptions, MAX_BRIDGE_SUBSCRIPTIONS } from "../src/subscriptions.js";
 import { projectThread } from "../src/projection.js";
 import { threadFixture } from "./projection-fixtures.test.js";

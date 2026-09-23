@@ -1,4 +1,4 @@
-import type { CommandAck } from "@zcode/shared/zcode-protocol-v4";
+import type { CommandAck } from "@codez/shared/codez-protocol-v4";
 import { shouldExposeE2EStoreBridge } from "@/lib/e2eStoreBridge.js";
 
 interface DelayPlan {
@@ -14,8 +14,8 @@ export async function sendWithConversationDelayE2E(
   const host =
     typeof window === "undefined"
       ? undefined
-      : (window as Window & { __zcodeTransportDelayE2E?: DelayPlan });
-  const plan = shouldExposeE2EStoreBridge() ? host?.__zcodeTransportDelayE2E : undefined;
+      : (window as Window & { __codezTransportDelayE2E?: DelayPlan });
+  const plan = shouldExposeE2EStoreBridge() ? host?.__codezTransportDelayE2E : undefined;
   if (!plan || plan.consumed) return send();
   plan.consumed = true;
   const delay = (ms: number) =>

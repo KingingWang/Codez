@@ -3,14 +3,14 @@ import test, { type TestContext } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { zcodeWorkspaceGenerateTextResultSchema } from "@zcode/shared";
+import { codezWorkspaceGenerateTextResultSchema } from "@codez/shared";
 import {
   V4_METHODS,
   commandAckSchema,
   v4ConversationSubscribeResultSchema,
   routedTopicWireFrameSchema,
   type RoutedTopicWireFrame,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { BridgeRuntime } from "../src/bridge-runtime.js";
 import type { CodexProcess, CodexNotification, CodexServerRequest } from "../src/contract.js";
 import { CodexRpcError } from "../src/rpc-errors.js";
@@ -42,7 +42,7 @@ const create = (id = "create-1", identity = workspaceId) => ({
   payload: { workspaceId: identity },
 });
 async function fixture(t: TestContext) {
-  const root = await mkdtemp(join(tmpdir(), "zcode-runtime-qa-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-runtime-qa-"));
   const notifications = new Set<(event: CodexNotification) => void>();
   const requests = new Set<(event: CodexServerRequest) => void>();
   const closes = new Set<(error: Error) => void>();
@@ -176,7 +176,7 @@ test("auxiliary dispatch precedes legacy unsupported control route and waits for
     turn: { id: "aux-turn", status: "completed" },
   });
   const response = await pending;
-  assert.equal(zcodeWorkspaceGenerateTextResultSchema.parse(response.result).text, "fix: QA");
+  assert.equal(codezWorkspaceGenerateTextResultSchema.parse(response.result).text, "fix: QA");
   assert.equal(response.afterResponse, undefined);
   assert.equal(h.calls.filter((call) => call.method === "turn/start").length, 1);
   assert.equal(h.listeners(), 2, "only runtime notification/request listeners remain");

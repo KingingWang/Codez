@@ -53,12 +53,12 @@ export async function prepareCodexRemoteComponent({
       mount: "codex",
       binarySha256: metadata.sha256,
       bridgeSha256: metadata.bridgeSha256,
-      runtimeRoot: "~/.zcode-codex/server",
+      runtimeRoot: "~/.codez-codex/server",
       nodeVersion: "24.14.0",
       requiredEnv: {
-        ZCODE_CODEX_COMMAND: "<runtimeRoot>/codex/codex",
-        ZCODE_CODEX_BRIDGE_PATH: "<runtimeRoot>/codex/bridge.cjs",
-        ZCODE_CODEX_BRIDGE_HOME: "~/.zcode-codex/bridge",
+        CODEZ_CODEX_COMMAND: "<runtimeRoot>/codex/codex",
+        CODEZ_CODEX_BRIDGE_PATH: "<runtimeRoot>/codex/bridge.cjs",
+        CODEZ_CODEX_BRIDGE_HOME: "~/.codez-codex/bridge",
       },
       ...codexRemoteDeploymentContract,
     };

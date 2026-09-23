@@ -1,40 +1,40 @@
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
-import { ZCODE_PRODUCT_FLAVOR, type ZCodeProductFlavor } from "@zcode/shared";
+import { CODEZ_PRODUCT_FLAVOR, type CodezProductFlavor } from "@codez/shared";
 
-export const CODEX_RELEASE_PAGE = "https://github.com/KingingWang/ZCode/releases";
-export const isCodexDesktop = ZCODE_PRODUCT_FLAVOR === "codex";
-export const desktopProtocolScheme = isCodexDesktop ? "zcode-codex" : "zcode";
-export const desktopIntegrationName = isCodexDesktop ? "zcode-codex" : "zcode";
+export const CODEX_RELEASE_PAGE = "https://github.com/KingingWang/Codez/releases";
+export const isCodexDesktop = CODEZ_PRODUCT_FLAVOR === "codex";
+export const desktopProtocolScheme = isCodexDesktop ? "codez-codex" : "codez";
+export const desktopIntegrationName = isCodexDesktop ? "codez-codex" : "codez";
 
 export function resolveDesktopApplicationName(
-  flavor: ZCodeProductFlavor,
+  flavor: CodezProductFlavor,
   isPackaged: boolean,
 ): string {
-  if (flavor === "codex") return isPackaged ? "ZCode Codex" : "ZCode Codex Dev";
-  return !isPackaged ? "ZCode Dev" : flavor === "preview" ? "ZCode Preview" : "ZCode";
+  if (flavor === "codex") return isPackaged ? "Codez Codex" : "Codez Codex Dev";
+  return !isPackaged ? "Codez Dev" : flavor === "preview" ? "Codez Preview" : "Codez";
 }
 
 export function resolveDesktopDataBaseDir(
   configured: string | null | undefined,
   home = homedir(),
-  flavor: ZCodeProductFlavor = ZCODE_PRODUCT_FLAVOR,
+  flavor: CodezProductFlavor = CODEZ_PRODUCT_FLAVOR,
 ): string {
   const base = configured?.trim() || home;
-  // services 固定拼接 .zcode/v2，必须隔离其 base，而不只修改 Electron userData。
-  return flavor === "codex" && basename(base) !== ".zcode-codex"
-    ? join(base, ".zcode-codex")
+  // services 固定拼接 .codez/v2，必须隔离其 base，而不只修改 Electron userData。
+  return flavor === "codex" && basename(base) !== ".codez-codex"
+    ? join(base, ".codez-codex")
     : base;
 }
 
 export function resolveDesktopBootstrapSettingsFile(
   home = homedir(),
-  flavor: ZCodeProductFlavor = ZCODE_PRODUCT_FLAVOR,
+  flavor: CodezProductFlavor = CODEZ_PRODUCT_FLAVOR,
 ): string {
-  return join(resolveDesktopDataBaseDir(undefined, home, flavor), ".zcode", "v2", "setting.json");
+  return join(resolveDesktopDataBaseDir(undefined, home, flavor), ".codez", "v2", "setting.json");
 }
 
-export function resolveDesktopUpdatePolicy(flavor: ZCodeProductFlavor = ZCODE_PRODUCT_FLAVOR) {
+export function resolveDesktopUpdatePolicy(flavor: CodezProductFlavor = CODEZ_PRODUCT_FLAVOR) {
   return flavor === "codex"
     ? { automatic: false, manualReleasePage: CODEX_RELEASE_PAGE }
     : { automatic: flavor === "production", manualReleasePage: undefined };

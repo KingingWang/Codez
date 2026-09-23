@@ -10,7 +10,7 @@ const formats = { darwin: [".dmg", ".zip"], linux: [".AppImage", ".deb"], win32:
 const platformNames = { darwin: "mac", linux: "linux", win32: "win" };
 
 export function releaseIdentity(env) {
-  if (env.GITHUB_REPOSITORY !== "KingingWang/ZCode")
+  if (env.GITHUB_REPOSITORY !== "KingingWang/Codez")
     throw new Error("Unexpected release repository");
   if (!["push", "workflow_dispatch"].includes(env.GITHUB_EVENT_NAME))
     throw new Error("Event cannot publish");
@@ -21,7 +21,7 @@ export function releaseIdentity(env) {
   return {
     repository: env.GITHUB_REPOSITORY,
     sha: env.GITHUB_SHA,
-    tag: `zcode-codex-build-${env.GITHUB_RUN_ID}-${env.GITHUB_SHA.slice(0, 12)}`,
+    tag: `codez-codex-build-${env.GITHUB_RUN_ID}-${env.GITHUB_SHA.slice(0, 12)}`,
     prerelease: env.GITHUB_REF !== "refs/heads/main",
   };
 }
@@ -40,7 +40,7 @@ export async function collectReleaseAssets(directory) {
     for (const arch of ["x64", "arm64"]) {
       const key = `${os}-${arch}`;
       const matches = folders.filter((entry) =>
-        new RegExp(`^zcode-codex-${key}-(un)?signed$`).test(entry.name),
+        new RegExp(`^codez-codex-${key}-(un)?signed$`).test(entry.name),
       );
       if (matches.length !== 1 || !matches[0].isDirectory())
         throw new Error(`Missing or ambiguous target: ${key}`);
@@ -56,7 +56,7 @@ export async function collectReleaseAssets(directory) {
         `-${platformNames[os]}-(?:${archNames})(?:_TEST)?(?:-unsigned)?\\.`,
       );
       for (const line of lines) {
-        const match = /^([a-f0-9]{64})  (ZCode[ .]Codex-[A-Za-z0-9 ._+-]+)$/.exec(line);
+        const match = /^([a-f0-9]{64})  (Codez[ .]Codex-[A-Za-z0-9 ._+-]+)$/.exec(line);
         if (!match || !targetPattern.test(match[2]))
           throw new Error(`Unsafe or foreign checksum entry: ${key}`);
         const [, expected, originalName] = match;
@@ -160,7 +160,7 @@ export async function publishCodexRelease({
   }
   if (!release) {
     const notes = [
-      "Independent community ZCode Codex build; not an official OpenAI product.",
+      "Independent community Codez Codex build; not an official OpenAI product.",
       `Source commit: ${sha}. Source ref: ${env.GITHUB_REF}.`,
       `Build evidence: https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}`,
       "All six native desktop builds and Codex smoke checks passed. Installers include pinned Codex and verified remote components. SHA256SUMS files accompany every target.",
@@ -185,7 +185,7 @@ export async function publishCodexRelease({
         "-f",
         "make_latest=false",
         "-f",
-        `name=ZCode Codex build ${env.GITHUB_RUN_ID} (${sha.slice(0, 12)})`,
+        `name=Codez Codex build ${env.GITHUB_RUN_ID} (${sha.slice(0, 12)})`,
         "-f",
         `body=${notes}`,
       ]),

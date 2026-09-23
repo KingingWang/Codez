@@ -2,17 +2,17 @@ import type {
   ICommandsService,
   IMcpSyncService,
   ISkillsService,
-  IZCodeAgentService,
-  IZCodeSessionService,
-} from "@zcode/services";
+  ICodezAgentService,
+  ICodezSessionService,
+} from "@codez/services";
 import { logger } from "@/logger.js";
-import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/zcodeDraftSkillInvalidation.js";
+import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/codezDraftSkillInvalidation.js";
 import { refreshSharedSkillStoreForWorkspace } from "@/lib/skillStoreRefresh.js";
 import { mergeSlashCommandsAfterCommandRefresh } from "@/settings/pluginSlashCommandRefresh.js";
 import { useCommandsStore } from "@/store/commandsStore.js";
 import { useMcpStore } from "@/store/mcpStore.js";
 import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 
 function toMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -50,15 +50,15 @@ async function refreshSlashCommandsAfterRemotePluginSync(params: {
       });
     }
 
-    const zcodeSessionStore = useZCodeSessionStore.getState();
-    const currentSlashCommands = zcodeSessionStore.getWorkspaceState(
+    const codezSessionStore = useCodezSessionStore.getState();
+    const currentSlashCommands = codezSessionStore.getWorkspaceState(
       workspacePath,
       workspaceIdentityParam,
     ).slashCommands;
     // 远程插件同步入口不一定打开过命令设置页，commandsStore 可能尚未初始化。
-    // 输入框 `/` 面板读取的是 zcodeSessionStore.slashCommands，所以同步后必须直接
+    // 输入框 `/` 面板读取的是 codezSessionStore.slashCommands，所以同步后必须直接
     // 向当前远端 workspace 拉取 commands 并写回 slashCommands，不能只刷新设置页 store。
-    zcodeSessionStore.setSlashCommands(
+    codezSessionStore.setSlashCommands(
       workspacePath,
       mergeSlashCommandsAfterCommandRefresh(currentSlashCommands, result.commands),
       workspaceIdentityParam,
@@ -90,8 +90,8 @@ export async function refreshWorkspacePluginCapabilitiesAfterRemoteSync(params: 
   skillsService: ISkillsService;
   workspaceIdentity?: string | null;
   workspacePath?: string | null;
-  zcodeAgentService: IZCodeAgentService;
-  zcodeSessionService: Pick<IZCodeSessionService, "closeSession">;
+  codezAgentService: ICodezAgentService;
+  codezSessionService: Pick<ICodezSessionService, "closeSession">;
 }): Promise<void> {
   const workspacePath = params.workspacePath;
   if (!workspacePath) {
@@ -105,11 +105,11 @@ export async function refreshWorkspacePluginCapabilitiesAfterRemoteSync(params: 
     pluginStore.workspacePath === workspacePath &&
     pluginStore.workspaceIdentity === workspaceIdentity
   ) {
-    await pluginStore.refresh(params.zcodeAgentService);
+    await pluginStore.refresh(params.codezAgentService);
   }
 
   await invalidateDeferredDraftSessionForSkillChange({
-    zcodeSessionService: params.zcodeSessionService,
+    codezSessionService: params.codezSessionService,
     workspacePath,
     workspaceIdentity: workspaceIdentityParam,
     reason: params.reason,

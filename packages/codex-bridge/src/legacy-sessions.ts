@@ -1,4 +1,4 @@
-import * as shared from "@zcode/shared";
+import * as shared from "@codez/shared";
 import type { CodexRpcPort } from "./contract.js";
 import type { ThreadStateStore } from "./thread-state.js";
 import { decorateNativeThread, selectionOverrides, turnMode } from "./command-input.js";
@@ -36,7 +36,7 @@ export async function handleLegacySession(
   }
   let sessionId: string;
   if (method === "session/create") {
-    const parsed = shared.zcodeSessionCreateParamsSchema.parse(p);
+    const parsed = shared.codezSessionCreateParamsSchema.parse(p);
     const thread = decorateNativeThread(
       await rpc.request("thread/start", {
         cwd: store.cwd,
@@ -57,7 +57,7 @@ export async function handleLegacySession(
       break;
     case "session/messages": {
       const snapshot = projectLegacySnapshot(state.thread, store.cwd);
-      return shared.zcodeSessionMessagesResultSchema.parse({ messages: snapshot.messages });
+      return shared.codezSessionMessagesResultSchema.parse({ messages: snapshot.messages });
     }
     case "session/setModel": {
       const selection = shared.modelSelectionSchema.parse(p.model);
@@ -90,12 +90,12 @@ export async function handleLegacySession(
     case "session/close":
       await rpc.request("thread/unsubscribe", native);
       // 桌面结果为 strict schema，额外 sessionId 会让成功卸载被误判为失败。
-      return shared.zcodeSessionCloseResultSchema.parse({ closed: true });
+      return shared.codezSessionCloseResultSchema.parse({ closed: true });
     default:
       unsupported(method);
   }
   const snapshot = projectLegacySnapshot(state.thread, store.cwd);
   snapshot.session.workspace = workspace;
   snapshot.settings = await readControlModelSettings({ rpc, cwd: store.cwd });
-  return shared.zcodeSessionStateSnapshotSchema.parse(snapshot);
+  return shared.codezSessionStateSnapshotSchema.parse(snapshot);
 }

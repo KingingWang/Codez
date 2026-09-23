@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { pendingInteractionSchema, type PendingInteraction } from "@zcode/shared/zcode-protocol-v4";
+import { pendingInteractionSchema, type PendingInteraction } from "@codez/shared/codez-protocol-v4";
 import type { CodexRpcPort, CodexServerRequest } from "./contract.js";
 import { array, object, string, type JsonObject } from "./json.js";
 

@@ -15,7 +15,7 @@ export function resolveProductionRemoteAssetCacheDir(
   homeDir = homedir(),
 ) {
   const pathApi = pathApiForPlatform(platform);
-  const product = resolveDesktopRuntime(env) === "codex" ? "ZCode Codex" : "ZCode";
+  const product = resolveDesktopRuntime(env) === "codex" ? "Codez Codex" : "Codez";
   if (platform === "darwin") {
     return pathApi.join(homeDir, "Library", "Application Support", product, "remote-assets-cache");
   }
@@ -37,26 +37,26 @@ export function buildDesktopRemoteProdEnv(
   const runtime = resolveDesktopRuntime(baseEnv);
   if (
     runtime === "codex" &&
-    (baseEnv.ZCODE_DEV_REMOTE_ASSET_USE_CDN === "1" ||
-      baseEnv.ZCODE_REMOTE_ASSET_CDN_BASE_URL?.trim() ||
-      baseEnv.ZCODE_CDN_BASE_URL?.trim())
+    (baseEnv.CODEZ_DEV_REMOTE_ASSET_USE_CDN === "1" ||
+      baseEnv.CODEZ_REMOTE_ASSET_CDN_BASE_URL?.trim() ||
+      baseEnv.CODEZ_CDN_BASE_URL?.trim())
   ) {
     throw new Error(
-      "Codex remote-prod uses verified bundled assets; legacy CDN flags/overrides are not supported. Explicit ZCODE_DESKTOP_RUNTIME=legacy retains the upstream CDN workflow.",
+      "Codex remote-prod uses verified bundled assets; legacy CDN flags/overrides are not supported. Explicit CODEZ_DESKTOP_RUNTIME=legacy retains the upstream CDN workflow.",
     );
   }
   const cacheDir =
-    baseEnv.ZCODE_REMOTE_ASSET_CACHE_DIR?.trim() ||
+    baseEnv.CODEZ_REMOTE_ASSET_CACHE_DIR?.trim() ||
     resolveProductionRemoteAssetCacheDir(baseEnv, platform, homeDir);
 
   return {
     ...baseEnv,
-    ZCODE_DESKTOP_RUNTIME: runtime,
+    CODEZ_DESKTOP_RUNTIME: runtime,
     // Codex 使用打包资源；只有显式 legacy 才复现生产 CDN 链路。
-    ZCODE_ENV: "production",
-    ZCODE_DEV_REMOTE_ASSET_USE_CDN: runtime === "codex" ? "0" : "1",
+    CODEZ_ENV: "production",
+    CODEZ_DEV_REMOTE_ASSET_USE_CDN: runtime === "codex" ? "0" : "1",
     // Main 是 cache 命名空间唯一所有者，避免自定义目录重复追加 codex/codex。
-    ZCODE_REMOTE_ASSET_CACHE_DIR: cacheDir,
+    CODEZ_REMOTE_ASSET_CACHE_DIR: cacheDir,
   };
 }
 
@@ -66,7 +66,7 @@ export function resolvePnpmCommand(platform = process.platform) {
 
 export function runDesktopRemoteProdDev() {
   const repoRoot = resolve(import.meta.dirname, "..");
-  const child = spawn(resolvePnpmCommand(), ["--filter", "@zcode/desktop", "dev"], {
+  const child = spawn(resolvePnpmCommand(), ["--filter", "@codez/desktop", "dev"], {
     cwd: repoRoot,
     stdio: "inherit",
     env: buildDesktopRemoteProdEnv(),

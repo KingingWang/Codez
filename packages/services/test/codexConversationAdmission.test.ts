@@ -3,26 +3,26 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { Emitter } from "@zcode/rpc";
-import type { ModelSelectionView } from "@zcode/provider";
-import type { ZCodeProtocolMessage } from "@zcode/shared";
-import { V4_METHODS, type CommandEnvelope } from "@zcode/shared/zcode-protocol-v4";
+import { Emitter } from "@codez/rpc";
+import type { ModelSelectionView } from "@codez/provider";
+import type { CodezProtocolMessage } from "@codez/shared";
+import { V4_METHODS, type CommandEnvelope } from "@codez/shared/codez-protocol-v4";
 import { setDataBaseDir } from "../src/paths.js";
-import { createZCodeAgentService } from "../src/zcode-agent/zcodeAgentService.js";
-import { ZCodeAgentProcessManager } from "../src/zcode-agent/zcodeAgentProcessManager.js";
-import { ZCodeProtocolClient } from "../src/zcode-agent/zcodeProtocolClient.js";
+import { createCodezAgentService } from "../src/codez-agent/codezAgentService.js";
+import { CodezAgentProcessManager } from "../src/codez-agent/codezAgentProcessManager.js";
+import { CodezProtocolClient } from "../src/codez-agent/codezProtocolClient.js";
 
 for (const runtime of ["desktop", "deployed"] as const) {
   test(`${runtime} Codex forwards native model and independent plan intent without legacy preparation`, async (t) => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-codex-admission-"));
+    const dir = await mkdtemp(join(tmpdir(), "codez-codex-admission-"));
     setDataBaseDir(dir);
     const previous = { ...process.env };
-    delete process.env.ZCODE_AGENT_SERVER_COMMAND;
-    if (runtime === "deployed") process.env.ZCODE_CODEX_BRIDGE_PATH = "/remote/codex/bridge.cjs";
-    const sent: ZCodeProtocolMessage[] = [];
-    const messages = new Emitter<ZCodeProtocolMessage>();
+    delete process.env.CODEZ_AGENT_SERVER_COMMAND;
+    if (runtime === "deployed") process.env.CODEZ_CODEX_BRIDGE_PATH = "/remote/codex/bridge.cjs";
+    const sent: CodezProtocolMessage[] = [];
+    const messages = new Emitter<CodezProtocolMessage>();
     const closes = new Emitter<{ reason?: string }>();
-    const client = new ZCodeProtocolClient({
+    const client = new CodezProtocolClient({
       kind: "memory",
       onMessage: messages.event,
       onClose: closes.event,
@@ -46,8 +46,8 @@ for (const runtime of ["desktop", "deployed"] as const) {
         closes.dispose();
       },
     });
-    t.mock.method(ZCodeAgentProcessManager.prototype, "getClient", async () => client);
-    const service = createZCodeAgentService({
+    t.mock.method(CodezAgentProcessManager.prototype, "getClient", async () => client);
+    const service = createCodezAgentService({
       presentationSurface: runtime === "desktop" ? "desktop" : undefined,
       modelSelectionReadinessSource: {
         async getView() {
@@ -121,7 +121,7 @@ for (const runtime of ["desktop", "deployed"] as const) {
       }
       assert.equal(sent.length, commands.length, "no legacy capability or preparation requests");
       // Minimal registry fixture: this test exercises readiness and not model config evaluation.
-      const legacyReady = createZCodeAgentService({
+      const legacyReady = createCodezAgentService({
         presentationSurface: "desktop",
         commandResolver: () => null,
         modelSelectionReadinessSource: {

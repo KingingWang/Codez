@@ -1,4 +1,4 @@
-import { codexRequestSchema, type CodexRequest } from "@zcode/shared";
+import { codexRequestSchema, type CodexRequest } from "@codez/shared";
 import type { CodexRpcPort } from "./contract.js";
 import { sameExecutionPath } from "./execution-path.js";
 import { array, object } from "./json.js";
