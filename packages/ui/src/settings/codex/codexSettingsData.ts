@@ -153,13 +153,13 @@ export function codexAuthorizationUrl(value: string): string {
 }
 
 export function isCodexSettingsSection(section: string): boolean {
-  return ["codex", "modelProvider", "skill", "mcp", "plugin"].includes(section);
+  // subagents 由 CodexSettingsSection 的 agents 面板承载（文件型 agent roles）。
+  return ["codex", "modelProvider", "skill", "subagents", "mcp", "plugin"].includes(section);
 }
 
 export function isCodexUnsupportedSection(section: string): boolean {
   return [
     "memory",
-    "subagents",
     "commands",
     "hooks",
     "browser",

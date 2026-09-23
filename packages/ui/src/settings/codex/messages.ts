@@ -31,6 +31,7 @@ const en = {
   models: "Models & permissions",
   config: "Configuration",
   skills: "Skills",
+  agents: "Subagents",
   mcp: "MCP servers",
   plugins: "Plugins & marketplaces",
   refresh: "Refresh",
@@ -102,6 +103,23 @@ const en = {
   scope: "Workspace",
   mutations:
     "Changes affect this Host’s native Codex configuration and may affect other workspaces using the same Codex home.",
+  agentsHelp:
+    "File-based roles in ~/.codex/agents (user) and this workspace’s .codex/agents (project). Changes apply to new sessions; running threads are unaffected. Roles declared inline in config.toml layers are not shown.",
+  agentsUserScope: "User roles",
+  agentsProjectScope: "Project roles",
+  agentsEmpty: "No roles in this scope yet.",
+  agentsCreate: "New role",
+  agentsEdit: "Edit",
+  agentsDelete: "Delete",
+  agentsName: "Name",
+  agentsNameHelp:
+    "ASCII letters, digits, spaces, hyphens and underscores; must start with a letter or digit.",
+  agentsNameLocked: "Names cannot be changed; delete and recreate to rename.",
+  agentsDescription: "Description (optional)",
+  agentsModel: "Model (optional)",
+  agentsEffort: "Reasoning effort (optional)",
+  agentsInstructions: "Developer instructions (required)",
+  agentsNicknames: "Nickname candidates (optional, comma-separated)",
 };
 const zh: Record<keyof typeof en, string> = {
   legacyPreferences:
@@ -128,6 +146,7 @@ const zh: Record<keyof typeof en, string> = {
   models: "模型与权限",
   config: "配置",
   skills: "技能",
+  agents: "子智能体",
   mcp: "MCP 服务",
   plugins: "插件与市场",
   refresh: "刷新",
@@ -193,6 +212,22 @@ const zh: Record<keyof typeof en, string> = {
   openSettings: "打开 Codex 设置",
   scope: "工作区",
   mutations: "更改会影响此 Host 的原生 Codex 配置，也可能影响使用同一 Codex home 的其他工作区。",
+  agentsHelp:
+    "管理 ~/.codex/agents（用户）与当前工作区 .codex/agents（项目）下的文件型角色。变更对新会话生效，运行中的线程不受影响。config.toml 各层内联声明的角色不在此展示。",
+  agentsUserScope: "用户角色",
+  agentsProjectScope: "项目角色",
+  agentsEmpty: "此范围暂无角色。",
+  agentsCreate: "新建角色",
+  agentsEdit: "编辑",
+  agentsDelete: "删除",
+  agentsName: "名称",
+  agentsNameHelp: "仅限 ASCII 字母、数字、空格、连字符和下划线，且必须以字母或数字开头。",
+  agentsNameLocked: "名称不可修改；如需改名请删除后重新创建。",
+  agentsDescription: "描述（可选）",
+  agentsModel: "模型（可选）",
+  agentsEffort: "推理强度（可选）",
+  agentsInstructions: "开发者指令（必填）",
+  agentsNicknames: "昵称候选（可选，逗号分隔）",
 };
 export function useCodexMessages() {
   return useCodezIntl().locale === "zh-CN" ? zh : en;

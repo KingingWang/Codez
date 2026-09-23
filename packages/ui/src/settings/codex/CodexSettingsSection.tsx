@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button.js";
 import { useCodexSettings } from "@/hooks/useCodexSettings.js";
+import { CodexAgentsPanel } from "./CodexAgentsPanel.js";
 import { CodexAccountPanel } from "./CodexAccountPanel.js";
 import { CodexConfigPanel } from "./CodexConfigPanel.js";
 import { CodexMcpPanel, CodexPluginsPanel, CodexSkillsPanel } from "./CodexResourcesPanel.js";
 import { CodexNotice, CodexSection } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
 
-type Panel = "account" | "models" | "skills" | "mcp" | "plugins" | "config";
-const PANELS: Panel[] = ["account", "models", "skills", "mcp", "plugins", "config"];
+type Panel = "account" | "models" | "skills" | "agents" | "mcp" | "plugins" | "config";
+const PANELS: Panel[] = ["account", "models", "skills", "agents", "mcp", "plugins", "config"];
 interface CodexSettingsSectionProps {
   workspacePath?: string | null;
   workspaceIdentity?: string;
@@ -90,6 +91,13 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
             <CodexConfigPanel key={panel} controller={controller} advanced={panel === "config"} />
           ) : null}
           {panel === "skills" ? <CodexSkillsPanel controller={controller} /> : null}
+          {panel === "agents" ? (
+            <CodexAgentsPanel
+              workspacePath={props.workspacePath}
+              workspaceIdentity={props.workspaceIdentity}
+              remoteSessionId={props.remoteSessionId}
+            />
+          ) : null}
           {panel === "mcp" ? <CodexMcpPanel controller={controller} /> : null}
           {panel === "plugins" ? <CodexPluginsPanel controller={controller} /> : null}
           {!props.onboarding ? <CodexNotice>{text.parity}</CodexNotice> : null}
