@@ -94,6 +94,16 @@ existing services path contract under an isolated base: by default
 and Main forwards the resolved base to Host before services are created.
 No upstream settings/credentials/cache are migrated or reused implicitly.
 
+Remote auxiliaries follow the same flavor layout. Agent launcher wrappers are
+generated from the current layout root: `runtime_root` defaults to
+`$HOME/.codez-codex/server` (codex) or `$HOME/.codez/server` (legacy), resolving
+both the node binary and the agent bundle from it, and deployments rewrite the
+wrapper on content mismatch on every backend (SSH/Docker/WSL), not only WSL.
+Prompt attachments stage under `<data-base>/tmp/prompt-attachments` where the
+data base is `~/.codez-codex` for codex and `~/.codez` for legacy. References
+under the pre-isolation `~/.codez` root stay recognized and cleanable; orphaned
+pre-switch tmp files are left in place without migration.
+
 ```
 compiled codex flavor → Main identity/bootstrap owner → isolated settings/base
                                                   └→ Host env → services paths

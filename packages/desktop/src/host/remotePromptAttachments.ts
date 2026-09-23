@@ -1,10 +1,27 @@
 import type { IRemoteBackend, RemoteUploadOptions } from "@codez/server/remote";
 import { quotePosixPathArg } from "@codez/server/remote/posixShell.js";
+import { resolveRemoteDataBaseDir } from "@codez/server/remote/remoteRuntime.js";
 import type { TraceId, CodezPromptAttachment } from "@codez/shared";
 import { randomUUID } from "node:crypto";
 
-const REMOTE_PROMPT_ATTACHMENT_ROOT = "~/.codez/tmp/prompt-attachments";
-const REMOTE_PROMPT_ATTACHMENT_RELATIVE_ROOT = ".codez/tmp/prompt-attachments";
+const REMOTE_PROMPT_ATTACHMENT_SUBDIR = "tmp/prompt-attachments";
+// 隔离修复前附件根硬编码在上游 ~/.codez 下，codex flavor 每次带附件发消息都会写上游目录。
+// 切到 flavor 数据基目录后，历史 ref（旧根）仍要可识别、可安全清理；
+// 切换前已上传的孤儿 tmp 文件允许遗留，不做迁移。
+const LEGACY_REMOTE_PROMPT_ATTACHMENT_ROOT = `~/.codez/${REMOTE_PROMPT_ATTACHMENT_SUBDIR}`;
+
+/** 当前 flavor 的附件根（~ 形式）。每次调用经 resolveRemoteDataBaseDir 惰性读取 CODEZ_DESKTOP_RUNTIME，不缓存编译期常量。 */
+function currentRemotePromptAttachmentTildeRoot(): string {
+  return `${resolveRemoteDataBaseDir()}/${REMOTE_PROMPT_ATTACHMENT_SUBDIR}`;
+}
+
+/** ref 识别与清理接受的全部 ~ 形式根：当前 flavor 根 + 旧泄漏根（去重）。 */
+function recognizedRemotePromptAttachmentTildeRoots(): string[] {
+  const current = currentRemotePromptAttachmentTildeRoot();
+  return current === LEGACY_REMOTE_PROMPT_ATTACHMENT_ROOT
+    ? [current]
+    : [current, LEGACY_REMOTE_PROMPT_ATTACHMENT_ROOT];
+}
 
 interface RemotePromptAttachmentMaterializeInput {
   taskId?: string;
@@ -33,13 +50,13 @@ export async function materializeRemotePromptAttachments(
 
   const replacements = new Map<string, string>();
   const nextAttachments: CodezPromptAttachment[] = [];
-  let remoteRootPromise: Promise<string> | undefined;
+  let remoteRootsPromise: Promise<RemotePromptAttachmentRoots> | undefined;
   let uploadedCount = 0;
   let changed = false;
 
-  const getRemoteRoot = () => {
-    remoteRootPromise ??= resolveRemotePromptAttachmentRoot(options.backend);
-    return remoteRootPromise;
+  const getRemoteRoots = () => {
+    remoteRootsPromise ??= resolveRemotePromptAttachmentRoots(options.backend);
+    return remoteRootsPromise;
   };
 
   for (const [index, attachment] of attachments.entries()) {
@@ -49,13 +66,15 @@ export async function materializeRemotePromptAttachments(
       continue;
     }
 
-    if (isPathInRoot(localPath, REMOTE_PROMPT_ATTACHMENT_ROOT)) {
+    if (
+      recognizedRemotePromptAttachmentTildeRoots().some((root) => isPathInRoot(localPath, root))
+    ) {
       nextAttachments.push(attachment);
       continue;
     }
 
-    const remoteRoot = await getRemoteRoot();
-    if (isRemotePromptAttachmentPath(localPath, remoteRoot)) {
+    const remoteRoots = await getRemoteRoots();
+    if (isRemotePromptAttachmentPath(localPath, remoteRoots)) {
       nextAttachments.push(attachment);
       continue;
     }
@@ -63,12 +82,12 @@ export async function materializeRemotePromptAttachments(
     const remotePath = buildRemotePromptAttachmentPath({
       filename: attachment.filename,
       index,
-      root: remoteRoot,
+      root: remoteRoots.current,
       traceId: input.traceId,
     });
 
     try {
-      await ensureRemotePromptAttachmentDirectory(options.backend, remotePath, remoteRoot);
+      await ensureRemotePromptAttachmentDirectory(options.backend, remotePath, remoteRoots.current);
       if (options.uploadOptions) {
         await options.backend.upload(localPath, remotePath, options.uploadOptions);
       } else {
@@ -106,8 +125,8 @@ export async function cleanupRemotePromptAttachment(
   backend: Pick<IRemoteBackend, "exec">,
   remotePath: string,
 ): Promise<void> {
-  const root = await resolveRemotePromptAttachmentRoot(backend);
-  if (!isRemotePromptAttachmentPath(remotePath, root)) return;
+  const roots = await resolveRemotePromptAttachmentRoots(backend);
+  if (!isRemotePromptAttachmentPath(remotePath, roots)) return;
   const remoteDir = remoteDirname(remotePath);
   await waitForRemoteCommand(
     backend,
@@ -120,10 +139,17 @@ export async function cleanupStaleRemotePromptAttachments(
   backend: Pick<IRemoteBackend, "exec">,
   olderThanMinutes = 24 * 60,
 ): Promise<void> {
-  const root = await resolveRemotePromptAttachmentRoot(backend);
+  const roots = await resolveRemotePromptAttachmentRoots(backend);
+  const mmin = Math.max(1, Math.floor(olderThanMinutes));
+  // 新旧根都做过期清理：旧根是隔离修复前的泄漏位置，清理它安全且能回收历史孤儿文件。
   await waitForRemoteCommand(
     backend,
-    `if [ -d ${quotePosixPathArg(root)} ]; then find ${quotePosixPathArg(root)} -type f -mmin +${Math.max(1, Math.floor(olderThanMinutes))} -delete; find ${quotePosixPathArg(root)} -mindepth 1 -depth -type d -empty -delete; fi`,
+    roots.recognized
+      .map(
+        (root) =>
+          `if [ -d ${quotePosixPathArg(root)} ]; then find ${quotePosixPathArg(root)} -type f -mmin +${mmin} -delete; find ${quotePosixPathArg(root)} -mindepth 1 -depth -type d -empty -delete; fi`,
+      )
+      .join("; "),
   );
 }
 
@@ -138,7 +164,7 @@ function buildRemotePromptAttachmentPath(params: {
   const nonceSegment = sanitizePathSegment(params.nonce ?? createAttachmentNonce()).slice(0, 64);
   const filename = sanitizePathSegment(basenameFromPathLike(params.filename)) || "attachment";
   const indexSegment = String(params.index + 1).padStart(2, "0");
-  const root = params.root ?? REMOTE_PROMPT_ATTACHMENT_ROOT;
+  const root = params.root ?? currentRemotePromptAttachmentTildeRoot();
   return `${root}/${traceSegment}/${nonceSegment}/${indexSegment}-${filename.slice(0, 160)}`;
 }
 
@@ -164,15 +190,31 @@ async function lockDownRemotePromptAttachmentFile(
   await waitForRemoteCommand(backend, `command chmod 600 ${quotePosixPathArg(remotePath)}`);
 }
 
-async function resolveRemotePromptAttachmentRoot(
+interface RemotePromptAttachmentRoots {
+  /** 新上传使用的当前 flavor 根（远端绝对路径）。 */
+  current: string;
+  /** ref 识别与清理接受的全部根（远端绝对路径，含旧泄漏根）。 */
+  recognized: string[];
+}
+
+async function resolveRemotePromptAttachmentRoots(
   backend: Pick<IRemoteBackend, "exec">,
-): Promise<string> {
+): Promise<RemotePromptAttachmentRoots> {
   const homeDir = await readRemoteCommandStdout(backend, 'printf %s "$HOME"');
   const normalizedHome = homeDir.trim().replace(/\/+$/u, "");
   if (!normalizedHome.startsWith("/")) {
     throw new Error("remote HOME is not an absolute path");
   }
-  return `${normalizedHome}/${REMOTE_PROMPT_ATTACHMENT_RELATIVE_ROOT}`;
+  const toAbsolute = (tildeRoot: string) => `${normalizedHome}/${tildeRoot.slice(2)}`;
+  const currentTildeRoot = currentRemotePromptAttachmentTildeRoot();
+  const current = toAbsolute(currentTildeRoot);
+  const recognized = [
+    current,
+    ...recognizedRemotePromptAttachmentTildeRoots()
+      .filter((tildeRoot) => tildeRoot !== currentTildeRoot)
+      .map(toAbsolute),
+  ];
+  return { current, recognized };
 }
 
 async function readRemoteCommandStdout(
@@ -227,8 +269,11 @@ function getAttachmentLocalPath(attachment: CodezPromptAttachment): string | und
   return localPath ? attachment.localPath : undefined;
 }
 
-function isRemotePromptAttachmentPath(path: string, remoteRoot: string): boolean {
-  return isPathInRoot(path, REMOTE_PROMPT_ATTACHMENT_ROOT) || isPathInRoot(path, remoteRoot);
+function isRemotePromptAttachmentPath(path: string, roots: RemotePromptAttachmentRoots): boolean {
+  return (
+    recognizedRemotePromptAttachmentTildeRoots().some((root) => isPathInRoot(path, root)) ||
+    roots.recognized.some((root) => isPathInRoot(path, root))
+  );
 }
 
 function isPathInRoot(path: string, root: string): boolean {
@@ -237,7 +282,9 @@ function isPathInRoot(path: string, root: string): boolean {
 
 function remoteDirname(remotePath: string): string {
   const slashIndex = remotePath.lastIndexOf("/");
-  return slashIndex > 0 ? remotePath.slice(0, slashIndex) : REMOTE_PROMPT_ATTACHMENT_ROOT;
+  return slashIndex > 0
+    ? remotePath.slice(0, slashIndex)
+    : currentRemotePromptAttachmentTildeRoot();
 }
 
 function collectRemotePromptAttachmentPrivateDirs(remoteDir: string, root: string): string[] {
