@@ -125,12 +125,12 @@ default, with a `publish` switch to opt out. Explicit GitHub skip-CI commit mark
 still skip the workflow, so do not use them when a release is wanted.
 
 Each release is named `codez-build-<run-id>-<short-sha>` and points to the exact
-built commit. The release job checks all ten installers and six SHA256 manifests,
-uploads to a temporary draft, checks the uploaded asset digests, then makes it
-public. Failed uploads remain drafts and can be resumed by rerunning the failed
-job. A rerun verifies an already-public release without replacing its assets.
-Public filenames use `Codez.Codex-…`; the downloadable SHA256 manifests use those
-same names. Per-platform updater YAML files are not released.
+built commit. The release job checks all eight installers against their SHA256
+manifests, uploads only the installers to a temporary draft, checks the uploaded
+asset digests, then makes it public. Checksum manifests are pipeline-internal and
+not release assets. Failed uploads remain drafts and can be resumed by rerunning
+the failed job. A rerun verifies an already-public release without replacing its
+assets. Per-platform updater YAML files are not released.
 
 Find installers under **KingingWang/Codez → Releases**, not only the workflow's
 14-day Artifacts. Only a release built from the current main head is eligible for

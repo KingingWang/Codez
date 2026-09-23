@@ -367,7 +367,7 @@ test("artifact checksums require each native installer and exclude unrelated fil
   await assert.rejects(writeCodexArtifactChecksums(root), /Missing .* installer/);
   const target = resolveCodexTarget();
   const platform = { darwin: "mac", win32: "win", linux: "linux" }[target.os];
-  const extensions = { darwin: ["dmg", "zip"], win32: ["exe"], linux: ["AppImage", "deb"] }[
+  const extensions = { darwin: ["dmg"], win32: ["exe"], linux: ["AppImage", "deb"] }[
     target.os
   ];
   const suffix = process.env.CODEZ_CODEX_SIGNED === "1" ? "" : "-unsigned";
