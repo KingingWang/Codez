@@ -7,8 +7,9 @@ import { codexWorkspaceRoot, resolveCodexTarget, sha256File } from "./codex-runt
  * 每个构建目标进入 release 的完整资产模型：安装包 + 差分 blockmap + per-arch channel yml。
  * channel yml 命名与 app-builder-lib updateInfoBuilder.getUpdateInfoFileName 保持一致：
  * windows 无平台后缀，mac 追加 -mac，linux 追加 -linux 且非 x64 再追加 -<arch>
- * （linux arm64 因此是 arm64-latest-linux-arm64.yml）。运行时 electron-updater 用烘焙进
- * app-update.yml 的 channel 加同一套平台后缀取回该文件，两边规则必须同步修改。
+ * （linux arm64 因此是 arm64-latest-linux-arm64.yml）。运行时 electron-updater 用
+ * setFeedURL 显式传入的 per-arch channel 加同一套平台后缀取回该文件
+ * （setFeedURL 后不再回读 app-update.yml 的烘焙 channel），两边规则必须同步修改。
  */
 export function resolveCodexUpdaterAssetPlan(os, arch) {
   const channelSuffix = { darwin: "-mac", linux: "-linux", win32: "" }[os];
