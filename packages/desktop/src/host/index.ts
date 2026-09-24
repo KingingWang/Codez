@@ -872,6 +872,10 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
     selection: request.modelSelection,
     fixedSelection: existingRun?.modelSelection,
     modelSelectionService,
+    workspace: {
+      workspacePath: request.workspacePath,
+      ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
+    },
     // Repo 已在读取前完成离线导入；不再为迁移绕行 Agent/账号服务。
     // 未迁入或损坏的新值仍由此入口明确拒绝，不能当成跟随 Workspace。
     readSelection: () =>

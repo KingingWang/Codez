@@ -165,6 +165,10 @@ export {
   EmptyAccountProviderConfigSource,
   ProviderRuntime,
 } from "./model-provider/providerRuntime.js";
+export {
+  createCodexModelSelectionService,
+  type CodexModelSelectionService,
+} from "./model-provider/codexModelSelectionService.js";
 export type {
   ProviderRuntimeDependencies,
   ProviderRuntimeOptions,
@@ -381,6 +385,7 @@ import {
   createProviderRuntimeFromConfigRuntime,
   type ProviderRuntime,
 } from "./model-provider/providerRuntime.js";
+import { createCodexModelSelectionService } from "./model-provider/codexModelSelectionService.js";
 import {
   IModelSelectionService,
   IProviderSettingsService,
@@ -645,6 +650,15 @@ interface ManagedCuaHelperHostDispose {
 // 的 WeakMap 侧表登记，dispose 时统一终止（best-effort，不阻断其它资源回收）。
 const managedCuaHelperHosts = new WeakMap<ServiceCollection, ManagedCuaHelperHostDispose>();
 const providerRuntimes = new WeakMap<ServiceCollection, ProviderRuntime>();
+const codexModelSelectionServices = new WeakMap<ServiceCollection, IModelSelectionService>();
+
+/** legacy Provider Runtime 自行 dispose；仅 Codex 适配服务需要额外汇总释放。 */
+function disposeHostModelSelectionService(services: ServiceCollection): void {
+  const service = codexModelSelectionServices.get(services);
+  if (!service || service === providerRuntimes.get(services)?.modelSelection) return;
+  (service as { dispose?: () => void }).dispose?.();
+  codexModelSelectionServices.delete(services);
+}
 const providerProvisioningSources = new WeakMap<ServiceCollection, ProviderProvisioningSource>();
 const providerProvisioningTriggerDisposers = new WeakMap<
   ServiceCollection,
@@ -2508,6 +2522,14 @@ export function createLocalServices(options: {
   // 注册链上的懒工厂（如 OffPeak）会各自创建 tasks-index sqlite repo；先收集到本数组，
   // services 集合建好后在 return 前统一登记进 sharedSqliteRepos 侧表
   const sqliteReposToClose: Array<{ close(): void }> = [];
+  // Codex bridge 模式：账号/配置/模型目录由 Codex 持有，legacy Provider Registry 不启动。
+  // Bot、Automation 与移动 Web 都经 IModelSelectionService 解析 Submission 模型——
+  // 用 Codex 原生目录（config/read + model/list）适配同一合同；legacy 模式保持原视图。
+  const hostModelSelectionService: IModelSelectionService = usesDefaultCodexDesktopBridge
+    ? createCodexModelSelectionService({
+        send: (params) => codezAgentService.codexRequest(params),
+      })
+    : providerRuntime.modelSelection;
   const services = new ServiceCollection()
     .register(IFileService, fileService)
     .register(IMediaPreviewService, mediaPreviewService)
@@ -2532,7 +2554,7 @@ export function createLocalServices(options: {
         codezTaskService,
         broadcastService,
         settingService,
-        modelSelectionService: providerRuntime.modelSelection,
+        modelSelectionService: hostModelSelectionService,
         remoteWorkspaceService: botRemoteWorkspaceService,
         // 远端与本地 Bot 都读取所属 Environment 的 Model Selection View。
         // 远端启动期不再轮询旧 Preset，避免重新制造一套模型候选事实。
@@ -2692,11 +2714,12 @@ export function createLocalServices(options: {
   offPeakRequestAuthBuilders.set(services, buildOffPeakRequestAuthForTicket);
 
   providerRuntimes.set(services, providerRuntime);
+  codexModelSelectionServices.set(services, hostModelSelectionService);
   providerProvisioningSources.set(services, providerProvisioningSource);
   providerProvisioningTriggerDisposers.set(services, providerProvisioningDisposers);
   services
     .register(IProviderSettingsService, providerRuntime.providerSettings)
-    .register(IModelSelectionService, providerRuntime.modelSelection);
+    .register(IModelSelectionService, hostModelSelectionService);
   if (isDesktopAttachedRemote || options.providerProvisioningTargetEnabled === true) {
     services.register(
       IProviderProvisioningTargetService,
@@ -2841,6 +2864,7 @@ export function disposeServiceResources(services: ServiceCollection): void {
   // 关闭共享 tasks-index sqlite 句柄（Windows 上悬着句柄会让后续目录清理撞 EBUSY）
   for (const repo of sharedSqliteRepos.get(services) ?? []) repo.close();
   sharedSqliteRepos.delete(services);
+  disposeHostModelSelectionService(services);
   providerRuntimes.get(services)?.dispose();
   for (const dispose of providerProvisioningTriggerDisposers.get(services) ?? []) dispose();
   providerProvisioningTriggerDisposers.delete(services);
@@ -2878,6 +2902,7 @@ export async function disposeServiceResourcesAndWait(services: ServiceCollection
   // 关闭共享 tasks-index sqlite 句柄（同 disposeServiceResources，异步收口路径也要释放）
   for (const repo of sharedSqliteRepos.get(services) ?? []) repo.close();
   sharedSqliteRepos.delete(services);
+  disposeHostModelSelectionService(services);
   providerRuntimes.get(services)?.dispose();
   for (const dispose of providerProvisioningTriggerDisposers.get(services) ?? []) dispose();
   providerProvisioningTriggerDisposers.delete(services);

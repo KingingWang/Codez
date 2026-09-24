@@ -196,6 +196,14 @@ export interface ModelSelectionProviderView extends Pick<
 
 export interface ModelSelectionViewInput {
   readonly selection: ModelSelection | null;
+  /**
+   * 目标 workspace。Codex 原生 Host 的模型事实是 per-workspace 的（config/read 需要 cwd）；
+   * legacy Provider Registry 视图是 Host 全局的，实现忽略此字段。
+   */
+  readonly workspace?: {
+    readonly workspacePath: string;
+    readonly workspaceIdentity?: string;
+  };
 }
 
 export interface ModelSelectionView extends Partial<EffectiveModelSelectionResult> {
