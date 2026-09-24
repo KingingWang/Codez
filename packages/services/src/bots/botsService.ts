@@ -19,6 +19,7 @@ import {
   getPermissionRequestPreview,
   getSupportedBotReplyGranularities,
   normalizeBotReplyGranularity,
+  parseModelPickerValue,
   type CodezConfigOption,
   type CodezElicitationRequest,
   type CodezElicitationQuestion,
@@ -174,10 +175,15 @@ function parseBotModelOptionValue(value: string): ModelSelection | undefined {
   }
   const separatorIndex = value.indexOf("/");
   if (separatorIndex > 0 && separatorIndex < value.length - 1) {
-    return {
-      providerId: value.slice(0, separatorIndex),
-      modelId: value.slice(separatorIndex + 1),
-    };
+    // Bugfix: task.model 是 picker 展示格式 provider/model$effort，modelId 可能带
+    // "$" 档位后缀。手写切分会把 "$xhigh" 留在 modelId 里，/new 继承草稿后首发
+    // 送进 Codex 目录匹配必然 model-not-found（报「无法从目标 Host 解析 Submission
+    // 模型」）。复用共享的 picker 解析器剥离档位为 options.reasoningLevel。
+    try {
+      return parseModelPickerValue(value);
+    } catch {
+      return undefined;
+    }
   }
   return value.trim() ? { providerId: CODEZ_AGENT_PROVIDER, modelId: value.trim() } : undefined;
 }
