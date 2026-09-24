@@ -1029,9 +1029,6 @@ importers:
 
   packages/services:
     dependencies:
-      '@larksuiteoapi/node-sdk':
-        specifier: 1.64.0
-        version: 1.64.0
       '@codez/codez-cua':
         specifier: workspace:*
         version: link:../codez-cua
@@ -1047,6 +1044,9 @@ importers:
       '@codez/shared':
         specifier: workspace:*
         version: link:../shared
+      '@larksuiteoapi/node-sdk':
+        specifier: 1.64.0
+        version: 1.64.0
       croner:
         specifier: ^10.0.1
         version: 10.0.1
@@ -16197,11 +16197,11 @@ snapshots:
 
   lodash.merge@4.6.2: {}
 
+  lodash.pickby@4.6.0: {}
+
   lodash.uniqby@4.7.0: {}
 
   lodash@4.18.1: {}
-
-  lodash.pickby@4.6.0: {}
 
   log-symbols@4.1.0:
     dependencies:
