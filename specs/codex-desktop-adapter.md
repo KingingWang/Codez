@@ -78,7 +78,12 @@ closed, and native config/skills/plugin requests stay on the canonical execution
 - Queue/steer keep the native thread's effective settings. Reject per-input
   model/reasoning/mode changes that these native methods cannot honor; editing
   queued text preserves its existing image/non-text inputs. Reject legacy held
-  queue dispositions, browser context and restricted-tool intents before mutation.
+  queue item guards (`expectedHeldQueueItemIds`), browser context and
+  restricted-tool intents before mutation. A bare legacy `heldQueueDisposition`
+  has no held-queue transaction to apply (the projection never reports choice);
+  replayable senders (bots, automations, mobile) always carry
+  `keepQueueAndSend` for legacy `session/send` parity, so it is accepted and
+  ignored rather than rejected.
 - Conversation revert does not imply file rewind. File rewind requires a separate
   preview and a supported safe implementation; never use destructive Git reset.
 - Editing/retrying a historical input requires matching epoch/revision and stable
