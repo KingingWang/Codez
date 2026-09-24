@@ -155,6 +155,11 @@ export function useDraftConfigControl(params: {
     "remote-waiting",
     {
       selection: draft.modelSelection ?? null,
+      // Codex 原生 Host 按 workspace 解析模型事实；legacy Registry 忽略此字段。
+      workspace: {
+        workspacePath,
+        ...(workspaceIdentity ? { workspaceIdentity } : {}),
+      },
     },
   );
   const modelSelectionView =
