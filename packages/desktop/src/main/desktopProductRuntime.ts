@@ -40,6 +40,24 @@ export function resolveDesktopUpdatePolicy(flavor: CodezProductFlavor = CODEZ_PR
   return { automatic: flavor !== "preview" };
 }
 
+export function resolveCodexGitHubUpdateFeedOptions(arch: string): {
+  provider: "github";
+  owner: string;
+  repo: string;
+  channel: string;
+} {
+  // 运行时 channel 必须随 feed 显式给出：setFeedURL 会直接安装 provider，
+  // electron-updater 的 GitHub provider 只从 feed options（或 autoUpdater.channel）取
+  // channel，不再回读 app-update.yml 的烘焙值；缺省静默回退 "latest"，请求
+  // latest-mac.yml 会 404（release 只发布 per-arch yml，见 specs/codex-desktop-distribution.md）。
+  return {
+    provider: "github",
+    owner: "KingingWang",
+    repo: "Codez",
+    channel: `${arch}-latest`,
+  };
+}
+
 export function resolveCodexRemoteAssetDirs(options: {
   isPackaged: boolean;
   resourcesPath: string;

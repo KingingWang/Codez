@@ -124,12 +124,17 @@ the root release version.
 Codex installs auto-update from KingingWang/Codez GitHub releases through
 electron-updater's GitHub provider. The upstream server manifest provider and
 its stable/preview channel switching never apply to this flavor, and
-`autoUpdater.allowPrerelease` stays `false`. Every build bakes a
-per-architecture channel (`x64-latest` / `arm64-latest`) into `app-update.yml`,
-so the six targets of one release publish updater metadata side by side without
-overwriting each other. electron-updater appends its platform suffix to the
-baked channel and fetches exactly one metadata file from the release marked
-Latest, then verifies the SHA512 checksums recorded there before installing:
+`autoUpdater.allowPrerelease` stays `false`. Builds use a per-architecture
+channel (`x64-latest` / `arm64-latest`): the publish config channels the
+per-target updater metadata into distinct file names, so the six targets of one
+release publish side by side without overwriting each other. At runtime the
+main process passes that channel explicitly in `setFeedURL` — electron-updater's
+GitHub provider resolves the channel only from the feed options (or
+`autoUpdater.channel`) and never re-reads the baked `app-update.yml` once a feed
+is installed, so an omitted channel silently falls back to `latest` and 404s on
+`latest-mac.yml`. electron-updater appends its platform suffix to that channel
+and fetches exactly one metadata file from the release marked Latest, then
+verifies the SHA512 checksums recorded there before installing:
 
 | platform | updater asset set per target                                                                                                              |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
