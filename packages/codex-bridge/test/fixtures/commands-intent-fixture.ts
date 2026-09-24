@@ -165,7 +165,7 @@ async function verifyHeldIntent(t: TestContext) {
   for (const heldQueueDisposition of ["clearQueueAndSend", "keepQueueAndSend"] as const) {
     for (const requestedDelivery of ["startNow", "queue", "guide"] as const) {
       await t.test(
-        `legacy held ${heldQueueDisposition}:${requestedDelivery} rejects`,
+        `held item guard ${heldQueueDisposition}:${requestedDelivery} rejects`,
         async (t) => {
           const h = await setup(t, requestedDelivery === "guide");
           settings(h);
@@ -185,6 +185,38 @@ async function verifyHeldIntent(t: TestContext) {
         },
       );
     }
+    // 裸 heldQueueDisposition（无 item guard）无可执行事务：legacy 仅在 held(choice)
+    // 路由消费它，Codex 投影永不报 choice。replayable（Bot/Automation/手机）发送端
+    // 无条件携带 keepQueueAndSend 对齐旧 session/send 语义，bridge 必须接受并忽略，
+    // 按默认 delivery 正常送达。
+    await t.test(`bare ${heldQueueDisposition} is ignored when idle`, async (t) => {
+      const h = await setup(t, false);
+      settings(h);
+      const ack = await h.execute(
+        h.command(
+          "sendText",
+          { text: "input", heldQueueDisposition },
+          `held-${heldQueueDisposition}`,
+        ),
+      );
+      assert.equal(ack.status, "accepted", ack.message);
+      assert.equal(h.rpc.params("turn/start").length, 1);
+      assert.equal(h.rpc.params("thread/queue/add").length, 0);
+      assert.equal(h.rpc.params("turn/steer").length, 0);
+    });
+    await t.test(`bare ${heldQueueDisposition} is ignored while running`, async (t) => {
+      const h = await setup(t, true);
+      settings(h);
+      const ack = await h.execute(
+        h.command(
+          "sendText",
+          { text: "input", heldQueueDisposition },
+          `held-${heldQueueDisposition}`,
+        ),
+      );
+      assert.equal(ack.status, "accepted", ack.message);
+      assert.deepEqual(h.rpc.methods(), ["turn/steer"]);
+    });
   }
 }
 
