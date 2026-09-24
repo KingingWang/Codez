@@ -210,6 +210,37 @@ export interface ModelSelectionView extends Partial<EffectiveModelSelectionResul
   readonly revision: number;
   readonly providers: readonly ModelSelectionProviderView[];
   readonly preferredSelection?: ModelSelection;
+  /**
+   * 视图/变更事件来源的 workspace。Codex 原生 Host 的模型事实按 workspace 解析，
+   * revision 也是 per-workspace 的，事件必须携带身份供消费者在比较 revision 之前过滤；
+   * legacy Provider Registry 视图是 Host 全局的，不携带此字段。
+   */
+  readonly workspace?: {
+    readonly workspacePath: string;
+    readonly workspaceIdentity?: string;
+  };
+}
+
+/** 模型选择视图来源 workspace 的身份 key：identity 优先，回退路径，与 Host 侧口径一致。 */
+export function modelSelectionViewWorkspaceKey(view: ModelSelectionView): string | undefined {
+  const workspace = view.workspace;
+  if (!workspace) return undefined;
+  return workspace.workspaceIdentity?.trim() || workspace.workspacePath;
+}
+
+/**
+ * 变更事件是否属于当前消费者的 workspace，必须在比较 revision 或采用视图之前调用。
+ * legacy Registry 事件是 Host 全局事实（不携带 workspace），总是接受；
+ * 消费者没有 workspace 上下文时，不接管其他 workspace 的事件事实。
+ */
+export function isModelSelectionViewForWorkspace(
+  view: ModelSelectionView,
+  workspaceKey: string | undefined,
+): boolean {
+  const eventWorkspaceKey = modelSelectionViewWorkspaceKey(view);
+  if (eventWorkspaceKey === undefined) return true;
+  if (workspaceKey === undefined) return false;
+  return eventWorkspaceKey === workspaceKey;
 }
 
 export class ProviderSettingsFacade {

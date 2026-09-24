@@ -260,6 +260,12 @@ export function createCodexModelSelectionService(
   const listeners = new Set<(view: ModelSelectionView) => void>();
   const revisionsByWorkspace = new Map<string, { revision: number; fingerprint: string }>();
   const cacheByWorkspace = new Map<string, CodexCatalogCacheEntry>();
+  // 同一 workspace 的并发刷新合并为一次在途读取；后到者共享结果，
+  // 乱序完成时不会让旧配置覆盖新配置再留下更高 revision。
+  const inflightByWorkspace = new Map<
+    string,
+    Promise<{ catalog: CodexHostModelCatalog; fingerprint: string }>
+  >();
   let disposed = false;
 
   async function readCatalog(
@@ -298,27 +304,41 @@ export function createCodexModelSelectionService(
     return buildCodexHostModelCatalog(config, catalog.data);
   }
 
+  async function readCatalogCoalesced(
+    target: CodexModelSelectionWorkspaceTarget,
+  ): Promise<{ catalog: CodexHostModelCatalog; fingerprint: string }> {
+    const workspaceKey = resolveWorkspaceKey(target);
+    const cached = cacheByWorkspace.get(workspaceKey);
+    if (cached && cached.expiresAt > now()) {
+      return { catalog: cached.catalog, fingerprint: cached.fingerprint };
+    }
+    let inflight = inflightByWorkspace.get(workspaceKey);
+    if (!inflight) {
+      inflight = readCatalog(target)
+        .then((catalog) => {
+          const fingerprint = JSON.stringify(catalog);
+          cacheByWorkspace.set(workspaceKey, {
+            fingerprint,
+            catalog,
+            expiresAt: now() + CATALOG_CACHE_TTL_MS,
+          });
+          return { catalog, fingerprint };
+        })
+        .finally(() => {
+          inflightByWorkspace.delete(workspaceKey);
+        });
+      inflightByWorkspace.set(workspaceKey, inflight);
+    }
+    return inflight;
+  }
+
   async function readCatalogCached(target: CodexModelSelectionWorkspaceTarget): Promise<{
     catalog: CodexHostModelCatalog;
     revision: number;
     changed: boolean;
   }> {
     const workspaceKey = resolveWorkspaceKey(target);
-    const cached = cacheByWorkspace.get(workspaceKey);
-    let catalog: CodexHostModelCatalog;
-    let fingerprint: string;
-    if (cached && cached.expiresAt > now()) {
-      catalog = cached.catalog;
-      fingerprint = cached.fingerprint;
-    } else {
-      catalog = await readCatalog(target);
-      fingerprint = JSON.stringify(catalog);
-      cacheByWorkspace.set(workspaceKey, {
-        fingerprint,
-        catalog,
-        expiresAt: now() + CATALOG_CACHE_TTL_MS,
-      });
-    }
+    const { catalog, fingerprint } = await readCatalogCoalesced(target);
     const state = revisionsByWorkspace.get(workspaceKey);
     const revision = state
       ? state.fingerprint === fingerprint
@@ -350,6 +370,14 @@ export function createCodexModelSelectionService(
       const view: ModelSelectionView = Object.freeze({
         revision,
         providers,
+        // 事件/视图必须携带来源 workspace：revision 是 per-workspace 的，
+        // 消费者在比较 revision 之前先按身份过滤跨 workspace 事件。
+        workspace: Object.freeze({
+          workspacePath: workspace.workspacePath,
+          ...(workspace.workspaceIdentity
+            ? { workspaceIdentity: workspace.workspaceIdentity }
+            : {}),
+        }),
         ...(catalog.preferredSelection
           ? { preferredSelection: freezeSelection(catalog.preferredSelection) }
           : {}),
@@ -365,6 +393,7 @@ export function createCodexModelSelectionService(
       listeners.clear();
       revisionsByWorkspace.clear();
       cacheByWorkspace.clear();
+      inflightByWorkspace.clear();
     },
   };
 }
