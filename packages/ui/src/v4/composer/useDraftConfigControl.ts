@@ -161,6 +161,8 @@ export function useDraftConfigControl(params: {
         ...(workspaceIdentity ? { workspaceIdentity } : {}),
       },
     },
+    // 事件按 workspace 身份过滤，跨 workspace 的变更不会压住本草稿的读取。
+    workspaceKey,
   );
   const modelSelectionView =
     modelSelectionRead.state.status === "ready" ? modelSelectionRead.state.view : null;

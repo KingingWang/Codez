@@ -44,6 +44,15 @@ Bot 消息 / Automation 派发 / UI 订阅
   `reasoning-level-not-supported`。
 - `revision` 按 workspace 单调递增，仅当目录指纹变化时推进；`onDidChange` 在读取
   到变化时通知。无轮询。
+- `ModelSelectionView` 增加可选 `workspace { workspacePath, workspaceIdentity? }`：
+  Codex 视图/变更事件必须携带来源 workspace 身份；legacy Registry 视图是 Host
+  全局的，不携带。身份 key 统一为 `workspaceIdentity?.trim() || workspacePath`。
+  消费者必须在比较 revision 或采用视图之前调用
+  `isModelSelectionViewForWorkspace(view, workspaceKey)` 过滤：跨 workspace
+  事件直接忽略；无 workspace 上下文（Host 全局）的消费者不接受携带 workspace 的
+  事件；无 workspace 的事件（legacy）总是接受。
+- 目录读取按 workspace 做在途合并（single-flight）：并发刷新共享同一 RPC，
+  完成后一次性写缓存，乱序完成不会让旧配置覆盖新配置再推进 revision。
 
 ## 失败语义
 

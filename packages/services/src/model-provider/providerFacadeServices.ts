@@ -26,6 +26,7 @@ export type {
   ModelSelectionViewInput,
   ProviderSettingsView,
 } from "@codez/provider";
+export { isModelSelectionViewForWorkspace, modelSelectionViewWorkspaceKey } from "@codez/provider";
 
 export interface IProviderSettingsService {
   readonly onDidChange: Event<ProviderSettingsView>;

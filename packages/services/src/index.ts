@@ -4,6 +4,8 @@ export { ServiceCollection } from "./collection.js";
 export {
   IModelSelectionService,
   IProviderSettingsService,
+  isModelSelectionViewForWorkspace,
+  modelSelectionViewWorkspaceKey,
   type ModelSelectionView,
   type ModelSelectionViewInput,
   type ProviderSettingsProviderView,
