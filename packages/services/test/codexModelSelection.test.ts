@@ -539,3 +539,26 @@ test("codex 视图：并发刷新合并为一次在途读取，配置变化后 r
   assert.equal(fifth.preferredSelection?.modelId, "gpt-5-codex");
   service.dispose();
 });
+
+test("codex 视图：config/read 省略 layers 字段（includeLayers: false 的真实响应）仍可解析", async () => {
+  // 真实 codex app-server 在 includeLayers: false 时不返回 layers 字段（而非 null）。
+  // 严格 schema 曾因此拒绝整个响应，Bot 解析模型失败（2026-09-24 Windows 实测回归）。
+  const service = createCodexModelSelectionService({
+    send: async (params) => {
+      if (params.request.method === "config/read") {
+        return {
+          config: { model: "gpt-5-codex", model_reasoning_effort: "high" },
+          origins: {},
+        };
+      }
+      return { data: [nativeModel("gpt-5-codex", { isDefault: true })], nextCursor: null };
+    },
+  });
+  const view = await service.getView({ selection: null, workspace: WORKSPACE });
+  assert.deepEqual(view.preferredSelection, {
+    providerId: "openai",
+    modelId: "gpt-5-codex",
+    options: { reasoningLevel: "high" },
+  });
+  service.dispose();
+});

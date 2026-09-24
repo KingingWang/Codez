@@ -58,6 +58,11 @@ Bot 消息 / Automation 派发 / UI 订阅
 
 - Codex RPC 失败：`getView` 抛错；Bot 捕获后按既有「无法解析」路径回复，
   不落错误状态。
+- 原生 RPC 字段省略语义：`includeLayers: false` 时 `config/read` 省略整个
+  `layers` 字段（而非返回 null），`model/list` 在无下一页时可能省略
+  `nextCursor`。共享 schema 对这些字段一律 `nullable().optional()`，
+  不能因字段省略拒绝整个配置/模型目录（2026-09-24 Windows 实测回归：
+  严格 schema 拒绝响应导致 Bot 无法解析 Submission 模型）。
 - 目录为空且无配置事实：空视图（providers=[]），preferredSelection 缺省；
   Bot 首发返回既有错误文案，与 legacy 空 Registry 一致。
 - Bot 远端 workspace：经 `BotRemoteWorkspaceService` 代理到远端 Host 的同一服务；
