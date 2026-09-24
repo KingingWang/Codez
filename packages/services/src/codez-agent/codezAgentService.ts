@@ -242,7 +242,10 @@ import {
   commandsQueryParamsSchema,
   commandsQueryResultSchema,
   conversationTopic,
+  conversationTopicFrameSchema,
   conversationTopicWireCandidateSchema,
+  TopicWireFrameAssembler,
+  type TopicWireAssemblyEvent,
   conversationTelemetryFactSchema,
   cuaPermissionObservationSchema,
   sessionsIndexTopic,
@@ -286,6 +289,7 @@ import {
   CODEZ_ATTACHMENT_FAULT_CODES,
   CodezAttachmentFaultError,
   type CommandAck,
+  type ConversationTopicFrame,
   type ConversationTopicWireCandidate,
   type ConversationTelemetryFact,
   type SessionsIndexTopicWireCandidate,
@@ -303,6 +307,7 @@ import { AutomationRepo } from "#src/session/automationRepo.js";
 import { TaskIndexRepo } from "#src/session/taskIndexRepo.js";
 import { CodezAgentMcpStatusModeUnsupportedError } from "#src/codez-agent/codezAgentErrors.js";
 import { usesCodexBridgeRuntime } from "./codexBridgeCommand.js";
+import { createCodexSessionEventProjection } from "./codexSessionEventProjection.js";
 import {
   CodezAgentProcessManager,
   resolveDefaultCodezAgentCommand,
@@ -1573,6 +1578,224 @@ export function createCodezAgentService(
     const created = new Emitter<CodezAgentServiceEvent>();
     sessionEmitters.set(key, created);
     return created;
+  }
+
+  // ── codex legacy 流式事件投影（spec: specs/codex-bot-stream-projection.md）──
+  // Codex bridge 刻意不实现 legacy session/subscribe + session/event（"Codex adapter
+  // does not support session/subscribe"），只发 v4 conversationFrame（全量 snapshot）。
+  // Bot 回复链路 / Host mirror 消费的 legacy 事件在 codex 模式下因此没有事件源
+  // （2026-09-24 飞书实测：会话里有回复，机器人侧完全看不到）。这里为每个
+  // (workspace, sessionId) 建一条引用计数的共享 v4 conversation 订阅，帧经
+  // TopicWireFrameAssembler 重组后由 codexSessionEventProjection 快照差分成 legacy
+  // session 事件，喂给既有 adapter mapServiceEvent 下游（零改动复用）。
+  interface CodexLegacySessionUpstream {
+    readonly emitter: Emitter<CodezAgentServiceEvent>;
+    refCount: number;
+    disposed: boolean;
+    dispose(): void;
+  }
+  const codexLegacySessionUpstreams = new Map<string, CodexLegacySessionUpstream>();
+
+  function createCodexLegacySessionUpstream(
+    params: CodezAgentSessionSubscribeParams,
+  ): CodexLegacySessionUpstream {
+    const workspace: CodezAgentWorkspaceTarget = {
+      workspacePath: params.workspacePath,
+      ...(params.workspaceIdentity?.trim() ? { workspaceIdentity: params.workspaceIdentity } : {}),
+    };
+    const topic = conversationTopic(params.sessionId);
+    const emitter = new Emitter<CodezAgentServiceEvent>();
+    const projection = createCodexSessionEventProjection({ sessionId: params.sessionId });
+    const assembler = new TopicWireFrameAssembler(conversationTopicFrameSchema);
+    // 订阅在途期间到达的同 topic 帧先暂存：stdio 同一 read 会先 resolve response、
+    // 再同步 fire initial notification，await continuation 尚未运行就按
+    // subscriptionId 过滤会把首帧丢掉（与 taskIndexSyncer 的 staging 同一理由）。
+    const stagedWires: ConversationTopicWireCandidate[] = [];
+    let subscriptionId: string | null = null;
+    let connectionId: string | null = null;
+    let assemblyTimer: ReturnType<typeof setTimeout> | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const upstream: CodexLegacySessionUpstream = {
+      emitter,
+      refCount: 0,
+      disposed: false,
+      dispose,
+    };
+
+    const deliverFrame = (frame: ConversationTopicFrame): void => {
+      if (upstream.disposed) return;
+      try {
+        for (const event of projection.acceptFrame(frame)) {
+          emitter.fire({ type: "session.event", event });
+        }
+      } catch (error) {
+        // 投影 fail-closed（合成事件不过协议 schema 直接抛）：丢帧好过污染 Bot 回复链。
+        logger.warn(undefined, "codex session 事件投影失败，丢弃该帧", {
+          error: error instanceof Error ? error.message : String(error),
+          sessionId: params.sessionId,
+        });
+      }
+    };
+
+    const scheduleAssemblyExpiry = (): void => {
+      if (assemblyTimer) {
+        clearTimeout(assemblyTimer);
+        assemblyTimer = null;
+      }
+      const nextExpiryAt = assembler.nextExpiryAt;
+      if (nextExpiryAt === null || upstream.disposed) return;
+      assemblyTimer = setTimeout(
+        () => {
+          assemblyTimer = null;
+          handleAssemblyEvents(assembler.expire(Date.now()));
+          scheduleAssemblyExpiry();
+        },
+        Math.max(0, nextExpiryAt - Date.now()),
+      );
+    };
+
+    const handleAssemblyEvents = (
+      events: readonly TopicWireAssemblyEvent<ConversationTopicFrame>[],
+    ): void => {
+      for (const event of events) {
+        if (event.kind === "fault") {
+          logger.warn(undefined, "codex session 帧重组失败，丢弃该逻辑帧", {
+            logicalFrameId: event.fault.logicalFrameId,
+            reasonCode: event.fault.reasonCode,
+            sessionId: params.sessionId,
+            subscriptionId: event.fault.subscriptionId,
+          });
+          assembler.abort(event.fault.topic, event.fault.subscriptionId);
+          continue;
+        }
+        deliverFrame(event.frame);
+      }
+    };
+
+    const acceptWire = (wire: ConversationTopicWireCandidate): void => {
+      if (upstream.disposed || wire.topic !== topic) return;
+      if (subscriptionId === null) {
+        stagedWires.push(wire);
+        return;
+      }
+      if (wire.subscriptionId !== subscriptionId) return;
+      handleAssemblyEvents(assembler.accept(wire));
+      scheduleAssemblyExpiry();
+    };
+
+    // 先挂帧监听再发起订阅（理由见 stagedWires 注释）。
+    const frameDisposable = getConversationFrameEmitter(workspace).event(acceptWire);
+
+    const subscribe = async (attempt: number): Promise<void> => {
+      if (upstream.disposed) return;
+      try {
+        const client = await getReadOnlyClient(params);
+        if (upstream.disposed) return;
+        const connection = resolveV4Connection(params);
+        const result = await client.request(
+          V4_METHODS.conversationSubscribe,
+          {
+            topic,
+            connectionId: connection.connectionId,
+            clientMode: connection.clientMode,
+            workspace: buildWorkspaceRef(params),
+          },
+          v4ConversationSubscribeResultSchema,
+        );
+        if (upstream.disposed) return;
+        subscriptionId = result.ack.subscriptionId;
+        connectionId = connection.connectionId;
+        rememberV4SubscriptionRoute(params, topic, subscriptionId, connection.connectionId);
+        // 回放暂存帧：只留下属于本订阅的（同 topic 可能有桌面 UI 自己的订阅在发帧）。
+        const staged = stagedWires.splice(0);
+        for (const wire of staged) {
+          acceptWire(wire);
+        }
+      } catch (error) {
+        if (upstream.disposed) return;
+        // 有界重试（与 legacy「重试耗尽即放弃」语义对齐）：会话刚创建时 bridge 侧
+        // 投影可能尚未就绪，短暂退避后放弃，Bot 侧表现与 legacy 订阅失败一致。
+        if (attempt < 3) {
+          retryTimer = setTimeout(() => {
+            retryTimer = null;
+            void subscribe(attempt + 1);
+          }, 300 * attempt);
+          return;
+        }
+        logger.warn(undefined, "codex session 事件订阅建立失败，已达最大重试次数，放弃", {
+          error: error instanceof Error ? error.message : String(error),
+          sessionId: params.sessionId,
+          workspaceKey: resolveWorkspaceKey(params),
+        });
+      }
+    };
+    void subscribe(1);
+
+    function dispose(): void {
+      if (upstream.disposed) return;
+      upstream.disposed = true;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      if (assemblyTimer) {
+        clearTimeout(assemblyTimer);
+        assemblyTimer = null;
+      }
+      frameDisposable.dispose();
+      assembler.clear();
+      projection.dispose();
+      stagedWires.length = 0;
+      const activeSubscriptionId = subscriptionId;
+      const activeConnectionId = connectionId;
+      subscriptionId = null;
+      connectionId = null;
+      if (activeSubscriptionId && activeConnectionId) {
+        void unsubscribeV4Route(
+          { ...workspace, subscriptionId: activeSubscriptionId },
+          "conversation/",
+        ).catch((error: unknown) => {
+          logger.debug(undefined, "codex session 事件订阅退订失败（忽略）", {
+            error: error instanceof Error ? error.message : String(error),
+            sessionId: params.sessionId,
+          });
+        });
+      }
+      emitter.dispose();
+    }
+
+    return upstream;
+  }
+
+  function onCodexDynamicSessionEvent(
+    params: CodezAgentSessionSubscribeParams,
+  ): (listener: (event: CodezAgentServiceEvent) => void) => { dispose(): void } {
+    return (listener) => {
+      const key = sessionEventKey(params);
+      let upstream = codexLegacySessionUpstreams.get(key);
+      if (!upstream || upstream.disposed) {
+        upstream = createCodexLegacySessionUpstream(params);
+        codexLegacySessionUpstreams.set(key, upstream);
+      }
+      upstream.refCount += 1;
+      const subscription = upstream.emitter.event(listener);
+      let disposed = false;
+      return {
+        dispose() {
+          if (disposed) return;
+          disposed = true;
+          subscription.dispose();
+          upstream.refCount -= 1;
+          if (upstream.refCount <= 0) {
+            if (codexLegacySessionUpstreams.get(key) === upstream) {
+              codexLegacySessionUpstreams.delete(key);
+            }
+            upstream.dispose();
+          }
+        },
+      };
+    };
   }
 
   function getPluginOperationProgressEmitter(operationId: string) {
@@ -3228,6 +3451,10 @@ export function createCodezAgentService(
       emitter.dispose();
     }
     sessionEmitters.clear();
+    for (const upstream of codexLegacySessionUpstreams.values()) {
+      upstream.dispose();
+    }
+    codexLegacySessionUpstreams.clear();
     sessionRuntimePreferencesRequestEmitter.dispose();
     processResourceSampleEmitter.dispose();
     mcpTelemetryEmitter.dispose();
@@ -4828,6 +5055,12 @@ export function createCodezAgentService(
     },
 
     onDynamicSessionEvent(params: CodezAgentSessionSubscribeParams) {
+      // Codex bridge 没有 legacy session/subscribe + session/event；改走 v4
+      // conversation 订阅 + 快照差分投影（spec: specs/codex-bot-stream-projection.md）。
+      // legacy 模式保持原实现不变。
+      if (usesDefaultCodexBridge) {
+        return onCodexDynamicSessionEvent(params);
+      }
       const emitter = getSessionEmitter(params);
       return (listener) => {
         // cancelled / retryTimer 的作用域是单个订阅者：调用方 dispose 时取消自己的重试，
