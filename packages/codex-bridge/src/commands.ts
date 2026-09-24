@@ -140,8 +140,15 @@ export class CommandRouter {
           unsupported("changing provider on an existing thread; create a new thread");
         }
         if (p.context_refs?.length) unsupported("shared-context execution");
-        if (p.heldQueueDisposition || p.expectedHeldQueueItemIds)
-          unsupported("held queue dispositions");
+        // heldQueueDisposition 只在 legacy held(choice) 路由下有事务语义（clear/keep
+        // 队列后 startNow）；Codex 没有 held queue，投影永不报 choice，该字段无事务
+        // 可执行。replayable 路径（Bot/Automation/手机）为对齐旧 session/send 语义
+        // 无条件携带 keepQueueAndSend，与 bridge 默认 delivery（running→guide /
+        // idle→startNow，即"不动队列、立即送达"）天然一致——接受并忽略，不能拒绝，
+        // 否则所有 Bot 回调消息都会在 admission 前失败。
+        // expectedHeldQueueItemIds 是 choice 确认框的过期守卫，bridge 无 held queue
+        // 状态可校验，合法发送端（投影从未报 choice）不会携带，继续 fail-closed 拒绝。
+        if (p.expectedHeldQueueItemIds) unsupported("held queue item guards");
         if (
           p.browserAmbientContext ||
           p.modelExecution ||
