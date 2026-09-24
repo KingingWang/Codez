@@ -306,6 +306,9 @@ export function createWeixinChannelRuntime(deps: WeixinChannelRuntimeDeps) {
 
   async function dispose(): Promise<void> {
     refreshQueue.invalidate();
+    // 修复原因：invalidate 只阻止后续 reconcile；正在执行的一轮仍可能写 bot 配置/状态文件，
+    // 先等队列清空再快照并中止长轮询，避免销毁返回后仍有文件落盘。
+    await refreshQueue.whenIdle();
     const activeRuntimes = [...runtimes.values()];
     for (const runtime of activeRuntimes) {
       runtime.controller.abort();

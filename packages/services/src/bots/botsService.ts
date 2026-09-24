@@ -6339,10 +6339,15 @@ export function createBotsService(
       inboundProcessingQueuesByContext.clear();
       // Bugfix：host 的异步资源回收会优先调用 disposeAllAndWait。保留统一 Promise，确保并发关闭
       // 只执行一次，并在返回前等三类 Provider runtime 的请求、WebSocket 和跨进程锁全部收口。
+      // 修复：启动期 fire-and-forget 的 ensureBotStorageMigrated 会在首次运行时物化
+      // bot-config/bot-state 文件；不把它纳入收口，dispose 返回后这次写入才落盘，
+      // 调用方（如测试）随后删除数据目录时会撞 ENOTEMPTY。这里按当前 Promise 一并等待。
+      const pendingStorageMigration = botStorageMigrationPromise ?? Promise.resolve();
       shutdownPromise = Promise.allSettled([
         telegramRuntime.dispose(),
         weixinRuntime.dispose(),
         feishuRuntime.dispose(),
+        pendingStorageMigration,
       ]).then(() => undefined);
       return shutdownPromise;
     },
