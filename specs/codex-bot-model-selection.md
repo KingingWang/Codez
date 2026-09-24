@@ -58,6 +58,18 @@ Bot 消息 / Automation 派发 / UI 订阅
 
 - Codex RPC 失败：`getView` 抛错；Bot 捕获后按既有「无法解析」路径回复，
   不落错误状态。
+- `/new` 草稿继承：`task.model` 是 picker 展示格式 `provider/model$effort`
+  （`formatModelPickerValue`，带 `$` 档位后缀，非可逆序列化）。Bot 解析该值
+  必须复用共享 `parseModelPickerValue` 剥离档位为 `options.reasoningLevel`；
+  手写按 `/` 切分会把 `$xhigh` 留在 `modelId` 里，目录匹配必然
+  `model-not-found`，/new 后首发表象为「无法从目标 Host 解析 Submission
+  模型」（2026-09-24 Windows 实测回归）。
+- Codex bridge `sendText` 接受并忽略裸 `heldQueueDisposition`：该字段只在
+  legacy held(choice) 路由有事务语义，bridge 投影永不报 choice，replayable
+  路径（Bot/Automation/手机）无条件携带 `keepQueueAndSend` 对齐旧
+  `session/send` 语义，拒绝会让所有 replayable 首发/跟进在 admission 前失败
+  （2026-09-24 Windows/macOS 实测回归）。`expectedHeldQueueItemIds` 是
+  choice 确认框的过期守卫，bridge 无对应状态可校验，继续拒绝。
 - 原生 RPC 字段省略语义：`includeLayers: false` 时 `config/read` 省略整个
   `layers` 字段（而非返回 null），`model/list` 在无下一页时可能省略
   `nextCursor`。共享 schema 对这些字段一律 `nullable().optional()`，
