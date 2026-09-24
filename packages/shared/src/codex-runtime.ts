@@ -82,7 +82,8 @@ export const codexModelSchema = z.object({
 export type CodexModel = z.infer<typeof codexModelSchema>;
 export const codexModelsResponseSchema = z.object({
   data: z.array(codexModelSchema),
-  nextCursor: z.string().nullable(),
+  // 没有下一页时原生 RPC 可能省略字段而非返回 null；分页循环按 falsy 结束，语义不变。
+  nextCursor: z.string().nullable().optional(),
 });
 
 const configSourceSchema = z.object({
@@ -102,7 +103,10 @@ export const codexConfigResponseSchema = z.object({
         disabledReason: z.string().nullable().optional(),
       }),
     )
-    .nullable(),
+    // includeLayers: false 时原生 RPC 直接省略整个字段（而非返回 null），
+    // 与 disabledReason 同一类省略语义；消费者本就用 ?. 读取。
+    .nullable()
+    .optional(),
 });
 export type CodexConfigResponse = z.infer<typeof codexConfigResponseSchema>;
 export const codexConfigRequirementsResponseSchema = z.object({

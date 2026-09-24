@@ -76,7 +76,8 @@ export async function readCodexResource<K extends CodexResource>(
 }
 
 async function readCodexPages<T>(
-  parse: (value: unknown) => { data: T[]; nextCursor: string | null },
+  // 原生 RPC 可能省略 nextCursor（而非返回 null）；循环按 falsy 结束，语义不变。
+  parse: (value: unknown) => { data: T[]; nextCursor?: string | null },
   request: CodexRequest,
   send: CodexRequestSender,
 ) {
