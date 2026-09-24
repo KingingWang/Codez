@@ -40,7 +40,8 @@ export function buildManifestFromLatestRelease(release) {
 export async function resolveLatestCodexManifest(options = {}) {
   const fetchImpl = options.fetchImpl ?? fetch;
   const attempts = options.attempts ?? 3;
-  const retryDelay = options.retryDelay ?? ((attempt) => new Promise((done) => setTimeout(done, attempt * 1500)));
+  const retryDelay =
+    options.retryDelay ?? ((attempt) => new Promise((done) => setTimeout(done, attempt * 1500)));
   const headers = {
     accept: "application/vnd.github+json",
     "x-github-api-version": "2022-11-28",
