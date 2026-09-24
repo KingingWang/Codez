@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { isCodezAgentProvider, CODEZ_AGENT_PROVIDER, type CodezProvider } from "@codez/shared";
-import type { IModelSelectionService, ModelSelectionView } from "@codez/services";
+import {
+  isModelSelectionViewForWorkspace,
+  type IModelSelectionService,
+  type ModelSelectionView,
+} from "@codez/services";
 import {
   buildModelConfigMissingUiError,
   type ModelConfigMissingUiError,
@@ -90,6 +94,9 @@ export function useDraftModelReadinessGate(params: {
       commitStatus(status);
     };
     const subscription = modelSelectionService.onDidChange((view) => {
+      // Codex 原生 Host 的模型事实与 revision 都是 per-workspace 的；跨 workspace
+      // 事件不属于本门禁，必须在比较 registryEventVersion / 采用状态之前按身份过滤。
+      if (!isModelSelectionViewForWorkspace(view, workspaceKey)) return;
       registryEventVersion += 1;
       applyStatus(resolveModelSelectionReadinessStatus(view));
     });

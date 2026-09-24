@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import type {
-  IModelSelectionService,
-  ModelSelectionView,
-  ModelSelectionViewInput,
+import {
+  isModelSelectionViewForWorkspace,
+  type IModelSelectionService,
+  type ModelSelectionView,
+  type ModelSelectionViewInput,
 } from "@codez/services";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
 import { logger } from "@/logger.js";
@@ -54,6 +55,12 @@ export function useModelSelectionServiceView(
   enabled = true,
   unavailableReason: "remote-waiting" | "missing-target" = "remote-waiting",
   input?: ModelSelectionViewInput,
+  /**
+   * 当前消费者的 workspace 身份 key。Codex 原生 Host 的模型事实与 revision 都是
+   * per-workspace 的：跨 workspace 的变更事件必须先按身份过滤，否则别处的 revision
+   * 会压住本 workspace 的读取。legacy Registry 事件是 Host 全局的，总是接受。
+   */
+  eventWorkspaceKey?: string,
 ): ModelSelectionRead {
   const normalizedService = service ?? null;
   // 调用方可每次 render 创建参数对象；所有权按选择内容绑定，不按对象引用反复订阅。
@@ -153,6 +160,9 @@ export function useModelSelectionServiceView(
     };
     const subscription = normalizedService.onDidChange((candidate) => {
       if (generation !== generationRef.current) return;
+      // 跨 workspace 事件不属于本消费者；在比较 revision 之前按身份过滤，
+      // 否则别处的 revision 会压住本 workspace 的读取结果。
+      if (!isModelSelectionViewForWorkspace(candidate, eventWorkspaceKey)) return;
       if (stableInput === undefined) commit(candidate);
       else {
         // 公共事件没有某个调用者的原意图；只能用它触发当前输入重读，不能直接接管结果。
@@ -166,7 +176,15 @@ export function useModelSelectionServiceView(
       cancelRetry();
       subscription.dispose();
     };
-  }, [enabled, normalizedService, reloadVersion, unavailableReason, inputKey, stableInput]);
+  }, [
+    enabled,
+    normalizedService,
+    reloadVersion,
+    unavailableReason,
+    inputKey,
+    stableInput,
+    eventWorkspaceKey,
+  ]);
 
   return { state: visibleState, reload: useCallback(() => reload(), []) };
 }
@@ -187,10 +205,15 @@ export function useModelSelectionView(
     remoteTarget,
   );
   const remoteWaiting = resolution.connectionKind === "remote-waiting";
+  // 与 Host 侧身份口径一致：identity 优先，回退路径。
+  const eventWorkspaceKey = hasTarget
+    ? workspaceIdentity?.trim() || workspacePath || undefined
+    : undefined;
   return useModelSelectionServiceView(
     resolution.services.modelSelectionService,
     hasTarget && !remoteWaiting,
     hasTarget ? "remote-waiting" : "missing-target",
     input,
+    eventWorkspaceKey,
   );
 }

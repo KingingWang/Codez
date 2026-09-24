@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { codexConfigResponseSchema, type CodexModel, type CodexRequest } from "@codez/shared";
 import {
+  isModelSelectionViewForWorkspace,
+  modelSelectionViewWorkspaceKey,
+  type ModelSelectionView,
+} from "@codez/provider";
+import {
   buildCodexHostModelCatalog,
   createCodexModelSelectionService,
   resolveCodexEffectiveModelSelection,
@@ -365,5 +370,172 @@ test("codex 视图：selection 为 null 的读取携带 selection-missing 口径
   const view = await service.getView({ selection: null, workspace: WORKSPACE });
   assert.equal(view.effectiveSelection, undefined);
   assert.equal(view.selectionIssue, undefined);
+  service.dispose();
+});
+
+function createPerWorkspaceSender(backends: Map<string, FakeCodexBackend>) {
+  const send = async (
+    params: CodexModelSelectionWorkspaceTarget & { request: CodexRequest },
+  ): Promise<unknown> => {
+    const backend = backends.get(params.workspacePath);
+    assert.ok(backend, `未登记的 workspace: ${params.workspacePath}`);
+    if (params.request.method === "config/read") {
+      return { config: backend.config, origins: {}, layers: null };
+    }
+    return backend.pages[0];
+  };
+  return { send };
+}
+
+test("codex 视图：变更事件携带来源 workspace；跨 workspace 事件不推进彼此 revision", async () => {
+  const backends = new Map<string, FakeCodexBackend>([
+    [
+      "/repo/a",
+      {
+        config: {},
+        pages: [{ data: [nativeModel("model-a", { isDefault: true })], nextCursor: null }],
+      },
+    ],
+    [
+      "/repo/b",
+      {
+        config: {},
+        pages: [{ data: [nativeModel("model-b", { isDefault: true })], nextCursor: null }],
+      },
+    ],
+  ]);
+  const { send } = createPerWorkspaceSender(backends);
+  let now = 1_000;
+  const service = createCodexModelSelectionService({ send, now: () => now });
+  const events: ModelSelectionView[] = [];
+  service.onDidChange((view) => events.push(view));
+
+  const aFirst = await service.getView({
+    selection: null,
+    workspace: { workspacePath: "/repo/a" },
+  });
+  const bFirst = await service.getView({
+    selection: null,
+    workspace: { workspacePath: "/repo/b" },
+  });
+  assert.equal(aFirst.revision, 1);
+  assert.equal(bFirst.revision, 1);
+  assert.equal(aFirst.workspace?.workspacePath, "/repo/a");
+
+  // B 的目录变化：事件携带 B 的 workspace 身份，A 的读取与 revision 不受影响。
+  backends.get("/repo/b")!.config = { model: "model-b", model_reasoning_effort: "high" };
+  now += 10_000;
+  const bSecond = await service.getView({
+    selection: null,
+    workspace: { workspacePath: "/repo/b" },
+  });
+  assert.equal(bSecond.revision, 2);
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.workspace?.workspacePath, "/repo/b");
+
+  const aAgain = await service.getView({
+    selection: null,
+    workspace: { workspacePath: "/repo/a" },
+  });
+  assert.equal(aAgain.revision, 1, "B 的变化不能推进 A 的 revision");
+  assert.equal(aAgain.preferredSelection?.modelId, "model-a");
+  assert.equal(events.length, 1, "A 的缓存命中读取不产生事件");
+  service.dispose();
+});
+
+test("workspace 身份过滤：legacy 全局事件总是接受；跨 workspace 事件在比较 revision 前被拦截", () => {
+  const view = {
+    revision: 2,
+    providers: [],
+    workspace: { workspacePath: "/repo/b" },
+  } satisfies ModelSelectionView;
+  assert.equal(modelSelectionViewWorkspaceKey(view), "/repo/b");
+  assert.equal(isModelSelectionViewForWorkspace(view, "/repo/b"), true);
+  assert.equal(isModelSelectionViewForWorkspace(view, "/repo/a"), false);
+  // 消费者没有 workspace 上下文时不接管别处事实。
+  assert.equal(isModelSelectionViewForWorkspace(view, undefined), false);
+
+  const identityView = {
+    revision: 1,
+    providers: [],
+    workspace: { workspacePath: "/repo/b", workspaceIdentity: "ssh://host/repo/b" },
+  } satisfies ModelSelectionView;
+  assert.equal(modelSelectionViewWorkspaceKey(identityView), "ssh://host/repo/b");
+  assert.equal(isModelSelectionViewForWorkspace(identityView, "ssh://host/repo/b"), true);
+  assert.equal(isModelSelectionViewForWorkspace(identityView, "/repo/b"), false);
+
+  // legacy Registry 事件是 Host 全局事实：不携带 workspace，任何消费者都接受。
+  const legacyView = { revision: 7, providers: [] } satisfies ModelSelectionView;
+  assert.equal(modelSelectionViewWorkspaceKey(legacyView), undefined);
+  assert.equal(isModelSelectionViewForWorkspace(legacyView, "/repo/a"), true);
+  assert.equal(isModelSelectionViewForWorkspace(legacyView, undefined), true);
+});
+
+/** 可在途挂起的 sender：open 后所有当前与后续请求立即按当前后端状态响应。 */
+function createDeferredSender(backend: FakeCodexBackend) {
+  const calls: Array<{ target: CodexModelSelectionWorkspaceTarget; request: CodexRequest }> = [];
+  const pending: Array<() => void> = [];
+  let open = false;
+  const respond = (params: { request: CodexRequest }): unknown => {
+    if (params.request.method === "config/read") {
+      return { config: backend.config, origins: {}, layers: null };
+    }
+    return backend.pages[0];
+  };
+  const send = (
+    params: CodexModelSelectionWorkspaceTarget & { request: CodexRequest },
+  ): Promise<unknown> => {
+    calls.push({ target: params, request: params.request });
+    if (open) return Promise.resolve(respond(params));
+    return new Promise((resolve) => pending.push(() => resolve(respond(params))));
+  };
+  return {
+    send,
+    calls,
+    open(): void {
+      open = true;
+      for (const release of pending.splice(0)) release();
+    },
+  };
+}
+
+test("codex 视图：并发刷新合并为一次在途读取，配置变化后 revision 单调递增不回归", async () => {
+  const backend: FakeCodexBackend = {
+    config: {},
+    pages: [{ data: [nativeModel("gpt-5-codex", { isDefault: true })], nextCursor: null }],
+  };
+  const sender = createDeferredSender(backend);
+  let now = 1_000;
+  const service = createCodexModelSelectionService({ send: sender.send, now: () => now });
+  const configReads = () =>
+    sender.calls.filter((call) => call.request.method === "config/read").length;
+
+  // 两个并发读取共享同一在途 RPC，而不是各自发起。
+  const firstPending = service.getView({ selection: null, workspace: WORKSPACE });
+  const secondPending = service.getView({ selection: null, workspace: WORKSPACE });
+  await Promise.resolve();
+  assert.equal(configReads(), 1, "并发读取必须合并为一次在途读取");
+  sender.open();
+  const [first, second] = await Promise.all([firstPending, secondPending]);
+  assert.equal(first.revision, 1);
+  assert.equal(second.revision, 1);
+
+  // 缓存过期 + 配置已变：新一轮并发读取同样合并，revision 推进到新配置。
+  now += 10_000;
+  backend.config = { model: "gpt-5-codex", model_reasoning_effort: "high" };
+  const [third, fourth] = await Promise.all([
+    service.getView({ selection: null, workspace: WORKSPACE }),
+    service.getView({ selection: null, workspace: WORKSPACE }),
+  ]);
+  assert.equal(configReads(), 2, "过期后的并发刷新仍只发一次 RPC");
+  assert.equal(third.revision, 2);
+  assert.equal(fourth.revision, 2);
+  assert.equal(third.preferredSelection?.modelId, "gpt-5-codex");
+
+  // 不存在"旧响应后返回又写缓存"的窗口：过期重读仍是新配置，revision 不回归。
+  now += 10_000;
+  const fifth = await service.getView({ selection: null, workspace: WORKSPACE });
+  assert.equal(fifth.revision, 2);
+  assert.equal(fifth.preferredSelection?.modelId, "gpt-5-codex");
   service.dispose();
 });
