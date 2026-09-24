@@ -16,7 +16,7 @@ import {
   type UpdateStatePayload,
 } from "@codez/shared";
 import { app, BrowserWindow, ipcMain, Menu } from "electron";
-import { isCodexDesktop } from "./desktopProductRuntime.js";
+import { isCodexDesktop, resolveCodexGitHubUpdateFeedOptions } from "./desktopProductRuntime.js";
 import pkg, { CancellationToken } from "electron-updater";
 import semver from "semver";
 import { logger } from "./logger.js";
@@ -756,13 +756,11 @@ async function syncAutoUpdateCheckChannelFromSettings(
 function applyCodexGitHubUpdateProvider(): void {
   // codex 走 electron-updater 内置 GitHub provider：feed 指向 fork 的 KingingWang/Codez。
   // 显式 setFeedURL 而非依赖烘焙的 app-update.yml：dev 更新验证（forceDevUpdateConfig）
-  // 没有烘焙配置也能跑通，且运行时意图与打包元数据解耦。channel 仍由 app-update.yml
-  // 烘焙的 per-arch 值（x64-latest / arm64-latest）决定，这里不覆盖。
-  autoUpdater.setFeedURL({
-    provider: "github",
-    owner: "KingingWang",
-    repo: "Codez",
-  });
+  // 没有烘焙配置也能跑通，且运行时意图与打包元数据解耦。
+  // 修复依据：setFeedURL 会立即安装 provider，GitHub provider 的 channel 只取自本
+  // options（或 autoUpdater.channel），不再回读 app-update.yml 的烘焙值；缺省会静默
+  // 回退 "latest"，请求 latest-mac.yml 命中 404（release 只发布 per-arch yml）。
+  autoUpdater.setFeedURL(resolveCodexGitHubUpdateFeedOptions(process.arch));
   // 只有被标记 Latest 的正式发布才提供更新；feature 分支发布的 prerelease 永不参与。
   autoUpdater.allowPrerelease = false;
   logger.info("[auto-update] codex github provider applied repo=KingingWang/Codez");
@@ -1551,8 +1549,8 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
     }
 
     const checkId = beginAutoUpdateCheck();
-    // codex 的更新 channel 由 app-update.yml 烘焙的 per-arch 值唯一决定，
-    // 不接入 receivePreviewUpdates 的 stable/preview 切换。
+    // codex 的更新 channel 由 feed options 的 per-arch 值唯一决定
+    // （见 applyCodexGitHubUpdateProvider），不接入 receivePreviewUpdates 的 stable/preview 切换。
     const checkForUpdatesPromise =
       !isCodexDesktop && options.settingService
         ? (async () => {

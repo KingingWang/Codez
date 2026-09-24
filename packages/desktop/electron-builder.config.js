@@ -844,8 +844,10 @@ export default {
         releaseType: "draft",
         // 同一 release 同时承载 6 个构建目标的 updater 元数据；按本次构建 arch 区分
         // channel（x64-latest / arm64-latest），避免两架构的 latest*.yml 互相覆盖。
-        // 该 channel 会烘焙进 app-update.yml，运行时 electron-updater 再按平台追加
-        // -mac / -linux[-arm64] 后缀，恰好命中 app-builder-lib 生成的 per-arch yml 文件名。
+        // 该 channel 决定 app-builder-lib 生成的 per-arch yml 文件名（并烘焙进
+        // app-update.yml）；运行时的 channel 由 autoUpdater.ts 经 setFeedURL 显式传入
+        // （setFeedURL 后 electron-updater 不回读烘焙值），再按平台追加
+        // -mac / -linux[-arm64] 后缀，恰好命中这里生成的文件名。
         channel: `${targetPlatform.arch}-latest`,
       }
     : {
