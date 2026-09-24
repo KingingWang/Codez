@@ -1476,15 +1476,25 @@ export function createBotsService(
   ): Promise<ModelSelectionView | null> {
     const service = await resolveModelSelectionServiceForContext(context).catch(() => null);
     if (!service) return null;
-    return service.getView
-      .call(service, selection ? { selection } : undefined)
-      .catch((error: unknown) => {
-        botsLogger.warn(
-          undefined,
-          `read model selection view for bot model display failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
-        return null;
-      });
+    return (
+      service.getView
+        // workspace 必须贯穿：Codex 原生 Host 的模型事实按 workspace 解析；
+        // legacy Registry 忽略该字段。selection 缺省传 null，与 UI 调用口径一致。
+        .call(service, {
+          selection: selection ?? null,
+          workspace: {
+            workspacePath: context.workspacePath,
+            ...(context.workspaceIdentity ? { workspaceIdentity: context.workspaceIdentity } : {}),
+          },
+        })
+        .catch((error: unknown) => {
+          botsLogger.warn(
+            undefined,
+            `read model selection view for bot model display failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          return null;
+        })
+    );
   }
 
   async function listModelSelectionProviderOptions(
