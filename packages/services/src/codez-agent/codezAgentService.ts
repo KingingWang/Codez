@@ -1486,8 +1486,16 @@ export function createCodezAgentService(
           {
             workspace: buildWorkspaceRef(params.workspace),
             preferences: {
-              askUserQuestionAutoResolutionEnabled:
-                params.preferences.askUserQuestionAutoResolutionEnabled,
+              // Codex bridge 对该标志 fail-closed（"Codex questions require explicit
+              // user answers"），而远端 Bot/手机链路把 preferences 同步失败当成整个
+              // runtime 初始化失败（botRemoteWorkspaceBridge 会 await 它）。codex
+              // 模式下该偏好本就无效：免交互由 yolo 的 approvalPolicy=never 表达，
+              // 不存在可自动应答的 AskUserQuestion 面。在发送边界归一为 false，
+              // 保持 bridge 的严格语义，同时不再打挂远端 attachment 初始化
+              // （2026-09-24 实测：远程 workspace 的 Bot 消息全部因此失败）。
+              askUserQuestionAutoResolutionEnabled: usesDefaultCodexBridge
+                ? false
+                : params.preferences.askUserQuestionAutoResolutionEnabled,
             },
           },
           codezWorkspaceUpdateInteractionPreferencesResultSchema,
