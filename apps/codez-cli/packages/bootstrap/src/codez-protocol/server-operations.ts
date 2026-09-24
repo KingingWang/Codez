@@ -2373,7 +2373,7 @@ async function runPromptTurnInBackground(
     queryId?: QueryId;
     content: string;
     toolDenylist?: readonly string[];
-    botDeliveryTarget?: ZCodeAutomationBotDeliveryTarget;
+    botDeliveryTarget?: CodezAutomationBotDeliveryTarget;
   } & TurnBackgroundAttribution,
 ): Promise<void> {
   const startedAt = Date.now();

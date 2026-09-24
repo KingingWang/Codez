@@ -26,7 +26,7 @@ interface StartPromptTurnParamsBase {
   /** sendQueuedNow 已持有 Core promotion lease，要求这次 admission 只能占用空闲位。 */
   requireIdle?: boolean;
   /** Bot 入站 turn 的稳定回推地址；仅在本 turn 内暴露给 CronCreate。 */
-  botDeliveryTarget?: ZCodeAutomationBotDeliveryTarget;
+  botDeliveryTarget?: CodezAutomationBotDeliveryTarget;
 }
 
 type StartPromptTurnParams = StartPromptTurnParamsBase & TurnBackgroundAttribution;

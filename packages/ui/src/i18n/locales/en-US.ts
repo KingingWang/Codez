@@ -549,7 +549,7 @@ const enUS: Record<string, string> = {
   "confirmDialog.projectRemoveDescription":
     "Project “{projectName}” will be removed from the sidebar, but files on disk will remain untouched.",
   "bots.title": "Bots",
-  "bots.description": "Connect external chats and webhooks to ZCode bots.",
+  "bots.description": "Connect external chats and webhooks to Codez bots.",
   "bots.listTitle": "Bots",
   "bots.addBot": "New bot",
   "bots.addBinding": "Add binding",
@@ -603,9 +603,9 @@ const enUS: Record<string, string> = {
   "bots.setup.guide.weixin.create.1":
     "Start Weixin QR login, scan the QR code with Weixin, then confirm on your phone.",
   "bots.setup.guide.weixin.create.2":
-    "ZCode saves the bot_token returned by iLink automatically; after scanning, send any message to the bot in Weixin to activate the chat.",
+    "Codez saves the bot_token returned by iLink automatically; after scanning, send any message to the bot in Weixin to activate the chat.",
   "bots.setup.guide.weixin.create.3":
-    "ZCode uses a built-in iLink client: `/ilink/bot/getupdates` for long polling and `/ilink/bot/sendmessage` for replies.",
+    "Codez uses a built-in iLink client: `/ilink/bot/getupdates` for long polling and `/ilink/bot/sendmessage` for replies.",
   "bots.setup.guide.weixin.bind.1": "Open the Weixin direct chat you want to bind.",
   "bots.setup.guide.weixin.bind.2": "Send {command}.",
   "bots.setup.guide.weixin.bind.3":
@@ -622,13 +622,13 @@ const enUS: Record<string, string> = {
   "bots.setup.guide.feishu.bind.3":
     "Return here after the bind succeeds to finish the workspace and CLI defaults.",
   "bots.setup.guide.webhook.create.1":
-    "Webhook mode does not require a native bot in the third-party product; your integration only needs to POST messages to ZCode.",
+    "Webhook mode does not require a native bot in the third-party product; your integration only needs to POST messages to Codez.",
   "bots.setup.guide.webhook.create.2":
     "Set a shared secret first; add an outbound webhook URL as well if you want asynchronous replies pushed back.",
   "bots.setup.guide.webhook.create.3":
     "Keep one stable userId per external user so binding and future context resolve to the same person.",
   "bots.setup.guide.webhook.bind.1":
-    "POST a private-message callback to ZCode's `/api/bots/webhook` endpoint.",
+    "POST a private-message callback to Codez's `/api/bots/webhook` endpoint.",
   "bots.setup.guide.webhook.bind.2":
     'The payload should at least include this botId, a stable userId, `chatType: "private"`, and set text to {command}.',
   "bots.setup.guide.webhook.bind.3":
@@ -767,7 +767,7 @@ const enUS: Record<string, string> = {
   "bots.runtime.telegramLongPollingStarting": "Telegram long polling is starting.",
   "bots.runtime.telegramLongPollingStopped": "Telegram long polling is stopped.",
   "bots.runtime.telegramLongPollingHandledElsewhere":
-    "Telegram long polling is handled by another ZCode window.",
+    "Telegram long polling is handled by another Codez window.",
   "bots.runtime.telegramTokenMissing": "Telegram bot credential is missing.",
   "bots.runtime.telegramPollingFailedRetrying": "Telegram polling failed; retrying.",
   "bots.runtime.feishuWebSocketStarting": "Feishu WebSocket is starting.",
@@ -1734,7 +1734,7 @@ const enUS: Record<string, string> = {
     "We are establishing the {method} connection. You can follow the live setup progress here.",
   "webRemoteControl.trigger": "Mobile remote control",
   "webRemoteControl.title": "Mobile remote control",
-  "webRemoteControl.description": "Control ZCode workspaces through chat bots.",
+  "webRemoteControl.description": "Control Codez workspaces through chat bots.",
   "webRemoteControl.botChannel.title": "Use a bot channel",
   "webRemoteControl.botChannel.description": "Connect a chat bot for longer-running mobile access.",
   "webRemoteControl.botChannel.weixin.title": "Weixin",

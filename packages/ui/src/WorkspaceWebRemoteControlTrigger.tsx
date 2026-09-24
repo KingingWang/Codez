@@ -3,7 +3,7 @@ import { Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { WebRemoteControlDialog } from "@/WebRemoteControlDialog.js";
 
@@ -18,7 +18,7 @@ export function WorkspaceWebRemoteControlTrigger({
   compact?: boolean;
   className?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [webRemoteControlOpen, setWebRemoteControlOpen] = useState(false);
   return (
     <>

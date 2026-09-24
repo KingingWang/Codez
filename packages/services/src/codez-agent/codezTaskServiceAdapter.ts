@@ -382,7 +382,7 @@ export function createCodezTaskServiceAdapter(
       content: string;
       attachments?: CodezPromptAttachment[];
       toolDenylist?: string[];
-      botDeliveryTarget?: ZCodeAutomationBotDeliveryTarget;
+      botDeliveryTarget?: CodezAutomationBotDeliveryTarget;
       clientId?: string;
       clientMode?: CodezTaskClientMode;
       logReason?: string;

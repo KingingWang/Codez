@@ -243,7 +243,7 @@ function buildRunningWorkflowRuns(
     if (run.status !== "pending" && run.status !== "running") continue;
     const work = workflowWorkByWorkId.get(run.runId);
     if (work) joinedWorkIds.add(run.runId);
-    // 计数与聊天紧凑卡同源（唯一实现在 @zcode/shared 的 workflowRunStepCounts：表内 + 表外）。
+    // 计数与聊天紧凑卡同源（唯一实现在 @codez/shared 的 workflowRunStepCounts：表内 + 表外）。
     const steps = workflowRunStepCounts(run);
     rows.push({
       runId: run.runId,

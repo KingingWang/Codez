@@ -108,7 +108,7 @@ async function createSkillDiscovery(options: ListCodezSkillsOptions): Promise<
     workingDirectory,
   });
 
-  // 内置技能包与插件技能根并列注入：`zcode skills list`、引用目录与 runtime 看到同一份发现结果。
+  // 内置技能包与插件技能根并列注入：`codez skills list`、引用目录与 runtime 看到同一份发现结果。
   const bundledSkillRoots = await resolveBundledSkillRoots({
     cliStorageRoot: getCliStorageRoot(resolvePath(configResult.config.storage.dir)),
     logger: options.logger,

@@ -1,6 +1,6 @@
-import type { ZCodeConfigOption, ZCodeProvider, ZCodeTaskMode } from "@zcode/shared";
+import type { CodezConfigOption, CodezProvider, CodezTaskMode } from "@codez/shared";
 
-const CANONICAL_SESSION_MODES = new Set<ZCodeTaskMode>([
+const CANONICAL_SESSION_MODES = new Set<CodezTaskMode>([
   "yolo",
   "plan",
   "edit",
@@ -18,21 +18,21 @@ function readTrimmedString(value: unknown): string | undefined {
   return normalized.length > 0 ? normalized : undefined;
 }
 
-function getModeConfigOption(options: readonly ZCodeConfigOption[]): ZCodeConfigOption | undefined {
+function getModeConfigOption(options: readonly CodezConfigOption[]): CodezConfigOption | undefined {
   return options.find((option) => option.category === "mode" && option.type === "select");
 }
 
 function normalizePersistedSessionMode(
   modeId: string | null | undefined,
-  _provider?: ZCodeProvider,
-): ZCodeTaskMode | undefined {
+  _provider?: CodezProvider,
+): CodezTaskMode | undefined {
   const trimmedModeId = readTrimmedString(modeId);
   if (!trimmedModeId) {
     return undefined;
   }
 
-  if (CANONICAL_SESSION_MODES.has(trimmedModeId as ZCodeTaskMode)) {
-    return trimmedModeId as ZCodeTaskMode;
+  if (CANONICAL_SESSION_MODES.has(trimmedModeId as CodezTaskMode)) {
+    return trimmedModeId as CodezTaskMode;
   }
 
   switch (trimmedModeId) {
@@ -50,9 +50,9 @@ function normalizePersistedSessionMode(
 }
 
 export function resolveProviderModeIdFromConfigOptions(params: {
-  configOptions: readonly ZCodeConfigOption[];
+  configOptions: readonly CodezConfigOption[];
   modeId: string | null | undefined;
-  provider?: ZCodeProvider;
+  provider?: CodezProvider;
 }): string | undefined {
   const requestedMode = readTrimmedString(params.modeId);
   if (!requestedMode) {
@@ -66,18 +66,14 @@ export function resolveProviderModeIdFromConfigOptions(params: {
     return exactMatch.value;
   }
 
-  const requestedPersistedMode = normalizePersistedSessionMode(
-    requestedMode,
-    params.provider,
-  );
+  const requestedPersistedMode = normalizePersistedSessionMode(requestedMode, params.provider);
   if (!requestedPersistedMode) {
     return undefined;
   }
 
   const semanticMatch = candidates.find(
     (candidate) =>
-      normalizePersistedSessionMode(candidate.value, params.provider) ===
-      requestedPersistedMode,
+      normalizePersistedSessionMode(candidate.value, params.provider) === requestedPersistedMode,
   );
 
   return semanticMatch?.value;

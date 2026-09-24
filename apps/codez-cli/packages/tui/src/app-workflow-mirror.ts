@@ -102,7 +102,7 @@ export function seedWorkflowMirror(
  *
  * 动态工作流没有静态总数，所以分母是已排程节点数，绝不冒充全程百分比。
  *
- * 数法只有一处——@zcode/shared 的 `workflowRunStepCounts`（run 卡、时间线摘要与这里共用）。
+ * 数法只有一处——@codez/shared 的 `workflowRunStepCounts`（run 卡、时间线摘要与这里共用）。
  * 这里此前自己数 `nodes`，于是一条撞过节点界的 run 在三个读面上显示三个数字，而且三个都比
  * 真实步数小：触界是**拒新**，被拒的实例根本不在 `nodes` 里，只在 usage 的两个计数器上。
  * 本函数只保留 TUI 的字段名（卡片与 i18n 说的是 nodesSettled / nodesTotal）。

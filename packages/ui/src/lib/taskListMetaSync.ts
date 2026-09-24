@@ -34,7 +34,7 @@ const ABSENT_MEMBERSHIP: TaskListMembershipState = {
   archived: true,
 };
 
-function sortTasksByUpdatedAt(tasks: readonly ZCodeTaskMeta[]): ZCodeTaskMeta[] {
+function sortTasksByUpdatedAt(tasks: readonly CodezTaskMeta[]): CodezTaskMeta[] {
   return [...tasks].sort((left, right) => {
     if (right.updatedAt !== left.updatedAt) {
       return right.updatedAt - left.updatedAt;
@@ -49,29 +49,29 @@ function sortTasksByUpdatedAt(tasks: readonly ZCodeTaskMeta[]): ZCodeTaskMeta[] 
 export function syncTaskMetaToTaskCaches(params: {
   workspacePath: string;
   workspaceIdentity?: string;
-  task: ZCodeTaskMeta;
+  task: CodezTaskMeta;
   membership?: TaskListMembershipState;
   forceInsertMembership?: boolean;
   ensureInWorkspaceTaskCache?: boolean;
   preserveListMembership?: boolean;
   applyQueryCacheMutation?: boolean;
 }): void {
-  const store = useZCodeSessionStore.getState();
+  const store = useCodezSessionStore.getState();
   const workspaceState = store.getWorkspaceState(params.workspacePath, params.workspaceIdentity);
   const previousTask = getTaskMeta(workspaceState, params.task.taskId);
-  const queryTask = useTaskQueryCacheStore.getState().taskMetaByEntityKey[
-    buildTaskEntityKey({
-      taskId: params.task.taskId,
-      workspacePath: params.workspacePath,
-      workspaceIdentity: params.workspaceIdentity ?? params.task.workspaceIdentity,
-    })
-  ];
+  const queryTask =
+    useTaskQueryCacheStore.getState().taskMetaByEntityKey[
+      buildTaskEntityKey({
+        taskId: params.task.taskId,
+        workspacePath: params.workspacePath,
+        workspaceIdentity: params.workspaceIdentity ?? params.task.workspaceIdentity,
+      })
+    ];
   // Bugfix: session/readSession 快照的 updatedAt 可能落后于首发 prompt 写入的前端乐观时间。
   // 同步快照时必须先和本地已有 task meta 单调合并，否则新建任务会在 sqlite 首屏刷新后跳回下面。
   // Bugfix: 重启恢复时 workspace store 可能还没有当前 task，但 query cache 已经有 sqlite indexed meta。
   // raw session snapshot 不带 titleOverridden，必须一起合并，避免手动重命名标题在 renderer 被还原。
-  const task =
-    mergeTaskMetaCandidates(params.task, previousTask, queryTask) ?? params.task;
+  const task = mergeTaskMetaCandidates(params.task, previousTask, queryTask) ?? params.task;
   const cachedTasks = workspaceState.taskListCache ?? [];
   const hasCachedTask = cachedTasks.some((cachedTask) => cachedTask.taskId === task.taskId);
   const shouldExistInWorkspaceTaskCache =
@@ -115,9 +115,7 @@ export function syncTaskMetaToTaskCaches(params: {
       previousTask: previousTask ?? task,
       nextTask: task,
       previousState:
-        previousTask && !params.forceInsertMembership
-          ? params.membership
-          : ABSENT_MEMBERSHIP,
+        previousTask && !params.forceInsertMembership ? params.membership : ABSENT_MEMBERSHIP,
       nextState: params.membership,
     });
   }
@@ -126,7 +124,7 @@ export function syncTaskMetaToTaskCaches(params: {
 export function insertTaskIntoTaskCaches(params: {
   workspacePath: string;
   workspaceIdentity?: string;
-  task: ZCodeTaskMeta;
+  task: CodezTaskMeta;
   membership: TaskListMembershipState;
 }): void {
   // Bugfix: 新建/fork/远控 shared-host 创建 task 都应走同一条“无 -> 有”成员变更。

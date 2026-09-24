@@ -950,11 +950,11 @@ export function markTaskQueryCacheScopesStale(
   useTaskQueryCacheStore.getState().markWorkspaceKeysStale(workspaceKeys);
 }
 
-export function upsertTaskQueryCacheTaskMeta(task: ZCodeTaskMeta): void {
+export function upsertTaskQueryCacheTaskMeta(task: CodezTaskMeta): void {
   useTaskQueryCacheStore.getState().upsertTaskMeta(task);
 }
 
-export function updateTaskQueryCacheTaskMetaPreservingMembership(task: ZCodeTaskMeta): void {
+export function updateTaskQueryCacheTaskMetaPreservingMembership(task: CodezTaskMeta): void {
   useTaskQueryCacheStore.getState().updateTaskMetaPreservingMembership(task);
 }
 

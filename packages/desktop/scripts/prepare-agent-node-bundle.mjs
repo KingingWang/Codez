@@ -114,10 +114,10 @@ const officialPluginPackages = [
   },
 ];
 // 随 CLI 内置的技能包（不是插件）：bootstrap 的 resolveBundledSkillRoots 沿官方插件同款候选目录
-// 在 zcode.cjs 旁找 packages/bundled-skills 并原地读取。漏 stage 它，桌面包的 /workflow 会展开成
+// 在 codez.cjs 旁找 packages/bundled-skills 并原地读取。漏 stage 它，桌面包的 /workflow 会展开成
 // 「先加载 dynamic-workflows 技能」而技能文件不存在，因此必须随 Agent 一起打包。
 const bundledSkillPack = {
-  relativePath: "apps/zcode-cli/packages/bundled-skills",
+  relativePath: "apps/codez-cli/packages/bundled-skills",
   requiredPaths: [
     "skills/dynamic-workflows/SKILL.md",
     "skills/dynamic-workflows/patterns.md",

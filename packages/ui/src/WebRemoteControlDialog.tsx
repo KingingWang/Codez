@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import type { BotProvider } from "@zcode/shared";
+import type { BotProvider } from "@codez/shared";
 import { Bot as BotIcon, MonitorSmartphone, XIcon } from "lucide-react";
 import { BotsDialog } from "@/BotsDialog.js";
 import { ProviderIcon } from "@/BotsDialog/shared.js";
@@ -11,14 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { getBotProviderRegionTagLabelId } from "@/botsUi.js";
 
-type RemoteControlBotProvider = Extract<
-  BotProvider,
-  "weixin" | "feishu" | "lark" | "telegram"
->;
+type RemoteControlBotProvider = Extract<BotProvider, "weixin" | "feishu" | "lark" | "telegram">;
 
 const REMOTE_CONTROL_BOT_ENTRIES: Array<{
   provider: RemoteControlBotProvider;
@@ -40,10 +37,9 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
   workspacePath: string;
   workspaceIdentity?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [botsDialogOpen, setBotsDialogOpen] = useState(false);
-  const [botEntryProvider, setBotEntryProvider] =
-    useState<RemoteControlBotProvider | null>(null);
+  const [botEntryProvider, setBotEntryProvider] = useState<RemoteControlBotProvider | null>(null);
 
   const handleOpenBotEntry = (provider: RemoteControlBotProvider) => {
     setBotEntryProvider(provider);
@@ -92,9 +88,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                   <MonitorSmartphone className="size-5" />
                 </div>
                 <div className="space-y-1">
-                  <DialogTitle>
-                    {intl.formatMessage({ id: "webRemoteControl.title" })}
-                  </DialogTitle>
+                  <DialogTitle>{intl.formatMessage({ id: "webRemoteControl.title" })}</DialogTitle>
                   <DialogDescription>
                     {intl.formatMessage({ id: "webRemoteControl.description" })}
                   </DialogDescription>
@@ -121,9 +115,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                 </div>
                 <div className="grid min-h-0 flex-1 gap-3">
                   {REMOTE_CONTROL_BOT_ENTRIES.map((entry) => {
-                    const regionTagLabelId = getBotProviderRegionTagLabelId(
-                      entry.provider,
-                    );
+                    const regionTagLabelId = getBotProviderRegionTagLabelId(entry.provider);
 
                     return (
                       <button
@@ -134,10 +126,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                       >
                         {/* Bugfix: 远控 Bot Channel 入口原来用通用 lucide 图标，用户无法一眼区分微信、飞书和 Telegram。
                             这里直接复用 BotsDialog 的渠道 logo，不再额外包裹容器，保证品牌图标本身作为视觉识别。 */}
-                        <ProviderIcon
-                          provider={entry.provider}
-                          className="size-12 shrink-0"
-                        />
+                        <ProviderIcon provider={entry.provider} className="size-12 shrink-0" />
                         <span className="min-w-0 flex-1 space-y-1">
                           <span className="flex min-w-0 items-center gap-1.5 text-ui-base font-medium text-foreground">
                             <span className="min-w-0 truncate">
