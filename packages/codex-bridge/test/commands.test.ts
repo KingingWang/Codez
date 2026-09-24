@@ -65,6 +65,104 @@ test("create rejects another workspace before any native mutation", async (t) =>
   assert.deepEqual(h.rpc.calls, []);
 });
 test("native input intent is never silently lost", verifyNativeInputIntent);
+test("replayable bot sendText payload (heldQueueDisposition + selection) is admitted", async (t) => {
+  // Host codezTaskServiceAdapter 的 replayable sendText 载荷形状：
+  // { text, heldQueueDisposition: "keepQueueAndSend", modelSelection }，
+  // 不带 mode/plan/attachments。回归：bridge 曾以 held queue 为由整体拒绝该载荷，
+  // 导致所有 Bot/Automation/手机消息在 admission 前失败。
+  const h = await setup(t);
+  const ack = await h.execute(
+    h.command("sendText", {
+      text: "hi",
+      heldQueueDisposition: "keepQueueAndSend",
+      modelSelection: {
+        providerId: "openai",
+        modelId: "fixture-model",
+        options: { reasoningLevel: "medium" },
+      },
+    }),
+  );
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.params("turn/start"), [
+    {
+      threadId: sessionId,
+      input: textInput("hi"),
+      clientUserMessageId: "sendText",
+      model: "fixture-model",
+      effort: "medium",
+    },
+  ]);
+
+  // running 时同一载荷走默认 guide（turn/steer），settings 不变不得拒绝。
+  const busy = await setup(t, true);
+  const steered = await busy.execute(
+    busy.command("sendText", {
+      text: "继续",
+      heldQueueDisposition: "keepQueueAndSend",
+      modelSelection: {
+        providerId: "openai",
+        modelId: "fixture-model",
+        options: { reasoningLevel: "medium" },
+      },
+    }),
+  );
+  assert.equal(steered.status, "accepted", steered.message);
+  assert.deepEqual(busy.rpc.methods(), ["turn/steer"]);
+});
+test("bot createSession config (provider/model/thought + forced yolo) maps to native thread", async (t) => {
+  // Bot createTask(v4Create) 的载荷形状：config 携带 provider/model/thought，
+  // mode 由 applyDraftConfigOptions 随后经 switchCollaborationMode 强制 yolo。
+  const h = await setup(t);
+  h.rpc.handlers.set("thread/settings/update", () => ({}));
+  h.rpc.handlers.set("thread/start", () => ({
+    thread: { ...h.authority.thread, id: "created", model: null, turns: [] },
+    model: "deepseek-v4-flash",
+    reasoningEffort: "xhigh",
+  }));
+  const ack = await h.execute(
+    h.command(
+      "createSession",
+      {
+        workspaceId,
+        config: { provider: "ollama1", model: "deepseek-v4-flash", thought: "xhigh" },
+      },
+      "create",
+      null,
+    ),
+  );
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.params("thread/start"), [
+    {
+      cwd,
+      historyMode: "paginated",
+      model: "deepseek-v4-flash",
+      modelProvider: "ollama1",
+    },
+  ]);
+  assert.deepEqual(h.rpc.params("thread/settings/update"), [
+    { threadId: "created", effort: "xhigh" },
+  ]);
+
+  const mode = await h.execute(
+    h.command("switchCollaborationMode", { mode: "yolo" }, "yolo", "created"),
+  );
+  assert.equal(mode.status, "accepted", mode.message);
+  const updates = h.rpc.params("thread/settings/update");
+  assert.equal(updates.length, 2);
+  assert.deepEqual(updates[1], {
+    threadId: "created",
+    collaborationMode: {
+      mode: "default",
+      settings: {
+        model: "deepseek-v4-flash",
+        reasoning_effort: "xhigh",
+        developer_instructions: null,
+      },
+    },
+    approvalPolicy: "never",
+    sandboxPolicy: { type: "dangerFullAccess" },
+  });
+});
 test("send startNow/guide/queue decisions use native turn/queue authority", async (t) => {
   for (const [busy, delivery, method, accepted] of sendCases)
     await t.test(`${busy}:${delivery}`, async (t) => {
