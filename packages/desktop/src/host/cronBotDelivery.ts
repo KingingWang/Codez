@@ -1,15 +1,15 @@
-import type { ZCodeAutomationBotDeliveryTarget } from "@zcode/shared";
+import type { CodezAutomationBotDeliveryTarget } from "@codez/shared";
 
 interface CronBotDeliveryRepo {
   getBotDeliveryTarget(
     automationId: string,
     workspaceKey?: string,
-  ): Promise<ZCodeAutomationBotDeliveryTarget | undefined>;
+  ): Promise<CodezAutomationBotDeliveryTarget | undefined>;
 }
 
 interface CronBotDeliveryService {
   watchAutomationRun(params: {
-    target: ZCodeAutomationBotDeliveryTarget;
+    target: CodezAutomationBotDeliveryTarget;
     taskId: string;
     workspacePath: string;
     workspaceIdentity?: string;
@@ -28,18 +28,13 @@ export async function watchCronRunBotDelivery(params: {
   repo: CronBotDeliveryRepo;
   botsService: CronBotDeliveryService;
 }): Promise<boolean> {
-  const target = await params.repo.getBotDeliveryTarget(
-    params.automationId,
-    params.workspaceKey,
-  );
+  const target = await params.repo.getBotDeliveryTarget(params.automationId, params.workspaceKey);
   if (!target) return false;
   await params.botsService.watchAutomationRun({
     target,
     taskId: params.taskId,
     workspacePath: params.workspacePath,
-    ...(params.workspaceIdentity
-      ? { workspaceIdentity: params.workspaceIdentity }
-      : {}),
+    ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
   });
   return true;
 }

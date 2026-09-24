@@ -16,8 +16,8 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
     "@codez/model-option-map": "workspace:*",
+    "@types/node": "^25.5.0",
     "typescript": "^6.0.2"
   }
 }

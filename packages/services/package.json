@@ -17,12 +17,12 @@
     "lint:fix": "oxlint --fix"
   },
   "dependencies": {
-    "@larksuiteoapi/node-sdk": "1.64.0",
+    "@codez/codez-cua": "workspace:*",
     "@codez/provider": "workspace:*",
     "@codez/provider-node": "workspace:*",
     "@codez/rpc": "workspace:*",
     "@codez/shared": "workspace:*",
-    "@codez/codez-cua": "workspace:*",
+    "@larksuiteoapi/node-sdk": "1.64.0",
     "croner": "^10.0.1",
     "ignore": "^5.3.2",
     "node-forge": "^1.4.0",

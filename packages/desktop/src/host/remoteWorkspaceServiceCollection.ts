@@ -328,7 +328,7 @@ export function createRemoteWorkspaceServiceCollection(params: {
       IBotsService,
       createBotsService({
         credentialService: localCredentialService,
-        zcodeTaskService: remoteZCodeTaskService,
+        codezTaskService: remoteCodezTaskService,
         broadcastService: localBroadcastService,
         settingService: localSettingService,
         modelSelectionService: params.connectionServices.modelSelectionService,

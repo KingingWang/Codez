@@ -166,7 +166,7 @@ export interface WorkflowRunCardSummary {
    * 已排程（observed）节点数，**不是**全程总数——动态工作流的节点数由脚本在运行时决定，
    * 静态总数不存在。所以进度读作「已排程的里结算了几个」，绝不冒充完成百分比。
    *
-   * 两个数都出自 `workflowRunStepCounts`（@zcode/shared）：`nodes` 表内 + `usage.nodesUnlisted`
+   * 两个数都出自 `workflowRunStepCounts`（@codez/shared）：`nodes` 表内 + `usage.nodesUnlisted`
    * 表外。撞过 1024 界的 run 在这里仍报真实步数，少的是**每一步的详情**，卡与详情页各有一句
    * 「仅展示 n/m 步的详情」说这件事。
    */

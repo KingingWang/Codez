@@ -131,11 +131,11 @@ overwriting each other. electron-updater appends its platform suffix to the
 baked channel and fetches exactly one metadata file from the release marked
 Latest, then verifies the SHA512 checksums recorded there before installing:
 
-| platform | updater asset set per target |
-| --- | --- |
-| macOS | `Codez-<version>-mac-<arch>[-unsigned].dmg`, `.dmg.blockmap`, `.zip`, `.zip.blockmap`, `<arch>-latest-mac.yml` |
-| Windows | `Codez-<version>-win-<arch>[-unsigned].exe`, `.exe.blockmap`, `<arch>-latest.yml` |
-| Linux | `Codez-<version>-linux-<arch>[-unsigned].AppImage`, `.AppImage.blockmap`, `.deb`, `x64-latest-linux.yml` / `arm64-latest-linux-arm64.yml` |
+| platform | updater asset set per target                                                                                                              |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS    | `Codez-<version>-mac-<arch>[-unsigned].dmg`, `.dmg.blockmap`, `.zip`, `.zip.blockmap`, `<arch>-latest-mac.yml`                            |
+| Windows  | `Codez-<version>-win-<arch>[-unsigned].exe`, `.exe.blockmap`, `<arch>-latest.yml`                                                         |
+| Linux    | `Codez-<version>-linux-<arch>[-unsigned].AppImage`, `.AppImage.blockmap`, `.deb`, `x64-latest-linux.yml` / `arm64-latest-linux-arm64.yml` |
 
 macOS updates require the zip artifact (dmg cannot drive Squirrel.Mac); the dmg
 stays the manual-install option. The deb is installer-only and never

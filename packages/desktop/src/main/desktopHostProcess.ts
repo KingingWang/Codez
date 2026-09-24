@@ -566,7 +566,6 @@ export function spawnHostProcess(
       return;
     }
 
-
     if (result.data.type === HostResponseTypes.BotRemoteWorkspaceReconnectRequest) {
       const request = result.data;
       const handler = dependencies.handleBotRemoteWorkspaceReconnectRequest;
@@ -656,7 +655,7 @@ export function spawnHostProcess(
           type: HostMessageTypes.BotRemoteWorkspaceRuntimePort,
           requestId: request.requestId,
           ok: false,
-          // Bugfix: 远端 Bot 不能在缺少 runtime bridge 时回落到本地 ZCode Agent，
+          // Bugfix: 远端 Bot 不能在缺少 runtime bridge 时回落到本地 Codez Agent，
           // 否则会把 remote workspace 的任务写到本地并触发错误模型。
           error: "未注入 Bot 远端 workspace runtime 处理器。",
         });

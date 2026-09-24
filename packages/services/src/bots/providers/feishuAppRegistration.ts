@@ -66,7 +66,7 @@ const FEISHU_ACCOUNTS_URL = "https://accounts.feishu.cn";
 const LARK_ACCOUNTS_URL = "https://accounts.larksuite.com";
 const FEISHU_APP_REGISTRATION_PATH = "/oauth/v1/app/registration";
 const FEISHU_APP_REGISTRATION_TIMEOUT_MS = 10_000;
-const FEISHU_APP_REGISTRATION_SOURCE = "node-sdk/zcode";
+const FEISHU_APP_REGISTRATION_SOURCE = "node-sdk/codez";
 
 function getAccountsBaseUrl(domain: FeishuAppRegistrationDomain): string {
   return domain === "lark" ? LARK_ACCOUNTS_URL : FEISHU_ACCOUNTS_URL;
@@ -78,7 +78,10 @@ function readString(record: Record<string, unknown> | null | undefined, key: str
 }
 
 function readRegistrationAppName(response: FeishuAppRegistrationPollResponse): string | undefined {
-  const app = typeof response.app === "object" && response.app !== null ? response.app as Record<string, unknown> : null;
+  const app =
+    typeof response.app === "object" && response.app !== null
+      ? (response.app as Record<string, unknown>)
+      : null;
   return (
     response.app_name?.trim() ||
     response.client_name?.trim() ||
@@ -125,7 +128,7 @@ export async function beginFeishuAppRegistration(
     throw new Error("Feishu app registration did not return a device code.");
   }
   const qrUrl = new URL(beginResponse.verification_uri_complete);
-  // SDK registerApp 使用 from=sdk/source=node-sdk[/source]/tp=sdk；这里保留 zcode 来源方便排查。
+  // SDK registerApp 使用 from=sdk/source=node-sdk[/source]/tp=sdk；这里保留 codez 来源方便排查。
   qrUrl.searchParams.set("from", "sdk");
   qrUrl.searchParams.set("source", FEISHU_APP_REGISTRATION_SOURCE);
   qrUrl.searchParams.set("tp", "sdk");

@@ -1,8 +1,8 @@
-import { ServiceChannels } from "@zcode/shared";
+import { ServiceChannels } from "@codez/shared";
 import { createServiceDescriptor } from "../descriptors.js";
 import type {
-  ZCodeConfigOption,
-  ZCodeProvider,
+  CodezConfigOption,
+  CodezProvider,
   BotConfig,
   BotContextState,
   BotInboundMessage,
@@ -12,9 +12,9 @@ import type {
   BotServiceStatus,
   BotWorkspaceRef,
   BotsConfigFile,
-  ZCodeAutomationBotDeliveryTarget,
-} from "@zcode/shared";
-import type { ZCodeAgentAppRuntimePreferences } from "../zcode-agent/zcodeAgent.js";
+  CodezAutomationBotDeliveryTarget,
+} from "@codez/shared";
+import type { CodezAgentAppRuntimePreferences } from "../codez-agent/codezAgent.js";
 
 export interface BotCreateBindCodeParams {
   botId?: string;
@@ -47,11 +47,11 @@ export interface BotListWorkspaceRefsParams {
 export interface BotUserConfigOptionsParams {
   workspacePath: string;
   workspaceIdentity?: string;
-  provider: ZCodeProvider;
+  provider: CodezProvider;
 }
 
 export interface BotAutomationRunWatchParams {
-  target: ZCodeAutomationBotDeliveryTarget;
+  target: CodezAutomationBotDeliveryTarget;
   taskId: string;
   workspacePath: string;
   workspaceIdentity?: string;
@@ -128,11 +128,11 @@ export interface IBotsService {
   /**
    * 将 App 全局交互偏好同步给 Bot 已持有的远端 runtime；不得为此建立新的远端连接。
    */
-  syncAppRuntimePreferences(preferences: ZCodeAgentAppRuntimePreferences): Promise<void>;
+  syncAppRuntimePreferences(preferences: CodezAgentAppRuntimePreferences): Promise<void>;
   getStatus(): Promise<BotServiceStatus>;
   getConfig(): Promise<BotsConfigFile>;
   listWorkspaceRefs(params?: BotListWorkspaceRefsParams): Promise<BotWorkspaceRef[]>;
-  getUserConfigOptions(params: BotUserConfigOptionsParams): Promise<ZCodeConfigOption[]>;
+  getUserConfigOptions(params: BotUserConfigOptionsParams): Promise<CodezConfigOption[]>;
   beginFeishuRegistration(
     params?: BotFeishuRegistrationBeginParams,
   ): Promise<BotFeishuRegistrationBeginResult>;

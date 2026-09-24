@@ -5,7 +5,7 @@
 // 路由——什么情况该来修订而不是重建、不要先停、不要等——因为它决定的是「要不要调这个工具」，
 // 必须在技能加载之前就被读到。
 
-import { DYNAMIC_WORKFLOW_SKILL_NAME } from "@zcode/contracts";
+import { DYNAMIC_WORKFLOW_SKILL_NAME } from "@codez/contracts";
 
 export const AMEND_WORKFLOW_TOOL_DESCRIPTION = [
   "Amend an existing dynamic-workflow run with a revised script or revised settings. Starts a NEW run that supersedes the old one and imports its finished work as a cache, so only what you changed is paid for again. Works on ANY run of this project: completed, errored, stopped — or still running.",

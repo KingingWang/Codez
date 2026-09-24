@@ -9,7 +9,7 @@ import { SAVED_WORKFLOW_MAX_NAME_CHARS, SavedWorkflowScopeSchema } from "./saved
 export const CREATE_WORKFLOW_TOOL_NAME = "CreateWorkflow";
 
 /**
- * 教模型写工作流的内置技能名（apps/zcode-cli/packages/bundled-skills/skills/<name>/SKILL.md）。
+ * 教模型写工作流的内置技能名（apps/codez-cli/packages/bundled-skills/skills/<name>/SKILL.md）。
  * 四个创作工具（Create/Amend/Save/EvalWorkflowSnippet）的 resolveInput 以它为门：会话里没有
  * 加载过这份技能就拒绝提交脚本。
  * 住在 contracts 里是因为 core 的门与 bootstrap 的技能包都读它，而两者不能互相 import。

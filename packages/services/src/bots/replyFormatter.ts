@@ -1,14 +1,11 @@
 /* eslint-disable max-lines -- Bot bot reply formatter 集中维护第三方消息的文本颗粒度、工具摘要和权限摘要，避免 provider 间文案分叉。 */
 import type {
-  ZCodePermissionRequest,
-  ZCodeStreamEvent,
-  ZCodeTaskChangeSummary,
+  CodezPermissionRequest,
+  CodezStreamEvent,
+  CodezTaskChangeSummary,
   Locale,
-} from "@zcode/shared";
-import {
-  getCompactToolCallSummary,
-  getPermissionRequestPreview,
-} from "@zcode/shared";
+} from "@codez/shared";
+import { getCompactToolCallSummary, getPermissionRequestPreview } from "@codez/shared";
 import { normalizeBotMessageLocale } from "./messages.js";
 
 export interface BotReplyToolCallState {
@@ -39,7 +36,7 @@ export type BotAssistantReplyBlock =
     }
   | {
       type: "change-summary";
-      changeSummary: ZCodeTaskChangeSummary;
+      changeSummary: CodezTaskChangeSummary;
     };
 
 const MAX_TOOL_SUMMARY_ITEMS = 10;
@@ -162,7 +159,9 @@ function formatCompactSummaryDetail(
 ): string | undefined {
   const parts: string[] = [];
   if (summary.secondaryText) {
-    parts.push(formatMarkdownInlineCode(truncateMiddleText(normalizeInlineText(summary.secondaryText))));
+    parts.push(
+      formatMarkdownInlineCode(truncateMiddleText(normalizeInlineText(summary.secondaryText))),
+    );
   }
   if (summary.changeStat) {
     const stat = formatBotDiffCount(summary.changeStat);
@@ -185,7 +184,7 @@ function formatBotDiffCount(changeStat: { added: number; removed: number }): str
 }
 
 function formatPermissionRequestHeader(
-  request: Pick<ZCodePermissionRequest, "title" | "description" | "kind" | "raw">,
+  request: Pick<CodezPermissionRequest, "title" | "description" | "kind" | "raw">,
   options?: BotReplyFormatOptions,
 ): string {
   const preview = getPermissionRequestPreview(request);
@@ -193,7 +192,7 @@ function formatPermissionRequestHeader(
 }
 
 function formatPermissionRequestTitle(
-  request: Pick<ZCodePermissionRequest, "title" | "description" | "kind" | "raw">,
+  request: Pick<CodezPermissionRequest, "title" | "description" | "kind" | "raw">,
   preview: ReturnType<typeof getPermissionRequestPreview>,
   options?: BotReplyFormatOptions,
 ): string {
@@ -206,13 +205,16 @@ function formatPermissionRequestTitle(
     titleWithoutEdit && titleWithoutEdit !== preview.title
       ? titleWithoutEdit
       : preview.filePaths.length === 1 || preview.fileChanges.length === 1
-        ? toWorkspaceRelativePath((preview.filePaths[0] ?? preview.fileChanges[0]?.path)!, options?.workspacePath)
+        ? toWorkspaceRelativePath(
+            (preview.filePaths[0] ?? preview.fileChanges[0]?.path)!,
+            options?.workspacePath,
+          )
         : "";
   return targetText ? `${label} ${targetText}` : label;
 }
 
 function formatEditPermissionKindLabel(
-  request: Pick<ZCodePermissionRequest, "title" | "description" | "kind" | "raw">,
+  request: Pick<CodezPermissionRequest, "title" | "description" | "kind" | "raw">,
   preview: ReturnType<typeof getPermissionRequestPreview>,
   locale?: Locale,
 ): string {
@@ -221,20 +223,25 @@ function formatEditPermissionKindLabel(
     request.description,
     isRecord(request.raw) && typeof request.raw.kind === "string" ? request.raw.kind : undefined,
     isRecord(request.raw) && typeof request.raw.title === "string" ? request.raw.title : undefined,
-  ].filter((value): value is string => typeof value === "string").join(" ");
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
   const normalizedText = rawText.trim().toLowerCase();
   const fileChangeType = preview.fileChange?.type;
 
   if (/\b(delete|deleted|remove|removed|erase|erased|unlink|rm)\b/u.test(normalizedText)) {
     return t(locale, "editDeleting");
   }
-  if (fileChangeType === "add" || /\b(write|wrote|create|created|add|added|save|saved|new)\b/u.test(normalizedText)) {
+  if (
+    fileChangeType === "add" ||
+    /\b(write|wrote|create|created|add|added|save|saved|new)\b/u.test(normalizedText)
+  ) {
     return t(locale, "editWriting");
   }
   if (/\b(update|updating|updated)\b/u.test(normalizedText)) {
     return t(locale, "editUpdating");
   }
-  // Bugfix: edit 权限标题直接透传 ZCode Agent 的 "Edit <path>" 时，第三方消息无法像 UI kindLabel 一样区分写入/更新/删除。
+  // Bugfix: edit 权限标题直接透传 Codez Agent 的 "Edit <path>" 时，第三方消息无法像 UI kindLabel 一样区分写入/更新/删除。
   // 这里至少把泛化的 Edit 换成 edit kind label，具体操作能从 raw/fileChange 推断时再细分。
   return t(locale, "editEditing");
 }
@@ -261,7 +268,8 @@ function formatToolStatus(
   locale?: Locale,
 ): string {
   if (status === "completed") return t(locale, "completed");
-  if (status === "failed") return `${t(locale, "failed")}${error ? `: ${truncateText(normalizeInlineText(error))}` : ""}`;
+  if (status === "failed")
+    return `${t(locale, "failed")}${error ? `: ${truncateText(normalizeInlineText(error))}` : ""}`;
   if (status === "denied") return t(locale, "denied");
   if (status === "in_progress") return t(locale, "inProgress");
   return t(locale, "pending");
@@ -310,7 +318,7 @@ export function formatBotToolCallReply(
 }
 
 export function formatBotPermissionRequestSummary(
-  request: Pick<ZCodePermissionRequest, "title" | "description" | "kind" | "raw">,
+  request: Pick<CodezPermissionRequest, "title" | "description" | "kind" | "raw">,
   options?: BotReplyFormatOptions,
 ): string {
   const preview = getPermissionRequestPreview(request);
@@ -318,9 +326,10 @@ export function formatBotPermissionRequestSummary(
   if (preview.command) {
     return `${header}\n${formatMarkdownInlineCode(truncateMiddleText(preview.command))}`;
   }
-  const previewFilePaths = preview.filePaths.length > 0
-    ? preview.filePaths
-    : preview.fileChanges.map((change) => change.path);
+  const previewFilePaths =
+    preview.filePaths.length > 0
+      ? preview.filePaths
+      : preview.fileChanges.map((change) => change.path);
   if (previewFilePaths.length > 0) {
     const paths = previewFilePaths
       .slice(0, 3)
@@ -332,17 +341,14 @@ export function formatBotPermissionRequestSummary(
   return header;
 }
 
-export function isBotToolCallReplyTerminal(
-  status?: BotReplyToolCallState["status"],
-): boolean {
-  return status === "completed" ||
-    status === "failed" ||
-    status === "denied" ||
-    status === "stopped";
+export function isBotToolCallReplyTerminal(status?: BotReplyToolCallState["status"]): boolean {
+  return (
+    status === "completed" || status === "failed" || status === "denied" || status === "stopped"
+  );
 }
 
 function formatBotChangeSummary(
-  changeSummary?: ZCodeTaskChangeSummary | null,
+  changeSummary?: CodezTaskChangeSummary | null,
   options?: Pick<BotReplyFormatOptions, "locale">,
 ): string {
   if (!changeSummary || changeSummary.fileCount <= 0 || changeSummary.files.length === 0) {
@@ -357,14 +363,16 @@ function formatBotChangeSummary(
     lines.push(`- ${formatMarkdownInlineCode(file.path)} (${formatBotDiffCount(file)})`);
   }
   if (changeSummary.files.length > MAX_TOOL_SUMMARY_ITEMS) {
-    lines.push(`- ${t(options?.locale, "moreFiles").replace("{count}", String(changeSummary.files.length - MAX_TOOL_SUMMARY_ITEMS))}`);
+    lines.push(
+      `- ${t(options?.locale, "moreFiles").replace("{count}", String(changeSummary.files.length - MAX_TOOL_SUMMARY_ITEMS))}`,
+    );
   }
   return lines.join("\n");
 }
 
 export function updateBotReplyToolCalls(
   toolCalls: Map<string, BotReplyToolCallState>,
-  event: ZCodeStreamEvent,
+  event: CodezStreamEvent,
 ): void {
   if (event.type === "tool_call") {
     toolCalls.set(event.toolId, {

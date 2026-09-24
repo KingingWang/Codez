@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, rename, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import type { BotConfig, BotProviderCallbackResult, BotRuntimeInfo } from "@zcode/shared";
+import type { BotConfig, BotProviderCallbackResult, BotRuntimeInfo } from "@codez/shared";
 import { getAppConfigDir } from "../paths.js";
 
 export const BOT_RUNTIME_LOCK_RETRY_MS = 10_000;
@@ -84,9 +84,7 @@ export function isBotRuntimeLockConflictError(error: unknown): boolean {
 function isBotRuntimeLockCleanupRetryable(error: unknown): boolean {
   return (
     isNodeError(error) &&
-    (error.code === "EPERM" ||
-      error.code === "EBUSY" ||
-      error.code === "ENOTEMPTY")
+    (error.code === "EPERM" || error.code === "EBUSY" || error.code === "ENOTEMPTY")
   );
 }
 
@@ -188,10 +186,7 @@ async function acquireBotRuntimeLock(
         }
         const currentOwner = await readBotRuntimeLockOwner(lockPath);
         if (currentOwner) {
-          const leaseAt = await readBotRuntimeLockLeaseAt(
-            lockPath,
-            currentOwner.nonce,
-          );
+          const leaseAt = await readBotRuntimeLockLeaseAt(lockPath, currentOwner.nonce);
           const leaseAge = Date.now() - leaseAt;
           if (
             isProcessAlive(currentOwner.pid) &&

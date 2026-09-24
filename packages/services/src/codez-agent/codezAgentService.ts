@@ -1632,7 +1632,7 @@ export function createCodezAgentService(
   function resolveV4Connection(
     params: unknown,
     fallbackConnectionId: string = v4ConnectionId,
-  ): ZCodeAgentV4ConnectionContext {
+  ): CodezAgentV4ConnectionContext {
     return (
       readTrustedCodezAgentV4Connection(params) ?? {
         // 没有可信 carrier 就是宿主内部直调：按旧消费者订阅（整键 patch），不猜能力。

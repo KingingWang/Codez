@@ -2529,7 +2529,7 @@ export function createLocalServices(options: {
       IBotsService,
       createBotsService({
         credentialService,
-        zcodeTaskService,
+        codezTaskService,
         broadcastService,
         settingService,
         modelSelectionService: providerRuntime.modelSelection,

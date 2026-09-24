@@ -75,8 +75,8 @@ All six installer artifacts were confirmed present, nonempty, unexpired and back
 by GitHub's SHA256 artifact digest. Each installer artifact also contains its own
 per-file SHA256 manifest. Desktop artifacts have a 14-day retention period.
 
-| Target        | Installers    | Artifact                            |
-| ------------- | ------------- | ----------------------------------- |
+| Target        | Installers    | Artifact                      |
+| ------------- | ------------- | ----------------------------- |
 | macOS x64     | DMG           | `codez-darwin-x64-unsigned`   |
 | macOS arm64   | DMG           | `codez-darwin-arm64-unsigned` |
 | Windows x64   | NSIS EXE      | `codez-win32-x64-unsigned`    |

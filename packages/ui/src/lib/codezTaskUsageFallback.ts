@@ -1,5 +1,5 @@
-import type { ZCodeUsage } from "@zcode/shared";
-import type { TaskUsageState } from "@/store/zcodeSessionStoreTypes.js";
+import type { CodezUsage } from "@codez/shared";
+import type { TaskUsageState } from "@/store/codezSessionStoreTypes.js";
 
 interface TaskUsageKeyParams {
   workspacePath: string;
@@ -78,7 +78,7 @@ export function buildPromptCompletionUsageFallback(
   params: TaskUsageKeyParams & {
     currentUsage: TaskUsageState | null | undefined;
     currentContextWindow?: number | null;
-    usage?: ZCodeUsage;
+    usage?: CodezUsage;
   },
 ): TaskUsageState | null {
   const { currentUsage, currentContextWindow, usage } = params;
@@ -94,7 +94,7 @@ export function buildPromptCompletionUsageFallback(
   }
 
   // Bugfix: task_complete.usage 是本轮 prompt 的 token 统计，不是上下文窗口快照。
-  // 只有从未收到过正数 usage_update 的 provider 才把它当弱 fallback，避免覆盖 zcode-cli/GLM 的真实 context used。
+  // 只有从未收到过正数 usage_update 的 provider 才把它当弱 fallback，避免覆盖 codez-cli/GLM 的真实 context used。
   return {
     ...currentUsage,
     size: contextWindow,

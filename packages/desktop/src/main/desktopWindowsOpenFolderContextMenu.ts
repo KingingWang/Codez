@@ -120,7 +120,9 @@ export async function installWindowsOpenFolderContextMenu(options: {
       // 先删 command 子键再删父键；reg delete 遇到子键会失败，两步都 best-effort。
       await Promise.all(
         [LEGACY_CODEX_MENU_KEY_NAME].flatMap((legacyKey) => [
-          runRegDeleteBestEffort(`HKCU\\Software\\Classes\\Directory\\shell\\${legacyKey}\\command`),
+          runRegDeleteBestEffort(
+            `HKCU\\Software\\Classes\\Directory\\shell\\${legacyKey}\\command`,
+          ),
           runRegDeleteBestEffort(`HKCU\\Software\\Classes\\Directory\\shell\\${legacyKey}`),
           runRegDeleteBestEffort(`HKCU\\Software\\Classes\\Drive\\shell\\${legacyKey}\\command`),
           runRegDeleteBestEffort(`HKCU\\Software\\Classes\\Drive\\shell\\${legacyKey}`),
