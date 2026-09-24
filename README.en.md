@@ -176,6 +176,14 @@ pnpm bundle:desktop -- --help
 
 The default target is macOS arm64, and the default output directory is `packages/desktop/dist/`. `--os` accepts `mac`, `win`, or `linux`; `--arch` accepts `x64` or `arm64`. Packaging and signing require the tools and configuration for the target platform.
 
+Install: open the DMG and drag Codez into Applications. Local builds are unsigned; if macOS blocks the first launch, run:
+
+```bash
+sudo xattr -rd com.apple.quarantine /Applications/Codez.app
+```
+
+This command needs permission to manage other apps: macOS shows a consent prompt in the top-right corner of the screen, and you must click "Allow" for it to succeed. If you accidentally deny it, enable your terminal app under System Settings → Privacy & Security → App Management and run the command again.
+
 ### Codez CLI distribution
 
 Run `pnpm build:codez` to build the CLI/TUI, backend, and Web client, collect the TUI native libraries, workers, and runtime dependencies, then assemble the distribution. Running the distribution still requires Node.js; use the version specified in `mise.toml`.

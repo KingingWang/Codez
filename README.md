@@ -182,6 +182,8 @@ pnpm bundle:desktop -- --help
 sudo xattr -rd com.apple.quarantine /Applications/Codez.app
 ```
 
+该命令需要"管理其他 App"的权限：执行时 macOS 会在屏幕右上角弹出授权提示，必须点击"允许"后命令才能成功；若误点"不允许"，前往"系统设置 → 隐私与安全性 → App 管理"，为你的终端 App 开启权限后重试。
+
 ### Codez 命令行版
 
 构建入口为 `pnpm build:codez`。脚本会依次构建 CLI/TUI、后端和 Web，收集 TUI 的原生库、worker 与运行时依赖，再组装发行包；运行发行包仍需要 Node.js，版本以 `mise.toml` 为准。
