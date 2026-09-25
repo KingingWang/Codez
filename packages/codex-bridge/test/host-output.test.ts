@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { HostOutput } from "../src/host-output.js";
+import { MAX_FRAME_BYTES } from "../src/rpc-framing.js";
+
+test("bridge output accepts one frame larger than the former 8 MiB queue limit", async () => {
+  let sent = 0;
+  const output = new HostOutput((_chunk, done) => {
+    sent++;
+    done();
+  });
+  await output.write({ id: 1, result: "x".repeat(9 * 1024 * 1024) });
+  assert.equal(sent, 1);
+  assert.ok(MAX_FRAME_BYTES > 9 * 1024 * 1024);
+});
 
 test("host output accounts for queued frames, not only bytes already inside stdout", async () => {
   const writes: (() => void)[] = [];

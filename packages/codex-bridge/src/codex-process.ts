@@ -8,9 +8,11 @@ import type {
 import { CodexRpcError, CodexTransportError } from "./rpc-errors.js";
 import {
   encodeFrame,
+  frameEnvelopeHint,
   MAX_FRAME_BYTES,
   RpcFramer,
   validId,
+  type CodexDroppedFrame,
   type RpcEnvelope,
   type RpcId,
 } from "./rpc-framing.js";
@@ -96,6 +98,49 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
   function requireReady(): void {
     if (terminal) throw terminal;
     if (!ready) throw new CodexTransportError("NOT_READY", "Codex connection is not initialized");
+  }
+  function rejectPending(id: RpcId, error: Error): boolean {
+    const entry = pending.get(id);
+    if (!entry) return false;
+    clearTimeout(entry.timer);
+    pending.delete(id);
+    entry.reject(error);
+    return true;
+  }
+  /**
+   * 超大入站帧已被 framer 按 NDJSON 边界丢弃。这里只做显式归因失败：
+   * 不重试、不伪造结果、不终止连接；无法证明归属时让全部在途请求显式失败，
+   * 避免请求方永远等待一个已被丢弃的响应。
+   */
+  function handleDroppedFrame(frame: CodexDroppedFrame): void {
+    const hint = frameEnvelopeHint(frame.prefix);
+    const error = new CodexTransportError("LIMIT", "Codex response frame exceeds size limit");
+    if (hint.method === undefined && hint.id === undefined) {
+      // 前缀可能来自原生 server request；不知道 id 就无法安全应答，必须失败关闭。
+      void stop(error);
+    } else if (hint.method !== undefined) {
+      if (hint.id !== undefined) {
+        // 被丢弃的是原生 server request：它从未进入 receive 注册表，
+        // 必须直接按 id 回错误，否则原生端会永远等待答复。
+        void write({
+          id: hint.id,
+          error: { code: -32000, message: "Codex request frame exceeds size limit" },
+        }).catch((writeError: Error) => void stop(writeError));
+      }
+      // 纯通知没有请求方可失败；诊断经 onFrameDropped 上报，投影不靠猜测补齐。
+    } else if (hint.id === undefined || !rejectPending(hint.id, error)) {
+      // 前缀里看不到归属 id：无法证明丢失的是哪个响应，全部在途请求显式失败。
+      for (const entry of pending.values()) {
+        clearTimeout(entry.timer);
+        entry.reject(error);
+      }
+      pending.clear();
+    }
+    try {
+      options.onFrameDropped?.(frame);
+    } catch {
+      // 诊断回调绝不能破坏传输状态机。
+    }
   }
   function write(message: RpcEnvelope, serialized?: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -253,7 +298,7 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
   child.stdout.on("data", (chunk: Buffer) => {
     if (terminal) return;
     try {
-      framer.push(chunk, receive);
+      framer.push(chunk, receive, handleDroppedFrame);
     } catch (error) {
       void stop(error as Error);
     }

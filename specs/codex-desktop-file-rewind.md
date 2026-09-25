@@ -15,6 +15,8 @@ Renderer preview/confirm
 ```
 
 - `safeDesktopFileRewind` is advertised only when the Desktop-local default Codex bridge and registered transaction owner are both present. Desktop-attached remote, mobile replay, non-default bridges, missing/old/degraded/disconnected/failed capability reads, and unregistered owners resolve to unsupported/unavailable and issue no doomed request.
+- The bridge advertises the row-level `canRewindFiles` action on a `turnHeader` row only when that turn is in a terminal state, has at least one projected file change, and its projected changes are not already `reverted`. The renderer combines the row action with capability support and handler presence; the action alone never authorizes a transaction.
+- Native `fileChange` entries describe `add` and `delete` kinds with the complete file body as raw content, not unified hunks. The bridge projection converts them into equivalent full-range line patches (`add`: all `+` lines; `delete`: all `-` lines) so per-turn addition/deletion counts are real and an added file's preimage reconstructs to empty (rewind deletes it). A `delete` change restores only through the fail-closed path this batch: the missing live file is reported `checkpoint_missing` and never fabricated from the projection. Unified-hunk `update` entries keep hunk parsing; when a `kind` field is absent the entry is treated as an update for backwards compatibility.
 - Identity is `workspaceIdentity?.trim() || workspacePath`. The identity string is recorded in the ledger; a later request must match it exactly. Path fallback is valid only when no identity was originally recorded.
 - The preview digest is computed from the canonical projection: revision, log epoch, row target, affected paths, actions, operation counts, and tool names in fixed order.
 - The transaction service has one in-flight transaction per workspace key. A confirmed transaction is idempotent by confirmation id.
@@ -60,6 +62,10 @@ Every failure retains the ledger and, after backup completion, the backup. Backu
 5. A legacy path-only checkpoint is migrated to the workspace-keyed ledger, but cannot be claimed after an identity is recorded; a blank identity remains local path fallback.
 6. Old bridge/Host peers expose the feature as unsupported and UI sends no request.
 7. A successful overlay marks the validated turn as reverted, republishes at a new revision after acknowledgement, rejects stale revision reads, and a same-ID retry can restore the bridge-derived overlay after restart without mutating files or history.
+8. A turn whose only change added a new file projects real addition counts, advertises `canRewindFiles` after completion, previews with delete-the-added-file as the restore plan, and an applied rewind removes the file. A turn that only deleted a file shows real deletion counts while its preview fails closed as `checkpoint_missing` rather than restoring from projection.
+9. Absolute native paths are accepted only inside the workspace; a sibling
+   path with the same prefix and a parent traversal both fail closed. A
+   full-content add must match its current text before the scoped delete.
 
 ## Current deployment boundary
 

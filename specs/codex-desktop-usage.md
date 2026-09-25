@@ -21,6 +21,8 @@ Conversation snapshots expose the additive `usage.codexObserved` object for thes
 
 The cache owner is Desktop/Host services. The agent service observes validated conversation frames only: snapshot `usage.codexObserved` values reconcile authoritatively, while `state.updated` usage deltas follow normal delivery. It is keyed by `workspaceIdentity?.trim() || workspacePath`; `workspacePath` remains the execution/display path. The agent service exposes the retained snapshot/query by that same workspace key through the usage-stats service; renderer callers cannot supply cache contents or mutate observations.
 
+The retained snapshot crosses the Host→renderer RPC boundary, whose object codec is JSON: JavaScript `Map` instances serialize to `{}` and lose their entries. The snapshot's `threads` collection is therefore an ordered array of `{ threadId, observation, conflict }` entries, never a `Map`. Renderer consumers normalize the value defensively (array, `Map`, or legacy object) because desktop/mobile renderers may attach to an older Host; an unrecognized shape degrades to an empty list plus a warn log, never a render crash.
+
 Canonical identity bytes use fixed field order and stable object-key order:
 
 ```json
@@ -69,3 +71,7 @@ App Usage copy must state that Codex usage is desktop-observed telemetry and is 
 7. Identity and path fallback isolate workspaces.
 8. Runtime-unavailable retains the last cache but marks it stale; a new validated observation returns it to current.
 9. App Usage renders observed totals plus explicit stale/conflict status while keeping agent-db and Coding Plan data separate.
+10. The snapshot crosses RPC without losing thread entries, and a renderer attached to a legacy or malformed shape renders an empty observed summary instead of crashing.
+11. Legacy in-memory Map entries have `{ observation, conflict }` values;
+    normalization preserves the nested observation and rejects entries with
+    missing or malformed payloads rather than passing them to the totals view.
