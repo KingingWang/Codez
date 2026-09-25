@@ -4,6 +4,7 @@ import {
   IMediaPreviewService,
   IGitService,
   IGitCheckpointService,
+  ICodexDesktopFileRewindService,
   ISystemService,
   ITerminalService,
   ISettingService,
@@ -53,6 +54,10 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly mediaPreviewService: IMediaPreviewService;
   readonly gitService: IGitService;
   readonly gitCheckpointService: IGitCheckpointService;
+  // IServiceAccessor 上该服务为可选：host 只在 Desktop-local 默认 Codex bridge 装配下注册此
+  // channel。getChannel 是惰性代理，未注册时构造安全（调用才会报 Unknown channel）；是否可用由
+  // UI 侧能力门禁（safeDesktopFileRewind=supported + isDesktop）裁决，与 cuaPermissionService 同例。
+  readonly codexDesktopFileRewindService: ICodexDesktopFileRewindService;
   readonly systemService: ISystemService;
   readonly terminalService: ITerminalService;
   readonly settingService: ISettingService;
@@ -107,6 +112,9 @@ export class RemoteServiceAccess implements IServiceAccessor {
     );
     this.gitCheckpointService = ProxyChannel.toService<IGitCheckpointService>(
       channelClient.getChannel(IGitCheckpointService.channelName),
+    );
+    this.codexDesktopFileRewindService = ProxyChannel.toService<ICodexDesktopFileRewindService>(
+      channelClient.getChannel(ICodexDesktopFileRewindService.channelName),
     );
     this.systemService = ProxyChannel.toService<ISystemService>(
       channelClient.getChannel(ISystemService.channelName),

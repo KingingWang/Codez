@@ -582,6 +582,18 @@ export function SessionPane({
     workspacePath,
     ...(workspaceIdentity ? { workspaceIdentity } : {}),
   });
+  // 子智能体详情的会话内容仍只读；文件撤销恢复的是 workspace，必须作为独立能力判断。
+  // 该判定还决定 preview/apply 的通道分流（Desktop 事务服务 vs legacy v4 command），
+  // 必须早于两个 handler 的定义，故从 rowContext memo 附近上移到这里。
+  const desktopFileRewindSupported =
+    isDesktop &&
+    isCodexDesktopFileRewindAvailable(desktopFileRewindCapability.availability) &&
+    Boolean(services.codexDesktopFileRewindService);
+  const workspaceFileRewindEnabled =
+    desktopFileRewindSupported || (!isDesktop && (!readOnly || allowWorkspaceFileRewind));
+  const desktopFileRewindService = desktopFileRewindSupported
+    ? services.codexDesktopFileRewindService
+    : undefined;
   const { intl, locale } = useCodezIntl();
   const codexText = useCodexMessages();
   const slashCommands = useSlashCommands(workspacePath, workspaceIdentity);
@@ -1724,19 +1736,39 @@ export function SessionPane({
           ignoredFiles: [],
         });
       }
-      return fileRewindPreview({
-        sessionId,
-        target,
-        baseRevision: current.revision,
-        baseLogEpoch: current.logEpoch,
-      }).catch((error: unknown) => {
+      // Codex bridge 不实现 v4/conversation/fileRewindPreview：Desktop 的预览由事务服务
+      // 基于 bridge 的 fileChanges 投影构建（spec: codex-desktop-file-rewind）；
+      // 非 Desktop（web / legacy CLI runtime）继续走 transport 方法。
+      const request = desktopFileRewindService
+        ? desktopFileRewindService.preview({
+            workspacePath,
+            ...(workspaceIdentity ? { workspaceIdentity } : {}),
+            sessionId,
+            target,
+            baseRevision: current.revision,
+            baseLogEpoch: current.logEpoch,
+          })
+        : fileRewindPreview({
+            sessionId,
+            target,
+            baseRevision: current.revision,
+            baseLogEpoch: current.logEpoch,
+          });
+      return request.catch((error: unknown) => {
         if (shouldResyncForStaleAuthority(error)) {
           lease?.store?.recoverFromStaleAuthority();
         }
         throw error;
       });
     },
-    [fileRewindPreview, lease, sessionId],
+    [
+      desktopFileRewindService,
+      fileRewindPreview,
+      lease,
+      sessionId,
+      workspaceIdentity,
+      workspacePath,
+    ],
   );
 
   const handleApplyFileRewind = useCallback(
@@ -1744,6 +1776,17 @@ export function SessionPane({
       const current = snapshotRef.current;
       if (!sessionId || !current) {
         throw new Error("Cannot apply file rewind without an active session revision");
+      }
+      if (!desktopFileRewindService) {
+        // 非 Desktop（web / legacy CLI runtime）没有 Desktop 事务服务，
+        // 仍走 CLI 自己的 applyFileRewind command（runtime checkpoint 恢复）。
+        return dispatchCommand(
+          "applyFileRewind",
+          { target },
+          sessionId,
+          current.revision,
+          current.logEpoch,
+        );
       }
       // Desktop 的文件恢复是独立事务，不能伪造 legacy applyFileRewind command ack。
       const status = await applyDesktopFileRewind({
@@ -1765,7 +1808,7 @@ export function SessionPane({
         message: status.state,
       } as CommandAck;
     },
-    [applyDesktopFileRewind, sessionId],
+    [applyDesktopFileRewind, desktopFileRewindService, dispatchCommand, sessionId],
   );
 
   const handleOpenSubagentSession = useCallback(
@@ -2177,13 +2220,6 @@ export function SessionPane({
   const chatLoadingBlockedByActiveWork = hasChatLoadingBlockingActiveWork(
     snapshot?.control.activeWorks ?? [],
   );
-  // 子智能体详情的会话内容仍只读；文件撤销恢复的是 workspace，必须作为独立能力判断。
-  const desktopFileRewindSupported =
-    isDesktop &&
-    isCodexDesktopFileRewindAvailable(desktopFileRewindCapability.availability) &&
-    Boolean(services.codexDesktopFileRewindService);
-  const workspaceFileRewindEnabled =
-    desktopFileRewindSupported || (!isDesktop && (!readOnly || allowWorkspaceFileRewind));
   // cancelBackgroundWork：启动卡 / 后台任务卡的「取消」入口。定义在 rowContext memo 之前，
   // 供其绑定（onOpenWorkflowRun 同样在 memo 前定义）；只读模式下不下发（与 4213 处一致）。
   const handleCancelBackgroundWork = useCallback(
