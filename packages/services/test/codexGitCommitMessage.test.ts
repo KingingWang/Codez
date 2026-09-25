@@ -53,6 +53,20 @@ test("Git native model discovery and auxiliary generation never prepare legacy p
   let pages: Array<{ data: CodexModel[]; nextCursor: string | null }> = [];
   let invalidConfig = false;
   let generationFails = false;
+  let auxiliaryCapability: unknown = {
+    independentPlanState: true,
+    codex: {
+      auxiliaryTextGeneration: "supported",
+      observedSessionUsage: "supported",
+      observedAppUsage: "supported",
+      sharedContextContentCopy: "degraded",
+      scheduledPromptAutomations: "supported",
+      nativeBrowserCuaMcp: "unsupported",
+      readOnlyWorkflowHistory: "supported",
+      safeDesktopFileRewind: "unsupported",
+      legacyWorkflowRuns: "unsupported",
+    },
+  };
   let generatedSelection: ModelSelection | undefined;
   let starts = 0;
   t.mock.method(ProviderRuntime.prototype, "start", async () => {
@@ -91,6 +105,11 @@ test("Git native model discovery and auxiliary generation never prepare legacy p
               result = pages[params.cursor ? 1 : 0];
             }
           } else {
+            if (message.method === "runtime/capabilities") {
+              result = auxiliaryCapability;
+              messages.fire({ id: message.id, result });
+              return;
+            }
             assert.equal(
               message.method,
               "workspace/generateText",
@@ -171,10 +190,62 @@ test("Git native model discovery and auxiliary generation never prepare legacy p
       try {
         if (runtime === "explicit-legacy" || runtime === "custom-legacy") {
           const before = calls.length;
-          await assert.rejects(generate(), /legacy provider must not be required/);
+          await assert.rejects(
+            generate(),
+            /legacy provider must not be required|生成提交消息所需的 Codex 辅助能力不可用。/,
+          );
           assert.equal(calls.length, before, "legacy model lookup must not call native Codex");
           continue;
         }
+        for (const capability of [undefined, {}, { codex: null }, { codex: {} }] as unknown[]) {
+          auxiliaryCapability = capability;
+          const before = calls.filter(
+            (call) =>
+              call.method === "codex/request" ||
+              call.method === "runtime/capabilities" ||
+              call.method === "workspace/generateText",
+          ).length;
+          await assert.rejects(generate(), /生成提交消息所需的 Codex 辅助能力不可用。/);
+          assert.equal(
+            calls.filter(
+              (call) =>
+                call.method === "codex/request" ||
+                call.method === "runtime/capabilities" ||
+                call.method === "workspace/generateText",
+            ).length,
+            before + 1,
+            "capability is read once and no model/account/generation request follows",
+          );
+        }
+        auxiliaryCapability = {
+          independentPlanState: true,
+          codex: {
+            auxiliaryTextGeneration: "unsupported",
+            observedSessionUsage: "supported",
+            observedAppUsage: "supported",
+            sharedContextContentCopy: "degraded",
+            scheduledPromptAutomations: "supported",
+            nativeBrowserCuaMcp: "unsupported",
+            readOnlyWorkflowHistory: "supported",
+            safeDesktopFileRewind: "unsupported",
+            legacyWorkflowRuns: "unsupported",
+          },
+        };
+        await assert.rejects(generate(), /生成提交消息所需的 Codex 辅助能力不可用。/);
+        auxiliaryCapability = {
+          independentPlanState: true,
+          codex: {
+            auxiliaryTextGeneration: "supported",
+            observedSessionUsage: "supported",
+            observedAppUsage: "supported",
+            sharedContextContentCopy: "degraded",
+            scheduledPromptAutomations: "supported",
+            nativeBrowserCuaMcp: "unsupported",
+            readOnlyWorkflowHistory: "supported",
+            safeDesktopFileRewind: "unsupported",
+            legacyWorkflowRuns: "unsupported",
+          },
+        };
         config = {
           model_provider: "custom-native",
           model: "configured-only",

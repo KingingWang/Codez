@@ -11,6 +11,7 @@
 import {
   AutomationRepo,
   computeAutomationNextRunAt,
+  isTerminalCodexAutomationCorrelationState,
   isOneShotAutomation,
   OffPeakTaskRepo,
 } from "@codez/services/node";
@@ -169,6 +170,18 @@ async function handleClaimed(automation: CodezAutomation, now: number): Promise<
     trigger: "schedule",
     // 原意图在 dispatch request 中传递，首次有效选择由目标 Host 固定；此处不提前冻结。
   });
+  const correlation = await repo.getCodexAutomationCorrelation({ workspaceKey, runId });
+  if (correlation && isTerminalCodexAutomationCorrelationState(correlation.state)) {
+    await repo.markRunOutcome(runId, correlation.state === "completed" ? "succeeded" : "failed");
+    await repo.markRunDispatch({ runId, dispatchStatus: "dispatched" });
+    const automation = await repo.get(automation.automationId);
+    await repo.markDispatched(automation.automationId, {
+      dispatchedAt: now,
+      nextRunAt: automation ? computeAutomationNextRunAt(automation, now) : null,
+    });
+    log("info", `suppress duplicate automation dispatch runId=${runId}`);
+    return;
+  }
   inFlight.set(runId, {
     automationId: automation.automationId,
     workspaceKey,
@@ -203,6 +216,19 @@ async function handleClaimedManual(
   automation: CodezAutomation,
   run: CodezAutomationRun,
 ): Promise<void> {
+  const correlation = await repo.getCodexAutomationCorrelation({
+    workspaceKey: automation.workspaceKey,
+    runId: run.runId,
+  });
+  if (correlation && isTerminalCodexAutomationCorrelationState(correlation.state)) {
+    await repo.markRunOutcome(
+      run.runId,
+      correlation.state === "completed" ? "succeeded" : "failed",
+    );
+    await repo.releaseManualClaim(automation.automationId, automation.workspaceKey);
+    log("info", `suppress duplicate manual automation dispatch runId=${run.runId}`);
+    return;
+  }
   inFlight.set(run.runId, {
     automationId: automation.automationId,
     workspaceKey: resolveWorkspaceKey({

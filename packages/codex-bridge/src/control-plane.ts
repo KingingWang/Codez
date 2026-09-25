@@ -38,6 +38,39 @@ export function supportsControlMethod(method: string): boolean {
   return methods.has(method);
 }
 
+/**
+ * Bridge dispatch authority. The auxiliary port owns generation support; this module only
+ * receives control-plane dispatch. Keeping this fact explicit prevents Host/UI from probing
+ * methods or parsing failures to build a second capability matrix.
+ */
+export function bridgeCodexFeatureCapabilities(
+  auxiliary: {
+    supports(method: string): boolean;
+  },
+  nativeBrowserCua?: {
+    browserAvailable: boolean;
+    cuaAvailable: boolean;
+  },
+): s.CodexFeatureCapabilities {
+  let nativeBrowserCuaMcp: s.CodexFeatureCapabilities["nativeBrowserCuaMcp"] = "unsupported";
+  if (nativeBrowserCua?.browserAvailable === true) {
+    nativeBrowserCuaMcp = nativeBrowserCua.cuaAvailable === true ? "supported" : "degraded";
+  }
+  return {
+    auxiliaryTextGeneration: auxiliary.supports("workspace/generateText")
+      ? "supported"
+      : "unsupported",
+    observedSessionUsage: "supported",
+    observedAppUsage: "supported",
+    sharedContextContentCopy: "degraded",
+    scheduledPromptAutomations: "supported",
+    nativeBrowserCuaMcp,
+    readOnlyWorkflowHistory: "supported",
+    safeDesktopFileRewind: "supported",
+    legacyWorkflowRuns: "unsupported",
+  };
+}
+
 /** Unknown/unsupported mutations reject with JSON-RPC code, message and structured data. */
 export async function handleControlRequest(
   method: string,
@@ -76,7 +109,13 @@ async function dispatch(
   switch (method) {
     case "runtime/capabilities":
       input(z.object({}).strict(), params ?? {}, method);
-      return s.codezRuntimeCapabilitiesSchema.parse({ independentPlanState: true });
+      return s.codezRuntimeCapabilitiesSchema.parse({
+        independentPlanState: true,
+        codex: bridgeCodexFeatureCapabilities(
+          context.auxiliary ?? { supports: () => false },
+          context.nativeBrowserCua,
+        ),
+      });
     case "workspace/readPresentation": {
       const p = input(s.codezWorkspaceReadPresentationParamsSchema, params, method);
       checkWorkspace(p.workspace, context, method);

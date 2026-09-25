@@ -46,6 +46,7 @@ export function scopeConversationShareServiceForAttachment(
       importShare: (input, operationId) => service.importShare(input, operationId),
       onDynamicImportProgress: (operationId) => service.onDynamicImportProgress(operationId),
       getImportedConversation: (input) => service.getImportedConversation(input),
+      readSharedContextContentCopy: rejectUnavailable,
       getPreview: (shareCode) => service.getPreview(shareCode),
       getContinuation: (input) => service.getContinuation(input),
     };
@@ -64,6 +65,7 @@ export function scopeConversationShareServiceForAttachment(
     onDynamicImportProgress: () => RpcEvent.None,
     // 手机远控没有本地 workspace 副本，直接返回 null 即可（不渲染只读块）。
     getImportedConversation: async () => null,
+    readSharedContextContentCopy: rejectMobileShare,
     getPreview: (shareCode: string) => service.getPreview(shareCode),
     getContinuation: rejectMobileShare,
   };

@@ -96,6 +96,10 @@ export async function handleLegacySession(
   }
   const snapshot = projectLegacySnapshot(state.thread, store.cwd);
   snapshot.session.workspace = workspace;
-  snapshot.settings = await readControlModelSettings({ rpc, cwd: store.cwd });
+  snapshot.settings = await readControlModelSettings({
+    rpc,
+    cwd: store.cwd,
+    auxiliary: { supports: () => false },
+  });
   return shared.codezSessionStateSnapshotSchema.parse(snapshot);
 }

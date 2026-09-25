@@ -3,7 +3,9 @@ import {
   commandsQueryParamsSchema,
   v4ConversationRowsRangeParamsSchema,
   v4ConversationPlansParamsSchema,
+  codexConversationHistoryRunsParamsSchema,
   v4ConversationFileChangesParamsSchema,
+  v4ConversationFileRewindProjectionOverlayParamsSchema,
 } from "@codez/shared/codez-protocol-v4";
 import type { CodexProcess } from "./contract.js";
 import { DeletedThreadError, ThreadStateStore } from "./thread-state.js";
@@ -17,6 +19,7 @@ import { supportsControlMethod, handleControlRequest } from "./control-plane.js"
 import { handleLegacySession } from "./legacy-sessions.js";
 import { array, object, string, unsupported } from "./json.js";
 import { projectTurnFileChanges } from "./file-changes.js";
+import { projectCodexHistoryRuns } from "./history-runs.js";
 import { join } from "node:path";
 import { AuxiliaryText } from "./auxiliary-text.js";
 import { scopeWorkspaceParams, scopedNativeRequest } from "./request-scope.js";
@@ -33,6 +36,10 @@ export interface BridgeRuntimeOptions {
   stateRoot: string;
   notify(method: string, params: unknown): Promise<void>;
   fatal(error: Error, origin?: BridgeFailureOrigin): void;
+  nativeBrowserCua?: {
+    browserAvailable: boolean;
+    cuaAvailable: boolean;
+  };
 }
 
 export class BridgeRuntime {
@@ -44,6 +51,7 @@ export class BridgeRuntime {
   private readonly subscriptions: BridgeSubscriptions;
   private readonly attachments: AttachmentStore;
   private readonly auxiliary: AuxiliaryText;
+  private readonly nativeBrowserCua: BridgeRuntimeOptions["nativeBrowserCua"];
   private readonly unsubscribe: (() => void)[] = [];
   private eventTail: Promise<void> = Promise.resolve();
   private closed = false;
@@ -52,6 +60,7 @@ export class BridgeRuntime {
     const { rpc, cwd, workspaceId, stateRoot, notify } = options;
     this.store = new ThreadStateStore(rpc, cwd);
     this.auxiliary = new AuxiliaryText({ rpc, cwd });
+    this.nativeBrowserCua = options.nativeBrowserCua;
     this.interactions = new InteractionBroker(rpc, (id) => this.store.touch(id));
     this.ledger = new CommandLedger(join(stateRoot, "commands"));
     this.attachments = new AttachmentStore({
@@ -68,7 +77,7 @@ export class BridgeRuntime {
       attachments: (refs, sessionId) => this.attachments.toNativeInput(refs, sessionId),
     });
     this.snapshots = new BridgeSnapshots(
-      { rpc, cwd },
+      { rpc, cwd, auxiliary: this.auxiliary },
       this.store,
       this.interactions,
       workspaceId,
@@ -191,7 +200,14 @@ export class BridgeRuntime {
       };
     }
     if (supportsControlMethod(method))
-      return { result: await handleControlRequest(method, params, { rpc, cwd }) };
+      return {
+        result: await handleControlRequest(method, params, {
+          rpc,
+          cwd,
+          auxiliary: this.auxiliary,
+          nativeBrowserCua: this.nativeBrowserCua,
+        }),
+      };
     if (method.startsWith("session/")) {
       const result = await handleLegacySession(method, params, rpc, this.store, workspaceId);
       return {
@@ -260,6 +276,19 @@ export class BridgeRuntime {
           },
         };
       }
+      case V4_METHODS.codexConversationHistoryRuns: {
+        const parsed = codexConversationHistoryRunsParamsSchema.parse(params);
+        const state = await this.store.ensure(parsed.sessionId);
+        return {
+          result: projectCodexHistoryRuns({
+            thread: state.thread,
+            params: parsed,
+            seq: state.seq,
+            revision: state.revision,
+            logEpoch: state.epoch,
+          }),
+        };
+      }
       case V4_METHODS.attachmentBegin:
         return { result: await this.attachments.handle(method, params) };
       case V4_METHODS.attachmentRead:
@@ -284,12 +313,45 @@ export class BridgeRuntime {
           .map(object)
           .find((candidate) => candidate.id === row.turnId);
         if (!turn) throw new Error("File change turn no longer exists");
-        return { result: projectTurnFileChanges(turn) };
+        return {
+          result: projectTurnFileChanges(
+            turn,
+            this.snapshots.isFileChangesReverted(parsed.sessionId, row.turnId)
+              ? "reverted"
+              : "active",
+          ),
+        };
       }
       case V4_METHODS.attachmentChunk:
       case V4_METHODS.attachmentCommit:
       case V4_METHODS.attachmentAbort:
         return { result: await this.attachments.handle(method, params) };
+      case V4_METHODS.conversationFileRewindProjectionOverlay: {
+        const parsed = v4ConversationFileRewindProjectionOverlayParamsSchema.parse(params);
+        const snapshot = await this.snapshots.conversation(parsed.sessionId);
+        const row = snapshot.rows.window.find(
+          (candidate) =>
+            candidate.rowId === parsed.target.rowId &&
+            candidate.entityId === parsed.target.entityId,
+        );
+        if (!row || row.kind !== "turnHeader" || row.turnId !== parsed.turnId)
+          throw new Error("File rewind overlay target does not exist");
+        const publishReverted = this.snapshots.markFileChangesReverted(
+          parsed.sessionId,
+          parsed.turnId,
+        );
+        return {
+          result: {},
+          // 先让成功事务收到 overlay ACK，再发布新的 revision，避免旧终端在
+          // 得知恢复完成前收到一个无法解释的中间投影。
+          afterResponse: async () => {
+            if (publishReverted) {
+              publishReverted();
+              await this.subscriptions.changed(`conversation/${parsed.sessionId}`);
+            }
+          },
+        };
+      }
       default:
         unsupported(method);
     }

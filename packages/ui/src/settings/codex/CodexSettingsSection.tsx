@@ -1,18 +1,30 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button.js";
+import type { IServiceAccessor } from "@codez/services";
 import { useCodexSettings } from "@/hooks/useCodexSettings.js";
 import { CodexAgentsPanel } from "./CodexAgentsPanel.js";
 import { CodexAccountPanel } from "./CodexAccountPanel.js";
 import { CodexConfigPanel } from "./CodexConfigPanel.js";
 import { CodexMcpPanel, CodexPluginsPanel, CodexSkillsPanel } from "./CodexResourcesPanel.js";
+import { CodexHistoryPanel } from "./CodexHistoryPanel.js";
 import { CodexNotice, CodexSection } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
 
-type Panel = "account" | "models" | "skills" | "agents" | "mcp" | "plugins" | "config";
-const PANELS: Panel[] = ["account", "models", "skills", "agents", "mcp", "plugins", "config"];
+type Panel = "account" | "models" | "skills" | "agents" | "mcp" | "plugins" | "config" | "history";
+const PANELS: Panel[] = [
+  "account",
+  "models",
+  "skills",
+  "agents",
+  "mcp",
+  "plugins",
+  "config",
+  "history",
+];
 interface CodexSettingsSectionProps {
   workspacePath?: string | null;
   workspaceIdentity?: string;
+  sessionId?: string;
   remoteSessionId?: string;
   initialPanel?: Panel;
   onboarding?: boolean;
@@ -24,6 +36,7 @@ export function CodexSettingsSection(props: CodexSettingsSectionProps) {
     <CodexSettingsContent
       key={JSON.stringify([
         props.workspaceIdentity?.trim() || props.workspacePath,
+        props.sessionId,
         props.remoteSessionId,
         props.initialPanel,
       ])}
@@ -36,6 +49,10 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
   const text = useCodexMessages();
   const controller = useCodexSettings(props);
   const [panel, setPanel] = useState<Panel>(props.initialPanel ?? "account");
+  const nativeBrowserCuaCapability = useCodexNativeBrowserCuaCapability(
+    controller.services,
+    controller.remote,
+  );
   return (
     <div data-testid="codex-settings" className="space-y-4 text-ui-base text-foreground">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -98,8 +115,22 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
               remoteSessionId={props.remoteSessionId}
             />
           ) : null}
-          {panel === "mcp" ? <CodexMcpPanel controller={controller} /> : null}
+          {panel === "mcp" ? (
+            <CodexMcpPanel
+              controller={controller}
+              remote={controller.remote}
+              nativeBrowserCuaCapability={nativeBrowserCuaCapability}
+            />
+          ) : null}
           {panel === "plugins" ? <CodexPluginsPanel controller={controller} /> : null}
+          {panel === "history" ? (
+            <CodexHistoryPanel
+              agentService={controller.services.codezAgentService}
+              workspacePath={props.workspacePath}
+              workspaceIdentity={props.workspaceIdentity}
+              sessionId={props.sessionId ?? ""}
+            />
+          ) : null}
           {!props.onboarding ? <CodexNotice>{text.parity}</CodexNotice> : null}
         </div>
       )}
@@ -119,4 +150,29 @@ export function CodexCapabilityNotice({ onOpenSettings }: { onOpenSettings?: () 
       ) : null}
     </CodexSection>
   );
+}
+
+function useCodexNativeBrowserCuaCapability(
+  services: IServiceAccessor,
+  remote: boolean,
+): string | undefined {
+  const [state, setState] = useState<{ capability?: string } | undefined>(undefined);
+  const agentService = services.codezAgentService;
+  useEffect(() => {
+    let cancelled = false;
+    setState(undefined);
+    if (remote || !agentService?.helloConversationV4) return;
+    void agentService
+      .helloConversationV4()
+      .then((hello) => {
+        if (!cancelled) setState({ capability: hello.capabilities.codex?.nativeBrowserCuaMcp });
+      })
+      .catch(() => {
+        if (!cancelled) setState(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [agentService, remote]);
+  return state?.capability;
 }

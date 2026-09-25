@@ -34,7 +34,7 @@ export function useCodexSettings({
     remoteSessionId,
     workspaceIdentity,
   );
-  const { services, rpcReady } = resolution;
+  const { services, rpcReady, isRemoteTarget } = resolution;
   const [runtimeRevision, setRuntimeRevision] = useState(0);
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   const scope = useMemo(
@@ -182,6 +182,8 @@ export function useCodexSettings({
     busy: state.busy,
     error: state.scope === scope ? state.error : undefined,
     enabled,
+    services,
+    remote: isRemoteTarget,
     request,
     refresh,
     run,

@@ -20,7 +20,7 @@ export function UsageStatsSection({
   selectedCodingPlanSource?: CodingPlanUsageSource | null;
 }) {
   if (activeTab === "app") {
-    return <AppUsagePanel />;
+    return <AppUsagePanel workspaceIdentity={workspaceIdentity} workspacePath={workspacePath} />;
   }
 
   return (

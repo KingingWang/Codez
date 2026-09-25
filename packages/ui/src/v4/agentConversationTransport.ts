@@ -64,6 +64,7 @@ type ConversationV4AgentService = Pick<
   | "conversationPlansV4"
   | "conversationWorkflowRunEventsV4"
   | "conversationWorkflowRunsV4"
+  | "codexHistoryRunsV4"
   | "conversationWorkflowRunArtifactsV4"
   | "conversationWorkflowRunArtifactDataV4"
   | "conversationWorkflowRunArtifactReadV4"

@@ -34,6 +34,8 @@ import type {
   V4ConversationWorkflowRunsParams,
   V4ConversationWorkflowRunEventsResult,
   V4ConversationWorkflowRunsResult,
+  CodexConversationHistoryRunsParams,
+  CodexConversationHistoryRunsResult,
   ConversationResyncParams,
   V4ConversationResyncResult,
   V4ConversationSubscribeResult,
@@ -68,6 +70,10 @@ export interface ConversationTransport {
   ): Promise<V4ConversationWorkflowRunEventsResult>;
   /** v4/conversation/workflowRuns：workflow run 枚举（journal-backed 的重启后发现面）。 */
   workflowRuns(params: V4ConversationWorkflowRunsParams): Promise<V4ConversationWorkflowRunsResult>;
+  /** v4/codex/conversation/historyRuns：独立只读 Codex thread-history 投影。 */
+  codexHistoryRuns(
+    params: CodexConversationHistoryRunsParams,
+  ): Promise<CodexConversationHistoryRunsResult>;
   /**
    * v4/conversation/workflowRunArtifacts：workflow run 的**用户面产物**清单（冷恢复的 durable 读法）。
    *

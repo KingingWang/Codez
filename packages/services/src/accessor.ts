@@ -10,6 +10,7 @@ import type { ICloudContentService } from "#src/cloud-content/cloudContent.js";
 import type { IMarketingTouchService } from "#src/marketing-touch/marketingTouch.js";
 import type { IGitService } from "./git/git.js";
 import type { IGitCheckpointService } from "./git/gitCheckpoint.js";
+import type { ICodexDesktopFileRewindService } from "./desktop-file-rewind.js";
 import type { ISystemService } from "./system/system.js";
 import type { ITerminalService } from "./terminal/terminal.js";
 import type { ISettingService } from "./setting/setting.js";
@@ -56,6 +57,8 @@ export interface IServiceAccessor {
   readonly marketingTouchService?: IMarketingTouchService;
   readonly gitService: IGitService;
   readonly gitCheckpointService: IGitCheckpointService;
+  /** Desktop-owned safe Codex file rewind transaction; old hosts may omit it. */
+  readonly codexDesktopFileRewindService?: ICodexDesktopFileRewindService;
   readonly systemService: ISystemService;
   readonly terminalService: ITerminalService;
   readonly settingService: ISettingService;

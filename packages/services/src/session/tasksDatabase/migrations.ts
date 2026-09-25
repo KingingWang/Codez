@@ -2,6 +2,7 @@ import { databaseMigrationIdSchema, type DatabaseMigrationFacts } from "@codez/s
 import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import {
+  CODEX_AUTOMATION_CORRELATIONS_SCHEMA,
   AUTOMATION_SCHEMA,
   OFF_PEAK_SCHEMA,
   TASK_INDEX_SCHEMA,
@@ -64,6 +65,10 @@ const definitions = [
     id: "0003_official_glm_selection",
     checksumInput: [OFFICIAL_GLM_SELECTION_MIGRATION_SQL],
   },
+  {
+    id: "0004_codex_automation_correlations",
+    checksumInput: [CODEX_AUTOMATION_CORRELATIONS_SCHEMA],
+  },
 ] as const;
 
 export function runTasksDatabaseMigrations(
@@ -113,7 +118,9 @@ export function runTasksDatabaseMigrations(
       options.onProgress?.("migrating", { ...migrationFacts });
       if (migration.id === "0001_adopt_task_schema") adoptSchema(db);
       else if (migration.id === "0002_provider_selection") importLegacyAutomationSelections(db);
-      else db.exec(OFFICIAL_GLM_SELECTION_MIGRATION_SQL);
+      else if (migration.id === "0003_official_glm_selection")
+        db.exec(OFFICIAL_GLM_SELECTION_MIGRATION_SQL);
+      else db.exec(CODEX_AUTOMATION_CORRELATIONS_SCHEMA);
       migrationFacts.executedCount++;
       db.prepare("INSERT INTO tasks_schema_migration VALUES(?,?,?)").run(
         migration.id,

@@ -218,9 +218,6 @@ function createHello(context: CodezAgentV4ConnectionContext): HelloMessage {
       compression: "none",
       workspaceHookReview: true,
       independentPlanState: true,
-      // 本 Host 会转发 `workflowRun.*` 键级增量；客户端见到它才能在 clientHello 里回声明
-      // （那个 capabilities 是 .strict() 的，反过来会让老 Host 握不上手）。
-      workflowRunDeltas: true,
     },
     auth: {},
   };
@@ -668,7 +665,20 @@ export function createCodezAgentConnectionScope(
     async helloConversationV4() {
       assertOpen();
       helloIssued = true;
-      return createHello(context);
+      const hello = createHello(context);
+      // The base service owns bridge/service capability discovery. This connection-scoped
+      // hello keeps its routing identity and copies only the validated Codex projection.
+      const upstream = await base.helloConversationV4();
+      const codex = upstream.capabilities.codex;
+      const codexUnavailable = upstream.capabilities.codexUnavailable;
+      return {
+        ...hello,
+        capabilities: {
+          ...hello.capabilities,
+          ...(codex ? { codex } : {}),
+          ...(codexUnavailable ? { codexUnavailable } : {}),
+        },
+      };
     },
     async initializeConversationV4(clientHello) {
       assertOpen();
@@ -743,6 +753,10 @@ export function createCodezAgentConnectionScope(
       return base.conversationRowsRangeV4(
         withTrustedConnection(params, forwardedConnection(params)),
       );
+    },
+    async codexHistoryRunsV4(params) {
+      assertReady();
+      return base.codexHistoryRunsV4(withTrustedConnection(params, forwardedConnection(params)));
     },
     async attachmentBeginV4(params) {
       assertReady();

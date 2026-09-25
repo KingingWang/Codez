@@ -9,6 +9,7 @@ import {
   commandAckSchema,
   v4ConversationSubscribeResultSchema,
   routedTopicWireFrameSchema,
+  conversationSnapshotSchema,
   type RoutedTopicWireFrame,
 } from "@codez/shared/codez-protocol-v4";
 import { BridgeRuntime } from "../src/bridge-runtime.js";
@@ -207,6 +208,82 @@ test("runtime cancellation and close abort auxiliary work, interrupt exact turn 
       assert.equal(h.closeCount(), 1);
       await assert.rejects(h.runtime.request("workspace/generateText", generate), { code: -32004 });
     });
+});
+
+test("successful desktop file rewind projection overlay republishes reverted file changes", async (t) => {
+  const h = await fixture(t);
+  h.authority.thread.turns[0]!.items = [
+    ...h.authority.thread.turns[0]!.items,
+    {
+      type: "fileChange" as const,
+      id: "file-change-1",
+      status: "completed" as const,
+      changes: [
+        {
+          path: "file.txt",
+          diff: "@@ -1,1 +1,1 @@\n-old\n+context",
+          kind: { type: "update" as const, move_path: null },
+        },
+      ],
+    },
+  ];
+  const target = { rowId: 0, entityId: "codex:turn:turn-1" };
+  const initial = await h.runtime.request(V4_METHODS.conversationRowsRange, {
+    sessionId: "thread-1",
+    limit: 1,
+  });
+  const subscription = await h.runtime.request(
+    V4_METHODS.conversationSubscribe,
+    subscribe("conversation/thread-1"),
+  );
+  await subscription.afterResponse?.();
+  await tick();
+  h.frames.length = 0;
+  const before = await h.runtime.request(V4_METHODS.conversationFileChanges, {
+    sessionId: "thread-1",
+    target,
+    baseRevision: (initial.result as { atRevision: number }).atRevision,
+    baseLogEpoch: (initial.result as { atLogEpoch: string }).atLogEpoch,
+  });
+  assert.equal((before.result as { state?: string }).state, "active");
+  const overlayPromise = h.runtime.request(V4_METHODS.conversationFileRewindProjectionOverlay, {
+    sessionId: "thread-1",
+    target,
+    turnId: "turn-1",
+  });
+  await tick();
+  assert.deepEqual(
+    h.frames.filter((frame) => frame.topic === "conversation/thread-1"),
+    [],
+  );
+  const overlay = await overlayPromise;
+  await overlay.afterResponse?.();
+  await tick();
+  const frames = h.frames.filter((frame) => frame.topic === "conversation/thread-1");
+  assert.equal(frames.length, 1);
+  const lastFrame = frames.at(-1);
+  const payload = lastFrame?.kind === "complete" ? lastFrame.frame.payload : undefined;
+  assert.ok(payload?.kind === "snapshot");
+  const snapshot = conversationSnapshotSchema.parse(payload.snapshot);
+  const header = snapshot.rows.window.find((row) => row.rowId === 0);
+  assert.equal(header?.kind, "turnHeader");
+  assert.equal(header.fileChanges?.state, "reverted");
+  const details = await h.runtime.request(V4_METHODS.conversationFileChanges, {
+    sessionId: "thread-1",
+    target,
+    baseRevision: snapshot.revision,
+    baseLogEpoch: snapshot.logEpoch,
+  });
+  assert.equal((details.result as { state?: string }).state, "reverted");
+  await assert.rejects(
+    h.runtime.request(V4_METHODS.conversationFileChanges, {
+      sessionId: "thread-1",
+      target,
+      baseRevision: snapshot.revision - 1,
+      baseLogEpoch: snapshot.logEpoch,
+    }),
+    /Conversation changed/,
+  );
 });
 
 test("all V4 subscription topics and both profiles defer initial frames until ACK write callback", async (t) => {

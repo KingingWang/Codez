@@ -19,6 +19,10 @@ import {
   codexReadRequest,
   isCodexSettingsSection,
   isCodexUnsupportedSection,
+  classifyCodexNativeBrowserCua,
+  codexNativeBrowserCuaInstallRequest,
+  installCodexNativeBrowserCuaMcp,
+  isCodexNativeBrowserCuaConfigured,
 } from "./codexSettingsData.js";
 import { roleFormToWriteInput } from "./CodexAgentsPanel.js";
 
@@ -322,4 +326,237 @@ test("agent role form validates like the bridge and omits blank optional fields"
     roleFormToWriteInput({ ...base, name: "weird—name", originalName: "weird—name" }).name,
     "weird—name",
   );
+});
+
+const nativeDescriptor = {
+  runtimeInstalled: true,
+  serviceRunning: true,
+  executable: "/fixture/electron",
+  bridgePath: "/fixture/bridge.cjs",
+  endpoint: "/tmp/codez-native-browser-cua-test.sock",
+  tokenFile: "/user/codez-native-browser-cua-test.token",
+  browserAvailable: true,
+  cuaAvailable: false,
+  cuaReason: "codez-cua.runtime_unavailable",
+};
+
+test("native Browser/CUA install writes only the fixed server and follows exact reload/status order", async () => {
+  const target = { filePath: "/fixture/config.toml", expectedVersion: "v1" };
+  const request = codexNativeBrowserCuaInstallRequest(target, nativeDescriptor);
+  assert.equal(
+    request.method,
+    "config/batchWrite",
+    "first operation must be the single fixed write",
+  );
+  const calls: CodexRequest[] = [];
+  await installCodexNativeBrowserCuaMcp(
+    {
+      snapshot: {
+        config: {
+          data: codexConfigResponseSchema.parse({
+            config: {},
+            origins: {},
+            layers: [
+              {
+                name: { type: "user", file: "/fixture/config.toml", profile: null },
+                version: "v1",
+                config: {},
+              },
+            ],
+          }),
+        },
+      },
+      async request(value) {
+        calls.push(value);
+        if (value.method === "mcpServerStatus/list")
+          return {
+            data: [],
+            nextCursor:
+              calls.filter((entry) => entry.method === "mcpServerStatus/list").length === 1
+                ? "next"
+                : null,
+          };
+        return {};
+      },
+    },
+    nativeDescriptor,
+  );
+  assert.equal(calls.length, 4);
+  assert.deepEqual(calls[0], request);
+  assert.deepEqual(calls[0]?.params, {
+    ...target,
+    edits: [
+      {
+        keyPath: "mcp_servers.codez-desktop-browser-cua",
+        value: {
+          command: "/fixture/electron",
+          args: ["/fixture/bridge.cjs", "native-browser-cua-mcp"],
+          env: [
+            { name: "ELECTRON_RUN_AS_NODE", value: "1" },
+            { name: "CODEZ_NATIVE_BROWSER_CUA_ENDPOINT", value: nativeDescriptor.endpoint },
+            { name: "CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE", value: nativeDescriptor.tokenFile },
+          ],
+        },
+        mergeStrategy: "replace",
+      },
+    ],
+  });
+  assert.deepEqual(calls[1], { method: "config/mcpServer/reload" });
+  assert.deepEqual(calls[2]?.params, {});
+  assert.deepEqual(calls[3]?.params, { cursor: "next" });
+  assert.equal(JSON.stringify(calls[0]).includes("CODEZ_NODE_REPL_BROWSER_BROKER"), false);
+});
+
+test("native Browser/CUA install stops after one failed mutation and never retries", async () => {
+  const calls: CodexRequest[] = [];
+  await assert.rejects(
+    installCodexNativeBrowserCuaMcp(
+      {
+        snapshot: {
+          config: {
+            data: codexConfigResponseSchema.parse({
+              config: {},
+              origins: {},
+              layers: [
+                {
+                  name: { type: "user", file: "/fixture/config.toml", profile: null },
+                  version: "v1",
+                  config: {},
+                },
+              ],
+            }),
+          },
+        },
+        async request(value) {
+          calls.push(value);
+          throw new Error("write failed");
+        },
+      },
+      nativeDescriptor,
+    ),
+    /write failed/u,
+  );
+  assert.equal(calls.length, 1);
+});
+
+test("native Browser/CUA classification fails closed before descriptor and configuration", () => {
+  assert.equal(
+    classifyCodexNativeBrowserCua({
+      capability: undefined,
+      remote: false,
+      configured: false,
+    }),
+    "unsupported",
+  );
+  assert.equal(
+    classifyCodexNativeBrowserCua({ capability: "degraded", remote: true, configured: true }),
+    "unsupported",
+  );
+  assert.equal(
+    classifyCodexNativeBrowserCua({
+      capability: "degraded",
+      remote: false,
+      descriptorError: "command failed",
+      configured: true,
+    }),
+    "descriptor-unavailable",
+  );
+  assert.equal(
+    classifyCodexNativeBrowserCua({
+      capability: "degraded",
+      remote: false,
+      configured: true,
+    }),
+    "descriptor-unavailable",
+  );
+  assert.equal(
+    classifyCodexNativeBrowserCua({
+      capability: "degraded",
+      remote: false,
+      descriptor: {
+        runtimeInstalled: false,
+        serviceRunning: false,
+        executable: "/fixture/electron",
+        browserAvailable: false,
+        cuaAvailable: false,
+        cuaReason: "codez-cua.runtime_unavailable",
+      },
+      configured: true,
+    }),
+    "runtime-missing",
+  );
+  assert.equal(
+    classifyCodexNativeBrowserCua({
+      capability: "degraded",
+      remote: false,
+      descriptor: { ...nativeDescriptor, serviceRunning: false },
+      configured: true,
+    }),
+    "service-not-running",
+  );
+  assert.equal(
+    isCodexNativeBrowserCuaConfigured(
+      codexConfigResponseSchema.parse({
+        config: { mcp_servers: { "codez-desktop-browser-cua": { command: "wrong" } } },
+        origins: {},
+        layers: [],
+      }),
+      nativeDescriptor as never,
+    ),
+    false,
+  );
+});
+
+test("native Browser/CUA configured comparison is structural and pagination detects cursor loops", async () => {
+  const configuredValue = {
+    args: [nativeDescriptor.bridgePath, "native-browser-cua-mcp"],
+    env: [
+      { name: "ELECTRON_RUN_AS_NODE", value: "1" },
+      { name: "CODEZ_NATIVE_BROWSER_CUA_ENDPOINT", value: nativeDescriptor.endpoint },
+      { name: "CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE", value: nativeDescriptor.tokenFile },
+    ],
+    command: nativeDescriptor.executable,
+  };
+  assert.equal(
+    isCodexNativeBrowserCuaConfigured(
+      codexConfigResponseSchema.parse({
+        config: { mcp_servers: { "codez-desktop-browser-cua": configuredValue } },
+        origins: {},
+        layers: [],
+      }),
+      nativeDescriptor as never,
+    ),
+    true,
+  );
+
+  const calls: CodexRequest[] = [];
+  await assert.rejects(
+    installCodexNativeBrowserCuaMcp(
+      {
+        snapshot: {
+          config: {
+            data: codexConfigResponseSchema.parse({
+              config: {},
+              origins: {},
+              layers: [
+                {
+                  name: { type: "user", file: "/fixture/config.toml", profile: null },
+                  version: "v1",
+                  config: {},
+                },
+              ],
+            }),
+          },
+        },
+        async request(value) {
+          calls.push(value);
+          if (value.method === "mcpServerStatus/list") return { data: [], nextCursor: "loop" };
+          return {};
+        },
+      },
+      nativeDescriptor,
+    ),
+    /Invalid Codex pagination cursor/u,
+  );
+  assert.equal(calls.filter((entry) => entry.method === "mcpServerStatus/list").length, 2);
 });

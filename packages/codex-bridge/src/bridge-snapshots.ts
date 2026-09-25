@@ -14,6 +14,75 @@ import { projectTurnFileChanges } from "./file-changes.js";
 import { itemEntityId } from "./projection-rows.js";
 import type { AttachmentStore, AttachmentReadAuthorization } from "./attachments.js";
 
+function safeUsageCount(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+}
+
+function sparseNativeUsage(value: unknown): ConversationSnapshot["usage"] | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const usage = value as Record<string, unknown>;
+  const total =
+    typeof usage.total === "object" && usage.total !== null
+      ? (usage.total as Record<string, unknown>)
+      : undefined;
+  const last =
+    typeof usage.last === "object" && usage.last !== null
+      ? (usage.last as Record<string, unknown>)
+      : undefined;
+  const inputTokens = safeUsageCount(total?.inputTokens);
+  const outputTokens = safeUsageCount(total?.outputTokens);
+  const cacheReadTokens = safeUsageCount(total?.cachedInputTokens);
+  const cacheWriteTokens = safeUsageCount(total?.cacheWriteInputTokens);
+  const usedTokens = safeUsageCount(last?.totalTokens);
+  const maxTokens = safeUsageCount(usage.modelContextWindow);
+  if (
+    inputTokens === undefined &&
+    outputTokens === undefined &&
+    cacheReadTokens === undefined &&
+    cacheWriteTokens === undefined &&
+    usedTokens === undefined &&
+    maxTokens === undefined
+  ) {
+    return undefined;
+  }
+  const hasContextWindow = usedTokens !== undefined || maxTokens !== undefined;
+  const codexObserved: NonNullable<ConversationSnapshot["usage"]["codexObserved"]> = {
+    ...(inputTokens !== undefined ? { inputTokens } : {}),
+    ...(outputTokens !== undefined ? { outputTokens } : {}),
+    ...(cacheReadTokens !== undefined ? { cacheReadTokens } : {}),
+    ...(cacheWriteTokens !== undefined ? { cacheWriteTokens } : {}),
+    ...(hasContextWindow
+      ? {
+          contextWindow: {
+            ...(usedTokens !== undefined ? { usedTokens } : {}),
+            ...(maxTokens !== undefined ? { maxTokens } : {}),
+          },
+        }
+      : {}),
+  };
+  return {
+    // Dense fields are compatibility-only. They are emitted solely when at least one
+    // corresponding native fact exists; unavailable sibling fields remain absent from
+    // codexObserved and UI must mark them unavailable.
+    cumulative: {
+      inputTokens: inputTokens ?? 0,
+      outputTokens: outputTokens ?? 0,
+      cacheReadTokens: cacheReadTokens ?? 0,
+      cacheWriteTokens: cacheWriteTokens ?? 0,
+    },
+    ...(hasContextWindow
+      ? {
+          contextWindow: {
+            usedTokens: usedTokens ?? 0,
+            maxTokens: maxTokens ?? 0,
+            autoCompactThresholdTokens: null,
+          },
+        }
+      : { contextWindow: null }),
+    codexObserved,
+  };
+}
+
 export class BridgeSnapshots {
   private readonly indexEpoch = randomUUID();
   private readonly configEpoch = randomUUID();
@@ -23,6 +92,8 @@ export class BridgeSnapshots {
     string,
     { epoch: string; rows: ConversationSnapshot["rows"]["window"] }
   >();
+  private readonly revertedTurns = new Map<string, Set<string>>();
+
   constructor(
     private readonly context: BridgeControlContext,
     private readonly store: ThreadStateStore,
@@ -30,6 +101,28 @@ export class BridgeSnapshots {
     readonly workspaceId: string,
     private readonly attachments?: AttachmentStore,
   ) {}
+
+  /**
+   * Desktop 成功事务是文件恢复的事实来源，但原生历史不可重写。
+   * 仅在投影层把同一 session/turn 标为 reverted；touch 复用既有全量快照发布，
+   * 让同一 logEpoch 下的 revision/seq 变化负责失效 UI 终态缓存。
+   */
+  isFileChangesReverted(sessionId: string, turnId: string): boolean {
+    return this.revertedTurns.get(sessionId)?.has(turnId) === true;
+  }
+
+  markFileChangesReverted(sessionId: string, turnId: string): (() => void) | undefined {
+    let turns = this.revertedTurns.get(sessionId);
+    if (!turns) {
+      turns = new Set();
+      this.revertedTurns.set(sessionId, turns);
+    }
+    if (turns.has(turnId)) return undefined;
+    turns.add(turnId);
+    // Revision/touch happens only after the mutation RPC is ready to ACK; otherwise the
+    // store listener can publish a reverted snapshot before the transaction sees its ACK.
+    return () => this.store.touch(sessionId);
+  }
 
   async conversation(id: string): Promise<ConversationSnapshot> {
     const state = await this.store.ensure(id);
@@ -42,27 +135,15 @@ export class BridgeSnapshots {
       queue: state.queue,
       interactions: this.interactions.list(id),
     });
-    if (state.thread.tokenUsage) {
-      const usage = object(state.thread.tokenUsage);
-      const total = object(usage.total);
-      const last = object(usage.last);
-      const count = (value: unknown) =>
-        typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
+    // Batch A/B 的稀疏事实边界：只有原生明确给到的非负安全整数才是观测值。
+    // 旧 dense usage 字段保持缺省（UI 展示为不可用），不能把缺席/坏值归零。
+    const observed = sparseNativeUsage(state.thread.tokenUsage);
+    if (observed) {
       snapshot.usage = {
-        cumulative: {
-          inputTokens: count(total.inputTokens),
-          outputTokens: count(total.outputTokens),
-          cacheReadTokens: count(total.cachedInputTokens),
-          cacheWriteTokens: count(total.cacheWriteInputTokens),
-        },
-        contextWindow:
-          typeof usage.modelContextWindow === "number"
-            ? {
-                usedTokens: count(last.totalTokens),
-                maxTokens: usage.modelContextWindow,
-                autoCompactThresholdTokens: null,
-              }
-            : null,
+        ...snapshot.usage,
+        cumulative: observed.cumulative,
+        contextWindow: observed.contextWindow,
+        codexObserved: observed.codexObserved,
       };
     }
     const idle = snapshot.control.phase !== "running";
@@ -101,10 +182,21 @@ export class BridgeSnapshots {
       if (row.kind === "turnHeader") {
         const turn = array(state.thread.turns)
           .map(object)
-          .find((item) => item.id === row.turnId);
+          .find((candidate) => candidate.id === row.turnId) as
+          | { id: string; changes?: unknown }
+          | undefined;
         if (turn) {
-          const { files, additions, deletions } = projectTurnFileChanges(turn);
-          if (files) row.fileChanges = { files, additions, deletions };
+          const filesResult = projectTurnFileChanges(
+            turn,
+            this.isFileChangesReverted(id, turn.id) ? "reverted" : "active",
+          );
+          if (filesResult.files)
+            row.fileChanges = {
+              files: filesResult.files,
+              additions: filesResult.additions,
+              deletions: filesResult.deletions,
+              state: filesResult.state,
+            };
         }
       }
       if (row.kind === "userInput" && this.attachments) {

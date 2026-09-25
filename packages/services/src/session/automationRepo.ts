@@ -29,6 +29,11 @@ import {
 } from "@codez/shared";
 import { getTasksIndexDatabasePath } from "#src/paths.js";
 import { runTasksDatabaseMigrations } from "#src/session/tasksDatabase/migrations.js";
+import {
+  CodexAutomationCorrelationRepo,
+  type CodexAutomationCorrelation,
+  type CodexAutomationCorrelationState,
+} from "#src/session/codexAutomationCorrelation.js";
 
 const require = createRequire(import.meta.url);
 const { DatabaseSync } = require("node:sqlite") as typeof import("node:sqlite");
@@ -228,6 +233,7 @@ export class AutomationRepo {
   private db: DatabaseSyncInstance | null = null;
   private dbPath: string | null = null;
   private initializePromise: Promise<void> | null = null;
+  private codexAutomationCorrelationRepo: CodexAutomationCorrelationRepo | null = null;
   // db 路径不能从进程级全局 _dataBaseDir（getTasksIndexDatabasePath）解析：
   // vitest threads 池会在同一进程并发跑多个测试文件，各文件的 setDataBaseDir(tempDir)
   // 互相覆盖全局值，导致 repo 与裸 SQL 操作在并发窗口内写进真实库 ~/.codez/v2（历史脏数据
@@ -279,6 +285,7 @@ export class AutomationRepo {
     if (!this.db) {
       this.db = new DatabaseSync(path);
       this.dbPath = path;
+      this.codexAutomationCorrelationRepo = new CodexAutomationCorrelationRepo(this.db);
       this.db.exec(`PRAGMA busy_timeout = ${this.startupBusyTimeoutMs}`);
       this.db.exec("PRAGMA journal_mode = WAL");
       this.db.exec("PRAGMA synchronous = NORMAL");
@@ -1405,6 +1412,44 @@ export class AutomationRepo {
       .prepare(`SELECT * FROM automation_runs WHERE run_id = @run_id`)
       .get({ run_id: runId }) as AutomationRunRow | undefined;
     return row ? rowToRun(row) : null;
+  }
+
+  async getCodexAutomationCorrelation(params: {
+    workspaceKey: string;
+    runId: string;
+  }): Promise<CodexAutomationCorrelation | null> {
+    await this.ensureReady();
+    return this.codexAutomationCorrelationRepo!.get(params);
+  }
+
+  async prepareCodexAutomationCorrelation(params: {
+    workspaceKey: string;
+    runId: string;
+    automationId: string;
+    threadId: string;
+    now?: number;
+  }): Promise<{ created: boolean; correlation: CodexAutomationCorrelation }> {
+    await this.ensureReady();
+    return this.codexAutomationCorrelationRepo!.prepare({
+      ...params,
+      now: params.now ?? Date.now(),
+    });
+  }
+
+  async transitionCodexAutomationCorrelation(params: {
+    workspaceKey: string;
+    runId: string;
+    to: CodexAutomationCorrelationState;
+    threadId?: string;
+    turnId?: string;
+    error?: string;
+    now?: number;
+  }): Promise<CodexAutomationCorrelation> {
+    await this.ensureReady();
+    return this.codexAutomationCorrelationRepo!.transition({
+      ...params,
+      now: params.now ?? Date.now(),
+    });
   }
 
   async deleteRun(runId: string, workspaceKey?: string): Promise<void> {

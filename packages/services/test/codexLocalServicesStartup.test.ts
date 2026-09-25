@@ -1,16 +1,22 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { Emitter } from "@codez/rpc";
-import { appSettingsSchema, resolveWorkspaceKey, type CodezProtocolMessage } from "@codez/shared";
+import {
+  appSettingsSchema,
+  codezProtocolMethods,
+  resolveWorkspaceKey,
+  type CodezProtocolMessage,
+} from "@codez/shared";
 import { createLocalServices, disposeServiceResourcesAndWait } from "../src/node.js";
 import { ProviderRuntime } from "../src/model-provider/providerRuntime.js";
 import type { ISettingService } from "../src/setting/setting.js";
 import { setDataBaseDir } from "../src/paths.js";
 import { ICodezAgentService } from "../src/codez-agent/codezAgent.js";
+import { ICodexDesktopFileRewindService } from "../src/desktop-file-rewind.js";
 import {
   CodezAgentProcessManager,
   type CodezAgentProcessManagerOptions,
@@ -40,10 +46,28 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
     onMessage: messages.event,
     onClose: closes.event,
     async send(message) {
-      if ("method" in message && "id" in message) {
-        wireMethods.push(message.method);
-        messages.fire({ id: message.id, result: { native: true } });
-      }
+      if (!("method" in message && "id" in message)) return;
+      wireMethods.push(message.method);
+      messages.fire({
+        id: message.id,
+        result:
+          message.method === codezProtocolMethods.runtimeCapabilities
+            ? {
+                independentPlanState: true,
+                codex: {
+                  auxiliaryTextGeneration: "supported",
+                  observedSessionUsage: "supported",
+                  observedAppUsage: "unsupported",
+                  sharedContextContentCopy: "unsupported",
+                  scheduledPromptAutomations: "supported",
+                  nativeBrowserCuaMcp: "unsupported",
+                  readOnlyWorkflowHistory: "supported",
+                  safeDesktopFileRewind: "supported",
+                  legacyWorkflowRuns: "unsupported",
+                },
+              }
+            : { native: true },
+      });
     },
     dispose() {
       messages.dispose();
@@ -98,11 +122,21 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
       };
       if (mode === "explicit-env") process.env.CODEZ_AGENT_SERVER_COMMAND = "/legacy/agent";
       else delete process.env.CODEZ_AGENT_SERVER_COMMAND;
-      if (mode === "deployed-codex")
-        process.env.CODEZ_CODEX_BRIDGE_PATH = "/remote/codex/bridge.cjs";
-      else delete process.env.CODEZ_CODEX_BRIDGE_PATH;
+      if (mode === "deployed-codex") {
+        const bridgeRoot = join(root, "remote", "codex");
+        await mkdir(bridgeRoot, { recursive: true });
+        await writeFile(join(bridgeRoot, "bridge.cjs"), "");
+        await writeFile(join(bridgeRoot, "codex"), "");
+        process.env.CODEZ_CODEX_BRIDGE_PATH = join(bridgeRoot, "bridge.cjs");
+      } else delete process.env.CODEZ_CODEX_BRIDGE_PATH;
       wireMethods.length = 0;
       const before = starts;
+      const nativeBrowserCua =
+        mode === "codex"
+          ? { browserAvailable: true, cuaAvailable: false }
+          : mode === "deployed-codex"
+            ? { browserAvailable: false, cuaAvailable: false }
+            : undefined;
       const services = createLocalServices({
         settingService: settings,
         runtimeProcessEnvPatch: { PATH: savedEnv.PATH ?? "" },
@@ -124,6 +158,7 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
               },
             }),
         ...(mode === "custom-resolver" ? { codezAgentCommandResolver: () => null } : {}),
+        ...(nativeBrowserCua ? { nativeBrowserCua } : {}),
         prepareLegacyAccountConnections: async () => {
           accountPreparations += 1;
           throw new Error("must not prepare Zai account for Codex");
@@ -139,6 +174,21 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
       });
       try {
         const agent = services.get(ICodezAgentService);
+        if (mode === "deployed-codex") {
+          const hello = await agent.helloConversationV4();
+          assert.equal(
+            hello.capabilities.codex?.sharedContextContentCopy,
+            "unsupported",
+            "attached-remote unsupported share wrapper must not become Codex content-copy capability",
+          );
+        }
+        const rewindOwner = services.getOptional(ICodexDesktopFileRewindService);
+        assert.equal(
+          Boolean(rewindOwner),
+          mode === "codex",
+          "safe rewind owner is Desktop-local/default bridge only",
+        );
+        wireMethods.length = 0;
         const request = agent.codexRequest({
           workspacePath: root,
           workspaceIdentity: "remote-identity-kept",
@@ -155,17 +205,39 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
             "no legacy tool policy prerequisite RPCs",
           );
           assert.equal(process.env.PATH, savedEnv.PATH);
-          assert.deepEqual(spawnEnv, {
-            HTTP_PROXY: "http://127.0.0.1:19080",
-            HTTPS_PROXY: "http://127.0.0.1:19080",
-            ALL_PROXY: "http://127.0.0.1:19080",
-            CODEZ_HTTP_PROXY: "http://127.0.0.1:19080",
-            NO_PROXY: "localhost",
-            no_proxy: "localhost",
-            CODEZ_NO_PROXY: "localhost",
-            NODE_EXTRA_CA_CERTS: join(root, "example-ca.pem"),
-            CODEZ_AGENT_CA_CERT: join(root, "example-ca.pem"),
-          });
+          assert.deepEqual(
+            spawnEnv,
+            mode === "codex"
+              ? {
+                  HTTP_PROXY: "http://127.0.0.1:19080",
+                  HTTPS_PROXY: "http://127.0.0.1:19080",
+                  ALL_PROXY: "http://127.0.0.1:19080",
+                  CODEZ_HTTP_PROXY: "http://127.0.0.1:19080",
+                  NO_PROXY: "localhost",
+                  no_proxy: "localhost",
+                  CODEZ_NO_PROXY: "localhost",
+                  NODE_EXTRA_CA_CERTS: join(root, "example-ca.pem"),
+                  CODEZ_AGENT_CA_CERT: join(root, "example-ca.pem"),
+                  CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE: "1",
+                  CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE: "0",
+                }
+              : {
+                  HTTP_PROXY: "http://127.0.0.1:19080",
+                  HTTPS_PROXY: "http://127.0.0.1:19080",
+                  ALL_PROXY: "http://127.0.0.1:19080",
+                  CODEZ_HTTP_PROXY: "http://127.0.0.1:19080",
+                  NO_PROXY: "localhost",
+                  no_proxy: "localhost",
+                  CODEZ_NO_PROXY: "localhost",
+                  NODE_EXTRA_CA_CERTS: join(root, "example-ca.pem"),
+                  CODEZ_AGENT_CA_CERT: join(root, "example-ca.pem"),
+                  CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE: "0",
+                  CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE: "0",
+                },
+          );
+          for (const key of Object.keys(spawnEnv ?? {})) {
+            assert.equal(key.includes("CODEZ_NODE_REPL_BROWSER_BROKER"), false, key);
+          }
         } else {
           await assert.rejects(request, (error) => error === legacyError);
           assert.ok(starts > before, `${mode} retains legacy startup prerequisites`);

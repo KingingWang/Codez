@@ -2743,6 +2743,7 @@ export const WorkspaceShellLayout = memo(
                               <CodexSettingsSection
                                 workspacePath={workspaceAbsPath}
                                 workspaceIdentity={workspaceIdentity}
+                                sessionId={activeTaskId ?? undefined}
                                 initialPanel="plugins"
                               />
                             ) : <PluginStorePage
