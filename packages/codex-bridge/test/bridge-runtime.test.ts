@@ -707,3 +707,125 @@ test("writer-conflict subscribe degrades to read-only; resync invalidates it and
   assert.equal(recovered.includes("writerConflict"), false);
   assert.match(recovered, /Hello back/);
 });
+
+test("file rewind overlay injects a one-shot model notice into the next sendText", async (t) => {
+  const h = await fixture(t);
+  // 一轮已完成的 fileChange（add 全量正文），投影应给出 canRewindFiles 的 turnHeader。
+  h.authority.thread.turns.push({
+    id: "turn-rewind",
+    itemsView: "full",
+    status: "completed",
+    error: null,
+    startedAt: 121,
+    completedAt: 130,
+    durationMs: 9000,
+    items: [
+      {
+        type: "userMessage",
+        id: "user-2",
+        content: [{ type: "text", text: "add a file", text_elements: [] }],
+      },
+      {
+        type: "fileChange",
+        id: "fc-1",
+        status: "completed",
+        changes: [
+          { path: "/workspace/src/new.ts", diff: "export const a = 1;\n", kind: { type: "add" } },
+        ],
+      },
+    ],
+  });
+  const range = (await h.runtime.request(V4_METHODS.conversationRowsRange, {
+    sessionId: "thread-1",
+    limit: 50,
+  })) as {
+    result: {
+      rows: Array<{
+        kind: string;
+        rowId: number;
+        entityId?: string;
+        turnId?: string;
+        actions?: { canRewindFiles?: boolean };
+      }>;
+    };
+  };
+  const header = range.result.rows.find(
+    (row) => row.kind === "turnHeader" && row.turnId === "turn-rewind",
+  );
+  assert.ok(header, "fileChange turn 应投影出 turnHeader 行");
+  assert.equal(header.actions?.canRewindFiles, true);
+
+  const overlay = await h.runtime.request(V4_METHODS.conversationFileRewindProjectionOverlay, {
+    sessionId: "thread-1",
+    target: {
+      rowId: header.rowId,
+      ...(header.entityId !== undefined ? { entityId: header.entityId } : {}),
+    },
+    turnId: "turn-rewind",
+  });
+  await overlay.afterResponse?.();
+
+  // fixture 缺省 turn/start 回包不带 status，投影会把该 turn 判成非法；
+  // 这里返回完整运行中 turn，后续快照才能继续投影（现有用例发送后不再投影，未踩到）。
+  h.handlers["turn/start"] = () => ({
+    turn: {
+      id: "live-after-rewind",
+      status: "inProgress",
+      items: [],
+      itemsView: "full",
+      startedAt: 131,
+      completedAt: null,
+      error: null,
+    },
+  });
+  // 第一条发送后线程在跑，第二条走 steer 投递。
+  h.handlers["turn/steer"] = () => ({ turnId: "live-after-rewind" });
+
+  // 撤销后第一条用户消息：prepend 一次性通知（相对路径 + 行级统计），原文保留在后。
+  const sent = await h.runtime.request(V4_METHODS.command, {
+    type: "sendText",
+    commandId: "after-rewind-1",
+    clientId: "desktop-1",
+    sessionId: "thread-1",
+    issuedAt: 2,
+    payload: { text: "continue please" },
+  });
+  const sentAck = commandAckSchema.parse(sent.result);
+  assert.equal(sentAck.status, "accepted", sentAck.message);
+  const starts = h.calls.filter((call) => call.method === "turn/start");
+  assert.equal(starts.length, 1);
+  const input = (starts[0]!.params as { input: Array<{ text: string }> }).input;
+  assert.ok(input[0]!.text.startsWith("[User action: file changes reverted]"));
+  assert.ok(input[0]!.text.includes("- `src/new.ts` (+1/-0)"));
+  assert.ok(input[0]!.text.endsWith("continue please"));
+
+  // 快照投影同轮标记 reverted，且第二条消息不再携带通知。
+  const snapshot = (await h.runtime.request(V4_METHODS.conversationRowsRange, {
+    sessionId: "thread-1",
+    limit: 50,
+  })) as {
+    result: {
+      rows: Array<{ kind: string; turnId?: string; fileChanges?: { state?: string } }>;
+    };
+  };
+  const revertedHeader = snapshot.result.rows.find(
+    (row) => row.kind === "turnHeader" && row.turnId === "turn-rewind",
+  );
+  assert.equal(revertedHeader?.fileChanges?.state, "reverted");
+
+  const second = await h.runtime.request(V4_METHODS.command, {
+    type: "sendText",
+    commandId: "after-rewind-2",
+    clientId: "desktop-1",
+    sessionId: "thread-1",
+    issuedAt: 3,
+    payload: { text: "next" },
+  });
+  assert.equal(commandAckSchema.parse(second.result).status, "accepted");
+  const allStarts = h.calls.filter((call) => call.method === "turn/start");
+  assert.equal(allStarts.length, 1);
+  const steer = h.calls.filter((call) => call.method === "turn/steer");
+  assert.equal(steer.length, 1);
+  const steerInput = (steer[0]!.params as { input: Array<{ text: string }> }).input;
+  assert.ok(!steerInput[0]!.text.includes("reverted"));
+});
