@@ -68,6 +68,33 @@ closed, and native config/skills/plugin requests stay on the canonical execution
   content against late start/delta notifications.
 - Native queue contents are owned by Codex. Unsupported auto-drain/paused intent
   semantics must be reported, never silently acknowledged.
+- Native transport frames are newline-delimited JSON with a hard cap of 32 MiB
+  per frame in each direction. JSON never carries a raw newline inside a frame,
+  so an oversized inbound frame is skipped by discarding bytes up to the next
+  raw newline; the connection survives and memory stays bounded regardless of
+  the dropped frame's true length. Dropping is explicit, never silent:
+  - A dropped response fails its in-flight request with a `LIMIT` transport
+    error. The request id is read from the retained frame prefix; when the id
+    is not visible there, every in-flight request on that connection fails
+    because the lost response cannot be attributed. No request is retried.
+  - A dropped server-initiated request receives an error reply when its id is
+    visible in the retained prefix, so the native side never waits forever on
+    an answer we cannot address. When neither id nor method is visible, the
+    connection is terminally failed instead of risking a hung interaction.
+  - A dropped notification is logged with a bounded diagnostic (observed byte
+    count and the allowlisted method name when visible, never payload content).
+    Projection state stays authoritative-by-snapshot; a dropped live item is
+    missing until the next reload and must not be fabricated.
+- An outbound bridge→Host response that exceeds the frame cap fails its own
+  request with a `LIMIT` error result; it never terminates the bridge. Fatal
+  treatment remains for invalid JSON, invalid UTF-8, malformed envelopes and
+  other protocol violations where resync is not provably safe.
+- The bridge→Host output queue accepts a single valid maximum-sized frame; a
+  full but otherwise healthy queue is backpressure, not an oversized frame.
+  A frame that cannot fit the transport cap fails only its correlated request.
+  Correlation hints must identify top-level envelope fields, never text inside
+  a user-provided payload. Unknown envelope identity must fail closed rather
+  than treating a possible server request as a response or notification.
 - Native queues automatically dispatch when idle (including cold resume). An
   explicit queue request is not a request to hold an idle turn. External queue
   entries retain their native IDs; unknown admission metadata uses documented
@@ -176,7 +203,9 @@ completed merely because their controls are disabled.
 
 1. Missing/wrong executable: actionable startup error; shell still opens.
 2. Handshake: reject pre-initialization use; concurrent request IDs resolve once;
-   invalid/oversized frames and process death reject pending operations.
+   invalid frames and process death reject pending operations; oversized frames
+   skip with bounded diagnostics and fail the affected requests without killing
+   the connection.
 3. Chat: create, send, stream text/reasoning/tool, completion, resume same thread.
 4. Stop/steer: expected turn guard; late stop cannot stop a later turn.
 5. Queue: add/edit/reorder/delete/start, refresh after invalidation; no local clone.

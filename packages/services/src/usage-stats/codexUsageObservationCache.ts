@@ -22,9 +22,17 @@ export interface CodexUsageThreadState {
   readonly conflict: boolean;
 }
 
+/**
+ * RPC 边界的对象编码是 JSON：Map 会被序列化成 {} 并丢失全部条目，
+ * 渲染端随后调用 .values() 直接崩溃。快照必须使用可序列化的有序数组。
+ */
+export interface CodexUsageThreadEntry extends CodexUsageThreadState {
+  readonly threadId: string;
+}
+
 export interface CodexUsageCacheSnapshot {
   readonly workspaceKey: string;
-  readonly threads: ReadonlyMap<string, CodexUsageThreadState>;
+  readonly threads: readonly CodexUsageThreadEntry[];
   readonly conflict: boolean;
   /**
    * Runtime unavailable means the retained facts are still displayable, but they are no
@@ -146,7 +154,11 @@ export class CodexUsageObservationCache {
   snapshot(): CodexUsageCacheSnapshot {
     return {
       workspaceKey: this.workspaceKey,
-      threads: new Map(this.threads),
+      threads: [...this.threads.entries()].map(([threadId, state]) => ({
+        threadId,
+        observation: state.observation,
+        conflict: state.conflict,
+      })),
       conflict: [...this.threads.values()].some((thread) => thread.conflict),
       stale: this.runtimeUnavailable,
     };

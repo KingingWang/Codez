@@ -231,7 +231,10 @@ export function createCodexDesktopFileRewindService(options: {
     for (const plan of pathPlans) {
       const current = await readRegularTextFile(plan.absolutePath);
       const actual = current === null ? null : hashContent(current);
-      if (actual !== plan.preimageHash) {
+      // 新增文件撤销的目标是「文件不存在」，不能拿 null 与空字符串的哈希比较；
+      // 否则删除成功却会误记为需人工恢复。其余恢复仍按字节哈希严格校验。
+      const verified = plan.preimage === "" ? current === null : actual === plan.preimageHash;
+      if (!verified) {
         const failed = await transition(ledger, "needs-manual-recovery", {
           message: "Restore verification failed",
           failureReason: "restore_verification_failed",

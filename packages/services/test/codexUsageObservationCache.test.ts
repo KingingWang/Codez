@@ -67,7 +67,7 @@ test("duplicate delivery is a no-op; newest wins and regression becomes latest p
   assert.equal(cache.observe("thread", payloadA), false);
   assert.equal(cache.observe("thread", payloadB), true);
   assert.equal(cache.observe("thread", payloadA), true);
-  const state = cache.snapshot().threads.get("thread");
+  const state = cache.snapshot().threads.find((entry) => entry.threadId === "thread");
   assert.deepEqual(state?.observation.payload, payloadA);
   assert.equal(state?.conflict, true);
   assert.equal(cache.snapshot().conflict, true);
@@ -80,19 +80,19 @@ test("authoritative replacement is outside normal delivery and scopes conflict t
   cache.observe("a", payloadB);
   cache.observe("a", payloadA); // regression
   cache.reconcile("a", payloadA);
-  assert.equal(cache.snapshot().threads.get("a")?.conflict, false);
-  assert.equal(cache.snapshot().threads.get("b")?.conflict, false);
+  assert.equal(cache.snapshot().threads.find((entry) => entry.threadId === "a")?.conflict, false);
+  assert.equal(cache.snapshot().threads.find((entry) => entry.threadId === "b")?.conflict, false);
 
   cache.observe("a", payloadB);
   cache.reconcile("a", payloadA);
-  assert.equal(cache.snapshot().threads.get("a")?.conflict, true);
+  assert.equal(cache.snapshot().threads.find((entry) => entry.threadId === "a")?.conflict, true);
   assert.equal(cache.snapshot().conflict, true);
 
   cache.observe("b", payloadB);
   cache.observe("b", payloadA); // unrelated regression
   cache.reconcile("a", payloadA);
-  assert.equal(cache.snapshot().threads.get("a")?.conflict, false);
-  assert.equal(cache.snapshot().threads.get("b")?.conflict, true);
+  assert.equal(cache.snapshot().threads.find((entry) => entry.threadId === "a")?.conflict, false);
+  assert.equal(cache.snapshot().threads.find((entry) => entry.threadId === "b")?.conflict, true);
   assert.equal(cache.snapshot().conflict, true);
 });
 
@@ -112,7 +112,10 @@ test("runtime unavailable retains facts as stale until a new validated observati
   cache.markRuntimeUnavailable();
   const retained = cache.snapshot();
   assert.equal(retained.stale, true);
-  assert.deepEqual(retained.threads.get("thread")?.observation.payload, payloadA);
+  assert.deepEqual(
+    retained.threads.find((entry) => entry.threadId === "thread")?.observation.payload,
+    payloadA,
+  );
 
   assert.equal(cache.observe("thread", payloadA), false);
   assert.equal(cache.snapshot().stale, false);

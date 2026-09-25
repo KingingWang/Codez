@@ -10,6 +10,11 @@ import { useAppUsageStats } from "@/hooks/useUsageStats.js";
 import { UsageChartLoadBoundary } from "@/settings/usage-stats/UsageChartLoadBoundary.js";
 import { UsageHeatmap } from "@/settings/usage-stats/UsageHeatmap.js";
 import { logger } from "@/logger.js";
+import {
+  normalizeCodexUsageThreads,
+  type CodexObservedUsageInput,
+  type CodexUsageObservationsSnapshot,
+} from "./codexUsageThreads.js";
 import { UsageStatsErrorNotice } from "@/settings/usage-stats/UsageStatsErrorNotice.js";
 import {
   USAGE_STATS_TABS_LIST_CLASS,
@@ -36,22 +41,6 @@ const AppUsageModelUsagePieChart = lazy(() =>
 
 export const CODEX_APP_USAGE_OBSERVATION_COPY_ID = "settings.usage.appUsage.observationNotice";
 
-interface CodexObservedUsageInput {
-  readonly inputTokens?: number;
-  readonly outputTokens?: number;
-  readonly cacheReadTokens?: number;
-  readonly cacheWriteTokens?: number;
-}
-
-interface CodexUsageObservationsSnapshot {
-  readonly threads: ReadonlyMap<
-    string,
-    { observation: { payload: Readonly<CodexObservedUsageInput> } }
-  >;
-  readonly conflict: boolean;
-  readonly stale: boolean;
-}
-
 function useCodexUsageObservations(workspace: {
   workspaceIdentity?: string;
   workspacePath?: string;
@@ -70,14 +59,17 @@ function useCodexUsageObservations(workspace: {
       return;
     }
     try {
-      setSnapshot(
-        await service.getCodexUsageObservations({
-          workspacePath,
-          ...(workspace.workspaceIdentity?.trim()
-            ? { workspaceIdentity: workspace.workspaceIdentity.trim() }
-            : {}),
-        }),
-      );
+      const raw = await service.getCodexUsageObservations({
+        workspacePath,
+        ...(workspace.workspaceIdentity?.trim()
+          ? { workspaceIdentity: workspace.workspaceIdentity.trim() }
+          : {}),
+      });
+      setSnapshot({
+        threads: normalizeCodexUsageThreads((raw as { threads?: unknown }).threads),
+        conflict: Boolean((raw as { conflict?: unknown }).conflict),
+        stale: Boolean((raw as { stale?: unknown }).stale),
+      });
     } catch (error) {
       logger.warn("[codex-usage] Reading desktop observations failed", {
         error: error instanceof Error ? error.message : String(error),
@@ -136,7 +128,7 @@ export function CodexUsageObservationSummary({
   locale: string;
 }) {
   const threads = observations?.threads;
-  const totals = buildCodexUsageObservationTotals(threads?.values() ?? []);
+  const totals = buildCodexUsageObservationTotals(threads ?? []);
   const items = [
     ["observedThreads", totals.threads, false],
     ["observedInput", totals.inputTokens, true],
@@ -160,12 +152,12 @@ export function CodexUsageObservationSummary({
         </div>
       ))}
       <div className="col-span-2 flex flex-col justify-center gap-1 sm:col-span-5">
-        {threads && threads.size > 0 && observations?.stale ? (
+        {threads && threads.length > 0 && observations?.stale ? (
           <div data-testid="codex-usage-observation-stale">
             {intl.formatMessage({ id: "settings.usage.appUsage.observationStale" })}
           </div>
         ) : null}
-        {threads && threads.size > 0 && observations?.conflict ? (
+        {threads && threads.length > 0 && observations?.conflict ? (
           <div data-testid="codex-usage-observation-conflict">
             {intl.formatMessage({ id: "settings.usage.appUsage.observationConflict" })}
           </div>

@@ -58,9 +58,16 @@ function normalizeRelativePath(path: string): string {
 }
 
 export function resolveRewindFilePath(workspacePath: string, projectedPath: string): string {
+  const workspaceRoot = resolve(workspacePath);
+  // 原生 fileChange 的 path 是绝对路径（实测 codex app-server 0.156.x）。
+  // 绝对路径必须按真实位置做工作区包含判定，不能剥掉根斜杠后拼回工作区。
+  if (isAbsolute(projectedPath)) {
+    const absolute = resolve(projectedPath);
+    const rel = relative(workspaceRoot, absolute);
+    return rel.startsWith("..") || isAbsolute(rel) ? "" : absolute;
+  }
   const normalized = normalizeRelativePath(projectedPath);
   if (!normalized) return "";
-  const workspaceRoot = resolve(workspacePath);
   const absolute = resolve(workspaceRoot, normalized);
   const rel = relative(workspaceRoot, absolute);
   return rel.startsWith("..") || isAbsolute(rel) ? "" : absolute;

@@ -52,6 +52,30 @@ test("native token usage remains sparse and unavailable fields never become zero
   assert.equal("cacheWriteTokens" in snapshot.usage.codexObserved!, false);
 });
 
+test("completed native file add advertises real counts and a guarded rewind row action", async () => {
+  const thread = threadFixture();
+  thread.turns[0]!.items.push({
+    type: "fileChange",
+    id: "new-file",
+    status: "completed",
+    changes: [{ path: "/workspace/new.txt", kind: { type: "add" }, diff: "first\nsecond\n" }],
+  } as never);
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+  );
+  const snapshot = await snapshots.conversation(thread.id);
+  const row = snapshot.rows.window.find((entry) => entry.kind === "turnHeader");
+  assert.equal(row?.fileChanges?.additions, 2);
+  assert.equal(row?.fileChanges?.deletions, 0);
+  assert.equal(row?.actions?.canRewindFiles, true);
+});
+
 test("attachment restoration follows turn-scoped row identity when native item IDs are reused", async () => {
   const thread = threadFixture();
   const first = {

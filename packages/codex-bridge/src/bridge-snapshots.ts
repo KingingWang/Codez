@@ -197,6 +197,11 @@ export class BridgeSnapshots {
               deletions: filesResult.deletions,
               state: filesResult.state,
             };
+          // 行级撤销入口只描述「该轮存在可投影的文件变更」这一事实；
+          // 能力门禁与 Desktop 事务所有者仍在 UI/服务层判定。
+          // 运行中的轮次变更不完整，不开放撤销；已撤销的轮次不重复开放。
+          if (filesResult.files > 0 && filesResult.state !== "reverted" && row.state !== "running")
+            row.actions = { ...row.actions, canRewindFiles: true };
         }
       }
       if (row.kind === "userInput" && this.attachments) {

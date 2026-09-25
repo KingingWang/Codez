@@ -249,7 +249,15 @@ for (const text of invalidFrames) {
   );
 }
 
-for (const method of ["oversized", "truncated", "invalid-utf8", "duplicate-server-id"]) {
+test("oversized response fails only its request and allows later traffic", options, async (t) => {
+  const { process } = await fixture(t);
+  await process.initialize();
+  await assert.rejects(process.request("oversized"), { code: "LIMIT" });
+  assert.equal(await process.request("echo", "alive"), "alive");
+  assert.equal((await process.request<string>("large-valid")).length, 9 * 1024 * 1024);
+});
+
+for (const method of ["truncated", "invalid-utf8", "duplicate-server-id"]) {
   test(`${method} terminates the connection`, options, async (t) => {
     const { process } = await fixture(t);
     await process.initialize();
@@ -320,7 +328,7 @@ test(
     const cyclic = {};
     Object.assign(cyclic, { cyclic });
     await assert.rejects(process.request("echo", cyclic), /serializ/i);
-    await assert.rejects(process.request("echo", "x".repeat(8 * 1024 * 1024)), /large|limit/i);
+    await assert.rejects(process.request("echo", "x".repeat(33 * 1024 * 1024)), /large|limit/i);
     assert.equal(await process.request("echo", "ok"), "ok");
   },
 );
