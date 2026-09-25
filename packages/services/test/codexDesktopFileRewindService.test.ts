@@ -168,6 +168,45 @@ test("preview and successful apply follow fixed ledger order with backup retenti
   assert.equal((await readFile(after.ledgerFile!, "utf8")).includes('"state": "success"'), true);
 });
 
+test("absolute native add within workspace can preview and delete its exact new file", async () => {
+  const h = await setup();
+  const file = join(h.workspace, "new.txt");
+  await writeFile(file, "first\nsecond\n", "utf8");
+  h.projected.items = [
+    {
+      path: file,
+      additions: 2,
+      deletions: 0,
+      writeCount: 1,
+      toolNames: ["ApplyPatch"],
+      patches: [
+        {
+          oldStart: 0,
+          oldLines: 0,
+          newStart: 1,
+          newLines: 2,
+          lines: ["+first", "+second"],
+        },
+      ],
+    },
+  ];
+  h.projected.files = 1;
+  const preview = await h.service.preview(h.target);
+  assert.equal(preview.canApply, true);
+  assert.equal(preview.safeFiles[0]?.action, "delete");
+  const status = await h.service.apply({ ...h.target, confirmationId: "new-file" });
+  assert.equal(status.state, "success");
+  await assert.rejects(readFile(file, "utf8"), { code: "ENOENT" });
+});
+
+test("native absolute sibling path is outside workspace and cannot be rewound", async () => {
+  const h = await setup();
+  h.projected.items[0]!.path = `${h.workspace}-sibling/file.txt`;
+  const preview = await h.service.preview(h.target);
+  assert.equal(preview.canApply, false);
+  assert.equal(preview.unsafeFiles[0]?.reason, "unsupported_checkpoint");
+});
+
 async function firstBackupName(dir: string): Promise<string> {
   const files = await readdir(dir);
   assert.equal(files.length, 1);

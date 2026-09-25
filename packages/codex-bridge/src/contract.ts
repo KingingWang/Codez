@@ -24,6 +24,11 @@ export interface CodexProcessOptions {
    * human approvals/questions remain pending until reply or connection close, within the cap.
    */
   interactionTimeoutMs?: number;
+  /**
+   * 超大入站帧被丢弃时的有界回调（同步、禁止抛错）。prefix 仅供离线诊断归属，
+   * 消费方只能输出 method/observedBytes 等结构化字段，禁止原文记录。
+   */
+  onFrameDropped?: (frame: { observedBytes: number; prefix: string }) => void;
 }
 
 export interface CodexProcess extends CodexRpcPort {

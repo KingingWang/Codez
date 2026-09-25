@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { realpath } from "node:fs/promises";
 import { createCodexProcess } from "./codex-process.js";
 import { RpcFramer, type RpcEnvelope } from "./rpc-framing.js";
+import { CodexTransportError } from "./rpc-errors.js";
 import { HostOutput } from "./host-output.js";
 import { BridgeRuntime } from "./bridge-runtime.js";
 import { CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE } from "@codez/shared";
@@ -26,6 +27,12 @@ async function main(): Promise<void> {
   const rpc = createCodexProcess({
     executable: process.env.CODEZ_CODEX_COMMAND?.trim() || "codex",
     cwd,
+    onFrameDropped: (frame) => {
+      // 只输出结构化下界与字节数；前缀内容可能含用户数据，永不记录。
+      process.stderr.write(
+        `Codex desktop bridge dropped an oversized native frame (observedBytes>=${frame.observedBytes}); affected requests fail explicitly without retry.\n`,
+      );
+    },
   });
   let runtime: BridgeRuntime | undefined;
   let stopping = false;
@@ -97,7 +104,17 @@ async function main(): Promise<void> {
       .request(message.method, message.params)
       .then(
         async (response) => {
-          await write({ id, result: response.result });
+          try {
+            await write({ id, result: response.result });
+          } catch (error) {
+            // 超大响应（如全量 plugin/list 透传）只让该请求失败，
+            // 不能升级为整桥致命错误；失败语义显式，不重试。
+            if (!(error instanceof CodexTransportError) || error.code !== "LIMIT") throw error;
+            await write({
+              id,
+              error: { code: -32000, message: "Codex response exceeds the bridge frame limit" },
+            });
+          }
           await response.afterResponse?.();
         },
         async (error: unknown) => {

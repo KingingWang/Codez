@@ -1,4 +1,4 @@
-import { encodeFrame, type RpcEnvelope } from "./rpc-framing.js";
+import { encodeFrame, MAX_FRAME_BYTES, type RpcEnvelope } from "./rpc-framing.js";
 
 /** Bounded physical output: queued promises retain bytes even before stdout.write. */
 export class HostOutput {
@@ -6,7 +6,8 @@ export class HostOutput {
   private pendingBytes = 0;
   constructor(
     private readonly send: (chunk: string, done: (error?: Error | null) => void) => void,
-    private readonly maxBytes = 8 * 1024 * 1024,
+    // 单个有效响应可能大于旧的 8 MiB 排队阈值；上限与物理帧一致。
+    private readonly maxBytes = MAX_FRAME_BYTES + 1,
     private readonly timeoutMs = 30_000,
   ) {}
   write(frame: RpcEnvelope): Promise<void> {

@@ -103,7 +103,10 @@ input.on("line", (line) => {
       process.stdout.write(params.text);
       break;
     case "oversized":
-      process.stdout.write(Buffer.alloc(8 * 1024 * 1024 + 1, 120));
+      send({ id, result: "x".repeat(33 * 1024 * 1024) });
+      break;
+    case "large-valid":
+      send({ id, result: "x".repeat(9 * 1024 * 1024) });
       break;
     case "truncated":
       process.stdout.write('{"id":');

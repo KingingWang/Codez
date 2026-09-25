@@ -32,3 +32,29 @@ test("declined patches are not claimed as applied changes", () => {
     0,
   );
 });
+test("native full-content add/delete project real counts even when content resembles a hunk", () => {
+  const result = projectTurnFileChanges({
+    items: [
+      {
+        type: "fileChange",
+        status: "completed",
+        changes: [
+          { kind: { type: "add" }, path: "/workspace/new.txt", diff: "first\n@@ -2,1 +2,1 @@\n" },
+          { kind: { type: "delete" }, path: "/workspace/old.txt", diff: "old\n" },
+        ],
+      },
+    ],
+  });
+  assert.equal(result.files, 2);
+  assert.equal(result.additions, 2);
+  assert.equal(result.deletions, 1);
+  assert.deepEqual(result.items[0]?.patches, [
+    {
+      oldStart: 0,
+      oldLines: 0,
+      newStart: 1,
+      newLines: 2,
+      lines: ["+first", "+@@ -2,1 +2,1 @@"],
+    },
+  ]);
+});

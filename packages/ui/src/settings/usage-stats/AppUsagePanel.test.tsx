@@ -9,6 +9,7 @@ import {
   CodexUsageObservationSummary,
   CODEX_APP_USAGE_OBSERVATION_COPY_ID,
 } from "./AppUsagePanel.js";
+import { normalizeCodexUsageThreads } from "./codexUsageThreads.js";
 
 test("app usage copy states desktop observation and excludes official billing", () => {
   const english = enUS[CODEX_APP_USAGE_OBSERVATION_COPY_ID];
@@ -62,18 +63,16 @@ function IntlSummaryFixture({
 test("app usage renders cache-owned Codex staleness and conflict without zeroing sparse facts", () => {
   const snapshot = {
     workspaceKey: "workspace",
-    threads: new Map([
-      [
-        "thread",
-        {
-          observation: {
-            observationId: "observation",
-            payload: { inputTokens: 10 },
-          },
-          conflict: true,
+    threads: [
+      {
+        threadId: "thread",
+        observation: {
+          observationId: "observation",
+          payload: { inputTokens: 10 },
         },
-      ],
-    ]),
+        conflict: true,
+      },
+    ],
     conflict: true,
     stale: true,
   };
@@ -89,10 +88,20 @@ test("app usage renders cache-owned Codex staleness and conflict without zeroing
   const empty = renderToStaticMarkup(
     <CodezIntlProvider initialLocale="en-US">
       <IntlSummaryFixture
-        observations={{ ...snapshot, threads: new Map(), conflict: true, stale: true }}
+        observations={{ ...snapshot, threads: [], conflict: true, stale: true }}
       />
     </CodezIntlProvider>,
   );
   assert.doesNotMatch(empty, /disconnected/);
   assert.doesNotMatch(empty, /regressed/);
+});
+
+test("RPC snapshot normalizes arrays, legacy Maps and malformed shapes without a render crash", () => {
+  const state = { observation: { payload: { inputTokens: 10 } }, conflict: true };
+  const array = [{ threadId: "thread", ...state }];
+  assert.deepEqual(normalizeCodexUsageThreads(array), array);
+  assert.deepEqual(normalizeCodexUsageThreads(new Map([["thread", state]])), array);
+  assert.deepEqual(normalizeCodexUsageThreads({}), []);
+  assert.deepEqual(normalizeCodexUsageThreads([{ threadId: "bad", observation: null }]), []);
+  assert.deepEqual(normalizeCodexUsageThreads(new Map([["bad", { observation: {} }]])), []);
 });
