@@ -267,10 +267,13 @@ test("codex mode streams legacy session events from v4 frames (bot reply source)
     await waitFor(() => sent.some((message) => message.method === "v4/conversation/unsubscribe"));
     const observations = await service.getCodexUsageObservations(workspace);
     assert.equal(observations.workspaceKey, "remote-a");
-    assert.deepEqual(observations.threads.get(SESSION_ID)?.observation.payload, {
-      inputTokens: 10,
-      outputTokens: 5,
-    });
+    assert.deepEqual(
+      observations.threads.find((entry) => entry.threadId === SESSION_ID)?.observation.payload,
+      {
+        inputTokens: 10,
+        outputTokens: 5,
+      },
+    );
   } finally {
     await service.disposeAllAndWait();
     await rm(dir, { recursive: true, force: true });
