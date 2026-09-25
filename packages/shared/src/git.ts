@@ -213,6 +213,7 @@ export interface GitCommitResult {
 }
 
 export interface GitGenerateCommitMessageRequest extends GitRepositoryRequest {
+  operationId?: string;
   workspaceIdentity?: string;
   locale?: Locale;
   includeUnstaged?: boolean;
@@ -235,6 +236,15 @@ export interface GitGenerateCommitMessageResult {
   message: string;
   providerId: string;
   model: string;
+}
+
+export interface GitCancelGenerateCommitMessageRequest extends GitRepositoryRequest {
+  workspaceIdentity?: string;
+  operationId: string;
+}
+
+export interface GitCancelGenerateCommitMessageResult {
+  cancelled: boolean;
 }
 
 export interface GitPushRequest extends GitRepositoryRequest {}

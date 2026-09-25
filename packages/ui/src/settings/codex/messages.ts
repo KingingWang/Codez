@@ -34,6 +34,7 @@ const en = {
   agents: "Subagents",
   mcp: "MCP servers",
   plugins: "Plugins & marketplaces",
+  history: "Thread history",
   refresh: "Refresh",
   loading: "Reading Codex state…",
   failed:
@@ -98,7 +99,7 @@ const en = {
   disabled: "Disabled",
   unsupported: "Not available in the Codex adapter",
   parity:
-    "Legacy workflows, scheduled/off-peak behavior, browser/computer use, cloud sharing and migration have no verified Codex parity. These controls do not change native Codex capabilities. Git, files and terminal remain available.",
+    "Legacy workflows, scheduled/off-peak behavior, cloud sharing and migration have no verified Codex parity. Native Browser is available degraded; Computer Use is not available. Git, files and terminal remain available.",
   openSettings: "Open Codex settings",
   scope: "Workspace",
   mutations:
@@ -120,6 +121,29 @@ const en = {
   agentsEffort: "Reasoning effort (optional)",
   agentsInstructions: "Developer instructions (required)",
   agentsNicknames: "Nickname candidates (optional, comma-separated)",
+  nativeBrowserCuaTitle: "Native Desktop browser · Browser-only",
+  nativeBrowserCuaConfigured: "Configured",
+  nativeBrowserCuaNotConfigured: "Not configured",
+  nativeBrowserCuaUnsupported:
+    "Native Desktop browser is unavailable on this Host. Install is disabled to avoid a doomed mutation.",
+  nativeBrowserCuaRuntimeMissing: "Desktop bridge runtime is missing.",
+  nativeBrowserCuaServiceNotRunning: "Desktop browser service is not running.",
+  nativeBrowserCuaDescriptorUnavailable: "Desktop browser descriptor is unavailable.",
+  nativeBrowserCuaDegraded:
+    "Browser commands are available; Computer Use is unavailable (codez-cua.runtime_unavailable).",
+  nativeBrowserCuaInstall: "Configure native server",
+  codexHistoryTitle: "Codex thread history",
+  codexHistoryDescription:
+    "A read-only projection of native Codex turns. It is not a complete legacy workflow equivalent; start, resume and cancel are unavailable.",
+  codexHistoryLoading: "Reading Codex thread history…",
+  codexHistoryEmpty: "No native Codex turns are available for this workspace.",
+  codexHistoryNoSession: "Open a native Codex thread to read its history.",
+  codexHistoryTransportUnavailable: "Codex history transport is unavailable on this Host.",
+  codexHistoryUsageAvailable: "Per-turn usage available",
+  codexHistoryUsageUnavailable: "Per-turn usage unavailable",
+  codexHistoryArtifacts: "Artifacts",
+  nativeBrowserCuaStatuses:
+    "Runtime, configuration, connection, authorization and tool errors are shown separately below.",
 };
 const zh: Record<keyof typeof en, string> = {
   legacyPreferences:
@@ -149,6 +173,7 @@ const zh: Record<keyof typeof en, string> = {
   agents: "子智能体",
   mcp: "MCP 服务",
   plugins: "插件与市场",
+  history: "线程历史",
   refresh: "刷新",
   loading: "正在读取 Codex 状态…",
   failed: "操作失败。重试前请刷新确认当前状态；不会自动重试更改。",
@@ -208,7 +233,7 @@ const zh: Record<keyof typeof en, string> = {
   disabled: "已禁用",
   unsupported: "Codex 适配器尚不支持",
   parity:
-    "旧工作流、定时与闲时执行、浏览器/电脑控制、云分享和迁移尚无 Codex 等价能力验证。这些控件不会更改原生 Codex 能力。Git、文件与终端仍可使用。",
+    "旧工作流、定时与闲时执行、云分享和迁移尚无 Codex 等价能力验证。原生 Browser 已降级可用；Computer Use 暂不可用。Git、文件与终端仍可使用。",
   openSettings: "打开 Codex 设置",
   scope: "工作区",
   mutations: "更改会影响此 Host 的原生 Codex 配置，也可能影响使用同一 Codex home 的其他工作区。",
@@ -228,6 +253,27 @@ const zh: Record<keyof typeof en, string> = {
   agentsEffort: "推理强度（可选）",
   agentsInstructions: "开发者指令（必填）",
   agentsNicknames: "昵称候选（可选，逗号分隔）",
+  nativeBrowserCuaTitle: "原生桌面浏览器 · 仅 Browser",
+  nativeBrowserCuaConfigured: "已配置",
+  nativeBrowserCuaNotConfigured: "未配置",
+  nativeBrowserCuaUnsupported: "当前 Host 的原生桌面浏览器不可用。为避免无效变更，配置操作已禁用。",
+  nativeBrowserCuaRuntimeMissing: "缺少桌面 bridge 运行时。",
+  nativeBrowserCuaServiceNotRunning: "桌面浏览器服务未运行。",
+  nativeBrowserCuaDescriptorUnavailable: "桌面浏览器描述符不可用。",
+  nativeBrowserCuaDegraded:
+    "Browser 命令可用；Computer Use 不可用（codez-cua.runtime_unavailable）。",
+  nativeBrowserCuaInstall: "配置原生服务",
+  codexHistoryTitle: "Codex 线程历史",
+  codexHistoryDescription:
+    "Codex 原生 turn 的只读投影。它不是完整的旧工作流等价物；启动、恢复和取消均不可用。",
+  codexHistoryLoading: "正在读取 Codex 线程历史…",
+  codexHistoryEmpty: "此工作区暂无可用的 Codex 原生 turn。",
+  codexHistoryNoSession: "请先打开原生 Codex 线程以读取历史。",
+  codexHistoryTransportUnavailable: "当前 Host 的 Codex 历史传输不可用。",
+  codexHistoryUsageAvailable: "单轮用量可用",
+  codexHistoryUsageUnavailable: "单轮用量不可用",
+  codexHistoryArtifacts: "产物",
+  nativeBrowserCuaStatuses: "下方独立展示运行时、配置、连接、授权与工具错误。",
 };
 export function useCodexMessages() {
   return useCodezIntl().locale === "zh-CN" ? zh : en;

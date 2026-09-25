@@ -6,6 +6,8 @@ import type {
   GitCreateBranchRequest,
   GitChangesRequest,
   GitCommitRequest,
+  GitCancelGenerateCommitMessageRequest,
+  GitCancelGenerateCommitMessageResult,
   GitCommitResult,
   GitDiffQuery,
   GitDiffResult,
@@ -46,6 +48,9 @@ export interface IGitService {
   generateCommitMessage(
     params: GitGenerateCommitMessageRequest,
   ): Promise<GitGenerateCommitMessageResult>;
+  cancelGenerateCommitMessage(
+    params: GitCancelGenerateCommitMessageRequest,
+  ): Promise<GitCancelGenerateCommitMessageResult>;
   commit(params: GitCommitRequest): Promise<GitCommitResult>;
   push(params: GitPushRequest): Promise<GitPushResult>;
   getIdentity(params: GitRepositoryRequest): Promise<GitIdentity>;

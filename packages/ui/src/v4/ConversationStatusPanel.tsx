@@ -108,6 +108,7 @@ interface ConversationStatusPanelProps {
   gitDirtyFileCount?: number;
   gitWorktreeReviewSourceId?: GitChangeSourceId | null;
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
+  gitAuxiliaryGenerationSupported?: boolean;
   activeTaskChangeSummary?: CodezTaskChangeSummary | null;
   goal?: GoalState | null;
   sessionPlans?: readonly ToolCallRow[];
@@ -356,6 +357,7 @@ function StatusSection({
 
 function GitStatusSection({
   activeTaskChangeSummary,
+  auxiliaryGenerationSupported,
   gitSummary,
   gitWorktreeReviewSourceId,
   model,
@@ -367,6 +369,7 @@ function GitStatusSection({
   useVerticalFloatingPanels,
 }: {
   activeTaskChangeSummary?: CodezTaskChangeSummary | null;
+  auxiliaryGenerationSupported?: boolean;
   gitSummary: GitRepositorySummary | null | undefined;
   gitWorktreeReviewSourceId?: GitChangeSourceId | null;
   model: ConversationStatusPanelModel;
@@ -445,6 +448,7 @@ function GitStatusSection({
           workspaceIdentity={workspaceIdentity}
           gitSummary={gitSummary}
           activeTaskChangeSummary={activeTaskChangeSummary ?? null}
+          auxiliaryGenerationSupported={auxiliaryGenerationSupported}
           onRefreshGit={onRefreshGit}
           triggerLayout="status-row"
           className="w-full"
@@ -1710,6 +1714,7 @@ function ConversationStatusPanelImpl({
   gitDirtyFileCount = 0,
   gitWorktreeReviewSourceId,
   gitWorktreeChangeSummary,
+  gitAuxiliaryGenerationSupported,
   activeTaskChangeSummary,
   goal,
   sessionPlans,
@@ -1971,6 +1976,7 @@ function ConversationStatusPanelImpl({
                 workspacePath={workspacePath}
                 workspaceIdentity={workspaceIdentity}
                 activeTaskChangeSummary={activeTaskChangeSummary}
+                auxiliaryGenerationSupported={gitAuxiliaryGenerationSupported}
                 onRefreshGit={onRefreshGit}
                 onOpenGitReview={onOpenGitReview}
                 separated={false}

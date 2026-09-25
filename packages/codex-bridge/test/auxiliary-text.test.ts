@@ -273,6 +273,39 @@ test("30-second deadline interrupts and never retries a turn", async (t) => {
   assert.equal(f.notifications.size + f.closes.size, 0);
 });
 
+test("malformed native completion and thread cleanup failure do not retry", async () => {
+  for (const failure of ["malformed-turn", "cleanup-failure"] as const) {
+    const f = fixture();
+    if (failure === "cleanup-failure")
+      f.handlers["thread/unsubscribe"] = () => Promise.reject(new Error("cleanup refused"));
+    const pending = f.auxiliary.handle("workspace/generateText", params);
+    let rejection: Promise<void> | undefined;
+    if (failure === "malformed-turn") rejection = assert.rejects(pending, { code: -32000 });
+    else void pending.catch(() => {});
+    await f.started.promise;
+    if (failure === "malformed-turn") {
+      f.emit("turn/completed", {
+        threadId: "aux-thread",
+        turn: { id: "aux-turn" },
+      });
+      await Promise.resolve();
+    } else {
+      f.complete();
+      const generated = codezWorkspaceGenerateTextResultSchema.parse(await pending);
+      assert.equal(generated.text, "fix: preserve ACK ordering");
+    }
+    if (rejection) await rejection;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(f.calls.filter((call) => call.method === "turn/start").length, 1);
+    assert.equal(
+      f.calls.filter((call) => call.method === "thread/unsubscribe").length,
+      1,
+      "cleanup is attempted exactly once and never retried",
+    );
+    assert.equal(f.notifications.size + f.closes.size, 0);
+  }
+});
+
 test(
   "pinned native isolation: no model tools, MCP/notify side effects or persisted thread",
   {

@@ -25,7 +25,10 @@ function parsePatches(diff: string): Patch[] {
 }
 
 /** Facts describe what Codex applied during this turn, not the current Git working tree. */
-export function projectTurnFileChanges(turn: unknown): V4ConversationFileChangesResult {
+export function projectTurnFileChanges(
+  turn: unknown,
+  state: "active" | "reverted" = "active",
+): V4ConversationFileChangesResult {
   const byPath = new Map<string, V4ConversationFileChangesResult["items"][number]>();
   for (const item of array(object(turn).items).map(object)) {
     if (item.type !== "fileChange" || item.status !== "completed") continue;
@@ -53,6 +56,7 @@ export function projectTurnFileChanges(turn: unknown): V4ConversationFileChanges
     files: items.length,
     additions: items.reduce((sum, item) => sum + item.additions, 0),
     deletions: items.reduce((sum, item) => sum + item.deletions, 0),
+    ...(items.length > 0 ? { state } : {}),
     items,
   });
 }

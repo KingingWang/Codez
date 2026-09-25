@@ -13,6 +13,7 @@ import { Event as RpcEvent, type Event } from "@codez/rpc";
 
 import { createServiceDescriptor } from "../descriptors.js";
 import type { ConversationShareClientErrorKind } from "./conversationShareHttpClient.js";
+import type { SharedContextContentCopyRecord } from "./codexSharedContextContentCopy.js";
 
 export type ConversationShareSelection =
   | { kind: "all" }
@@ -439,6 +440,13 @@ export interface IConversationShareService {
     workspacePath: string;
     contextId: string;
   }): Promise<ImportedConversationShare | null>;
+  /** Codex Host 授权读取当前 workspace/session 的持久化内容副本。 */
+  readSharedContextContentCopy(input: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+    sessionId: string;
+    contextId: string;
+  }): Promise<SharedContextContentCopyRecord>;
   getPreview(shareCode: string): Promise<ConversationSharePreview>;
   getContinuation(input: {
     shareCode: string;
@@ -476,6 +484,7 @@ export function createUnsupportedConversationShareService(options: {
     onDynamicImportProgress: noEvents,
     // 只读查询：不可用环境下返回 null 而不是抛错，会话里就是不渲染只读块。
     getImportedConversation: async () => null,
+    readSharedContextContentCopy: reject("readSharedContextContentCopy"),
     getPreview: reject("getPreview"),
     getContinuation: reject("getContinuation"),
   };

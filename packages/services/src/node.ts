@@ -9,7 +9,7 @@ import {
   NodeModelSelectionConfigRepository,
   PERSONAL_PROVIDER_CONFIG_FILE_NAME,
 } from "@codez/provider-node";
-import { getAppConfigDir as resolveAppConfigDir } from "./paths.js";
+import { getAppConfigDir as resolveAppConfigDir, getCodezDataRootDir } from "./paths.js";
 import {
   buildLocalMediaPreviewUrl,
   codexConfigResponseSchema,
@@ -77,6 +77,7 @@ export {
 export { createGitService } from "./git/gitService.js";
 export { GitCommitMessageGenerator } from "./git/gitCommitMessageGenerator.js";
 export { createGitCheckpointService } from "./git/gitCheckpointService.js";
+export { createCodexDesktopFileRewindService } from "./desktop-file-rewindService.js";
 export { createSystemService } from "./system/systemService.js";
 export { listSSHConfigAliasesFromLocalConfig } from "./system/sshConfigAlias.js";
 export { createTerminalService } from "./terminal/terminalService.js";
@@ -88,6 +89,11 @@ export { createCredentialService } from "./credential/credentialService.js";
 export { createBroadcastService } from "./broadcast/broadcastService.js";
 export { createCodezAgentService } from "./codez-agent/codezAgentService.js";
 export { createCodezTaskServiceAdapter } from "./codez-agent/codezTaskServiceAdapter.js";
+export {
+  isCodexScheduledPromptCapabilitySupported,
+  resolveCodexAutomationHistory,
+  type CodexAutomationHistoryResolution,
+} from "./codez-agent/codexAutomationAdapter.js";
 export { createCodezSessionService } from "./codez-session/codezSessionService.js";
 export {
   resolveDefaultCodezAgentCommand,
@@ -314,6 +320,7 @@ import {
   conversationShareConnectionScopeFactory,
 } from "./conversation-share/conversationShareService.js";
 import { createLocalConversationShareArtifactSource } from "./conversation-share/conversationShareArtifactSource.js";
+import { SharedContextContentCopyError } from "./conversation-share/codexSharedContextContentCopy.js";
 import { ConversationShareHttpClient } from "./conversation-share/conversationShareHttpClient.js";
 import { IBotsService } from "./bots/bots.js";
 import { IFileWatcherService } from "./fileWatcher/fileWatcher.js";
@@ -340,6 +347,8 @@ import type { WorkspaceFileSearchFilter } from "./file/workspaceFileMentionFilte
 import { createGitService } from "./git/gitService.js";
 import { GitCommitMessageGenerator } from "./git/gitCommitMessageGenerator.js";
 import { createGitCheckpointService } from "./git/gitCheckpointService.js";
+import { ICodexDesktopFileRewindService } from "./desktop-file-rewind.js";
+import { createCodexDesktopFileRewindService } from "./desktop-file-rewindService.js";
 import { createSystemService } from "./system/systemService.js";
 import { createTerminalService } from "./terminal/terminalService.js";
 import { createSettingServiceWithMigrations } from "./setting/settingService.js";
@@ -528,6 +537,8 @@ import {
   type CodezAutomationRun,
   getCapturedCodezAgentTelemetryEnv,
   CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_CUA_ENV,
   ZAI_PROVIDER_ID,
   codezAccountAccessSchema,
   codezProviderAccountAccessSchema,
@@ -1334,6 +1345,11 @@ export function createLocalServices(options: {
   codezAgentCommandResolver?: CodezAgentCommandResolver;
   /** Desktop Main 提前异步采集的本机 runtime 环境；Local Host 注入后不再同步启动 login shell。 */
   runtimeProcessEnvPatch?: Record<string, string>;
+  /** Desktop Main 提供的稳定 Browser/CUA native MCP availability facts。 */
+  nativeBrowserCua?: {
+    browserAvailable: boolean;
+    cuaAvailable: boolean;
+  };
   /** 本地桌面上次 workspace 缺失时，仅用于 Agent 子进程 spawn.cwd 兜底。 */
   codezAgentSpawnFallbackCwd?: string;
   /** desktop-attached remote server 从 Desktop Host 收到的一次性 Agent 网络配置。 */
@@ -1414,6 +1430,7 @@ export function createLocalServices(options: {
       options.codezAgentCommandResolver !== resolveDefaultCodezAgentCommand,
     ),
   });
+  const nativeBrowserCua = options?.nativeBrowserCua;
 
   // app 自签 CA：首次启动生成一份根 CA（幂等），供 agent 子进程经 NODE_EXTRA_CA_CERTS 信任、
   // 出口代理用其私钥重签。生成失败不应阻断启动（例如只读文件系统），仅记录日志后继续。
@@ -1784,7 +1801,7 @@ export function createLocalServices(options: {
         const timer = setTimeout(() => finish(null), 300);
         socket.on("connect", () => {
           clearTimeout(timer);
-          socket.write(`{"id":0,"method":"ping","params":{}}\n`);
+          socket.write(JSON.stringify({ id: 0, method: "ping", params: {} }) + "\n");
           let buffer = "";
           socket.on("data", (chunk: Buffer) => {
             buffer += chunk.toString("utf8");
@@ -2112,12 +2129,36 @@ export function createLocalServices(options: {
           resolveOffPeakClientConfig: () => codingPlanSubscriptionService.getOffPeakClientConfig(),
           resolveOffPeakTaskService: () => offPeakTaskServiceForAgent,
         };
+  // ConversationShareService 需要已创建的 Agent service，而 Codex 命令需要 Host 授权的
+  // shared-context reader。这个 forward holder 只在服务集合装配完成后被绑定；装配期命令
+  // 不可能到达，未绑定时 fail closed。
+  let conversationShareContentCopyReader:
+    | IConversationShareService["readSharedContextContentCopy"]
+    | undefined;
   const codezAgentService = createCodezAgentService({
+    safeDesktopFileRewindOwner: usesDefaultCodexDesktopBridge && !isDesktopAttachedRemote,
     ...(agentAccountProviderConfigSource
       ? { accountProviderConfigSource: agentAccountProviderConfigSource }
       : {}),
     accountRequestAuthService,
     ...(modelSelectionReadinessSource ? { modelSelectionReadinessSource } : {}),
+    // desktop-attached-remote 的 ConversationShare reader 是 unsupported wrapper；
+    // 注入“函数存在”会让能力投影误报 degraded。只在真实授权 reader 所在的
+    // Desktop-local/legacy assembly 提供该 owner fact。
+    ...(isDesktopAttachedRemote
+      ? {}
+      : {
+          readSharedContextContentCopy: (input) => {
+            if (!conversationShareContentCopyReader) {
+              throw new SharedContextContentCopyError(
+                "capability_missing",
+                "Codex shared-context content copy is unavailable",
+              );
+            }
+            return conversationShareContentCopyReader(input);
+          },
+          supportsSharedContextContentCopy: true as const,
+        }),
     authorizeLocalMediaPreviewPath: options?.authorizeLocalMediaPreviewPath,
     ...offPeakToolWiring,
     // 动态工作流灰度：与 Off-Peak 不同，
@@ -2187,7 +2228,19 @@ export function createLocalServices(options: {
       });
       // Codex 拥有账号、配置与工具；旧 Provider/Zai/CUA/Subagent 准备不能成为其启动前置条件。
       // PATH 仍由 initializeRuntimeProcessEnv 统一准备，身份与 transport 仍由进程管理器注入。
-      if (usesDefaultCodexDesktopBridge) return networkEnv;
+      if (usesDefaultCodexDesktopBridge) {
+        return {
+          ...networkEnv,
+          ...(nativeBrowserCua
+            ? {
+                [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: nativeBrowserCua.browserAvailable
+                  ? "1"
+                  : "0",
+                [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: nativeBrowserCua.cuaAvailable ? "1" : "0",
+              }
+            : {}),
+        };
+      }
       // 内置 Subagent 的旧覆盖必须在 CLI 独立读取之前导入，不能等待设置页操作。
       await subagentsService.prepareRuntimeState();
       // 与 helper 创建同一个门控（isCuaEnabledForContext：dev/internal 特性 OR 官方插件 enablement），
@@ -2405,6 +2458,7 @@ export function createLocalServices(options: {
     textGenerator: {
       async generateText(params) {
         return await codezAgentService.generateWorkspaceText({
+          ...(params.signal ? { signal: params.signal } : {}),
           workspacePath: params.workspacePath,
           ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
           selection: params.selection,
@@ -2414,6 +2468,9 @@ export function createLocalServices(options: {
       },
     },
     logger: createServiceLogger("git-commit-message"),
+    capabilityChecker: {
+      canGenerateWorkspaceText: (params) => codezAgentService.canGenerateWorkspaceText(params),
+    },
   });
   const gitService = createGitService({
     commitMessageGenerator: gitCommitMessageGenerator,
@@ -2519,6 +2576,8 @@ export function createLocalServices(options: {
         client: conversationShareClient,
         artifactSource: createLocalConversationShareArtifactSource(),
       });
+  conversationShareContentCopyReader = (input) =>
+    conversationShareService.readSharedContextContentCopy(input);
   // 注册链上的懒工厂（如 OffPeak）会各自创建 tasks-index sqlite repo；先收集到本数组，
   // services 集合建好后在 return 前统一登记进 sharedSqliteRepos 侧表
   const sqliteReposToClose: Array<{ close(): void }> = [];
@@ -2530,6 +2589,14 @@ export function createLocalServices(options: {
         send: (params) => codezAgentService.codexRequest(params),
       })
     : providerRuntime.modelSelection;
+  const supportsDesktopFileRewindOwner = usesDefaultCodexDesktopBridge && !isDesktopAttachedRemote;
+  const codexDesktopFileRewindService = supportsDesktopFileRewindOwner
+    ? createCodexDesktopFileRewindService({
+        agentService: codezAgentService,
+        isRegisteredOwner: () => supportsDesktopFileRewindOwner,
+        rootDir: getCodezDataRootDir(),
+      })
+    : undefined;
   const services = new ServiceCollection()
     .register(IFileService, fileService)
     .register(IMediaPreviewService, mediaPreviewService)
@@ -2709,6 +2776,11 @@ export function createLocalServices(options: {
   // 调用栈结束后才创建的高权限 Helper；若返回后立即 dispose，terminal fence 会先于 acquire 生效。
   // Helper 懒启动：不预热——Helper 由 SDK 首次 CUA 调用拉起（spawn env 注入
   // 稳定 socket），或用户显式授权流（restartHelper）拉起。启动即零 Helper 常驻。
+
+  // Rewind is Desktop-local only. Registering `undefined` would create a channel-map entry
+  // even though `getOptional` resolves it as absent, so registration itself must be conditional.
+  if (codexDesktopFileRewindService)
+    services.register(ICodexDesktopFileRewindService, codexDesktopFileRewindService);
 
   accountRequestAuthServices.set(services, accountRequestAuthService);
   offPeakRequestAuthBuilders.set(services, buildOffPeakRequestAuthForTicket);

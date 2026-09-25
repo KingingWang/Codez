@@ -39,7 +39,7 @@ interface UsageStatsServiceDependencies {
   credentialService?: Pick<ICredentialService, "load">;
   env?: NodeJS.ProcessEnv;
   /** App Usage 经 Codez Protocol 读取 agent 数据库真实统计。 */
-  codezAgentService: Pick<ICodezAgentService, "getAppUsageStats">;
+  codezAgentService: Pick<ICodezAgentService, "getAppUsageStats" | "getCodexUsageObservations">;
   /**
    * 官方 Server MCP 额度的凭证来源（与 server MCP 调用同一套 5 个身份头）。
    * 缺省时 entitlement 快照不含 MCP 额度。
@@ -73,6 +73,10 @@ export function createUsageStatsService(
         range: request.range,
         timeZone: request.timeZone,
       });
+    },
+    getCodexUsageObservations(request: { workspacePath: string; workspaceIdentity?: string }) {
+      // This is the explicit Desktop observation path; it never touches Coding Plan APIs.
+      return dependencies.codezAgentService.getCodexUsageObservations(request);
     },
     async getCodingPlanUsageSnapshot(
       request: CodingPlanUsageRequest,

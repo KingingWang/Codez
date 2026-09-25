@@ -1146,6 +1146,8 @@ const zhCN: Record<string, string> = {
   "git.actionMenu.commitDialog.error.noChanges": "当前没有可提交的更改。",
   "git.actionMenu.commitDialog.error.messageRequired": "请先输入或生成提交消息。",
   "git.actionMenu.commitDialog.error.generateFailed": "生成提交消息失败，请重试或手动填写。",
+  "git.actionMenu.commitDialog.error.auxiliaryUnavailable":
+    "当前 Codex 运行时暂不支持 AI 生成提交消息，请手动填写提交信息。",
   "git.actionMenu.commitDialog.error.requestFailed": "提交失败：{error}",
   "git.actionMenu.commitDialog.error.pushAfterCommitFailed": "已提交，但推送失败：{error}",
   "git.actionMenu.commitDialog.toast.success": "已提交当前更改",
@@ -3386,6 +3388,17 @@ const zhCN: Record<string, string> = {
   "settings.usage.healthLiteDecode": "Lite 高峰期平均 Decode 速度",
   "settings.usage.refresh": "刷新",
   "settings.usage.loadingTitle": "正在统计中",
+  "settings.usage.appUsage.observationNotice":
+    "此处 Codex 用量由桌面本地观察统计，不是官方计费账单。",
+  "settings.usage.appUsage.observedThreads": "已观察 Codex 会话",
+  "settings.usage.appUsage.observedInput": "已观察输入 Token",
+  "settings.usage.appUsage.observedOutput": "已观察输出 Token",
+  "settings.usage.appUsage.observedCacheRead": "已观察缓存读取 Token",
+  "settings.usage.appUsage.observedCacheWrite": "已观察缓存写入 Token",
+  "settings.usage.appUsage.observationStale":
+    "最近一次观察发生在 Codex 运行时断开前；重连后请刷新。",
+  "settings.usage.appUsage.observationConflict":
+    "至少一个会话的观察计数出现回退，合计值可能不是权威结果。",
   "settings.usage.appUsageLoadingDescription": "正在读取本地应用会话历史，可能需要一点时间。",
   "settings.usage.codingPlanLoadingDescription":
     "正在读取当前供应商 monitor 接口，可能需要一点时间。",
@@ -4338,6 +4351,8 @@ const zhCN: Record<string, string> = {
   "chat.promptEnhance.unsupported": "当前选中的模型暂时没有可直连的增强配置。",
   "chat.promptEnhance.error": "提示词增强失败，请稍后重试。",
   "chat.promptEnhance.errorWithDetail": "提示词增强失败：{error}",
+  "chat.sharedContext.contentCopyWarning":
+    "Codex 会收到这份共享上下文的文本副本。引用语义会丢失，源内容后续变化也不会同步到这条消息。",
   "chat.queue.enqueue": "加入队列",
   "chat.queue.title": "待发送消息（{count}）",
   "chat.queue.drag": "拖拽排序",
@@ -6493,6 +6508,18 @@ const zhCN: Record<string, string> = {
   "scheduledPreview.keepAwakeDisabled": "已关闭保持唤醒",
   "scheduledPreview.toast.running": "正在运行“{title}”…",
   "scheduledPreview.toast.view": "查看",
+  "codexHistoryStatus.running": "运行中",
+  "codexHistoryStatus.completed": "已完成",
+  "codexHistoryStatus.failed": "失败",
+  "codexHistoryStatus.interrupted": "已中断",
+  "codexHistoryStatus.unknown": "结局未知",
+  codexHistoryDuration: "{count} 秒",
+  codexHistoryFileChanges: "{files} 个文件 · +{additions} / -{deletions}",
+  codexHistoryNoSession: "请先打开原生 Codex 线程以读取历史。",
+  codexHistoryTransportUnavailable: "当前 Host 的 Codex 历史传输不可用。",
+  codexHistoryUsageAvailable: "单轮用量可用",
+  codexHistoryUsageUnavailable: "单轮用量不可用",
+  codexHistoryArtifacts: "产物",
   "scheduledPreview.addSchedule": "添加计划",
 };
 

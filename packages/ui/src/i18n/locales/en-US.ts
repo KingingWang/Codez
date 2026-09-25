@@ -1241,6 +1241,8 @@ const enUS: Record<string, string> = {
     "Enter or generate a commit message before committing.",
   "git.actionMenu.commitDialog.error.generateFailed":
     "Commit message generation failed. Try again or enter one manually.",
+  "git.actionMenu.commitDialog.error.auxiliaryUnavailable":
+    "AI commit-message generation is unavailable with the current Codex runtime. Enter the commit message manually.",
   "git.actionMenu.commitDialog.error.requestFailed": "Commit failed: {error}",
   "git.actionMenu.commitDialog.error.pushAfterCommitFailed": "Committed, but push failed: {error}",
   "git.actionMenu.commitDialog.toast.success": "Committed the current changes",
@@ -3594,6 +3596,17 @@ const enUS: Record<string, string> = {
   "settings.usage.healthLiteDecode": "Lite peak average decode speed",
   "settings.usage.refresh": "Refresh",
   "settings.usage.loadingTitle": "Computing usage",
+  "settings.usage.appUsage.observationNotice":
+    "Codex usage shown here is desktop-observed telemetry, not an official billing statement.",
+  "settings.usage.appUsage.observedThreads": "Observed Codex threads",
+  "settings.usage.appUsage.observedInput": "Observed input tokens",
+  "settings.usage.appUsage.observedOutput": "Observed output tokens",
+  "settings.usage.appUsage.observedCacheRead": "Observed cache-read tokens",
+  "settings.usage.appUsage.observedCacheWrite": "Observed cache-write tokens",
+  "settings.usage.appUsage.observationStale":
+    "Last observed while the Codex runtime was disconnected; refresh after reconnecting.",
+  "settings.usage.appUsage.observationConflict":
+    "Observed counters regressed for at least one thread, so totals may not be authoritative.",
   "settings.usage.appUsageLoadingDescription":
     "Reading local app session history, so it can take a moment.",
   "settings.usage.codingPlanLoadingDescription":
@@ -4637,6 +4650,8 @@ const enUS: Record<string, string> = {
     "The selected model does not currently expose a direct enhancement configuration.",
   "chat.promptEnhance.error": "Prompt enhancement failed. Please try again.",
   "chat.promptEnhance.errorWithDetail": "Prompt enhancement failed: {error}",
+  "chat.sharedContext.contentCopyWarning":
+    "Codex will receive this shared context as a text copy. Reference semantics are lost, and later changes to the source won't update this message.",
   "chat.queue.enqueue": "Queue message",
   "chat.queue.title": "Queued messages ({count})",
   "chat.queue.drag": "Drag to reorder",
@@ -6816,6 +6831,18 @@ const enUS: Record<string, string> = {
   "scheduledPreview.keepAwakeDisabled": "Keep awake disabled",
   "scheduledPreview.toast.running": "Running “{title}”…",
   "scheduledPreview.toast.view": "View",
+  "codexHistoryStatus.running": "Running",
+  "codexHistoryStatus.completed": "Completed",
+  "codexHistoryStatus.failed": "Failed",
+  "codexHistoryStatus.interrupted": "Interrupted",
+  "codexHistoryStatus.unknown": "Outcome unknown",
+  codexHistoryDuration: "{count}s",
+  codexHistoryFileChanges: "{files} files · +{additions} / -{deletions}",
+  codexHistoryNoSession: "Open a native Codex thread to read its history.",
+  codexHistoryTransportUnavailable: "Codex history transport is unavailable on this Host.",
+  codexHistoryUsageAvailable: "Per-turn usage available",
+  codexHistoryUsageUnavailable: "Per-turn usage unavailable",
+  codexHistoryArtifacts: "Artifacts",
   "scheduledPreview.addSchedule": "Add schedule",
 };
 

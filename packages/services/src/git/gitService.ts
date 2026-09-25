@@ -1,5 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import type { GitBranchComparison, GitFileChange, GitChangeSectionId } from "@codez/shared";
+import type {
+  GitBranchComparison,
+  GitCancelGenerateCommitMessageResult,
+  GitFileChange,
+  GitChangeSectionId,
+} from "@codez/shared";
 import { isPathInWorkspaceScope, normalizeGitPath, toWorkspaceRelativeGitPath } from "./config.js";
 import { filterCommitMessageFilesByCurrentSession } from "./commitMessageFileScope.js";
 import type { IGitService } from "./git.js";
@@ -172,6 +178,26 @@ export function createGitService(options?: {
   commitMessageGenerator?: GitCommitMessageGenerator;
 }): IGitService {
   const repo = options?.repo ?? createGitCliRepo();
+  const activeCommitMessageControllers = new Map<string, AbortController>();
+
+  const commitMessageOperationKey = (
+    workspacePath: string,
+    workspaceIdentity: string | undefined,
+    operationId: string,
+  ): string => `${workspaceIdentity?.trim() || workspacePath}\u0000${operationId.trim()}`;
+
+  const abortCommitMessageGeneration = (
+    workspacePath: string,
+    workspaceIdentity: string | undefined,
+    operationId: string,
+  ): boolean => {
+    const controller = activeCommitMessageControllers.get(
+      commitMessageOperationKey(workspacePath, workspaceIdentity, operationId),
+    );
+    if (!controller) return false;
+    controller.abort();
+    return true;
+  };
 
   return {
     async getRepositorySummary(params) {
@@ -287,15 +313,43 @@ export function createGitService(options?: {
           : [],
       );
 
-      return await options.commitMessageGenerator.generate({
-        workspacePath: params.workspacePath,
-        ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
-        ...(params.locale ? { locale: params.locale } : {}),
-        branchName: status.summary.branchName,
-        files,
-        diffs,
-        ...(params.conversationContext ? { conversationContext: params.conversationContext } : {}),
-      });
+      const operationId = params.operationId?.trim() || randomUUID();
+      const key = commitMessageOperationKey(
+        params.workspacePath,
+        params.workspaceIdentity,
+        operationId,
+      );
+      // 同一 operationId 只允许代表一条活动请求；旧请求必须先停止，
+      // 避免 UI stale continuation 覆盖新请求结果。
+      activeCommitMessageControllers.get(key)?.abort();
+      const controller = new AbortController();
+      activeCommitMessageControllers.set(key, controller);
+      try {
+        return await options.commitMessageGenerator.generate({
+          signal: controller.signal,
+          workspacePath: params.workspacePath,
+          ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+          ...(params.locale ? { locale: params.locale } : {}),
+          branchName: status.summary.branchName,
+          files,
+          diffs,
+          ...(params.conversationContext
+            ? { conversationContext: params.conversationContext }
+            : {}),
+        });
+      } finally {
+        activeCommitMessageControllers.delete(key);
+      }
+    },
+
+    async cancelGenerateCommitMessage(params): Promise<GitCancelGenerateCommitMessageResult> {
+      return {
+        cancelled: abortCommitMessageGeneration(
+          params.workspacePath,
+          params.workspaceIdentity,
+          params.operationId,
+        ),
+      };
     },
 
     async commit(params) {

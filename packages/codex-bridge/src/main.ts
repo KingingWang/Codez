@@ -6,9 +6,15 @@ import { createCodexProcess } from "./codex-process.js";
 import { RpcFramer, type RpcEnvelope } from "./rpc-framing.js";
 import { HostOutput } from "./host-output.js";
 import { BridgeRuntime } from "./bridge-runtime.js";
+import { CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE } from "@codez/shared";
+import { parseNativeBrowserCuaFacts, runNativeBrowserCuaMcp } from "./native-browser-cua-mcp.js";
 import { describeBridgeFailure, type BridgeFailureOrigin } from "./diagnostics.js";
 
 async function main(): Promise<void> {
+  if (process.argv[2] === CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE) {
+    await runNativeBrowserCuaMcp();
+    return;
+  }
   // Windows 的 cwd 可保留 junction/短路径拼写；执行路径统一为物理目录，身份仍由 Host 指定。
   const cwd = await realpath(process.cwd());
   const workspaceId = process.env.CODEZ_WORKSPACE_IDENTITY?.trim() || cwd;
@@ -76,6 +82,7 @@ async function main(): Promise<void> {
     stateRoot,
     notify: (method, params) => write({ method, params }),
     fatal,
+    nativeBrowserCua: parseNativeBrowserCuaFacts(),
   });
   const framer = new RpcFramer();
   const receive = (message: RpcEnvelope): boolean => {

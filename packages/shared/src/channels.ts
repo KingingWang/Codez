@@ -98,6 +98,8 @@ export const ServiceChannels = {
   CodezAgent: "codez-agent",
   /** Codez session 应用服务 */
   CodezSession: "codez-session",
+  /** Desktop-owned safe Codex file rewind transaction */
+  CodexDesktopFileRewind: "codex-desktop-file-rewind",
   /** 会话分享发布、预览与 continuation API 编排 */
   ConversationShare: "conversation-share",
   /** 文件系统监视服务 */

@@ -27,8 +27,16 @@ interface GitCommitMessageCurrentModelProvider {
   }): Promise<CodezWorkspaceGenerateTextParams["selection"] | null>;
 }
 
+interface GitCommitMessageCapabilityChecker {
+  canGenerateWorkspaceText(params: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+  }): Promise<boolean>;
+}
+
 interface GitCommitMessageTextGenerator {
   generateText(params: {
+    signal?: AbortSignal;
     workspacePath: string;
     workspaceIdentity?: string;
     selection: CodezWorkspaceGenerateTextParams["selection"];
@@ -39,6 +47,7 @@ interface GitCommitMessageTextGenerator {
 
 interface GitCommitMessageGeneratorOptions {
   currentModelProvider: GitCommitMessageCurrentModelProvider;
+  capabilityChecker?: GitCommitMessageCapabilityChecker;
   textGenerator: GitCommitMessageTextGenerator;
   logger?: ServiceLogger;
 }
@@ -54,10 +63,18 @@ class GitCommitMessageGenerationError extends Error {
   }
 }
 
+class GitCommitMessageCapabilityUnavailableError extends Error {
+  constructor() {
+    super("生成提交消息所需的 Codex 辅助能力不可用。");
+    this.name = "GitCommitMessageCapabilityUnavailableError";
+  }
+}
+
 export class GitCommitMessageGenerator {
   constructor(private readonly options: GitCommitMessageGeneratorOptions) {}
 
   async generate(params: {
+    signal?: AbortSignal;
     workspacePath: string;
     workspaceIdentity?: string;
     branchName: string | null;
@@ -66,6 +83,12 @@ export class GitCommitMessageGenerator {
     diffs: readonly GitDiffResult[];
     conversationContext?: GitCommitMessageConversationContext;
   }): Promise<{ message: string; providerId: string; model: string }> {
+    if (this.options.capabilityChecker) {
+      // 能力必须在读取当前模型前判定：老 bridge、断连或 malformed capability
+      // 都不能触发账号/模型准备，更不能发出注定失败的生成请求。
+      const supported = await this.options.capabilityChecker.canGenerateWorkspaceText(params);
+      if (!supported) throw new GitCommitMessageCapabilityUnavailableError();
+    }
     const selection = await this.resolveCurrentModel(params);
     const prompt = buildGitCommitMessageGenerationPrompt({
       branchName: params.branchName,
@@ -87,6 +110,7 @@ export class GitCommitMessageGenerator {
     });
 
     const rawMessage = await this.complete({
+      ...(params.signal ? { signal: params.signal } : {}),
       workspacePath: params.workspacePath,
       workspaceIdentity: params.workspaceIdentity,
       selection,
@@ -145,6 +169,7 @@ export class GitCommitMessageGenerator {
   }
 
   private async complete(params: {
+    signal?: AbortSignal;
     workspacePath: string;
     workspaceIdentity?: string;
     selection: CodezWorkspaceGenerateTextParams["selection"];
@@ -152,6 +177,7 @@ export class GitCommitMessageGenerator {
   }): Promise<string> {
     try {
       const result = await this.options.textGenerator.generateText({
+        signal: params.signal,
         workspacePath: params.workspacePath,
         ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
         selection: params.selection,

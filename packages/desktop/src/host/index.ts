@@ -149,6 +149,10 @@ import {
 } from "./windowRemoteConnectionRegistry.js";
 import { createWindowHostControllerRuntime } from "./windowHostControllerService.js";
 import { resolveAutomationSubmissionModelSelection } from "./automationModelSelection.js";
+import {
+  assertCodexScheduledPromptCapability,
+  reconcileCodexAutomationHistory,
+} from "./codexAutomationCorrelation.js";
 import { createRemoteConnectionProgressContext } from "@codez/server/remote/remoteConnectionProgressContext.js";
 import { startHostSelfResourceTelemetry } from "./hostSelfResourceTelemetry.js";
 type RemoteBackendHostConnection = RemoteConnection & {
@@ -352,6 +356,8 @@ const logger = {
 
 const cronAutomationRepo = new AutomationRepo();
 const cronRunSubscriptions = new Map<string, { dispose(): void }>();
+/** Host 内同一 run 的 native-send 单飞；跨进程幂等由 correlation ledger 负责。 */
+const codexAutomationRunInFlight = new Set<string>();
 
 // ---- 闲时任务（off-peak）派发：与 cron 并行的独立链路（表/消息/常量互不复用）----
 const offPeakTaskRepo = new OffPeakTaskRepo();
@@ -815,6 +821,15 @@ function trackCronRunOutcome(params: {
   const disposable = params.codezTaskService.onDynamicTaskTerminalOutcome(params.taskId)(
     (result) => {
       if (result.inputId !== params.traceId) return;
+      markCodexAutomationCorrelationTerminal({
+        workspaceKey: params.workspaceKey,
+        runId: params.runId,
+        threadId: params.taskId,
+        // correlation v1 只有 completed/failed；native stopped 归入 failed，
+        // automation_runs 仍保留原有 stopped 展示语义。
+        outcome: result.outcome === "succeeded" ? "succeeded" : "failed",
+        error: result.error,
+      });
       void settleCronRunTerminalOutcome({
         ...params,
         outcome: result.outcome,
@@ -848,6 +863,162 @@ function trackCronRunOutcome(params: {
   });
 }
 
+function markCodexAutomationCorrelationTerminal(params: {
+  workspaceKey: string;
+  runId: string;
+  threadId: string;
+  outcome: "succeeded" | "failed";
+  error?: string;
+}): void {
+  void (async () => {
+    try {
+      const current = await cronAutomationRepo.getCodexAutomationCorrelation({
+        workspaceKey: params.workspaceKey,
+        runId: params.runId,
+      });
+      // 终态事件可能先于 sendPrompt ACK 返回。pending 先落 unknown，再用权威终态收敛；
+      // 这保留“没有 ACK 不代表 accepted”的状态机边界。
+      if (current?.state === "pending") {
+        await cronAutomationRepo.transitionCodexAutomationCorrelation({
+          workspaceKey: params.workspaceKey,
+          runId: params.runId,
+          to: "unknown",
+          threadId: params.threadId,
+          now: Date.now(),
+        });
+      }
+      await cronAutomationRepo.transitionCodexAutomationCorrelation({
+        workspaceKey: params.workspaceKey,
+        runId: params.runId,
+        to: params.outcome === "succeeded" ? "completed" : "failed",
+        threadId: params.threadId,
+        error: params.error,
+        now: Date.now(),
+      });
+    } catch (error) {
+      logger.warn(`回写 Codex automation correlation 终态失败 runId=${params.runId}`, error);
+    }
+  })();
+}
+
+async function dispatchExistingCronRunCorrelation(params: {
+  codezTaskService: ICodezTaskService;
+  agentService: Pick<ICodezAgentService, "conversationRowsRangeV4">;
+  workspacePath: string;
+  workspaceIdentity?: string;
+  workspaceKey: string;
+  runId: string;
+  automationId: string;
+  scheduledAt: number | null;
+  trigger: "schedule" | "manual";
+}): Promise<{ taskId: string; sessionId: string }> {
+  const correlation = await cronAutomationRepo.getCodexAutomationCorrelation({
+    workspaceKey: params.workspaceKey,
+    runId: params.runId,
+  });
+  if (!correlation?.threadId) throw new Error("Codex automation correlation has no thread id");
+
+  if (correlation.state === "completed" || correlation.state === "failed") {
+    const outcome = correlation.state === "completed" ? "succeeded" : "failed";
+    await settleCronRunTerminalOutcome({
+      ...params,
+      repo: cronAutomationRepo,
+      outcome,
+      logWarn: (message, error) => logger.warn(message, error),
+    });
+    return { taskId: correlation.threadId, sessionId: correlation.threadId };
+  }
+
+  const reconciliation = await reconcileCodexAutomationHistory({
+    agentService: params.agentService,
+    workspacePath: params.workspacePath,
+    ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+    threadId: correlation.threadId,
+    commandId: correlation.commandId,
+  });
+  if (reconciliation.kind === "resolved" && reconciliation.resolution.terminal) {
+    const correlationOutcome = reconciliation.resolution.outcome;
+    const outcome = correlationOutcome === "completed" ? "succeeded" : "failed";
+    await cronAutomationRepo.transitionCodexAutomationCorrelation({
+      workspaceKey: params.workspaceKey,
+      runId: params.runId,
+      to: correlationOutcome,
+      threadId: correlation.threadId,
+      ...(reconciliation.resolution.turnId ? { turnId: reconciliation.resolution.turnId } : {}),
+      now: Date.now(),
+    });
+    await settleCronRunTerminalOutcome({
+      ...params,
+      repo: cronAutomationRepo,
+      outcome,
+      logWarn: (message, error) => logger.warn(message, error),
+    });
+    return { taskId: correlation.threadId, sessionId: correlation.threadId };
+  }
+
+  if (
+    reconciliation.kind === "resolved" &&
+    !reconciliation.resolution.terminal &&
+    reconciliation.resolution.admitted
+  ) {
+    if (correlation.state === "pending") {
+      await cronAutomationRepo.transitionCodexAutomationCorrelation({
+        workspaceKey: params.workspaceKey,
+        runId: params.runId,
+        to: "accepted",
+        threadId: correlation.threadId,
+        ...(reconciliation.resolution.turnId ? { turnId: reconciliation.resolution.turnId } : {}),
+        now: Date.now(),
+      });
+    }
+    trackCronRunOutcome({
+      codezTaskService: params.codezTaskService,
+      taskId: correlation.threadId,
+      traceId: correlation.runId as TraceId,
+      workspacePath: params.workspacePath,
+      ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+      runId: params.runId,
+      automationId: params.automationId,
+      workspaceKey: params.workspaceKey,
+      scheduledAt: params.scheduledAt,
+      trigger: params.trigger,
+    });
+    return { taskId: correlation.threadId, sessionId: correlation.threadId };
+  }
+
+  if (reconciliation.kind === "unrecoverable") {
+    await cronAutomationRepo.transitionCodexAutomationCorrelation({
+      workspaceKey: params.workspaceKey,
+      runId: params.runId,
+      to: "failed",
+      threadId: correlation.threadId,
+      error: "native thread is deleted or unrecoverable",
+      now: Date.now(),
+    });
+    await settleCronRunTerminalOutcome({
+      ...params,
+      repo: cronAutomationRepo,
+      outcome: "failed",
+      error: "native thread is deleted or unrecoverable",
+      logWarn: (message, error) => logger.warn(message, error),
+    });
+    return { taskId: correlation.threadId, sessionId: correlation.threadId };
+  }
+
+  // No authoritative evidence is not permission to resend. Pending becomes unknown so restart
+  // can never turn a previously prepared run into a second native turn.
+  if (correlation.state === "pending") {
+    await cronAutomationRepo.transitionCodexAutomationCorrelation({
+      workspaceKey: params.workspaceKey,
+      runId: params.runId,
+      to: "unknown",
+      threadId: correlation.threadId,
+      now: Date.now(),
+    });
+  }
+  return { taskId: correlation.threadId, sessionId: correlation.threadId };
+}
+
 /**
  * 把一次 cron/manual run 直接提交给当前 host 的 V4 task service。
  * 会话内 automation 可能绑定到未激活 session，必须先恢复再应用保存的运行参数。
@@ -856,7 +1027,16 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
   taskId: string;
   sessionId: string;
 }> {
+  if (codexAutomationRunInFlight.has(request.runId)) {
+    throw new Error(`Codex automation run is already dispatching: ${request.runId}`);
+  }
+  codexAutomationRunInFlight.add(request.runId);
   const targetServices = resolveAutomationTargetServices(request);
+  const agentService = targetServices.getOptional(ICodezAgentService);
+  if (!agentService) {
+    throw new Error("Codez agent service is not initialized.");
+  }
+  await assertCodexScheduledPromptCapability(agentService);
   const codezTaskService = targetServices.getOptional(ICodezTaskService);
   if (!codezTaskService) {
     throw new Error("Codez task service is not initialized.");
@@ -892,7 +1072,25 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
   const workspaceKey = resolveWorkspaceKey(request);
   const trigger = request.runId.includes(":manual:") ? "manual" : "schedule";
   const scheduledAt = parseCronRunScheduledAt(request.runId, request.automationId);
+  let correlationPrepared = false;
   try {
+    const existingCorrelation = await cronAutomationRepo.getCodexAutomationCorrelation({
+      workspaceKey,
+      runId: request.runId,
+    });
+    if (existingCorrelation) {
+      return await dispatchExistingCronRunCorrelation({
+        codezTaskService,
+        agentService,
+        workspacePath: request.workspacePath,
+        ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
+        workspaceKey,
+        runId: request.runId,
+        automationId: request.automationId,
+        scheduledAt,
+        trigger,
+      });
+    }
     const task = request.targetTaskId
       ? { taskId: request.targetTaskId }
       : await codezTaskService.createTask({
@@ -947,6 +1145,26 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
       }
     }
     trackedKey = cronRunSubscriptionKey(task.taskId, promptTraceId);
+    const prepared = await cronAutomationRepo.prepareCodexAutomationCorrelation({
+      workspaceKey,
+      runId: request.runId,
+      automationId: request.automationId,
+      threadId: task.taskId,
+    });
+    correlationPrepared = prepared.created;
+    if (!prepared.created) {
+      return await dispatchExistingCronRunCorrelation({
+        codezTaskService,
+        agentService,
+        workspacePath: request.workspacePath,
+        ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
+        workspaceKey,
+        runId: request.runId,
+        automationId: request.automationId,
+        scheduledAt,
+        trigger,
+      });
+    }
     trackCronRunOutcome({
       codezTaskService,
       taskId: task.taskId,
@@ -965,6 +1183,14 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
       content: request.prompt,
       clientMode: "desktop-continuous",
       automationId: request.automationId,
+      modelSelection: submissionModelSelection,
+    });
+    await cronAutomationRepo.transitionCodexAutomationCorrelation({
+      workspaceKey,
+      runId: request.runId,
+      to: "accepted",
+      threadId: task.taskId,
+      now: Date.now(),
     });
     // prompt 创建的定时任务带 targetTaskId，追加原会话不能计成 session_create。
     if (!request.targetTaskId) {
@@ -977,6 +1203,19 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
     }
     return { taskId: task.taskId, sessionId: task.taskId };
   } catch (error) {
+    if (correlationPrepared) {
+      try {
+        await cronAutomationRepo.transitionCodexAutomationCorrelation({
+          workspaceKey,
+          runId: request.runId,
+          to: "unknown",
+          error: error instanceof Error ? error.message : String(error),
+          now: Date.now(),
+        });
+      } catch (ledgerError) {
+        logger.warn(`回写 Codex automation ACK-loss 状态失败 runId=${request.runId}`, ledgerError);
+      }
+    }
     if (trackedKey) disposeCronRunSubscription(trackedKey);
     markCronRunOutcome({
       runId: request.runId,
@@ -988,6 +1227,8 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;
+  } finally {
+    codexAutomationRunInFlight.delete(request.runId);
   }
 }
 
@@ -2850,6 +3091,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               hostApiNetworkTransport,
               authorizeLocalMediaPreviewPath,
               runtimeProcessEnvPatch: msg.runtimeProcessEnvPatch,
+              nativeBrowserCua: msg.nativeBrowserCua,
               agentRuntimeContext: {
                 getDeviceMid: () => msg.deviceMid,
                 runtimeSurface: "desktop_local_host",

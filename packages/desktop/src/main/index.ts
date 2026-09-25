@@ -23,6 +23,7 @@ import {
 } from "./desktopContextPromptRollout.js";
 import { buildBrowserViewCloseTabNotification } from "./browserView/browserCloseTabNotification.js";
 import { BrowserGuestManager } from "./browserView/browserGuestManager.js";
+import { createNativeBrowserCuaMcpBroker } from "./browserView/nativeBrowserCuaMcpBroker.js";
 import { createElectronBrowserWebmRecorder } from "./browserView/electronBrowserWebmRecorder.js";
 import { installBrowserRestoreBootstrapProtocol } from "./browserView/browserRestoreBootstrapProtocol.js";
 import {
@@ -451,6 +452,15 @@ const browserGuestManager = new BrowserGuestManager(
   (windowId) => BrowserWindow.fromId(windowId),
 );
 setBrowserUseGuestWebContentsIdsProvider(() => browserGuestManager.listGuestWebContentsIds());
+const nativeBrowserCuaMcpBroker = createNativeBrowserCuaMcpBroker({
+  manager: browserGuestManager,
+  flavor: CODEZ_PRODUCT_FLAVOR,
+  userDataPath: runtimeUserDataPath ?? app.getPath("userData"),
+  eligibleWindowResolver: () =>
+    getMainApplicationWindows().find((win) => nativeBrowserCuaEligibleWindowIds.has(win.id)) ??
+    null,
+  logger,
+});
 
 // browser-use：带诊断日志地执行 browser 命令（两处 spawnHostProcess wiring 共用）。
 // 打入口/出口便于定位卡点（如 navigate loadURL 挂起、CDP 报错等）。
@@ -637,6 +647,7 @@ const windowsCuaOperationIndicator = createWindowsCuaOperationIndicator({
   getLocale: () => currentApplicationLocale,
   logger,
 });
+const nativeBrowserCuaEligibleWindowIds = new Set<number>();
 
 // 常驻 cron scheduler 进程句柄；app ready 后拉起，退出前销毁。
 let cronScheduler: CronSchedulerHandle | null = null;
@@ -780,7 +791,13 @@ app.on("browser-window-blur", (_event, win) => {
 });
 app.on("browser-window-created", (_event, win) => {
   const windowKey = resolveCuaPipWindowKey(win);
-  win.once("closed", () => cuaPipFocusRouter.removeWindow(windowKey));
+  if (windowHostProcessMap.has(win.id) || nativeBrowserCuaEligibleWindowIds.has(win.id)) {
+    nativeBrowserCuaEligibleWindowIds.add(win.id);
+  }
+  win.once("closed", () => {
+    nativeBrowserCuaEligibleWindowIds.delete(win.id);
+    cuaPipFocusRouter.removeWindow(windowKey);
+  });
 });
 
 const remoteSessionManager = createRemoteWorkspaceSessionManager({
@@ -1023,6 +1040,7 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
   markForceQuit(reason);
   windowsCuaOperationIndicator.dispose();
   browserScreenshotSurfaceCoordinator.dispose();
+  await nativeBrowserCuaMcpBroker.close();
   // Bug 根因：资源样本改为 5 分钟窗口后，退出仍直接 stop 会清空未满窗口的数据。
   // 退出时只排空已存在的角色 / Agent 内存窗口，不启动新采样、目录扫描或外部探针。
   stopDesktopResourceTelemetry({ flushPendingWindows: true });
@@ -1375,6 +1393,7 @@ async function executeDesktopCommandForApp(
     },
     credentialsDir: getCredentialsDir(),
     currentApplicationLocale,
+    nativeBrowserCuaMcpBroker,
   });
 }
 
@@ -1699,7 +1718,10 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
         hideWindow: () => win.hide(),
       }),
     windowHostProcessMap,
-    onHostProcessReady: (windowKey) => cuaPipFocusRouter.refreshWindow(windowKey),
+    onHostProcessReady: (windowKey, win) => {
+      nativeBrowserCuaEligibleWindowIds.add(win.id);
+      cuaPipFocusRouter.refreshWindow(windowKey);
+    },
     awaitFirstHostSpawnDecision,
     spawnHostProcess: (win, label, initMessage) =>
       spawnHostProcess(
@@ -1851,6 +1873,11 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
     deviceMid,
     runtimeProcessEnvPatchPromise: runtimeProcessEnvPreparation.patchPromise,
     runtimeProcessEnvFallbackPatch: runtimeProcessEnvPreparation.fallbackPatch,
+    nativeBrowserCua: () => nativeBrowserCuaMcpBroker.availability,
+    nativeBrowserCuaReadiness: () => nativeBrowserCuaMcpBroker.readiness,
+    codezBuiltinProviderConfigFilePath: resolveCodezBuiltinProviderConfigFilePath({
+      env: { ...hostProcessLocalEnv, ...process.env },
+    }),
     initialDesktopZoomLevel: currentDesktopZoomLevel,
     initialWindowSize: currentDesktopWindowSize,
     currentApplicationLocale: () => currentApplicationLocale,

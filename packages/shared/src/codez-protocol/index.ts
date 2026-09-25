@@ -74,9 +74,29 @@ export const CODEZ_PROTOCOL_NAME = "Codez Protocol" as const;
 export const CODEZ_PROTOCOL_VERSION = 1 as const;
 // V4 wire 与 legacy 主协议并存；禁止为了 V4 physical framing 改写 legacy 版本。
 export const CODEZ_PROTOCOL_V4_WIRE_VERSION = 3 as const;
+export const codexFeatureCapabilityStateSchema = z.enum(["supported", "degraded", "unsupported"]);
+export const codexFeatureCapabilitiesSchema = z.strictObject({
+  auxiliaryTextGeneration: codexFeatureCapabilityStateSchema,
+  observedSessionUsage: codexFeatureCapabilityStateSchema,
+  observedAppUsage: codexFeatureCapabilityStateSchema,
+  sharedContextContentCopy: codexFeatureCapabilityStateSchema,
+  scheduledPromptAutomations: codexFeatureCapabilityStateSchema,
+  nativeBrowserCuaMcp: codexFeatureCapabilityStateSchema,
+  readOnlyWorkflowHistory: codexFeatureCapabilityStateSchema,
+  safeDesktopFileRewind: codexFeatureCapabilityStateSchema,
+  legacyWorkflowRuns: codexFeatureCapabilityStateSchema,
+});
+/** Source discovery failed. Feature omission remains the old-peer unsupported case. */
+export const codexCapabilityUnavailableSchema = z.strictObject({
+  reason: z.enum(["bridge-unavailable"]),
+});
 export const codezRuntimeCapabilitiesSchema = z.object({
   independentPlanState: z.boolean().optional(),
+  // Old peers omit this object; every consumer resolves omission as unsupported.
+  codex: codexFeatureCapabilitiesSchema.optional(),
 });
+export type CodexFeatureCapabilities = z.infer<typeof codexFeatureCapabilitiesSchema>;
+export type CodexCapabilityUnavailable = z.infer<typeof codexCapabilityUnavailableSchema>;
 export const codezProtocolErrorCodes = {
   sessionUnavailable: -32004,
 } as const;

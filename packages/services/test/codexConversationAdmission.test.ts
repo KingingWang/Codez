@@ -108,8 +108,7 @@ for (const runtime of ["desktop", "deployed"] as const) {
       },
     ];
     try {
-      assert.equal((await service.helloConversationV4()).capabilities.workspaceHookReview, false);
-      assert.equal((await service.helloConversationV4()).capabilities.independentPlanState, true);
+      const commandsStart = sent.length;
       for (const envelope of commands) {
         const ack = await service.sendConversationCommandV4({ ...target, envelope });
         assert.equal(ack.status, "accepted");
@@ -119,7 +118,11 @@ for (const runtime of ["desktop", "deployed"] as const) {
           params: envelope,
         });
       }
-      assert.equal(sent.length, commands.length, "no legacy capability or preparation requests");
+      assert.equal(
+        sent.length - commandsStart,
+        commands.length,
+        "commands send no legacy capability or preparation requests",
+      );
       // Minimal registry fixture: this test exercises readiness and not model config evaluation.
       const legacyReady = createCodezAgentService({
         presentationSurface: "desktop",

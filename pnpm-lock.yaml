@@ -627,6 +627,9 @@ importers:
       '@codez/shared':
         specifier: workspace:*
         version: link:../shared
+      '@modelcontextprotocol/server':
+        specifier: 2.0.0
+        version: 2.0.0
       smol-toml:
         specifier: ^1.6.1
         version: 1.6.1

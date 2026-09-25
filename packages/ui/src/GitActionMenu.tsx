@@ -68,6 +68,7 @@ interface GitActionMenuProps {
   gitSummary: GitRepositorySummary;
   activeTaskChangeSummary?: CodezTaskChangeSummary | null;
   commitMessageConversationContext?: GitCommitMessageConversationContext | null;
+  auxiliaryGenerationSupported?: boolean;
   onRefreshGit: () => void;
   className?: string;
   triggerIconOnly?: boolean;
@@ -117,6 +118,7 @@ interface GitCommitDialogProps {
   error: string | null;
   mutationPending: boolean;
   generationPending: boolean;
+  auxiliaryGenerationSupported: boolean;
   includeUnstaged: boolean;
   pushEnabled: boolean;
   onRefreshGit: () => void;
@@ -124,6 +126,7 @@ interface GitCommitDialogProps {
   onMessageChange: (nextValue: string) => void;
   onIncludeUnstagedChange: (nextValue: boolean) => void;
   onGenerateMessage: () => void;
+  onCancelMessageGeneration?: () => void;
   onSubmit: () => void;
   onSubmitAndPush: () => void;
   onPushOnly: () => void;
@@ -187,6 +190,7 @@ function CommitCommandActionItem({
 }
 
 function GitCommitDialog({
+  auxiliaryGenerationSupported,
   open,
   loading,
   state,
@@ -202,6 +206,7 @@ function GitCommitDialog({
   onMessageChange,
   onIncludeUnstagedChange,
   onGenerateMessage,
+  onCancelMessageGeneration,
   onSubmit,
   onSubmitAndPush,
   onPushOnly,
@@ -226,6 +231,11 @@ function GitCommitDialog({
   const commitActionDisabled =
     actionPending || !hasSelectedChanges || (!hasIdentity && state?.identity !== null);
   const pushOnlyDisabled = actionPending || !pushEnabled;
+  const generateDisabled =
+    actionPending ||
+    !hasSelectedChanges ||
+    (!hasIdentity && state?.identity !== null) ||
+    !auxiliaryGenerationSupported;
   const commitShortcutLabel = formatCommandShortcutLabel("⏎");
   const commitActions = useMemo(
     () => [
@@ -449,11 +459,7 @@ function GitCommitDialog({
                       variant="ghost"
                       size="icon-sm"
                       onClick={onGenerateMessage}
-                      disabled={
-                        actionPending ||
-                        !hasSelectedChanges ||
-                        (!hasIdentity && state.identity !== null)
-                      }
+                      disabled={!generationPending && generateDisabled}
                       aria-label={intl.formatMessage({
                         id: messageReady
                           ? "git.actionMenu.commitDialog.regenerate"
@@ -476,6 +482,18 @@ function GitCommitDialog({
                     })}
                   </TooltipContent>
                 </Tooltip>
+                {generationPending && onCancelMessageGeneration ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={onCancelMessageGeneration}
+                    className="absolute right-9 top-1.5 text-foreground-subtle hover:text-foreground"
+                    aria-label={intl.formatMessage({ id: "common.cancel" })}
+                  >
+                    <AlertCircleIcon className="size-4" />
+                  </Button>
+                ) : null}
               </div>
             </div>
 
@@ -825,6 +843,7 @@ export function GitActionMenu({
   gitSummary,
   activeTaskChangeSummary = null,
   commitMessageConversationContext = null,
+  auxiliaryGenerationSupported = false,
   onRefreshGit,
   className,
   triggerIconOnly = false,
@@ -842,6 +861,7 @@ export function GitActionMenu({
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
   const [mutationPending, setMutationPending] = useState(false);
+  const activeGenerationOperationRef = useRef<string | null>(null);
 
   const actionAvailable = canUseGitActionMenu(gitSummary);
   const currentBranchLabel = useMemo(
@@ -899,6 +919,22 @@ export function GitActionMenu({
   ]);
 
   const closeCommitDialog = useCallback(() => {
+    const operationId = activeGenerationOperationRef.current;
+    if (operationId) {
+      void gitService
+        .cancelGenerateCommitMessage({
+          workspacePath,
+          ...(workspaceIdentity ? { workspaceIdentity } : {}),
+          operationId,
+        })
+        .catch((error: unknown) => {
+          logger.warn("[GitActionMenu] 取消提交消息生成失败", {
+            workspacePath,
+            operationId,
+            error: getErrorMessage(error),
+          });
+        });
+    }
     setCommitDialogOpen(false);
     setCommitDialogLoading(false);
     setCommitDialogState(null);
@@ -987,7 +1023,11 @@ export function GitActionMenu({
   }, [loadCommitDialogState, onRefreshGit]);
 
   const generateCommitMessage = useCallback(
-    async (state: GitCommitDialogState, includeUnstaged: boolean): Promise<string> => {
+    async (
+      state: GitCommitDialogState,
+      includeUnstaged: boolean,
+      operationId: string,
+    ): Promise<string> => {
       const files = getCommitDialogFiles(state, includeUnstaged);
       const currentSessionFilePaths = getCurrentSessionFilePaths(state.activeTaskChangeSummary);
       logger.info("[GitActionMenu] 开始生成提交消息", {
@@ -1004,6 +1044,7 @@ export function GitActionMenu({
         ...(workspaceIdentity ? { workspaceIdentity } : {}),
         locale,
         includeUnstaged,
+        operationId,
         ...(currentSessionFilePaths ? { currentSessionFilePaths } : {}),
         ...(commitMessageConversationContext
           ? { conversationContext: commitMessageConversationContext }
@@ -1028,8 +1069,34 @@ export function GitActionMenu({
     ],
   );
 
+  const cancelCommitMessageGeneration = useCallback(() => {
+    const operationId = activeGenerationOperationRef.current;
+    if (!operationId) return;
+    void gitService
+      .cancelGenerateCommitMessage({
+        workspacePath,
+        ...(workspaceIdentity ? { workspaceIdentity } : {}),
+        operationId,
+      })
+      .catch((error: unknown) => {
+        logger.warn("[GitActionMenu] 取消提交消息生成失败", {
+          workspacePath,
+          operationId,
+          error: getErrorMessage(error),
+        });
+      });
+  }, [gitService, workspaceIdentity, workspacePath]);
+
   const handleGenerateCommitMessage = useCallback(async () => {
     if (!commitDialogState) {
+      return;
+    }
+    if (!auxiliaryGenerationSupported) {
+      setCommitError(
+        intl.formatMessage({
+          id: "git.actionMenu.commitDialog.error.auxiliaryUnavailable",
+        }),
+      );
       return;
     }
 
@@ -1045,11 +1112,14 @@ export function GitActionMenu({
 
     setCommitError(null);
     setCommitMessageGenerationPending(true);
+    const operationId = `git-commit-message-${crypto.randomUUID()}`;
+    activeGenerationOperationRef.current = operationId;
 
     try {
       const nextCommitMessage = await generateCommitMessage(
         commitDialogState,
         commitIncludeUnstaged,
+        operationId,
       );
       setCommitMessage(nextCommitMessage);
     } catch (error: unknown) {
@@ -1065,6 +1135,8 @@ export function GitActionMenu({
         }),
       );
     } finally {
+      if (activeGenerationOperationRef.current === operationId)
+        activeGenerationOperationRef.current = null;
       setCommitMessageGenerationPending(false);
     }
   }, [
@@ -1074,6 +1146,7 @@ export function GitActionMenu({
     gitSummary.branchName,
     intl,
     workspacePath,
+    auxiliaryGenerationSupported,
   ]);
 
   const pushCurrentBranch = useCallback(
@@ -1133,10 +1206,24 @@ export function GitActionMenu({
 
       let nextCommitMessage = commitMessage.trim();
       if (!nextCommitMessage) {
+        if (!auxiliaryGenerationSupported) {
+          setCommitError(
+            intl.formatMessage({
+              id: "git.actionMenu.commitDialog.error.auxiliaryUnavailable",
+            }),
+          );
+          return;
+        }
         setCommitError(null);
         setCommitMessageGenerationPending(true);
+        const operationId = `git-commit-message-${crypto.randomUUID()}`;
+        activeGenerationOperationRef.current = operationId;
         try {
-          nextCommitMessage = await generateCommitMessage(commitDialogState, includeUnstaged);
+          nextCommitMessage = await generateCommitMessage(
+            commitDialogState,
+            includeUnstaged,
+            operationId,
+          );
           setCommitMessage(nextCommitMessage);
         } catch (error: unknown) {
           const message = getErrorMessage(error);
@@ -1152,6 +1239,8 @@ export function GitActionMenu({
           );
           return;
         } finally {
+          if (activeGenerationOperationRef.current === operationId)
+            activeGenerationOperationRef.current = null;
           setCommitMessageGenerationPending(false);
         }
       }
@@ -1232,6 +1321,7 @@ export function GitActionMenu({
       commitIncludeUnstaged,
       commitDialogState,
       commitMessage,
+      auxiliaryGenerationSupported,
       generateCommitMessage,
       gitService,
       gitSummary.branchName,
@@ -1358,6 +1448,7 @@ export function GitActionMenu({
         error={commitError}
         mutationPending={mutationPending}
         generationPending={commitMessageGenerationPending}
+        auxiliaryGenerationSupported={auxiliaryGenerationSupported}
         includeUnstaged={commitIncludeUnstaged}
         pushEnabled={pushEnabled}
         onRefreshGit={refreshCommitDialogAfterBranchChange}
@@ -1369,8 +1460,10 @@ export function GitActionMenu({
         onMessageChange={setCommitMessage}
         onIncludeUnstagedChange={setCommitIncludeUnstaged}
         onGenerateMessage={() => {
-          void handleGenerateCommitMessage();
+          if (commitMessage.trim().length > 0 || auxiliaryGenerationSupported)
+            void handleGenerateCommitMessage();
         }}
+        onCancelMessageGeneration={cancelCommitMessageGeneration}
         onSubmit={() => {
           void handleCommitSubmit();
         }}

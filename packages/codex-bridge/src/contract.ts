@@ -37,4 +37,9 @@ export interface CodexProcess extends CodexRpcPort {
 export interface BridgeControlContext {
   rpc: CodexRpcPort;
   cwd: string;
+  auxiliary?: { supports(method: string): boolean };
+  nativeBrowserCua?: {
+    browserAvailable: boolean;
+    cuaAvailable: boolean;
+  };
 }
