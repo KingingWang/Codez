@@ -22,6 +22,7 @@ import {
 import { array, object, string, unsupported } from "./json.js";
 import { projectThread } from "./projection.js";
 import { createNativeSession } from "./command-create.js";
+import { formatRewindNotice, type RewindNoticeStore } from "./rewind-notice.js";
 
 /** writer-conflict 只读会话上的既有会话命令拒绝；admit 映射为 guard.codex.writerConflict。 */
 export class WriterConflictError extends Error {
@@ -37,6 +38,11 @@ export interface CommandContext {
   ledger: CommandLedger;
   workspaceId: string;
   attachments?: ResolveAttachments;
+  /**
+   * Desktop 文件撤销的一次性模型通知（spec: codex-desktop-file-rewind）。
+   * 缺省时 sendText 不注入，保持旧嵌入方/测试语义。
+   */
+  rewindNotices?: RewindNoticeStore;
 }
 
 /** Per-thread serialization covers admission decisions, not native execution. */
@@ -157,7 +163,11 @@ export class CommandRouter {
           p.toolDisallowlist?.length
         )
           unsupported("legacy execution context; this intent cannot be safely applied by Codex");
-        const input = await nativeInput(p.text, p.attachments, sessionId, attachments);
+        // 撤销通知随下一条用户文本进入 Codex 事实；peek 不消费，
+        // native 请求失败时通知保留，下一次发送重试。
+        const rewindNotice = this.context.rewindNotices?.peek(sessionId);
+        const text = rewindNotice ? `${formatRewindNotice(rewindNotice)}\n\n${p.text}` : p.text;
+        const input = await nativeInput(text, p.attachments, sessionId, attachments);
         const delivery = p.requestedDelivery ?? (running ? "guide" : "startNow");
         if (delivery === "queue" || (delivery === "guide" && running))
           assertUnchangedInputSettings(p, state.thread);
@@ -196,6 +206,9 @@ export class CommandRouter {
           store.applySettings(sessionId, turnParams);
           store.acceptTurnResponse(sessionId, response);
         }
+        // 三个投递分支（queue/steer/start）都在此汇合且 native 已成功，消费通知。
+        // 恰好同批：并发 record 的新条目留给再下一条消息。
+        if (rewindNotice) this.context.rewindNotices?.clear(sessionId, rewindNotice);
         return {
           type: "inputAccepted",
           delivery: delivery === "guide" && !running ? "startNow" : delivery,

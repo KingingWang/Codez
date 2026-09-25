@@ -501,3 +501,50 @@ test("async broker publication failures are not silently detached", async (t) =>
     /snapshot publish failed/,
   );
 });
+
+test("sendText prepends a pending rewind notice exactly once", async (t) => {
+  const h = await setup(t);
+  h.notices.record(sessionId, {
+    turnId: "turn-1",
+    files: [{ path: "src/new.ts", additions: 4, deletions: 0 }],
+  });
+  const ack = await h.execute(h.command("sendText", { text: "continue" }, "sendText-notice-1"));
+  assert.equal(ack.status, "accepted", ack.message);
+  const starts = h.rpc.params("turn/start");
+  assert.equal(starts.length, 1);
+  const input = (starts[0] as { input: Array<{ text: string }> }).input;
+  assert.ok(input[0]!.text.startsWith("[User action: file changes reverted]"));
+  assert.ok(input[0]!.text.includes("- `src/new.ts` (+4/-0)"));
+  assert.ok(input[0]!.text.endsWith("continue"));
+
+  // 通知一次性：第二条消息不再携带（首轮 turn/start 后线程在跑，第二条走 steer 投递）。
+  const again = await h.execute(h.command("sendText", { text: "again" }, "sendText-notice-2"));
+  assert.equal(again.status, "accepted", again.message);
+  assert.equal(h.rpc.params("turn/start").length, 1);
+  const steers = h.rpc.params("turn/steer");
+  assert.equal(steers.length, 1);
+  assert.deepEqual((steers[0] as { input: unknown }).input, textInput("again"));
+});
+
+test("failed sendText retains the rewind notice for the next attempt", async (t) => {
+  const h = await setup(t);
+  h.notices.record(sessionId, {
+    turnId: "turn-1",
+    files: [{ path: "src/new.ts", additions: 4, deletions: 0 }],
+  });
+  h.rpc.handlers.set("turn/start", () => {
+    throw new Error("native boom");
+  });
+  const failed = await h.execute(h.command("sendText", { text: "oops" }, "sendText-fail"));
+  assert.equal(failed.status, "failed");
+
+  // native 恢复后重发：通知仍在，且发送成功后即被消费。
+  h.rpc.handlers.set("turn/start", () => ({ turn: turn("retry-turn") }));
+  const retried = await h.execute(h.command("sendText", { text: "retry" }, "sendText-retry"));
+  assert.equal(retried.status, "accepted", retried.message);
+  const all = h.rpc.params("turn/start");
+  assert.equal(all.length, 2);
+  const retryInput = (all[1] as { input: Array<{ text: string }> }).input;
+  assert.ok(retryInput[0]!.text.startsWith("[User action: file changes reverted]"));
+  assert.equal(h.notices.peek(sessionId), undefined);
+});

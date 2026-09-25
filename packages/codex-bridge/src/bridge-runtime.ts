@@ -12,6 +12,7 @@ import { DeletedThreadError, ThreadStateStore } from "./thread-state.js";
 import { InteractionBroker } from "./interactions.js";
 import { CommandLedger } from "./command-ledger.js";
 import { CommandRouter } from "./commands.js";
+import { RewindNoticeStore, relativizeRewindNoticePath } from "./rewind-notice.js";
 import { BridgeSnapshots } from "./bridge-snapshots.js";
 import { BridgeSubscriptions } from "./subscriptions.js";
 import { AttachmentStore } from "./attachments.js";
@@ -47,6 +48,7 @@ export class BridgeRuntime {
   private readonly interactions: InteractionBroker;
   private readonly ledger: CommandLedger;
   private readonly commands: CommandRouter;
+  private readonly rewindNotices = new RewindNoticeStore();
   private readonly snapshots: BridgeSnapshots;
   private readonly subscriptions: BridgeSubscriptions;
   private readonly attachments: AttachmentStore;
@@ -75,6 +77,7 @@ export class BridgeRuntime {
       ledger: this.ledger,
       workspaceId,
       attachments: (refs, sessionId) => this.attachments.toNativeInput(refs, sessionId),
+      rewindNotices: this.rewindNotices,
     });
     this.snapshots = new BridgeSnapshots(
       { rpc, cwd, auxiliary: this.auxiliary },
@@ -340,6 +343,25 @@ export class BridgeRuntime {
           parsed.sessionId,
           parsed.turnId,
         );
+        if (publishReverted) {
+          // 全新撤销（非重放）：登记一次性模型通知。投影层只改 UI 语义，
+          // 模型不知道文件已被恢复；下一次 sendText 会把撤销事实 prepend 进用户文本。
+          const state = await this.store.ensure(parsed.sessionId);
+          const turn = array(state.thread.turns)
+            .map(object)
+            .find((candidate) => candidate.id === parsed.turnId);
+          if (turn) {
+            const changes = projectTurnFileChanges(turn);
+            this.rewindNotices.record(parsed.sessionId, {
+              turnId: parsed.turnId,
+              files: changes.items.map((item) => ({
+                path: relativizeRewindNoticePath(this.store.cwd, item.path),
+                additions: item.additions,
+                deletions: item.deletions,
+              })),
+            });
+          }
+        }
         return {
           result: {},
           // 先让成功事务收到 overlay ACK，再发布新的 revision，避免旧终端在

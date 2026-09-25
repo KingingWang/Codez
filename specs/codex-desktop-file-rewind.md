@@ -21,6 +21,7 @@ Renderer preview/confirm
 - The preview digest is computed from the canonical projection: revision, log epoch, row target, affected paths, actions, operation counts, and tool names in fixed order.
 - The transaction service has one in-flight transaction per workspace key. A confirmed transaction is idempotent by confirmation id.
 - A successful transaction owns a Desktop reverted-projection overlay. The service records the guarded session/row/entity target plus the resolved immutable turn id, notifies the bridge's projection overlay after terminal `success`, and the bridge validates the row still maps to that turn before projecting its file changes as `reverted` while retaining counts. The bridge overlay is runtime-derived state: it is not reconstructed by scanning the workspace or by guessing another process's ledger location. The notification bumps conversation projection seq/revision and republishes a full snapshot after the transaction receives the overlay acknowledgement, invalidating terminal caches without rewriting Codex history or the file-change facts. Retrying the same successful confirmation after a bridge restart may replay the overlay from the retained ledger turn id; absent that explicit retry, restart does not claim an unproven recovered projection.
+- The overlay alone is UI-facing; the model still assumes its edits exist. To close that gap the bridge also records a one-shot rewind notice per session when it accepts a fresh overlay (idempotent replay does not re-record). The next `sendText` on that session prepends a user-action block naming the reverted files with their per-turn addition/deletion counts, then the original user text; the block is part of the sent message and is visible in the bubble (no display/send split). The notice is consumed only after the native request succeeds, so a failed send retains it for the next attempt; multiple rewinds before the next message aggregate into one block. It is in-memory and best-effort: a bridge restart before the next send drops it without affecting ledger/overlay recovery, and it never blocks, alters, or fails the `sendText` admission itself.
 
 ## Preview and transaction order
 
@@ -63,9 +64,10 @@ Every failure retains the ledger and, after backup completion, the backup. Backu
 6. Old bridge/Host peers expose the feature as unsupported and UI sends no request.
 7. A successful overlay marks the validated turn as reverted, republishes at a new revision after acknowledgement, rejects stale revision reads, and a same-ID retry can restore the bridge-derived overlay after restart without mutating files or history.
 8. A turn whose only change added a new file projects real addition counts, advertises `canRewindFiles` after completion, previews with delete-the-added-file as the restore plan, and an applied rewind removes the file. A turn that only deleted a file shows real deletion counts while its preview fails closed as `checkpoint_missing` rather than restoring from projection.
-9. Absolute native paths are accepted only inside the workspace; a sibling
-   path with the same prefix and a parent traversal both fail closed. A
-   full-content add must match its current text before the scoped delete.
+9. After a successful rewind, the next user message on that session carries the one-shot rewind notice (reverted paths and counts) ahead of the typed text, exactly once; a failed send keeps the notice pending, and a second successful send contains no notice. A bridge restart between rewind and next send loses the notice silently while the projection still shows the turn as reverted.
+10. Absolute native paths are accepted only inside the workspace; a sibling
+    path with the same prefix and a parent traversal both fail closed. A
+    full-content add must match its current text before the scoped delete.
 
 ## Current deployment boundary
 

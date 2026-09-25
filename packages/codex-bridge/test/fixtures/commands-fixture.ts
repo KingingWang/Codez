@@ -17,6 +17,7 @@ import { ThreadStateStore } from "../../src/thread-state.js";
 import { InteractionBroker } from "../../src/interactions.js";
 import type { CodexRpcPort } from "../../src/contract.js";
 import type { CodexTurn } from "../../src/codex-types.js";
+import { RewindNoticeStore } from "../../src/rewind-notice.js";
 import { threadFixture } from "../projection-fixtures.test.js";
 
 export const cwd = "/workspace";
@@ -122,7 +123,15 @@ export async function setup(t: TestContext, busy = false) {
   const state = store.markStarted(structuredClone(authority.thread));
   const ledger = new CommandLedger(root);
   const broker = new InteractionBroker(rpc, (id) => store.touch(id));
-  const context: CommandContext = { rpc, store, interactions: broker, ledger, workspaceId };
+  const notices = new RewindNoticeStore();
+  const context: CommandContext = {
+    rpc,
+    store,
+    interactions: broker,
+    ledger,
+    workspaceId,
+    rewindNotices: notices,
+  };
   const router = new CommandRouter(context);
   rpc.handlers.set("thread/read", () => ({ thread: authority.thread }));
   rpc.handlers.set("thread/resume", () => ({ thread: authority.thread }));
@@ -163,7 +172,20 @@ export async function setup(t: TestContext, busy = false) {
     assert.deepEqual(commandAckSchema.parse(ack), ack);
     return ack;
   };
-  return { rpc, authority, store, state, ledger, broker, context, router, root, command, execute };
+  return {
+    rpc,
+    authority,
+    store,
+    state,
+    ledger,
+    broker,
+    notices,
+    context,
+    router,
+    root,
+    command,
+    execute,
+  };
 }
 
 export function queueMutations(h: Awaited<ReturnType<typeof setup>>) {
