@@ -17,6 +17,8 @@ import type {
   V4ConversationWorkflowRunEventsResult,
   V4ConversationWorkflowRunsParams,
   V4ConversationWorkflowRunsResult,
+  CodexConversationHistoryRunsParams,
+  CodexConversationHistoryRunsResult,
 } from "@codez/shared/codez-protocol-v4";
 
 export function createWorkflowRunTransportMethods(input: {
@@ -24,6 +26,7 @@ export function createWorkflowRunTransportMethods(input: {
     ICodezAgentService,
     | "conversationWorkflowRunEventsV4"
     | "conversationWorkflowRunsV4"
+    | "codexHistoryRunsV4"
     | "conversationWorkflowRunArtifactsV4"
     | "conversationWorkflowRunArtifactDataV4"
     | "conversationWorkflowRunArtifactReadV4"
@@ -55,6 +58,18 @@ export function createWorkflowRunTransportMethods(input: {
         ...workspace,
         sessionId: params.sessionId,
         ...(params.limit !== undefined ? { limit: params.limit } : {}),
+      });
+    },
+    async codexHistoryRuns(
+      params: CodexConversationHistoryRunsParams,
+    ): Promise<CodexConversationHistoryRunsResult> {
+      await ensureHandshake();
+      return agentService.codexHistoryRunsV4({
+        ...workspace,
+        sessionId: params.sessionId,
+        ...(params.limit !== undefined ? { limit: params.limit } : {}),
+        ...(params.status !== undefined ? { status: params.status } : {}),
+        ...(params.beforeTurnId !== undefined ? { beforeTurnId: params.beforeTurnId } : {}),
       });
     },
     // dwf 用户面产物的三条读面。

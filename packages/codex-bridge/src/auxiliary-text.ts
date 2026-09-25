@@ -186,6 +186,18 @@ export class AuxiliaryText {
     op.abort.reject(reason);
   }
 
+  private fail(op: Operation, reason: Error): void {
+    if (op.terminal) return;
+    // malformed completion 可能在 turn/start 回复前到达；必须同时唤醒 execute
+    // 和外层 race，否则操作会悬挂到 30 秒 deadline。
+    op.terminal = true;
+    op.stopped ??= reason;
+    op.output.promise.catch(() => {});
+    op.abort.promise.catch(() => {});
+    op.output.reject(reason);
+    op.abort.reject(reason);
+  }
+
   private check(op: Operation): void {
     if (op.stopped) throw op.stopped;
   }
@@ -256,6 +268,7 @@ export class AuxiliaryText {
       }
       this.check(op);
       for (const event of op.events.splice(0)) this.notification(op, event);
+      this.check(op);
       return await op.output.promise;
     } catch (cause) {
       if (!op.stopped && !op.terminal)
@@ -271,41 +284,52 @@ export class AuxiliaryText {
     const parsed = object.safeParse(event.params);
     if (!parsed.success || parsed.data.threadId !== op.threadId) return;
     if (!["item/completed", "item/started", "turn/completed"].includes(event.method)) return;
+    const completedTurn =
+      event.method === "turn/completed"
+        ? z
+            .object({
+              turn: identifier.extend({
+                status: z.enum(["completed", "failed", "interrupted"]),
+              }),
+            })
+            .safeParse(event.params)
+        : undefined;
+    // malformed completion 可能在 turn/start 回复前到达；这种事件无法通过等待
+    // turn id 变成有效结果，必须立即终止而不是进入重放缓冲。
+    if (completedTurn && !completedTurn.success) {
+      this.fail(op, error(-32000, "Auxiliary turn completion is malformed"));
+      return;
+    }
     if (!op.turnId) {
       if (op.events.length >= 64) this.stop(op, error(-32000, "Auxiliary event buffer exceeded"));
       else op.events.push(event);
       return;
     }
+    if (completedTurn) {
+      const turn = completedTurn.data.turn;
+      if (turn.id !== op.turnId) return;
+      if (turn.status !== "completed" || op.text === undefined) {
+        this.fail(op, error(-32000, `Auxiliary turn ${turn.status} without usable final text`));
+        return;
+      }
+      op.terminal = true;
+      op.output.resolve(op.text);
+      return;
+    }
     try {
-      if (event.method === "turn/completed") {
-        const turn = z
-          .object({
-            turn: identifier.extend({ status: z.enum(["completed", "failed", "interrupted"]) }),
-          })
-          .parse(event.params).turn;
-        if (turn.id !== op.turnId) return;
-        if (turn.status !== "completed" || op.text === undefined) {
-          this.stop(op, error(-32000, `Auxiliary turn ${turn.status} without usable final text`));
-          op.terminal = true;
-          return;
-        }
-        op.terminal = true;
-        op.output.resolve(op.text);
-      } else {
-        const value = z.object({ turnId: z.string(), item: object }).parse(event.params);
-        if (value.turnId !== op.turnId) return;
-        if (!["agentMessage", "reasoning", "userMessage"].includes(String(value.item.type)))
-          throw error(-32000, "Restricted auxiliary thread attempted a tool operation");
-        if (
-          event.method === "item/completed" &&
-          value.item.type === "agentMessage" &&
-          value.item.phase !== "commentary"
-        ) {
-          const text = z.string().parse(value.item.text);
-          if (Buffer.byteLength(text) > MAX_TEXT_BYTES)
-            throw error(-32000, "Auxiliary text output exceeds limit");
-          op.text = text;
-        }
+      const value = z.object({ turnId: z.string(), item: object }).parse(event.params);
+      if (value.turnId !== op.turnId) return;
+      if (!["agentMessage", "reasoning", "userMessage"].includes(String(value.item.type)))
+        throw error(-32000, "Restricted auxiliary thread attempted a tool operation");
+      if (
+        event.method === "item/completed" &&
+        value.item.type === "agentMessage" &&
+        value.item.phase !== "commentary"
+      ) {
+        const text = z.string().parse(value.item.text);
+        if (Buffer.byteLength(text) > MAX_TEXT_BYTES)
+          throw error(-32000, "Auxiliary text output exceeds limit");
+        op.text = text;
       }
     } catch (cause) {
       this.stop(op, cause instanceof Error ? cause : error(-32000, "Invalid auxiliary event"));

@@ -55,6 +55,17 @@ export function createWindow(options: {
   runtimeProcessEnvPatchPromise?: Promise<Record<string, string>>;
   /** 不执行 shell 即可计算的完整降级 patch；预热失败/超时时仍要注入 Local Host。 */
   runtimeProcessEnvFallbackPatch: Record<string, string>;
+  /** Desktop Main 提供的稳定 Browser/CUA native MCP availability facts。 */
+  nativeBrowserCua: () => {
+    browserAvailable: boolean;
+    cuaAvailable: boolean;
+  };
+  /**
+   * Broker socket/token 就绪结果只用于避免首 Host 烤入冷启动 false。
+   * settled 失败必须 fail-closed；不能阻塞或拒绝 Local Host 启动。
+   */
+  nativeBrowserCuaReadiness?: () => Promise<void>;
+  codezBuiltinProviderConfigFilePath: string;
   /** 仅供启动门禁和测试注入；超过该时间必须 fail-open 创建 Local Host。 */
   runtimeProcessEnvWaitTimeoutMs?: number;
   /**
@@ -66,7 +77,7 @@ export function createWindow(options: {
    */
   awaitFirstHostSpawnDecision?: () => Promise<void>;
   /** Local Host map insertion completed; presentation facts can now be replayed safely. */
-  onHostProcessReady?: (windowKey: number) => void;
+  onHostProcessReady?: (windowKey: number, win: BrowserWindow) => void;
   resolveBrowserViewOwner?: Parameters<typeof createBrowserWindow>[0]["resolveBrowserViewOwner"];
 }) {
   const win = createBrowserWindow({
@@ -184,6 +195,16 @@ export function createWindow(options: {
     if (options.awaitFirstHostSpawnDecision) {
       await options.awaitFirstHostSpawnDecision();
     }
+    if (options.nativeBrowserCuaReadiness) {
+      try {
+        await options.nativeBrowserCuaReadiness();
+      } catch (error) {
+        options.logger.warn(
+          `[createWindow] native Browser/CUA readiness failed (${label}); projecting unavailable`,
+          error,
+        );
+      }
+    }
 
     const spawnLocalHost = (runtimeProcessEnvPatch: Record<string, string>) => {
       if (currentDomReadyGeneration !== domReadyGeneration || win.isDestroyed()) {
@@ -199,12 +220,14 @@ export function createWindow(options: {
           ? { agentWarmupTargets: [...options.agentWarmupTargets] }
           : {}),
         runtimeProcessEnvPatch,
+        nativeBrowserCua: options.nativeBrowserCua(),
+        codezBuiltinProviderConfigFilePath: options.codezBuiltinProviderConfigFilePath,
         // 同一窗口会后台索引所有已恢复 workspace，不只索引启动时的 active workspace。
         // fallback 必须跟随 local Host 生命周期常驻，否则非 active 历史目录被删除后会用失效 cwd 反复 spawn。
         agentSpawnFallbackCwd: options.agentSpawnFallbackCwd,
       });
       options.windowHostProcessMap.set(wcId, child);
-      options.onHostProcessReady?.(wcId);
+      options.onHostProcessReady?.(wcId, win);
       options.syncAutoUpdaterStateToWindow(win);
       options.syncReadyUpdateToWindow(win);
       options.syncPostUpdateReleaseNotesToWindow(win);

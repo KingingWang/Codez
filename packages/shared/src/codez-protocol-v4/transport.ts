@@ -6,6 +6,10 @@ import { z } from "zod";
 import { APP_USAGE_RANGES, appUsageSnapshotSchema } from "../usage-stats.js";
 import { codezWorkspaceRefSchema } from "../codez-protocol-legacy-types.js";
 import {
+  codexCapabilityUnavailableSchema,
+  codexFeatureCapabilitiesSchema,
+} from "../codez-protocol/index.js";
+import {
   PROTOCOL_V4_LIMITS,
   V4_WIRE_PROTOCOL_VERSION,
   conversationRowTargetSchema,
@@ -35,6 +39,10 @@ export const hostCapabilitiesSchema = z.object({
    * `state.updated`，并且先经 `clampWorkflowRunsForLegacy` 裁到旧界。
    */
   workflowRunDeltas: z.boolean().optional(),
+  // Additive Codex projection. `codex` is bridge-owned and service-overlaid; `codexUnavailable`
+  // means discovery failed. Omission of both means an old peer and resolves unsupported.
+  codex: z.lazy(() => codexFeatureCapabilitiesSchema).optional(),
+  codexUnavailable: z.lazy(() => codexCapabilityUnavailableSchema).optional(),
 });
 export type HostCapabilities = z.infer<typeof hostCapabilitiesSchema>;
 
@@ -344,6 +352,7 @@ export const V4_METHODS = {
   conversationFileChanges: "v4/conversation/fileChanges",
   backgroundBashOutput: "v4/conversation/backgroundBashOutput",
   conversationFileRewindPreview: "v4/conversation/fileRewindPreview",
+  conversationFileRewindProjectionOverlay: "v4/conversation/fileRewindProjectionOverlay",
   // workflow run 的事件日志分页（详情页审计面）：只读、无状态、超时重发安全。
   // 新方法天然偏斜安全——旧桌面根本不会调用它。
   conversationWorkflowRunEvents: "v4/conversation/workflowRunEvents",
@@ -360,6 +369,9 @@ export const V4_METHODS = {
   // 照产物的 ①/③ 拆法：Workspace 是轻行清单（不带正文），NodeResult 是一个节点的有界正文。
   conversationWorkflowRunWorkspace: "v4/conversation/workflowRunWorkspace",
   conversationWorkflowRunNodeResult: "v4/conversation/workflowRunNodeResult",
+  // Codex 原生 turn 的独立只读历史投影。它不是 DWF workflowRuns 的第二实现，
+  // 也不携带任何 start/resume/cancel mutation。
+  codexConversationHistoryRuns: "v4/codex/conversation/historyRuns",
   // usage query（模式同 rows/range：只读、无状态、超时重发安全）。
   // usage 事实源在 CLI 的 session 库（model_usage/turn_usage 聚合），host 侧无副本，
   // 故收敛为 v4 query 而非 host 直连；旧词 usage/stats、session/usage 就此消费清零。
@@ -591,6 +603,17 @@ export const v4ConversationFileChangesResultSchema = z
   .strict();
 export type V4ConversationFileChangesResult = z.infer<typeof v4ConversationFileChangesResultSchema>;
 
+export const v4ConversationFileRewindProjectionOverlayParamsSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    target: conversationRowTargetSchema,
+    turnId: z.string().min(1),
+  })
+  .strict();
+export type V4ConversationFileRewindProjectionOverlayParams = z.infer<
+  typeof v4ConversationFileRewindProjectionOverlayParamsSchema
+>;
+
 // ── workflow run 事件日志──
 // 形态与 rows/range、plans 同族：只读、无状态、超时重发安全。cursor = journal sequence
 // （`appendEvent` 单调分配），在 workflowRuns[].lastEventSequence 抬升时重取。
@@ -705,6 +728,99 @@ export const v4ConversationWorkflowRunsResultSchema = z
   .strict();
 export type V4ConversationWorkflowRunsResult = z.infer<
   typeof v4ConversationWorkflowRunsResultSchema
+>;
+
+// ── Codex thread-history turn projection ──
+// DWF run facts and Codex native turns have different owners. This query is therefore
+// additive and must never feed or populate the legacy workflowRuns projection.
+export const codexHistoryRunStatusSchema = z.enum([
+  "running",
+  "completed",
+  "failed",
+  "interrupted",
+  "unknown",
+]);
+export type CodexHistoryRunStatus = z.infer<typeof codexHistoryRunStatusSchema>;
+
+const codexHistoryToolChainStepSchema = z
+  .object({
+    kind: z.enum(["command", "mcpToolCall", "fileChange", "unknown"]),
+    itemId: z.string().min(1),
+    label: z.string().min(1).max(240),
+    status: z.enum(["inProgress", "completed", "failed", "declined", "unknown"]),
+    /** Technical target (command, server/tool, file path, or native item type). */
+    detail: z.string().max(1024).optional(),
+  })
+  .strict();
+export type CodexHistoryToolChainStep = z.infer<typeof codexHistoryToolChainStepSchema>;
+
+export const codexHistoryRunSchema = z
+  .object({
+    runId: z.string().min(1),
+    threadId: z.string().min(1),
+    turnId: z.string().min(1),
+    status: codexHistoryRunStatusSchema,
+    startedAtMs: z.number().int().nonnegative().optional(),
+    completedAtMs: z.number().int().nonnegative().optional(),
+    durationMs: z.number().int().nonnegative().optional(),
+    toolChain: z.array(codexHistoryToolChainStepSchema),
+    fileChangeSummary: z
+      .object({
+        files: z.number().int().nonnegative(),
+        additions: z.number().int().nonnegative(),
+        deletions: z.number().int().nonnegative(),
+        paths: z.array(z.string().min(1)).max(512),
+      })
+      .strict()
+      .optional(),
+    result: z.string().max(16_384).optional(),
+    failure: z
+      .object({
+        code: z.string().min(1).max(128),
+        message: z.string().max(2048),
+        detail: z.string().max(4096).optional(),
+      })
+      .strict()
+      .optional(),
+    usage: z.never().optional(),
+    artifacts: z
+      .array(
+        z
+          .object({
+            kind: z.literal("fileChange"),
+            path: z.string().min(1),
+          })
+          .strict(),
+      )
+      .optional(),
+  })
+  .strict();
+export type CodexHistoryRun = z.infer<typeof codexHistoryRunSchema>;
+
+export const codexConversationHistoryRunsParamsSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    limit: z.number().int().min(1).max(100).optional(),
+    status: codexHistoryRunStatusSchema.optional(),
+    beforeTurnId: z.string().min(1).optional(),
+  })
+  .strict();
+export type CodexConversationHistoryRunsParams = z.infer<
+  typeof codexConversationHistoryRunsParamsSchema
+>;
+
+export const codexConversationHistoryRunsResultSchema = z
+  .object({
+    runs: z.array(codexHistoryRunSchema),
+    nextBeforeTurnId: z.string().min(1).optional(),
+    atSeq: z.number().int().nonnegative(),
+    atRevision: z.number().int().nonnegative(),
+    atLogEpoch: z.string().min(1),
+    source: z.literal("native-thread"),
+  })
+  .strict();
+export type CodexConversationHistoryRunsResult = z.infer<
+  typeof codexConversationHistoryRunsResultSchema
 >;
 
 export const v4ConversationFileRewindPreviewParamsSchema = z

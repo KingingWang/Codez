@@ -193,6 +193,13 @@ export const hostInitLocalMessageSchema = z.object({
   runtimeProcessEnvPatch: z
     .record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string())
     .optional(),
+  nativeBrowserCua: z
+    .object({
+      browserAvailable: z.boolean(),
+      cuaAvailable: z.boolean(),
+    })
+    .strict()
+    .optional(),
 });
 
 export const windowHostRemoteWorkspaceDescriptorSchema = z

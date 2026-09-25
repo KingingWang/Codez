@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- 桌面命令分发需要共享窗口与平台上下文，集中维护更便于一致性 */
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { existsSync } from "node:fs";
+import { dirname, isAbsolute, join } from "node:path";
 import { app, BrowserWindow, dialog, session, shell } from "electron";
 import type { MessageBoxOptions } from "electron";
 import {
@@ -10,6 +11,7 @@ import {
   type AppSettings,
   type DesktopCommandId,
   type Locale,
+  nativeBrowserCuaMcpDescriptorResultSchema,
   resolveRuntimeCodezEndpointOrigin,
   CODEZ_ENV,
   CODEZ_PRODUCT_FLAVOR,
@@ -496,6 +498,9 @@ export async function executeDesktopCommand(options: {
   codezEndpointEnvBaseOrigin?: string | null;
   credentialsDir: string;
   currentApplicationLocale: Locale;
+  nativeBrowserCuaMcpBroker?: {
+    descriptor(input: { executable: string; bridgePath: string }): unknown;
+  };
 }) {
   const targetWindow = resolveTargetWindow(options.senderWindow);
   options.logger.info(
@@ -684,5 +689,41 @@ export async function executeDesktopCommand(options: {
       return;
     case DesktopCommandIds.GetCuaOsSupport:
       return resolveCuaOsSupport();
+    case DesktopCommandIds.GetCodexNativeBrowserCuaMcpDescriptor: {
+      if (!options.nativeBrowserCuaMcpBroker) return undefined;
+      const deployedBridge = process.env.CODEZ_CODEX_BRIDGE_PATH?.trim();
+      if (deployedBridge && !isAbsolute(deployedBridge))
+        return nativeBrowserCuaMcpDescriptorResultSchema.parse({
+          runtimeInstalled: false,
+          serviceRunning: false,
+          executable: process.execPath,
+          browserAvailable: false,
+          cuaAvailable: false,
+          cuaReason: "codez-cua.runtime_unavailable",
+        });
+      let bridgePath = deployedBridge;
+      if (!bridgePath && app.isPackaged && process.resourcesPath) {
+        const packagedBridge = join(process.resourcesPath, "codex", "bridge.cjs");
+        bridgePath = existsSync(packagedBridge) ? packagedBridge : undefined;
+      }
+      let directory = app.getAppPath();
+      while (!bridgePath) {
+        const candidate = join(directory, "packages", "codex-bridge", "dist", "bridge.cjs");
+        if (existsSync(candidate)) {
+          bridgePath = candidate;
+          break;
+        }
+        const parent = dirname(directory);
+        if (parent === directory) break;
+        directory = parent;
+      }
+      if (!bridgePath) return undefined;
+      return nativeBrowserCuaMcpDescriptorResultSchema.parse(
+        options.nativeBrowserCuaMcpBroker.descriptor({
+          executable: process.execPath,
+          bridgePath,
+        }),
+      );
+    }
   }
 }

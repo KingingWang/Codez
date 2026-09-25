@@ -1822,6 +1822,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                                   <CodexSettingsSection
                                     workspacePath={workspaceAbsPath}
                                     workspaceIdentity={workspaceIdentity}
+                                    sessionId={activeTaskId ?? undefined}
                                     initialPanel="plugins"
                                   />
                                 ) : (

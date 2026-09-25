@@ -100,6 +100,8 @@ import type {
   V4ConversationWorkflowRunNodeResultResult,
   V4ConversationWorkflowRunWorkspaceResult,
   V4ConversationWorkflowRunsResult,
+  CodexConversationHistoryRunsParams,
+  CodexConversationHistoryRunsResult,
   V4ConversationRowsRangeResult,
   V4ConversationResyncResult,
   V4ConversationSubscribeResult,
@@ -108,6 +110,7 @@ import type {
   WorkspaceConfigTopicWireCandidate,
 } from "@codez/shared/codez-protocol-v4";
 import { createServiceDescriptor } from "../descriptors.js";
+import type { CodexUsageCacheSnapshot } from "../usage-stats/codexUsageObservationCache.js";
 
 export * from "./codezAgentPluginParams.js";
 export * from "./codezAgentWorkflowParams.js";
@@ -396,6 +399,13 @@ export interface CodezAgentConversationWorkflowRunsParams extends CodezAgentSess
   limit?: number;
 }
 
+/** Codex 原生 turn 的独立只读历史投影查询。 */
+export interface CodezAgentCodexHistoryRunsParams extends CodezAgentSessionTarget {
+  limit?: number;
+  status?: CodexConversationHistoryRunsParams["status"];
+  beforeTurnId?: string;
+}
+
 // ── dwf 用户面产物──
 // ⚠ 术语：artifact = 脚本经 `artifact.*` 发布给**用户**看的产出（文件 / markdown / 预置看板），
 // 不是 run 的顶层返回值（引擎内部对后者的同名叫法）。
@@ -450,6 +460,11 @@ export interface CodezAgentConversationFileRewindPreviewParams extends CodezAgen
   target: ConversationRowTarget;
   baseRevision: number;
   baseLogEpoch: string;
+}
+
+export interface CodezAgentConversationFileRewindProjectionOverlayParams extends CodezAgentSessionTarget {
+  target: ConversationRowTarget;
+  turnId: string;
 }
 
 export interface CodezAgentConversationCommandParams extends CodezAgentWorkspaceTarget {
@@ -612,6 +627,7 @@ export interface ICodezAgentService {
     params: CodezAgentListSessionSubagentsParams,
   ): Promise<CodezSessionSubagentsResult>;
   getAppUsageStats(params: CodezAgentAppUsageParams): Promise<AppUsageSnapshot>;
+  getCodexUsageObservations(params: CodezAgentWorkspaceTarget): Promise<CodexUsageCacheSnapshot>;
   getTaskTokenUsage(params: CodezAgentTaskTokenUsageParams): Promise<CodezTaskTokenUsageResult>;
   readSession(params: CodezAgentReadSessionParams): Promise<CodezSessionStateSnapshot>;
   readSessionMessages(
@@ -719,6 +735,7 @@ export interface ICodezAgentService {
   generateWorkspaceText(
     params: CodezAgentGenerateWorkspaceTextParams,
   ): Promise<CodezWorkspaceGenerateTextResult>;
+  canGenerateWorkspaceText(params: CodezAgentWorkspaceTarget): Promise<boolean>;
   testModelConnectivity(
     params: CodezAgentTestModelConnectivityParams,
   ): Promise<CodezProviderTestModelConnectivityResult>;
@@ -788,6 +805,10 @@ export interface ICodezAgentService {
   conversationWorkflowRunsV4(
     params: CodezAgentConversationWorkflowRunsParams,
   ): Promise<V4ConversationWorkflowRunsResult>;
+  /** Codex thread-history projection；独立于 legacy DWF workflowRuns。 */
+  codexHistoryRunsV4(
+    params: CodezAgentCodexHistoryRunsParams,
+  ): Promise<CodexConversationHistoryRunsResult>;
   /** workflow run 的用户面产物清单；与 plans 同族（只读、无状态、超时重发安全）。 */
   conversationWorkflowRunArtifactsV4(
     params: CodezAgentConversationWorkflowRunArtifactsParams,
@@ -817,6 +838,9 @@ export interface ICodezAgentService {
   conversationFileRewindPreviewV4(
     params: CodezAgentConversationFileRewindPreviewParams,
   ): Promise<V4ConversationFileRewindPreviewResult>;
+  conversationFileRewindProjectionOverlayV4(
+    params: CodezAgentConversationFileRewindProjectionOverlayParams,
+  ): Promise<void>;
   sendConversationCommandV4(params: CodezAgentConversationCommandParams): Promise<CommandAck>;
   queryConversationCommandsV4(params: CodezAgentCommandsQueryParams): Promise<CommandsQueryResult>;
   attachmentBeginV4(params: CodezAgentAttachmentBeginParams): Promise<V4AttachmentBeginResult>;

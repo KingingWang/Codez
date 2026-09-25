@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   codezWorkspacePresentationSchema,
+  nativeBrowserCuaMcpEndpointPath,
+  nativeBrowserCuaMcpTokenFilePath,
   codezSessionSettingsStateSchema,
   codezSkillsReferenceCatalogResultSchema,
   codezProviderUpdateAccountConfigResultSchema,
@@ -10,8 +12,31 @@ import {
   codezWorkspaceUpdateModelIoPreferencesResultSchema,
 } from "@codez/shared";
 import type { CodexRpcPort } from "../src/contract.js";
-import { handleControlRequest, supportsControlMethod } from "../src/control-plane.js";
+import {
+  bridgeCodexFeatureCapabilities,
+  handleControlRequest,
+  supportsControlMethod,
+} from "../src/control-plane.js";
 import { readControlModelSettings } from "../src/control-presentation.js";
+
+test("native Browser/CUA paths are deterministic per desktop flavor", () => {
+  assert.equal(
+    nativeBrowserCuaMcpEndpointPath({
+      platform: "linux",
+      flavor: "Prod Flavor",
+      temporaryDirectory: "/tmp/",
+    }),
+    "/tmp/codez-native-browser-cua-prodflavor.sock",
+  );
+  assert.equal(
+    nativeBrowserCuaMcpEndpointPath({ platform: "win32", flavor: "prod-flavor" }),
+    "\\\\.\\pipe\\codez-native-browser-cua-prod-flavor",
+  );
+  assert.equal(
+    nativeBrowserCuaMcpTokenFilePath({ flavor: "Prod Flavor", userDataPath: "/user/data/" }),
+    "/user/data/codez-native-browser-cua-prodflavor.token",
+  );
+});
 
 const workspace = {
   workspacePath: "/workspace",
@@ -87,7 +112,8 @@ function fixture(overrides: Record<string, unknown> = {}) {
     async respond() {},
     async respondError() {},
   };
-  return { context: { rpc, cwd: "/workspace" }, calls };
+  const auxiliary = { supports: (method: string) => method === "workspace/generateText" };
+  return { context: { rpc, cwd: "/workspace", auxiliary }, calls };
 }
 
 test("presentation parses the real strict schema, preserving remote identity", async () => {
@@ -122,8 +148,69 @@ test("capabilities expose native independent plan state without inventing execut
   const { context, calls } = fixture();
   const raw = await handleControlRequest("runtime/capabilities", {}, context);
   assert.deepEqual(raw, codezRuntimeCapabilitiesSchema.parse(raw));
-  assert.deepEqual(raw, { independentPlanState: true });
+  assert.deepEqual(raw, {
+    independentPlanState: true,
+    codex: bridgeCodexFeatureCapabilities(context.auxiliary),
+  });
   assert.equal(calls.length, 0);
+});
+
+test("bridge capability authority is runtime-dispatch-derived and exposes every required state", async () => {
+  const capabilities = bridgeCodexFeatureCapabilities({
+    supports: (method) => method === "workspace/generateText",
+  });
+  assert.deepEqual(
+    Object.values(capabilities).sort(),
+    [
+      "degraded",
+      "supported",
+      "supported",
+      "supported",
+      "supported",
+      "supported",
+      "supported",
+      ...Array(2).fill("unsupported"),
+    ].sort(),
+  );
+  assert.equal(capabilities.auxiliaryTextGeneration, "supported");
+  assert.equal(capabilities.scheduledPromptAutomations, "supported");
+  assert.equal(capabilities.legacyWorkflowRuns, "unsupported");
+  const { context } = fixture();
+  const result = codezRuntimeCapabilitiesSchema.parse(
+    await handleControlRequest(
+      "runtime/capabilities",
+      {},
+      {
+        ...context,
+        auxiliary: { supports: () => true },
+      },
+    ),
+  );
+  assert.deepEqual(result.codex, capabilities);
+  assert.deepEqual(
+    bridgeCodexFeatureCapabilities({ supports: () => false }).auxiliaryTextGeneration,
+    "unsupported",
+  );
+  assert.equal(
+    bridgeCodexFeatureCapabilities(
+      { supports: () => false },
+      {
+        browserAvailable: true,
+        cuaAvailable: false,
+      },
+    ).nativeBrowserCuaMcp,
+    "degraded",
+  );
+  assert.equal(
+    bridgeCodexFeatureCapabilities(
+      { supports: () => false },
+      {
+        browserAvailable: false,
+        cuaAvailable: true,
+      },
+    ).nativeBrowserCuaMcp,
+    "unsupported",
+  );
 });
 
 test("read-only permission never implies independent plan collaboration", async () => {

@@ -64,6 +64,14 @@ export type { MediaPreviewPreparation } from "./media-preview/mediaPreview.js";
 // Git service — IGitService is both a type (interface) and value (descriptor)
 export { IGitService } from "./git/git.js";
 export { IGitCheckpointService } from "./git/gitCheckpoint.js";
+export {
+  ICodexDesktopFileRewindService,
+  type CodexDesktopFileRewindApplyParams,
+  type CodexDesktopFileRewindFailureReason,
+  type CodexDesktopFileRewindPreviewResult,
+  type CodexDesktopFileRewindStatus,
+  type CodexDesktopFileRewindTarget,
+} from "./desktop-file-rewind.js";
 
 // System service — ISystemService is both a type (interface) and value (descriptor)
 export { ISystemService } from "./system/system.js";
@@ -229,6 +237,14 @@ export { IOAuthService } from "./oauth/oauth.js";
 
 // UsageStats service — IUsageStatsService is both a type (interface) and value (descriptor)
 export { IUsageStatsService } from "./usage-stats/usageStats.js";
+export {
+  type CodexUsageCacheSnapshot,
+  CodexUsageObservationCache,
+  codexUsageObservationId,
+  type CodexObservedUsage,
+  type CodexUsageObservation,
+  type CodexUsageThreadState,
+} from "./usage-stats/codexUsageObservationCache.js";
 
 // Storage（资源管理器「存储」tab）：数据类型在 @codez/shared；这里只导出服务接口与卷分组纯函数
 export type { IStorageService } from "./storage/contract.js";

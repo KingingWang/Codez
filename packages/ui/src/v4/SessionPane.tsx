@@ -138,6 +138,11 @@ import { ConversationQuotaBanner } from "@/v4/ConversationQuotaBanner.js";
 import { PendingCommandRecoveryBanner } from "@/v4/PendingCommandRecoveryBanner.js";
 import { WorkspaceHookPendingBanner } from "@/v4/WorkspaceHookPendingBanner.js";
 import { ConversationStatusPanel } from "@/v4/ConversationStatusPanel.js";
+import { useGitAuxiliaryCapability } from "@/capabilities/useGitAuxiliaryCapability.js";
+import {
+  isCodexDesktopFileRewindAvailable,
+  useCodexDesktopFileRewindCapability,
+} from "@/capabilities/useCodexDesktopFileRewindCapability.js";
 import { SessionSubscriptionErrorPanel } from "@/v4/SessionSubscriptionErrorPanel.js";
 import { ConversationTimeline } from "@/v4/ConversationTimeline.js";
 import { ConversationShareImportNotice } from "@/v4/ConversationShareImportNotice.js";
@@ -559,10 +564,24 @@ export function SessionPane({
     onRuntimeLifecycle,
     fileChanges,
     fileRewindPreview,
+    applyDesktopFileRewind,
   } = useV4Conversation();
   const platform = useOptionalPlatform();
+  const services = useServices();
   const { conversationShareService, modelSelectionService, codezSessionService, codezTaskService } =
-    useServices();
+    services;
+  const desktopFileRewindCapability = useCodexDesktopFileRewindCapability(
+    services.codezAgentService,
+    {
+      workspacePath,
+      ...(workspaceIdentity ? { workspaceIdentity } : {}),
+    },
+    { onRuntimeRestart, onRuntimeLifecycle },
+  );
+  const gitAuxiliaryCapability = useGitAuxiliaryCapability(services, {
+    workspacePath,
+    ...(workspaceIdentity ? { workspaceIdentity } : {}),
+  });
   const { intl, locale } = useCodezIntl();
   const codexText = useCodexMessages();
   const slashCommands = useSlashCommands(workspacePath, workspaceIdentity);
@@ -1721,20 +1740,32 @@ export function SessionPane({
   );
 
   const handleApplyFileRewind = useCallback(
-    (target: ConversationRowTarget) => {
+    async (target: ConversationRowTarget) => {
       const current = snapshotRef.current;
       if (!sessionId || !current) {
         throw new Error("Cannot apply file rewind without an active session revision");
       }
-      return dispatchCommand(
-        "applyFileRewind",
-        { target },
+      // Desktop 的文件恢复是独立事务，不能伪造 legacy applyFileRewind command ack。
+      const status = await applyDesktopFileRewind({
         sessionId,
-        current.revision,
-        current.logEpoch,
-      );
+        target,
+        baseRevision: current.revision,
+        baseLogEpoch: current.logEpoch,
+        confirmationId: crypto.randomUUID(),
+      });
+      if (status.state !== "success") {
+        throw Object.assign(new Error(status.message ?? "Safe file rewind failed"), {
+          status,
+        });
+      }
+      return {
+        status: "accepted",
+        commandId: status.confirmationId,
+        reasonCode: undefined,
+        message: status.state,
+      } as CommandAck;
     },
-    [dispatchCommand, sessionId],
+    [applyDesktopFileRewind, sessionId],
   );
 
   const handleOpenSubagentSession = useCallback(
@@ -2147,7 +2178,12 @@ export function SessionPane({
     snapshot?.control.activeWorks ?? [],
   );
   // 子智能体详情的会话内容仍只读；文件撤销恢复的是 workspace，必须作为独立能力判断。
-  const workspaceFileRewindEnabled = !isDesktop && (!readOnly || allowWorkspaceFileRewind);
+  const desktopFileRewindSupported =
+    isDesktop &&
+    isCodexDesktopFileRewindAvailable(desktopFileRewindCapability.availability) &&
+    Boolean(services.codexDesktopFileRewindService);
+  const workspaceFileRewindEnabled =
+    desktopFileRewindSupported || (!isDesktop && (!readOnly || allowWorkspaceFileRewind));
   // cancelBackgroundWork：启动卡 / 后台任务卡的「取消」入口。定义在 rowContext memo 之前，
   // 供其绑定（onOpenWorkflowRun 同样在 memo 前定义）；只读模式下不下发（与 4213 处一致）。
   const handleCancelBackgroundWork = useCallback(
@@ -4742,6 +4778,9 @@ export function SessionPane({
             gitDirtyFileCount={gitDirtyFileCount}
             gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
             gitWorktreeChangeSummary={gitWorktreeChangeSummary}
+            gitAuxiliaryGenerationSupported={
+              gitAuxiliaryCapability.availability.status === "supported"
+            }
             activeTaskChangeSummary={activeTaskChangeSummary}
             goal={selectionSideChat ? null : (snapshot?.goal ?? null)}
             sessionPlans={state.sessionPlans}

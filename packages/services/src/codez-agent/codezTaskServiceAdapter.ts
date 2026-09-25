@@ -141,6 +141,7 @@ import type {
   CodezTaskIndexTerminalEvent,
 } from "./codezTaskIndexSyncer.js";
 import { readModelTrajectory } from "./modelTrajectory.js";
+import { buildCodexAutomationSendTextPayload } from "./codexAutomationAdapter.js";
 import { errorAttributionSchema, type CommandPayloadMap } from "@codez/shared/codez-protocol-v4";
 import {
   assertV4CommandAckOk,
@@ -391,6 +392,9 @@ export function createCodezTaskServiceAdapter(
     } & CodezBackgroundTurnAttribution,
   ): Promise<void> {
     const startedAt = Date.now();
+    if (params.automationId && params.attachments?.length) {
+      throw new Error("Codex scheduled prompt automations do not support attachments");
+    }
     notifySyncerSession(target);
     // live tool projection 只用于当前运行的终态收口。
     // 新输入开始时必须清掉上一轮 live-only 子工具，避免后续 snapshot 把旧工具补到新回复尾部。
@@ -410,7 +414,10 @@ export function createCodezTaskServiceAdapter(
       workspacePath: target.workspacePath,
     });
     try {
-      const promptToolDenylist = resolvePromptToolDenylist(params);
+      // Codex automation 是原生 prompt turn；执行身份和旧工具限制不能进入 native command。
+      const promptToolDenylist = params.automationId
+        ? undefined
+        : resolvePromptToolDenylist(params);
       if (params.attachments?.length) {
         // 遗留（附件命令面）：v4 sendText 的 attachments 是 attachmentRef 引用模型，
         // 上传/寄存命令面尚未建模（CLI 侧 fork-edit-retry.ts 同款裁决“附件命令面后续”）。
@@ -442,14 +449,12 @@ export function createCodezTaskServiceAdapter(
         // queue 的 traceId 对账（completeRuntimeCommandByInputId 语义不变）。
         // heldQueueDisposition=keepQueueAndSend：旧 session/send 没有 held choice 闸门，
         // replayable 无人机交互路径按“立即发送、不动队列”等价老语义。
-        const ack = await options.codezAgentService.sendConversationCommandV4({
-          workspacePath: target.workspacePath,
-          workspaceIdentity: target.workspaceIdentity,
-          ...(target.remoteSessionId ? { remoteSessionId: target.remoteSessionId } : {}),
-          ...(params.clientMode ? { clientMode: params.clientMode } : {}),
-          envelope: createHostCommandEnvelope({
-            type: "sendText",
-            payload: {
+        const payload: CommandPayloadMap["sendText"] = params.automationId
+          ? buildCodexAutomationSendTextPayload({
+              text: params.content,
+              modelSelection: params.modelSelection,
+            })
+          : {
               text: params.content,
               heldQueueDisposition: "keepQueueAndSend",
               ...(params.modelSelection ? { modelSelection: params.modelSelection } : {}),
@@ -457,7 +462,15 @@ export function createCodezTaskServiceAdapter(
               ...turnAttributionOf(params),
               ...(params.botDeliveryTarget ? { botDeliveryTarget: params.botDeliveryTarget } : {}),
               ...(promptToolDenylist ? { toolDisallowlist: promptToolDenylist } : {}),
-            },
+            };
+        const ack = await options.codezAgentService.sendConversationCommandV4({
+          workspacePath: target.workspacePath,
+          workspaceIdentity: target.workspaceIdentity,
+          ...(target.remoteSessionId ? { remoteSessionId: target.remoteSessionId } : {}),
+          ...(params.clientMode ? { clientMode: params.clientMode } : {}),
+          envelope: createHostCommandEnvelope({
+            type: "sendText",
+            payload,
             sessionId: target.taskId,
             commandId: params.traceId,
             clientId: params.clientId,

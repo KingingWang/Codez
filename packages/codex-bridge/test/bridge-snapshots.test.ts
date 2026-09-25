@@ -23,6 +23,35 @@ const image = (ref: string) => ({
   path: `/native/${ref}.png`,
 });
 
+test("native token usage remains sparse and unavailable fields never become zero", async () => {
+  const thread = threadFixture();
+  thread.tokenUsage = {
+    total: { inputTokens: 10, cachedInputTokens: 2 },
+    last: { totalTokens: 8 },
+    modelContextWindow: 100,
+  } as never;
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+  );
+  const snapshot = await snapshots.conversation(thread.id);
+
+  assert.deepEqual(snapshot.usage.codexObserved, {
+    inputTokens: 10,
+    cacheReadTokens: 2,
+    contextWindow: { usedTokens: 8, maxTokens: 100 },
+  });
+  // Dense compatibility fields may exist for old consumers, but downstream sparse readers
+  // must use codexObserved; missing output/cache-write are unavailable, not measured zero.
+  assert.equal("outputTokens" in snapshot.usage.codexObserved!, false);
+  assert.equal("cacheWriteTokens" in snapshot.usage.codexObserved!, false);
+});
+
 test("attachment restoration follows turn-scoped row identity when native item IDs are reused", async () => {
   const thread = threadFixture();
   const first = {

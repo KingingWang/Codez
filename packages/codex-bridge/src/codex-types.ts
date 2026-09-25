@@ -144,6 +144,9 @@ export const codexThreadSchema = z.object({
   parentThreadId: id.nullish(),
   status: codexThreadStatusSchema,
   turns: z.array(codexTurnSchema),
+  // Native token usage is additive telemetry. Unknown or malformed fields must never
+  // be coerced to zero during projection.
+  tokenUsage: z.unknown().optional(),
 });
 export type CodexThread = z.infer<typeof codexThreadSchema>;
 

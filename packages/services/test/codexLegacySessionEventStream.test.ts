@@ -63,8 +63,9 @@ function makeSnapshot(
     },
     modelTransition: null,
     usage: {
-      contextWindow: { usedTokens: 0, maxTokens: 1000, autoCompactThresholdTokens: 900 },
+      contextWindow: null,
       cumulative: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      codexObserved: { inputTokens: 10, outputTokens: 5 },
     },
     queue: { items: [], autoDrain: false },
     pendingInteractions: [],
@@ -264,6 +265,12 @@ test("codex mode streams legacy session events from v4 frames (bot reply source)
     // 最后一个订阅者 dispose 后必须退订 v4 订阅，不留悬挂路由。
     subscription.dispose();
     await waitFor(() => sent.some((message) => message.method === "v4/conversation/unsubscribe"));
+    const observations = await service.getCodexUsageObservations(workspace);
+    assert.equal(observations.workspaceKey, "remote-a");
+    assert.deepEqual(observations.threads.get(SESSION_ID)?.observation.payload, {
+      inputTokens: 10,
+      outputTokens: 5,
+    });
   } finally {
     await service.disposeAllAndWait();
     await rm(dir, { recursive: true, force: true });

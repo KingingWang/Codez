@@ -16,9 +16,14 @@ import type {
 } from "@codez/shared";
 import { ServiceChannels } from "@codez/shared";
 import { createServiceDescriptor } from "../descriptors.js";
+import type { CodexUsageCacheSnapshot } from "./codexUsageObservationCache.js";
 
 export interface IUsageStatsService {
   getAppUsageSnapshot(request: AppUsageRequest): Promise<AppUsageSnapshot>;
+  getCodexUsageObservations(request: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+  }): Promise<CodexUsageCacheSnapshot>;
   getCodingPlanUsageSnapshot(request: CodingPlanUsageRequest): Promise<CodingPlanUsageSnapshot>;
   getCodingPlanResetStatus(
     request: CodingPlanResetScopeRequest,

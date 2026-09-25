@@ -11,6 +11,8 @@ import {
   type CodexModel,
   type CodexPlugin,
   type CodexRequest,
+  type NativeBrowserCuaMcpDescriptor,
+  type NativeBrowserCuaMcpRuntimeMissingDescriptor,
 } from "@codez/shared";
 
 export const codexReaders = {
@@ -98,6 +100,133 @@ async function readCodexPages<T>(
     page.nextCursor = next.nextCursor;
   }
   return page;
+}
+
+export function codexNativeBrowserCuaServerValue(descriptor: NativeBrowserCuaMcpDescriptor) {
+  return {
+    command: descriptor.executable,
+    args: [descriptor.bridgePath, "native-browser-cua-mcp"],
+    env: [
+      { name: "ELECTRON_RUN_AS_NODE", value: "1" },
+      {
+        name: "CODEZ_NATIVE_BROWSER_CUA_ENDPOINT",
+        value: descriptor.endpoint,
+      },
+      { name: "CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE", value: descriptor.tokenFile },
+    ],
+  };
+}
+
+function matchesNativeBrowserCuaServerValue(actual: unknown, expected: unknown): boolean {
+  if (Array.isArray(actual) || Array.isArray(expected)) {
+    return (
+      Array.isArray(actual) &&
+      Array.isArray(expected) &&
+      actual.length === expected.length &&
+      actual.every((entry, index) => matchesNativeBrowserCuaServerValue(entry, expected[index]))
+    );
+  }
+  if (!actual || !expected || typeof actual !== "object" || typeof expected !== "object") {
+    return actual === expected;
+  }
+  const actualKeys = Object.keys(actual).sort();
+  const expectedKeys = Object.keys(expected).sort();
+  return (
+    actualKeys.length === expectedKeys.length &&
+    actualKeys.every((key, index) => key === expectedKeys[index]) &&
+    actualKeys.every((key) =>
+      matchesNativeBrowserCuaServerValue(
+        (actual as Record<string, unknown>)[key],
+        (expected as Record<string, unknown>)[key],
+      ),
+    )
+  );
+}
+
+export function codexNativeBrowserCuaInstallRequest(
+  target: NonNullable<ReturnType<typeof codexUserConfigTarget>>,
+  descriptor: NativeBrowserCuaMcpDescriptor,
+): CodexRequest {
+  return {
+    method: "config/batchWrite",
+    params: {
+      ...target,
+      edits: [
+        {
+          keyPath: "mcp_servers.codez-desktop-browser-cua",
+          value: codexNativeBrowserCuaServerValue(descriptor),
+          mergeStrategy: "replace",
+        },
+      ],
+    },
+  };
+}
+
+export function isCodexNativeBrowserCuaConfigured(
+  config: CodexConfigResponse | undefined,
+  descriptor: NativeBrowserCuaMcpDescriptor | undefined,
+): boolean {
+  if (!descriptor) return false;
+  const raw = config?.config["mcp_servers"];
+  if (!raw || typeof raw !== "object") return false;
+  const value = (raw as Record<string, unknown>)["codez-desktop-browser-cua"];
+  return matchesNativeBrowserCuaServerValue(value, codexNativeBrowserCuaServerValue(descriptor));
+}
+
+export type CodexNativeBrowserCuaStatus =
+  | "unsupported"
+  | "runtime-missing"
+  | "service-not-running"
+  | "descriptor-unavailable"
+  | "not-configured"
+  | "configured";
+
+export function classifyCodexNativeBrowserCua(input: {
+  capability: string | undefined;
+  remote: boolean;
+  descriptor?:
+    | NativeBrowserCuaMcpDescriptor
+    | NativeBrowserCuaMcpRuntimeMissingDescriptor
+    | undefined;
+  descriptorError?: string;
+  configured: boolean;
+}): CodexNativeBrowserCuaStatus {
+  if (input.capability !== "degraded" && input.capability !== "supported") return "unsupported";
+  if (input.remote) return "unsupported";
+  if (input.descriptorError) return "descriptor-unavailable";
+  if (!input.descriptor) return "descriptor-unavailable";
+  if (!input.descriptor.runtimeInstalled || !input.descriptor.bridgePath) return "runtime-missing";
+  if (!input.descriptor.serviceRunning) return "service-not-running";
+  return input.configured ? "configured" : "not-configured";
+}
+
+export async function installCodexNativeBrowserCuaMcp(
+  controller: {
+    request(request: CodexRequest): Promise<unknown>;
+    snapshot: { config?: { data?: CodexConfigResponse } };
+  },
+  descriptor: NativeBrowserCuaMcpDescriptor,
+): Promise<void> {
+  const target = codexUserConfigTarget(controller.snapshot.config?.data);
+  if (!target) throw new Error("No writable native Codex user configuration version");
+  await controller.request(codexNativeBrowserCuaInstallRequest(target, descriptor));
+  await controller.request({ method: "config/mcpServer/reload" });
+  const seenCursors = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    if (cursor) {
+      if (seenCursors.has(cursor) || seenCursors.size >= 100)
+        throw new Error("Invalid Codex pagination cursor");
+      seenCursors.add(cursor);
+    }
+    const result = codexMcpStatusResponseSchema.parse(
+      await controller.request({
+        method: "mcpServerStatus/list",
+        params: cursor ? { cursor } : {},
+      }),
+    );
+    cursor = result.nextCursor ?? undefined;
+  } while (cursor);
 }
 
 export function codexUserConfigTarget(config: CodexConfigResponse | undefined) {

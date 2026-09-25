@@ -202,6 +202,26 @@ export const sessionUsageStateSchema = z.object({
     cacheReadTokens: z.number(),
     cacheWriteTokens: z.number(),
   }),
+  /**
+   * Codex sparse observation (additive). Each field is present only when Codex emitted it;
+   * absence means unavailable and must never be interpreted as zero. Legacy dense fields stay
+   * for old consumers only and are not merged with this object.
+   */
+  codexObserved: z
+    .object({
+      inputTokens: z.number().int().nonnegative().optional(),
+      outputTokens: z.number().int().nonnegative().optional(),
+      cacheReadTokens: z.number().int().nonnegative().optional(),
+      cacheWriteTokens: z.number().int().nonnegative().optional(),
+      contextWindow: z
+        .object({
+          usedTokens: z.number().int().nonnegative().optional(),
+          maxTokens: z.number().int().nonnegative().optional(),
+        })
+        .optional(),
+    })
+    .strict()
+    .optional(),
 });
 export type SessionUsageState = z.infer<typeof sessionUsageStateSchema>;
 

@@ -76,6 +76,7 @@ import {
   summarizeOfficialMcpIdentityHeaders,
   codezProtocolEmptyResultSchema,
   codezProtocolMethods,
+  codezRuntimeCapabilitiesSchema,
   codezProtocolNotifications,
   codezMcpTelemetryEventSchema,
   codezMcpResourceSamplesSchema,
@@ -116,8 +117,16 @@ import {
   type CodezToolExecResource,
   type CodezPluginOperationProgressNotification,
   type CodezTaskMode,
+  type CodexFeatureCapabilities,
 } from "@codez/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
+import {
+  expandSharedContextContentCopy,
+  SharedContextContentCopyError,
+  type SharedContextContentCopyReadInput,
+  type SharedContextContentCopyRecord,
+} from "#src/conversation-share/codexSharedContextContentCopy.js";
+import { CodexUsageObservationCache } from "../usage-stats/codexUsageObservationCache.js";
 import { createOfficialMcpIssuanceAudit } from "#src/official-mcp/officialMcpIssuanceAudit.js";
 import type {
   AccountRequestAuthMaterial,
@@ -215,6 +224,7 @@ import type {
   CodezAgentCommandsQueryParams,
   CodezAgentConversationFileChangesParams,
   CodezAgentConversationFileRewindPreviewParams,
+  CodezAgentConversationFileRewindProjectionOverlayParams,
   CodezAgentConversationRowsRangeParams,
   CodezAgentConversationPlansParams,
   CodezAgentConversationWorkflowRunEventsParams,
@@ -224,6 +234,7 @@ import type {
   CodezAgentConversationWorkflowRunNodeResultParams,
   CodezAgentConversationWorkflowRunWorkspaceParams,
   CodezAgentConversationWorkflowRunsParams,
+  CodezAgentCodexHistoryRunsParams,
   CodezAgentConversationResyncParams,
   CodezAgentConversationSubscribeParams,
   CodezAgentConversationUnsubscribeParams,
@@ -277,6 +288,8 @@ import {
   v4ConversationWorkflowRunNodeResultResultSchema,
   v4ConversationWorkflowRunWorkspaceResultSchema,
   v4ConversationWorkflowRunsResultSchema,
+  codexConversationHistoryRunsParamsSchema,
+  codexConversationHistoryRunsResultSchema,
   v4ConversationResyncResultSchema,
   v4ConversationSubscribeResultSchema,
   v4ConversationUsageResultSchema,
@@ -849,6 +862,30 @@ interface WaitingWorkspaceStartup {
   workspace: CodezAgentWorkspaceTarget;
 }
 
+function overlayHostCodexCapabilities(
+  capabilities: CodexFeatureCapabilities,
+  serviceOwnerFacts: {
+    sharedContextContentCopy: boolean;
+    observedAppUsage: boolean;
+    safeDesktopFileRewindOwner: boolean;
+  },
+): CodexFeatureCapabilities {
+  return {
+    ...capabilities,
+    // Only a trusted Host/service resolver can provide the actual end-to-end copy path.
+    sharedContextContentCopy: serviceOwnerFacts.sharedContextContentCopy
+      ? "degraded"
+      : "unsupported",
+    // The Desktop-owned cache is only a real capability when a query exposes it.
+    observedAppUsage: serviceOwnerFacts.observedAppUsage ? "supported" : "unsupported",
+    // Bridge projection is necessary but not sufficient: workspace mutation must have
+    // its registered Desktop-local transaction owner.
+    safeDesktopFileRewind: serviceOwnerFacts.safeDesktopFileRewindOwner
+      ? capabilities.safeDesktopFileRewind
+      : "unsupported",
+  };
+}
+
 interface ActiveWorkspaceClient {
   client: CodezProtocolClient;
   interactionPreferencesReady?: Promise<void>;
@@ -884,7 +921,15 @@ interface CreateCodezAgentServiceOptions extends Omit<
   /** Desktop Host 请求 Main 登记 Agent 已授权的精确本地视频路径。 */
   authorizeLocalMediaPreviewPath?: (path: string) => Promise<string>;
   modelSelectionReadinessSource?: ModelSelectionReadinessSource;
+  /** Codex shared-context degradation reader；Host 注入，renderer 无法提供路径或内容。 */
+  readSharedContextContentCopy?: ((
+    input: SharedContextContentCopyReadInput,
+  ) => Promise<SharedContextContentCopyRecord>) & {
+    supportsSharedContextContentCopy?: boolean;
+  };
   sessionRuntimePreferencesAuthority?: "local" | "external";
+  /** Safe rewind requires Desktop-local authority; attached-remote/mobile hosts must fail closed. */
+  safeDesktopFileRewindOwner?: boolean;
   resolveSessionRuntimePreferences?: (
     scope: CodezSessionRuntimePreferencesScope,
   ) => Promise<CodezSessionRuntimePreferencesResult>;
@@ -1153,6 +1198,9 @@ export function createCodezAgentService(
   >();
   // v4 conversation 帧 fan-out：workspace 级 emitter，renderer 侧按 topic 自行路由。
   const conversationFrameEmitters = new Map<string, Emitter<ConversationTopicWireCandidate>>();
+  // Desktop-owned Codex usage observations. The bridge frame stream remains the only input;
+  // Coding Plan data is never read or merged into this cache.
+  const codexUsageObservationCaches = new Map<string, CodexUsageObservationCache>();
   const localTtftFactsEmitter = new Emitter<{ workspaceKey: string; facts: LocalTtftFacts }>();
   const conversationTelemetryFactEmitters = new Map<string, Emitter<ConversationTelemetryFact>>();
   const cuaPermissionObservationEmitter = new Emitter<CodezAgentCuaPermissionObservation>();
@@ -1265,6 +1313,9 @@ export function createCodezAgentService(
 
   const runtimeLifecycleDisposable = processManager.onRuntimeLifecycle((event) => {
     if (event.state !== "unavailable") return;
+    // 观察缓存可以继续展示最后事实，但断线后的旧值不再是“当前事实”；
+    // 标记 stale 后，只有新的合法帧/snapshot 才能恢复 current。
+    getCodexUsageObservationCache(event).markRuntimeUnavailable();
     // 协议关闭、进程崩溃或请求超时时，runtime 可能不会再发送 turn-failed/
     // session-closed，也不一定能成功启动下一代 runtime。必须在 unavailable 这个权威
     // 生命周期边界清掉 CUA tracker，否则 Windows 顶部提示和 Helper 恢复门控会永久残留。
@@ -1824,6 +1875,40 @@ export function createCodezAgentService(
     return created;
   }
 
+  function getCodexUsageObservationCache(workspace: CodezAgentWorkspaceTarget) {
+    const key = resolveWorkspaceKey(workspace);
+    const existing = codexUsageObservationCaches.get(key);
+    if (existing) return existing;
+    const created = new CodexUsageObservationCache(workspace);
+    codexUsageObservationCaches.set(key, created);
+    return created;
+  }
+
+  function observeCodexUsageWire(
+    workspace: CodezAgentWorkspaceTarget,
+    wire: ConversationTopicWireCandidate,
+  ): void {
+    const sessionId = wire.topic.slice("conversation/".length);
+    if (!sessionId) return;
+    // The candidate schema intentionally leaves the logical frame opaque for routing.
+    // Re-validate with the concrete topic schema before retaining any usage fact.
+    const typed = conversationTopicFrameSchema.safeParse(
+      wire.kind === "complete" ? wire.frame : undefined,
+    );
+    if (!typed.success) return;
+    const cache = getCodexUsageObservationCache(workspace);
+    if (typed.data.payload.kind === "snapshot") {
+      const observed = typed.data.payload.snapshot.usage.codexObserved;
+      if (observed) cache.reconcile(sessionId, observed);
+      return;
+    }
+    for (const delta of typed.data.payload.deltas) {
+      if (delta.op !== "state.updated") continue;
+      const observed = delta.patch.usage?.codexObserved;
+      if (observed) cache.observe(sessionId, observed);
+    }
+  }
+
   function getConversationTelemetryFactEmitter(workspace: CodezAgentWorkspaceTarget) {
     const key = resolveWorkspaceKey(workspace);
     const existing = conversationTelemetryFactEmitters.get(key);
@@ -2343,6 +2428,7 @@ export function createCodezAgentService(
           }
           const parsed = conversationTopicWireCandidateSchema.safeParse(message.params);
           if (parsed.success) {
+            observeCodexUsageWire(workspace, parsed.data);
             getConversationFrameEmitter(workspace).fire(parsed.data);
           } else {
             logger.warn(undefined, "丢弃无效 v4 conversation frame", {
@@ -3540,7 +3626,39 @@ export function createCodezAgentService(
     params: CodezAgentConversationCommandParams,
   ): Promise<CommandEnvelope> {
     const envelope = params.envelope;
-    // Codex 直接消费原生 selection/plan 意图；旧工具策略不能重写该信封或引入 Provider 前置读取。
+    // Codex 不接收 shared-context 引用；Host 必须先完成全量内容展开，失败则不派发命令。
+    if (usesDefaultCodexBridge && envelope.type === "sendText") {
+      const payload = commandPayloadSchemas.sendText.parse(envelope.payload);
+      if (payload.context_refs?.length) {
+        if (!options?.readSharedContextContentCopy) {
+          throw new SharedContextContentCopyError(
+            "capability_missing",
+            "Codex shared-context content copy is unavailable",
+          );
+        }
+        if (!envelope.sessionId) {
+          throw new SharedContextContentCopyError(
+            "invalid_session",
+            "Shared context requires an existing session",
+          );
+        }
+        const text = await expandSharedContextContentCopy({
+          text: payload.text,
+          refs: payload.context_refs,
+          workspacePath: params.workspacePath,
+          ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+          sessionId: envelope.sessionId,
+          read: options.readSharedContextContentCopy,
+        });
+        const { context_refs: _context_refs, ...payloadWithoutRefs } = payload;
+        return {
+          ...envelope,
+          payload: { ...payloadWithoutRefs, text },
+        };
+      }
+      return envelope;
+    }
+    // 旧 CLI 路径保留 legacy session 工具面策略；Codex 直接消费原生 selection/plan 意图。
     if (usesDefaultCodexBridge) return envelope;
     if (envelope.type === "createSession") {
       // V4 createSession 绕过 legacy session/create 的参数构造，工具面 flag 必须在
@@ -3926,6 +4044,10 @@ export function createCodezAgentService(
         { range: params.range, timeZone: params.timeZone },
         v4UsageStatsResultSchema,
       );
+    },
+
+    async getCodexUsageObservations(params: CodezAgentWorkspaceTarget) {
+      return getCodexUsageObservationCache(params).snapshot();
     },
 
     async getTaskTokenUsage(params: CodezAgentTaskTokenUsageParams) {
@@ -4661,6 +4783,18 @@ export function createCodezAgentService(
     },
 
     async generateWorkspaceText(params: CodezAgentGenerateWorkspaceTextParams) {
+      // Git 辅助是当前唯一调用方；在启动/账号准备前读取同一 runtime 能力，
+      // 老 bridge 或断连路径必须 fail-closed，而不是发出注定失败的生成请求。
+      if (usesDefaultCodexBridge && params.querySource === "git_commit_message") {
+        const client = await getReadOnlyClient(params);
+        const capabilities = await client.request(
+          codezProtocolMethods.runtimeCapabilities,
+          {},
+          codezRuntimeCapabilitiesSchema,
+        );
+        if (capabilities.codex?.auxiliaryTextGeneration !== "supported")
+          throw new Error("生成提交消息所需的 Codex 辅助能力不可用。");
+      }
       const client = await getClient(params);
       // Worker 自己读取 Codez Built-in / Personal Config；Host 只在执行前确保账号状态形成的
       // Account Config Overlay 已同步，避免新进程先按旧套餐状态创建 Model。
@@ -4714,6 +4848,22 @@ export function createCodezAgentService(
         );
       } finally {
         params.signal?.removeEventListener("abort", cancel);
+      }
+    },
+
+    async canGenerateWorkspaceText(params: CodezAgentWorkspaceTarget) {
+      if (!usesDefaultCodexBridge) return false;
+      try {
+        const client = await getReadOnlyClient(params);
+        const capabilities = await client.request(
+          codezProtocolMethods.runtimeCapabilities,
+          {},
+          codezRuntimeCapabilitiesSchema,
+        );
+        return capabilities.codex?.auxiliaryTextGeneration === "supported";
+      } catch {
+        // capability 读取失败与缺字段同语义：Host 不能自行补救为可用。
+        return false;
       }
     },
 
@@ -5213,6 +5363,28 @@ export function createCodezAgentService(
     // ── v4 conversation 通道（竖切）：host 只做透传，不落任何业务状态 ──
 
     async helloConversationV4() {
+      // Bridge facts are authoritative. Service owners may only downgrade native facts or
+      // replace a native unsupported fact when their trusted end-to-end path is installed.
+      let codexCapabilities: CodexFeatureCapabilities | undefined;
+      let codexCapabilityUnavailable = false;
+      if (usesDefaultCodexBridge) {
+        try {
+          const entry = await getOrStartReadOnlyClient({ workspacePath: process.cwd() });
+          const capabilities = await entry.client.request(
+            codezProtocolMethods.runtimeCapabilities,
+            {},
+            codezRuntimeCapabilitiesSchema,
+          );
+          codexCapabilities = capabilities.codex;
+          await entry.interactionPreferencesReady;
+        } catch (error) {
+          codexCapabilityUnavailable = true;
+          codexCapabilities = undefined;
+          logger.warn(undefined, "读取 Codex bridge 能力失败，按缺省能力投影", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
       return {
         kind: "hello" as const,
         protocolVersion: V4_WIRE_PROTOCOL_VERSION,
@@ -5228,9 +5400,24 @@ export function createCodezAgentService(
           // Codex bridge 不支持旧 Hooks 审批写入，不能向 UI 广告该能力。
           workspaceHookReview: !usesDefaultCodexBridge,
           independentPlanState: true,
-          // 与 connection scope 的 hello 同一份能力集：直连 base service 的宿主内部消费者
-          // 也能收到 `workflowRun.*` 增量（是否真收由它自己的 clientHello 决定）。
-          workflowRunDeltas: true,
+          // Codex bridge 尚无 DWF 增量投影；Host 不能自制 legacy workflow capability。
+          ...(codexCapabilities
+            ? {
+                codex:
+                  usesDefaultCodexBridge && codexCapabilities
+                    ? overlayHostCodexCapabilities(codexCapabilities, {
+                        sharedContextContentCopy:
+                          options?.readSharedContextContentCopy
+                            ?.supportsSharedContextContentCopy === true,
+                        observedAppUsage: true,
+                        safeDesktopFileRewindOwner: options?.safeDesktopFileRewindOwner === true,
+                      })
+                    : codexCapabilities,
+              }
+            : {}),
+          ...(codexCapabilityUnavailable
+            ? { codexUnavailable: { reason: "bridge-unavailable" as const } }
+            : {}),
         },
         auth: {},
       };
@@ -5593,8 +5780,7 @@ export function createCodezAgentService(
 
     // 行分页：只读 query 透传（超时重发安全，无订阅状态）。
     async conversationRowsRangeV4(params: CodezAgentConversationRowsRangeParams) {
-      const trusted = readTrustedCodezAgentV4Connection(params);
-      if (!trusted) throw new Error("fault.conversation.rowsRangeConnectionUntrusted");
+      const trusted = resolveV4Connection(params);
       const client = await getReadOnlyClient(params);
       return client.request(
         V4_METHODS.conversationRowsRange,
@@ -5645,6 +5831,22 @@ export function createCodezAgentService(
           ...(params.limit !== undefined ? { limit: params.limit } : {}),
         },
         v4ConversationWorkflowRunsResultSchema,
+      );
+    },
+
+    // Codex 原生 turn 历史是独立只读查询；Host 不创建第二份状态，也不映射到 DWF。
+    async codexHistoryRunsV4(params: CodezAgentCodexHistoryRunsParams) {
+      const client = await getReadOnlyClient(params);
+      const wireParams = codexConversationHistoryRunsParamsSchema.parse({
+        sessionId: params.sessionId,
+        ...(params.limit !== undefined ? { limit: params.limit } : {}),
+        ...(params.status !== undefined ? { status: params.status } : {}),
+        ...(params.beforeTurnId !== undefined ? { beforeTurnId: params.beforeTurnId } : {}),
+      });
+      return client.request(
+        V4_METHODS.codexConversationHistoryRuns,
+        wireParams,
+        codexConversationHistoryRunsResultSchema,
       );
     },
 
@@ -5785,6 +5987,16 @@ export function createCodezAgentService(
         },
         v4ConversationFileRewindPreviewResultSchema,
       );
+    },
+    async conversationFileRewindProjectionOverlayV4(
+      params: CodezAgentConversationFileRewindProjectionOverlayParams,
+    ): Promise<void> {
+      const client = await getReadOnlyClient(params);
+      await client.request(V4_METHODS.conversationFileRewindProjectionOverlay, {
+        sessionId: params.sessionId,
+        target: params.target,
+        turnId: params.turnId,
+      });
     },
 
     onDynamicConversationFrame(params: CodezAgentWorkspaceTarget) {

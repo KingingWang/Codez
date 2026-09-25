@@ -1,10 +1,20 @@
-import { useState } from "react";
-import { codexMcpOauthResponseSchema } from "@codez/shared";
+import { useEffect, useState } from "react";
+import {
+  DesktopCommandIds,
+  codexMcpOauthResponseSchema,
+  nativeBrowserCuaMcpDescriptorResultSchema,
+} from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
-import { codexAuthorizationUrl, codexPluginInstallRequest } from "./codexSettingsData.js";
+import {
+  classifyCodexNativeBrowserCua,
+  codexAuthorizationUrl,
+  codexPluginInstallRequest,
+  installCodexNativeBrowserCuaMcp,
+  isCodexNativeBrowserCuaConfigured,
+} from "./codexSettingsData.js";
 import { CodexConfirmButton, CodexNotice, CodexSection } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
 
@@ -62,15 +72,118 @@ export function CodexSkillsPanel({ controller }: { controller: CodexSettingsCont
   );
 }
 
-export function CodexMcpPanel({ controller }: { controller: CodexSettingsController }) {
+export function CodexMcpPanel({
+  controller,
+  remote = false,
+  nativeBrowserCuaCapability,
+  descriptorOverride,
+}: {
+  controller: CodexSettingsController;
+  remote?: boolean;
+  nativeBrowserCuaCapability?: string;
+  descriptorOverride?: unknown;
+}) {
   const text = useCodexMessages();
   const platform = usePlatform();
   const state = controller.snapshot.mcp;
   const [authorization, setAuthorization] = useState<{ name: string; url: string } | null>(null);
+  const [loadedDescriptor, setLoadedDescriptor] = useState<unknown>();
+  const descriptor = descriptorOverride ?? loadedDescriptor;
+  const [descriptorError, setDescriptorError] = useState<string | undefined>();
   const disabled = controller.busy || controller.loading || !controller.enabled;
+  useEffect(() => {
+    let cancelled = false;
+    setLoadedDescriptor(undefined);
+    setDescriptorError(undefined);
+    const capabilityAllows =
+      nativeBrowserCuaCapability === "degraded" || nativeBrowserCuaCapability === "supported";
+    if (remote || !capabilityAllows || typeof platform.executeDesktopCommand !== "function") return;
+    void platform
+      .executeDesktopCommand(DesktopCommandIds.GetCodexNativeBrowserCuaMcpDescriptor)
+      .then((value) => {
+        if (!cancelled) setLoadedDescriptor(value);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setDescriptorError(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [nativeBrowserCuaCapability, platform, remote]);
+  const parsedDescriptor = descriptor
+    ? nativeBrowserCuaMcpDescriptorResultSchema.safeParse(descriptor)
+    : undefined;
+  const activeDescriptor = parsedDescriptor?.success ? parsedDescriptor.data : undefined;
+  if (descriptor && !activeDescriptor) setDescriptorError("Invalid Desktop browser descriptor");
+  const configured = isCodexNativeBrowserCuaConfigured(
+    controller.snapshot.config?.data,
+    activeDescriptor?.runtimeInstalled ? activeDescriptor : undefined,
+  );
+  const nativeStatus = classifyCodexNativeBrowserCua({
+    capability: nativeBrowserCuaCapability,
+    remote,
+    descriptor: activeDescriptor?.runtimeInstalled ? activeDescriptor : undefined,
+    descriptorError,
+    configured,
+  });
+  const nativeDisabled = disabled || nativeStatus !== "not-configured";
+  let nativeStatusMessage: string;
+  switch (nativeStatus) {
+    case "configured":
+      nativeStatusMessage = text.nativeBrowserCuaConfigured;
+      break;
+    case "unsupported":
+      nativeStatusMessage = text.nativeBrowserCuaUnsupported;
+      break;
+    case "runtime-missing":
+      nativeStatusMessage = text.nativeBrowserCuaRuntimeMissing;
+      break;
+    case "service-not-running":
+      nativeStatusMessage = text.nativeBrowserCuaServiceNotRunning;
+      break;
+    case "descriptor-unavailable":
+      nativeStatusMessage = text.nativeBrowserCuaDescriptorUnavailable;
+      break;
+    default:
+      nativeStatusMessage = text.nativeBrowserCuaNotConfigured;
+  }
+  const nativeServer = state?.data?.data.find(
+    (server) => server.name === "codez-desktop-browser-cua",
+  );
   return (
     <CodexSection title={text.mcp}>
       {state?.error ? <CodexNotice error>{state.error}</CodexNotice> : null}
+      <div className="space-y-2 rounded-lg bg-surface p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-ui-base">{text.nativeBrowserCuaTitle}</p>
+            <p className="text-ui-sm text-foreground-subtle">{nativeStatusMessage}</p>
+            <p className="text-ui-sm text-foreground-subtle">{text.nativeBrowserCuaDegraded}</p>
+            <p className="text-ui-sm text-foreground-subtle">
+              {text.nativeBrowserCuaStatuses} {nativeServer?.runtimeStatus ?? text.notConnected} ·{" "}
+              {nativeServer?.authStatus ?? "unknown"} · {text.tools}:{" "}
+              {nativeServer ? Object.keys(nativeServer.tools).length : 0}
+            </p>
+            {nativeServer?.toolsError ? (
+              <CodexNotice error>{nativeServer.toolsError}</CodexNotice>
+            ) : null}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={nativeDisabled}
+            onClick={() =>
+              void controller.run(async () => {
+                if (!activeDescriptor?.runtimeInstalled)
+                  throw new Error(text.nativeBrowserCuaRuntimeMissing);
+                await installCodexNativeBrowserCuaMcp(controller, activeDescriptor);
+              })
+            }
+          >
+            {text.nativeBrowserCuaInstall}
+          </Button>
+        </div>
+      </div>
       <Button
         variant="outline"
         disabled={disabled}

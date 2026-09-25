@@ -172,6 +172,7 @@ import type { ConversationPromptTelemetrySeed } from "@/v4/telemetry/conversatio
 import type { ComposerSubmissionConfig } from "@/v4/composer/composerSubmissionConfig.js";
 import { buildV4ConversationPromptTelemetryExtraDetail } from "@/v4/telemetry/conversationPromptTelemetry.js";
 import { resolveAttachableShareContext } from "@/lib/conversationShareContext.js";
+import { CONVERSATION_SHARED_CONTEXT_COPY_WARNING_ID } from "@/v4/composer/sharedContextContentCopy.js";
 
 const MODEL_SELECTION_LOADING_STATE: ModelSelectionState = { status: "loading" };
 
@@ -2269,6 +2270,15 @@ function ConversationComposerImpl({
             {intl.formatMessage({
               id: `chat.selections.limit.${conversationSelectionLimitReason}`,
             })}
+          </div>
+        ) : null}
+        {pendingShareContext && codexModelCatalog ? (
+          <div
+            role="status"
+            data-testid="v4-composer-shared-context-copy-warning"
+            className="mb-2 w-full rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-3 py-2 text-ui-base text-foreground"
+          >
+            {intl.formatMessage({ id: CONVERSATION_SHARED_CONTEXT_COPY_WARNING_ID })}
           </div>
         ) : null}
         <ChatPromptEditor

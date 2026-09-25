@@ -1,19 +1,22 @@
 import { RefreshCcw } from "lucide-react";
-import { Fragment, lazy, useState } from "react";
+import { Fragment, lazy, useCallback, useEffect, useState } from "react";
 import { APP_USAGE_RANGES } from "@codez/shared";
 import type { AppUsageRange, AppUsageSnapshot } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
+import { useServices } from "@/hooks/useServices.js";
 import { useAppUsageStats } from "@/hooks/useUsageStats.js";
 import { UsageChartLoadBoundary } from "@/settings/usage-stats/UsageChartLoadBoundary.js";
 import { UsageHeatmap } from "@/settings/usage-stats/UsageHeatmap.js";
+import { logger } from "@/logger.js";
 import { UsageStatsErrorNotice } from "@/settings/usage-stats/UsageStatsErrorNotice.js";
 import {
   USAGE_STATS_TABS_LIST_CLASS,
   USAGE_STATS_TABS_TRIGGER_CLASS,
   UsageEmptyState,
   formatCompactNumber,
+  formatCompactTokenUsage,
   formatSummaryCompactTokenUsage,
 } from "@/settings/usage-stats/usageStatsUiParts.js";
 
@@ -31,15 +34,169 @@ const AppUsageModelUsagePieChart = lazy(() =>
   })),
 );
 
-export function AppUsagePanel() {
+export const CODEX_APP_USAGE_OBSERVATION_COPY_ID = "settings.usage.appUsage.observationNotice";
+
+interface CodexObservedUsageInput {
+  readonly inputTokens?: number;
+  readonly outputTokens?: number;
+  readonly cacheReadTokens?: number;
+  readonly cacheWriteTokens?: number;
+}
+
+interface CodexUsageObservationsSnapshot {
+  readonly threads: ReadonlyMap<
+    string,
+    { observation: { payload: Readonly<CodexObservedUsageInput> } }
+  >;
+  readonly conflict: boolean;
+  readonly stale: boolean;
+}
+
+function useCodexUsageObservations(workspace: {
+  workspaceIdentity?: string;
+  workspacePath?: string;
+}) {
+  const { usageStatsService } = useServices();
+  const [snapshot, setSnapshot] = useState<CodexUsageObservationsSnapshot | null>(null);
+  const refresh = useCallback(async () => {
+    const workspacePath = workspace.workspacePath?.trim();
+    if (!workspacePath) {
+      setSnapshot(null);
+      return;
+    }
+    const service = usageStatsService;
+    if (typeof service.getCodexUsageObservations !== "function") {
+      setSnapshot(null);
+      return;
+    }
+    try {
+      setSnapshot(
+        await service.getCodexUsageObservations({
+          workspacePath,
+          ...(workspace.workspaceIdentity?.trim()
+            ? { workspaceIdentity: workspace.workspaceIdentity.trim() }
+            : {}),
+        }),
+      );
+    } catch (error) {
+      logger.warn("[codex-usage] Reading desktop observations failed", {
+        error: error instanceof Error ? error.message : String(error),
+        workspaceIdentity: workspace.workspaceIdentity ?? null,
+        workspacePath,
+      });
+    }
+  }, [usageStatsService, workspace.workspaceIdentity, workspace.workspacePath]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  return { snapshot, refresh };
+}
+
+function CodexUsageObservationNotice({ intl }: { intl: ReturnType<typeof useCodezIntl>["intl"] }) {
+  return (
+    <p className="text-ui-sm text-foreground-subtle" data-testid="codex-usage-observation-notice">
+      {intl.formatMessage({ id: CODEX_APP_USAGE_OBSERVATION_COPY_ID })}
+    </p>
+  );
+}
+
+export function buildCodexUsageObservationTotals(
+  threads: Iterable<{ observation: { payload: CodexObservedUsageInput } }>,
+) {
+  return [...threads].reduce(
+    (totals, thread) => {
+      const usage = thread.observation.payload;
+      return {
+        threads: totals.threads + 1,
+        inputTokens: totals.inputTokens + (usage.inputTokens ?? 0),
+        outputTokens: totals.outputTokens + (usage.outputTokens ?? 0),
+        cacheReadTokens: totals.cacheReadTokens + (usage.cacheReadTokens ?? 0),
+        cacheWriteTokens: totals.cacheWriteTokens + (usage.cacheWriteTokens ?? 0),
+      };
+    },
+    {
+      threads: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+    },
+  );
+}
+
+export function CodexUsageObservationSummary({
+  observations,
+  intl,
+  locale,
+}: {
+  observations: CodexUsageObservationsSnapshot | null;
+  intl: ReturnType<typeof useCodezIntl>["intl"];
+  locale: string;
+}) {
+  const threads = observations?.threads;
+  const totals = buildCodexUsageObservationTotals(threads?.values() ?? []);
+  const items = [
+    ["observedThreads", totals.threads, false],
+    ["observedInput", totals.inputTokens, true],
+    ["observedOutput", totals.outputTokens, true],
+    ["observedCacheRead", totals.cacheReadTokens, true],
+    ["observedCacheWrite", totals.cacheWriteTokens, true],
+  ] as const;
+  return (
+    <section
+      className="grid grid-cols-2 gap-3 rounded-xl bg-surface p-4 sm:grid-cols-5"
+      data-testid="codex-usage-observations"
+    >
+      {items.map(([key, value, tokens]) => (
+        <div key={key} className="min-w-0">
+          <div className="truncate text-ui-lg font-medium text-foreground">
+            {tokens ? formatCompactTokenUsage(locale, value) : formatCompactNumber(locale, value)}
+          </div>
+          <div className="mt-1 truncate text-ui-base text-foreground-subtle">
+            {intl.formatMessage({ id: `settings.usage.appUsage.${key}` })}
+          </div>
+        </div>
+      ))}
+      <div className="col-span-2 flex flex-col justify-center gap-1 sm:col-span-5">
+        {threads && threads.size > 0 && observations?.stale ? (
+          <div data-testid="codex-usage-observation-stale">
+            {intl.formatMessage({ id: "settings.usage.appUsage.observationStale" })}
+          </div>
+        ) : null}
+        {threads && threads.size > 0 && observations?.conflict ? (
+          <div data-testid="codex-usage-observation-conflict">
+            {intl.formatMessage({ id: "settings.usage.appUsage.observationConflict" })}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+export function AppUsagePanel({
+  workspaceIdentity,
+  workspacePath,
+}: {
+  workspaceIdentity?: string;
+  workspacePath?: string;
+}) {
   const { intl, locale } = useCodezIntl();
   const [range, setRange] = useState<AppUsageRange>("7d");
+  const codexUsage = useCodexUsageObservations({ workspaceIdentity, workspacePath });
   const { snapshot: lifetimeSnapshot, refresh: refreshLifetime } = useAppUsageStats("all");
   const { snapshot, loading, error, refresh } = useAppUsageStats(range);
 
   if (loading && !snapshot) {
     return (
       <div className="space-y-5">
+        <CodexUsageObservationNotice intl={intl} />
+        <CodexUsageObservationSummary
+          observations={codexUsage.snapshot}
+          intl={intl}
+          locale={locale}
+        />
         <AppUsageLifetimeSummaryStrip snapshot={lifetimeSnapshot} />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-ui-base font-medium text-foreground">
@@ -61,6 +218,12 @@ export function AppUsagePanel() {
   if (!snapshot) {
     return (
       <div className="space-y-5">
+        <CodexUsageObservationNotice intl={intl} />
+        <CodexUsageObservationSummary
+          observations={codexUsage.snapshot}
+          intl={intl}
+          locale={locale}
+        />
         <AppUsageLifetimeSummaryStrip snapshot={lifetimeSnapshot} />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-ui-base font-medium text-foreground">
@@ -81,6 +244,12 @@ export function AppUsagePanel() {
 
   return (
     <div className="space-y-5">
+      <CodexUsageObservationNotice intl={intl} />
+      <CodexUsageObservationSummary
+        observations={codexUsage.snapshot}
+        intl={intl}
+        locale={locale}
+      />
       <AppUsageLifetimeSummaryStrip snapshot={lifetimeSnapshot} />
       {lifetimeSnapshot?.heatmap.weeks.length ? (
         <UsageHeatmap locale={locale} intl={intl} weeks={lifetimeSnapshot.heatmap.weeks} />
@@ -119,7 +288,7 @@ export function AppUsagePanel() {
           size="sm"
           className="h-8 rounded-md bg-background"
           onClick={() => {
-            void Promise.all([refresh(), refreshLifetime()]);
+            void Promise.all([refresh(), refreshLifetime(), codexUsage.refresh()]);
           }}
         >
           <RefreshCcw className="size-3.5" />

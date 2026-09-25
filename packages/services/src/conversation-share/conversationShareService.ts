@@ -67,6 +67,10 @@ import {
 import { buildConversationSharePublicProjection } from "./conversationSharePublicProjection.js";
 import type { ConversationShareArtifactSource } from "./conversationShareArtifactSource.js";
 import { formatSharedContextV1 } from "./sharedContextFormatter.js";
+import {
+  SharedContextContentCopyError,
+  type SharedContextContentCopyRecord,
+} from "./codexSharedContextContentCopy.js";
 
 const DEFAULT_CONFIRM_POLL_INTERVAL_MS = 5_000;
 const DEFAULT_CONFIRM_POLL_TIMEOUT_MS = 120_000;
@@ -266,6 +270,11 @@ const importedConversationShareFileSchema = z
     shareId: z.string().trim().min(1),
     contextId: z.string().trim().min(1),
     title: z.string(),
+    sessionId: z.string().trim().min(1).optional(),
+    shareUrl: z.string().url().optional(),
+    workspaceKey: z.string().trim().min(1).optional(),
+    formatterVersion: z.number().int().positive().optional(),
+    createdAt: z.number().int().nonnegative().optional(),
     rows: z.array(z.unknown()),
     artifacts: z.array(
       z.object({
@@ -1230,6 +1239,7 @@ export class ConversationShareService implements IConversationShareService {
       importShare: (input, operationId) => this.importShare(input, operationId),
       onDynamicImportProgress: (operationId) => this.onDynamicImportProgress(operationId),
       getImportedConversation: (input) => this.getImportedConversation(input),
+      readSharedContextContentCopy: (input) => this.readSharedContextContentCopy(input),
       getPreview: (shareCode) => this.getPreview(shareCode),
       getContinuation: (input) => this.getContinuation(input),
     };
@@ -1594,6 +1604,11 @@ export class ConversationShareService implements IConversationShareService {
           shareId: continuation.share.share_id,
           contextId,
           title: continuation.share.title,
+          sessionId,
+          shareUrl,
+          workspaceKey: workspaceKeyOf(workspacePath, workspaceIdentity),
+          formatterVersion: 1,
+          createdAt: this.now(),
           rows: continuation.rawRows,
           artifacts: continuation.artifacts.map((artifact) => ({
             artifactId: artifact.artifact_id,
@@ -1761,6 +1776,92 @@ export class ConversationShareService implements IConversationShareService {
       };
     }
     return null;
+  }
+
+  async readSharedContextContentCopy(input: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+    sessionId: string;
+    contextId: string;
+  }): Promise<SharedContextContentCopyRecord> {
+    const authorizedWorkspaceKey = workspaceKeyOf(input.workspacePath, input.workspaceIdentity);
+    await this.completedImportsLoaded;
+    const completed = [
+      ...this.completedImports.values(),
+      ...this.completedImportsByWorkspace.values(),
+    ].find(
+      (item) =>
+        item.contextId === input.contextId &&
+        item.sessionId === input.sessionId &&
+        workspaceKeyOf(item.workspacePath, item.workspaceIdentity) === authorizedWorkspaceKey,
+    );
+    // workspacePath 只作 workspace 归属键，不能直接成为文件边界。先在 completed import
+    // 索引里完成授权并取回导入时落盘的 workspacePath；历史/远程导入则回退到服务根目录。
+    const shareRoot = join(
+      completed?.workspacePath ?? this.conversationWorkspaceRoot,
+      ".codez-share",
+    );
+    let entries: Dirent[];
+    try {
+      entries = await readdir(shareRoot, { withFileTypes: true });
+    } catch {
+      throw new SharedContextContentCopyError(
+        "read_failed",
+        "Shared context copy directory cannot be read",
+      );
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const conversationPath = join(shareRoot, entry.name, "shared-conversation.json");
+      let raw: string;
+      let capturedAt: number | undefined;
+      try {
+        raw = await readFile(conversationPath, "utf8");
+        capturedAt = (await stat(conversationPath)).mtimeMs;
+      } catch {
+        continue;
+      }
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        throw new SharedContextContentCopyError(
+          "invalid_record",
+          "Shared context copy is not valid JSON",
+        );
+      }
+      const validated = importedConversationShareFileSchema.safeParse(parsed);
+      if (!validated.success || validated.data.contextId !== input.contextId) continue;
+      const sessionId = validated.data.sessionId ?? completed?.sessionId;
+      const shareUrl = validated.data.shareUrl ?? completed?.shareUrl;
+      const workspaceKey = validated.data.workspaceKey ?? authorizedWorkspaceKey;
+      if (sessionId !== input.sessionId || workspaceKey !== authorizedWorkspaceKey) {
+        throw new SharedContextContentCopyError(
+          "authorization_failed",
+          "Shared context does not belong to the current workspace/session",
+        );
+      }
+      if (!raw.trim()) {
+        throw new SharedContextContentCopyError("empty_content", "Shared context copy is empty");
+      }
+      if (validated.data.createdAt !== undefined) capturedAt = validated.data.createdAt;
+      return {
+        contextId: validated.data.contextId,
+        sessionId,
+        shareId: validated.data.shareId,
+        title: validated.data.title,
+        ...(shareUrl ? { shareUrl } : {}),
+        workspaceKey,
+        formatVersion: validated.data.formatVersion,
+        formatterVersion: validated.data.formatterVersion ?? 1,
+        content: raw,
+        ...(capturedAt !== undefined ? { capturedAt } : {}),
+      };
+    }
+    throw new SharedContextContentCopyError(
+      "not_found",
+      "Shared context copy was not found in the authorized workspace",
+    );
   }
 
   private async loadCompletedImportIndex(): Promise<void> {
