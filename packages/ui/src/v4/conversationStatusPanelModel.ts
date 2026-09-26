@@ -144,11 +144,8 @@ function buildGitModel({
   }
   const added = gitWorktreeChangeSummary?.added ?? 0;
   const removed = gitWorktreeChangeSummary?.removed ?? 0;
-  // v4 之前只要是 Git repository 就创建 Git model，导致 clean repo
-  // 也挂出右上角状态卡；旧 ChatView 只在 worktree 有行级变化时展示 Git Tools。
-  if (added + removed <= 0) {
-    return null;
-  }
+  // 行数为零不等于没有 Git 操作：干净仓库仍可建分支，ahead 的提交仍需推送；
+  // 二进制变更和空文件也可能没有行级差异，不能因此隐藏唯一的 Git 菜单入口。
   const isClean =
     !gitSummary.isDirty &&
     gitDirtyFileCount === 0 &&

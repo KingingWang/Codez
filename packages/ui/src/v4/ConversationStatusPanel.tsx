@@ -25,6 +25,7 @@ import {
   CircleIcon,
   EllipsisIcon,
   FileDiffIcon,
+  GitBranchIcon,
   GoalIcon,
   ListChecksIcon,
   Maximize2Icon,
@@ -1674,8 +1675,8 @@ function StatusSummaryRow({
   ) : endedWorkflowRunCount > 0 ? (
     // 胶囊的兜底链止步于「活动计数」，而面板级的卸载闸门（!hasContent &&
     // !canRenderEndedWorkflows）为了保住 run 目录入口，会在**只剩已结束 run**时仍保留
-    // 整个壳——工作区无 Git 变更时 workflow 一结束，胶囊各分支全 null，只剩一条 2px
-    // 空壳线（与 goal notSatisfied 那次是同一个失效形状）。这里补上最低优先级的终态
+    // 整个壳——非 Git 工作区 workflow 一结束，胶囊各分支全 null，只剩一条 2px
+    // 空壳线（与 goal notSatisfied 那次是同一个失效形状）。这里补上终态
     // 分支：图标沿用 Workflow 域，文案与 Workflows 分区页脚同 key，点开即展开面板。
     <StatusSummaryMetric
       icon={<Workflow className="size-4 text-[var(--color-foreground-subtle)]" />}
@@ -1685,6 +1686,13 @@ function StatusSummaryRow({
       </span>
       <span className="shrink-0 text-[var(--color-foreground-subtle)]">
         {endedWorkflowRunCount}
+      </span>
+    </StatusSummaryMetric>
+  ) : model.git ? (
+    // 干净仓库没有 +/- 摘要；仍要让胶囊有可见的 Git 入口，避免空壳无法展开。
+    <StatusSummaryMetric icon={<GitBranchIcon className="size-4 text-[var(--color-foreground)]" />}>
+      <span className="min-w-0 truncate">
+        {intl.formatMessage({ id: "chat.statusPanel.environment" })}
       </span>
     </StatusSummaryMetric>
   ) : null;
@@ -1856,7 +1864,7 @@ function ConversationStatusPanelImpl({
     return () => observer.disconnect();
   }, [model]);
 
-  // `model.hasContent` 只认**活的**内容（模型手上的投影都是活状态），所以「只剩历史」的
+  // `model.hasContent` 只认 Git / 目标等当前投影，不包含已结束的 run，所以「只剩历史」的
   // 会话会连整个胶囊一起消失——而那正是重启后打开一条旧对话的样子，run 目录的入口于是又没了。
   // 已结束的 run 因此单独开这道门。（Agents 的已结束行有同一个洞：`endedSubagentCount` 也
   // 没进 `hasContent`。那是既有行为，不在本轮一起翻。）
