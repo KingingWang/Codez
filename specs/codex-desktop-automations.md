@@ -60,7 +60,9 @@ select project → resolve its Host and workspace identity → read Host model v
   → show available models and preferred selection → validate fields → enable Create
 ```
 
-Changing projects invalidates the previous model selection and view; a late response from the previous Host must not enable creation for the new project. Missing target, failed reads, or a catalog without a selectable model keep Create disabled and show the existing unavailable/error state. An explicitly selected model and its reasoning level must be preserved on refresh; the form must not synthesize a missing Codex effort.
+Changing projects invalidates the previous model selection and view; a late response from the previous Host must not enable creation for the new project. Missing target, failed reads, or a view without a valid effective model keep Create disabled and show the existing unavailable/error state. An explicitly selected model and its reasoning level must be preserved on refresh; the form must not synthesize a missing Codex effort.
+
+The native model view may provide a configured custom default absent from discovery and without any reasoning level. A valid effective model from the Host is sufficient to create or save even if the menu has no matching catalog item; the form carries its sparse `modelSelection` unchanged and lets Codex use its native reasoning default. No UI-only catalog-item or required-effort gate may disagree with the visible default-model label. Workspace changes still invalidate the old Host view and must not make the new form submit-ready until the new workspace has a valid effective model.
 
 ## Acceptance scenarios
 
@@ -74,3 +76,4 @@ Changing projects invalidates the previous model selection and view; a late resp
 8. Disable/delete affects future scheduling only; native completion and failure settlement remain idempotent.
 9. Missing/degraded capability prevents native send and leaves a recoverable scheduler state rather than fabricating execution.
 10. In a local Codex project with a native default model, opening Create shows the Host's models; completing title, schedule and prompt enables Create, and submission carries the selected native model. Switching to a second workspace reads its own model catalog without using stale choices. An unavailable workspace keeps Create disabled with an actionable read failure.
+11. In a local Codex project whose native configured default model omits reasoning effort, the displayed default model plus required fields enables Create without an explicit model re-selection. Creating stores the model with no invented effort; an explicit choice of another model still preserves its selected effort.

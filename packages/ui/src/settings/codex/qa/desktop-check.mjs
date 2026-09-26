@@ -14,6 +14,12 @@ if (!page)
   throw new Error("Expected isolated desktop with local QA renderer; refusing another page");
 const checks = [];
 try {
+  const startupErrors = [];
+  page.on("pageerror", (error) => startupErrors.push(error.message));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "New task", exact: true }).waitFor();
+  assert.deepEqual(startupErrors, [], "Renderer startup must not evaluate Host-only Node modules");
+  checks.push("Fresh desktop renderer shows navigation without a Node crypto browser exception");
   await page.keyboard.press("Escape");
   const back = page.getByRole("button", { name: "Back to workspace", exact: true });
   if (await back.count()) await back.first().click();

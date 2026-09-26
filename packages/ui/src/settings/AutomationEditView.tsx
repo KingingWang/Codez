@@ -121,6 +121,7 @@ import {
 } from "@/settings/automationEditDirtyState.js";
 import {
   clearAutomationEditRequiredFieldError,
+  isAutomationEditSubmissionContextReady,
   resolveAutomationEditRequiredFieldErrors,
   type AutomationEditRequiredField,
 } from "@/settings/automationEditValidation.js";
@@ -1643,13 +1644,12 @@ export function AutomationEditView({
     [cronExpr, prompt, title],
   );
   const hasValidWorkspace = Boolean(editing || selectedWorkspace);
-  const submissionContextReady =
-    hasValidWorkspace &&
-    (Boolean(editing) || selectedWorkspace !== null) &&
-    modelSelectionRead.state.status === "ready" &&
-    selectedModelItem !== null &&
-    Boolean(effectiveReasoningLevel) &&
-    !modelSelectionView?.selectionIssue;
+  const submissionContextReady = isAutomationEditSubmissionContextReady({
+    workspaceSelected: hasValidWorkspace,
+    modelViewReady: modelSelectionRead.state.status === "ready",
+    selectedModelValue: effectiveModelValue,
+    selectionIssue: modelSelectionView?.selectionIssue,
+  });
   const canSubmit = submissionContextReady && requiredFieldErrors.length === 0;
 
   const requestRequiredFieldValidation = useCallback(
@@ -1686,7 +1686,8 @@ export function AutomationEditView({
 
   const buildSubmitInput = useCallback(
     ({ modeValue }: { modeValue: string }): CreateAutomationInput | UpdateAutomationInput => {
-      if (!effectiveSelection || !effectiveReasoningLevel) {
+      // 修复：Codex 的原生默认思考档允许为空，提交时保留 Host 给出的稀疏选择。
+      if (!effectiveSelection) {
         throw new Error("Automation model selection is required");
       }
       return {
@@ -1716,7 +1717,6 @@ export function AutomationEditView({
       preserveSessionCreatedSchedule,
       prompt,
       effectiveSelection,
-      effectiveReasoningLevel,
       title,
       touchedFields,
     ],
