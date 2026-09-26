@@ -105,6 +105,21 @@ test("workflow includes automation and Git UI regressions outside the Codex sett
   }
 });
 
+test("each native build typechecks the Codex bridge once through the root script", async () => {
+  const require = createRequire(new URL("../packages/desktop/package.json", import.meta.url));
+  const workflow = require("yaml").parse(
+    await readFile(new URL("../.github/workflows/codex-desktop.yml", import.meta.url), "utf8"),
+  );
+  const root = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const bridgeTypecheck = "pnpm --filter @codez/codex-bridge typecheck";
+  assert.ok(root.scripts.typecheck.split(" && ").includes(bridgeTypecheck));
+  const commands = workflow.jobs.build.steps.flatMap((step) =>
+    (step.run ?? "").split("\n").map((line) => line.trim()),
+  );
+  assert.equal(commands.filter((command) => command === "pnpm typecheck").length, 1);
+  assert.equal(commands.filter((command) => command === bridgeTypecheck).length, 0);
+});
+
 async function loadRuntimeModule(t, source, flavor = "codex", plugins = []) {
   const directory = await mkdtemp(join(tmpdir(), "codez-identity-test-"));
   t.after(() => rm(directory, { recursive: true, force: true }));

@@ -26,6 +26,8 @@ read-only repository permissions.
 
 The Linux regression gate also explicitly runs the UI tests for workspace-scoped automation model reads, valid default-model submission, and clean-repository Git tools. These tests live outside `settings/codex/` and must not be lost by relying on that directory glob alone. Test-path coverage is asserted by the workflow regression test; native six-target build, smoke and release gates stay unchanged.
 
+Each native build calls the root `pnpm typecheck` once; that script already includes the Codex bridge typecheck. Do not repeat the bridge typecheck as a separate workflow command. A regression asserts both the root-script coverage and the absence of the redundant command, without dropping any per-platform check.
+
 ## Per-push release publication
 
 ## Product identity

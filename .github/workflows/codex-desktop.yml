@@ -140,7 +140,6 @@ jobs:
       - name: Typecheck, lint, architecture and adapter tests
         run: |
           pnpm typecheck
-          pnpm --filter @codez/codex-bridge typecheck
           pnpm lint
           pnpm architecture:check
           pnpm --filter @codez/codex-bridge test
