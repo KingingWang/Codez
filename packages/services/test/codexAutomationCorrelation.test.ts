@@ -9,6 +9,7 @@ import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 import {
   buildCodexAutomationSendTextPayload,
   resolveCodexAutomationHistory,
+  resolveCodexAutomationTerminalOutcome,
 } from "../src/codez-agent/codexAutomationAdapter.js";
 import {
   CodexAutomationCorrelationRepo,
@@ -16,6 +17,7 @@ import {
   type CodexAutomationCorrelationState,
 } from "../src/session/codexAutomationCorrelation.js";
 import { runTasksDatabaseMigrations } from "../src/session/tasksDatabase/migrations.js";
+import { AutomationRepo } from "../src/session/automationRepo.js";
 
 async function createDb() {
   const root = await mkdtemp(join(tmpdir(), "codez-codex-automation-"));
@@ -40,11 +42,11 @@ function prepare(
     repo.transition({
       workspaceKey: "workspace-a",
       runId,
-      to: state === "completed" ? "accepted" : state,
+      to: state === "completed" || state === "stopped" ? "accepted" : state,
       now: 2,
     });
-    if (state === "completed") {
-      repo.transition({ workspaceKey: "workspace-a", runId, to: "completed", now: 3 });
+    if (state === "completed" || state === "stopped") {
+      repo.transition({ workspaceKey: "workspace-a", runId, to: state, now: 3 });
     }
   }
   return result.correlation;
@@ -55,7 +57,10 @@ test("migration 0004 is additive and idempotent on fresh and old databases", () 
   try {
     const db = new DatabaseSync(join(root, "tasks-index.sqlite"));
     runTasksDatabaseMigrations(db);
-    // 模拟一个已停在 0003 的旧库：删除 0004 账本与表，再完整走 runner。
+    // 模拟一个已停在 0003 的旧库：删除后续账本与表，再完整走 runner。
+    db.prepare("DELETE FROM tasks_schema_migration WHERE id = ?").run(
+      "0005_codex_automation_stopped",
+    );
     db.prepare("DELETE FROM tasks_schema_migration WHERE id = ?").run(
       "0004_codex_automation_correlations",
     );
@@ -147,6 +152,43 @@ test("duplicate preparation and terminal transitions are idempotent", async () =
   }
 });
 
+test("migration 0005 preserves old rows and allows a durable stopped terminal", async () => {
+  const { root, db } = await createDb();
+  try {
+    const repo = new CodexAutomationCorrelationRepo(db);
+    prepare(repo, "accepted", "old-run");
+    db.prepare("DELETE FROM tasks_schema_migration WHERE id=?").run(
+      "0005_codex_automation_stopped",
+    );
+    db.exec(`
+      CREATE TABLE codex_automation_correlations_v1 (
+        workspace_key TEXT NOT NULL, run_id TEXT NOT NULL, automation_id TEXT NOT NULL,
+        command_id TEXT NOT NULL,
+        state TEXT NOT NULL CHECK (state IN ('pending', 'accepted', 'unknown', 'completed', 'failed')),
+        thread_id TEXT, turn_id TEXT, error TEXT,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        PRIMARY KEY (workspace_key, run_id)
+      );
+      INSERT INTO codex_automation_correlations_v1 SELECT * FROM codex_automation_correlations;
+      DROP TABLE codex_automation_correlations;
+      ALTER TABLE codex_automation_correlations_v1 RENAME TO codex_automation_correlations;
+    `);
+    runTasksDatabaseMigrations(db);
+    assert.equal(repo.get({ workspaceKey: "workspace-a", runId: "old-run" })?.state, "accepted");
+    const stopped = repo.transition({
+      workspaceKey: "workspace-a",
+      runId: "old-run",
+      to: "stopped",
+      now: 10,
+    });
+    assert.equal(stopped.state, "stopped");
+    runTasksDatabaseMigrations(db);
+    assert.deepEqual(repo.get({ workspaceKey: "workspace-a", runId: "old-run" }), stopped);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("state machine permits only exhaustive legal transitions", async () => {
   const { root, db } = await createDb();
   try {
@@ -159,9 +201,12 @@ test("state machine permits only exhaustive legal transitions", async () => {
       ["pending", "completed", false],
       ["accepted", "completed", true],
       ["accepted", "failed", true],
+      ["accepted", "stopped", true],
       ["accepted", "unknown", false],
       ["unknown", "completed", true],
       ["unknown", "failed", true],
+      ["unknown", "stopped", true],
+      ["pending", "stopped", false],
       ["unknown", "accepted", false],
     ];
     for (const [from, to, legal] of cases) {
@@ -171,9 +216,16 @@ test("state machine permits only exhaustive legal transitions", async () => {
       const next = fresh.transition({ workspaceKey: "workspace-a", runId, to, now: 2 });
       assert.equal(next.state === to, legal, `${from} -> ${to}`);
     }
-    for (const state of ["completed", "failed"] as const) {
+    for (const state of ["completed", "failed", "stopped"] as const) {
       assert.equal(isTerminalCodexAutomationCorrelationState(state), true);
-      for (const to of ["pending", "accepted", "unknown", "completed", "failed"] as const) {
+      for (const to of [
+        "pending",
+        "accepted",
+        "unknown",
+        "completed",
+        "failed",
+        "stopped",
+      ] as const) {
         const runId = `automation-terminal-${state}-${to}`;
         const fresh = new CodexAutomationCorrelationRepo(db);
         prepare(fresh, state, runId);
@@ -267,4 +319,49 @@ test("history reconciliation matches source command id and terminal state", () =
     turnId: undefined,
   });
   assert.equal(resolveCodexAutomationHistory(rows, "missing-run"), null);
+  assert.deepEqual(
+    resolveCodexAutomationHistory(
+      [{ ...rows[1], state: "completedInterrupted" } as ConversationRow],
+      "automation-1:1000",
+    ),
+    { admitted: true, terminal: true, outcome: "stopped", turnId: undefined },
+  );
+  assert.deepEqual(
+    resolveCodexAutomationHistory(
+      [{ ...rows[1], state: "running" } as ConversationRow],
+      "automation-1:1000",
+    ),
+    { admitted: true, terminal: false, turnId: undefined },
+  );
+});
+
+test("live native phase maps success, interruption and failure to distinct outcomes", () => {
+  assert.equal(resolveCodexAutomationTerminalOutcome("completedSuccess"), "succeeded");
+  assert.equal(resolveCodexAutomationTerminalOutcome("completedInterrupted"), "stopped");
+  assert.equal(resolveCodexAutomationTerminalOutcome("error"), "failed");
+});
+
+test("settled automation history cannot be overwritten by running or a late terminal event", async () => {
+  const root = await mkdtemp(join(tmpdir(), "codez-automation-outcome-"));
+  const repo = new AutomationRepo(join(root, "tasks-index.sqlite"));
+  try {
+    await repo.ensureReady();
+    const db = new DatabaseSync(join(root, "tasks-index.sqlite"));
+    try {
+      db.prepare(
+        `INSERT INTO automation_runs
+          (run_id, automation_id, workspace_key, trigger, created_at, updated_at)
+         VALUES ('run-stop', 'automation-1', 'workspace-a', 'manual', 1, 1)`,
+      ).run();
+    } finally {
+      db.close();
+    }
+    await repo.markRunOutcome("run-stop", "stopped");
+    await repo.markRunOutcome("run-stop", "running");
+    await repo.markRunOutcome("run-stop", "succeeded");
+    assert.equal((await repo.getRun("run-stop"))?.outcome, "stopped");
+  } finally {
+    repo.close();
+    await rm(root, { recursive: true, force: true });
+  }
 });

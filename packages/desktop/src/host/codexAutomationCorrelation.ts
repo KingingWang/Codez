@@ -1,10 +1,24 @@
 import type { ICodezAgentService } from "@codez/services";
+import type { CodexAutomationCorrelationState } from "@codez/services/node";
 import {
   isCodexScheduledPromptCapabilitySupported,
   resolveCodexAutomationHistory,
   type CodexAutomationHistoryResolution,
 } from "@codez/services/node";
 import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
+import type { CodezAutomationRunOutcome } from "@codez/shared";
+
+export function codexCorrelationStateFromRunOutcome(
+  outcome: Exclude<CodezAutomationRunOutcome, "running">,
+): "completed" | "failed" | "stopped" {
+  return outcome === "succeeded" ? "completed" : outcome;
+}
+
+export function codexRunOutcomeFromCorrelationState(
+  state: Extract<CodexAutomationCorrelationState, "completed" | "failed" | "stopped">,
+): Exclude<CodezAutomationRunOutcome, "running"> {
+  return state === "completed" ? "succeeded" : state;
+}
 
 export type CodexAutomationHistoryReconciliation =
   | { kind: "resolved"; resolution: CodexAutomationHistoryResolution }

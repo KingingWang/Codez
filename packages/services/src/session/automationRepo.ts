@@ -1342,19 +1342,14 @@ export class AutomationRepo {
     error?: string,
   ): Promise<void> {
     await this.ensureReady();
+    // 修复原因：恢复/迟到回调可能重放成功或 running；已结算的 stopped 等终态不能再被覆盖。
     this.getDatabase()
       .prepare(
         `UPDATE automation_runs
-        SET outcome = CASE
-              WHEN @outcome = 'running' AND outcome IS NOT NULL AND outcome <> 'running' THEN outcome
-              ELSE @outcome
-            END,
-            error = CASE
-              WHEN @outcome = 'running' AND outcome IS NOT NULL AND outcome <> 'running' THEN error
-              ELSE COALESCE(@error, error)
-            END,
+        SET outcome = @outcome,
+            error = COALESCE(@error, error),
             updated_at = @now
-        WHERE run_id = @run_id`,
+        WHERE run_id = @run_id AND (outcome IS NULL OR outcome = 'running')`,
       )
       .run({ run_id: runId, outcome, error: error ?? null, now: Date.now() });
   }

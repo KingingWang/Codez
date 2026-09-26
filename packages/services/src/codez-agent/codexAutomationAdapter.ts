@@ -28,7 +28,23 @@ export function buildCodexAutomationSendTextPayload(
 
 export type CodexAutomationHistoryResolution =
   | { admitted: true; terminal: false; turnId?: string }
-  | { admitted: true; terminal: true; outcome: "completed" | "failed"; turnId?: string };
+  | {
+      admitted: true;
+      terminal: true;
+      outcome: "completed" | "failed" | "stopped";
+      turnId?: string;
+    };
+
+export function resolveCodexAutomationTerminalOutcome(
+  phase: "completedSuccess" | "completedInterrupted" | "error",
+): "succeeded" | "stopped" | "failed" {
+  // 修复原因：turn.completed 合并了正常完成和用户停止；必须依据 native phase 判定运行结果。
+  return phase === "completedSuccess"
+    ? "succeeded"
+    : phase === "completedInterrupted"
+      ? "stopped"
+      : "failed";
+}
 
 export function resolveCodexAutomationHistory(
   rows: readonly ConversationRow[],
@@ -42,7 +58,12 @@ export function resolveCodexAutomationHistory(
     return {
       admitted: true,
       terminal: true,
-      outcome: turn.state === "completedSuccess" ? "completed" : "failed",
+      outcome:
+        turn.state === "completedSuccess"
+          ? "completed"
+          : turn.state === "completedInterrupted"
+            ? "stopped"
+            : "failed",
       turnId: turn.turnId,
     };
   }
