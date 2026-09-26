@@ -19,6 +19,25 @@ export interface ModelSelectionRead {
   reload(): void;
 }
 
+/** 目标 Host 的模型事实按 workspace 读取；无显式选择输入的旧调用保持原行为。 */
+export function attachWorkspaceToModelSelectionInput(
+  input: ModelSelectionViewInput | undefined,
+  workspacePath: string | null | undefined,
+  workspaceIdentity?: string | null,
+): ModelSelectionViewInput | undefined {
+  if (!input || !workspacePath?.trim()) return input;
+  // Codex Host 缺 workspace 会返回空目录，导致自动化表单无模型且创建按钮禁用。
+  // 由此处唯一地把 hook 的目标 workspace 传给既有 getView 入参，切项目时旧请求仍由
+  // useModelSelectionServiceView 的 generation/inputKey 守卫丢弃。
+  return {
+    ...input,
+    workspace: {
+      workspacePath,
+      ...(workspaceIdentity?.trim() ? { workspaceIdentity: workspaceIdentity.trim() } : {}),
+    },
+  };
+}
+
 interface OwnedModelSelectionState {
   service: IModelSelectionService | null;
   enabled: boolean;
@@ -209,11 +228,12 @@ export function useModelSelectionView(
   const eventWorkspaceKey = hasTarget
     ? workspaceIdentity?.trim() || workspacePath || undefined
     : undefined;
+  const scopedInput = attachWorkspaceToModelSelectionInput(input, workspacePath, workspaceIdentity);
   return useModelSelectionServiceView(
     resolution.services.modelSelectionService,
     hasTarget && !remoteWaiting,
     hasTarget ? "remote-waiting" : "missing-target",
-    input,
+    scopedInput,
     eventWorkspaceKey,
   );
 }

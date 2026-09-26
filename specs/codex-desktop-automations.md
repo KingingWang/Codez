@@ -51,6 +51,17 @@ Capability `scheduledPromptAutomations` is `supported` only when all native disp
 
 The desktop app renders the automations page directly; it must not gate the whole page behind the blanket "Codex adapter unsupported" notice. Scheduled prompts are supported on the Codex adapter, so `automations` is not a Codex-unsupported settings section. Tabs that depend on server-side gray configuration keep their own gating: the off-peak tab stays hidden unless the off-peak gray config enables it (or non-terminal tasks exist), and the saved-workflows tab stays hidden unless the dynamic-workflow gray config enables it. Template loading failure keeps the manual creation entry.
 
+### Model selection for scheduled prompts
+
+The selected automation workspace owns the model-catalog target. The UI's workspace-scoped model-selection hook passes its `workspacePath` and optional `workspaceIdentity` in the existing `ModelSelectionViewInput.workspace` together with the form's selection. The Codex Host reads `config/read` and `model/list` for that target; the legacy Host ignores the workspace field. No separate renderer catalog or writes to workspace defaults are permitted.
+
+```text
+select project → resolve its Host and workspace identity → read Host model view
+  → show available models and preferred selection → validate fields → enable Create
+```
+
+Changing projects invalidates the previous model selection and view; a late response from the previous Host must not enable creation for the new project. Missing target, failed reads, or a catalog without a selectable model keep Create disabled and show the existing unavailable/error state. An explicitly selected model and its reasoning level must be preserved on refresh; the form must not synthesize a missing Codex effort.
+
 ## Acceptance scenarios
 
 1. Migration `0004` succeeds on old/new databases, is idempotent, and enforces `(workspaceKey, runId)` uniqueness.
@@ -62,3 +73,4 @@ The desktop app renders the automations page directly; it must not gate the whol
 7. Every unlisted state transition is rejected and terminal rows ignore late/deletion events.
 8. Disable/delete affects future scheduling only; native completion and failure settlement remain idempotent.
 9. Missing/degraded capability prevents native send and leaves a recoverable scheduler state rather than fabricating execution.
+10. In a local Codex project with a native default model, opening Create shows the Host's models; completing title, schedule and prompt enables Create, and submission carries the selected native model. Switching to a second workspace reads its own model catalog without using stale choices. An unavailable workspace keeps Create disabled with an actionable read failure.
