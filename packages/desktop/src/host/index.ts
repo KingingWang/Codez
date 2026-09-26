@@ -151,6 +151,8 @@ import { createWindowHostControllerRuntime } from "./windowHostControllerService
 import { resolveAutomationSubmissionModelSelection } from "./automationModelSelection.js";
 import {
   assertCodexScheduledPromptCapability,
+  codexCorrelationStateFromRunOutcome,
+  codexRunOutcomeFromCorrelationState,
   reconcileCodexAutomationHistory,
 } from "./codexAutomationCorrelation.js";
 import { createRemoteConnectionProgressContext } from "@codez/server/remote/remoteConnectionProgressContext.js";
@@ -821,22 +823,28 @@ function trackCronRunOutcome(params: {
   const disposable = params.codezTaskService.onDynamicTaskTerminalOutcome(params.taskId)(
     (result) => {
       if (result.inputId !== params.traceId) return;
-      markCodexAutomationCorrelationTerminal({
-        workspaceKey: params.workspaceKey,
-        runId: params.runId,
-        threadId: params.taskId,
-        // correlation v1 只有 completed/failed；native stopped 归入 failed，
-        // automation_runs 仍保留原有 stopped 展示语义。
-        outcome: result.outcome === "succeeded" ? "succeeded" : "failed",
-        error: result.error,
-      });
-      void settleCronRunTerminalOutcome({
-        ...params,
-        outcome: result.outcome,
-        error: result.error,
-        repo: cronAutomationRepo,
-        logWarn: (message, error) => logger.warn(message, error),
-      });
+      void (async () => {
+        const state = await markCodexAutomationCorrelationTerminal({
+          workspaceKey: params.workspaceKey,
+          runId: params.runId,
+          threadId: params.taskId,
+          outcome: result.outcome,
+          error: result.error,
+        });
+        // 修复原因：终态持久化先于历史投影；重复/迟到事件以已存 correlation 为准。
+        await settleCronRunTerminalOutcome({
+          ...params,
+          outcome:
+            state === "completed" || state === "failed" || state === "stopped"
+              ? codexRunOutcomeFromCorrelationState(state)
+              : result.outcome,
+          error: result.error,
+          repo: cronAutomationRepo,
+          logWarn: (message, error) => logger.warn(message, error),
+        });
+      })().catch((error) =>
+        logger.warn(`结算 Codex automation 终态失败 runId=${params.runId}`, error),
+      );
       // 定时任务在后台完成后统一置为未读，真正打开 task 时再由导航链路清除。
       void params.codezTaskService.setTaskUnread({
         taskId: params.taskId,
@@ -863,42 +871,46 @@ function trackCronRunOutcome(params: {
   });
 }
 
-function markCodexAutomationCorrelationTerminal(params: {
+async function markCodexAutomationCorrelationTerminal(params: {
   workspaceKey: string;
   runId: string;
   threadId: string;
-  outcome: "succeeded" | "failed";
+  outcome: "succeeded" | "failed" | "stopped";
   error?: string;
-}): void {
-  void (async () => {
-    try {
-      const current = await cronAutomationRepo.getCodexAutomationCorrelation({
-        workspaceKey: params.workspaceKey,
-        runId: params.runId,
-      });
-      // 终态事件可能先于 sendPrompt ACK 返回。pending 先落 unknown，再用权威终态收敛；
-      // 这保留“没有 ACK 不代表 accepted”的状态机边界。
-      if (current?.state === "pending") {
-        await cronAutomationRepo.transitionCodexAutomationCorrelation({
-          workspaceKey: params.workspaceKey,
-          runId: params.runId,
-          to: "unknown",
-          threadId: params.threadId,
-          now: Date.now(),
-        });
-      }
+}): Promise<"completed" | "failed" | "stopped" | null> {
+  try {
+    const current = await cronAutomationRepo.getCodexAutomationCorrelation({
+      workspaceKey: params.workspaceKey,
+      runId: params.runId,
+    });
+    // 终态事件可能先于 sendPrompt ACK 返回。pending 先落 unknown，再用权威终态收敛；
+    // 这保留“没有 ACK 不代表 accepted”的状态机边界。
+    if (current?.state === "pending") {
       await cronAutomationRepo.transitionCodexAutomationCorrelation({
         workspaceKey: params.workspaceKey,
         runId: params.runId,
-        to: params.outcome === "succeeded" ? "completed" : "failed",
+        to: "unknown",
         threadId: params.threadId,
-        error: params.error,
         now: Date.now(),
       });
-    } catch (error) {
-      logger.warn(`回写 Codex automation correlation 终态失败 runId=${params.runId}`, error);
     }
-  })();
+    const settled = await cronAutomationRepo.transitionCodexAutomationCorrelation({
+      workspaceKey: params.workspaceKey,
+      runId: params.runId,
+      to: codexCorrelationStateFromRunOutcome(params.outcome),
+      threadId: params.threadId,
+      error: params.error,
+      now: Date.now(),
+    });
+    return settled.state === "completed" ||
+      settled.state === "failed" ||
+      settled.state === "stopped"
+      ? settled.state
+      : null;
+  } catch (error) {
+    logger.warn(`回写 Codex automation correlation 终态失败 runId=${params.runId}`, error);
+    return null;
+  }
 }
 
 async function dispatchExistingCronRunCorrelation(params: {
@@ -918,8 +930,12 @@ async function dispatchExistingCronRunCorrelation(params: {
   });
   if (!correlation?.threadId) throw new Error("Codex automation correlation has no thread id");
 
-  if (correlation.state === "completed" || correlation.state === "failed") {
-    const outcome = correlation.state === "completed" ? "succeeded" : "failed";
+  if (
+    correlation.state === "completed" ||
+    correlation.state === "failed" ||
+    correlation.state === "stopped"
+  ) {
+    const outcome = codexRunOutcomeFromCorrelationState(correlation.state);
     await settleCronRunTerminalOutcome({
       ...params,
       repo: cronAutomationRepo,
@@ -938,8 +954,7 @@ async function dispatchExistingCronRunCorrelation(params: {
   });
   if (reconciliation.kind === "resolved" && reconciliation.resolution.terminal) {
     const correlationOutcome = reconciliation.resolution.outcome;
-    const outcome = correlationOutcome === "completed" ? "succeeded" : "failed";
-    await cronAutomationRepo.transitionCodexAutomationCorrelation({
+    const settled = await cronAutomationRepo.transitionCodexAutomationCorrelation({
       workspaceKey: params.workspaceKey,
       runId: params.runId,
       to: correlationOutcome,
@@ -950,7 +965,11 @@ async function dispatchExistingCronRunCorrelation(params: {
     await settleCronRunTerminalOutcome({
       ...params,
       repo: cronAutomationRepo,
-      outcome,
+      // 修复原因：历史回放与实时事件并发时，以持久化终态为准，不重写 stopped。
+      outcome:
+        settled.state === "completed" || settled.state === "failed" || settled.state === "stopped"
+          ? codexRunOutcomeFromCorrelationState(settled.state)
+          : codexRunOutcomeFromCorrelationState(correlationOutcome),
       logWarn: (message, error) => logger.warn(message, error),
     });
     return { taskId: correlation.threadId, sessionId: correlation.threadId };

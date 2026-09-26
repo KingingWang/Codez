@@ -81,6 +81,8 @@ interface WorkspaceBroadcastTarget {
 
 export interface CodezTaskIndexTerminalEvent {
   target: CodezAgentSessionTarget;
+  /** v4 phase 不可丢：同为 turn.completed 的中断与成功对 automation 是不同结果。 */
+  phase: "completedSuccess" | "completedInterrupted" | "error";
   /** v4 phase 终态映射：completedSuccess/completedInterrupted → turn.completed；error → turn.failed。 */
   kind: "turn.completed" | "turn.failed";
 }
@@ -177,7 +179,7 @@ interface CreateCodezTaskIndexSyncerOptions {
 }
 
 /** phase 终态集合（sessions-index 的 conflated 最新态里判定迁移用）。 */
-function isTerminalPhase(phase: SessionPhase): boolean {
+function isTerminalPhase(phase: SessionPhase): phase is CodezTaskIndexTerminalEvent["phase"] {
   return phase === "completedSuccess" || phase === "completedInterrupted" || phase === "error";
 }
 
@@ -556,10 +558,12 @@ export function createCodezTaskIndexSyncer(
 
   function emitTerminalAndReady(target: CodezAgentSessionTarget, summary: SessionSummary): void {
     const phase = summary.phase;
+    if (!isTerminalPhase(phase)) return;
     const failed = phase === "error";
     // 顺序保持旧协议语义：先 turn 终态（收口当前 input），再 prompt ready（放行下一条）。
     terminalEventEmitter.fire({
       target,
+      phase,
       kind: failed ? "turn.failed" : "turn.completed",
     });
     readyEventEmitter.fire({

@@ -141,7 +141,10 @@ import type {
   CodezTaskIndexTerminalEvent,
 } from "./codezTaskIndexSyncer.js";
 import { readModelTrajectory } from "./modelTrajectory.js";
-import { buildCodexAutomationSendTextPayload } from "./codexAutomationAdapter.js";
+import {
+  buildCodexAutomationSendTextPayload,
+  resolveCodexAutomationTerminalOutcome,
+} from "./codexAutomationAdapter.js";
 import { errorAttributionSchema, type CommandPayloadMap } from "@codez/shared/codez-protocol-v4";
 import {
   assertV4CommandAckOk,
@@ -3062,8 +3065,7 @@ export function createCodezTaskServiceAdapter(
     },
 
     onDynamicTaskTerminalOutcome(taskId: string): Event<CodezTaskTerminalOutcome> {
-      // 合并迁移：V4 syncer 只暴露归一化后的终态 kind，不再携带旧协议 event payload。
-      // automation 只需要稳定收口运行结果，因此 completed/failed 在此映射为公开 outcome。
+      // 修复原因：kind 把 native 中断并入 turn.completed；automation 必须读原始 phase。
       return (listener) =>
         taskIndexSyncer.onSessionTerminalEvent((terminal) => {
           if (terminal.target.sessionId !== taskId) {
@@ -3078,7 +3080,7 @@ export function createCodezTaskServiceAdapter(
           listener({
             taskId,
             ...(inputId ? { inputId } : {}),
-            outcome: terminal.kind === "turn.failed" ? "failed" : "succeeded",
+            outcome: resolveCodexAutomationTerminalOutcome(terminal.phase),
           });
         });
     },

@@ -6,22 +6,24 @@ export const CODEX_AUTOMATION_CORRELATION_STATES = [
   "unknown",
   "completed",
   "failed",
+  "stopped",
 ] as const;
 
 export type CodexAutomationCorrelationState = (typeof CODEX_AUTOMATION_CORRELATION_STATES)[number];
 
 const legalTransitions: Record<CodexAutomationCorrelationState, ReadonlySet<string>> = {
   pending: new Set(["accepted", "failed", "unknown"]),
-  accepted: new Set(["completed", "failed"]),
-  unknown: new Set(["completed", "failed"]),
+  accepted: new Set(["completed", "failed", "stopped"]),
+  unknown: new Set(["completed", "failed", "stopped"]),
   completed: new Set(),
   failed: new Set(),
+  stopped: new Set(),
 };
 
 export function isTerminalCodexAutomationCorrelationState(
   state: CodexAutomationCorrelationState,
 ): boolean {
-  return state === "completed" || state === "failed";
+  return state === "completed" || state === "failed" || state === "stopped";
 }
 
 export interface CodexAutomationCorrelation {

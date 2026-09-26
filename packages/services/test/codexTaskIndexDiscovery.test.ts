@@ -85,7 +85,7 @@ async function createHarness(options: HarnessOptions) {
   );
   let subscriptionSequence = 0;
   const readSessionCalls: Error[] = [];
-  const terminalEvents: string[] = [];
+  const terminalEvents: Array<{ kind: string; phase: string; sessionId: string }> = [];
   const readyEvents: string[] = [];
   const agentService = {
     async subscribeSessionsIndexV4() {
@@ -126,7 +126,13 @@ async function createHarness(options: HarnessOptions) {
     agentService,
     taskIndexRepo: options.taskIndexRepo,
   });
-  syncer.onSessionTerminalEvent((event) => terminalEvents.push(event.kind));
+  syncer.onSessionTerminalEvent((event) =>
+    terminalEvents.push({
+      kind: event.kind,
+      phase: event.phase,
+      sessionId: event.target.sessionId,
+    }),
+  );
   syncer.onSessionReadyEvent((event) => readyEvents.push(event.reason));
   syncer.onDynamicWorkspaceEvent(options.workspace)((event) => {
     if (event.type === "workspace_task_list_changed") {
@@ -312,6 +318,38 @@ test("late discovered terminal summary seeds a row without loading native histor
       3,
     );
     assert.equal(harness.listEvents.length, 1);
+  } finally {
+    harness.syncer.disposeAll();
+    repo.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("live terminal event preserves interrupted phase and is not replayed after completion", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "codez-codex-index-stop-"));
+  const repo = new TaskIndexRepo(join(dir, "tasks.sqlite"));
+  const workspace = { workspacePath: "/remote/project", workspaceIdentity: "ssh:remote-stop" };
+  const harness = await createHarness({
+    taskIndexRepo: repo,
+    workspace,
+    summaries: [summary("automation-thread", "running")],
+  });
+  try {
+    await harness.sendInitialSnapshot();
+    await harness.sendFrame(
+      "online",
+      snapshot([summary("automation-thread", "completedInterrupted")]),
+      2,
+    );
+    assert.deepEqual(harness.terminalEvents, [
+      { kind: "turn.completed", phase: "completedInterrupted", sessionId: "automation-thread" },
+    ]);
+    await harness.sendFrame(
+      "online",
+      snapshot([summary("automation-thread", "completedInterrupted")]),
+      3,
+    );
+    assert.equal(harness.terminalEvents.length, 1);
   } finally {
     harness.syncer.disposeAll();
     repo.close();
