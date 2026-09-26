@@ -83,6 +83,28 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   assert.ok(release.steps.some((step) => step.uses?.startsWith("actions/checkout")));
 });
 
+test("workflow includes automation and Git UI regressions outside the Codex settings directory", async () => {
+  const require = createRequire(new URL("../packages/desktop/package.json", import.meta.url));
+  const workflow = require("yaml").parse(
+    await readFile(new URL("../.github/workflows/codex-desktop.yml", import.meta.url), "utf8"),
+  );
+  const commands = workflow.jobs["remote-assets"].steps
+    .map((step) => step.run ?? "")
+    .filter((command) => command.includes("tsx --tsconfig packages/ui/tsconfig.json --test"));
+  for (const path of [
+    "packages/ui/src/hooks/useModelSelectionView.test.ts",
+    "packages/ui/src/settings/automationEditValidation.test.ts",
+    "packages/ui/src/v4/ConversationStatusPanel.test.tsx",
+    "packages/ui/src/v4/conversationStatusPanelModel.test.ts",
+    "packages/ui/src/capabilities/useGitAuxiliaryCapability.test.ts",
+  ]) {
+    assert.ok(
+      commands.some((command) => command.includes(path)),
+      `Missing UI regression: ${path}`,
+    );
+  }
+});
+
 async function loadRuntimeModule(t, source, flavor = "codex", plugins = []) {
   const directory = await mkdtemp(join(tmpdir(), "codez-identity-test-"));
   t.after(() => rm(directory, { recursive: true, force: true }));

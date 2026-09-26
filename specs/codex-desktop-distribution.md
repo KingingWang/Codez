@@ -24,6 +24,8 @@ manifests. Every branch/tag push builds and automatically publishes a public
 release after all six targets pass; pull requests never publish. Build jobs need
 read-only repository permissions.
 
+The Linux regression gate also explicitly runs the UI tests for workspace-scoped automation model reads, valid default-model submission, and clean-repository Git tools. These tests live outside `settings/codex/` and must not be lost by relying on that directory glob alone. Test-path coverage is asserted by the workflow regression test; native six-target build, smoke and release gates stay unchanged.
+
 ## Per-push release publication
 
 ## Product identity
