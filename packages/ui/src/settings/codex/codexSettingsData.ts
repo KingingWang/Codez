@@ -287,14 +287,8 @@ export function isCodexSettingsSection(section: string): boolean {
   return ["codex", "modelProvider", "skill", "subagents", "mcp", "plugin"].includes(section);
 }
 
+// 定时任务（automations）在 Codex 适配器上已支持（spec: codex-desktop-automations
+// UI surfacing），不能再归入不支持分区；闲时/工作流标签页由页面内部灰度裁决。
 export function isCodexUnsupportedSection(section: string): boolean {
-  return [
-    "memory",
-    "commands",
-    "hooks",
-    "browser",
-    "computerUse",
-    "automations",
-    "migration",
-  ].includes(section);
+  return ["memory", "commands", "hooks", "browser", "computerUse", "migration"].includes(section);
 }

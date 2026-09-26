@@ -99,7 +99,7 @@ const en = {
   disabled: "Disabled",
   unsupported: "Not available in the Codex adapter",
   parity:
-    "Legacy workflows, scheduled/off-peak behavior, cloud sharing and migration have no verified Codex parity. Native Browser is available degraded; Computer Use is not available. Git, files and terminal remain available.",
+    "Legacy workflows, cloud sharing and migration have no verified Codex parity. Scheduled automations run as native turns; off-peak tasks follow server gray availability. Native Browser is available degraded; Computer Use is not available. Git, files and terminal remain available.",
   openSettings: "Open Codex settings",
   scope: "Workspace",
   mutations:
@@ -233,7 +233,7 @@ const zh: Record<keyof typeof en, string> = {
   disabled: "已禁用",
   unsupported: "Codex 适配器尚不支持",
   parity:
-    "旧工作流、定时与闲时执行、云分享和迁移尚无 Codex 等价能力验证。原生 Browser 已降级可用；Computer Use 暂不可用。Git、文件与终端仍可使用。",
+    "旧工作流、云分享和迁移尚无 Codex 等价能力验证。定时任务以原生轮次执行；闲时任务跟随服务端灰度开放。原生 Browser 已降级可用；Computer Use 暂不可用。Git、文件与终端仍可使用。",
   openSettings: "打开 Codex 设置",
   scope: "工作区",
   mutations: "更改会影响此 Host 的原生 Codex 配置，也可能影响使用同一 Codex home 的其他工作区。",

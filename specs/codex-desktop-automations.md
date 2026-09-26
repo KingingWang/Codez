@@ -47,6 +47,10 @@ Codex native commands contain text, model selection, mode/collaboration intent, 
 
 Capability `scheduledPromptAutomations` is `supported` only when all native dispatch, command idempotency, and history-correlation operations are available. A missing or failed capability read is treated as unsupported and prevents the side-effectful send; a bounded implementation reports `degraded` with its reason.
 
+## UI surfacing
+
+The desktop app renders the automations page directly; it must not gate the whole page behind the blanket "Codex adapter unsupported" notice. Scheduled prompts are supported on the Codex adapter, so `automations` is not a Codex-unsupported settings section. Tabs that depend on server-side gray configuration keep their own gating: the off-peak tab stays hidden unless the off-peak gray config enables it (or non-terminal tasks exist), and the saved-workflows tab stays hidden unless the dynamic-workflow gray config enables it. Template loading failure keeps the manual creation entry.
+
 ## Acceptance scenarios
 
 1. Migration `0004` succeeds on old/new databases, is idempotent, and enforces `(workspaceKey, runId)` uniqueness.

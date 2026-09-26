@@ -46,10 +46,7 @@ import type {
 } from "@/settings/saved-workflows/SavedWorkflowsSection.js";
 import { AutomationsMainBreadcrumbFrame } from "@/settings/AutomationsMainBreadcrumbFrame.js";
 import { PluginStorePage } from "@/settings/PluginStorePage.js";
-import {
-  CodexCapabilityNotice,
-  CodexSettingsSection,
-} from "@/settings/codex/CodexSettingsSection.js";
+import { CodexSettingsSection } from "@/settings/codex/CodexSettingsSection.js";
 import { TaskFindDialog } from "@/quickpick/TaskFindDialog.js";
 import { WorkspaceHeader } from "@/WorkspaceHeader.js";
 import { WorkspaceSidebar, type SidebarFileTreeOpenRequest } from "@/WorkspaceSidebar.js";
@@ -1774,32 +1771,31 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                                 className="min-h-full"
                               >
                                 <div className="mx-auto flex w-full max-w-5xl flex-col px-4 py-4 md:px-6 md:py-6">
-                                  {isDesktop ? (
-                                    <CodexCapabilityNotice />
-                                  ) : (
-                                    <AutomationsSection
-                                      workspacePath={workspaceAbsPath}
-                                      workspaceIdentity={workspaceIdentity}
-                                      onCreateViaChat={handleCreateAutomationInChat}
-                                      onNavigateToLaunchedRun={handleNavigateToLaunchedRun}
-                                      onOpenWorkflowRun={handleOpenSavedWorkflowRun}
-                                      onOpenWorkflowArtifact={handleOpenSavedWorkflowArtifact}
-                                      openAutomationId={openAutomationId}
-                                      openAutomationTab={openAutomationTab}
-                                      onOpenAutomationConsumed={onOpenAutomationConsumed}
-                                      onOpenSession={({
-                                        sessionId,
+                                  {/* 定时任务在 Codex 适配器上已支持（spec: codex-desktop-automations
+                                      UI surfacing），不能再整页挡在“Codex 适配器尚不支持”后面；
+                                      闲时/工作流标签页仍由各自灰度配置在 AutomationsSection 内部裁决。 */}
+                                  <AutomationsSection
+                                    workspacePath={workspaceAbsPath}
+                                    workspaceIdentity={workspaceIdentity}
+                                    onCreateViaChat={handleCreateAutomationInChat}
+                                    onNavigateToLaunchedRun={handleNavigateToLaunchedRun}
+                                    onOpenWorkflowRun={handleOpenSavedWorkflowRun}
+                                    onOpenWorkflowArtifact={handleOpenSavedWorkflowArtifact}
+                                    openAutomationId={openAutomationId}
+                                    openAutomationTab={openAutomationTab}
+                                    onOpenAutomationConsumed={onOpenAutomationConsumed}
+                                    onOpenSession={({
+                                      sessionId,
+                                      workspacePath,
+                                      workspaceIdentity,
+                                    }) =>
+                                      handleSelectTaskInChat(
                                         workspacePath,
+                                        sessionId,
                                         workspaceIdentity,
-                                      }) =>
-                                        handleSelectTaskInChat(
-                                          workspacePath,
-                                          sessionId,
-                                          workspaceIdentity,
-                                        )
-                                      }
-                                    />
-                                  )}
+                                      )
+                                    }
+                                  />
                                 </div>
                               </ScopedErrorBoundary>
                             </div>
