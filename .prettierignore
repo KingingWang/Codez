@@ -5,6 +5,8 @@ apps/codez-cli/
 
 # 本地代理的会话/指标文件由运行时持续写入，不属于产品源码或格式化输入。
 .omx/
+# MindFS 元数据同属本地运行数据，不因格式检查改写或纳入源码。
+.mindfs/
 
 # 这两个 fixture 是 dynamic-workflow 子包的图测试输入，刻意使用 for await 的非法 TS 语法，
 # oxfmt 解析会报错；只排除这两个文件，其余 graphs fixture 仍参与格式检查。
