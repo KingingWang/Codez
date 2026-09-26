@@ -53,10 +53,7 @@ import type {
 } from "@/settings/saved-workflows/SavedWorkflowsSection.js";
 import { AutomationsMainBreadcrumbFrame } from "@/settings/AutomationsMainBreadcrumbFrame.js";
 import { PluginStorePage } from "@/settings/PluginStorePage.js";
-import {
-  CodexCapabilityNotice,
-  CodexSettingsSection,
-} from "@/settings/codex/CodexSettingsSection.js";
+import { CodexSettingsSection } from "@/settings/codex/CodexSettingsSection.js";
 import { TaskFindDialog } from "@/quickpick/TaskFindDialog.js";
 import { WebRemoteControlMobileShell } from "@/WebRemoteControlMobileShell.js";
 import { WorkspaceHeader } from "@/WorkspaceHeader.js";
@@ -2696,7 +2693,8 @@ export const WorkspaceShellLayout = memo(
                             className="min-h-full"
                           >
                             <div className="mx-auto flex w-full max-w-5xl flex-col px-4 py-4 md:px-6 md:py-6">
-                              {isDesktop ? <CodexCapabilityNotice /> : <AutomationsSection
+                              {/* Codex 自动化已支持，保留上游布局与灰度裁决，不再用能力提示挡住页面。 */}
+                              <AutomationsSection
                                 workspacePath={workspaceAbsPath}
                                 workspaceIdentity={workspaceIdentity}
                                 onCreateViaChat={handleCreateAutomationInChat}
@@ -2719,7 +2717,7 @@ export const WorkspaceShellLayout = memo(
                                     workspaceIdentity,
                                   )
                                 }
-                              />}
+                              />
                             </div>
                           </ScopedErrorBoundary>
                         </div>

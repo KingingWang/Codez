@@ -276,8 +276,11 @@ test("workspace reads carry native cwd and malformed lists fail rather than look
 test("legacy settings routes resolve to Codex or explicit unsupported capability notices", () => {
   for (const route of ["codex", "modelProvider", "skill", "subagents", "mcp", "plugin"])
     assert.equal(isCodexSettingsSection(route), true);
-  for (const route of ["automations", "computerUse", "browser", "migration"])
+  for (const route of ["computerUse", "browser", "migration"])
     assert.equal(isCodexUnsupportedSection(route), true);
+  // 定时任务在 Codex 适配器已支持（spec: codex-desktop-automations UI surfacing），
+  // 自动化分区不能再落入“不支持”列表。
+  assert.equal(isCodexUnsupportedSection("automations"), false);
   assert.equal(isCodexUnsupportedSection("appearance"), false);
   assert.equal(isCodexSettingsSection("general"), false);
 });
