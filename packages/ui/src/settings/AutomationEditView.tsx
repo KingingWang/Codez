@@ -2688,17 +2688,25 @@ export function AutomationEditView({
                         "w-fit max-w-72 min-w-0 shrink @max-sm/composer:size-7 @max-sm/composer:justify-center @max-sm/composer:gap-0 @max-sm/composer:p-0",
                       )}
                       triggerIconClassName="inline-flex @sm/composer:hidden"
+                      pending={modelSelectionRead.state.status === "loading"}
+                      pendingLabel={intl.formatMessage({ id: "common.loading" })}
                       disabled={modelSelectionRead.state.status !== "ready"}
                     />
+                    {/* 读取未完成时仅禁用模型按钮会隐藏原因；复用读取状态展示加载和失败反馈。 */}
                     {modelSelectionRead.state.status === "error" ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="xs"
-                        onClick={modelSelectionRead.reload}
-                      >
-                        {intl.formatMessage({ id: "common.retry" })}
-                      </Button>
+                      <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1">
+                        <span role="status" className="text-ui-sm text-destructive">
+                          {intl.formatMessage({ id: "root.modelSelection.loadFailed" })}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          onClick={modelSelectionRead.reload}
+                        >
+                          {intl.formatMessage({ id: "common.retry" })}
+                        </Button>
+                      </div>
                     ) : null}
                     {thoughtLevelOption ? (
                       <ThoughtLevelCycleControl
