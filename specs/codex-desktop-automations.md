@@ -54,6 +54,8 @@ The native send occurs at most once per `(workspaceKey, runId)`. A transport fai
 
 The scheduler suppresses duplicate dispatch and terminal settlement using the correlation state. Late native terminal events remain valid and settle at most once. History deletion is audited only after the correlation is terminal.
 
+Reconciliation stops reading older pages as soon as the existing resolver identifies a terminal turn for the requested command id. An unrelated older-page failure must not invalidate an already observed terminal result. A matching user input or running turn is not sufficient for this shortcut: without a terminal match, preserve full pagination, admission semantics and missing/transient/deleted-thread results. Pagination progress checks remain in place. This is a read optimization only: no new state owner, cache, schema migration or desktop/mobile delivery behavior is introduced.
+
 ## Native command boundary
 
 Codex native commands contain text, model selection, mode/collaboration intent, and the run id as command/client message id. They do not contain `automationId`, `offPeakTaskId`, `toolDisallowlist`, `modelExecution`, off-peak execution fields, or attachment claims. Task-index attribution may retain the Codez automation id for grouping/navigation, but it is never sent as native execution context.
@@ -93,3 +95,4 @@ The native model view may provide a configured custom default absent from discov
 12. Start a scheduled or manual automation, stop its matching native turn: the session says Stopped and its history says Stopped, both immediately and after restart/ACK loss. An ordinary completion says Succeeded; a native error says Failed. An unrelated session's terminal event cannot settle this run.
 13. Replayed, duplicate or late terminal events cannot overwrite an already settled result, particularly Stopped. A running or not-yet-terminal native turn stays unresolved during reconciliation; no ACK or connectivity loss alone may fabricate Stopped.
 14. Fresh and existing databases accept the new `stopped` correlation terminal after migration `0005`; preexisting rows remain unchanged and repeated migrations are idempotent.
+15. A requested run terminal (success, failure or interruption) in the first history page resolves after one read even when `hasMore` is true; no older page is requested. Unrelated terminal turns, matching user input and running turns do not authorize this shortcut, and existing pagination/error cases remain unchanged.

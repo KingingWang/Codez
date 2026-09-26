@@ -90,6 +90,15 @@ export async function reconcileCodexAutomationHistory(params: {
       if (hasMore && firstRowId === beforeRowId) {
         return { kind: "unavailable", error: new Error("History pagination did not advance") };
       }
+      // 修复原因：已找到本次运行终态后，旧页失败不应推翻结果；只在本页出现目标回合时复查，避免逐页重扫全部历史。
+      if (
+        page.rows.some(
+          (row) => row.kind === "turnHeader" && row.sourceCommandId === params.commandId,
+        )
+      ) {
+        const resolution = resolveCodexAutomationHistory(rows, params.commandId);
+        if (resolution?.terminal) return { kind: "resolved", resolution };
+      }
       beforeRowId = firstRowId;
     } while (hasMore);
   } catch (error) {
