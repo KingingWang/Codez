@@ -237,7 +237,9 @@ for (const text of invalidFrames) {
     `invalid frame fails closed without exposing payload: ${invalidFrames.indexOf(text)}`,
     options,
     async (t) => {
-      const { process } = await fixture(t);
+      // macOS CI 冷启动波动曾让 1s 的默认 RPC 期限先于畸形帧到达；
+      // 此处检验的是协议 fail-closed，不是超时语义，给子进程独立的真实启动预算。
+      const { process } = await fixture(t, "normal", 4000);
       await process.initialize();
       const didClose = closed(process);
       const pending = assert.rejects(process.request("hang"), /frame|protocol/i);

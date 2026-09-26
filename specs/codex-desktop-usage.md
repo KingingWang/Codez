@@ -60,6 +60,8 @@ Malformed/incomplete records remain sparse and do not invent values. Disconnect 
 
 App Usage copy must state that Codex usage is desktop-observed telemetry and is not an official billing statement. It must render the Codex observation summary separately from agent-database usage: only observed threads and observed token fields are shown; absent facts stay unavailable rather than becoming zero. It must render cache-owned conflict and disconnect-staleness flags rather than inferring them in the renderer. Coding Plan remains an independent remote source and is never read or merged by this cache.
 
+The renderer imports usage snapshot types without evaluating the Host-owned observation cache. The public services barrel exposes these snapshot types as type-only exports; the cache and its Node crypto identity implementation stay in the Host service. The desktop shell must render the main navigation without Node built-ins in the browser module graph; the Host→renderer RPC snapshot remains the sole data path.
+
 ## Acceptance scenarios
 
 1. Identity is deterministic for fixed canonical inputs, absent fields stay absent, and native update ids do not affect it.
@@ -75,3 +77,4 @@ App Usage copy must state that Codex usage is desktop-observed telemetry and is 
 11. Legacy in-memory Map entries have `{ observation, conflict }` values;
     normalization preserves the nested observation and rejects entries with
     missing or malformed payloads rather than passing them to the totals view.
+12. A fresh isolated Electron renderer opens with visible navigation and no `node:crypto` browser-compatibility exception, even when usage cache types are imported.

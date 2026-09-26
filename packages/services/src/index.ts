@@ -237,13 +237,12 @@ export { IOAuthService } from "./oauth/oauth.js";
 
 // UsageStats service — IUsageStatsService is both a type (interface) and value (descriptor)
 export { IUsageStatsService } from "./usage-stats/usageStats.js";
-export {
-  type CodexUsageCacheSnapshot,
-  CodexUsageObservationCache,
-  codexUsageObservationId,
-  type CodexObservedUsage,
-  type CodexUsageObservation,
-  type CodexUsageThreadState,
+// 修复：渲染端也加载服务公开入口；运行时转发 Host 专用缓存会连带加载 node:crypto，导致窗口启动黑屏。
+export type {
+  CodexUsageCacheSnapshot,
+  CodexObservedUsage,
+  CodexUsageObservation,
+  CodexUsageThreadState,
 } from "./usage-stats/codexUsageObservationCache.js";
 
 // Storage（资源管理器「存储」tab）：数据类型在 @codez/shared；这里只导出服务接口与卷分组纯函数
