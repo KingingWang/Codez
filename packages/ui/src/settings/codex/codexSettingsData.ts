@@ -106,14 +106,14 @@ export function codexNativeBrowserCuaServerValue(descriptor: NativeBrowserCuaMcp
   return {
     command: descriptor.executable,
     args: [descriptor.bridgePath, "native-browser-cua-mcp"],
-    env: [
-      { name: "ELECTRON_RUN_AS_NODE", value: "1" },
-      {
-        name: "CODEZ_NATIVE_BROWSER_CUA_ENDPOINT",
-        value: descriptor.endpoint,
-      },
-      { name: "CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE", value: descriptor.tokenFile },
-    ],
+    // 修复依据：config/batchWrite 写入的是 Codex config.toml，其 mcp_servers.*.env
+    // 是 TOML map（键值表），不是 [{name,value}] 数组；数组形状会被 Codex 校验拒绝
+    // （invalid type: sequence, expected a map）。spec 中的 descriptor 示例同样是 map。
+    env: {
+      ELECTRON_RUN_AS_NODE: "1",
+      CODEZ_NATIVE_BROWSER_CUA_ENDPOINT: descriptor.endpoint,
+      CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: descriptor.tokenFile,
+    },
   };
 }
 
@@ -162,6 +162,21 @@ export function codexNativeBrowserCuaInstallRequest(
   };
 }
 
+// Codex config/read 会把条目反序列化为规范化对象并补充默认键
+// （enabled/environment_id/tool_timeout_sec 等，GUI 实测确认）。这些不是用户改动，
+// 不参与已配置判定；未知额外键仍视为漂移，enabled === false 视为用户停用。
+const CODEX_NORMALIZED_MCP_SERVER_KEYS: ReadonlySet<string> = new Set([
+  "enabled",
+  "environment_id",
+  "tool_timeout_sec",
+  "tool_timeout_ms",
+  "startup_timeout_sec",
+  "startup_timeout_ms",
+  "disabled_reason",
+  "env_vars",
+  "required",
+]);
+
 export function isCodexNativeBrowserCuaConfigured(
   config: CodexConfigResponse | undefined,
   descriptor: NativeBrowserCuaMcpDescriptor | undefined,
@@ -170,7 +185,17 @@ export function isCodexNativeBrowserCuaConfigured(
   const raw = config?.config["mcp_servers"];
   if (!raw || typeof raw !== "object") return false;
   const value = (raw as Record<string, unknown>)["codez-desktop-browser-cua"];
-  return matchesNativeBrowserCuaServerValue(value, codexNativeBrowserCuaServerValue(descriptor));
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  const expected = codexNativeBrowserCuaServerValue(descriptor) as Record<string, unknown>;
+  const ownedKeysMatch = Object.keys(expected).every((key) =>
+    matchesNativeBrowserCuaServerValue(record[key], expected[key]),
+  );
+  if (!ownedKeysMatch) return false;
+  if (record.enabled === false) return false;
+  return Object.keys(record)
+    .filter((key) => !(key in expected))
+    .every((key) => CODEX_NORMALIZED_MCP_SERVER_KEYS.has(key));
 }
 
 export type CodexNativeBrowserCuaStatus =

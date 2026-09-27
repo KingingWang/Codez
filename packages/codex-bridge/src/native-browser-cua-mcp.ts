@@ -1,7 +1,7 @@
 import { createConnection, type Socket } from "node:net";
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import { INVALID_PARAMS, Server } from "@modelcontextprotocol/server";
+import { INVALID_PARAMS, Server, type Transport } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import {
@@ -10,6 +10,8 @@ import {
   CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_ENV,
   CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE_ENV,
   CODEZ_NATIVE_BROWSER_CUA_UNAVAILABLE_REASON,
+  nativeBrowserCuaMcpBrowserCommandJsonSchema,
+  nativeBrowserCuaMcpBrowserCommandSchema,
   nativeBrowserCuaMcpBrowserMethodSchema,
   nativeBrowserCuaMcpResponseSchema,
   type NativeBrowserCuaMcpResponse,
@@ -17,24 +19,22 @@ import {
 
 const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 
-const browserCommandJsonSchema = {
-  type: "object" as const,
-  additionalProperties: false,
-  required: ["method"],
-  properties: {
-    method: {
-      type: "string",
-      enum: [...nativeBrowserCuaMcpBrowserMethodSchema.options],
-    },
-  },
-};
-
 const tools = [
   {
     name: "browser_command",
+    // 字段速查表必须留在描述里：部分客户端（含 Codex）会丢弃 JSON Schema 联合，
+    // 模型主要依据这里的说明组装参数；缺字段时桥接层会返回带字段路径的精确错误。
     description:
-      "Run one validated command against the Desktop-owned in-app browser. Prefer list/getState/snapshot before acting.",
-    inputSchema: browserCommandJsonSchema,
+      "Run one validated command against the Desktop-owned in-app browser. " +
+      "Prefer getState/snapshot before acting. " +
+      "Per-method fields: navigate(url); click(ref or x,y); fill(ref,value); type(ref,text); " +
+      "press(key[,ref]); select(ref,values); check(ref[,checked]); hover(ref or x,y); " +
+      "scroll([ref or x,y]); cuaScroll(x,y,scrollX,scrollY); domCuaScroll(scrollX,scrollY[,nodeId]); " +
+      "drag(fromRef/from,toRef/to); cuaDrag(path); screenshot([ref|fullPage|clip]); " +
+      "elementInfo(x,y); waitFor(selector|text|textGone[,timeoutMs]); " +
+      "getDialog(); handleDialog(accept[,promptText]); snapshot(); getState(); " +
+      "back/forward/reload take no extra fields. tabId is always optional.",
+    inputSchema: nativeBrowserCuaMcpBrowserCommandJsonSchema,
   },
   {
     name: "cua_status",
@@ -112,11 +112,22 @@ export function createNativeBrowserCuaMcpRuntime(input: {
         .success
     )
       invalidParams("browser_command requires an allowed method");
+    // 与 broker 同源的整体校验：字段缺失/多余时在读取 token、连接 broker 之前失败，
+    // 让调用方（Codex）立刻拿到带字段路径的参数错误，而不是含糊的下游失败。
+    const parsedCommand = nativeBrowserCuaMcpBrowserCommandSchema.safeParse(args);
+    if (!parsedCommand.success) {
+      const issue = parsedCommand.error.issues[0];
+      invalidParams(
+        issue
+          ? `browser_command arguments are invalid: ${issue.path.join(".") || "command"}: ${issue.message}`
+          : "browser_command arguments are invalid",
+      );
+    }
     const response = await sendBrokerRequest(
       {
         id: randomUUID(),
         token: await readToken(),
-        command: args,
+        command: parsedCommand.data,
       },
       extra.mcpReq.signal,
     );
@@ -197,16 +208,43 @@ export function createNativeBrowserCuaMcpRuntime(input: {
   }
 }
 
+export type NativeBrowserCuaMcpStdioOptions = {
+  endpoint: string;
+  tokenFile: string;
+  readFile?: (path: string) => Promise<string>;
+  connect?: (endpoint: string) => Socket;
+  transport?: Transport;
+};
+
+export function startNativeBrowserCuaMcpStdio(input: NativeBrowserCuaMcpStdioOptions): {
+  close(): Promise<void>;
+} {
+  const runtime = createNativeBrowserCuaMcpRuntime(input);
+  // 修复依据：Codex 的 MCP 客户端目前以 2025-06-18 旧版握手（initialize 无 envelope
+  // 元数据），legacy:"reject" 会在握手阶段直接拒绝（-32022 unsupported protocol
+  // version），表现为 MCP startup failed、工具列表恒为 0。legacy:"serve" 让同一
+  // 工厂同时服务旧版与现代客户端，二者共享同一份工具定义与校验逻辑。
+  const handle = serveStdio(() => runtime.server, {
+    legacy: "serve",
+    ...(input.transport ? { transport: input.transport } : {}),
+  });
+  let stopped = false;
+  const close = async () => {
+    if (stopped) return;
+    stopped = true;
+    runtime.dispose();
+    await handle.close();
+  };
+  return { close };
+}
+
 export async function runNativeBrowserCuaMcp(): Promise<void> {
-  const environment = nativeBrowserCuaEnvironment();
-  const runtime = createNativeBrowserCuaMcpRuntime(environment);
-  const handle = serveStdio(() => runtime.server, { legacy: "reject" });
+  const server = startNativeBrowserCuaMcpStdio(nativeBrowserCuaEnvironment());
   let stopped = false;
   const stop = () => {
     if (stopped) return;
     stopped = true;
-    runtime.dispose();
-    void handle.close().finally(() => process.exit(0));
+    void server.close().finally(() => process.exit(0));
   };
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);

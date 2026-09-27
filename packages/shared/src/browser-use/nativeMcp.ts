@@ -43,6 +43,97 @@ export type NativeBrowserCuaMcpBrowserMethod = z.infer<
   typeof nativeBrowserCuaMcpBrowserMethodSchema
 >;
 
+// 修复依据：此前桥接层手写的 MCP inputSchema 只声明了 method 字段，Codex 无法构造
+// navigate(url)、fill(ref,value) 等合法调用（模型按声明的参数生成调用）。这里直接从
+// browserCommandSchema 过滤出允许暴露的方法，桥接层快速校验与对外 JSON Schema 都从该
+// 子集派生，声明与校验共享同一事实源，不再漂移。
+const nativeBrowserCuaMcpAllowedMethodSet: ReadonlySet<string> = new Set(
+  NATIVE_BROWSER_CUA_MCP_BROWSER_METHODS,
+);
+
+function browserCommandOptionMethod(option: z.ZodType): string | undefined {
+  const shape = (option.def as { shape?: Record<string, { def?: { values?: unknown[] } }> }).shape;
+  const values = shape?.method?.def?.values;
+  const method = Array.isArray(values) && values.length === 1 ? values[0] : undefined;
+  return typeof method === "string" ? method : undefined;
+}
+
+const nativeBrowserCuaMcpBrowserCommandOptions = browserCommandSchema.options.filter((option) =>
+  nativeBrowserCuaMcpAllowedMethodSet.has(browserCommandOptionMethod(option) ?? ""),
+);
+
+if (
+  nativeBrowserCuaMcpBrowserCommandOptions.length !==
+    NATIVE_BROWSER_CUA_MCP_BROWSER_METHODS.length ||
+  NATIVE_BROWSER_CUA_MCP_BROWSER_METHODS.some(
+    (method) =>
+      !nativeBrowserCuaMcpBrowserCommandOptions.some(
+        (option) => browserCommandOptionMethod(option) === method,
+      ),
+  )
+) {
+  // 允许列表与命令协议漂移属于编程错误，必须在模块加载时失败，不能静默降级为错误工具声明。
+  throw new Error("native Browser/CUA MCP methods drifted from browserCommandSchema");
+}
+
+// 上方不变量已保证过滤结果非空；这里仅把数组收窄为 zod 要求的非空元组类型。
+type BrowserCommandOption = (typeof browserCommandSchema.options)[number];
+export const nativeBrowserCuaMcpBrowserCommandSchema = z.discriminatedUnion(
+  "method",
+  nativeBrowserCuaMcpBrowserCommandOptions as [BrowserCommandOption, ...BrowserCommandOption[]],
+);
+
+type BrowserCommandJsonVariant = { properties?: Record<string, Record<string, unknown>> };
+
+// 修复依据（GUI 实测证据）：Codex 的工具管线会丢弃 oneOf/anyOf 联合，模型端只看到
+// {"type":"object"} 且没有任何 properties，于是无论想传什么，最终 arguments 都被清空为
+// {}。因此对外广告 schema 必须是扁平 object：method 枚举 + 全部字段平铺可选。
+// 各方法的必填约束由工具描述说明，并由桥接层/broker 的 zod 联合严格校验兜底。
+function mergeBrowserCommandProperty(
+  existing: Record<string, unknown> | undefined,
+  incoming: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!existing) return incoming;
+  if (JSON.stringify(existing) === JSON.stringify(incoming)) return existing;
+  // 同名不同形（例如 type.text 与 waitFor.text 的 minLength 差异）：收敛为公共类型，
+  // 不产生 oneOf/anyOf（会被 Codex 管线丢弃）；严格性由运行时校验保证。
+  if (typeof existing.type === "string" && existing.type === incoming.type)
+    return { type: existing.type };
+  return {};
+}
+
+const generatedNativeBrowserCuaMcpBrowserCommandJsonSchema = z.toJSONSchema(
+  nativeBrowserCuaMcpBrowserCommandSchema,
+  { io: "input", reused: "inline" },
+);
+
+const nativeBrowserCuaMcpBrowserCommandProperties: Record<string, Record<string, unknown>> = {
+  method: { type: "string", enum: [...NATIVE_BROWSER_CUA_MCP_BROWSER_METHODS] },
+};
+for (const variant of (
+  generatedNativeBrowserCuaMcpBrowserCommandJsonSchema as { oneOf?: BrowserCommandJsonVariant[] }
+).oneOf ?? []) {
+  for (const [key, property] of Object.entries(variant.properties ?? {})) {
+    if (key === "method") continue;
+    nativeBrowserCuaMcpBrowserCommandProperties[key] = mergeBrowserCommandProperty(
+      nativeBrowserCuaMcpBrowserCommandProperties[key],
+      property,
+    );
+  }
+}
+
+// MCP 工具入参顶层必须是 object（客户端按此解析 tools/list）。properties 来自上方同一
+// zod 联合的扁平合并，required 只保留 method；逐方法必填字段由校验错误信息精确反馈。
+export const nativeBrowserCuaMcpBrowserCommandJsonSchema: {
+  type: "object";
+  [key: string]: unknown;
+} = {
+  type: "object",
+  properties: nativeBrowserCuaMcpBrowserCommandProperties,
+  required: ["method"],
+  additionalProperties: false,
+};
+
 export const nativeBrowserCuaMcpErrorSchema = z.enum([
   "invalid_request",
   "authentication_failed",
