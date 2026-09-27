@@ -314,6 +314,9 @@ export function isCodexSettingsSection(section: string): boolean {
 
 // 定时任务（automations）在 Codex 适配器上已支持（spec: codex-desktop-automations
 // UI surfacing），不能再归入不支持分区；闲时/工作流标签页由页面内部灰度裁决。
+// 浏览器控制在 Codex 适配器上已支持（spec: codex-desktop-native-browser-cua
+// 「Settings Browser section surfacing」）：分区内的浏览器控制入口是原生 MCP 卡片，
+// 数据导入/清理由平台命令承载，与适配器无关。
 export function isCodexUnsupportedSection(section: string): boolean {
-  return ["memory", "commands", "hooks", "browser", "computerUse", "migration"].includes(section);
+  return ["memory", "commands", "hooks", "computerUse", "migration"].includes(section);
 }

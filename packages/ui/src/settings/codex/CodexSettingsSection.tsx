@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button.js";
-import type { IServiceAccessor } from "@codez/services";
 import { useCodexSettings } from "@/hooks/useCodexSettings.js";
 import { CodexAgentsPanel } from "./CodexAgentsPanel.js";
 import { CodexAccountPanel } from "./CodexAccountPanel.js";
@@ -9,6 +8,7 @@ import { CodexMcpPanel, CodexPluginsPanel, CodexSkillsPanel } from "./CodexResou
 import { CodexHistoryPanel } from "./CodexHistoryPanel.js";
 import { CodexNotice, CodexSection } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
+import { useCodexNativeBrowserCuaCapability } from "./useCodexNativeBrowserCua.js";
 
 type Panel = "account" | "models" | "skills" | "agents" | "mcp" | "plugins" | "config" | "history";
 const PANELS: Panel[] = [
@@ -150,29 +150,4 @@ export function CodexCapabilityNotice({ onOpenSettings }: { onOpenSettings?: () 
       ) : null}
     </CodexSection>
   );
-}
-
-function useCodexNativeBrowserCuaCapability(
-  services: IServiceAccessor,
-  remote: boolean,
-): string | undefined {
-  const [state, setState] = useState<{ capability?: string } | undefined>(undefined);
-  const agentService = services.codezAgentService;
-  useEffect(() => {
-    let cancelled = false;
-    setState(undefined);
-    if (remote || !agentService?.helloConversationV4) return;
-    void agentService
-      .helloConversationV4()
-      .then((hello) => {
-        if (!cancelled) setState({ capability: hello.capabilities.codex?.nativeBrowserCuaMcp });
-      })
-      .catch(() => {
-        if (!cancelled) setState(undefined);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [agentService, remote]);
-  return state?.capability;
 }
