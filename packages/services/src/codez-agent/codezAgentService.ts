@@ -3708,6 +3708,26 @@ export function createCodezAgentService(
     return envelope;
   }
 
+  // disposeWorkspace 与 disposeActiveWorkspaceRuntimes 共用的单个 workspace runtime 释放。
+  const disposeWorkspaceRuntime = async (params: CodezAgentWorkspaceTarget): Promise<void> => {
+    const workspaceKey = resolveWorkspaceKey(params);
+    // 释放不仅要终止当前进程，还要让已排队的 provider-ready continuation 失效；
+    // 否则它会在 dispose 完成后把同一个 workspace 的 Agent 再次启动。
+    cancelWaitingWorkspaceStartup(workspaceKey);
+    clearV4SubscriptionRoutes(workspaceKey);
+    cuaOperationTurnTracker?.clearWorkspaceKey(workspaceKey);
+    const active = activeClientsByWorkspaceKey.get(workspaceKey);
+    if (active) {
+      invalidateWorkspaceClient(workspaceKey, active.client);
+    } else {
+      interactionPreferenceSyncByWorkspaceKey.delete(workspaceKey);
+    }
+    // 该入口被 restartWorkspaceProcess 用作 runtime invalidation，并非
+    // workspace/service 真 teardown。销毁 workspace emitter 会让既有 UI/task-index
+    // listener 永久绑在死对象上；emitters 只由 disposeLocalState/disposeAll 释放。
+    await processManager.disposeWorkspace(params);
+  };
+
   return {
     async codexRequest(params) {
       // 先校验再启动，拒绝未授权 native RPC；只读启动不限制已获 UI 授权的设置写入。
@@ -6150,22 +6170,27 @@ export function createCodezAgentService(
     },
 
     async disposeWorkspace(params): Promise<void> {
-      const workspaceKey = resolveWorkspaceKey(params);
-      // 释放不仅要终止当前进程，还要让已排队的 provider-ready continuation 失效；
-      // 否则它会在 dispose 完成后把同一个 workspace 的 Agent 再次启动。
-      cancelWaitingWorkspaceStartup(workspaceKey);
-      clearV4SubscriptionRoutes(workspaceKey);
-      cuaOperationTurnTracker?.clearWorkspaceKey(workspaceKey);
-      const active = activeClientsByWorkspaceKey.get(workspaceKey);
-      if (active) {
-        invalidateWorkspaceClient(workspaceKey, active.client);
-      } else {
-        interactionPreferenceSyncByWorkspaceKey.delete(workspaceKey);
-      }
-      // 该入口被 restartWorkspaceProcess 用作 runtime invalidation，并非
-      // workspace/service 真 teardown。销毁 workspace emitter 会让既有 UI/task-index
-      // listener 永久绑在死对象上；emitters 只由 disposeLocalState/disposeAll 释放。
-      await processManager.disposeWorkspace(params);
+      await disposeWorkspaceRuntime(params);
+    },
+
+    async disposeActiveWorkspaceRuntimes(params): Promise<void> {
+      // 只有 codex bridge runtime 消费这类配置（update_plan 工具开关）；legacy CLI
+      // workspace 不注入该 env，重启它们只会平白打断进行中的任务。
+      if (!usesDefaultCodexBridge) return;
+      const actives = [...activeClientsByWorkspaceKey.values()];
+      await Promise.all(
+        actives.map(async (active) => {
+          try {
+            await disposeWorkspaceRuntime(active.workspace);
+          } catch (error) {
+            // best-effort：单个 workspace 释放失败不能阻断其它 workspace 应用新配置。
+            logger.warn(undefined, "dispose workspace runtime for config change failed", {
+              reason: params.reason,
+              message: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }),
+      );
     },
 
     disposeAll(): void {

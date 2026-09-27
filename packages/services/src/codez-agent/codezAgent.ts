@@ -914,6 +914,13 @@ export interface ICodezAgentService {
   /** 当前 desktop-local CUA turn 是否仍在执行，用于 Helper recovery 避免中途回收 Agent。 */
   hasActiveCuaOperationTurn(): boolean;
   disposeWorkspace(params: CodezAgentWorkspaceTarget): Promise<void>;
+  /**
+   * 设置变更要求重造本进程全部活动 workspace runtime（当前唯一消费者是 codex bridge 的
+   * update_plan 开关：工具注册发生在 app-server 配置加载期，只能随进程重启生效，
+   * 见 specs/codex-desktop-update-plan.md）。非 codex bridge runtime 时为空操作。
+   * best-effort：单个 workspace 释放失败不阻断其它 workspace，调用方不据此判失败。
+   */
+  disposeActiveWorkspaceRuntimes(params: { reason: string }): Promise<void>;
   disposeAll(): void;
 }
 

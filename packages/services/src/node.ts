@@ -476,6 +476,7 @@ import {
   resolveOfficialMcpCredentials,
 } from "./official-mcp/officialMcpCredentials.js";
 import {
+  CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY,
   createOfficialMcpTrustedOriginRegistry,
   OFFICIAL_MCP_DEV_TRUSTED_ORIGINS_ENV,
 } from "@codez/shared";
@@ -678,6 +679,8 @@ function disposeHostModelSelectionService(services: ServiceCollection): void {
   codexModelSelectionServices.delete(services);
 }
 const providerProvisioningSources = new WeakMap<ServiceCollection, ProviderProvisioningSource>();
+// messageStreamShowTodos 变更触发的活动 workspace runtime 重造订阅；随服务集合释放。
+const settingsRuntimeRestartDisposers = new WeakMap<ServiceCollection, (() => void)[]>();
 const providerProvisioningTriggerDisposers = new WeakMap<
   ServiceCollection,
   readonly (() => void)[]
@@ -2238,6 +2241,11 @@ export function createLocalServices(options: {
       if (usesDefaultCodexDesktopBridge) {
         return {
           ...networkEnv,
+          // codex bridge 的 update_plan 工具注册在 app-server 配置加载期，只能随进程启动注入；
+          // 开关变更由下方 messageStreamShowTodos 订阅统一释放活动 workspace 后生效。
+          ...(settings.messageStreamShowTodos === true
+            ? { [CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY]: "1" }
+            : {}),
           ...(nativeBrowserCua
             ? {
                 [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: nativeBrowserCua.browserAvailable
@@ -2796,6 +2804,23 @@ export function createLocalServices(options: {
   codexModelSelectionServices.set(services, hostModelSelectionService);
   providerProvisioningSources.set(services, providerProvisioningSource);
   providerProvisioningTriggerDisposers.set(services, providerProvisioningDisposers);
+  settingsRuntimeRestartDisposers.set(services, [
+    settingService.onDidUpdate((event) => {
+      // update_plan 的工具注册发生在 app-server 配置加载期，进程内热切换不存在；
+      // 设置变更后释放本 Host 全部活动 workspace runtime，下一次使用时按新值拉起。
+      // 进行中的 turn 会被打断，与切换模型的 workspace 重启语义一致。
+      if (!event.keys.includes("messageStreamShowTodos")) return;
+      void codezAgentService
+        .disposeActiveWorkspaceRuntimes({ reason: "messageStreamShowTodos" })
+        .catch((error: unknown) => {
+          createServiceLogger("settings-runtime-restart").warn(
+            undefined,
+            "restart workspace runtimes for messageStreamShowTodos failed",
+            { message: error instanceof Error ? error.message : String(error) },
+          );
+        });
+    }),
+  ]);
   services
     .register(IProviderSettingsService, providerRuntime.providerSettings)
     .register(IModelSelectionService, hostModelSelectionService);
@@ -2947,6 +2972,8 @@ export function disposeServiceResources(services: ServiceCollection): void {
   providerRuntimes.get(services)?.dispose();
   for (const dispose of providerProvisioningTriggerDisposers.get(services) ?? []) dispose();
   providerProvisioningTriggerDisposers.delete(services);
+  for (const dispose of settingsRuntimeRestartDisposers.get(services) ?? []) dispose();
+  settingsRuntimeRestartDisposers.delete(services);
   providerProvisioningSources.delete(services);
   managedHostApiNetworkTransports.get(services)?.dispose();
 }
@@ -2985,6 +3012,8 @@ export async function disposeServiceResourcesAndWait(services: ServiceCollection
   providerRuntimes.get(services)?.dispose();
   for (const dispose of providerProvisioningTriggerDisposers.get(services) ?? []) dispose();
   providerProvisioningTriggerDisposers.delete(services);
+  for (const dispose of settingsRuntimeRestartDisposers.get(services) ?? []) dispose();
+  settingsRuntimeRestartDisposers.delete(services);
   providerProvisioningSources.delete(services);
   await managedHostApiNetworkTransports
     .get(services)

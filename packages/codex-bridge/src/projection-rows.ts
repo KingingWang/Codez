@@ -44,6 +44,18 @@ export function itemEntityId(turnId: string, itemId: string): string {
   return `codex:turn:${encodeURIComponent(turnId)}:item:${encodeURIComponent(itemId)}`;
 }
 
+/** bridge 合成的 update_plan 计划卡（specs/codex-desktop-update-plan.md）；不进入原生历史。 */
+interface CodexPlanUpdateItem {
+  type: "planUpdate";
+  id: string;
+  plan: Array<{ step: string; status: "pending" | "in_progress" | "completed" }>;
+  explanation?: string;
+}
+
+function isCodexPlanUpdateItem(item: CodexThreadItem): item is CodexThreadItem & CodexPlanUpdateItem {
+  return item.type === "planUpdate" && Array.isArray((item as { plan?: unknown }).plan);
+}
+
 type RowBase = Pick<
   ConversationRow,
   "rowId" | "entityId" | "turnId" | "productTurnId" | "createdAt" | "createdAtSeq" | "visibility"
@@ -126,6 +138,21 @@ function itemRow(
   base: RowBase,
   interactions: readonly PendingInteraction[],
 ): ConversationRow {
+  if (isCodexPlanUpdateItem(item)) {
+    // update_plan 是一次已完成的计划事实：复用 UI 现有 todo 识别（toolName 命中
+    // tool-plan-adapter）与 messageStreamShowTodos 展示门，不虚构工具输出。
+    return {
+      ...base,
+      kind: "toolCall",
+      toolCallId: item.id,
+      toolName: "update_plan",
+      status: "success",
+      ...projectToolInput({
+        ...(typeof item.explanation === "string" ? { explanation: item.explanation } : {}),
+        plan: item.plan,
+      }),
+    };
+  }
   if (!isCodexKnownItem(item)) {
     const approval = interactions.find(
       (interaction) =>

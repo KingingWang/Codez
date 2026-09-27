@@ -2237,7 +2237,7 @@ const enUS: Record<string, string> = {
   "settings.messageStreamShowReasoningDescription":
     "Show full reasoning inside the message stream. When off, the first reasoning item in each turn remains visible.",
   "settings.messageStreamShowTodos": "Show todos",
-  "settings.messageStreamShowTodosDescription": "Show Todo tool cards inside the message stream. ",
+  "settings.messageStreamShowTodosDescription": "Show Todo tool cards inside the message stream and enable the update_plan tool for Codex sessions. Toggling restarts workspace agent processes and interrupts in-flight tasks.",
   "settings.toolGroupingExplore": "Group exploration tools",
   "settings.toolGroupingExploreDescription":
     "Group consecutive reads and searches into an Explore section.",
