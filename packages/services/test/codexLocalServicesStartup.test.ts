@@ -159,6 +159,15 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
             }),
         ...(mode === "custom-resolver" ? { codezAgentCommandResolver: () => null } : {}),
         ...(nativeBrowserCua ? { nativeBrowserCua } : {}),
+        // 故意向每一种 Host 都传同一份清单：远端和旧运行时必须拒绝注入。
+        desktopCodexMcpServers: [
+          {
+            name: "codez-desktop-browser-cua",
+            command: "/opt/codez/bridge",
+            args: ["/opt/codez/bridge.cjs", "native-browser-cua-mcp"],
+            env: { CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/window-token" },
+          },
+        ],
         prepareLegacyAccountConnections: async () => {
           accountPreparations += 1;
           throw new Error("must not prepare Zai account for Codex");
@@ -220,6 +229,14 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
                   CODEZ_AGENT_CA_CERT: join(root, "example-ca.pem"),
                   CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE: "1",
                   CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE: "0",
+                  CODEZ_DESKTOP_MCP_SERVERS: JSON.stringify([
+                    {
+                      name: "codez-desktop-browser-cua",
+                      command: "/opt/codez/bridge",
+                      args: ["/opt/codez/bridge.cjs", "native-browser-cua-mcp"],
+                      env: { CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/window-token" },
+                    },
+                  ]),
                 }
               : {
                   HTTP_PROXY: "http://127.0.0.1:19080",
@@ -233,6 +250,7 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
                   CODEZ_AGENT_CA_CERT: join(root, "example-ca.pem"),
                   CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE: "0",
                   CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE: "0",
+                  CODEZ_DESKTOP_MCP_SERVERS: "",
                 },
           );
           for (const key of Object.keys(spawnEnv ?? {})) {

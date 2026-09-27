@@ -248,7 +248,15 @@ export function nativeBrowserCuaMcpEndpointPath(input: {
 export function nativeBrowserCuaMcpTokenFilePath(input: {
   flavor?: string;
   userDataPath: string;
+  windowId?: number;
 }): string {
+  if (
+    input.windowId !== undefined &&
+    (!Number.isSafeInteger(input.windowId) || input.windowId < 0)
+  ) {
+    throw new Error("Native Browser/CUA window id must be a nonnegative safe integer");
+  }
   const flavor = (input.flavor ?? "").replace(/[^a-z0-9-]/giu, "").toLowerCase() || "default";
-  return `${input.userDataPath.replace(/[\\/]$/u, "")}/${CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_PREFIX}-${flavor}.token`;
+  const windowId = input.windowId === undefined ? "" : `-${input.windowId}`;
+  return `${input.userDataPath.replace(/[\\/]$/u, "")}/${CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_PREFIX}-${flavor}${windowId}.token`;
 }

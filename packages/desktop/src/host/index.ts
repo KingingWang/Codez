@@ -3240,6 +3240,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               registerPluginSandbox: pluginSandboxRegistrationBridge.register,
               runtimeProcessEnvPatch: msg.runtimeProcessEnvPatch,
               nativeBrowserCua: msg.nativeBrowserCua,
+              desktopCodexMcpServers: msg.desktopCodexMcpServers,
               agentTelemetry: {
                 getDeviceMid: () => msg.deviceMid,
                 runtimeSurface: "desktop_local_host",

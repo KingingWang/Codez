@@ -22,14 +22,25 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 
 export interface NativeBrowserCuaMcpBroker {
   readonly ready: Promise<void>;
-  readonly tokenReady: Promise<void>;
   readonly readiness: Promise<void>;
   readonly availability: {
     browserAvailable: boolean;
     cuaAvailable: boolean;
   };
-  descriptor(input: { executable: string; bridgePath: string }): NativeBrowserCuaMcpDescriptor;
+  registerWindow(windowId: number): Promise<void>;
+  revokeWindow(windowId: number): Promise<void>;
+  descriptor(input: {
+    executable: string;
+    bridgePath: string;
+    windowId: number;
+  }): NativeBrowserCuaMcpDescriptor;
   close(): Promise<void>;
+}
+
+interface WindowCapability {
+  token: string;
+  tokenFile: string;
+  owned: boolean;
 }
 
 export function createNativeBrowserCuaMcpBroker(input: {
@@ -37,7 +48,7 @@ export function createNativeBrowserCuaMcpBroker(input: {
   platform?: NodeJS.Platform | string;
   flavor: string;
   userDataPath: string;
-  eligibleWindowResolver: () => BrowserWindow | null;
+  eligibleWindowResolver: (windowId: number) => BrowserWindow | null;
   temporaryDirectory?: string;
   logger: {
     warn: (...args: unknown[]) => void;
@@ -51,21 +62,16 @@ export function createNativeBrowserCuaMcpBroker(input: {
     userDataPath: input.userDataPath,
     temporaryDirectory: input.temporaryDirectory ?? tmpdir(),
   });
-  const tokenFile = nativeBrowserCuaMcpTokenFilePath({
-    flavor: input.flavor,
-    userDataPath: input.userDataPath,
-  });
-  const token = randomBytes(32).toString("hex");
+  const windowCapabilities = new Map<number, WindowCapability>();
+  const pendingWindowRegistrations = new Map<number, Promise<void>>();
   let closing: Promise<void> | undefined;
   let closed = false;
   let endpointReady = false;
-  let tokenFileReady = false;
-  // 凭据/socket 文件的属主标记：只有本进程确实监听成功并写过 token，close 才允许
-  // 删除文件。否则 endpoint 被占用时（第二实例启动竞争）仍会走完 broker 创建，
-  // 启动期写 token 会顶掉、退出期 rm 会删掉正在运行的实例的凭据与 socket 路径，
+  // 凭据/socket 文件的属主标记：只有本进程确实监听成功并写过对应窗口 token，
+  // close/revoke 才允许删除文件。否则 endpoint 被占用时（第二实例启动竞争）
+  // 仍会走完 broker 创建，退出期 rm 会删掉正在服役实例的 socket 路径与凭据，
   // 使其 MCP 请求全部 authentication_failed（GUI 实测复现）。
   let endpointOwned = false;
-  let tokenOwned = false;
   const server: Server = createServer((socket) => {
     void handleSocket(socket).catch((error: unknown) => {
       input.logger.warn("Native Browser/CUA MCP request failed", {
@@ -92,47 +98,81 @@ export function createNativeBrowserCuaMcpBroker(input: {
     server.once("error", reject);
   });
   server.listen(endpoint);
-  // token 写入必须等 socket 监听成功：监听失败说明别的实例正在服役，本实例的
-  // 随机 token 与它无关，写文件只会破坏正在运行的实例的鉴权。
-  const writeToken: Promise<void> = ready.then(
-    async () => {
-      if (input.tokenFileWriter) {
-        await input.tokenFileWriter(tokenFile, `${token}\n`);
-      } else {
-        await mkdir(dirname(tokenFile), { recursive: true });
-        await writeFile(tokenFile, `${token}\n`, { mode: 0o600 });
-        await chmod(tokenFile, 0o600);
-      }
-      tokenOwned = true;
-    },
-    () => undefined,
-  );
-  void ready.catch(() => undefined);
-  void writeToken
-    .then(() => {
-      tokenFileReady = !closed && tokenOwned;
-    })
-    .catch((error: unknown) => {
-      input.logger.warn("Native Browser/CUA token write failed", error);
-    });
-  const readiness = Promise.allSettled([ready, writeToken]).then(() => undefined);
+  const readiness = ready.catch(() => undefined);
   const currentAvailability = () => ({
-    browserAvailable: !closed && endpointReady && tokenFileReady,
+    browserAvailable: !closed && endpointReady && windowCapabilities.size > 0,
     cuaAvailable: false,
   });
 
+  const windowTokenFile = (windowId: number): string =>
+    nativeBrowserCuaMcpTokenFilePath({
+      flavor: input.flavor,
+      userDataPath: input.userDataPath,
+      windowId,
+    });
+
+  const windowScope = (windowId: number): string =>
+    `${NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX}${input.flavor}-${windowId}`;
+
   return {
     ready,
-    tokenReady: writeToken,
     readiness,
     get availability() {
       return currentAvailability();
     },
-    descriptor: ({ executable, bridgePath }) => {
+    registerWindow: async (windowId) => {
+      if (!Number.isSafeInteger(windowId) || windowId < 0) {
+        throw new Error("Native Browser/CUA window id must be a nonnegative safe integer");
+      }
+      const existingRegistration = windowCapabilities.get(windowId);
+      if (existingRegistration) return;
+      const pendingRegistration = pendingWindowRegistrations.get(windowId);
+      if (pendingRegistration) return await pendingRegistration;
+      const registration = (async () => {
+        if (closed || !endpointReady) await ready;
+        if (windowCapabilities.has(windowId)) return;
+        const token = randomBytes(32).toString("hex");
+        const tokenFile = windowTokenFile(windowId);
+        if (input.tokenFileWriter) {
+          await input.tokenFileWriter(tokenFile, `${token}\n`);
+        } else {
+          await mkdir(dirname(tokenFile), { recursive: true });
+          await writeFile(tokenFile, `${token}\n`, { mode: 0o600 });
+          await chmod(tokenFile, 0o600);
+        }
+        if (closed) {
+          await rm(tokenFile, { force: true });
+          throw new Error("Native Browser/CUA MCP broker closed while registering window");
+        }
+        windowCapabilities.set(windowId, { token, tokenFile, owned: true });
+      })();
+      pendingWindowRegistrations.set(windowId, registration);
+      try {
+        await registration;
+      } finally {
+        if (pendingWindowRegistrations.get(windowId) === registration) {
+          pendingWindowRegistrations.delete(windowId);
+        }
+      }
+    },
+    revokeWindow: async (windowId) => {
+      const capability = windowCapabilities.get(windowId);
+      windowCapabilities.delete(windowId);
+      const pendingRegistration = pendingWindowRegistrations.get(windowId);
+      if (pendingRegistration) await pendingRegistration.catch(() => undefined);
+      const registered = windowCapabilities.get(windowId);
+      if (capability?.owned) await rm(capability.tokenFile, { force: true });
+      if (registered?.owned) {
+        windowCapabilities.delete(windowId);
+        await rm(registered.tokenFile, { force: true });
+      }
+    },
+    descriptor: ({ executable, bridgePath, windowId }) => {
       const availability = currentAvailability();
+      const tokenFile = windowTokenFile(windowId);
       return {
         runtimeInstalled: true,
-        serviceRunning: availability.browserAvailable,
+        serviceRunning: availability.browserAvailable && windowCapabilities.has(windowId),
         executable,
         bridgePath,
         endpoint,
@@ -145,15 +185,24 @@ export function createNativeBrowserCuaMcpBroker(input: {
       closing ??= (async () => {
         closed = true;
         await readiness;
+        for (const pendingRegistration of pendingWindowRegistrations.values()) {
+          await pendingRegistration.catch(() => undefined);
+        }
         await ready.catch(() => undefined);
-        await new Promise<void>((resolve) => {
-          server.close(() => resolve());
-          for (const socket of sockets) socket.destroy();
-        });
+        if (!server.listening) {
+          await ready.catch(() => undefined);
+        } else {
+          await new Promise<void>((resolve) => {
+            server.close(() => resolve());
+            for (const socket of sockets) socket.destroy();
+          });
+        }
         // 只有属主才能删除 endpoint/token 文件；监听失败实例的 close 不得
         // 删掉正在服役实例的 socket 路径（新 MCP 会话会 connect 失败）与凭据。
         if (platform !== "win32" && endpointOwned) await rm(endpoint, { force: true });
-        if (tokenOwned) await rm(tokenFile, { force: true });
+        for (const capability of windowCapabilities.values()) {
+          if (capability.owned) await rm(capability.tokenFile, { force: true });
+        }
       })();
       return await closing;
     },
@@ -184,7 +233,8 @@ export function createNativeBrowserCuaMcpBroker(input: {
       return;
     }
     const request = parsedRequest.data;
-    if (!authorize(request.token, token)) {
+    const windowId = authorize(request.token);
+    if (windowId === undefined) {
       respond({
         id: request.id,
         ok: false,
@@ -202,7 +252,7 @@ export function createNativeBrowserCuaMcpBroker(input: {
       });
       return;
     }
-    const win = input.eligibleWindowResolver();
+    const win = input.eligibleWindowResolver(windowId);
     if (!win) {
       respond({
         id: request.id,
@@ -217,10 +267,10 @@ export function createNativeBrowserCuaMcpBroker(input: {
         requestId: request.id,
         // synthetic owner scope 的取值必须与 @codez/shared 的标记常量一致：
         // renderer 靠它们把原生浏览器 tab 识别为窗口级并落到侧边栏（不绑定会话）。
-        browserId: request.browserId ?? `${NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX}${input.flavor}`,
+        browserId: request.browserId ?? windowScope(windowId),
         browserGeneration: request.browserGeneration ?? 0,
         windowId: win.id,
-        workspaceKey: `${NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX}${input.flavor}`,
+        workspaceKey: windowScope(windowId),
         sessionId: NATIVE_BROWSER_CUA_SESSION_ID,
         clientMode: "desktop-continuous",
       },
@@ -235,10 +285,13 @@ export function createNativeBrowserCuaMcpBroker(input: {
     }
   }
 
-  function authorize(actual: string, expected: string): boolean {
-    const left = Buffer.from(actual);
-    const right = Buffer.from(expected);
-    return left.length === right.length && timingSafeEqual(left, right);
+  function authorize(actual: string): number | undefined {
+    for (const [windowId, capability] of windowCapabilities) {
+      const left = Buffer.from(actual);
+      const right = Buffer.from(capability.token);
+      if (left.length === right.length && timingSafeEqual(left, right)) return windowId;
+    }
+    return undefined;
   }
 
   function invalidRequest(id: string, message: string): NativeBrowserCuaMcpResponse {

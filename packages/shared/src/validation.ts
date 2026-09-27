@@ -47,6 +47,7 @@ import {
   codezMcpTelemetryEventSchema,
   codezProcessResourceSampleSchema,
   codezToolExecResourceSchema,
+  desktopCodexMcpServersSchema,
 } from "./codez-protocol/index.js";
 import { codezTaskModeSchema } from "./codez-task-mode-schema.js";
 
@@ -535,6 +536,7 @@ export const hostInitLocalMessageSchema = z.object({
     })
     .strict()
     .optional(),
+  desktopCodexMcpServers: desktopCodexMcpServersSchema.optional(),
 });
 
 export const windowHostRemoteWorkspaceDescriptorSchema = z

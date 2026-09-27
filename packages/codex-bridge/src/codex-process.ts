@@ -17,6 +17,7 @@ import {
   type RpcId,
 } from "./rpc-framing.js";
 import { shutdownCodex } from "./rpc-shutdown.js";
+import { codexServerArgv } from "./codex-server-argv.js";
 
 type Pending = {
   resolve: (value: unknown) => void;
@@ -40,11 +41,7 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
   ) {
     throw new CodexTransportError("INVALID", "Invalid Codex interaction timeout");
   }
-  const argv = ["app-server", "--listen", "stdio://"];
-  if (options.updatePlanToolEnabled === true) {
-    argv.push("-c", "tools.update_plan.enabled=true");
-  }
-  const child = spawn(options.executable, argv, {
+  const child = spawn(options.executable, codexServerArgv(options), {
     cwd: options.cwd,
     env: options.env ?? process.env,
     shell: false,

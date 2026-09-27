@@ -122,16 +122,20 @@ const en = {
   agentsInstructions: "Developer instructions (required)",
   agentsNicknames: "Nickname candidates (optional, comma-separated)",
   nativeBrowserCuaTitle: "Native Desktop browser · Browser-only",
-  nativeBrowserCuaConfigured: "Configured",
-  nativeBrowserCuaNotConfigured: "Not configured",
+  nativeBrowserCuaActive:
+    "Active for this Desktop window. Registration is temporary and process-scoped; it is not written to Codex config.",
   nativeBrowserCuaUnsupported:
-    "Native Desktop browser is unavailable on this Host. Install is disabled to avoid a doomed mutation.",
+    "Native Desktop browser is unavailable on this Host. Native configuration changes are disabled.",
   nativeBrowserCuaRuntimeMissing: "Desktop bridge runtime is missing.",
   nativeBrowserCuaServiceNotRunning: "Desktop browser service is not running.",
   nativeBrowserCuaDescriptorUnavailable: "Desktop browser descriptor is unavailable.",
   nativeBrowserCuaDegraded:
     "Browser commands are available; Computer Use is unavailable (codez-cua.runtime_unavailable).",
-  nativeBrowserCuaInstall: "Configure native server",
+  nativeBrowserCuaLegacyCleanup: "Remove legacy global registration",
+  nativeBrowserCuaLegacyCustomized:
+    "A same-name global registration is still shared because it does not match the exact Codez-generated value. It was left unchanged; remove it manually only if you accept deleting your custom entry.",
+  nativeBrowserCuaLegacyUnknown:
+    "A same-name global registration exists, but the Desktop descriptor is unavailable so Codez cannot verify whether it is safe to remove. It may still be shared and was left unchanged.",
   codexHistoryTitle: "Codex thread history",
   codexHistoryDescription:
     "A read-only projection of native Codex turns. It is not a complete legacy workflow equivalent; start, resume and cancel are unavailable.",
@@ -254,15 +258,18 @@ const zh: Record<keyof typeof en, string> = {
   agentsInstructions: "开发者指令（必填）",
   agentsNicknames: "昵称候选（可选，逗号分隔）",
   nativeBrowserCuaTitle: "原生桌面浏览器 · 仅 Browser",
-  nativeBrowserCuaConfigured: "已配置",
-  nativeBrowserCuaNotConfigured: "未配置",
-  nativeBrowserCuaUnsupported: "当前 Host 的原生桌面浏览器不可用。为避免无效变更，配置操作已禁用。",
+  nativeBrowserCuaActive: "在当前桌面窗口中生效。注册是临时的进程级配置，不会写入 Codex 配置。",
+  nativeBrowserCuaUnsupported: "当前 Host 的原生桌面浏览器不可用。原生配置变更已禁用。",
   nativeBrowserCuaRuntimeMissing: "缺少桌面 bridge 运行时。",
   nativeBrowserCuaServiceNotRunning: "桌面浏览器服务未运行。",
   nativeBrowserCuaDescriptorUnavailable: "桌面浏览器描述符不可用。",
   nativeBrowserCuaDegraded:
     "Browser 命令可用；Computer Use 不可用（codez-cua.runtime_unavailable）。",
-  nativeBrowserCuaInstall: "配置原生服务",
+  nativeBrowserCuaLegacyCleanup: "移除旧全局注册",
+  nativeBrowserCuaLegacyCustomized:
+    "同名全局注册与 Codez 生成的精确值不匹配，因此仍在全局共享。系统未修改该条目；只有在接受删除自定义内容时才手动移除。",
+  nativeBrowserCuaLegacyUnknown:
+    "存在同名全局注册，但桌面描述符不可用，Codez 无法确认删除是否安全。它可能仍在全局共享，系统未修改该条目。",
   codexHistoryTitle: "Codex 线程历史",
   codexHistoryDescription:
     "Codex 原生 turn 的只读投影。它不是完整的旧工作流等价物；启动、恢复和取消均不可用。",

@@ -206,11 +206,11 @@ test("native Browser/CUA section gates unsupported capability and reports degrad
     />,
   );
   assert.match(unsupported, /Native Desktop browser is unavailable on this Host/);
-  assert.match(unsupported, /disabled=""[^>]*>Configure native server/);
+  assert.doesNotMatch(unsupported, /<button[^>]*>Remove legacy global registration<\/button>/);
   const remote = render(
     <CodexMcpPanel controller={controller} remote nativeBrowserCuaCapability="degraded" />,
   );
-  assert.match(remote, /disabled=""[^>]*>Configure native server/);
+  assert.doesNotMatch(remote, /<button[^>]*>Remove legacy global registration<\/button>/);
   const supported = render(
     <CodexMcpPanel
       controller={controller}
@@ -220,8 +220,138 @@ test("native Browser/CUA section gates unsupported capability and reports degrad
   );
   assert.match(supported, /Native Desktop browser · Browser-only/);
   assert.match(supported, /Computer Use is unavailable/);
-  assert.match(supported, /Not configured/);
-  assert.match(supported, /<button[^>]*>Configure native server<\/button>/);
+  assert.match(supported, /Active for this Desktop window/);
+  assert.doesNotMatch(supported, /Configure native server|Install to Codex/);
+  assert.doesNotMatch(supported, /<button[^>]*>Remove legacy global registration<\/button>/);
+});
+
+test("native Browser/CUA cleanup is explicit and customized legacy entries remain visible", () => {
+  const exactConfig = {
+    config: {
+      mcp_servers: {
+        "other-mcp": { command: "/fixture/other" },
+        "codez-desktop-browser-cua": {
+          command: descriptor.executable,
+          args: [descriptor.bridgePath, "native-browser-cua-mcp"],
+          env: {
+            ELECTRON_RUN_AS_NODE: "1",
+            CODEZ_NATIVE_BROWSER_CUA_ENDPOINT: descriptor.endpoint,
+            CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: descriptor.tokenFile,
+          },
+        },
+      },
+    },
+    origins: {},
+    layers: [
+      {
+        name: { type: "user", file: "/fixture/config.toml" },
+        version: "v1",
+        config: {
+          mcp_servers: {
+            "codez-desktop-browser-cua": {
+              command: descriptor.executable,
+              args: [descriptor.bridgePath, "native-browser-cua-mcp"],
+              env: {
+                ELECTRON_RUN_AS_NODE: "1",
+                CODEZ_NATIVE_BROWSER_CUA_ENDPOINT: descriptor.endpoint,
+                CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: descriptor.tokenFile,
+              },
+            },
+          },
+        },
+      },
+    ],
+  };
+  const exact = render(
+    <CodexMcpPanel
+      controller={{ ...controller, snapshot: { config: { data: exactConfig } } }}
+      nativeBrowserCuaCapability="degraded"
+      descriptorOverride={descriptor}
+    />,
+  );
+  assert.match(exact, /Remove legacy global registration/);
+  const customized = render(
+    <CodexMcpPanel
+      controller={{
+        ...controller,
+        snapshot: {
+          config: {
+            data: {
+              ...exactConfig,
+              config: {
+                mcp_servers: {
+                  ...exactConfig.config.mcp_servers,
+                  "codez-desktop-browser-cua": {
+                    ...exactConfig.config.mcp_servers["codez-desktop-browser-cua"],
+                    customKey: "user-edit",
+                  },
+                },
+              },
+              layers: [
+                {
+                  ...exactConfig.layers[0]!,
+                  config: {
+                    mcp_servers: {
+                      "codez-desktop-browser-cua": {
+                        ...exactConfig.config.mcp_servers["codez-desktop-browser-cua"],
+                        customKey: "user-edit",
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }}
+      nativeBrowserCuaCapability="degraded"
+      descriptorOverride={descriptor}
+    />,
+  );
+  assert.match(customized, /still shared because it does not match/);
+  assert.match(customized, /left unchanged/);
+  assert.doesNotMatch(customized, /<button[^>]*>Remove legacy global registration<\/button>/);
+});
+
+test("native Browser/CUA card preserves Codex config read errors", () => {
+  const html = render(
+    <CodexMcpPanel
+      controller={{
+        ...controller,
+        snapshot: { config: { error: "Codex config read failed" } },
+      }}
+      nativeBrowserCuaCapability="degraded"
+      descriptorOverride={descriptor}
+    />,
+  );
+  assert.match(html, /Active for this Desktop window/);
+  assert.match(html, /Codex config read failed/);
+  assert.doesNotMatch(html, /<button[^>]*>Remove legacy global registration<\/button>/);
+});
+
+test("native Browser/CUA card renders with a same-name entry before descriptor readiness", () => {
+  const html = render(
+    <CodexMcpPanel
+      controller={{
+        ...controller,
+        snapshot: {
+          config: {
+            data: {
+              config: {
+                mcp_servers: { "codez-desktop-browser-cua": { command: "/fixture/custom" } },
+              },
+              origins: {},
+              layers: [],
+            },
+          },
+        },
+      }}
+      nativeBrowserCuaCapability="degraded"
+    />,
+  );
+  assert.match(html, /Native Desktop browser/);
+  assert.match(html, /may still be shared and was left unchanged/);
+  assert.doesNotMatch(html, /<button[^>]*>Remove legacy global registration<\/button>/);
 });
 
 const historyRun = {
