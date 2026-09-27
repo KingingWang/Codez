@@ -170,9 +170,65 @@ test("native broker readiness resolves once and projects token failure fail clos
       }),
   });
   assert.equal(broker.availability.browserAvailable, false);
-  rejectToken?.(new Error("token write fixture failed"));
+  // token 写入现在等 socket 监听成功后才触发（不能把第二实例的凭据顶掉服役实例），
+  // 因此写入器是被异步调用的；等它被调用后再拒绝。
+  await broker.ready;
+  while (!rejectToken) await new Promise((resolve) => setImmediate(resolve));
+  rejectToken(new Error("token write fixture failed"));
   await broker.readiness;
   assert.deepEqual(broker.availability, { browserAvailable: false, cuaAvailable: false });
   await broker.close();
+  await rm(directory, { recursive: true, force: true });
+});
+
+test("native broker does not clobber a live instance token when listen fails", async () => {
+  // 回归：第二实例竞争同一 endpoint 时 listen 失败，但它仍完成了 broker 创建；
+  // 启动期写 token / 退出期 rm 都会顶掉正在服役实例的凭据与 socket 路径，
+  // 使其 MCP 请求全部 authentication_failed。
+  const directory = await mkdtemp(join(tmpdir(), "native-browser-cua-"));
+  const first = createNativeBrowserCuaMcpBroker({
+    manager: {
+      async execute() {
+        throw new Error("must not execute");
+      },
+    } as never,
+    flavor: "test",
+    userDataPath: directory,
+    temporaryDirectory: directory,
+    eligibleWindowResolver: () => null,
+    logger: { warn: () => {} },
+  });
+  await first.readiness;
+  assert.equal(first.availability.browserAvailable, true);
+  const tokenFile = join(directory, "codez-native-browser-cua-test.token");
+  const liveToken = await readFile(tokenFile, "utf8");
+
+  let secondWroteToken = false;
+  const second = createNativeBrowserCuaMcpBroker({
+    manager: {
+      async execute() {
+        throw new Error("must not execute");
+      },
+    } as never,
+    flavor: "test",
+    userDataPath: directory,
+    temporaryDirectory: directory,
+    eligibleWindowResolver: () => null,
+    logger: { warn: () => {} },
+    tokenFileWriter: async () => {
+      secondWroteToken = true;
+    },
+  });
+  await second.readiness;
+  assert.equal(second.availability.browserAvailable, false);
+  assert.equal(secondWroteToken, false);
+  // 退出竞争失败的实例也不得删除服役实例的 endpoint 与 token 文件。
+  await second.close();
+  assert.equal(await readFile(tokenFile, "utf8"), liveToken);
+  await stat(
+    first.descriptor({ executable: process.execPath, bridgePath: "/fixture/bridge.cjs" }).endpoint,
+  );
+
+  await first.close();
   await rm(directory, { recursive: true, force: true });
 });

@@ -36,6 +36,12 @@ export const NATIVE_BROWSER_CUA_MCP_BROWSER_METHODS = [
   "handleDialog",
   "waitFor",
 ] as const;
+// native broker 创建的浏览器 tab 的 synthetic owner scope：MCP server 是全局配置，
+// 不绑定任何 Codez 会话，Desktop main 与 renderer 共用这两个标记识别「窗口级」原生
+// 浏览器 tab（spec: codex-desktop-native-browser-cua「Side pane surfacing」）。
+export const NATIVE_BROWSER_CUA_SESSION_ID = "codex-native-browser-cua";
+export const NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX = "native-browser-cua:";
+
 export const nativeBrowserCuaMcpBrowserMethodSchema = z.enum(
   NATIVE_BROWSER_CUA_MCP_BROWSER_METHODS,
 );

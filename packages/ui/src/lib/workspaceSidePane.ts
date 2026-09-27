@@ -1,5 +1,9 @@
 /* eslint-disable max-lines -- Side pane tab 状态集中维护 Browser/Git/CodeViewer/Treemapping/Whiteboard 的打开、复用、关闭和排序规则；拆分需要同步迁移现有内存恢复逻辑。 */
-import { createUuid, type BrowserTabResidencyState } from "@codez/shared";
+import {
+  NATIVE_BROWSER_CUA_SESSION_ID,
+  createUuid,
+  type BrowserTabResidencyState,
+} from "@codez/shared";
 import { inferMediaPreview, isPptxPreviewPath, type CodeViewerSource } from "@/lib/codeViewer.js";
 import { normalizeCodeViewerSource } from "@/lib/codeViewerSource.js";
 
@@ -1070,7 +1074,20 @@ function sidePaneTabMatchesWorkspace(
   tab: WorkspaceSidePaneTab,
   activeWorkspaceKey: string | null,
 ): boolean {
+  // 原生浏览器 tab 的 workspaceKey 是 synthetic（native-browser-cua:*），guest 实际
+  // 挂在收到事件的窗口里，按窗口级可见处理。
+  if (isNativeBrowserCuaSidePaneTab(tab)) return true;
   return tab.workspaceKey == null || tab.workspaceKey === activeWorkspaceKey;
+}
+
+/**
+ * Codex 原生浏览器 MCP（codez-desktop-browser-cua）创建的 tab：MCP server 全局配置，
+ * 不绑定任何会话，owner 是 synthetic scope（spec: codex-desktop-native-browser-cua
+ * 「Side pane surfacing」）。synthetic 值必须原样保留在 tab 上（main 的 attach 校验
+ * 逐字比对 owner），仅可见性/聚焦规则按窗口级处理。
+ */
+export function isNativeBrowserCuaSidePaneTab(tab: WorkspaceSidePaneTab): boolean {
+  return tab.type === "browser-use" && tab.sessionId === NATIVE_BROWSER_CUA_SESSION_ID;
 }
 
 /**
@@ -1110,7 +1127,8 @@ function getVisibleSidePaneTabsByScope(
   return tabs.filter((tab) => {
     if (!sidePaneTabMatchesWorkspace(tab, scope.workspaceKey)) return false;
     if (isWorkspaceGlobalSidePaneTab(tab)) return true;
-    if (tab.type === "browser-use") return tab.sessionId === scope.ownerTaskId;
+    if (tab.type === "browser-use")
+      return isNativeBrowserCuaSidePaneTab(tab) || tab.sessionId === scope.ownerTaskId;
     if (
       tab.type === "subagent-session" ||
       tab.type === "subagent-directory" ||
@@ -1369,10 +1387,16 @@ export function applyBrowserUseSidePaneEvent(
   },
   activeScope: BrowserUseSidePaneScope,
 ): { state: WorkspaceSidePaneState; shouldReveal: boolean } {
-  const shouldReveal =
+  const shouldRevealScope =
     options.workspaceKey === activeScope.workspaceKey &&
     (options.remoteSessionId ?? "") === (activeScope.remoteSessionId ?? "") &&
     options.sessionId === activeScope.ownerTaskId;
+  // 原生浏览器 tab 的 synthetic scope 永远不会匹配会话 scope；改为「新建即揭示」，
+  // 已存在 tab 的重放/恢复 ready 事件仍只后台挂载，不抢焦点。
+  const isNativeNewTab =
+    options.sessionId === NATIVE_BROWSER_CUA_SESSION_ID &&
+    !current?.tabs.some((tab) => tab.id === `browser-use:${options.tabId}`);
+  const shouldReveal = shouldRevealScope || isNativeNewTab;
   return {
     state: openBrowserUseSidePane(current, {
       ...options,
@@ -1902,7 +1926,7 @@ export function isSidePaneTabVisibleForParent(
   parentSessionId: string | null,
 ): boolean {
   if (tab.type === "browser-use") {
-    return tab.sessionId === parentSessionId;
+    return isNativeBrowserCuaSidePaneTab(tab) || tab.sessionId === parentSessionId;
   }
   // 归属于某条对话（而非 workspace 全局）的 tab 按 parentSessionId 收窄。
   if (

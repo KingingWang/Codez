@@ -6,6 +6,8 @@ import { dirname } from "node:path";
 import { BrowserWindow } from "electron";
 import {
   CODEZ_NATIVE_BROWSER_CUA_UNAVAILABLE_REASON,
+  NATIVE_BROWSER_CUA_SESSION_ID,
+  NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX,
   nativeBrowserCuaMcpEndpointPath,
   nativeBrowserCuaMcpRequestSchema,
   nativeBrowserCuaMcpTokenFilePath,
@@ -58,6 +60,12 @@ export function createNativeBrowserCuaMcpBroker(input: {
   let closed = false;
   let endpointReady = false;
   let tokenFileReady = false;
+  // 凭据/socket 文件的属主标记：只有本进程确实监听成功并写过 token，close 才允许
+  // 删除文件。否则 endpoint 被占用时（第二实例启动竞争）仍会走完 broker 创建，
+  // 启动期写 token 会顶掉、退出期 rm 会删掉正在运行的实例的凭据与 socket 路径，
+  // 使其 MCP 请求全部 authentication_failed（GUI 实测复现）。
+  let endpointOwned = false;
+  let tokenOwned = false;
   const server: Server = createServer((socket) => {
     void handleSocket(socket).catch((error: unknown) => {
       input.logger.warn("Native Browser/CUA MCP request failed", {
@@ -78,22 +86,31 @@ export function createNativeBrowserCuaMcpBroker(input: {
   const ready = new Promise<void>((resolve, reject) => {
     server.once("listening", () => {
       endpointReady = !closed;
+      endpointOwned = endpointReady;
       resolve();
     });
     server.once("error", reject);
   });
   server.listen(endpoint);
-  const writeToken: Promise<void> = input.tokenFileWriter
-    ? input.tokenFileWriter(tokenFile, `${token}\n`)
-    : (async () => {
+  // token 写入必须等 socket 监听成功：监听失败说明别的实例正在服役，本实例的
+  // 随机 token 与它无关，写文件只会破坏正在运行的实例的鉴权。
+  const writeToken: Promise<void> = ready.then(
+    async () => {
+      if (input.tokenFileWriter) {
+        await input.tokenFileWriter(tokenFile, `${token}\n`);
+      } else {
         await mkdir(dirname(tokenFile), { recursive: true });
         await writeFile(tokenFile, `${token}\n`, { mode: 0o600 });
         await chmod(tokenFile, 0o600);
-      })();
+      }
+      tokenOwned = true;
+    },
+    () => undefined,
+  );
   void ready.catch(() => undefined);
   void writeToken
     .then(() => {
-      tokenFileReady = !closed;
+      tokenFileReady = !closed && tokenOwned;
     })
     .catch((error: unknown) => {
       input.logger.warn("Native Browser/CUA token write failed", error);
@@ -133,8 +150,10 @@ export function createNativeBrowserCuaMcpBroker(input: {
           server.close(() => resolve());
           for (const socket of sockets) socket.destroy();
         });
-        if (platform !== "win32") await rm(endpoint, { force: true });
-        await rm(tokenFile, { force: true });
+        // 只有属主才能删除 endpoint/token 文件；监听失败实例的 close 不得
+        // 删掉正在服役实例的 socket 路径（新 MCP 会话会 connect 失败）与凭据。
+        if (platform !== "win32" && endpointOwned) await rm(endpoint, { force: true });
+        if (tokenOwned) await rm(tokenFile, { force: true });
       })();
       return await closing;
     },
@@ -196,11 +215,13 @@ export function createNativeBrowserCuaMcpBroker(input: {
     const result = await input.manager.execute(
       {
         requestId: request.id,
-        browserId: request.browserId ?? `native-browser-cua:${input.flavor}`,
+        // synthetic owner scope 的取值必须与 @codez/shared 的标记常量一致：
+        // renderer 靠它们把原生浏览器 tab 识别为窗口级并落到侧边栏（不绑定会话）。
+        browserId: request.browserId ?? `${NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX}${input.flavor}`,
         browserGeneration: request.browserGeneration ?? 0,
         windowId: win.id,
-        workspaceKey: `native-browser-cua:${input.flavor}`,
-        sessionId: "codex-native-browser-cua",
+        workspaceKey: `${NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX}${input.flavor}`,
+        sessionId: NATIVE_BROWSER_CUA_SESSION_ID,
         clientMode: "desktop-continuous",
       },
       request.command,
