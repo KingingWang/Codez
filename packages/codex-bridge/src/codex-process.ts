@@ -40,7 +40,11 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
   ) {
     throw new CodexTransportError("INVALID", "Invalid Codex interaction timeout");
   }
-  const child = spawn(options.executable, ["app-server", "--listen", "stdio://"], {
+  const argv = ["app-server", "--listen", "stdio://"];
+  if (options.updatePlanToolEnabled === true) {
+    argv.push("-c", "tools.update_plan.enabled=true");
+  }
+  const child = spawn(options.executable, argv, {
     cwd: options.cwd,
     env: options.env ?? process.env,
     shell: false,

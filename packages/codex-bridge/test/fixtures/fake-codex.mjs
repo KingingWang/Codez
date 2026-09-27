@@ -3,7 +3,15 @@ import assert from "node:assert/strict";
 import { appendFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 
-assert.deepEqual(process.argv.slice(2), ["app-server", "--listen", "stdio://"]);
+// 基础 argv 固定；唯一允许的附加参数是 update_plan 开关的 server 级配置覆盖。
+const argv = process.argv.slice(2);
+assert.deepEqual(argv.slice(0, 3), ["app-server", "--listen", "stdio://"]);
+const extraArgv = argv.slice(3);
+assert.ok(
+  extraArgv.length === 0 ||
+    (extraArgv.length === 2 && extraArgv[0] === "-c" && extraArgv[1] === "tools.update_plan.enabled=true"),
+  `unexpected extra argv: ${JSON.stringify(extraArgv)}`,
+);
 assert.equal(process.env.HOME, process.env.CODEX_HOME);
 const mode = process.env.FAKE_CODEX_MODE;
 let initialized = false;
@@ -13,6 +21,9 @@ let delayedMutationId;
 const replies = [];
 const send = (value) => process.stdout.write(`${JSON.stringify(value)}\n`);
 const trace = (text) => appendFile(process.env.FAKE_CODEX_TRACE, `${text}\n`);
+// argv 追踪是按需通道：默认关闭，避免污染既有测试对 trace 内容的精确断言。
+if (process.env.FAKE_CODEX_TRACE_ARGV === "1")
+  void trace(`argv ${JSON.stringify(process.argv.slice(2))}`);
 const input = createInterface({ input: process.stdin });
 
 if (mode === "stubborn") process.on("SIGTERM", () => void trace("SIGTERM"));

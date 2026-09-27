@@ -13,6 +13,8 @@ async function fixture(
   mode = "normal",
   requestTimeoutMs = 1000,
   interactionTimeoutMs?: number,
+  updatePlanToolEnabled = false,
+  traceArgv = false,
 ) {
   const directory = await mkdtemp(join(tmpdir(), "codez transport 中文 "));
   const executable = join(directory, "fake codex");
@@ -24,12 +26,14 @@ async function fixture(
     cwd: directory,
     requestTimeoutMs,
     interactionTimeoutMs,
+    updatePlanToolEnabled,
     env: {
       PATH: globalThis.process.env.PATH,
       HOME: directory,
       CODEX_HOME: directory,
       FAKE_CODEX_MODE: mode,
       FAKE_CODEX_TRACE: trace,
+      ...(traceArgv ? { FAKE_CODEX_TRACE_ARGV: "1" } : {}),
     },
   });
   t.after(async () => {
@@ -395,3 +399,27 @@ test(
     await process.respondError(42, { code: -32601, message: "Unsupported" });
   },
 );
+
+test("update_plan 开关开启时向 app-server argv 注入 server 级配置覆盖", options, async (t) => {
+  const enabled = await fixture(t, "normal", 1000, undefined, true, true);
+  await enabled.process.initialize();
+  const trace = await readFile(enabled.trace, "utf8");
+  const argvLine = trace.split("\n").find((line) => line.startsWith("argv "));
+  assert.ok(argvLine, "fixture 必须记录启动 argv");
+  assert.deepEqual(JSON.parse(argvLine.slice(5)), [
+    "app-server",
+    "--listen",
+    "stdio://",
+    "-c",
+    "tools.update_plan.enabled=true",
+  ]);
+});
+
+test("update_plan 开关缺省时 argv 不含配置覆盖", options, async (t) => {
+  const disabled = await fixture(t, "normal", 1000, undefined, false, true);
+  await disabled.process.initialize();
+  const trace = await readFile(disabled.trace, "utf8");
+  const argvLine = trace.split("\n").find((line) => line.startsWith("argv "));
+  assert.ok(argvLine, "fixture 必须记录启动 argv");
+  assert.deepEqual(JSON.parse(argvLine.slice(5)), ["app-server", "--listen", "stdio://"]);
+});

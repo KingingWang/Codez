@@ -283,3 +283,36 @@ test("reasoning and user media fallbacks retain content without inventing attach
     "Summary\n\nReason one\n\nReason two",
   );
 });
+
+test("planUpdate items project as todo toolCall rows with structured plan input", () => {
+  const thread = threadFixture();
+  thread.turns[0]!.items.push({
+    type: "planUpdate",
+    id: "plan-update",
+    explanation: "分两步走",
+    plan: [
+      { step: "探查代码", status: "completed" },
+      { step: "实现", status: "in_progress" },
+      { step: "验证", status: "pending" },
+    ],
+  } as unknown as CodexThreadItem);
+  const snapshot = projectThread(thread, { workspacePath: "/workspace" });
+  assert.deepEqual(conversationSnapshotSchema.parse(snapshot), snapshot);
+  const row = snapshot.rows.window.find(
+    (value) => value.kind === "toolCall" && value.toolName === "update_plan",
+  );
+  assert.ok(row && row.kind === "toolCall");
+  assert.equal(row.status, "success");
+  assert.equal(row.output, undefined);
+  assert.deepEqual(row.input, {
+    explanation: "分两步走",
+    plan: [
+      { step: "探查代码", status: "completed" },
+      { step: "实现", status: "in_progress" },
+      { step: "验证", status: "pending" },
+    ],
+  });
+  assert.deepEqual(JSON.parse(row.inputText), row.input);
+  // 合成 item 的展示身份必须与 thread-state 的固定 id 对齐，保证更新原位生效。
+  assert.equal(row.entityId, "codex:turn:turn-1:item:plan-update");
+});

@@ -18,6 +18,12 @@ export interface CodexProcessOptions {
   executable: string;
   cwd: string;
   env?: NodeJS.ProcessEnv;
+  /**
+   * 开启时给 app-server argv 追加 `-c tools.update_plan.enabled=true`。
+   * 工具注册发生在原生配置加载期（server 级覆盖对所有线程生效，包括 resume），
+   * 进程启动后不可热切换；开关变更由 Host 负责重启进程。
+   */
+  updatePlanToolEnabled?: boolean;
   /** Ordinary outbound RPC/write timeout in milliseconds; defaults to 30 seconds. */
   requestTimeoutMs?: number;
   /** Optional positive server-interaction deadline in milliseconds. Omitted means no expiry;

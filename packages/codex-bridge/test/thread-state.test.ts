@@ -314,3 +314,76 @@ test("aliased workspace path discovers, resumes and attributes native threads", 
     undefined,
   );
 });
+
+test("turn/plan/updated upserts one normalized plan item per turn", async () => {
+  const store = new ThreadStateStore(
+    port(() => ({})),
+    "/work",
+  );
+  store.markStarted(thread());
+  await store.apply({
+    method: "turn/started",
+    params: { threadId: "t1", turn: { id: "turn", items: [] } },
+  });
+  await store.apply({
+    method: "turn/plan/updated",
+    params: {
+      threadId: "t1",
+      turnId: "turn",
+      explanation: "先摸清现状",
+      plan: [
+        { step: "探查代码", status: "inProgress" },
+        { step: "实现", status: "pending" },
+        { step: "坏状态", status: "doing" },
+        { step: 42, status: "completed" },
+        "不是对象",
+      ],
+    },
+  });
+  let turns = store.get("t1")!.thread.turns as { items: unknown[] }[];
+  assert.equal(turns[0]!.items.length, 1);
+  assert.deepEqual(turns[0]!.items[0], {
+    id: "plan-update",
+    type: "planUpdate",
+    explanation: "先摸清现状",
+    plan: [
+      { step: "探查代码", status: "in_progress" },
+      { step: "实现", status: "pending" },
+    ],
+  });
+
+  // 全量替换：同 turn 再更新时原位覆盖，不产生第二张卡；explanation 缺席即移除。
+  await store.apply({
+    method: "turn/plan/updated",
+    params: {
+      threadId: "t1",
+      turnId: "turn",
+      plan: [
+        { step: "探查代码", status: "completed" },
+        { step: "实现", status: "in_progress" },
+      ],
+    },
+  });
+  turns = store.get("t1")!.thread.turns as { items: unknown[] }[];
+  assert.equal(turns[0]!.items.length, 1);
+  assert.deepEqual(turns[0]!.items[0], {
+    id: "plan-update",
+    type: "planUpdate",
+    plan: [
+      { step: "探查代码", status: "completed" },
+      { step: "实现", status: "in_progress" },
+    ],
+  });
+
+  // 未知 turn 与空计划静默忽略，事件尾巴不受影响。
+  await store.apply({
+    method: "turn/plan/updated",
+    params: { threadId: "t1", turnId: "missing", plan: [{ step: "x", status: "pending" }] },
+  });
+  await store.apply({
+    method: "turn/plan/updated",
+    params: { threadId: "t1", turnId: "turn", plan: [] },
+  });
+  turns = store.get("t1")!.thread.turns as { items: unknown[] }[];
+  assert.equal(turns[0]!.items.length, 1);
+});
