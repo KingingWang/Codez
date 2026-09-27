@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import type { Socket } from "node:net";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createServer, type Socket } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { PassThrough } from "node:stream";
@@ -10,6 +13,87 @@ import {
   createNativeBrowserCuaMcpRuntime,
   startNativeBrowserCuaMcpStdio,
 } from "../src/native-browser-cua-mcp.js";
+
+function connectedBrokerSocket(): Socket {
+  class FakeSocket extends EventEmitter {
+    destroy(): void {}
+  }
+  const socket = new FakeSocket();
+  queueMicrotask(() => socket.emit("connect"));
+  return socket as unknown as Socket;
+}
+
+test("tools/list hides browser tools without a token or a listening Desktop broker", async () => {
+  let tokenPresent = false;
+  let brokerListening = false;
+  let connections = 0;
+  const runtime = createNativeBrowserCuaMcpRuntime({
+    endpoint: "/fixture/native-browser.sock",
+    tokenFile: "/fixture/native-browser.token",
+    readFile: async () => {
+      if (!tokenPresent) throw new Error("token missing");
+      return "fixture-token";
+    },
+    connect: () => {
+      connections += 1;
+      if (!brokerListening) throw new Error("stale socket has no listener");
+      return connectedBrokerSocket();
+    },
+  });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: "fixture", version: "0" });
+  await Promise.all([runtime.server.connect(serverTransport), client.connect(clientTransport)]);
+  try {
+    assert.deepEqual((await client.listTools()).tools, []);
+    assert.equal(connections, 0, "missing token must not contact the broker");
+    tokenPresent = true;
+    assert.deepEqual((await client.listTools()).tools, [], "stale endpoint must not expose tools");
+    brokerListening = true;
+    assert.deepEqual(
+      (await client.listTools()).tools.map((tool) => tool.name),
+      ["browser_command", "cua_status"],
+    );
+    brokerListening = false;
+    assert.deepEqual((await client.listTools()).tools, [], "Desktop quit must hide tools again");
+  } finally {
+    await Promise.allSettled([client.close(), runtime.server.close()]);
+    runtime.dispose();
+  }
+});
+
+test("tools/list checks a real broker socket, not just a leftover token file", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "codez-mcp-discovery-"));
+  const endpoint =
+    process.platform === "win32"
+      ? `\\\\.\\pipe\\codez-mcp-discovery-${process.pid}-${Date.now()}`
+      : join(directory, "broker.sock");
+  const tokenFile = join(directory, "broker.token");
+  await writeFile(tokenFile, "fixture-token\n");
+  const broker = createServer((socket) => socket.destroy());
+  const runtime = createNativeBrowserCuaMcpRuntime({ endpoint, tokenFile });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: "fixture", version: "0" });
+  try {
+    await Promise.all([runtime.server.connect(serverTransport), client.connect(clientTransport)]);
+    assert.deepEqual((await client.listTools()).tools, [], "token alone is not sufficient");
+    await new Promise<void>((resolve, reject) => {
+      broker.once("error", reject);
+      broker.listen(endpoint, () => {
+        broker.off("error", reject);
+        resolve();
+      });
+    });
+    assert.deepEqual(
+      (await client.listTools()).tools.map((tool) => tool.name),
+      ["browser_command", "cua_status"],
+    );
+  } finally {
+    await Promise.allSettled([client.close(), runtime.server.close()]);
+    runtime.dispose();
+    await new Promise<void>((resolve) => broker.close(() => resolve()));
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("native browser_command rejects disallowed methods before token or broker connection", async () => {
   let tokenReads = 0;
@@ -85,6 +169,8 @@ test("browser_command tool schema is a flat object covering every method's field
   const runtime = createNativeBrowserCuaMcpRuntime({
     endpoint: "/fixture/native-browser.sock",
     tokenFile: "/fixture/native-browser.token",
+    readFile: async () => "fixture-token",
+    connect: connectedBrokerSocket,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "fixture", version: "0" });
@@ -222,6 +308,8 @@ test("stdio entry serves a 2025-era (Codex dialect) initialize handshake and too
   const server = startNativeBrowserCuaMcpStdio({
     endpoint: "/fixture/native-browser.sock",
     tokenFile: "/fixture/native-browser.token",
+    readFile: async () => "fixture-token",
+    connect: connectedBrokerSocket,
     transport: new StdioServerTransport(clientToServer, serverToClient),
   });
 

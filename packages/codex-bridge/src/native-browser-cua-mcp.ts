@@ -87,7 +87,11 @@ export function createNativeBrowserCuaMcpRuntime(input: {
     { name: "codez-desktop-browser-cua", version: "0.1.0" },
     { capabilities: { tools: {} } },
   );
-  server.setRequestHandler("tools/list", async () => ({ tools }));
+  server.setRequestHandler("tools/list", async () => ({
+    // Desktop 关闭后 Codex 用户配置仍在；仅检查文件存在会被崩溃后残留的 token
+    // 欺骗。必须同时确认 broker 正在监听，才向独立 CLI 暴露无法离线使用的工具。
+    tools: (await desktopBrokerReachable()) ? tools : [],
+  }));
   server.setRequestHandler("tools/call", async (request, extra) => {
     if (disposed) throw new Error("Native Browser/CUA MCP runtime is disposed");
     const toolName = parseNativeBrowserCuaToolName(request.params.name);
@@ -155,6 +159,30 @@ export function createNativeBrowserCuaMcpRuntime(input: {
     const trimmed = token.trim();
     if (!trimmed) throw new Error("Native Browser/CUA token file is empty");
     return trimmed;
+  }
+
+  async function desktopBrokerReachable(): Promise<boolean> {
+    try {
+      await readToken();
+      // 探测只连接，不发送命令或凭据；实际调用仍由 broker 校验 token。
+      const socket = input.connect?.(input.endpoint) ?? createConnection(input.endpoint);
+      return await new Promise<boolean>((resolve) => {
+        let settled = false;
+        const timeout = setTimeout(() => finish(false), 1_000);
+        const finish = (reachable: boolean) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          socket.destroy();
+          resolve(reachable);
+        };
+        socket.once("connect", () => finish(true));
+        socket.once("error", () => finish(false));
+        socket.once("close", () => finish(false));
+      });
+    } catch {
+      return false;
+    }
   }
 
   async function sendBrokerRequest(
