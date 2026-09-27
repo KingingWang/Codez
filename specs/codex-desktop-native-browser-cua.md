@@ -50,6 +50,22 @@ CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE=<stable token file path>
 It must never receive `CODEZ_NODE_REPL_BROWSER_BROKER_SOCKET` or
 `CODEZ_NODE_REPL_BROWSER_BROKER_TOKEN`.
 
+The stdio entry must serve both eras from the same factory: Codex's MCP client opens with a
+2025-06-18 legacy `initialize` (no envelope metadata), so `legacy` must be `"serve"` — rejecting
+legacy openings fails the handshake (`-32022`) and the server never becomes usable. Era routing is
+the SDK's; the tool definitions and validation above are shared by both eras.
+
+The `browser_command` tool's advertised input schema is generated from the `browserCommandSchema`
+subset restricted to `NATIVE_BROWSER_CUA_MCP_BROWSER_METHODS`. Codex's tool pipeline drops JSON
+Schema union combinators (`oneOf`/`anyOf`) before the model sees the tool — observed live as the
+model receiving `{"type":"object"}` and emitting empty arguments — so the advertised schema is a
+flat object: a `method` enum plus every command field as an optional property
+(`additionalProperties: false`, only `method` required). Same-name fields with conflicting shapes
+collapse to their shared primitive type. Per-method required fields are documented in the tool
+description cheat-sheet and enforced authoritatively by the bridge's pre-dispatch validation and
+the Main broker (which share the same zod union and therefore cannot drift); the bridge rejects
+schema-invalid arguments with field-path errors before reading the token or contacting the broker.
+
 Main injects only stable native availability facts into the Host bridge process environment. The
 bridge capability parser derives:
 

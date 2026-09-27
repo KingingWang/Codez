@@ -394,11 +394,11 @@ test("native Browser/CUA install writes only the fixed server and follows exact 
         value: {
           command: "/fixture/electron",
           args: ["/fixture/bridge.cjs", "native-browser-cua-mcp"],
-          env: [
-            { name: "ELECTRON_RUN_AS_NODE", value: "1" },
-            { name: "CODEZ_NATIVE_BROWSER_CUA_ENDPOINT", value: nativeDescriptor.endpoint },
-            { name: "CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE", value: nativeDescriptor.tokenFile },
-          ],
+          env: {
+            ELECTRON_RUN_AS_NODE: "1",
+            CODEZ_NATIVE_BROWSER_CUA_ENDPOINT: nativeDescriptor.endpoint,
+            CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: nativeDescriptor.tokenFile,
+          },
         },
         mergeStrategy: "replace",
       },
@@ -513,11 +513,11 @@ test("native Browser/CUA classification fails closed before descriptor and confi
 test("native Browser/CUA configured comparison is structural and pagination detects cursor loops", async () => {
   const configuredValue = {
     args: [nativeDescriptor.bridgePath, "native-browser-cua-mcp"],
-    env: [
-      { name: "ELECTRON_RUN_AS_NODE", value: "1" },
-      { name: "CODEZ_NATIVE_BROWSER_CUA_ENDPOINT", value: nativeDescriptor.endpoint },
-      { name: "CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE", value: nativeDescriptor.tokenFile },
-    ],
+    env: {
+      ELECTRON_RUN_AS_NODE: "1",
+      CODEZ_NATIVE_BROWSER_CUA_ENDPOINT: nativeDescriptor.endpoint,
+      CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: nativeDescriptor.tokenFile,
+    },
     command: nativeDescriptor.executable,
   };
   assert.equal(
@@ -530,6 +530,60 @@ test("native Browser/CUA configured comparison is structural and pagination dete
       nativeDescriptor as never,
     ),
     true,
+  );
+
+  // Codex config/read 的规范化回读会补充默认键（GUI 实测：enabled/environment_id/
+  // tool_timeout_sec），这些不算漂移。
+  assert.equal(
+    isCodexNativeBrowserCuaConfigured(
+      codexConfigResponseSchema.parse({
+        config: {
+          mcp_servers: {
+            "codez-desktop-browser-cua": {
+              ...configuredValue,
+              enabled: true,
+              environment_id: "local",
+              tool_timeout_sec: null,
+            },
+          },
+        },
+        origins: {},
+        layers: [],
+      }),
+      nativeDescriptor as never,
+    ),
+    true,
+  );
+  // 用户停用（enabled: false）与未知额外键都要按未配置处理，保留修复入口。
+  assert.equal(
+    isCodexNativeBrowserCuaConfigured(
+      codexConfigResponseSchema.parse({
+        config: {
+          mcp_servers: {
+            "codez-desktop-browser-cua": { ...configuredValue, enabled: false },
+          },
+        },
+        origins: {},
+        layers: [],
+      }),
+      nativeDescriptor as never,
+    ),
+    false,
+  );
+  assert.equal(
+    isCodexNativeBrowserCuaConfigured(
+      codexConfigResponseSchema.parse({
+        config: {
+          mcp_servers: {
+            "codez-desktop-browser-cua": { ...configuredValue, customKey: "user-edit" },
+          },
+        },
+        origins: {},
+        layers: [],
+      }),
+      nativeDescriptor as never,
+    ),
+    false,
   );
 
   const calls: CodexRequest[] = [];
