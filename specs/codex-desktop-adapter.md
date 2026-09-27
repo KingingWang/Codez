@@ -72,7 +72,11 @@ closed, and native config/skills/plugin requests stay on the canonical execution
   per frame in each direction. JSON never carries a raw newline inside a frame,
   so an oversized inbound frame is skipped by discarding bytes up to the next
   raw newline; the connection survives and memory stays bounded regardless of
-  the dropped frame's true length. Dropping is explicit, never silent:
+  the dropped frame's true length. The oversized-response regression allows
+  slow CI runners to generate and stream the whole frame before asserting
+  `LIMIT`; it then verifies a later ordinary request and a valid large response
+  on the same connection. Its deadline does not change the product's RPC default.
+  Dropping is explicit, never silent:
   - A dropped response fails its in-flight request with a `LIMIT` transport
     error. The request id is read from the retained frame prefix; when the id
     is not visible there, every in-flight request on that connection fails

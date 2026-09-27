@@ -251,13 +251,19 @@ for (const text of invalidFrames) {
   );
 }
 
-test("oversized response fails only its request and allows later traffic", options, async (t) => {
-  const { process } = await fixture(t);
-  await process.initialize();
-  await assert.rejects(process.request("oversized"), { code: "LIMIT" });
-  assert.equal(await process.request("echo", "alive"), "alive");
-  assert.equal((await process.request<string>("large-valid")).length, 9 * 1024 * 1024);
-});
+test(
+  "oversized response fails only its request and allows later traffic",
+  { ...options, timeout: 30_000 },
+  async (t) => {
+    // macOS Intel CI 生成并输送 33 MiB 帧可能超过默认的 1s 测试期限；
+    // 此测试只验证丢帧归因与连接恢复，不能让超时抢先于 LIMIT。
+    const { process } = await fixture(t, "normal", 20_000);
+    await process.initialize();
+    await assert.rejects(process.request("oversized"), { code: "LIMIT" });
+    assert.equal(await process.request("echo", "alive"), "alive");
+    assert.equal((await process.request<string>("large-valid")).length, 9 * 1024 * 1024);
+  },
+);
 
 for (const method of ["truncated", "invalid-utf8", "duplicate-server-id"]) {
   test(`${method} terminates the connection`, options, async (t) => {
