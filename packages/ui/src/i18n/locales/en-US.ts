@@ -2412,11 +2412,6 @@ const enUS: Record<string, string> = {
   "resourceManager.storage.confirmDescription.backups":
     "These copies allow recovery if an upgrade or migration goes wrong; deleting them cannot be undone.",
   "settings.browser.title": "Browser Use",
-  "settings.browser.control.title": "Enable built-in browser control",
-  "settings.browser.control.description":
-    "Enable the official Browser Use plugin so new sessions can access and control web pages in the built-in browser.",
-  "settings.browser.control.enabledToast": "Built-in browser control enabled",
-  "settings.browser.control.disabledToast": "Built-in browser control disabled",
   "settings.browser.security.section": "Security",
   "settings.embeddedBrowserAllowInsecureCertificates": "Ignore certificate errors",
   "settings.embeddedBrowserAllowInsecureCertificatesDescription":

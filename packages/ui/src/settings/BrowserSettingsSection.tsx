@@ -1,5 +1,5 @@
-/* oxlint-disable eslint(max-lines) -- Browser Plugin、Chrome 数据导入与清理共享同一平台状态机，拆分会扩大 pending/失败回收边界。 */
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+/* oxlint-disable eslint(max-lines) -- 原生浏览器卡片、Chrome 数据导入与清理共享同一平台状态机，拆分会扩大 pending/失败回收边界。 */
+import { useCallback, useState, type ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
 import type { ChromeBrowserDataImportResult } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
@@ -15,19 +15,15 @@ import {
 } from "@/components/ui/alert-dialog.js";
 import { Switch } from "@/components/ui/switch.js";
 import { toast } from "@/components/ui/toast.js";
+import { useCodexSettings } from "@/hooks/useCodexSettings.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
-import { useServices } from "@/hooks/useServices.js";
-import { useCodezSessionService } from "@/hooks/useCodezSessionService.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
-import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/codezDraftSkillInvalidation.js";
 import { logger } from "@/logger.js";
 import { startUserAction } from "@/lib/userActionTelemetry.js";
 import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
-import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
-import { useSkillStore } from "@/store/skillStore.js";
+import { CodexNativeBrowserCuaCard } from "./codex/CodexNativeBrowserCuaCard.js";
+import { useCodexNativeBrowserCuaCapability } from "./codex/useCodexNativeBrowserCua.js";
 import { formatImportSummary } from "./browserImportSummary.js";
-
-const OFFICIAL_BROWSER_USE_PLUGIN_ID = "browser-use@codez-plugins-official";
 
 interface BrowserSettingsSectionProps {
   isDesktop: boolean;
@@ -81,100 +77,24 @@ export function BrowserSettingsSection({
 }: BrowserSettingsSectionProps) {
   const { intl } = useCodezIntl();
   const platform = usePlatform();
-  const { pluginManagementService, skillsService } = useServices();
-  const codezSessionService = useCodezSessionService(
-    workspacePath ?? undefined,
-    undefined,
-    workspaceIdentity,
+  // 内置浏览器控制对 Codex 的唯一可用路径是原生 MCP（codez-desktop-browser-cua）；
+  // browser-use 插件是 .codez-plugin 格式，Codex 插件目录不会收录，旧的插件开关对 Codex
+  // 永远是禁用态，因此这里直接复用 Codex 设置 MCP 面板的原生卡片（spec:
+  // codex-desktop-native-browser-cua「Settings Browser section surfacing」）。
+  const codexController = useCodexSettings({ workspacePath, workspaceIdentity });
+  const nativeBrowserCuaCapability = useCodexNativeBrowserCuaCapability(
+    codexController.services,
+    codexController.remote,
   );
-  const browserUsePlugin = usePluginManagementStore((state) =>
-    state.plugins.find((plugin) => plugin.id === OFFICIAL_BROWSER_USE_PLUGIN_ID),
-  );
-  const loading = usePluginManagementStore((state) => state.loading);
-  const pluginError = usePluginManagementStore((state) => state.error);
-  const togglingPluginId = usePluginManagementStore((state) => state.togglingPluginId);
-  const initializePlugins = usePluginManagementStore((state) => state.initialize);
-  const setPluginEnabled = usePluginManagementStore((state) => state.setEnabled);
-  const refreshSkills = useSkillStore((state) => state.refresh);
-  const skillStoreWorkspacePath = useSkillStore((state) => state.workspacePath);
-  const skillStoreWorkspaceIdentity = useSkillStore((state) => state.workspaceIdentity);
   const [pendingOperation, setPendingOperation] = useState<BrowserDataOperation>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [lastImportResult, setLastImportResult] = useState<ChromeBrowserDataImportResult | null>(
     null,
   );
-  const normalizedWorkspaceIdentity = workspaceIdentity?.trim() || null;
   const nativeActionsAvailable =
     isDesktop &&
     typeof platform.importChromeBrowserData === "function" &&
     typeof platform.clearEmbeddedBrowserData === "function";
-
-  useEffect(() => {
-    if (!workspacePath) return;
-    void initializePlugins({
-      workspacePath,
-      workspaceIdentity,
-      pluginService: pluginManagementService,
-    });
-  }, [initializePlugins, pluginManagementService, workspaceIdentity, workspacePath]);
-
-  const refreshAfterPluginChange = useCallback(async () => {
-    await invalidateDeferredDraftSessionForSkillChange({
-      codezSessionService,
-      workspacePath,
-      workspaceIdentity: normalizedWorkspaceIdentity ?? undefined,
-      reason: "settings-browser-use-plugin-enabled",
-    });
-    if (
-      workspacePath &&
-      skillStoreWorkspacePath === workspacePath &&
-      skillStoreWorkspaceIdentity === normalizedWorkspaceIdentity
-    ) {
-      await refreshSkills(skillsService, normalizedWorkspaceIdentity ?? undefined);
-    }
-  }, [
-    normalizedWorkspaceIdentity,
-    refreshSkills,
-    skillStoreWorkspaceIdentity,
-    skillStoreWorkspacePath,
-    skillsService,
-    workspacePath,
-    codezSessionService,
-  ]);
-
-  const handleBrowserEnabledChange = useCallback(
-    async (enabled: boolean) => {
-      const trace = startUserAction({
-        featureId: "settings.browser",
-        action: "toggle_browser_use",
-        trigger: "switch",
-      });
-      try {
-        await setPluginEnabled(OFFICIAL_BROWSER_USE_PLUGIN_ID, enabled, pluginManagementService);
-        const refreshedPlugin = usePluginManagementStore
-          .getState()
-          .plugins.find((plugin) => plugin.id === OFFICIAL_BROWSER_USE_PLUGIN_ID);
-        if (refreshedPlugin?.enabled === enabled) {
-          await refreshAfterPluginChange();
-          toast(
-            intl.formatMessage({
-              id: enabled
-                ? "settings.browser.control.enabledToast"
-                : "settings.browser.control.disabledToast",
-            }),
-          );
-        }
-        trace.complete({
-          resultSource: "platform_result",
-          stateAfter: enabled ? "enabled" : "disabled",
-        });
-      } catch (error) {
-        trace.fail({ failureStage: "plugin_update" });
-        throw error;
-      }
-    },
-    [intl, pluginManagementService, refreshAfterPluginChange, setPluginEnabled],
-  );
 
   const handleImport = useCallback(async () => {
     if (!platform.importChromeBrowserData) return;
@@ -238,39 +158,21 @@ export function BrowserSettingsSection({
     [intl, platform],
   );
 
-  const pluginTogglePending = togglingPluginId === OFFICIAL_BROWSER_USE_PLUGIN_ID;
-  const pluginUnavailable = !workspacePath || loading || !browserUsePlugin;
   const operationDisabled = !nativeActionsAvailable;
 
   return (
     <div className="space-y-5">
       <section className="space-y-3">
-        <SettingsGroupCard>
-          <SettingsRow
-            label={intl.formatMessage({ id: "settings.browser.control.title" })}
-            description={intl.formatMessage({
-              id: "settings.browser.control.description",
-            })}
-            control={
-              <Switch
-                aria-label={intl.formatMessage({
-                  id: "settings.browser.control.title",
-                })}
-                checked={browserUsePlugin?.enabled === true}
-                disabled={pluginUnavailable || pluginTogglePending}
-                onCheckedChange={(checked) => void handleBrowserEnabledChange(checked)}
-              />
-            }
-            detail={
-              pluginError ? (
-                <div className="text-ui-base text-destructive">{pluginError}</div>
-              ) : undefined
-            }
-          />
-          {/* 导入登录状态是“开启内置浏览器控制”之后的配套动作，与开关同卡片表达先后关系；
-              清除类破坏性操作仍留在“浏览器数据”分组。
-              Windows App-Bound 导入链路暂未开放，先隐藏入口但保留底层实现和清理能力。*/}
-          {!isWindowsDesktop ? (
+        <CodexNativeBrowserCuaCard
+          controller={codexController}
+          remote={codexController.remote}
+          nativeBrowserCuaCapability={nativeBrowserCuaCapability}
+        />
+        {/* 导入登录状态是“开启内置浏览器控制”之后的配套动作，跟随控制卡片表达先后关系；
+            清除类破坏性操作仍留在“浏览器数据”分组。
+            Windows App-Bound 导入链路暂未开放，先隐藏入口但保留底层实现和清理能力。*/}
+        {!isWindowsDesktop ? (
+          <SettingsGroupCard>
             <SettingsRow
               label={intl.formatMessage({ id: "settings.browser.import.title" })}
               description={intl.formatMessage({
@@ -294,8 +196,8 @@ export function BrowserSettingsSection({
                 ) : undefined
               }
             />
-          ) : null}
-        </SettingsGroupCard>
+          </SettingsGroupCard>
+        ) : null}
       </section>
 
       {/* 证书策略只在桌面端有内置浏览器时可配；改动由 main 在启动时装到 Session，需重启生效。 */}

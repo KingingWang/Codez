@@ -132,6 +132,17 @@ failure is reported as authentication/start failure, not as a connection inferen
 support. Unsupported and unavailable paths disable the install action; no doomed native mutation is
 issued.
 
+## Settings Browser section surfacing
+
+The Settings → Browser section is Codex-supported and must not be gated by the unsupported-section
+notice. Its browser-control entry is the same native card rendered in the Codex MCP panel: one
+shared component owns descriptor loading, status classification, and the explicit configure action,
+so the two surfaces cannot drift. The legacy Browser Use plugin toggle is not surfaced for Codex:
+`browser-use@codez-plugins-official` is a `.codez-plugin` manifest that Codex's plugin catalog never
+lists, so a plugin toggle there would be a permanently disabled control. Chrome data import, the
+insecure-certificate policy, and browser-data clearing are Desktop platform operations independent
+of the agent adapter and remain in the section unchanged.
+
 ## Failure semantics
 
 - Invalid request schema: reject without dispatch and return `invalid_request`.
