@@ -1,4 +1,5 @@
 /** Codex is the execution authority; this port never owns a second queue. */
+import type { DesktopCodexMcpServer } from "@codez/shared";
 export interface CodexRpcPort {
   request<T = unknown>(method: string, params?: unknown): Promise<T>;
   respond(id: string | number, result: unknown): Promise<void>;
@@ -24,6 +25,8 @@ export interface CodexProcessOptions {
    * 进程启动后不可热切换；开关变更由 Host 负责重启进程。
    */
   updatePlanToolEnabled?: boolean;
+  /** 仅桌面 Host 提供的当前 bridge 实例 MCP 配置，不持久化到用户配置。 */
+  desktopMcpServers?: DesktopCodexMcpServer[];
   /** Ordinary outbound RPC/write timeout in milliseconds; defaults to 30 seconds. */
   requestTimeoutMs?: number;
   /** Optional positive server-interaction deadline in milliseconds. Omitted means no expiry;

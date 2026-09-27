@@ -21,6 +21,7 @@ import {
   type HostMcpTelemetryResponse,
   type HostSessionCreateTelemetryResponse,
   type TaskRealtimeHostDeliveryKind,
+  type DesktopCodexMcpServer,
   formatCodezHostProcessName,
   HostMessageTypes,
   HostResponseTypes,
@@ -88,6 +89,8 @@ export interface HostInitMessage {
     browserAvailable: boolean;
     cuaAvailable: boolean;
   };
+  /** 当前窗口的临时 Codex MCP；Main 铸造，绝不写入用户 config。 */
+  desktopCodexMcpServers?: DesktopCodexMcpServer[];
 }
 
 interface SpawnHostProcessOptions {

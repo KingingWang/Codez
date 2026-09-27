@@ -9,6 +9,8 @@ import { HostOutput } from "./host-output.js";
 import { BridgeRuntime } from "./bridge-runtime.js";
 import {
   CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY,
+  CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY,
+  desktopCodexMcpServersSchema,
   CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE,
 } from "@codez/shared";
 import { parseNativeBrowserCuaFacts, runNativeBrowserCuaMcp } from "./native-browser-cua-mcp.js";
@@ -31,8 +33,12 @@ async function main(): Promise<void> {
     executable: process.env.CODEZ_CODEX_COMMAND?.trim() || "codex",
     cwd,
     // Host 按设置页“显示待办”开关注入；update_plan 注册于原生配置加载期，进程内不可热切换。
-    updatePlanToolEnabled:
-      process.env[CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY]?.trim() === "1",
+    updatePlanToolEnabled: process.env[CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY]?.trim() === "1",
+    desktopMcpServers: process.env[CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]
+      ? desktopCodexMcpServersSchema.parse(
+          JSON.parse(process.env[CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]),
+        )
+      : [],
     onFrameDropped: (frame) => {
       // 只输出结构化下界与字节数；前缀内容可能含用户数据，永不记录。
       process.stderr.write(

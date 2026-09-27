@@ -45,6 +45,25 @@ const CODEZ_ENDPOINT_PROMPT_WIDTH = 460;
 const CODEZ_ENDPOINT_PROMPT_HEIGHT = 210;
 const CODING_PLAN_WEBVIEW_PARTITION = "persist:codez-coding-plan";
 
+/** Settings descriptor and Host bootstrap must resolve the same bridge artifact. */
+export function resolveDesktopCodexBridgePath(): string | undefined {
+  const deployedBridge = process.env.CODEZ_CODEX_BRIDGE_PATH?.trim();
+  if (deployedBridge)
+    return isAbsolute(deployedBridge) && existsSync(deployedBridge) ? deployedBridge : undefined;
+  if (app.isPackaged && process.resourcesPath) {
+    const packagedBridge = join(process.resourcesPath, "codex", "bridge.cjs");
+    if (existsSync(packagedBridge)) return packagedBridge;
+  }
+  let directory = app.getAppPath();
+  while (true) {
+    const candidate = join(directory, "packages", "codex-bridge", "dist", "bridge.cjs");
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(directory);
+    if (parent === directory) return undefined;
+    directory = parent;
+  }
+}
+
 function resolveTargetWindow(senderWindow?: BrowserWindow | null) {
   if (senderWindow && !senderWindow.isDestroyed()) {
     return senderWindow;
@@ -499,7 +518,7 @@ export async function executeDesktopCommand(options: {
   credentialsDir: string;
   currentApplicationLocale: Locale;
   nativeBrowserCuaMcpBroker?: {
-    descriptor(input: { executable: string; bridgePath: string }): unknown;
+    descriptor(input: { executable: string; bridgePath: string; windowId: number }): unknown;
   };
 }) {
   const targetWindow = resolveTargetWindow(options.senderWindow);
@@ -690,7 +709,13 @@ export async function executeDesktopCommand(options: {
     case DesktopCommandIds.GetCuaOsSupport:
       return resolveCuaOsSupport();
     case DesktopCommandIds.GetCodexNativeBrowserCuaMcpDescriptor: {
-      if (!options.nativeBrowserCuaMcpBroker) return undefined;
+      // 修复依据：描述符包含窗口专属 token 文件路径，不能从焦点窗口兜底推测调用方。
+      if (
+        !options.nativeBrowserCuaMcpBroker ||
+        !options.senderWindow ||
+        options.senderWindow.isDestroyed()
+      )
+        return undefined;
       const deployedBridge = process.env.CODEZ_CODEX_BRIDGE_PATH?.trim();
       if (deployedBridge && !isAbsolute(deployedBridge))
         return nativeBrowserCuaMcpDescriptorResultSchema.parse({
@@ -701,27 +726,13 @@ export async function executeDesktopCommand(options: {
           cuaAvailable: false,
           cuaReason: "codez-cua.runtime_unavailable",
         });
-      let bridgePath = deployedBridge;
-      if (!bridgePath && app.isPackaged && process.resourcesPath) {
-        const packagedBridge = join(process.resourcesPath, "codex", "bridge.cjs");
-        bridgePath = existsSync(packagedBridge) ? packagedBridge : undefined;
-      }
-      let directory = app.getAppPath();
-      while (!bridgePath) {
-        const candidate = join(directory, "packages", "codex-bridge", "dist", "bridge.cjs");
-        if (existsSync(candidate)) {
-          bridgePath = candidate;
-          break;
-        }
-        const parent = dirname(directory);
-        if (parent === directory) break;
-        directory = parent;
-      }
+      const bridgePath = resolveDesktopCodexBridgePath();
       if (!bridgePath) return undefined;
       return nativeBrowserCuaMcpDescriptorResultSchema.parse(
         options.nativeBrowserCuaMcpBroker.descriptor({
           executable: process.execPath,
           bridgePath,
+          windowId: options.senderWindow.id,
         }),
       );
     }

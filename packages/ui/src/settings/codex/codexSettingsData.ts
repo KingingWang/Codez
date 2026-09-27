@@ -1,4 +1,5 @@
 import {
+  CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE,
   codexAccountReadResponseSchema,
   codexConfigResponseSchema,
   codexConfigRequirementsResponseSchema,
@@ -105,7 +106,7 @@ async function readCodexPages<T>(
 export function codexNativeBrowserCuaServerValue(descriptor: NativeBrowserCuaMcpDescriptor) {
   return {
     command: descriptor.executable,
-    args: [descriptor.bridgePath, "native-browser-cua-mcp"],
+    args: [descriptor.bridgePath, CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE],
     // 修复依据：config/batchWrite 写入的是 Codex config.toml，其 mcp_servers.*.env
     // 是 TOML map（键值表），不是 [{name,value}] 数组；数组形状会被 Codex 校验拒绝
     // （invalid type: sequence, expected a map）。spec 中的 descriptor 示例同样是 map。
@@ -113,6 +114,28 @@ export function codexNativeBrowserCuaServerValue(descriptor: NativeBrowserCuaMcp
       ELECTRON_RUN_AS_NODE: "1",
       CODEZ_NATIVE_BROWSER_CUA_ENDPOINT: descriptor.endpoint,
       CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: descriptor.tokenFile,
+    },
+  };
+}
+
+function legacyCodexNativeBrowserCuaServerValue(
+  descriptor: NativeBrowserCuaMcpDescriptor,
+): ReturnType<typeof codexNativeBrowserCuaServerValue> {
+  const current = codexNativeBrowserCuaServerValue(descriptor);
+  // descriptor.tokenFile 由 shared 生成：...-<flavor>-<windowId>.token。
+  // 这里仅剥离末尾安全整数 windowId，还原旧全局 ...-<flavor>.token；
+  // 其他形状不匹配，保留为 customized，避免删除用户数据。
+  const match = descriptor.tokenFile.match(
+    /^(.+codez-native-browser-cua-[a-z0-9-]+?)-\d+\.token$/u,
+  );
+  if (!match) return current;
+  // 旧全局注册使用共享 token 文件；新 descriptor 带 windowId 后缀。这里只从
+  // descriptor.tokenFile 受控反推历史路径，用于识别，不作为写入值。
+  return {
+    ...current,
+    env: {
+      ...current.env,
+      CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: `${match[1]}.token`,
     },
   };
 }
@@ -143,18 +166,20 @@ function matchesNativeBrowserCuaServerValue(actual: unknown, expected: unknown):
   );
 }
 
-export function codexNativeBrowserCuaInstallRequest(
+export const CODEX_NATIVE_BROWSER_CUA_MCP_SERVER_KEY = "mcp_servers.codez-desktop-browser-cua";
+
+export function codexNativeBrowserCuaLegacyCleanupRequest(
   target: NonNullable<ReturnType<typeof codexUserConfigTarget>>,
-  descriptor: NativeBrowserCuaMcpDescriptor,
 ): CodexRequest {
   return {
     method: "config/batchWrite",
     params: {
-      ...target,
+      filePath: target.filePath,
+      expectedVersion: target.expectedVersion,
       edits: [
         {
-          keyPath: "mcp_servers.codez-desktop-browser-cua",
-          value: codexNativeBrowserCuaServerValue(descriptor),
+          keyPath: CODEX_NATIVE_BROWSER_CUA_MCP_SERVER_KEY,
+          value: null,
           mergeStrategy: "replace",
         },
       ],
@@ -177,25 +202,43 @@ const CODEX_NORMALIZED_MCP_SERVER_KEYS: ReadonlySet<string> = new Set([
   "required",
 ]);
 
-export function isCodexNativeBrowserCuaConfigured(
+export function getCodexNativeBrowserCuaLegacyRegistration(
   config: CodexConfigResponse | undefined,
   descriptor: NativeBrowserCuaMcpDescriptor | undefined,
-): boolean {
-  if (!descriptor) return false;
-  const raw = config?.config["mcp_servers"];
-  if (!raw || typeof raw !== "object") return false;
-  const value = (raw as Record<string, unknown>)["codez-desktop-browser-cua"];
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const record = value as Record<string, unknown>;
-  const expected = codexNativeBrowserCuaServerValue(descriptor) as Record<string, unknown>;
-  const ownedKeysMatch = Object.keys(expected).every((key) =>
-    matchesNativeBrowserCuaServerValue(record[key], expected[key]),
+): "none" | "codez-generated" | "customized" | "unknown" {
+  // 修复依据：config/read.config 是合成后的有效配置，包含本进程 -c 注入；
+  // 迁移只能读取 user layer，否则删掉旧全局项后仍会误判为未清理。
+  const userLayer = config?.layers?.find(
+    (layer) =>
+      layer.name.type === "user" && !layer.name.profile && !layer.disabledReason && layer.name.file,
   );
-  if (!ownedKeysMatch) return false;
-  if (record.enabled === false) return false;
+  const effective = config?.config["mcp_servers"];
+  const effectiveHasEntry =
+    effective && typeof effective === "object" && "codez-desktop-browser-cua" in effective;
+  if (!userLayer || !userLayer.config || typeof userLayer.config !== "object")
+    return effectiveHasEntry ? "unknown" : "none";
+  const raw = (userLayer.config as Record<string, unknown>)["mcp_servers"];
+  if (!raw || typeof raw !== "object") return "none";
+  const value = (raw as Record<string, unknown>)["codez-desktop-browser-cua"];
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "none";
+  const record = value as Record<string, unknown>;
+  // 同名条目存在但缺少严格 descriptor 时不能判定隔离，也不能提供删除入口。
+  if (!descriptor) return "unknown";
+  const candidates = [
+    codexNativeBrowserCuaServerValue(descriptor),
+    legacyCodexNativeBrowserCuaServerValue(descriptor),
+  ] as Record<string, unknown>[];
+  const expected = candidates.find((candidate) =>
+    Object.keys(candidate).every((key) =>
+      matchesNativeBrowserCuaServerValue(record[key], candidate[key]),
+    ),
+  );
+  if (!expected || record.enabled === false) return "customized";
   return Object.keys(record)
     .filter((key) => !(key in expected))
-    .every((key) => CODEX_NORMALIZED_MCP_SERVER_KEYS.has(key));
+    .every((key) => CODEX_NORMALIZED_MCP_SERVER_KEYS.has(key))
+    ? "codez-generated"
+    : "customized";
 }
 
 export type CodexNativeBrowserCuaStatus =
@@ -203,8 +246,7 @@ export type CodexNativeBrowserCuaStatus =
   | "runtime-missing"
   | "service-not-running"
   | "descriptor-unavailable"
-  | "not-configured"
-  | "configured";
+  | "active";
 
 export function classifyCodexNativeBrowserCua(input: {
   capability: string | undefined;
@@ -214,27 +256,44 @@ export function classifyCodexNativeBrowserCua(input: {
     | NativeBrowserCuaMcpRuntimeMissingDescriptor
     | undefined;
   descriptorError?: string;
-  configured: boolean;
 }): CodexNativeBrowserCuaStatus {
   if (input.capability !== "degraded" && input.capability !== "supported") return "unsupported";
   if (input.remote) return "unsupported";
   if (input.descriptorError) return "descriptor-unavailable";
   if (!input.descriptor) return "descriptor-unavailable";
-  if (!input.descriptor.runtimeInstalled || !input.descriptor.bridgePath) return "runtime-missing";
+  if (
+    !input.descriptor.runtimeInstalled ||
+    !input.descriptor.bridgePath ||
+    !input.descriptor.browserAvailable
+  )
+    return "runtime-missing";
   if (!input.descriptor.serviceRunning) return "service-not-running";
-  return input.configured ? "configured" : "not-configured";
+  return "active";
 }
 
-export async function installCodexNativeBrowserCuaMcp(
+export async function cleanupCodexNativeBrowserCuaLegacyMcp(
   controller: {
     request(request: CodexRequest): Promise<unknown>;
-    snapshot: { config?: { data?: CodexConfigResponse } };
   },
   descriptor: NativeBrowserCuaMcpDescriptor,
 ): Promise<void> {
-  const target = codexUserConfigTarget(controller.snapshot.config?.data);
+  // 修复依据：Settings controller 不保存 workspacePath；传空 cwd 会被 bridge 的
+  // 工作区隔离校验拒绝。省略 cwd 后，bridge 会填入它已授权的当前工作区路径。
+  // 删除前重新读取：expectedVersion 与值识别都不能依赖可能过期的设置快照。
+  const freshConfig = codexConfigResponseSchema.parse(
+    await controller.request({
+      method: "config/read",
+      params: { includeLayers: true },
+    }),
+  );
+  const target = codexUserConfigTarget(freshConfig);
   if (!target) throw new Error("No writable native Codex user configuration version");
-  await controller.request(codexNativeBrowserCuaInstallRequest(target, descriptor));
+  const registration = getCodexNativeBrowserCuaLegacyRegistration(freshConfig, descriptor);
+  if (registration === "none")
+    throw new Error("Legacy native browser registration was already removed");
+  if (registration === "customized")
+    throw new Error("Customized native browser registration was left unchanged");
+  await controller.request(codexNativeBrowserCuaLegacyCleanupRequest(target));
   await controller.request({ method: "config/mcpServer/reload" });
   const seenCursors = new Set<string>();
   let cursor: string | undefined;

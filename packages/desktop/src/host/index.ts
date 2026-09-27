@@ -3111,6 +3111,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               authorizeLocalMediaPreviewPath,
               runtimeProcessEnvPatch: msg.runtimeProcessEnvPatch,
               nativeBrowserCua: msg.nativeBrowserCua,
+              desktopCodexMcpServers: msg.desktopCodexMcpServers,
               agentRuntimeContext: {
                 getDeviceMid: () => msg.deviceMid,
                 runtimeSurface: "desktop_local_host",

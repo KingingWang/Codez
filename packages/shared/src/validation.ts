@@ -20,6 +20,7 @@ import {
   codezMcpResourceSamplesSchema,
   codezToolExecResourceSchema,
   codezProcessResourceSampleSchema,
+  desktopCodexMcpServersSchema,
 } from "./codez-protocol/index.js";
 import { codezTaskModeSchema } from "./codez-task-mode-schema.js";
 import { PROTOCOL_V4_LIMITS } from "./codez-protocol-v4/core.js";
@@ -200,6 +201,7 @@ export const hostInitLocalMessageSchema = z.object({
     })
     .strict()
     .optional(),
+  desktopCodexMcpServers: desktopCodexMcpServersSchema.optional(),
 });
 
 export const windowHostRemoteWorkspaceDescriptorSchema = z

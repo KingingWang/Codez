@@ -86,6 +86,8 @@ import {
   type UpdateStatePayload,
   type TelemetryEventPayload,
   HostMessageTypes,
+  CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE,
+  CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
 } from "@codez/shared";
 import { logger } from "./logger.js";
 import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
@@ -126,7 +128,7 @@ import {
   type ExplicitStartupWorkspaceRequest,
   resolveExplicitStartupWorkspaceBootstrap,
 } from "./startupWorkspaceDeepLinkGate.js";
-import { executeDesktopCommand } from "./desktopCommandHandlers.js";
+import { executeDesktopCommand, resolveDesktopCodexBridgePath } from "./desktopCommandHandlers.js";
 import { clampDesktopZoomLevel, resolveDesktopZoomLevelFromFactor } from "./desktopZoom.js";
 import {
   getDesktopMenuLabel as getDesktopMenuLabelByLocale,
@@ -456,9 +458,10 @@ const nativeBrowserCuaMcpBroker = createNativeBrowserCuaMcpBroker({
   manager: browserGuestManager,
   flavor: CODEZ_PRODUCT_FLAVOR,
   userDataPath: runtimeUserDataPath ?? app.getPath("userData"),
-  eligibleWindowResolver: () =>
-    getMainApplicationWindows().find((win) => nativeBrowserCuaEligibleWindowIds.has(win.id)) ??
-    null,
+  eligibleWindowResolver: (windowId) =>
+    getMainApplicationWindows().find(
+      (win) => win.id === windowId && nativeBrowserCuaEligibleWindowIds.has(win.id),
+    ) ?? null,
   logger,
 });
 
@@ -796,6 +799,9 @@ app.on("browser-window-created", (_event, win) => {
   }
   win.once("closed", () => {
     nativeBrowserCuaEligibleWindowIds.delete(win.id);
+    void nativeBrowserCuaMcpBroker.revokeWindow(win.id).catch((error) => {
+      logger.warn("Native Browser/CUA window capability revoke failed", error);
+    });
     cuaPipFocusRouter.removeWindow(windowKey);
   });
 });
@@ -1875,6 +1881,35 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
     runtimeProcessEnvFallbackPatch: runtimeProcessEnvPreparation.fallbackPatch,
     nativeBrowserCua: () => nativeBrowserCuaMcpBroker.availability,
     nativeBrowserCuaReadiness: () => nativeBrowserCuaMcpBroker.readiness,
+    prepareDesktopCodexMcpServers: async (win) => {
+      const bridgePath = resolveDesktopCodexBridgePath();
+      if (!bridgePath || win.isDestroyed()) return [];
+      // 修复依据：旧用户级注册让所有客户端共享工具；仅向当前窗口的 Local Host
+      // 颁发独立凭据，并在其 Codex app-server 启动时注入临时 MCP。
+      await nativeBrowserCuaMcpBroker.registerWindow(win.id);
+      if (win.isDestroyed()) {
+        await nativeBrowserCuaMcpBroker.revokeWindow(win.id);
+        return [];
+      }
+      const descriptor = nativeBrowserCuaMcpBroker.descriptor({
+        executable: process.execPath,
+        bridgePath,
+        windowId: win.id,
+      });
+      if (!descriptor.serviceRunning) return [];
+      return [
+        {
+          name: CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
+          command: descriptor.executable,
+          args: [descriptor.bridgePath, CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE],
+          env: {
+            ELECTRON_RUN_AS_NODE: "1",
+            CODEZ_NATIVE_BROWSER_CUA_ENDPOINT: descriptor.endpoint,
+            CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: descriptor.tokenFile,
+          },
+        },
+      ];
+    },
     codezBuiltinProviderConfigFilePath: resolveCodezBuiltinProviderConfigFilePath({
       env: { ...hostProcessLocalEnv, ...process.env },
     }),

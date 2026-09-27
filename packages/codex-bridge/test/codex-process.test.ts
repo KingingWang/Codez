@@ -6,6 +6,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { test, type TestContext } from "node:test";
 import { createCodexProcess } from "../src/codex-process.js";
 import type { CodexProcess, CodexNotification, CodexServerRequest } from "../src/contract.js";
+import type { DesktopCodexMcpServer } from "@codez/shared";
 
 const options = { timeout: 10_000, skip: process.platform === "win32" };
 async function fixture(
@@ -15,6 +16,7 @@ async function fixture(
   interactionTimeoutMs?: number,
   updatePlanToolEnabled = false,
   traceArgv = false,
+  desktopMcpServers?: DesktopCodexMcpServer[],
 ) {
   const directory = await mkdtemp(join(tmpdir(), "codez transport 中文 "));
   const executable = join(directory, "fake codex");
@@ -27,6 +29,7 @@ async function fixture(
     requestTimeoutMs,
     interactionTimeoutMs,
     updatePlanToolEnabled,
+    desktopMcpServers,
     env: {
       PATH: globalThis.process.env.PATH,
       HOME: directory,
@@ -422,4 +425,26 @@ test("update_plan 开关缺省时 argv 不含配置覆盖", options, async (t) =
   const argvLine = trace.split("\n").find((line) => line.startsWith("argv "));
   assert.ok(argvLine, "fixture 必须记录启动 argv");
   assert.deepEqual(JSON.parse(argvLine.slice(5)), ["app-server", "--listen", "stdio://"]);
+});
+
+test("桌面专属 MCP 只通过进程级覆盖传入，字符串与数组按 TOML 转义", options, async (t) => {
+  const { process, trace } = await fixture(t, "normal", 1000, undefined, false, true, [
+    {
+      name: "codez-desktop-browser-cua",
+      command: '/tmp/my "bridge"',
+      args: ["/tmp/bridge.cjs", "native-browser-cua-mcp"],
+      env: { CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/token file", ELECTRON_RUN_AS_NODE: "1" },
+    },
+  ]);
+  await process.initialize();
+  const content = await readFile(trace, "utf8");
+  const argvLine = content.split("\n").find((line) => line.startsWith("argv "));
+  assert.ok(argvLine);
+  assert.deepEqual(JSON.parse(argvLine.slice(5)), [
+    "app-server",
+    "--listen",
+    "stdio://",
+    "-c",
+    'mcp_servers.codez-desktop-browser-cua={command="/tmp/my \\"bridge\\"",args=["/tmp/bridge.cjs","native-browser-cua-mcp"],env={"CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE"="/tmp/token file","ELECTRON_RUN_AS_NODE"="1"},enabled=true}',
+  ]);
 });

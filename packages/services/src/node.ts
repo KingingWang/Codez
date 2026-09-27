@@ -547,6 +547,7 @@ import {
   CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
   CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV,
   CODEZ_NATIVE_BROWSER_CUA_CUA_ENV,
+  CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY,
   ZAI_PROVIDER_ID,
   codezAccountAccessSchema,
   codezProviderAccountAccessSchema,
@@ -1360,6 +1361,8 @@ export function createLocalServices(options: {
     browserAvailable: boolean;
     cuaAvailable: boolean;
   };
+  /** Main 当前窗口授予的临时 MCP 清单；仅用于本地默认 Codex bridge。 */
+  desktopCodexMcpServers?: import("@codez/shared").DesktopCodexMcpServer[];
   /** 本地桌面上次 workspace 缺失时，仅用于 Agent 子进程 spawn.cwd 兜底。 */
   codezAgentSpawnFallbackCwd?: string;
   /** desktop-attached remote server 从 Desktop Host 收到的一次性 Agent 网络配置。 */
@@ -2246,6 +2249,14 @@ export function createLocalServices(options: {
           ...(settings.messageStreamShowTodos === true
             ? { [CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY]: "1" }
             : {}),
+          // 修复依据：即使上层进程环境意外带同名变量，远端/无授权本地 Host
+          // 也必须清空，而非让 bridge 从继承环境注册桌面工具。
+          [CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]:
+            !isDesktopAttachedRemote &&
+            options?.serviceAuthorityMode === "desktop-local" &&
+            options.desktopCodexMcpServers?.length
+              ? JSON.stringify(options.desktopCodexMcpServers)
+              : "",
           ...(nativeBrowserCua
             ? {
                 [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: nativeBrowserCua.browserAvailable

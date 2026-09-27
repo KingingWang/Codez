@@ -3,13 +3,18 @@ import assert from "node:assert/strict";
 import { appendFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 
-// 基础 argv 固定；唯一允许的附加参数是 update_plan 开关的 server 级配置覆盖。
+// 基础 argv 固定；仅允许 server 级配置覆盖。
 const argv = process.argv.slice(2);
 assert.deepEqual(argv.slice(0, 3), ["app-server", "--listen", "stdio://"]);
 const extraArgv = argv.slice(3);
 assert.ok(
-  extraArgv.length === 0 ||
-    (extraArgv.length === 2 && extraArgv[0] === "-c" && extraArgv[1] === "tools.update_plan.enabled=true"),
+  extraArgv.length % 2 === 0 &&
+    extraArgv.every((arg, index) =>
+      index % 2 === 0
+        ? arg === "-c"
+        : arg === "tools.update_plan.enabled=true" ||
+          arg.startsWith("mcp_servers.codez-desktop-browser-cua={"),
+    ),
   `unexpected extra argv: ${JSON.stringify(extraArgv)}`,
 );
 assert.equal(process.env.HOME, process.env.CODEX_HOME);

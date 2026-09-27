@@ -2,7 +2,13 @@ import { getDatabaseStartupPortPayload } from "./databaseStartupRelay.js";
 import { randomUUID } from "node:crypto";
 import { app, BrowserWindow, Menu, MessageChannelMain } from "electron";
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
-import { HostMessageTypes, InternalChannels, PlatformChannels, type Locale } from "@codez/shared";
+import {
+  HostMessageTypes,
+  InternalChannels,
+  PlatformChannels,
+  type DesktopCodexMcpServer,
+  type Locale,
+} from "@codez/shared";
 import { scheduleArmsBrowserPerfLoadNudge } from "./armsBrowserPerfLoadNudge.js";
 import { createBrowserWindow } from "./desktopWindowChrome.js";
 import type { HostInitMessage, WindowBootstrapOptions } from "./desktopHostProcess.js";
@@ -14,6 +20,7 @@ import {
   syncAppUnreadBadge,
 } from "./unreadBadge.js";
 import { attachDesktopWindowSizePersistence, type DesktopWindowSize } from "./desktopWindowSize.js";
+import { localBrowserMcpAvailability } from "./desktopCodexMcpAvailability.js";
 import {
   registerMainApplicationWindow,
   unregisterMainApplicationWindow,
@@ -60,6 +67,8 @@ export function createWindow(options: {
     browserAvailable: boolean;
     cuaAvailable: boolean;
   };
+  /** Main 完成 broker 窗口注册后返回本窗口能力；失败则仅禁用可选工具。 */
+  prepareDesktopCodexMcpServers?: (win: BrowserWindow) => Promise<DesktopCodexMcpServer[]>;
   /**
    * Broker socket/token 就绪结果只用于避免首 Host 烤入冷启动 false。
    * settled 失败必须 fail-closed；不能阻塞或拒绝 Local Host 启动。
@@ -205,12 +214,24 @@ export function createWindow(options: {
         );
       }
     }
+    let desktopCodexMcpServers: DesktopCodexMcpServer[] = [];
+    if (options.prepareDesktopCodexMcpServers) {
+      try {
+        desktopCodexMcpServers = await options.prepareDesktopCodexMcpServers(win);
+      } catch (error) {
+        options.logger.warn(
+          `[createWindow] Desktop Codex MCP unavailable (${label}); continuing without tool`,
+          error,
+        );
+      }
+    }
 
     const spawnLocalHost = (runtimeProcessEnvPatch: Record<string, string>) => {
       if (currentDomReadyGeneration !== domReadyGeneration || win.isDestroyed()) {
         return;
       }
       const primaryWarmupTarget = options.agentWarmupTargets?.[0];
+      const nativeBrowserCua = options.nativeBrowserCua();
       const child = options.spawnHostProcess(win, label, {
         type: HostMessageTypes.InitLocal,
         deviceMid: options.deviceMid,
@@ -220,7 +241,10 @@ export function createWindow(options: {
           ? { agentWarmupTargets: [...options.agentWarmupTargets] }
           : {}),
         runtimeProcessEnvPatch,
-        nativeBrowserCua: options.nativeBrowserCua(),
+        nativeBrowserCua: options.prepareDesktopCodexMcpServers
+          ? localBrowserMcpAvailability(nativeBrowserCua, desktopCodexMcpServers)
+          : nativeBrowserCua,
+        desktopCodexMcpServers,
         codezBuiltinProviderConfigFilePath: options.codezBuiltinProviderConfigFilePath,
         // 同一窗口会后台索引所有已恢复 workspace，不只索引启动时的 active workspace。
         // fallback 必须跟随 local Host 生命周期常驻，否则非 active 历史目录被删除后会用失效 cwd 反复 spawn。

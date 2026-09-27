@@ -74,6 +74,16 @@ export const CODEZ_PROTOCOL_NAME = "Codez Protocol" as const;
 export const CODEZ_PROTOCOL_VERSION = 1 as const;
 // V4 wire 与 legacy 主协议并存；禁止为了 V4 physical framing 改写 legacy 版本。
 export const CODEZ_PROTOCOL_V4_WIRE_VERSION = 3 as const;
+/** 仅 Desktop Local Host 在启动受控 Codex bridge 时传递；不写入 Codex 用户配置。 */
+export const CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY = "CODEZ_DESKTOP_MCP_SERVERS";
+export const desktopCodexMcpServerSchema = z.strictObject({
+  name: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/),
+  command: z.string().min(1).max(4096),
+  args: z.array(z.string().max(4096)).max(16),
+  env: z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string().max(4096)),
+});
+export type DesktopCodexMcpServer = z.infer<typeof desktopCodexMcpServerSchema>;
+export const desktopCodexMcpServersSchema = z.array(desktopCodexMcpServerSchema).max(8);
 export const codexFeatureCapabilityStateSchema = z.enum(["supported", "degraded", "unsupported"]);
 export const codexFeatureCapabilitiesSchema = z.strictObject({
   auxiliaryTextGeneration: codexFeatureCapabilityStateSchema,

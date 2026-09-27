@@ -1,5 +1,64 @@
 # Codex native Browser/CUA MCP
 
+## Desktop-only registration migration
+
+The native browser MCP is a Desktop-only tool. The Desktop Main broker owns the live window
+capabilities; each local window Host owns its Codex app-server connection; Codex still owns tool
+execution. New registrations must be passed as process-scoped `-c` overrides when the Host's
+bridge starts Codex, never written into the shared user `config.toml`.
+
+Main binds each browser request to the live window from which its local Host originated. A
+window-scoped capability is minted only after the broker is ready, has an independent token file,
+and is revoked on window close. The broker derives the target window from that capability; a
+request may not select an arbitrary `windowId`. The bridge keeps the existing validated MCP
+stdio server and sends commands through the existing authenticated broker protocol. No new
+browser command execution path or duplicate task/session state is introduced.
+
+```text
+Main broker ready → per-window capability → local Host init
+  → workspace bridge spawn → Codex app-server -c (MCP server only in this process)
+  → Codex MCP stdio bridge → token file → Main resolves live owner window → browser guest
+window close → capability revoked → subsequent requests fail closed
+```
+
+The server is exposed to all threads in this local window's app-server, including resume and
+mobile control attached to that same Desktop Host. Remote workspace runtimes, independent CLI,
+and other clients never receive this temporary registration. A locally unavailable broker or
+missing bridge artifact must fail closed without providing a misleading tool catalog. The MCP
+server remains optional; broker failure must not prevent the whole Codex session from starting.
+Only Main owns the window capability; UI configuration state is a projection, not a second owner.
+Future Desktop-only tools may use the same process-scoped override mechanism but must supply
+their own validated capability and lifecycle.
+
+The previous installer wrote only the fixed `mcp_servers.codez-desktop-browser-cua` user key.
+Existing global installations must be handled separately: remove that key only when its value
+matches a known Codez-generated registration, preserving all other MCP entries and any manually
+customized value. The UI reports an unmatched global entry as still shared but never offers
+automatic deletion of it; it must not claim Desktop-only isolation until the shared registration
+is gone. Configuration deletion is a one-time migration, never part of normal startup. Repeated
+migration attempts and stale config versions must be safe and must not remove user edits.
+The former "Install to Codex" UI changes to Desktop availability plus migration status.
+The migration reads `config/read.layers`' user layer, never the merged effective `config`:
+that merged view also contains the Desktop app-server's temporary `sessionFlags` override, even
+after the persistent user entry is gone. If the user layer cannot be inspected, the UI warns
+instead of treating the temporary server as a deletable legacy entry.
+
+Acceptance cases:
+
+1. Fresh local Desktop with no global registration: only its Codex app-server sees the native
+   browser MCP; independent CLI and remote workspaces do not, even while Desktop is running.
+2. Two Desktop windows: a request from A executes only on A; after A closes the same credential
+   cannot operate B. B remains usable. Invalid, missing, or stale credentials fail closed.
+3. Existing exact Codez-generated global entry: after scoped migration, CLI no longer lists the
+   tool and other user MCP entries are byte-for-byte untouched; Desktop remains able to use it.
+4. Customized same-name entry: no implicit deletion; UI says it is still shared and leaves it
+   untouched for manual user review. A failed verified deletion leaves both config and status consistent.
+5. Packaged and dev builds: process overrides use a validated absolute bridge artifact, quoted
+   TOML values and a stable per-window endpoint/token-file path; no secret token in CLI args,
+   settings, descriptor, logs, or screenshots.
+6. Reconnect/resume and mobile remote control of a Desktop Host reuse the same window-scoped
+   runtime. Closing the window or broker fails pending/new browser calls explicitly.
+
 ## Scope
 
 This feature exposes the Desktop-owned in-app browser to Codex as the fixed native MCP server
@@ -16,13 +75,13 @@ unavailable and fails closed. Consequently the combined capability is never `sup
 support only from Host hello; it never probes methods, parses error strings, or treats an MCP status
 as capability truth.
 
-Desktop Main owns one process-wide native broker:
+Desktop Main owns one process-wide native broker with a separate capability per local window:
 
 - POSIX: a deterministic Unix domain socket under the OS temporary directory.
 - Windows: a deterministic named pipe under the user's pipe namespace.
 - The endpoint is regenerated only at app restart. It is never selected by a Codex session.
-- Main writes a random 32-byte token to a `0600` file under Desktop user data, and only after the
-  endpoint listen succeeds. The token is never placed in Codex config, UI, logs, or descriptors.
+- Main writes a random 32-byte token per window to a `0600` file under Desktop user data, only
+  after the endpoint listens. Token contents never enter Codex config, UI, logs, or descriptors.
   Endpoint and token files are removed on close only by the instance that owns them: a competing
   instance whose bind fails (for example a second app launch racing the single-instance handoff)
   must not overwrite or delete the live instance's credentials — otherwise every later MCP request
@@ -32,15 +91,14 @@ Desktop Main owns one process-wide native broker:
 - Main dispatches strict `BrowserCommand` values through `BrowserGuestManager`. It returns the
   existing strict `BrowserCommandResult`; it does not expose filesystem or arbitrary process
   execution.
-- Main selects only a live local application window, excluding CUA indicator and update windows. If
-  no eligible window exists, the request fails closed as `backend_unavailable`.
+- Main selects only the live local application window bound to the supplied token. No fallback to
+  another window exists; after its owner closes the request fails closed.
 - The broker closes during app quit. Requests that arrive afterward fail with `backend_unavailable`;
   they are never transformed into success.
 
-Desktop Main exposes a single fail-closed readiness future covering both socket listen and token-file
-write. Local Host initialization waits for that future to settle, then snapshots the broker's current
-availability facts; endpoint/token failure settles unavailable and must never block or reject Host
-startup.
+Desktop Main exposes a fail-closed socket readiness future; after it settles Main registers the
+window capability and snapshots availability into its Local Host. Endpoint/token failure disables
+only this optional tool and never blocks Host startup.
 
 The bridge artifact exposes a separate `bridge.cjs native-browser-cua-mcp` stdio MCP entry mode. It
 authenticates each request by reading the configured token file. Its environment contains only:
@@ -54,24 +112,13 @@ CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE=<stable token file path>
 It must never receive `CODEZ_NODE_REPL_BROWSER_BROKER_SOCKET` or
 `CODEZ_NODE_REPL_BROWSER_BROKER_TOKEN`.
 
-### CLI tool discovery while Desktop is offline
+### Independent client isolation
 
-The Codex user-level MCP registration persists across Desktop restarts; Desktop does not rewrite
-or remove global Codex config on quit. The stdio bridge owns tool discovery for that registration.
-On each `tools/list`, it reads the nonempty Desktop token file and checks that the configured
-Desktop broker endpoint accepts a connection. Missing/empty token, connection refusal (including
-a stale socket file after a crash), or a bounded connection failure yields an empty tool list.
-No browser or CUA tool descriptions are advertised in a new CLI session while Desktop is offline.
-When the broker is reachable, the existing tool definitions are returned unchanged. Actual tool
-calls continue to use the broker's authenticated command path; a connection check does not grant
-access. A CLI session whose catalog was built while offline may need to reload MCP or restart
-to discover tools after Desktop starts; no background polling or global config mutation is added.
-
-```text
-Codex CLI → bridge tools/list → token-file read → broker endpoint connection → tools or []
-Desktop quit → broker closes endpoint + removes token file → next tools/list returns []
-Desktop start → broker listens + writes token → next tools/list returns tools
-```
+Only the Desktop Host's bridge starts Codex with the process-scoped MCP override. Independent CLI
+and remote workspace runtimes receive no new registration. Until the verified legacy global
+entry is explicitly removed, however, other clients may still list that old entry. On
+`tools/list` a missing token or unreachable broker yields no tools; individual calls still
+authenticate. Closing one window revokes only that window's token.
 
 The stdio entry must serve both eras from the same factory: Codex's MCP client opens with a
 2025-06-18 legacy `initialize` (no envelope metadata), so `legacy` must be `"serve"` — rejecting
@@ -126,24 +173,17 @@ The descriptor command is:
 }
 ```
 
-An explicit UI action performs exactly this sequence:
-
-1. reject before writing when capability or descriptor is unavailable;
-2. one `config/batchWrite` to the writable base user layer/version;
-3. write only `mcp_servers.codez-desktop-browser-cua` with `mergeStrategy: "replace"`;
-4. one `config/mcpServer/reload`;
-5. read all pages of `mcpServerStatus/list`;
-6. stop on the first failure and require an explicit refresh/retry.
-
-The write is a whole-object replacement. `createSession.mcpServers`, per-session MCP overlays, and
-environment overlays are prohibited.
+Normal startup never writes to Codex config. The only user-level mutation is explicit migration:
+re-read the writable user layer and its version, verify the exact known Codez-generated entry,
+then remove only this fixed key with `expectedVersion`. Mismatches and concurrent writes fail
+closed. Future Desktop-only tools reuse the bounded process-scoped MCP list.
 
 ## UI status taxonomy
 
 The MCP panel reports all independent facts rather than collapsing them:
 
 - runtime: installed, missing, service-not-running, or descriptor unavailable;
-- configuration: configured with the exact fixed object or not configured;
+- configuration: temporary Desktop injection, legacy global entry present, or unavailable;
 - connection: `connecting`, `connected`, `disconnected`, `disabled`, or `failed`;
 - authorization: native status/auth state remains distinct from connection state;
 - start/tool failure: process-start failure, tool listing failure, and tool error remain visible;
@@ -152,14 +192,13 @@ The MCP panel reports all independent facts rather than collapsing them:
 
 Configured-but-runtime-missing is shown as runtime missing and never as connected. Authentication
 failure is reported as authentication/start failure, not as a connection inference about Browser
-support. Unsupported and unavailable paths disable the install action; no doomed native mutation is
-issued.
+support. Unsupported and unavailable paths never trigger an installation write.
 
 ## Settings Browser section surfacing
 
 The Settings → Browser section is Codex-supported and must not be gated by the unsupported-section
 notice. Its browser-control entry is the same native card rendered in the Codex MCP panel: one
-shared component owns descriptor loading, status classification, and the explicit configure action,
+shared component owns descriptor loading, status classification, and explicit legacy cleanup,
 so the two surfaces cannot drift. The legacy Browser Use plugin toggle is not surfaced for Codex:
 `browser-use@codez-plugins-official` is a `.codez-plugin` manifest that Codex's plugin catalog never
 lists, so a plugin toggle there would be a permanently disabled control. Chrome data import, the
@@ -168,9 +207,9 @@ of the agent adapter and remain in the section unchanged.
 
 ## Side pane surfacing
 
-Browser tabs created through the native broker carry the shared synthetic owner scope
+Browser tabs created through the native broker carry a window-specific synthetic owner scope
 (`NATIVE_BROWSER_CUA_SESSION_ID`, workspace key prefix `NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX`)
-because the MCP server is configured globally and is not bound to a Codez conversation. The
+because the MCP server is scoped to a window rather than to a Codez conversation. The
 renderer keeps those exact values on the side-pane tab so guest attach validation in Main stays
 consistent, but treats the tab as window-scoped: it matches any workspace and any conversation in
 the owner window, and the pane reveals only when a native tab is newly created. Replayed or
@@ -184,9 +223,8 @@ restored ready events mount in the background and never steal focus.
 - No local owner window: return `backend_unavailable`.
 - Browser command rejected by schema: return `invalid_request`; do not call the manager.
 - Manager failure: return the strict Browser result exactly.
-- Config write/reload/status failure: preserve the native error, stop immediately, and do not retry.
-- App restart replaces the endpoint; Codex reload or a later explicit retry establishes the new
-  process. Stale endpoint requests fail closed.
+- Legacy cleanup write failure: preserve the native error, stop immediately, and do not retry.
+- Window close revokes its capability; stale requests fail closed.
 
 ## Permissions
 
@@ -198,12 +236,9 @@ permission broker; it must not bypass that broker by virtue of being Codex-owned
 ## Event order
 
 ```text
-explicit UI action
-  -> descriptor validation
-  -> config/batchWrite (fixed name only)
-  -> config/mcpServer/reload
-  -> paginated mcpServerStatus/list
-  -> projected UI status
+Main broker ready -> register window/token -> local Host init -> workspace bridge spawn
+  -> app-server -c temporary MCP override -> tool request authenticates -> bound window
+  -> window close revokes its token
 ```
 
 There is no background write loop, automatic repair, or timed retry. A user-visible refresh only
@@ -211,22 +246,20 @@ rereads state; it does not mutate Codex config.
 
 ## Acceptance scenarios
 
-1. Browser available, CUA unavailable: Host capability is `degraded`; UI explains Browser-only
-   degradation and still allows explicit configuration.
-2. Native Main environment absent: Host capability is `unsupported`; install is disabled.
+1. Browser available, CUA unavailable: Host capability is `degraded`; the Desktop runtime alone
+   receives the Browser tool.
+2. Native Main environment absent: Host capability is `unsupported`; no MCP is injected.
 3. Old bridge or omitted capability: UI projects unsupported and never guesses from MCP status.
-4. Missing bridge/service: descriptor fails before any Codex write.
-5. Valid configure action: writes only the fixed server object, reloads once, then reads every
-   status page.
-6. Any operation failure: no automatic retry; user must refresh or retry.
+4. Missing bridge/service: Local Host starts without the optional MCP.
+5. Exact old Codez-generated config can be deliberately removed without modifying other entries.
+6. Customized old config is never removed by automatic migration.
 7. Invalid endpoint token: endpoint returns `authentication_failed` and dispatches nothing.
 8. Invalid Browser command: endpoint returns `invalid_request` and manager is not called.
 9. No eligible local window: endpoint returns a strict failed Browser result, never success.
-10. Remote workspace/runtime: native mutation is unavailable/disabled even if a same-name server is
-    present in Codex config.
+10. Remote workspace/runtime: no Desktop MCP is injected even if a same-name server is present in
+    Codex config.
 
 ## Migration boundary
 
-Only the fixed `mcp_servers.codez-desktop-browser-cua` key is owned by this feature. The installer
-replaces that whole value and leaves every other MCP server untouched. Existing legacy Browser/CUA
-plugin configuration and the per-session `node_repl` broker remain unchanged.
+Only the fixed `mcp_servers.codez-desktop-browser-cua` key may be removed during the verified,
+explicit migration. All other MCP entries and the existing Browser/CUA plugin remain unchanged.

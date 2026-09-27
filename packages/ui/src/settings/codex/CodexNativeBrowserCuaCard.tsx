@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
 import {
   classifyCodexNativeBrowserCua,
-  installCodexNativeBrowserCuaMcp,
-  isCodexNativeBrowserCuaConfigured,
+  cleanupCodexNativeBrowserCuaLegacyMcp,
+  getCodexNativeBrowserCuaLegacyRegistration,
 } from "./codexSettingsData.js";
 import { CodexNotice } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
@@ -39,7 +39,7 @@ export function CodexNativeBrowserCuaCard({
   const descriptorError =
     loaded.error ??
     (descriptor && !activeDescriptor ? "Invalid Desktop browser descriptor" : undefined);
-  const configured = isCodexNativeBrowserCuaConfigured(
+  const legacyRegistration = getCodexNativeBrowserCuaLegacyRegistration(
     controller.snapshot.config?.data,
     activeDescriptor?.runtimeInstalled ? activeDescriptor : undefined,
   );
@@ -48,13 +48,13 @@ export function CodexNativeBrowserCuaCard({
     remote,
     descriptor: activeDescriptor?.runtimeInstalled ? activeDescriptor : undefined,
     descriptorError,
-    configured,
   });
-  const nativeDisabled = disabled || nativeStatus !== "not-configured";
+  const legacyCleanupDisabled =
+    disabled || nativeStatus !== "active" || legacyRegistration !== "codez-generated";
   let nativeStatusMessage: string;
   switch (nativeStatus) {
-    case "configured":
-      nativeStatusMessage = text.nativeBrowserCuaConfigured;
+    case "active":
+      nativeStatusMessage = text.nativeBrowserCuaActive;
       break;
     case "unsupported":
       nativeStatusMessage = text.nativeBrowserCuaUnsupported;
@@ -68,8 +68,6 @@ export function CodexNativeBrowserCuaCard({
     case "descriptor-unavailable":
       nativeStatusMessage = text.nativeBrowserCuaDescriptorUnavailable;
       break;
-    default:
-      nativeStatusMessage = text.nativeBrowserCuaNotConfigured;
   }
   const nativeServer = state?.data?.data.find(
     (server) => server.name === "codez-desktop-browser-cua",
@@ -92,21 +90,32 @@ export function CodexNativeBrowserCuaCard({
           {nativeServer?.toolsError ? (
             <CodexNotice error>{nativeServer.toolsError}</CodexNotice>
           ) : null}
+          {legacyRegistration === "customized" ? (
+            <p className="text-ui-sm text-warning">{text.nativeBrowserCuaLegacyCustomized}</p>
+          ) : null}
+          {legacyRegistration === "unknown" ? (
+            <p className="text-ui-sm text-warning">{text.nativeBrowserCuaLegacyUnknown}</p>
+          ) : null}
+          {controller.snapshot.config?.error ? (
+            <CodexNotice error>{controller.snapshot.config.error}</CodexNotice>
+          ) : null}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={nativeDisabled}
-          onClick={() =>
-            void controller.run(async () => {
-              if (!activeDescriptor?.runtimeInstalled)
-                throw new Error(text.nativeBrowserCuaRuntimeMissing);
-              await installCodexNativeBrowserCuaMcp(controller, activeDescriptor);
-            })
-          }
-        >
-          {text.nativeBrowserCuaInstall}
-        </Button>
+        {legacyRegistration === "codez-generated" ? (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={legacyCleanupDisabled}
+            onClick={() =>
+              void controller.run(async () => {
+                if (!activeDescriptor?.runtimeInstalled)
+                  throw new Error(text.nativeBrowserCuaRuntimeMissing);
+                await cleanupCodexNativeBrowserCuaLegacyMcp(controller, activeDescriptor);
+              })
+            }
+          >
+            {text.nativeBrowserCuaLegacyCleanup}
+          </Button>
+        ) : null}
       </div>
     </div>
   );
