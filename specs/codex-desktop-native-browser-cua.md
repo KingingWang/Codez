@@ -21,8 +21,12 @@ Desktop Main owns one process-wide native broker:
 - POSIX: a deterministic Unix domain socket under the OS temporary directory.
 - Windows: a deterministic named pipe under the user's pipe namespace.
 - The endpoint is regenerated only at app restart. It is never selected by a Codex session.
-- Main writes a random 32-byte token to a `0600` file under Desktop user data. The token is never
-  placed in Codex config, UI, logs, or descriptors.
+- Main writes a random 32-byte token to a `0600` file under Desktop user data, and only after the
+  endpoint listen succeeds. The token is never placed in Codex config, UI, logs, or descriptors.
+  Endpoint and token files are removed on close only by the instance that owns them: a competing
+  instance whose bind fails (for example a second app launch racing the single-instance handoff)
+  must not overwrite or delete the live instance's credentials — otherwise every later MCP request
+  fails `authentication_failed` and new MCP sessions cannot connect.
 - Every endpoint request is validated with the native request schema, size-bounded, and authorized
   by timing-safe token comparison.
 - Main dispatches strict `BrowserCommand` values through `BrowserGuestManager`. It returns the
@@ -142,6 +146,16 @@ so the two surfaces cannot drift. The legacy Browser Use plugin toggle is not su
 lists, so a plugin toggle there would be a permanently disabled control. Chrome data import, the
 insecure-certificate policy, and browser-data clearing are Desktop platform operations independent
 of the agent adapter and remain in the section unchanged.
+
+## Side pane surfacing
+
+Browser tabs created through the native broker carry the shared synthetic owner scope
+(`NATIVE_BROWSER_CUA_SESSION_ID`, workspace key prefix `NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX`)
+because the MCP server is configured globally and is not bound to a Codez conversation. The
+renderer keeps those exact values on the side-pane tab so guest attach validation in Main stays
+consistent, but treats the tab as window-scoped: it matches any workspace and any conversation in
+the owner window, and the pane reveals only when a native tab is newly created. Replayed or
+restored ready events mount in the background and never steal focus.
 
 ## Failure semantics
 
