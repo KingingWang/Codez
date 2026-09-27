@@ -54,6 +54,25 @@ CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE=<stable token file path>
 It must never receive `CODEZ_NODE_REPL_BROWSER_BROKER_SOCKET` or
 `CODEZ_NODE_REPL_BROWSER_BROKER_TOKEN`.
 
+### CLI tool discovery while Desktop is offline
+
+The Codex user-level MCP registration persists across Desktop restarts; Desktop does not rewrite
+or remove global Codex config on quit. The stdio bridge owns tool discovery for that registration.
+On each `tools/list`, it reads the nonempty Desktop token file and checks that the configured
+Desktop broker endpoint accepts a connection. Missing/empty token, connection refusal (including
+a stale socket file after a crash), or a bounded connection failure yields an empty tool list.
+No browser or CUA tool descriptions are advertised in a new CLI session while Desktop is offline.
+When the broker is reachable, the existing tool definitions are returned unchanged. Actual tool
+calls continue to use the broker's authenticated command path; a connection check does not grant
+access. A CLI session whose catalog was built while offline may need to reload MCP or restart
+to discover tools after Desktop starts; no background polling or global config mutation is added.
+
+```text
+Codex CLI → bridge tools/list → token-file read → broker endpoint connection → tools or []
+Desktop quit → broker closes endpoint + removes token file → next tools/list returns []
+Desktop start → broker listens + writes token → next tools/list returns tools
+```
+
 The stdio entry must serve both eras from the same factory: Codex's MCP client opens with a
 2025-06-18 legacy `initialize` (no envelope metadata), so `legacy` must be `"serve"` — rejecting
 legacy openings fails the handshake (`-32022`) and the server never becomes usable. Era routing is
