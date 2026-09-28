@@ -7,6 +7,7 @@ import { CodexConfigPanel } from "./CodexConfigPanel.js";
 import { CodexMcpPanel, CodexPluginsPanel, CodexSkillsPanel } from "./CodexResourcesPanel.js";
 import { CodexHistoryPanel } from "./CodexHistoryPanel.js";
 import { CodexMemoryPanel } from "./CodexMemoryPanel.js";
+import { CodexProvidersPanel } from "./CodexProvidersPanel.js";
 import { CodexNotice, CodexSection } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
 import { useCodexNativeBrowserCuaCapability } from "./useCodexNativeBrowserCua.js";
@@ -15,6 +16,7 @@ import { useSettings } from "@/hooks/useSettingService.js";
 type Panel =
   | "account"
   | "models"
+  | "providers"
   | "skills"
   | "agents"
   | "mcp"
@@ -25,6 +27,7 @@ type Panel =
 const PANELS: Panel[] = [
   "account",
   "models",
+  "providers",
   "skills",
   "agents",
   "mcp",
@@ -141,6 +144,13 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
           ) : null}
           {panel === "plugins" ? <CodexPluginsPanel controller={controller} /> : null}
           {panel === "memory" ? <CodexMemoryPanel controller={controller} /> : null}
+          {panel === "providers" ? (
+            <CodexProvidersPanel
+              controller={controller}
+              workspacePath={props.workspacePath}
+              workspaceIdentity={props.workspaceIdentity}
+            />
+          ) : null}
           {panel === "history" ? (
             <CodexHistoryPanel
               agentService={controller.services.codezAgentService}

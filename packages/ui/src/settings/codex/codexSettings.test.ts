@@ -17,6 +17,19 @@ import {
   codexMemoryNumberEdit,
 } from "./codexMemorySettings.js";
 import {
+  codexCatalogModelTemplate,
+  codexCatalogModelView,
+  codexModelEntryFromForm,
+  codexModelFormFrom,
+  codexProviderCreateEdits,
+  codexProviderDeleteEdits,
+  codexProviderFormError,
+  codexProviderFormFrom,
+  codexProvidersView,
+  codexProviderSetDefaultEdits,
+  codexProviderUpdateEdits,
+} from "./codexProviderSettings.js";
+import {
   codexAuthorizationUrl,
   codexModelEdits,
   codexPluginInstallRequest,
@@ -726,4 +739,218 @@ test("codexMemoryNumberEdit validates range and resets on empty input", () => {
   assert.equal(codexMemoryNumberEdit(field, "129"), null);
   assert.equal(codexMemoryNumberEdit(field, "1.5"), null);
   assert.equal(codexMemoryNumberEdit(field, "abc"), null);
+});
+
+test("providers view reads model_providers with token presence only and default-first order", () => {
+  const config = codexConfigResponseSchema.parse({
+    config: {
+      model_provider: "openai-my",
+      model_providers: {
+        ollama1: {
+          name: "Ollama One",
+          base_url: "http://127.0.0.1:39080/v1",
+          wire_api: "chat",
+          requires_openai_auth: true,
+          experimental_bearer_token: "sk-secret-value",
+        },
+        "openai-my": { base_url: "http://127.0.0.1:39081/v1", wire_api: "responses" },
+      },
+    },
+    origins: {},
+    layers: null,
+  });
+  const view = codexProvidersView(config, [
+    { slug: "kimi-k3", provider: "ollama1" },
+    { slug: "glm5", provider: "ollama1" },
+    { slug: "gpt-6-sol", provider: "openai-my" },
+  ]);
+  assert.deepEqual(view, [
+    {
+      id: "openai-my",
+      name: "openai-my",
+      baseUrl: "http://127.0.0.1:39081/v1",
+      wireApi: "responses",
+      requiresOpenaiAuth: false,
+      hasBearerToken: false,
+      isDefault: true,
+      modelCount: 1,
+    },
+    {
+      id: "ollama1",
+      name: "Ollama One",
+      baseUrl: "http://127.0.0.1:39080/v1",
+      wireApi: "chat",
+      requiresOpenaiAuth: true,
+      // 只保留存在性；明文 token 绝不进入视图（UI 不回显）。
+      hasBearerToken: true,
+      isDefault: false,
+      modelCount: 2,
+    },
+  ]);
+  assert.equal(JSON.stringify(view).includes("sk-secret-value"), false);
+});
+
+test("provider form validation gates id pattern, duplicates and base url", () => {
+  const form = { ...codexProviderFormFrom(), id: "bad.id", baseUrl: "http://x" };
+  assert.equal(codexProviderFormError(form, true, []), "providerIdInvalid");
+  assert.equal(
+    codexProviderFormError({ ...form, id: "taken" }, true, ["taken"]),
+    "providerIdTaken",
+  );
+  assert.equal(
+    codexProviderFormError({ ...form, id: "ok-id", baseUrl: "  " }, true, []),
+    "providerBaseUrlRequired",
+  );
+  assert.equal(
+    codexProviderFormError({ ...form, id: "ok-id_2", baseUrl: "http://x" }, true, ["ok-id_2"]),
+    "providerIdTaken",
+  );
+  // 编辑态不校验 id（输入框已禁用），只校验 base url。
+  assert.equal(
+    codexProviderFormError({ ...form, id: "ok-id", baseUrl: "http://x" }, false, []),
+    null,
+  );
+});
+
+test("provider create writes the whole table; update edits per field and keeps token semantics", () => {
+  const form = {
+    ...codexProviderFormFrom(),
+    id: "my-provider",
+    name: "Mine",
+    baseUrl: "http://127.0.0.1:9000/v1",
+    wireApi: "responses" as const,
+    requiresOpenaiAuth: true,
+    bearerToken: "sk-new",
+  };
+  assert.deepEqual(codexProviderCreateEdits(form), [
+    {
+      keyPath: "model_providers.my-provider",
+      value: {
+        name: "Mine",
+        base_url: "http://127.0.0.1:9000/v1",
+        wire_api: "responses",
+        requires_openai_auth: true,
+        experimental_bearer_token: "sk-new",
+      },
+      mergeStrategy: "replace",
+    },
+  ]);
+  // 更新：逐字段写，保留未知手编 key；token 仅在输入新值时写。
+  assert.deepEqual(codexProviderUpdateEdits({ ...form, bearerToken: "" }), [
+    { keyPath: "model_providers.my-provider.name", value: "Mine", mergeStrategy: "replace" },
+    {
+      keyPath: "model_providers.my-provider.base_url",
+      value: "http://127.0.0.1:9000/v1",
+      mergeStrategy: "replace",
+    },
+    {
+      keyPath: "model_providers.my-provider.wire_api",
+      value: "responses",
+      mergeStrategy: "replace",
+    },
+    {
+      keyPath: "model_providers.my-provider.requires_openai_auth",
+      value: true,
+      mergeStrategy: "replace",
+    },
+  ]);
+  // 清除 token → 写 null 删键。
+  const clearing = codexProviderUpdateEdits({ ...form, bearerToken: "", clearBearerToken: true });
+  assert.deepEqual(clearing.at(-1), {
+    keyPath: "model_providers.my-provider.experimental_bearer_token",
+    value: null,
+    mergeStrategy: "replace",
+  });
+  assert.deepEqual(codexProviderDeleteEdits("my-provider"), [
+    { keyPath: "model_providers.my-provider", value: null, mergeStrategy: "replace" },
+  ]);
+  assert.deepEqual(codexProviderSetDefaultEdits("my-provider"), [
+    { keyPath: "model_provider", value: "my-provider", mergeStrategy: "replace" },
+  ]);
+});
+
+test("catalog model template strips identity fields from the same-provider entry", () => {
+  const template = codexCatalogModelTemplate(
+    [
+      { slug: "other", provider: "other-p", context_window: 1 },
+      {
+        slug: "kimi-k3",
+        provider: "ollama1",
+        display_name: "Kimi",
+        description: "desc",
+        context_window: 500000,
+        supported_reasoning_levels: [{ effort: "high", description: "d" }],
+        availability_nux: { message: "nux" },
+      },
+    ],
+    "ollama1",
+  );
+  // 能力字段保留；身份/营销字段剥离；provider 覆盖为目标。
+  assert.deepEqual(template, {
+    provider: "ollama1",
+    context_window: 500000,
+    supported_reasoning_levels: [{ effort: "high", description: "d" }],
+  });
+  // 无同 provider 模板时退回首条；完全无模型时给最小骨架。
+  assert.deepEqual(codexCatalogModelTemplate([], "p"), { provider: "p", visibility: "list" });
+});
+
+test("model entry builder overlays identity fields on the raw JSON and rejects bad input", () => {
+  const entry = codexModelEntryFromForm({
+    slug: "new-slug",
+    provider: "ollama1",
+    displayName: "New",
+    description: "",
+    hidden: true,
+    rawJson: JSON.stringify({
+      slug: "template-slug",
+      provider: "template-p",
+      display_name: "Template",
+      description: "keep?",
+      context_window: 123,
+    }),
+  });
+  // slug/provider/visibility 以简单字段为准；description 清空 = 删键；能力字段保留。
+  assert.deepEqual(entry, {
+    slug: "new-slug",
+    provider: "ollama1",
+    display_name: "New",
+    visibility: "hidden",
+    context_window: 123,
+  });
+  assert.equal(
+    codexModelEntryFromForm({
+      slug: "x",
+      provider: "p",
+      displayName: "",
+      description: "",
+      hidden: false,
+      rawJson: "{ not json",
+    }),
+    null,
+  );
+  assert.equal(
+    codexModelEntryFromForm({
+      slug: " ",
+      provider: "p",
+      displayName: "",
+      description: "",
+      hidden: false,
+      rawJson: "{}",
+    }),
+    null,
+  );
+  // 表单往返：编辑态初始 JSON 即条目本身。
+  const source = { slug: "a", provider: "p", display_name: "A", context_window: 1 };
+  const form = codexModelFormFrom(source, {});
+  assert.equal(form.originalSlug, "a");
+  assert.deepEqual(codexModelEntryFromForm(form), { ...source, visibility: "list" });
+  // 视图投影：hidden 判定与 display_name 回退。
+  assert.deepEqual(codexCatalogModelView({ slug: "b", visibility: "hidden" }), {
+    slug: "b",
+    provider: undefined,
+    displayName: "b",
+    description: undefined,
+    hidden: true,
+  });
 });

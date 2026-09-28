@@ -40,6 +40,7 @@ import {
   codezPluginsInstallResultSchema,
   codezPluginsListResultSchema,
   codezAgentsListResultSchema,
+  codezCatalogReadModelsResultSchema,
   codezCatalogReadResultSchema,
   codezAgentsWriteResultSchema,
   codezAgentsDeleteResultSchema,
@@ -4388,6 +4389,34 @@ export function createCodezAgentService(
       return client.request(
         codezProtocolMethods.catalogRead,
         { workspace: buildWorkspaceRef(params) },
+        codezCatalogReadResultSchema,
+      );
+    },
+
+    async readCodexCatalogModels(params: CodezAgentWorkspaceTarget) {
+      // 管理面完整条目读取：与 readCodexCatalog 同一载体铁律（specs/codex-model-provider-management.md）。
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.catalogReadModels,
+        { workspace: buildWorkspaceRef(params) },
+        codezCatalogReadModelsResultSchema,
+      );
+    },
+
+    async writeCodexCatalogModel(params) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.catalogWriteModel,
+        { workspace: buildWorkspaceRef(params), model: params.model },
+        codezCatalogReadResultSchema,
+      );
+    },
+
+    async deleteCodexCatalogModel(params) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.catalogDeleteModel,
+        { workspace: buildWorkspaceRef(params), slug: params.slug },
         codezCatalogReadResultSchema,
       );
     },

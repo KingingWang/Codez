@@ -3694,6 +3694,32 @@ export const codezCatalogReadResultSchema = z
   .strict();
 export type CodezCatalogReadResult = z.infer<typeof codezCatalogReadResultSchema>;
 
+// Codex 模型目录管理（specs/codex-model-provider-management.md）：与 catalog/read
+// 同族的 bridge 本地 fs 控制面方法，绝不进入 codex/request 原生白名单。
+// 条目校验最小化（slug 必填非空 string），其余能力字段 passthrough 由原样保留。
+export const codezCatalogModelEntrySchema = z.object({ slug: nonEmptyString }).passthrough();
+export type CodezCatalogModelEntry = z.infer<typeof codezCatalogModelEntrySchema>;
+
+export const codezCatalogReadModelsParamsSchema = z
+  .object({ workspace: codezWorkspaceRefSchema })
+  .strict();
+export const codezCatalogReadModelsResultSchema = z
+  .object({
+    path: z.string().nullable(),
+    models: z.array(codezCatalogModelEntrySchema),
+  })
+  .strict();
+export type CodezCatalogReadModelsResult = z.infer<typeof codezCatalogReadModelsResultSchema>;
+
+export const codezCatalogWriteModelParamsSchema = z
+  .object({ workspace: codezWorkspaceRefSchema, model: codezCatalogModelEntrySchema })
+  .strict();
+export const codezCatalogDeleteModelParamsSchema = z
+  .object({ workspace: codezWorkspaceRefSchema, slug: nonEmptyString })
+  .strict();
+// writeModel/deleteModel 结果与 catalog/read 同形：写后顺带返回最新 slug→provider 映射，
+// 调用方无需二次读取。
+
 // 写入承载完整托管字段集：缺省的可选字段 = 从文件中移除该 key；
 // 未知 TOML key 由 bridge 解析→合并→回序列化保留。
 export const codezAgentRoleWriteInputSchema = z
@@ -3822,6 +3848,10 @@ export const codezProtocolMethods = {
   // Codex 模型目录（model_catalog_json）读取：bridge 本地 fs 控制面方法，
   // 非原生 RPC；多 provider 分组事实的唯一来源（specs/codex-model-provider-grouping.md）。
   catalogRead: "catalog/read",
+  // Codex 模型目录管理写路径（specs/codex-model-provider-management.md）。
+  catalogReadModels: "catalog/readModels",
+  catalogWriteModel: "catalog/writeModel",
+  catalogDeleteModel: "catalog/deleteModel",
   automationCreate: "automation/create",
   automationUpdate: "automation/update",
   automationCheckTaskBinding: "automation/checkTaskBinding",

@@ -11,6 +11,7 @@ import { CodexAccountPanel } from "./CodexAccountPanel.js";
 import { CodexConfigPanel } from "./CodexConfigPanel.js";
 import { CodexSkillsPanel, CodexMcpPanel, CodexPluginsPanel } from "./CodexResourcesPanel.js";
 import { CodexHistoryPanel, HistoryRunRow } from "./CodexHistoryPanel.js";
+import { CodexProvidersPanel } from "./CodexProvidersPanel.js";
 import { codexVisibleConfig } from "./CodexSettingsParts.js";
 import { codexCapabilityGate, projectCodexCapabilities } from "@/capabilities/codexCapabilities.js";
 
@@ -471,4 +472,61 @@ test("Codex thread history is read-only and fails closed without an active nativ
     codex: { readOnlyWorkflowHistory: "unsupported" },
   }).readOnlyWorkflowHistory;
   assert.equal(codexCapabilityGate(unsupported).disabled, true);
+});
+
+test("providers panel renders provider facts without ever exposing the bearer token", () => {
+  const markup = render(
+    <CodexProvidersPanel
+      controller={{
+        ...controller,
+        snapshot: {
+          config: {
+            data: {
+              config: {
+                model_provider: "ollama1",
+                model: "kimi-k3",
+                model_providers: {
+                  ollama1: {
+                    name: "Ollama One",
+                    base_url: "http://127.0.0.1:39080/v1",
+                    wire_api: "chat",
+                    experimental_bearer_token: "sk-panel-secret",
+                  },
+                  "openai-my": { base_url: "http://127.0.0.1:39081/v1", wire_api: "responses" },
+                },
+              },
+              origins: {},
+              layers: [
+                {
+                  name: { type: "user", file: "/fixture/config.toml", profile: null },
+                  version: "v1",
+                  config: {},
+                  disabledReason: null,
+                },
+              ],
+            },
+          },
+        },
+      }}
+      workspacePath="/fixture/workspace"
+    />,
+  );
+  assert.match(markup, /Ollama One/);
+  assert.match(markup, /openai-my/);
+  assert.match(markup, /http:\/\/127\.0\.0\.1:39081\/v1/);
+  assert.match(markup, /Set as default/);
+  assert.match(markup, /Add provider/);
+  assert.match(markup, /Catalog models/);
+  // 安全不变量：config/read 返回的明文 token 绝不出现在任何渲染产物中。
+  assert.equal(markup.includes("sk-panel-secret"), false);
+  // 中文文案随 locale 切换。
+  const zh = render(
+    <CodexProvidersPanel
+      controller={{ ...controller, snapshot: {} }}
+      workspacePath="/fixture/workspace"
+    />,
+    "zh-CN",
+  );
+  assert.match(zh, /模型供应商/);
+  assert.match(zh, /添加供应商/);
 });

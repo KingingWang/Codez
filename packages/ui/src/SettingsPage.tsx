@@ -1723,7 +1723,7 @@ export function SettingsPage({
                                     : activeSection === "plugin"
                                       ? "plugins"
                                       : activeSection === "modelProvider"
-                                        ? "models"
+                                        ? "providers"
                                         : activeSection === "memory"
                                           ? "memory"
                                           : "account"

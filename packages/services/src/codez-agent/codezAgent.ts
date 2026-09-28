@@ -33,6 +33,8 @@ import type {
   CodezAgentRoleScope,
   CodezAgentRoleWriteInput,
   CodezAgentsListResult,
+  CodezCatalogModelEntry,
+  CodezCatalogReadModelsResult,
   CodezCatalogReadResult,
   CodezAgentsWriteResult,
   CodezPluginsOverviewResult,
@@ -670,6 +672,18 @@ export interface ICodezAgentService {
    * 承载约束与 listAgentRoles 相同。specs/codex-model-provider-grouping.md。
    */
   readCodexCatalog(params: CodezAgentWorkspaceTarget): Promise<CodezCatalogReadResult>;
+  /**
+   * Codex 模型目录管理（specs/codex-model-provider-management.md）：
+   * 完整原始条目读取与按 slug upsert/删除。载体铁律与 readCodexCatalog 相同；
+   * 写后返回最新 slug→provider 映射，调用方无需二次读取。
+   */
+  readCodexCatalogModels(params: CodezAgentWorkspaceTarget): Promise<CodezCatalogReadModelsResult>;
+  writeCodexCatalogModel(
+    params: CodezAgentWorkspaceTarget & { model: CodezCatalogModelEntry },
+  ): Promise<CodezCatalogReadResult>;
+  deleteCodexCatalogModel(
+    params: CodezAgentWorkspaceTarget & { slug: string },
+  ): Promise<CodezCatalogReadResult>;
   /** 新建或更新角色 TOML；更新传 originalName，不支持改名（删除+新建）。 */
   writeAgentRole(params: CodezAgentWriteAgentRoleParams): Promise<CodezAgentsWriteResult>;
   /** 删除角色 TOML；按 effective name 定位，文件必须存在于该 scope。 */
