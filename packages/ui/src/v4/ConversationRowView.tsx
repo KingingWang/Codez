@@ -12,6 +12,7 @@ import {
   GitBranchIcon,
   GoalIcon,
   PencilIcon,
+  PlayIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
   TrendingUpDownIcon,
@@ -27,6 +28,7 @@ import {
   TID_V4_FEEDBACK_DISLIKE,
   TID_V4_FEEDBACK_LIKE,
   TID_V4_FORK,
+  TID_V4_RETRY,
   TID_V4_ROW,
   TID_V4_ROW_ATTACHMENTS,
   testId,
@@ -1479,6 +1481,52 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
         <span className="select-none text-ui-sm text-foreground-subtlest">{timeLabel}</span>
       ) : null}
     </MessageActions>
+  );
+});
+
+/**
+ * 中断轮末尾的「继续」入口。
+ *
+ * 手动 stop 后整轮以 completedInterrupted 收口，会话空闲但界面没有任何恢复路径。
+ * 点击后由 retryTurn 截断本轮 partial 输出、用原 user prompt（含原附件）重跑整轮；
+ * 停止后改过的模型/配置对重跑生效——这是 retryTurn 的既有语义，UI 不快照停止时的配置。
+ * 常显而非并进 hover-only 动作栏：它是中断后唯一的恢复入口，且手机远控没有 hover。
+ */
+export const ConversationTurnContinueAction = memo(function ConversationTurnContinueAction({
+  target,
+  onContinue,
+  className,
+}: {
+  /** retryTurn 的行级目标；由 resolveInterruptedTurnContinueTarget 裁决，必须自带 canRetry 权威。 */
+  target: ConversationRowTarget;
+  onContinue: (target: ConversationRowTarget) => void;
+  className?: string;
+}) {
+  const { intl } = useCodezIntl();
+  const label = intl.formatMessage({ id: "chat.turn.continue" });
+  const description = intl.formatMessage({ id: "chat.turn.continue.description" });
+  const handleContinue = useCallback(() => {
+    logger.info("[ConversationRowView] 中断轮继续：截断 partial 输出并重跑原 prompt", {
+      targetEntityId: target.entityId,
+      targetRowId: target.rowId,
+    });
+    onContinue(target);
+  }, [onContinue, target]);
+  return (
+    <div className={cn("flex w-full", className)}>
+      <ControlHintTooltip title={label} description={description}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-testid={testId(TID_V4_RETRY, String(target.rowId))}
+          onClick={handleContinue}
+        >
+          <PlayIcon className="size-3.5" data-icon="inline-start" />
+          {label}
+        </Button>
+      </ControlHintTooltip>
+    </div>
   );
 });
 

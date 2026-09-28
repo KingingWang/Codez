@@ -4337,6 +4337,9 @@ const zhCN: Record<string, string> = {
   "chat.history.duration.second": "秒",
   "chat.stop": "停止生成",
   "chat.stop.short": "停止",
+  "chat.turn.continue": "继续",
+  "chat.turn.continue.description":
+    "重新执行本轮：截断已停止的输出，用原输入重跑（使用当前模型与配置）",
   "chat.promptEnhance.title": "增强提示词",
   "chat.promptEnhance.description": "使用当前选中的模型配置润色这条草稿。",
   "chat.promptEnhance.cancel": "取消增强",

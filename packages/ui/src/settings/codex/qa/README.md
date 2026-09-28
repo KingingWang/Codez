@@ -51,6 +51,21 @@ On failure it writes the UI text, errors, sanitized mock request diagnostics and
 a screenshot, and releases the held response. It does not automatically retry
 commands or move attachment refs between sessions.
 
+For the interrupted-turn recovery entry, launch a **fresh** probe with
+`CODEX_UI_QA_MOCK=1` and run:
+
+```sh
+CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/qa/desktop-interrupted-turn-check.mjs
+```
+
+It sends one text prompt to the held loopback provider, clicks the composer stop
+control while the native turn is running, and asserts the interrupted turn end
+renders an always-visible `v4-retry-<rowId>` continue entry. Clicking it must dispatch
+`retryTurn` (the provider sees a second request), truncate the stopped partial output,
+and hide the entry while the rerun runs and after it completes.
+Recorded verification — September 28, 2026: `/tmp/codex-ui-interrupted-continue-QLLeNO/`
+(four checks, one interrupted and one completed native turn, zero page errors).
+
 Fresh full-turn **actual dev.mjs** verification passed on 2026-09-22:
 `/tmp/codex-ui-desktop-conversation-gqtR57/results.json` (six checks, three completed
 native turns, zero page errors). Screenshots include `first-image-ready.png`,
