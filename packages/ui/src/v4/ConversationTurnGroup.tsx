@@ -91,7 +91,10 @@ import { ConversationWorkflowDigests } from "@/v4/ConversationWorkflowDigests.js
 import { ConversationWorkflowCompletion } from "@/v4/ConversationWorkflowCompletion.js";
 import { resolveWorkflowTurnDigests } from "@/v4/workflowTurnDigests.js";
 import { resolveWorkflowTurnCompletion } from "@/v4/workflowTurnCompletion.js";
-import { ConversationAssistantTextActions } from "@/v4/ConversationRowView.js";
+import {
+  ConversationAssistantTextActions,
+  ConversationTurnContinueAction,
+} from "@/v4/ConversationRowView.js";
 import { readAssistantFeedback } from "@/v4/ConversationRowView.js";
 import type {
   AssistantFeedbackHandler,
@@ -101,6 +104,7 @@ import {
   isConversationReasoningRowVisible,
   type ConversationRowRenderContext,
 } from "@/v4/conversationRowContext.js";
+import { resolveInterruptedTurnContinueTarget } from "@/v4/conversationTurnContinue.js";
 import type {
   AssistantWorkRow,
   ConversationTurnFlowItem,
@@ -1483,6 +1487,14 @@ function ConversationTurnGroupImpl({
     return { enabled: true, reason: "available" };
   }, [unit.header?.actions?.canRewindFiles, unit.header?.fileChanges, unit.isRunning]);
 
+  // 中断轮恢复入口：能否继续、继续打哪一行都由 render unit 唯一裁决
+  //（行级 actions.canRetry + isLastTurn）；宿主未注入 onRetry（只读会话、writer-conflict
+  // 只读、分享侧聊）时整块不渲染，UI 不再另立第二套 phase guard。
+  const interruptedContinueTarget = useMemo(
+    () => (onRetry ? resolveInterruptedTurnContinueTarget(unit) : undefined),
+    [onRetry, unit],
+  );
+
   // workflow 通知卡开头的轮去掉轮顶 padding：卡片只贴上一轮 pb-5 的常规流内间距。
   const startsWithWorkflowNotificationCard =
     backgroundResultTitle !== undefined && resolveWorkflowNotification(unit) !== undefined;
@@ -1765,6 +1777,10 @@ function ConversationTurnGroupImpl({
       )}
       {unit.topicPreparations?.length ? (
         <BotTopicPreparation items={unit.topicPreparations} />
+      ) : null}
+      {/* 手动 stop 后保留轮尾恢复入口，和上游话题准备状态独立显示。 */}
+      {interruptedContinueTarget && onRetry ? (
+        <ConversationTurnContinueAction target={interruptedContinueTarget} onContinue={onRetry} />
       ) : null}
     </section>
   );
