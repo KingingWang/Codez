@@ -38,8 +38,10 @@ Bot 消息 / Automation 派发 / UI 订阅
 - `preferredSelection`：显式 `model`+`model_reasoning_effort` 配置的优先；其次
   目录 `isDefault` 模型 + 默认档位；显式配置但不在目录中的模型保留为
   `configuredSelection`（不伪造目录能力）。
-- `effectiveSelection`（传入 `selection` 时）：providerId 必须等于当前 codex
-  provider；`configuredSelection` 模型按配置事实直传（能力不可校验）；目录模型
+- `effectiveSelection`（传入 `selection` 时）：providerId 必须是视图中的已知
+  provider 组（多 provider 分组见 specs/codex-model-provider-grouping.md；
+  未知 provider + 跨组唯一模型命中时治愈为模型实际归属组）；
+  `configuredSelection` 模型按配置事实直传（能力不可校验）；目录模型
   缺档位时补 `defaultReasoningEffort`；档位不受支持时返回
   `reasoning-level-not-supported`。
 - `revision` 按 workspace 单调递增，仅当目录指纹变化时推进；`onDidChange` 在读取

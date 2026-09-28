@@ -142,9 +142,11 @@ export class CommandRouter {
     switch (command.type) {
       case "sendText": {
         const p = commandPayloadSchemas.sendText.parse(command.payload);
-        if (p.modelSelection && p.modelSelection.providerId !== state.thread.modelProvider) {
-          unsupported("changing provider on an existing thread; create a new thread");
-        }
+        // 跨 provider 换模型由 codex 原生按 catalog per-model provider 路由
+        // （turn_context.with_model），无需拒绝；线程 provider 记录跟随最近一次
+        // 选择更新（specs/codex-model-provider-grouping.md）。原生报告的
+        // ThreadSettings.model_provider 是创建期固定身份，不作执行依据。
+
         if (p.context_refs?.length) unsupported("shared-context execution");
         // heldQueueDisposition 只在 legacy held(choice) 路由下有事务语义（clear/keep
         // 队列后 startNow）；Codex 没有 held queue，投影永不报 choice，该字段无事务
@@ -203,7 +205,10 @@ export class CommandRouter {
             ),
           };
           const response = await rpc.request("turn/start", turnParams);
-          store.applySettings(sessionId, turnParams);
+          store.applySettings(sessionId, {
+            ...turnParams,
+            ...(p.modelSelection ? { modelProvider: p.modelSelection.providerId } : {}),
+          });
           store.acceptTurnResponse(sessionId, response);
         }
         // 三个投递分支（queue/steer/start）都在此汇合且 native 已成功，消费通知。
@@ -244,14 +249,15 @@ export class CommandRouter {
       }
       case "switchModelConfig": {
         const p = commandPayloadSchemas.switchModelConfig.parse(command.payload);
-        if (p.provider !== state.thread.modelProvider)
-          unsupported("changing provider on an existing thread; create a new thread");
+        // 跨 provider 换模型由 codex 原生按 catalog 路由（thread/settings/update
+        // 实测接受任意目录模型），bridge 记录跟随选择的 provider 归属。
         await rpc.request("thread/settings/update", {
           ...native,
           model: p.model,
           effort: p.thought || undefined,
         });
         state.thread.model = p.model;
+        state.thread.modelProvider = p.provider;
         if (p.thought) state.thread.reasoningEffort = p.thought;
         break;
       }

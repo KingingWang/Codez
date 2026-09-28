@@ -40,6 +40,7 @@ import {
   codezPluginsInstallResultSchema,
   codezPluginsListResultSchema,
   codezAgentsListResultSchema,
+  codezCatalogReadResultSchema,
   codezAgentsWriteResultSchema,
   codezAgentsDeleteResultSchema,
   codezPluginsMarketplaceMutationResultSchema,
@@ -4377,6 +4378,17 @@ export function createCodezAgentService(
         codezProtocolMethods.agentsList,
         { workspace: buildWorkspaceRef(params) },
         codezAgentsListResultSchema,
+      );
+    },
+
+    async readCodexCatalog(params: CodezAgentWorkspaceTarget) {
+      // 与 listAgentRoles 同一载体铁律：catalog 文件是宿主本地 fs 事实，
+      // 远程 workspace 必须由远端 bridge 进程读取。
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.catalogRead,
+        { workspace: buildWorkspaceRef(params) },
+        codezCatalogReadResultSchema,
       );
     },
 

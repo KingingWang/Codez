@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button.js";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.js";
@@ -48,7 +50,15 @@ export function CodexComposerModelControls({
         value={selection?.modelId ?? ""}
         disabled={locked}
         onValueChange={(value) => {
-          if (!locked) onSelectModel(catalog.providerId, value, null);
+          if (locked) return;
+          // configuredSelection 是激活 provider 的配置事实；目录模型按分组归属，
+          // providerId 必须跟随模型的实际 catalog provider（执行路由事实）。
+          const owner =
+            configured && value === configured.modelId
+              ? configured.providerId
+              : (catalog.groups.find((group) => group.models.some((entry) => entry.model === value))
+                  ?.providerId ?? catalog.providerId);
+          onSelectModel(owner, value, null);
         }}
       >
         <SelectTrigger aria-label={text.model} className="h-7 max-w-56 text-ui-sm">
@@ -60,10 +70,16 @@ export function CodexComposerModelControls({
               {configured.modelId} · {text.configured}
             </SelectItem>
           )}
-          {catalog.models.map((entry) => (
-            <SelectItem key={entry.id} value={entry.model}>
-              {entry.displayName}
-            </SelectItem>
+          {catalog.groups.map((group) => (
+            <SelectGroup key={group.providerId}>
+              {/* 单 provider 部署不显示组标签，与分组引入前的扁平列表视觉一致。 */}
+              {catalog.groups.length > 1 && <SelectLabel>{group.providerName}</SelectLabel>}
+              {group.models.map((entry) => (
+                <SelectItem key={entry.id} value={entry.model}>
+                  {entry.displayName}
+                </SelectItem>
+              ))}
+            </SelectGroup>
           ))}
         </SelectContent>
       </Select>
@@ -77,7 +93,11 @@ export function CodexComposerModelControls({
           disabled={locked || !model}
           onValueChange={(value) => {
             if (model && !locked)
-              onSelectThought(value, { provider: catalog.providerId, model: model.model });
+              // provider 跟随当前选择的实际归属组（选择解析时已按 catalog 映射治愈）。
+              onSelectThought(value, {
+                provider: selection?.providerId ?? catalog.providerId,
+                model: model.model,
+              });
           }}
         >
           <SelectTrigger aria-label={text.effort} className="h-7 max-w-40 text-ui-sm">

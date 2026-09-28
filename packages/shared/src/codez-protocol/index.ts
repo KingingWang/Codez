@@ -3674,6 +3674,26 @@ export const codezAgentsListResultSchema = z
   .strict();
 export type CodezAgentsListResult = z.infer<typeof codezAgentsListResultSchema>;
 
+// Codex 模型目录（model_catalog_json）读取结果：slug→provider 映射。
+// 只收录显式声明 provider 的条目；path 为 null 表示未配置目录文件。
+export const codezCatalogReadParamsSchema = z
+  .object({ workspace: codezWorkspaceRefSchema })
+  .strict();
+export const codezCatalogReadResultSchema = z
+  .object({
+    path: z.string().nullable(),
+    models: z.array(
+      z
+        .object({
+          slug: z.string(),
+          provider: z.string().optional(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+export type CodezCatalogReadResult = z.infer<typeof codezCatalogReadResultSchema>;
+
 // 写入承载完整托管字段集：缺省的可选字段 = 从文件中移除该 key；
 // 未知 TOML key 由 bridge 解析→合并→回序列化保留。
 export const codezAgentRoleWriteInputSchema = z
@@ -3799,6 +3819,9 @@ export const codezProtocolMethods = {
   agentsList: "agents/list",
   agentsWrite: "agents/write",
   agentsDelete: "agents/delete",
+  // Codex 模型目录（model_catalog_json）读取：bridge 本地 fs 控制面方法，
+  // 非原生 RPC；多 provider 分组事实的唯一来源（specs/codex-model-provider-grouping.md）。
+  catalogRead: "catalog/read",
   automationCreate: "automation/create",
   automationUpdate: "automation/update",
   automationCheckTaskBinding: "automation/checkTaskBinding",

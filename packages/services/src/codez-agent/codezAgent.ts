@@ -33,6 +33,7 @@ import type {
   CodezAgentRoleScope,
   CodezAgentRoleWriteInput,
   CodezAgentsListResult,
+  CodezCatalogReadResult,
   CodezAgentsWriteResult,
   CodezPluginsOverviewResult,
   CodezPluginsMarketplaceMutationResult,
@@ -663,6 +664,12 @@ export interface ICodezAgentService {
    * 不走独立 plugin management 进程。
    */
   listAgentRoles(params: CodezAgentWorkspaceTarget): Promise<CodezAgentsListResult>;
+  /**
+   * Codex 模型目录（model_catalog_json）的 slug→provider 映射。
+   * 走真实 workspace carrier（远程 workspace 的目录文件在远端机器上），
+   * 承载约束与 listAgentRoles 相同。specs/codex-model-provider-grouping.md。
+   */
+  readCodexCatalog(params: CodezAgentWorkspaceTarget): Promise<CodezCatalogReadResult>;
   /** 新建或更新角色 TOML；更新传 originalName，不支持改名（删除+新建）。 */
   writeAgentRole(params: CodezAgentWriteAgentRoleParams): Promise<CodezAgentsWriteResult>;
   /** 删除角色 TOML；按 effective name 定位，文件必须存在于该 scope。 */

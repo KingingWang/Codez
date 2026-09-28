@@ -394,7 +394,10 @@ test("attachment resolver is awaited and its async errors prevent native send", 
   assert.deepEqual(h.rpc.calls, []);
 });
 
-test("cross-provider send cannot silently execute under the existing provider", async (t) => {
+test("cross-provider send executes under the model's catalog provider", async (t) => {
+  // specs/codex-model-provider-grouping.md：codex 原生按 catalog per-model provider
+  // 路由执行（turn_context.with_model），bridge 不再以「线程 provider 不可变」拒绝。
+  // 线程 provider 记录跟随选择，原生 ThreadSettings.model_provider 是创建期固定身份。
   const h = await setup(t);
   const ack = await h.execute(
     h.command("sendText", {
@@ -402,12 +405,15 @@ test("cross-provider send cannot silently execute under the existing provider", 
       modelSelection: { ...selection, providerId: "other-provider" },
     }),
   );
-  assert.equal(
-    ack.status,
-    "failed",
-    "turn/start has no modelProvider override; unsupported changes must reject",
-  );
-  assert.deepEqual(h.rpc.calls, []);
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.params("turn/start")[0], {
+    threadId: sessionId,
+    input: textInput("Different provider"),
+    clientUserMessageId: "sendText",
+    model: selection.modelId,
+    effort: "high",
+  });
+  assert.equal(h.store.get(sessionId)?.thread.modelProvider, "other-provider");
 });
 
 test("plan collaboration settings preserve the explicit reasoning effort", async (t) => {
@@ -467,6 +473,43 @@ test("model switch followed by mode switch cannot restore stale cached model", a
     (p.collaborationMode as { settings: { model: string } }).settings.model,
     "new-model",
   );
+});
+
+test("cross-provider model switch follows codex catalog routing instead of rejecting", async (t) => {
+  // specs/codex-model-provider-grouping.md：跨 provider 换模型由 codex 原生按
+  // catalog per-model provider 路由，bridge 守卫不再拒绝，线程记录跟随选择。
+  const h = await setup(t);
+  h.rpc.handlers.set("thread/settings/update", () => ({}));
+  const ack = await h.execute(
+    h.command("switchModelConfig", { provider: "openai-my", model: "gpt-6-sol", thought: "high" }),
+  );
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.params("thread/settings/update"), [
+    { threadId: sessionId, model: "gpt-6-sol", effort: "high" },
+  ]);
+  assert.equal(h.store.get(sessionId)?.thread.model, "gpt-6-sol");
+  assert.equal(h.store.get(sessionId)?.thread.modelProvider, "openai-my");
+
+  // 携带新 provider 选择的发送不再触发 provider 守卫，model/effort 直传 turn/start。
+  const send = await h.execute(
+    h.command("sendText", {
+      text: "hi",
+      modelSelection: {
+        providerId: "openai-my",
+        modelId: "gpt-6-sol",
+        options: { reasoningLevel: "high" },
+      },
+    }),
+  );
+  assert.equal(send.status, "accepted", send.message);
+  assert.deepEqual(h.rpc.params("turn/start")[0], {
+    threadId: sessionId,
+    input: textInput("hi"),
+    clientUserMessageId: "sendText",
+    model: "gpt-6-sol",
+    effort: "high",
+  });
+  assert.equal(h.store.get(sessionId)?.thread.modelProvider, "openai-my");
 });
 
 test("resume retains model metadata from native response for subsequent mode requests", async (t) => {

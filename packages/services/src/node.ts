@@ -2671,6 +2671,7 @@ export function createLocalServices(options: {
   const hostModelSelectionService: IModelSelectionService = usesDefaultCodexDesktopBridge
     ? createCodexModelSelectionService({
         send: (params) => codezAgentService.codexRequest(params),
+        readCatalogProviderMap: (target) => codezAgentService.readCodexCatalog(target),
       })
     : providerRuntime.modelSelection;
   const supportsDesktopFileRewindOwner = usesDefaultCodexDesktopBridge && !isDesktopAttachedRemote;

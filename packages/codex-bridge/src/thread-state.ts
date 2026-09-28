@@ -223,7 +223,13 @@ export class ThreadStateStore {
   applySettings(id: string, settings: JsonObject): void {
     const state = this.states.get(id);
     if (!state) return;
-    for (const key of ["model", "approvalPolicy", "sandboxPolicy", "collaborationMode"]) {
+    for (const key of [
+      "model",
+      "modelProvider",
+      "approvalPolicy",
+      "sandboxPolicy",
+      "collaborationMode",
+    ]) {
       if (settings[key] !== undefined) state.thread[key] = settings[key];
     }
     if (settings.effort !== undefined) state.thread.reasoningEffort = settings.effort;
@@ -283,7 +289,8 @@ export class ThreadStateStore {
     else if (event.method === "thread/settings/updated") {
       const settings = object(params.threadSettings);
       state.thread.model = settings.model;
-      state.thread.modelProvider = settings.modelProvider;
+      // 原生报告的 modelProvider 是线程创建期固定身份，不随 catalog per-model
+      // 路由更新；bridge 以选择派生的 provider 记录为准（specs/codex-model-provider-grouping.md）。
       state.thread.reasoningEffort = settings.effort;
       state.thread.sandboxPolicy = settings.sandboxPolicy;
       state.thread.approvalPolicy = settings.approvalPolicy;
