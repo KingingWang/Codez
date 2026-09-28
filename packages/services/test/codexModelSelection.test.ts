@@ -8,8 +8,10 @@ import {
 } from "@codez/provider";
 import {
   buildCodexHostModelCatalog,
-  createCodexModelSelectionService,
   resolveCodexEffectiveModelSelection,
+} from "../src/model-provider/codexHostModelCatalog.js";
+import {
+  createCodexModelSelectionService,
   type CodexModelSelectionWorkspaceTarget,
 } from "../src/model-provider/codexModelSelectionService.js";
 
@@ -559,6 +561,164 @@ test("codex 视图：config/read 省略 layers 字段（includeLayers: false 的
     providerId: "openai",
     modelId: "gpt-5-codex",
     options: { reasoningLevel: "high" },
+  });
+  service.dispose();
+});
+
+test("codex 视图：catalog provider 映射把模型分成多 provider 组", async () => {
+  const backend: FakeCodexBackend = {
+    config: {
+      model_provider: "ollama1",
+      model: "kimi-k3",
+      model_providers: {
+        ollama1: { name: "ollama1" },
+        "openai-my": { name: "Openai-my" },
+      },
+    },
+    pages: [
+      {
+        data: [
+          nativeModel("kimi-k3", { isDefault: true }),
+          nativeModel("gpt-6-sol"),
+          nativeModel("unmapped"),
+        ],
+        nextCursor: null,
+      },
+    ],
+  };
+  const { send } = createFakeSender(backend);
+  const service = createCodexModelSelectionService({
+    send,
+    readCatalogProviderMap: async () => ({
+      path: "/catalog.json",
+      models: [{ slug: "gpt-6-sol", provider: "openai-my" }],
+    }),
+  });
+  const view = await service.getView({ selection: null, workspace: WORKSPACE });
+  // 激活 provider 组优先；映射命中的模型归 catalog provider；未命中归激活组。
+  assert.deepEqual(
+    view.providers.map((provider) => [
+      provider.providerId,
+      provider.providerName,
+      provider.models.map((model) => model.modelId),
+    ]),
+    [
+      ["ollama1", "ollama1", ["kimi-k3", "unmapped"]],
+      ["openai-my", "Openai-my", ["gpt-6-sol"]],
+    ],
+  );
+  // preferredSelection 保持配置事实（激活 provider + 配置模型）。
+  assert.deepEqual(view.preferredSelection, {
+    providerId: "ollama1",
+    modelId: "kimi-k3",
+    options: { reasoningLevel: "medium" },
+  });
+  service.dispose();
+});
+
+test("codex effective 解析：已知组内未命中时跨组唯一命中治愈归属；陌生 provider 不猜", async () => {
+  const backend: FakeCodexBackend = {
+    config: { model_provider: "ollama1" },
+    pages: [
+      {
+        data: [nativeModel("kimi-k3", { isDefault: true }), nativeModel("gpt-6-sol")],
+        nextCursor: null,
+      },
+    ],
+  };
+  const { send } = createFakeSender(backend);
+  const service = createCodexModelSelectionService({
+    send,
+    readCatalogProviderMap: async () => ({
+      path: "/catalog.json",
+      models: [{ slug: "gpt-6-sol", provider: "openai-my" }],
+    }),
+  });
+
+  // 分组引入前存储的旧值：激活 provider + 实际归属 openai-my 的模型 → 治愈。
+  const healed = await service.getView({
+    selection: { providerId: "ollama1", modelId: "gpt-6-sol" },
+    workspace: WORKSPACE,
+  });
+  assert.equal(healed.selectionIssue, undefined);
+  assert.deepEqual(healed.effectiveSelection, {
+    providerId: "openai-my",
+    modelId: "gpt-6-sol",
+    options: { reasoningLevel: "medium" },
+  });
+
+  // 陌生 provider（legacy/其他 Host 残留）不猜归属。
+  const foreign = await service.getView({
+    selection: { providerId: "glm", modelId: "gpt-6-sol" },
+    workspace: WORKSPACE,
+  });
+  assert.equal(foreign.effectiveSelection, null);
+  assert.equal(foreign.selectionIssue, "provider-not-found");
+
+  // 已知组 + 不存在的模型仍是明确无效。
+  const missing = await service.getView({
+    selection: { providerId: "openai-my", modelId: "gone" },
+    workspace: WORKSPACE,
+  });
+  assert.equal(missing.selectionIssue, "model-not-found");
+  service.dispose();
+});
+
+test("codex 视图：catalog 映射读取失败降级为单激活 provider 组", async () => {
+  const backend: FakeCodexBackend = {
+    config: { model_provider: "ollama1" },
+    pages: [
+      {
+        data: [nativeModel("kimi-k3", { isDefault: true }), nativeModel("gpt-6-sol")],
+        nextCursor: null,
+      },
+    ],
+  };
+  const { send } = createFakeSender(backend);
+  const service = createCodexModelSelectionService({
+    send,
+    readCatalogProviderMap: async () => {
+      throw new Error("catalog file unreadable");
+    },
+  });
+  const view = await service.getView({ selection: null, workspace: WORKSPACE });
+  assert.equal(view.providers.length, 1);
+  assert.equal(view.providers[0]?.providerId, "ollama1");
+  assert.deepEqual(
+    view.providers[0]?.models.map((model) => model.modelId),
+    ["kimi-k3", "gpt-6-sol"],
+  );
+  service.dispose();
+});
+
+test("codex effective 解析：同名条目映射到同一组时按组去重治愈", async () => {
+  // 映射按 slug 生效，catalog 中同名重复条目必然同组；按组去重后治愈仍唯一。
+  const backend: FakeCodexBackend = {
+    config: { model_provider: "ollama1" },
+    pages: [
+      {
+        data: [nativeModel("kimi-k3", { isDefault: true }), nativeModel("shared")],
+        nextCursor: null,
+      },
+    ],
+  };
+  const { send } = createFakeSender(backend);
+  const service = createCodexModelSelectionService({
+    send,
+    readCatalogProviderMap: async () => ({
+      path: "/catalog.json",
+      models: [{ slug: "shared", provider: "openai-my" }],
+    }),
+  });
+  const healed = await service.getView({
+    selection: { providerId: "ollama1", modelId: "shared" },
+    workspace: WORKSPACE,
+  });
+  assert.equal(healed.selectionIssue, undefined);
+  assert.deepEqual(healed.effectiveSelection, {
+    providerId: "openai-my",
+    modelId: "shared",
+    options: { reasoningLevel: "medium" },
   });
   service.dispose();
 });

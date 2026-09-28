@@ -74,8 +74,11 @@ export function useCodexModelCatalog({
     if (!enabled || !rpcReady || !workspacePath)
       throw new Error("Codex workspace is not connected");
     if (current.inflight) return current.inflight;
-    const request = readCodexModelCatalog(workspacePath, (request) =>
-      services.codezAgentService.codexRequest({ workspacePath, workspaceIdentity, request }),
+    const request = readCodexModelCatalog(
+      workspacePath,
+      (request) =>
+        services.codezAgentService.codexRequest({ workspacePath, workspaceIdentity, request }),
+      () => services.codezAgentService.readCodexCatalog({ workspacePath, workspaceIdentity }),
     ).then(
       (catalog) => {
         if (scopeStateRef.current !== current || !current.valid)

@@ -6,6 +6,7 @@ import { readControlPresentation, readControlSkills } from "./control-presentati
 import { readControlMcp } from "./control-mcp.js";
 import { handlePluginRequest } from "./control-plugins.js";
 import { handleAgentRequest } from "./control-agents.js";
+import { handleCatalogRequest } from "./control-catalog.js";
 
 const methods = new Set([
   "runtime/capabilities",
@@ -31,6 +32,7 @@ const methods = new Set([
   "agents/list",
   "agents/write",
   "agents/delete",
+  "catalog/read",
 ]);
 
 /** Dispatch ownership, not a promise that every parameter combination is supported. */
@@ -106,6 +108,7 @@ async function dispatch(
 ): Promise<unknown> {
   if (method.startsWith("plugins/")) return handlePluginRequest(method, params, context);
   if (method.startsWith("agents/")) return handleAgentRequest(method, params, context);
+  if (method.startsWith("catalog/")) return handleCatalogRequest(method, params, context);
   switch (method) {
     case "runtime/capabilities":
       input(z.object({}).strict(), params ?? {}, method);

@@ -88,6 +88,9 @@ const selection = {
 const catalog = {
   providerId: "native-provider",
   models: [nativeModel],
+  groups: [
+    { providerId: "native-provider", providerName: "native-provider", models: [nativeModel] },
+  ],
   preferredSelection: selection,
 };
 
@@ -132,6 +135,72 @@ test("legacy recent selection migrates, explicit native selection and native eff
   const explicit = { ...selection, options: { reasoningLevel: "high" } };
   assert.equal(resolveCodexSelection(catalog, explicit), explicit);
   assert.equal(resolveCodexSelection(catalog, { ...selection, modelId: "removed" }), null);
+});
+
+test("codex catalog groups models by catalog provider and heals stale provider identity", async () => {
+  const otherModel = codexModelSchema.parse({
+    ...nativeModel,
+    id: "other-id",
+    model: "other",
+    displayName: "Other",
+  });
+  const result = await readCodexModelCatalog(
+    "/native/workspace",
+    async (request) =>
+      request.method === "config/read"
+        ? {
+            config: {
+              model_provider: "native-provider",
+              model: "native",
+              model_providers: {
+                "native-provider": { name: "Native" },
+                "other-provider": { name: "Other API" },
+              },
+            },
+            origins: {},
+            layers: [],
+          }
+        : { data: [nativeModel, otherModel], nextCursor: null },
+    async () => ({
+      path: "/catalog.json",
+      models: [{ slug: "other", provider: "other-provider" }],
+    }),
+  );
+  assert.deepEqual(
+    result.groups.map((group) => [group.providerId, group.models.map((m) => m.model)]),
+    [
+      ["native-provider", ["native"]],
+      ["other-provider", ["other"]],
+    ],
+  );
+  assert.equal(result.groups[1]?.providerName, "Other API");
+  // 修复前存储的「激活 provider + 其他组模型」旧值被治愈为实际归属组。
+  assert.deepEqual(
+    resolveCodexSelection(result, {
+      providerId: "native-provider",
+      modelId: "other",
+      options: { reasoningLevel: "medium" },
+    }),
+    { providerId: "other-provider", modelId: "other", options: { reasoningLevel: "medium" } },
+  );
+  // 完全陌生的 provider 不猜归属：迁移到首选。
+  assert.equal(
+    resolveCodexSelection(result, { providerId: "zai", modelId: "other" }),
+    result.preferredSelection,
+  );
+  // 已知组内模型被移除 = 明确无效；其他组的模型按归属组就绪。
+  assert.equal(
+    isCodexSelectionReady(result, { providerId: "other-provider", modelId: "removed" }),
+    false,
+  );
+  assert.equal(
+    isCodexSelectionReady(result, {
+      providerId: "other-provider",
+      modelId: "other",
+      options: { reasoningLevel: "medium" },
+    }),
+    true,
+  );
 });
 
 test("unavailable catalog, removed models and unsupported native effort block submission", () => {

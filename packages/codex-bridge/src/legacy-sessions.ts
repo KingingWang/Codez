@@ -61,10 +61,12 @@ export async function handleLegacySession(
     }
     case "session/setModel": {
       const selection = shared.modelSelectionSchema.parse(p.model);
-      if (selection.providerId !== state.thread.modelProvider)
-        unsupported("provider changes within a thread");
+      // 跨 provider 换模型由 codex 原生按 catalog 路由；线程 provider 记录跟随选择。
       await rpc.request("thread/settings/update", { ...native, ...selectionOverrides(selection) });
-      store.applySettings(sessionId, selectionOverrides(selection));
+      store.applySettings(sessionId, {
+        ...selectionOverrides(selection),
+        modelProvider: selection.providerId,
+      });
       break;
     }
     case "session/setThoughtLevel":
