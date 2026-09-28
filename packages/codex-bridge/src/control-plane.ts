@@ -33,6 +33,9 @@ const methods = new Set([
   "agents/write",
   "agents/delete",
   "catalog/read",
+  "catalog/readModels",
+  "catalog/writeModel",
+  "catalog/deleteModel",
 ]);
 
 /** Dispatch ownership, not a promise that every parameter combination is supported. */

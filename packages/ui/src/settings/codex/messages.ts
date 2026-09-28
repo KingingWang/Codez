@@ -1,5 +1,7 @@
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
+import { enProviders, zhProviders } from "./messagesProviders.js";
+
 const en = {
   legacyPreferences:
     "Codex questions require your explicit answer. Legacy follow-up preferences, automatic answers and full model-I/O retention do not apply to Codex.",
@@ -185,6 +187,7 @@ const en = {
   memoryMinRateLimitPercent: "Min rate-limit remaining (%)",
   memoryNumberHelp: "Leave empty to restore the native default.",
   memoryNumberInvalid: "Value out of range; not saved.",
+  ...enProviders,
 };
 const zh: Record<keyof typeof en, string> = {
   legacyPreferences:
@@ -351,6 +354,7 @@ const zh: Record<keyof typeof en, string> = {
   memoryMinRateLimitPercent: "启动所需最低额度（%）",
   memoryNumberHelp: "留空恢复原生默认值。",
   memoryNumberInvalid: "数值超出范围，未保存。",
+  ...zhProviders,
 };
 export function useCodexMessages() {
   return useCodezIntl().locale === "zh-CN" ? zh : en;

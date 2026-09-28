@@ -1,0 +1,113 @@
+// 「模型供应商」面板的文案（specs/codex-model-provider-management.md）；
+// 从 messages.ts 拆出以控制单文件行数，键集必须与 zhProviders 对齐。
+export const enProviders = {
+  providers: "Providers",
+  providersHelp:
+    "OpenAI-compatible providers from config.toml model_providers. Changes hot-reload every loaded thread immediately. The API key is written to config.toml in plaintext (experimental_bearer_token; the file is user-only readable) and is never displayed here.",
+  providerAdd: "Add provider",
+  providerEdit: "Edit",
+  providerDelete: "Delete",
+  providerSetDefault: "Set as default",
+  providerDefaultBadge: "Default",
+  providerId: "Provider id",
+  providerIdHelp:
+    "Letters, digits, _ and - only. Becomes the model_providers table key and cannot be changed later.",
+  providerIdLocked: "The id is the config table key; create a new provider to rename.",
+  providerIdInvalid: "Provider id may only contain letters, digits, _ and -.",
+  providerIdTaken: "A provider with this id already exists.",
+  providerBaseUrlRequired: "Base URL is required.",
+  providerName: "Display name",
+  providerBaseUrl: "Base URL",
+  providerWireApi: "Wire API",
+  providerToken: "API key",
+  providerTokenHelp:
+    "Stored in plaintext as experimental_bearer_token. Leave empty to keep the current value.",
+  providerTokenConfigured: "Configured (value hidden)",
+  providerTokenClear: "Clear the stored key",
+  providerRequiresOpenaiAuth: "Requires OpenAI auth (auth.json)",
+  providerEmpty: "No providers configured.",
+  providerDeleteDefaultBlocked:
+    "The default provider cannot be deleted; set another provider as default first.",
+  providerDeleteModelsBlocked:
+    "Catalog models still reference this provider; delete or move those models first.",
+  providerModelCount: "models",
+  providerSave: "Save provider",
+  providerCancel: "Cancel",
+  providerModels: "Catalog models",
+  providerModelsHelp:
+    "Models from the model_catalog_json file, grouped by provider. Edits apply to new turns immediately; the composer model picker refreshes after a runtime restart.",
+  providerModelsEmpty: "No catalog models.",
+  modelAdd: "Add model",
+  modelSlug: "Model slug",
+  modelSlugHelp: "Unique model id sent to the provider API; cannot be changed after creation.",
+  modelProvider: "Provider",
+  modelDisplayName: "Display name",
+  modelDescription: "Description",
+  modelHidden: "Hidden from the model picker",
+  modelAdvancedJson: "Advanced JSON",
+  modelAdvancedJsonHelp:
+    "The full catalog entry. Identity fields (slug, provider, display name, description, visibility) are overwritten by the fields above on save.",
+  modelInvalid: "Invalid model entry: check slug/provider and the JSON syntax.",
+  modelNoCatalog:
+    "model_catalog_json is not configured, so catalog models cannot be managed. Configure it in config.toml first.",
+  modelCatalogStale:
+    "Catalog saved; new turns can use the changes now. Restart the runtime to refresh the composer model picker.",
+  modelRestartRuntime: "Restart runtime now",
+  modelRestartRuntimeConfirm: "Restarting interrupts running tasks in this workspace. Continue?",
+  modelDeleteDefaultWarning:
+    "This model is the configured default (config.model); new threads fall back to the provider-preferred model.",
+  modelSave: "Save model",
+};
+
+export const zhProviders: Record<keyof typeof enProviders, string> = {
+  providers: "模型供应商",
+  providersHelp:
+    "config.toml model_providers 中的 OpenAI 兼容供应商。修改立即热刷新所有已加载线程。API Key 以明文写入 config.toml（experimental_bearer_token；文件仅本人可读），此处不回显。",
+  providerAdd: "添加供应商",
+  providerEdit: "编辑",
+  providerDelete: "删除",
+  providerSetDefault: "设为默认",
+  providerDefaultBadge: "默认",
+  providerId: "供应商 id",
+  providerIdHelp: "仅限字母、数字、_ 和 -。将成为 model_providers 表键，创建后不可修改。",
+  providerIdLocked: "id 即配置表键，不可修改；改名请新建供应商。",
+  providerIdInvalid: "供应商 id 只能包含字母、数字、_ 和 -。",
+  providerIdTaken: "已存在同名 id 的供应商。",
+  providerBaseUrlRequired: "Base URL 必填。",
+  providerName: "显示名称",
+  providerBaseUrl: "Base URL",
+  providerWireApi: "Wire API",
+  providerToken: "API Key",
+  providerTokenHelp: "以明文存储为 experimental_bearer_token。留空表示保持当前值不变。",
+  providerTokenConfigured: "已配置（不回显）",
+  providerTokenClear: "清除已存储的 Key",
+  providerRequiresOpenaiAuth: "需要 OpenAI 鉴权（auth.json）",
+  providerEmpty: "尚未配置供应商。",
+  providerDeleteDefaultBlocked: "默认供应商不能删除；请先把其他供应商设为默认。",
+  providerDeleteModelsBlocked: "仍有目录模型引用该供应商；请先删除或迁移这些模型。",
+  providerModelCount: "个模型",
+  providerSave: "保存供应商",
+  providerCancel: "取消",
+  providerModels: "目录模型",
+  providerModelsHelp:
+    "model_catalog_json 文件中的模型，按供应商分组。修改立即对新对话生效；composer 模型下拉在运行时重启后刷新。",
+  providerModelsEmpty: "目录中暂无模型。",
+  modelAdd: "添加模型",
+  modelSlug: "模型 slug",
+  modelSlugHelp: "发送给供应商 API 的唯一模型 id；创建后不可修改。",
+  modelProvider: "所属供应商",
+  modelDisplayName: "显示名称",
+  modelDescription: "描述",
+  modelHidden: "在模型下拉中隐藏",
+  modelAdvancedJson: "高级 JSON",
+  modelAdvancedJsonHelp:
+    "完整的目录条目。保存时身份字段（slug、provider、显示名称、描述、可见性）以上方表单为准。",
+  modelInvalid: "模型条目无效：请检查 slug/provider 与 JSON 语法。",
+  modelNoCatalog: "未配置 model_catalog_json，无法管理目录模型。请先在 config.toml 中配置。",
+  modelCatalogStale: "目录已保存，新对话立即可用。重启运行时以刷新 composer 模型下拉。",
+  modelRestartRuntime: "立即重启运行时",
+  modelRestartRuntimeConfirm: "重启将中断该工作区正在运行的任务，继续？",
+  modelDeleteDefaultWarning:
+    "该模型是配置的默认模型（config.model）；新会话将回退到供应商偏好模型。",
+  modelSave: "保存模型",
+};
