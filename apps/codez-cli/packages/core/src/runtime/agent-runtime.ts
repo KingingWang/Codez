@@ -68,6 +68,8 @@ import type {
 } from "./deps.js";
 import { installAgentRuntimeMethods } from "./methods/index.js";
 import type { StartSavedWorkflowRunResult } from "./methods/dynamic-workflow-run-start.js";
+import type { MemoryRuntimeConfigPatch } from "./methods/config.js";
+import type { MemoryRuntimeConfig } from "./types.js";
 import type {
   AmendWorkflowRunSettingsInput,
   AmendWorkflowRunSettingsResult,
@@ -341,6 +343,10 @@ export interface AgentRuntime {
   updateConfig(
     patch: Pick<AgentRuntimeConfig, "mode" | "planEnabled" | "language" | "outputStyle">,
   ): void;
+  /** Host 记忆偏好热更新；见 methods/config.ts 的 applyMemoryRuntimeConfig。 */
+  applyMemoryRuntimeConfig(patch: MemoryRuntimeConfigPatch): Promise<void>;
+  /** 当前记忆配置浅快照（Host override 已应用后的 effective 值）。 */
+  getMemoryRuntimeConfig(): MemoryRuntimeConfig | undefined;
   initializeSessionShellEnvironmentIfNeeded(
     selection: ExecutionShellSelection | (() => ExecutionShellSelection),
   ): boolean;

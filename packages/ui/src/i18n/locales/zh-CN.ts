@@ -2014,7 +2014,14 @@ const zhCN: Record<string, string> = {
   "settings.memory": "记忆",
   "settings.memory.workspaceMemory": "工作区记忆",
   "settings.memoryDescription":
-    "在工作区中保存并复用长期上下文，新会话生效。开启后可能增加模型调用和 Token 成本。",
+    "在工作区中保存并复用长期上下文，修改立即生效。开启后可能增加模型调用和 Token 成本。",
+  "settings.memory.use": "在对话中使用记忆",
+  "settings.memory.useDescription": "每轮对话注入该工作区已保存的记忆；关闭时同时停止自动提取。",
+  "settings.memory.extraction": "自动提取记忆",
+  "settings.memory.extractionDescription": "每轮对话结束后自动总结并保存值得长期记住的信息。",
+  "settings.memory.extractionModel": "记忆提取模型",
+  "settings.memory.extractionModelDescription": "提取记忆时使用的模型，默认跟随当前会话模型。",
+  "settings.memory.extractionModel.followSession": "跟随会话模型",
   "settings.memory.viewer.localOnly":
     "记忆详情仅支持在本地桌面端查看，请前往本地桌面端的“记忆”设置。",
   "settings.memory.viewer.title": "已保存的工作区记忆",
@@ -2102,7 +2109,8 @@ const zhCN: Record<string, string> = {
   "settings.messageStreamShowReasoningDescription":
     "在消息流中展示完整的模型思考内容；关闭时每轮仍展示第一次思考。",
   "settings.messageStreamShowTodos": "显示待办",
-  "settings.messageStreamShowTodosDescription": "在消息流中展示 Todo 工具卡片；Codex 会话会同步启用 update_plan 计划工具。切换后各工作区的 Agent 进程会重启，进行中的任务会被打断。",
+  "settings.messageStreamShowTodosDescription":
+    "在消息流中展示 Todo 工具卡片；Codex 会话会同步启用 update_plan 计划工具。切换后各工作区的 Agent 进程会重启，进行中的任务会被打断。",
   "settings.toolGroupingExplore": "分组探索工具",
   "settings.toolGroupingExploreDescription": "将连续的读取和搜索工具聚合为 Explore 分组。",
   "settings.toolGroupingTerminal": "分组终端命令",

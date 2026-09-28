@@ -103,6 +103,7 @@ import {
   codezWorkspaceGenerateTextResultSchema,
   codezWorkspaceHookTrustGrantResultSchema,
   codezWorkspaceUpdateInteractionPreferencesResultSchema,
+  codezWorkspaceUpdateMemoryPreferencesResultSchema,
   codezWorkspaceUpdateModelIoPreferencesResultSchema,
   codezProviderUpdateAccountConfigResultSchema,
   type CodezSessionStateSnapshot,
@@ -1577,6 +1578,28 @@ export function createCodezAgentService(
         } catch (error) {
           // 新 Host 兼容尚未升级的 CLI：只有 method-not-found 可降级，其他同步失败仍需上抛。
           if (!isProtocolMethodNotFoundError(error)) throw error;
+        }
+        // Memory 偏好与 interaction 偏好同一串行队列：同一 workspace 内按提交顺序应用，
+        // 缺字段的旧调用方（undefined）不会把 CLI 侧记忆配置回退成默认值。
+        if (params.preferences.memoryEnabled !== undefined) {
+          try {
+            await params.client.request(
+              codezProtocolMethods.workspaceUpdateMemoryPreferences,
+              {
+                workspace: buildWorkspaceRef(params.workspace),
+                preferences: {
+                  memoryEnabled: params.preferences.memoryEnabled,
+                  useEnabled: params.preferences.memoryUseEnabled !== false,
+                  extractionEnabled: params.preferences.memoryExtractionEnabled !== false,
+                  extractionModel: params.preferences.memoryExtractionModel ?? null,
+                },
+              },
+              codezWorkspaceUpdateMemoryPreferencesResultSchema,
+            );
+          } catch (error) {
+            // 与 ModelIO 同一兼容模式：旧 CLI 未实现该方法时降级忽略。
+            if (!isProtocolMethodNotFoundError(error)) throw error;
+          }
         }
       });
     interactionPreferenceSyncByWorkspaceKey.set(workspaceKey, current);

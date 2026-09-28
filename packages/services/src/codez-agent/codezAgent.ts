@@ -576,6 +576,14 @@ export type CodezAgentServiceEvent =
 export interface CodezAgentAppRuntimePreferences {
   askUserQuestionAutoResolutionEnabled: boolean;
   modelIoFullRetentionEnabled?: boolean;
+  /** Host 记忆总开关；缺省不改动 CLI 侧现状（兼容旧调用方）。 */
+  memoryEnabled?: boolean;
+  /** 对话中注入记忆；缺省按 CLI 本地配置。 */
+  memoryUseEnabled?: boolean;
+  /** 成功 turn 后自动提取记忆；缺省按 CLI 本地配置。 */
+  memoryExtractionEnabled?: boolean;
+  /** 记忆提取专用模型；null/缺省 = 跟随会话模型。 */
+  memoryExtractionModel?: ModelSelection | null;
 }
 
 export interface CodezAgentLocalRuntimeChildProcesses {

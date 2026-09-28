@@ -83,6 +83,16 @@ export interface CodezProtocolToolInputTransmissionState {
 export interface CodezProtocolSessionRecord {
   app: CodezApp;
   memoryEnabled: boolean;
+  /**
+   * Host override 应用前的 CLI 本地记忆配置快照（createRecord 时读取）。
+   * Host 偏好热更新按 host && local（布尔）/ host ?? local（模型）重算 effective 值。
+   */
+  localMemoryConfig: {
+    enabled?: boolean;
+    use?: boolean;
+    extractionEnabled?: boolean;
+    extractionModel?: ModelSelection;
+  };
   nativeSearchEnhancementsEnabled: boolean;
   modelContextBudgetStrategy: CodezModelContextBudgetStrategy;
   createdAt: number;
@@ -132,6 +142,16 @@ export interface CodezProtocolAgentServerContext {
   appRuntimePreferences: {
     askUserQuestionAutoResolutionEnabled: boolean;
     modelIoFullRetentionEnabled: boolean;
+    /**
+     * Host 记忆偏好快照（workspace/updateMemoryPreferences 热推送）。
+     * 单键 undefined = Host 未控制该键，回落 session 创建时的 CLI 本地配置。
+     */
+    memory: {
+      memoryEnabled?: boolean;
+      useEnabled?: boolean;
+      extractionEnabled?: boolean;
+      extractionModel?: ModelSelection | null;
+    };
     /** host 同步的 Off-Peak 工具面门禁；缺省 false（fail-closed），供 v4 冷恢复等无 host 参数的路径读取。 */
     offPeakToolEnabled: boolean;
     /**

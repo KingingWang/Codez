@@ -5,6 +5,7 @@ import type { ProviderFamilyConnectionSelectionSettings } from "./provider-famil
 import type { CodezProvider } from "./codez-task-types-core.js";
 import type { WorkspacePurpose } from "./workspacePurpose.js";
 import type { EmbeddedBrowserViewportPreference } from "./browser-use/command-metadata.js";
+import type { ModelSelection } from "./model-selection.js";
 
 // ── Domain types ──
 
@@ -325,6 +326,12 @@ export interface AppSettings {
   nativeSearchEnhancementsEnabled?: boolean;
   /** 新建或冷恢复 Session 是否启用 Memory；默认关闭。 */
   memoryEnabled?: boolean;
+  /** 是否在对话中注入记忆；默认启用。关闭时自动提取一并停止。 */
+  memoryUseEnabled?: boolean;
+  /** 成功 turn 结束后是否自动提取记忆；默认启用。 */
+  memoryExtractionEnabled?: boolean;
+  /** 记忆提取专用模型；缺省跟随会话模型。 */
+  memoryExtractionModel?: ModelSelection | null;
   onboardingOccupation?:
     | "office"
     | "developer"

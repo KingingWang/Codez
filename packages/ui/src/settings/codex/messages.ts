@@ -151,6 +151,40 @@ const en = {
   codexHistoryArtifacts: "Artifacts",
   nativeBrowserCuaStatuses:
     "Runtime, configuration, connection, authorization and tool errors are shown separately below.",
+  memory: "Memory",
+  memoryHelp:
+    "Native Codex memory pipeline. Changes write the user config.toml and hot-reload every loaded thread immediately; no restart is required.",
+  memoryEnable: "Enable memory",
+  memoryEnableHelp:
+    "Master switch for the native memory pipeline (features.memories). Off disables usage, generation and memory tools.",
+  memoryUse: "Use memories in conversations",
+  memoryUseHelp:
+    "Inject memory usage instructions into developer prompts (memories.use_memories, default on).",
+  memoryGenerate: "Generate memories",
+  memoryGenerateHelp:
+    "Summarize new threads into memories (memories.generate_memories, default on).",
+  memoryDedicatedTools: "Dedicated memory tools",
+  memoryDedicatedToolsHelp:
+    "Expose dedicated memory tools through the extension tool surface (memories.dedicated_tools, default off).",
+  memoryDisableOnExternalContext: "Disable on external context",
+  memoryDisableOnExternalContextHelp:
+    "Mark threads that use MCP or web search as polluted so they are not memorized (memories.disable_on_external_context, default off).",
+  memoryExtractModel: "Extraction model",
+  memoryExtractModelHelp:
+    "Model used for thread summarisation (memories.extract_model). Default uses the provider-preferred model.",
+  memoryConsolidationModel: "Consolidation model",
+  memoryConsolidationModelHelp:
+    "Model used for memory consolidation (memories.consolidation_model). Default uses the provider-preferred model.",
+  memoryModelDefault: "Default (provider preferred)",
+  memoryAdvanced: "Advanced",
+  memoryMaxRolloutsPerStartup: "Max threads processed per startup",
+  memoryMaxRolloutAgeDays: "Max thread age (days)",
+  memoryMinRolloutIdleHours: "Min thread idle (hours)",
+  memoryMaxRawMemories: "Max raw memories for consolidation",
+  memoryMaxUnusedDays: "Max unused days",
+  memoryMinRateLimitPercent: "Min rate-limit remaining (%)",
+  memoryNumberHelp: "Leave empty to restore the native default.",
+  memoryNumberInvalid: "Value out of range; not saved.",
 };
 const zh: Record<keyof typeof en, string> = {
   legacyPreferences:
@@ -287,6 +321,36 @@ const zh: Record<keyof typeof en, string> = {
   codexHistoryUsageUnavailable: "单轮用量不可用",
   codexHistoryArtifacts: "产物",
   nativeBrowserCuaStatuses: "下方独立展示运行时、配置、连接、授权与工具错误。",
+  memory: "记忆",
+  memoryHelp:
+    "原生 Codex 记忆流水线。修改会写入用户 config.toml 并立即热刷新所有已加载线程，无需重启。",
+  memoryEnable: "启用记忆",
+  memoryEnableHelp:
+    "原生记忆流水线总开关（features.memories）。关闭后停止使用、生成记忆与记忆工具。",
+  memoryUse: "在对话中使用记忆",
+  memoryUseHelp: "把记忆使用说明注入开发者提示词（memories.use_memories，默认开）。",
+  memoryGenerate: "自动生成记忆",
+  memoryGenerateHelp: "把新线程总结为记忆（memories.generate_memories，默认开）。",
+  memoryDedicatedTools: "专用记忆工具",
+  memoryDedicatedToolsHelp: "在扩展工具面暴露专用记忆工具（memories.dedicated_tools，默认关）。",
+  memoryDisableOnExternalContext: "外部上下文时禁用",
+  memoryDisableOnExternalContextHelp:
+    "使用 MCP 或联网搜索的线程标记为污染，不生成记忆（memories.disable_on_external_context，默认关）。",
+  memoryExtractModel: "提取模型",
+  memoryExtractModelHelp: "线程总结使用的模型（memories.extract_model）。默认使用供应商偏好模型。",
+  memoryConsolidationModel: "整合模型",
+  memoryConsolidationModelHelp:
+    "记忆整合使用的模型（memories.consolidation_model）。默认使用供应商偏好模型。",
+  memoryModelDefault: "默认（供应商偏好）",
+  memoryAdvanced: "高级",
+  memoryMaxRolloutsPerStartup: "单次启动最大处理会话数",
+  memoryMaxRolloutAgeDays: "会话最大年龄（天）",
+  memoryMinRolloutIdleHours: "会话最小空闲（小时）",
+  memoryMaxRawMemories: "整合最大原始记忆数",
+  memoryMaxUnusedDays: "记忆最长未使用（天）",
+  memoryMinRateLimitPercent: "启动所需最低额度（%）",
+  memoryNumberHelp: "留空恢复原生默认值。",
+  memoryNumberInvalid: "数值超出范围，未保存。",
 };
 export function useCodexMessages() {
   return useCodezIntl().locale === "zh-CN" ? zh : en;

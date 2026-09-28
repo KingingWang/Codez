@@ -367,8 +367,12 @@ export function codexAuthorizationUrl(value: string): string {
 }
 
 export function isCodexSettingsSection(section: string): boolean {
-  // subagents 由 CodexSettingsSection 的 agents 面板承载（文件型 agent roles）。
-  return ["codex", "modelProvider", "skill", "subagents", "mcp", "plugin"].includes(section);
+  // subagents 由 CodexSettingsSection 的 agents 面板承载（文件型 agent roles）；
+  // memory 由 CodexSettingsSection 的 memory 面板承载（原生 [memories] 配置，
+  // spec: specs/codez-memory-settings.md「Codex 适配器路径」）。
+  return ["codex", "modelProvider", "skill", "subagents", "mcp", "plugin", "memory"].includes(
+    section,
+  );
 }
 
 // 定时任务（automations）在 Codex 适配器上已支持（spec: codex-desktop-automations
@@ -377,5 +381,5 @@ export function isCodexSettingsSection(section: string): boolean {
 // 「Settings Browser section surfacing」）：分区内的浏览器控制入口是原生 MCP 卡片，
 // 数据导入/清理由平台命令承载，与适配器无关。
 export function isCodexUnsupportedSection(section: string): boolean {
-  return ["memory", "commands", "hooks", "computerUse", "migration"].includes(section);
+  return ["commands", "hooks", "computerUse", "migration"].includes(section);
 }

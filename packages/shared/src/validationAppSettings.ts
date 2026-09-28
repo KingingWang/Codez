@@ -10,6 +10,7 @@ import {
   embeddedBrowserViewportPreferenceSchema,
 } from "./browser-use/command-metadata.js";
 import { providerFamilyConnectionSelectionSettingsSchema } from "./provider-family-connection-selection.js";
+import { modelSelectionSchema } from "./model-selection.js";
 
 /** 引导职业枚举；单独导出供 onboarding 记录回填 settings 时做窄化校验。 */
 const appSettingsOccupationSchema = z.enum([
@@ -464,6 +465,11 @@ const appSettingsObjectSchema = z.object({
   onboardingOccupation: appSettingsOccupationSchema.nullish(),
   proactiveSuggestionsEnabled: z.boolean().optional(),
   memoryEnabled: z.boolean().default(false),
+  // 记忆注入与提取独立于总开关；AND 语义叠加 CLI 本地配置（任一侧关闭即关闭）。
+  memoryUseEnabled: z.boolean().default(true),
+  memoryExtractionEnabled: z.boolean().default(true),
+  // 缺省/null = 跟随会话模型；显式设置后记忆提取改用该模型。
+  memoryExtractionModel: modelSelectionSchema.nullish(),
   lastWorkspaceSession: z.array(appWorkspaceSessionEntrySchema).default([]),
   lastActiveTabIndex: z.number().int().nonnegative().default(0),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
@@ -550,6 +556,9 @@ export const appSettingsPatchSchema = z.object({
     .nullish(),
   proactiveSuggestionsEnabled: z.boolean().optional(),
   memoryEnabled: z.boolean().optional(),
+  memoryUseEnabled: z.boolean().optional(),
+  memoryExtractionEnabled: z.boolean().optional(),
+  memoryExtractionModel: modelSelectionSchema.nullish(),
   lastWorkspaceSession: z.array(appWorkspaceSessionEntrySchema).optional(),
   lastActiveTabIndex: z.number().int().nonnegative().optional(),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),

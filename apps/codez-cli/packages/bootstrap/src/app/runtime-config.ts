@@ -177,8 +177,16 @@ export function resolveAppRuntimeConfig(input: {
       cliStorageRoot,
       enabled: options.runtimeConfig?.memory?.enabled ?? configResult.config.features.memory,
       ...(options.runtimeConfig?.memory?.extractionEnabled === undefined
-        ? {}
+        ? configResult.config.memory.extractionEnabled === undefined
+          ? {}
+          : { extractionEnabled: configResult.config.memory.extractionEnabled }
         : { extractionEnabled: options.runtimeConfig.memory.extractionEnabled }),
+      // 提取模型：runtimeConfig（Host 下发）优先，其次 CLI 配置文件；都没有则跟随会话模型。
+      ...(options.runtimeConfig?.memory?.extractionModel !== undefined
+        ? { extractionModel: options.runtimeConfig.memory.extractionModel }
+        : configResult.config.memory.extractionModel !== undefined
+          ? { extractionModel: configResult.config.memory.extractionModel }
+          : {}),
       ...(input.storageRoot ? { storageRoot: input.storageRoot } : {}),
       use: options.runtimeConfig?.memory?.use ?? configResult.config.memory.use,
       workspaceIdentity: workspaceIdentity?.trim() || undefined,

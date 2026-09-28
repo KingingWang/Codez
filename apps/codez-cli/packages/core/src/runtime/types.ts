@@ -301,6 +301,8 @@ export interface MemoryRuntimeConfig {
   enabled?: boolean;
   /** 是否调度成功 Main turn 后的自动 Extraction；缺省按 true 处理。 */
   extractionEnabled?: boolean;
+  /** 记忆提取专用模型；缺省跟随会话模型。 */
+  extractionModel?: ModelSelection;
   storageRoot?: string;
   use?: boolean;
   workspaceIdentity?: string;

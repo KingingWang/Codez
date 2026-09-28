@@ -22,7 +22,7 @@ import {
   type ChildClientPortsContext,
   type ClientFacingPorts,
 } from "../helpers/child-client-ports.js";
-import type { AgentRuntimeConfig, ActiveTurnInfo } from "../types.js";
+import type { AgentRuntimeConfig, ActiveTurnInfo, MemoryRuntimeConfig } from "../types.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 import { cloneModelSelection } from "../model-selection.js";
 import { applyRuntimeExecutionState } from "../execution-state.js";
@@ -30,6 +30,7 @@ import { applyRuntimeExecutionState } from "../execution-state.js";
 import { orderProviderVisibleToolContracts } from "../../tool/provider-visible-order.js";
 import { projectToolModelContract } from "../../tool/model-contract.js";
 import { rebuildContextPrefix } from "./context-refresh.js";
+import { loadProjectMemoryIndexContent } from "./context.js";
 import { filterEmbeddedSearchRuntimeVisibleTools } from "./embedded-search-branch.js";
 import {
   getSessionShellSelection as readSessionShellSelection,
@@ -67,6 +68,41 @@ export function updateConfig(
     if (!this.activeTurn) {
       rebuildContextPrefix(this);
     }
+  }
+}
+
+/** 返回当前记忆配置的浅快照；调用方不得原地修改（extractionModel 引用共享但按不可变约定使用）。 */
+export function getMemoryRuntimeConfig(
+  this: AgentRuntimeInternal,
+): MemoryRuntimeConfig | undefined {
+  return this.config.memory ? { ...this.config.memory } : undefined;
+}
+
+/** Host 记忆偏好热更新：只改这四个键；cliStorageRoot/workspaceIdentity 由创建/恢复路径独占。 */
+export type MemoryRuntimeConfigPatch = Partial<
+  Pick<MemoryRuntimeConfig, "enabled" | "use" | "extractionEnabled" | "extractionModel">
+>;
+
+export async function applyMemoryRuntimeConfig(
+  this: AgentRuntimeInternal,
+  patch: MemoryRuntimeConfigPatch,
+): Promise<void> {
+  const memory = (this.config.memory ??= {});
+  // 键出现即生效（含 undefined）：调用方按快照语义下发，undefined = 清除回默认。
+  if ("enabled" in patch) memory.enabled = patch.enabled;
+  if ("use" in patch) memory.use = patch.use;
+  if ("extractionEnabled" in patch) memory.extractionEnabled = patch.extractionEnabled;
+  if ("extractionModel" in patch) memory.extractionModel = patch.extractionModel;
+
+  // 首轮 context 初始化会读取最新 config，无需提前重载。
+  if (!this.contextInitialized) return;
+
+  const traceContext = this.rootTraceContext;
+  this.memoryRoot = await this.loadProjectMemoryRoot(traceContext);
+  this.memoryIndexContent = await loadProjectMemoryIndexContent(this, this.memoryRoot);
+  // 活动 Turn 的 context prefix 已冻结；turn 结束后的 rebuild 自然读取新值。
+  if (!this.activeTurn) {
+    rebuildContextPrefix(this);
   }
 }
 

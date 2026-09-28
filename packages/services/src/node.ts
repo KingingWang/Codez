@@ -2426,6 +2426,10 @@ export function createLocalServices(options: {
                 settings.askUserQuestionAutoResolutionEnabled !== false,
               nativeSearchEnhancementsEnabled: settings.nativeSearchEnhancementsEnabled !== false,
               memoryEnabled: settings.memoryEnabled === true,
+              // 完整记忆偏好随会话 materialization 下发；与热更新共用同一事实源。
+              memoryUseEnabled: settings.memoryUseEnabled !== false,
+              memoryExtractionEnabled: settings.memoryExtractionEnabled !== false,
+              memoryExtractionModel: settings.memoryExtractionModel ?? null,
               modelContextBudgetStrategy,
               // user-execution 只消费 Shell；共享默认策略是统一 result schema 的兼容占位，
               // 不会覆盖 runtime-materialization 阶段已经固定的 strategy。

@@ -85,6 +85,7 @@ import { listMcpServers } from "./mcp.js";
 import { updateInteractionPreferences } from "./interaction-preferences.js";
 import { updateAccountProviderConfig } from "./account-provider-config.js";
 import { updateModelIoPreferences } from "./model-io-preferences.js";
+import { updateMemoryPreferences } from "./memory-preferences.js";
 import { updateOffPeakToolPolicy } from "./off-peak-tool-policy.js";
 import { updateDynamicWorkflowPolicy } from "./dynamic-workflow-policy.js";
 import { grantWorkspaceHookTrustForProtocol } from "./workspace-hook-trust.js";
@@ -249,6 +250,8 @@ export class CodezProtocolAgentServer {
       appRuntimePreferences: {
         askUserQuestionAutoResolutionEnabled: true,
         modelIoFullRetentionEnabled: false,
+        // Host 尚未推送记忆偏好；单键 undefined 时回落各 session 的 CLI 本地配置。
+        memory: {},
         offPeakToolEnabled: false,
         // 动态工作流灰度门 fail-closed：Host 必须显式 workspace/updateDynamicWorkflowPolicy
         // 才开启。
@@ -629,6 +632,8 @@ export class CodezProtocolAgentServer {
         return await updateInteractionPreferences(this.context, request.params);
       case codezProtocolMethods.workspaceUpdateModelIoPreferences:
         return await updateModelIoPreferences(this.context, request.params);
+      case codezProtocolMethods.workspaceUpdateMemoryPreferences:
+        return await updateMemoryPreferences(this.context, request.params);
       case codezProtocolMethods.workspaceUpdateOffPeakToolPolicy:
         return await updateOffPeakToolPolicy(this.context, request.params);
       case codezProtocolMethods.workspaceUpdateDynamicWorkflowPolicy:

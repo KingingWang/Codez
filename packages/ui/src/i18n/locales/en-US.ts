@@ -2144,7 +2144,17 @@ const enUS: Record<string, string> = {
   "settings.memory": "Memory",
   "settings.memory.workspaceMemory": "Workspace Memory",
   "settings.memoryDescription":
-    "Save and reuse long-term context in workspaces. Applies to new sessions and may increase model requests and token costs.",
+    "Save and reuse long-term context in workspaces. Changes apply immediately and may increase model requests and token costs.",
+  "settings.memory.use": "Use memories in conversations",
+  "settings.memory.useDescription":
+    "Inject saved workspace memories into each turn. Turning this off also stops automatic extraction.",
+  "settings.memory.extraction": "Auto-extract memories",
+  "settings.memory.extractionDescription":
+    "Summarize and save memorable long-term information after each turn.",
+  "settings.memory.extractionModel": "Memory extraction model",
+  "settings.memory.extractionModelDescription":
+    "Model used to extract memories. Follows the session model by default.",
+  "settings.memory.extractionModel.followSession": "Follow session model",
   "settings.memory.viewer.disabled": "Enable Workspace Memory to view saved memories.",
   "settings.memory.viewer.localOnly":
     "Memory details are available only in the local desktop app. Open Memory settings there to view them.",
@@ -2237,7 +2247,8 @@ const enUS: Record<string, string> = {
   "settings.messageStreamShowReasoningDescription":
     "Show full reasoning inside the message stream. When off, the first reasoning item in each turn remains visible.",
   "settings.messageStreamShowTodos": "Show todos",
-  "settings.messageStreamShowTodosDescription": "Show Todo tool cards inside the message stream and enable the update_plan tool for Codex sessions. Toggling restarts workspace agent processes and interrupts in-flight tasks.",
+  "settings.messageStreamShowTodosDescription":
+    "Show Todo tool cards inside the message stream and enable the update_plan tool for Codex sessions. Toggling restarts workspace agent processes and interrupts in-flight tasks.",
   "settings.toolGroupingExplore": "Group exploration tools",
   "settings.toolGroupingExploreDescription":
     "Group consecutive reads and searches into an Explore section.",

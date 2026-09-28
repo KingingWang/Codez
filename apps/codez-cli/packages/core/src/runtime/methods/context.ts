@@ -165,7 +165,7 @@ export async function loadProjectMemoryRoot(
   return memoryRoot;
 }
 
-async function loadProjectMemoryIndexContent(
+export async function loadProjectMemoryIndexContent(
   runtime: AgentRuntimeInternal,
   memoryRoot: string | undefined,
 ): Promise<string | undefined> {

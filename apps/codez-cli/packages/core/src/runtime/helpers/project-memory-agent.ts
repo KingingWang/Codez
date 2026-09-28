@@ -39,7 +39,24 @@ export function captureProjectMemoryAgentContext(
     traceContext: TraceContext;
   },
 ): ProjectMemoryAgentContext {
-  const baseModel =
+  // 记忆提取模型（memory.extractionModel）优先于产生该工作的 Turn Model；
+  // 解析失败（Provider 不可用等）回退 Turn Model，不阻断提取。
+  let baseModel: Model | undefined;
+  const extractionModelSelection = runtime.config.memory?.extractionModel;
+  if (extractionModelSelection) {
+    try {
+      baseModel = createRuntimeModel(runtime, { selection: extractionModelSelection });
+    } catch (error) {
+      runtime.logger?.warn("Memory extraction model fallback to turn model", {
+        event: "memory.extraction_model_fallback",
+        module: "core.runtime",
+        error: error instanceof Error ? error.message : String(error),
+        providerId: extractionModelSelection.providerId,
+        modelId: extractionModelSelection.modelId,
+      });
+    }
+  }
+  baseModel ??=
     input.model ??
     createRuntimeModel(runtime, {
       selection: runtime.getSessionModelSelection(),
