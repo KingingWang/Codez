@@ -197,6 +197,38 @@ test("Codex copy follows the application locale and configuration presentation e
   );
 });
 
+test("native Browser/CUA card renders the global toggle and reflects the disabled state", () => {
+  const enabled = render(
+    <CodexMcpPanel
+      controller={controller}
+      remote={false}
+      nativeBrowserCuaCapability="degraded"
+      nativeBrowserControlEnabled={true}
+      onNativeBrowserControlEnabledChange={() => {}}
+    />,
+  );
+  assert.match(enabled, /Allow agents to control the built-in browser/);
+  assert.match(enabled, /role="switch"[^>]*aria-checked="true"/);
+
+  const disabledHtml = render(
+    <CodexMcpPanel
+      controller={controller}
+      remote={false}
+      nativeBrowserCuaCapability="degraded"
+      nativeBrowserControlEnabled={false}
+      onNativeBrowserControlEnabledChange={() => {}}
+    />,
+  );
+  assert.match(disabledHtml, /role="switch"[^>]*aria-checked="false"/);
+  assert.match(disabledHtml, /Browser control is off/);
+
+  // 未注入回调（测试/非设置上下文）不渲染开关。
+  const withoutToggle = render(
+    <CodexMcpPanel controller={controller} remote={false} nativeBrowserCuaCapability="degraded" />,
+  );
+  assert.doesNotMatch(withoutToggle, /Allow agents to control the built-in browser/);
+});
+
 test("native Browser/CUA section gates unsupported capability and reports degraded Browser-only state", () => {
   const unsupported = render(
     <CodexMcpPanel

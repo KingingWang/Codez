@@ -13,6 +13,7 @@ import {
   PERSONAL_PROVIDER_CONFIG_FILE_NAME,
 } from "@codez/provider-node";
 import { getAppConfigDir as resolveAppConfigDir, getCodezDataRootDir } from "./paths.js";
+import { createDesktopBrowserRelay } from "./codez-agent/desktopBrowserRelay.js";
 import {
   buildLocalMediaPreviewUrl,
   type DynamicWorkflowMode,
@@ -595,6 +596,10 @@ import {
   CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
   CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV,
   CODEZ_NATIVE_BROWSER_CUA_CUA_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
+  CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE,
   CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY,
   ZAI_PROVIDER_ID,
   codezAccountAccessSchema,
@@ -1201,6 +1206,15 @@ export function createLocalServices(options: {
   };
   /** Main 当前窗口授予的临时 MCP 清单；仅用于本地默认 Codex bridge。 */
   desktopCodexMcpServers?: import("@codez/shared").DesktopCodexMcpServer[];
+  /**
+   * 桌面浏览器 MCP 的运行时持有器（spec: codex-desktop-native-browser-cua「Global enable
+   * toggle」）：Main 推送的清单/可用性事实会即时更新，优先于 InitLocal 快照；
+   * resolveSpawnEnv 每次 spawn 现读，保证开关切换后下一次 spawn 不再使用旧注册。
+   */
+  desktopBrowserMcpStateSource?: () => {
+    servers: readonly import("@codez/shared").DesktopCodexMcpServer[];
+    nativeBrowserCua?: { browserAvailable: boolean; cuaAvailable: boolean };
+  };
   /** 本地桌面上次 workspace 缺失时，仅用于 Agent 子进程 spawn.cwd 兜底。 */
   codezAgentSpawnFallbackCwd?: string;
   /** desktop-attached remote server 从 Desktop Host 收到的一次性 Agent 网络配置。 */
@@ -1254,6 +1268,11 @@ export function createLocalServices(options: {
   cuaOperationStateReporter?: CuaOperationStateReporter;
 }): ServiceCollection {
   const isDesktopAttachedRemote = options?.serviceAuthorityMode === "desktop-attached-remote";
+  // 远端 relay：仅 desktop-attached-remote 装配；窗口 Host 经 RPC 授予/撤销能力，
+  // 本地与独立 server 永远不创建（spec: codex-desktop-native-browser-cua「Remote workspace relay」）。
+  const desktopBrowserRelay = isDesktopAttachedRemote
+    ? createDesktopBrowserRelay({ dataDirectory: getCodezDataRootDir() })
+    : undefined;
   // host / remote server 以前直接沿用当前进程环境启动后续服务。
   // GUI 启动的 desktop、SSH/WSL/Docker 拉起的 remote server 往往拿不到用户 login shell 里的 PATH，
   // 导致 bun 这类只在 shell profile 里追加的命令在 Codez Agent/终端里不可见。
@@ -2148,6 +2167,7 @@ export function createLocalServices(options: {
         throw new Error("Topic resource authorization is unavailable");
       return bots.validateTopicResource({ ...request, signal });
     },
+    ...(desktopBrowserRelay ? { desktopBrowserRelay } : {}),
     // 官方 Server MCP 身份头：host 是唯一身份权威，Agent 经反向请求索取。
     // Provider 存在性读取正式 Model Selection View；不恢复旧 Provider Snapshot。
     officialMcpAuthHeadersResolver: createOfficialMcpAuthHeadersResolver({
@@ -2207,22 +2227,56 @@ export function createLocalServices(options: {
           ...(settings.messageStreamShowTodos === true
             ? { [CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY]: "1" }
             : {}),
-          // 修复依据：即使上层进程环境意外带同名变量，远端/无授权本地 Host
-          // 也必须清空，而非让 bridge 从继承环境注册桌面工具。
-          [CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]:
-            !isDesktopAttachedRemote &&
-            options?.serviceAuthorityMode === "desktop-local" &&
-            options.desktopCodexMcpServers?.length
-              ? JSON.stringify(options.desktopCodexMcpServers)
-              : "",
-          ...(nativeBrowserCua
-            ? {
-                [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: nativeBrowserCua.browserAvailable
-                  ? "1"
-                  : "0",
-                [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: nativeBrowserCua.cuaAvailable ? "1" : "0",
+          // spec: codex-desktop-native-browser-cua「Remote workspace relay」「Global enable toggle」。
+          // 本地：清单来自 Main 授权（InitLocal 快照 + Main 推送的运行时持有器，spawn 时现读）；
+          // 远端：仅当 relay 已被窗口 Host 授予时由本进程自建 remote-local 注册——
+          // endpoint/tokenFile 都指向远端 relay，窗口 token 不出桌面进程。
+          // 其余场景一律显式清空/置 0，防止 bridge 从继承环境注册桌面工具或误报可用性。
+          ...(() => {
+            if (isDesktopAttachedRemote) {
+              const relayDescriptor = desktopBrowserRelay?.activeDescriptor();
+              const remoteBridgePath = process.env.CODEZ_CODEX_BRIDGE_PATH?.trim();
+              if (!relayDescriptor || !remoteBridgePath) {
+                return {
+                  [CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]: "",
+                  [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: "0",
+                  [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: "0",
+                };
               }
-            : {}),
+              return {
+                [CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]: JSON.stringify([
+                  {
+                    name: CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
+                    command: process.execPath,
+                    args: [remoteBridgePath, CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE],
+                    env: {
+                      [CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_ENV]: relayDescriptor.endpoint,
+                      [CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE_ENV]: relayDescriptor.tokenFile,
+                    },
+                  },
+                ]),
+                [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: "1",
+                [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: "0",
+              };
+            }
+            const liveState = options?.desktopBrowserMcpStateSource?.();
+            const localServers =
+              options?.serviceAuthorityMode === "desktop-local"
+                ? (liveState?.servers ?? options.desktopCodexMcpServers)
+                : undefined;
+            const localFacts = liveState?.nativeBrowserCua ?? nativeBrowserCua;
+            return {
+              [CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]: localServers?.length
+                ? JSON.stringify(localServers)
+                : "",
+              ...(localFacts
+                ? {
+                    [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: localFacts.browserAvailable ? "1" : "0",
+                    [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: localFacts.cuaAvailable ? "1" : "0",
+                  }
+                : {}),
+            };
+          })(),
         };
       }
       // 内置 Subagent 的旧覆盖必须在 CLI 独立读取之前导入，不能等待设置页操作。

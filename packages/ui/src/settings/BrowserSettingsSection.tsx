@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch.js";
 import { toast } from "@/components/ui/toast.js";
 import { useCodexSettings } from "@/hooks/useCodexSettings.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
+import { useSettings } from "@/hooks/useSettingService.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { startUserAction } from "@/lib/userActionTelemetry.js";
@@ -160,6 +161,10 @@ export function BrowserSettingsSection({
 
   const operationDisabled = !nativeActionsAvailable;
 
+  // 内置浏览器 Agent 工具的全局开关：useSettings.update 先落盘再经 syncAppSettings
+  // 即时通知 Main（broker 拒止 + runtime 重造），无需重启 App。
+  const { settings: appSettings, update: updateAppSettings } = useSettings();
+
   return (
     <div className="space-y-5">
       <section className="space-y-3">
@@ -167,6 +172,10 @@ export function BrowserSettingsSection({
           controller={codexController}
           remote={codexController.remote}
           nativeBrowserCuaCapability={nativeBrowserCuaCapability}
+          nativeBrowserControlEnabled={appSettings?.nativeBrowserControlEnabled !== false}
+          onNativeBrowserControlEnabledChange={(enabled) =>
+            updateAppSettings({ nativeBrowserControlEnabled: enabled })
+          }
         />
         {/* 导入登录状态是“开启内置浏览器控制”之后的配套动作，跟随控制卡片表达先后关系；
             清除类破坏性操作仍留在“浏览器数据”分组。

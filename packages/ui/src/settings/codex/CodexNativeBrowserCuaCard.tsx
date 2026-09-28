@@ -1,5 +1,6 @@
 import { nativeBrowserCuaMcpDescriptorResultSchema } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
+import { Switch } from "@/components/ui/switch.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
 import {
   classifyCodexNativeBrowserCua,
@@ -20,13 +21,23 @@ export function CodexNativeBrowserCuaCard({
   remote = false,
   nativeBrowserCuaCapability,
   descriptorOverride,
+  nativeBrowserControlEnabled,
+  onNativeBrowserControlEnabledChange,
 }: {
   controller: CodexSettingsController;
   remote?: boolean;
   nativeBrowserCuaCapability?: string;
   descriptorOverride?: unknown;
+  /**
+   * 全局开关状态与变更回调（spec: codex-desktop-native-browser-cua「Global enable toggle」）。
+   * 由父级经 useSettings 注入（update 先落盘再经 syncAppSettings 即时通知 Main）；
+   * 缺省（测试/非设置上下文）不渲染开关，状态展示按开启处理。
+   */
+  nativeBrowserControlEnabled?: boolean;
+  onNativeBrowserControlEnabledChange?: (enabled: boolean) => void | Promise<void>;
 }) {
   const text = useCodexMessages();
+  const nativeBrowserControlOn = nativeBrowserControlEnabled !== false;
   const loaded = useCodexNativeBrowserCuaDescriptor(nativeBrowserCuaCapability, remote);
   const descriptor = descriptorOverride ?? loaded.descriptor;
   const state = controller.snapshot.mcp;
@@ -52,23 +63,26 @@ export function CodexNativeBrowserCuaCard({
   const legacyCleanupDisabled =
     disabled || nativeStatus !== "active" || legacyRegistration !== "codez-generated";
   let nativeStatusMessage: string;
-  switch (nativeStatus) {
-    case "active":
-      nativeStatusMessage = text.nativeBrowserCuaActive;
-      break;
-    case "unsupported":
-      nativeStatusMessage = text.nativeBrowserCuaUnsupported;
-      break;
-    case "runtime-missing":
-      nativeStatusMessage = text.nativeBrowserCuaRuntimeMissing;
-      break;
-    case "service-not-running":
-      nativeStatusMessage = text.nativeBrowserCuaServiceNotRunning;
-      break;
-    case "descriptor-unavailable":
-      nativeStatusMessage = text.nativeBrowserCuaDescriptorUnavailable;
-      break;
-  }
+  if (!nativeBrowserControlOn) {
+    nativeStatusMessage = text.nativeBrowserControlDisabled;
+  } else
+    switch (nativeStatus) {
+      case "active":
+        nativeStatusMessage = text.nativeBrowserCuaActive;
+        break;
+      case "unsupported":
+        nativeStatusMessage = text.nativeBrowserCuaUnsupported;
+        break;
+      case "runtime-missing":
+        nativeStatusMessage = text.nativeBrowserCuaRuntimeMissing;
+        break;
+      case "service-not-running":
+        nativeStatusMessage = text.nativeBrowserCuaServiceNotRunning;
+        break;
+      case "descriptor-unavailable":
+        nativeStatusMessage = text.nativeBrowserCuaDescriptorUnavailable;
+        break;
+    }
   const nativeServer = state?.data?.data.find(
     (server) => server.name === "codez-desktop-browser-cua",
   );
@@ -100,6 +114,18 @@ export function CodexNativeBrowserCuaCard({
             <CodexNotice error>{controller.snapshot.config.error}</CodexNotice>
           ) : null}
         </div>
+        {onNativeBrowserControlEnabledChange ? (
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={nativeBrowserControlOn}
+              onCheckedChange={(checked) => void onNativeBrowserControlEnabledChange(checked)}
+              aria-label={text.nativeBrowserControlToggle}
+            />
+            <span className="text-ui-sm text-foreground-subtle">
+              {text.nativeBrowserControlToggle}
+            </span>
+          </div>
+        ) : null}
         {legacyRegistration === "codez-generated" ? (
           <Button
             variant="outline"

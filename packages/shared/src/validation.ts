@@ -809,6 +809,19 @@ export const hostPluginSandboxRegisterResultMessageSchema = z
   })
   .strict();
 
+export const hostNativeBrowserCuaMcpServersChangedMessageSchema = z
+  .object({
+    type: z.literal("native-browser-cua-mcp-servers-changed"),
+    desktopCodexMcpServers: desktopCodexMcpServersSchema,
+    nativeBrowserCua: z
+      .object({
+        browserAvailable: z.boolean(),
+        cuaAvailable: z.boolean(),
+      })
+      .strict(),
+  })
+  .strict();
+
 export const hostCuaPipFocusChangedMessageSchema = z
   .object({
     type: z.literal("cua-pip-focus-changed"),
@@ -878,6 +891,7 @@ export const hostIncomingMessageSchema = z.discriminatedUnion("type", [
   hostLocalMediaPreviewPathAuthorizeResultMessageSchema,
   hostPluginSandboxRegisterResultMessageSchema,
   hostCuaPipFocusChangedMessageSchema,
+  hostNativeBrowserCuaMcpServersChangedMessageSchema,
   hostProviderProvisioningExecuteMessageSchema,
 ]);
 

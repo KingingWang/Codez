@@ -19,16 +19,28 @@ Main broker ready → per-window capability → local Host init
   → workspace bridge spawn → Codex app-server -c (MCP server only in this process)
   → Codex MCP stdio bridge → token file → Main resolves live owner window → browser guest
 window close → capability revoked → subsequent requests fail closed
+
+remote: window Host connects remote codez server → Host pushes capability flag over RPC
+  → remote server starts its local relay socket + mints a remote-local token (0600)
+  → remote bridge spawn -c (MCP server, endpoint = relay socket, token file = remote-local)
+  → Codex MCP stdio bridge → relay validates remote-local token
+  → RPC event → window Host swaps in the window token → Main broker → browser guest
+  → response returns over the same RPC call
+window close / toggle off / connection drop → relay torn down or broker rejects → fail closed
 ```
 
 The server is exposed to all threads in this local window's app-server, including resume and
-mobile control attached to that same Desktop Host. Remote workspace runtimes, independent CLI,
-and other clients never receive this temporary registration. A locally unavailable broker or
-missing bridge artifact must fail closed without providing a misleading tool catalog. The MCP
-server remains optional; broker failure must not prevent the whole Codex session from starting.
-Only Main owns the window capability; UI configuration state is a projection, not a second owner.
-Future Desktop-only tools may use the same process-scoped override mechanism but must supply
-their own validated capability and lifecycle.
+mobile control attached to that same Desktop Host. Independent CLI clients never receive this
+temporary registration. Remote workspace runtimes (SSH/WSL/Docker) receive an equivalent
+registration through the window-scoped relay described in "Remote workspace relay" below: the
+remote Codex process registers the same MCP entry against a remote-local proxy socket owned by
+its own codez server, and every browser command is forwarded over the existing authenticated
+window connection back to the Main broker. A locally unavailable broker or missing bridge
+artifact must fail closed without providing a misleading tool catalog. The MCP server remains
+optional; broker failure must not prevent the whole Codex session from starting. Only Main owns
+the window capability; UI configuration state is a projection, not a second owner. Future
+Desktop-only tools may use the same process-scoped override mechanism but must supply their own
+validated capability and lifecycle.
 
 The previous installer wrote only the fixed `mcp_servers.codez-desktop-browser-cua` user key.
 Existing global installations must be handled separately: remove that key only when its value
@@ -46,7 +58,8 @@ instead of treating the temporary server as a deletable legacy entry.
 Acceptance cases:
 
 1. Fresh local Desktop with no global registration: only its Codex app-server sees the native
-   browser MCP; independent CLI and remote workspaces do not, even while Desktop is running.
+   browser MCP; independent CLI does not, even while Desktop is running. Remote workspaces see
+   only the relay-scoped registration granted by their own window connection.
 2. Two Desktop windows: a request from A executes only on A; after A closes the same credential
    cannot operate B. B remains usable. Invalid, missing, or stale credentials fail closed.
 3. Existing exact Codez-generated global entry: after scoped migration, CLI no longer lists the
@@ -114,11 +127,12 @@ It must never receive `CODEZ_NODE_REPL_BROWSER_BROKER_SOCKET` or
 
 ### Independent client isolation
 
-Only the Desktop Host's bridge starts Codex with the process-scoped MCP override. Independent CLI
-and remote workspace runtimes receive no new registration. Until the verified legacy global
-entry is explicitly removed, however, other clients may still list that old entry. On
-`tools/list` a missing token or unreachable broker yields no tools; individual calls still
-authenticate. Closing one window revokes only that window's token.
+Only the Desktop Host's bridge (local) and the desktop-attached remote server's bridge (via the
+relay) start Codex with the process-scoped MCP override. Independent CLI runtimes receive no new
+registration. Until the verified legacy global entry is explicitly removed, however, other
+clients may still list that old entry. On `tools/list` a missing token or unreachable broker (or
+relay socket, for remote runtimes) yields no tools; individual calls still authenticate. Closing
+one window revokes only that window's token.
 
 The stdio entry must serve both eras from the same factory: Codex's MCP client opens with a
 2025-06-18 legacy `initialize` (no envelope metadata), so `legacy` must be `"serve"` — rejecting
@@ -143,6 +157,91 @@ bridge capability parser derives:
 - `degraded` when the stable Browser path exists and CUA is unavailable;
 - `supported` only when both Browser and CUA runtimes are actually available (not reachable in this
   checkout).
+
+## Remote workspace relay (SSH/WSL/Docker)
+
+Remote workspace runtimes execute on another machine (or container/distro) and cannot reach the
+Main broker's local socket. The relay reuses the existing authenticated window connection as the
+only transport; no new network listener is opened on the Desktop host, and no SSH port forwarding,
+WSL gateway, or Docker host networking is required. All three remote backends share one code path
+because they all terminate in the same `IRemoteBackend` byte stream.
+
+Ownership and flow:
+
+- The remote codez server (`desktop-attached-remote`) owns a **relay socket** on the remote
+  machine (POSIX: deterministic unix socket under the remote temporary directory; Windows remote:
+  deterministic named pipe). It is created only while the desktop capability is granted and is
+  torn down on revoke, connection loss, or server shutdown.
+- On grant, the remote server mints its own random 32-byte **remote-local token**, written to a
+  `0600` file under the remote data directory. This token authenticates only the bridge→relay
+  hop on the remote machine. The Desktop window token is never written to the remote filesystem,
+  never placed in remote process environments, and never appears in the relay registration.
+- The remote server injects the process-scoped MCP override itself (`CODEZ_DESKTOP_MCP_SERVERS`
+  in the bridge spawn environment, same schema as Desktop): `command` is the remote server's own
+  runtime executable, `args` point at the deployed `bridge.cjs native-browser-cua-mcp`, and `env`
+  carries only `CODEZ_NATIVE_BROWSER_CUA_ENDPOINT` (relay socket) and
+  `CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE` (remote-local token file).
+- The relay accepts the same one-request-per-connection framed JSON protocol as the Main broker,
+  enforces the same 1 MiB request bound, validates the remote-local token with a timing-safe
+  comparison, and then forwards the raw request payload as an RPC event
+  (`onDynamicDesktopBrowserCommandRequest`) on the agent service channel.
+- The window Host (Desktop side) listens for that event per remote connection, replaces the
+  token field with the live window token read from the Main-issued token file, and plays client
+  to the Main broker socket. The broker's per-window authentication and dispatch are unchanged;
+  the relay introduces no second browser command execution path.
+- The broker response line returns to the remote server through
+  `respondDesktopBrowserCommand`, and the relay writes it back to the bridge socket verbatim.
+  Screenshot-sized results are supported: the RPC channel imposes no small frame cap.
+- If the window Host cannot reach the broker (window closed, broker down, token revoked), it
+  responds with a well-formed `backend_unavailable`/`authentication_failed` broker frame so the
+  bridge surfaces a normal tool error; the relay never fabricates success.
+- The relay applies a bounded per-request timeout; on timeout, RPC failure, or connection loss
+  it answers the bridge with `backend_unavailable` and fails closed.
+
+```text
+remote bridge.cjs → relay socket (remote-local token) → remote codez server
+  → RPC event on the existing window connection → Desktop window Host
+  → window token file + Main broker socket → BrowserGuestManager
+```
+
+The window Host learns the broker endpoint and token-file path from the Main-issued
+`desktopCodexMcpServers` descriptor (InitLocal plus live updates); it never derives those paths
+itself. A remote runtime whose window Host holds no descriptor (toggle off, broker unavailable,
+non-Desktop authority) receives `enabled=false` and exposes no tools.
+
+Remote availability is projected exactly like local: the remote server injects
+`CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV=1` into bridge spawns only while its relay is active, so
+`runtime/capabilities` reports `degraded` for a live relay and `unsupported` otherwise. The UI
+never probes or infers beyond that projection. One accepted divergence from local behavior:
+while the relay socket is up but the Desktop broker is momentarily unreachable, a remote
+`tools/list` may still list the tools; individual calls then fail `backend_unavailable`.
+
+## Global enable toggle
+
+The setting `nativeBrowserControlEnabled` (boolean, default `true`) is the single user-facing
+switch for the **agent-facing** browser tool. It lives in app settings, is authored by the
+Desktop, and governs local and remote registrations uniformly. It does not disable the in-app
+browser itself: the user-driven browser panel, tab management, and other browser surfaces remain
+available regardless of the toggle.
+
+- Default is on, preserving behavior for existing installations.
+- The toggle is exposed on the shared `CodexNativeBrowserCuaCard`, so the Codex MCP settings
+  panel and Settings → Browser cannot drift.
+- Main subscribes to the setting and applies it to the broker immediately: while disabled the
+  broker answers every request `backend_unavailable` after envelope validation and reports
+  `browserAvailable=false`, which also makes `prepareDesktopCodexMcpServers` yield no
+  registration for newly spawned Hosts.
+- Main pushes the resulting `desktopCodexMcpServers` list (full descriptor on enable, empty on
+  disable) to every live window Host. The Host stores it in a mutable holder read by
+  `resolveSpawnEnv` at each agent spawn, then disposes its active workspace runtimes so the next
+  spawn reflects the new value. Dispose strictly follows the holder update, so a respawn never
+  observes a stale registration.
+- The same push drives the remote relay: the window Host forwards `enabled` to each connected
+  remote server, which applies it to its relay and disposes its own active workspace runtimes.
+  Toggle changes therefore take effect without an app restart, a window reload, or a remote
+  reconnect; in-flight browser calls fail explicitly rather than hanging.
+- Disposal may interrupt a running turn; that is the accepted cost of immediate effect and
+  matches the existing `messageStreamShowTodos` restart semantics.
 
 ## Command and configuration contract
 
@@ -239,6 +338,11 @@ permission broker; it must not bypass that broker by virtue of being Codex-owned
 Main broker ready -> register window/token -> local Host init -> workspace bridge spawn
   -> app-server -c temporary MCP override -> tool request authenticates -> bound window
   -> window close revokes its token
+
+toggle change -> Main broker enable/disable -> Main pushes MCP list to window Hosts
+  -> Host updates spawn-env holder -> Host disposes active workspace runtimes
+  -> Host pushes enabled flag to each remote server -> remote relay starts/stops
+  -> remote server disposes its active workspace runtimes -> next spawn reflects the toggle
 ```
 
 There is no background write loop, automatic repair, or timed retry. A user-visible refresh only
@@ -256,8 +360,18 @@ rereads state; it does not mutate Codex config.
 7. Invalid endpoint token: endpoint returns `authentication_failed` and dispatches nothing.
 8. Invalid Browser command: endpoint returns `invalid_request` and manager is not called.
 9. No eligible local window: endpoint returns a strict failed Browser result, never success.
-10. Remote workspace/runtime: no Desktop MCP is injected even if a same-name server is present in
-    Codex config.
+10. Remote workspace/runtime: the relay registration points only at the remote-local relay
+    socket; a same-name server in the remote machine's Codex user config is neither reused nor
+    treated as the Desktop capability, and never receives the window token.
+11. SSH/WSL/Docker session with the toggle on: the session's Codex lists `browser_command`, and a
+    command executes on the built-in browser of the Desktop window that owns the connection.
+12. Toggle off while sessions are running: the broker rejects subsequent calls immediately, active
+    workspace runtimes (local and remote) are disposed, and the next spawn registers no tool;
+    toggling back on re-grants without an app restart or remote reconnect.
+13. Remote relay with a wrong/absent remote-local token: the relay rejects before any RPC
+    forwarding; the Main broker never sees the request.
+14. Remote connection drop or window close mid-request: the pending bridge call fails explicitly
+    (`backend_unavailable`/connection error); no retry or success fabrication.
 
 ## Migration boundary
 

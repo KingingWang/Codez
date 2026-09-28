@@ -387,3 +387,76 @@ for (const action of ["revoke", "close"] as const) {
     await rm(directory, { recursive: true, force: true });
   });
 }
+
+test("native broker toggle disables dispatch immediately and re-enables cleanly", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "native-browser-cua-toggle-"));
+  const executed: unknown[] = [];
+  const broker = createNativeBrowserCuaMcpBroker({
+    manager: {
+      async execute(...args: unknown[]) {
+        executed.push(args);
+        return { ok: true, elapsedMs: 0 };
+      },
+    } as never,
+    flavor: "test",
+    userDataPath: directory,
+    temporaryDirectory: directory,
+    eligibleWindowResolver: (windowId) => ({ id: windowId }) as never,
+    logger: { warn: () => {} },
+  });
+  await broker.ready;
+  await broker.registerWindow(1);
+  const descriptor = () =>
+    broker.descriptor({
+      executable: process.execPath,
+      bridgePath: "/fixture/bridge.cjs",
+      windowId: 1,
+    });
+  const endpoint = descriptor().endpoint;
+  const token = (await readFile(descriptor().tokenFile, "utf8")).trim();
+  const send = async () => {
+    const done = once<string>();
+    const socket = connect(endpoint);
+    let buffer = "";
+    socket.on("error", done.reject);
+    socket.on("data", (chunk) => {
+      buffer += chunk.toString();
+      const newline = buffer.indexOf("\n");
+      if (newline >= 0) done.resolve(buffer.slice(0, newline));
+    });
+    socket.on("connect", () =>
+      socket.write(
+        `${JSON.stringify({
+          id: "00000000-0000-4000-8000-000000000002",
+          token,
+          command: { method: "getState" },
+        })}\n`,
+      ),
+    );
+    try {
+      return await done.promise;
+    } finally {
+      socket.destroy();
+    }
+  };
+  try {
+    broker.setEnabled(false);
+    // 关闭即拒止：不进 manager，能力描述符同步不可用。
+    assert.equal(broker.availability.browserAvailable, false);
+    assert.equal(descriptor().serviceRunning, false);
+    const rejected = await send();
+    assert.match(rejected, /backend_unavailable/u);
+    assert.match(rejected, /disabled/u);
+    assert.equal(executed.length, 0);
+
+    broker.setEnabled(true);
+    assert.equal(broker.availability.browserAvailable, true);
+    assert.equal(descriptor().serviceRunning, true);
+    const accepted = await send();
+    assert.match(accepted, /"ok":true/u);
+    assert.equal(executed.length, 1);
+  } finally {
+    await broker.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

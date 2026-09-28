@@ -9,6 +9,7 @@ import { CodexHistoryPanel } from "./CodexHistoryPanel.js";
 import { CodexNotice, CodexSection } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
 import { useCodexNativeBrowserCuaCapability } from "./useCodexNativeBrowserCua.js";
+import { useSettings } from "@/hooks/useSettingService.js";
 
 type Panel = "account" | "models" | "skills" | "agents" | "mcp" | "plugins" | "config" | "history";
 const PANELS: Panel[] = [
@@ -49,6 +50,7 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
   const text = useCodexMessages();
   const controller = useCodexSettings(props);
   const [panel, setPanel] = useState<Panel>(props.initialPanel ?? "account");
+  const { settings: appSettings, update: updateAppSettings } = useSettings();
   const nativeBrowserCuaCapability = useCodexNativeBrowserCuaCapability(
     controller.services,
     controller.remote,
@@ -120,6 +122,10 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
               controller={controller}
               remote={controller.remote}
               nativeBrowserCuaCapability={nativeBrowserCuaCapability}
+              nativeBrowserControlEnabled={appSettings?.nativeBrowserControlEnabled !== false}
+              onNativeBrowserControlEnabledChange={(enabled) =>
+                updateAppSettings({ nativeBrowserControlEnabled: enabled })
+              }
             />
           ) : null}
           {panel === "plugins" ? <CodexPluginsPanel controller={controller} /> : null}

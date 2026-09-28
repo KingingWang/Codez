@@ -260,3 +260,72 @@ export function nativeBrowserCuaMcpTokenFilePath(input: {
   const windowId = input.windowId === undefined ? "" : `-${input.windowId}`;
   return `${input.userDataPath.replace(/[\\/]$/u, "")}/${CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_PREFIX}-${flavor}${windowId}.token`;
 }
+
+// ---- Remote workspace relay（spec: codex-desktop-native-browser-cua「Remote workspace relay」）----
+// 远端 codez server 在本机提供 relay socket，把浏览器命令经既有窗口 RPC 通道转发回桌面
+// 窗口 Host；窗口 token 不出桌面进程，远端只用自签发的 remote-local token 保护 bridge→relay 跳。
+export const NATIVE_BROWSER_CUA_RELAY_ENDPOINT_PREFIX = "codez-native-browser-cua-relay";
+/** 与 Main broker 相同：单请求帧上限 1 MiB。 */
+export const NATIVE_BROWSER_CUA_RELAY_REQUEST_MAX_BYTES = 1024 * 1024;
+/** 与 bridge MCP 相同：单响应帧上限 32 MiB（截图内联 base64）。 */
+export const NATIVE_BROWSER_CUA_RELAY_RESPONSE_MAX_BYTES = 32 * 1024 * 1024;
+
+/** remote → desktop 的中继请求事件载荷；payload 是原始 broker 请求行（不含换行）。 */
+export const desktopBrowserCommandRelayRequestSchema = z
+  .object({
+    requestId: z.string().uuid(),
+    payload: z.string().min(1).max(NATIVE_BROWSER_CUA_RELAY_REQUEST_MAX_BYTES),
+  })
+  .strict();
+export type DesktopBrowserCommandRelayRequest = z.infer<
+  typeof desktopBrowserCommandRelayRequestSchema
+>;
+
+/** desktop → remote 的中继响应载荷；payload 是原始 broker 响应行（不含换行）。 */
+export const desktopBrowserCommandRelayResponseSchema = z
+  .object({
+    requestId: z.string().uuid(),
+    payload: z.string().min(1).max(NATIVE_BROWSER_CUA_RELAY_RESPONSE_MAX_BYTES),
+  })
+  .strict();
+export type DesktopBrowserCommandRelayResponse = z.infer<
+  typeof desktopBrowserCommandRelayResponseSchema
+>;
+
+/** desktop → remote：授予/撤销桌面内置浏览器能力。 */
+export const desktopBrowserControlUpdateSchema = z
+  .object({
+    enabled: z.boolean(),
+  })
+  .strict();
+export type DesktopBrowserControlUpdate = z.infer<typeof desktopBrowserControlUpdateSchema>;
+
+/**
+ * relay socket 路径按进程隔离：同一台远端机器可能被多个桌面窗口（甚至多个桌面实例）
+ * 同时连接，确定性共享路径会互相顶掉；注册清单按 spawn 从活跃 holder 读取，pid 路径天然一致。
+ */
+export function nativeBrowserCuaRelayEndpointPath(input: {
+  platform?: NodeJS.Platform | string;
+  processId: number;
+  temporaryDirectory?: string;
+}): string {
+  if (!Number.isSafeInteger(input.processId) || input.processId < 0) {
+    throw new Error("Native Browser/CUA relay process id must be a nonnegative safe integer");
+  }
+  if (input.platform === "win32") {
+    return `\\\\.\\pipe\\${NATIVE_BROWSER_CUA_RELAY_ENDPOINT_PREFIX}-${input.processId}`;
+  }
+  const root = (input.temporaryDirectory ?? "").replace(/[\\/]$/u, "");
+  return `${root}/${NATIVE_BROWSER_CUA_RELAY_ENDPOINT_PREFIX}-${input.processId}.sock`;
+}
+
+/** remote-local token 文件路径：位于远端数据目录（0600），不进入任何配置或日志。 */
+export function nativeBrowserCuaRelayTokenFilePath(input: {
+  dataDirectory: string;
+  processId: number;
+}): string {
+  if (!Number.isSafeInteger(input.processId) || input.processId < 0) {
+    throw new Error("Native Browser/CUA relay process id must be a nonnegative safe integer");
+  }
+  return `${input.dataDirectory.replace(/[\\/]$/u, "")}/${NATIVE_BROWSER_CUA_RELAY_ENDPOINT_PREFIX}-${input.processId}.token`;
+}
