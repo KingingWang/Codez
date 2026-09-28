@@ -12,6 +12,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { Emitter } from "@codez/rpc";
 import type { IDisposable } from "@codez/rpc";
+import type { DesktopBrowserRelay } from "./desktopBrowserRelay.js";
 import type {
   AccountProviderConfigSnapshot,
   ModelSelectionView,
@@ -954,6 +955,12 @@ interface CreateCodezAgentServiceOptions extends Omit<
   resolveOffPeakTaskService?: () =>
     | Pick<IOffPeakTaskService, "createTask" | "list" | "getCodingPlanSupport">
     | undefined;
+  /**
+   * 桌面内置浏览器中继（spec: codex-desktop-native-browser-cua「Remote workspace relay」）。
+   * 仅 desktop-attached-remote 装配注入；本地/纯 CLI/独立 HTTP 缺省时
+   * update/respond 为 no-op，事件永不触发。
+   */
+  desktopBrowserRelay?: DesktopBrowserRelay;
   /**
    * browser-use 执行桥：把 agent 的 interaction/browserExecute 反向请求转发到 main
    * （WebContentsView+CDP）。desktop host 装配时注入；缺省（纯 CLI/远控无 main）则
@@ -3728,6 +3735,27 @@ export function createCodezAgentService(
     await processManager.disposeWorkspace(params);
   };
 
+  // disposeActiveWorkspaceRuntimes 与桌面浏览器开关共用的释放实现：
+  // 只有 codex bridge runtime 消费这类进程级 env 配置；legacy CLI workspace 不注入，
+  // 重启它们只会平白打断进行中的任务。
+  const disposeActiveRuntimesForConfigChange = async (reason: string): Promise<void> => {
+    if (!usesDefaultCodexBridge) return;
+    const actives = [...activeClientsByWorkspaceKey.values()];
+    await Promise.all(
+      actives.map(async (active) => {
+        try {
+          await disposeWorkspaceRuntime(active.workspace);
+        } catch (error) {
+          // best-effort：单个 workspace 释放失败不能阻断其它 workspace 应用新配置。
+          logger.warn(undefined, "dispose workspace runtime for config change failed", {
+            reason,
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }),
+    );
+  };
+
   return {
     async codexRequest(params) {
       // 先校验再启动，拒绝未授权 native RPC；只读启动不限制已获 UI 授权的设置写入。
@@ -6174,23 +6202,39 @@ export function createCodezAgentService(
     },
 
     async disposeActiveWorkspaceRuntimes(params): Promise<void> {
-      // 只有 codex bridge runtime 消费这类配置（update_plan 工具开关）；legacy CLI
-      // workspace 不注入该 env，重启它们只会平白打断进行中的任务。
-      if (!usesDefaultCodexBridge) return;
-      const actives = [...activeClientsByWorkspaceKey.values()];
-      await Promise.all(
-        actives.map(async (active) => {
-          try {
-            await disposeWorkspaceRuntime(active.workspace);
-          } catch (error) {
-            // best-effort：单个 workspace 释放失败不能阻断其它 workspace 应用新配置。
-            logger.warn(undefined, "dispose workspace runtime for config change failed", {
-              reason: params.reason,
-              message: error instanceof Error ? error.message : String(error),
-            });
-          }
-        }),
-      );
+      await disposeActiveRuntimesForConfigChange(params.reason);
+    },
+
+    async updateDesktopBrowserControl(params): Promise<void> {
+      const relay = options?.desktopBrowserRelay;
+      if (!relay) return;
+      // 先切换 relay（fail closed：关闭即刻拒止新调用），再按变化重造 runtime；
+      // 顺序反过来会让已释放的 workspace 在新状态生效前被重拉起来。
+      const changed = await relay.setEnabled(params.enabled);
+      if (!changed) return;
+      logger.info(undefined, "desktop browser control capability changed", {
+        enabled: params.enabled,
+      });
+      await disposeActiveRuntimesForConfigChange("nativeBrowserControlEnabled");
+    },
+
+    onDynamicDesktopBrowserCommandRequest() {
+      const relay = options?.desktopBrowserRelay;
+      if (!relay) {
+        return () => ({ dispose: () => undefined });
+      }
+      return (listener) => relay.onCommandRequest(listener);
+    },
+
+    async respondDesktopBrowserCommand(params): Promise<void> {
+      const relay = options?.desktopBrowserRelay;
+      if (!relay) {
+        logger.warn(undefined, "desktop browser relay response without a relay", {
+          requestId: params.requestId,
+        });
+        return;
+      }
+      relay.resolveCommand(params.requestId, params.payload);
     },
 
     disposeAll(): void {
@@ -6209,6 +6253,8 @@ export function createCodezAgentService(
         processManager.disposeAllAndWait(),
         pluginProcessManager.disposeAllAndWait(),
         mcpStatusProcessManager.disposeAllAndWait(),
+        // relay 关闭只停 socket/token，不依赖进程管理器，可并行收口。
+        options?.desktopBrowserRelay?.dispose() ?? Promise.resolve(),
       ]);
       automationRepo.close();
       automationTaskIndexRepo.close();

@@ -122,6 +122,14 @@ import {
 import { watchCronRunBotDelivery } from "./cronBotDelivery.js";
 import { createHostRemoteWorkspaceProxyState } from "./hostRemoteWorkspaceProxyState.js";
 import { createRemoteWorkspaceServiceCollection } from "./remoteWorkspaceServiceCollection.js";
+import {
+  createNativeBrowserCuaMcpStateHolder,
+  type NativeBrowserCuaMcpStateHolder,
+} from "./nativeBrowserCuaMcpState.js";
+import {
+  executeNativeBrowserCuaBrokerRequest,
+  synthesizeNativeBrowserCuaFailureLine,
+} from "./nativeBrowserCuaBrokerClient.js";
 import { getRemoteProviderProvisioningExecutor } from "./remoteProviderProvisioningService.js";
 import { createRemotePromptAttachmentTransferService } from "./promptAttachmentTransferService.js";
 import { shouldReportHostConsoleError, stringifyHostLogArg } from "./hostLog.js";
@@ -1854,6 +1862,11 @@ console.error = (...args: unknown[]) => {
 let databaseStartup: ReturnType<typeof createHostDatabaseStartup> | undefined;
 const pendingStartupAttachments = new Map<string, () => void>();
 let activeServices: ServiceCollection | null = null;
+// 窗口级内置浏览器 MCP 状态持有器：InitLocal 快照初始化，Main 推送即时更新；
+// 本地 spawn env 与远程 relay 授权共用同一事实源
+// （spec: codex-desktop-native-browser-cua「Global enable toggle」「Remote workspace relay」）。
+const nativeBrowserCuaMcpState: NativeBrowserCuaMcpStateHolder =
+  createNativeBrowserCuaMcpStateHolder();
 let activeHostApiNetworkTransport: HostApiNetworkTransport | null = null;
 /** 本地 host services 的资源遥测订阅；远端连接的订阅由各自的 connection handle 持有。 */
 let activeLocalResourceTelemetry: IDisposable | null = null;
@@ -1933,6 +1946,48 @@ async function createWindowRemoteConnectionHandle(params: {
   }
 
   const backendConnection = connection;
+  // 内置浏览器中继（spec: codex-desktop-native-browser-cua「Remote workspace relay」）：
+  // 1) 连接建立即按当前持有器推送一次能力；2) Main 推送（开关/能力变化）经持有器订阅转发；
+  // 3) 远端 relay 的每条命令请求换入窗口 token 后打给 Main broker，响应原路回写。
+  const remoteCodezAgentService = connection.services.codezAgentService;
+  const pushDesktopBrowserControl = () => {
+    const enabled = nativeBrowserCuaMcpState.brokerTarget() !== undefined;
+    void remoteCodezAgentService.updateDesktopBrowserControl({ enabled }).catch((error) => {
+      logger.warn("push desktop browser control capability failed", {
+        enabled,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  };
+  pushDesktopBrowserControl();
+  const unsubscribeDesktopBrowserControl = nativeBrowserCuaMcpState.subscribe(() => {
+    pushDesktopBrowserControl();
+  });
+  const desktopBrowserCommandDisposable =
+    remoteCodezAgentService.onDynamicDesktopBrowserCommandRequest()((request) => {
+      void (async () => {
+        const target = nativeBrowserCuaMcpState.brokerTarget();
+        const payload = target
+          ? await executeNativeBrowserCuaBrokerRequest({ target, payload: request.payload })
+          : synthesizeNativeBrowserCuaFailureLine(
+              request.payload,
+              "Native Browser/CUA control is unavailable for this window",
+            );
+        await remoteCodezAgentService.respondDesktopBrowserCommand({
+          requestId: request.requestId,
+          payload,
+        });
+      })().catch((error: unknown) => {
+        logger.warn("desktop browser relay request failed", {
+          requestId: request.requestId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    });
+  closeListeners.add(() => {
+    unsubscribeDesktopBrowserControl();
+    desktopBrowserCommandDisposable.dispose();
+  });
   const materializePromptAttachments = async (request: {
     taskId: string;
     traceId: TraceId | string;
@@ -2576,6 +2631,27 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
     return;
   }
 
+  if (msg.type === HostMessageTypes.NativeBrowserCuaMcpServersChanged) {
+    // spec: codex-desktop-native-browser-cua「Global enable toggle」：
+    // 先更新持有器（holder.set 同步触发远程 relay 授权推送），再释放本地活动 runtime，
+    // 保证下一次 spawn 读到的一定是新清单。
+    nativeBrowserCuaMcpState.set({
+      servers: msg.desktopCodexMcpServers,
+      nativeBrowserCua: msg.nativeBrowserCua,
+    });
+    const agentService = activeServices?.getOptional(ICodezAgentService);
+    if (agentService) {
+      void agentService
+        .disposeActiveWorkspaceRuntimes({ reason: "nativeBrowserControlEnabled" })
+        .catch((error: unknown) => {
+          logger.warn("restart workspace runtimes for nativeBrowserControlEnabled failed", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+    }
+    return;
+  }
+
   if (msg.type === HostMessageTypes.CuaPipFocusChanged) {
     const service = activeServices?.getOptional(ICuaPipSessionService);
     if (service) {
@@ -3046,6 +3122,11 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
   }
 
   if (msg.type === HostMessageTypes.InitLocal) {
+    // 持有器必须先于 createLocalServices 初始化：resolveSpawnEnv 经 state source 现读。
+    nativeBrowserCuaMcpState.set({
+      servers: msg.desktopCodexMcpServers ?? [],
+      nativeBrowserCua: msg.nativeBrowserCua,
+    });
     if (!port) {
       logger.error("init-local message missing MessagePort");
       return;
@@ -3112,6 +3193,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               runtimeProcessEnvPatch: msg.runtimeProcessEnvPatch,
               nativeBrowserCua: msg.nativeBrowserCua,
               desktopCodexMcpServers: msg.desktopCodexMcpServers,
+              desktopBrowserMcpStateSource: () => nativeBrowserCuaMcpState.get(),
               agentRuntimeContext: {
                 getDeviceMid: () => msg.deviceMid,
                 runtimeSurface: "desktop_local_host",

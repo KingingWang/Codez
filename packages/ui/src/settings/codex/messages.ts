@@ -122,6 +122,9 @@ const en = {
   agentsInstructions: "Developer instructions (required)",
   agentsNicknames: "Nickname candidates (optional, comma-separated)",
   nativeBrowserCuaTitle: "Native Desktop browser · Browser-only",
+  nativeBrowserControlToggle: "Allow agents to control the built-in browser",
+  nativeBrowserControlDisabled:
+    "Browser control is off. Agents do not see the tool; the browser panel stays available.",
   nativeBrowserCuaActive:
     "Active for this Desktop window. Registration is temporary and process-scoped; it is not written to Codex config.",
   nativeBrowserCuaUnsupported:
@@ -258,6 +261,9 @@ const zh: Record<keyof typeof en, string> = {
   agentsInstructions: "开发者指令（必填）",
   agentsNicknames: "昵称候选（可选，逗号分隔）",
   nativeBrowserCuaTitle: "原生桌面浏览器 · 仅 Browser",
+  nativeBrowserControlToggle: "允许 Agent 控制内置浏览器",
+  nativeBrowserControlDisabled: "浏览器控制已关闭。Agent 看不到该工具；浏览器面板仍可手动使用。",
+
   nativeBrowserCuaActive: "在当前桌面窗口中生效。注册是临时的进程级配置，不会写入 Codex 配置。",
   nativeBrowserCuaUnsupported: "当前 Host 的原生桌面浏览器不可用。原生配置变更已禁用。",
   nativeBrowserCuaRuntimeMissing: "缺少桌面 bridge 运行时。",

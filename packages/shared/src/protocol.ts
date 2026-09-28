@@ -299,6 +299,8 @@ export interface AppSettings {
   messageStreamShowReasoningMigrationInitialized?: boolean;
   /** 是否在消息流中展示 todo 工具渲染；不影响摘要面板的 todo */
   messageStreamShowTodos?: boolean;
+  /** 是否允许 Agent 通过内置浏览器 MCP 工具控制桌面内置浏览器；不影响用户手动使用的浏览器面板。 */
+  nativeBrowserControlEnabled?: boolean;
   /** 是否把连续的只读工具调用聚合成 Explore。 */
   toolGroupingExploreEnabled?: boolean;
   /** 是否把连续的非只读 Shell 工具调用聚合成 Terminal。 */

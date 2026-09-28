@@ -8,7 +8,6 @@ import { codexAuthorizationUrl, codexPluginInstallRequest } from "./codexSetting
 import { CodexNativeBrowserCuaCard } from "./CodexNativeBrowserCuaCard.js";
 import { CodexConfirmButton, CodexNotice, CodexSection } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
-
 export function CodexSkillsPanel({ controller }: { controller: CodexSettingsController }) {
   const text = useCodexMessages();
   const state = controller.snapshot.skills;
@@ -68,11 +67,16 @@ export function CodexMcpPanel({
   remote = false,
   nativeBrowserCuaCapability,
   descriptorOverride,
+  nativeBrowserControlEnabled,
+  onNativeBrowserControlEnabledChange,
 }: {
   controller: CodexSettingsController;
   remote?: boolean;
   nativeBrowserCuaCapability?: string;
   descriptorOverride?: unknown;
+  /** 内置浏览器 Agent 工具开关；由 SettingsPage 层经 useSettings 注入，缺省不渲染开关。 */
+  nativeBrowserControlEnabled?: boolean;
+  onNativeBrowserControlEnabledChange?: (enabled: boolean) => void | Promise<void>;
 }) {
   const text = useCodexMessages();
   const platform = usePlatform();
@@ -87,6 +91,8 @@ export function CodexMcpPanel({
         remote={remote}
         nativeBrowserCuaCapability={nativeBrowserCuaCapability}
         descriptorOverride={descriptorOverride}
+        nativeBrowserControlEnabled={nativeBrowserControlEnabled}
+        onNativeBrowserControlEnabledChange={onNativeBrowserControlEnabledChange}
       />
       <Button
         variant="outline"

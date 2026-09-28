@@ -88,6 +88,7 @@ import {
   HostMessageTypes,
   CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE,
   CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
+  type DesktopCodexMcpServer,
 } from "@codez/shared";
 import { logger } from "./logger.js";
 import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
@@ -129,6 +130,7 @@ import {
   resolveExplicitStartupWorkspaceBootstrap,
 } from "./startupWorkspaceDeepLinkGate.js";
 import { executeDesktopCommand, resolveDesktopCodexBridgePath } from "./desktopCommandHandlers.js";
+import { localBrowserMcpAvailability } from "./desktopCodexMcpAvailability.js";
 import { clampDesktopZoomLevel, resolveDesktopZoomLevelFromFactor } from "./desktopZoom.js";
 import {
   getDesktopMenuLabel as getDesktopMenuLabelByLocale,
@@ -464,6 +466,80 @@ const nativeBrowserCuaMcpBroker = createNativeBrowserCuaMcpBroker({
     ) ?? null,
   logger,
 });
+
+// 构建窗口级 MCP 清单的唯一实现：窗口 Host 初始化（prepareDesktopCodexMcpServers）与
+// 开关切换后的 Main→Host 推送共用，保证两条路径的注册内容逐字段一致
+// （spec: codex-desktop-native-browser-cua「Global enable toggle」）。
+async function buildNativeBrowserCuaMcpServersForWindow(
+  win: BrowserWindow,
+): Promise<DesktopCodexMcpServer[]> {
+  const bridgePath = resolveDesktopCodexBridgePath();
+  if (!bridgePath || win.isDestroyed()) return [];
+  await nativeBrowserCuaMcpBroker.registerWindow(win.id);
+  if (win.isDestroyed()) {
+    await nativeBrowserCuaMcpBroker.revokeWindow(win.id);
+    return [];
+  }
+  const descriptor = nativeBrowserCuaMcpBroker.descriptor({
+    executable: process.execPath,
+    bridgePath,
+    windowId: win.id,
+  });
+  if (!descriptor.serviceRunning) return [];
+  return [
+    {
+      name: CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
+      command: descriptor.executable,
+      args: [descriptor.bridgePath, CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE],
+      env: {
+        ELECTRON_RUN_AS_NODE: "1",
+        CODEZ_NATIVE_BROWSER_CUA_ENDPOINT: descriptor.endpoint,
+        CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: descriptor.tokenFile,
+      },
+    },
+  ];
+}
+
+/** 把当前窗口的最新 MCP 清单与可用性事实推给它的 Local Host（含远程 relay 联动）。 */
+async function pushNativeBrowserCuaMcpServersToWindow(win: BrowserWindow): Promise<void> {
+  const hostProcess = windowHostProcessMap.get(win.id);
+  if (!hostProcess || win.isDestroyed()) return;
+  let servers: DesktopCodexMcpServer[] = [];
+  try {
+    servers = await buildNativeBrowserCuaMcpServersForWindow(win);
+  } catch (error) {
+    logger.warn("[native-browser-cua] rebuild window MCP servers failed; pushing empty list", {
+      windowId: win.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+  if (win.isDestroyed() || windowHostProcessMap.get(win.id) !== hostProcess) return;
+  hostProcess.postMessage({
+    type: HostMessageTypes.NativeBrowserCuaMcpServersChanged,
+    desktopCodexMcpServers: servers,
+    nativeBrowserCua: localBrowserMcpAvailability(nativeBrowserCuaMcpBroker.availability, servers),
+  });
+}
+
+/**
+ * 全局开关落点（spec: codex-desktop-native-browser-cua「Global enable toggle」）：
+ * broker 立即拒止/恢复（进行中的调用 fail closed），随后逐窗口推送最新清单，
+ * Host 侧据此更新 spawn-env 持有器并释放活动 runtime，远程 relay 同步启停。
+ */
+function applyNativeBrowserControlEnabled(enabled: boolean, reason: string): void {
+  nativeBrowserCuaMcpBroker.setEnabled(enabled);
+  for (const win of getMainApplicationWindows()) {
+    if (win.isDestroyed() || !nativeBrowserCuaEligibleWindowIds.has(win.id)) continue;
+    if (!windowHostProcessMap.has(win.id)) continue;
+    void pushNativeBrowserCuaMcpServersToWindow(win).catch((error) => {
+      logger.warn("[native-browser-cua] push MCP servers after toggle failed", {
+        windowId: win.id,
+        reason,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
+}
 
 // browser-use：带诊断日志地执行 browser 命令（两处 spawnHostProcess wiring 共用）。
 // 打入口/出口便于定位卡点（如 navigate loadURL 挂起、CDP 报错等）。
@@ -974,6 +1050,14 @@ function syncCloseToTrayOnWindows(value: unknown) {
 
 function syncImmediateAppSettings(patch: Partial<AppSettings>) {
   syncCloseToTrayOnWindows(patch.closeToTrayOnWindows);
+
+  if (typeof patch.nativeBrowserControlEnabled === "boolean") {
+    // 渲染进程已先落盘（useSettings.update await 后再走本通道），这里只应用运行时状态。
+    applyNativeBrowserControlEnabled(
+      patch.nativeBrowserControlEnabled,
+      "settings nativeBrowserControlEnabled changed",
+    );
+  }
 
   if (typeof patch.keepAwakeWhileRunning === "boolean") {
     keepAwakeWhileRunning = patch.keepAwakeWhileRunning;
@@ -1881,35 +1965,9 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
     runtimeProcessEnvFallbackPatch: runtimeProcessEnvPreparation.fallbackPatch,
     nativeBrowserCua: () => nativeBrowserCuaMcpBroker.availability,
     nativeBrowserCuaReadiness: () => nativeBrowserCuaMcpBroker.readiness,
-    prepareDesktopCodexMcpServers: async (win) => {
-      const bridgePath = resolveDesktopCodexBridgePath();
-      if (!bridgePath || win.isDestroyed()) return [];
-      // 修复依据：旧用户级注册让所有客户端共享工具；仅向当前窗口的 Local Host
-      // 颁发独立凭据，并在其 Codex app-server 启动时注入临时 MCP。
-      await nativeBrowserCuaMcpBroker.registerWindow(win.id);
-      if (win.isDestroyed()) {
-        await nativeBrowserCuaMcpBroker.revokeWindow(win.id);
-        return [];
-      }
-      const descriptor = nativeBrowserCuaMcpBroker.descriptor({
-        executable: process.execPath,
-        bridgePath,
-        windowId: win.id,
-      });
-      if (!descriptor.serviceRunning) return [];
-      return [
-        {
-          name: CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
-          command: descriptor.executable,
-          args: [descriptor.bridgePath, CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE],
-          env: {
-            ELECTRON_RUN_AS_NODE: "1",
-            CODEZ_NATIVE_BROWSER_CUA_ENDPOINT: descriptor.endpoint,
-            CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: descriptor.tokenFile,
-          },
-        },
-      ];
-    },
+    // 修复依据：旧用户级注册让所有客户端共享工具；仅向当前窗口的 Local Host
+    // 颁发独立凭据，并在其 Codex app-server 启动时注入临时 MCP。
+    prepareDesktopCodexMcpServers: (win) => buildNativeBrowserCuaMcpServersForWindow(win),
     codezBuiltinProviderConfigFilePath: resolveCodezBuiltinProviderConfigFilePath({
       env: { ...hostProcessLocalEnv, ...process.env },
     }),
@@ -2014,6 +2072,9 @@ app.whenReady().then(async () => {
     }
     closeToTrayOnWindows = bootstrapSettings.closeToTrayOnWindows ?? true;
     keepAwakeWhileRunning = bootstrapSettings.keepAwakeWhileRunning ?? false;
+    // 内置浏览器开关的启动初值：broker 默认开启（与 schema default 一致），这里按
+    // 持久化值校正；此时还没有窗口/能力，纯运行时标志，无需推送。
+    nativeBrowserCuaMcpBroker.setEnabled(bootstrapSettings.nativeBrowserControlEnabled !== false);
     currentDesktopZoomLevel = clampDesktopZoomLevel(bootstrapSettings.desktopZoomLevel ?? 0);
     currentDesktopWindowSize = bootstrapSettings.desktopWindowSize;
     // 全局 keep-awake：启动时若设置已开，立刻持有 powerSaveBlocker，不必等设置变更事件。

@@ -561,6 +561,8 @@ export const HostMessageTypes = {
   LocalMediaPreviewPathAuthorizeResult: "local-media-preview-path-authorize-result",
   /** Main → Host：全局前台 Codez 窗口派生的 producer focus fact。 */
   CuaPipFocusChanged: "cua-pip-focus-changed",
+  /** Main → Host：内置浏览器 MCP 清单变更（开关/能力重授）；空列表 = 立即停注。 */
+  NativeBrowserCuaMcpServersChanged: "native-browser-cua-mcp-servers-changed",
   /** main → host：要求 Host 现读本地 Source，并同步指定 Remote Environment。 */
   ProviderProvisioningExecute: "provider-provisioning-execute",
   /** main → host：资源管理器请求 Host 采样其后代进程（Agent / MCP / 终端）的 CPU 与内存 */

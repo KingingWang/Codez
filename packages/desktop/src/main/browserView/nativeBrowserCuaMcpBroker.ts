@@ -27,6 +27,11 @@ export interface NativeBrowserCuaMcpBroker {
     browserAvailable: boolean;
     cuaAvailable: boolean;
   };
+  /**
+   * 全局开关（spec: codex-desktop-native-browser-cua「Global enable toggle」）。
+   * 关闭后所有请求在 schema 校验后立即 fail closed，能力描述符同步不可用。
+   */
+  setEnabled(enabled: boolean): void;
   registerWindow(windowId: number): Promise<void>;
   revokeWindow(windowId: number): Promise<void>;
   descriptor(input: {
@@ -67,6 +72,8 @@ export function createNativeBrowserCuaMcpBroker(input: {
   let closing: Promise<void> | undefined;
   let closed = false;
   let endpointReady = false;
+  // 默认开启（与设置 schema 的 default(true) 一致）；Main 在设置加载/变更时校正。
+  let enabled = true;
   // 凭据/socket 文件的属主标记：只有本进程确实监听成功并写过对应窗口 token，
   // close/revoke 才允许删除文件。否则 endpoint 被占用时（第二实例启动竞争）
   // 仍会走完 broker 创建，退出期 rm 会删掉正在服役实例的 socket 路径与凭据，
@@ -100,7 +107,7 @@ export function createNativeBrowserCuaMcpBroker(input: {
   server.listen(endpoint);
   const readiness = ready.catch(() => undefined);
   const currentAvailability = () => ({
-    browserAvailable: !closed && endpointReady && windowCapabilities.size > 0,
+    browserAvailable: !closed && endpointReady && enabled && windowCapabilities.size > 0,
     cuaAvailable: false,
   });
 
@@ -119,6 +126,9 @@ export function createNativeBrowserCuaMcpBroker(input: {
     readiness,
     get availability() {
       return currentAvailability();
+    },
+    setEnabled(next) {
+      enabled = next;
     },
     registerWindow: async (windowId) => {
       if (!Number.isSafeInteger(windowId) || windowId < 0) {
@@ -233,6 +243,15 @@ export function createNativeBrowserCuaMcpBroker(input: {
       return;
     }
     const request = parsedRequest.data;
+    if (!enabled) {
+      respond({
+        id: request.id,
+        ok: false,
+        error: "backend_unavailable",
+        message: "Native Browser/CUA control is disabled by the user setting",
+      });
+      return;
+    }
     const windowId = authorize(request.token);
     if (windowId === undefined) {
       respond({

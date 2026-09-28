@@ -1,4 +1,9 @@
 import type { BackgroundBashOutputResult, SessionDebugSnapshot } from "@codez/shared";
+import type {
+  DesktopBrowserCommandRelayRequest,
+  DesktopBrowserCommandRelayResponse,
+  DesktopBrowserControlUpdate,
+} from "@codez/shared";
 /* eslint-disable max-lines -- Codez agent service 接口集中声明 protocol/session/workspace 方法，拆分会增加 service descriptor 迁移成本。 */
 import type { Event, IDisposable } from "@codez/rpc";
 import { ServiceChannels } from "@codez/shared";
@@ -757,6 +762,19 @@ export interface ICodezAgentService {
     params: CodezAgentRespondSessionRuntimePreferencesParams,
   ): Promise<void>;
   onDynamicSessionRuntimePreferencesRequest(): Event<CodezAgentSessionRuntimePreferencesRequest>;
+  /**
+   * desktop → remote：授予/撤销桌面内置浏览器中继能力（spec: codex-desktop-native-browser-cua
+   * 「Remote workspace relay」）。仅 desktop-attached-remote server 实现真实 relay；
+   * 其它 authority mode 下为 no-op。状态变化时远端自行释放活动 workspace runtime。
+   */
+  updateDesktopBrowserControl(params: DesktopBrowserControlUpdate): Promise<void>;
+  /**
+   * remote → desktop（dynamic event）：远端 relay socket 收到一条待中继的浏览器命令，
+   * payload 为原始 broker 请求行；Host 侧换入窗口 token 后打给 Main broker。
+   */
+  onDynamicDesktopBrowserCommandRequest(): Event<DesktopBrowserCommandRelayRequest>;
+  /** desktop → remote：回传中继命令结果（原始 broker 响应行）。 */
+  respondDesktopBrowserCommand(params: DesktopBrowserCommandRelayResponse): Promise<void>;
   /**
    * CLI 进程级资源样本，带 services 打的 lane 标签（CLI 自己不知道 lane）。
    * 使用 dynamic event 避免 RPC 服务在无人订阅时缓冲周期事件；

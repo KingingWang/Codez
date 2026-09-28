@@ -447,6 +447,8 @@ const appSettingsObjectSchema = z.object({
   messageStreamShowReasoning: z.boolean().default(true),
   messageStreamShowReasoningMigrationInitialized: z.boolean().default(true),
   messageStreamShowTodos: z.boolean().default(false),
+  // 内置浏览器 Agent 工具（native Browser/CUA MCP）全局开关；默认开启，桌面 Main 订阅即时生效。
+  nativeBrowserControlEnabled: z.boolean().default(true),
   toolGroupingExploreEnabled: z.boolean().default(true),
   toolGroupingTerminalEnabled: z.boolean().default(true),
   toolGroupingChangesEnabled: z.boolean().default(false),
@@ -515,6 +517,7 @@ export const appSettingsPatchSchema = z.object({
   messageStreamShowReasoning: z.boolean().optional(),
   messageStreamShowReasoningMigrationInitialized: z.boolean().optional(),
   messageStreamShowTodos: z.boolean().optional(),
+  nativeBrowserControlEnabled: z.boolean().optional(),
   toolGroupingExploreEnabled: z.boolean().optional(),
   toolGroupingTerminalEnabled: z.boolean().optional(),
   toolGroupingChangesEnabled: z.boolean().optional(),
