@@ -2102,6 +2102,10 @@ export const codezSessionRuntimePreferencesResultSchema = z
     nativeSearchEnhancementsEnabled: z.boolean(),
     subagentRuntimeConfigEnabled: z.boolean().optional(),
     memoryEnabled: z.boolean().default(false),
+    // 旧 Host 可缺席；undefined = 不覆盖 CLI 本地 memory.use / 提取配置。
+    memoryUseEnabled: z.boolean().optional(),
+    memoryExtractionEnabled: z.boolean().optional(),
+    memoryExtractionModel: modelSelectionSchema.nullish(),
     askUserQuestionAutoResolutionEnabled: z.boolean().default(true),
     integratedTerminalShell: integratedTerminalShellSelectionSchema.optional(),
     // 兼容旧 Host：缺少字段时在协议解析边界使用当前默认策略。
@@ -2630,6 +2634,40 @@ export const codezWorkspaceUpdateModelIoPreferencesResultSchema = z
   .strict();
 export type CodezWorkspaceUpdateModelIoPreferencesResult = z.infer<
   typeof codezWorkspaceUpdateModelIoPreferencesResultSchema
+>;
+
+export const codezMemoryPreferencesSchema = z
+  .object({
+    // Host 总开关；false 时全设备会话不加载、不生成记忆。
+    memoryEnabled: z.boolean(),
+    // 对话中注入记忆；关闭时自动提取一并停止（与 CLI memory.use 同语义）。
+    useEnabled: z.boolean(),
+    // 成功 turn 结束后的自动提取。
+    extractionEnabled: z.boolean(),
+    // 记忆提取专用模型；null/缺省 = 跟随会话模型。
+    extractionModel: modelSelectionSchema.nullish(),
+  })
+  .strict();
+export type CodezMemoryPreferences = z.infer<typeof codezMemoryPreferencesSchema>;
+
+export const codezWorkspaceUpdateMemoryPreferencesParamsSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    preferences: codezMemoryPreferencesSchema,
+  })
+  .strict();
+export type CodezWorkspaceUpdateMemoryPreferencesParams = z.infer<
+  typeof codezWorkspaceUpdateMemoryPreferencesParamsSchema
+>;
+
+export const codezWorkspaceUpdateMemoryPreferencesResultSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    updatedSessionCount: z.number().int().nonnegative(),
+  })
+  .strict();
+export type CodezWorkspaceUpdateMemoryPreferencesResult = z.infer<
+  typeof codezWorkspaceUpdateMemoryPreferencesResultSchema
 >;
 
 export const codezWorkspaceUpdateOffPeakToolPolicyParamsSchema = z
@@ -4230,6 +4268,7 @@ export const codezProtocolMethods = {
   providerUpdateAccountConfig: "provider/updateAccountConfig",
   workspaceUpdateInteractionPreferences: "workspace/updateInteractionPreferences",
   workspaceUpdateModelIoPreferences: "workspace/updateModelIoPreferences",
+  workspaceUpdateMemoryPreferences: "workspace/updateMemoryPreferences",
   // Off-Peak 工具面门禁是 workspace 级事实（灰度 + 本地/远程），由 host 在 agent 就绪时同步；
   // CLI 对 legacy create/resume 与 v4 冷恢复统一读取。旧 CLI method-not-found → host 降级忽略。
   workspaceUpdateOffPeakToolPolicy: "workspace/updateOffPeakToolPolicy",

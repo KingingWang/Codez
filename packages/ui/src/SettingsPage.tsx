@@ -20,6 +20,7 @@ import type {
   IntegratedTerminalShellOption,
   IntegratedTerminalShellSelection,
   Locale,
+  ModelSelection,
   UsageEntitlementSnapshot,
   UserInfo,
   CodezInteractionBehavior,
@@ -1009,6 +1010,51 @@ export function SettingsPage({
     },
     [updateSharedSettings],
   );
+  const handleMemoryUseEnabledChange = useCallback(
+    async (enabled: boolean) => {
+      await runSettingsActionAsync({
+        featureId: "settings.memory",
+        action: "toggle_memory_use",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ memoryUseEnabled: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
+    },
+    [updateSharedSettings],
+  );
+  const handleMemoryExtractionEnabledChange = useCallback(
+    async (enabled: boolean) => {
+      await runSettingsActionAsync({
+        featureId: "settings.memory",
+        action: "toggle_memory_extraction",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ memoryExtractionEnabled: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
+    },
+    [updateSharedSettings],
+  );
+  const handleMemoryExtractionModelChange = useCallback(
+    async (model: ModelSelection | null) => {
+      await runSettingsActionAsync({
+        featureId: "settings.memory",
+        action: "change_memory_extraction_model",
+        trigger: "select",
+        operation: () => updateSharedSettings({ memoryExtractionModel: model }),
+        completed: {
+          resultSource: "shared_settings",
+          valueAfter: model ? `${model.providerId}/${model.modelId}` : "follow-session",
+        },
+      });
+    },
+    [updateSharedSettings],
+  );
   const handleHttpProxyChange = useCallback(
     async (proxy: string) => {
       const normalizedProxy = proxy.trim();
@@ -1730,7 +1776,9 @@ export function SettingsPage({
                                       ? "plugins"
                                       : activeSection === "modelProvider"
                                         ? "models"
-                                        : "account"
+                                        : activeSection === "memory"
+                                          ? "memory"
+                                          : "account"
                             }
                           />
                         ) : isDesktop && isCodexUnsupportedSection(activeSection) ? (
@@ -1914,8 +1962,16 @@ export function SettingsPage({
                             {/* Memory catalog 始终使用本地 Host，避免远程 workspace 误读本机数据。 */}
                             <MemorySettingsSection
                               memoryEnabled={memoryEnabled}
+                              memoryUseEnabled={sharedSettings?.memoryUseEnabled !== false}
+                              memoryExtractionEnabled={
+                                sharedSettings?.memoryExtractionEnabled !== false
+                              }
+                              memoryExtractionModel={sharedSettings?.memoryExtractionModel ?? null}
                               memoryService={localHostServices.memoryService}
                               onMemoryEnabledChange={handleMemoryEnabledChange}
+                              onMemoryUseEnabledChange={handleMemoryUseEnabledChange}
+                              onMemoryExtractionEnabledChange={handleMemoryExtractionEnabledChange}
+                              onMemoryExtractionModelChange={handleMemoryExtractionModelChange}
                               projectMemoryViewerAvailable={Boolean(isDesktop)}
                               workspaceDisplayNames={memoryWorkspaceDisplayNames}
                             />

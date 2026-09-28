@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- codez-cli 配置 schema 需要集中维护文件解析和 provider 继承，拆散会让配置语义更难对齐。 */
 import { z } from "zod";
 import type { RuntimeConfigPatch } from "@codez/contracts";
+import { modelSelectionSchema } from "@codez/shared/model-selection";
 
 const stringRecordSchema = z.record(z.string(), z.string());
 const unknownRecordSchema = z.record(z.string(), z.unknown());
@@ -41,6 +42,9 @@ const featuresSchema = z.object({
 
 const memorySchema = z.object({
   use: z.boolean().optional(),
+  extractionEnabled: z.boolean().optional(),
+  // 记忆提取专用模型；形状与 ModelSelection 一致，运行态再按 Registry 校验可用性。
+  extractionModel: modelSelectionSchema.optional(),
 });
 
 const mcpServerBaseSchema = {

@@ -11,6 +11,12 @@ import {
   type CodexRequest,
 } from "@codez/shared";
 import {
+  CODEX_MEMORY_NUMBER_FIELDS,
+  codexMemoryConfigView,
+  codexMemoryEdit,
+  codexMemoryNumberEdit,
+} from "./codexMemorySettings.js";
+import {
   codexAuthorizationUrl,
   codexModelEdits,
   codexPluginInstallRequest,
@@ -274,7 +280,7 @@ test("workspace reads carry native cwd and malformed lists fail rather than look
 });
 
 test("legacy settings routes resolve to Codex or explicit unsupported capability notices", () => {
-  for (const route of ["codex", "modelProvider", "skill", "subagents", "mcp", "plugin"])
+  for (const route of ["codex", "modelProvider", "skill", "subagents", "mcp", "plugin", "memory"])
     assert.equal(isCodexSettingsSection(route), true);
   for (const route of ["computerUse", "migration"])
     assert.equal(isCodexUnsupportedSection(route), true);
@@ -284,6 +290,9 @@ test("legacy settings routes resolve to Codex or explicit unsupported capability
   // 浏览器控制在 Codex 适配器已支持（spec: codex-desktop-native-browser-cua
   // 「Settings Browser section surfacing」），不能再落入“不支持”列表。
   assert.equal(isCodexUnsupportedSection("browser"), false);
+  // 记忆由 CodexSettingsSection 的 memory 面板承载（原生 [memories] 配置，
+  // spec: specs/codez-memory-settings.md），不能再落入“不支持”列表。
+  assert.equal(isCodexUnsupportedSection("memory"), false);
   assert.equal(isCodexUnsupportedSection("appearance"), false);
   assert.equal(isCodexSettingsSection("general"), false);
 });
@@ -639,4 +648,82 @@ test("native Browser/CUA legacy comparison recognizes only exact generated value
     /Invalid Codex pagination cursor/u,
   );
   assert.equal(calls.filter((entry) => entry.method === "mcpServerStatus/list").length, 2);
+});
+
+test("codexMemoryConfigView reads effective feature flag and raw memories table", () => {
+  const empty = codexMemoryConfigView(undefined);
+  assert.equal(empty.featureEnabled, false);
+  assert.equal(empty.useMemories, undefined);
+  assert.equal(empty.extractModel, undefined);
+
+  const view = codexMemoryConfigView(
+    codexConfigResponseSchema.parse({
+      config: {
+        features: { memories: true },
+        memories: {
+          use_memories: false,
+          generate_memories: true,
+          dedicated_tools: true,
+          disable_on_external_context: true,
+          extract_model: "gpt-5.1",
+          consolidation_model: "kimi-k3",
+          max_rollouts_per_startup: 4,
+          max_rollout_age_days: 7,
+          min_rollout_idle_hours: 12,
+          max_raw_memories_for_consolidation: 512,
+          max_unused_days: 15,
+          min_rate_limit_remaining_percent: 40,
+        },
+      },
+      origins: {},
+    }),
+  );
+  assert.equal(view.featureEnabled, true);
+  assert.equal(view.useMemories, false);
+  assert.equal(view.generateMemories, true);
+  assert.equal(view.dedicatedTools, true);
+  assert.equal(view.disableOnExternalContext, true);
+  assert.equal(view.extractModel, "gpt-5.1");
+  assert.equal(view.consolidationModel, "kimi-k3");
+  assert.equal(view.maxRolloutsPerStartup, 4);
+  assert.equal(view.maxRolloutAgeDays, 7);
+  assert.equal(view.minRolloutIdleHours, 12);
+  assert.equal(view.maxRawMemoriesForConsolidation, 512);
+  assert.equal(view.maxUnusedDays, 15);
+  assert.equal(view.minRateLimitRemainingPercent, 40);
+});
+
+test("codexMemoryEdit builds replace edits and null removes a key", () => {
+  assert.deepEqual(codexMemoryEdit("features.memories", true), {
+    keyPath: "features.memories",
+    value: true,
+    mergeStrategy: "replace",
+  });
+  // 模型切回「默认」时删除键，恢复原生供应商偏好模型。
+  assert.deepEqual(codexMemoryEdit("memories.extract_model", null), {
+    keyPath: "memories.extract_model",
+    value: null,
+    mergeStrategy: "replace",
+  });
+});
+
+test("codexMemoryNumberEdit validates range and resets on empty input", () => {
+  const field = CODEX_MEMORY_NUMBER_FIELDS.find((entry) => entry.key === "maxRolloutsPerStartup");
+  assert.ok(field);
+  assert.deepEqual(codexMemoryNumberEdit(field, "4"), {
+    keyPath: "memories.max_rollouts_per_startup",
+    value: 4,
+    mergeStrategy: "replace",
+  });
+  // 空输入 = 清除该键，恢复原生默认。
+  assert.deepEqual(codexMemoryNumberEdit(field, "  "), {
+    keyPath: "memories.max_rollouts_per_startup",
+    value: null,
+    mergeStrategy: "replace",
+  });
+  // 越界与非整数拒绝提交。
+  assert.equal(codexMemoryNumberEdit(field, "0"), null);
+  assert.equal(codexMemoryNumberEdit(field, "129"), null);
+  assert.equal(codexMemoryNumberEdit(field, "1.5"), null);
+  assert.equal(codexMemoryNumberEdit(field, "abc"), null);
 });
