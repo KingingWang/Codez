@@ -87,6 +87,21 @@ renderer and pinned native bridge. It does not use `dev.mjs`'s fixed dev ports.
 Use the mock port printed by that fresh probe. Run the existing
 `desktop-conversation-check.mjs` on another fresh isolated probe for image,
 busy-input and native queue regression; do not reuse a mock after a turn.
+For the interrupted-turn recovery entry, launch a **fresh** probe with
+`CODEX_UI_QA_MOCK=1` and run:
+
+```sh
+CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/qa/desktop-interrupted-turn-check.mjs
+```
+
+It sends one text prompt to the held loopback provider, clicks the composer stop
+control while the native turn is running, and asserts the interrupted turn end
+renders an always-visible `v4-retry-<rowId>` continue entry. Clicking it must dispatch
+`retryTurn` (the provider sees a second request), truncate the stopped partial output,
+and hide the entry while the rerun runs and after it completes.
+Recorded verification — September 28, 2026: `/tmp/codex-ui-interrupted-continue-QLLeNO/`
+(four checks, one interrupted and one completed native turn, zero page errors).
+
 
 Fresh full-turn **actual dev.mjs** verification passed on 2026-09-22:
 `/tmp/codex-ui-desktop-conversation-gqtR57/results.json` (six checks, three completed

@@ -4649,6 +4649,9 @@ const enUS: Record<string, string> = {
   "chat.history.duration.second": "s",
   "chat.stop": "Stop",
   "chat.stop.short": "Stop",
+  "chat.turn.continue": "Continue",
+  "chat.turn.continue.description":
+    "Re-run this turn: discards the stopped output and resends the original input with the current model and configuration",
   "chat.promptEnhance.title": "Enhance prompt",
   "chat.promptEnhance.description":
     "Refine the current draft with the selected model configuration.",
