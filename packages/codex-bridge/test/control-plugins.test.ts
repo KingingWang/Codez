@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { join, resolve } from "node:path";
 import * as s from "@codez/shared";
 import type { CodexRpcPort } from "../src/contract.js";
 import type { OfficialPluginMarketplace } from "../src/official-plugin-marketplace.js";
@@ -179,7 +180,8 @@ test("local and remote installs address actual Codex schemas, not marketplace ID
 
 test("official catalog is visible before native registration, and install is a verified user-level native write", async () => {
   const { context, calls, replies } = fixture();
-  const path = "/isolated/official/.agents/plugins/marketplace.json";
+  const source = resolve("/isolated/official");
+  const path = join(source, ".agents", "plugins", "marketplace.json");
   const official = {
     path,
     catalog: {
@@ -280,7 +282,7 @@ test("official catalog is visible before native registration, and install is a v
     registration.completed = true;
     return {
       marketplaceName: existing.name,
-      installedRoot: "/isolated/official",
+      installedRoot: source,
       alreadyAdded: false,
     };
   };
@@ -306,7 +308,7 @@ test("official catalog is visible before native registration, and install is a v
   );
   assert.equal(result.installedPlugins[0]?.id, existing.plugins[0]!.id);
   assert.deepEqual(calls.find((call) => call.method === "marketplace/add")?.params, {
-    source: "/isolated/official",
+    source,
   });
 });
 
