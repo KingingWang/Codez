@@ -2,6 +2,7 @@ import * as shared from "@codez/shared";
 import type { CodexRpcPort } from "./contract.js";
 import type { ThreadStateStore } from "./thread-state.js";
 import { decorateNativeThread, selectionOverrides, turnMode } from "./command-input.js";
+import { turnPermissionIntent } from "./control-common.js";
 import { object, string, unsupported } from "./json.js";
 import { projectLegacySnapshot } from "./projection.js";
 import { readControlModelSettings } from "./control-presentation.js";
@@ -50,6 +51,7 @@ export async function handleLegacySession(
   } else sessionId = string(p.sessionId, "sessionId");
   const state = await store.ensure(sessionId);
   const native = { threadId: sessionId };
+  const controlContext = { rpc, cwd: store.cwd, auxiliary: { supports: () => false } };
   switch (method) {
     case "session/create":
     case "session/read":
@@ -74,19 +76,22 @@ export async function handleLegacySession(
       store.applySettings(sessionId, { effort: p.thoughtLevel });
       break;
     case "session/setMode": {
+      // 显式切换与 v4 sendText 同一迁移规则（specs/codex-permission-modes.md）。
+      const mode = string(p.mode);
+      const permissions = await turnPermissionIntent(controlContext, state.thread, mode);
       const settings = {
         ...native,
         ...turnMode(
-          string(p.mode),
+          mode,
           string(state.thread.model),
           undefined,
           state.thread.reasoningEffort as string | undefined,
-          state.thread.sandboxPolicy,
-          true,
+          permissions,
         ),
       };
       await rpc.request("thread/settings/update", settings);
       store.applySettings(sessionId, settings);
+      store.rememberMode(sessionId, mode);
       break;
     }
     case "session/close":
@@ -98,10 +103,6 @@ export async function handleLegacySession(
   }
   const snapshot = projectLegacySnapshot(state.thread, store.cwd);
   snapshot.session.workspace = workspace;
-  snapshot.settings = await readControlModelSettings({
-    rpc,
-    cwd: store.cwd,
-    auxiliary: { supports: () => false },
-  });
+  snapshot.settings = await readControlModelSettings(controlContext);
   return shared.codezSessionStateSnapshotSchema.parse(snapshot);
 }

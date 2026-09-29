@@ -123,6 +123,25 @@ test("native config and catalog determine provider/model/effort, without legacy 
   );
 });
 
+test("codex submission freezes custom and maps a stale plan mode onto custom", () => {
+  // custom 是 Codex 权限档位（跟随 config.toml），必须能通过提交冻结面。
+  const custom = createComposerSubmissionConfig(
+    { mode: "custom", planEnabled: false, modelSelection: selection },
+    null,
+    catalog,
+  );
+  assert.equal(custom?.mode, "custom");
+  // 旧草稿的 mode:"plan"（plan 现为独立勾选维度）在 Codex 链路落到 custom，
+  // 而不是 Codez Agent 的 build（specs/codex-permission-modes.md）。
+  const stalePlan = createComposerSubmissionConfig(
+    { mode: "plan", planEnabled: true, modelSelection: selection },
+    null,
+    catalog,
+  );
+  assert.equal(stalePlan?.mode, "custom");
+  assert.equal(stalePlan?.planEnabled, true);
+});
+
 test("legacy recent selection migrates, explicit native selection and native effort are preserved", () => {
   assert.deepEqual(
     resolveCodexSelection(catalog, { providerId: "zai", modelId: "old" }),

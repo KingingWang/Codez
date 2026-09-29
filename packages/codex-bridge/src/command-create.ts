@@ -8,6 +8,7 @@ import type { ThreadStateStore } from "./thread-state.js";
 import {
   decorateNativeThread,
   nativeInput,
+  projectThreadMode,
   selectionOverrides,
   turnMode,
   type ResolveAttachments,
@@ -29,7 +30,6 @@ export async function createNativeSession(
     throw new Error("Workspace identity mismatch");
   if (p.mcpServers?.length || p.offPeakToolEnabled || p.dynamicWorkflowEnabled)
     unsupported("legacy session extensions; configure native Codex MCP and plugins instead");
-  if ((p.firstInput?.mode ?? p.config?.mode) === "edit") unsupported("edit mode");
   const selection = p.firstInput?.modelSelection ?? p.config?.modelSelection;
   const response = await rpc.request("thread/start", {
     cwd: store.cwd,
@@ -51,7 +51,8 @@ export async function createNativeSession(
         state.thread.model as string | undefined,
         p.config.planEnabled,
         p.config.thought ?? (state.thread.reasoningEffort as string | undefined),
-        state.thread.sandboxPolicy,
+        // 新线程生效权限 = config.toml；草稿档位与投影不同才显式下发覆盖。
+        { apply: p.config.mode !== undefined && p.config.mode !== projectThreadMode(state.thread) },
       ),
     };
     await rpc.request("thread/settings/update", settings);
@@ -71,13 +72,19 @@ export async function createNativeSession(
         selection?.modelId ?? (state.thread.model as string | undefined),
         p.firstInput.planEnabled ?? p.config?.planEnabled,
         selection?.options?.reasoningLevel ?? p.config?.thought,
-        state.thread.sandboxPolicy,
+        {
+          apply:
+            (p.firstInput.mode ?? p.config?.mode) !== undefined &&
+            (p.firstInput.mode ?? p.config?.mode) !== projectThreadMode(state.thread),
+        },
       ),
     };
     const response = await rpc.request("turn/start", turnParams);
     store.applySettings(sessionId, turnParams);
     store.acceptTurnResponse(sessionId, response);
   }
+  // 记住显式档位（bridge 进程内事实）；快照投影与 queue 守卫共用（specs/codex-permission-modes.md）。
+  store.rememberMode(sessionId, p.firstInput?.mode ?? p.config?.mode);
   return {
     type: "createSession",
     sessionId,

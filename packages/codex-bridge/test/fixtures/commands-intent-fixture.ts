@@ -30,6 +30,9 @@ function settings(h: Awaited<ReturnType<typeof setup>>, mode = "build", planEnab
     },
   });
   h.store.markStarted(structuredClone(h.authority.thread));
+  // 显式档位是 bridge 进程内事实；queue/steer 守卫按记住的档位投影比较
+  // （specs/codex-permission-modes.md）。plan 是独立维度，不进权限档位记忆。
+  if (mode !== "plan") h.store.rememberMode(sessionId, mode);
   h.rpc.handlers.set("thread/queue/add", () => ({
     queuedSubmission: {
       id: "native-added",

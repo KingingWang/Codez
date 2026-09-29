@@ -44,7 +44,9 @@ export function createComposerSubmissionConfig(
     return null;
   // 不读取 Session 或显示别名；复制所有选择叶子，防止 await 后用户切模改变本次请求。
   return Object.freeze({
-    mode: mode.data === "plan" ? "build" : mode.data,
+    // plan 是独立勾选维度；旧草稿的 mode:"plan" 提交前落到权限档默认值
+    // （Codex = custom 跟随 config.toml，Codez Agent = build）。
+    mode: mode.data === "plan" ? (codexCatalog ? "custom" : "build") : mode.data,
     planEnabled: resolveExecutionState(composer).planEnabled,
     modelSelection: Object.freeze({
       providerId: selection.providerId,

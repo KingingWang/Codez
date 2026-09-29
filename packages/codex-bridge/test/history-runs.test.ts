@@ -178,5 +178,6 @@ test("capability authority marks only the independent read surface supported", a
     readOnlyWorkflowHistory: "supported",
     safeDesktopFileRewind: "supported",
     legacyWorkflowRuns: "unsupported",
+    autoReviewApprovals: "unsupported",
   });
 });

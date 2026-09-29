@@ -430,6 +430,8 @@ export interface ConversationComposerProps {
   /** Model Selection 首次读取失败后的显式重试入口。 */
   modelSelectionReload?: () => void;
   codexModelCatalog?: CodexModelCatalogRead;
+  /** Approve for me（autoReviewApprovals 能力）是否受原生支持；未支持时权限菜单隐藏 edit 档。 */
+  codexAutoReviewSupported?: boolean;
   /** 草稿态使用预热 session 作附件 transaction 载体。 */
   attachmentSessionId?: string | null;
   attachmentPut: AttachmentPutFn;
@@ -539,6 +541,7 @@ function ConversationComposerImpl({
   modelSelectionState = MODEL_SELECTION_LOADING_STATE,
   modelSelectionReload,
   codexModelCatalog,
+  codexAutoReviewSupported = false,
   attachmentSessionId = null,
   attachmentPut,
   onRuntimeRestart,
@@ -2306,6 +2309,8 @@ function ConversationComposerImpl({
           activeConfigPicker={activeConfigPicker}
           onConfigPickerOpenChange={handleConfigPickerOpenChange}
           onSwitchMode={onSwitchMode}
+          codexPermissions={Boolean(codexModelCatalog)}
+          codexAutoReviewSupported={codexAutoReviewSupported}
         />
         {/* Bug 原因：附件画廊 rebase 曾整段覆盖 leadingActions，误删 staging 的 CUA 常驻入口。
             入口自身继续负责平台、远程与设置可见性，不在 composer 重复判定。 */}
@@ -2329,6 +2334,7 @@ function ConversationComposerImpl({
     [
       activeConfigPicker,
       canStop,
+      codexAutoReviewSupported,
       codexModelCatalog,
       nativeSettingsLocked,
       disabled,

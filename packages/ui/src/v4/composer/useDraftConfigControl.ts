@@ -117,6 +117,8 @@ export function useDraftConfigControl(params: {
   modelSelectionService: IModelSelectionService | null;
   codex?: boolean;
   codexCatalog?: CodexModelCatalog;
+  /** Approve for me 能力（autoReviewApprovals）；未确认时 codex 草稿的 edit 归一化为 custom。 */
+  codexAutoReviewSupported?: boolean;
 }): DraftConfigControl {
   const {
     workspacePath,
@@ -128,6 +130,7 @@ export function useDraftConfigControl(params: {
     modelSelectionService,
     codex = false,
     codexCatalog,
+    codexAutoReviewSupported = false,
   } = params;
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   const displayProvider = provider ?? CODEZ_AGENT_PROVIDER;
@@ -183,9 +186,10 @@ export function useDraftConfigControl(params: {
       codex && codexCatalog
         ? {
             ...draft,
-            // 恢复原生会话必须保留权限/plan；强制 build 会让 busy guide 与线程设置不一致。
+            // 恢复原生会话必须保留权限/plan；强制默认会让 busy guide 与线程设置不一致。
+            // Codex 新任务默认 custom（跟随 config.toml，不静默覆盖用户权限配置）。
             mode:
-              !initializeAsNewTask && mode.success && mode.data !== "plan" ? mode.data : "build",
+              !initializeAsNewTask && mode.success && mode.data !== "plan" ? mode.data : "custom",
             planEnabled:
               !initializeAsNewTask && resolveExecutionState(sessionConfig ?? {}).planEnabled,
             modelSelection:
@@ -230,16 +234,23 @@ export function useDraftConfigControl(params: {
     : modelSelectionView
       ? (modelSelectionView.effectiveSelection ?? undefined)
       : draft.modelSelection;
+  // Approve for me 能力未确认（探测中/失败/旧 peer）时，codex 草稿的 edit 一律按
+  // custom 提交，避免旧 edit 草稿被原生拒绝导致发送失败（specs/codex-permission-modes.md）。
+  const normalizeCodexDraftMode = useCallback(
+    (mode: V4ComposerDraft["mode"]): V4ComposerDraft["mode"] =>
+      codex && mode === "edit" && !codexAutoReviewSupported ? "custom" : mode,
+    [codex, codexAutoReviewSupported],
+  );
   const draftConfig = useMemo<Partial<SessionConfigState>>(
     () => ({
-      mode: draft.mode,
+      mode: normalizeCodexDraftMode(draft.mode),
       planEnabled: draft.planEnabled ?? false,
       modelSelection: effectiveSelection,
       provider: effectiveSelection?.providerId ?? "",
       model: effectiveSelection?.modelId ?? "",
       thought: effectiveSelection?.options?.reasoningLevel ?? "",
     }),
-    [draft.mode, draft.planEnabled, effectiveSelection],
+    [draft.mode, draft.planEnabled, effectiveSelection, normalizeCodexDraftMode],
   );
   const draftConfigRef = useRef(draftConfig);
   draftConfigRef.current = draftConfig;
@@ -268,7 +279,7 @@ export function useDraftConfigControl(params: {
           ? draftConfigRef.current.modelSelection
           : next.modelSelection;
       draftConfigRef.current = {
-        mode: next.mode,
+        mode: normalizeCodexDraftMode(next.mode),
         planEnabled: next.planEnabled ?? false,
         modelSelection: selection,
         provider: selection?.providerId ?? "",
@@ -279,7 +290,7 @@ export function useDraftConfigControl(params: {
       persistV4ComposerDraft(workspacePath, workspaceIdentity, scopeId, next);
       lastPersistedDraftRef.current = next;
     },
-    [scopeKey, workspacePath, workspaceIdentity, scopeId],
+    [normalizeCodexDraftMode, scopeKey, workspacePath, workspaceIdentity, scopeId],
   );
   const updateDraftConfig = useCallback(
     (update: (current: Partial<SessionConfigState>) => Partial<SessionConfigState>) => {
@@ -291,11 +302,14 @@ export function useDraftConfigControl(params: {
         modelSelection: next.modelSelection,
         // 用户已经显式改选，不能再由导入时等待的默认初始化覆盖。
         ...(current.initializeFromNewTask
-          ? { mode: mode.success ? mode.data : "build", initializeFromNewTask: undefined }
+          ? {
+              mode: mode.success ? mode.data : codex ? "custom" : "build",
+              initializeFromNewTask: undefined,
+            }
           : {}),
       }));
     },
-    [updateComposerDraft],
+    [codex, updateComposerDraft],
   );
   const captureAcceptedModelSelection = useCallback(
     (selection: ModelSelection, expectedSelection: ModelSelection = selection): (() => void) => {
@@ -514,9 +528,11 @@ export function useDraftConfigControl(params: {
   const handleDraftSwitchMode = useCallback(
     (mode: string) => {
       if (mode === "plan" || mode === "plan-off") {
+        // plan 勾选与权限档位正交；取消勾选时回到的权限档默认值按运行时区分。
+        const fallbackMode = codex ? "custom" : "build";
         updateComposerDraft((current) => ({
           ...current,
-          mode: current.mode === "plan" ? "build" : (current.mode ?? "build"),
+          mode: current.mode === "plan" ? fallbackMode : (current.mode ?? fallbackMode),
           planEnabled: mode === "plan",
           initializeFromNewTask: undefined,
         }));
@@ -531,7 +547,7 @@ export function useDraftConfigControl(params: {
           initializeFromNewTask: undefined,
         }));
     },
-    [updateComposerDraft],
+    [codex, updateComposerDraft],
   );
 
   return {

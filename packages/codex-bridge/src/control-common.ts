@@ -1,5 +1,12 @@
 import { z } from "zod";
 import type { BridgeControlContext } from "./contract.js";
+import {
+  isRelaxedThread,
+  projectThreadMode,
+  type NativePermissionDefaults,
+  type TurnPermissionIntent,
+} from "./command-input.js";
+import type { JsonObject } from "./json.js";
 
 export class ControlError extends Error {
   constructor(
@@ -75,7 +82,18 @@ export const configResponseSchema = z.object({
       .enum(["read-only", "workspace-write", "danger-full-access"])
       .nullable()
       .optional(),
+    // workspace-write 的生效细节（可写根/网络等）；custom 恢复时保真透传。
+    sandbox_workspace_write: z
+      .object({
+        writable_roots: z.array(z.string()).optional(),
+        network_access: z.boolean().optional(),
+        exclude_tmpdir_env_var: z.boolean().optional(),
+        exclude_slash_tmp: z.boolean().optional(),
+      })
+      .nullable()
+      .optional(),
     approval_policy: z.unknown().optional(),
+    approvals_reviewer: z.enum(["user", "auto_review", "guardian_subagent"]).nullable().optional(),
     mcp_servers: z
       .record(
         z.string(),
@@ -93,4 +111,75 @@ export async function readConfig(context: BridgeControlContext) {
   return configResponseSchema.parse(
     await context.rpc.request("config/read", { cwd: context.cwd, includeLayers: false }),
   ).config;
+}
+
+/**
+ * 读取 config.toml 生效权限值（specs/codex-permission-modes.md）。
+ * custom 档从放宽态切回时用它显式恢复原生默认；读取失败或值不可映射时返回
+ * undefined，由调用方回退 workspaceWrite + on-request + user 基线。
+ */
+export async function readNativePermissionDefaults(
+  context: BridgeControlContext,
+): Promise<NativePermissionDefaults | undefined> {
+  let config: z.infer<typeof configResponseSchema>["config"];
+  try {
+    config = await readConfig(context);
+  } catch {
+    // 固定文案，不携带路径/配置内容；不阻断提交（spec 失败语义）。
+    process.stderr.write(
+      "Codex desktop bridge warn: config/read failed while restoring custom permission mode; falling back to the workspace-write baseline.\n",
+    );
+    return undefined;
+  }
+  // sandbox_mode → 原生 v2 SandboxPolicy（camelCase 线格式）；
+  // granular permission profile 等未知形态不可映射，交由调用方基线兜底。
+  const workspaceWrite = config.sandbox_workspace_write;
+  const sandboxPolicy =
+    config.sandbox_mode === "read-only"
+      ? { type: "readOnly", networkAccess: false }
+      : config.sandbox_mode === "workspace-write"
+        ? {
+            type: "workspaceWrite",
+            writableRoots: workspaceWrite?.writable_roots ?? [],
+            networkAccess: workspaceWrite?.network_access ?? false,
+            excludeTmpdirEnvVar: workspaceWrite?.exclude_tmpdir_env_var ?? false,
+            excludeSlashTmp: workspaceWrite?.exclude_slash_tmp ?? false,
+          }
+        : config.sandbox_mode === "danger-full-access"
+          ? { type: "dangerFullAccess" }
+          : undefined;
+  // approval_policy 只透传 bridge 档位使用的两种；untrusted/on-failure 等交由基线兜底。
+  const approvalPolicy =
+    config.approval_policy === "on-request" || config.approval_policy === "never"
+      ? config.approval_policy
+      : undefined;
+  // guardian_subagent 是 auto_review 的旧别名（serde alias），统一投影为 auto_review。
+  const approvalsReviewer =
+    config.approvals_reviewer === "auto_review" || config.approvals_reviewer === "guardian_subagent"
+      ? "auto_review"
+      : config.approvals_reviewer === "user"
+        ? "user"
+        : undefined;
+  if (!sandboxPolicy && !approvalPolicy && !approvalsReviewer) return {};
+  return {
+    ...(approvalPolicy ? { approvalPolicy } : {}),
+    ...(approvalsReviewer ? { approvalsReviewer } : {}),
+    ...(sandboxPolicy ? { sandboxPolicy } : {}),
+  };
+}
+
+/**
+ * 计算本次请求的权限意图（specs/codex-permission-modes.md）：
+ * 仅档位相对线程投影发生迁移时下发覆盖，避免每次提交重置原生会话内已授权；
+ * custom 从放宽态（完全访问沙箱 / AI 代批）切回时读取 config.toml 生效值恢复，
+ * 读取失败回退空 defaults（= workspaceWrite + on-request + user 基线）。
+ */
+export async function turnPermissionIntent(
+  context: BridgeControlContext,
+  thread: JsonObject,
+  mode: string | undefined,
+): Promise<TurnPermissionIntent> {
+  const apply = mode !== undefined && mode !== projectThreadMode(thread);
+  if (!apply || mode !== "custom" || !isRelaxedThread(thread)) return { apply };
+  return { apply, configDefaults: (await readNativePermissionDefaults(context)) ?? {} };
 }

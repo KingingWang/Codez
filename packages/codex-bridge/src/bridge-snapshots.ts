@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { formatModelPickerValue } from "@codez/shared";
+import { formatModelPickerValue, getCodexPermissionModes } from "@codez/shared";
 import {
   workspaceConfigSnapshotSchema,
   type ConversationSnapshot,
@@ -8,6 +8,7 @@ import type { BridgeControlContext } from "./contract.js";
 import { DeletedThreadError, type ThreadStateStore } from "./thread-state.js";
 import type { InteractionBroker } from "./interactions.js";
 import { readControlModelSettings, readControlPresentation } from "./control-presentation.js";
+import { projectThreadMode } from "./command-input.js";
 import { projectThread, projectSessionsIndex } from "./projection.js";
 import { array, object, string } from "./json.js";
 import { projectTurnFileChanges } from "./file-changes.js";
@@ -147,10 +148,8 @@ export class BridgeSnapshots {
       };
     }
     const idle = snapshot.control.phase !== "running";
-    snapshot.config.mode =
-      state.thread.sandboxPolicy && object(state.thread.sandboxPolicy).type === "dangerFullAccess"
-        ? "yolo"
-        : "build";
+    // 记住的显式档位优先；无记录按原生生效值推导（specs/codex-permission-modes.md）。
+    snapshot.config.mode = projectThreadMode(state.thread);
     if (state.thread.collaborationMode)
       snapshot.config.planEnabled = object(state.thread.collaborationMode).mode === "plan";
     const allowed = { allowed: true as const };
@@ -323,10 +322,15 @@ export class BridgeSnapshots {
               name: "Codex mode",
               type: "select",
               currentValue: settings.mode.current,
+              // Plan 是独立勾选维度，保留旧 configOptions 消费方的兼容条目；
+              // 权限档位目录与 composer 菜单同源（shared getCodexPermissionModes）。
               options: [
-                { value: "build", name: "Default" },
                 { value: "plan", name: "Plan" },
-                { value: "yolo", name: "Full access" },
+                ...getCodexPermissionModes().map((mode) => ({
+                  value: mode.id,
+                  name: mode.name,
+                  description: mode.description,
+                })),
               ],
             },
           ],
