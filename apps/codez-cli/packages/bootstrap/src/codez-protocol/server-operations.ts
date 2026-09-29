@@ -2714,6 +2714,10 @@ export async function setMode(context: CodezProtocolAgentServerContext, rawParam
   const params = parseParams(codezSessionSetModeParamsSchema, rawParams);
   const record = requireSession(context, params.sessionId);
   assertExpectedRevision(record, params.expectedRevision);
+  // custom 只属于 Codex 链路（codex-bridge）；Codez Agent 运行时显式拒绝，
+  // 不允许 as 断言后由 resolveExecutionState 静默降档（specs/codex-permission-modes.md）。
+  if (params.mode === "custom")
+    throw new Error('Session mode "custom" is Codex-only; Codez Agent sessions must not receive it');
   await record.app.setMode(params.mode);
   return await afterStateMutation(context, record, "mode_changed");
 }
@@ -3340,12 +3344,16 @@ async function createRecord(
   // automation-port 需要读取「本会话」的实时 model/mode/thought；record 在 app 之后才建。
   // 用可变持有者做惰性绑定：CronCreate 在 turn 中调用 create() 时 record 早已就绪。
   let ownSessionRecord: CodezProtocolSessionRecord | undefined;
+  // 同 setMode：custom 是 Codex 专属档位，legacy 创建路径显式拒绝，不静默降档。
+  const runtimeMode = "mode" in params ? params.mode : undefined;
+  if (runtimeMode === "custom")
+    throw new Error('Session mode "custom" is Codex-only; Codez Agent sessions must not receive it');
   const app = await createWorkspaceCodezApp(context, workspace, {
     env: context.deps.env,
     eventStore,
     resume,
     runtimeConfig: {
-      mode: "mode" in params ? params.mode : undefined,
+      mode: runtimeMode,
       modelSelection: "model" in params ? toRuntimeModelSelection(initialModel) : undefined,
       parentSessionId,
       taskType,

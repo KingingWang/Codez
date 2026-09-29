@@ -277,6 +277,20 @@ export type TurnSteerSource = "plan_approval_feedback" | "workflow_refine_feedba
  */
 export type TurnSteerDeliveryMode = "guide" | "queue";
 
+/**
+ * TurnInputIntentMetadata.mode 的收敛入口：只放行 Codez Agent 运行时契约值域。
+ * custom 只属于 Codex 链路（codex-bridge），admission 已显式拒绝，理论不可达；
+ * 协议 SubmissionMode 值域放宽后在此白名单收敛，未知/越界值一律不写 mode 字段，
+ * 不让运行时不认识的档位伪装成合法 intent。
+ */
+export function contractIntentMode(
+  mode: string | undefined,
+): "build" | "edit" | "plan" | "yolo" | undefined {
+  return mode === "build" || mode === "edit" || mode === "plan" || mode === "yolo"
+    ? mode
+    : undefined;
+}
+
 /** 协议无关的输入 intent metadata；bootstrap v4 在事件边界组装为 ConversationInputIntent。 */
 export interface TurnInputIntentMetadata {
   planEnabled?: boolean;

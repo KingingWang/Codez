@@ -66,6 +66,9 @@ const CODEX_PERMISSION_MODE_OPTIONS = [
 
 // OpenRouter 会把 `:free` 作为模型 ID 的一部分。UI/configOptions 的展示态
 // 不能再用冒号分隔 thought level，否则草稿选择会静默截断真实 modelId。
+// 仅用于 Codez Agent 运行时的档位投影：custom 只属于 Codex 链路，落到这里按
+// 未知值回退 build 是预期防御；Codex 展示必须走 getCodexPermissionModes()，
+// 不得复用本函数（会把 custom 错归一成 build）。
 export function normalizeAvailableCodezMode(mode: CodezSessionMode): string {
   return CODEZ_AGENT_MODE_ID_SET.has(mode) ? mode : "build";
 }

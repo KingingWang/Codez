@@ -173,6 +173,38 @@ export async function verifySandboxTransitions(t: TestContext) {
     assert.equal(projectThreadMode(h.state.thread), "custom");
   });
 
+  await t.test(
+    "custom restores config and resets the reviewer when leaving auto review",
+    async (t) => {
+      const h = await setup(t);
+      // 放宽态由 AI 代批（approvalsReviewer:auto_review）提供，而非完全访问沙箱。
+      Object.assign(h.authority.thread, {
+        sandboxPolicy: workspaceWrite,
+        approvalPolicy: "on-request",
+        approvalsReviewer: "auto_review",
+      });
+      h.store.markStarted(structuredClone(h.authority.thread));
+      mockConfigRead(h, {
+        sandbox_mode: "workspace-write",
+        approval_policy: "on-request",
+        approvals_reviewer: "user",
+      });
+      const ack = await h.execute(
+        h.command("sendText", { text: "Back to custom", mode: "custom" }),
+      );
+      assert.equal(ack.status, "accepted", ack.message);
+      const params = h.rpc.params("turn/start")[0]!;
+      // 放宽态切回 custom：读 config/read，下发完整恢复三元组，approvalsReviewer 复位 user，
+      // 不允许 AI 代批静默残留（spec 标签与生效权限不允许静默错位）。
+      assert.ok(h.rpc.methods().includes("config/read"));
+      assert.equal(params.approvalPolicy, "on-request");
+      assert.equal(params.approvalsReviewer, "user");
+      assert.deepEqual(params.sandboxPolicy, workspaceWrite);
+      // 成功后记忆 custom。
+      assert.equal(projectThreadMode(h.state.thread), "custom");
+    },
+  );
+
   await t.test("custom falls back to the baseline when config/read fails", async (t) => {
     const h = await setup(t);
     Object.assign(h.authority.thread, {

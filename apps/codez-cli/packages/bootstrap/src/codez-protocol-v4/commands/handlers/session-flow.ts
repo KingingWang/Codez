@@ -142,6 +142,10 @@ export function resolveSubmittedExecutionState(
     planEnabled?: boolean;
   },
 ): { modelSelection: ModelSelection; mode: SubmissionMode; planEnabled: boolean } {
+  // custom 只属于 Codex 链路（codex-bridge）；Codez Agent admission 显式拒绝，
+  // 不让 resolveExecutionState 的 safeParse 回退把它静默降档成 build。
+  if (payload.mode === "custom")
+    throw new Error('Submission mode "custom" is Codex-only; Codez Agent sessions must not receive it');
   let modelSelection = payload.modelSelection;
   if (!modelSelection) {
     const runtimeSelection = record.app.runtime?.getSessionModelSelection?.();

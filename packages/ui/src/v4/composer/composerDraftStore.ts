@@ -19,6 +19,12 @@ export interface V4ComposerDraft {
   mention?: ComposerMentionPrefill;
   /** 有合法 mode 表示已经初始化；没有模型仍是明确空态，不能按旧文本草稿补默认。 */
   mode?: SubmissionMode;
+  /**
+   * 权限档位代际标记：2 = 四档权限模型（specs/codex-permission-modes.md）下写入的
+   * mode。缺失说明是升级前的存量草稿，Codex 链路把旧 build（语义=保留原生权限）
+   * 归一为 custom 展示/提交，见 composerDraftModeNormalization.ts。
+   */
+  permissionModeGen?: 2;
   planEnabled?: boolean;
   /** 已处理的工具变更，防止重连快照再次覆盖用户选择。 */
   lastPlanTransitionId?: string;
@@ -121,6 +127,7 @@ function readDraft(value: unknown): V4ComposerDraft | null {
       : {}),
     ...(hasMention ? { mention: mention as unknown as ComposerMentionPrefill } : {}),
     ...(mode.success ? { mode: mode.data === "plan" ? ("build" as const) : mode.data } : {}),
+    ...(value.permissionModeGen === 2 ? { permissionModeGen: 2 as const } : {}),
     ...(typeof value.planEnabled === "boolean"
       ? { planEnabled: value.planEnabled }
       : mode.success

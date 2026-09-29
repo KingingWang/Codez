@@ -55,6 +55,7 @@ import {
   AMEND_WORKFLOW_TOOL_NAME,
   CREATE_WORKFLOW_TOOL_NAME,
   SessionEventType,
+  contractIntentMode,
   getModelUsageContextTokens,
 } from "@codez/contracts";
 // review 单调性裁决单一来源；projection 只实现“应用策略”（advance/no_current 接受，
@@ -3500,6 +3501,7 @@ export class ProductProjection {
           (candidate) => candidate.queueItemId === pendingInputId,
         );
         if (!queueItem) return [];
+        const intentMode = contractIntentMode(queueItem.mode);
         const intent: TurnInputIntentMetadata = {
           sourceCommandId: queueItem.sourceCommandId,
           queueItemId: queueItem.queueItemId,
@@ -3507,7 +3509,7 @@ export class ProductProjection {
           kind: queueItem.kind,
           text: queueItem.text,
           ...(queueItem.modelSelection ? { modelSelection: queueItem.modelSelection } : {}),
-          ...(queueItem.mode ? { mode: queueItem.mode } : {}),
+          ...(intentMode ? { mode: intentMode } : {}),
           ...(queueItem.planEnabled !== undefined ? { planEnabled: queueItem.planEnabled } : {}),
           admissionSeq: queueItem.order.admissionSeq,
           admittedAt: queueItem.admittedAt,

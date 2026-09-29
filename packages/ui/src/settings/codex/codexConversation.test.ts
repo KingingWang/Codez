@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { codexModelSchema } from "@codez/shared";
-import { createComposerSubmissionConfig } from "@/v4/composer/composerSubmissionConfig.js";
+import {
+  createComposerSubmissionConfig,
+  freezeSubmissionMode,
+} from "@/v4/composer/composerSubmissionConfig.js";
 import { codexQuestionAnswer, readCodexQuestions } from "./codexQuestions.js";
 import { resolveDesktopRuntimePreferences } from "./codexRuntimePreferences.js";
 import {
@@ -140,6 +143,17 @@ test("codex submission freezes custom and maps a stale plan mode onto custom", (
   );
   assert.equal(stalePlan?.mode, "custom");
   assert.equal(stalePlan?.planEnabled, true);
+});
+
+test("non-codex submissions never carry the codex-only custom mode", () => {
+  // custom 只属于 Codex 链路；运行时切换等残留草稿落到非 Codex 提交面时回退 build，
+  // 防止 Codez Agent 协议面收到不认识的档位（其 admission 会显式拒绝）。
+  assert.equal(freezeSubmissionMode("custom", undefined), "build");
+  assert.equal(freezeSubmissionMode("custom", catalog), "custom");
+  assert.equal(freezeSubmissionMode("plan", undefined), "build");
+  assert.equal(freezeSubmissionMode("plan", catalog), "custom");
+  assert.equal(freezeSubmissionMode("build", undefined), "build");
+  assert.equal(freezeSubmissionMode("yolo", catalog), "yolo");
 });
 
 test("legacy recent selection migrates, explicit native selection and native effort are preserved", () => {

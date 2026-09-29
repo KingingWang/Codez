@@ -24,6 +24,7 @@ import {
   CompactTimelineStatus,
   CompactTrigger,
   CoreErrorType,
+  contractIntentMode,
   createSessionId,
   ModelErrorCode,
   parseCompletedToolPartMetadata,
@@ -386,6 +387,7 @@ function inputIntentOfMessage(message: MessageWithParts): TurnInputIntentMetadat
   );
   if (fullIntent.success) {
     const value = fullIntent.data;
+    const intentMode = contractIntentMode(value.mode);
     return {
       sourceCommandId: value.sourceCommandId,
       queueItemId: value.queueItemId,
@@ -395,7 +397,7 @@ function inputIntentOfMessage(message: MessageWithParts): TurnInputIntentMetadat
       // 禁止从 `/goal replace ...` 文案再做大小写/关键字解析。
       text: value.text,
       ...(value.modelSelection ? { modelSelection: value.modelSelection } : {}),
-      ...(value.mode ? { mode: value.mode } : {}),
+      ...(intentMode ? { mode: intentMode } : {}),
       ...(value.planEnabled !== undefined ? { planEnabled: value.planEnabled } : {}),
       admissionSeq: value.order.admissionSeq,
       admittedAt: value.admittedAt,

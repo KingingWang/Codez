@@ -585,7 +585,10 @@ export function SessionPane({
   });
   // Approve for me 档（approvalsReviewer:"auto_review"）由原生 guardian approval 能力门控；
   // fail-closed，未确认前 composer 隐藏 edit 档（specs/codex-permission-modes.md）。
-  const codexAutoReviewSupported = useCodexAutoReviewApprovals(services, isDesktop);
+  const codexAutoReviewSupported = useCodexAutoReviewApprovals(services, isDesktop, {
+    onRuntimeRestart,
+    onRuntimeLifecycle,
+  });
   // 子智能体详情的会话内容仍只读；文件撤销恢复的是 workspace，必须作为独立能力判断。
   // 该判定还决定 preview/apply 的通道分流（Desktop 事务服务 vs legacy v4 command），
   // 必须早于两个 handler 的定义，故从 rowContext memo 附近上移到这里。

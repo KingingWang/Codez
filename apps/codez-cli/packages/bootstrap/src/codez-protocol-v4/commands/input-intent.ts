@@ -1,4 +1,4 @@
-import type { TurnInputIntentMetadata } from "@codez/contracts";
+import { contractIntentMode, type TurnInputIntentMetadata } from "@codez/contracts";
 import type { ModelSelection } from "@codez/shared";
 import type { AttachmentRef, CommandEnvelope, QueueItem } from "@codez/shared/codez-protocol-v4";
 import type { SubmissionMode } from "@codez/shared/codez-protocol-v4";
@@ -36,6 +36,7 @@ export function inputIntentMetadata(
   },
 ): TurnInputIntentMetadata {
   const admission = commandAdmissionOf(envelope);
+  const intentMode = contractIntentMode(options.mode);
   return {
     sourceCommandId: envelope.commandId,
     queueItemId: admission.queueItemId,
@@ -50,7 +51,7 @@ export function inputIntentMetadata(
     // goal 的 displayText（如 `/GoAl replace X`）不是 runtime 已解析的 canonical objective。
     text: options.text,
     ...(options.modelSelection ? { modelSelection: options.modelSelection } : {}),
-    ...(options.mode ? { mode: options.mode } : {}),
+    ...(intentMode ? { mode: intentMode } : {}),
     ...(options.planEnabled !== undefined ? { planEnabled: options.planEnabled } : {}),
     admissionSeq: admission.admissionSeq,
     admittedAt: admission.admittedAt,
@@ -77,6 +78,7 @@ export function inputIntentMetadataFromCanonical(
   const admission = commandAdmissionOf(envelope);
   const originalSourceCommandId =
     canonical.provenance?.sourceCommandId ?? canonical.sourceCommandId;
+  const intentMode = contractIntentMode(canonical.mode);
   return {
     sourceCommandId: envelope.commandId,
     queueItemId: admission.queueItemId,
@@ -84,7 +86,7 @@ export function inputIntentMetadataFromCanonical(
     kind: canonical.kind,
     text,
     ...(canonical.modelSelection ? { modelSelection: canonical.modelSelection } : {}),
-    ...(canonical.mode ? { mode: canonical.mode } : {}),
+    ...(intentMode ? { mode: intentMode } : {}),
     ...(canonical.planEnabled !== undefined ? { planEnabled: canonical.planEnabled } : {}),
     admissionSeq: admission.admissionSeq,
     admittedAt: admission.admittedAt,
@@ -110,6 +112,7 @@ export function inputIntentMetadataFromQueueItem(
   item: QueueItem,
   canonicalText: string,
 ): TurnInputIntentMetadata {
+  const intentMode = contractIntentMode(item.mode);
   return {
     sourceCommandId: item.sourceCommandId,
     queueItemId: item.queueItemId,
@@ -117,7 +120,7 @@ export function inputIntentMetadataFromQueueItem(
     kind: item.kind,
     text: canonicalText,
     ...(item.modelSelection ? { modelSelection: item.modelSelection } : {}),
-    ...(item.mode ? { mode: item.mode } : {}),
+    ...(intentMode ? { mode: intentMode } : {}),
     ...(item.planEnabled !== undefined ? { planEnabled: item.planEnabled } : {}),
     admissionSeq: item.order.admissionSeq,
     admittedAt: item.admittedAt,

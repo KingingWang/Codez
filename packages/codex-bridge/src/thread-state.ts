@@ -302,6 +302,9 @@ export class ThreadStateStore {
       state.thread.reasoningEffort = settings.effort;
       state.thread.sandboxPolicy = settings.sandboxPolicy;
       state.thread.approvalPolicy = settings.approvalPolicy;
+      // 原生 v2 ThreadSettings 必带 approvalsReviewer；外部（CLI/另一窗口）切 auto_review 需同步投影。
+      if (typeof settings.approvalsReviewer === "string")
+        state.thread.approvalsReviewer = settings.approvalsReviewer;
       state.thread.collaborationMode = settings.collaborationMode;
     } else if (event.method === "thread/tokenUsage/updated")
       state.thread.tokenUsage = params.tokenUsage;

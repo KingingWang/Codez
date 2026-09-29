@@ -499,3 +499,40 @@ test("only mapped built-ins appear and duplicate skills cannot shadow them", asy
   );
   assert.ok(result.slashCommands[0]?.inputHint?.includes("fixture/test-model$medium"));
 });
+
+test("autoReviewApprovals accepts the guardian_subagent reviewer alias in the org allowlist", async () => {
+  // guardian_subagent 是 auto_review 的旧别名；组织白名单只列旧别名时也应判 supported。
+  const { context } = fixture({
+    "configRequirements/read": {
+      requirements: { allowedApprovalsReviewers: ["guardian_subagent"] },
+    },
+  });
+  assert.equal(
+    codezRuntimeCapabilitiesSchema.parse(
+      await handleControlRequest("runtime/capabilities", {}, context),
+    ).codex?.autoReviewApprovals,
+    "supported",
+  );
+});
+
+test("autoReviewApprovals fails closed and caches when configRequirements/read rejects", async () => {
+  const { context } = fixture();
+  let reviewerProbes = 0;
+  const original = context.rpc.request.bind(context.rpc);
+  context.rpc.request = async <T>(method: string, params: unknown): Promise<T> => {
+    if (method === "configRequirements/read") {
+      reviewerProbes++;
+      throw new Error("configRequirements unavailable");
+    }
+    return original<T>(method, params);
+  };
+  assert.equal(
+    codezRuntimeCapabilitiesSchema.parse(
+      await handleControlRequest("runtime/capabilities", {}, context),
+    ).codex?.autoReviewApprovals,
+    "unsupported",
+  );
+  // 探测失败结果同样按 bridge 进程缓存：第二次 dispatch 不再触发 configRequirements/read。
+  await handleControlRequest("runtime/capabilities", {}, context);
+  assert.equal(reviewerProbes, 1);
+});
