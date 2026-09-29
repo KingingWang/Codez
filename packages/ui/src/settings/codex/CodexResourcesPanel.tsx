@@ -1,11 +1,8 @@
 import { useState } from "react";
-import { codexMcpOauthResponseSchema } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
-import { usePlatform } from "@/hooks/usePlatform.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
-import { codexAuthorizationUrl, codexPluginInstallRequest } from "./codexSettingsData.js";
-import { CodexNativeBrowserCuaCard } from "./CodexNativeBrowserCuaCard.js";
+import { codexPluginInstallRequest } from "./codexSettingsData.js";
 import { CodexConfirmButton, CodexNotice, CodexSection } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
 export function CodexSkillsPanel({ controller }: { controller: CodexSettingsController }) {
@@ -58,103 +55,6 @@ export function CodexSkillsPanel({ controller }: { controller: CodexSettingsCont
       {state?.data && state.data.data.every((entry) => entry.skills.length === 0) ? (
         <CodexNotice>{text.empty}</CodexNotice>
       ) : null}
-    </CodexSection>
-  );
-}
-
-export function CodexMcpPanel({
-  controller,
-  remote = false,
-  nativeBrowserCuaCapability,
-  descriptorOverride,
-  nativeBrowserControlEnabled,
-  onNativeBrowserControlEnabledChange,
-}: {
-  controller: CodexSettingsController;
-  remote?: boolean;
-  nativeBrowserCuaCapability?: string;
-  descriptorOverride?: unknown;
-  /** 内置浏览器 Agent 工具开关；由 SettingsPage 层经 useSettings 注入，缺省不渲染开关。 */
-  nativeBrowserControlEnabled?: boolean;
-  onNativeBrowserControlEnabledChange?: (enabled: boolean) => void | Promise<void>;
-}) {
-  const text = useCodexMessages();
-  const platform = usePlatform();
-  const state = controller.snapshot.mcp;
-  const [authorization, setAuthorization] = useState<{ name: string; url: string } | null>(null);
-  const disabled = controller.busy || controller.loading || !controller.enabled;
-  return (
-    <CodexSection title={text.mcp}>
-      {state?.error ? <CodexNotice error>{state.error}</CodexNotice> : null}
-      <CodexNativeBrowserCuaCard
-        controller={controller}
-        remote={remote}
-        nativeBrowserCuaCapability={nativeBrowserCuaCapability}
-        descriptorOverride={descriptorOverride}
-        nativeBrowserControlEnabled={nativeBrowserControlEnabled}
-        onNativeBrowserControlEnabledChange={onNativeBrowserControlEnabledChange}
-      />
-      <Button
-        variant="outline"
-        disabled={disabled}
-        onClick={() =>
-          void controller.run(async () => {
-            await controller.request({ method: "config/mcpServer/reload" });
-          })
-        }
-      >
-        {text.reload}
-      </Button>
-      {state?.data?.data.map((server) => (
-        <div
-          key={server.name}
-          className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"
-        >
-          <div className="min-w-0 flex-1">
-            <p className="text-ui-base">{server.name}</p>
-            <p className="text-ui-sm text-foreground-subtle">
-              {server.runtimeStatus ?? text.notConnected} · {server.authStatus} · {text.tools}:{" "}
-              {Object.keys(server.tools).length}
-            </p>
-            {server.toolsError ? <CodexNotice error>{server.toolsError}</CodexNotice> : null}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={disabled || server.authStatus === "unsupported"}
-            onClick={() =>
-              void controller.run(async () => {
-                const result = codexMcpOauthResponseSchema.parse(
-                  await controller.request({
-                    method: "mcpServer/oauth/login",
-                    params: { name: server.name },
-                  }),
-                );
-                const url = codexAuthorizationUrl(result.authorizationUrl);
-                setAuthorization({ name: server.name, url });
-                platform.openExternal(url);
-              })
-            }
-          >
-            {text.oauth}
-          </Button>
-        </div>
-      ))}
-      {authorization ? (
-        <div className="space-y-2">
-          <CodexNotice>
-            {authorization.name}: {text.pending}
-          </CodexNotice>
-          <Button
-            variant="outline"
-            disabled={disabled}
-            onClick={() => platform.openExternal(authorization.url)}
-          >
-            {text.openBrowser}
-          </Button>
-        </div>
-      ) : null}
-      {state?.data?.data.length === 0 ? <CodexNotice>{text.empty}</CodexNotice> : null}
     </CodexSection>
   );
 }

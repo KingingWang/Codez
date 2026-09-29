@@ -1,5 +1,6 @@
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
+import { enMcp, zhMcp } from "./messagesMcp.js";
 import { enProviders, zhProviders } from "./messagesProviders.js";
 
 const en = {
@@ -188,6 +189,7 @@ const en = {
   memoryNumberHelp: "Leave empty to restore the native default.",
   memoryNumberInvalid: "Value out of range; not saved.",
   ...enProviders,
+  ...enMcp,
 };
 const zh: Record<keyof typeof en, string> = {
   legacyPreferences:
@@ -355,6 +357,7 @@ const zh: Record<keyof typeof en, string> = {
   memoryNumberHelp: "留空恢复原生默认值。",
   memoryNumberInvalid: "数值超出范围，未保存。",
   ...zhProviders,
+  ...zhMcp,
 };
 export function useCodexMessages() {
   return useCodezIntl().locale === "zh-CN" ? zh : en;

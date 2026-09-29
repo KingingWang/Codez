@@ -4,7 +4,8 @@ import { useCodexSettings } from "@/hooks/useCodexSettings.js";
 import { CodexAgentsPanel } from "./CodexAgentsPanel.js";
 import { CodexAccountPanel } from "./CodexAccountPanel.js";
 import { CodexConfigPanel } from "./CodexConfigPanel.js";
-import { CodexMcpPanel, CodexPluginsPanel, CodexSkillsPanel } from "./CodexResourcesPanel.js";
+import { CodexMcpPanel } from "./CodexMcpPanel.js";
+import { CodexPluginsPanel, CodexSkillsPanel } from "./CodexResourcesPanel.js";
 import { CodexHistoryPanel } from "./CodexHistoryPanel.js";
 import { CodexMemoryPanel } from "./CodexMemoryPanel.js";
 import { CodexProvidersPanel } from "./CodexProvidersPanel.js";
@@ -140,6 +141,8 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
               onNativeBrowserControlEnabledChange={(enabled) =>
                 updateAppSettings({ nativeBrowserControlEnabled: enabled })
               }
+              workspacePath={props.workspacePath}
+              workspaceIdentity={props.workspaceIdentity}
             />
           ) : null}
           {panel === "plugins" ? <CodexPluginsPanel controller={controller} /> : null}
