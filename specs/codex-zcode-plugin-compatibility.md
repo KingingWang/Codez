@@ -39,21 +39,101 @@ wrong machine and bridge identity validation would reject the request.
 the actual workspace path is passed as the native cwd. Remote workspaces must
 materialize on the remote host, never on the desktop machine.
 
-The official catalog's distributed plugin packages must not be silently
-replaced by unverified Git working-tree content. Any native Git source used
-by the compatibility layer must be pinned to a resolved commit and checked
-against the published plugin name/version; failures are visible diagnostics.
+## Compatibility pipeline (materialize + transpile)
+
+Every official plugin install is served from a bridge-materialized local
+marketplace. Refresh downloads each catalog entry's published zip artifact
+from the official CDN, verifies the catalog-pinned SHA-256, extracts it with
+zip-slip protection, and runs a deterministic transpiler before exposing the
+plugin to Codex. The published zip is the only trusted artifact; no Git
+working-tree content is used. Transpiled output is staged under a temporary
+directory and swapped in atomically; a failed refresh never disturbs the last
+good materialization.
+
+The transpiler applies data-driven component rules instead of per-plugin
+special cases, so new official plugins and new versions flow through the same
+pipeline without code changes:
+
+1. Manifest: `.claude-plugin/plugin.json` is used when present; otherwise a
+   Claude-compatible manifest is synthesized from `.zcode-plugin/plugin.json`.
+   Manifest path fields (`skills`, `commands`, `hooks`, `mcpServers`) are
+   normalized to the `./`-prefixed form Codex requires. Manifest fields that
+   name components Codex cannot execute (`channels`, `lspServers`,
+   `outputStyles`, `settings`) make the entry unavailable with an explicit
+   reason. Unknown fields that Codex ignores pass through untouched.
+2. MCP servers (`.mcp.json` or inline `mcpServers`): stdio and
+   streamable-http transports are supported. `${ZCODE_PLUGIN_ROOT}` and
+   `${CLAUDE_PLUGIN_ROOT}` bake to the absolute materialized plugin path
+   (Codex copies local installs into its own cache, so baked paths must point
+   at the stable materialized directory). A `cwd` of `${ZCODE_PROJECT_DIR}` /
+   `${CLAUDE_PROJECT_DIR}` is dropped so the server inherits the per-workspace
+   app-server cwd. `${user_config.<key>}` bakes the declared default; a use
+   without a declared default drops that server with a warning.
+   `${ZCODE_BASE_URL}` resolves to the configured Codez endpoint origin.
+   `auth: {type: "zcode_official"}` on an HTTP server becomes
+   `bearer_token_env_var: "CODEZ_ZAI_OFFICIAL_MCP_TOKEN"` and marks the plugin
+   as requiring z.ai account auth; any other unrecognized `${...}` variable,
+   transport, or auth shape drops that server with a warning. When a plugin
+   declares MCP servers and every server is dropped, the entry is
+   unavailable. Legacy SSE transports are unsupported.
+3. Hooks (`hooks/hooks.json` or inline `hooks`): command hooks pass through;
+   ZCode `type: "process"` handlers (command + args) are rewritten to
+   shell-quoted `type: "command"` strings. `${ZCODE_PLUGIN_ROOT}` rewrites to
+   `${CLAUDE_PLUGIN_ROOT}`, which Codex expands for plugin hooks at discovery.
+   Events outside the Codex hook model are dropped with a warning.
+4. Skills and commands are copied unchanged; Codex resolves matcher aliases
+   (`Edit`/`Write` → `apply_patch`, `Agent` → `spawn_agent`) itself.
+5. Content scan: plugin text assets are scanned for markers of ZCode-only
+   runtime coupling (`node_repl`, `control-browser`, `BrowserRecordingAPI`,
+   `browser_use`, `computer_use`). Matches do not block installation but
+   surface as per-plugin capability warnings, because instruction-level
+   coupling degrades gracefully while tool-level coupling does not.
+6. Anything not recognized by these rules never produces a silent partial
+   success: the entry is either available with enumerated warnings or
+   unavailable with a concrete reason.
+
+The bridge stores transpile outcomes in a sidecar metadata file next to the
+generated marketplace.json; Codex only ever reads the Codex-clean
+marketplace.json. Available entries carry `AVAILABLE` policy; unavailable
+entries keep `NOT_AVAILABLE` so native Codex install is also blocked.
+Each plugin version materializes under its own `plugins/<name>/<version>`
+directory so an installed older version keeps working until the user updates;
+directories for versions that are neither in the catalog nor installed are
+pruned after a successful refresh.
+
+## Official auth token delivery
+
+Official HTTP MCP servers authenticate with the desktop's z.ai OAuth access
+token (`oauth:zai:access_token`). The services layer reads the credential at
+agent-spawn time and exports it to the Codex bridge process as
+`CODEZ_ZAI_OFFICIAL_MCP_TOKEN`; the bridge child app-server inherits it and
+Codex resolves `bearer_token_env_var` from its own process environment, so the
+token never touches disk in materialized files. A missing token never blocks
+installation or other components: the affected MCP servers fail authentication
+visibly, and the store surfaces a login hint on the plugin. Remote workspace
+bridges have no credential store access, so official-auth MCP servers remain
+unavailable there until a token relay is designed.
+
+## Plugin hook trust
+
+Codex gates plugin hooks behind per-hook trust persisted in user config. After
+a successful official install or update, the bridge enumerates the plugin's
+hooks via `hooks/list` and writes each hook's current hash to
+`hooks.state."<key>".trusted_hash`, limited to plugins installed from the
+generated official marketplace. This mirrors the trust Codex grants
+workspace-listed plugins automatically; hooks from any other source are never
+trusted by the bridge. Hash changes on update re-enter the same trust flow.
+
 Plugins whose required runtime depends on ZCode-specific auth, missing package
 assets or incompatible hooks/MCP must not report a successful Codex install.
-The first supported class is portable skills-based official packages with
-an existing Codex/Claude-compatible manifest; unsupported entries are
-reported as unavailable, not silently omitted as successfully installed.
 Unavailable official entries remain visible in both card and detail views. The
 bridge supplies `availablePlugins[].installationUnavailableReason`; the UI
 projects that reason to `StorePluginItem`, disables every install entry point
 (button and example-prompt fallback), displays localized explanatory copy, and
-retains the backend reason as detail tooltip content. Entries without the field
-keep the existing Codez store behavior and remain installable.
+retains the backend reason as detail tooltip content. Available entries may
+carry `officialWarnings` and `officialAuthRequired`; the UI shows them as
+capability notes without disabling installation. Entries without these fields
+keep the existing Codez store behavior.
 
 ## State and failure cases
 
@@ -69,9 +149,11 @@ keep the existing Codez store behavior and remain installable.
 4. Uninstall: use native `plugin/uninstall`, confirm removal, and retain the
    discoverable official catalog for reinstall. Do not delete unrelated
    native plugins, other marketplaces, or user plugin data.
-5. Refresh/update: make new catalog versions visible, never reinterpret a
-   remote Git HEAD as a published version, and preserve an old working install
-   if catalog refresh or upgrade fails.
+5. Refresh/update: re-run the materialize-transpile pipeline from the CDN
+   catalog so new plugins and new versions flow through unchanged rules; make
+   new catalog versions visible, preserve an old working install if catalog
+   refresh or upgrade fails, and never trust a hook hash that the current
+   pipeline did not just verify.
 6. Native catalog and ZCode official catalog are separate sources. Personal
    Codex marketplaces remain available in the Personal segment; collisions
    in names use `name@marketplace` identity.
@@ -82,8 +164,11 @@ keep the existing Codez store behavior and remain installable.
 ## Validation
 
 - Unit: official identity alias only for trusted source, schema/manifest
-  validation, missing or unsupported assets, unavailable CDN/Git, version
-  mismatch, idempotent native registration, failure receipt and rollback.
+  validation, zip SHA-256 verification, zip-slip rejection, transpiler rules
+  (manifest synthesis, path normalization, variable baking, userConfig
+  defaults, official-auth rewrite, process-hook conversion, content scan),
+  missing or unsupported assets, unavailable CDN, version mismatch, idempotent
+  native registration, failure receipt and rollback.
 - Bridge: native installed/enabled/catalog and marketplace lifecycle using
   an isolated Codex home and mock RPC; no developer configuration mutated.
 - UI: public catalog and personal sources, install/disable/uninstall/error,
@@ -94,10 +179,21 @@ keep the existing Codez store behavior and remain installable.
 - Repository: targeted tests, `pnpm typecheck`, `pnpm lint`,
   `pnpm architecture:check --changed`, and relevant desktop smoke checks.
 
-## Open evidence
+## Verified evidence (codex-cli 0.158/0.159)
 
-The online catalog currently lists 26 items. Its finance-only MCP plugins
-(`finance-search`, `hexin`, `wind`, `tianyancha`) use ZCode-specific authentication
-and have no portable skill manifest. They must remain explicitly unavailable
-until an authenticated Codex MCP integration is designed. Other entries still
-need manifest and runtime verification before being labelled compatible.
+- Local marketplace sources (`{"source": "local", "path": "./plugins/x"}`)
+  install, enable, and update through `marketplace/add` + `plugin/install`;
+  installs are copied into the Codex cache keyed by version.
+- Plugin stdio MCP servers spawn with literal args/env; no variable expansion
+  exists in legacy plugin MCP configs, so the transpiler bakes absolute paths.
+- Plugin HTTP MCP servers accept `bearer_token_env_var`; Codex resolves the
+  token from the app-server process environment (`authStatus: bearerToken`).
+- Plugin hooks are discoverable via `hooks/list`, execute only when trusted,
+  and trust is writable via `hooks.state."<key>".trusted_hash` config edits.
+  Codex expands `${CLAUDE_PLUGIN_ROOT}` in plugin hook commands at discovery
+  and maps `Edit`/`Write` matchers to `apply_patch`.
+- Plugin skills from local sources are listed as `<plugin>:<skill>` and are
+  usable immediately after install.
+- Codex ignores unknown manifest fields (`userConfig`, `description_i18n`),
+  but ignores manifest path fields that lack the `./` prefix, which the
+  transpiler normalizes.

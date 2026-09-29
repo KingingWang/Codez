@@ -27,6 +27,7 @@ import {
   PluginStoreInstallButton,
   PluginStoreItemMenu,
   PluginStorePaidPlanBadge,
+  PluginStoreCapabilityNotes,
   PluginStoreUnavailableReason,
   type PluginStoreActions,
 } from "@/settings/PluginStoreCard.js";
@@ -190,6 +191,10 @@ export function PluginStoreDetailView({
           </p>
         ) : null}
         <PluginStoreUnavailableReason
+          item={item}
+          className="flex items-center gap-1.5 text-ui-base text-foreground-subtle"
+        />
+        <PluginStoreCapabilityNotes
           item={item}
           className="flex items-center gap-1.5 text-ui-base text-foreground-subtle"
         />
