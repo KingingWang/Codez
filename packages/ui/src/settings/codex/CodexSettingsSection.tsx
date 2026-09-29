@@ -14,7 +14,7 @@ import { useCodexMessages } from "./messages.js";
 import { useCodexNativeBrowserCuaCapability } from "./useCodexNativeBrowserCua.js";
 import { useSettings } from "@/hooks/useSettingService.js";
 
-type Panel =
+export type CodexSettingsPanel =
   | "account"
   | "models"
   | "providers"
@@ -25,7 +25,7 @@ type Panel =
   | "config"
   | "history"
   | "memory";
-const PANELS: Panel[] = [
+const PANELS: CodexSettingsPanel[] = [
   "account",
   "models",
   "providers",
@@ -42,8 +42,13 @@ interface CodexSettingsSectionProps {
   workspaceIdentity?: string;
   sessionId?: string;
   remoteSessionId?: string;
-  initialPanel?: Panel;
+  initialPanel?: CodexSettingsPanel;
   onboarding?: boolean;
+  /**
+   * 内部面板切换回调：嵌在 SettingsPage 时用于把有侧栏对应项的面板
+   * 同步为外层 activeSection（标题/高亮跟随内容）；无对应项的面板由调用方忽略。
+   */
+  onPanelChange?: (panel: CodexSettingsPanel) => void;
 }
 
 export function CodexSettingsSection(props: CodexSettingsSectionProps) {
@@ -64,7 +69,7 @@ export function CodexSettingsSection(props: CodexSettingsSectionProps) {
 function CodexSettingsContent(props: CodexSettingsSectionProps) {
   const text = useCodexMessages();
   const controller = useCodexSettings(props);
-  const [panel, setPanel] = useState<Panel>(props.initialPanel ?? "account");
+  const [panel, setPanel] = useState<CodexSettingsPanel>(props.initialPanel ?? "account");
   const { settings: appSettings, update: updateAppSettings } = useSettings();
   const nativeBrowserCuaCapability = useCodexNativeBrowserCuaCapability(
     controller.services,
@@ -111,7 +116,10 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
                   variant={panel === id ? "secondary" : "ghost"}
                   size="sm"
                   aria-current={panel === id ? "page" : undefined}
-                  onClick={() => setPanel(id)}
+                  onClick={() => {
+                    setPanel(id);
+                    props.onPanelChange?.(id);
+                  }}
                 >
                   {text[id]}
                 </Button>

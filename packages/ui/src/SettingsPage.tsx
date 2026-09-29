@@ -36,11 +36,14 @@ import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
 import {
   CodexSettingsSection,
   CodexCapabilityNotice,
+  type CodexSettingsPanel,
 } from "@/settings/codex/CodexSettingsSection.js";
 import {
   isCodexSettingsSection,
   isCodexUnsupportedSection,
 } from "@/settings/codex/codexSettingsData.js";
+import { codexPanelToSection, codexSectionToPanel } from "@/settings/codex/codexSettingsNav.js";
+
 import { useUsageEntitlement } from "@/hooks/useUsageEntitlement.js";
 import {
   addPendingSettingsSectionListener,
@@ -610,6 +613,15 @@ export function SettingsPage({
       writeLastSettingsSectionPreference(resolvedSection);
     },
     [activeSection],
+  );
+  // 内部面板与侧栏分区是同一导航的两个入口：有对应分区时切换外层
+  // activeSection，让标题与侧栏高亮始终跟随可见面板。
+  const handleCodexSettingsPanelChange = useCallback(
+    (panel: CodexSettingsPanel) => {
+      const section = codexPanelToSection(panel);
+      if (section) setActiveSettingsSection(section);
+    },
+    [setActiveSettingsSection],
   );
   const handleOpenCodingPlanUpgradeSettings = useCallback(
     (
@@ -1713,21 +1725,8 @@ export function SettingsPage({
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                             remoteSessionId={activeWorkspaceTab?.remoteSessionId ?? undefined}
-                            initialPanel={
-                              activeSection === "skill"
-                                ? "skills"
-                                : activeSection === "subagents"
-                                  ? "agents"
-                                  : activeSection === "mcp"
-                                    ? "mcp"
-                                    : activeSection === "plugin"
-                                      ? "plugins"
-                                      : activeSection === "modelProvider"
-                                        ? "providers"
-                                        : activeSection === "memory"
-                                          ? "memory"
-                                          : "account"
-                            }
+                            onPanelChange={handleCodexSettingsPanelChange}
+                            initialPanel={codexSectionToPanel(activeSection)}
                           />
                         ) : isDesktop && isCodexUnsupportedSection(activeSection) ? (
                           <CodexCapabilityNotice
