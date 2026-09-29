@@ -2262,8 +2262,16 @@ export function createLocalServices(options: {
       // Codex 拥有账号、配置与工具；旧 Provider/Zai/CUA/Subagent 准备不能成为其启动前置条件。
       // PATH 仍由 initializeRuntimeProcessEnv 统一准备，身份与 transport 仍由进程管理器注入。
       if (usesDefaultCodexDesktopBridge) {
+        // 官方插件的 ZCode 专有 HTTP MCP 通过 bearer_token_env_var 从进程环境取 token；
+        // 仅在已登录 z.ai 时注入，token 不落盘、不进入物化文件（spec: codex-zcode-plugin-compatibility）。
+        const zaiOfficialMcpToken = (
+          await credentialService
+            .load(`oauth:${ZAI_PROVIDER_ID}:access_token`)
+            .catch(() => undefined)
+        )?.trim();
         return {
           ...networkEnv,
+          ...(zaiOfficialMcpToken ? { CODEZ_ZAI_OFFICIAL_MCP_TOKEN: zaiOfficialMcpToken } : {}),
           // codex bridge 的 update_plan 工具注册在 app-server 配置加载期，只能随进程启动注入；
           // 开关变更由下方 messageStreamShowTodos 订阅统一释放活动 workspace 后生效。
           ...(settings.messageStreamShowTodos === true

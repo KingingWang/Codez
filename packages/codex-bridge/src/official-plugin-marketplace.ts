@@ -1,242 +1,56 @@
+/**
+ * ZCode 官方插件目录 → Codex 本地市场物化器。
+ *
+ * 刷新管线（spec: codex-zcode-plugin-compatibility「Compatibility pipeline」）：
+ *   CDN catalog → 逐插件下载 zip（SHA-256 校验）→ 安全解压 → 转译 →
+ *   暂存区组装 plugins/<name>/<version> + marketplace.json + 桥侧车元数据 → 原子换入。
+ * Codex 只读生成的 marketplace.json（local source）；转译结果与诊断只进侧车文件。
+ * 任何完整性失败（哈希不符/zip 损坏）使整个刷新失败并保留上一份快照；
+ * 单个插件的转译降级只影响该插件（fail-visible）。
+ */
+import { resolveRuntimeCodezEndpointOrigin } from "@codez/shared/codezEndpoint";
 import { randomUUID } from "node:crypto";
-import { execFile } from "node:child_process";
-import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { promisify } from "node:util";
 import { z } from "zod";
+import type { OfficialCatalogFetcher } from "./official-plugin-package.js";
+import {
+  DefaultOfficialCatalogFetcher,
+  extractOfficialPluginZip,
+  verifySha256,
+} from "./official-plugin-package.js";
+import { transpileOfficialPlugin } from "./official-plugin-transpile.js";
+import {
+  OFFICIAL_CATALOG_URL,
+  OFFICIAL_NATIVE_NAME,
+  OFFICIAL_SOURCE_NAME,
+  generatedMarketplaceSchema,
+  sidecarMetaSchema,
+  sourceCatalogSchema,
+} from "./official-plugin-catalog.js";
+import type {
+  OfficialCatalog,
+  OfficialCatalogPlugin,
+  OfficialPluginCatalogSource,
+  SidecarMeta,
+} from "./official-plugin-catalog.js";
 
-const OFFICIAL_SOURCE_NAME = "zcode-plugins-official";
-const OFFICIAL_NATIVE_NAME = "codez-plugins-official";
-const OFFICIAL_CATALOG_URL = "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json";
-const OFFICIAL_GIT_URL = "https://github.com/zai-org/zcode-plugins.git";
-const OFFICIAL_GIT_TREE_URL = "https://api.github.com/repos/zai-org/zcode-plugins/git/trees";
-const PLUGIN_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,127}$/u;
-const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
-const SHA_PATTERN = /^[a-f0-9]{40}$/u;
-const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
-const MCP_ONLY_PLUGINS = new Set(["finance-search", "hexin", "wind", "tianyancha"]);
-const MANIFEST_CONCURRENCY = 6;
-const UNSUPPORTED_MANIFEST_FIELDS = ["channels", "lspServers", "outputStyles", "settings"] as const;
+export type {
+  OfficialCatalog,
+  OfficialCatalogPlugin,
+  OfficialPluginCatalogSource,
+} from "./official-plugin-catalog.js";
 
-export type OfficialPluginInstallation = "AVAILABLE" | "NOT_AVAILABLE";
+/** 刷新时逐插件下载/转译的并发上限。 */
+const PLUGIN_CONCURRENCY = 4;
 
-export interface OfficialCatalogPlugin {
-  name: string;
-  version: string;
-  policy: { installation: OfficialPluginInstallation };
-  description?: string;
-  displayName?: string;
-  category?: string;
-}
-
-export interface OfficialCatalog {
-  updatedAt?: string;
-  plugins: OfficialCatalogPlugin[];
-}
-
-export interface OfficialPluginCatalogSource {
-  name: string;
-  plugins: Array<{
-    name: string;
-    version: string;
-    source: {
-      source: "url";
-      type: "zip";
-      url: string;
-      sha256: string;
-      path: string;
-    };
-    description?: string;
-    displayName?: string;
-    category?: string;
-    policy?: { installation: OfficialPluginInstallation };
-  }>;
-}
-
-export interface OfficialCodexMarketplacePlugin {
-  name: string;
-  version: string;
-  description?: string;
-  displayName?: string;
-  category?: string;
-  source: {
-    source: "git-subdir";
-    url: string;
-    path: string;
-    sha: string;
-  };
-  policy: { installation: OfficialPluginInstallation };
-}
-
-export interface OfficialCodexMarketplace {
-  name: string;
-  plugins: OfficialCodexMarketplacePlugin[];
-}
-
-export interface OfficialCatalogFetcher {
-  fetchText(url: string): Promise<string>;
-  resolveGitHead(url: string): Promise<string>;
-}
-
-const sourcePluginSchema = z.object({
-  name: z.string().regex(PLUGIN_NAME_PATTERN, "Invalid official plugin name"),
-  version: z.string().regex(VERSION_PATTERN, "Invalid official plugin version"),
-  source: z.object({
-    source: z.literal("url"),
-    type: z.literal("zip"),
-    url: z.string().url(),
-    sha256: z.string().regex(SHA256_PATTERN, "Invalid official artifact SHA-256"),
-    path: z.string(),
-  }),
-  description: z.string().trim().min(1).optional(),
-  displayName: z.string().trim().min(1).optional(),
-  category: z.string().trim().min(1).optional(),
-  policy: z.object({ installation: z.enum(["AVAILABLE", "NOT_AVAILABLE"]) }).optional(),
-});
-
-const sourceCatalogSchema = z.object({
-  name: z.string(),
-  plugins: z.array(sourcePluginSchema).min(1),
-});
-
-const generatedSchema = z.object({
-  name: z.literal(OFFICIAL_NATIVE_NAME),
-  plugins: z.array(
-    z.object({
-      name: z.string().regex(PLUGIN_NAME_PATTERN),
-      version: z.string().regex(VERSION_PATTERN),
-      source: z.object({
-        source: z.literal("git-subdir"),
-        url: z.literal(OFFICIAL_GIT_URL),
-        path: z.string().regex(/^\.\/plugins\/[a-z0-9][a-z0-9._-]{0,127}$/u),
-        sha: z.string().regex(SHA_PATTERN),
-      }),
-      policy: z.object({ installation: z.enum(["AVAILABLE", "NOT_AVAILABLE"]) }),
-      description: z.string().min(1).optional(),
-      displayName: z.string().min(1).optional(),
-      category: z.string().min(1).optional(),
-    }),
-  ),
-});
-
-const treeSchema = z.object({
-  sha: z.string().regex(SHA_PATTERN),
-  truncated: z.literal(false),
-  tree: z.array(z.object({ path: z.string(), type: z.string() })),
-});
-
-const manifestSchema = z.object({
-  name: z.string(),
-  version: z.string(),
-  mcpServers: z.unknown().optional(),
-  hooks: z.unknown().optional(),
-  channels: z.unknown().optional(),
-  lspServers: z.unknown().optional(),
-  outputStyles: z.unknown().optional(),
-  settings: z.unknown().optional(),
-});
-
-export function verifyOfficialPluginManifest(
-  name: string,
-  version: string,
-  manifest: { name?: unknown; version?: unknown },
-): void {
-  if (manifest.name !== name) throw new Error("Official plugin manifest name mismatch");
-  if (manifest.version !== version) throw new Error("Official plugin manifest version mismatch");
-}
-
-function trustedArtifactUrl(name: string, version: string) {
-  return `https://cdn-zcode.z.ai/zcode/official-plugin/plugins/${encodeURIComponent(name)}/${encodeURIComponent(version)}/plugin.zip`;
-}
-
-function metadata(plugin: z.infer<typeof sourcePluginSchema>) {
-  return {
-    ...(plugin.description ? { description: plugin.description } : {}),
-    ...(plugin.displayName ? { displayName: plugin.displayName } : {}),
-    ...(plugin.category ? { category: plugin.category } : {}),
-  };
-}
-
-export function buildOfficialCodexMarketplace(
-  catalog: OfficialPluginCatalogSource,
-  sha: string,
-): OfficialCodexMarketplace {
-  if (catalog.name !== OFFICIAL_SOURCE_NAME)
-    throw new Error("Untrusted official marketplace identity");
-  if (!SHA_PATTERN.test(sha)) throw new Error("Official marketplace requires a resolved commit");
-
-  const source = sourceCatalogSchema.parse(catalog);
-  const names = new Set<string>();
-  return {
-    name: OFFICIAL_NATIVE_NAME,
-    plugins: source.plugins.map((plugin) => {
-      if (names.has(plugin.name)) throw new Error("Duplicate official plugin name");
-      names.add(plugin.name);
-      if (plugin.source.url !== trustedArtifactUrl(plugin.name, plugin.version))
-        throw new Error(`Official plugin ${plugin.name} uses an untrusted source`);
-      if (plugin.source.path !== plugin.name)
-        throw new Error(`Official plugin ${plugin.name} has a mismatched source path`);
-      const installation =
-        plugin.policy?.installation ??
-        (isStructurallyPortablePluginName(plugin.name) ? "AVAILABLE" : "NOT_AVAILABLE");
-      return {
-        name: plugin.name,
-        version: plugin.version,
-        ...metadata(plugin),
-        source: {
-          source: "git-subdir" as const,
-          url: OFFICIAL_GIT_URL,
-          path: `./plugins/${plugin.name}`,
-          sha,
-        },
-        policy: {
-          installation: MCP_ONLY_PLUGINS.has(plugin.name) ? "NOT_AVAILABLE" : installation,
-        },
-      };
-    }),
-  };
-}
-
-class DefaultOfficialCatalogFetcher implements OfficialCatalogFetcher {
-  async fetchText(url: string): Promise<string> {
-    const response = await fetch(url, { redirect: "error" });
-    if (!response.ok) throw new Error(`Official catalog request failed: ${response.status}`);
-    return await response.text();
-  }
-
-  async resolveGitHead(url: string): Promise<string> {
-    if (url !== OFFICIAL_GIT_URL) throw new Error("Untrusted official Git source");
-    const output = await promisify(execFile)("git", ["ls-remote", url, "HEAD"], {
-      maxBuffer: 1024,
-    });
-    const match = /^([a-f0-9]{40})\tHEAD$/mu.exec(output.stdout.trim());
-    if (!match) throw new Error("Could not resolve official Git HEAD");
-    return match[1]!;
-  }
-}
+/** 供刷新 GC 查询「仍被 Codex 安装引用」的官方插件版本。 */
+export type OfficialInstalledVersionsProvider = () => Promise<
+  Array<{ name: string; version: string }>
+>;
 
 function jsonText(value: unknown) {
   return `${JSON.stringify(value, null, 2)}\n`;
-}
-
-function treePathMatches(path: string, expected: string) {
-  return path === expected || path.startsWith(`${expected}/`);
-}
-
-function isStructurallyPortablePluginName(name: string) {
-  // The generator can still mark a supplied policy, but refresh only promotes a name after
-  // pinned tree plus manifest validation. This legacy-safe list keeps pure build calls honest.
-  return name === "github";
-}
-
-function structuralCompatibility(entries: readonly { path: string; type: string }[], name: string) {
-  const root = `plugins/${name}`;
-  const own = entries.filter((entry) => treePathMatches(entry.path, root));
-  const manifest = own.some((entry) => entry.path === `${root}/.claude-plugin/plugin.json`);
-  const skills = own.some((entry) => treePathMatches(entry.path, `${root}/skills`));
-  const mcp = own.some((entry) => entry.path === `${root}/.mcp.json`);
-  const hooks = own.some((entry) => entry.path === `${root}/hooks/hooks.json`);
-  return { manifest, skills, mcp, hooks, portable: manifest && skills && !mcp && !hooks };
 }
 
 async function mapBounded<T, R>(
@@ -257,138 +71,267 @@ async function mapBounded<T, R>(
 }
 
 export class OfficialPluginMarketplace {
-  readonly #marketplacePath: string;
+  readonly #baseDir: string;
   readonly #fetcher: OfficialCatalogFetcher;
+  readonly #zcodeBaseUrl: string;
   #refreshTail: Promise<unknown> = Promise.resolve();
 
-  constructor(baseDir: string, fetcher?: OfficialCatalogFetcher) {
+  constructor(
+    baseDir: string,
+    options?: { fetcher?: OfficialCatalogFetcher; zcodeBaseUrl?: string },
+  ) {
     if (!baseDir.trim()) throw new Error("Official marketplace base directory is required");
-    this.#marketplacePath = join(resolve(baseDir), ".agents", "plugins", "marketplace.json");
-    this.#fetcher = fetcher ?? new DefaultOfficialCatalogFetcher();
+    this.#baseDir = resolve(baseDir);
+    this.#fetcher = options?.fetcher ?? new DefaultOfficialCatalogFetcher();
+    // 默认跟随桥进程环境（CODEZ_BASE_URL/CODEZ_ENDPOINT_ORIGIN），与桌面端点解析一致；测试可注入。
+    this.#zcodeBaseUrl = options?.zcodeBaseUrl?.trim() || resolveRuntimeCodezEndpointOrigin();
   }
 
   get path() {
-    return this.#marketplacePath;
+    return join(this.#baseDir, ".agents", "plugins", "marketplace.json");
+  }
+
+  get #metaPath() {
+    return join(this.#baseDir, ".agents", "plugins", "marketplace.codez.json");
   }
 
   async load(): Promise<{ path: string; catalog: OfficialCatalog; updatedAt?: string } | null> {
-    let raw: string;
+    let marketplaceRaw: string;
+    let metaRaw: string;
     let modifiedAt: Date;
     try {
-      [raw, { mtime: modifiedAt }] = await Promise.all([
-        readFile(this.#marketplacePath, "utf8"),
-        stat(this.#marketplacePath),
+      [marketplaceRaw, metaRaw, { mtime: modifiedAt }] = await Promise.all([
+        readFile(this.path, "utf8"),
+        readFile(this.#metaPath, "utf8"),
+        stat(this.path),
       ]);
     } catch (error) {
       if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return null;
       throw error;
     }
+    const marketplace = generatedMarketplaceSchema.parse(JSON.parse(marketplaceRaw));
+    const meta = sidecarMetaSchema.parse(JSON.parse(metaRaw));
     return {
-      path: this.#marketplacePath,
+      path: this.path,
       catalog: {
         updatedAt: modifiedAt.toISOString(),
-        plugins: this.#catalogPlugins(generatedSchema.parse(JSON.parse(raw))),
+        plugins: this.#catalogPlugins(marketplace, meta),
       },
     };
   }
 
-  async refresh(): Promise<{ path: string; catalog: OfficialCatalog; updatedAt?: string }> {
-    const refresh = this.#refreshTail.catch(() => undefined).then(() => this.#refresh());
+  async refresh(options?: {
+    installedVersions?: OfficialInstalledVersionsProvider;
+  }): Promise<{ path: string; catalog: OfficialCatalog; updatedAt?: string }> {
+    const refresh = this.#refreshTail
+      .catch(() => undefined)
+      .then(() => this.#refresh(options?.installedVersions));
     this.#refreshTail = refresh;
     return await refresh;
   }
 
-  #catalogPlugins(marketplace: OfficialCodexMarketplace): OfficialCatalogPlugin[] {
-    const sha = marketplace.plugins[0]?.source.sha;
+  #catalogPlugins(
+    marketplace: z.infer<typeof generatedMarketplaceSchema>,
+    meta: SidecarMeta,
+  ): OfficialCatalogPlugin[] {
     const names = new Set<string>();
     return marketplace.plugins.map((plugin) => {
       if (names.has(plugin.name))
         throw new Error("Official marketplace cache contains duplicate plugins");
       names.add(plugin.name);
-      // Revalidate cached native sources; a tampered path or divergent pin must never authorize Git IO.
-      if (!sha || plugin.source.sha !== sha || plugin.source.path !== `./plugins/${plugin.name}`)
-        throw new Error("Official marketplace cache contains an untrusted Git source");
+      const [, , nameSegment] = plugin.source.path.split("/");
+      if (nameSegment !== plugin.name)
+        throw new Error("Official marketplace cache contains an untrusted local source");
+      const entryMeta = meta.plugins[plugin.name];
+      if (!entryMeta) throw new Error("Official marketplace sidecar metadata is incomplete");
       return {
         name: plugin.name,
-        version: plugin.version,
+        version: entryMeta.version,
         policy: plugin.policy,
+        warnings: entryMeta.warnings,
+        requiresOfficialAuth: entryMeta.requiresOfficialAuth,
+        requiresPaidPlan: entryMeta.requiresPaidPlan,
+        hasHooks: entryMeta.hasHooks,
+        ...(entryMeta.unavailableReason ? { unavailableReason: entryMeta.unavailableReason } : {}),
         ...(plugin.description ? { description: plugin.description } : {}),
         ...(plugin.displayName ? { displayName: plugin.displayName } : {}),
         ...(plugin.category ? { category: plugin.category } : {}),
+        ...(entryMeta.displayNameI18n ? { displayNameI18n: entryMeta.displayNameI18n } : {}),
+        ...(entryMeta.descriptionI18n ? { descriptionI18n: entryMeta.descriptionI18n } : {}),
+        ...(entryMeta.icon ? { icon: entryMeta.icon } : {}),
+        ...(entryMeta.author ? { author: entryMeta.author } : {}),
+        ...(entryMeta.authorUrl ? { authorUrl: entryMeta.authorUrl } : {}),
       };
     });
   }
 
-  async #refresh(): Promise<{ path: string; catalog: OfficialCatalog; updatedAt?: string }> {
+  async #refresh(
+    installedVersions?: OfficialInstalledVersionsProvider,
+  ): Promise<{ path: string; catalog: OfficialCatalog; updatedAt?: string }> {
     const source = sourceCatalogSchema.parse(
       JSON.parse(await this.#fetcher.fetchText(OFFICIAL_CATALOG_URL)),
     );
     if (source.name !== OFFICIAL_SOURCE_NAME)
       throw new Error("Untrusted official marketplace identity");
-    const sha = await this.#fetcher.resolveGitHead(OFFICIAL_GIT_URL);
-    const treeUrl = `${OFFICIAL_GIT_TREE_URL}/${sha}?recursive=1`;
-    const tree = treeSchema.parse(JSON.parse(await this.#fetcher.fetchText(treeUrl)));
-    const compatibility = new Map(
-      source.plugins.map((plugin) => [
-        plugin.name,
-        structuralCompatibility(tree.tree, plugin.name),
-      ]),
-    );
-    const candidates = source.plugins.filter(
-      (plugin) => !MCP_ONLY_PLUGINS.has(plugin.name) && compatibility.get(plugin.name)!.portable,
-    );
-    const manifests = await mapBounded(candidates, MANIFEST_CONCURRENCY, async (plugin) => {
-      const manifestUrl = `https://raw.githubusercontent.com/zai-org/zcode-plugins/${sha}/plugins/${plugin.name}/.claude-plugin/plugin.json`;
-      try {
-        const manifest = manifestSchema.parse(
-          JSON.parse(await this.#fetcher.fetchText(manifestUrl)),
+    const names = new Set<string>();
+    for (const plugin of source.plugins) {
+      if (names.has(plugin.name)) throw new Error("Duplicate official plugin name");
+      names.add(plugin.name);
+      if (plugin.source.path !== plugin.name)
+        throw new Error(`Official plugin ${plugin.name} has a mismatched source path`);
+    }
+
+    // 暂存区：全部插件成功物化后才换入，失败插件以 NOT_AVAILABLE 降级但仍进目录。
+    // 暂存区与目标同文件系统，rename 才是原子且不会 EXDEV。
+    const staging = join(this.#baseDir, `.refresh-${process.pid}-${randomUUID()}`);
+    const stagedPlugins: Array<{ name: string; version: string; from: string }> = [];
+    try {
+      const outcomes = await mapBounded(source.plugins, PLUGIN_CONCURRENCY, async (plugin) => {
+        const bakedRoot = join(this.#baseDir, "plugins", plugin.name, plugin.version);
+        let outcome: Awaited<ReturnType<typeof transpileOfficialPlugin>>;
+        const zip = await this.#fetcher.fetchBuffer(plugin.source.url);
+        verifySha256(zip, plugin.source.sha256);
+        const extracted = await extractOfficialPluginZip(
+          zip,
+          join(staging, "extract", plugin.name),
         );
-        verifyOfficialPluginManifest(plugin.name, plugin.version, manifest);
-        if (
-          manifest.mcpServers !== undefined ||
-          manifest.hooks !== undefined ||
-          UNSUPPORTED_MANIFEST_FIELDS.some((field) => manifest[field] !== undefined)
-        )
-          return false;
-        return true;
-      } catch {
-        // 目录可信，但单个 manifest 不兼容时只降级该插件，不让整个目录刷新失败。
-        return false;
-      }
-    });
-    const available = new Set(
-      candidates.filter((_, index) => manifests[index]).map((plugin) => plugin.name),
-    );
-    const marketplace = buildOfficialCodexMarketplace(
-      {
-        ...source,
-        plugins: source.plugins.map((plugin) => ({
-          ...plugin,
-          policy: {
-            installation: available.has(plugin.name) ? "AVAILABLE" : "NOT_AVAILABLE",
+        try {
+          outcome = await transpileOfficialPlugin({
+            pluginDir: extracted.pluginDir,
+            bakedPluginRoot: bakedRoot,
+            zcodeBaseUrl: this.#zcodeBaseUrl,
+            expectedName: plugin.name,
+            expectedVersion: plugin.version,
+          });
+          const target = join(staging, "plugins", plugin.name, plugin.version);
+          await mkdir(dirname(target), { recursive: true });
+          await rename(extracted.pluginDir, target);
+          stagedPlugins.push({ name: plugin.name, version: plugin.version, from: target });
+        } finally {
+          await rm(extracted.stagingRoot, { recursive: true, force: true }).catch(() => undefined);
+        }
+        return { plugin, outcome };
+      });
+
+      const marketplace = {
+        name: OFFICIAL_NATIVE_NAME,
+        plugins: outcomes.map(({ plugin, outcome }) => ({
+          name: plugin.name,
+          source: {
+            source: "local" as const,
+            path: `./plugins/${plugin.name}/${plugin.version}`,
           },
+          policy: { installation: outcome.installation },
+          ...(plugin.description ? { description: plugin.description } : {}),
+          ...(plugin.displayName ? { displayName: plugin.displayName } : {}),
+          ...(plugin.category ? { category: plugin.category } : {}),
         })),
-      },
-      sha,
-    );
-    await this.#writeAtomic(marketplace);
-    return {
-      path: this.#marketplacePath,
-      catalog: { updatedAt: new Date().toISOString(), plugins: this.#catalogPlugins(marketplace) },
-    };
+      };
+      const meta: SidecarMeta = {
+        catalogUpdatedAt: new Date().toISOString(),
+        plugins: Object.fromEntries(
+          outcomes.map(({ plugin, outcome }) => [
+            plugin.name,
+            {
+              version: plugin.version,
+              installation: outcome.installation,
+              ...(outcome.unavailableReason
+                ? { unavailableReason: outcome.unavailableReason }
+                : {}),
+              warnings: outcome.warnings,
+              requiresOfficialAuth: outcome.requiresOfficialAuth,
+              requiresPaidPlan: plugin.requiresPaidPlan ?? outcome.requiresPaidPlan,
+              hasHooks: outcome.hasHooks,
+              ...(plugin.displayName_i18n ? { displayNameI18n: plugin.displayName_i18n } : {}),
+              ...(plugin.description_i18n ? { descriptionI18n: plugin.description_i18n } : {}),
+              ...(plugin.icon ? { icon: plugin.icon } : {}),
+              ...(plugin.author?.name ? { author: plugin.author.name } : {}),
+              ...(plugin.author?.url ? { authorUrl: plugin.author.url } : {}),
+            },
+          ]),
+        ),
+      };
+
+      // 先落盘 marketplace + 侧车（原子），再换入插件目录，最后回收旧版本目录。
+      const marketplaceDir = dirname(this.path);
+      await mkdir(marketplaceDir, { recursive: true });
+      await this.#writeAtomic(this.path, marketplace);
+      await this.#writeAtomic(this.#metaPath, meta);
+      for (const staged of stagedPlugins) {
+        const destination = join(this.#baseDir, "plugins", staged.name, staged.version);
+        await rm(join(this.#baseDir, "plugins", staged.name, staged.version), {
+          recursive: true,
+          force: true,
+        }).catch(() => undefined);
+        await mkdir(dirname(destination), { recursive: true });
+        await rename(staged.from, destination);
+      }
+      await this.#collectGarbage(
+        outcomes.map(({ plugin }) => `${plugin.name}/${plugin.version}`),
+        installedVersions,
+      );
+      return {
+        path: this.path,
+        catalog: {
+          updatedAt: meta.catalogUpdatedAt,
+          plugins: this.#catalogPlugins(generatedMarketplaceSchema.parse(marketplace), meta),
+        },
+      };
+    } finally {
+      await rm(staging, { recursive: true, force: true }).catch(() => undefined);
+    }
   }
 
-  async #writeAtomic(marketplace: OfficialCodexMarketplace): Promise<void> {
-    await mkdir(dirname(this.#marketplacePath), { recursive: true });
-    const temporary = join(
-      dirname(this.#marketplacePath),
-      `.marketplace-${process.pid}-${randomUUID()}.tmp`,
-    );
+  /** 回收不再被目录或已安装实例引用的旧版本物化目录。 */
+  async #collectGarbage(
+    currentKeys: readonly string[],
+    installedVersions?: OfficialInstalledVersionsProvider,
+  ): Promise<void> {
+    const keep = new Set(currentKeys);
+    if (installedVersions) {
+      try {
+        for (const installed of await installedVersions()) {
+          keep.add(`${installed.name}/${installed.version}`);
+        }
+      } catch {
+        // 查询不到已安装列表时宁可不回收，避免删掉仍在用的物化目录。
+        return;
+      }
+    }
+    const pluginsRoot = join(this.#baseDir, "plugins");
+    let pluginDirs;
     try {
-      await writeFile(temporary, jsonText(marketplace), "utf8");
-      // Windows rename-over-file can fail; atomic-replace semantics are recovered without
-      // ever exposing a partial file.
-      await rename(temporary, this.#marketplacePath);
+      pluginDirs = await readdir(pluginsRoot, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const pluginDir of pluginDirs) {
+      if (!pluginDir.isDirectory()) continue;
+      const versionsRoot = join(pluginsRoot, pluginDir.name);
+      const versionDirs = await readdir(versionsRoot, { withFileTypes: true }).catch(() => []);
+      let remaining = 0;
+      for (const versionDir of versionDirs) {
+        if (!versionDir.isDirectory()) continue;
+        if (keep.has(`${pluginDir.name}/${versionDir.name}`)) {
+          remaining += 1;
+          continue;
+        }
+        await rm(join(versionsRoot, versionDir.name), { recursive: true, force: true }).catch(
+          () => undefined,
+        );
+      }
+      if (remaining === 0) {
+        await rm(versionsRoot, { recursive: true, force: true }).catch(() => undefined);
+      }
+    }
+  }
+
+  async #writeAtomic(path: string, value: unknown): Promise<void> {
+    const temporary = join(dirname(path), `.${process.pid}-${randomUUID()}.tmp`);
+    try {
+      await writeFile(temporary, jsonText(value), "utf8");
+      // rename 在同文件系统内是原子的；先写临时文件再替换，避免暴露半截文件。
+      await rename(temporary, path);
     } catch (error) {
       await rm(temporary, { force: true }).catch(() => undefined);
       throw error;

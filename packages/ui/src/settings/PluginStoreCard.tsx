@@ -256,6 +256,40 @@ export function PluginStoreUnavailableReason({
   );
 }
 
+/** 可安装的官方条目携带的能力提示：转译警告（ZCode 专有运行时耦合、被降级的组件）
+ * 与官方账号要求。只提示、不阻断安装；与不可安装原因共用同一 tooltip 呈现模式。 */
+export function PluginStoreCapabilityNotes({
+  item,
+  className,
+}: {
+  item: Pick<StorePluginItem, "id" | "summary">;
+  className?: string;
+}) {
+  const { intl } = useCodezIntl();
+  const warnings = item.summary?.officialWarnings ?? [];
+  const authRequired = item.summary?.officialAuthRequired === true;
+  if (item.summary === undefined || (warnings.length === 0 && !authRequired)) return null;
+  const warningLabel = intl.formatMessage({ id: "settings.plugins.store.capabilityWarning" });
+  const authLabel = intl.formatMessage({ id: "settings.plugins.store.authRequired" });
+  const label = warnings.length > 0 ? warningLabel : authLabel;
+  const description = [
+    ...warnings,
+    ...(authRequired && warnings.length > 0 ? [authLabel] : []),
+  ].join("\n");
+  return (
+    <ControlHintTooltip title={label} description={description} standalone>
+      <div
+        data-testid="plugin-store-capability-notes"
+        data-plugin-id={item.id}
+        className={className ?? "flex items-center gap-1.5 text-ui-sm text-foreground-subtle"}
+      >
+        <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+        <span>{label}</span>
+      </div>
+    </ControlHintTooltip>
+  );
+}
+
 /** 已安装条目的「可更新」角标：列表/卡片标题行直接标出哪个插件有更新，与详情页入口共用判定。 */
 export function PluginStoreUpdateBadge({
   item,
@@ -368,6 +402,10 @@ export function PluginStoreCard({
           </div>
         ) : null}
         <PluginStoreUnavailableReason
+          item={item}
+          className="mt-0.5 flex items-center gap-1.5 truncate text-ui-sm text-foreground-subtle"
+        />
+        <PluginStoreCapabilityNotes
           item={item}
           className="mt-0.5 flex items-center gap-1.5 truncate text-ui-sm text-foreground-subtle"
         />

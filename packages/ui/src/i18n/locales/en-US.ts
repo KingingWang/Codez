@@ -4038,6 +4038,8 @@ const enUS: Record<string, string> = {
   "settings.plugins.store.install": "Install",
   "settings.plugins.store.installUnavailable":
     "This official plugin is not yet available in Codex.",
+  "settings.plugins.store.capabilityWarning": "Some features are unavailable in Codex",
+  "settings.plugins.store.authRequired": "Requires a signed-in z.ai account",
   "settings.plugins.store.paidPlanBadge": "Coding Plan",
   "settings.plugins.store.requiresPaidPlan": "This plugin works better with a Coding Plan",
   "settings.plugins.store.tryNow": "Try now",

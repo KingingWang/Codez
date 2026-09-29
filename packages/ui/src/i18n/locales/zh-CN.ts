@@ -3773,6 +3773,8 @@ const zhCN: Record<string, string> = {
   "settings.plugins.store.showLess": "收起",
   "settings.plugins.store.install": "安装",
   "settings.plugins.store.installUnavailable": "这个官方插件暂不支持 Codex。",
+  "settings.plugins.store.capabilityWarning": "部分功能在 Codex 中不可用",
+  "settings.plugins.store.authRequired": "需要登录 z.ai 账号",
   "settings.plugins.store.paidPlanBadge": "编程套餐",
   "settings.plugins.store.requiresPaidPlan": "这个插件搭配编程套餐可以更好地工作",
   "settings.plugins.store.tryNow": "立即试用",

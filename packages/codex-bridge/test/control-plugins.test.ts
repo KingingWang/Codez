@@ -64,7 +64,7 @@ function fixture(remote = false) {
       }),
     "plugin/read": () => detail(),
     "config/value/write": (params) => {
-      plugin.enabled = Boolean(params.value);
+      if (typeof params.value === "boolean") plugin.enabled = params.value;
       return {
         status: "ok",
         version: "v1",
@@ -91,6 +91,7 @@ function fixture(remote = false) {
       upgradedRoots: ["/market"],
       errors: [],
     }),
+    "hooks/list": () => ({ data: [] }),
   };
   const rpc: CodexRpcPort = {
     async request<T>(method: string, params: unknown): Promise<T> {
@@ -192,23 +193,20 @@ test("official catalog is visible before native registration, and install is a v
           version: "0.1.2",
           description: "GitHub workflows",
           policy: { installation: "AVAILABLE" },
-          source: {
-            source: "git-subdir",
-            url: "https://github.com/zai-org/zcode-plugins.git",
-            path: "./plugins/github",
-            sha: "c".repeat(40),
-          },
+          warnings: [],
+          requiresOfficialAuth: false,
+          requiresPaidPlan: false,
+          hasHooks: false,
         },
         {
           name: "wind",
           version: "0.1.0",
           policy: { installation: "NOT_AVAILABLE" },
-          source: {
-            source: "git-subdir",
-            url: "https://github.com/zai-org/zcode-plugins.git",
-            path: "./plugins/wind",
-            sha: "c".repeat(40),
-          },
+          unavailableReason: "declared MCP servers cannot be adapted to Codex transports/auth",
+          warnings: [],
+          requiresOfficialAuth: true,
+          requiresPaidPlan: true,
+          hasHooks: false,
         },
       ],
     },
@@ -327,6 +325,10 @@ test("official marketplace identity collision cannot register or install a plugi
                 name: "example",
                 version: "2.0.0",
                 policy: { installation: "AVAILABLE" },
+                warnings: [],
+                requiresOfficialAuth: false,
+                requiresPaidPlan: false,
+                hasHooks: false,
               },
             ],
           },
@@ -366,7 +368,17 @@ test("official update reports success only after Codex confirms the published ve
         return {
           path: market.path,
           catalog: {
-            plugins: [{ name: "example", version: "2.0.0", policy: { installation: "AVAILABLE" } }],
+            plugins: [
+              {
+                name: "example",
+                version: "2.0.0",
+                policy: { installation: "AVAILABLE" },
+                warnings: [],
+                requiresOfficialAuth: false,
+                requiresPaidPlan: false,
+                hasHooks: false,
+              },
+            ],
           },
         };
       },
@@ -536,4 +548,126 @@ test("marketplace mismatched mutation receipts fail without retrying", async () 
   );
   assert.equal(calls.filter((call) => call.method === "marketplace/remove").length, 1);
   assert.equal(calls.filter((call) => call.method === "marketplace/upgrade").length, 1);
+});
+
+test("official install trusts the plugin's own hooks and reports missing official auth", async () => {
+  const { context, calls, replies } = fixture();
+  const source = resolve("/isolated/official");
+  const official = {
+    path: join(source, ".agents", "plugins", "marketplace.json"),
+    catalog: {
+      plugins: [
+        {
+          name: "mimosa",
+          version: "1.0.3",
+          policy: { installation: "AVAILABLE" },
+          warnings: ["Some features rely on ZCode node_repl tool, which Codex does not provide"],
+          requiresOfficialAuth: true,
+          requiresPaidPlan: true,
+          hasHooks: true,
+        },
+      ],
+    },
+  };
+  const registration = { completed: false };
+  const existing = {
+    name: s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+    path: official.path,
+    plugins: [
+      {
+        ...fixture().plugin,
+        id: `mimosa@${s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`,
+        name: "mimosa",
+        installed: false,
+        localVersion: "1.0.3",
+      },
+    ],
+  };
+  replies["plugin/list"] = () =>
+    registration.completed
+      ? { marketplaces: [structuredClone(existing)], marketplaceLoadErrors: [] }
+      : { marketplaces: [], marketplaceLoadErrors: [] };
+  replies["plugin/installed"] = () => ({
+    marketplaces: [{ ...existing, plugins: existing.plugins.filter((entry) => entry.installed) }],
+    marketplaceLoadErrors: [],
+  });
+  replies["marketplace/add"] = () => {
+    registration.completed = true;
+    return { marketplaceName: existing.name, installedRoot: source, alreadyAdded: false };
+  };
+  replies["plugin/install"] = () => {
+    existing.plugins[0]!.installed = true;
+    return { authPolicy: "ON_INSTALL", appsNeedingAuth: [] };
+  };
+  replies["hooks/list"] = () => ({
+    data: [
+      {
+        cwd: workspace.workspacePath,
+        hooks: [
+          {
+            key: `mimosa@${s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}:hooks/hooks.json:session_start:0:0`,
+            currentHash: "sha256:abc",
+            trustStatus: "untrusted",
+            pluginId: `mimosa@${s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`,
+          },
+          {
+            key: "other@market:hooks/hooks.json:stop:0:0",
+            currentHash: "sha256:def",
+            trustStatus: "untrusted",
+            pluginId: "other@market",
+          },
+        ],
+      },
+    ],
+  });
+  const control = {
+    ...context,
+    officialPlugins: {
+      async load() {
+        return official;
+      },
+      async refresh() {
+        return official;
+      },
+    } as unknown as OfficialPluginMarketplace,
+  };
+
+  const overview = s.codezPluginsOverviewResultSchema.parse(
+    await handleControlRequest("plugins/overview", { workspace }, control),
+  );
+  const card = overview.availablePlugins.find((plugin) => plugin.name === "mimosa");
+  assert.equal(card?.officialAuthRequired, true);
+  assert.equal(card?.listing?.requiresPaidPlan, true);
+  assert.deepEqual(card?.officialWarnings, official.catalog.plugins[0]!.warnings);
+
+  const tokenBefore = process.env.CODEZ_ZAI_OFFICIAL_MCP_TOKEN;
+  delete process.env.CODEZ_ZAI_OFFICIAL_MCP_TOKEN;
+  try {
+    const result = s.codezPluginsInstallResultSchema.parse(
+      await handleControlRequest(
+        "plugins/install",
+        { workspace, pluginName: "mimosa", marketplace: s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID },
+        control,
+      ),
+    );
+    assert.equal(result.installedPlugins[0]?.name, "mimosa");
+    assert.ok(
+      result.diagnostics.some((diagnostic) => diagnostic.code === "codex_official_auth_missing"),
+    );
+  } finally {
+    if (tokenBefore !== undefined) process.env.CODEZ_ZAI_OFFICIAL_MCP_TOKEN = tokenBefore;
+  }
+  // 只为该官方插件的钩子写信任；其它插件的钩子绝不动。
+  const trustWrites = calls.filter(
+    (call) =>
+      call.method === "config/value/write" &&
+      typeof call.params.keyPath === "string" &&
+      call.params.keyPath.startsWith("hooks.state."),
+  );
+  assert.equal(trustWrites.length, 1);
+  assert.deepEqual(trustWrites[0]?.params, {
+    keyPath: `hooks.state."mimosa@codez-plugins-official:hooks/hooks.json:session_start:0:0".trusted_hash`,
+    value: "sha256:abc",
+    mergeStrategy: "replace",
+  });
 });

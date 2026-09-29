@@ -3157,6 +3157,9 @@ export const codezAvailablePluginSummarySchema = z
     installed: z.boolean(),
     // Codex official NOT_AVAILABLE entries stay visible but are not installable.
     installationUnavailableReason: z.string().optional(),
+    // Codex 官方插件转译产物的可见能力警告与账号要求（仅官方市场条目）。
+    officialWarnings: z.array(z.string()).optional(),
+    officialAuthRequired: z.boolean().optional(),
     componentTypes: z.array(z.string()).optional(),
     listing: codezPluginStoreListingSchema.optional(),
   })
