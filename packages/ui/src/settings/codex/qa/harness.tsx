@@ -1,13 +1,19 @@
 // Browser-only fixture: real UI/hooks, injected Host authority, no filesystem or native credentials.
-import { StrictMode, useRef, useState } from "react";
+import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { IServiceAccessor } from "@codez/services";
-import type { IPlatformService, CodexRequest } from "@codez/shared";
+import type {
+  IPlatformService,
+  CodexRequest,
+  CodezAgentRoleScope,
+  CodezAgentRoleSummary,
+  CodezAgentRoleWriteInput,
+} from "@codez/shared";
 import type { ConversationSnapshot, PendingInteraction } from "@codez/shared/codez-protocol-v4";
 import { pendingInteractionSchema, queueStateSchema } from "@codez/shared/codez-protocol-v4";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
-import { TabStoreProvider, useTabStoreApi } from "@/store/TabStoreProvider.js";
+import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { useCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
 import { useDraftConfigControl } from "@/v4/composer/useDraftConfigControl.js";
@@ -26,62 +32,60 @@ import { CodexComposerModelControls } from "../CodexComposerModelControls.js";
 import { V4ComposerModeSwitch } from "@/v4/composer/V4ComposerModeControls.js";
 import type { V4ComposerConfigPicker } from "@/v4/composer/configPickerState.js";
 import { CatalogLifetimeControls, waitForCatalogFixture } from "./catalog-lifetime-fixture.js";
+import { config, model, otherWorkspaceConfig, questions } from "./harnessConfig.js";
 import {
   createProjectDiscoveryLocalServices,
   initializeProjectDiscoveryFixture,
   ProjectDiscoveryFixture,
-  seedProjectDiscoveryFixtureTabs,
+  ProjectDiscoveryTabSeeder,
 } from "./project-discovery-fixture.js";
 import "@/styles.css";
 
-const model = (name: string, isDefault = false) => ({
-  id: `id-${name}`,
-  model: name,
-  displayName: name,
-  description: "QA fixture",
-  hidden: false,
-  isDefault,
-  defaultReasoningEffort: "medium",
-  supportedReasoningEfforts: [
-    { reasoningEffort: "medium", description: "Balanced" },
-    { reasoningEffort: "high", description: "Detailed" },
-  ],
-});
 const projectDiscoveryLocalServices = createProjectDiscoveryLocalServices();
 const requests: Array<CodexRequest & { workspacePath?: string }> = [];
 let modelFailure = false;
+let providerCatalogFailure = true;
+let rolesReadFailure = true;
+let rolesWriteFailure = true;
+const agentRoles: CodezAgentRoleSummary[] = [];
 let legacyReads = 0;
+let catalogReads = 0;
 let interactionCommandCount = 0;
-const config = {
-  config: {
-    model: "native-model",
-    model_provider: "native-provider",
-    model_reasoning_effort: "medium",
-  },
-  origins: {},
-  layers: [
-    { name: { type: "user", file: "/isolated/config.toml" }, version: "fixture-v1", config: {} },
-  ],
-};
-const otherWorkspaceConfig = {
-  config: {
-    model: "workspace-model",
-    model_provider: "native-provider",
-    model_reasoning_effort: "medium",
-  },
-  origins: {},
-  layers: [
-    {
-      name: { type: "user", file: "/isolated/other-config.toml" },
-      version: "fixture-v1",
-      config: {},
-    },
-  ],
-};
 const emptyEvent = () => ({ dispose() {} });
 const services = {
   codezAgentService: {
     onAgentRuntimeRestarted: emptyEvent,
+    async readCodexCatalog() {
+      // 根因：composer 已增加 Host 目录读取边界，旧夹具未实现而使模型就绪失败。
+      // 目录未配置时按真实服务合同返回空映射，模型回退到激活 provider 组。
+      catalogReads++;
+      return { path: null, models: [] };
+    },
+    async readCodexCatalogModels() {
+      if (providerCatalogFailure) throw new Error("Fixture provider catalog unavailable");
+      return {
+        path: "/isolated/catalog.json",
+        models: [{ slug: "second-model", provider: "referenced-provider" }],
+      };
+    },
+    async listAgentRoles() {
+      if (rolesReadFailure) throw new Error("Fixture agent roles unavailable");
+      return { roles: [...agentRoles], diagnostics: [] };
+    },
+    async writeAgentRole({
+      scope,
+      role,
+    }: {
+      scope: CodezAgentRoleScope;
+      role: CodezAgentRoleWriteInput;
+    }) {
+      if (rolesWriteFailure) throw new Error("Fixture role write rejected");
+      agentRoles.push({
+        ...role,
+        scope,
+        fileName: `${role.name}.toml`,
+      });
+    },
     codexRequest: async ({
       request,
       workspacePath,
@@ -146,28 +150,6 @@ const platform = {
   },
   showTaskNotification() {},
 } as unknown as IPlatformService;
-const questions = [
-  {
-    id: "deployment-target",
-    header: "Target",
-    question: "Where should this run?",
-    options: [
-      { label: "Staging", description: "Isolated" },
-      { label: "Production", description: "Not used" },
-    ],
-  },
-  { id: "private-code", header: "Secret", question: "Enter fixture secret", isSecret: true },
-];
-function ProjectDiscoveryTabSeeder() {
-  const tabStore = useTabStoreApi();
-  const seededRef = useRef(false);
-  if (!seededRef.current) {
-    seededRef.current = true;
-    seedProjectDiscoveryFixtureTabs(tabStore);
-  }
-  return null;
-}
-
 function Harness() {
   const [busy, setBusy] = useState(false);
   const [picker, setPicker] = useState<V4ComposerConfigPicker | null>(null);
@@ -285,10 +267,23 @@ function Harness() {
         >
           Toggle catalog failure
         </Button>
+        <Button onClick={() => (providerCatalogFailure = !providerCatalogFailure)}>
+          Toggle provider catalog failure
+        </Button>
+        <Button onClick={() => (rolesReadFailure = !rolesReadFailure)}>
+          Toggle roles read failure
+        </Button>
+        <Button onClick={() => (rolesWriteFailure = !rolesWriteFailure)}>
+          Toggle roles write failure
+        </Button>
         <Button onClick={() => ask("userInput")}>Native questions</Button>
         <Button onClick={() => ask("permission")}>Native approval</Button>
         <Button onClick={() => setRejectNext(true)}>Reject next answer</Button>
-        <Button onClick={() => setOutput({ requests, legacyReads, interactionCommandCount })}>
+        <Button
+          onClick={() =>
+            setOutput({ requests, legacyReads, catalogReads, interactionCommandCount })
+          }
+        >
           Inspect RPC log
         </Button>
         <Button onClick={() => setSettingsOpen((open) => !open)}>Toggle settings</Button>

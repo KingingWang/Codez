@@ -67,6 +67,8 @@ try {
     modelId: "native-model",
     options: { reasoningLevel: "medium" },
   });
+  await page.getByRole("button", { name: "Inspect RPC log", exact: true }).click();
+  assert.ok((await result()).catalogReads > 0, "Composer must read the Host catalog boundary");
   checks.push("NewTask native config/model readiness, legacy registry never accessed");
   const firstSendConfigReads = await catalogConfigReads();
   await page.getByRole("button", { name: "Send fixture", exact: true }).click();
@@ -287,6 +289,68 @@ try {
     mergeStrategy: "replace",
   });
   checks.push("Real settings hook writes native versioned config and refreshes effective values");
+  await page.getByRole("button", { name: "Toggle settings", exact: true }).click();
+  await settings.getByRole("button", { name: "Providers", exact: true }).click();
+  await settings.getByText("Fixture provider catalog unavailable").waitFor();
+  assert.equal(await settings.getByText(/model_catalog_json is not configured/).count(), 0);
+  assert.equal(await settings.getByText(/· 0 models/).count(), 0);
+  await page.screenshot({ path: join(evidence, "provider-catalog-error.png") });
+  const providerDelete = (id) =>
+    settings
+      .getByTestId(`codex-provider-row-${id}`)
+      .getByRole("button", { name: "Delete", exact: true });
+  assert.equal(await providerDelete("unused-provider").isDisabled(), true);
+  await page.getByRole("button", { name: "Toggle provider catalog failure" }).click();
+  await settings.getByRole("button", { name: "Models & permissions", exact: true }).click();
+  await settings.getByRole("button", { name: "Providers", exact: true }).click();
+  await settings
+    .getByTestId("codex-provider-row-unused-provider")
+    .getByText(/0 models/)
+    .waitFor();
+  assert.equal(await providerDelete("referenced-provider").isDisabled(), true);
+  assert.equal(await providerDelete("unused-provider").isEnabled(), true);
+  await page.screenshot({ path: join(evidence, "provider-catalog-recovered.png") });
+  await providerDelete("unused-provider").click();
+  await settings.getByRole("button", { name: "Cancel", exact: true }).click();
+  checks.push(
+    "Provider deletion and reference counts fail closed while catalog is unreadable, then recover after a verified empty-reference read",
+  );
+  await settings.getByRole("button", { name: "MCP servers", exact: true }).click();
+  await settings.getByText(/Native Desktop browser is unavailable on this Host/).waitFor();
+  assert.equal(await settings.getByText(/Native Browser is available degraded/).count(), 0);
+  await page.screenshot({ path: join(evidence, "native-browser-unavailable.png") });
+  checks.push("Settings footer never contradicts the current Host's native Browser capability");
+  await settings.getByRole("button", { name: "Subagents", exact: true }).click();
+  await settings.getByText("Fixture agent roles unavailable").waitFor();
+  assert.equal(await settings.getByText("No roles in this scope yet.").count(), 0);
+  assert.equal(await settings.getByRole("button", { name: "New role" }).first().isDisabled(), true);
+  await page.screenshot({ path: join(evidence, "agent-roles-error.png") });
+  await page.getByRole("button", { name: "Toggle roles read failure" }).click();
+  await settings.getByRole("button", { name: "Retry role list" }).click();
+  await settings.getByText("No roles in this scope yet.").first().waitFor();
+  assert.equal(await settings.getByText("No roles in this scope yet.").count(), 2);
+  assert.equal(await settings.getByRole("button", { name: "New role" }).first().isEnabled(), true);
+  await page.screenshot({ path: join(evidence, "agent-roles-recovered.png") });
+  checks.push(
+    "Subagent roles list distinguishes failed read from a verified empty list and can retry",
+  );
+  await settings.getByRole("button", { name: "New role" }).first().click();
+  await settings.getByRole("textbox", { name: "Name", exact: true }).fill("Fixture Reviewer");
+  await settings
+    .getByRole("textbox", { name: "Developer instructions (required)" })
+    .fill("Review isolated test files");
+  await settings.getByRole("button", { name: "Save", exact: true }).click();
+  await settings.getByText("Fixture role write rejected").waitFor();
+  assert.equal(
+    await settings.getByRole("textbox", { name: "Name", exact: true }).isEnabled(),
+    true,
+  );
+  assert.equal(await settings.getByRole("button", { name: "Save", exact: true }).isEnabled(), true);
+  await page.getByRole("button", { name: "Toggle roles write failure" }).click();
+  await settings.getByRole("button", { name: "Save", exact: true }).click();
+  await settings.getByText("Fixture Reviewer", { exact: true }).waitFor();
+  checks.push("Rejected role write preserves editable draft for user-initiated retry");
+  await page.getByRole("button", { name: "Toggle settings", exact: true }).click();
   await page.getByRole("button", { name: "Mount held catalog", exact: true }).click();
   await page.getByTestId("lifetime-status").filter({ hasText: "loading" }).waitFor();
   await page.getByRole("button", { name: "Read lifetime catalog", exact: true }).click();

@@ -102,13 +102,15 @@ const en = {
   disabled: "Disabled",
   unsupported: "Not available in the Codex adapter",
   parity:
-    "Legacy workflows, cloud sharing and migration have no verified Codex parity. Scheduled automations run as native turns; off-peak tasks follow server gray availability. Native Browser is available degraded; Computer Use is not available. Git, files and terminal remain available.",
+    "Legacy workflows, cloud sharing and migration have no verified Codex parity. Scheduled automations run as native turns; off-peak tasks follow server gray availability. Native Browser availability depends on this Host; Computer Use is not available. Git, files and terminal remain available.",
   openSettings: "Open Codex settings",
   scope: "Workspace",
   mutations:
     "Changes affect this Host’s native Codex configuration and may affect other workspaces using the same Codex home.",
   agentsHelp:
     "File-based roles in ~/.codex/agents (user) and this workspace’s .codex/agents (project). Changes apply to new sessions; running threads are unaffected. Roles declared inline in config.toml layers are not shown.",
+  agentsLoading: "Reading Codex roles…",
+  agentsRetry: "Retry role list",
   agentsUserScope: "User roles",
   agentsProjectScope: "Project roles",
   agentsEmpty: "No roles in this scope yet.",
@@ -279,12 +281,14 @@ const zh: Record<keyof typeof en, string> = {
   disabled: "已禁用",
   unsupported: "Codex 适配器尚不支持",
   parity:
-    "旧工作流、云分享和迁移尚无 Codex 等价能力验证。定时任务以原生轮次执行；闲时任务跟随服务端灰度开放。原生 Browser 已降级可用；Computer Use 暂不可用。Git、文件与终端仍可使用。",
+    "旧工作流、云分享和迁移尚无 Codex 等价能力验证。定时任务以原生轮次执行；闲时任务跟随服务端灰度开放。原生 Browser 能力取决于当前 Host；Computer Use 暂不可用。Git、文件与终端仍可使用。",
   openSettings: "打开 Codex 设置",
   scope: "工作区",
   mutations: "更改会影响此 Host 的原生 Codex 配置，也可能影响使用同一 Codex home 的其他工作区。",
   agentsHelp:
     "管理 ~/.codex/agents（用户）与当前工作区 .codex/agents（项目）下的文件型角色。变更对新会话生效，运行中的线程不受影响。config.toml 各层内联声明的角色不在此展示。",
+  agentsLoading: "正在读取 Codex 角色…",
+  agentsRetry: "重试读取角色",
   agentsUserScope: "用户角色",
   agentsProjectScope: "项目角色",
   agentsEmpty: "此范围暂无角色。",

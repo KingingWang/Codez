@@ -14,17 +14,17 @@ The bridge implements `runtime/capabilities` on the same dispatch surface used b
 
 Required features and initial states:
 
-| Feature                      | State                                                                   |
-| ---------------------------- | ----------------------------------------------------------------------- |
-| `auxiliaryTextGeneration`    | `supported` when bridge auxiliary dispatch is active                    |
-| `observedSessionUsage`       | `supported` for native thread usage facts                               |
-| `observedAppUsage`           | `supported` only when App Usage exposes and renders those observations  |
-| `sharedContextContentCopy`   | `degraded` only when the trusted Host resolver is installed             |
-| `scheduledPromptAutomations` | `supported` (native turns use durable run correlation)                  |
-| `nativeBrowserCuaMcp`        | `unsupported`                                                           |
-| `readOnlyWorkflowHistory`    | `supported` (independent native-turn history query)                     |
-| `safeDesktopFileRewind`      | `supported` (Desktop-owned transaction with read-only Codex projection) |
-| `legacyWorkflowRuns`         | `unsupported`                                                           |
+| Feature                      | State                                                                                          |
+| ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| `auxiliaryTextGeneration`    | `supported` when bridge auxiliary dispatch is active                                           |
+| `observedSessionUsage`       | `supported` for native thread usage facts                                                      |
+| `observedAppUsage`           | `supported` only when App Usage exposes and renders those observations                         |
+| `sharedContextContentCopy`   | `degraded` only when the trusted Host resolver is installed                                    |
+| `scheduledPromptAutomations` | `supported` (native turns use durable run correlation)                                         |
+| `nativeBrowserCuaMcp`        | `unsupported`                                                                                  |
+| `readOnlyWorkflowHistory`    | `supported` (independent native-turn history query)                                            |
+| `safeDesktopFileRewind`      | `supported` (Desktop-owned transaction with read-only Codex projection)                        |
+| `legacyWorkflowRuns`         | `unsupported`                                                                                  |
 | `autoReviewApprovals`        | `supported` only when native guardian approval is enabled and requirements allow `auto_review` |
 
 Disconnect has no capability projection: the previous explicit state may remain cached for display, but a fresh read is `unavailable`. Host and UI must not synthesize support while the authority cannot answer.
@@ -53,6 +53,10 @@ BridgeRuntime dispatch → runtime/capabilities.codex
 - `degraded`: show an explicit degraded reason and disable only the unsupported portion.
 - `unsupported`: hide when the entry is optional, otherwise disable with the reason.
 - Capability-unavailable: show an unavailable state and issue no doomed operation.
+- General settings footers must not claim that the native Browser is available
+  or degraded on every Host. The scoped Browser/MCP card alone reports the
+  bridge-projected status; an unsupported or remote Host must never see a
+  contradictory global availability claim.
 - Capability status is stable while a connection remains active. UI refreshes after lifecycle `available` and after restart/`transportReplaced`; the subscriptions coexist because stable Local Host transport replacement is emitted only on the restart channel.
 
 ## Acceptance scenarios

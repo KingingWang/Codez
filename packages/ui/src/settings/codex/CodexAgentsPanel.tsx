@@ -75,7 +75,8 @@ export function CodexAgentsPanel(props: {
   const controller = useCodexAgents(props);
   const [form, setForm] = useState<RoleFormState | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const disabled = controller.busy || controller.loading || !controller.enabled;
+  const disabled =
+    controller.busy || controller.loading || !controller.enabled || controller.readFailed;
 
   const submit = () => {
     if (!form) return;
@@ -119,7 +120,9 @@ export function CodexAgentsPanel(props: {
             {text.agentsCreate}
           </Button>
         </div>
-        {roles.length === 0 ? <CodexNotice>{text.agentsEmpty}</CodexNotice> : null}
+        {roles.length === 0 && !controller.loading && !controller.readFailed ? (
+          <CodexNotice>{text.agentsEmpty}</CodexNotice>
+        ) : null}
         {roles.map((role) => (
           <div
             key={`${scope}:${role.fileName}`}
@@ -163,7 +166,22 @@ export function CodexAgentsPanel(props: {
   return (
     <CodexSection title={text.agents}>
       <CodexNotice>{text.agentsHelp}</CodexNotice>
-      {controller.error ? <CodexNotice error>{controller.error}</CodexNotice> : null}
+      {controller.loading ? <CodexNotice>{text.agentsLoading}</CodexNotice> : null}
+      {controller.error ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <CodexNotice error>{controller.error}</CodexNotice>
+          {controller.readFailed ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={controller.busy}
+              onClick={() => void controller.refresh()}
+            >
+              {text.agentsRetry}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       {controller.diagnostics.map((entry, index) => (
         <CodexNotice
           key={`${entry.code}:${entry.fileName ?? index}`}

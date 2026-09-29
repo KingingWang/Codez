@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { spawn } from "node:child_process";
 import { startDesktopMockProvider } from "./desktop-mock-provider.mjs";
+import { isolatedElectronSandboxEnv } from "./desktop-probe-env.mjs";
 const root = process.cwd();
 const packaged = process.env.CODEX_UI_QA_PACKAGED === "1";
 const packagedRoot = resolve(root, "packages/desktop/dist/linux-unpacked");
@@ -53,6 +54,7 @@ const env = {
   CODEZ_DESKTOP_HOME_DIR: join(isolated, "home"),
   CODEZ_DESKTOP_USER_DATA_DIR: join(isolated, "userData"),
   CODEZ_DESKTOP_SESSION_DATA_DIR: join(isolated, "session"),
+  ...isolatedElectronSandboxEnv(process.platform, process.getuid?.()),
   ...(nativeOverride ? { CODEZ_CODEX_COMMAND: nativeOverride } : {}),
 };
 const display = spawn(

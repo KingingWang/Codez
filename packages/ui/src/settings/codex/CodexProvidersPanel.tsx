@@ -28,6 +28,7 @@ import {
 } from "./codexProviderSettings.js";
 import { codexUserConfigTarget } from "./codexSettingsData.js";
 import { CodexCatalogModelFormView, CodexProviderFormView } from "./CodexProviderForms.js";
+import { CodexProviderRow } from "./CodexProviderRow.js";
 import { CodexConfirmButton, CodexNotice, CodexSection } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
 
@@ -60,6 +61,7 @@ export function CodexProvidersPanel({
   const config = controller.snapshot.config?.data;
   const target = codexUserConfigTarget(config);
   const disabled = controller.busy || controller.loading || !controller.enabled || !target;
+  const catalogReady = catalog !== null && catalogError === null;
   const workspaceRef = useMemo(
     () =>
       workspacePath
@@ -73,13 +75,15 @@ export function CodexProvidersPanel({
 
   const loadCatalog = useCallback(async () => {
     if (!workspaceRef) return;
+    setCatalog(null);
+    setCatalogError(null);
     try {
       const result =
         await controller.services.codezAgentService.readCodexCatalogModels(workspaceRef);
       setCatalog({ path: result.path, models: result.models });
       setCatalogError(null);
     } catch (error) {
-      setCatalog({ path: null, models: [] });
+      setCatalog(null);
       setCatalogError(error instanceof Error ? error.message : String(error));
     }
   }, [controller.services, workspaceRef]);
@@ -150,6 +154,12 @@ export function CodexProvidersPanel({
   };
 
   const deleteProvider = (view: CodexProviderView) => {
+    // 根因：目录读取失败曾被投影成空数组，未知引用数误判为 0 时会放行删除。
+    // 只有已成功读取目录才能证明非默认 provider 没有模型引用。
+    if (!catalogReady) {
+      setFormError(text.providerCatalogUnavailable);
+      return;
+    }
     if (view.isDefault) {
       setFormError(text.providerDeleteDefaultBlocked);
       return;
@@ -225,59 +235,26 @@ export function CodexProvidersPanel({
         ) : null}
         {notice ? <CodexNotice>{notice}</CodexNotice> : null}
         {formError ? <CodexNotice error>{formError}</CodexNotice> : null}
+        {providers.length > 0 && !catalogReady ? (
+          <CodexNotice>{text.providerCatalogUnavailable}</CodexNotice>
+        ) : null}
         {providers.length === 0 ? <CodexNotice>{text.providerEmpty}</CodexNotice> : null}
         {providers.map((view) => (
-          <div
+          <CodexProviderRow
             key={view.id}
-            className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"
-          >
-            <div className="min-w-0 flex-1">
-              <p className="text-ui-base">
-                {view.name}
-                {view.isDefault ? (
-                  <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-ui-sm text-foreground-subtle">
-                    {text.providerDefaultBadge}
-                  </span>
-                ) : null}
-              </p>
-              <p className="break-all font-mono text-ui-sm text-foreground-subtlest">
-                {view.id} · {view.wireApi}
-                {view.baseUrl ? ` · ${view.baseUrl}` : ""} · {view.modelCount}{" "}
-                {text.providerModelCount}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {!view.isDefault ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={Boolean(disabled)}
-                  onClick={() =>
-                    void controller.run(() => writeEdits(codexProviderSetDefaultEdits(view.id)))
-                  }
-                >
-                  {text.providerSetDefault}
-                </Button>
-              ) : null}
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={Boolean(disabled)}
-                onClick={() => {
-                  setFormError(null);
-                  setModelForm(null);
-                  setProviderForm({ form: codexProviderFormFrom(view), creating: false });
-                }}
-              >
-                {text.providerEdit}
-              </Button>
-              <CodexConfirmButton
-                label={text.providerDelete}
-                disabled={Boolean(disabled) || view.isDefault}
-                onConfirm={() => deleteProvider(view)}
-              />
-            </div>
-          </div>
+            view={view}
+            disabled={Boolean(disabled)}
+            catalogReady={catalogReady}
+            onSetDefault={() =>
+              void controller.run(() => writeEdits(codexProviderSetDefaultEdits(view.id)))
+            }
+            onEdit={() => {
+              setFormError(null);
+              setModelForm(null);
+              setProviderForm({ form: codexProviderFormFrom(view), creating: false });
+            }}
+            onDelete={() => deleteProvider(view)}
+          />
         ))}
         <div className="border-t border-border pt-3">
           <Button
@@ -308,7 +285,7 @@ export function CodexProvidersPanel({
       <CodexSection title={text.providerModels}>
         <CodexNotice>{text.providerModelsHelp}</CodexNotice>
         {catalogError ? <CodexNotice error>{catalogError}</CodexNotice> : null}
-        {catalog && !catalog.path ? <CodexNotice>{text.modelNoCatalog}</CodexNotice> : null}
+        {catalogReady && !catalog?.path ? <CodexNotice>{text.modelNoCatalog}</CodexNotice> : null}
         {modelGroups.length === 0 && catalog?.path ? (
           <CodexNotice>{text.providerModelsEmpty}</CodexNotice>
         ) : null}

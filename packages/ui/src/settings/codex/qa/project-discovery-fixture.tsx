@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { IServiceAccessor } from "@codez/services";
 import { Button } from "@/components/ui/button.js";
 import { useCodexProjectDiscovery } from "@/hooks/useCodexProjectDiscovery.js";
@@ -18,6 +18,16 @@ const calls: Array<{
 }> = [];
 let listRelease: (() => void) | null = null;
 export const createProjectDiscoveryLocalServices = (): IServiceAccessor => createServices(0);
+
+export function ProjectDiscoveryTabSeeder() {
+  const tabStore = useTabStoreApi();
+  const seededRef = useRef(false);
+  if (!seededRef.current) {
+    seededRef.current = true;
+    seedProjectDiscoveryFixtureTabs(tabStore);
+  }
+  return null;
+}
 
 const createServices = (generation: number, hold = false): IServiceAccessor =>
   ({

@@ -30,6 +30,10 @@ account/config/requirements, refreshes and checks legacy MCP routing and the
 sidebar Codex account entry (no legacy Connect/login requirement).
 No model turn, login/logout, resource install, or native settings mutation is performed.
 Stop the probe and Vite processes after inspection. Temporary evidence is retained.
+When this isolated probe runs as root on Linux, it disables Chromium's sandbox
+only for the temporary QA Electron process; regular development and packaged
+launches retain their default sandbox. Verify this boundary with
+`node --test packages/ui/src/settings/codex/qa/desktop-probe-env.test.mjs`.
 
 For actual first-input image submission, launch a **fresh** probe with
 `CODEX_UI_QA_MOCK=1`. It prints a local

@@ -28,6 +28,11 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
     id 含点会破坏路径语义；TOML 裸键同口径）。
   - 删除供应商：当前默认供应商（`config.model_provider`）禁止删除；仍有
     catalog 模型引用时给出明确提示，由用户先迁移/删除模型，不静默级联。
+    catalog 正在读取、读取失败或尚未验证引用关系时，所有供应商的删除入口
+    必须 fail-closed（禁用按钮和命令入口）。目录成功读取为无配置（path=null）
+    时才可把引用数视为 0；不能用失败时的空数组假装已证明不存在引用。
+    目录读取失败时引用数显示“未知”而不是 0，并只显示读取错误，不能额外
+    宣告 `model_catalog_json` 未配置；只有成功返回 `path=null` 才显示未配置。
   - 删除模型：slug 等于 `config.model`（新线程默认模型）时给出警告但允许。
   - 「设为默认供应商」写 `config.model_provider`；codex 的
     check_thread_model_provider 只校验托管要求，用户层变更不会 invalidate
@@ -44,7 +49,7 @@ model_catalog_json 文件     ──bridge catalog/* 本地控制面写──→
                               新 slug；model/list 下拉需重启 workspace runtime 刷新
 ```
 
-- catalog 文件读写是 bridge 本地 fs 控制面方法族（与 agents/*、catalog/read
+- catalog 文件读写是 bridge 本地 fs 控制面方法族（与 agents/\*、catalog/read
   同族）：路径一律由 bridge 内部经 `config/read` 解析 `model_catalog_json`，
   不接受调用方传路径（不开放任意路径读写面），绝不进入 `codex/request`
   原生白名单。
@@ -109,3 +114,7 @@ deleteCodexCatalogModel`，载体铁律与 `readCodexCatalog` 相同（workspace
    条目不变；非法 JSON 不落盘并提示。
 7. visibility 切 hidden → 下次 model/list（includeHidden=false）不再返回该模型。
 8. 远程 workspace：全部读写经远端 bridge 执行，本机不产生文件写。
+9. 模型目录读取失败或尚在加载：非默认供应商的「删除」也不可操作，不向
+   `config/batchWrite` 发删除 edit；重新打开面板成功读取后，引用数为零的
+   非默认供应商恢复可删除，仍有引用的继续禁止删除并保留解释文案。
+   失败页不显示虚构的 0 个引用或“未配置目录”。

@@ -30,7 +30,10 @@ export const enProviders = {
     "The default provider cannot be deleted; set another provider as default first.",
   providerDeleteModelsBlocked:
     "Catalog models still reference this provider; delete or move those models first.",
+  providerCatalogUnavailable:
+    "Provider deletion is unavailable until catalog models have been loaded successfully.",
   providerModelCount: "models",
+  providerModelCountUnknown: "model references unknown",
   providerSave: "Save provider",
   providerCancel: "Cancel",
   providerModels: "Catalog models",
@@ -85,7 +88,9 @@ export const zhProviders: Record<keyof typeof enProviders, string> = {
   providerEmpty: "尚未配置供应商。",
   providerDeleteDefaultBlocked: "默认供应商不能删除；请先把其他供应商设为默认。",
   providerDeleteModelsBlocked: "仍有目录模型引用该供应商；请先删除或迁移这些模型。",
+  providerCatalogUnavailable: "目录模型尚未成功读取，暂时无法删除供应商。",
   providerModelCount: "个模型",
+  providerModelCountUnknown: "模型引用数未知",
   providerSave: "保存供应商",
   providerCancel: "取消",
   providerModels: "目录模型",
