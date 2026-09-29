@@ -19,6 +19,7 @@ import {
   turnMode,
   type ResolveAttachments,
 } from "./command-input.js";
+import { turnPermissionIntent } from "./control-common.js";
 import { array, object, string, unsupported } from "./json.js";
 import { projectThread } from "./projection.js";
 import { createNativeSession } from "./command-create.js";
@@ -136,6 +137,8 @@ export class CommandRouter {
     if (state.readOnly === "writer-conflict" && command.type !== "forkAssistant")
       throw new WriterConflictError();
     const native = { threadId: sessionId };
+    // config.toml 生效值读取上下文；权限覆盖仅在档位迁移时下发（specs/codex-permission-modes.md）。
+    const controlContext = { rpc, cwd: store.cwd };
     const running = array(state.thread.turns)
       .map(object)
       .findLast((turn) => turn.status === "inProgress");
@@ -190,6 +193,7 @@ export class CommandRouter {
         } else {
           if (running)
             throw new Error("A turn is already running; stop, guide, or queue the input");
+          const permissions = await turnPermissionIntent(controlContext, state.thread, p.mode);
           const turnParams = {
             ...native,
             input,
@@ -201,7 +205,7 @@ export class CommandRouter {
               p.planEnabled,
               p.modelSelection?.options?.reasoningLevel ??
                 (state.thread.reasoningEffort as string | undefined),
-              state.thread.sandboxPolicy,
+              permissions,
             ),
           };
           const response = await rpc.request("turn/start", turnParams);
@@ -210,6 +214,7 @@ export class CommandRouter {
             ...(p.modelSelection ? { modelProvider: p.modelSelection.providerId } : {}),
           });
           store.acceptTurnResponse(sessionId, response);
+          store.rememberMode(sessionId, p.mode);
         }
         // 三个投递分支（queue/steer/start）都在此汇合且 native 已成功，消费通知。
         // 恰好同批：并发 record 的新条目留给再下一条消息。
@@ -263,6 +268,8 @@ export class CommandRouter {
       }
       case "switchCollaborationMode": {
         const p = commandPayloadSchemas.switchCollaborationMode.parse(command.payload);
+        // 与 sendText 同一迁移规则（specs/codex-permission-modes.md）。
+        const permissions = await turnPermissionIntent(controlContext, state.thread, p.mode);
         const settings = {
           ...native,
           ...turnMode(
@@ -270,12 +277,12 @@ export class CommandRouter {
             string(state.thread.model, "model"),
             undefined,
             state.thread.reasoningEffort as string | undefined,
-            state.thread.sandboxPolicy,
-            true,
+            permissions,
           ),
         };
         await rpc.request("thread/settings/update", settings);
         store.applySettings(sessionId, settings);
+        store.rememberMode(sessionId, p.mode);
         break;
       }
       case "sendQueuedNow": {

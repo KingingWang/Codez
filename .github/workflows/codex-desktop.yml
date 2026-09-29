@@ -57,7 +57,7 @@ jobs:
       - name: Codex UI settings regressions (Linux once)
         run: pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test packages/ui/src/settings/codex/*.test.ts packages/ui/src/settings/codex/*.test.tsx
       # 这些回归不在 settings/codex 目录，必须显式纳入，防止 rebase 后修复失守。
-      - name: Automation and Git UI regressions (Linux once)
+      - name: Automation, Git and Codex capability UI regressions (Linux once)
         run: >-
           pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test
           packages/ui/src/hooks/useModelSelectionView.test.ts
@@ -65,6 +65,7 @@ jobs:
           packages/ui/src/v4/ConversationStatusPanel.test.tsx
           packages/ui/src/v4/conversationStatusPanelModel.test.ts
           packages/ui/src/capabilities/useGitAuxiliaryCapability.test.ts
+          packages/ui/src/capabilities/codexCapabilities.test.ts
       - name: Assemble four remote targets without compiling Codex
         run: node scripts/codex-runtime-remote-assets.mjs
       - name: Native standalone remote package smoke

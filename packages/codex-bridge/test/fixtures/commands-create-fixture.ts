@@ -25,12 +25,33 @@ export async function verifyCreateIntent(t: TestContext) {
     { name: "plan enabled", config: { planEnabled: true }, plan: "plan" },
     { name: "explicit plan disabled", config: { planEnabled: false }, plan: "default" },
     { name: "legacy plan mode", config: { mode: "plan" }, plan: "plan" },
-    { name: "yolo mode", config: { mode: "yolo" }, plan: "default", sandbox: "dangerFullAccess" },
+    {
+      name: "yolo mode",
+      config: { mode: "yolo" },
+      plan: "default",
+      sandbox: "dangerFullAccess",
+      reviewer: "user",
+    },
     {
       name: "build exits inherited full access",
       config: { mode: "build" },
       plan: "default",
       sandbox: "workspaceWrite",
+      reviewer: "user",
+    },
+    {
+      name: "edit routes approvals to the auto reviewer",
+      config: { mode: "edit" },
+      plan: "default",
+      sandbox: "workspaceWrite",
+      reviewer: "auto_review",
+    },
+    {
+      // custom = 跟随 config.toml：新线程本来就处于原生默认，不得下发任何权限覆盖。
+      name: "custom keeps the inherited native policy",
+      config: { mode: "custom" },
+      plan: "default",
+      noOverrides: true,
     },
     {
       name: "combined mode, plan and thought",
@@ -89,15 +110,25 @@ export async function verifyCreateIntent(t: TestContext) {
           example.sandbox === "dangerFullAccess" ? "never" : "on-request",
         );
       }
+      if ("reviewer" in example) {
+        assert.equal(params.approvalsReviewer, example.reviewer);
+        assert.equal(state.thread.approvalsReviewer, example.reviewer);
+      }
+      if ("noOverrides" in example) {
+        assert.equal(Object.hasOwn(params, "sandboxPolicy"), false);
+        assert.equal(Object.hasOwn(params, "approvalPolicy"), false);
+        assert.equal(Object.hasOwn(params, "approvalsReviewer"), false);
+      }
       assert.deepEqual(await h.execute(command), ack);
       assert.deepEqual(h.rpc.methods(), ["thread/start", "thread/settings/update"]);
     });
   }
+  // edit 不再是拒绝面：Approve for me 由原生 approvalsReviewer 承接
+  // （specs/codex-permission-modes.md），能力门控在 UI/bridge 能力探测层。
   const unsupported = [
     { mcpServers: [{ name: "fixture", command: "fixture-no-exec", args: [], env: [] }] },
     { offPeakToolEnabled: true },
     { dynamicWorkflowEnabled: true },
-    { config: { mode: "edit" } },
   ];
   for (const payload of unsupported) {
     for (const firstInput of [undefined, { text: "First" }]) {

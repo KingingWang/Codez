@@ -71,7 +71,7 @@ export const codezPermissionResponseSchema = z
   })
   .strict();
 export type CodezPermissionResponse = z.infer<typeof codezPermissionResponseSchema>;
-export const codezSessionModeSchema = z.enum(["plan", "build", "edit", "yolo", "auto"]);
+export const codezSessionModeSchema = z.enum(["plan", "build", "edit", "yolo", "auto", "custom"]);
 export const codezSessionStatusSchema = z.enum([
   "idle",
   "running",

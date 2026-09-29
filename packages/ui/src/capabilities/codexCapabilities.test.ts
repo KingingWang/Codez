@@ -13,12 +13,39 @@ test("old peers omit every codex feature and resolve to unsupported", () => {
     assert.ok(value);
     return value;
   };
-  assert.equal(Object.keys(projection).length, 9);
+  assert.equal(Object.keys(projection).length, 10);
   for (const availability of Object.values(projection)) {
     assert.equal(availability.status, "unsupported");
   }
   assert.equal(codexCapabilityGate(availability("legacyWorkflowRuns")).hidden, false);
   assert.equal(codexCapabilityGate(availability("legacyWorkflowRuns")).disabled, true);
+  // 旧 peer 缺省 autoReviewApprovals → unsupported（composer 隐藏"帮我审批"档）。
+  assert.equal(availability("autoReviewApprovals").status, "unsupported");
+  assert.equal(codexCapabilityGate(availability("autoReviewApprovals")).disabled, true);
+});
+
+test("autoReviewApprovals only surfaces as supported when the bridge probed it", () => {
+  const supported = projectCodexCapabilities({
+    available: true,
+    codex: {
+      auxiliaryTextGeneration: "unsupported",
+      observedSessionUsage: "supported",
+      observedAppUsage: "supported",
+      sharedContextContentCopy: "unsupported",
+      scheduledPromptAutomations: "supported",
+      nativeBrowserCuaMcp: "unsupported",
+      readOnlyWorkflowHistory: "supported",
+      safeDesktopFileRewind: "supported",
+      legacyWorkflowRuns: "unsupported",
+      autoReviewApprovals: "supported",
+    },
+  });
+  assert.equal(codexCapabilityGate(supported.autoReviewApprovals).disabled, false);
+  const denied = projectCodexCapabilities({
+    available: true,
+    codex: { autoReviewApprovals: "unsupported" },
+  });
+  assert.equal(codexCapabilityGate(denied.autoReviewApprovals).disabled, true);
 });
 
 test("bridge states map to supported, degraded, unsupported, and unavailable UI gates", () => {

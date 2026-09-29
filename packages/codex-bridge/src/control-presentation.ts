@@ -59,11 +59,9 @@ export async function readControlModelSettings(
     label: effort.reasoningEffort,
     description: effort.description,
   }));
-  // Codex sandbox 不是独立计划状态；只有明确完全放权才展示 yolo。
-  const mode =
-    config.sandbox_mode === "danger-full-access" && config.approval_policy === "never"
-      ? "yolo"
-      : "build";
+  // 全局 config 不是线程级档位：Codex 会话"跟随 config.toml"的语义即 custom 档
+  // （specs/codex-permission-modes.md）；线程级投影由 projectThreadMode 负责。
+  const mode = "custom" as const;
   const current = modelId
     ? { providerId, modelId, ...(reasoningLevel ? { options: { reasoningLevel } } : {}) }
     : undefined;
@@ -188,7 +186,7 @@ export async function readControlPresentation(
     {
       name: "mode",
       description: "Select permission mode",
-      inputHint: "plan | build | yolo",
+      inputHint: "plan | build | edit | yolo | custom",
       source: "builtin" as const,
     },
     {

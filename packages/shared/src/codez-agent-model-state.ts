@@ -36,6 +36,34 @@ const CODEZ_AGENT_MODE_OPTIONS = [
 ] as const satisfies readonly CodezTaskModeInfo[];
 const CODEZ_AGENT_MODE_ID_SET = new Set<string>(CODEZ_AGENT_MODE_OPTIONS.map((mode) => mode.id));
 
+// Codex 会话专用权限档位，与 Codex 原生权限菜单一一对应（specs/codex-permission-modes.md）。
+// Plan 是独立勾选维度（collaborationMode），不进该列表；UI 展示文案走 mode.codex.* i18n 键，
+// 这里的 name/description 仅供非 i18n 消费方（bridge configOptions 等）兜底。
+const CODEX_PERMISSION_MODE_OPTIONS = [
+  {
+    id: "build",
+    name: "Ask for approval",
+    description:
+      "Read, edit, and run commands in this workspace. Approval is required to access the internet or edit other files.",
+  },
+  {
+    id: "edit",
+    name: "Approve for me",
+    description: "Only ask for actions detected as potentially unsafe.",
+  },
+  {
+    id: "yolo",
+    name: "Full access",
+    description:
+      "Edit files outside this workspace and access the internet without asking for approval.",
+  },
+  {
+    id: "custom",
+    name: "Custom",
+    description: "Use the permissions defined in config.toml.",
+  },
+] as const satisfies readonly CodezTaskModeInfo[];
+
 // OpenRouter 会把 `:free` 作为模型 ID 的一部分。UI/configOptions 的展示态
 // 不能再用冒号分隔 thought level，否则草稿选择会静默截断真实 modelId。
 export function normalizeAvailableCodezMode(mode: CodezSessionMode): string {
@@ -52,6 +80,11 @@ export function getCodezAgentModeSelectOptions(): NonNullable<CodezConfigOption[
 
 export function getCodezAgentAvailableModes(): CodezTaskModeInfo[] {
   return CODEZ_AGENT_MODE_OPTIONS.map((mode) => ({ ...mode }));
+}
+
+/** Codex 会话的权限档位目录；edit（Approve for me）可用性由 autoReviewApprovals 能力门控，调用方负责过滤。 */
+export function getCodexPermissionModes(): CodezTaskModeInfo[] {
+  return CODEX_PERMISSION_MODE_OPTIONS.map((mode) => ({ ...mode }));
 }
 
 export function codezSessionSettingsToCodezConfigOptions(

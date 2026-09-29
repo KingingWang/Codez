@@ -1,7 +1,7 @@
 import { z } from "zod";
 import * as s from "@codez/shared";
 import type { BridgeControlContext } from "./contract.js";
-import { checkWorkspace, ControlError, input, unsupported } from "./control-common.js";
+import { checkWorkspace, ControlError, input, readPages, unsupported } from "./control-common.js";
 import { readControlPresentation, readControlSkills } from "./control-presentation.js";
 import { readControlMcp } from "./control-mcp.js";
 import { handlePluginRequest } from "./control-plugins.js";
@@ -56,6 +56,7 @@ export function bridgeCodexFeatureCapabilities(
     browserAvailable: boolean;
     cuaAvailable: boolean;
   },
+  autoReviewApprovals?: "supported" | "unsupported",
 ): s.CodexFeatureCapabilities {
   let nativeBrowserCuaMcp: s.CodexFeatureCapabilities["nativeBrowserCuaMcp"] = "unsupported";
   if (nativeBrowserCua?.browserAvailable === true) {
@@ -73,7 +74,54 @@ export function bridgeCodexFeatureCapabilities(
     readOnlyWorkflowHistory: "supported",
     safeDesktopFileRewind: "supported",
     legacyWorkflowRuns: "unsupported",
+    // 缺省即 unsupported（与旧 peer 缺省字段的解析一致）；只有探测成功才宣告。
+    autoReviewApprovals: autoReviewApprovals ?? "unsupported",
   };
+}
+
+/**
+ * Approve-for-me（approvalsReviewer:"auto_review"）能力探测（specs/codex-permission-modes.md）：
+ * 原生 guardian_approval feature 已启用，且组织策略未把审批人白名单排除 auto_review。
+ * 探测失败或旧原生缺失该 feature 一律 fail-closed（unsupported），不猜测可用。
+ */
+async function probeAutoReviewApprovals(
+  context: BridgeControlContext,
+): Promise<"supported" | "unsupported"> {
+  try {
+    const features = await readPages(
+      context,
+      "experimentalFeature/list",
+      z.object({ name: z.string(), enabled: z.boolean() }),
+    );
+    if (!features.some((feature) => feature.name === "guardian_approval" && feature.enabled))
+      return "unsupported";
+    const { requirements } = z
+      .object({
+        requirements: z
+          .object({ allowedApprovalsReviewers: z.array(z.string()).nullable().optional() })
+          .nullable()
+          .optional(),
+      })
+      .parse(await context.rpc.request("configRequirements/read"));
+    const allowed = requirements?.allowedApprovalsReviewers;
+    // 无 requirements 或白名单缺省 = 不限制；显式白名单必须包含 auto_review。
+    return !allowed || allowed.includes("auto_review") ? "supported" : "unsupported";
+  } catch {
+    return "unsupported";
+  }
+}
+
+/** 探测结果按 bridge 进程缓存（spec：能力探测与降级）；同一 rpc 端口只探测一次。 */
+const autoReviewProbes = new WeakMap<object, Promise<"supported" | "unsupported">>();
+
+function detectAutoReviewApprovals(
+  context: BridgeControlContext,
+): Promise<"supported" | "unsupported"> {
+  const cached = autoReviewProbes.get(context.rpc);
+  if (cached) return cached;
+  const probe = probeAutoReviewApprovals(context);
+  autoReviewProbes.set(context.rpc, probe);
+  return probe;
 }
 
 /** Unknown/unsupported mutations reject with JSON-RPC code, message and structured data. */
@@ -120,6 +168,7 @@ async function dispatch(
         codex: bridgeCodexFeatureCapabilities(
           context.auxiliary ?? { supports: () => false },
           context.nativeBrowserCua,
+          await detectAutoReviewApprovals(context),
         ),
       });
     case "workspace/readPresentation": {

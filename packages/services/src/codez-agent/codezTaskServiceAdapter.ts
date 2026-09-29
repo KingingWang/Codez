@@ -3299,7 +3299,9 @@ function toCodezMode(mode: CodezTaskMode | undefined): CodezSessionMode | undefi
 }
 
 function fromCodezMode(mode: CodezSessionMode): CodezTaskMode {
-  return mode === "build" ? "build" : mode;
+  // custom 只属于 Codex 链路（跟随 config.toml 权限）；旧任务索引/持久化投影
+  // 不会出现该值，防御性按默认 build 归一，避免类型收窄失败。
+  return mode === "build" || mode === "custom" ? "build" : mode;
 }
 
 function addSessionForkSnapshotFallback(

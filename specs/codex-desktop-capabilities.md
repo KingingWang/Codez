@@ -25,6 +25,7 @@ Required features and initial states:
 | `readOnlyWorkflowHistory`    | `supported` (independent native-turn history query)                     |
 | `safeDesktopFileRewind`      | `supported` (Desktop-owned transaction with read-only Codex projection) |
 | `legacyWorkflowRuns`         | `unsupported`                                                           |
+| `autoReviewApprovals`        | `supported` only when native guardian approval is enabled and requirements allow `auto_review` |
 
 Disconnect has no capability projection: the previous explicit state may remain cached for display, but a fresh read is `unavailable`. Host and UI must not synthesize support while the authority cannot answer.
 

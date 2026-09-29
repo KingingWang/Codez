@@ -20,6 +20,7 @@ const features = [
   "readOnlyWorkflowHistory",
   "safeDesktopFileRewind",
   "legacyWorkflowRuns",
+  "autoReviewApprovals",
 ] as const satisfies readonly (keyof CodexFeatureCapabilities)[];
 
 const unsupported = (feature: (typeof features)[number]): CodexFeatureAvailability => ({

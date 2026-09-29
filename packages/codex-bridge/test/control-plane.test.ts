@@ -56,6 +56,12 @@ function fixture(overrides: Record<string, unknown> = {}) {
         approval_policy: "on-request",
       },
     },
+    // autoReviewApprovals 探测端点：guardian approval 已启用、组织策略不限制审批人。
+    "experimentalFeature/list": {
+      data: [{ name: "guardian_approval", enabled: true }],
+      nextCursor: null,
+    },
+    "configRequirements/read": { requirements: null },
     "model/list": {
       data: [
         {
@@ -122,7 +128,8 @@ test("presentation parses the real strict schema, preserving remote identity", a
     await handleControlRequest("workspace/readPresentation", { workspace }, context),
   );
   assert.deepEqual(result.workspace, workspace);
-  assert.equal(result.mode, "build");
+  // 全局 config 投影恒为 custom 档（specs/codex-permission-modes.md）。
+  assert.equal(result.mode, "custom");
   assert.ok(result.slashCommands.some((command) => command.name === "example"));
   assert.ok(!result.slashCommands.some((command) => command.name === "disabled"));
   assert.deepEqual(
@@ -150,31 +157,79 @@ test("capabilities expose native independent plan state without inventing execut
   assert.deepEqual(raw, codezRuntimeCapabilitiesSchema.parse(raw));
   assert.deepEqual(raw, {
     independentPlanState: true,
-    codex: bridgeCodexFeatureCapabilities(context.auxiliary),
+    codex: bridgeCodexFeatureCapabilities(context.auxiliary, undefined, "supported"),
   });
-  assert.equal(calls.length, 0);
+  // 探测只走两个只读端点，且按 bridge 进程缓存：第二次读取不再触发 RPC。
+  assert.deepEqual(
+    calls.map((call) => call.method),
+    ["experimentalFeature/list", "configRequirements/read"],
+  );
+  const again = await handleControlRequest("runtime/capabilities", {}, context);
+  assert.deepEqual(again, raw);
+  assert.equal(calls.length, 2);
+});
+
+test("autoReviewApprovals fails closed without guardian approval or reviewer allowance", async () => {
+  const guardianDisabled = fixture({
+    "experimentalFeature/list": {
+      data: [{ name: "guardian_approval", enabled: false }],
+      nextCursor: null,
+    },
+  });
+  assert.equal(
+    codezRuntimeCapabilitiesSchema.parse(
+      await handleControlRequest("runtime/capabilities", {}, guardianDisabled.context),
+    ).codex?.autoReviewApprovals,
+    "unsupported",
+  );
+  // 旧原生缺失 guardian_approval 条目 → 不猜测可用。
+  const guardianMissing = fixture({
+    "experimentalFeature/list": { data: [], nextCursor: null },
+  });
+  assert.equal(
+    codezRuntimeCapabilitiesSchema.parse(
+      await handleControlRequest("runtime/capabilities", {}, guardianMissing.context),
+    ).codex?.autoReviewApprovals,
+    "unsupported",
+  );
+  // 组织策略白名单不含 auto_review → unsupported。
+  const restricted = fixture({
+    "configRequirements/read": { requirements: { allowedApprovalsReviewers: ["user"] } },
+  });
+  assert.equal(
+    codezRuntimeCapabilitiesSchema.parse(
+      await handleControlRequest("runtime/capabilities", {}, restricted.context),
+    ).codex?.autoReviewApprovals,
+    "unsupported",
+  );
+  // 探测响应损坏（schema 校验失败）→ fail-closed，不冒 supported。
+  const broken = fixture({ "experimentalFeature/list": { unexpected: true } });
+  assert.equal(
+    codezRuntimeCapabilitiesSchema.parse(
+      await handleControlRequest("runtime/capabilities", {}, broken.context),
+    ).codex?.autoReviewApprovals,
+    "unsupported",
+  );
 });
 
 test("bridge capability authority is runtime-dispatch-derived and exposes every required state", async () => {
-  const capabilities = bridgeCodexFeatureCapabilities({
-    supports: (method) => method === "workspace/generateText",
-  });
+  const capabilities = bridgeCodexFeatureCapabilities(
+    { supports: (method) => method === "workspace/generateText" },
+    undefined,
+    "supported",
+  );
   assert.deepEqual(
     Object.values(capabilities).sort(),
-    [
-      "degraded",
-      "supported",
-      "supported",
-      "supported",
-      "supported",
-      "supported",
-      "supported",
-      ...Array(2).fill("unsupported"),
-    ].sort(),
+    ["degraded", ...Array(7).fill("supported"), ...Array(2).fill("unsupported")].sort(),
   );
   assert.equal(capabilities.auxiliaryTextGeneration, "supported");
   assert.equal(capabilities.scheduledPromptAutomations, "supported");
   assert.equal(capabilities.legacyWorkflowRuns, "unsupported");
+  // 缺省第三参 = 旧 peer 语义：autoReviewApprovals 投影为 unsupported。
+  assert.equal(
+    bridgeCodexFeatureCapabilities({ supports: () => false }).autoReviewApprovals,
+    "unsupported",
+  );
   const { context } = fixture();
   const result = codezRuntimeCapabilitiesSchema.parse(
     await handleControlRequest(
@@ -213,19 +268,21 @@ test("bridge capability authority is runtime-dispatch-derived and exposes every 
   );
 });
 
-test("read-only permission never implies independent plan collaboration", async () => {
-  for (const [sandbox_mode, approval_policy, expected] of [
-    ["read-only", "never", "build"],
-    ["workspace-write", "on-request", "build"],
-    ["danger-full-access", "never", "yolo"],
+test("global config projects the custom tier regardless of sandbox policy", async () => {
+  // 全局 config.toml 事实 = custom 档（跟随用户配置）；线程级 yolo/edit 投影
+  // 由 projectThreadMode 负责，不在全局 presentation 上猜测（specs/codex-permission-modes.md）。
+  for (const [sandbox_mode, approval_policy] of [
+    ["read-only", "never"],
+    ["workspace-write", "on-request"],
+    ["danger-full-access", "never"],
   ]) {
     const { context } = fixture({ "config/read": { config: { sandbox_mode, approval_policy } } });
     const settings = await readControlModelSettings(context);
-    assert.equal(settings.mode.current, expected);
+    assert.equal(settings.mode.current, "custom");
     const presentation = codezWorkspacePresentationSchema.parse(
       await handleControlRequest("workspace/readPresentation", { workspace }, context),
     );
-    assert.equal(presentation.mode, expected);
+    assert.equal(presentation.mode, "custom");
   }
 });
 

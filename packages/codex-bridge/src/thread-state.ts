@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { CodexNotification, CodexRpcPort } from "./contract.js";
 import { array, object, string, type JsonObject } from "./json.js";
-import { decorateNativeThread } from "./command-input.js";
+import { decorateNativeThread, rememberThreadMode } from "./command-input.js";
 import { sameExecutionPath } from "./execution-path.js";
 import { mergeNativeTurn } from "./merge-turn.js";
 import { canonicalNativeThreads } from "./projection.js";
@@ -227,6 +227,7 @@ export class ThreadStateStore {
       "model",
       "modelProvider",
       "approvalPolicy",
+      "approvalsReviewer",
       "sandboxPolicy",
       "collaborationMode",
     ]) {
@@ -234,6 +235,13 @@ export class ThreadStateStore {
     }
     if (settings.effort !== undefined) state.thread.reasoningEffort = settings.effort;
     this.touch(id);
+  }
+
+  /** 记住用户显式选择的权限档位（bridge 进程内事实，投影与 queue 守卫共用）。 */
+  rememberMode(id: string, mode: string | undefined): void {
+    const state = this.states.get(id);
+    if (!state) return;
+    rememberThreadMode(state.thread, mode);
   }
 
   async reloadAfterHistoryChange(id: string): Promise<ThreadProjectionState> {

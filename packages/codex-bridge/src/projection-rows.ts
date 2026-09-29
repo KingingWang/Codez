@@ -52,7 +52,9 @@ interface CodexPlanUpdateItem {
   explanation?: string;
 }
 
-function isCodexPlanUpdateItem(item: CodexThreadItem): item is CodexThreadItem & CodexPlanUpdateItem {
+function isCodexPlanUpdateItem(
+  item: CodexThreadItem,
+): item is CodexThreadItem & CodexPlanUpdateItem {
   return item.type === "planUpdate" && Array.isArray((item as { plan?: unknown }).plan);
 }
 

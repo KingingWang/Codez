@@ -160,6 +160,7 @@ test("bot createSession config (provider/model/thought + forced yolo) maps to na
       },
     },
     approvalPolicy: "never",
+    approvalsReviewer: "user",
     sandboxPolicy: { type: "dangerFullAccess" },
   });
 });

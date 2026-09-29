@@ -95,6 +95,8 @@ export const codexFeatureCapabilitiesSchema = z.strictObject({
   readOnlyWorkflowHistory: codexFeatureCapabilityStateSchema,
   safeDesktopFileRewind: codexFeatureCapabilityStateSchema,
   legacyWorkflowRuns: codexFeatureCapabilityStateSchema,
+  // 旧 peer 缺省该字段；消费方把缺省解析为 unsupported（composer 隐藏 Approve for me 档）。
+  autoReviewApprovals: codexFeatureCapabilityStateSchema.optional(),
 });
 /** Source discovery failed. Feature omission remains the old-peer unsupported case. */
 export const codexCapabilityUnavailableSchema = z.strictObject({

@@ -38,6 +38,7 @@ import {
   NotepadText,
   ShieldAlertIcon,
   ShieldCheckIcon,
+  SlidersHorizontalIcon,
   type LucideIcon,
 } from "lucide-react";
 import { CODEZ_MODE_OPTION_DESCRIPTION_IDS, CODEZ_MODE_OPTION_LABEL_IDS } from "./display-help.js";
@@ -211,6 +212,9 @@ export function resolveModeOptionIcon(value: unknown): LucideIcon {
   // build 对应常规确认模式，使用确认图标。
   if (typeof value === "string" && value.toLocaleLowerCase() === "build") return HandIcon;
   if (typeof value === "string" && value.toLocaleLowerCase() === "plan") return NotepadText;
+  // custom 跟随 config.toml，权限形态不固定，使用调节图标。
+  if (typeof value === "string" && value.toLocaleLowerCase() === "custom")
+    return SlidersHorizontalIcon;
 
   if (typeof value === "string" && /^(auto|agent|autoEdit|edit)$/i.test(value)) {
     return ShieldCheckIcon;

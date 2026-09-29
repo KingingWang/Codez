@@ -354,6 +354,10 @@ export interface V4ComposerToolbarProps {
   /** 选中思考深度；modelContext 固定本次用户操作的目标模型。 */
   onSelectThought: (thought: string, modelContext: { provider: string; model: string }) => void;
   onSwitchMode: (mode: string) => void;
+  /** Codex 会话：权限档位菜单改用原生档位目录（specs/codex-permission-modes.md）；缺省为 Codez Agent 旧档位。 */
+  codexPermissions?: boolean;
+  /** Approve for me（autoReviewApprovals 能力）是否受原生支持；未支持时隐藏 edit 档（fail-closed）。 */
+  codexAutoReviewSupported?: boolean;
   /** prepare/configOptions 失败时，custom provider 选择走 workspace recovery 链。 */
   onRecoverCustomModelSelection?: (
     value: string,

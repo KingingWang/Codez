@@ -5922,6 +5922,21 @@ const enUS: Record<string, string> = {
   "mode.description.glm.edit": "Edit files automatically.",
   "mode.description.glm.plan": "Plan before editing.",
   "mode.description.glm.yolo": "Run with fewer confirmations.",
+  "mode.codex.build": "Ask for approval",
+  "mode.codex.build.description":
+    "Read, edit, and run commands in this workspace. Approval is required to access the internet or edit other files.",
+  "mode.codex.edit": "Approve for me",
+  "mode.codex.edit.description": "Only ask for actions detected as potentially unsafe.",
+  "mode.codex.yolo": "Full access",
+  "mode.codex.yolo.description":
+    "Edit files outside this workspace and access the internet without asking for approval.",
+  "mode.codex.custom": "Custom",
+  "mode.codex.custom.description": "Use the permissions defined in config.toml.",
+  "mode.codex.plan.description": "Inspect the code and present a plan before making changes.",
+  "mode.codex.yolo.confirm.title": "Switch to full access?",
+  "mode.codex.yolo.confirm.description":
+    "The agent can edit files outside this workspace and access the internet without asking for approval.",
+  "mode.codex.yolo.confirm.accept": "Enable full access",
   "todo.panel.title": "Todo",
   "todo.panel.currentTask": "Current task",
   "todo.panel.completed": "Todo completed",
