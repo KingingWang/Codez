@@ -44,6 +44,7 @@ import {
   getCodexNativeBrowserCuaLegacyRegistration,
 } from "./codexSettingsData.js";
 import { roleFormToWriteInput } from "./CodexAgentsPanel.js";
+import { codexPanelToSection, codexSectionToPanel } from "./codexSettingsNav.js";
 
 const model = codexModelSchema.parse({
   id: "catalog-id",
@@ -308,6 +309,30 @@ test("legacy settings routes resolve to Codex or explicit unsupported capability
   assert.equal(isCodexUnsupportedSection("memory"), false);
   assert.equal(isCodexUnsupportedSection("appearance"), false);
   assert.equal(isCodexSettingsSection("general"), false);
+});
+
+test("settings section and internal panel mappings stay inverse and complete", () => {
+  // 有侧栏分区的面板必须双向往返一致，否则内部标签切换后标题/高亮与内容脱节。
+  const mappedPanels = [
+    "account",
+    "providers",
+    "skills",
+    "agents",
+    "mcp",
+    "plugins",
+    "memory",
+  ] as const;
+  for (const panel of mappedPanels) {
+    const section = codexPanelToSection(panel);
+    assert.ok(section, `${panel} should map to a section`);
+    assert.equal(isCodexSettingsSection(section), true);
+    assert.equal(codexSectionToPanel(section), panel);
+  }
+  // 没有侧栏分区的面板保持内部切换（返回 null），其余分区落到 account。
+  for (const panel of ["models", "config", "history"] as const)
+    assert.equal(codexPanelToSection(panel), null);
+  assert.equal(codexSectionToPanel("codex"), "account");
+  assert.equal(codexSectionToPanel("general"), "account");
 });
 
 test("agent role form validates like the bridge and omits blank optional fields", () => {
