@@ -66,6 +66,9 @@ jobs:
           packages/ui/src/v4/conversationStatusPanelModel.test.ts
           packages/ui/src/capabilities/useGitAuxiliaryCapability.test.ts
           packages/ui/src/capabilities/codexCapabilities.test.ts
+          packages/ui/src/capabilities/useCodexAutoReviewApprovals.test.ts
+          packages/ui/src/v4/composer/composerDraftModeNormalization.test.ts
+          packages/ui/src/v4/composer/codexFullAccessAcknowledgement.test.ts
       - name: Assemble four remote targets without compiling Codex
         run: node scripts/codex-runtime-remote-assets.mjs
       - name: Native standalone remote package smoke

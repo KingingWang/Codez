@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { LightbulbIcon, XIcon, ChevronDownIcon } from "lucide-react";
 import {
   TID_CHAT_MODE_SELECT_TRIGGER,
@@ -90,7 +90,9 @@ function V4ComposerModeSwitchImpl({
     // 与 useDraftConfigControl 的提交归一化保持一致，避免菜单整个消失。
     (codexPermissions
       ? permissions.find((mode) => mode.id === "custom")
-      : draftConfig?.mode === "edit" ? { id: "edit", name: "Edit" } : undefined);
+      : draftConfig?.mode === "edit"
+        ? { id: "edit", name: "Edit" }
+        : permissions.find((mode) => mode.id === "build"));
   const label = useCallback(
     (mode: CodezTaskModeInfo) => {
       const codexLabelId = codexPermissions ? CODEX_MODE_OPTION_LABEL_IDS[mode.id] : undefined;
@@ -112,6 +114,18 @@ function V4ComposerModeSwitchImpl({
     ? intl.formatMessage({ id: "mode.plan" })
     : label(getCodezAgentAvailableModes().find((mode) => mode.id === "plan")!);
   const planDescriptionId = descriptionId("plan");
+  // 确认弹窗是异步 Promise：组件卸载或 Codex 权限面消失后，迟到的确认不得再写入
+  // 旧作用域的草稿（把 yolo 写回已切换走的 scope）。模态已挡住指针交互，这里兜底
+  // 卸载与权限面变化两类失效。
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  const codexPermissionsRef = useRef(codexPermissions);
+  codexPermissionsRef.current = codexPermissions;
   /** 完全访问首次选择需确认；确认后持久化，不再重复弹（spec UI 约束）。 */
   const handleSelectPermission = useCallback(
     (value: string) => {
@@ -124,7 +138,7 @@ function V4ComposerModeSwitchImpl({
         description: intl.formatMessage({ id: "mode.codex.yolo.confirm.description" }),
         actionLabel: intl.formatMessage({ id: "mode.codex.yolo.confirm.accept" }),
       }).then((confirmed) => {
-        if (!confirmed) return;
+        if (!confirmed || !mountedRef.current || !codexPermissionsRef.current) return;
         writeCodexFullAccessAcknowledged();
         onSwitchMode("yolo");
       });
@@ -231,7 +245,7 @@ function V4ComposerModeSwitchImpl({
                   data-testid={testId(TID_CHAT_MODE_SELECT_ITEM, mode.id)}
                   className={cn(
                     "min-h-13 items-start gap-3 py-2",
-                    mode.id === "yolo" && "text-warning focus:text-warning",
+                    mode.id === "yolo" && "text-warning data-[highlighted]:text-warning",
                   )}
                 >
                   <ModeIcon className="mt-0.5 size-4.5 shrink-0" />

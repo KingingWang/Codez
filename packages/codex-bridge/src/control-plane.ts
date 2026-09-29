@@ -104,8 +104,12 @@ async function probeAutoReviewApprovals(
       })
       .parse(await context.rpc.request("configRequirements/read"));
     const allowed = requirements?.allowedApprovalsReviewers;
-    // 无 requirements 或白名单缺省 = 不限制；显式白名单必须包含 auto_review。
-    return !allowed || allowed.includes("auto_review") ? "supported" : "unsupported";
+    // 无 requirements 或白名单缺省 = 不限制；显式白名单必须包含 auto_review
+    //（guardian_subagent 是 auto_review 的旧别名，等价对待）。
+    return !allowed ||
+      allowed.some((value) => value === "auto_review" || value === "guardian_subagent")
+      ? "supported"
+      : "unsupported";
   } catch {
     return "unsupported";
   }

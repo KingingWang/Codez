@@ -6,7 +6,7 @@ import {
   type CodexFeatureAvailability,
 } from "@/capabilities/codexCapabilities.js";
 
-interface RuntimeRefreshSource {
+export interface RuntimeRefreshSource {
   onRuntimeRestart?: (
     listener: (reason?: "runtimeRestart" | "transportReplaced") => void,
   ) => () => void;

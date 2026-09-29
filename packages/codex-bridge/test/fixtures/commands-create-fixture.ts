@@ -2,18 +2,39 @@ import assert from "node:assert/strict";
 import type { TestContext } from "node:test";
 import { setup, workspaceId } from "./commands-fixture.js";
 
+/** 原生 thread/start 回传（继承）的权限形态：显式 build/edit 场景刻意继承 dangerFullAccess，
+ * 用以验证预设能收紧回 workspaceWrite；其余继承 readOnly。取代原先语义含糊的布尔形参
+ * fullAccess（调用点按目标档位反推继承值，读者难以对应）。 */
+type InheritedSandbox = "readOnly" | "workspaceWrite" | "dangerFullAccess";
+const inheritedPermissions: Record<InheritedSandbox, { sandbox: unknown; approvalPolicy: string }> =
+  {
+    readOnly: { sandbox: { type: "readOnly", networkAccess: false }, approvalPolicy: "untrusted" },
+    workspaceWrite: {
+      sandbox: {
+        type: "workspaceWrite",
+        writableRoots: [],
+        networkAccess: false,
+        excludeTmpdirEnvVar: false,
+        excludeSlashTmp: false,
+      },
+      approvalPolicy: "on-request",
+    },
+    dangerFullAccess: { sandbox: { type: "dangerFullAccess" }, approvalPolicy: "never" },
+  };
+
 /** Executable create contract: thread/start → accepted native settings/update → ACK.
  * No synthetic first turn. Unsupported creation intent rejects before thread allocation.
  * Native response owns the effective model; only accepted settings enter the store.
  */
-async function creation(t: TestContext, fullAccess = false) {
+async function creation(t: TestContext, inheritedSandbox: InheritedSandbox = "readOnly") {
   const h = await setup(t);
+  const inherited = inheritedPermissions[inheritedSandbox];
   h.rpc.handlers.set("thread/start", () => ({
     thread: { ...h.authority.thread, id: "created", model: null, turns: [] },
     model: "effective-model",
     reasoningEffort: "medium",
-    sandbox: fullAccess ? { type: "dangerFullAccess" } : { type: "readOnly", networkAccess: false },
-    approvalPolicy: fullAccess ? "never" : "untrusted",
+    sandbox: inherited.sandbox,
+    approvalPolicy: inherited.approvalPolicy,
   }));
   h.rpc.handlers.set("thread/settings/update", () => ({}));
   return h;
@@ -62,7 +83,14 @@ export async function verifyCreateIntent(t: TestContext) {
   ] as const;
   for (const example of cases) {
     await t.test(`empty create preserves ${example.name}`, async (t) => {
-      const h = await creation(t, "sandbox" in example && example.sandbox === "workspaceWrite");
+      const h = await creation(
+        t,
+        // 显式 workspaceWrite（build/edit）场景让原生回传继承 dangerFullAccess 沙箱，
+        // 以验证预设能从完全访问收紧回 workspace-write。
+        "sandbox" in example && example.sandbox === "workspaceWrite"
+          ? "dangerFullAccess"
+          : "readOnly",
+      );
       const command = h.command(
         "createSession",
         { workspaceId, config: example.config },

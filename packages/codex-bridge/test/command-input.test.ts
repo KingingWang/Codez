@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assertUnchangedInputSettings,
+  decorateNativeThread,
   projectThreadMode,
   rememberThreadMode,
   turnMode,
@@ -151,4 +152,36 @@ test("turnMode applies overrides only on an explicit migration", () => {
   assert.equal(Object.hasOwn(plan, "sandboxPolicy"), false);
   // 无 mode 且 planEnabled 未指定 → 空对象（模型/effort 走各自通道）。
   assert.deepEqual(turnMode(undefined, "model"), {});
+});
+
+test("decorateNativeThread merges top-level reviewer and collaboration mode from resume", () => {
+  // 原生 resume 响应在顶层携带权限/plan 字段（Thread struct 不含）；水合必须合并，
+  // 否则 auto_review 会被投影成 custom、plan 态丢失，标签与生效权限静默错位。
+  const decorated = decorateNativeThread({
+    thread: { id: "t1", cwd: "/work", turns: [] },
+    sandbox: { type: "workspaceWrite" },
+    approvalPolicy: "on-request",
+    approvalsReviewer: "auto_review",
+    collaborationMode: { mode: "plan" },
+    model: "effective",
+    reasoningEffort: "high",
+  });
+  assert.equal(decorated.approvalsReviewer, "auto_review");
+  assert.deepEqual(decorated.collaborationMode, { mode: "plan" });
+  assert.deepEqual(decorated.sandboxPolicy, { type: "workspaceWrite" });
+  assert.equal(decorated.approvalPolicy, "on-request");
+  assert.equal(decorated.model, "effective");
+  assert.equal(decorated.reasoningEffort, "high");
+  // 水合后放宽态（AI 代批）投影为 edit，而非 custom。
+  assert.equal(projectThreadMode(decorated), "edit");
+  // start/fork 响应没有 collaborationMode：不得凭空捏造。
+  const started = decorateNativeThread({
+    thread: { id: "t2" },
+    sandbox: { type: "dangerFullAccess" },
+    approvalPolicy: "never",
+    approvalsReviewer: "user",
+  });
+  assert.equal(Object.hasOwn(started, "collaborationMode"), false);
+  assert.equal(started.approvalsReviewer, "user");
+  assert.equal(projectThreadMode(started), "yolo");
 });

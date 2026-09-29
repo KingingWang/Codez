@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { ThreadStateStore } from "../src/thread-state.js";
+import { projectThreadMode } from "../src/command-input.js";
 import type { CodexRpcPort } from "../src/contract.js";
 
 const thread = () => ({
@@ -386,4 +387,31 @@ test("turn/plan/updated upserts one normalized plan item per turn", async () => 
   });
   turns = store.get("t1")!.thread.turns as { items: unknown[] }[];
   assert.equal(turns[0]!.items.length, 1);
+});
+
+test("thread/settings/updated syncs approvalsReviewer so an external auto_review switch projects edit", async () => {
+  const store = new ThreadStateStore(
+    port(() => ({})),
+    "/work",
+  );
+  store.markStarted(thread());
+  // 外部（CLI/另一窗口）切到 AI 代批：通知必须同步 approvalsReviewer，否则投影滞留旧值，
+  // 标签与生效权限静默错位（specs/codex-permission-modes.md）。
+  await store.apply({
+    method: "thread/settings/updated",
+    params: {
+      threadId: "t1",
+      threadSettings: {
+        model: "m",
+        effort: "high",
+        sandboxPolicy: { type: "workspaceWrite" },
+        approvalPolicy: "on-request",
+        approvalsReviewer: "auto_review",
+        collaborationMode: { mode: "default" },
+      },
+    },
+  });
+  const projected = store.get("t1")!.thread;
+  assert.equal(projected.approvalsReviewer, "auto_review");
+  assert.equal(projectThreadMode(projected), "edit");
 });

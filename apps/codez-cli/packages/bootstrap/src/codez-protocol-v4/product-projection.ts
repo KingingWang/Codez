@@ -57,6 +57,7 @@ import {
   CREATE_WORKFLOW_TOOL_NAME,
   CoreErrorType,
   SessionEventType,
+  contractIntentMode,
   getModelUsageContextTokens,
 } from "@codez/contracts";
 import {
@@ -3795,6 +3796,7 @@ export class ProductProjection {
           (candidate) => candidate.queueItemId === pendingInputId,
         );
         if (!queueItem) return [];
+        const intentMode = contractIntentMode(queueItem.mode);
         const intent: TurnInputIntentMetadata = {
           sourceCommandId: queueItem.sourceCommandId,
           queueItemId: queueItem.queueItemId,
@@ -3802,7 +3804,7 @@ export class ProductProjection {
           kind: queueItem.kind,
           text: queueItem.text,
           ...(queueItem.modelSelection ? { modelSelection: queueItem.modelSelection } : {}),
-          ...(queueItem.mode ? { mode: queueItem.mode } : {}),
+          ...(intentMode ? { mode: intentMode } : {}),
           ...(queueItem.planEnabled !== undefined ? { planEnabled: queueItem.planEnabled } : {}),
           admissionSeq: queueItem.order.admissionSeq,
           admittedAt: queueItem.admittedAt,

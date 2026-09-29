@@ -20,6 +20,7 @@ Plan 保持独立勾选维度（`planEnabled` → `collaborationMode`），与�
 ## 状态所有权与事件顺序
 
 - 生效权限的唯一所有者是原生线程；bridge `ThreadStateStore` 持有投影缓存，并额外记住"用户最近一次显式选择的档位"（bridge 进程内存，不落盘、不跨进程）。
+- 投影输入必须完整：`thread/start` / `thread/resume` / `thread/fork` 响应在顶层携带 `approvalPolicy` / `approvalsReviewer` / `sandbox`（`Thread` 结构体本身不含权限字段），水合装饰必须合并 `approvalsReviewer`（丢失会把 edit 线程误投影为 custom，切 custom 时漏发恢复覆盖）；`thread/settings/updated` 事件同步更新 `approvalsReviewer`（外部 CLI/另一窗口的变更不能被投影吞掉）。
 - 投影规则（snapshot `config.mode` 与 queue 守卫共用同一推导）：
   1. 本进程记住的显式档位优先；
   2. 否则按线程生效值推导：`dangerFullAccess → yolo`；`approvalsReviewer=auto_review → edit`；其余 → `custom`（无显式选择即跟随原生，与旧 build "保留原生权限"行为等价）。
@@ -28,14 +29,15 @@ Plan 保持独立勾选维度（`planEnabled` → `collaborationMode`），与�
 
 ## 能力探测与降级
 
-- bridge `runtime/capabilities` 新增 `autoReviewApprovals`：探测原生 `guardian_approval` feature（`experimentalFeature/list`）与 `configRequirements/read` 的 `allowed_approvals_reviewers`；两者均允许才 `supported`，否则 `unsupported`。探测结果按 bridge 进程缓存。
+- bridge `runtime/capabilities` 新增 `autoReviewApprovals`：探测原生 `guardian_approval` feature（`experimentalFeature/list`）与 `configRequirements/read` 的 `requirements.allowedApprovalsReviewers`（wire 为 camelCase；来源配置项即 `allowed_approvals_reviewers`，旧别名 `guardian_subagent` 与 `auto_review` 等价对待）；两者均允许才 `supported`，否则 `unsupported`。探测结果（含失败）按 bridge 进程缓存，进程重启后重新探测；UI 侧在 runtime 重启 / transport 替换后重新 hello，刷新期间按不可用处理（fail-closed）。
 - 能力非 `supported` 时，composer 隐藏 `edit` 档；已持久化的 `edit` 草稿在 Codex scope 归一化为 `custom`。
 - 旧 peer 缺省该能力字段时按 `unsupported` 解析（协议字段为 optional，UI 投影缺省即隐藏）。
 
 ## 默认值与迁移边界
 
 - Codex 会话新任务草稿默认档为 `custom`（不静默覆盖用户 config.toml）。
-- 存量持久化草稿：`yolo` 保留（语义不变）；`build`/`edit` 不重写——旧 build 语义（保留原生）与新 custom 等价，投影会显示 custom，下次显式选择即收敛；`edit` 在能力可用时自然获得 Approve for me 语义，不可用时按上节归一化。
+- 存量持久化草稿：`yolo` 保留（语义不变）；升级前写入的 `build`（草稿缺少 `permissionModeGen:2` 代际标记）在展示与提交层归一为 `custom`——旧 build 语义（保留原生权限）与新 custom 等价，直接下发 build 会被 bridge 当成显式迁移而静默改写线程权限；新版本下用户显式选择的 `build` 写入代际标记，原样保留。`edit` 在能力可用时自然获得 Approve for me 语义，不可用时按上节归一化。
+- `custom` 只属于 Codex 链路：残留草稿落到非 Codex 链路时 UI 展示/提交归一为 `build`，Codez Agent CLI admission（`resolveSubmittedExecutionState` / `switchCollaborationMode`）对 `custom` 显式拒绝（failed ACK），不允许静默降档。
 - `submissionModeSchema` 增加 `custom`；`codezSessionModeSchema` 增加 `custom`（additive，旧运行时不产生该值，`normalizeAvailableCodezMode` 对未知值仍回退 build）。
 - bridge 不再拒绝 `edit`；`turnMode` 的 `edit → unsupported` 与 `createNativeSession` 的 edit 拒绝同步移除。
 

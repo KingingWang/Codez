@@ -188,6 +188,11 @@ export function decorateNativeThread(response: unknown): Record<string, unknown>
     ...thread,
     ...(result.sandbox ? { sandboxPolicy: result.sandbox } : {}),
     ...(result.approvalPolicy ? { approvalPolicy: result.approvalPolicy } : {}),
+    // 原生 resume/start/fork 响应在顶层携带 approvalsReviewer 与 collaborationMode（仅 resume），
+    // Thread struct 本身不含权限字段；漏合并会让水合的 auto_review 线程被投影成 custom、plan
+    // 态丢失，导致标签与生效权限静默错位（specs/codex-permission-modes.md）。
+    ...(result.approvalsReviewer ? { approvalsReviewer: result.approvalsReviewer } : {}),
+    ...(result.collaborationMode ? { collaborationMode: result.collaborationMode } : {}),
     ...(typeof result.model === "string" ? { model: result.model } : {}),
     ...(typeof result.reasoningEffort === "string"
       ? { reasoningEffort: result.reasoningEffort }
