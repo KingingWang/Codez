@@ -36,12 +36,14 @@ try {
   await page.route("**/*", (route) =>
     new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort(),
   );
-  // 根因：页面表单已可交互时，Vite 的无关资源仍可能拖住全页 load/networkidle；
-  // 用目标控件就绪作为同步边界，不扩大原有控件断言的超时时间。
+  // 根因：页面表单已可交互时，Vite 的无关资源仍可能拖住 DOMContentLoaded/load；
+  // 用目标控件就绪作为同步边界，仅冷启动预打包有独立上限，不放宽后续交互断言。
   await page.goto("http://127.0.0.1:5189/automation-model-read.html", {
-    waitUntil: "domcontentloaded",
+    waitUntil: "commit",
   });
-  await page.getByRole("button", { name: "Reject delayed read", exact: true }).waitFor();
+  await page
+    .getByRole("button", { name: "Reject delayed read", exact: true })
+    .waitFor({ timeout: 20_000 });
   await page.getByTestId("automation-form-prompt").fill("Isolated retained prompt");
   const picker = page.getByTestId("chat-model-select-trigger");
   await page.getByRole("button", { name: "Loading...", exact: true }).waitFor();

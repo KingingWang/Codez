@@ -25,11 +25,14 @@ workspace selection → existing Host model-view hook → loading / ready / erro
 3. Clicking Retry performs a fresh read; a successful result removes failure feedback without submitting or modifying the prompt.
 4. Valid native defaults (including models absent from discovery or without reasoning effort) retain the existing ready/submission behavior.
 5. A local isolated browser test exercises loading → error → retry → ready using the real automation form and injected services, without user credentials or real automation writes.
-6. The isolated browser test waits for the fixture's own interactive control
-   after `domcontentloaded`, not for every unrelated asset/request to reach the
-   page-wide `load` or `networkidle` state. A slow unrelated resource must not
-   fail navigation while the real form is already interactive; the same
-   per-control readiness assertions and deadlines still apply.
+6. The isolated browser test navigates only until the response is committed,
+   then waits for the fixture's own interactive control. It must not wait for
+   `domcontentloaded`, `load`, or `networkidle`: under Vite's cold dependency
+   optimization, these page-wide events can still be pending after React has
+   rendered the usable form. Cold Vite dependency optimization gets a
+   separate bounded 20-second boot deadline for the first control; every
+   subsequent interaction assertion keeps its 10-second deadline. A missing
+   control must still fail, never be silently retried.
 
 ## Reproduction
 
