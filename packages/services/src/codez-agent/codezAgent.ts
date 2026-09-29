@@ -37,6 +37,8 @@ import type {
   CodezCatalogReadModelsResult,
   CodezCatalogReadResult,
   CodezAgentsWriteResult,
+  CodezMcpProjectConfigWriteAction,
+  CodezMcpProjectConfigWriteResult,
   CodezPluginsOverviewResult,
   CodezPluginsMarketplaceMutationResult,
   CodezPluginsInstallResult,
@@ -612,6 +614,19 @@ export interface CodezAgentWriteAgentRoleParams extends CodezAgentWorkspaceTarge
   role: CodezAgentRoleWriteInput;
 }
 
+/**
+ * Codex 项目层 MCP 配置写入（spec: specs/codex-desktop-mcp-settings.md）。
+ * 载体铁律与 listAgentRoles 相同：项目配置文件在 workspace 所属机器上，
+ * 远程 workspace 必须由远端 bridge 进程写。
+ */
+export interface CodezAgentMcpProjectConfigWriteParams extends CodezAgentWorkspaceTarget {
+  action: CodezMcpProjectConfigWriteAction;
+  name: string;
+  config?: Record<string, unknown>;
+  enabled?: boolean;
+  dotCodexFolder?: string;
+}
+
 export interface CodezAgentDeleteAgentRoleParams extends CodezAgentWorkspaceTarget {
   scope: CodezAgentRoleScope;
   name: string;
@@ -686,6 +701,13 @@ export interface ICodezAgentService {
   ): Promise<CodezCatalogReadResult>;
   /** 新建或更新角色 TOML；更新传 originalName，不支持改名（删除+新建）。 */
   writeAgentRole(params: CodezAgentWriteAgentRoleParams): Promise<CodezAgentsWriteResult>;
+  /**
+   * Codex 项目层 MCP 配置的 upsert/delete/set-enabled（spec: specs/codex-desktop-mcp-settings.md）。
+   * 原生 config/batchWrite 禁写项目层，由 bridge 直接改 `.codex/config.toml` 并 reload。
+   */
+  writeCodexProjectMcpConfig(
+    params: CodezAgentMcpProjectConfigWriteParams,
+  ): Promise<CodezMcpProjectConfigWriteResult>;
   /** 删除角色 TOML；按 effective name 定位，文件必须存在于该 scope。 */
   deleteAgentRole(params: CodezAgentDeleteAgentRoleParams): Promise<void>;
   /**

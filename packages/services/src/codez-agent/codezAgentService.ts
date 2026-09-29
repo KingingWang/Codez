@@ -43,6 +43,7 @@ import {
   codezCatalogReadModelsResultSchema,
   codezCatalogReadResultSchema,
   codezAgentsWriteResultSchema,
+  codezMcpProjectConfigWriteResultSchema,
   codezAgentsDeleteResultSchema,
   codezPluginsMarketplaceMutationResultSchema,
   codezPluginsOverviewResultSchema,
@@ -211,6 +212,7 @@ import type {
   CodezAgentWorkspaceTarget,
   CodezAgentDeleteAgentRoleParams,
   CodezAgentWriteAgentRoleParams,
+  CodezAgentMcpProjectConfigWriteParams,
   CodezAgentCuaPermissionObservation,
   CodezAgentCreateAutomationParams,
   CodezAgentUpdateAutomationParams,
@@ -4418,6 +4420,25 @@ export function createCodezAgentService(
         codezProtocolMethods.catalogDeleteModel,
         { workspace: buildWorkspaceRef(params), slug: params.slug },
         codezCatalogReadResultSchema,
+      );
+    },
+
+    // 与 writeAgentRole 同一载体铁律（spec: specs/codex-desktop-mcp-settings.md）：
+    // 项目层 .codex/config.toml 在 workspace 所属机器上，远程 workspace 必须由
+    // 远端 bridge 写入；原生 config/batchWrite 禁写项目层（configLayerReadonly）。
+    async writeCodexProjectMcpConfig(params: CodezAgentMcpProjectConfigWriteParams) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.mcpProjectConfigWrite,
+        {
+          workspace: buildWorkspaceRef(params),
+          action: params.action,
+          name: params.name,
+          ...(params.config !== undefined ? { config: params.config } : {}),
+          ...(params.enabled !== undefined ? { enabled: params.enabled } : {}),
+          ...(params.dotCodexFolder ? { dotCodexFolder: params.dotCodexFolder } : {}),
+        },
+        codezMcpProjectConfigWriteResultSchema,
       );
     },
 

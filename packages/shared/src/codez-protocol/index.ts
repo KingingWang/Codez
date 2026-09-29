@@ -3758,6 +3758,42 @@ export const codezAgentsDeleteParamsSchema = z
   .strict();
 export const codezAgentsDeleteResultSchema = z.object({}).strict();
 
+// Codex 项目层 MCP 配置写入（spec: specs/codex-desktop-mcp-settings.md）。
+// 原生 config/batchWrite 只允许 user 层；项目层由 bridge 在 workspace 所属机器上
+// read-modify-write `.codex/config.toml` 并触发 config/mcpServer/reload。
+export const codezMcpProjectConfigWriteActionSchema = z.enum(["upsert", "delete", "set-enabled"]);
+export type CodezMcpProjectConfigWriteAction = z.infer<
+  typeof codezMcpProjectConfigWriteActionSchema
+>;
+
+export const codezMcpProjectConfigWriteParamsSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    action: codezMcpProjectConfigWriteActionSchema,
+    name: nonEmptyString,
+    // upsert 专用：Codex 原生 server 条目（stdio: command/args/env…；http: url/http_headers…）。
+    config: z.record(z.string(), z.unknown()).optional(),
+    // 编辑/删除/启停多层叠放项目配置里的既有条目时，指定 origins 报告的所属
+    // .codex 目录；缺省写最近一层。bridge 校验该值必须是 Codex 当前报告的项目层。
+    dotCodexFolder: z.string().optional(),
+    // set-enabled 专用：true 删除 enabled 键恢复默认启用；false 写 enabled=false。
+    enabled: z.boolean().optional(),
+  })
+  .strict();
+export type CodezMcpProjectConfigWriteParams = z.infer<
+  typeof codezMcpProjectConfigWriteParamsSchema
+>;
+
+export const codezMcpProjectConfigWriteResultSchema = z
+  .object({
+    configFilePath: nonEmptyString,
+    projectRoot: nonEmptyString,
+  })
+  .strict();
+export type CodezMcpProjectConfigWriteResult = z.infer<
+  typeof codezMcpProjectConfigWriteResultSchema
+>;
+
 export const codezProtocolMethods = {
   codexRequest: "codex/request",
   runtimeCapabilities: "runtime/capabilities",
@@ -3844,6 +3880,7 @@ export const codezProtocolMethods = {
   // Codex 子智能体（agent roles）文件管理：bridge 控制面方法族，非原生 RPC。
   agentsList: "agents/list",
   agentsWrite: "agents/write",
+  mcpProjectConfigWrite: "mcp/projectConfigWrite",
   agentsDelete: "agents/delete",
   // Codex 模型目录（model_catalog_json）读取：bridge 本地 fs 控制面方法，
   // 非原生 RPC；多 provider 分组事实的唯一来源（specs/codex-model-provider-grouping.md）。
