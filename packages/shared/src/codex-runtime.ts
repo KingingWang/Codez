@@ -90,6 +90,9 @@ const configSourceSchema = z.object({
   type: z.string(),
   file: z.string().optional(),
   profile: z.string().nullable().optional(),
+  // project 层用 dotCodexFolder 暴露配置目录（Codex 0.157 实测，不给 file）；
+  // zod 默认剥离未知键，不显式声明就拿不到项目配置目录。
+  dotCodexFolder: z.string().optional(),
 });
 const configMetadataSchema = z.object({ name: configSourceSchema, version: z.string() });
 export const codexConfigResponseSchema = z.object({

@@ -3,7 +3,7 @@ import * as s from "@codez/shared";
 import type { BridgeControlContext } from "./contract.js";
 import { checkWorkspace, ControlError, input, readPages, unsupported } from "./control-common.js";
 import { readControlPresentation, readControlSkills } from "./control-presentation.js";
-import { readControlMcp } from "./control-mcp.js";
+import { readControlMcp, writeProjectMcpConfig } from "./control-mcp.js";
 import { handlePluginRequest } from "./control-plugins.js";
 import { handleAgentRequest } from "./control-agents.js";
 import { handleCatalogRequest } from "./control-catalog.js";
@@ -33,6 +33,7 @@ const methods = new Set([
   "agents/list",
   "agents/write",
   "agents/delete",
+  "mcp/projectConfigWrite",
   "catalog/read",
   "catalog/readModels",
   "catalog/writeModel",
@@ -196,6 +197,11 @@ async function dispatch(
           "Codex owns MCP configuration; Codez server overlays cannot be applied",
         );
       return readControlMcp(context);
+    }
+    case "mcp/projectConfigWrite": {
+      const p = input(s.codezMcpProjectConfigWriteParamsSchema, params, method);
+      checkWorkspace(p.workspace, context, method);
+      return writeProjectMcpConfig(context, p);
     }
     case "provider/updateAccountConfig": {
       const p = input(s.codezProviderUpdateAccountConfigParamsSchema, params, method);
