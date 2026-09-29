@@ -36,8 +36,12 @@ try {
   await page.route("**/*", (route) =>
     new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort(),
   );
-  await page.goto("http://127.0.0.1:5189/automation-model-read.html");
-  await page.waitForLoadState("networkidle");
+  // 根因：页面表单已可交互时，Vite 的无关资源仍可能拖住全页 load/networkidle；
+  // 用目标控件就绪作为同步边界，不扩大原有控件断言的超时时间。
+  await page.goto("http://127.0.0.1:5189/automation-model-read.html", {
+    waitUntil: "domcontentloaded",
+  });
+  await page.getByRole("button", { name: "Reject delayed read", exact: true }).waitFor();
   await page.getByTestId("automation-form-prompt").fill("Isolated retained prompt");
   const picker = page.getByTestId("chat-model-select-trigger");
   await page.getByRole("button", { name: "Loading...", exact: true }).waitFor();
