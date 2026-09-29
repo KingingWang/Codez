@@ -28,6 +28,11 @@ effective configuration, resource installation state, or accepted commands.
 - A dedicated Codex section contains native account, model/reasoning,
   configuration/requirements, skills, MCP, and plugin/marketplace controls.
   Legacy provider/skill/MCP/plugin deep links render the Codex surface on desktop.
+- The section's internal panel tabs are the same navigation as the Settings
+  sidebar entries: switching a tab that has a sidebar counterpart also moves
+  the outer active section, so the page title and sidebar highlight always
+  follow the visible panel. Panels without a sidebar entry (models, config,
+  history) remain internal-only switches.
 - Unsupported legacy agent settings show an explicit capability notice. Workflow,
   CUA, cloud and migration parity are not implied by disabled controls.
 - Login starts/cancels through native account RPC. Credentials are ephemeral form
