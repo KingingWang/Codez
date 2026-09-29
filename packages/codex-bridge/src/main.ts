@@ -25,10 +25,9 @@ async function main(): Promise<void> {
   const cwd = await realpath(process.cwd());
   const workspaceId = process.env.CODEZ_WORKSPACE_IDENTITY?.trim() || cwd;
   const scope = createHash("sha256").update(workspaceId).digest("hex");
-  const stateRoot = join(
-    process.env.CODEZ_CODEX_BRIDGE_HOME || join(homedir(), ".codez-codex", "bridge"),
-    scope,
-  );
+  const bridgeHome =
+    process.env.CODEZ_CODEX_BRIDGE_HOME || join(homedir(), ".codez-codex", "bridge");
+  const stateRoot = join(bridgeHome, scope);
   const rpc = createCodexProcess({
     executable: process.env.CODEZ_CODEX_COMMAND?.trim() || "codex",
     cwd,
@@ -99,6 +98,7 @@ async function main(): Promise<void> {
     cwd,
     workspaceId,
     stateRoot,
+    officialMarketplaceRoot: join(bridgeHome, "official-codex-marketplace"),
     notify: (method, params) => write({ method, params }),
     fatal,
     nativeBrowserCua: parseNativeBrowserCuaFacts(),

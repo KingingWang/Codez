@@ -1,5 +1,6 @@
 /** Codex is the execution authority; this port never owns a second queue. */
 import type { DesktopCodexMcpServer } from "@codez/shared";
+import type { OfficialPluginMarketplace } from "./official-plugin-marketplace.js";
 export interface CodexRpcPort {
   request<T = unknown>(method: string, params?: unknown): Promise<T>;
   respond(id: string | number, result: unknown): Promise<void>;
@@ -51,6 +52,7 @@ export interface CodexProcess extends CodexRpcPort {
 export interface BridgeControlContext {
   rpc: CodexRpcPort;
   cwd: string;
+  officialPlugins?: OfficialPluginMarketplace;
   auxiliary?: { supports(method: string): boolean };
   nativeBrowserCua?: {
     browserAvailable: boolean;

@@ -27,6 +27,7 @@ import {
   PluginStoreInstallButton,
   PluginStoreItemMenu,
   PluginStorePaidPlanBadge,
+  PluginStoreUnavailableReason,
   type PluginStoreActions,
 } from "@/settings/PluginStoreCard.js";
 import {
@@ -188,6 +189,10 @@ export function PluginStoreDetailView({
             {intl.formatMessage({ id: "settings.plugins.store.sourceMissing" })}
           </p>
         ) : null}
+        <PluginStoreUnavailableReason
+          item={item}
+          className="flex items-center gap-1.5 text-ui-base text-foreground-subtle"
+        />
       </div>
 
       {/* Hero 区：横幅图上垂直堆叠示例提示词胶囊；无图但有提示词 → 纯胶囊列表；两者皆无 → 不渲染。 */}

@@ -3660,6 +3660,8 @@ export const codezAvailablePluginSummarySchema = z
     description: z.string().optional(),
     version: z.string().optional(),
     installed: z.boolean(),
+    // Codex official NOT_AVAILABLE entries stay visible but are not installable.
+    installationUnavailableReason: z.string().optional(),
     componentTypes: z.array(z.string()).optional(),
     listing: codezPluginStoreListingSchema.optional(),
   })

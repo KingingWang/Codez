@@ -7,7 +7,7 @@ import {
   v4ConversationFileChangesParamsSchema,
   v4ConversationFileRewindProjectionOverlayParamsSchema,
 } from "@codez/shared/codez-protocol-v4";
-import type { CodexProcess } from "./contract.js";
+import type { BridgeControlContext, CodexProcess } from "./contract.js";
 import { DeletedThreadError, ThreadStateStore } from "./thread-state.js";
 import { InteractionBroker } from "./interactions.js";
 import { CommandLedger } from "./command-ledger.js";
@@ -17,6 +17,7 @@ import { BridgeSnapshots } from "./bridge-snapshots.js";
 import { BridgeSubscriptions } from "./subscriptions.js";
 import { AttachmentStore } from "./attachments.js";
 import { supportsControlMethod, handleControlRequest } from "./control-plane.js";
+import { OfficialPluginMarketplace } from "./official-plugin-marketplace.js";
 import { handleLegacySession } from "./legacy-sessions.js";
 import { array, object, string, unsupported } from "./json.js";
 import { projectTurnFileChanges } from "./file-changes.js";
@@ -35,12 +36,10 @@ export interface BridgeRuntimeOptions {
   cwd: string;
   workspaceId: string;
   stateRoot: string;
+  officialMarketplaceRoot?: string;
   notify(method: string, params: unknown): Promise<void>;
   fatal(error: Error, origin?: BridgeFailureOrigin): void;
-  nativeBrowserCua?: {
-    browserAvailable: boolean;
-    cuaAvailable: boolean;
-  };
+  nativeBrowserCua?: BridgeControlContext["nativeBrowserCua"];
 }
 
 export class BridgeRuntime {
@@ -53,7 +52,7 @@ export class BridgeRuntime {
   private readonly subscriptions: BridgeSubscriptions;
   private readonly attachments: AttachmentStore;
   private readonly auxiliary: AuxiliaryText;
-  private readonly nativeBrowserCua: BridgeRuntimeOptions["nativeBrowserCua"];
+  private readonly officialPlugins: OfficialPluginMarketplace | undefined;
   private readonly unsubscribe: (() => void)[] = [];
   private eventTail: Promise<void> = Promise.resolve();
   private closed = false;
@@ -62,7 +61,9 @@ export class BridgeRuntime {
     const { rpc, cwd, workspaceId, stateRoot, notify } = options;
     this.store = new ThreadStateStore(rpc, cwd);
     this.auxiliary = new AuxiliaryText({ rpc, cwd });
-    this.nativeBrowserCua = options.nativeBrowserCua;
+    this.officialPlugins = options.officialMarketplaceRoot
+      ? new OfficialPluginMarketplace(options.officialMarketplaceRoot)
+      : undefined;
     this.interactions = new InteractionBroker(rpc, (id) => this.store.touch(id));
     this.ledger = new CommandLedger(join(stateRoot, "commands"));
     this.attachments = new AttachmentStore({
@@ -207,8 +208,9 @@ export class BridgeRuntime {
         result: await handleControlRequest(method, params, {
           rpc,
           cwd,
+          officialPlugins: this.officialPlugins,
           auxiliary: this.auxiliary,
-          nativeBrowserCua: this.nativeBrowserCua,
+          nativeBrowserCua: this.options.nativeBrowserCua,
         }),
       };
     if (method.startsWith("session/")) {

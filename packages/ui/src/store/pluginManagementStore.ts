@@ -70,14 +70,14 @@ export interface PluginManagementState {
     marketplace: string,
     pluginService: IPluginManagementService,
     scope?: CodezPluginScope,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   uninstallPlugin: (
     pluginId: string,
     pluginService: IPluginManagementService,
     removeCache?: boolean,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   updatePlugin: (pluginId: string, pluginService: IPluginManagementService) => Promise<void>;
-  restoreBuiltin: (pluginId: string, pluginService: IPluginManagementService) => Promise<void>;
+  restoreBuiltin: (pluginId: string, pluginService: IPluginManagementService) => Promise<boolean>;
   configurePlugin: (
     pluginId: string,
     options: Record<string, string | number | boolean>,
@@ -253,7 +253,7 @@ export const usePluginManagementStore = create<PluginManagementState>((set, get)
   },
 
   async installPlugin(pluginName, marketplace, pluginService, scope = "user") {
-    await runWorkspaceOperation(
+    return runWorkspaceOperation(
       set,
       get,
       pluginService,
@@ -274,7 +274,7 @@ export const usePluginManagementStore = create<PluginManagementState>((set, get)
   },
 
   async uninstallPlugin(pluginId, pluginService, removeCache = true) {
-    await runWorkspaceOperation(
+    return runWorkspaceOperation(
       set,
       get,
       pluginService,
@@ -305,7 +305,7 @@ export const usePluginManagementStore = create<PluginManagementState>((set, get)
   },
 
   async restoreBuiltin(pluginId, pluginService) {
-    await runWorkspaceOperation(
+    return runWorkspaceOperation(
       set,
       get,
       pluginService,

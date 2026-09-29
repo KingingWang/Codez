@@ -3774,7 +3774,13 @@ export function createCodezAgentService(
     return (await getOrStartReadOnlyClient(params)).client;
   }
 
-  async function getPluginManagementClient(): Promise<CodezProtocolClient> {
+  async function getPluginManagementClient(
+    target?: CodezAgentWorkspaceTarget,
+  ): Promise<CodezProtocolClient> {
+    // Codex 插件写入用户级配置，但执行主机由目标 workspace 决定。
+    // 合成管理 workspace 只属于 legacy CLI；Codex 必须复用真实 attachment，
+    // 否则 scope 校验拒绝请求，远端项目还可能错误落地到本机。
+    if (usesDefaultCodexBridge && target) return (await getOrStartReadOnlyClient(target)).client;
     const workspace = { workspacePath: ensurePluginManagementWorkspacePath() };
     const client = await pluginProcessManager.getClient(workspace);
     wireClient(client, workspace, "plugin");
@@ -4709,7 +4715,7 @@ export function createCodezAgentService(
 
     async listPlugins(params: CodezAgentPluginViewParams) {
       const requestPluginsList = async () => {
-        const client = await getPluginManagementClient();
+        const client = await getPluginManagementClient(params);
         // plugins/list 只读取本地 plugin metadata，与 mcp/list 一样走默认协议超时，
         // 这样 stale client 能在合理时间内触发回收并重试，而不是被 5 分钟市场 I/O 超时拖住。
         return client.request(
@@ -5259,7 +5265,7 @@ export function createCodezAgentService(
     },
 
     async resolveSuggestedPluginReference(params: CodezAgentResolveSuggestedPluginReferenceParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsResolveSuggestedReference,
         {
@@ -5310,7 +5316,7 @@ export function createCodezAgentService(
     },
 
     async getPluginsOverview(params: CodezAgentPluginViewParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsOverview,
         {
@@ -5323,7 +5329,7 @@ export function createCodezAgentService(
     },
 
     async addPluginMarketplace(params: CodezAgentAddPluginMarketplaceParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsMarketplaceAdd,
         {
@@ -5338,7 +5344,7 @@ export function createCodezAgentService(
     },
 
     async removePluginMarketplace(params: CodezAgentRemovePluginMarketplaceParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsMarketplaceRemove,
         {
@@ -5351,7 +5357,7 @@ export function createCodezAgentService(
     },
 
     async updatePluginMarketplace(params: CodezAgentUpdatePluginMarketplaceParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsMarketplaceUpdate,
         {
@@ -5365,7 +5371,7 @@ export function createCodezAgentService(
     },
 
     async installPlugin(params: CodezAgentInstallPluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsInstall,
         {
@@ -5392,7 +5398,7 @@ export function createCodezAgentService(
     },
 
     async uninstallPlugin(params: CodezAgentUninstallPluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsUninstall,
         {
@@ -5408,7 +5414,7 @@ export function createCodezAgentService(
     },
 
     async updatePlugin(params: CodezAgentUpdatePluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsUpdate,
         {
@@ -5422,7 +5428,7 @@ export function createCodezAgentService(
     },
 
     async restoreBuiltinPlugin(params: CodezAgentRestoreBuiltinPluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsRestoreBuiltin,
         {
@@ -5435,7 +5441,7 @@ export function createCodezAgentService(
     },
 
     async configurePlugin(params: CodezAgentConfigurePluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsConfigure,
         {
@@ -5452,7 +5458,7 @@ export function createCodezAgentService(
     },
 
     async resetPluginConfig(params: CodezAgentResetPluginConfigParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsResetConfig,
         {
@@ -5466,7 +5472,7 @@ export function createCodezAgentService(
     },
 
     async validatePlugin(params: CodezAgentValidatePluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsValidate,
         {
@@ -5481,7 +5487,7 @@ export function createCodezAgentService(
     },
 
     async describePlugin(params: CodezAgentDescribePluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsDescribe,
         {
@@ -5495,7 +5501,7 @@ export function createCodezAgentService(
     },
 
     async setPluginEnabled(params: CodezAgentSetPluginEnabledParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsSetEnabled,
         {
