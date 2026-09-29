@@ -30,7 +30,7 @@ catalog/read ──→ 新增 bridge 控制面方法：host 本地读 catalog �
 ```
 
 - model→provider 映射只存在于 `model_catalog_json` 文件中（codex 远端 catalog
-  从不设置该字段），因此映射读取是 bridge 本地 fs 控制面方法，与 agents/*
+  从不设置该字段），因此映射读取是 bridge 本地 fs 控制面方法，与 agents/\*
   同族：绝不能进入 `codex/request` 原生白名单。
 - `catalog/read` 内部先经 `config/read` 取 `model_catalog_json` 解析后路径
   （含 profile/托管层合并结果），不接受调用方传路径——bridge 以用户权限运行，
@@ -90,3 +90,17 @@ catalog/read ──→ 新增 bridge 控制面方法：host 本地读 catalog �
   行为与修复前完全一致。
 - legacy Provider Registry 路径不经过本分组逻辑，行为不变。
 - Bot 存储的旧选择值经跨组治愈逻辑兼容，不做数据迁移。
+
+## GUI 验证夹具与验收
+
+- 隔离交互夹具的 `codezAgentService` 必须实现真实 composer 调用的
+  `readCodexCatalog` 服务边界；模型归属映射由夹具返回，不通过旧 Provider
+  Registry 或伪造的原生 `model/list` provider 字段取得。目录读取属于可选
+  增强；失败时真实 hook 退化到单激活 provider 组，不阻断发送。
+- 夹具中工作区和配置的事实所有者仍是注入的 Host 服务；UI 只保留当前
+  workspace 的目录投影，切换工作区和配置失效后重新读取。交互测试至少
+  验证新任务首发可用、原生目录读取发生且旧 Registry 读取为零，再继续验证
+  原有的发送、切换、提问、权限及设置场景。
+- 验证顺序：配置/目录/模型读取 → 草稿就绪 → 发送 → 命令投影；
+  目录辅助读取失败只触发已定义降级。测试只使用隔离的模拟 Host，
+  不写入用户 Codex 配置或凭据；这不能替代真实 Electron/Host 验证。

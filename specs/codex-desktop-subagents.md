@@ -154,5 +154,14 @@ supported" notice):
   update targets and name conflicts fail closed with JSON-RPC errors; the UI
   shows the message and does not retry.
 - A missing managed directory lists as empty, not as an error.
+- A failed roles read is not an empty directory: the panel displays the error
+  and a retry action, hides both empty-state claims, and disables create/delete
+  until a successful read. An isolated GUI fixture implements the same
+  `listAgentRoles` Host method with a distinct read-failure mode, so QA can
+  verify error → retry → empty state without touching the developer's files.
+- A rejected role write is a different error: it leaves the last successfully
+  read role list authoritative, keeps the edit form and its draft enabled,
+  displays the mutation error and allows the user to correct and resubmit.
+  No mutation is retried automatically. A new successful write refreshes roles.
 - The Codex native request path (`codex/request`) is unchanged and carries no
   `agents/*` methods.

@@ -13,6 +13,7 @@ export interface CodexAgentsController {
   loading: boolean;
   busy: boolean;
   error?: string;
+  readFailed: boolean;
   roles: CodezAgentRoleSummary[];
   diagnostics: CodezAgentRoleDiagnostic[];
   refresh: () => Promise<void>;
@@ -52,7 +53,8 @@ export function useCodexAgents({
     loading: boolean;
     busy: boolean;
     error?: string;
-  }>({ roles: [], diagnostics: [], loading: false, busy: false });
+    errorKind?: "read" | "mutation";
+  }>({ roles: [], diagnostics: [], loading: true, busy: false });
   const readSequence = useRef(0);
   const mounted = useRef(false);
   useEffect(() => {
@@ -66,7 +68,12 @@ export function useCodexAgents({
   const refresh = useCallback(async () => {
     if (!enabled || !workspacePath) return;
     const seq = ++readSequence.current;
-    setState((previous) => ({ ...previous, loading: true, error: undefined }));
+    setState((previous) => ({
+      ...previous,
+      loading: true,
+      error: undefined,
+      errorKind: undefined,
+    }));
     try {
       const result = await services.codezAgentService.listAgentRoles({
         workspacePath,
@@ -78,6 +85,7 @@ export function useCodexAgents({
         roles: result.roles,
         diagnostics: result.diagnostics,
         loading: false,
+        errorKind: undefined,
       }));
     } catch (error) {
       if (!mounted.current || readSequence.current !== seq) return;
@@ -87,6 +95,7 @@ export function useCodexAgents({
         diagnostics: [],
         loading: false,
         error: error instanceof Error ? error.message : String(error),
+        errorKind: "read",
       }));
     }
   }, [enabled, services, workspacePath, workspaceIdentity]);
@@ -97,10 +106,15 @@ export function useCodexAgents({
 
   const mutate = useCallback(
     async (operation: () => Promise<unknown>): Promise<boolean> => {
-      if (!enabled || state.busy) return false;
+      if (!enabled || state.busy || state.loading || state.errorKind === "read") return false;
       // 写入期间作废旧读取，避免旧列表覆盖刚完成的变更。
       readSequence.current += 1;
-      setState((previous) => ({ ...previous, busy: true, error: undefined }));
+      setState((previous) => ({
+        ...previous,
+        busy: true,
+        error: undefined,
+        errorKind: undefined,
+      }));
       try {
         await operation();
       } catch (error) {
@@ -113,6 +127,7 @@ export function useCodexAgents({
             ...previous,
             busy: false,
             error: error instanceof Error ? error.message : String(error),
+            errorKind: "mutation",
           }));
         }
         return false;
@@ -122,7 +137,7 @@ export function useCodexAgents({
       await refresh();
       return true;
     },
-    [enabled, state.busy, refresh, workspaceKey],
+    [enabled, state.busy, state.loading, state.errorKind, refresh, workspaceKey],
   );
 
   const saveRole = useCallback(
@@ -165,6 +180,7 @@ export function useCodexAgents({
     loading: state.loading,
     busy: state.busy,
     error: state.error,
+    readFailed: state.errorKind === "read",
     roles: state.roles,
     diagnostics: state.diagnostics,
     refresh,

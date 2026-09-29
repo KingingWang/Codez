@@ -87,6 +87,12 @@ Only explicit `CODEZ_DESKTOP_RUNTIME=legacy` retains upstream identity/runtime b
 The dev entry prepares the verified native binary and builds the bridge before starting
 Electron, then passes the selected native path to Host. No manual build prerequisite.
 
+隔离桌面 GUI 验证在 Linux root 容器运行时，QA 启动器可仅向其临时 Electron
+子进程设置 `ELECTRON_DISABLE_SANDBOX=1`，因为 Chromium 禁止 root 在默认沙箱
+下启动。非 root、本地正式开发入口与发行包不得继承这个 QA 例外；探针仍使用
+临时 HOME/CODEX_HOME 和回环假模型服务，不读取开发者账号。验收分别检查 root
+容器能够启动并暴露 QA CDP，以及普通进程不改变 Electron 沙箱设置。
+
 ## Runtime isolation and remote boundary
 
 `codex` is an explicit product flavor, independent of test/production backend.

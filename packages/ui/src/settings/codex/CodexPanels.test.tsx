@@ -518,6 +518,12 @@ test("providers panel renders provider facts without ever exposing the bearer to
   assert.match(markup, /Set as default/);
   assert.match(markup, /Add provider/);
   assert.match(markup, /Catalog models/);
+  const deleteButtons = markup.match(/<button[^>]*>Delete<\/button>/g) ?? [];
+  assert.equal(deleteButtons.length, 2);
+  assert.ok(
+    deleteButtons.every((button) => button.includes('disabled=""')),
+    "While the catalog is unread, even a non-default provider cannot be safely deleted",
+  );
   // 安全不变量：config/read 返回的明文 token 绝不出现在任何渲染产物中。
   assert.equal(markup.includes("sk-panel-secret"), false);
   // 中文文案随 locale 切换。
