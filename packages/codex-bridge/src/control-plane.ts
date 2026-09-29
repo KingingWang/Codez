@@ -25,6 +25,7 @@ const methods = new Set([
   "plugins/describe",
   "plugins/setEnabled",
   "plugins/install",
+  "plugins/update",
   "plugins/uninstall",
   "plugins/marketplace/add",
   "plugins/marketplace/remove",

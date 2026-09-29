@@ -20,6 +20,30 @@ interface PluginUninstallController {
   confirmUninstall: () => Promise<void>;
 }
 
+interface ConfirmPluginUninstallInput {
+  pendingId: string | null;
+  pluginService: IPluginManagementService;
+  uninstallPlugin: (pluginId: string, pluginService: IPluginManagementService) => Promise<boolean>;
+  clearPending: () => void;
+  onAfterUninstall: () => Promise<void>;
+}
+
+export async function confirmPluginUninstall({
+  pendingId,
+  pluginService,
+  uninstallPlugin,
+  clearPending,
+  onAfterUninstall,
+}: ConfirmPluginUninstallInput): Promise<boolean> {
+  if (!pendingId) return false;
+  // 卸载失败时保留确认弹窗，让插件管理 store 的错误继续可见且用户可直接重试。
+  const succeeded = await uninstallPlugin(pendingId, pluginService);
+  if (!succeeded) return false;
+  await onAfterUninstall();
+  clearPending();
+  return true;
+}
+
 /**
  * 集中管理插件卸载的确认流程：UI 各入口（已安装详情、市场面板）都通过它发起卸载，
  * 共用同一份 pending 状态、确认弹窗目标解析与卸载收尾逻辑。
@@ -54,11 +78,14 @@ export function usePluginUninstall({
   }, []);
 
   const confirmUninstall = useCallback(async () => {
-    if (!pendingId) return;
-    await uninstallPlugin(pendingId, pluginService);
-    await onAfterUninstall();
-    setPendingId(null);
-  }, [pluginService, onAfterUninstall, pendingId, uninstallPlugin]);
+    await confirmPluginUninstall({
+      pendingId,
+      pluginService,
+      uninstallPlugin,
+      clearPending: () => setPendingId(null),
+      onAfterUninstall,
+    });
+  }, [onAfterUninstall, pendingId, pluginService, uninstallPlugin]);
 
   return { pendingPlugin, uninstalling, requestUninstall, cancelUninstall, confirmUninstall };
 }

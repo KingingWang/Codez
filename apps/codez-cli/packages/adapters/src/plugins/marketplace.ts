@@ -6,7 +6,11 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { PluginDiagnostic, PluginManifest, PluginStoreListing } from "@codez/contracts";
 import { isOfficialMarketplaceId, CODEZ_OFFICIAL_PLUGIN_MARKETPLACE } from "@codez/contracts";
-import { DEFAULT_PLUGIN_MARKETPLACES, sanitizeCodezRuntimeEnv } from "@codez/shared";
+import {
+  DEFAULT_PLUGIN_MARKETPLACES,
+  normalizeOfficialMarketplaceId,
+  sanitizeCodezRuntimeEnv,
+} from "@codez/shared";
 import { loadPluginMcpServerDefinitions, resolvePluginMcpServers } from "./mcp.js";
 import {
   appendPluginSourceCleanupError,
@@ -449,7 +453,7 @@ async function requestMarketplaceJson(
   headers?: Record<string, string>,
   signal?: AbortSignal,
   timeoutMs = MARKETPLACE_JSON_TIMEOUT_MS,
-): Promise<unknown> {
+): Promise<{ effectiveUrl: string; value: unknown }> {
   const client = createNodeWebFetchHttpClientAdapter({
     env: process.env,
     maxResponseBytes: MARKETPLACE_JSON_MAX_BYTES,
@@ -484,7 +488,10 @@ async function requestMarketplaceJson(
     if (response.status < 200 || response.status >= 300) {
       throw new Error(`Failed to fetch marketplace: ${response.status} ${response.statusText}`);
     }
-    return JSON.parse(new TextDecoder().decode(response.body)) as unknown;
+    return {
+      effectiveUrl: currentUrl,
+      value: JSON.parse(new TextDecoder().decode(response.body)) as unknown,
+    };
   }
   throw new Error(`Marketplace fetch exceeded redirect limit: ${url}`);
 }
@@ -1539,8 +1546,16 @@ async function loadMarketplaceFromSource(
       return { manifest, sourceRoot: source.path };
     }
     case "url": {
-      const parsed = await requestMarketplaceJson(source.url, source.headers, options.signal);
-      return { manifest: parseRequiredMarketplaceManifest(parsed) };
+      const response = await requestMarketplaceJson(source.url, source.headers, options.signal);
+      const parsed = parseRequiredMarketplaceManifest(response.value);
+      const name = normalizeOfficialMarketplaceId(parsed.name, response.effectiveUrl);
+      return {
+        manifest: {
+          ...parsed,
+          name,
+          raw: { ...parsed.raw, name },
+        },
+      };
     }
     case "github": {
       const resolved = await resolveRepositoryMarketplaceSource(

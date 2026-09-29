@@ -13,6 +13,13 @@ import {
   readPluginCatalog,
   readPluginDetail,
 } from "./control-plugin-data.js";
+import {
+  OFFICIAL,
+  officialEntry,
+  officialSnapshot,
+  projectOfficialCatalog,
+  registerOfficial,
+} from "./control-official-plugins.js";
 
 function failure(method: string, reason: string): never {
   throw new ControlError(-32000, `${method}: ${reason}`, { method, reason });
@@ -30,22 +37,52 @@ export async function handlePluginRequest(
       unsupported(method, "Workspace-only plugin configuration is not exposed by Codex");
     const catalog = await readPluginCatalog(context);
     const installed = await readPluginCatalog(context, true);
+    const official = await officialSnapshot(context);
+    const nativeOfficial = catalog.marketplaces.find((market) => market.name === OFFICIAL);
+    const officialView = projectOfficialCatalog(
+      official.snapshot,
+      nativeOfficial?.plugins.map((plugin) => plugin.name) ?? [],
+    );
     return s.codezPluginsOverviewResultSchema.parse({
-      marketplaces: catalog.marketplaces.map((market) =>
-        marketplaceSummary(market, catalog.featuredPluginIds),
-      ),
-      availablePlugins: catalog.rows.map(({ market, plugin }) => ({
-        id: plugin.id,
-        name: plugin.name,
-        marketplace: market.name,
-        installed: plugin.installed,
-        version: plugin.version ?? undefined,
-        description: plugin.interface?.shortDescription ?? undefined,
-        listing: pluginListing(plugin),
-      })),
-      installedPlugins: installed.rows.filter((row) => row.plugin.installed).map(installedPlugin),
+      marketplaces: [
+        ...catalog.marketplaces
+          .map((market) => marketplaceSummary(market, catalog.featuredPluginIds))
+          .map((market) => (market.id === OFFICIAL ? { ...market, isOfficial: true } : market)),
+        ...(!nativeOfficial && officialView.marketplace ? [officialView.marketplace] : []),
+      ],
+      availablePlugins: [
+        ...catalog.rows.map(({ market, plugin }) => ({
+          id: plugin.id,
+          name: plugin.name,
+          marketplace: market.name,
+          installed: plugin.installed,
+          version: plugin.version ?? undefined,
+          description: plugin.interface?.shortDescription ?? undefined,
+          listing: pluginListing(plugin),
+          ...(market.name === OFFICIAL &&
+          officialEntry(official.snapshot, plugin.name)?.policy.installation === "NOT_AVAILABLE"
+            ? {
+                installationUnavailableReason:
+                  "This ZCode plugin requires components unsupported by Codex",
+              }
+            : {}),
+        })),
+        ...officialView.availablePlugins,
+      ],
+      installedPlugins: installed.rows
+        .filter((row) => row.plugin.installed)
+        .map((row) => {
+          const result = installedPlugin(row);
+          const latest =
+            row.market.name === OFFICIAL
+              ? officialEntry(official.snapshot, row.plugin.name)?.version
+              : undefined;
+          if (latest && result.version && latest !== result.version)
+            return { ...result, latestVersion: latest, updateStatus: "update-available" as const };
+          return result;
+        }),
       restorableBuiltins: [],
-      diagnostics: [...catalog.diagnostics, ...installed.diagnostics],
+      diagnostics: [...catalog.diagnostics, ...installed.diagnostics, ...official.diagnostics],
       capability: { supported: true },
     });
   }
@@ -96,8 +133,8 @@ export async function handlePluginRequest(
               )
               .map((row) => row.plugin.id)
           : [],
-        skillQualifiedNames: details[index]!.skills.filter((skill) => skill.enabled).map(
-          (skill) => `${plugin.name}:${skill.name}`,
+        skillQualifiedNames: details[index]!.skills.filter((skill) => skill.enabled).map((skill) =>
+          skill.name.startsWith(`${plugin.name}:`) ? skill.name : `${plugin.name}:${skill.name}`,
         ),
         mcpServerNames: details[index]!.mcpServers,
         subagentNames: [],
@@ -108,6 +145,18 @@ export async function handlePluginRequest(
     const p = input(s.codezPluginsDescribeParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
     const catalog = await readPluginCatalog(context);
+    if (
+      p.marketplace === OFFICIAL &&
+      !catalog.rows.some((row) => row.market.name === OFFICIAL && row.plugin.name === p.pluginName)
+    ) {
+      const { snapshot } = await officialSnapshot(context);
+      if (!officialEntry(snapshot, p.pluginName))
+        failure(method, "Official plugin is not present in the verified catalog");
+      return s.codezPluginsDescribeResultSchema.parse({
+        components: [],
+        diagnostics: [],
+      });
+    }
     const detail = await readPluginDetail(context, findPlugin(catalog.rows, method, p));
     return s.codezPluginsDescribeResultSchema.parse({
       components: pluginComponents(detail),
@@ -148,6 +197,17 @@ export async function handlePluginRequest(
     checkWorkspace(p.workspace, context, method);
     if (p.scope === "workspace" || p.dryRun)
       unsupported(method, "Codex plugin/install has no workspace scope or dry-run contract");
+    let officialVersion: string | undefined;
+    if (p.marketplace === OFFICIAL && context.officialPlugins) {
+      const { snapshot } = await officialSnapshot(context);
+      if (!snapshot) failure(method, "Official catalog is not available");
+      const entry = officialEntry(snapshot, p.pluginName);
+      if (!entry) failure(method, "Plugin is not in the verified official catalog");
+      if (entry.policy.installation !== "AVAILABLE")
+        failure(method, "This plugin is not compatible with Codex");
+      officialVersion = entry.version;
+      await registerOfficial(method, context, snapshot);
+    }
     const catalog = await readPluginCatalog(context);
     const row = findPlugin(catalog.rows, method, p);
     const installed = z
@@ -161,6 +221,11 @@ export async function handlePluginRequest(
     const after = await readPluginCatalog(context, true);
     const refreshed = findPlugin(after.rows, method, { pluginId: row.plugin.id });
     if (!refreshed.plugin.installed) failure(method, "Codex has not confirmed installation");
+    if (
+      officialVersion &&
+      (refreshed.plugin.localVersion ?? refreshed.plugin.version) !== officialVersion
+    )
+      failure(method, "Codex did not confirm the published plugin version");
     return s.codezPluginsInstallResultSchema.parse({
       installedPlugins: [installedPlugin(refreshed)],
       dependencyClosure: [refreshed.plugin.id],
@@ -178,10 +243,42 @@ export async function handlePluginRequest(
       ],
     });
   }
+  if (method === "plugins/update") {
+    const p = input(s.codezPluginsUpdateParamsSchema, params, method);
+    checkWorkspace(p.workspace, context, method);
+    const { snapshot } = await officialSnapshot(context);
+    if (!snapshot || !p.pluginId)
+      unsupported(method, "Only verified official plugin updates are supported");
+    const before = await readPluginCatalog(context, true);
+    const row = findPlugin(before.rows, method, p);
+    if (row.market.name !== OFFICIAL || !row.plugin.installed)
+      unsupported(method, "Only installed official plugins can be updated");
+    const entry = officialEntry(snapshot, row.plugin.name);
+    if (!entry || entry.policy.installation !== "AVAILABLE")
+      failure(method, "The published plugin is not compatible with Codex");
+    const current = row.plugin.localVersion ?? row.plugin.version;
+    if (current === entry.version)
+      failure(method, "The installed plugin is already at the published version");
+    z.object({ authPolicy: z.string(), appsNeedingAuth: z.array(z.unknown()) }).parse(
+      await context.rpc.request("plugin/install", pluginAddress(row)),
+    );
+    const after = await readPluginCatalog(context, true);
+    const refreshed = findPlugin(after.rows, method, { pluginId: row.plugin.id });
+    if (
+      !refreshed.plugin.installed ||
+      (refreshed.plugin.localVersion ?? refreshed.plugin.version) !== entry.version
+    )
+      failure(method, "Codex did not confirm the plugin update; previous install remains visible");
+    return s.codezPluginsInstallResultSchema.parse({
+      installedPlugins: [installedPlugin(refreshed)],
+      dependencyClosure: [refreshed.plugin.id],
+      diagnostics: after.diagnostics,
+    });
+  }
   if (method === "plugins/uninstall") {
     const p = input(s.codezPluginsUninstallParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
-    if (p.removeCache !== undefined)
+    if (p.removeCache === false)
       unsupported(method, "Codex does not expose cache-retention control");
     const before = await readPluginCatalog(context, true);
     const row = findPlugin(before.rows, method, p);
@@ -222,6 +319,8 @@ async function handleMarketplaceRequest(
   } else if (method === "plugins/marketplace/remove") {
     const p = input(s.codezPluginsMarketplaceRemoveParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
+    if (p.marketplace === OFFICIAL)
+      unsupported(method, "The built-in official marketplace cannot be removed");
     const removed = z
       .object({ marketplaceName: z.string(), installedRoot: z.string().nullable() })
       .parse(await context.rpc.request("marketplace/remove", { marketplaceName: p.marketplace }));
@@ -230,6 +329,28 @@ async function handleMarketplaceRequest(
   } else if (method === "plugins/marketplace/update") {
     const p = input(s.codezPluginsMarketplaceUpdateParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
+    if (context.officialPlugins && (!p.marketplace || p.marketplace === OFFICIAL)) {
+      try {
+        await context.officialPlugins.refresh();
+      } catch {
+        failure(method, "Official ZCode catalog refresh failed verification; old catalog retained");
+      }
+    }
+    if (p.marketplace === OFFICIAL && context.officialPlugins) {
+      const { snapshot } = await officialSnapshot(context);
+      if (!snapshot) failure(method, "Official catalog is not available");
+      return s.codezPluginsMarketplaceMutationResultSchema.parse({
+        marketplace: {
+          id: OFFICIAL,
+          name: OFFICIAL,
+          source: { type: "local", path: snapshot.path },
+          pluginCount: snapshot.catalog.plugins.length,
+          isOfficial: true,
+          ...(snapshot.catalog.updatedAt ? { lastUpdated: snapshot.catalog.updatedAt } : {}),
+        },
+        diagnostics: [],
+      });
+    }
     const result = z
       .object({
         selectedMarketplaces: z.array(z.string()),

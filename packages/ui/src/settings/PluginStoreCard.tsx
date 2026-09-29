@@ -199,6 +199,7 @@ export function PluginStoreInstallButton({
   const installing =
     actions.operationId === `plugin:install:${item.name}@${item.marketplace}` ||
     actions.operationId === `plugin:restore:${item.id}`;
+  const unavailableReason = item.installationUnavailableReason;
   return (
     <Button
       type="button"
@@ -207,9 +208,11 @@ export function PluginStoreInstallButton({
       variant="secondary"
       size={size}
       className="rounded-full"
-      disabled={installing}
+      disabled={installing || unavailableReason !== undefined}
+      title={unavailableReason}
       onClick={(event) => {
         event.stopPropagation();
+        if (unavailableReason !== undefined) return;
         runUserAction({
           input: { featureId: "extension.plugin", action: "install", trigger: "button" },
           operation: () => actions.onInstall(item),
@@ -223,6 +226,33 @@ export function PluginStoreInstallButton({
         ? intl.formatMessage({ id: "settings.plugins.marketplace.installing" })
         : intl.formatMessage({ id: "settings.plugins.store.install" })}
     </Button>
+  );
+}
+
+/** 目录明确不可安装的条目：按钮与描述共用同一条来源原因，不制造第二套事实。 */
+export function PluginStoreUnavailableReason({
+  item,
+  className,
+}: {
+  item: Pick<StorePluginItem, "id" | "installationUnavailableReason">;
+  className?: string;
+}) {
+  const { intl } = useCodezIntl();
+  const reason = item.installationUnavailableReason;
+  if (reason === undefined) return null;
+  const label = intl.formatMessage({ id: "settings.plugins.store.installUnavailable" });
+  return (
+    <ControlHintTooltip title={label} description={reason} standalone>
+      <div
+        data-testid="plugin-store-install-unavailable"
+        data-plugin-id={item.id}
+        data-unavailable-reason={reason}
+        className={className ?? "flex items-center gap-1.5 text-ui-sm text-foreground-subtle"}
+      >
+        <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+        <span>{label}</span>
+      </div>
+    </ControlHintTooltip>
   );
 }
 
@@ -337,6 +367,10 @@ export function PluginStoreCard({
             </span>
           </div>
         ) : null}
+        <PluginStoreUnavailableReason
+          item={item}
+          className="mt-0.5 flex items-center gap-1.5 truncate text-ui-sm text-foreground-subtle"
+        />
         {description ? (
           <div className="mt-0.5 truncate text-ui-sm text-foreground-subtle">{description}</div>
         ) : null}

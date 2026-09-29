@@ -3772,6 +3772,7 @@ const zhCN: Record<string, string> = {
   "settings.plugins.store.viewMoreFew": "查看 {names}",
   "settings.plugins.store.showLess": "收起",
   "settings.plugins.store.install": "安装",
+  "settings.plugins.store.installUnavailable": "这个官方插件暂不支持 Codex。",
   "settings.plugins.store.paidPlanBadge": "编程套餐",
   "settings.plugins.store.requiresPaidPlan": "这个插件搭配编程套餐可以更好地工作",
   "settings.plugins.store.tryNow": "立即试用",

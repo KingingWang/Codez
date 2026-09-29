@@ -8,6 +8,9 @@ export interface DefaultPluginMarketplace {
 }
 
 export const CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID = "codez-plugins-official";
+export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "zcode-plugins-official";
+const OFFICIAL_ZCODE_MARKETPLACE_SOURCE =
+  "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json";
 
 /** Settings 三类资源发现共用；Bootstrap 单测与官方 definition 的 defaultEnabled 机械对照。 */
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set([
@@ -32,9 +35,9 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
 export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] = [
   {
     // Codez 官方唯一市场：本地 seed 分片与 CDN 分片在 Agent storage 内合并。
-    // CDN manifest 的 name 必须与该 canonical id 一致。
+    // CDN manifest 发布 zcode id；仅在官方源校验通过后映射为该 canonical id。
     id: CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
-    source: "https://cdn-zcode.z.ai/codez/official-plugin/marketplace.json",
+    source: OFFICIAL_ZCODE_MARKETPLACE_SOURCE,
     name: CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
     description: "Official Codez plugins marketplace: built-in and community plugins for Codez.",
     pluginCount: 0,
@@ -46,4 +49,15 @@ export const PUBLIC_STORE_MARKETPLACE_IDS = [CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_I
 
 export function isPublicStoreMarketplaceId(id: string): boolean {
   return (PUBLIC_STORE_MARKETPLACE_IDS as readonly string[]).includes(id);
+}
+
+/**
+ * 官方 ZCode 目录发布 id 与 Codez canonical id 不同。只有共享的官方 CDN source 允许映射；
+ * 未映射的目录 id 保持原值，由调用方的第三方保留 ID 校验继续拒绝。
+ */
+export function normalizeOfficialMarketplaceId(id: string, source: string): string {
+  if (source === OFFICIAL_ZCODE_MARKETPLACE_SOURCE && id === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID) {
+    return CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID;
+  }
+  return id;
 }

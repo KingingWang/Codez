@@ -9,6 +9,7 @@ import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useServices } from "@/hooks/useServices.js";
 import { usePluginStoreOrder } from "@/hooks/usePluginStoreOrder.js";
 import { useCodezSessionService } from "@/hooks/useCodezSessionService.js";
+import { useCodezSessionStore, selectWorkspaceCodezState } from "@/store/codezSessionStore.js";
 import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
 import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/codezDraftSkillInvalidation.js";
@@ -90,8 +91,14 @@ export function PluginStorePage({
   const installPlugin = usePluginManagementStore((state) => state.installPlugin);
   const describePlugin = usePluginManagementStore((state) => state.describePlugin);
   const updatePlugin = usePluginManagementStore((state) => state.updatePlugin);
+  const setPluginEnabled = usePluginManagementStore((state) => state.setEnabled);
   const restoreBuiltin = usePluginManagementStore((state) => state.restoreBuiltin);
+  const togglingPluginId = usePluginManagementStore((state) => state.togglingPluginId);
 
+  const selectedProvider = useCodezSessionStore(
+    (state) =>
+      selectWorkspaceCodezState(state, workspacePath ?? "", workspaceIdentity).selectedProvider,
+  );
   const [view, setView] = useState<PluginStoreView>("store");
   const [detailPluginId, setDetailPluginId] = useState<string | null>(null);
   const [segment, setSegment] = useState<PluginStoreSegment>("public");
@@ -263,8 +270,15 @@ export function PluginStorePage({
       workspacePath,
       workspaceIdentity: normalizedWorkspaceIdentity,
       skillsService,
+      provider: selectedProvider,
     });
-  }, [normalizedWorkspaceIdentity, skillsService, workspacePath, codezSessionService]);
+  }, [
+    normalizedWorkspaceIdentity,
+    selectedProvider,
+    skillsService,
+    workspacePath,
+    codezSessionService,
+  ]);
 
   const uninstall = usePluginUninstall({
     pluginService: pluginManagementService,
@@ -278,15 +292,51 @@ export function PluginStorePage({
 
   const handleInstall = useCallback(
     async (item: StorePluginItem) => {
+      let succeeded: boolean;
       if (item.restorable) {
-        await restoreBuiltin(item.id, pluginManagementService);
+        succeeded = await restoreBuiltin(item.id, pluginManagementService);
       } else {
-        await installPlugin(item.name, item.marketplace, pluginManagementService, "user");
+        succeeded = await installPlugin(
+          item.name,
+          item.marketplace,
+          pluginManagementService,
+          "user",
+        );
       }
+      // runWorkspaceOperation 失败时已保留旧 overview；不能继续刷新能力并暗示安装成功。
+      if (!succeeded) return;
       // 安装/恢复会引入新技能与命令，与启停/卸载一样做一次收尾刷新。
       await refreshAfterPluginChange();
     },
     [installPlugin, pluginManagementService, refreshAfterPluginChange, restoreBuiltin],
+  );
+
+  const handleSetPluginEnabled = useCallback(
+    async (pluginId: string, enabled: boolean) => {
+      const pluginLabel =
+        plugins.find((plugin) => plugin.id === pluginId)?.name ??
+        itemById.get(pluginId)?.name ??
+        pluginId;
+      const succeeded = await setPluginEnabled(pluginId, enabled, pluginManagementService, "user");
+      if (!succeeded) {
+        toast(
+          usePluginManagementStore.getState().error ??
+            intl.formatMessage({ id: "settings.plugins.toggle.failed" }, { plugin: pluginLabel }),
+          { variant: "warning" },
+        );
+        return;
+      }
+      toast(
+        intl.formatMessage(
+          {
+            id: enabled ? "settings.plugins.toggle.enabled" : "settings.plugins.toggle.disabled",
+          },
+          { plugin: pluginLabel },
+        ),
+      );
+      await refreshAfterPluginChange();
+    },
+    [intl, itemById, pluginManagementService, plugins, refreshAfterPluginChange, setPluginEnabled],
   );
 
   const handleUpdatePlugin = useCallback(
@@ -343,6 +393,9 @@ export function PluginStorePage({
   const handleUsePrompt = useCallback(
     (item: StorePluginItem, prompt: string) => {
       // 未安装时点提示词先引导安装，不新建会话。
+      if (!item.installed && item.installationUnavailableReason !== undefined) {
+        return;
+      }
       if (!item.installed) {
         void handleInstall(item);
         return;
@@ -367,10 +420,19 @@ export function PluginStorePage({
       onInstall: (item) => void handleInstall(item),
       onUninstall: uninstall.requestUninstall,
       onUpdate: (pluginId) => void handleUpdatePlugin(pluginId),
+      onSetEnabled: (pluginId, enabled) => void handleSetPluginEnabled(pluginId, enabled),
       operationId,
-      togglingPluginId: null,
+      togglingPluginId,
     }),
-    [handleInstall, handleUpdatePlugin, openDetail, operationId, uninstall.requestUninstall],
+    [
+      handleInstall,
+      handleSetPluginEnabled,
+      handleUpdatePlugin,
+      openDetail,
+      operationId,
+      togglingPluginId,
+      uninstall.requestUninstall,
+    ],
   );
 
   if (!workspacePath) {

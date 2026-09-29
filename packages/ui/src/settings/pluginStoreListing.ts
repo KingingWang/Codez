@@ -60,6 +60,8 @@ export interface StorePluginItem {
   restorable: boolean;
   /** 已安装但原 marketplace 已移除；仍可运行和管理，但不能更新。 */
   orphaned: boolean;
+  /** 目录明确声明当前运行环境不可安装；存在时必须禁用所有安装入口。 */
+  installationUnavailableReason?: string;
   listing?: CodezPluginStoreListing;
   summary?: CodezAvailablePluginSummary;
   /** 运行时信息（仅已发现的已安装插件有）：启用态、组件、manifest 回退字段。 */
@@ -233,6 +235,9 @@ export function buildStoreItems(input: {
         info?.packageStatus === "missing" ? false : summary.installed || info !== undefined,
       restorable: false,
       orphaned: false,
+      ...(summary.installationUnavailableReason
+        ? { installationUnavailableReason: summary.installationUnavailableReason }
+        : {}),
       ...(summary.listing ? { listing: summary.listing } : {}),
       summary,
       ...(info ? { info } : {}),
