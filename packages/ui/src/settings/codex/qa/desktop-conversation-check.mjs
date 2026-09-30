@@ -74,6 +74,8 @@ function pixelPng() {
 }
 try {
   const composer = page.getByTestId("v4-composer-input");
+  // busy 时发送按钮 aria-label 随 inputRouting 变为 Queue message；统一按 testid 定位。
+  const sendButton = page.getByTestId("v4-composer-send");
   assert.match(
     await page.getByRole("combobox", { name: "Default model", exact: true }).innerText(),
     /ui-qa-offline.*Configured in Codex/,
@@ -82,10 +84,10 @@ try {
   await page
     .locator('input[type="file"]')
     .setInputFiles({ name: "qa-pixel.png", mimeType: "image/png", buffer: pixelPng() });
-  await until(() => page.getByRole("button", { name: "Send", exact: true }).isEnabled());
+  await until(() => sendButton.isEnabled());
   await page.screenshot({ path: join(evidence, "first-image-ready.png") });
   const firstSendAt = performance.now();
-  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await sendButton.click();
   await until(async () => (await state()).requests.length === 1);
   sendTimings.push({
     turn: 1,
@@ -109,7 +111,7 @@ try {
     "Actual running native snapshot locks model and permission/plan controls without hiding composer",
   );
   await composer.fill("/plan must not change a busy native thread");
-  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await sendButton.click();
   await until(async () => (await composer.innerText()).includes("/plan must not change"));
   assert.equal((await state()).requests.length, 1);
   checks.push("Busy /plan does not mutate thread or dispatch a second request; draft retained");
@@ -127,7 +129,7 @@ try {
   await fetch(new URL("/qa/hold", mockUrl), { method: "POST" });
   await composer.fill("QA held turn before queued image. No tools.");
   const secondSendAt = performance.now();
-  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await sendButton.click();
   await until(async () => (await state()).requests.length === 2);
   sendTimings.push({
     turn: 2,
@@ -136,22 +138,58 @@ try {
   await until(() =>
     page.getByRole("combobox", { name: "Default model", exact: true }).isDisabled(),
   );
+
+  // busy 普通发送 = 真实排队：卡片立即可见，可编辑/删除，不产生新模型请求。
+  const queueItems = page.locator(
+    '[data-testid^="v4-queue-item-"]:not([data-testid*="send-now"]):not([data-testid*="edit"]):not([data-testid*="delete"])',
+  );
+  await composer.fill("QA busy plain send queues visibly. No tools.");
+  await sendButton.click();
+  await page
+    .getByText("Codex native queue · runs automatically when idle, including after resume.")
+    .waitFor();
+  await until(async () => (await queueItems.count()) === 1);
+  assert.equal((await state()).requests.length, 2, "busy 排队不产生新模型请求");
+  assert.equal(await page.locator('[data-testid^="v4-queue-item-edit-"]').count(), 1);
+  assert.equal(await page.locator('[data-testid^="v4-queue-item-delete-"]').count(), 1);
+  assert.equal(
+    await page.locator('[data-testid^="v4-queue-item-send-now-"]').count(),
+    1,
+    "busy 队列项提供抢占式立即发送",
+  );
+  assert.equal(await page.locator('[data-testid="v4-queue-resume"]').count(), 0);
+  checks.push(
+    "Busy plain send enqueues into the visible native queue card with edit/delete/send-now controls",
+  );
+  await page.screenshot({ path: join(evidence, "native-busy-queue-visible.png"), fullPage: true });
+
+  // 编辑 = 撤回到输入框：卡片消失、原文回到 composer，改完再发重新入队。
+  await page.locator('[data-testid^="v4-queue-item-edit-"]').first().click();
+  await until(async () => (await queueItems.count()) === 0);
+  await until(async () =>
+    (await composer.innerText()).includes("QA busy plain send queues visibly"),
+  );
+  await composer.fill("QA busy plain send queues visibly. Edited. No tools.");
+  await until(() => sendButton.isEnabled());
+  await sendButton.click();
+  await until(async () => (await queueItems.count()) === 1);
+  checks.push("Queue item edit recalls text into the composer and re-enqueues the edited text");
+
+  // 删除：卡片消失、不产生新请求。
+  await page.locator('[data-testid^="v4-queue-item-delete-"]').first().click();
+  await until(async () => (await queueItems.count()) === 0);
+  assert.equal((await state()).requests.length, 2);
+  checks.push("Queue item delete removes the card without dispatching a request");
+
+  // 重新排队一条带图消息（普通点击即排队），等待空闲自动 dispatch。
   await composer.fill("QA queued image to auto-dispatch when idle. No tools.");
   await page
     .locator('input[type="file"]')
     .setInputFiles({ name: "qa-second-pixel.png", mimeType: "image/png", buffer: pixelPng() });
-  await until(() => page.getByRole("button", { name: "Send", exact: true }).isEnabled());
-  // 原生 followupMode=guide；Ctrl 点击走真实 composer 的反向 queue admission。
-  await page.getByRole("button", { name: "Send", exact: true }).click({ modifiers: ["Control"] });
-  await page
-    .getByText("Codex native queue · runs automatically when idle, including after resume.")
-    .waitFor();
-  assert.equal(await page.locator('[data-testid^="v4-queue-item-send-now-"]').count(), 0);
-  assert.equal(await page.locator('[data-testid="v4-queue-resume"]').count(), 0);
+  await until(() => sendButton.isEnabled());
+  await sendButton.click();
+  await until(async () => (await queueItems.count()) === 1);
   assert.equal((await state()).requests.length, 2);
-  checks.push(
-    "Busy image queue admission succeeds; no unsupported immediate-send or pause/resume control",
-  );
   await page.screenshot({ path: join(evidence, "native-auto-queue-waiting.png"), fullPage: true });
   await fetch(new URL("/qa/release", mockUrl), { method: "POST" });
   await until(async () => (await state()).requests.length === 3);
@@ -161,7 +199,7 @@ try {
   assert.equal(queuedImage.imageIsDataUrl, true);
   await page.getByText("Isolated desktop QA response 2", { exact: true }).first().waitFor();
   await page.getByText("Isolated desktop QA response 3", { exact: true }).first().waitFor();
-  await until(async () => (await page.getByText(/Codex native queue/).count()) === 0);
+  await until(async () => (await queueItems.count()) === 0);
   await until(() => page.getByRole("combobox", { name: "Default model", exact: true }).isEnabled());
   assert.deepEqual((await state()).completed, [1, 2, 3]);
   assert.deepEqual((await state()).interrupted, []);
@@ -172,6 +210,49 @@ try {
     path: join(evidence, "native-queued-image-auto-drained.png"),
     fullPage: true,
   });
+
+  // busy Ctrl+发送 = 抢占：当前 turn 被中断，新消息立即开始，不经过队列。
+  await fetch(new URL("/qa/hold", mockUrl), { method: "POST" });
+  await composer.fill("QA turn to be preempted by ctrl send. No tools.");
+  await sendButton.click();
+  await until(async () => (await state()).requests.length === 4);
+  await composer.fill("QA preempting ctrl send. No tools.");
+  await sendButton.click({ modifiers: ["Control"] });
+  await until(async () => (await state()).requests.length === 5);
+  await until(async () => (await state()).interrupted.includes(4));
+  assert.equal(await queueItems.count(), 0, "抢占不经过队列");
+  checks.push(
+    "Busy ctrl+send preempts: running turn interrupted, new input starts immediately without queueing",
+  );
+  await page.screenshot({ path: join(evidence, "native-ctrl-send-preempt.png"), fullPage: true });
+  await fetch(new URL("/qa/release", mockUrl), { method: "POST" });
+  await page.getByText("Isolated desktop QA response 5", { exact: true }).first().waitFor();
+  await until(() => page.getByRole("combobox", { name: "Default model", exact: true }).isEnabled());
+  assert.deepEqual((await state()).completed, [1, 2, 3, 5]);
+  assert.deepEqual((await state()).interrupted, [4]);
+
+  // 队列项"立即发送"抢占：中断当前 turn，选中项立即开始，队列清空。
+  await fetch(new URL("/qa/hold", mockUrl), { method: "POST" });
+  await composer.fill("QA turn to be preempted by queue item. No tools.");
+  await sendButton.click();
+  await until(async () => (await state()).requests.length === 6);
+  await composer.fill("QA queued item to promote. No tools.");
+  await sendButton.click();
+  await until(async () => (await queueItems.count()) === 1);
+  await page.locator('[data-testid^="v4-queue-item-send-now-"]').first().click();
+  await until(async () => (await state()).requests.length === 7);
+  await until(async () => (await state()).interrupted.includes(6));
+  await until(async () => (await queueItems.count()) === 0);
+  checks.push("Queue item send-now preempts the running turn and starts the promoted item");
+  await page.screenshot({
+    path: join(evidence, "native-queue-send-now-preempt.png"),
+    fullPage: true,
+  });
+  await fetch(new URL("/qa/release", mockUrl), { method: "POST" });
+  await page.getByText("Isolated desktop QA response 7", { exact: true }).first().waitFor();
+  await until(() => page.getByRole("combobox", { name: "Default model", exact: true }).isEnabled());
+  assert.deepEqual((await state()).completed, [1, 2, 3, 5, 7]);
+  assert.deepEqual((await state()).interrupted, [4, 6]);
   assert.deepEqual(errors, []);
   await writeFile(
     join(evidence, "results.json"),

@@ -99,15 +99,27 @@ closed, and native config/skills/plugin requests stay on the canonical execution
   Correlation hints must identify top-level envelope fields, never text inside
   a user-provided payload. Unknown envelope identity must fail closed rather
   than treating a possible server request as a response or notification.
-- Native queues automatically dispatch when idle (including cold resume). An
+- Native queues automatically dispatch when idle (including cold resume),
+  except that idle caused by an interrupt never dispatches. An
   explicit queue request is not a request to hold an idle turn. External queue
   entries retain their native IDs; unknown admission metadata uses documented
   unavailable display sentinels, not fabricated timestamps or client identities.
-- Native `thread/queue/start` requires idle. The running-state UI must not offer
-  legacy stop-and-promote semantics; separate interrupt/start mutations cannot
-  safely emulate an atomic selection in the presence of native auto-dispatch.
+- Busy input defaults to the native queue (`running -> queue`), so a follow-up
+  is immediately visible and editable while a turn runs; steer
+  (`requestedDelivery: "guide"`) stays available only as an explicit per-send
+  intent, because steered input is invisible and not editable until injection.
+- Preempt is interrupt-then-start, never a single atomic mutation: busy
+  `requestedDelivery: "startNow"` and busy `sendQueuedNow` interrupt the running
+  turn first. `turn/interrupt` resolves only after `TurnAborted`, and core
+  reports the post-interrupt idle as `ThreadIdleCause::Interrupted`, for which
+  the native queue extension skips auto-dispatch, so no queued item can slip in
+  between the two mutations. A turn that finishes naturally just before the
+  interrupt wins the race; the follow-up start then fails and the draft is
+  restored. A failed interrupt never blocks the subsequent start decision.
 - Queue/steer keep the native thread's effective settings. Reject per-input
-  model/reasoning/mode changes that these native methods cannot honor; editing
+  model/reasoning/mode changes that these native methods cannot honor; preempt
+  is exempt because the interrupt settles the old turn before the new
+  `turn/start` applies fresh settings. Editing
   queued text preserves its existing image/non-text inputs. Reject legacy held
   queue item guards (`expectedHeldQueueItemIds`), browser context and
   restricted-tool intents before mutation. A bare legacy `heldQueueDisposition`

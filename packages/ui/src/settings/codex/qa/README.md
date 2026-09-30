@@ -46,11 +46,14 @@ CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/q
 This sends only a generated 1-pixel image and fixture text through the real
 Electron/Host/native bridge to an in-process no-auth loopback provider. It holds
 the response to verify busy controls and `/plan`, then releases a deterministic
-response without tools. A second held turn admits a queued fixture image; the test
-asserts no busy immediate-send or pause/resume control, releases the current turn,
-and observes automatic native image dispatch and the completed response. Native
-`thread/queue/start` is **idle-only**; busy atomic stop/promote is not supported or
-claimed. The URL must be loopback and the probe must be fresh.
+response without tools. A busy plain send enqueues into the visible native queue
+card; the test exercises edit (recall into the composer) and delete, re-queues a
+fixture image, releases the current turn, and observes automatic native image
+dispatch. Busy `Ctrl`+send preempts (interrupt, then immediate start), and a busy
+queue item exposes the same preempt through its send-now button; both are
+interrupt-then-start, safe because the native queue never auto-dispatches on an
+interrupted idle (specs/codex-desktop-adapter.md). The URL must be loopback and
+the probe must be fresh.
 On failure it writes the UI text, errors, sanitized mock request diagnostics and
 a screenshot, and releases the held response. It does not automatically retry
 commands or move attachment refs between sessions.

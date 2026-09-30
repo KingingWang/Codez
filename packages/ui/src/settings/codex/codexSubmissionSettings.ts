@@ -21,7 +21,8 @@ export function isQueueSendNowAvailable(
   nativeCodex: boolean,
   availability: ConversationSnapshot["availability"]["sendQueuedNow"] | undefined,
 ): boolean {
-  // 原生 busy 队列不能抢占；旧 UI 的 Steer 按钮曾忽略 availability 并发送必拒绝的命令。
+  // 原生 busy 也可抢占（bridge interrupt+start，specs/codex-desktop-adapter.md），
+  // 可用性以投影 availability 为准；旧 UI 的按钮曾忽略 availability 并发送必拒绝的命令。
   return !nativeCodex || availability?.allowed === true;
 }
 

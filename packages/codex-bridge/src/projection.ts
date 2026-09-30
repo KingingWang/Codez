@@ -170,7 +170,7 @@ export function projectThread(
         ? { mode: "reject", reasonCode: "guard.codex.authorityRequired" }
         : state.phase === "running"
           ? state.canStop
-            ? { mode: "guide" }
+            ? { mode: "enqueue" }
             : { mode: "reject", reasonCode: "guard.codex.turnNotLoaded" }
           : { mode: "startNow" },
     // Codex name has no provenance. V4 requires a source, so default means not certified custom/generated.
@@ -180,7 +180,9 @@ export function projectThread(
       model: options.model ?? source.model ?? "",
       thought: source.reasoningEffort ?? "",
       thoughtLevels: [],
-      followupMode: "guide",
+      // 与 busy 默认投递一致（queue）：组合键反向投递因而是 startNow 抢占，
+      // 由命令层 interrupt+start 实现（specs/codex-desktop-adapter.md）。
+      followupMode: "queue",
       mode: "",
     },
     usage: options.usage ?? {

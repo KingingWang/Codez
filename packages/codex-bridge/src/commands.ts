@@ -19,7 +19,7 @@ import {
   turnMode,
   type ResolveAttachments,
 } from "./command-input.js";
-import { turnPermissionIntent } from "./control-common.js";
+import { preemptByInterrupt, turnPermissionIntent } from "./control-common.js";
 import { array, object, string, unsupported } from "./json.js";
 import { projectThread } from "./projection.js";
 import { createNativeSession } from "./command-create.js";
@@ -154,8 +154,8 @@ export class CommandRouter {
         // heldQueueDisposition 只在 legacy held(choice) 路由下有事务语义（clear/keep
         // 队列后 startNow）；Codex 没有 held queue，投影永不报 choice，该字段无事务
         // 可执行。replayable 路径（Bot/Automation/手机）为对齐旧 session/send 语义
-        // 无条件携带 keepQueueAndSend，与 bridge 默认 delivery（running→guide /
-        // idle→startNow，即"不动队列、立即送达"）天然一致——接受并忽略，不能拒绝，
+        // 无条件携带 keepQueueAndSend，与 bridge 默认 delivery（running→queue /
+        // idle→startNow，即"不动既有队列"）天然一致——接受并忽略，不能拒绝，
         // 否则所有 Bot 回调消息都会在 admission 前失败。
         // expectedHeldQueueItemIds 是 choice 确认框的过期守卫，bridge 无 held queue
         // 状态可校验，合法发送端（投影从未报 choice）不会携带，继续 fail-closed 拒绝。
@@ -173,7 +173,8 @@ export class CommandRouter {
         const rewindNotice = this.context.rewindNotices?.peek(sessionId);
         const text = rewindNotice ? `${formatRewindNotice(rewindNotice)}\n\n${p.text}` : p.text;
         const input = await nativeInput(text, p.attachments, sessionId, attachments);
-        const delivery = p.requestedDelivery ?? (running ? "guide" : "startNow");
+        // busy 默认入队：排队消息立即可见、可编辑/删除；steer 只保留给显式 guide（specs/codex-desktop-adapter.md）。
+        const delivery = p.requestedDelivery ?? (running ? "queue" : "startNow");
         if (delivery === "queue" || (delivery === "guide" && running))
           assertUnchangedInputSettings(p, state.thread);
         if (delivery === "queue") {
@@ -191,8 +192,9 @@ export class CommandRouter {
             clientUserMessageId: command.commandId,
           });
         } else {
-          if (running)
-            throw new Error("A turn is already running; stop, guide, or queue the input");
+          // busy 时 startNow = 抢占：interrupt 后的 Interrupted idle 不触发队列
+          // 自动 dispatch（specs/codex-desktop-adapter.md）。
+          if (running) await preemptByInterrupt(rpc, native, string(running.id, "turnId"));
           const permissions = await turnPermissionIntent(controlContext, state.thread, p.mode);
           const turnParams = {
             ...native,
@@ -287,7 +289,8 @@ export class CommandRouter {
       }
       case "sendQueuedNow": {
         const p = commandPayloadSchemas.sendQueuedNow.parse(command.payload);
-        if (running) throw new Error("Stop the current turn before starting a queued input");
+        // busy 抢占：interrupt 后队列不因 Interrupted idle 自动 dispatch，其余队列项保留。
+        if (running) await preemptByInterrupt(rpc, native, string(running.id, "turnId"));
         const response = await rpc.request("thread/queue/start", {
           ...native,
           queuedSubmissionId: p.queueItemId,
