@@ -55,6 +55,36 @@ On failure it writes the UI text, errors, sanitized mock request diagnostics and
 a screenshot, and releases the held response. It does not automatically retry
 commands or move attachment refs between sessions.
 
+To verify native model-retry visibility, start a separate fresh mock probe and run
+`desktop-retry-check.mjs` with its printed `mockProvider` URL. The fixture
+sets only its isolated provider's `request_max_retries = 0`; production Codex
+retains its own request-layer retry policy. The test returns two HTTP 503s (the
+first WebSocket reconnect event may be suppressed by Codex), holds the next
+request, checks the live status and HTTP code, then verifies recovery and that
+the next turn has no stale status. It also checks a compact desktop viewport and records
+`retry-visible.png`, `retry-compact-desktop.png`, `retry-recovered.png` and
+`results.json` under a fresh temporary directory.
+Neither this test nor Codez can surface Codex's request-layer attempts that
+have no native `willRetry` notification.
+
+When another worktree already owns ports 5174/9229, use a separate **isolated**
+desktop instance without stopping it. Build the renderer, serve it without
+file watchers (useful on low-inotify systems), then launch the QA probe with
+explicit renderer/CDP ports:
+
+```sh
+CODEZ_DESKTOP_RUNTIME=codex CODEZ_ENV=production pnpm --filter @codez/desktop exec vite build --logLevel error
+CODEZ_DESKTOP_RUNTIME=codex CODEZ_ENV=production pnpm --filter @codez/desktop exec vite preview --host 127.0.0.1 --port 5175 --strictPort
+CODEX_UI_QA_RENDERER_PORT=5175 CODEX_UI_QA_CDP_PORT=9231 CODEX_UI_QA_MOCK=1 node packages/ui/src/settings/codex/qa/desktop-probe.mjs
+CODEX_UI_QA_RENDERER_PORT=5175 CODEX_UI_QA_CDP_PORT=9231 CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/qa/desktop-retry-check.mjs
+```
+
+The parallel probe uses the real locally built Electron main/preload/Host,
+renderer and pinned native bridge. It does not use `dev.mjs`'s fixed dev ports.
+Use the mock port printed by that fresh probe. Run the existing
+`desktop-conversation-check.mjs` on another fresh isolated probe for image,
+busy-input and native queue regression; do not reuse a mock after a turn.
+
 Fresh full-turn **actual dev.mjs** verification passed on 2026-09-22:
 `/tmp/codex-ui-desktop-conversation-gqtR57/results.json` (six checks, three completed
 native turns, zero page errors). Screenshots include `first-image-ready.png`,

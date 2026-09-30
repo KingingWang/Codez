@@ -8,10 +8,25 @@ export async function startDesktopMockProvider({ reuseItemId = false } = {}) {
   const completed = [];
   const interrupted = [];
   let hold = true;
+  let retryFailuresRemaining = 0;
   const server = createServer(async (req, res) => {
     if (req.url === "/qa" && req.method === "GET") {
       res.setHeader("content-type", "application/json");
-      res.end(JSON.stringify({ requests, pending: pending.size, hold, completed, interrupted }));
+      res.end(
+        JSON.stringify({
+          requests,
+          pending: pending.size,
+          hold,
+          completed,
+          interrupted,
+          retryFailuresRemaining,
+        }),
+      );
+      return;
+    }
+    if (req.url === "/qa/retry-twice" && req.method === "POST") {
+      retryFailuresRemaining = 2;
+      res.end("armed");
       return;
     }
     if (req.url === "/qa/hold" && req.method === "POST") {
@@ -46,6 +61,12 @@ export async function startDesktopMockProvider({ reuseItemId = false } = {}) {
         imageCount: images.length,
         imageIsDataUrl: images.every((image) => image.image_url?.startsWith("data:image/")),
       });
+      if (retryFailuresRemaining > 0) {
+        retryFailuresRemaining -= 1;
+        res.writeHead(503, { "content-type": "application/json" });
+        res.end(JSON.stringify({ error: { message: "Temporary isolated QA outage" } }));
+        return;
+      }
       const index = requests.length;
       const text = `Isolated desktop QA response ${index}`;
       const item = {

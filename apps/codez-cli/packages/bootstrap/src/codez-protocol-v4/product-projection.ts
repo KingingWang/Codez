@@ -2577,6 +2577,8 @@ export class ProductProjection {
       current === apiRetry ||
       (current !== null &&
         apiRetry !== null &&
+        !("source" in current) &&
+        !("source" in apiRetry) &&
         current.attempt === apiRetry.attempt &&
         current.maxAttempts === apiRetry.maxAttempts &&
         current.nextRetryAt === apiRetry.nextRetryAt &&

@@ -3,10 +3,22 @@ import { mkdtemp, mkdir, readFile, access, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { startDesktopMockProvider } from "./desktop-mock-provider.mjs";
 import { isolatedElectronSandboxEnv } from "./desktop-probe-env.mjs";
 const root = process.cwd();
 const packaged = process.env.CODEX_UI_QA_PACKAGED === "1";
+function qaPort(name, fallback) {
+  const value = process.env[name];
+  if (value === undefined) return fallback;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1024 || parsed > 65535)
+    throw new Error(`Invalid isolated QA port: ${name}`);
+  return parsed;
+}
+const rendererPort = qaPort("CODEX_UI_QA_RENDERER_PORT", 5174);
+const cdpPort = qaPort("CODEX_UI_QA_CDP_PORT", packaged ? 9230 : 9229);
+const parallelProbe = !packaged && (rendererPort !== 5174 || cdpPort !== 9229);
 const packagedRoot = resolve(root, "packages/desktop/dist/linux-unpacked");
 const packagedExecutable = join(packagedRoot, "codez-codex");
 const isolated = await mkdtemp(join(tmpdir(), "codex-ui-qa-"));
@@ -18,7 +30,7 @@ const mock =
     : null;
 await writeFile(
   join(isolated, "codex/config.toml"),
-  `model_provider = "ui_qa"\nmodel = "ui-qa-offline"\napproval_policy = "never"\nsandbox_mode = "read-only"\n[model_providers.ui_qa]\nname = "Isolated UI QA"\nbase_url = "${mock?.url ?? "http://127.0.0.1:9"}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n[analytics]\nenabled = false\n`,
+  `model_provider = "ui_qa"\nmodel = "ui-qa-offline"\napproval_policy = "never"\nsandbox_mode = "read-only"\n[model_providers.ui_qa]\nname = "Isolated UI QA"\nbase_url = "${mock?.url ?? "http://127.0.0.1:9"}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n${mock ? "request_max_retries = 0\n" : ""}[analytics]\nenabled = false\n`,
 );
 let nativeOverride;
 if (packaged) {
@@ -54,6 +66,12 @@ const env = {
   CODEZ_DESKTOP_HOME_DIR: join(isolated, "home"),
   CODEZ_DESKTOP_USER_DATA_DIR: join(isolated, "userData"),
   CODEZ_DESKTOP_SESSION_DATA_DIR: join(isolated, "session"),
+  ...(parallelProbe
+    ? {
+        CODEZ_DISABLE_FIXED_REMOTE_DEBUGGING_PORT: "1",
+        ELECTRON_RENDERER_URL: `http://127.0.0.1:${rendererPort}`,
+      }
+    : {}),
   ...isolatedElectronSandboxEnv(process.platform, process.getuid?.()),
   ...(nativeOverride ? { CODEZ_CODEX_COMMAND: nativeOverride } : {}),
 };
@@ -74,14 +92,23 @@ env.DISPLAY = await new Promise((resolveDisplay, reject) => {
   display.once("error", reject);
   display.once("exit", (code) => reject(new Error(`Xvfb exited before launch: ${code}`)));
 });
-// dev.mjs owns Electron ['.'], build readiness, renderer URL and child process cleanup.
+// The default probe uses dev.mjs. Parallel QA attaches an isolated Electron to
+// its own renderer/CDP ports, leaving other worktree GUI sessions untouched.
 // Isolation must not bypass real package/updater startup validation.
 // 打包验收不覆盖 bridge/native 路径；临时 cwd 也不能回溯到源码树 resolver fallback。
+const require = createRequire(import.meta.url);
+const electronPackageRoot = resolve(require.resolve("electron/package.json"), "..");
 const app = spawn(
-  packaged ? packagedExecutable : process.execPath,
   packaged
-    ? ["--remote-debugging-port=9230", "--remote-debugging-address=127.0.0.1"]
-    : ["scripts/dev.mjs"],
+    ? packagedExecutable
+    : parallelProbe
+      ? join(electronPackageRoot, "dist", "electron")
+      : process.execPath,
+  packaged
+    ? [`--remote-debugging-port=${cdpPort}`, "--remote-debugging-address=127.0.0.1"]
+    : parallelProbe
+      ? [".", `--remote-debugging-port=${cdpPort}`, "--remote-debugging-address=127.0.0.1"]
+      : ["scripts/dev.mjs"],
   {
     cwd: packaged ? join(isolated, "workspace") : resolve(root, "packages/desktop"),
     env,
@@ -91,9 +118,13 @@ const app = spawn(
 console.log(
   JSON.stringify({
     isolated,
-    cdp: `http://127.0.0.1:${packaged ? 9230 : 9229}`,
+    cdp: `http://127.0.0.1:${cdpPort}`,
     devPid: app.pid,
-    entry: packaged ? packagedExecutable : "packages/desktop/scripts/dev.mjs",
+    entry: packaged
+      ? packagedExecutable
+      : parallelProbe
+        ? join(electronPackageRoot, "dist", "electron")
+        : "packages/desktop/scripts/dev.mjs",
     mockProvider: mock?.url,
   }),
 );
