@@ -9,6 +9,13 @@ import { chromium } from "playwright-core";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { verifyProjectDiscovery } from "./project-discovery-e2e.mjs";
+import {
+  createCatalogConfigReadCounter,
+  verifyLocalConfigValidation,
+  verifyModeTooltipOwnership,
+  verifyUsageHostReconnect,
+  waitFixtureButtonEnabled,
+} from "./settings-regressions-e2e.mjs";
 
 const evidence = await mkdtemp(join(tmpdir(), "codex-ui-interaction-e2e-"));
 const checks = [];
@@ -33,27 +40,16 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1280, height: 1100 } });
 const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
+const tooltipWarnings = [];
+page.on("console", (message) => {
+  if (message.text().includes("Tooltip is changing from")) tooltipWarnings.push(message.text());
+});
 await page.route("**/*", (route) =>
   new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort(),
 );
 const result = async () => JSON.parse(await page.getByTestId("result").innerText());
-const catalogConfigReads = async (workspacePath = "/isolated/workspace") => {
-  await page.getByRole("button", { name: "Inspect RPC log", exact: true }).click();
-  const requests = (await result()).requests ?? [];
-  return requests.filter(
-    (request) => request.method === "config/read" && request.workspacePath === workspacePath,
-  ).length;
-};
-const waitEnabled = async (name) => {
-  await page.getByRole("button", { name, exact: true }).waitFor();
-  await page.waitForFunction(
-    (label) =>
-      [...document.querySelectorAll("button")].some(
-        (button) => button.textContent === label && !button.disabled,
-      ),
-    name,
-  );
-};
+const catalogConfigReads = createCatalogConfigReadCounter(page, result);
+const waitEnabled = (name) => waitFixtureButtonEnabled(page, name);
 try {
   await page.goto("http://127.0.0.1:5188/");
   await waitEnabled("Send fixture");
@@ -145,6 +141,7 @@ try {
     await page.getByRole("button", { name: "Switch mode", exact: true }).isEnabled(),
     true,
   );
+  await verifyModeTooltipOwnership(page, tooltipWarnings, checks);
   checks.push(
     "Busy projection disables real native model/effort and mode/plan controls; same-settings send remains enabled and idle unlocks controls",
   );
@@ -290,6 +287,7 @@ try {
   });
   checks.push("Real settings hook writes native versioned config and refreshes effective values");
   await page.getByRole("button", { name: "Toggle settings", exact: true }).click();
+  await verifyLocalConfigValidation(page, settings, result, checks);
   await settings.getByRole("button", { name: "Providers", exact: true }).click();
   await settings.getByText("Fixture provider catalog unavailable").waitFor();
   assert.equal(await settings.getByText(/model_catalog_json is not configured/).count(), 0);
@@ -373,6 +371,7 @@ try {
   checks.push(
     "StrictMode lifecycle, captured old scope, synchronous reload, and pending/ready unmount reject stale catalog reads",
   );
+  await verifyUsageHostReconnect(page, checks);
   await verifyProjectDiscovery(page, checks);
   assert.deepEqual(errors, []);
   await page.screenshot({ path: join(evidence, "desktop-width.png"), fullPage: true });

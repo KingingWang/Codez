@@ -36,6 +36,13 @@ export type CodexResourceState<K extends CodexResource> = {
 export type CodexSnapshot = { [K in CodexResource]?: CodexResourceState<K> };
 export type CodexRequestSender = (request: CodexRequest) => Promise<unknown>;
 
+/** Managed "untrusted" may describe project trust, but is no longer a writable approval policy. */
+export function codexUserApprovalOptions(allowed?: readonly unknown[] | null): string[] {
+  return (allowed ?? ["on-request", "never"]).filter(
+    (value): value is string => typeof value === "string" && value !== "untrusted",
+  );
+}
+
 export function codexReadRequest(resource: CodexResource, cwd: string): CodexRequest {
   switch (resource) {
     case "account":

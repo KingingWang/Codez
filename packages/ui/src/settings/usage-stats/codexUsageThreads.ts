@@ -19,6 +19,36 @@ export interface CodexUsageObservationsSnapshot {
   readonly stale: boolean;
 }
 
+export function buildCodexUsageObservationTotals(
+  threads: Iterable<{ observation: { payload: CodexObservedUsageInput } }>,
+) {
+  const totals: {
+    threads: number;
+    inputTokens: number | null;
+    outputTokens: number | null;
+    cacheReadTokens: number | null;
+    cacheWriteTokens: number | null;
+  } = { threads: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
+  const add = (total: number | null, observed: number | undefined) =>
+    total === null || observed === undefined ? null : total + observed;
+  for (const { observation } of threads) {
+    const usage = observation.payload;
+    totals.threads++;
+    // 缺失的原生 token 事实不是测得的零；部分线程合计也不能冒充精确合计。
+    totals.inputTokens = add(totals.inputTokens, usage.inputTokens);
+    totals.outputTokens = add(totals.outputTokens, usage.outputTokens);
+    totals.cacheReadTokens = add(totals.cacheReadTokens, usage.cacheReadTokens);
+    totals.cacheWriteTokens = add(totals.cacheWriteTokens, usage.cacheWriteTokens);
+  }
+  if (totals.threads === 0) {
+    totals.inputTokens = null;
+    totals.outputTokens = null;
+    totals.cacheReadTokens = null;
+    totals.cacheWriteTokens = null;
+  }
+  return totals;
+}
+
 function validEntry(
   threadId: unknown,
   state: unknown,

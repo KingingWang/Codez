@@ -1,9 +1,5 @@
 import { useState } from "react";
-import {
-  codexConfigEditsSchema,
-  codexConfigWriteResponseSchema,
-  type CodexRequest,
-} from "@codez/shared";
+import { codexConfigWriteResponseSchema, type CodexRequest } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import { Textarea } from "@/components/ui/textarea.js";
@@ -15,7 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
-import { codexModelEdits, codexUserConfigTarget } from "./codexSettingsData.js";
+import {
+  codexModelEdits,
+  codexUserApprovalOptions,
+  codexUserConfigTarget,
+} from "./codexSettingsData.js";
+import { parseCodexConfigBatchEdits, parseCodexConfigValueEdit } from "./codexConfigValidation.js";
 import { CodexNotice, CodexSection, codexVisibleConfig } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
 
@@ -67,6 +68,7 @@ export function CodexConfigPanel({
   const [jsonValue, setJsonValue] = useState("");
   const [batch, setBatch] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const config = controller.snapshot.config?.data;
   const target = codexUserConfigTarget(config);
   const requirements = controller.snapshot.requirements?.data;
@@ -92,9 +94,9 @@ export function CodexConfigPanel({
     (typeof config?.config.approval_policy === "string" ? config.config.approval_policy : "");
   const sandboxValue =
     sandbox ?? (typeof config?.config.sandbox_mode === "string" ? config.config.sandbox_mode : "");
-  const approvalOptions = (
-    requirements?.requirements?.allowedApprovalPolicies ?? ["untrusted", "on-request", "never"]
-  ).filter((value): value is string => typeof value === "string");
+  const approvalOptions = codexUserApprovalOptions(
+    requirements?.requirements?.allowedApprovalPolicies,
+  );
   const sandboxOptions = requirements?.requirements?.allowedSandboxModes ?? [
     "read-only",
     "workspace-write",
@@ -144,23 +146,27 @@ export function CodexConfigPanel({
             onSubmit={(event) => {
               event.preventDefault();
               if (!target) return;
-              void controller.run(async () => {
-                const [edit] = codexConfigEditsSchema.parse([
-                  {
-                    keyPath: keyPath.trim(),
-                    value: JSON.parse(jsonValue),
-                    mergeStrategy: "replace",
-                  },
-                ]);
-                await write({ method: "config/value/write", params: { ...target, ...edit } });
-              });
+              // 本地草稿 JSON 格式错不代表远端写入失败；只有校验通过才进入 mutation。
+              setNotice(null);
+              try {
+                const edit = parseCodexConfigValueEdit(keyPath, jsonValue);
+                setValidationError(null);
+                void controller.run(() =>
+                  write({ method: "config/value/write", params: { ...target, ...edit } }),
+                );
+              } catch (error) {
+                setValidationError(error instanceof Error ? error.message : String(error));
+              }
             }}
           >
             <label className="block space-y-1 text-ui-sm">
               {text.keyPath}
               <Input
                 value={keyPath}
-                onChange={(event) => setKeyPath(event.target.value)}
+                onChange={(event) => {
+                  setKeyPath(event.target.value);
+                  setValidationError(null);
+                }}
                 placeholder="model_reasoning_effort"
                 disabled={disabled}
               />
@@ -169,7 +175,10 @@ export function CodexConfigPanel({
               {text.jsonValue}
               <Textarea
                 value={jsonValue}
-                onChange={(event) => setJsonValue(event.target.value)}
+                onChange={(event) => {
+                  setJsonValue(event.target.value);
+                  setValidationError(null);
+                }}
                 placeholder={'"high"'}
                 disabled={disabled}
               />
@@ -183,12 +192,17 @@ export function CodexConfigPanel({
             onSubmit={(event) => {
               event.preventDefault();
               if (!target) return;
-              void controller.run(async () => {
-                await write({
-                  method: "config/batchWrite",
-                  params: { ...target, edits: codexConfigEditsSchema.parse(JSON.parse(batch)) },
-                });
-              });
+              // 批量输入同样只在本地解析成功后才交给原生配置写入。
+              setNotice(null);
+              try {
+                const edits = parseCodexConfigBatchEdits(batch);
+                setValidationError(null);
+                void controller.run(() =>
+                  write({ method: "config/batchWrite", params: { ...target, edits } }),
+                );
+              } catch (error) {
+                setValidationError(error instanceof Error ? error.message : String(error));
+              }
             }}
           >
             <label className="block space-y-1 text-ui-sm">
@@ -196,7 +210,10 @@ export function CodexConfigPanel({
               <Textarea
                 value={batch}
                 rows={4}
-                onChange={(event) => setBatch(event.target.value)}
+                onChange={(event) => {
+                  setBatch(event.target.value);
+                  setValidationError(null);
+                }}
                 disabled={disabled}
                 placeholder={
                   '[{"keyPath":"model_reasoning_effort","value":"high","mergeStrategy":"replace"}]'
@@ -207,6 +224,7 @@ export function CodexConfigPanel({
               {text.saveBatch}
             </Button>
           </form>
+          {validationError ? <CodexNotice error>{validationError}</CodexNotice> : null}
         </>
       ) : (
         <>
