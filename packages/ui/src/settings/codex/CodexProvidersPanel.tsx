@@ -14,6 +14,7 @@ import {
   codexModelEntryFromForm,
   codexModelFormFrom,
   codexProviderCreateEdits,
+  codexProviderDeleteBlock,
   codexProviderDeleteEdits,
   codexProviderFormError,
   codexProviderFormFrom,
@@ -155,17 +156,11 @@ export function CodexProvidersPanel({
 
   const deleteProvider = (view: CodexProviderView) => {
     // 根因：目录读取失败曾被投影成空数组，未知引用数误判为 0 时会放行删除。
-    // 只有已成功读取目录才能证明非默认 provider 没有模型引用。
-    if (!catalogReady) {
-      setFormError(text.providerCatalogUnavailable);
-      return;
-    }
-    if (view.isDefault) {
-      setFormError(text.providerDeleteDefaultBlocked);
-      return;
-    }
-    if (view.modelCount > 0) {
-      setFormError(text.providerDeleteModelsBlocked);
+    // 判定与按钮禁用共用 codexProviderDeleteBlock；写入前再判一次，
+    // 使删除不变量不依赖渲染期 prop（新增入口/自动化调用同样受保护）。
+    const block = codexProviderDeleteBlock(view, catalogReady);
+    if (block) {
+      setFormError(text[block]);
       return;
     }
     setFormError(null);

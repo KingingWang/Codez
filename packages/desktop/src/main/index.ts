@@ -1,4 +1,5 @@
 import { createLocalTtftExporter } from "./localTtftExporter.js";
+import { createRendererCrashRecovery } from "./rendererCrashRecovery.js";
 /* eslint-disable max-lines */
 import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
@@ -2451,8 +2452,20 @@ app.on("browser-window-created", (_, win) => {
   });
   // 渲染进程崩溃但窗口存活时 closed 不会触发，崩溃路径同样按 owner 复位
   // （owner 不匹配时天然幂等）。
-  win.webContents.on("render-process-gone", () => {
+  // renderer 原生崩溃后窗口仍存活但页面已消失；主窗口做有界原地 reload，
+  // 否则 Linux/Windows 上用户只会得到永久无响应的空窗口。原地 reload 是第一道
+  // 恢复（全平台）；primaryWindowCoordinator 的丢弃重建只是最后兜底。
+  // 延迟与存活性策略由 rendererCrashRecovery 模块持有；这里只提供窗口事实。
+  const rendererCrashRecovery = createRendererCrashRecovery({
+    reload: () => win.webContents.reload(),
+    canReload: () => !win.isDestroyed() && !win.webContents.isDestroyed(),
+    isQuitting: () => hasPreparedAppQuit || forceQuitRef.current,
+    logger: { warn: (message, payload) => logger.warn(message, payload) },
+  });
+  win.webContents.on("render-process-gone", (_event, details) => {
     resetShortcutRecordingForWebContents(windowWebContentsId);
+    if (!getMainApplicationWindows().includes(win)) return;
+    rendererCrashRecovery.handle(details);
   });
 });
 app.on("window-all-closed", () => {

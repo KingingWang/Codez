@@ -18,7 +18,7 @@ import {
 } from "./codexSettingsData.js";
 import { parseCodexConfigBatchEdits, parseCodexConfigValueEdit } from "./codexConfigValidation.js";
 import { CodexNotice, CodexSection, codexVisibleConfig } from "./CodexSettingsParts.js";
-import { useCodexMessages } from "./messages.js";
+import { formatCodexTemplate, useCodexMessages } from "./messages.js";
 
 function ConfigSelect({
   label,
@@ -50,6 +50,17 @@ function ConfigSelect({
       </Select>
     </div>
   );
+}
+
+function describeCodexConfigDraftError(
+  text: ReturnType<typeof useCodexMessages>,
+  error: unknown,
+): string {
+  const message = error instanceof Error ? error.message : String(error);
+  // JSON 语法错误对普通用户缺少上下文；schema/远端错误文案本身已可执行。
+  return error instanceof SyntaxError
+    ? formatCodexTemplate(text.invalidJsonSyntax, { message })
+    : message;
 }
 
 export function CodexConfigPanel({
@@ -155,7 +166,7 @@ export function CodexConfigPanel({
                   write({ method: "config/value/write", params: { ...target, ...edit } }),
                 );
               } catch (error) {
-                setValidationError(error instanceof Error ? error.message : String(error));
+                setValidationError(describeCodexConfigDraftError(text, error));
               }
             }}
           >
@@ -201,7 +212,7 @@ export function CodexConfigPanel({
                   write({ method: "config/batchWrite", params: { ...target, edits } }),
                 );
               } catch (error) {
-                setValidationError(error instanceof Error ? error.message : String(error));
+                setValidationError(describeCodexConfigDraftError(text, error));
               }
             }}
           >

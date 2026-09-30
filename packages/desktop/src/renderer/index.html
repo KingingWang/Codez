@@ -103,6 +103,60 @@
           animation: none;
         }
       }
+      #codez-bootstrap-failure {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        text-align: center;
+        color: #151718;
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      .codez-bootstrap-failure-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .codez-bootstrap-failure-detail {
+        margin: 0;
+        max-width: 52ch;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #4b4f52;
+      }
+
+      #codez-bootstrap-failure button {
+        padding: 8px 18px;
+        border: 1px solid #d0d4d8;
+        border-radius: 8px;
+        background: #ffffff;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      #codez-bootstrap-failure details {
+        max-width: 68ch;
+        font-size: 12px;
+        color: #6b7075;
+        text-align: left;
+      }
+
+      #codez-bootstrap-failure ul {
+        margin: 6px 0 0;
+        padding-left: 18px;
+        word-break: break-all;
+      }
     </style>
   </head>
   <body>
@@ -145,6 +199,9 @@
       let finished = false;
       let animationDone = false;
       let reactReady = false;
+      const BOOTSTRAP_AUTO_RETRY_KEY = "codez-bootstrap-auto-retried";
+      const BOOTSTRAP_EVIDENCE_DELAY_MS = 4000;
+      const BOOTSTRAP_HARD_DEADLINE_MS = 20000;
 
       // 主入口不能依赖动画结束后的动态 import；一旦导入路径在 Electron/Vite 下失败，
       // 页面会永久停在 HTML loading。这里让主入口静态加载，只把启动壳作为动画遮罩延迟移除。
@@ -162,6 +219,11 @@
 
       const markReactReady = () => {
         reactReady = true;
+        try {
+          window.sessionStorage.removeItem(BOOTSTRAP_AUTO_RETRY_KEY);
+        } catch {
+          // sessionStorage 不可用时忽略，看门狗退化为仅提示。
+        }
         tryFinishStartupAnimation();
       };
 
@@ -183,7 +245,129 @@
       }
 
       if (!isUpdateStatusWindow) {
-        window.setTimeout(markReactReady, 3000);
+        // 3s 兜底只移除启动壳，避免慢启动永久卡在 logo；它不代表 React 已挂载，
+        // reactReady 只能由 codez-react-startup-ready 置位，供失败看门狗判断。
+        window.setTimeout(() => {
+          if (finished) return;
+          finished = true;
+          document.body.classList.add("codez-startup-ready");
+          window.setTimeout(() => startupLoading?.remove(), 500);
+        }, 3000);
+      }
+
+      // ---- renderer 引导失败看门狗 ----
+      // 模块图任一关键模块加载失败时 React 永远不会挂载；旧行为在 3s 兜底后移除
+      // 启动壳，留下永久空白窗口且没有任何可操作信息（真实桌面复现：资源受限宿主
+      // 上 reload 触发 net::ERR_INSUFFICIENT_RESOURCES，入口模块缺失）。
+      const bootstrapStartedAt = Date.now();
+      const bootstrapFailures = [];
+      let bootstrapFailureUiShown = false;
+
+      window.addEventListener(
+        "error",
+        (event) => {
+          const target = event.target;
+          if (
+            target instanceof Element &&
+            (target.tagName === "SCRIPT" || target.tagName === "LINK")
+          ) {
+            bootstrapFailures.push(
+              String(target.getAttribute("src") ?? target.getAttribute("href") ?? "").slice(-140),
+            );
+          }
+        },
+        true,
+      );
+      window.addEventListener("unhandledrejection", (event) => {
+        const reason = event.reason;
+        const message = reason instanceof Error ? reason.message : String(reason ?? "");
+        if (/dynamically imported module|importing a module script failed/iu.test(message)) {
+          bootstrapFailures.push(message.slice(0, 160));
+        }
+      });
+
+      const readBootstrapAutoRetried = () => {
+        try {
+          return window.sessionStorage.getItem(BOOTSTRAP_AUTO_RETRY_KEY) === "1";
+        } catch {
+          return false;
+        }
+      };
+
+      const renderBootstrapFailureUi = () => {
+        bootstrapFailureUiShown = true;
+        startupLoading?.remove();
+        document.body.classList.add("codez-startup-ready");
+        const zh = String(navigator.language ?? "en")
+          .toLowerCase()
+          .startsWith("zh");
+        const shell = document.createElement("div");
+        shell.id = "codez-bootstrap-failure";
+        shell.setAttribute("role", "alert");
+        const title = document.createElement("p");
+        title.className = "codez-bootstrap-failure-title";
+        title.textContent = zh ? "界面加载失败" : "The interface failed to load";
+        const detail = document.createElement("p");
+        detail.className = "codez-bootstrap-failure-detail";
+        detail.textContent = zh
+          ? "渲染进程缺少启动所需的模块。可以重试；若反复出现，请检查磁盘与系统资源后重启应用。"
+          : "The renderer is missing modules required for startup. You can retry; if this repeats, check disk and system resources, then restart the app.";
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = zh ? "重新加载" : "Reload";
+        button.addEventListener("click", () => window.location.reload());
+        shell.append(title, detail, button);
+        if (bootstrapFailures.length > 0) {
+          const details = document.createElement("details");
+          const summary = document.createElement("summary");
+          summary.textContent = zh ? "技术细节" : "Technical details";
+          const list = document.createElement("ul");
+          for (const failure of bootstrapFailures.slice(0, 8)) {
+            const item = document.createElement("li");
+            item.textContent = failure;
+            list.append(item);
+          }
+          details.append(summary, list);
+          shell.append(details);
+        }
+        document.body.append(shell);
+      };
+
+      const checkBootstrapFailure = () => {
+        if (reactReady || bootstrapFailureUiShown || isUpdateStatusWindow) return;
+        const elapsed = Date.now() - bootstrapStartedAt;
+        const hasEvidence = bootstrapFailures.length > 0;
+        if (
+          hasEvidence ? elapsed < BOOTSTRAP_EVIDENCE_DELAY_MS : elapsed < BOOTSTRAP_HARD_DEADLINE_MS
+        )
+          return;
+        if (!readBootstrapAutoRetried()) {
+          // 资源受限宿主上的模块加载失败多为瞬时；自动重试一次，避免用户手动刷新。
+          try {
+            window.sessionStorage.setItem(BOOTSTRAP_AUTO_RETRY_KEY, "1");
+          } catch {
+            renderBootstrapFailureUi();
+            return;
+          }
+          window.location.reload();
+          return;
+        }
+        renderBootstrapFailureUi();
+      };
+
+      if (!isUpdateStatusWindow) {
+        // 固定两个定时器会在 4s~20s 之间留下检测空窗；改为短间隔轮询，
+        // React 挂载或错误面渲染后立即停止。
+        const bootstrapCheckTimer = window.setInterval(() => {
+          checkBootstrapFailure();
+          if (
+            reactReady ||
+            bootstrapFailureUiShown ||
+            Date.now() - bootstrapStartedAt > BOOTSTRAP_HARD_DEADLINE_MS
+          ) {
+            window.clearInterval(bootstrapCheckTimer);
+          }
+        }, 2000);
       }
     </script>
     <script type="module" src="./src/main.tsx"></script>

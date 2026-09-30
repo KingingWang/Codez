@@ -82,6 +82,7 @@ const en = {
   jsonValue: "JSON value",
   saveValue: "Write value",
   saveBatch: "Write batch",
+  invalidJsonSyntax: "Invalid JSON: {message}",
   configHelp:
     "Writes target the native user configuration file using its version. Paths are dot-separated; values must be valid JSON. Managed and workspace layers may override defaults.",
   reload: "Reload MCP configuration",
@@ -262,6 +263,7 @@ const zh: Record<keyof typeof en, string> = {
   jsonValue: "JSON 值",
   saveValue: "写入单值",
   saveBatch: "批量写入",
+  invalidJsonSyntax: "JSON 无效：{message}",
   configHelp:
     "按版本写入原生用户配置文件。键路径用点分隔，值必须是合法 JSON。托管配置与工作区配置可能覆盖默认值。",
   reload: "重载 MCP 配置",
@@ -363,6 +365,20 @@ const zh: Record<keyof typeof en, string> = {
   ...zhProviders,
   ...zhMcp,
 };
+
+/**
+ * Codex i18n 目录的 `{key}` 占位符格式化入口（唯一实现）。
+ * 目录独立于 packages/ui/src/i18n 的全局 locale 文件，因此不复用 intl.formatMessage。
+ */
+export function formatCodexTemplate(template: string, values: Record<string, string>): string {
+  // 单次扫描替换：已插入的值不会被再次当作占位符（例如错误文本里出现 {message}）；
+  // 用函数形式返回替换值，避免 $& 等特殊序列被解释；未知占位符原样保留。
+  return template.replace(/\{(\w+)\}/g, (match, key: string) => {
+    const value = values[key];
+    return value === undefined ? match : value;
+  });
+}
+
 export function useCodexMessages() {
   return useCodezIntl().locale === "zh-CN" ? zh : en;
 }

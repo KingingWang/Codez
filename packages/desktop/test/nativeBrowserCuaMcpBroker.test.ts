@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { spawn } from "node:child_process";
 import { connect } from "node:net";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -387,6 +388,90 @@ for (const action of ["revoke", "close"] as const) {
     await rm(directory, { recursive: true, force: true });
   });
 }
+
+test("native broker reclaims a stale endpoint left behind by an unclean exit", async () => {
+  // 回归：进程崩溃或被 SIGKILL 后 Unix socket 文件残留，之后每次 listen 都
+  // EADDRINUSE，原生 Browser/CUA 能力永久不可用，而 GUI 只能显示不可用。
+  const directory = await mkdtemp(join(tmpdir(), "native-browser-cua-"));
+  const endpoint = join(directory, "codez-native-browser-cua-test.sock");
+  const child = spawn(
+    process.execPath,
+    [
+      "-e",
+      'require("node:net").createServer().listen(process.argv[1]); setInterval(() => {}, 1000);',
+      endpoint,
+    ],
+    { stdio: "ignore" },
+  );
+  try {
+    // 等子进程真的绑定过，再用 SIGKILL 制造残留文件（无监听者）。
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      try {
+        await stat(endpoint);
+        break;
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+    }
+    child.kill("SIGKILL");
+    await new Promise<void>((resolve) => child.once("exit", () => resolve()));
+    assert.equal((await stat(endpoint)).isSocket(), true);
+
+    const executed: string[] = [];
+    const broker = createNativeBrowserCuaMcpBroker({
+      manager: {
+        async execute() {
+          executed.push("called");
+          return {
+            ok: true,
+            state: {
+              url: "https://example.invalid",
+              title: "Fixture",
+              canGoBack: false,
+              canGoForward: false,
+            },
+            elapsedMs: 0,
+          };
+        },
+      } as never,
+      flavor: "test",
+      userDataPath: directory,
+      temporaryDirectory: directory,
+      eligibleWindowResolver: (windowId) => ({ id: windowId }) as never,
+      logger: { warn: () => {} },
+    });
+    // 修复前 ready 会因 EADDRINUSE 拒绝，能力永久不可用。
+    await broker.ready;
+    await broker.registerWindow(1);
+    assert.equal(broker.availability.browserAvailable, true);
+    const token = (
+      await readFile(join(directory, "codez-native-browser-cua-test-1.token"), "utf8")
+    ).trim();
+    // 回收后必须真的能服务请求，而不只是把残留文件删掉。
+    const done = once<string>();
+    const socket = connect(endpoint);
+    socket.on("error", done.reject);
+    socket.on("data", (chunk) => {
+      socket.destroy();
+      done.resolve(chunk.toString());
+    });
+    socket.on("connect", () => {
+      socket.write(
+        `${JSON.stringify({
+          id: "00000000-0000-4000-8000-000000000009",
+          token,
+          command: { method: "getState" },
+        })}\n`,
+      );
+    });
+    assert.match(await done.promise, /"ok":true/u);
+    assert.deepEqual(executed, ["called"]);
+    await broker.close();
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("native broker toggle disables dispatch immediately and re-enables cleanly", async () => {
   const directory = await mkdtemp(join(tmpdir(), "native-browser-cua-toggle-"));

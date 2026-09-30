@@ -99,6 +99,15 @@ Desktop Main owns one process-wide native broker with a separate capability per 
   instance whose bind fails (for example a second app launch racing the single-instance handoff)
   must not overwrite or delete the live instance's credentials — otherwise every later MCP request
   fails `authentication_failed` and new MCP sessions cannot connect.
+- POSIX only: a socket file left behind by an unclean exit (crash, `SIGKILL`, power loss) has no
+  live listener, so every later start fails `EADDRINUSE` and the capability stays permanently
+  unavailable with no user-recoverable path. Before binding, Main must probe the endpoint and
+  reclaim it only when the probe proves there is no live owner: a successful connection means
+  another instance is serving, so Main keeps failing closed and must not delete that endpoint or
+  its credentials; a refused, failed or timed-out connection means the file is stale, may be
+  removed, and is then bound once. Windows named pipes leave no file and are never reclaimed.
+  Reclamation must not widen authorization: tokens stay per window and are still written only
+  after the endpoint listens.
 - Every endpoint request is validated with the native request schema, size-bounded, and authorized
   by timing-safe token comparison.
 - Main dispatches strict `BrowserCommand` values through `BrowserGuestManager`. It returns the

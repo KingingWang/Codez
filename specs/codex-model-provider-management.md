@@ -31,6 +31,9 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
     catalog 正在读取、读取失败或尚未验证引用关系时，所有供应商的删除入口
     必须 fail-closed（禁用按钮和命令入口）。目录成功读取为无配置（path=null）
     时才可把引用数视为 0；不能用失败时的空数组假装已证明不存在引用。
+    两个入口必须共用同一判定来源（`codexProviderDeleteBlock`）：按钮禁用只
+    负责呈现，写入前判定负责不变量；删除写入不得只依赖渲染期 prop，否则新增
+    入口、快捷键或自动化调用会绕过 fail-closed。
     目录读取失败时引用数显示“未知”而不是 0，并只显示读取错误，不能额外
     宣告 `model_catalog_json` 未配置；只有成功返回 `path=null` 才显示未配置。
   - 删除模型：slug 等于 `config.model`（新线程默认模型）时给出警告但允许。

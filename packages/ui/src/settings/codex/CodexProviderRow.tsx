@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button.js";
 import { CodexConfirmButton } from "./CodexSettingsParts.js";
-import type { CodexProviderView } from "./codexProviderSettings.js";
+import { codexProviderDeleteBlock, type CodexProviderView } from "./codexProviderSettings.js";
 import { useCodexMessages } from "./messages.js";
 
 export function CodexProviderRow({
@@ -55,7 +55,7 @@ export function CodexProviderRow({
         </Button>
         <CodexConfirmButton
           label={text.providerDelete}
-          disabled={disabled || !catalogReady || view.isDefault || view.modelCount > 0}
+          disabled={disabled || codexProviderDeleteBlock(view, catalogReady) !== null}
           onConfirm={onDelete}
         />
       </div>

@@ -22,6 +22,7 @@ import {
   codexModelEntryFromForm,
   codexModelFormFrom,
   codexProviderCreateEdits,
+  codexProviderDeleteBlock,
   codexProviderDeleteEdits,
   codexProviderFormError,
   codexProviderFormFrom,
@@ -936,6 +937,28 @@ test("provider create writes the whole table; update edits per field and keeps t
   assert.deepEqual(codexProviderSetDefaultEdits("my-provider"), [
     { keyPath: "model_provider", value: "my-provider", mergeStrategy: "replace" },
   ]);
+});
+
+test("provider deletion fails closed on an unproven catalog from one decision source", () => {
+  // 目录未成功读取时引用数未知：默认与非默认 provider 一律阻断，不能把读取失败投影成 0 引用。
+  assert.equal(
+    codexProviderDeleteBlock({ isDefault: false, modelCount: 0 }, false),
+    "providerCatalogUnavailable",
+  );
+  assert.equal(
+    codexProviderDeleteBlock({ isDefault: true, modelCount: 0 }, false),
+    "providerCatalogUnavailable",
+  );
+  // 目录已成功读取（含 path=null 的空目录）后才按默认与引用数判定。
+  assert.equal(
+    codexProviderDeleteBlock({ isDefault: true, modelCount: 0 }, true),
+    "providerDeleteDefaultBlocked",
+  );
+  assert.equal(
+    codexProviderDeleteBlock({ isDefault: false, modelCount: 2 }, true),
+    "providerDeleteModelsBlocked",
+  );
+  assert.equal(codexProviderDeleteBlock({ isDefault: false, modelCount: 0 }, true), null);
 });
 
 test("catalog model template strips identity fields from the same-provider entry", () => {
