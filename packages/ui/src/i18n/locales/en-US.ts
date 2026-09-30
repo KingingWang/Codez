@@ -5062,7 +5062,7 @@ const enUS: Record<string, string> = {
   "chat.queue.enqueue": "Queue message",
   "chat.queue.title": "Queued messages ({count})",
   "chat.queue.drag": "Drag to reorder",
-  "chat.queue.sendNow": "Steer",
+  "chat.queue.sendNow": "Send now",
   "chat.queue.runNow": "Run now",
   "chat.queue.edit": "Edit",
   "chat.queue.editDraftConflict":
