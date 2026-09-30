@@ -102,7 +102,6 @@ and hide the entry while the rerun runs and after it completes.
 Recorded verification — September 28, 2026: `/tmp/codex-ui-interrupted-continue-QLLeNO/`
 (four checks, one interrupted and one completed native turn, zero page errors).
 
-
 Fresh full-turn **actual dev.mjs** verification passed on 2026-09-22:
 `/tmp/codex-ui-desktop-conversation-gqtR57/results.json` (six checks, three completed
 native turns, zero page errors). Screenshots include `first-image-ready.png`,

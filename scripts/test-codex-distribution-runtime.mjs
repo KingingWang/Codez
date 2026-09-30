@@ -32,7 +32,7 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   }
   const { build, release } = workflow.jobs;
   for (const command of [
-    "pnpm exec tsx --test packages/services/test/codex*.test.ts packages/desktop/test/codex*.test.ts packages/server/test/codex*.test.ts",
+    "pnpm exec tsx --test packages/services/test/codex*.test.ts packages/desktop/test/codex*.test.ts packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts packages/server/test/codex*.test.ts",
     "pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test packages/ui/src/settings/codex/*.test.ts packages/ui/src/settings/codex/*.test.tsx",
   ]) {
     assert.equal(
@@ -97,6 +97,9 @@ test("workflow includes automation and Git UI regressions outside the Codex sett
     "packages/ui/src/v4/ConversationStatusPanel.test.tsx",
     "packages/ui/src/v4/conversationStatusPanelModel.test.ts",
     "packages/ui/src/capabilities/useGitAuxiliaryCapability.test.ts",
+    "packages/ui/src/capabilities/useCodexMessageFeedbackCapability.test.tsx",
+    "packages/ui/src/settings/usage-stats/AppUsagePanel.test.tsx",
+    "packages/ui/src/TaskActionMenuContent.test.tsx",
   ]) {
     assert.ok(
       commands.some((command) => command.includes(path)),

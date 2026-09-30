@@ -1,5 +1,8 @@
 export type QuickPickCommandIcon =
   | "book"
+  | "bot"
+  | "chart"
+  | "package"
   | "browser"
   | "community"
   | "diff"
@@ -51,6 +54,10 @@ interface QuickPickCommandHandlers {
   openSettings: () => void;
   openSkillsSettings: () => void;
   openMcpSettings: () => void;
+  // Codex 适配器深链：仅桌面 Host 提供；缺省时命令不注册（web/legacy 不显示死入口）。
+  openCodexSettings?: () => void;
+  openCodexProviders?: () => void;
+  openUsageStats?: () => void;
   switchTheme: () => void;
   openFeedback: () => void | Promise<void>;
   openCommunity: () => void | Promise<void>;
@@ -114,14 +121,6 @@ export function createQuickPickCommands({
       keywords: ["open", "workspace", "folder", "project", "打开", "文件夹", "项目"],
       disabled: !allowOpenWorkspace,
       run: handlers.openWorkspace,
-    },
-    {
-      id: "suggested-settings",
-      sectionId: "suggested",
-      titleId: "quickPick.command.settings",
-      icon: "settings",
-      keywords: ["settings", "preferences", "配置", "设置"],
-      run: handlers.openSettings,
     },
     {
       id: "toggle-sidebar",
@@ -193,8 +192,9 @@ export function createQuickPickCommands({
       run: handlers.openReviewTab,
     },
     {
+      // 唯一设置入口：suggested 与 configure 同时列出会产生两条同名结果。
       id: "settings",
-      sectionId: "configure",
+      sectionId: "suggested",
       titleId: "quickPick.command.settings",
       icon: "settings",
       keywords: ["settings", "preferences", "配置", "设置"],
@@ -228,6 +228,39 @@ export function createQuickPickCommands({
       run: handlers.openMcpSettings,
     },
   ];
+
+  // Codex 原生设置深链：让「codex / provider / usage」在命令面板可直达，
+  // 否则适配后的设置分区只能靠设置页侧栏逐层点进。
+  if (handlers.openCodexSettings) {
+    commands.push({
+      id: "codex-settings",
+      sectionId: "configure",
+      titleId: "quickPick.command.codexSettings",
+      icon: "bot",
+      keywords: ["codex", "native", "account", "configuration", "原生", "账户", "配置"],
+      run: handlers.openCodexSettings,
+    });
+  }
+  if (handlers.openCodexProviders) {
+    commands.push({
+      id: "codex-providers",
+      sectionId: "configure",
+      titleId: "quickPick.command.codexProviders",
+      icon: "package",
+      keywords: ["provider", "providers", "model provider", "base url", "供应商", "模型服务"],
+      run: handlers.openCodexProviders,
+    });
+  }
+  if (handlers.openUsageStats) {
+    commands.push({
+      id: "usage-stats",
+      sectionId: "configure",
+      titleId: "quickPick.command.usageStats",
+      icon: "chart",
+      keywords: ["usage", "stats", "tokens", "统计", "用量"],
+      run: handlers.openUsageStats,
+    });
+  }
 
   commands.push({
     id: "feedback",

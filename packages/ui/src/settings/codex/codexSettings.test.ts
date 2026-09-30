@@ -871,6 +871,21 @@ test("provider form validation gates id pattern, duplicates and base url", () =>
     codexProviderFormError({ ...form, id: "ok-id", baseUrl: "  " }, true, []),
     "providerBaseUrlRequired",
   );
+  // base_url 与原生 Url::parse 同口径：非法/非 http(s)/缺 host 一律拒绝落盘。
+  for (const bad of ["not-a-url", "ftp://host/v1", "http://", "//host/v1", "https://"]) {
+    assert.equal(
+      codexProviderFormError({ ...form, id: "ok-id", baseUrl: bad }, true, []),
+      "providerBaseUrlInvalid",
+      `expected invalid base url rejection for ${bad}`,
+    );
+  }
+  for (const good of ["http://127.0.0.1:34185/v1", "https://api.example.com/v1"]) {
+    assert.equal(
+      codexProviderFormError({ ...form, id: "ok-id", baseUrl: good }, true, []),
+      null,
+      `expected valid base url acceptance for ${good}`,
+    );
+  }
   assert.equal(
     codexProviderFormError({ ...form, id: "ok-id_2", baseUrl: "http://x" }, true, ["ok-id_2"]),
     "providerIdTaken",

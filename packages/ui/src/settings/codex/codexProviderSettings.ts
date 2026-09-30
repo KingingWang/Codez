@@ -115,17 +115,39 @@ function providerTableValue(form: CodexProviderForm): Record<string, unknown> {
   };
 }
 
+/**
+ * base_url 与 codex 原生请求期 `url::Url::parse` 同口径：必须是带 host 的绝对
+ * http/https URL。GUI 提前拒绝，避免把运行时才会失败的坏配置写进 config.toml。
+ */
+export function isCodexProviderBaseUrlValid(baseUrl: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(baseUrl.trim());
+  } catch {
+    return false;
+  }
+  // hostname 检查是主防线（个别引擎对 "http://" 不抛错而给出空 host），
+  // try/catch 只负责语法非法的输入；两者共同对齐原生 Url::parse 的失败面。
+  return (url.protocol === "http:" || url.protocol === "https:") && url.hostname.length > 0;
+}
+
 /** 校验表单；返回错误文案键，合法返回 null。 */
 export function codexProviderFormError(
   form: CodexProviderForm,
   creating: boolean,
   existingIds: readonly string[],
-): "providerIdInvalid" | "providerIdTaken" | "providerBaseUrlRequired" | null {
+):
+  | "providerIdInvalid"
+  | "providerIdTaken"
+  | "providerBaseUrlRequired"
+  | "providerBaseUrlInvalid"
+  | null {
   if (creating) {
     if (!CODEX_PROVIDER_ID_PATTERN.test(form.id.trim())) return "providerIdInvalid";
     if (existingIds.includes(form.id.trim())) return "providerIdTaken";
   }
   if (!form.baseUrl.trim()) return "providerBaseUrlRequired";
+  if (!isCodexProviderBaseUrlValid(form.baseUrl)) return "providerBaseUrlInvalid";
   return null;
 }
 

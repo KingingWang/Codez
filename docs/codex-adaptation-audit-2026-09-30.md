@@ -104,3 +104,29 @@ prop；审查真正指出的问题是「两条校验路径」，已通过把两�
 继续验收的优先级：先在正常资源配额的 Linux/Windows/macOS 上复测冷载、
 刷新与所有本地控件；确定供应商删除/目录刷新的权威合同，再对隔离测试
 账号与移动远控完成登录、审批、断线重放和危险操作确认矩阵。
+
+## 第五轮增补：全表面 walkthrough 新发现（commit 91f830f）
+
+第五轮对 GUI 做了逐操作 walkthrough（证据截图见
+`.tmp/codex-real-gui-20260930/screenshots/`，含 `final2-*.png`），新发现六个
+「对 Codex 适配不友好」的缺陷并全部修复，细节与审查回应见
+`docs/codex-gui-review-2026-09-30.md` 第五轮：
+
+| #   | 缺陷                                                       | 修复                                                       | 实测                                 |
+| --- | ---------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------ |
+| 1   | Provider 表单不校验 base_url，坏值直接写进原生 config.toml | 写入前按 `Url::parse` 口径校验（`providerBaseUrlInvalid`） | 非法值拦截且 config 不变；合法值落盘 |
+| 2   | 命令面板两条同名 Settings                                  | 删除 `suggested-settings` 双注册                           | 搜索仅一条                           |
+| 3   | 命令面板无法直达 Codex 设置分区                            | 新增三条桌面专属深链                                       | codex/provider/usage 直达            |
+| 4   | 「复制日志路径」复制不存在的 legacy 路径                   | 解析真实 Host 按日日志，缺失则 null                        | 复制路径在磁盘存在                   |
+| 5   | 「复制任务路径」复制永不存在的 `.codez-session`            | 接口允许 null，菜单禁用                                    | 菜单项 [disabled]                    |
+| 6   | 点赞/点踩在 Codex 下永远静默失败                           | `messageFeedback` 能力位，unsupported 隐藏                 | 行内 0 个反馈按钮                    |
+
+门禁：typecheck 全绿；lint 0 error（70 warning 为上游新基线）；architecture
+0 violations；bridge 455 / ui 69 / desktop codex\* 55 单测全过；真实桌面
+conversation-check 10 项通过；interaction-e2e 通过；walkthrough 全程 0 console
+error、0 page error。
+
+仍未关闭的验收边界（不记为通过项）：`desktop-check.mjs` 在本容器受 inotify/
+资源配额限制不能稳定通过；renderer 原生崩溃恢复需在资源配额正常的宿主机复测；
+带凭据模型、远程 workspace、移动远控、Windows/macOS、托管策略表面未测；
+供应商删除的跨进程 TOCTOU 仍待产品决策。

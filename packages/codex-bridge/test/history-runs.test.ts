@@ -179,5 +179,7 @@ test("capability authority marks only the independent read surface supported", a
     safeDesktopFileRewind: "supported",
     legacyWorkflowRuns: "unsupported",
     autoReviewApprovals: "unsupported",
+    // 原生无逐条反馈通道：显式 unsupported（UI 隐藏点赞/点踩）。
+    messageFeedback: "unsupported",
   });
 });

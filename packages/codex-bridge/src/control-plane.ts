@@ -78,6 +78,9 @@ export function bridgeCodexFeatureCapabilities(
     legacyWorkflowRuns: "unsupported",
     // 缺省即 unsupported（与旧 peer 缺省字段的解析一致）；只有探测成功才宣告。
     autoReviewApprovals: autoReviewApprovals ?? "unsupported",
+    // 原生 Codex 没有逐条消息反馈通道（app-server 仅有 feedback/upload 上报），
+    // 显式 unsupported 让 UI 隐藏点赞/点踩，而不是点了再静默回滚。
+    messageFeedback: "unsupported",
   };
 }
 

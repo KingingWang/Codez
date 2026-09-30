@@ -77,6 +77,22 @@ test("main-process crash recovery wiring avoids browser globals", async () => {
   assert.match(wiring, /win\.webContents\.reload\(\)/u);
 });
 
+test("crash recovery uses the registered workspace window boundary, not all application windows", async () => {
+  const index = await readFile(join(here, "..", "src", "main", "index.ts"), "utf8");
+  const start = index.indexOf('win.webContents.on("render-process-gone"');
+  const end = index.indexOf("rendererCrashRecovery.handle(details);", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const wiring = index.slice(start, end);
+  // About、更新和资源管理器也属于 application windows，但不是 workspace renderer。
+  // 复用 createWindow 在首次加载前登记的 WebContents 身份，不依赖 Host 是否已启动。
+  assert.match(
+    wiring,
+    /if \(!isMainApplicationWindowWebContents\(windowWebContentsId\)\) return;/u,
+  );
+  assert.doesNotMatch(wiring, /getMainApplicationWindows\(\)|windowHostProcessMap\./u);
+});
+
 test("crash recovery defers reload and re-checks liveness and quit state", () => {
   const scheduled: Array<() => void> = [];
   const reloads: string[] = [];

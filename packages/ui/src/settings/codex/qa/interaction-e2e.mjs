@@ -14,6 +14,7 @@ import {
   verifyLocalConfigValidation,
   verifyModeTooltipOwnership,
   verifyUsageHostReconnect,
+  verifyMessageFeedback,
   waitFixtureButtonEnabled,
 } from "./settings-regressions-e2e.mjs";
 
@@ -372,6 +373,7 @@ try {
     "StrictMode lifecycle, captured old scope, synchronous reload, and pending/ready unmount reject stale catalog reads",
   );
   await verifyUsageHostReconnect(page, checks);
+  await verifyMessageFeedback(page, checks);
   await verifyProjectDiscovery(page, checks);
   assert.deepEqual(errors, []);
   await page.screenshot({ path: join(evidence, "desktop-width.png"), fullPage: true });

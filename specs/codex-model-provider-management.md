@@ -26,6 +26,9 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
 - 操作约束：
   - 供应商 id 仅允许 `[A-Za-z0-9_-]+`（config/batchWrite keyPath 按 `.` 分段，
     id 含点会破坏路径语义；TOML 裸键同口径）。
+  - 供应商 base_url 必须是绝对 `http://` / `https://` URL（含 host），与 codex 原生
+    `url::Url::parse` 的运行时解析口径一致；表单在写入 config.toml 前拒绝非法值
+    （错误键 `providerBaseUrlInvalid`），避免把原生请求期才会失败的坏配置落盘。
   - 删除供应商：当前默认供应商（`config.model_provider`）禁止删除；仍有
     catalog 模型引用时给出明确提示，由用户先迁移/删除模型，不静默级联。
     catalog 正在读取、读取失败或尚未验证引用关系时，所有供应商的删除入口
@@ -121,3 +124,6 @@ deleteCodexCatalogModel`，载体铁律与 `readCodexCatalog` 相同（workspace
    `config/batchWrite` 发删除 edit；重新打开面板成功读取后，引用数为零的
    非默认供应商恢复可删除，仍有引用的继续禁止删除并保留解释文案。
    失败页不显示虚构的 0 个引用或“未配置目录”。
+10. 添加/编辑供应商时 base_url 填 `not-a-url` 或 `ftp://x` → 表单报
+    `providerBaseUrlInvalid` 且不发起 config 写入；填 `http://127.0.0.1:34185/v1`
+    通过校验并落盘。
