@@ -172,11 +172,8 @@ export class BridgeSnapshots {
           : { allowed: false, reasonCode: "guard.codex.activeTurn" },
       switchModelConfig: writerConflict ? writerBlocked : allowed,
       queueEdit: writerConflict ? writerBlocked : allowed,
-      sendQueuedNow: writerConflict
-        ? writerBlocked
-        : idle
-          ? allowed
-          : { allowed: false, reasonCode: "guard.codex.activeTurn" },
+      // busy 也可用：命令层 interrupt+start 抢占（specs/codex-desktop-adapter.md）。
+      sendQueuedNow: writerConflict ? writerBlocked : allowed,
     };
     for (const row of snapshot.rows.window) {
       if (idle && row.kind === "assistantText") row.actions = { canFork: true };

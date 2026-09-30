@@ -53,9 +53,9 @@ export const sendCases = [
   [false, "startNow", "turn/start", "startNow"],
   [false, "guide", "turn/start", "startNow"],
   [true, "guide", "turn/steer", "guide"],
-  [true, undefined, "turn/steer", "guide"],
+  [true, undefined, "thread/queue/add", "queue"],
   [true, "queue", "thread/queue/add", "queue"],
-  [true, "startNow", undefined, undefined],
+  [true, "startNow", "turn/start", "startNow"],
 ] as const;
 export const queueCases = [
   ["editQueueItem", { queueItemId: "q1", newText: "edited" }, "thread/queue/update"],

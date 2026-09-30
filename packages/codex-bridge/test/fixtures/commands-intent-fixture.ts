@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import type { TestContext } from "node:test";
 import { codexQueuedSubmissionSchema } from "../../src/codex-types.js";
-import { setup, sessionId, textInput } from "./commands-fixture.js";
+import { queueMutations, setup, sessionId, textInput } from "./commands-fixture.js";
 
 const currentSelection = {
   providerId: "openai",
@@ -12,7 +12,7 @@ const routes = [
   { busy: false, delivery: "queue", method: "thread/queue/add" },
   { busy: true, delivery: "queue", method: "thread/queue/add" },
   { busy: true, delivery: "guide", method: "turn/steer" },
-  { busy: true, delivery: undefined, method: "turn/steer" },
+  { busy: true, delivery: undefined, method: "thread/queue/add" },
 ] as const;
 
 function settings(h: Awaited<ReturnType<typeof setup>>, mode = "build", planEnabled = false) {
@@ -210,6 +210,7 @@ async function verifyHeldIntent(t: TestContext) {
     await t.test(`bare ${heldQueueDisposition} is ignored while running`, async (t) => {
       const h = await setup(t, true);
       settings(h);
+      queueMutations(h);
       const ack = await h.execute(
         h.command(
           "sendText",
@@ -218,7 +219,8 @@ async function verifyHeldIntent(t: TestContext) {
         ),
       );
       assert.equal(ack.status, "accepted", ack.message);
-      assert.deepEqual(h.rpc.methods(), ["turn/steer"]);
+      // busy 默认投递是 queue：replayable 发送端 busy 消息入队，与 legacy Bot 语义对齐。
+      assert.deepEqual(h.rpc.methods(), ["thread/queue/add", "thread/queue/list"]);
     });
   }
 }

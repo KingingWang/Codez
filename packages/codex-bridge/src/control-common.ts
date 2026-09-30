@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { BridgeControlContext } from "./contract.js";
+import type { BridgeControlContext, CodexRpcPort } from "./contract.js";
 import {
   isRelaxedThread,
   projectThreadMode,
@@ -182,4 +182,21 @@ export async function turnPermissionIntent(
   const apply = mode !== undefined && mode !== projectThreadMode(thread);
   if (!apply || mode !== "custom" || !isRelaxedThread(thread)) return { apply };
   return { apply, configDefaults: (await readNativePermissionDefaults(context)) ?? {} };
+}
+
+/**
+ * 抢占共用的中断步骤（specs/codex-desktop-adapter.md）：interrupt 响应以 TurnAborted 为界，返回时线程已空闲。
+ * 失败静默——turn 可能恰好已自然完成；紧随的 start 请求以原生线程状态做最终裁决，
+ * 线程仍忙时由它原样报错，不能在这里用兜底分支掩盖。
+ */
+export async function preemptByInterrupt(
+  rpc: CodexRpcPort,
+  native: { threadId: string },
+  turnId: string,
+): Promise<void> {
+  try {
+    await rpc.request("turn/interrupt", { ...native, turnId });
+  } catch {
+    // 抢占尝试不以前置中断成败为门禁；最终一致性由紧随的 start 请求裁决。
+  }
 }

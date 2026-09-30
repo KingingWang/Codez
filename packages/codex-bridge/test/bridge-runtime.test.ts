@@ -818,8 +818,14 @@ test("file rewind overlay injects a one-shot model notice into the next sendText
       error: null,
     },
   });
-  // 第一条发送后线程在跑，第二条走 steer 投递。
-  h.handlers["turn/steer"] = () => ({ turnId: "live-after-rewind" });
+  // 第一条发送后线程在跑，第二条走 queue 投递。
+  h.handlers["thread/queue/add"] = () => ({
+    queuedSubmission: {
+      id: "native-added",
+      input: [{ type: "text", text: "next", text_elements: [] }],
+      clientUserMessageId: "after-rewind-2",
+    },
+  });
 
   // 撤销后第一条用户消息：prepend 一次性通知（相对路径 + 行级统计），原文保留在后。
   const sent = await h.runtime.request(V4_METHODS.command, {
@@ -864,8 +870,8 @@ test("file rewind overlay injects a one-shot model notice into the next sendText
   assert.equal(commandAckSchema.parse(second.result).status, "accepted");
   const allStarts = h.calls.filter((call) => call.method === "turn/start");
   assert.equal(allStarts.length, 1);
-  const steer = h.calls.filter((call) => call.method === "turn/steer");
-  assert.equal(steer.length, 1);
-  const steerInput = (steer[0]!.params as { input: Array<{ text: string }> }).input;
-  assert.ok(!steerInput[0]!.text.includes("reverted"));
+  const queuedCalls = h.calls.filter((call) => call.method === "thread/queue/add");
+  assert.equal(queuedCalls.length, 1);
+  const queuedInput = (queuedCalls[0]!.params as { input: Array<{ text: string }> }).input;
+  assert.ok(!queuedInput[0]!.text.includes("reverted"));
 });

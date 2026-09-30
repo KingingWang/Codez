@@ -93,9 +93,10 @@ test("replayable bot sendText payload (heldQueueDisposition + selection) is admi
     },
   ]);
 
-  // running 时同一载荷走默认 guide（turn/steer），settings 不变不得拒绝。
+  // running 时同一载荷走默认 queue（thread/queue/add），settings 不变不得拒绝。
   const busy = await setup(t, true);
-  const steered = await busy.execute(
+  queueMutations(busy);
+  const queuedAck = await busy.execute(
     busy.command("sendText", {
       text: "继续",
       heldQueueDisposition: "keepQueueAndSend",
@@ -106,8 +107,8 @@ test("replayable bot sendText payload (heldQueueDisposition + selection) is admi
       },
     }),
   );
-  assert.equal(steered.status, "accepted", steered.message);
-  assert.deepEqual(busy.rpc.methods(), ["turn/steer"]);
+  assert.equal(queuedAck.status, "accepted", queuedAck.message);
+  assert.deepEqual(busy.rpc.methods(), ["thread/queue/add", "thread/queue/list"]);
 });
 test("bot createSession config (provider/model/thought + forced yolo) maps to native thread", async (t) => {
   // Bot createTask(v4Create) 的载荷形状：config 携带 provider/model/thought，
@@ -183,7 +184,7 @@ test("send startNow/guide/queue decisions use native turn/queue authority", asyn
       assert.equal(params.clientUserMessageId, "send");
       assert.equal(params.threadId, sessionId);
       if (method === "turn/steer") assert.equal(params.expectedTurnId, "live-turn");
-      assert.deepEqual(h.state.queue, delivery === "queue" ? h.authority.queue : []);
+      assert.deepEqual(h.state.queue, method === "thread/queue/add" ? h.authority.queue : []);
     });
 });
 test("queue CRUD/reorder/start read native list, retain external entries, never use turn/start", async (t) => {
@@ -433,6 +434,7 @@ test("plan collaboration settings preserve the explicit reasoning effort", async
 
 test("distinct sends before TurnStarted notification do not dispatch two native starts", async (t) => {
   const h = await setup(t);
+  queueMutations(h);
   const a = h.execute(h.command("sendText", { text: "First" }, "first"));
   const b = h.execute(h.command("sendText", { text: "Second" }, "second"));
   const acks = await Promise.all([a, b]);
@@ -442,8 +444,37 @@ test("distinct sends before TurnStarted notification do not dispatch two native 
     1,
     "the native response already identifies the admitted active turn",
   );
-  if (acks[1]?.status === "accepted")
-    assert.equal(h.rpc.params("turn/steer")[0]?.expectedTurnId, "live-turn");
+  if (acks[1]?.status === "accepted") assert.equal(h.rpc.params("thread/queue/add").length, 1);
+});
+
+test("busy startNow/sendQueuedNow preempt by interrupting the running turn first", async (t) => {
+  const h = await setup(t, true);
+  queueMutations(h);
+  const preempt = await h.execute(
+    h.command("sendText", { text: "抢占", requestedDelivery: "startNow" }, "preempt"),
+  );
+  assert.equal(preempt.status, "accepted", preempt.message);
+  const methods = h.rpc.methods();
+  assert.ok(
+    methods.indexOf("turn/interrupt") > -1 &&
+      methods.indexOf("turn/interrupt") < methods.indexOf("turn/start"),
+    `interrupt must land before the preempting start: ${methods.join(",")}`,
+  );
+  assert.deepEqual(h.rpc.params("turn/interrupt")[0], { threadId: sessionId, turnId: "live-turn" });
+  assert.deepEqual(preempt.result, {
+    type: "inputAccepted",
+    delivery: "startNow",
+    inputId: "preempt",
+  });
+
+  // 队列项"立即发送"同样抢占：interrupt 先行，thread/queue/start 随后。
+  const promote = await h.execute(h.command("sendQueuedNow", { queueItemId: "q2" }, "promote"));
+  assert.equal(promote.status, "accepted", promote.message);
+  const promoteMethods = h.rpc.methods();
+  assert.ok(
+    promoteMethods.lastIndexOf("turn/interrupt") < promoteMethods.indexOf("thread/queue/start"),
+    `interrupt must land before the promoted queue start: ${promoteMethods.join(",")}`,
+  );
 });
 
 test("model switch followed by mode switch cannot restore stale cached model", async (t) => {
@@ -548,6 +579,7 @@ test("async broker publication failures are not silently detached", async (t) =>
 
 test("sendText prepends a pending rewind notice exactly once", async (t) => {
   const h = await setup(t);
+  queueMutations(h);
   h.notices.record(sessionId, {
     turnId: "turn-1",
     files: [{ path: "src/new.ts", additions: 4, deletions: 0 }],
@@ -561,13 +593,13 @@ test("sendText prepends a pending rewind notice exactly once", async (t) => {
   assert.ok(input[0]!.text.includes("- `src/new.ts` (+4/-0)"));
   assert.ok(input[0]!.text.endsWith("continue"));
 
-  // 通知一次性：第二条消息不再携带（首轮 turn/start 后线程在跑，第二条走 steer 投递）。
+  // 通知一次性：第二条消息不再携带（首轮 turn/start 后线程在跑，第二条走 queue 投递）。
   const again = await h.execute(h.command("sendText", { text: "again" }, "sendText-notice-2"));
   assert.equal(again.status, "accepted", again.message);
   assert.equal(h.rpc.params("turn/start").length, 1);
-  const steers = h.rpc.params("turn/steer");
-  assert.equal(steers.length, 1);
-  assert.deepEqual((steers[0] as { input: unknown }).input, textInput("again"));
+  const adds = h.rpc.params("thread/queue/add");
+  assert.equal(adds.length, 1);
+  assert.deepEqual((adds[0] as { input: unknown }).input, textInput("again"));
 });
 
 test("failed sendText retains the rewind notice for the next attempt", async (t) => {

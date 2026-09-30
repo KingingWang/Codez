@@ -109,7 +109,7 @@ test("target golden fixture parses the actual V4 schema, not invented defaults",
       model: "fixture-model",
       thought: "medium",
       thoughtLevels: [],
-      followupMode: "guide",
+      followupMode: "queue",
       mode: "",
     },
     usage: {
