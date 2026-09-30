@@ -141,6 +141,43 @@ export function officialAvailableEntry(entry: {
   };
 }
 
+// 注册成功按桥内的 marketplace 实例缓存，整个桥生命周期只核验一次；
+// 失败不缓存，下一次调用重试。并发调用共享同一个 in-flight Promise。
+const ensureOfficialDone = new WeakSet<OfficialPluginMarketplace>();
+const ensureOfficialInflight = new WeakMap<OfficialPluginMarketplace, Promise<boolean>>();
+
+/**
+ * 把内置官方市场注册进 Codex 配置，使原生 plugin/list（设置 → Codex → 插件与市场
+ * 直接读原生状态，不经过商店投影）始终能看到官方插件。注册幂等、路径冲突不覆盖；
+ * 任何失败都降级为 false，由下一次调用重试，绝不打断调用方的读请求。
+ * cachedOnly 只用磁盘上已验证的快照（桥启动预热），不触发 CDN 刷新。
+ */
+export async function ensureOfficialRegistered(
+  context: BridgeControlContext,
+  options?: { cachedOnly?: boolean },
+): Promise<boolean> {
+  const market = context.officialPlugins;
+  if (!market) return false;
+  if (ensureOfficialDone.has(market)) return true;
+  const existing = ensureOfficialInflight.get(market);
+  if (existing) return existing;
+  const task = (async () => {
+    const snapshot = options?.cachedOnly
+      ? await market.load()
+      : (await officialSnapshot(context)).snapshot;
+    if (!snapshot) return false;
+    await registerOfficial("plugins/official/ensure", context, snapshot);
+    ensureOfficialDone.add(market);
+    return true;
+  })().catch(() => false);
+  ensureOfficialInflight.set(market, task);
+  try {
+    return await task;
+  } finally {
+    ensureOfficialInflight.delete(market);
+  }
+}
+
 /** 插件市场增删刷新的控制面映射；官方市场走本地物化快照，其余透传 Codex。 */
 export async function handleMarketplaceRequest(
   method: string,

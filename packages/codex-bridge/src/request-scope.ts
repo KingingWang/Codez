@@ -1,7 +1,13 @@
 import { codexRequestSchema, type CodexRequest } from "@codez/shared";
-import type { CodexRpcPort } from "./contract.js";
+import { resolve } from "node:path";
+import type { BridgeControlContext, CodexRpcPort } from "./contract.js";
 import { sameExecutionPath } from "./execution-path.js";
 import { array, object } from "./json.js";
+import {
+  OFFICIAL,
+  ensureOfficialRegistered,
+  trustOfficialPluginHooks,
+} from "./control-official-plugins.js";
 
 function mismatch(): never {
   throw Object.assign(new Error("Request workspace scope mismatch"), { code: -32602 });
@@ -80,4 +86,72 @@ export async function scopedNativeRequest(
       mismatch();
   }
   return request;
+}
+
+export interface NativeRequestOutcome {
+  result: unknown;
+  afterResponse?: () => Promise<void>;
+}
+
+/**
+ * 设置 → Codex 面板的原生透传入口。读路径保持纯透传，但官方市场语义与商店
+ * 控制面对齐：plugin/* 之前确保内置官方市场已注册（面板才能看到官方插件）；
+ * 内置官方市场不可经原生 marketplace/remove 移除；官方市场 upgrade 先走
+ * CDN 刷新管线；官方插件原生安装后补齐钩子信任。
+ */
+export async function handleCodexNativeRequest(
+  params: unknown,
+  context: BridgeControlContext,
+  publishWorkspaceConfig: () => Promise<void>,
+): Promise<NativeRequestOutcome> {
+  // 先解析信封识别官方插件相关方法：scopedNativeRequest 对 plugin/read 与
+  // plugin/install 会用原生 plugin/list 校验 marketplacePath，注册必须先于该校验。
+  const envelope = codexRequestSchema.safeParse(params);
+  if (envelope.success && envelope.data.method.startsWith("plugin/"))
+    await ensureOfficialRegistered(context);
+  const request = await scopedNativeRequest(params, context.rpc, context.cwd);
+  const requestParams = object(request.params ?? {});
+  if (request.method === "marketplace/remove" && requestParams.marketplaceName === OFFICIAL)
+    throw Object.assign(new Error("The built-in official marketplace cannot be removed"), {
+      code: -32000,
+    });
+  if (request.method === "marketplace/upgrade" && requestParams.marketplaceName === OFFICIAL) {
+    if (!context.officialPlugins)
+      throw Object.assign(new Error("Official catalog is not available"), { code: -32000 });
+    try {
+      await context.officialPlugins.refresh();
+    } catch {
+      throw Object.assign(
+        new Error("Official ZCode catalog refresh failed verification; old catalog retained"),
+        { code: -32000 },
+      );
+    }
+    // 本地物化市场没有原生可升级的远端；刷新已原子换入新目录，plugin/list 重新读盘即生效。
+    return { result: { selectedMarketplaces: [OFFICIAL], upgradedRoots: [], errors: [] } };
+  }
+  const result = await context.rpc.request(request.method, request.params);
+  if (
+    request.method === "plugin/install" &&
+    context.officialPlugins &&
+    typeof requestParams.marketplacePath === "string" &&
+    resolve(requestParams.marketplacePath) === resolve(context.officialPlugins.path)
+  ) {
+    // 与商店安装路径一致：官方插件原生安装后补齐钩子信任；失败保持未信任，不回滚安装。
+    await trustOfficialPluginHooks(context, `${String(requestParams.pluginName)}@${OFFICIAL}`);
+  }
+  return {
+    result,
+    afterResponse: async () => {
+      if (
+        [
+          "config/value/write",
+          "config/batchWrite",
+          "account/logout",
+          "skills/config/write",
+        ].includes(request.method)
+      ) {
+        await publishWorkspaceConfig();
+      }
+    },
+  };
 }

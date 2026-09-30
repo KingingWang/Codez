@@ -39,6 +39,30 @@ wrong machine and bridge identity validation would reject the request.
 the actual workspace path is passed as the native cwd. Remote workspaces must
 materialize on the remote host, never on the desktop machine.
 
+## Built-in marketplace registration (Settings → Codex panel)
+
+The Settings → Codex plugins-and-marketplaces panel talks to Codex through the
+scoped native `codex/request` passthrough and never crosses the store control
+plane, so the bridge itself must make the built-in official marketplace
+visible there:
+
+- At bridge start the official marketplace is registered from the last
+  verified on-disk snapshot when one exists; startup never touches the
+  network. The first native `plugin/*` passthrough completes registration,
+  materializing the catalog on demand when no snapshot exists yet.
+- Registration is idempotent per bridge process and shares one in-flight
+  promise. It never overwrites a same-named foreign source and never fails
+  the triggering native read: failure degrades to a no-op that is retried on
+  the next call.
+- The native passthrough enforces the same official invariants as the store
+  control plane. Native `marketplace/remove` of the built-in official
+  marketplace is rejected. Native `marketplace/upgrade` naming the official
+  marketplace runs the materialize-transpile refresh and answers from the
+  refreshed catalog, because a local source has no native remote to upgrade.
+  A native `plugin/install` served from the official marketplace path
+  receives the same post-install hook-trust write as a store install; trust
+  failure leaves hooks untrusted without failing the install.
+
 ## Compatibility pipeline (materialize + transpile)
 
 Every official plugin install is served from a bridge-materialized local
@@ -168,7 +192,10 @@ keep the existing Codez store behavior.
   (manifest synthesis, path normalization, variable baking, userConfig
   defaults, official-auth rewrite, process-hook conversion, content scan),
   missing or unsupported assets, unavailable CDN, version mismatch, idempotent
-  native registration, failure receipt and rollback.
+  native registration, failure receipt and rollback, startup warm-up from a
+  cached snapshot without network, native removal guard, official upgrade
+  refresh routing, and hook trust after native installs from the official
+  marketplace path.
 - Bridge: native installed/enabled/catalog and marketplace lifecycle using
   an isolated Codex home and mock RPC; no developer configuration mutated.
 - UI: public catalog and personal sources, install/disable/uninstall/error,

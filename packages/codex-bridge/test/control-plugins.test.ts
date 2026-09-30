@@ -5,6 +5,8 @@ import * as s from "@codez/shared";
 import type { CodexRpcPort } from "../src/contract.js";
 import type { OfficialPluginMarketplace } from "../src/official-plugin-marketplace.js";
 import { handleControlRequest } from "../src/control-plane.js";
+import { ensureOfficialRegistered } from "../src/control-official-plugins.js";
+import { handleCodexNativeRequest } from "../src/request-scope.js";
 
 const workspace = { workspacePath: "/workspace", workspaceKey: "/workspace" };
 
@@ -670,4 +672,279 @@ test("official install trusts the plugin's own hooks and reports missing officia
     value: "sha256:abc",
     mergeStrategy: "replace",
   });
+});
+
+/** 设置 → Codex 面板的原生透传线束：官方市场存根 + 状态化原生 plugin/list。 */
+function officialNativeFixture(options?: { registered?: boolean }) {
+  const OFFICIAL = s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID;
+  const source = resolve("/isolated/official");
+  const path = join(source, ".agents", "plugins", "marketplace.json");
+  const snapshot = {
+    path,
+    catalog: {
+      plugins: [
+        {
+          name: "mimosa",
+          version: "1.0.3",
+          policy: { installation: "AVAILABLE" },
+          warnings: [],
+          requiresOfficialAuth: false,
+          requiresPaidPlan: false,
+          hasHooks: true,
+        },
+      ],
+    },
+  };
+  const personal = {
+    name: "market",
+    path: "/market/.agents/plugins/marketplace.json",
+    plugins: [
+      {
+        id: "example@market",
+        name: "example",
+        installed: false,
+        enabled: true,
+        version: "2.0",
+        localVersion: "2.0",
+        installedAt: 1000,
+        source: { type: "local", path: "/plugins/example" },
+        interface: null,
+      },
+    ],
+  };
+  const state = { registered: options?.registered ?? false };
+  const calls: { method: string; params: Record<string, unknown> }[] = [];
+  let refreshCount = 0;
+  const officialPlugins = {
+    path,
+    async load() {
+      return snapshot;
+    },
+    async refresh() {
+      refreshCount++;
+      return snapshot;
+    },
+  } as unknown as OfficialPluginMarketplace;
+  const marketplaces = () => [
+    ...(state.registered
+      ? [
+          {
+            name: OFFICIAL,
+            path,
+            plugins: [
+              {
+                id: `mimosa@${OFFICIAL}`,
+                name: "mimosa",
+                installed: false,
+                enabled: true,
+                version: "1.0.3",
+                localVersion: "1.0.3",
+                installedAt: 1000,
+                source: { type: "local", path },
+                interface: null,
+              },
+            ],
+          },
+        ]
+      : []),
+    structuredClone(personal),
+  ];
+  const rpc: CodexRpcPort = {
+    async request<T>(method: string, params: unknown): Promise<T> {
+      calls.push({ method, params: params as Record<string, unknown> });
+      if (method === "plugin/list")
+        return { marketplaces: marketplaces(), marketplaceLoadErrors: [] } as T;
+      if (method === "marketplace/add") {
+        state.registered = true;
+        return { marketplaceName: OFFICIAL, installedRoot: source, alreadyAdded: false } as T;
+      }
+      if (method === "plugin/install")
+        return { authPolicy: "ON_INSTALL", appsNeedingAuth: [] } as T;
+      if (method === "hooks/list")
+        return {
+          data: [
+            {
+              cwd: workspace.workspacePath,
+              hooks: [
+                {
+                  key: `mimosa@${OFFICIAL}:hooks/hooks.json:session_start:0:0`,
+                  pluginId: `mimosa@${OFFICIAL}`,
+                  currentHash: "sha256:abc",
+                  trustStatus: "untrusted",
+                },
+              ],
+            },
+          ],
+        } as T;
+      if (method === "config/value/write")
+        return {
+          status: "ok",
+          version: "v1",
+          filePath: "/isolated/config.toml",
+          overriddenMetadata: null,
+        } as T;
+      throw new Error(`Unexpected RPC ${method}`);
+    },
+    async respond() {},
+    async respondError() {},
+  };
+  const context = { rpc, cwd: workspace.workspacePath, officialPlugins };
+  const publish = async () => {};
+  return {
+    calls,
+    context,
+    officialPlugins,
+    path,
+    source,
+    publish,
+    refreshCount: () => refreshCount,
+  };
+}
+
+test("native plugin/list registers the built-in official marketplace exactly once", async () => {
+  const h = officialNativeFixture();
+  const listed = async () =>
+    (
+      (await handleCodexNativeRequest({ method: "plugin/list", params: {} }, h.context, h.publish))
+        .result as { marketplaces: { name: string }[] }
+    ).marketplaces;
+  assert.ok(
+    (await listed()).some((market) => market.name === s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID),
+  );
+  assert.deepEqual(h.calls.find((call) => call.method === "marketplace/add")?.params, {
+    source: h.source,
+  });
+  assert.ok(
+    (await listed()).some((market) => market.name === s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID),
+  );
+  assert.equal(h.calls.filter((call) => call.method === "marketplace/add").length, 1);
+});
+
+test("cached-only warm-up registers from the disk snapshot and never refreshes", async () => {
+  const h = officialNativeFixture();
+  assert.equal(await ensureOfficialRegistered(h.context, { cachedOnly: true }), true);
+  assert.equal(h.refreshCount(), 0);
+  assert.equal(h.calls.filter((call) => call.method === "marketplace/add").length, 1);
+});
+
+test("cached-only warm-up without a snapshot is a silent no-op", async () => {
+  const h = officialNativeFixture();
+  (h.officialPlugins as unknown as { load: () => Promise<null> }).load = async () => null;
+  assert.equal(await ensureOfficialRegistered(h.context, { cachedOnly: true }), false);
+  assert.equal(h.calls.length, 0);
+});
+
+test("official registration failure never breaks the native read and is retried", async () => {
+  const h = officialNativeFixture();
+  let failures = 0;
+  (h.officialPlugins as unknown as { load: () => Promise<null> }).load = async () => null;
+  (h.officialPlugins as unknown as { refresh: () => Promise<never> }).refresh = async () => {
+    failures++;
+    throw new Error("CDN offline");
+  };
+  const listed = await handleCodexNativeRequest(
+    { method: "plugin/list", params: {} },
+    h.context,
+    h.publish,
+  );
+  assert.deepEqual(
+    (listed.result as { marketplaces: { name: string }[] }).marketplaces.map((m) => m.name),
+    ["market"],
+  );
+  assert.equal(failures, 1);
+  assert.equal(
+    h.calls.some((call) => call.method === "marketplace/add"),
+    false,
+  );
+  await handleCodexNativeRequest({ method: "plugin/list", params: {} }, h.context, h.publish);
+  assert.equal(failures, 2);
+});
+
+test("native marketplace/remove cannot drop the built-in official marketplace", async () => {
+  const h = officialNativeFixture({ registered: true });
+  await assert.rejects(
+    handleCodexNativeRequest(
+      {
+        method: "marketplace/remove",
+        params: { marketplaceName: s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID },
+      },
+      h.context,
+      h.publish,
+    ),
+    { code: -32000 },
+  );
+  assert.equal(h.calls.length, 0);
+});
+
+test("native marketplace/upgrade of the official marketplace runs the refresh pipeline", async () => {
+  const h = officialNativeFixture({ registered: true });
+  const result = await handleCodexNativeRequest(
+    {
+      method: "marketplace/upgrade",
+      params: { marketplaceName: s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID },
+    },
+    h.context,
+    h.publish,
+  );
+  assert.deepEqual(result.result, {
+    selectedMarketplaces: [s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID],
+    upgradedRoots: [],
+    errors: [],
+  });
+  assert.equal(h.refreshCount(), 1);
+  assert.equal(h.calls.length, 0);
+  (h.officialPlugins as unknown as { refresh: () => Promise<never> }).refresh = async () => {
+    throw new Error("tampered catalog");
+  };
+  await assert.rejects(
+    handleCodexNativeRequest(
+      {
+        method: "marketplace/upgrade",
+        params: { marketplaceName: s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID },
+      },
+      h.context,
+      h.publish,
+    ),
+    /refresh failed verification/,
+  );
+});
+
+test("native install from the official marketplace path trusts only the plugin's hooks", async () => {
+  const h = officialNativeFixture({ registered: true });
+  const result = await handleCodexNativeRequest(
+    { method: "plugin/install", params: { pluginName: "mimosa", marketplacePath: h.path } },
+    h.context,
+    h.publish,
+  );
+  assert.equal((result.result as { authPolicy: string }).authPolicy, "ON_INSTALL");
+  const trustWrites = h.calls.filter((call) => call.method === "config/value/write");
+  assert.equal(trustWrites.length, 1);
+  assert.deepEqual(trustWrites[0]?.params, {
+    keyPath: `hooks.state."mimosa@${s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}:hooks/hooks.json:session_start:0:0".trusted_hash`,
+    value: "sha256:abc",
+    mergeStrategy: "replace",
+  });
+});
+
+test("native installs from personal marketplaces never receive official hook trust", async () => {
+  const h = officialNativeFixture({ registered: true });
+  await handleCodexNativeRequest(
+    {
+      method: "plugin/install",
+      params: {
+        pluginName: "example",
+        marketplacePath: "/market/.agents/plugins/marketplace.json",
+      },
+    },
+    h.context,
+    h.publish,
+  );
+  assert.equal(
+    h.calls.some((call) => call.method === "hooks/list"),
+    false,
+  );
+  assert.equal(
+    h.calls.some((call) => call.method === "config/value/write"),
+    false,
+  );
 });
