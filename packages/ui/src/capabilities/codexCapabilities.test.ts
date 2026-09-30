@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { codexFeatureCapabilitiesSchema } from "@codez/shared";
 import {
   codexCapabilityGate,
   codexCapabilitySource,
@@ -13,7 +14,12 @@ test("old peers omit every codex feature and resolve to unsupported", () => {
     assert.ok(value);
     return value;
   };
-  assert.equal(Object.keys(projection).length, 10);
+  // 根因：硬编码能力数量遗漏了新增 messageFeedback；以公开协议字段为准，
+  // 既验证旧 peer 全部 fail-closed，也防止以后新增字段时投影漏项。
+  assert.deepEqual(
+    Object.keys(projection).sort(),
+    Object.keys(codexFeatureCapabilitiesSchema.shape).sort(),
+  );
   for (const availability of Object.values(projection)) {
     assert.equal(availability.status, "unsupported");
   }
@@ -22,6 +28,7 @@ test("old peers omit every codex feature and resolve to unsupported", () => {
   // 旧 peer 缺省 autoReviewApprovals → unsupported（composer 隐藏"帮我审批"档）。
   assert.equal(availability("autoReviewApprovals").status, "unsupported");
   assert.equal(codexCapabilityGate(availability("autoReviewApprovals")).disabled, true);
+  assert.equal(availability("messageFeedback").status, "unsupported");
 });
 
 test("autoReviewApprovals only surfaces as supported when the bridge probed it", () => {
