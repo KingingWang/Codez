@@ -20,6 +20,7 @@ import type {
 } from "@codez/shared/codez-protocol-v4";
 import { ChatLoading } from "@/components/ai-elements/chat-loading.js";
 import { ChatApiRetryStatus } from "@/chat-input-toolbar/display.js";
+import { CodexRetryStatus } from "./CodexRetryStatus.js";
 import { cn } from "@/components/lib/utils.js";
 import { Checkbox } from "@/components/ui/checkbox.js";
 import { MessageActions } from "@/components/ai-elements/message.js";
@@ -124,7 +125,7 @@ interface OffPeakTurnCard {
 
 const MIN_VISIBLE_API_RETRY_ATTEMPT = 3;
 
-function toRetryStatus(apiRetry: ApiRetryState): CodezApiRetryStatus {
+function toRetryStatus(apiRetry: Extract<ApiRetryState, { attempt: number }>): CodezApiRetryStatus {
   const attempt = Math.max(1, Math.floor(apiRetry.attempt));
   // v4 maxAttempts 包含首次请求，而展示口径是重试次数；直接展示会把
   // 默认 10 次重试写成 1/11。
@@ -147,16 +148,22 @@ function TurnChatLoadingSlot({
   eligible: boolean;
 }) {
   const { intl, locale } = useCodezIntl();
-  const retryStatus = useMemo(() => (apiRetry ? toRetryStatus(apiRetry) : null), [apiRetry]);
+  const retryStatus = useMemo(
+    () => (apiRetry && "attempt" in apiRetry ? toRetryStatus(apiRetry) : null),
+    [apiRetry],
+  );
+  const codexRetry = apiRetry && "source" in apiRetry ? apiRetry : null;
   // 前两次短暂恢复对用户等价于普通加载；保留 apiRetry 运行态，但只在
   // 第三次重试开始后显示计数。必须在 retry/loading 分支前收敛，否则会留下空 slot，
   // 而不是回退到 ChatLoading。
   const visibleRetryStatus =
     retryStatus && retryStatus.attempt >= MIN_VISIBLE_API_RETRY_ATTEMPT ? retryStatus : null;
-  if (!visibleRetryStatus && !eligible) return null;
+  if (!visibleRetryStatus && !codexRetry && !eligible) return null;
   return (
     <div data-codez-chat-loading-slot="true" className="min-h-5">
-      {visibleRetryStatus ? (
+      {codexRetry ? (
+        <CodexRetryStatus httpStatusCode={codexRetry.httpStatusCode} intl={intl} />
+      ) : visibleRetryStatus ? (
         <ChatApiRetryStatus apiRetry={visibleRetryStatus} intl={intl} locale={locale} />
       ) : (
         // running 是 ChatLoading 的权威事实；额外静默计时会让 projection

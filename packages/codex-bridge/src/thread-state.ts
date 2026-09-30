@@ -6,6 +6,8 @@ import { sameExecutionPath } from "./execution-path.js";
 import { mergeNativeTurn } from "./merge-turn.js";
 import { canonicalNativeThreads } from "./projection.js";
 import { CodexRpcError } from "./rpc-errors.js";
+import { applyNativeRetry, type NativeRetryState } from "./native-retry-status.js";
+import { upsertTurnPlanUpdate } from "./turn-plan-update.js";
 
 export class DeletedThreadError extends Error {
   constructor() {
@@ -22,53 +24,13 @@ export function isWriterConflictError(error: unknown): boolean {
   );
 }
 
-/** turn/plan/updated 的合成 item id 由 bridge 拥有；原生 item id 是原生生成的标识，不会取这个固定值。 */
-const PLAN_UPDATE_ITEM_ID = "plan-update";
-
-/** 原生 v2 通知使用 camelCase 状态；投影层统一为 UI 计划词表（pending/in_progress/completed）。 */
-function normalizePlanStepStatus(value: unknown): "pending" | "in_progress" | "completed" | null {
-  if (value === "pending" || value === "completed") return value;
-  if (value === "inProgress" || value === "in_progress") return "in_progress";
-  return null;
-}
-
-/**
- * update_plan 通知是全量替换语义：同一 turn 只保留一张计划卡，原位更新保持首次出现的位置。
- * 载荷来自模型输出，必须防御性解析——任何不可用内容只丢这张卡，绝不让串行事件尾巴失败。
- */
-function upsertTurnPlanUpdate(turn: JsonObject, params: JsonObject): void {
-  const steps: { step: string; status: "pending" | "in_progress" | "completed" }[] = [];
-  for (const raw of array(params.plan)) {
-    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) continue;
-    const record = raw as Record<string, unknown>;
-    const status = normalizePlanStepStatus(record.status);
-    const title = typeof record.step === "string" ? record.step.trim() : "";
-    if (!title || !status) continue;
-    steps.push({ step: title, status });
-  }
-  if (steps.length === 0) return;
-  const item: JsonObject = { id: PLAN_UPDATE_ITEM_ID, type: "planUpdate", plan: steps };
-  if (typeof params.explanation === "string" && params.explanation.trim().length > 0)
-    item.explanation = params.explanation;
-  const items = array(turn.items);
-  const index = items.findIndex(
-    (value) =>
-      typeof value === "object" &&
-      value !== null &&
-      !Array.isArray(value) &&
-      (value as JsonObject).id === PLAN_UPDATE_ITEM_ID,
-  );
-  if (index < 0) items.push(item);
-  else items[index] = item;
-  turn.items = items;
-}
-
 export interface ThreadProjectionState {
   thread: JsonObject;
   queue: unknown[];
   revision: number;
   seq: number;
   epoch: string;
+  apiRetry: NativeRetryState;
   /** writer-conflict：另一进程持有该线程写锁，投影为只读降级；恢复需 invalidate 后重新 load。 */
   readOnly?: "writer-conflict";
 }
@@ -118,7 +80,14 @@ export class ThreadStateStore {
     const id = string(thread.id);
     this.assertAvailable(id);
     const previous = this.states.get(id);
-    const state = previous ?? { thread, queue: [], revision: 0, seq: 0, epoch: randomUUID() };
+    const state = previous ?? {
+      thread,
+      queue: [],
+      revision: 0,
+      seq: 0,
+      epoch: randomUUID(),
+      apiRetry: null,
+    };
     state.thread = { ...previous?.thread, ...thread };
     this.states.set(id, state);
     this.touch(id);
@@ -292,6 +261,12 @@ export class ThreadStateStore {
     const id = typeof params.threadId === "string" ? params.threadId : undefined;
     const state = id ? this.states.get(id) : undefined;
     if (!state || !id) return;
+    if (event.method === "error") {
+      const { retry, changed } = applyNativeRetry(state.thread, state.apiRetry, params);
+      state.apiRetry = retry;
+      if (changed) this.touch(id);
+      return id;
+    }
     if (event.method === "thread/status/changed") state.thread.status = params.status;
     else if (event.method === "thread/name/updated") state.thread.name = params.threadName;
     else if (event.method === "thread/settings/updated") {
@@ -310,6 +285,14 @@ export class ThreadStateStore {
       state.thread.tokenUsage = params.tokenUsage;
     else if (event.method === "turn/started" || event.method === "turn/completed") {
       const turn = object(params.turn);
+      if (
+        state.apiRetry &&
+        (event.method === "turn/completed"
+          ? state.apiRetry.turnId === turn.id
+          : state.apiRetry.turnId !== turn.id)
+      ) {
+        state.apiRetry = null;
+      }
       const turns = array(state.thread.turns);
       const index = turns.findIndex((value) => object(value).id === turn.id);
       // 原生生命周期通知仅携 turn 摘要；当前连接已按 item 事件收齐的内容不能被 summary 清空。
@@ -324,6 +307,7 @@ export class ThreadStateStore {
     } else if (event.method === "item/started" || event.method === "item/completed") {
       const turn = this.turn(state, params.turnId);
       if (!turn) return;
+      if (state.apiRetry?.turnId === params.turnId) state.apiRetry = null;
       const items = array(turn.items);
       const item = object(params.item);
       const itemKey = JSON.stringify([id, params.turnId, item.id]);
@@ -344,6 +328,7 @@ export class ThreadStateStore {
         .map(object)
         .find((value) => value.id === params.itemId);
       if (!item || typeof params.delta !== "string") return;
+      if (state.apiRetry?.turnId === params.turnId) state.apiRetry = null;
       if (event.method === "item/agentMessage/delta" || event.method === "item/plan/delta") {
         item.text = String(item.text ?? "") + params.delta;
       } else if (event.method === "item/commandExecution/outputDelta") {

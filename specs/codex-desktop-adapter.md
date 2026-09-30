@@ -123,6 +123,51 @@ closed, and native config/skills/plugin requests stay on the canonical execution
 
 ## Desktop surfaces
 
+### Native model retry visibility
+
+- Codex alone decides whether a model request is retrying. An app-server `error`
+  notification with `willRetry: true` is a transient retry fact, not a failed
+  turn. The bridge translates it into a turn-scoped, non-persisted V4
+  `control.apiRetry` presentation state. It does not retry a request or store a
+  second execution history.
+- Show a localized "model request is retrying" status in the live turn from the
+  first _reported_ notification. Show `HTTP nnn` only when the native
+  `codexErrorInfo.httpStatusCode` is a valid HTTP status. Do not display raw
+  `additionalDetails`, infer attempt counts or deadlines from English messages,
+  or apply the legacy model adapter's "third retry" visibility threshold.
+- Accept a retry notification only for the current in-progress turn on the
+  already-owned thread. Duplicate or late events for a completed/older turn
+  cannot revive the label. The first new model item/progress on that turn,
+  terminal `error` notification, and turn completion clear it. A new turn starts
+  without the previous turn's status.
+- This is transient bridge-owned display state, not a durable Codex fact.
+  Desktop uses the existing continuous subscription; mobile Web uses the same
+  current snapshot on replayable resubscribe/gap repair. A bridge restart may
+  lose an in-progress retry label until Codex sends another notification; it
+  must never invent an old retry from thread history or a timer.
+- Native Codex does not report every internal retry (including the first
+  WebSocket retry in release builds). The GUI claims only that a _reported_
+  retry is underway; showing every attempt would require an upstream Codex
+  event change.
+
+Acceptance scenarios:
+
+1. In an isolated real Electron → Host → bridge → pinned Codex → loopback
+   provider turn, set the fixture provider's _request-level_ retries to zero
+   (without changing the product setting) and return two retryable HTTP 503
+   responses (the release build may suppress the first WebSocket notification). While the following
+   request is held, the live chat shows the retry label with HTTP 503 and no final error; release
+   it, observe the answer and disappearance of the retry label.
+2. A native `willRetry: true` notification without structured HTTP status shows
+   the localized label without fabricating a code, count or deadline. A
+   `willRetry: false` notification never creates a retry label.
+3. Notifications for a different thread, older turn, or already completed turn
+   do not change the current chat. A duplicate event does not create a second
+   message; the next model item/progress or turn completion clears the label.
+4. An existing V4 legacy numeric `apiRetry` still displays its existing
+   attempt-count semantics. A replayable mobile snapshot reflects only the
+   current turn-scoped status; desktop continuous delivery remains independent.
+
 ### Follow-up turn reliability and send latency
 
 - Native item IDs are scoped to a turn, not a whole conversation. Presentation

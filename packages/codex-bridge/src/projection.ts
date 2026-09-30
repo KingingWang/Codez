@@ -4,6 +4,7 @@ import {
   pendingInteractionSchema,
   sessionSummarySchema,
   sessionsIndexSnapshotSchema,
+  type ApiRetryState,
   type ConversationSnapshot,
   type SessionControl,
   type SessionSummary,
@@ -36,6 +37,7 @@ export interface ProjectThreadOptions {
   queueAdmissions?: Readonly<Record<string, QueueAdmissionFacts>>;
   usage?: SessionUsageState;
   availability?: Partial<SessionActionAvailability>;
+  apiRetry?: ApiRetryState | null;
 }
 
 export interface SessionsIndexOptions {
@@ -70,7 +72,7 @@ function phase(thread: CodexThread): SessionControl["phase"] {
   return "completedSuccess";
 }
 
-function control(thread: CodexThread): SessionControl {
+function control(thread: CodexThread, apiRetry: ApiRetryState | null = null): SessionControl {
   const currentPhase = phase(thread);
   const activeTurn =
     currentPhase === "running"
@@ -104,7 +106,7 @@ function control(thread: CodexThread): SessionControl {
             ...(last.error.additionalDetails ? { detail: last.error.additionalDetails } : {}),
           }
         : null,
-    apiRetry: null,
+    apiRetry: activeTurn ? apiRetry : null,
   };
 }
 
@@ -142,7 +144,7 @@ export function projectThread(
     .array()
     .parse(options.interactions ?? options.pendingInteractions ?? []);
   const rows = projectRows(source, interactions);
-  const state = control(source);
+  const state = control(source, options.apiRetry);
   const waiting = source.status.type === "active" && source.status.activeFlags.length > 0;
   const unavailable = { allowed: false as const, reasonCode: "guard.codex.capabilityUnknown" };
   return conversationSnapshotSchema.parse({

@@ -117,12 +117,17 @@ export const sessionErrorInfoSchema = z.object({
 });
 export type SessionErrorInfo = z.infer<typeof sessionErrorInfoSchema>;
 
-export const apiRetryStateSchema = z.object({
+const countedApiRetryStateSchema = z.object({
   attempt: z.number(),
   maxAttempts: z.number(),
   nextRetryAt: timestampSchema,
   reasonCode: z.string(),
 });
+const codexApiRetryStateSchema = z.object({
+  source: z.literal("codex"),
+  httpStatusCode: z.number().int().min(100).max(599).nullable(),
+});
+export const apiRetryStateSchema = z.union([countedApiRetryStateSchema, codexApiRetryStateSchema]);
 export type ApiRetryState = z.infer<typeof apiRetryStateSchema>;
 
 export const sessionControlSchema = z.object({
