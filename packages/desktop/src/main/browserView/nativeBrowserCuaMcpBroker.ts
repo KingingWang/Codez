@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
-import { createServer, type Server, type Socket } from "node:net";
+import { chmod, mkdir, rm, stat, writeFile } from "node:fs/promises";
+import { connect, createServer, type Server, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname } from "node:path";
 import { BrowserWindow } from "electron";
@@ -18,6 +18,8 @@ import {
 import type { BrowserGuestManager } from "./browserGuestManager.js";
 
 const MAX_REQUEST_BYTES = 1024 * 1024;
+// 探测残留 endpoint 的等待上限：只用于判断是否存在活着的监听者，不参与业务超时。
+const STALE_ENDPOINT_PROBE_TIMEOUT_MS = 1500;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 export interface NativeBrowserCuaMcpBroker {
@@ -96,15 +98,57 @@ export function createNativeBrowserCuaMcpBroker(input: {
     sockets.add(socket);
     socket.once("close", () => sockets.delete(socket));
   });
-  const ready = new Promise<void>((resolve, reject) => {
-    server.once("listening", () => {
-      endpointReady = !closed;
-      endpointOwned = endpointReady;
-      resolve();
+  // Unix domain socket 的文件不会随进程退出自动消失：崩溃或被 SIGKILL 后残留的
+  // endpoint 会让之后每次启动 listen 都 EADDRINUSE，原生 Browser/CUA 能力从此永久
+  // 不可用，GUI 只能显示不可用而用户没有自助恢复入口（真实桌面复现）。
+  const endpointHasLiveOwner = async (): Promise<boolean> => {
+    try {
+      await stat(endpoint);
+    } catch {
+      return false; // 没有 endpoint 文件，无需探测
+    }
+    return await new Promise<boolean>((resolve) => {
+      const probe = connect(endpoint);
+      const finish = (alive: boolean) => {
+        probe.removeAllListeners();
+        probe.destroy();
+        resolve(alive);
+      };
+      probe.setTimeout(STALE_ENDPOINT_PROBE_TIMEOUT_MS);
+      probe.once("connect", () => finish(true));
+      probe.once("timeout", () => finish(false));
+      probe.once("error", () => finish(false));
     });
-    server.once("error", reject);
-  });
-  server.listen(endpoint);
+  };
+
+  const reclaimStaleEndpoint = async (): Promise<void> => {
+    // Windows 命名管道不留残留文件；删除他人管道等于破坏正在服役的实例。
+    if (platform === "win32" || closed) return;
+    // 有活着的监听者说明是第二实例竞争：保持 fail-closed，绝不删除其 endpoint。
+    if (await endpointHasLiveOwner()) return;
+    // 探测与 rm 之间存在极窄窗口：理论上另一进程可在此期间绑定同一路径。
+    // 该窗口依赖 Main 的单实例锁（app.requestSingleInstanceLock）收敛并发；
+    // 即便发生，被 unlink 的服务端仍持有 inode，仅影响按路径新建连接。
+    await rm(endpoint, { force: true });
+  };
+
+  const ready = (async () => {
+    await reclaimStaleEndpoint();
+    // close() 可能发生在探测期间；此时不绑定，并让 ready 明确失败，
+    // 避免 registerWindow 为从未监听的 endpoint 写 token。
+    if (closed) {
+      throw new Error("Native Browser/CUA MCP broker closed before endpoint bind");
+    }
+    await new Promise<void>((resolve, reject) => {
+      server.once("listening", () => {
+        endpointReady = !closed;
+        endpointOwned = endpointReady;
+        resolve();
+      });
+      server.once("error", reject);
+      server.listen(endpoint);
+    });
+  })();
   const readiness = ready.catch(() => undefined);
   const currentAvailability = () => ({
     browserAvailable: !closed && endpointReady && enabled && windowCapabilities.size > 0,

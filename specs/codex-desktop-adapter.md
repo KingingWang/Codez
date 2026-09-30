@@ -179,6 +179,41 @@ Acceptance scenarios:
 4. An existing V4 legacy numeric `apiRetry` still displays its existing
    attempt-count semantics. A replayable mobile snapshot reflects only the
    current turn-scoped status; desktop continuous delivery remains independent.
+### Open renderer startup debt (not a gate)
+
+The production main-window HTML currently emits 280 eager `modulepreload` links,
+227 of them single-icon Lucide chunks. This is recorded as open performance debt,
+not an acceptance gate: the intended direction is auditing `lucide-react` barrel
+imports so the bundler keeps only icons actually imported at module boundaries,
+never re-introducing one monolithic icon chunk, disabling module preloading, or
+raising startup timeouts. Any future budget assertion must encode a target that a
+real fix achieves, not the current baseline.
+
+### Renderer bootstrap failure stays visible and recoverable
+
+- Removing the startup shell must never be treated as proof that React mounted.
+  The 3s fallback only removes the shell; `reactReady` is set exclusively by the
+  `codez-react-startup-ready` event dispatched from the renderer entry.
+- When the module graph fails (script/link resource errors, or dynamic-import
+  rejections) and React has not mounted, the window must not stay blank: after a
+  short evidence delay the bootstrap watchdog reloads once automatically, and on a
+  repeated failure renders a dependency-free error surface with a reload action and
+  the captured failure list. The watchdog is evaluated on a 2s interval up to a hard
+  deadline, so late-arriving evidence is not missed between fixed timers.
+- The watchdog is plain inline DOM/CSS with no imports so it still runs while the
+  module graph is broken; it is skipped for the update-status window kind and never
+  fires once React reports ready.
+- Main owns the crash path the renderer cannot see: when a primary application
+  window reports `render-process-gone` with a recoverable reason (`crashed`,
+  `killed`, `oom`, `launch-failed`) and the app is not quitting, Main reloads that
+  window in place, bounded to two automatic reloads per window so a crash loop
+  cannot spin; the reload is deferred by one macrotask and re-checks window and
+  WebContents liveness so it never runs against a half-torn-down object. Exceeding
+  the budget logs an explicit warning instead of silently leaving the window dead.
+  Non-primary windows keep their existing handling.
+  In-place reload is the first-line recovery on every platform; the coordinator's
+  discard-and-recreate of a crashed window stays the last resort (macOS `activate`,
+  or a later primary-window request on other platforms), never the first response.
 
 ### Follow-up turn reliability and send latency
 

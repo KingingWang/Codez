@@ -151,6 +151,26 @@ export function codexProviderUpdateEdits(form: CodexProviderForm): CodexConfigEd
   return edits;
 }
 
+/** 删除阻断原因，对应文案 key；null 表示允许删除。 */
+export type CodexProviderDeleteBlock =
+  | "providerCatalogUnavailable"
+  | "providerDeleteDefaultBlocked"
+  | "providerDeleteModelsBlocked";
+
+/**
+ * 删除保护的单一判定来源：目录未成功读取时引用数未知，必须先 fail-closed。
+ * 按钮禁用与写入前判定共用本函数，删除不变量不只存在于渲染期 prop。
+ */
+export function codexProviderDeleteBlock(
+  view: Pick<CodexProviderView, "isDefault" | "modelCount">,
+  catalogReady: boolean,
+): CodexProviderDeleteBlock | null {
+  if (!catalogReady) return "providerCatalogUnavailable";
+  if (view.isDefault) return "providerDeleteDefaultBlocked";
+  if (view.modelCount > 0) return "providerDeleteModelsBlocked";
+  return null;
+}
+
 export function codexProviderDeleteEdits(id: string): CodexConfigEdit[] {
   return [edit(`model_providers.${id}`, null)];
 }

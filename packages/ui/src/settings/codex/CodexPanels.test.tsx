@@ -14,6 +14,7 @@ import { CodexSkillsPanel, CodexPluginsPanel } from "./CodexResourcesPanel.js";
 import { CodexHistoryPanel, HistoryRunRow } from "./CodexHistoryPanel.js";
 import { CodexProvidersPanel } from "./CodexProvidersPanel.js";
 import { codexVisibleConfig } from "./CodexSettingsParts.js";
+import { formatCodexTemplate, useCodexMessages } from "./messages.js";
 import { codexCapabilityGate, projectCodexCapabilities } from "@/capabilities/codexCapabilities.js";
 
 const controller: CodexSettingsController = {
@@ -53,6 +54,11 @@ function render(children: ReactNode, locale: "en-US" | "zh-CN" = "en-US"): strin
       <PlatformProvider platform={platform}>{children}</PlatformProvider>
     </CodezIntlProvider>,
   );
+}
+
+function CodexMessageProbe({ name }: { name: keyof ReturnType<typeof useCodexMessages> }) {
+  const text = useCodexMessages();
+  return <output data-testid={`codex-message-${name}`}>{text[name]}</output>;
 }
 
 test("account rendering distinguishes unauthenticated/no-auth and existing native account", () => {
@@ -97,6 +103,22 @@ test("missing configuration version visibly disables writes and errors remain ac
   assert.match(html, /No writable user configuration layer/);
   assert.match(html, /disabled=""[^>]*>Write value/);
   assert.match(html, /disabled=""[^>]*>Write batch/);
+});
+
+test("invalid JSON drafts report the syntax detail in the active locale", () => {
+  const en = render(<CodexMessageProbe name="invalidJsonSyntax" />);
+  const zh = render(<CodexMessageProbe name="invalidJsonSyntax" />, "zh-CN");
+  // 两个语言包都要保留 {message} 占位符，否则用户看不到 JSON 语法错误的具体上下文。
+  assert.match(en, /Invalid JSON: \{message\}/);
+  assert.match(zh, /JSON 无效：\{message\}/);
+  assert.equal(
+    formatCodexTemplate("Invalid JSON: {message}", { message: "Unexpected token }" }),
+    "Invalid JSON: Unexpected token }",
+  );
+  // 单次扫描：值里的占位符不被二次展开，未知占位符原样保留，替换语法按字面量输出。
+  assert.equal(formatCodexTemplate("{a}-{b}", { a: "{b}", b: "X" }), "{b}-X");
+  assert.equal(formatCodexTemplate("{a}-{unknown}", { a: "1" }), "1-{unknown}");
+  assert.equal(formatCodexTemplate("{message}", { message: "$&" }), "$&");
 });
 
 test("skills and MCP discovery errors are not silently rendered as empty inventories", () => {
