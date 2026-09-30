@@ -17,6 +17,7 @@ import { BridgeSnapshots } from "./bridge-snapshots.js";
 import { BridgeSubscriptions } from "./subscriptions.js";
 import { AttachmentStore } from "./attachments.js";
 import { supportsControlMethod, handleControlRequest } from "./control-plane.js";
+import { ensureOfficialRegistered } from "./control-official-plugins.js";
 import { OfficialPluginMarketplace } from "./official-plugin-marketplace.js";
 import { handleLegacySession } from "./legacy-sessions.js";
 import { array, object, string, unsupported } from "./json.js";
@@ -24,7 +25,7 @@ import { projectTurnFileChanges } from "./file-changes.js";
 import { projectCodexHistoryRuns } from "./history-runs.js";
 import { join } from "node:path";
 import { AuxiliaryText } from "./auxiliary-text.js";
-import { scopeWorkspaceParams, scopedNativeRequest } from "./request-scope.js";
+import { scopeWorkspaceParams, handleCodexNativeRequest } from "./request-scope.js";
 import type { BridgeFailureOrigin } from "./diagnostics.js";
 
 export interface BridgeResponse {
@@ -159,6 +160,19 @@ export class BridgeRuntime {
           });
       }),
     );
+    // 设置 → Codex「插件与市场」走原生 plugin/list，不经商店控制面；启动即用
+    // 已物化的快照预热官方市场注册（cachedOnly，不触网），首次打开面板即可见。
+    void ensureOfficialRegistered(this.control(), { cachedOnly: true });
+  }
+
+  private control(): BridgeControlContext {
+    return {
+      rpc: this.options.rpc,
+      cwd: this.options.cwd,
+      officialPlugins: this.officialPlugins,
+      auxiliary: this.auxiliary,
+      nativeBrowserCua: this.options.nativeBrowserCua,
+    };
   }
 
   /** writer-conflict 只读投影在 subscribe/resync 时失效，下一次快照读取重新 load 并重试 resume。 */
@@ -184,35 +198,12 @@ export class BridgeRuntime {
     params = await scopeWorkspaceParams(params, cwd, workspaceId);
     if (this.auxiliary.supports(method))
       return { result: await this.auxiliary.handle(method, params) };
-    if (method === "codex/request") {
-      const request = await scopedNativeRequest(params, rpc, cwd);
-      const result = await rpc.request(request.method, request.params);
-      return {
-        result,
-        afterResponse: async () => {
-          if (
-            [
-              "config/value/write",
-              "config/batchWrite",
-              "account/logout",
-              "skills/config/write",
-            ].includes(request.method)
-          ) {
-            await this.subscriptions.changed(`workspace-config/${workspaceId}`);
-          }
-        },
-      };
-    }
+    if (method === "codex/request")
+      return handleCodexNativeRequest(params, this.control(), () =>
+        this.subscriptions.changed(`workspace-config/${workspaceId}`),
+      );
     if (supportsControlMethod(method))
-      return {
-        result: await handleControlRequest(method, params, {
-          rpc,
-          cwd,
-          officialPlugins: this.officialPlugins,
-          auxiliary: this.auxiliary,
-          nativeBrowserCua: this.options.nativeBrowserCua,
-        }),
-      };
+      return { result: await handleControlRequest(method, params, this.control()) };
     if (method.startsWith("session/")) {
       const result = await handleLegacySession(method, params, rpc, this.store, workspaceId);
       return {

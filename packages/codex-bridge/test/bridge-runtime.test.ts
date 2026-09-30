@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { codezWorkspaceGenerateTextResultSchema } from "@codez/shared";
@@ -42,7 +42,7 @@ const create = (id = "create-1", identity = workspaceId) => ({
   issuedAt: 1,
   payload: { workspaceId: identity },
 });
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, officialMarketplaceRoot?: string) {
   const root = await mkdtemp(join(tmpdir(), "codez-runtime-qa-"));
   const notifications = new Set<(event: CodexNotification) => void>();
   const requests = new Set<(event: CodexServerRequest) => void>();
@@ -117,6 +117,7 @@ async function fixture(t: TestContext) {
     cwd,
     workspaceId,
     stateRoot: root,
+    ...(officialMarketplaceRoot ? { officialMarketplaceRoot } : {}),
     async notify(method, params) {
       assert.equal(method, "v4/conversation/frame");
       const frame = routedTopicWireFrameSchema.parse(params);
@@ -596,6 +597,45 @@ test("codex/request preserves native error code/message without retries", async 
     (error) => error === native,
   );
   assert.equal(h.calls.length, 1);
+});
+
+test("bridge start warms official marketplace registration from the cached snapshot", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "codez-official-warm-"));
+  t.after(async () => rm(root, { recursive: true, force: true }));
+  const pluginsDir = join(root, ".agents", "plugins");
+  await mkdir(pluginsDir, { recursive: true });
+  await writeFile(
+    join(pluginsDir, "marketplace.json"),
+    JSON.stringify({ name: "codez-plugins-official", plugins: [] }),
+  );
+  await writeFile(
+    join(pluginsDir, "marketplace.codez.json"),
+    JSON.stringify({ catalogUpdatedAt: new Date().toISOString(), plugins: {} }),
+  );
+  const h = await fixture(t, root);
+  // 预热在构造后即异步推进；这里同步补齐处理器，必定早于文件读完成。
+  let registered = false;
+  h.handlers["plugin/list"] = () => ({
+    marketplaces: registered
+      ? [
+          {
+            name: "codez-plugins-official",
+            path: join(root, ".agents", "plugins", "marketplace.json"),
+            plugins: [],
+          },
+        ]
+      : [],
+    marketplaceLoadErrors: [],
+  });
+  h.handlers["marketplace/add"] = () => {
+    registered = true;
+    return { marketplaceName: "codez-plugins-official", installedRoot: root, alreadyAdded: false };
+  };
+  for (let i = 0; i < 100 && !registered; i++) await tick();
+  assert.equal(registered, true);
+  assert.deepEqual(h.calls.find((call) => call.method === "marketplace/add")?.params, {
+    source: root,
+  });
 });
 
 test("cross-workspace topics, identities and native thread cwd are rejected before resume/mutation", async (t) => {
