@@ -60,6 +60,39 @@ Malformed/incomplete records remain sparse and do not invent values. Disconnect 
 
 App Usage copy must state that Codex usage is desktop-observed telemetry and is not an official billing statement. It must render the Codex observation summary separately from agent-database usage: only observed threads and observed token fields are shown; absent facts stay unavailable rather than becoming zero. It must render cache-owned conflict and disconnect-staleness flags rather than inferring them in the renderer. Coding Plan remains an independent remote source and is never read or merged by this cache.
 
+When Desktop is running the Codex adapter, App Usage is an observation-only
+surface. The renderer reads the existing Desktop-owned observation cache, but
+does not query or display the legacy agent-database charts, lifetime totals or
+their loading/error/empty states. A failed Codex observation read shows its
+own actionable error; no snapshot shows an explicit "no observed threads yet"
+state rather than five measured zeroes. A nonempty snapshot shows only observed
+totals and the existing owner-provided stale/conflict flags. Web/legacy usage
+keeps its current chart and error semantics.
+Read responses are scoped to the current workspace identity and Host service
+generation. A later refresh, Host reconnect, identity switch or unmount
+invalidates earlier pending reads, including their error/loading completions;
+an old response cannot replace a newer owner projection.
+
+```text
+native token facts → Desktop/Host observation owner → Codex-only summary
+legacy agent DB ────────────────────────────────→ Web/legacy usage only
+```
+
+Acceptance: one observed thread + failed legacy usage source still renders the
+Codex totals without an unrelated "unable to load" or "no usage data" alert;
+an empty cache does not claim measured zero tokens; observation read failure
+shows a Codex-specific error; Web legacy charts still render.
+Delayed old-Host success or failure after a same-key reconnect cannot override
+the newer Host's observation/error/loading state.
+For a multi-thread aggregate, a token category is an exact total only if
+every observed thread carries that category. If any thread omits it, render an
+unavailable marker (`--`), not a partial sum or measured zero. A present native
+zero is a valid measured value. This also applies to the shared observation
+summary in legacy App Usage; it must not invent sparse Codex facts.
+All five metric labels must remain legible at ordinary desktop and narrow
+mobile widths in both supported locales. Wrap long labels; do not rely on
+ellipsis to distinguish input/output from cache-read/cache-write facts.
+
 The renderer imports usage snapshot types without evaluating the Host-owned observation cache. The public services barrel exposes these snapshot types as type-only exports; the cache and its Node crypto identity implementation stay in the Host service. The desktop shell must render the main navigation without Node built-ins in the browser module graph; the Host→renderer RPC snapshot remains the sole data path.
 
 ## Acceptance scenarios
@@ -78,3 +111,5 @@ The renderer imports usage snapshot types without evaluating the Host-owned obse
     normalization preserves the nested observation and rejects entries with
     missing or malformed payloads rather than passing them to the totals view.
 12. A fresh isolated Electron renderer opens with visible navigation and no `node:crypto` browser-compatibility exception, even when usage cache types are imported.
+13. At 1200px desktop and 390px mobile viewport widths, every observed metric
+    label is readable without horizontal scrolling or hover-only expansion.

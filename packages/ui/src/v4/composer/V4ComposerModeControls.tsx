@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LightbulbIcon, XIcon, ChevronDownIcon } from "lucide-react";
 import {
   TID_CHAT_MODE_SELECT_TRIGGER,
@@ -74,6 +74,7 @@ function V4ComposerModeSwitchImpl({
   const { intl } = useCodezIntl();
   const displayProvider = provider ?? CODEZ_AGENT_PROVIDER;
   const modeShortcutLabel = useShortcutCommandLabel("cycleSessionMode");
+  const [modeTooltipOpen, setModeTooltipOpen] = useState(false);
   const requestAlert = useAlertDialogStore((state) => state.requestAlert);
   // Codex 会话使用与原生权限菜单一一对应的档位目录（specs/codex-permission-modes.md）；
   // edit（帮我审批）由 autoReviewApprovals 能力门控，能力未确认即隐藏（fail-closed）。
@@ -171,12 +172,17 @@ function V4ComposerModeSwitchImpl({
     <div className="flex min-w-0 items-center gap-1">
       <DropdownMenu
         open={activeConfigPicker === "mode"}
-        onOpenChange={(open) => onConfigPickerOpenChange("mode", open)}
+        onOpenChange={(open) => {
+          if (open) setModeTooltipOpen(false);
+          onConfigPickerOpenChange("mode", open);
+        }}
       >
         <ControlHintTooltip
           title={intl.formatMessage({ id: "chat.toolbar.mode.label" })}
           shortcut={modeShortcutLabel}
-          open={activeConfigPicker === "mode" ? false : undefined}
+          // 菜单切换前后保持 Tooltip 为受控态，避免 Radix ownership 警告。
+          open={activeConfigPicker !== "mode" && modeTooltipOpen}
+          onOpenChange={setModeTooltipOpen}
         >
           <DropdownMenuTrigger asChild>
             <Button

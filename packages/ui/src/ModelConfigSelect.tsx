@@ -226,6 +226,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
   triggerBadge,
 }: ModelConfigSelectProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
   const lastOpenRequestKeyRef = useRef(openRequestKey);
   const hasSelectableModel = modelGroups.length > 0;
@@ -531,7 +532,9 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
           title={guideTooltipOpen && guideTooltipTitle ? guideTooltipTitle : tooltipTitle}
           shortcut={guideTooltipOpen ? undefined : shortcutLabel}
           triggerRef={triggerRef}
-          open={guideTooltipOpen ? true : undefined}
+          // 引导提示结束后仍由同一状态所有者控制悬浮提示，不切回非受控 Radix。
+          open={guideTooltipOpen || tooltipOpen}
+          onOpenChange={setTooltipOpen}
           className={guideTooltipOpen ? "bg-background py-0.5 pr-0.5 pl-2" : undefined}
         >
           {modelTrigger}

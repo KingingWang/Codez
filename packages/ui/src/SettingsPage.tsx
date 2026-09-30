@@ -33,11 +33,13 @@ import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { getPathLeaf } from "@/lib/path.js";
 import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import {
   CodexSettingsSection,
   CodexCapabilityNotice,
   type CodexSettingsPanel,
 } from "@/settings/codex/CodexSettingsSection.js";
+import { selectedCodexHistorySessionId } from "@/settings/codex/codexHistorySelection.js";
 import {
   isCodexSettingsSection,
   isCodexUnsupportedSection,
@@ -650,6 +652,9 @@ export function SettingsPage({
   // 这里改为读取 tabStore 维护的“最近激活 workspace identity”，让插件管理继续命中正确远端。
   const activeWorkspaceIdentity = useTabStore(
     (state) => state.activeWorkspaceIdentity ?? undefined,
+  );
+  const selectedCodexSessionId = useCodezSessionStore((state) =>
+    selectedCodexHistorySessionId(state, activeWorkspacePath, activeWorkspaceIdentity),
   );
   const activeWorkspaceTab = useTabStore((state) => {
     const workspacePath = state.activeWorkspacePath;
@@ -1724,6 +1729,7 @@ export function SettingsPage({
                           <CodexSettingsSection
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
+                            sessionId={selectedCodexSessionId}
                             remoteSessionId={activeWorkspaceTab?.remoteSessionId ?? undefined}
                             onPanelChange={handleCodexSettingsPanelChange}
                             initialPanel={codexSectionToPanel(activeSection)}
@@ -1974,6 +1980,7 @@ export function SettingsPage({
                         ) : activeSection === "usage" ? (
                           <UsageStatsSection
                             activeTab={usageActiveTab}
+                            desktopCodex={isDesktop}
                             providerSourcesLoading={usageProviderSettingsLoading}
                             selectedCodingPlanSource={selectedUsageCodingPlanSource}
                             workspaceIdentity={activeWorkspaceIdentity}

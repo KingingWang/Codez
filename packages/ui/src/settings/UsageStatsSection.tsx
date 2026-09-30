@@ -1,4 +1,5 @@
 import { AppUsagePanel } from "@/settings/usage-stats/AppUsagePanel.js";
+import { CodexOnlyUsagePanel } from "@/settings/usage-stats/CodexOnlyUsagePanel.js";
 import {
   CodingPlanUsagePanel,
   type CodingPlanUsageSource,
@@ -12,15 +13,32 @@ export function UsageStatsSection({
   workspaceIdentity,
   workspacePath,
   selectedCodingPlanSource,
+  desktopCodex = false,
 }: {
   activeTab: UsageStatsSectionTab;
   providerSourcesLoading: boolean;
   workspaceIdentity?: string;
   workspacePath?: string;
   selectedCodingPlanSource?: CodingPlanUsageSource | null;
+  desktopCodex?: boolean;
 }) {
   if (activeTab === "app") {
-    return <AppUsagePanel workspaceIdentity={workspaceIdentity} workspacePath={workspacePath} />;
+    if (desktopCodex) {
+      return (
+        <CodexOnlyUsagePanel
+          key={workspaceIdentity?.trim() || workspacePath || "no-workspace"}
+          workspaceIdentity={workspaceIdentity}
+          workspacePath={workspacePath}
+        />
+      );
+    }
+    return (
+      <AppUsagePanel
+        key={workspaceIdentity?.trim() || workspacePath || "no-workspace"}
+        workspaceIdentity={workspaceIdentity}
+        workspacePath={workspacePath}
+      />
+    );
   }
 
   return (

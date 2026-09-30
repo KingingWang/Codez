@@ -153,6 +153,13 @@ Stop the probe after verification; retain temporary evidence only.
 node packages/ui/src/settings/codex/qa/interaction-e2e.mjs
 ```
 
+On a shared Linux host that has already exhausted the per-user inotify
+instance quota, run this isolated Vite fixture with
+`CHOKIDAR_USEPOLLING=1 node packages/ui/src/settings/codex/qa/interaction-e2e.mjs`.
+This changes only file watching; it does not increase assertions' timeouts or
+override application behavior. A real Electron reload may still fail in this
+environment and is tracked separately.
+
 Optional `AGENT_BROWSER_BIN=/absolute/path/to/agent-browser.js` captures an additional
 agent-browser snapshot using session `codex-ui-qa`. The runner launches system Chrome
 with a temporary home, starts Vite on localhost:5188, blocks non-local HTTP requests,
@@ -169,7 +176,12 @@ Assertions cover NewTask and active-session native selection, reasoning preserva
 catalog failure/recovery, native queue labeling/no resume, required question answers,
 password rendering and no persisted secrets, ID-keyed string arrays in actual V4
 commands, rejected answer recovery/cancel, double-click admission, all four native
-approval option IDs, and versioned configuration writes followed by refresh.
+approval option IDs, versioned configuration writes followed by refresh, a
+form-local invalid JSON path without mutation RPC, stable mode-tooltip ownership,
+and old-Host observation successes/failures arriving after a same-workspace
+reconnect. Actual Electron smoke independently confirms selected-thread history,
+native streamed/image/queued turns, and Codex-only usage; it does not cover
+credentialed models or every desktop and mobile operation.
 
 ## Recorded verification — September 22, 2026
 

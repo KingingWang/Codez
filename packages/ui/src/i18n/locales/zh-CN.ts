@@ -3393,6 +3393,9 @@ const zhCN: Record<string, string> = {
   "settings.usage.loadingTitle": "正在统计中",
   "settings.usage.appUsage.observationNotice":
     "此处 Codex 用量由桌面本地观察统计，不是官方计费账单。",
+  "settings.usage.appUsage.observationEmpty": "尚无已观察到的 Codex 会话。",
+  "settings.usage.appUsage.observationLoading": "正在读取 Codex 本地观察统计…",
+  "settings.usage.appUsage.observationReadError": "无法读取 Codex 本地观察统计，请刷新重试。",
   "settings.usage.appUsage.observedThreads": "已观察 Codex 会话",
   "settings.usage.appUsage.observedInput": "已观察输入 Token",
   "settings.usage.appUsage.observedOutput": "已观察输出 Token",

@@ -30,6 +30,7 @@ import {
   codexProviderUpdateEdits,
 } from "./codexProviderSettings.js";
 import {
+  codexUserApprovalOptions,
   codexAuthorizationUrl,
   codexModelEdits,
   codexPluginInstallRequest,
@@ -45,6 +46,10 @@ import {
 } from "./codexSettingsData.js";
 import { roleFormToWriteInput } from "./CodexAgentsPanel.js";
 import { codexPanelToSection, codexSectionToPanel } from "./codexSettingsNav.js";
+import { selectedCodexHistorySessionId } from "./codexHistorySelection.js";
+import { getDefaultWorkspaceState } from "@/store/codezSessionStoreTypes.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
+import { parseCodexConfigBatchEdits, parseCodexConfigValueEdit } from "./codexConfigValidation.js";
 
 const model = codexModelSchema.parse({
   id: "catalog-id",
@@ -65,6 +70,45 @@ const plugin = {
   installPolicy: "AVAILABLE" as const,
   mustShowInstallationInterstitial: false,
 };
+
+test("native configuration form validates JSON and native edit schema before mutation admission", () => {
+  assert.deepEqual(parseCodexConfigValueEdit(" model ", '"fixture-model"'), {
+    keyPath: "model",
+    value: "fixture-model",
+    mergeStrategy: "replace",
+  });
+  assert.deepEqual(
+    parseCodexConfigBatchEdits(
+      '[{"keyPath":"approval_policy","value":"on-request","mergeStrategy":"replace"}]',
+    ),
+    [{ keyPath: "approval_policy", value: "on-request", mergeStrategy: "replace" }],
+  );
+  assert.throws(() => parseCodexConfigValueEdit("model", "{"));
+  assert.throws(() => parseCodexConfigBatchEdits("{"));
+  assert.throws(() => parseCodexConfigValueEdit("", '"fixture-model"'));
+  assert.throws(() => parseCodexConfigBatchEdits("[]"));
+});
+
+test("history selection reads the active task only from the matching workspace identity", () => {
+  const state = {
+    ...useCodezSessionStore.getState(),
+    workspaces: {
+      "/same": { ...getDefaultWorkspaceState(), activeTaskId: "local-thread" },
+      "remote:A": { ...getDefaultWorkspaceState(), activeTaskId: "remote-thread" },
+      "remote:B": { ...getDefaultWorkspaceState(), activeTaskId: null },
+    },
+  };
+  assert.equal(selectedCodexHistorySessionId(state, "/same"), "local-thread");
+  assert.equal(selectedCodexHistorySessionId(state, "/same", "remote:A"), "remote-thread");
+  assert.equal(selectedCodexHistorySessionId(state, "/same", "remote:B"), undefined);
+  assert.equal(selectedCodexHistorySessionId(state, "/same", "remote:C"), undefined);
+  assert.equal(selectedCodexHistorySessionId(state, null, "remote:A"), undefined);
+});
+
+test("retired untrusted approval is never offered as an explicit user configuration", () => {
+  assert.deepEqual(codexUserApprovalOptions(), ["on-request", "never"]);
+  assert.deepEqual(codexUserApprovalOptions(["untrusted", "on-request"]), ["on-request"]);
+});
 
 test("settings allowlist rejects execution, filesystem and unknown methods", () => {
   for (const method of [

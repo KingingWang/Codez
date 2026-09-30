@@ -3604,6 +3604,10 @@ const enUS: Record<string, string> = {
   "settings.usage.loadingTitle": "Computing usage",
   "settings.usage.appUsage.observationNotice":
     "Codex usage shown here is desktop-observed telemetry, not an official billing statement.",
+  "settings.usage.appUsage.observationEmpty": "No observed Codex threads yet.",
+  "settings.usage.appUsage.observationLoading": "Reading observed Codex usage…",
+  "settings.usage.appUsage.observationReadError":
+    "Could not read desktop-observed Codex usage. Refresh to try again.",
   "settings.usage.appUsage.observedThreads": "Observed Codex threads",
   "settings.usage.appUsage.observedInput": "Observed input tokens",
   "settings.usage.appUsage.observedOutput": "Observed output tokens",

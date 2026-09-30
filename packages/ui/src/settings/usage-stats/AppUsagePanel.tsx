@@ -1,5 +1,5 @@
 import { RefreshCcw } from "lucide-react";
-import { Fragment, lazy, useCallback, useEffect, useState } from "react";
+import { Fragment, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { APP_USAGE_RANGES } from "@codez/shared";
 import type { AppUsageRange, AppUsageSnapshot } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
@@ -11,8 +11,8 @@ import { UsageChartLoadBoundary } from "@/settings/usage-stats/UsageChartLoadBou
 import { UsageHeatmap } from "@/settings/usage-stats/UsageHeatmap.js";
 import { logger } from "@/logger.js";
 import {
+  buildCodexUsageObservationTotals,
   normalizeCodexUsageThreads,
-  type CodexObservedUsageInput,
   type CodexUsageObservationsSnapshot,
 } from "./codexUsageThreads.js";
 import { UsageStatsErrorNotice } from "@/settings/usage-stats/UsageStatsErrorNotice.js";
@@ -41,21 +41,29 @@ const AppUsageModelUsagePieChart = lazy(() =>
 
 export const CODEX_APP_USAGE_OBSERVATION_COPY_ID = "settings.usage.appUsage.observationNotice";
 
-function useCodexUsageObservations(workspace: {
+export function useCodexUsageObservations(workspace: {
   workspaceIdentity?: string;
   workspacePath?: string;
 }) {
   const { usageStatsService } = useServices();
   const [snapshot, setSnapshot] = useState<CodexUsageObservationsSnapshot | null>(null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const readSequence = useRef(0);
   const refresh = useCallback(async () => {
+    const seq = ++readSequence.current;
+    setSnapshot(null);
+    setError(false);
+    setLoading(true);
     const workspacePath = workspace.workspacePath?.trim();
     if (!workspacePath) {
-      setSnapshot(null);
+      setLoading(false);
       return;
     }
     const service = usageStatsService;
     if (typeof service.getCodexUsageObservations !== "function") {
-      setSnapshot(null);
+      setError(true);
+      setLoading(false);
       return;
     }
     try {
@@ -65,56 +73,45 @@ function useCodexUsageObservations(workspace: {
           ? { workspaceIdentity: workspace.workspaceIdentity.trim() }
           : {}),
       });
+      // 同一 identity 的远端 Host 换代后，旧请求的成功/失败都不能覆盖新 owner。
+      if (readSequence.current !== seq) return;
       setSnapshot({
         threads: normalizeCodexUsageThreads((raw as { threads?: unknown }).threads),
         conflict: Boolean((raw as { conflict?: unknown }).conflict),
         stale: Boolean((raw as { stale?: unknown }).stale),
       });
     } catch (error) {
+      if (readSequence.current !== seq) return;
+      setError(true);
       logger.warn("[codex-usage] Reading desktop observations failed", {
         error: error instanceof Error ? error.message : String(error),
         workspaceIdentity: workspace.workspaceIdentity ?? null,
         workspacePath,
       });
+    } finally {
+      if (readSequence.current === seq) setLoading(false);
     }
   }, [usageStatsService, workspace.workspaceIdentity, workspace.workspacePath]);
 
   useEffect(() => {
     void refresh();
+    return () => {
+      readSequence.current++;
+    };
   }, [refresh]);
 
-  return { snapshot, refresh };
+  return { snapshot, refresh, error, loading };
 }
 
-function CodexUsageObservationNotice({ intl }: { intl: ReturnType<typeof useCodezIntl>["intl"] }) {
+export function CodexUsageObservationNotice({
+  intl,
+}: {
+  intl: ReturnType<typeof useCodezIntl>["intl"];
+}) {
   return (
     <p className="text-ui-sm text-foreground-subtle" data-testid="codex-usage-observation-notice">
       {intl.formatMessage({ id: CODEX_APP_USAGE_OBSERVATION_COPY_ID })}
     </p>
-  );
-}
-
-export function buildCodexUsageObservationTotals(
-  threads: Iterable<{ observation: { payload: CodexObservedUsageInput } }>,
-) {
-  return [...threads].reduce(
-    (totals, thread) => {
-      const usage = thread.observation.payload;
-      return {
-        threads: totals.threads + 1,
-        inputTokens: totals.inputTokens + (usage.inputTokens ?? 0),
-        outputTokens: totals.outputTokens + (usage.outputTokens ?? 0),
-        cacheReadTokens: totals.cacheReadTokens + (usage.cacheReadTokens ?? 0),
-        cacheWriteTokens: totals.cacheWriteTokens + (usage.cacheWriteTokens ?? 0),
-      };
-    },
-    {
-      threads: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      cacheReadTokens: 0,
-      cacheWriteTokens: 0,
-    },
   );
 }
 
@@ -144,9 +141,14 @@ export function CodexUsageObservationSummary({
       {items.map(([key, value, tokens]) => (
         <div key={key} className="min-w-0">
           <div className="truncate text-ui-lg font-medium text-foreground">
-            {tokens ? formatCompactTokenUsage(locale, value) : formatCompactNumber(locale, value)}
+            {value === null
+              ? "--"
+              : tokens
+                ? formatCompactTokenUsage(locale, value)
+                : formatCompactNumber(locale, value)}
           </div>
-          <div className="mt-1 truncate text-ui-base text-foreground-subtle">
+          {/* 五列桌面卡片宽度不够容纳英文指标名；换行展示完整语义，避免缓存读/写不可分辨。 */}
+          <div className="mt-1 break-words text-ui-base leading-snug text-foreground-subtle">
             {intl.formatMessage({ id: `settings.usage.appUsage.${key}` })}
           </div>
         </div>

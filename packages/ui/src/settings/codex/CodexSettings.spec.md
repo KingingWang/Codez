@@ -46,6 +46,23 @@ effective configuration, resource installation state, or accepted commands.
   effective configuration and policy restrictions. Mutations are serialized,
   never automatically retried, and followed by authoritative reads. Conflicts and
   overridden values remain visible, not presented as successful activation.
+- If the native requirements response does not supply an approval-policy
+  allowlist, present only current supported user-selectable policies. Retired
+  `untrusted` must not be offered as a user configuration value; project trust
+  level remains a separate native fact and is not reinterpreted as that choice.
+- Single-value and batch JSON are parsed and validated as local drafts before
+  entering the mutation path. Invalid input sends no RPC and shows a form-local
+  error; it must not show the generic "operation may have failed; refresh before
+  retrying" notice reserved for an attempted remote mutation. Editing the input
+  or switching settings panels clears its local validation error. A remote
+  mutation failure remains visible until explicit refresh or a new mutation.
+- The current conversation selection is owned by the workspace-keyed renderer
+  session store. When settings opens over a selected conversation, pass its
+  native session ID and workspace identity to the read-only history projection.
+  A draft workspace has no selected ID and shows the empty-state prompt. A
+  remote workspace with the same path but a different identity must never read
+  the previously selected local/remote thread. The bridge owns history facts;
+  settings holds no duplicate thread cache.
 - Resource enable/install/uninstall controls reflect native returned state. Respect
   plugin availability/install policy and interstitial requirements; do not replace
   required consent with an implicit install. Marketplace actions use native names
@@ -109,6 +126,25 @@ keyed by native question ID (or index fallback), never the legacy nested `answer
 object or question text. Secret answers remain in mounted form state only. Cancel
 and rejection remain explicit. Native approval option IDs pass unchanged. A rejected
 answer keeps the dialog open with an error, and duplicate clicks cannot resend.
+
+The mode dropdown's tooltip remains interactive while the menu is closed, but
+must be suppressed while the menu is open. Its Radix `open` ownership must not
+change between controlled and uncontrolled over the component lifetime.
+The model selector's forced guide tooltip follows the same invariant. Menu
+open/close and guide dismissal must not produce React/Radix ownership warnings.
+
+```text
+selected workspace identity + renderer selected session → history read request
+form draft → local JSON/schema validation → Host native mutation → refresh
+                                    └─ invalid: form error only, no Host request
+```
+
+Acceptance: completed Codex conversation → Settings → Thread history shows
+its native turns; navigating to another same-path identity does not reuse them;
+draft → explicit no-session state. Invalid JSON/schema → local error and zero
+mutation requests; navigation clears it; rejected native write retains its
+remote-failure warning. Opening/closing mode picker repeatedly and dismissing
+model guide leaves tooltip warning count unchanged.
 
 QA uses a dedicated `codex-ui-qa` browser session and isolated app/Codex paths.
 Desktop QA launches the repository's actual `packages/desktop/scripts/dev.mjs`
