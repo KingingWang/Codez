@@ -135,6 +135,27 @@ closed, and native config/skills/plugin requests stay on the canonical execution
 
 ## Desktop surfaces
 
+### Settings deep links and honest diagnostics copy
+
+- The command palette must not register two commands with the same title and
+  handler (the old `suggested-settings` + `settings` pair rendered two identical
+  `Settings` rows in every search). One entry lives in the `suggested` section.
+- Codex-adapted settings sections are reachable from the palette on desktop
+  Hosts: `Codex settings` (account panel), `Codex providers` (providers panel)
+  and `Usage stats` deep-link through `setPendingSettingsSection` +
+  `openSettingsTab`. Non-desktop clients omit these commands instead of
+  showing entries that resolve to legacy surfaces.
+- Task diagnostics copy actions must never hand the user a path that does not
+  exist. `Copy task path` and `Copy log path` are disabled while the resolved
+  path is unknown or proven missing (`exists === false`), in any runtime; the
+  Codex adapter has no `.codez-session` snapshot concept (native rollout +
+  tasks-index.sqlite are the facts), so `Copy task path` resolves to null and
+  stays disabled. `Copy log path` resolves to the Host daily log under
+  `getAppConfigDir()/logs` when that file exists (legacy CLI jsonl only as a
+  fallback) and to null otherwise. Copying a phantom path is treated as a
+  defect, not a convenience. Both task action menus and grouped task context
+  menus must keep a non-null path with `exists: false` disabled.
+
 ### Native model retry visibility
 
 - Codex alone decides whether a model request is retrying. An app-server `error`
@@ -179,6 +200,7 @@ Acceptance scenarios:
 4. An existing V4 legacy numeric `apiRetry` still displays its existing
    attempt-count semantics. A replayable mobile snapshot reflects only the
    current turn-scoped status; desktop continuous delivery remains independent.
+
 ### Open renderer startup debt (not a gate)
 
 The production main-window HTML currently emits 280 eager `modulepreload` links,
@@ -211,6 +233,9 @@ real fix achieves, not the current baseline.
   WebContents liveness so it never runs against a half-torn-down object. Exceeding
   the budget logs an explicit warning instead of silently leaving the window dead.
   Non-primary windows keep their existing handling.
+  The existing main-application WebContents registry identifies workspace
+  windows before their first Host attachment; About, resource manager, update
+  prompts and other auxiliary windows must not consume the recovery budget.
   In-place reload is the first-line recovery on every platform; the coordinator's
   discard-and-recreate of a crashed window stays the last resort (macOS `activate`,
   or a later primary-window request on other platforms), never the first response.

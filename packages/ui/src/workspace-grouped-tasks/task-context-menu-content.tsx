@@ -35,8 +35,8 @@ export function GroupedTaskContextMenuContent({
     formatMessage: (desc: { id: string }) => string;
   };
   fileManagerLabel: string;
-  taskSessionFile: { loading: boolean; path: string | null };
-  taskNativeSessionLogFile: { loading: boolean; path: string | null };
+  taskSessionFile: { loading: boolean; path: string | null; exists: boolean };
+  taskNativeSessionLogFile: { loading: boolean; path: string | null; exists: boolean };
   onMoveTaskToGroup: (task: CodezTaskMeta, groupId: string | null) => void;
   onMoveTaskToTop: (task: CodezTaskMeta) => void;
   onStartRenameTask: (task: CodezTaskMeta) => void;
@@ -147,8 +147,10 @@ export function GroupedTaskContextMenuContent({
       >
         {intl.formatMessage({ id: "appHeader.copyPath" })}
       </ContextMenuItem>
+      {/* 与普通任务菜单保持同一合同：exists=false 是已确认缺失，
+          禁用诊断路径复制，避免把幽灵路径写进剪贴板。 */}
       <ContextMenuItem
-        disabled={taskSessionFile.loading || !taskSessionFile.path}
+        disabled={taskSessionFile.loading || !taskSessionFile.path || !taskSessionFile.exists}
         onSelect={() =>
           onCopyText(intl.formatMessage({ id: "appHeader.copyTaskPath" }), taskSessionFile.path)
         }
@@ -156,7 +158,11 @@ export function GroupedTaskContextMenuContent({
         {intl.formatMessage({ id: "appHeader.copyTaskPath" })}
       </ContextMenuItem>
       <ContextMenuItem
-        disabled={taskNativeSessionLogFile.loading || !taskNativeSessionLogFile.path}
+        disabled={
+          taskNativeSessionLogFile.loading ||
+          !taskNativeSessionLogFile.path ||
+          !taskNativeSessionLogFile.exists
+        }
         onSelect={() =>
           onCopyText(
             intl.formatMessage({ id: "appHeader.copyLogPath" }),

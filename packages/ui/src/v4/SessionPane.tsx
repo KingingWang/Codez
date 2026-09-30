@@ -144,6 +144,10 @@ import {
   isCodexDesktopFileRewindAvailable,
   useCodexDesktopFileRewindCapability,
 } from "@/capabilities/useCodexDesktopFileRewindCapability.js";
+import {
+  isCodexMessageFeedbackAvailable,
+  useCodexMessageFeedbackCapability,
+} from "@/capabilities/useCodexMessageFeedbackCapability.js";
 import { SessionSubscriptionErrorPanel } from "@/v4/SessionSubscriptionErrorPanel.js";
 import { ConversationTimeline } from "@/v4/ConversationTimeline.js";
 import { ConversationShareImportNotice } from "@/v4/ConversationShareImportNotice.js";
@@ -578,6 +582,20 @@ export function SessionPane({
       ...(workspaceIdentity ? { workspaceIdentity } : {}),
     },
     { onRuntimeRestart, onRuntimeLifecycle },
+  );
+  // 原生 Codex 无逐条反馈通道：unsupported 时隐藏点赞/点踩，避免死按钮静默回滚。
+  const messageFeedbackAvailability = useCodexMessageFeedbackCapability(
+    services.codezAgentService,
+    {
+      workspacePath,
+      ...(workspaceIdentity ? { workspaceIdentity } : {}),
+    },
+    { onRuntimeRestart, onRuntimeLifecycle },
+    isDesktop,
+  );
+  const messageFeedbackSupported = isCodexMessageFeedbackAvailable(
+    messageFeedbackAvailability,
+    isDesktop,
   );
   const gitAuxiliaryCapability = useGitAuxiliaryCapability(services, {
     workspacePath,
@@ -4945,7 +4963,9 @@ export function SessionPane({
               onFork={forkActionsEnabled ? handleFork : undefined}
               onRetry={retryActionsEnabled ? handleRetry : undefined}
               onFeedbackChange={
-                !readOnly && !selectionSideChat && sessionId ? handleAssistantFeedback : undefined
+                !readOnly && !selectionSideChat && sessionId && messageFeedbackSupported
+                  ? handleAssistantFeedback
+                  : undefined
               }
               onEdit={editActionsEnabled ? handleEdit : undefined}
               canLoadOlder={timelineSnapshot ? hasOlderRows(timelineSnapshot) : false}

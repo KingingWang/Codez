@@ -33,6 +33,7 @@ import { V4ComposerModeSwitch } from "@/v4/composer/V4ComposerModeControls.js";
 import type { V4ComposerConfigPicker } from "@/v4/composer/configPickerState.js";
 import { CatalogLifetimeControls, waitForCatalogFixture } from "./catalog-lifetime-fixture.js";
 import { UsageObservationRaceFixture } from "./usage-observation-fixture.js";
+import { MessageFeedbackFixture } from "./message-feedback-fixture.js";
 import { config, model, otherWorkspaceConfig, questions } from "./harnessConfig.js";
 import {
   createProjectDiscoveryLocalServices,
@@ -292,6 +293,7 @@ function Harness() {
       <ProjectDiscoveryFixture />
       <CatalogLifetimeControls read={read} output={setOutput} />
       <UsageObservationRaceFixture />
+      <MessageFeedbackFixture />
       <section aria-label="Composer" className="space-y-2">
         <V4ComposerModeSwitch
           workspacePath={workspacePath}

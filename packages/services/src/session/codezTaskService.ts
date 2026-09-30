@@ -610,13 +610,17 @@ export interface ICodezTaskService {
     workspaceIdentity?: string;
   }): Promise<CodezTaskTokenUsageResult>;
 
-  /** 获取 task 持久化快照文件路径（统一为 {taskId}.json，软删除例外为 .deleted.json） */
+  /**
+   * 获取 task 持久化快照文件路径（统一为 {taskId}.json，软删除例外为 .deleted.json）。
+   * 没有快照文件概念的运行时（Codex：原生 rollout + tasks-index.sqlite）返回
+   * path=null，调用方必须把 null 呈现为「不可复制」而不是复制幻影路径。
+   */
   getTaskSessionFilePath(params: {
     taskId: string;
     workspacePath: string;
     workspaceIdentity?: string;
   }): Promise<{
-    path: string;
+    path: string | null;
     exists: boolean;
   }>;
 

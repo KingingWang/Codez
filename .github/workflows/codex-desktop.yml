@@ -53,7 +53,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: node --test scripts/test-codex-distribution*.mjs
       - name: Codex service, desktop and remote deployment regressions (Linux once)
-        run: pnpm exec tsx --test packages/services/test/codex*.test.ts packages/desktop/test/codex*.test.ts packages/server/test/codex*.test.ts
+        run: pnpm exec tsx --test packages/services/test/codex*.test.ts packages/desktop/test/codex*.test.ts packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts packages/server/test/codex*.test.ts
       - name: Codex UI settings regressions (Linux once)
         run: pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test packages/ui/src/settings/codex/*.test.ts packages/ui/src/settings/codex/*.test.tsx
       # 这些回归不在 settings/codex 目录，必须显式纳入，防止 rebase 后修复失守。
@@ -68,6 +68,9 @@ jobs:
           packages/ui/src/capabilities/useGitAuxiliaryCapability.test.ts
           packages/ui/src/capabilities/codexCapabilities.test.ts
           packages/ui/src/capabilities/useCodexAutoReviewApprovals.test.ts
+          packages/ui/src/capabilities/useCodexMessageFeedbackCapability.test.tsx
+          packages/ui/src/settings/usage-stats/AppUsagePanel.test.tsx
+          packages/ui/src/TaskActionMenuContent.test.tsx
           packages/ui/src/v4/composer/composerDraftModeNormalization.test.ts
           packages/ui/src/v4/composer/codexFullAccessAcknowledgement.test.ts
       - name: Assemble four remote targets without compiling Codex

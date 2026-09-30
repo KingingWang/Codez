@@ -1022,6 +1022,24 @@ export function App({
             setPendingSettingsPluginIntent("mcps");
             openSettingsTab();
           },
+          // Codex 适配器深链（specs/codex-desktop-adapter.md「设置深链」）：
+          // 仅桌面 Host 注册，命令面板搜 codex/provider/usage 可直达对应分区。
+          ...(isDesktop
+            ? {
+                openCodexSettings: () => {
+                  setPendingSettingsSection("codex");
+                  openSettingsTab();
+                },
+                openCodexProviders: () => {
+                  setPendingSettingsSection("modelProvider");
+                  openSettingsTab();
+                },
+                openUsageStats: () => {
+                  setPendingSettingsSection("usage");
+                  openSettingsTab();
+                },
+              }
+            : {}),
           switchTheme: handleSwitchTheme,
           openFeedback: handleOpenFeedback,
           openCommunity: handleOpenCommunity,

@@ -153,8 +153,15 @@ export function TaskActionMenuContent({
       >
         {intl.formatMessage({ id: "appHeader.copyPath" })}
       </Item>
+      {/* 诊断复制入口必须交付真实文件：hook 的 exists=false 已确认缺失，
+          旧日志路径约定会让幽灵路径继续可复制，现按桌面适配器合同禁用。 */}
       <Item
-        disabled={taskTargetActionsDisabled || taskSessionFile.loading || !taskSessionFile.path}
+        disabled={
+          taskTargetActionsDisabled ||
+          taskSessionFile.loading ||
+          !taskSessionFile.path ||
+          !taskSessionFile.exists
+        }
         title={taskTargetActionsDisabled ? disabledReason : undefined}
         onSelect={onCopyTaskPath}
       >
@@ -164,7 +171,8 @@ export function TaskActionMenuContent({
         disabled={
           taskTargetActionsDisabled ||
           taskNativeSessionLogFile.loading ||
-          !taskNativeSessionLogFile.path
+          !taskNativeSessionLogFile.path ||
+          !taskNativeSessionLogFile.exists
         }
         title={taskTargetActionsDisabled ? disabledReason : undefined}
         onSelect={onCopyTaskLogPath}

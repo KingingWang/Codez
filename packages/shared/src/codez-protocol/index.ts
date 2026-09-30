@@ -97,6 +97,8 @@ export const codexFeatureCapabilitiesSchema = z.strictObject({
   legacyWorkflowRuns: codexFeatureCapabilityStateSchema,
   // 旧 peer 缺省该字段；消费方把缺省解析为 unsupported（composer 隐藏 Approve for me 档）。
   autoReviewApprovals: codexFeatureCapabilityStateSchema.optional(),
+  // 旧 peer 缺省该字段；消费方把缺省解析为 unsupported（会话行隐藏点赞/点踩）。
+  messageFeedback: codexFeatureCapabilityStateSchema.optional(),
 });
 /** Source discovery failed. Feature omission remains the old-peer unsupported case. */
 export const codexCapabilityUnavailableSchema = z.strictObject({

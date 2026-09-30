@@ -1,5 +1,26 @@
 import assert from "node:assert/strict";
 
+export async function verifyMessageFeedback(page, checks) {
+  const feedback = page.getByTestId("message-feedback-fixture");
+  assert.equal(await feedback.getByTestId("feedback-hello-reads").innerText(), "0");
+  await feedback.getByRole("button", { name: "Like", exact: true }).click();
+  assert.equal(await feedback.getByTestId("feedback-writes").innerText(), "1");
+  await feedback.getByRole("button", { name: "Use Desktop feedback", exact: true }).click();
+  await feedback
+    .getByTestId("feedback-hello-reads")
+    .filter({ hasText: /^[1-9]/ })
+    .waitFor();
+  assert.equal(await feedback.getByRole("button", { name: /^(Like|Liked|Dislike)$/ }).count(), 0);
+  const desktopHelloReads = await feedback.getByTestId("feedback-hello-reads").innerText();
+  await feedback.getByRole("button", { name: "Use Web feedback", exact: true }).click();
+  await feedback.getByRole("button", { name: "Dislike", exact: true }).click();
+  assert.equal(await feedback.getByTestId("feedback-writes").innerText(), "2");
+  assert.equal(await feedback.getByTestId("feedback-hello-reads").innerText(), desktopHelloReads);
+  checks.push(
+    "Shared Web/legacy row actions retain working feedback without Codex hello; Desktop unsupported hides feedback and sends no command",
+  );
+}
+
 export function createCatalogConfigReadCounter(page, result) {
   return async (workspacePath = "/isolated/workspace") => {
     await page.getByRole("button", { name: "Inspect RPC log", exact: true }).click();

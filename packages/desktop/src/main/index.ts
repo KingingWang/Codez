@@ -205,6 +205,7 @@ import {
 } from "./desktopRemoteUsageArmsTelemetry.js";
 import { resolveCanonicalWslTarget } from "./desktopWslTargetResolver.js";
 import {
+  isMainApplicationWindowWebContents,
   listRegisteredHostAgentProcessIds,
   setBrowserUseGuestWebContentsIdsProvider,
 } from "./resourceManagerWindow.js";
@@ -2464,7 +2465,9 @@ app.on("browser-window-created", (_, win) => {
   });
   win.webContents.on("render-process-gone", (_event, details) => {
     resetShortcutRecordingForWebContents(windowWebContentsId);
-    if (!getMainApplicationWindows().includes(win)) return;
+    // getMainApplicationWindows 也包含 About/资源管理器等辅助窗口；复用既有
+    // workspace WebContents 注册表，避免对非主界面应用 reload/恢复预算。
+    if (!isMainApplicationWindowWebContents(windowWebContentsId)) return;
     rendererCrashRecovery.handle(details);
   });
 });

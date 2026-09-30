@@ -220,11 +220,13 @@ test("bridge capability authority is runtime-dispatch-derived and exposes every 
   );
   assert.deepEqual(
     Object.values(capabilities).sort(),
-    ["degraded", ...Array(7).fill("supported"), ...Array(2).fill("unsupported")].sort(),
+    ["degraded", ...Array(7).fill("supported"), ...Array(3).fill("unsupported")].sort(),
   );
   assert.equal(capabilities.auxiliaryTextGeneration, "supported");
   assert.equal(capabilities.scheduledPromptAutomations, "supported");
   assert.equal(capabilities.legacyWorkflowRuns, "unsupported");
+  // 原生无逐条反馈通道：显式 unsupported，UI 据此隐藏点赞/点踩。
+  assert.equal(capabilities.messageFeedback, "unsupported");
   // 缺省第三参 = 旧 peer 语义：autoReviewApprovals 投影为 unsupported。
   assert.equal(
     bridgeCodexFeatureCapabilities({ supports: () => false }).autoReviewApprovals,

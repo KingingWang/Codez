@@ -141,6 +141,7 @@ import type {
   CodezTaskIndexTerminalEvent,
 } from "./codezTaskIndexSyncer.js";
 import { readModelTrajectory } from "./modelTrajectory.js";
+import { getAppConfigDir } from "#src/paths.js";
 import {
   buildCodexAutomationSendTextPayload,
   resolveCodexAutomationTerminalOutcome,
@@ -250,6 +251,15 @@ function resolveCodezAgentCurrentLogFilePath(now = new Date()): string {
   const configuredLogDir = process.env.CODEZ_LOG_DIR?.trim();
   const logDir = configuredLogDir || join(homedir(), ".codez", "cli", "log");
   return join(logDir, `codez-${formatCodezAgentLogDate(now)}.jsonl`);
+}
+
+/**
+ * Codex 适配器的结构化日志事实源是 Desktop Host 的按日 .log（main logger 落盘于
+ * getAppConfigDir()/logs）。legacy CLI 的 jsonl 目录在本运行时不存在；两个候选都
+ * 缺失时调用方返回 null，让菜单禁用而不是复制幻影路径。
+ */
+function resolveDesktopHostCurrentLogFilePath(now = new Date()): string {
+  return join(getAppConfigDir(), "logs", `${formatCodezAgentLogDate(now)}.log`);
 }
 
 export function createCodezTaskServiceAdapter(
@@ -2832,9 +2842,13 @@ export function createCodezTaskServiceAdapter(
     },
 
     async getTaskNativeSessionLogFile() {
-      const path = resolveCodezAgentCurrentLogFilePath();
-      // 返回 Codez Agent 的结构化日志 JSONL；日志行中的 sessionId 用于按当前任务排查。
-      return { provider: GLM_PROVIDER, path, exists: existsSync(path) };
+      // Codex 运行时没有 legacy CLI jsonl；优先返回真实存在的 Host 按日日志，
+      // 两者都缺失时 path=null，菜单按「不可复制」禁用（specs/codex-desktop-adapter.md）。
+      const path =
+        [resolveDesktopHostCurrentLogFilePath(), resolveCodezAgentCurrentLogFilePath()].find(
+          (candidate) => existsSync(candidate),
+        ) ?? null;
+      return { provider: GLM_PROVIDER, path, exists: path !== null };
     },
 
     async getModelTrajectory(params) {
@@ -2857,11 +2871,10 @@ export function createCodezTaskServiceAdapter(
       });
     },
 
-    async getTaskSessionFilePath(params) {
-      return {
-        path: `${params.workspacePath}/${params.taskId}.codez-session`,
-        exists: false,
-      };
+    async getTaskSessionFilePath() {
+      // Codex 线程的事实源是原生 rollout 与 tasks-index.sqlite，不存在 .codez-session
+      // 快照文件；返回 null 让「复制任务路径」禁用，避免复制永不存在的幻影路径。
+      return { path: null, exists: false };
     },
 
     async restartWorkspaceProcess(params): Promise<void> {

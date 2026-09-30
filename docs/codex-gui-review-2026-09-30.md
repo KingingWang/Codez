@@ -173,6 +173,69 @@ dom-ready 后约 0.2s 内再次崩溃（模块风暴 + inotify 耗尽），因�
    性能债与正确方向（审计 `lucide-react` barrel 导入做 tree-shake），并明确未来
    任何预算断言必须对应真实修复可达的目标，不能把现状或巨型图标 chunk 当门槛。
 
+## 第五轮：全表面逐操作实测 + 适配缺口修复（commit 91f830f）
+
+在真实 Electron（隔离 QA home、loopback mock provider、CDP 9229）上对 GUI 的每个
+可达表面与操作做了一遍完整 walkthrough：侧栏（分组/时间线、筛选排序、归档生命周期、
+置顶、添加项目、拖拽与键盘改宽）、命令面板（空态/Actions/Tasks/Files、主题切换、
+深链）、会话区（query map、复制、编辑+取消、worked-for 展开、图片预览缩放、斜杠
+命令、权限模式菜单、模型选择器键盘与鼠标双路径、reasoning effort 按模型出现、
+添加上下文、发送禁用态）、头部（More 菜单 11 项、Help 6 项、终端真实执行、侧栏
+Review 的诚实 Git 空态）、设置页 14 个分区与 Codex 10 个子面板、配置写入的非法
+JSON 拦截、中/英切换、快捷键搜索、Automations/Workflows、插件市场、手机远控
+对话框、空态问候与建议 chips。全程 console error / page error 均为 0。
+
+本轮发现并修复六个适配缺口（spec 先行，见对应 spec 增补）：
+
+1. **Provider Base URL 无校验**：`not-a-url` 曾被直接写进原生 config.toml，
+   生成运行时才会失败的坏配置。现按原生 `url::Url::parse` 口径在写入前拒绝
+   （`providerBaseUrlInvalid`），实测非法值被拦截且 config 不落盘、合法值正常落盘。
+2. **命令面板重复 Settings**：`suggested-settings` 与 `settings` 双注册导致任何
+   搜索都出现两条同名结果；现仅保留一条（suggested 分区）。
+3. **命令面板搜不到 Codex 设置**：搜 codex/provider/usage 均零结果。新增
+   `Codex settings` / `Codex providers` / `Usage stats` 三条深链（仅桌面 Host
+   注册，web/legacy 不显示死入口），实测直达对应分区。
+4. **复制日志路径给幻影路径**：Codex 运行时不存在 legacy CLI jsonl。现解析真实
+   Host 按日日志（`getAppConfigDir()/logs`），实测复制出的路径在磁盘上存在。
+5. **复制任务路径给幻影路径**：Codex 线程事实源是原生 rollout + tasks-index.sqlite，
+   没有 `.codez-session`。接口允许 `path: null`，菜单项禁用，实测为 [disabled]。
+6. **点赞/点踩是死按钮**：原生 Codex 无逐条反馈通道，命令永远被拒后静默回滚。
+   新增 `messageFeedback` 能力位（bridge 显式 unsupported，旧 peer 缺省同义），
+   unsupported 时不渲染按钮，实测会话行 0 个 Like/Dislike 而 Copy/Edit/Fork 保留。
+
+验证：bridge 单测 455 通过、ui 69 通过、desktop codex\* 55 通过、typecheck/lint(0e)/
+architecture(0 violations) 全绿；真实桌面 conversation-check 10 项通过（sendTimings
+399/358ms）；interaction-e2e 通过。代码审查结论 APPROVE WITH NITS（MEDIUM 为
+rebase 解冲突造成的 spec 标题粘连，已修；两条 LOW 见下「审查回应」）。
+
+### 审查回应
+
+- MEDIUM（已采纳）：`specs/codex-desktop-adapter.md` 中 retry 一节末句与
+  「Open renderer startup debt」标题粘连在同一行，已补空行。
+- LOW（驳回）：建议为 `getTaskSessionFilePath` 的恒定 null 结果在 hook 层短路
+  以免一次 RPC。驳回理由：该 RPC 与其余菜单路径解析共用同一 service 合同与缓存
+  时机，引入「无快照概念」能力位会把运行时事实复制成第二个判定来源；菜单打开
+  频次极低，收益不足以抵消合同分裂风险。
+- LOW（记录）：`getTaskNativeSessionLogFile` 的 path 语义从「约定路径（可能不
+  存在）」变为「存在才非 null」。现有唯一消费者（复制/禁用）已按新语义实现，
+  接口 JSDoc 与 spec 已声明；未来若需展示「预期路径」应另加字段而非回退语义。
+
+### 架构 lane 审查回应（替补审查，APPROVE WITH NITS）
+
+首个架构 subagent 与第一次替补在本环境内均未返回（与上一轮首个架构 lane 相同的
+卡死模式），最终由范围收紧的替补审查完成，结论 **APPROVE WITH NITS**，五个架构
+问题（能力所有权、层界、面板单一判定源、null 安全、spec 一致性）全部通过，
+`pnpm architecture:check --changed` 0 violations。两条 LOW 的处置：
+
+- LOW（驳回）：建议把 `useCodexMessageFeedbackCapability` 与
+  `useCodexDesktopFileRewindCapability` 的 `helloConversationV4` 合并为共享缓存。
+  驳回理由：现有 rewind / autoReview / gitAuxiliary 三个能力 hook 均是各自独立
+  hello + `bindRuntimeCapabilityRefresh` 统一刷新；引入共享缓存会新增一份缓存
+  生命周期与 transport 替换失效的所有权问题，收益（每次 pane 挂载少一次本地
+  hello RPC）不足以改变既有模式。
+- LOW（已采纳）：在 `isCodexProviderBaseUrlValid` 补注释说明 hostname 检查是主
+  防线、try/catch 只覆盖语法非法输入，避免误读 `new URL("http://")` 的引擎差异。
+
 ### 环境受限项的现场证据（probe3）
 
 `desktop-check.mjs` 在本容器仍不能通过：runner 截图时 renderer 原生崩溃
