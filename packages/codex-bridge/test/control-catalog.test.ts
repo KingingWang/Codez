@@ -285,6 +285,23 @@ test("catalog/deleteModel removes by slug and reports missing entries honestly",
   );
 });
 
+test("catalog/deleteModel cannot write a configured empty catalog when deleting the last model", async () => {
+  const original = '{\n  "models": [{ "slug": "only-model", "provider": "fixture" }]\n}\n';
+  const f = await fixture(original);
+  const context = { rpc: rpcWithConfig({ model_catalog_json: f.catalogPath }), cwd: f.cwd };
+  const workspace = { workspace: { workspacePath: f.cwd, workspaceKey: f.cwd } };
+  await assert.rejects(
+    handleCatalogRequest("catalog/deleteModel", { ...workspace, slug: "only-model" }, context),
+    /must retain at least one model/,
+  );
+  assert.equal(await readFile(f.catalogPath, "utf8"), original, "rejected write preserves bytes");
+  await assert.rejects(
+    handleCatalogRequest("catalog/deleteModel", { ...workspace, slug: "missing" }, context),
+    /not found/,
+  );
+  assert.equal(await readFile(f.catalogPath, "utf8"), original);
+});
+
 test("catalog write methods reject foreign workspaces", async () => {
   const f = await fixture(JSON.stringify({ models: [] }));
   const context = {

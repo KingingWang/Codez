@@ -300,6 +300,11 @@ export function CodexProvidersPanel({
                       {text.modelDeleteDefaultWarning}
                     </p>
                   ) : null}
+                  {catalog?.models.length === 1 ? (
+                    <p className="text-ui-sm text-foreground-subtle">
+                      {text.modelDeleteLastBlocked}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Switch
@@ -323,7 +328,8 @@ export function CodexProvidersPanel({
                   </Button>
                   <CodexConfirmButton
                     label={text.providerDelete}
-                    disabled={Boolean(disabled)}
+                    targetLabel={view.slug}
+                    disabled={Boolean(disabled) || catalog?.models.length === 1}
                     onConfirm={() => deleteModel(view.slug)}
                   />
                 </div>
@@ -373,6 +379,8 @@ export function CodexProvidersPanel({
             </p>
             <CodexConfirmButton
               label={text.modelRestartRuntime}
+              confirmationLabel={text.modelConfirmRestart}
+              confirmationNotice={text.modelRestartRuntimeConfirm}
               disabled={Boolean(disabled)}
               onConfirm={restartRuntime}
             />

@@ -92,7 +92,6 @@ test("crash recovery uses the registered workspace window boundary, not all appl
   );
   assert.doesNotMatch(wiring, /getMainApplicationWindows\(\)|windowHostProcessMap\./u);
 });
-
 test("crash recovery defers reload and re-checks liveness and quit state", () => {
   const scheduled: Array<() => void> = [];
   const reloads: string[] = [];

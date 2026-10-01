@@ -159,6 +159,9 @@ async function deleteCatalogModel(
   if (models.length === existing.models.length) {
     failure(method, `model "${slug}" not found in catalog ${path}`);
   }
+  // Codex 启动期拒绝已配置的空目录；只校验 UI 上一次读取会有竞态，
+  // 因此必须在 bridge 本次读取后、原子写入前守住最后一条模型。
+  if (models.length === 0) failure(method, "model_catalog_json must retain at least one model");
   await writeCatalogFileAtomic(method, path, models);
   return catalogMapping(path, models);
 }

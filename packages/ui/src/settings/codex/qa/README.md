@@ -79,11 +79,17 @@ explicit renderer/CDP ports:
 CODEZ_DESKTOP_RUNTIME=codex CODEZ_ENV=production pnpm --filter @codez/desktop exec vite build --logLevel error
 CODEZ_DESKTOP_RUNTIME=codex CODEZ_ENV=production pnpm --filter @codez/desktop exec vite preview --host 127.0.0.1 --port 5175 --strictPort
 CODEX_UI_QA_RENDERER_PORT=5175 CODEX_UI_QA_CDP_PORT=9231 CODEX_UI_QA_MOCK=1 node packages/ui/src/settings/codex/qa/desktop-probe.mjs
+CODEX_UI_QA_RENDERER_PORT=5175 CODEX_UI_QA_CDP_PORT=9231 node packages/ui/src/settings/codex/qa/desktop-check.mjs
 CODEX_UI_QA_RENDERER_PORT=5175 CODEX_UI_QA_CDP_PORT=9231 CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/qa/desktop-retry-check.mjs
 ```
 
 The parallel probe uses the real locally built Electron main/preload/Host,
 renderer and pinned native bridge. It does not use `dev.mjs`'s fixed dev ports.
+The desktop check accepts only this explicitly selected localhost QA renderer
+and checks native settings, the inner Codex navigation/breadcrumb relationship,
+and target-specific accessible names for skill/plugin/marketplace controls;
+it never installs a plugin or confirms marketplace deletion. Run conversation,
+retry and interrupted-turn checks with separate fresh mock probes.
 Use the mock port printed by that fresh probe. Run the existing
 `desktop-conversation-check.mjs` on another fresh isolated probe for image,
 busy-input and native queue regression; do not reuse a mock after a turn.
@@ -94,6 +100,9 @@ For the interrupted-turn recovery entry, launch a **fresh** probe with
 CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/qa/desktop-interrupted-turn-check.mjs
 ```
 
+For an isolated preview on alternate ports, pass the same
+`CODEX_UI_QA_RENDERER_PORT` and `CODEX_UI_QA_CDP_PORT` used for the fresh probe;
+the checker rejects a different renderer URL and does not attach to another app.
 It sends one text prompt to the held loopback provider, clicks the composer stop
 control while the native turn is running, and asserts the interrupted turn end
 renders an always-visible `v4-retry-<rowId>` continue entry. Clicking it must dispatch
@@ -177,6 +186,7 @@ password rendering and no persisted secrets, ID-keyed string arrays in actual V4
 commands, rejected answer recovery/cancel, double-click admission, all four native
 approval option IDs, versioned configuration writes followed by refresh, a
 form-local invalid JSON path without mutation RPC, stable mode-tooltip ownership,
+single-model catalog deletion disabled, restart interruption confirmation/cancel,
 and old-Host observation successes/failures arriving after a same-workspace
 reconnect. Actual Electron smoke independently confirms selected-thread history,
 native streamed/image/queued turns, and Codex-only usage; it does not cover

@@ -20,11 +20,50 @@ export async function verifyMessageFeedback(page, checks) {
     "Shared Web/legacy row actions retain working feedback without Codex hello; Desktop unsupported hides feedback and sends no command",
   );
 }
+export async function inspectRpcLog(page, result) {
+  const previous = (await result())?.inspection ?? 0;
+  await page.getByRole("button", { name: "Inspect RPC log", exact: true }).click();
+  await page.waitForFunction((revision) => {
+    try {
+      const current = JSON.parse(document.querySelector('[data-testid="result"]')?.textContent);
+      return typeof current.inspection === "number" && current.inspection > revision;
+    } catch {
+      return false;
+    }
+  }, previous);
+  return result();
+}
+
+export async function verifySingleCatalogModelAndRestart(page, settings, result, checks) {
+  const catalogModels = settings.getByRole("heading", { name: "Catalog models" }).locator("..");
+  const deleteLast = catalogModels.getByRole("button", { name: "Delete second-model" });
+  await deleteLast.waitFor();
+  assert.equal(await deleteLast.isDisabled(), true);
+  await catalogModels.getByText(/at least one catalog model/i).waitFor();
+  checks.push(
+    "A configured single-model catalog cannot offer deletion that would break native Codex",
+  );
+  await catalogModels.getByRole("switch", { name: "Hidden from the model picker" }).click();
+  const restartRuntime = settings.getByRole("button", { name: "Restart runtime now" });
+  await restartRuntime.waitFor();
+  await restartRuntime.click();
+  await settings
+    .getByText("Restarting interrupts running tasks in this workspace. Continue?")
+    .waitFor();
+  await settings.getByRole("button", { name: "Confirm restart" }).waitFor();
+  await settings.getByRole("button", { name: "Cancel", exact: true }).click();
+  assert.equal((await inspectRpcLog(page, result)).runtimeDisposals, 0);
+  await restartRuntime.click();
+  await settings.getByRole("button", { name: "Confirm restart" }).click();
+  assert.equal((await inspectRpcLog(page, result)).runtimeDisposals, 1);
+  checks.push(
+    "Catalog restart warns about in-flight tasks; cancel does not dispose, confirmation disposes once",
+  );
+}
 
 export function createCatalogConfigReadCounter(page, result) {
   return async (workspacePath = "/isolated/workspace") => {
-    await page.getByRole("button", { name: "Inspect RPC log", exact: true }).click();
-    const requests = (await result()).requests ?? [];
+    const requests = (await inspectRpcLog(page, result)).requests ?? [];
     return requests.filter(
       (request) => request.method === "config/read" && request.workspacePath === workspacePath,
     ).length;
@@ -68,9 +107,9 @@ export async function verifyLocalConfigValidation(page, settings, result, checks
   // 此处仅断言 alert 存在且不为空，生产端用户侧的契约不依赖特定引擎文案。
   assert.ok((await settings.getByRole("alert").innerText()).length > 0);
   assert.equal(await settings.getByText(/Operation failed\. Refresh/).count(), 0);
-  await page.getByRole("button", { name: "Inspect RPC log", exact: true }).click();
+  const rpcLog = await inspectRpcLog(page, result);
   assert.equal(
-    (await result()).requests.filter((request) => request.method === "config/value/write").length,
+    rpcLog.requests.filter((request) => request.method === "config/value/write").length,
     0,
   );
   await settings.getByRole("button", { name: "Models & permissions" }).click();

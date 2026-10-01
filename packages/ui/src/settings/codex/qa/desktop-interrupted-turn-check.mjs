@@ -10,7 +10,11 @@ import { chromium } from "playwright-core";
 const mockUrl = new URL(process.env.CODEX_UI_QA_MOCK_URL ?? "http://invalid/");
 assert.equal(mockUrl.hostname, "127.0.0.1", "Only the isolated loopback mock is permitted");
 const packaged = process.env.CODEX_UI_QA_PACKAGED === "1";
+const rendererPort = Number(process.env.CODEX_UI_QA_RENDERER_PORT ?? 5174);
 const cdpPort = Number(process.env.CODEX_UI_QA_CDP_PORT ?? (packaged ? 9230 : 9229));
+for (const port of [rendererPort, cdpPort]) {
+  assert.ok(Number.isInteger(port) && port > 1023 && port <= 65535, "Invalid isolated QA port");
+}
 const state = async () => (await fetch(new URL("/qa", mockUrl))).json();
 const evidence = await mkdtemp(join(tmpdir(), "codex-ui-interrupted-turn-"));
 const checks = [];
@@ -21,7 +25,14 @@ const page = browser
   .contexts()
   .flatMap((context) => context.pages())
   .find((entry) => {
-    if (!packaged) return /^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):5174\//.test(entry.url());
+    if (!packaged) {
+      const url = new URL(entry.url());
+      return (
+        url.protocol === "http:" &&
+        ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) &&
+        Number(url.port) === rendererPort
+      );
+    }
     return entry.url().includes("resources/app.asar/out/renderer/index.html");
   });
 assert.ok(page, "Refuse a non-QA renderer");

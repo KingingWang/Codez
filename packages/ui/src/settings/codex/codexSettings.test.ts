@@ -373,9 +373,10 @@ test("settings section and internal panel mappings stay inverse and complete", (
     assert.equal(isCodexSettingsSection(section), true);
     assert.equal(codexSectionToPanel(section), panel);
   }
-  // 没有侧栏分区的面板保持内部切换（返回 null），其余分区落到 account。
+  // 内部专属面板必须归属 Codex 顶层分区；否则从 MCP 等子页进入时
+  // 会沿用之前的标题与侧栏高亮，误导用户以为正在修改 MCP 配置。
   for (const panel of ["models", "config", "history"] as const)
-    assert.equal(codexPanelToSection(panel), null);
+    assert.equal(codexPanelToSection(panel), "codex");
   assert.equal(codexSectionToPanel("codex"), "account");
   assert.equal(codexSectionToPanel("general"), "account");
 });

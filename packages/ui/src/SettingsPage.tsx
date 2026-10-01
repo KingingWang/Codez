@@ -341,6 +341,8 @@ export function SettingsPage({
     writeLastSettingsSectionPreference(visibleInitialSection);
     return visibleInitialSection;
   });
+  // 只有没有独立侧栏入口的 Codex 面板需要本地选中态；侧栏仍只认 activeSection。
+  const [codexInnerPanel, setCodexInnerPanel] = useState<CodexSettingsPanel | null>(null);
   const [pluginTab, setPluginTab] = useState(() => consumePendingSettingsPluginTab());
   // Linux 关闭驻留托盘能力查询（spec：docs/desktop/linux-close-to-tray.md）：打开设置页时
   // 经 platform IPC 触发 main 侧探测（带 stale 缓存），用户装完 AppIndicator 扩展重开
@@ -663,17 +665,19 @@ export function SettingsPage({
   const setActiveSettingsSection = useCallback(
     (section: SettingsSectionId, fallbackSection: SettingsSectionId = activeSection) => {
       const resolvedSection = resolveSettingsSection(section, fallbackSection);
+      setCodexInnerPanel(null);
       setActiveSection(resolvedSection);
       writeLastSettingsSectionPreference(resolvedSection);
     },
     [activeSection],
   );
-  // 内部面板与侧栏分区是同一导航的两个入口：有对应分区时切换外层
-  // activeSection，让标题与侧栏高亮始终跟随可见面板。
+  // 根因：内部专属面板原先没有更新 activeSection，从 MCP 切到配置/历史后
+  // 沿用 MCP 标题。先归属 Codex，再保留用户点选的面板供 keyed 内容重挂载。
   const handleCodexSettingsPanelChange = useCallback(
     (panel: CodexSettingsPanel) => {
       const section = codexPanelToSection(panel);
-      if (section) setActiveSettingsSection(section);
+      setActiveSettingsSection(section);
+      if (section === "codex" && panel !== "account") setCodexInnerPanel(panel);
     },
     [setActiveSettingsSection],
   );
@@ -1784,7 +1788,11 @@ export function SettingsPage({
                             sessionId={selectedCodexSessionId}
                             remoteSessionId={activeWorkspaceTab?.remoteSessionId ?? undefined}
                             onPanelChange={handleCodexSettingsPanelChange}
-                            initialPanel={codexSectionToPanel(activeSection)}
+                            initialPanel={
+                              activeSection === "codex" && codexInnerPanel
+                                ? codexInnerPanel
+                                : codexSectionToPanel(activeSection)
+                            }
                           />
                         ) : isDesktop && isCodexUnsupportedSection(activeSection) ? (
                           <CodexCapabilityNotice

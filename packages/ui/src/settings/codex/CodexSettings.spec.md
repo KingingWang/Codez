@@ -31,8 +31,28 @@ effective configuration, resource installation state, or accepted commands.
 - The section's internal panel tabs are the same navigation as the Settings
   sidebar entries: switching a tab that has a sidebar counterpart also moves
   the outer active section, so the page title and sidebar highlight always
-  follow the visible panel. Panels without a sidebar entry (models, config,
-  history) remain internal-only switches.
+  follow the visible panel. Panels without a sidebar counterpart (models,
+  config, history) activate the outer Codex section while retaining the chosen
+  inner panel. They must not leave a previously selected MCP/Plugins/etc. title
+  or sidebar highlight behind. An explicit sidebar/deep-link navigation to
+  Codex opens Account; switching among inner-only panels keeps the Codex
+  heading and does not persist a misleading legacy section preference.
+- The Codex skills and plugin marketplace lists expose a unique accessible
+  action name per target. Keep the short visible button label, but include the
+  skill name/scope/path, or plugin name/marketplace (and native ID when needed),
+  in its accessible name. Both the first click and the confirmation/cancel
+  controls must identify the same marketplace or plugin. This changes no native
+  command, installation policy, or ownership of resources.
+
+```text
+outer section click ───────────────→ SettingsPage activeSection → title/sidebar
+       └─ explicit Codex click ────→ Account (clear inner-only selection)
+inner Codex panel click → SettingsPage activeSection + inner-only selection
+       ├─ mapped panel ────────────→ matching sidebar section
+       └─ models/config/history ───→ Codex sidebar; retain clicked inner panel
+Codex list item → target-labeled UI control → existing native resource command
+```
+
 - Unsupported legacy agent settings show an explicit capability notice. Workflow,
   CUA, cloud and migration parity are not implied by disabled controls.
 - Login starts/cancels through native account RPC. Credentials are ephemeral form
@@ -145,12 +165,23 @@ draft → explicit no-session state. Invalid JSON/schema → local error and zer
 mutation requests; navigation clears it; rejected native write retains its
 remote-failure warning. Opening/closing mode picker repeatedly and dismissing
 model guide leaves tooltip warning count unchanged.
+From the MCP subpage, switching to Configuration and then Thread history must
+keep those panels visible while the title/sidebar point to Codex, not MCP; the
+outer Codex entry returns to Account. A list with two native skills, two
+marketplaces, and two plugins with the same display name must offer distinct
+accessible names and confirmation/cancel names; visual labels remain localized.
 
 QA uses a dedicated `codex-ui-qa` browser session and isolated app/Codex paths.
 Desktop QA launches the repository's actual `packages/desktop/scripts/dev.mjs`
 entry with its real package metadata and ready-marker/Vite checks. The isolation
 helper must not synthesize a package/version or replace updater behavior to make
 startup pass. Existing build artifacts must be stable before launch.
+When running an isolated preview on alternate local renderer/CDP ports, each
+real-desktop QA checker must honor those explicit ports and refuse a CDP page
+from any other origin/port; no fallback to another app's renderer is allowed.
+Browser fixture RPC-log assertions must wait for the inspection result produced
+by that click; an earlier `result` payload is not evidence of the current
+native interaction count.
 Packaged verification launches only this checkout's `packages/desktop/dist/linux-unpacked/codez-codex`
 from a temporary workspace, without renderer, bridge or native executable overrides.
 It uses dedicated CDP 9230 and accepts only the exact packaged
