@@ -9,12 +9,30 @@ The fork publishes Codez desktop builds from KingingWang/Codez. Preserve
 upstream history and license notices. Use an independent application identity,
 desktop data directory and update feed; do not update a fork install to upstream.
 
-Each workflow run resolves the latest KingingWang/codex release and its GitHub
-asset digests into a run-scoped manifest shared by all jobs; incomplete or
-malformed releases fail closed. Download only the selected target asset,
-validate before atomic staging, and package it outside ASAR. The checked-in
-manifest remains the local-development fallback; CI must use the run-resolved,
-validated manifest. No adjacent checkout dependency.
+Each workflow run first checks the latest published stable KingingWang/codex
+release. When that release is missing a required native target (for example,
+Windows assets uploaded after macOS/Linux), the resolver inspects at most ten
+releases in GitHub's newest-first list and selects the first earlier published
+stable release whose six target assets each have a valid GitHub digest and
+positive size. All six
+assets must come from that **one release**; it never combines a new partial
+release with older binaries. A newly completed latest release wins even if its
+assets arrive between the two reads. An unexpected tag, malformed asset
+digest/size, failed GitHub read, or absence of a complete release within the
+bounded list still fails closed (bounded retries may repeat the read).
+Drafts and prereleases never enter the stable desktop distribution. The chosen
+run-scoped manifest and tag are shared by every job; the checked-in manifest
+remains the local-development fallback, never the CI fallback. Download only
+the selected target asset, validate before atomic staging, and package it
+outside ASAR. No adjacent checkout dependency.
+
+Acceptance: given incomplete latest + a complete prior stable release, resolve
+the prior release with its own six verified digests; if the latest finishes before
+the list read, use latest instead. Ignore draft/prerelease candidates. Reject
+malformed tags/digests/sizes, missing latest in the bounded list, all-incomplete
+lists and API failures without publishing a manifest. The six-target CI smoke
+and installer checks still validate the actual chosen native version before any
+release is published.
 
 CI uses Node 24.14.0 and pnpm 10.33.2, frozen dependency installation, typecheck,
 lint, architecture and adapter tests. Build six native targets with fail-fast

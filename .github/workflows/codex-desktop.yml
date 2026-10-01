@@ -33,7 +33,7 @@ jobs:
     env:
       CODEZ_ENV: production
       CODEZ_DESKTOP_RUNTIME: codex
-      # 本次 run 解析出的 fork 最新 Codex release 清单，全流水线共享同一份。
+      # 本次 run 解析出的 fork 最新完整正式版清单，全流水线共享同一份。
       CODEZ_CODEX_MANIFEST: ${{ github.workspace }}/codex-manifest.json
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
         with:
           node-version: 24.14.0
           cache: pnpm
-      - name: Resolve latest fork Codex release
+      - name: Resolve latest complete fork Codex release
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/codex-runtime-resolve-latest.mjs codex-manifest.json
