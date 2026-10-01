@@ -39,6 +39,7 @@ export function GroupedTaskContextMenuContent({
   fileManagerLabel: string;
   taskSessionFile: { loading: boolean; path: string | null; exists: boolean };
   taskNativeSessionLogFile: { loading: boolean; path: string | null; exists: boolean };
+  providerConfigFile: { loading: boolean; path: string | null };
   onMoveTaskToGroup: (task: CodezTaskMeta, groupId: string | null) => void;
   onMoveTaskToTop: (task: CodezTaskMeta) => void;
   onStartRenameTask: (task: CodezTaskMeta) => void;

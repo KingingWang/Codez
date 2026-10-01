@@ -19,6 +19,7 @@ import {
   resolveCodexSelection,
   isCodexSelectionReady,
 } from "./codexModelCatalog.js";
+import { resolveComposerFollowupDelivery } from "@/v4/composer/followupModeSettings.js";
 
 const nativeModel = codexModelSchema.parse({
   id: "catalog-id",
@@ -42,6 +43,43 @@ test("native queue immediate action respects native availability; legacy behavio
   assert.equal(isQueueSendNowAvailable(true, undefined), false);
   assert.equal(isQueueSendNowAvailable(true, { allowed: true }), true);
   assert.equal(isQueueSendNowAvailable(false, { allowed: false, reasonCode: "fixture" }), true);
+});
+
+test("native follow-up choice is per-send; idle and legacy submissions retain their routing", () => {
+  const base = { nativeCodex: true, busy: true, nativeIntent: "queue" as const };
+  assert.equal(resolveComposerFollowupDelivery({ ...base, reverse: false }), "queue");
+  assert.equal(resolveComposerFollowupDelivery({ ...base, reverse: true }), "startNow");
+  assert.equal(
+    resolveComposerFollowupDelivery({ ...base, nativeIntent: "guide", reverse: false }),
+    "guide",
+  );
+  assert.equal(
+    resolveComposerFollowupDelivery({ ...base, nativeIntent: "guide", reverse: true }),
+    "queue",
+  );
+  assert.equal(
+    resolveComposerFollowupDelivery({ ...base, busy: false, reverse: false }),
+    undefined,
+  );
+  assert.equal(resolveComposerFollowupDelivery({ ...base, busy: false, reverse: true }), undefined);
+  assert.equal(
+    resolveComposerFollowupDelivery({
+      ...base,
+      nativeCodex: false,
+      followupMode: "queue",
+      reverse: false,
+    }),
+    undefined,
+  );
+  assert.equal(
+    resolveComposerFollowupDelivery({
+      ...base,
+      nativeCodex: false,
+      followupMode: "guide",
+      reverse: true,
+    }),
+    "queue",
+  );
 });
 
 test("Codex runtime preferences never auto-answer or enable unsupported retention; Web is unchanged", () => {

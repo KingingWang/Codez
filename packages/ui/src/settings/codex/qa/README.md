@@ -37,7 +37,9 @@ port 9. It launches actual `node scripts/dev.mjs` from `packages/desktop`, which
 waits for main/host/preload ready markers and Vite on port 5174, then starts Electron
 with the real desktop package. No synthetic package, version override, or updater
 replacement is permitted. Main currently forces dev CDP port 9229;
-do not run this probe if another app already owns that port. The desktop check attaches
+the probe refuses to start when the selected CDP port is already occupied,
+before creating a profile or launching Electron. Close only your previous isolated
+probe or choose separate QA ports; it never stops the port owner. The desktop check attaches
 only to the local QA renderer, verifies the explicitly configured custom model,
 types then clears an unsent draft, uploads/removes a fixture image, reads native
 account/config/requirements, refreshes and checks legacy MCP routing and the
@@ -71,6 +73,22 @@ the probe must be fresh.
 On failure it writes the UI text, errors, sanitized mock request diagnostics and
 a screenshot, and releases the held response. It does not automatically retry
 commands or move attachment refs between sessions.
+
+For native busy follow-ups, use a different **fresh** mock probe and run
+`desktop-followup-check.mjs` with that probe's `mockProvider` URL. It tests the
+default queue, explicit per-send Guide, inverse Ctrl modifier, local waiting
+hint, queue count/interruption wording, narrow desktop bounds and one-request-
+at-a-time model release. It asserts the authoritative guided user row replaces
+the local hint **before** the turn finishes, and the queued input does not start
+until afterward. The mock never uses account credentials or external models.
+On the alternate preview/CDP ports, provide both `CODEX_UI_QA_RENDERER_PORT`
+and `CODEX_UI_QA_CDP_PORT` as for the conversation check:
+
+```sh
+CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/qa/desktop-followup-check.mjs
+# For an isolated preview on alternate ports:
+CODEX_UI_QA_RENDERER_PORT=5175 CODEX_UI_QA_CDP_PORT=9231 CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/qa/desktop-followup-check.mjs
+```
 
 To verify native model-retry visibility, start a separate fresh mock probe and run
 `desktop-retry-check.mjs` with its printed `mockProvider` URL. The fixture

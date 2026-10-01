@@ -145,17 +145,18 @@ try {
   );
   await composer.fill("QA busy plain send queues visibly. No tools.");
   await sendButton.click();
-  await page
-    .getByText("Codex native queue · runs automatically when idle, including after resume.")
-    .waitFor();
+  await page.getByText("Starts after the current task finishes.").waitFor();
+  await page.getByText("Queued (1)").waitFor();
   await until(async () => (await queueItems.count()) === 1);
   assert.equal((await state()).requests.length, 2, "busy 排队不产生新模型请求");
   assert.equal(await page.locator('[data-testid^="v4-queue-item-edit-"]').count(), 1);
   assert.equal(await page.locator('[data-testid^="v4-queue-item-delete-"]').count(), 1);
   assert.equal(
-    await page.locator('[data-testid^="v4-queue-item-send-now-"]').count(),
+    await page
+      .getByRole("button", { name: "Interrupt the current task and send this message now" })
+      .count(),
     1,
-    "busy 队列项提供抢占式立即发送",
+    "busy 队列项应如实说明抢占会中断当前任务",
   );
   assert.equal(await page.locator('[data-testid="v4-queue-resume"]').count(), 0);
   checks.push(

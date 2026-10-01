@@ -138,11 +138,20 @@ import {
 } from "@/v4/composer/composerAutoFocus.js";
 import { V4_DRAFT_SCOPE_ROOT, type V4ComposerDraft } from "@/v4/composer/composerDraftStore.js";
 import {
-  resolveOppositeFollowupDelivery,
+  resolveComposerFollowupDelivery,
   resolveFollowupModifierTooltip,
   shouldEnableModifiedEnterSubmit,
   shouldReverseFollowupDeliveryForPointer,
 } from "@/v4/composer/followupModeSettings.js";
+import {
+  CodexFollowupModeMenu,
+  type CodexFollowupIntent,
+} from "@/v4/composer/CodexFollowupModeMenu.js";
+import {
+  recordAcceptedGuideNotice,
+  visibleAcceptedGuideNotices,
+  type AcceptedGuideNotice,
+} from "@/v4/composer/acceptedGuideNotices.js";
 import { isAppleKeyboardPlatform } from "@/lib/keyboardShortcuts.js";
 import { usePrimaryFollowupModifier } from "@/v4/composer/usePrimaryFollowupModifier.js";
 import { consumeV4ComposerDraftWorkspaceTransferRequest } from "@/v4/composer/composerDraftWorkspaceTransfer.js";
@@ -209,7 +218,11 @@ export interface ConversationComposerSendOptions {
   source?: import("@codez/shared/codez-protocol-v4").ConversationInputSource;
 }
 
-export type ConversationComposerSendResult = "sent" | "blocked" | "confirmationRequired";
+export type ConversationComposerSendResult =
+  | "sent"
+  | "blocked"
+  | "confirmationRequired"
+  | { status: "sent"; commandId: string };
 function getComposerAttachmentTypeLabel(filename: string, mimeType: string): string {
   const leaf = filename.split(/[\\/]/u).at(-1) ?? filename;
   const dotIndex = leaf.lastIndexOf(".");
@@ -613,6 +626,18 @@ function ConversationComposerImpl({
     const timer = window.setTimeout(() => setHighspeedSweepActive(true), 1_900);
     return () => window.clearTimeout(timer);
   }, [highspeedEntranceAnimated, highspeedPresented]);
+  const [followupChoice, setFollowupChoice] = useState<{
+    scopeKey: string;
+    intent: CodexFollowupIntent;
+  }>({ scopeKey: configPickerScopeKey, intent: "queue" });
+  const codexFollowupIntent =
+    followupChoice.scopeKey === configPickerScopeKey ? followupChoice.intent : "queue";
+  const setCodexFollowupIntent = useCallback(
+    (intent: CodexFollowupIntent) => setFollowupChoice({ scopeKey: configPickerScopeKey, intent }),
+    [configPickerScopeKey],
+  );
+  const [acceptedGuideNotices, setAcceptedGuideNotices] = useState<AcceptedGuideNotice[]>([]);
+  const guideNoticeIdRef = useRef(0);
   const [configPickerState, setConfigPickerState] = useState<{
     scopeKey: string;
     activePicker: V4ComposerConfigPicker | null;
@@ -1190,6 +1215,37 @@ function ConversationComposerImpl({
     isWebRemoteControl,
   });
   const canStop = Boolean(snapshot?.control.canStop);
+  const activeTurnId = snapshot?.control.activeWorks.find(
+    (work) => work.kind === "primaryTurn",
+  )?.foregroundExecutionId;
+  const visibleGuideNotices = canStop
+    ? visibleAcceptedGuideNotices(
+        acceptedGuideNotices,
+        workspaceKey,
+        sessionId,
+        activeTurnId,
+        snapshot ?? null,
+      )
+    : [];
+  useEffect(() => {
+    // 原因：引导是一次性草稿选择，native 没有“会话默认引导”设置；
+    // 运行结束或切换会话后不得将旧 turn 的选择套到下一次发送。
+    if (!canStop && codexFollowupIntent !== "queue") setCodexFollowupIntent("queue");
+  }, [canStop, codexFollowupIntent, setCodexFollowupIntent]);
+  useEffect(() => {
+    // 本地提示只能跟随触发它的 turn；切换会话或原生结束后立即撤下，
+    // 不能跨轮延续一条 native 从未报告为 queue 的引导。
+    setAcceptedGuideNotices((current) =>
+      current.length === 0
+        ? current
+        : current.filter(
+            (notice) =>
+              notice.workspaceKey === workspaceKey &&
+              notice.sessionId === sessionId &&
+              notice.turnId === activeTurnId,
+          ),
+    );
+  }, [activeTurnId, sessionId, workspaceKey]);
   const nativeSettingsLocked =
     Boolean(codexModelCatalog) && (pending || isCodexComposerBusy(snapshot));
   const modifiedEnterReversesDelivery = modifiedEnterSubmits && canStop;
@@ -1263,6 +1319,7 @@ function ConversationComposerImpl({
       // session scope；若成功清理时再读可变 ref，会误清新 scope，并把首条输入残留在
       // __draft__，下次新建任务又恢复。发送开始时冻结真正提交的 scope。
       const submittedDraft = snapshotDraftOfEditor();
+      const guideSnapshotAtSend = snapshotRef.current;
       let cleanupRevision = contentRevisionRef.current;
       const submission = createSubmissionFromComposer?.() ?? null;
       const submittedAttachmentIds = attachmentsApi.attachments.map((item) => item.id);
@@ -1513,6 +1570,34 @@ function ConversationComposerImpl({
           return;
         }
         setHeldQueueConfirmation(null);
+        if (codexModelCatalog) setCodexFollowupIntent("queue");
+        if (
+          codexModelCatalog &&
+          requestedDelivery === "guide" &&
+          sessionId &&
+          guideSnapshotAtSend &&
+          sendResult &&
+          typeof sendResult === "object" &&
+          sendResult.status === "sent"
+        ) {
+          const turnId = guideSnapshotAtSend.control.activeWorks.find(
+            (work) => work.kind === "primaryTurn",
+          )?.foregroundExecutionId;
+          if (turnId) {
+            const id = ++guideNoticeIdRef.current;
+            setAcceptedGuideNotices((current) =>
+              recordAcceptedGuideNotice(current, {
+                id,
+                workspaceKey,
+                sessionId,
+                turnId,
+                text: trimmed,
+                sourceCommandId: sendResult.commandId,
+                snapshot: guideSnapshotAtSend,
+              }),
+            );
+          }
+        }
         // 暂存内容只有在发送成功后才移交给 task；失败仍保留为可重试草稿。
         await attachmentsApi.adoptSentAttachments(submittedAttachmentIds);
         // Bug 原因：发送等待期间产生的新正文属于下一次 Submission，旧 ACK 不能清除。
@@ -1557,6 +1642,7 @@ function ConversationComposerImpl({
     },
     [
       attachmentsApi,
+      codexModelCatalog,
       conversationSelectionReferences,
       conversationTelemetry,
       draftConfig,
@@ -1582,6 +1668,7 @@ function ConversationComposerImpl({
       webElementContexts,
       pptxElementReferences,
       workspaceIdentity,
+      workspaceKey,
       workspacePath,
     ],
   );
@@ -1617,21 +1704,25 @@ function ConversationComposerImpl({
       textRef.current = value;
       const reverseDelivery = reversePointerDeliveryRef.current;
       reversePointerDeliveryRef.current = false;
-      const followupMode = snapshotRef.current?.config.followupMode;
       void submit(
         undefined,
         undefined,
         undefined,
-        reverseDelivery && followupMode ? resolveOppositeFollowupDelivery(followupMode) : undefined,
+        resolveComposerFollowupDelivery({
+          nativeCodex: Boolean(codexModelCatalog),
+          busy: Boolean(snapshotRef.current?.control.canStop),
+          nativeIntent: codexFollowupIntent,
+          followupMode: snapshotRef.current?.config.followupMode,
+          reverse: reverseDelivery,
+        }),
       );
       return false;
     },
-    [submit],
+    [codexFollowupIntent, codexModelCatalog, submit],
   );
 
   const handleModifiedEditorSubmit = useCallback(
     (value: string) => {
-      const followupMode = snapshotRef.current?.config.followupMode;
       textRef.current = value;
       // inputRouting 在 turn 启动初期可能仍为 startNow，不能用它
       // 推断空闲。组合键始终表达单次反向 delivery；空闲时 CLI 自然 startNow。
@@ -1639,11 +1730,17 @@ function ConversationComposerImpl({
         undefined,
         undefined,
         undefined,
-        followupMode ? resolveOppositeFollowupDelivery(followupMode) : undefined,
+        resolveComposerFollowupDelivery({
+          nativeCodex: Boolean(codexModelCatalog),
+          busy: Boolean(snapshotRef.current?.control.canStop),
+          nativeIntent: codexFollowupIntent,
+          followupMode: snapshotRef.current?.config.followupMode,
+          reverse: true,
+        }),
       );
       return false;
     },
-    [submit],
+    [codexFollowupIntent, codexModelCatalog, submit],
   );
 
   const handleClearQueueSend = useCallback(() => {
@@ -1718,20 +1815,31 @@ function ConversationComposerImpl({
   // 动态 placeholder（旧 chatViewPlaceholder 语义）：无历史 → newTask；
   // 有历史空闲 → followUpAsk；有历史处理中 → followUpQueue。
   const placeholder = intl.formatMessage({
-    id: resolveChatPlaceholderKey({
-      hasHistoryMessages: (snapshot?.rows.totalCount ?? 0) > 0,
-      isTaskProcessing: canStop,
-      compactNewTask: compactMobilePlaceholder,
-    }),
+    id:
+      codexModelCatalog && canStop && codexFollowupIntent === "guide"
+        ? "chat.followup.mode.guide.placeholder"
+        : resolveChatPlaceholderKey({
+            hasHistoryMessages: (snapshot?.rows.totalCount ?? 0) > 0,
+            isTaskProcessing: canStop,
+            compactNewTask: compactMobilePlaceholder,
+          }),
   });
   const sendTooltipTitle = intl.formatMessage({
-    id: mode === "enqueue" ? "chat.queue.enqueue" : "chat.send",
+    id:
+      codexModelCatalog && canStop
+        ? codexFollowupIntent === "guide"
+          ? "chat.followup.guideCurrent"
+          : "chat.followup.addToQueue"
+        : mode === "enqueue"
+          ? "chat.queue.enqueue"
+          : "chat.send",
   });
   const modifierTooltip = resolveFollowupModifierTooltip({
     enabled: modifiedEnterReversesDelivery,
     canSend,
     modifierPressed: primaryModifierPressed,
-    followupMode: snapshot?.config.followupMode,
+    followupMode:
+      codexModelCatalog && canStop ? codexFollowupIntent : snapshot?.config.followupMode,
     isApplePlatform: appleKeyboardPlatform,
   });
   const resolvedSendTooltipTitle = modifierTooltip
@@ -2172,8 +2280,8 @@ function ConversationComposerImpl({
   );
   const submitControlNode = useMemo(
     () => (
-      <div className="flex min-w-0 items-center gap-1">
-        <span className="flex min-w-0 shrink items-center gap-1 overflow-hidden empty:hidden">
+      <div className="flex min-w-0 max-w-full items-center gap-1">
+        <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden empty:hidden">
           {codexModelCatalog ? (
             <CodexComposerModelControls
               read={codexModelCatalog}
@@ -2215,6 +2323,13 @@ function ConversationComposerImpl({
             />
           )}
         </span>
+        {codexModelCatalog && canStop && mode !== "reject" ? (
+          <CodexFollowupModeMenu
+            intent={codexFollowupIntent}
+            disabled={disabled || pending}
+            onChange={setCodexFollowupIntent}
+          />
+        ) : null}
         {showStopControl ? (
           <ControlHintTooltip title={stopTooltipTitle} shortcut="Esc">
             <Button
@@ -2224,6 +2339,7 @@ function ConversationComposerImpl({
               onClick={handleStopClick}
               data-testid={TID_V4_STOP}
               aria-label={stopTooltipTitle}
+              className="shrink-0"
             >
               <SquareIcon className="size-4 fill-current" />
               <span className="sr-only">{stopTooltipTitle}</span>
@@ -2243,7 +2359,7 @@ function ConversationComposerImpl({
               onClick={handleSendButtonClick}
               data-testid={TID_V4_COMPOSER_SEND}
               aria-label={resolvedSendTooltipTitle}
-              className="cursor-pointer gap-1 rounded-lg bg-brand text-ui-base text-foreground-inverse hover:bg-brand/80"
+              className="shrink-0 cursor-pointer gap-1 rounded-lg bg-brand text-ui-base text-foreground-inverse hover:bg-brand/80"
             >
               {pending ? <Spinner className="size-4" /> : <ArrowUpIcon className="size-4" />}
               <span className="sr-only">{resolvedSendTooltipTitle}</span>
@@ -2272,6 +2388,8 @@ function ConversationComposerImpl({
       handleSelectModelTrace,
       modelSelectionReload,
       codexModelCatalog,
+      codexFollowupIntent,
+      setCodexFollowupIntent,
       nativeSettingsLocked,
       modelSelectionState,
       modelSelectionView,
@@ -2438,6 +2556,24 @@ function ConversationComposerImpl({
             {intl.formatMessage({ id: CONVERSATION_SHARED_CONTEXT_COPY_WARNING_ID })}
           </div>
         ) : null}
+        {visibleGuideNotices.map((notice) => (
+          <div
+            key={notice.id}
+            role="status"
+            data-testid="v4-codex-guide-notice"
+            className="mb-2 flex min-w-0 flex-col gap-0.5 rounded-xl border border-card-border bg-card px-3 py-2"
+          >
+            <span className="text-ui-sm font-medium text-foreground-subtle">
+              {intl.formatMessage({ id: "chat.followup.mode.guide.accepted" })}
+            </span>
+            <span
+              className="line-clamp-2 break-words text-ui-base text-foreground"
+              title={notice.text}
+            >
+              {notice.text}
+            </span>
+          </div>
+        ))}
         <ChatPromptEditor
           workspacePath={workspacePath}
           workspaceIdentity={workspaceIdentity}
@@ -2478,6 +2614,7 @@ function ConversationComposerImpl({
           enableMentionPanel
           leadingActions={leadingActionsNode}
           submitControl={submitControlNode}
+          shrinkTrailingActions={Boolean(codexModelCatalog)}
           className="p-0"
           shellClassName={
             highspeedCard

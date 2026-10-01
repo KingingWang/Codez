@@ -187,7 +187,7 @@ try {
   await page.getByRole("button", { name: "Toggle catalog failure" }).click();
   await waitEnabled("Send fixture");
   checks.push("Catalog failure blocks send; refresh recovers without legacy fallback");
-  assert.equal(await page.getByText(/Codex native queue/).count(), 1);
+  assert.equal(await page.getByText(/Starts after the current task finishes/).count(), 1);
   assert.equal(await page.locator('[data-testid="v4-queue-resume"]').count(), 0);
   assert.equal(await page.getByText(/queue is paused/i).count(), 0);
   checks.push("Native queue label, no false pause/resume affordance");

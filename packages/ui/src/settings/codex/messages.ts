@@ -12,13 +12,14 @@ const en = {
     "Explicit native configuration; model capabilities were not returned by discovery.",
   busySettings:
     "Model, reasoning and permissions are locked while Codex is busy. Wait for idle to change settings.",
+  busyShort: "Locked",
   settingsMismatch:
     "Codex queue/guide cannot override thread settings. Wait for idle and send normally, or restore the thread's current settings. Your draft is preserved.",
   attachmentSessionLost:
     "The attachment session changed. Reattach the files before sending; the draft is preserved.",
   attachmentStagingRequired:
     "This Host cannot stage path-only files for Codex yet. Use the attachment picker to select and upload the file instead.",
-  nativeQueue: "Codex native queue · runs automatically when idle, including after resume.",
+  nativeQueue: "Starts after the current task finishes.",
   historyEdit: "Edit history & resend",
   preserveFiles: "Files are preserved. Only conversation history is changed.",
   questions: "Codex needs your input",
@@ -201,12 +202,13 @@ const zh: Record<keyof typeof en, string> = {
   nativeDefault: "原生默认值",
   configuredHelp: "使用原生显式配置；模型发现未返回其能力信息。",
   busySettings: "Codex 忙碌时锁定模型、推理和权限设置。请等待空闲后再修改。",
+  busyShort: "已锁定",
   settingsMismatch:
     "Codex 队列/引导输入不能覆盖线程设置。请等待空闲后正常发送，或恢复线程当前设置。草稿已保留。",
   attachmentSessionLost: "附件所属会话已改变。请重新附加文件后发送；草稿已保留。",
   attachmentStagingRequired:
     "当前 Host 尚不能为 Codex 暂存路径型文件。请使用附件选择器选择并上传文件。",
-  nativeQueue: "Codex 原生队列 · 空闲时自动执行，恢复会话后同样生效。",
+  nativeQueue: "当前任务结束后自动发送。",
   historyEdit: "编辑历史并重新发送",
   preserveFiles: "保留文件，仅更改会话历史。",
   questions: "Codex 需要您的输入",
