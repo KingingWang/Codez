@@ -64,6 +64,14 @@ model_catalog_json 文件     ──bridge catalog/* 本地控制面写──→
   同族）：路径一律由 bridge 内部经 `config/read` 解析 `model_catalog_json`，
   不接受调用方传路径（不开放任意路径读写面），绝不进入 `codex/request`
   原生白名单。
+- **未决跨进程写入边界**：`catalog/writeModel` / `catalog/deleteModel` 当前
+  执行「读文件 → 修改内存列表 → 同目录临时文件 rename」。rename 只保证读者
+  看不到半截 JSON，**不是**基于文件版本的条件提交。其他 Codex/编辑器进程
+  在读取后、替换前改动目录时，本次写入可能覆盖其改动；若对方删了一个模型，
+  本次写入甚至可能把它恢复。最后模型守卫只保证本次 bridge 不主动写出空目录，
+  不保证多进程修改不丢失。需要先确定产品语义和唯一权威写入接口：采用可验证
+  的原生条件写入，或停止提供不具备并发保证的 GUI 修改入口；不能把再次读取
+  或定时重试称为原子修复。
 - **codex 启动期快照限制**：配置了 `model_catalog_json` 时 codex 用
   StaticModelsManager 持有启动期目录快照，`model/list` 不随文件变更刷新
   （reloadUserConfig 只重载线程 Config）。因此目录写入后：
