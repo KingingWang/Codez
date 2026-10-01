@@ -1,4 +1,13 @@
 // Native facts owned by the isolated Host fixture, never by the legacy registry.
+import type { IPlatformService } from "@codez/shared";
+
+export const platform = {
+  openExternal: () => {
+    throw new Error("External navigation forbidden");
+  },
+  showTaskNotification() {},
+} as unknown as IPlatformService;
+
 export const model = (name: string, isDefault = false) => ({
   id: `id-${name}`,
   model: name,

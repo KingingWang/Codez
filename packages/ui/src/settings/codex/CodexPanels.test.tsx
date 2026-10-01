@@ -207,6 +207,99 @@ test("plugin policy/consent restrictions disable install with explanation", () =
   assert.match(html, /disabled=""[^>]*>Install/);
 });
 
+test("Codex skill and plugin controls name their native targets without changing visible labels", () => {
+  const skills = render(
+    <CodexSkillsPanel
+      controller={{
+        ...controller,
+        snapshot: {
+          skills: {
+            data: {
+              data: [
+                {
+                  cwd: "/fixture",
+                  errors: [],
+                  skills: [
+                    {
+                      name: "imagegen",
+                      description: "",
+                      path: "/fixture/system/imagegen/SKILL.md",
+                      scope: "system",
+                      enabled: true,
+                      pluginId: null,
+                    },
+                    {
+                      name: "imagegen",
+                      description: "",
+                      path: "/fixture/user/imagegen/SKILL.md",
+                      scope: "user",
+                      enabled: true,
+                      pluginId: null,
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      }}
+    />,
+  );
+  assert.match(
+    skills,
+    /aria-label="Disable imagegen \(system: \/fixture\/system\/imagegen\/SKILL\.md\)"/,
+  );
+  assert.match(
+    skills,
+    /aria-label="Disable imagegen \(user: \/fixture\/user\/imagegen\/SKILL\.md\)"/,
+  );
+  const plugin = {
+    id: "shared-plugin",
+    name: "github",
+    installed: false,
+    enabled: false,
+    availability: "AVAILABLE" as const,
+    installPolicy: "AVAILABLE" as const,
+    mustShowInstallationInterstitial: false,
+  };
+  const marketplaces = ["market-one", "market-two"].map((name) => ({
+    name,
+    path: null,
+    plugins: [plugin],
+  }));
+  const plugins = render(
+    <CodexPluginsPanel
+      controller={{
+        ...controller,
+        snapshot: {
+          plugins: {
+            data: { marketplaces, marketplaceLoadErrors: [], featuredPluginIds: [] },
+          },
+        },
+      }}
+    />,
+  );
+  for (const marketplace of marketplaces) {
+    assert.ok(plugins.includes(`aria-label="Update marketplace ${marketplace.name}"`));
+    assert.ok(plugins.includes(`aria-label="Remove ${marketplace.name}"`));
+    assert.ok(plugins.includes(`aria-label="Install github (${marketplace.name}, shared-plugin)"`));
+  }
+  const zh = render(
+    <CodexPluginsPanel
+      controller={{
+        ...controller,
+        snapshot: {
+          plugins: {
+            data: { marketplaces, marketplaceLoadErrors: [], featuredPluginIds: [] },
+          },
+        },
+      }}
+    />,
+    "zh-CN",
+  );
+  assert.ok(zh.includes('aria-label="安装 github (market-one, shared-plugin)"'));
+});
+
 test("Codex copy follows the application locale and configuration presentation excludes secrets", () => {
   const html = render(<CodexSkillsPanel controller={controller} />, "zh-CN");
   assert.match(html, /技能/);

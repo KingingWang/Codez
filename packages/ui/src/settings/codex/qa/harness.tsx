@@ -3,7 +3,6 @@ import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { IServiceAccessor } from "@codez/services";
 import type {
-  IPlatformService,
   CodexRequest,
   CodezAgentRoleScope,
   CodezAgentRoleSummary,
@@ -34,7 +33,8 @@ import type { V4ComposerConfigPicker } from "@/v4/composer/configPickerState.js"
 import { CatalogLifetimeControls, waitForCatalogFixture } from "./catalog-lifetime-fixture.js";
 import { UsageObservationRaceFixture } from "./usage-observation-fixture.js";
 import { MessageFeedbackFixture } from "./message-feedback-fixture.js";
-import { config, model, otherWorkspaceConfig, questions } from "./harnessConfig.js";
+import { createCatalogModelsFixture } from "./catalog-models-fixture.js";
+import { config, model, otherWorkspaceConfig, platform, questions } from "./harnessConfig.js";
 import {
   createProjectDiscoveryLocalServices,
   initializeProjectDiscoveryFixture,
@@ -53,6 +53,8 @@ const agentRoles: CodezAgentRoleSummary[] = [];
 let legacyReads = 0;
 let catalogReads = 0;
 let interactionCommandCount = 0;
+let inspection = 0;
+const catalogModelsFixture = createCatalogModelsFixture();
 const emptyEvent = () => ({ dispose() {} });
 const services = {
   codezAgentService: {
@@ -65,11 +67,10 @@ const services = {
     },
     async readCodexCatalogModels() {
       if (providerCatalogFailure) throw new Error("Fixture provider catalog unavailable");
-      return {
-        path: "/isolated/catalog.json",
-        models: [{ slug: "second-model", provider: "referenced-provider" }],
-      };
+      return catalogModelsFixture.read();
     },
+    writeCodexCatalogModel: catalogModelsFixture.write,
+    disposeWorkspace: catalogModelsFixture.dispose,
     async listAgentRoles() {
       if (rolesReadFailure) throw new Error("Fixture agent roles unavailable");
       return { roles: [...agentRoles], diagnostics: [] };
@@ -146,12 +147,6 @@ const services = {
   codezSessionService: projectDiscoveryLocalServices.codezSessionService,
 } as unknown as IServiceAccessor;
 initializeProjectDiscoveryFixture();
-const platform = {
-  openExternal: () => {
-    throw new Error("External navigation forbidden");
-  },
-  showTaskNotification() {},
-} as unknown as IPlatformService;
 function Harness() {
   const [busy, setBusy] = useState(false);
   const [picker, setPicker] = useState<V4ComposerConfigPicker | null>(null);
@@ -283,7 +278,15 @@ function Harness() {
         <Button onClick={() => setRejectNext(true)}>Reject next answer</Button>
         <Button
           onClick={() =>
-            setOutput({ requests, legacyReads, catalogReads, interactionCommandCount })
+            setOutput({
+              inspection: ++inspection,
+              requests,
+              legacyReads,
+              catalogReads,
+              catalogWrites: catalogModelsFixture.writes,
+              runtimeDisposals: catalogModelsFixture.disposals,
+              interactionCommandCount,
+            })
           }
         >
           Inspect RPC log

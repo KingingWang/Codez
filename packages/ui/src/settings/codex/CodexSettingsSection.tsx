@@ -45,8 +45,8 @@ interface CodexSettingsSectionProps {
   initialPanel?: CodexSettingsPanel;
   onboarding?: boolean;
   /**
-   * 内部面板切换回调：嵌在 SettingsPage 时用于把有侧栏对应项的面板
-   * 同步为外层 activeSection（标题/高亮跟随内容）；无对应项的面板由调用方忽略。
+   * 内部面板切换回调：嵌在 SettingsPage 时将面板同步到外层侧栏；
+   * 无独立侧栏入口的面板归属 Codex，并由调用方保留其内部选中态。
    */
   onPanelChange?: (panel: CodexSettingsPanel) => void;
 }

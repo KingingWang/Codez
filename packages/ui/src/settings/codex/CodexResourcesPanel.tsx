@@ -38,6 +38,7 @@ export function CodexSkillsPanel({ controller }: { controller: CodexSettingsCont
               variant="outline"
               size="sm"
               disabled={disabled}
+              aria-label={`${skill.enabled ? text.disable : text.enable} ${skill.name} (${skill.scope}: ${skill.path})`}
               onClick={() =>
                 void controller.run(async () => {
                   await controller.request({
@@ -116,6 +117,7 @@ export function CodexPluginsPanel({ controller }: { controller: CodexSettingsCon
                 variant="outline"
                 size="sm"
                 disabled={disabled}
+                aria-label={`${text.upgrade} ${marketplace.name}`}
                 onClick={() =>
                   void controller.run(async () => {
                     await controller.request({
@@ -129,6 +131,7 @@ export function CodexPluginsPanel({ controller }: { controller: CodexSettingsCon
               </Button>
               <CodexConfirmButton
                 label={text.remove}
+                targetLabel={marketplace.name}
                 disabled={disabled}
                 onConfirm={() =>
                   void controller.run(async () => {
@@ -142,6 +145,7 @@ export function CodexPluginsPanel({ controller }: { controller: CodexSettingsCon
             </div>
           </div>
           {marketplace.plugins.map((plugin) => {
+            const pluginTarget = `${plugin.name} (${marketplace.name}, ${plugin.id})`;
             const restricted =
               plugin.availability !== "AVAILABLE" ||
               plugin.installPolicy === "NOT_AVAILABLE" ||
@@ -163,6 +167,7 @@ export function CodexPluginsPanel({ controller }: { controller: CodexSettingsCon
                 {plugin.installed ? (
                   <CodexConfirmButton
                     label={text.uninstall}
+                    targetLabel={pluginTarget}
                     disabled={disabled}
                     onConfirm={() =>
                       void controller.run(async () => {
@@ -178,6 +183,7 @@ export function CodexPluginsPanel({ controller }: { controller: CodexSettingsCon
                     variant="outline"
                     size="sm"
                     disabled={disabled || Boolean(restricted)}
+                    aria-label={`${text.install} ${pluginTarget}`}
                     onClick={() =>
                       void controller.run(async () => {
                         await controller.request(codexPluginInstallRequest(marketplace, plugin));

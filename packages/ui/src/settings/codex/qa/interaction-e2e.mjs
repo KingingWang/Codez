@@ -11,6 +11,8 @@ import { promisify } from "node:util";
 import { verifyProjectDiscovery } from "./project-discovery-e2e.mjs";
 import {
   createCatalogConfigReadCounter,
+  inspectRpcLog,
+  verifySingleCatalogModelAndRestart,
   verifyLocalConfigValidation,
   verifyModeTooltipOwnership,
   verifyUsageHostReconnect,
@@ -64,8 +66,10 @@ try {
     modelId: "native-model",
     options: { reasoningLevel: "medium" },
   });
-  await page.getByRole("button", { name: "Inspect RPC log", exact: true }).click();
-  assert.ok((await result()).catalogReads > 0, "Composer must read the Host catalog boundary");
+  assert.ok(
+    (await inspectRpcLog(page, result)).catalogReads > 0,
+    "Composer must read the Host catalog boundary",
+  );
   checks.push("NewTask native config/model readiness, legacy registry never accessed");
   const firstSendConfigReads = await catalogConfigReads();
   await page.getByRole("button", { name: "Send fixture", exact: true }).click();
@@ -271,14 +275,10 @@ try {
     "Warm send after refresh must reuse the new catalog without overriding the explicit draft model",
   );
   checks.push("Native configuration write invalidates composer catalog before next send");
-  await page.getByRole("button", { name: "Inspect RPC log", exact: true }).click();
-  const recorded = (await result()).requests;
-  assert.equal(
-    (await result()).interactionCommandCount,
-    7,
-    "Double-click must not duplicate native answers",
-  );
-  assert.equal((await result()).legacyReads, 0);
+  const rpcLog = await inspectRpcLog(page, result);
+  const recorded = rpcLog.requests;
+  assert.equal(rpcLog.interactionCommandCount, 7, "Double-click must not duplicate native answers");
+  assert.equal(rpcLog.legacyReads, 0);
   const write = recorded.find((request) => request.method === "config/batchWrite");
   assert.equal(write.params.expectedVersion, "fixture-v1");
   assert.deepEqual(write.params.edits[0], {
@@ -314,6 +314,7 @@ try {
   checks.push(
     "Provider deletion and reference counts fail closed while catalog is unreadable, then recover after a verified empty-reference read",
   );
+  await verifySingleCatalogModelAndRestart(page, settings, result, checks);
   await settings.getByRole("button", { name: "MCP servers", exact: true }).click();
   await settings.getByText(/Native Desktop browser is unavailable on this Host/).waitFor();
   assert.equal(await settings.getByText(/Native Browser is available degraded/).count(), 0);

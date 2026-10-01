@@ -39,7 +39,12 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
     入口、快捷键或自动化调用会绕过 fail-closed。
     目录读取失败时引用数显示“未知”而不是 0，并只显示读取错误，不能额外
     宣告 `model_catalog_json` 未配置；只有成功返回 `path=null` 才显示未配置。
-  - 删除模型：slug 等于 `config.model`（新线程默认模型）时给出警告但允许。
+  - 删除模型：slug 等于 `config.model`（新线程默认模型）时给出警告但允许，
+    但**禁止删除已配置目录的最后一个模型**。Codex 原生加载
+    `model_catalog_json` 时拒绝 `{ "models": [] }`；GUI 须禁用该按钮并解释
+    应先新增替代模型。bridge 在读取当前文件后、写入前独立拒绝最后一条
+    的删除，直连控制面和过期 GUI 读数都不能写坏目录；失败不改写文件、
+    不声明重启待办。未配置目录与不存在的 slug 保持原有失败语义。
   - 「设为默认供应商」写 `config.model_provider`；codex 的
     check_thread_model_provider 只校验托管要求，用户层变更不会 invalidate
     现有线程路由（0.157.1 源码核实）。
@@ -65,7 +70,8 @@ model_catalog_json 文件     ──bridge catalog/* 本地控制面写──→
   新 turn 路由立即生效（线程 Config.model_catalog 已重读）；GUI 模型下拉
   （model/list 数据源）需重启 workspace runtime。面板在目录写入成功后显示
   该提示并提供「立即重启运行时」动作（codezAgentService.disposeWorkspace，
-  中断该工作区在途任务，需用户确认）；不重启也不产生错误状态。
+  中断该工作区在途任务，需用户确认）；确认时明确显示该中断风险和
+  「确认重启」，不得沿用「确认移除」。不重启也不产生错误状态。
 - 供应商写路径不需要重启：provider 定义在 turn 时从线程 Config 解析。
 
 ## 合同
@@ -80,7 +86,8 @@ model_catalog_json 文件     ──bridge catalog/* 本地控制面写──→
   upsert：同 slug 替换整条，否则追加到 models 末尾。条目必须是带非空 string
   `slug` 的对象。原子写（同目录 tmp 文件 + rename）。
 - `catalog/deleteModel`：`{ workspace, slug }`。按 slug 删除；不存在时报
-  未找到错误（调用方据此提示，不当成功处理）。
+  未找到错误（调用方据此提示，不当成功处理）；最后一条目录模型则拒绝，
+  仍返回明确错误，文件原始字节不变。
 
 三者结果均含 `{ path, models: [{ slug, provider? }] }`（与 catalog/read 同形），
 写路径顺带返回最新映射，调用方无需二次读取。文件不存在时 writeModel 按
@@ -127,3 +134,17 @@ deleteCodexCatalogModel`，载体铁律与 `readCodexCatalog` 相同（workspace
 10. 添加/编辑供应商时 base_url 填 `not-a-url` 或 `ftp://x` → 表单报
     `providerBaseUrlInvalid` 且不发起 config 写入；填 `http://127.0.0.1:34185/v1`
     通过校验并落盘。
+11. 配置了单模型目录：GUI 显示「至少保留一个目录模型」，删除按钮禁用；
+    绕过 GUI 直发 `catalog/deleteModel` 被 bridge 拒绝，原始 JSON 字节不变，
+    不引入原生 Codex 的空目录加载错误。加第二模型后允许删第一条，仍保留一条。
+    外部进程在 GUI 读取后删去其他模型时，以 bridge 写入前的最新读取为准。
+12. 成功保存目录模型后，点击「立即重启运行时」先显示本工作区进行中任务
+    将被中断和「确认重启」；取消不调用 disposeWorkspace，确认才调用。
+
+```text
+GUI 已观察目录 → 展示禁用或确认 → bridge 接收 deleteModel
+                                    → 读取当前文件 → 计算剩余模型数
+                                    ├─ 0：拒绝，文件不变，GUI 不提示重启
+                                    └─ ≥1：原子写入 → 面板刷新 → 提示手动重启
+用户确认重启 → disposeWorkspace（可中断任务）→ 重新读取原生目录
+```

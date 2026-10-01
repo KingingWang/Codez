@@ -22,34 +22,58 @@ export function CodexNotice({ children, error = false }: { children: ReactNode; 
 }
 export function CodexConfirmButton({
   label,
+  targetLabel,
+  confirmationLabel,
+  confirmationNotice,
   disabled,
   onConfirm,
 }: {
   label: string;
+  targetLabel?: string;
+  confirmationLabel?: string;
+  confirmationNotice?: string;
   disabled: boolean;
   onConfirm: () => void;
 }) {
   const text = useCodexMessages();
   const [confirming, setConfirming] = useState(false);
+  const confirmAction = confirmationLabel ?? `${text.confirmRemove}: ${label}`;
   return confirming ? (
-    <span className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2">
+      {confirmationNotice ? (
+        <div className="w-full">
+          <CodexNotice>{confirmationNotice}</CodexNotice>
+        </div>
+      ) : null}
       <Button
         size="sm"
         variant="destructive"
         disabled={disabled}
+        aria-label={targetLabel ? `${confirmAction} ${targetLabel}` : undefined}
         onClick={() => {
           setConfirming(false);
           onConfirm();
         }}
       >
-        {text.confirmRemove}: {label}
+        {confirmAction}
       </Button>
-      <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>
+      <Button
+        size="sm"
+        variant="ghost"
+        aria-label={targetLabel ? `${text.cancelAction} ${targetLabel}` : undefined}
+        onClick={() => setConfirming(false)}
+      >
         {text.cancelAction}
       </Button>
-    </span>
+    </div>
   ) : (
-    <Button size="sm" variant="outline" disabled={disabled} onClick={() => setConfirming(true)}>
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={disabled}
+      aria-label={targetLabel ? `${label} ${targetLabel}` : undefined}
+      onClick={() => setConfirming(true)}
+    >
       {label}
     </Button>
   );

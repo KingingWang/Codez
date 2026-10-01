@@ -57,7 +57,10 @@ export const enProviders = {
   modelCatalogStale:
     "Catalog saved; new turns can use the changes now. Restart the runtime to refresh the composer model picker.",
   modelRestartRuntime: "Restart runtime now",
+  modelConfirmRestart: "Confirm restart",
   modelRestartRuntimeConfirm: "Restarting interrupts running tasks in this workspace. Continue?",
+  modelDeleteLastBlocked:
+    "Keep at least one catalog model; add a replacement before deleting this one.",
   modelDeleteDefaultWarning:
     "This model is the configured default (config.model); new threads fall back to the provider-preferred model.",
   modelSave: "Save model",
@@ -113,7 +116,9 @@ export const zhProviders: Record<keyof typeof enProviders, string> = {
   modelNoCatalog: "未配置 model_catalog_json，无法管理目录模型。请先在 config.toml 中配置。",
   modelCatalogStale: "目录已保存，新对话立即可用。重启运行时以刷新 composer 模型下拉。",
   modelRestartRuntime: "立即重启运行时",
+  modelConfirmRestart: "确认重启",
   modelRestartRuntimeConfirm: "重启将中断该工作区正在运行的任务，继续？",
+  modelDeleteLastBlocked: "目录至少需要保留一个模型；请先添加替代模型再删除此模型。",
   modelDeleteDefaultWarning:
     "该模型是配置的默认模型（config.model）；新会话将回退到供应商偏好模型。",
   modelSave: "保存模型",

@@ -2,7 +2,7 @@
  * SettingsPage 分区 ↔ Codex 设置内部面板的双向映射（spec: CodexSettings.spec.md
  * 「internal panel tabs」）。内部标签与侧栏分区是同一导航的两个入口：
  * 有对应分区的面板切换要同步外层 activeSection；没有侧栏分区的面板
- * （models/config/history）返回 null，保持内部切换。
+ * （models/config/history）归属 codex，内部选中态由 SettingsPage 保留。
  */
 import type { SettingsSectionId } from "@/lib/settingsNavigation.js";
 import type { CodexSettingsPanel } from "./CodexSettingsSection.js";
@@ -31,7 +31,7 @@ export function codexSectionToPanel(section: string): CodexSettingsPanel {
   return SECTION_TO_PANEL[section as SettingsSectionId] ?? "account";
 }
 
-/** 返回 null 表示该面板没有侧栏分区对应项，只做内部切换。 */
-export function codexPanelToSection(panel: CodexSettingsPanel): SettingsSectionId | null {
-  return PANEL_TO_SECTION[panel] ?? null;
+/** 内部专属面板归属 Codex 侧栏，不能沿用上一个 legacy 分区标题。 */
+export function codexPanelToSection(panel: CodexSettingsPanel): SettingsSectionId {
+  return PANEL_TO_SECTION[panel] ?? "codex";
 }
