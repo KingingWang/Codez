@@ -182,6 +182,9 @@ from any other origin/port; no fallback to another app's renderer is allowed.
 Browser fixture RPC-log assertions must wait for the inspection result produced
 by that click; an earlier `result` payload is not evidence of the current
 native interaction count.
+When the GUI target itself crashes, an optional failure screenshot may be
+unavailable; the QA checker must report its original assertion/crash error
+instead of replacing that error with the screenshot-capture failure.
 Packaged verification launches only this checkout's `packages/desktop/dist/linux-unpacked/codez-codex`
 from a temporary workspace, without renderer, bridge or native executable overrides.
 It uses dedicated CDP 9230 and accepts only the exact packaged

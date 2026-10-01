@@ -223,8 +223,19 @@ real fix achieves, not the current baseline.
   the captured failure list. The watchdog is evaluated on a 2s interval up to a hard
   deadline, so late-arriving evidence is not missed between fixed timers.
 - The watchdog is plain inline DOM/CSS with no imports so it still runs while the
-  module graph is broken; it is skipped for the update-status window kind and never
-  fires once React reports ready.
+  module graph is broken. It must be an ordinary (non-module) inline `<script>`
+  that remains in the served and production-built HTML; `type="module"` causes
+  Vite to bundle it into an external entry and removes the watchdog precisely
+  when an entry chunk fails. It is skipped for the update-status window kind
+  and never fires once React reports ready.
+- Acceptance: building the desktop renderer retains `checkBootstrapFailure`
+  inside a classic inline script independent of external module chunks. In an
+  isolated GUI page with the entry chunk aborted, a user sees a bounded
+  self-retry followed by an actionable failure surface, not a permanent logo.
+  The failure surface must set its own opaque, readable background and text
+  colors: Electron may show it over a dark startup body without the application
+  theme stylesheet, so dark text on a transparent overlay is not acceptable.
+  A normal successful React mount cancels the watchdog with no failure UI.
 - Main owns the crash path the renderer cannot see: when a primary application
   window reports `render-process-gone` with a recoverable reason (`crashed`,
   `killed`, `oom`, `launch-failed`) and the app is not quitting, Main reloads that

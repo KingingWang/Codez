@@ -5,18 +5,21 @@
 `/root/workspace/codex` 只读源码对照为依据。官方
 [Codex app-server 集成说明](https://developers.openai.com/blog/codex-as-a-platform)
 明确把长期会话、流式事件和审批作为 app-server 的集成面；
-本项目保持原生 Codex 为执行、会话和配置的权威，Codez 只负责窗口、
-路由与呈现。此文不把夹具的模拟审批视作真实账号/手机远控证据。
+本项目保持原生 Codex 为执行、会话和配置的权威；Codez 提供窗口、路由、
+呈现及受限的本地配置控制面。此文不把夹具的模拟审批视作真实账号/
+手机远控证据。
 
 ## 边界与本轮优化
 
-| 发现                                                                                    | 证据强度                                                                                  | 状态/处理                                                                          |
-| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| 设置内从 MCP servers 转到 Configuration/Thread history 时，标题与侧栏仍停在 MCP Servers | 真实隔离 Electron 可复现，`desktop-check.mjs` 修改前失败                                  | 已修：内层独有面板归属 Codex 外层导航，保留面板选中态；再次点外层 Codex 回 Account |
-| 技能、插件与市场的多个按钮同名，读屏无法确认操作目标                                    | GUI 可交互树与截图证实                                                                    | 已修：技能路径/作用域、插件 ID/市场和市场名进入无障碍名称；视觉短标签不变          |
-| 删除唯一 catalog 模型会写出 `{ "models": [] }`，但 Codex 原生拒绝空目录                 | 桥接代码、固定版本二进制错误字符串与参考源码 `load_catalog_json` 一致；桥接回归修改前失败 | 已修：bridge 本次读取后拒绝落盘，GUI 禁用并提示先添加替代模型；字节保持不变        |
-| 目录写入后的「重启运行时」曾显示「确认移除」且未显示任务中断风险                        | `CodexConfirmButton` 调用点与 `disposeWorkspace` 路径证实                                 | 已修：独立「确认重启」与中断提醒；取消不调用 dispose                               |
-| 隔离 GUI 回归旧脚本只认 5174/9229、或读取旧 RPC 日志快照                                | 原脚本在 5175/9231 拒绝 QA 页面；交互运行曾读到旧计数                                     | 已修：端口显式校验与目标 URL 白名单；RPC 观察等待本次检查序号                      |
+| 发现                                                                                           | 证据强度                                                                                  | 状态/处理                                                                          |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 设置内从 MCP servers 转到 Configuration/Thread history 时，标题与侧栏仍停在 MCP Servers        | 真实隔离 Electron 可复现，`desktop-check.mjs` 修改前失败                                  | 已修：内层独有面板归属 Codex 外层导航，保留面板选中态；再次点外层 Codex 回 Account |
+| 技能、插件与市场的多个按钮同名，读屏无法确认操作目标                                           | GUI 可交互树与截图证实                                                                    | 已修：技能路径/作用域、插件 ID/市场和市场名进入无障碍名称；视觉短标签不变          |
+| 删除唯一 catalog 模型会写出 `{ "models": [] }`，但 Codex 原生拒绝空目录                        | 桥接代码、固定版本二进制错误字符串与参考源码 `load_catalog_json` 一致；桥接回归修改前失败 | 已修：bridge 本次读取后拒绝落盘，GUI 禁用并提示先添加替代模型；字节保持不变        |
+| 目录写入后的「重启运行时」曾显示「确认移除」且未显示任务中断风险                               | `CodexConfirmButton` 调用点与 `disposeWorkspace` 路径证实                                 | 已修：独立「确认重启」与中断提醒；取消不调用 dispose                               |
+| renderer 的“内联”启动看门狗使用 `type="module"`，Vite 将其移进外部入口；入口失败时看门狗也失效 | 构建 HTML 只有外部脚本，真实 GUI reload 留在 logo；源码测试与故障注入修改前失败           | 已修为经典内联脚本；阻断入口两次后只重载一次并显示 Reload 错误面                   |
+| 错误面在深色 Electron 启动背景上透明，深色文字几乎不可读                                       | 真实 Electron 失败截图及 dark-mode 注入（背景透明）                                       | 已修为独立不透明浅色背景；dark-mode 故障注入再次通过                               |
+| 隔离 GUI 回归旧脚本只认 5174/9229、或读取旧 RPC 日志快照                                       | 原脚本在 5175/9231 拒绝 QA 页面；交互运行曾读到旧计数                                     | 已修：端口显式校验与目标 URL 白名单；RPC 观察等待本次检查序号                      |
 
 所有变动先记录在
 [`CodexSettings.spec.md`](../packages/ui/src/settings/codex/CodexSettings.spec.md)
@@ -41,17 +44,28 @@ GUI 最近一次目录读数 → 禁用/解释
 - `pnpm build:bootstrap` 与后续 renderer 增量构建通过；完整
   `pnpm typecheck` 通过；`pnpm lint` 0 error、70 条已有 warning；
   `pnpm architecture:check --changed` 0 新违规。
-- Codex 设置单测 44/44；catalog 控制面 13/13；`pnpm test:codex`
-  在本轮首批 UI 修改后通过（后续 catalog 守卫需在提交后重跑）。
+- Codex 设置单测 44/44；catalog 控制面与桌面 bootstrap/crash
+  回归合计 21/21；`pnpm test:codex` 在 catalog 守卫与内联看门狗
+  修改后重跑通过。
 - 真实隔离 Electron 设置/首张图片准备检查 10/10；真实原生会话检查
   10/10（首发图片、排队编辑/删除、自动出队、抢占）；原生 retry 检查
   4/4；手动中断后继续 4/4；浏览器 React 交互夹具最终 30/30。
   证据分别在 `/tmp/codex-ui-desktop-check-E2DVs7/`、
-  `/tmp/codex-ui-desktop-conversation-Um0QYA/`、
+  `/tmp/codex-ui-desktop-conversation-X8EPrx/`、
   `/tmp/codex-ui-desktop-retry-E1WDuu/`、
   `/tmp/codex-ui-interrupted-turn-gegs8T/`、
-  `/tmp/codex-ui-interaction-e2e-YqHnTn/`。
-- 原始 UI 探查截图与两项复现步骤保存在本地忽略目录
+  `/tmp/codex-ui-interaction-e2e-RH7Idn/`。
+- 构建产物的看门狗故障注入通过：`assets/index-*.js` 两次被阻断，
+  页面只自动重载一次，然后展示可操作的 Reload 错误页；截图在
+  `/tmp/codex-ui-bootstrap-watchdog-BWVwyS/`。另一次提交后真实 Electron
+  `desktop-check.mjs` 在 `page.reload()` 时遇到 `render-process-gone`
+  （reason=crashed，exitCode=133），Main 发起有界重载。该次检查**未通过**，
+  独立 Chrome 的故障注入不能代替真实 Electron 的崩溃恢复验收。
+  最终新实例冷载可正常显示工作区，但随后的 reload 再次报告原始
+  `Page crashed`（`/tmp/codex-ui-desktop-check-eIdeTk/`），日志显示
+  `render-process-gone` exit 133、Main 发起第 1 次有界重载；截图因 target
+  已崩溃不可用，检查器保留了原始错误。
+- 原始 UI 探查截图与三项复现步骤保存在本地忽略目录
   `.tmp/codex-dogfood-20261001/report.md`；录屏组件在本容器报
   `ffmpeg write failed: Broken pipe`，故无有效复现视频。单测夹具
   不能证明凭据模型、远端 attachment 或真实手机重放。
@@ -76,7 +90,8 @@ GUI 最近一次目录读数 → 禁用/解释
 4. **仍未验证（阻止“完美”宣称）**：真实 ChatGPT/API key 鉴权、外部插件
    安装与 OAuth、移动远控断线重放、跨 Host owner/lease、Windows/macOS、
    托管策略，以及本容器 inotify 紧张时的长时间 renderer 冷载/崩溃恢复。
-   需隔离测试账号、配套宿主机和复现矩阵。这里的 30/30 是夹具交互数，
+   需隔离测试账号、配套宿主机和复现矩阵，并在正常资源配额下复测
+   本轮观察到的 renderer exit 133。这里的 30/30 是夹具交互数，
    不代表 GUI 的「每个行为」在每个环境均已通过。
 
 ## 子代理审查状态

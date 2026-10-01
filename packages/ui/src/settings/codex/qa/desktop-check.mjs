@@ -26,6 +26,12 @@ if (!page)
   throw new Error("Expected isolated desktop with local QA renderer; refusing another page");
 const checks = [];
 try {
+  const rendererHtml = await (await page.request.get(page.url())).text();
+  const inlineWatchdog = [...rendererHtml.matchAll(/<script>([\s\S]*?)<\/script>/gu)].find(
+    (match) => match[1].includes("checkBootstrapFailure"),
+  );
+  assert.ok(inlineWatchdog, "Built QA renderer must keep the startup watchdog inline");
+  checks.push("Built renderer keeps a module-independent inline startup watchdog");
   const startupErrors = [];
   page.on("pageerror", (error) => startupErrors.push(error.message));
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -133,7 +139,12 @@ try {
   await writeFile(join(evidence, "results.json"), JSON.stringify({ checks }, null, 2));
   console.log(JSON.stringify({ status: "passed", evidence, checks }, null, 2));
 } catch (error) {
-  await page.screenshot({ path: join(evidence, "failure.png") });
+  try {
+    await page.screenshot({ path: join(evidence, "failure.png") });
+  } catch (screenshotError) {
+    // Renderer 原生崩溃后 CDP target 不可截图；记录原因以区分崩溃与断开。
+    console.error({ evidence, screenshotUnavailable: true, reason: screenshotError?.message });
+  }
   console.error({ evidence, checks });
   throw error;
 } finally {
