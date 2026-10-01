@@ -101,3 +101,36 @@
 `MIN_DESKTOP_WINDOW_WIDTH=480` 的自动收侧栏路径复核；这条推断在有真实
 resize 事件的桌面路径未复现。专用 architect 角色在当前环境因模型不存在
 未能启动，备用代理收到不可解读的任务载荷；不冒称取得独立架构 CLEAR。
+
+## 2026-10-02 最终复核补记
+
+- 本轮五个 Codex 修复/审查提交之后，补记以下最终复测结果。复测执行
+  `pnpm typecheck` 通过、`pnpm lint` 0 error / 70 条存量 warning；
+  `pnpm architecture:check --changed` 0 新违规。探针隔离单测 3/3、
+  Queue/Guide 与会话单测 14/14、浏览器真实组件交互夹具 30/30
+  （`/tmp/codex-ui-interaction-e2e-wBRx7b/results.json`）。
+  `pnpm test:codex` 桥接套件与发行测试（后者 55/55）通过；
+  构建 HTML 的入口阻断故障注入通过
+  （`/tmp/codex-ui-bootstrap-watchdog-aosDCa/results.json`）。
+- 已有同一提交的真实原生回环证据：Queue/Guide 9/9
+  (`/tmp/codex-ui-followup-QcjlG0/results.json`)，旧会话路径 10/10、
+  原生重试 4/4、中断后继续 4/4。深/浅色与窄窗卡片截图见上文。
+  测试用的是隔离的无认证回环提供者，不代表真实账号或移动网络。
+- 用 `agent-browser` 连接既有隔离 Electron：在可操作的启动错误面点击
+  “Reload” 曾恢复工作区；Codex 账户/配置/线程历史和外层 Codex 导航均
+  能打开。自动设置检查在 `page.reload()` 后却再次超时等候 “New task”
+  （`/tmp/codex-ui-desktop-check-Cn8Xhj`）。HAR 中 285 个请求有 283 个
+  HTTP 200、2 个未完成；同一实例日志有 `inotify` / `EMFILE` 错误，
+  不能据此断言单一根因，也绝不把失败检查算作通过。错误面实况：
+
+  ![隔离 Electron 重载后显示的可操作错误面](assets/codex-followup-2026-10-01/bootstrap-reload-failed-20261002.png)
+
+- 新一轮独立子代理只读审查没有报告阻断缺陷；它提出 guide 提示 ID 在
+  Composer 重挂载后可能碰撞，以及过滤函数在每个流式快照上重算。
+  目前提示列表与 ID ref 均属于同一个组件生命周期，卸载后不会保留
+  旧提示供新 ID 碰撞；而逐 chunk 更新的 snapshot 会使依赖它的 memo
+  同频失效。这两点尚无可复现错误或可测性能收益，本轮不作投机性修改。
+  另一个架构审查子代理无法解读任务载荷，不记为架构验收。
+- 仍需决策：catalog 跨进程整文件改写的并发丢失更新与原生热刷新协议，
+  以及真实账号、手机断线、跨 Host、Windows/macOS 和资源正常宿主机的
+  renderer 重载验收。此处不宣称每个 GUI 行为已测过，更不宣称完美适配。
