@@ -193,6 +193,21 @@ Stop the probe after verification; retain temporary evidence only.
 node packages/ui/src/settings/codex/qa/interaction-e2e.mjs
 ```
 
+The separate Help-menu product-identity runner mounts the real shared Help
+button under Codex, production and Preview Vite defines. For each flavor it
+opens the desktop and Web menus, checks update-entry visibility and captures
+screenshots; visible entries must dispatch the existing `checkForUpdates`
+platform command to a fixture (never to the real updater):
+
+```sh
+CHOKIDAR_USEPOLLING=1 node packages/ui/src/settings/codex/qa/help-menu-flavors-e2e.mjs
+```
+
+It uses an isolated browser profile, localhost port 5190 and temporary evidence
+directory. The broader interaction runner additionally verifies the Codex model
+catalog visibility switch's target-specific accessible name and checked state.
+Neither browser fixture is a packaged update installation or a real account test.
+
 On a shared Linux host that has already exhausted the per-user inotify
 instance quota, run this isolated Vite fixture with
 `CHOKIDAR_USEPOLLING=1 node packages/ui/src/settings/codex/qa/interaction-e2e.mjs`.

@@ -48,6 +48,7 @@ export const enProviders = {
   modelDisplayName: "Display name",
   modelDescription: "Description",
   modelHidden: "Hidden from the model picker",
+  modelVisible: "Show in the model picker",
   modelAdvancedJson: "Advanced JSON",
   modelAdvancedJsonHelp:
     "The full catalog entry. Identity fields (slug, provider, display name, description, visibility) are overwritten by the fields above on save.",
@@ -109,6 +110,7 @@ export const zhProviders: Record<keyof typeof enProviders, string> = {
   modelDisplayName: "显示名称",
   modelDescription: "描述",
   modelHidden: "在模型下拉中隐藏",
+  modelVisible: "在模型下拉中显示",
   modelAdvancedJson: "高级 JSON",
   modelAdvancedJsonHelp:
     "完整的目录条目。保存时身份字段（slug、provider、显示名称、描述、可见性）以上方表单为准。",

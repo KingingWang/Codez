@@ -51,6 +51,13 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
 
 ## 事实源与所有权
 
+目录列表的可见性开关表达「在模型下拉中显示」（`checked = !hidden`），
+不能在勾选时读作「隐藏」。可访问名称包含模型 slug，同名模型也必须有不同控件名。
+编辑表单的独立「隐藏」开关仍表示持久化 `hidden` 草稿（`checked = hidden`）。
+列表切换沿用原有目录写入命令、权威重读和重启提示。验收：可见与隐藏模型的
+勾选状态相反、读屏名称与状态一致且包含 slug；切换后向同一目录所有者写入
+相反的可见性，表单草稿语义不变。
+
 ```text
 config.toml model_providers ──config/batchWrite(reloadUserConfig: true)──→ 热刷新所有
                               已加载线程配置，新 turn 立即可路由（与记忆设置同机制）

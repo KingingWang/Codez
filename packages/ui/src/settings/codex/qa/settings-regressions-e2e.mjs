@@ -1,4 +1,37 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { promisify } from "node:util";
+
+export async function captureOptionalAgentBrowserSnapshot(evidence) {
+  if (!process.env.AGENT_BROWSER_BIN) return;
+  const { stdout } = await promisify(execFile)(process.execPath, [
+    process.env.AGENT_BROWSER_BIN,
+    "--session",
+    "codex-ui-qa",
+    "--cdp",
+    "9338",
+    "snapshot",
+    "-i",
+  ]);
+  await writeFile(join(evidence, "agent-browser-snapshot.txt"), stdout);
+}
+
+export async function verifyCodexHelpUpdate(page, result, evidence, checks) {
+  assert.equal(await page.getByTestId("qa-product-flavor").innerText(), "codex");
+  await page.getByTestId("qa-web-help").getByRole("button", { name: "Help" }).click();
+  assert.equal(await page.getByRole("menuitem", { name: "Check for Updates" }).count(), 0);
+  await page.keyboard.press("Escape");
+  await page.getByTestId("qa-desktop-help").getByRole("button", { name: "Help" }).click();
+  const checkUpdate = page.getByRole("menuitem", { name: "Check for Updates" });
+  await checkUpdate.waitFor();
+  await page.screenshot({ path: join(evidence, "codex-help-update.png"), animations: "disabled" });
+  await checkUpdate.click();
+  await page.getByRole("button", { name: "Inspect desktop commands" }).click();
+  assert.deepEqual(await result(), ["checkForUpdates"]);
+  checks.push("Codex desktop Help exposes the native update command; Web hides it");
+}
 
 export async function verifyMessageFeedback(page, checks) {
   const feedback = page.getByTestId("message-feedback-fixture");
@@ -43,7 +76,24 @@ export async function verifySingleCatalogModelAndRestart(page, settings, result,
   checks.push(
     "A configured single-model catalog cannot offer deletion that would break native Codex",
   );
-  await catalogModels.getByRole("switch", { name: "Hidden from the model picker" }).click();
+  const visibleInPicker = catalogModels.getByRole("switch", {
+    name: "Show in the model picker: second-model",
+  });
+  assert.equal(await visibleInPicker.getAttribute("aria-checked"), "true");
+  const initialWrites = (await inspectRpcLog(page, result)).catalogWrites;
+  await visibleInPicker.click();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[role="switch"][aria-label="Show in the model picker: second-model"]')
+        ?.getAttribute("aria-checked") === "false",
+  );
+  const persisted = await inspectRpcLog(page, result);
+  assert.equal(persisted.catalogWrites, initialWrites + 1);
+  assert.equal(persisted.catalogModelVisibility, "hidden");
+  checks.push(
+    "Catalog model visibility switch has a target-specific name and matching checked state",
+  );
   const restartRuntime = settings.getByRole("button", { name: "Restart runtime now" });
   await restartRuntime.waitFor();
   await restartRuntime.click();
