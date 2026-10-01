@@ -108,6 +108,74 @@ closed, and native config/skills/plugin requests stay on the canonical execution
   is immediately visible and editable while a turn runs; steer
   (`requestedDelivery: "guide"`) stays available only as an explicit per-send
   intent, because steered input is invisible and not editable until injection.
+- While a Codex turn is running, the composer must expose an explicit, accessible
+  per-send Queue / Guide choice next to Send. Queue remains selected by default:
+  it sends after the current task, appears in the editable native queue, and
+  never silently becomes a steer. Guide sends `requestedDelivery: "guide"` on
+  this submission only: it joins the current turn at Codex's next model step,
+  not necessarily at the next tool call. Codex does not expose un-injected
+  steers in `thread/queue/list`. After a successful ACK the initiating composer
+  may show an explicitly local "accepted, awaiting next model step" hint scoped
+  to the current turn; it is not an authoritative queued item, cannot be
+  edited, and disappears when a native user-input row carries the exact
+  `sourceCommandId` returned by the accepted steer, or on turn change.
+  Both the local next-send choice and hint are scoped by
+  `workspaceIdentity?.trim() || workspacePath` plus session and turn; switching
+  between same-path remote identities cannot carry a choice or hint across.
+  Codex's projected user-input row does not necessarily carry `guided: true`;
+  matching only that display flag or text leaves a duplicate hint or removes
+  the wrong one. The hint is not durable across reload; after restart only
+  native projected facts are shown. A successful send resets the next-send choice to Queue; rejection
+  keeps both the draft and the choice for retry. Returning to idle or switching
+  sessions also resets it.
+  Modifiers retain the existing inverse action (Queue → interrupt and start,
+  Guide → Queue); neither action changes the global legacy follow-up setting.
+  A running turn that settles between selection and admission follows the
+  native command's documented idle delivery, and the UI reconciles from
+  authoritative snapshot rather than inventing a second queue.
+- The native queue card labels the count and execution timing in user language,
+  keeps long input readable, and names its preempt action as an interruption
+  of the current task. The editable queue list derives solely from authoritative
+  `queue.items`; the local accepted-guide hint must remain visibly distinct
+  from that list and must never manufacture an authoritative queue fact. Empty
+  queue shows no card; no pause/resume affordance is shown for native Codex.
+
+```text
+running snapshot → Composer local next-send intent (Queue by default / Guide)
+  → sendText(requestedDelivery) → Host route → bridge → native queue/add | turn/steer
+  → native queue/turn events → bridge projection → desktop continuous UI
+                                     └── mobile replayable snapshot/gap repair
+accepted queue: native Codex; selected next-send intent: Composer draft only
+```
+
+Acceptance for follow-up delivery:
+
+1. An isolated Electron/Host/native turn held at the model request shows both
+   modes via mouse and keyboard, readable in the active theme and compact
+   viewport. A normal busy send creates one editable/deletable native queue
+   card; release auto-runs it as the next turn with no duplicate transcript.
+2. Selecting Guide and sending another busy input invokes `turn/steer` exactly
+   once, exposes a clearly local accepted-guide hint (not a queue card), and
+   after the next native model step displays the guided input in that same
+   turn while the hint disappears. Reload during that interval does not claim
+   the native queue contains the guide. The subsequent composer choice returns
+   to Queue.
+3. A rejected Guide preserves text, attachments and the selected mode; retry
+   cannot create two accepted commands. Idle, session switch and fresh task
+   hide the mode choice and resume the native start-now default.
+4. A Queue item's preempt action warns that it interrupts the current task;
+   the modifier's inverse result is announced for both modes. Locale, light/
+   dark and narrow viewport retain labels, focus and reachability. In a compact
+   busy Codex composer, disabled model details collapse to a labeled locked
+   status before consuming space needed by Queue/Guide and Stop/Send; they are
+   readable again at regular width or when idle. Desktop
+   continuous and mobile replayable projections agree about admitted delivery.
+5. The isolated Electron QA probe refuses to start if its chosen local CDP
+   port is already listening, before creating a profile or launching Electron.
+   A stale QA window on the same renderer preview must never be mistaken for
+   the new mock instance. Probe does not stop or reconfigure the port owner;
+   choose separate QA ports or close only the previous isolated probe.
+
 - Preempt is interrupt-then-start, never a single atomic mutation: busy
   `requestedDelivery: "startNow"` and busy `sendQueuedNow` interrupt the running
   turn first. `turn/interrupt` resolves only after `TurnAborted`, and core

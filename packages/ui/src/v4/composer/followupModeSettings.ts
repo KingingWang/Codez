@@ -15,6 +15,29 @@ export function resolveOppositeFollowupDelivery(
   return mode === "guide" ? "queue" : "startNow";
 }
 
+export function resolveComposerFollowupDelivery({
+  nativeCodex,
+  busy,
+  nativeIntent,
+  followupMode,
+  reverse,
+}: {
+  nativeCodex: boolean;
+  busy: boolean;
+  nativeIntent: "queue" | "guide";
+  followupMode?: SessionConfigState["followupMode"];
+  reverse: boolean;
+}): "startNow" | "queue" | "guide" | undefined {
+  // 原因：Codex 快照的 followupMode 固定为 queue，且桌面不接受旧
+  // setFollowupMode；仅靠投影模式无法表达用户选中的引导。显式意图随
+  // 本次命令提交，空闲仍交给 native startNow，旧运行时行为保持不变。
+  if (nativeCodex) {
+    if (!busy) return undefined;
+    return reverse ? resolveOppositeFollowupDelivery(nativeIntent) : nativeIntent;
+  }
+  return reverse && followupMode ? resolveOppositeFollowupDelivery(followupMode) : undefined;
+}
+
 export function shouldEnableModifiedEnterSubmit({
   inputRoutingMode,
 }: {

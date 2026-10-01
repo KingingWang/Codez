@@ -192,6 +192,34 @@ nodes:
     invariants:
       - Snapshots replace state; only contiguous deltas apply. Gaps require resync, and pending optimistic
         commands are not accepted runtime facts.
+  - id: surface.codex-followup-composer
+    kind: ui-surface
+    label: Codex composer per-send Queue or Guide choice
+    aliases:
+      - Codex 引导
+      - Codex 排队
+      - running follow-up
+    codeSeeds:
+      - file: packages/ui/src/v4/composer/CodexFollowupModeMenu.tsx
+        symbol: CodexFollowupModeMenu
+      - file: packages/ui/src/v4/ConversationComposer.tsx
+        symbol: ConversationComposer
+  - id: state.codex-followup-intent
+    kind: state-owner
+    label: Composer-local next-send choice, not an accepted queue
+    codeSeeds:
+      - file: packages/ui/src/v4/ConversationComposer.tsx
+        symbol: codexFollowupIntent
+      - file: packages/ui/src/v4/composer/followupModeSettings.ts
+        symbol: resolveComposerFollowupDelivery
+  - id: service.codex-native-followup
+    kind: service
+    label: Codex native queue/add and turn/steer commands
+    codeSeeds:
+      - file: packages/codex-bridge/src/commands.ts
+        symbol: CommandRouter
+      - file: packages/codex-bridge/src/projection.ts
+        symbol: projectThread
   - id: capability.workspace-identity
     kind: capability
     label: Workspace identity and remote runtime isolation
@@ -471,6 +499,25 @@ edges:
     to: service.conversation-command-inbox
     type: admits-commands-through
     rank: must-inspect
+  - from: capability.conversation-runtime
+    to: surface.codex-followup-composer
+    type: exposes-busy-followup-at
+    rank: conditional
+    condition: Codex desktop running turns only; the default remains native queue.
+  - from: surface.codex-followup-composer
+    to: state.codex-followup-intent
+    type: edits-next-send-draft
+    rank: must-inspect
+  - from: state.codex-followup-intent
+    to: service.codex-native-followup
+    type: submits-requested-delivery-to
+    rank: must-inspect
+    condition: An explicit per-send choice routes through the Host to native queue/add or turn/steer.
+  - from: service.codex-native-followup
+    to: state.conversation-projection
+    type: projects-native-admission-to
+    rank: must-inspect
+    condition: The queue card and pending guide split read native admitted delivery, not the draft choice.
   - from: capability.conversation-runtime
     to: state.conversation-product-projection
     type: projects-runtime-events-through

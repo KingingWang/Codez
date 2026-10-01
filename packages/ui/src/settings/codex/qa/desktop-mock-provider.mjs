@@ -41,6 +41,13 @@ export async function startDesktopMockProvider({ reuseItemId = false } = {}) {
       res.end("released");
       return;
     }
+    if (req.url === "/qa/release-one" && req.method === "POST") {
+      // 只放行当前模型请求，下一次 native model-step 继续 hold，
+      // 这样可检查 guided row 已投影但同一 turn 尚未结束时的 GUI。
+      pending.values().next().value?.();
+      res.end("released one");
+      return;
+    }
     if (req.url !== "/v1/responses" || req.method !== "POST") {
       res.writeHead(404).end();
       return;

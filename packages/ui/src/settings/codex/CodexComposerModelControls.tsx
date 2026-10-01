@@ -1,6 +1,8 @@
 import type { ModelSelection } from "@codez/shared";
 import type { CodexModelCatalogRead } from "@/hooks/useCodexModelCatalog.js";
+import { LockKeyholeIcon } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
+import { cn } from "@/components/lib/utils.js";
 import {
   Select,
   SelectContent,
@@ -45,7 +47,13 @@ export function CodexComposerModelControls({
       </div>
     );
   return (
-    <div data-testid="codex-composer-models" className="flex min-w-0 flex-wrap items-center gap-2">
+    <div
+      data-testid="codex-composer-models"
+      className={cn(
+        "flex min-w-0 flex-wrap items-center gap-2",
+        busy && "@max-[650px]/conversation:flex-nowrap",
+      )}
+    >
       <Select
         value={selection?.modelId ?? ""}
         disabled={locked}
@@ -61,7 +69,13 @@ export function CodexComposerModelControls({
           onSelectModel(owner, value, null);
         }}
       >
-        <SelectTrigger aria-label={text.model} className="h-7 max-w-56 text-ui-sm">
+        <SelectTrigger
+          aria-label={text.model}
+          className={cn(
+            "h-7 min-w-0 max-w-56 text-ui-sm",
+            busy && "@max-[650px]/conversation:max-w-24",
+          )}
+        >
           <SelectValue placeholder={text.model} />
         </SelectTrigger>
         <SelectContent>
@@ -84,7 +98,13 @@ export function CodexComposerModelControls({
         </SelectContent>
       </Select>
       {configuredSelected ? (
-        <span className="text-ui-sm text-muted-foreground" title={text.configuredHelp}>
+        <span
+          className={cn(
+            "text-ui-sm text-muted-foreground",
+            busy && "@max-[650px]/conversation:hidden",
+          )}
+          title={text.configuredHelp}
+        >
           {text.effort}: {selection?.options?.reasoningLevel ?? text.nativeDefault}
         </span>
       ) : (
@@ -100,7 +120,10 @@ export function CodexComposerModelControls({
               });
           }}
         >
-          <SelectTrigger aria-label={text.effort} className="h-7 max-w-40 text-ui-sm">
+          <SelectTrigger
+            aria-label={text.effort}
+            className={cn("h-7 max-w-40 text-ui-sm", busy && "@max-[650px]/conversation:hidden")}
+          >
             <SelectValue placeholder={text.effort} />
           </SelectTrigger>
           <SelectContent>
@@ -112,13 +135,33 @@ export function CodexComposerModelControls({
           </SelectContent>
         </Select>
       )}
-      <Button size="sm" variant="ghost" onClick={read.reload} disabled={disabled}>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={read.reload}
+        disabled={disabled}
+        className={busy ? "@max-[650px]/conversation:hidden" : undefined}
+      >
         {text.refresh}
       </Button>
       {busy && (
-        <span role="status" className="text-ui-sm text-muted-foreground">
-          {text.busySettings}
-        </span>
+        <>
+          <span
+            role="status"
+            className="text-ui-sm text-muted-foreground @max-[650px]/conversation:hidden"
+          >
+            {text.busySettings}
+          </span>
+          <span
+            role="status"
+            aria-label={text.busySettings}
+            title={text.busySettings}
+            className="hidden shrink-0 items-center gap-1 text-ui-sm text-foreground-subtle @max-[650px]/conversation:inline-flex"
+          >
+            <LockKeyholeIcon className="size-3.5" aria-hidden="true" />
+            {text.busyShort}
+          </span>
+        </>
       )}
     </div>
   );

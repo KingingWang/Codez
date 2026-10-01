@@ -65,6 +65,7 @@ export function ChatPromptEditor({
   attachmentAction,
   betweenCancelAndSubmitAction,
   submitControl,
+  shrinkTrailingActions = false,
   inputTestId,
   submitTestId,
   cancelTestId,
@@ -122,6 +123,8 @@ export function ChatPromptEditor({
   /** 行内编辑专用：固定插在取消与主提交之间的第二动作。 */
   betweenCancelAndSubmitAction?: ReactNode;
   submitControl?: ReactNode;
+  /** Codex 紧凑窗口：让只读模型信息先收缩，保留右侧发送/停止控制的可达性。 */
+  shrinkTrailingActions?: boolean;
   inputTestId?: string;
   submitTestId?: string;
   cancelTestId?: string;
@@ -411,7 +414,10 @@ export function ChatPromptEditor({
             </div>
           </div>
           <div
-            className="ml-auto flex shrink-0 items-center justify-end gap-1.5"
+            className={cn(
+              "ml-auto flex items-center justify-end gap-1.5",
+              shrinkTrailingActions ? "min-w-0 max-w-[calc(100%-5rem)] shrink" : "shrink-0",
+            )}
             data-composer-trailing-actions
           >
             {onCancel && cancelLabel ? (

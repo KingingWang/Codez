@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { startDesktopMockProvider } from "./desktop-mock-provider.mjs";
 import { isolatedElectronSandboxEnv } from "./desktop-probe-env.mjs";
+import { assertQaCdpPortAvailable } from "./desktop-probe-ports.mjs";
 const root = process.cwd();
 const packaged = process.env.CODEX_UI_QA_PACKAGED === "1";
 function qaPort(name, fallback) {
@@ -18,6 +19,7 @@ function qaPort(name, fallback) {
 }
 const rendererPort = qaPort("CODEX_UI_QA_RENDERER_PORT", 5174);
 const cdpPort = qaPort("CODEX_UI_QA_CDP_PORT", packaged ? 9230 : 9229);
+await assertQaCdpPortAvailable(cdpPort);
 const parallelProbe = !packaged && (rendererPort !== 5174 || cdpPort !== 9229);
 const packagedRoot = resolve(root, "packages/desktop/dist/linux-unpacked");
 const packagedExecutable = join(packagedRoot, "codez-codex");

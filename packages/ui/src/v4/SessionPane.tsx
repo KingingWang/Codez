@@ -3064,6 +3064,12 @@ export function SessionPane({
       if (heldQueueDisposition === "clearQueueAndSend") {
         settleCurrentQueueInputs(sessionId);
       }
+      // 原生 turn/steer 在注入前不进入 queue/list；将本次 native ACK 的
+      // commandId 只回传给发起端 Composer，使临时提示可与真实 userInput
+      // 的 sourceCommandId 精确对账，不在 Renderer 建立第二份已接纳队列。
+      if (isDesktop && options?.requestedDelivery === "guide") {
+        return { status: "sent" as const, commandId: ack.commandId };
+      }
     },
     [
       dispatchCommand,
@@ -3156,7 +3162,7 @@ export function SessionPane({
         if (shouldFocusLatest) {
           focusTimelineToLatest();
         }
-        return "sent";
+        return sendResult && typeof sendResult === "object" ? sendResult : "sent";
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
         const runtimeModelUnavailable = detail.includes("provider.notInRegistry");
