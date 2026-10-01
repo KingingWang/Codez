@@ -19,9 +19,12 @@ checksum-verified native executable automatically. Set `CODEZ_CODEX_COMMAND` to
 an absolute executable path to explicitly select another development installation.
 Packaged applications use the verified bundled executable.
 
-Every CI run resolves the latest `KingingWang/codex` release into a run-scoped
-manifest (`scripts/codex-runtime-resolve-latest.mjs`), using GitHub's per-asset
-SHA256 digests; all six native builds share that manifest via the
+Every CI run resolves the latest complete stable `KingingWang/codex` release
+into a run-scoped manifest (`scripts/codex-runtime-resolve-latest.mjs`), using
+GitHub's per-asset SHA256 digests. If the newest release lacks a required
+platform, a bounded search selects a previous complete release; invalid
+digests, malformed releases and no complete release still fail. All six native
+builds share the same selected version and manifest via the
 `codez-manifest` artifact and the `CODEZ_CODEX_MANIFEST` environment variable.
 The checked-in `scripts/codex-runtime-manifest.json` is only the
 local-development fallback and can be refreshed with the same script. Queue APIs
