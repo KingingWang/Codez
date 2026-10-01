@@ -13,9 +13,7 @@ test("renderer bootstrap shell never treats splash removal as React readiness", 
   // 回归：3s 兜底曾直接调用 markReactReady，把"启动壳已移除"伪装成 React 已挂载，
   // 导致模块图加载失败时留下永久空白窗口且没有任何可操作信息。
   assert.equal(html.includes("window.setTimeout(markReactReady, 3000)"), false);
-  const inline = [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map(
-    (match) => match[1],
-  );
+  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]);
   assert.equal(inline.length, 1);
   const script = inline[0]!;
   // reactReady 只能由 markReactReady 置位，且 markReactReady 只绑定真实 ready 事件。
@@ -26,9 +24,9 @@ test("renderer bootstrap shell never treats splash removal as React readiness", 
 
 test("renderer bootstrap watchdog keeps module-graph failure visible and recoverable", async () => {
   const html = await readFile(htmlPath, "utf8");
-  const inline = [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map(
-    (match) => match[1],
-  );
+  // 主界面 CSS 加载失败或桌面为深色时，错误面不得透明地叠在黑底上显示黑字。
+  assert.match(html, /#codez-bootstrap-failure\s*\{[^}]*background:\s*#[0-9a-f]+/iu);
+  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]);
   const script = inline[0]!;
   // 看门狗必须无依赖（内联、无 import），模块图损坏时仍然可运行。
   assert.equal(/import\s/u.test(script), false);

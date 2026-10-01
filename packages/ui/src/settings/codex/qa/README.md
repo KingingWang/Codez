@@ -16,6 +16,20 @@ node packages/ui/src/settings/codex/qa/desktop-probe.mjs
 node packages/ui/src/settings/codex/qa/desktop-check.mjs
 ```
 
+After building the renderer, verify that a failed entry chunk cannot strand a
+permanent startup logo:
+
+```sh
+CODEX_UI_QA_RENDERER_PORT=5175 node packages/ui/src/settings/codex/qa/bootstrap-watchdog-e2e.mjs
+```
+
+Run it against the isolated `vite preview` server on that explicit local port,
+not a real user browser. The runner blocks only the built `assets/index-*.js`
+entry, checks one bounded self-retry followed by a visible Reload error page,
+and retains a screenshot in a fresh temporary directory. The built HTML must
+keep the watchdog as a classic inline script; a Vite-bundled module watchdog
+cannot observe its own entry-chunk failure.
+
 The probe creates temporary home/config/cache/data/userData/session/CODEX_HOME
 directories, uses an allowlisted child environment (no inherited auth variables),
 starts a private Xvfb display and uses a no-auth provider pointing to closed localhost

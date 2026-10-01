@@ -114,6 +114,8 @@
         justify-content: center;
         padding: 32px;
         text-align: center;
+        /* 主界面 CSS 或模块图失效时深色 Electron 底色仍在，错误面须自带不透明底。 */
+        background: #f8fafc;
         color: #151718;
         font-family:
           system-ui,
@@ -190,7 +192,8 @@
         </svg>
       </div>
     </div>
-    <script type="module">
+    <!-- 不依赖 Vite 入口模块：入口缺失时此看门狗仍必须先于模块脚本执行。 -->
+    <script>
       const startupLogoShell = document.querySelector(".startup-logo-shell");
       const startupLoading = document.getElementById("loading");
       const isUpdateStatusWindow =
