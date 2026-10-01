@@ -308,7 +308,9 @@ export function CodexProvidersPanel({
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Switch
-                    aria-label={text.modelHidden}
+                    // 列表勾选态是“显示”，与编辑表单的 hidden 草稿相反；读屏名称必须跟状态一致，
+                    // 并包含 slug，避免多个同名模型的开关无法区分。
+                    aria-label={`${text.modelVisible}: ${view.slug}`}
                     checked={!view.hidden}
                     disabled={Boolean(disabled) || !catalog?.path}
                     onCheckedChange={() => toggleModelHidden(view)}

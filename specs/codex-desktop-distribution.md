@@ -183,6 +183,18 @@ user's auto-download preference drives any background download, and no
 unconditional background install happens. Preview/production flavors retain
 their existing manifest-provider behavior.
 
+The desktop workspace Help menu exposes the existing manual update command for
+both production and Codex product identities. Preview keeps that entry hidden,
+and Web never renders it. The Help menu subscribes to Main's update state;
+its click passes through `CheckForUpdates` to the sole Main updater owner.
+When an update is already downloaded, Main's existing command installs it on
+restart; the renderer must not create its own update state or download path.
+An unpackaged development build may report the existing `dev-skipped` outcome.
+Acceptance: open Help in each product flavor, confirm the visibility matrix;
+on Codex desktop select the entry and confirm the platform command is sent.
+Testing a real installation requires an isolated packaged build and a known
+test release, not a developer's installed app or a published release mutation.
+
 Unsigned builds are not signature-gated: Windows NSIS skips signature
 verification when no publisher name is baked, and Linux has no signature gate.
 macOS compares an update against the running app's code-signature identity, so

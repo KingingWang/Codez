@@ -6,11 +6,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createServer } from "vite";
 import { chromium } from "playwright-core";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { verifyProjectDiscovery } from "./project-discovery-e2e.mjs";
 import {
+  captureOptionalAgentBrowserSnapshot,
   createCatalogConfigReadCounter,
+  verifyCodexHelpUpdate,
   inspectRpcLog,
   verifySingleCatalogModelAndRestart,
   verifyLocalConfigValidation,
@@ -19,7 +19,6 @@ import {
   verifyMessageFeedback,
   waitFixtureButtonEnabled,
 } from "./settings-regressions-e2e.mjs";
-
 const evidence = await mkdtemp(join(tmpdir(), "codex-ui-interaction-e2e-"));
 const checks = [];
 const server = await createServer({
@@ -376,22 +375,12 @@ try {
   await verifyUsageHostReconnect(page, checks);
   await verifyMessageFeedback(page, checks);
   await verifyProjectDiscovery(page, checks);
+  await verifyCodexHelpUpdate(page, result, evidence, checks);
   assert.deepEqual(errors, []);
   await page.screenshot({ path: join(evidence, "desktop-width.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: join(evidence, "compact-width.png"), fullPage: true });
-  if (process.env.AGENT_BROWSER_BIN) {
-    const { stdout } = await promisify(execFile)(process.execPath, [
-      process.env.AGENT_BROWSER_BIN,
-      "--session",
-      "codex-ui-qa",
-      "--cdp",
-      "9338",
-      "snapshot",
-      "-i",
-    ]);
-    await writeFile(join(evidence, "agent-browser-snapshot.txt"), stdout);
-  }
+  await captureOptionalAgentBrowserSnapshot(evidence);
   await writeFile(join(evidence, "results.json"), JSON.stringify({ checks, errors }, null, 2));
   console.log(JSON.stringify({ status: "passed", checks, evidence }, null, 2));
 } catch (error) {

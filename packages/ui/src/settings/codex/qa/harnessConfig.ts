@@ -1,11 +1,17 @@
 // Native facts owned by the isolated Host fixture, never by the legacy registry.
 import type { IPlatformService } from "@codez/shared";
 
+export const desktopCommands: string[] = [];
+
 export const platform = {
   openExternal: () => {
     throw new Error("External navigation forbidden");
   },
   showTaskNotification() {},
+  executeDesktopCommand(command: string) {
+    desktopCommands.push(command);
+    return Promise.resolve();
+  },
 } as unknown as IPlatformService;
 
 export const model = (name: string, isDefault = false) => ({

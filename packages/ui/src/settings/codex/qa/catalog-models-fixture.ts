@@ -21,6 +21,9 @@ export function createCatalogModelsFixture() {
     get writes() {
       return writes;
     },
+    get visibility() {
+      return model.visibility ?? "list";
+    },
     get disposals() {
       return disposals;
     },
