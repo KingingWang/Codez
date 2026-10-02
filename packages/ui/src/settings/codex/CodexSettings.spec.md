@@ -53,6 +53,20 @@ effective configuration, resource installation state, or accepted commands.
   in its accessible name. Both the first click and the confirmation/cancel
   controls must identify the same marketplace or plugin. This changes no native
   command, installation policy, or ownership of resources.
+- In the Codex Subagents panel, the two visually identical "New role" actions
+  have scope-specific accessible names identifying User versus Project roles
+  (and their native directory hints) in both locales. The on-screen label
+  remains short; selecting either action still creates a draft in precisely
+  that scope. Test both names through the real component and a read-only native
+  settings screen.
+- The native Memory panel's advanced numeric limits display the actual
+  field-specific native default next to the accepted range. The entire helper,
+  including its default-value label, follows the chosen UI locale: English
+  must not append Chinese "默认", and Chinese must not append English "Default".
+  An invalid draft still shows the translated validation message. Localization
+  changes no Codex memory value or write command. Verify all six helper rows
+  after enabling Memory in an isolated desktop, and exercise both locales in
+  the shared-component browser fixture.
 
 ```text
 outer section click ───────────────→ SettingsPage activeSection → title/sidebar

@@ -13,7 +13,7 @@ import { pendingInteractionSchema, queueStateSchema } from "@codez/shared/codez-
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
-import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider, useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
 import { useDraftConfigControl } from "@/v4/composer/useDraftConfigControl.js";
 import { useDraftModelReadinessGate } from "@/v4/composer/useDraftModelReadinessGate.js";
@@ -148,6 +148,7 @@ const services = {
 } as unknown as IServiceAccessor;
 initializeProjectDiscoveryFixture();
 function Harness() {
+  const { setLocale } = useCodezIntl();
   const [busy, setBusy] = useState(false);
   const [picker, setPicker] = useState<V4ComposerConfigPicker | null>(null);
   const [session, setSession] = useState<string | null>(null);
@@ -294,6 +295,8 @@ function Harness() {
           Inspect RPC log
         </Button>
         <Button onClick={() => setSettingsOpen((open) => !open)}>Toggle settings</Button>
+        <Button onClick={() => setLocale("zh-CN")}>Use Chinese locale fixture</Button>
+        <Button onClick={() => setLocale("en-US")}>Use English locale fixture</Button>
       </div>
       <ProjectDiscoveryFixture />
       <CatalogLifetimeControls read={read} output={setOutput} />

@@ -220,6 +220,9 @@ CHOKIDAR_USEPOLLING=1 node packages/ui/src/settings/codex/qa/help-menu-flavors-e
 It uses an isolated browser profile, localhost port 5190 and temporary evidence
 directory. The broader interaction runner additionally verifies the Codex model
 catalog visibility switch's target-specific accessible name and checked state.
+It verifies distinct accessible User/Project scope names for the two "New role"
+actions, and checks all six Memory numeric defaults in both English and Chinese
+without changing native configuration.
 Neither browser fixture is a packaged update installation or a real account test.
 
 On a shared Linux host that has already exhausted the per-user inotify

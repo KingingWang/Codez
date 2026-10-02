@@ -118,3 +118,35 @@ GUI 验收截图（图像只展示视觉结果；控件可访问名称由交互�
 3. 在正常资源的 Linux 和 macOS/Windows 宿主机跑冷载/多次 reload、
    手机远控断线回放、远端同路径不同 identity 及 owner/lease 交接；每种
    delivery kind 分开断言序列，失败留截图、转储和 native 事件。
+
+## 提交后 Linux 隔离 GUI 复测
+
+基于提交 `d254219` 重新构建 Desktop main/Host/preload/renderer，固定
+Codex 原生二进制和无认证 loopback provider 均在独立临时 home 中运行。
+只打开本仓库的本地 QA renderer（5176/9232），不使用真实凭据或其他浏览器 profile。
+
+- 真 Electron 冷启动和 Codex Account、Models、Providers、Skills、
+  Subagents、MCP、Plugins、Configuration、Thread history、Memory
+  导航均可见；General 的可访问控件及键盘更改/恢复 **3/3**。
+  原生 Memory 总开关在隔离配置里写入并恢复；Providers 的编辑表单
+  可打开/取消，没有对真实账号或外部市场执行修改。
+- 四个全新实例分别通过实际 Host→固定 Codex→loopback 的图片、队列
+  编辑/删除、出队、抢占 **10/10**，Queue/Guide 及窄窗口、双主题
+  **9/9**，原生 503 retry **4/4**，手动中断后继续 **4/4**。证据分别在
+  `/tmp/codex-ui-desktop-conversation-dwJG0c/`、
+  `/tmp/codex-ui-followup-V7fqVN/`、
+  `/tmp/codex-ui-desktop-retry-iooB6G/`、
+  `/tmp/codex-ui-interrupted-turn-ZRxNYj/`。
+- `desktop-check.mjs` 连续 renderer reload 时再次失败：第二次重载后
+  Main 日志出现 `render-process-gone` / `exitCode=133`，该项**未通过**；
+  崩溃后 Main 有界重载恢复了页面。日志中同时有
+  `inotify_init() failed: Too many open files`，但共现不证明因果。
+  失败证据 `/tmp/codex-ui-desktop-check-5KyzQM/` 和隔离日志
+  `/tmp/codex-ui-qa-J7wSsv/data/.codez-codex/.codez/v2/logs/2026-10-03.log`。
+- 逐页检查还发现英文 Codex Memory 六项数值默认提示附带中文“默认”，
+  以及 User/Project 两个同名 `New role` 操作难以用读屏区分。
+  截图 `/tmp/codex-postcommit-gui-Rsc95w/memory-mixed-language-before.png`
+  和同目录的 `subagents.png`；规则已先记入设置 spec，再补真实组件的
+  双语/双范围断言与局部修复。浏览器真组件再次通过 **47/47**，
+  证据 `/tmp/codex-ui-interaction-e2e-IRpH5a/`；这些变动属于后续补丁，
+  真 Electron 和静态检查须在补丁提交后重新执行。

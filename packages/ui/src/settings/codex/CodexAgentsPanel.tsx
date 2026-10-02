@@ -111,6 +111,8 @@ export function CodexAgentsPanel(props: {
           <Button
             variant="outline"
             size="sm"
+            // 两个可见“新建角色”按钮属于不同 Codex 目录；读屏名称必须携带作用域与路径。
+            aria-label={`${text.agentsCreate}: ${title} (${pathHint})`}
             disabled={disabled}
             onClick={() => {
               setFormError(null);
