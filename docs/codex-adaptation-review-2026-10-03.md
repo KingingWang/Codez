@@ -143,6 +143,10 @@ Codex 原生二进制和无认证 loopback provider 均在独立临时 home 中�
   `inotify_init() failed: Too many open files`，但共现不证明因果。
   失败证据 `/tmp/codex-ui-desktop-check-5KyzQM/` 和隔离日志
   `/tmp/codex-ui-qa-J7wSsv/data/.codez-codex/.codez/v2/logs/2026-10-03.log`。
+  只读环境审计：容器 `fs.inotify.max_user_instances=128`、
+  `max_user_watches=524288`，`fs.file-nr` 无系统级耗尽；`inotify_init`
+  失败的 errno 24（EMFILE）与每用户实例配额耗尽一致。这是环境约束的
+  旁证，仍不构成该代码路径导致崩溃的证明。
 - 逐页检查还发现英文 Codex Memory 六项数值默认提示附带中文“默认”，
   以及 User/Project 两个同名 `New role` 操作难以用读屏区分。
   截图 `/tmp/codex-postcommit-gui-Rsc95w/memory-mixed-language-before.png`
