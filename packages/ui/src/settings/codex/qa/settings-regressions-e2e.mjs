@@ -18,6 +18,186 @@ export async function captureOptionalAgentBrowserSnapshot(evidence) {
   await writeFile(join(evidence, "agent-browser-snapshot.txt"), stdout);
 }
 
+export async function verifyRootProviderStartup(page, checks) {
+  const fixture = page.getByRole("region", { name: "Root startup mode fixture" });
+  const inspect = async () => {
+    await fixture.getByRole("button", { name: "Inspect Root startup" }).click();
+    return JSON.parse(await fixture.getByTestId("qa-root-startup-inspection").innerText());
+  };
+  const before = await inspect();
+  assert.equal(before.providerReads, 0);
+  assert.equal(before.providerSubscriptions, 0);
+  assert.equal(before.providerRefreshes, 0);
+  assert.equal(before.workflowReads, 0);
+  assert.equal(before.oauthRestores, 0);
+  await fixture.getByRole("button", { name: "Resolve native Codex Host" }).click();
+  const native = await inspect();
+  for (const key of [
+    "providerReads",
+    "providerSubscriptions",
+    "providerRefreshes",
+    "workflowReads",
+    "oauthRestores",
+  ])
+    assert.equal(native[key], 0, `Native Host unexpectedly started legacy ${key}`);
+  assert.ok(
+    native.oauthSubscriptions >= 1,
+    "Native Host must accept stale OAuth transport replies",
+  );
+  await fixture.getByRole("button", { name: "Deliver pending legacy OAuth link" }).click();
+  await page.waitForFunction(() => {
+    const text = document.querySelector('[data-testid="qa-root-startup-inspection"]')?.textContent;
+    return text && JSON.parse(text).oauthHandled === 1;
+  });
+  const acknowledged = await inspect();
+  assert.equal(
+    acknowledged.oauthBusinessCallbacks,
+    0,
+    "Stale OAuth link must not sign in to Codez",
+  );
+  assert.ok(native.rendererReady >= 1, "Native Host must notify Main that Renderer is ready");
+  assert.equal(native.workflowEnabled, false, "Native Host cannot expose old workflow entry");
+  await fixture.getByRole("button", { name: "Change callback dependency" }).click();
+  const updated = await inspect();
+  assert.equal(
+    updated.rendererReady,
+    acknowledged.rendererReady,
+    "Re-registering native callbacks must not notify Main ready twice",
+  );
+  checks.push("Native Codex Root skips legacy Provider/OAuth state yet acknowledges pending link");
+
+  await fixture.getByRole("button", { name: "Resolve legacy Host" }).click();
+  const legacy = await inspect();
+  for (const key of [
+    "providerReads",
+    "providerSubscriptions",
+    "providerRefreshes",
+    "workflowReads",
+    "oauthRestores",
+    "oauthSubscriptions",
+  ])
+    assert.ok(legacy[key] > 0, `Legacy Host lost existing ${key} path`);
+  checks.push("Explicit legacy Root keeps Provider snapshot, refresh and OAuth subscriptions");
+
+  await fixture.getByRole("button", { name: "Start pending legacy login" }).click();
+  const pendingLogin = await inspect();
+  assert.equal(pendingLogin.oauthBusinessCallbacks, legacy.oauthBusinessCallbacks + 1);
+  await fixture.getByRole("button", { name: "Resolve native Codex Host" }).click();
+  await fixture.getByRole("button", { name: "Release pending legacy login" }).click();
+  await page.waitForFunction((previous) => {
+    const text = document.querySelector('[data-testid="qa-root-startup-inspection"]')?.textContent;
+    return text && JSON.parse(text).oauthHandled > previous;
+  }, pendingLogin.oauthHandled);
+  const switched = await inspect();
+  await fixture.getByRole("button", { name: "Release legacy workflow response" }).click();
+  const afterWorkflow = await inspect();
+  assert.equal(afterWorkflow.workflowEnabled, false);
+  assert.equal(switched.oldAccountWrites, pendingLogin.oldAccountWrites);
+  assert.equal(switched.providerRefreshes, pendingLogin.providerRefreshes);
+  assert.equal(switched.oldLoginSuccesses, pendingLogin.oldLoginSuccesses);
+  checks.push("In-flight legacy OAuth deep link only acknowledges after native Host takeover");
+  checks.push(
+    "Native Root neither reads old workflow entitlement nor accepts a late enabled response",
+  );
+
+  await fixture.getByRole("button", { name: "Resolve legacy Host" }).click();
+  const beforePoll = await inspect();
+  await fixture.getByRole("button", { name: "Start legacy polling" }).click();
+  await page.waitForFunction((previous) => {
+    const text = document.querySelector('[data-testid="qa-root-startup-inspection"]')?.textContent;
+    return text && JSON.parse(text).oauthPolls > previous;
+  }, beforePoll.oauthPolls);
+  const pendingPoll = await inspect();
+  await fixture.getByRole("button", { name: "Resolve native Codex Host" }).click();
+  await fixture.getByRole("button", { name: "Release pending legacy poll" }).click();
+  const afterPoll = await inspect();
+  assert.equal(afterPoll.oldAccountWrites, pendingPoll.oldAccountWrites);
+  assert.equal(afterPoll.providerRefreshes, pendingPoll.providerRefreshes);
+  assert.equal(afterPoll.oldLoginSuccesses, pendingPoll.oldLoginSuccesses);
+  checks.push("In-flight legacy OAuth poll cannot sign in after native Host takeover");
+
+  await fixture.getByRole("button", { name: "Resolve legacy Host" }).click();
+  const beforeFamilyPoll = await inspect();
+  await fixture.getByRole("button", { name: "Start legacy polling" }).click();
+  await page.waitForFunction((previous) => {
+    const text = document.querySelector('[data-testid="qa-root-startup-inspection"]')?.textContent;
+    return text && JSON.parse(text).oauthPolls > previous;
+  }, beforeFamilyPoll.oauthPolls);
+  await fixture.getByRole("button", { name: "Hold legacy family refresh" }).click();
+  await fixture.getByRole("button", { name: "Release pending legacy poll" }).click();
+  await page.waitForFunction((previous) => {
+    const text = document.querySelector('[data-testid="qa-root-startup-inspection"]')?.textContent;
+    return text && JSON.parse(text).familyReadsHeld > previous;
+  }, beforeFamilyPoll.familyReadsHeld);
+  const pendingFamily = await inspect();
+  await fixture.getByRole("button", { name: "Resolve native Codex Host" }).click();
+  await fixture.getByRole("button", { name: "Release legacy family refresh" }).click();
+  const afterFamily = await inspect();
+  assert.equal(afterFamily.providerFamilyReads, pendingFamily.providerFamilyReads);
+  assert.equal(afterFamily.oldLoginSuccesses, pendingFamily.oldLoginSuccesses);
+  checks.push("Old polling entitlement read cannot initiate Provider RPC after Host takeover");
+
+  await fixture.getByRole("button", { name: "Resolve legacy Host" }).click();
+  const beforeLegacyLogin = await inspect();
+  await fixture.getByRole("button", { name: "Start pending legacy login" }).click();
+  await fixture.getByRole("button", { name: "Release pending legacy login" }).click();
+  await page.waitForFunction((previous) => {
+    const text = document.querySelector('[data-testid="qa-root-startup-inspection"]')?.textContent;
+    return text && JSON.parse(text).oldLoginSuccesses > previous;
+  }, beforeLegacyLogin.oldLoginSuccesses);
+  const legacyLogin = await inspect();
+  assert.equal(legacyLogin.oldAccountWrites, beforeLegacyLogin.oldAccountWrites + 1);
+  assert.equal(legacyLogin.oldSettingWrites, beforeLegacyLogin.oldSettingWrites + 1);
+  assert.equal(legacyLogin.providerRefreshes, beforeLegacyLogin.providerRefreshes + 1);
+  checks.push("Current legacy Host still completes its interactive OAuth login");
+
+  await fixture.getByRole("button", { name: "Resolve native Codex Host" }).click();
+  const beforePrompt = await inspect();
+  await fixture.getByRole("button", { name: "Restore expired legacy session" }).click();
+  const prompt = fixture.getByRole("dialog", { name: "Legacy reauthentication prompt" });
+  await prompt.waitFor();
+  await fixture.getByRole("button", { name: "Resolve native Codex Host" }).click();
+  await prompt.waitFor({ state: "detached" });
+  const afterPrompt = await inspect();
+  assert.equal(afterPrompt.reauthenticationActions, beforePrompt.reauthenticationActions);
+  checks.push("Native takeover cancels its old reauthentication prompt without acting on it");
+}
+
+export async function verifyGeneralAccessibility(page, checks) {
+  const fixture = page.getByRole("region", { name: "General accessibility fixture" });
+  await fixture.getByRole("button", { name: "Toggle General accessibility fixture" }).click();
+  const controls = fixture.getByTestId("qa-general-controls");
+  for (const name of [
+    "Inherit system terminal profile",
+    "Task notifications",
+    "Notification sound",
+    "Hide to tray when closing window",
+    "Auto-archive old tasks",
+  ])
+    await controls.getByRole("switch", { name, exact: true }).waitFor();
+  for (const name of ["Language", "Integrated terminal shell", "Archive retention"])
+    await controls.getByRole("combobox", { name, exact: true }).waitFor();
+  checks.push("General shared UI exposes translated names for desktop and Windows-only controls");
+
+  const notification = controls.getByRole("switch", { name: "Task notifications" });
+  assert.equal(await notification.getAttribute("aria-checked"), "false");
+  await notification.click();
+  assert.equal(await notification.getAttribute("aria-checked"), "true");
+  await notification.focus();
+  await notification.press("Space");
+  assert.equal(await notification.getAttribute("aria-checked"), "false");
+  const archive = controls.getByRole("switch", { name: "Auto-archive old tasks" });
+  await archive.click();
+  assert.equal(
+    await controls.getByRole("combobox", { name: "Archive retention" }).isEnabled(),
+    true,
+  );
+  await archive.press("Space");
+  assert.equal(await archive.getAttribute("aria-checked"), "false");
+  checks.push("General named switches keep mouse/keyboard state parity and preserve select gating");
+  await fixture.getByRole("button", { name: "Toggle General accessibility fixture" }).click();
+}
+
 export async function verifyCodexHelpUpdate(page, result, evidence, checks) {
   assert.equal(await page.getByTestId("qa-product-flavor").innerText(), "codex");
   await page.getByTestId("qa-web-help").getByRole("button", { name: "Help" }).click();

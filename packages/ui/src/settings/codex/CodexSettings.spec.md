@@ -22,6 +22,16 @@ effective configuration, resource installation state, or accepted commands.
 
 - Desktop startup is not gated on legacy Z.ai account/provider hydration. Keep
   the workspace, Git, files, terminal, and Settings shell available.
+- The shared General settings page remains available in Codex Desktop. Every
+  visible switch and select must expose its translated setting name to
+  assistive technology, including terminal profile, notifications and sound,
+  task auto-archive, language and auto-archive days (plus platform-specific
+  controls when present). A screen-reader/keyboard user must identify a
+  control before toggling it and observe the checked/selected value afterward.
+  Labels describe existing settings; this does not change their owner or
+  persistence behavior. Verify in the real isolated desktop and at least one
+  shared-component browser fixture; mouse and keyboard must have the same
+  state transition.
 - The desktop sidebar profile entry is labeled Codex account and opens native
   account settings. It does not show legacy Connect/login/logout or legacy plan
   entitlements as if they represented the native account.

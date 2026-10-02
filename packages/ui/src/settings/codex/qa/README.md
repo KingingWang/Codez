@@ -16,6 +16,20 @@ node packages/ui/src/settings/codex/qa/desktop-probe.mjs
 node packages/ui/src/settings/codex/qa/desktop-check.mjs
 ```
 
+To check the General page's accessible control names without reloading Electron
+(useful on a host with limited inotify resources), attach only to a fresh
+isolated probe's exact renderer/CDP ports:
+
+```sh
+CODEX_UI_QA_RENDERER_PORT=5175 CODEX_UI_QA_CDP_PORT=9231 \
+  node packages/ui/src/settings/codex/qa/desktop-general-accessibility-check.mjs
+```
+
+It reads the actual controls' accessible names, toggles and restores a
+notification setting with the keyboard, and retains a screenshot and result
+under an isolated temporary evidence directory. It does not change the real
+user profile or authenticate a Codex account.
+
 After building the renderer, verify that a failed entry chunk cannot strand a
 permanent startup logo:
 
@@ -238,6 +252,31 @@ and old-Host observation successes/failures arriving after a same-workspace
 reconnect. Actual Electron smoke independently confirms selected-thread history,
 native streamed/image/queued turns, and Codex-only usage; it does not cover
 credentialed models or every desktop and mobile operation.
+The browser fixture additionally mounts the shared General settings component
+to test desktop/Windows accessible names and mouse/keyboard switch parity, and
+mounts Root's provider snapshot/OAuth hooks against fake Host services to assert
+zero legacy account/provider reads on Codex versus active legacy subscriptions
+and refreshes. Native mode still installs a transport-only OAuth callback before
+renderer-ready to acknowledge a pending obsolete Codez link; the fixture confirms
+it sends no legacy account mutation or duplicate ready after changing a callback
+dependency. The separate Root migration test controls
+settings-read completion and verifies an obsolete Host never starts a Provider
+refresh after a mode switch. The cached OAuth restore test separately holds the
+restored provider-family refresh and verifies the old Host does not start a
+Provider refresh when the Codex Host takes ownership.
+The deeper restored-selection and migration helper tests hold settings,
+OAuth, model and entitlement reads to prove late results cannot initiate a
+Provider RPC or legacy setting write after takeover.
+The Root fixture also holds interactive deep-link/poll results and legacy
+workflow availability until native Host takeover: deep-link receipt still
+completes, without an old account write, Provider refresh or enabled workflow
+entry. It separately completes a login while the legacy Host remains current.
+The polling fixture can also pause inside the provider-family settings read,
+then proves that a late result cannot initiate a Provider RPC. An expired
+legacy account prompt closes on native takeover without completing old
+reauthentication; a separately owned prompt remains untouched in the store test.
+Provider View disposal and workflow generation have controlled unit tests.
+The fixture is not a real account or external service.
 
 ## Recorded verification — September 22, 2026
 

@@ -32,6 +32,8 @@ interface DynamicWorkflowAvailabilityState extends DynamicWorkflowAvailabilitySn
   ensureLoaded(service: ICodingPlanSubscriptionService): Promise<void>;
   /** 绕过闩与 Host 的 1h 快照缓存重取（forceRefresh）。 */
   refresh(service: ICodingPlanSubscriptionService): Promise<void>;
+  /** Codex 不支持旧工作流：令已发出的旧 Host 请求失效，并关闭所有基于此快照的入口。 */
+  disableForUnsupportedRuntime(): void;
 }
 
 const INITIAL_SNAPSHOT: DynamicWorkflowAvailabilitySnapshot = {
@@ -43,6 +45,8 @@ const INITIAL_SNAPSHOT: DynamicWorkflowAvailabilitySnapshot = {
 let inFlight: Promise<void> | null = null;
 /** 已经出过结果（成功或失败）的 service 实例；同一实例不再重复请求。 */
 let settledService: ICodingPlanSubscriptionService | null = null;
+let activeService: ICodingPlanSubscriptionService | null = null;
+let serviceGeneration = 0;
 
 type PublishSnapshot = (snapshot: DynamicWorkflowAvailabilitySnapshot) => void;
 
@@ -50,6 +54,7 @@ async function loadDynamicWorkflowConfig(
   service: ICodingPlanSubscriptionService,
   options: { forceRefresh?: boolean },
   publish: PublishSnapshot,
+  settled: () => void,
 ): Promise<void> {
   try {
     const config = await service.getDynamicWorkflowClientConfig(options);
@@ -61,22 +66,36 @@ async function loadDynamicWorkflowConfig(
     );
     publish({ status: "ready", enabled: false, config: null });
   } finally {
-    settledService = service;
+    settled();
   }
 }
 
 export const useDynamicWorkflowAvailabilityStore = create<DynamicWorkflowAvailabilityState>(
-  (set, get) => ({
+  (set) => ({
     ...INITIAL_SNAPSHOT,
 
     ensureLoaded(service): Promise<void> {
-      if (settledService === service) return Promise.resolve();
-      if (inFlight) {
-        // 在途的可能是另一份 service（手机 `/remote` 桥接期间 accessor 会换）：排在它后面再判一次。
-        // 若在途的就是这一份，那时 settledService 已等于它，递归会立即命中上面的 no-op。
-        return inFlight.then(() => get().ensureLoaded(service));
+      if (activeService !== service) {
+        // Host 改变时让旧灰度读数失效；新 Host 不必等待已废弃请求的网络回包。
+        serviceGeneration += 1;
+        activeService = service;
+        settledService = null;
+        inFlight = null;
+        set(INITIAL_SNAPSHOT);
       }
-      const run = loadDynamicWorkflowConfig(service, {}, set).finally(() => {
+      if (settledService === service) return Promise.resolve();
+      if (inFlight) return inFlight;
+      const generation = serviceGeneration;
+      const run = loadDynamicWorkflowConfig(
+        service,
+        {},
+        (snapshot) => {
+          if (generation === serviceGeneration) set(snapshot);
+        },
+        () => {
+          if (generation === serviceGeneration) settledService = service;
+        },
+      ).finally(() => {
         if (inFlight === run) inFlight = null;
       });
       inFlight = run;
@@ -84,7 +103,26 @@ export const useDynamicWorkflowAvailabilityStore = create<DynamicWorkflowAvailab
     },
 
     refresh(service): Promise<void> {
-      return loadDynamicWorkflowConfig(service, { forceRefresh: true }, set);
+      if (activeService !== service) return Promise.resolve();
+      const generation = serviceGeneration;
+      return loadDynamicWorkflowConfig(
+        service,
+        { forceRefresh: true },
+        (snapshot) => {
+          if (generation === serviceGeneration) set(snapshot);
+        },
+        () => {
+          if (generation === serviceGeneration) settledService = service;
+        },
+      );
+    },
+
+    disableForUnsupportedRuntime(): void {
+      serviceGeneration += 1;
+      activeService = null;
+      settledService = null;
+      inFlight = null;
+      set({ status: "ready", enabled: false, config: null });
     },
   }),
 );

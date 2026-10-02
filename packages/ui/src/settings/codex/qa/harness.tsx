@@ -35,7 +35,7 @@ import { UsageObservationRaceFixture } from "./usage-observation-fixture.js";
 import { MessageFeedbackFixture } from "./message-feedback-fixture.js";
 import { createCatalogModelsFixture } from "./catalog-models-fixture.js";
 import { config, model, otherWorkspaceConfig, platform, questions } from "./harnessConfig.js";
-import { DesktopUpdateMenuFixture } from "./desktop-update-menu-fixture.js";
+import { AdditionalFixtures } from "./additional-fixtures.js";
 import {
   createProjectDiscoveryLocalServices,
   initializeProjectDiscoveryFixture,
@@ -229,7 +229,7 @@ function Harness() {
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-6 text-foreground">
       <h1>Codex isolated interaction QA</h1>
-      <DesktopUpdateMenuFixture onInspect={setOutput} />
+      <AdditionalFixtures onInspect={setOutput} />
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => setBusy(!busy)}>Toggle native busy</Button>
         <Button onClick={() => setSession(session ? null : "existing-native-session")}>

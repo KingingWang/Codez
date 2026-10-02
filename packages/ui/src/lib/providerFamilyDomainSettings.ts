@@ -14,8 +14,11 @@ export function resolveLogoutProviderFamilyDomain(params: {
 export async function setProviderFamilyDomain(
   settingService: Pick<ISettingService, "get" | "update">,
   domain: ProviderFamilyDomain,
+  isCurrent?: () => boolean,
 ): Promise<void> {
   const currentSettings = await settingService.get();
+  // 交互登录跨 Host 切换时，旧设置读取晚到不能继续写入新 Codex 的启动环境。
+  if (isCurrent?.() === false) return;
   await settingService.update({
     providerFamilyDomain: domain,
     providerFamilyDomainUpdatedAt: Date.now(),

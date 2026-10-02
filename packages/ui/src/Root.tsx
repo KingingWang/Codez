@@ -61,6 +61,7 @@ import { useRootProviderStateRefresh } from "@/root/useRootProviderStateRefresh.
 import { resolveDesktopRuntimePreferences } from "@/settings/codex/codexRuntimePreferences.js";
 import { useModelSelectionServiceView } from "@/hooks/useModelSelectionView.js";
 import { useRootProviderSettingsSnapshot } from "@/root/useRootProviderSettingsSnapshot.js";
+import { useRootProviderStartupMode } from "@/hooks/useRootProviderStartupMode.js";
 import { useRootOAuthEffects } from "@/root/useRootOAuthEffects.js";
 import { consumeZcodeJwtInvalidRestartMarker } from "@/root/codezJwtInvalidRestartMarker.js";
 import { useDesktopNativeThemeSync } from "@/root/useDesktopNativeThemeSync.js";
@@ -88,6 +89,7 @@ import { RootStartupLoading } from "@/root/RootStartupLoading.js";
 import { resolveProviderAvailabilityState } from "@/lib/modelProviderAvailability.js";
 import { useProviderAvailabilityLoginEntryGuard } from "@/root/useProviderAvailabilityLoginEntryGuard.js";
 import { ensureProviderFamilyDomainMigration } from "@/lib/providerFamilyDomainMigration.js";
+import { startRootLegacyProviderStartup } from "@/root/legacyProviderStartup.js";
 import { useSettings } from "@/hooks/useSettingService.js";
 import { CLOSE_ACTIVE_CONTEXT_REQUEST_EVENT } from "@/lib/closeActiveContext.js";
 import { AssistantCodeCommentFeatureProvider } from "@/AssistantCodeCommentFeatureProvider.js";
@@ -205,7 +207,11 @@ function RootInner({
   // 动态工作流灰度快照的唯一取数点：
   // 放在 app 级 ServiceProvider 这一层取一次，自动化页与 run 面板只读。消费方可能位于
   // 工作区级 ServiceProvider 内（远程 Host 的 accessor），由它们取数会拿到另一台 Host 的答案。
-  useDynamicWorkflowAvailabilityLoader(services.codingPlanSubscriptionService);
+  const providerStartupMode = useRootProviderStartupMode(Boolean(isDesktop));
+  useDynamicWorkflowAvailabilityLoader(
+    services.codingPlanSubscriptionService,
+    providerStartupMode === "legacy",
+  );
 
   const { intl, locale } = useCodezIntl();
   const theme = useCodezStore((state) => state.theme);
@@ -428,36 +434,23 @@ function RootInner({
   const activateTabByPath = useTabStore((state) => state.activateTabByPath);
   const tabStoreApi = useTabStoreApi();
   const refreshProviderState = useRootProviderStateRefresh(services);
-  useRootProviderSettingsSnapshot(services);
+  useRootProviderSettingsSnapshot(services, providerStartupMode === "legacy");
   useEffect(() => {
+    // Host 已选择原生 Codex 时，旧迁移会误写 providerFamilyDomain 并唤醒 Provider Runtime。
+    if (providerStartupMode !== "legacy") return;
     let disposed = false;
-
-    void (async () => {
-      try {
-        await ensureProviderFamilyDomainMigration(services);
-      } catch (error) {
-        logger.warn("[Root] provider family domain 迁移失败，继续启动", {
-          error,
-        });
-      } finally {
-        if (!disposed) {
-          setProviderFamilyDomainMigrationComplete(true);
-          try {
-            await refreshAppSettings();
-            await refreshProviderState();
-          } catch (refreshError) {
-            logger.warn("[Root] provider family domain 迁移后刷新状态失败", {
-              error: refreshError,
-            });
-          }
-        }
-      }
-    })();
+    void startRootLegacyProviderStartup({
+      migrate: () => ensureProviderFamilyDomainMigration(services, () => !disposed),
+      isCurrent: () => !disposed,
+      markMigrationComplete: () => setProviderFamilyDomainMigrationComplete(true),
+      refreshAppSettings,
+      refreshProviderState,
+    });
 
     return () => {
       disposed = true;
     };
-  }, [refreshAppSettings, refreshProviderState, services]);
+  }, [providerStartupMode, refreshAppSettings, refreshProviderState, services]);
 
   const shouldPreferDirectoryBrowser = Boolean(preferDirectoryBrowser);
   const supportsEmbeddedBrowser = explicitSupportsEmbeddedBrowser ?? Boolean(isDesktop);
@@ -742,6 +735,7 @@ function RootInner({
   }, [platform]);
 
   useRootOAuthEffects({
+    startupMode: providerStartupMode,
     accountIntentKey: JSON.stringify([
       user?.id,
       appSettings?.providerFamilyDomain,

@@ -69,6 +69,8 @@ export interface WorkspaceFileEntry {
 export interface SystemInfo {
   homedir: string;
   platform: string;
+  /** Host 已选定的默认 Agent 运行时；旧 Host 缺少该字段时客户端保留 legacy 行为。 */
+  agentRuntimeMode?: "codex" | "legacy";
 }
 
 /** 支持的语言 */

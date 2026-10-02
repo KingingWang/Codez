@@ -24,9 +24,17 @@ export function useDynamicWorkflowAvailability(): DynamicWorkflowAvailabilitySna
  */
 export function useDynamicWorkflowAvailabilityLoader(
   service: ICodingPlanSubscriptionService,
+  legacyRuntimeEnabled: boolean,
 ): void {
   const ensureLoaded = useDynamicWorkflowAvailabilityStore((state) => state.ensureLoaded);
+  const disableForUnsupportedRuntime = useDynamicWorkflowAvailabilityStore(
+    (state) => state.disableForUnsupportedRuntime,
+  );
   useEffect(() => {
-    void ensureLoaded(service);
-  }, [ensureLoaded, service]);
+    if (legacyRuntimeEnabled) {
+      void ensureLoaded(service);
+    } else {
+      disableForUnsupportedRuntime();
+    }
+  }, [disableForUnsupportedRuntime, ensureLoaded, legacyRuntimeEnabled, service]);
 }
