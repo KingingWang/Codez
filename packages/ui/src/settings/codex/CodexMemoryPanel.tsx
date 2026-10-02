@@ -19,7 +19,7 @@ import {
 } from "./codexMemorySettings.js";
 import { codexUserConfigTarget } from "./codexSettingsData.js";
 import { CodexNotice, CodexSection } from "./CodexSettingsParts.js";
-import { useCodexMessages } from "./messages.js";
+import { formatCodexTemplate, useCodexMessages } from "./messages.js";
 
 const MEMORY_MODEL_DEFAULT_VALUE = "__default__";
 
@@ -119,7 +119,11 @@ function MemoryNumberRow({
       <div className="min-w-0 flex-1 space-y-1 text-ui-sm">
         <p className="text-ui-base">{label}</p>
         <p className="text-foreground-subtle">
-          {`${field.min} - ${field.max} · ${invalid ? invalidLabel : `${help}（默认 ${field.defaultValue}）`}`}
+          {`${field.min} - ${field.max} · ${
+            invalid
+              ? invalidLabel
+              : formatCodexTemplate(help, { value: String(field.defaultValue) })
+          }`}
         </p>
       </div>
       <Input

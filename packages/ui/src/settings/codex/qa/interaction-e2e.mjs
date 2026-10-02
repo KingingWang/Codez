@@ -7,6 +7,7 @@ import { join, resolve } from "node:path";
 import { createServer } from "vite";
 import { chromium } from "playwright-core";
 import { verifyProjectDiscovery } from "./project-discovery-e2e.mjs";
+import { verifyCodexMemoryLocale } from "./memory-locale-e2e.mjs";
 import {
   captureOptionalAgentBrowserSnapshot,
   createCatalogConfigReadCounter,
@@ -331,10 +332,17 @@ try {
   await settings.getByText("No roles in this scope yet.").first().waitFor();
   assert.equal(await settings.getByText("No roles in this scope yet.").count(), 2);
   assert.equal(await settings.getByRole("button", { name: "New role" }).first().isEnabled(), true);
+  await settings
+    .getByRole("button", { name: "New role: User roles (~/.codex/agents)", exact: true })
+    .waitFor();
+  await settings
+    .getByRole("button", { name: "New role: Project roles (.codex/agents)", exact: true })
+    .waitFor();
   await page.screenshot({ path: join(evidence, "agent-roles-recovered.png") });
   checks.push(
     "Subagent roles list distinguishes failed read from a verified empty list and can retry",
   );
+  checks.push("Subagent creation actions identify their user/project scope to screen readers");
   await settings.getByRole("button", { name: "New role" }).first().click();
   await settings.getByRole("textbox", { name: "Name", exact: true }).fill("Fixture Reviewer");
   await settings
@@ -380,6 +388,7 @@ try {
   await verifyCodexHelpUpdate(page, result, evidence, checks);
   await verifyGeneralAccessibility(page, checks);
   await verifyRootProviderStartup(page, checks);
+  await verifyCodexMemoryLocale(page, checks);
   assert.deepEqual(errors, []);
   await page.screenshot({ path: join(evidence, "desktop-width.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });

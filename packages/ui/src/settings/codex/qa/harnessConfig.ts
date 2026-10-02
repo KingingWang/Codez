@@ -33,6 +33,7 @@ export const config = {
     model: "native-model",
     model_provider: "native-provider",
     model_reasoning_effort: "medium",
+    features: { memories: true },
     model_providers: {
       "native-provider": {
         name: "Native Provider",
