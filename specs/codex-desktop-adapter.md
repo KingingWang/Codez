@@ -389,6 +389,113 @@ explicit legacy/custom resolvers retain their existing selection path. A failed
 auxiliary mutation is never automatically retried. Tests use isolated temporary Git
 repositories and in-memory native responses; they do not write developer settings.
 
+### Root startup ownership
+
+The local Host has already selected whether its default agent command is the native
+Codex bridge. Expose that resolved fact through its existing system-info service;
+the renderer must not infer agent mode from the desktop product flavor, window
+kind, environment variables, a model name or the presence of legacy settings.
+Until the Host replies, Root does not subscribe to or refresh the old Provider
+Settings View. When the Host reports Codex, Root skips the old provider-family
+migration, Provider Settings subscription, legacy OAuth restoration and
+account-connection-loss subscription/refresh entirely. Its renderer-ready
+notification must still be sent once so Main can deliver unrelated deep links.
+Before notifying Main, it installs a transport-only callback for obsolete Codez
+OAuth links: the preload sends its existing handled receipt after the callback
+returns, but the native branch never calls the legacy OAuth service, logs URL
+content or applies a legacy account. Without this receipt, Main would consume a
+pending deep link and keep its launch gate waiting indefinitely. The explicit
+legacy path continues to register its full existing OAuth callback before ready.
+Re-rendering/re-subscribing a callback due to locale or other UI dependencies
+does not re-notify Main for the same platform/renderer instance; a new renderer
+instance must still notify Main once after installing its callback.
+Other desktop runtimes, including an explicit legacy command/custom resolver,
+and Web continue the current migration/refresh/subscription/OAuth path.
+Older Hosts with no runtime
+fact retain the legacy startup path; a failed Host-info read also falls back to
+the preexisting legacy path and reports the read failure. This is a startup
+routing fact, not another owner of native account/config/model state.
+
+```text
+Host selects command resolver → system info reports selected runtime kind
+                                  ↓
+                           Root waits for mode
+                   ┌──────────────┴────────────────┐
+             native Codex bridge              legacy/custom/Web
+             skip old Provider path    migrate → refresh → subscribe View
+             notify renderer ready      restore OAuth → observe connection
+                   └──────────────┬────────────────┘
+                         workspace/UI shell stays available
+```
+
+Acceptance: in an isolated default Codex Host, first render/reload makes no
+legacy Provider refresh/getView/onDidChange, cached OAuth restoration or
+provider-family migration write; Main still gets renderer-ready. The model
+selector still obtains native `config/read` + `model/list`
+from the selected workspace. Explicit legacy-command/custom-resolver Host and
+Web continue their existing provider startup flow. Failed/missing info is
+visible in diagnostics but cannot block the desktop shell. This change does
+not alter desktop continuous or mobile replayable session delivery.
+If a Host changes while the legacy migration's settings refresh is pending,
+the old effect must re-check ownership after that await and must not initiate
+a Provider refresh for the new Codex Host. A pending legacy OAuth deep link on
+Codex is acknowledged by the preload/Main transport handshake without touching
+legacy account state or stalling launch telemetry.
+The same rule applies to the legacy OAuth cached-session restore path: after
+reading the active provider and after refreshing its restored family selection,
+check the original effect/Host is still current before refreshing Provider
+state. An in-flight old Host response must not start a new Provider RPC after
+native Codex has taken ownership.
+The restored family selection helper itself awaits settings, Account Provider
+state and entitlements. Pass the same ownership guard down that startup-only
+path and re-check it before each subsequent read/refresh or settings write;
+an outer guard after the helper returns cannot undo an old Provider refresh
+or conditional selection write that the helper already started. The interactive
+legacy login path without a startup owner keeps its existing semantics.
+Likewise, the provider-family migration helper awaits settings, OAuth provider
+and model selection before its setting write. Pass the Root effect guard into
+that existing one-caller helper; after each await it must stop before initiating
+the next old-service read or write when the Host changes. Completion after
+effect disposal must not claim a new Codex Host performed legacy migration.
+If a legacy Provider View read completes after its Root subscription is disposed,
+the detached result must not publish a ready/error snapshot or remain available
+to readers on the new Host. Likewise, a legacy OAuth callback/poll that was
+already in flight before a switch may finish on its original transport, but
+must not subsequently write Root's old account display/selection, refresh
+the old Provider state or report login success after Codex takes over. The
+transport still acknowledges the received deep link. Guard each subsequent
+effect-owned continuation, including the steps inside a successful callback;
+an already-started Host RPC cannot be retroactively undone.
+An old cached-session reauthentication prompt belongs to the same legacy
+effect: disposal cancels only that pending prompt, without dismissing an
+unrelated dialog, and a late confirmation cannot initiate legacy reauthentication
+on Codex. The dialog store remains the single owner of its pending request.
+
+The legacy dynamic-workflow availability request is also a Root startup path,
+not a native Codex capability. While the runtime mode is pending or Codex,
+Root does not query its old coding-plan service and its UI projection stays
+disabled, including when a previously enabled legacy response arrives late.
+Web and explicit legacy Hosts retain the existing one-fetch-per-service
+behavior. This gate does not imply that unsupported workflows have acquired
+native parity.
+
+```text
+legacy Root effect → old OAuth / Provider / workflow read
+       ↓ Host switch → effect disposed / generation invalidated
+late old result → no new Root write, snapshot publication or workflow enable
+       ↓ native Codex account/commands remain the sole authority
+```
+
+Acceptance: hold a legacy deep-link callback or polling result, Provider View
+read and enabled workflow response; switch the same renderer to Codex, then
+release each result. The deep link gets a transport receipt but causes no
+new old account/UI mutation or Provider refresh, Provider View does not expose
+the detached result, and the workflow entry remains disabled. A subsequent
+legacy Host still loads fresh snapshots and preserves interactive login.
+Hold a legacy reauthentication prompt across the switch: it closes without
+confirming or invoking the old reauthentication action; an unrelated prompt
+opened afterward remains owned by its own caller.
+
 Settings use Codex APIs rather than writing Codez's old provider/MCP/skill config.
 Show effective configuration and actionable errors. Test fixtures must use an
 isolated temporary Codex home; never mutate the developer's real credentials.

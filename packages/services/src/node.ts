@@ -1358,7 +1358,9 @@ export function createLocalServices(options: {
       isOAuthBusinessRequest({ input, credentialService }),
     resolveCodezEndpointOrigin: resolveCurrentCodezEndpointOrigin,
   });
-  const systemService = createSystemService();
+  const systemService = createSystemService({
+    agentRuntimeMode: usesDefaultCodexDesktopBridge ? "codex" : "legacy",
+  });
   // onboarding 资格与任务列表共用同一份全局 tasks-index；repo 懒加载数据库，提前构造不会
   // 增加启动 I/O，后续 session syncer 也继续复用这一实例。
   const taskIndexRepo = new TaskIndexRepo();

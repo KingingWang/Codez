@@ -306,6 +306,7 @@ export function GeneralSectionContent({
               <SelectTrigger
                 size="lg"
                 className="w-[260px] min-w-0 justify-between"
+                aria-label={intl.formatMessage({ id: "settings.locale" })}
                 data-testid={TID_SETTINGS_LOCALE_SELECT_TRIGGER}
               >
                 <SelectValue />
@@ -372,6 +373,7 @@ export function GeneralSectionContent({
           description={intl.formatMessage({ id: "settings.terminalProfileDescription" })}
           control={
             <Switch
+              aria-label={intl.formatMessage({ id: "settings.terminalProfile" })}
               checked={terminalInheritSystemProfile}
               onCheckedChange={(checked) => {
                 void onTerminalInheritSystemProfileChange(checked);
@@ -424,7 +426,11 @@ export function GeneralSectionContent({
                   void handleIntegratedTerminalShellChange(value);
                 }}
               >
-                <SelectTrigger size="lg" className="w-[260px] min-w-0 justify-between">
+                <SelectTrigger
+                  size="lg"
+                  className="w-[260px] min-w-0 justify-between"
+                  aria-label={intl.formatMessage({ id: "settings.integratedTerminalShell" })}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -632,7 +638,11 @@ export function GeneralSectionContent({
             id: "settings.notificationDescription",
           })}
           control={
-            <Switch checked={notificationEnabled} onCheckedChange={setNotificationEnabled} />
+            <Switch
+              aria-label={intl.formatMessage({ id: "settings.notification" })}
+              checked={notificationEnabled}
+              onCheckedChange={setNotificationEnabled}
+            />
           }
         />
         <SettingsRow
@@ -642,6 +652,7 @@ export function GeneralSectionContent({
           })}
           control={
             <Switch
+              aria-label={intl.formatMessage({ id: "settings.notificationSound" })}
               checked={notificationSoundEnabled}
               disabled={!notificationEnabled}
               onCheckedChange={setNotificationSoundEnabled}
@@ -662,6 +673,7 @@ export function GeneralSectionContent({
             }
             control={
               <Switch
+                aria-label={intl.formatMessage({ id: "settings.closeToTrayOnWindows" })}
                 checked={closeToTrayOnWindows}
                 // Linux 上托盘能力未知（探测中）或确认不可用时都锁定，防止误开导致关窗失联
                 //（spec：docs/desktop/linux-close-to-tray.md）。
@@ -711,7 +723,11 @@ export function GeneralSectionContent({
                     void onCodezInteractionBehaviorChange(value as CodezInteractionBehavior);
                   }}
                 >
-                  <SelectTrigger size="lg" className="w-[260px] min-w-0 justify-between">
+                  <SelectTrigger
+                    size="lg"
+                    className="w-[260px] min-w-0 justify-between"
+                    aria-label={intl.formatMessage({ id: "settings.codezInteractionBehavior" })}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -849,6 +865,7 @@ export function GeneralSectionContent({
           })}
           control={
             <Switch
+              aria-label={intl.formatMessage({ id: "settings.taskAutoArchive" })}
               checked={taskAutoArchiveEnabled}
               onCheckedChange={(checked) => {
                 void onTaskAutoArchiveEnabledChange(checked);
@@ -869,7 +886,11 @@ export function GeneralSectionContent({
               }}
               disabled={!taskAutoArchiveEnabled}
             >
-              <SelectTrigger size="lg" className="w-[260px] min-w-0 justify-between">
+              <SelectTrigger
+                size="lg"
+                className="w-[260px] min-w-0 justify-between"
+                aria-label={intl.formatMessage({ id: "settings.taskAutoArchiveDays" })}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

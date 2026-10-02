@@ -17,6 +17,8 @@ import {
   verifyModeTooltipOwnership,
   verifyUsageHostReconnect,
   verifyMessageFeedback,
+  verifyGeneralAccessibility,
+  verifyRootProviderStartup,
   waitFixtureButtonEnabled,
 } from "./settings-regressions-e2e.mjs";
 const evidence = await mkdtemp(join(tmpdir(), "codex-ui-interaction-e2e-"));
@@ -376,6 +378,8 @@ try {
   await verifyMessageFeedback(page, checks);
   await verifyProjectDiscovery(page, checks);
   await verifyCodexHelpUpdate(page, result, evidence, checks);
+  await verifyGeneralAccessibility(page, checks);
+  await verifyRootProviderStartup(page, checks);
   assert.deepEqual(errors, []);
   await page.screenshot({ path: join(evidence, "desktop-width.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });

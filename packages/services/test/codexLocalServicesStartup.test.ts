@@ -17,6 +17,7 @@ import type { ISettingService } from "../src/setting/setting.js";
 import { setDataBaseDir } from "../src/paths.js";
 import { ICodezAgentService } from "../src/codez-agent/codezAgent.js";
 import { ICodexDesktopFileRewindService } from "../src/desktop-file-rewind.js";
+import { ISystemService } from "../src/system/system.js";
 import {
   CodezAgentProcessManager,
   type CodezAgentProcessManagerOptions,
@@ -95,6 +96,7 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
       "codex",
       "deployed-codex",
       "explicit-env",
+      "forced-legacy",
       "custom-resolver",
       "remote",
       "headless",
@@ -120,6 +122,8 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
           assert.fail("fixture must not create projects");
         },
       };
+      if (mode === "forced-legacy") process.env.CODEZ_DESKTOP_RUNTIME = "legacy";
+      else delete process.env.CODEZ_DESKTOP_RUNTIME;
       if (mode === "explicit-env") process.env.CODEZ_AGENT_SERVER_COMMAND = "/legacy/agent";
       else delete process.env.CODEZ_AGENT_SERVER_COMMAND;
       if (mode === "deployed-codex") {
@@ -182,6 +186,12 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
         },
       });
       try {
+        const systemInfo = await services.get(ISystemService).info();
+        assert.equal(
+          systemInfo.agentRuntimeMode,
+          mode === "codex" || mode === "deployed-codex" ? "codex" : "legacy",
+          "Host must expose the selected runtime, not the desktop product flavor",
+        );
         const agent = services.get(ICodezAgentService);
         if (mode === "deployed-codex") {
           const hello = await agent.helloConversationV4();
