@@ -24,6 +24,7 @@ function fakeGitService(impl: {
   worktrees?: GitWorktreeEntry[];
   failRepoInfo?: boolean;
   omitListWorktrees?: boolean;
+  failListWorktrees?: boolean | { code: number };
   calls?: string[];
 }): IGitService {
   const calls = impl.calls ?? [];
@@ -44,6 +45,13 @@ function fakeGitService(impl: {
   if (!impl.omitListWorktrees) {
     service.listWorktrees = async () => {
       calls.push("listWorktrees");
+      if (impl.failListWorktrees) {
+        const error = new Error("connection lost");
+        if (typeof impl.failListWorktrees === "object") {
+          (error as Error & { code?: number }).code = impl.failListWorktrees.code;
+        }
+        throw error;
+      }
       return {
         workspacePath: "/x",
         isGitAvailable: true,
@@ -135,4 +143,30 @@ test("effect 取消后不再写台账结果", async () => {
     isCancelled: () => true,
   });
   assert.deepEqual(result.treesByProjectKey, {});
+});
+
+test("listWorktrees 瞬时失败：项目进入 failedListProjectKeys（不可达 ≠ 已删除）", async () => {
+  const failing = fakeGitService({
+    commonDir: "/repo/.git",
+    failListWorktrees: true,
+  });
+  const result = await fetchProjectWorktreeFacts({
+    tabs: [fakeTab({ workspacePath: "/repo" })],
+    resolveGitService: () => failing,
+  });
+  assert.deepEqual(result.treesByProjectKey, {});
+  assert.equal(result.failedListProjectKeys.length, 1);
+});
+
+test("listWorktrees 抛 -32601（旧远端不支持）：静默降级，不计入失败列表", async () => {
+  const legacy = fakeGitService({
+    commonDir: "/repo/.git",
+    failListWorktrees: { code: -32601 },
+  });
+  const result = await fetchProjectWorktreeFacts({
+    tabs: [fakeTab({ workspacePath: "/repo" })],
+    resolveGitService: () => legacy,
+  });
+  assert.deepEqual(result.treesByProjectKey, {});
+  assert.deepEqual(result.failedListProjectKeys, []);
 });

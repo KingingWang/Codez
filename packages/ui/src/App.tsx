@@ -93,6 +93,7 @@ export function App({
   baseFeedbackService,
   onConnectRemote,
   onSelectRemoteProject,
+  onOpenWorktreeEntry,
   onCancelRemoteProject,
   onReconnectRemoteWorkspace,
   onLogout,
@@ -1154,6 +1155,7 @@ export function App({
         handleManageInstalledPlugins={handleManageInstalledPlugins}
         onConnectRemote={onConnectRemote}
         onSelectRemoteProject={onSelectRemoteProject}
+        onOpenWorktreeEntry={onOpenWorktreeEntry}
         onCancelRemoteProject={onCancelRemoteProject}
         onReconnectRemoteWorkspace={onReconnectRemoteWorkspace}
         onLogout={onLogout}

@@ -7,7 +7,7 @@ import type {
 } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 
-import { TID_APP_HEADER } from "@codez/shared";
+import { LOCAL_WORKSPACE_SCOPE, TID_APP_HEADER } from "@codez/shared";
 // 保活：workspace tab 真正关闭时，按 workspaceKey 回收 side pane terminal 的常驻 PTY/xterm。
 // 对称下侧 Terminal.tsx 的 openWorkspaceKeys 回收。
 import { sidePaneTerminalSessionRegistry } from "@/terminal/sidePaneTerminalSessionRegistry.js";
@@ -36,6 +36,10 @@ import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
 import { WorkspacePluginPreview } from "@/WorkspacePluginPreview.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { GitBranchSwitcher } from "@/GitBranchSwitcher.js";
+import { ProjectWorktreeSwitcher } from "@/ProjectWorktreeSwitcher.js";
+import { useProjectWorktreeDiscovery } from "@/hooks/useProjectWorktreeDiscovery.js";
+import type { WorktreeDiscoveryEntry } from "@/lib/projectGrouping.js";
+import { shouldShowWorktreeSwitcher } from "@/lib/worktreeSwitcherDisplay.js";
 import { ScopedErrorBoundary } from "@/ErrorBoundary.js";
 
 import { AUTOMATIONS_TOAST_ANCHOR_ID, AutomationsSection } from "@/settings/AutomationsSection.js";
@@ -214,6 +218,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   onResolveConversationWorkspace,
   onOpenWorkspace,
   onOpenFolderFromWorkspaceMenu,
+  onOpenWorktreeEntry,
   onOpenRemoteWorkspace,
   onCreateScratchWorkspace,
   allowOpenWorkspace = true,
@@ -360,6 +365,37 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   );
   const [isSidebarFileTreeOpen, setIsSidebarFileTreeOpen] = useState(false);
   const workspaceKey = workspaceIdentity?.trim() || workspaceAbsPath;
+  // 项目分组与 worktree 发现（阶段一 R2/R5）：只读派生投影；
+  // 切换器显式点击才经 root 编排打开，本层不注册工作区、不挂载运行时。
+  const worktreeDiscovery = useProjectWorktreeDiscovery();
+  const worktreeProjectKey = worktreeDiscovery.projectKeyForWorkspace(workspaceKey);
+  const worktreeProjectGroup = useMemo(
+    () => worktreeDiscovery.groups.find((group) => group.projectKey === worktreeProjectKey) ?? null,
+    [worktreeDiscovery.groups, worktreeProjectKey],
+  );
+  const worktreeEntries = useMemo(
+    () =>
+      worktreeProjectKey ? (worktreeDiscovery.entriesByProjectKey[worktreeProjectKey] ?? []) : [],
+    [worktreeDiscovery.entriesByProjectKey, worktreeProjectKey],
+  );
+  const isWorktreeListRefreshFailed = worktreeProjectKey
+    ? worktreeDiscovery.failedListProjectKeys.has(worktreeProjectKey)
+    : false;
+  const handleOpenWorktreeEntry = useCallback(
+    (entry: WorktreeDiscoveryEntry) => {
+      if (!onOpenWorktreeEntry || !worktreeProjectGroup) {
+        return;
+      }
+      onOpenWorktreeEntry({
+        entry,
+        projectMemberKeys: worktreeProjectGroup.members.map(
+          (member) => member.workspaceIdentity?.trim() || member.workspacePath,
+        ),
+        isRemoteScope: worktreeProjectGroup.scope !== LOCAL_WORKSPACE_SCOPE,
+      });
+    },
+    [onOpenWorktreeEntry, worktreeProjectGroup],
+  );
   const screenshotSurfaceRequest = useBrowserScreenshotSurfaceRequest(sidePaneState?.tabs ?? []);
   const screenshotSurfaceTab = screenshotSurfaceRequest
     ? findScreenshotSurfaceTabForRender(sidePaneState?.tabs ?? [], screenshotSurfaceRequest)
@@ -1189,6 +1225,21 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
           onSelectRemoteProject={onSelectRemoteProject}
           onCancelRemoteProject={onCancelRemoteProject}
         />
+        {!isOfficeMode &&
+        activeWorkspacePurpose === "project" &&
+        onOpenWorktreeEntry &&
+        shouldShowWorktreeSwitcher(worktreeEntries) ? (
+          <ProjectWorktreeSwitcher
+            workspacePath={workspaceAbsPath}
+            entries={worktreeEntries}
+            isRefreshFailed={isWorktreeListRefreshFailed}
+            allowOpenWorkspace={allowOpenWorkspace}
+            onOpenEntry={handleOpenWorktreeEntry}
+            onRefresh={worktreeDiscovery.refresh}
+            className="px-0 pt-0"
+            popoverClassName="w-72"
+          />
+        ) : null}
         {isOfficeMode ? (
           <WorkspacePluginPreview
             onOpen={handleOpenPluginStore}
@@ -1218,6 +1269,11 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
       workspaceRemoteSessionId,
       handleOpenPluginStore,
       handleSelectComposerPlugin,
+      handleOpenWorktreeEntry,
+      isWorktreeListRefreshFailed,
+      onOpenWorktreeEntry,
+      worktreeDiscovery.refresh,
+      worktreeEntries,
       allowOpenWorkspace,
       allowRemoteWorkspace,
       activeWorkspacePurpose,

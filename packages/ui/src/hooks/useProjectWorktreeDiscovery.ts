@@ -28,6 +28,8 @@ export interface ProjectWorktreeDiscovery {
   entriesByProjectKey: Record<string, WorktreeDiscoveryEntry[]>;
   /** 指定 workspace 的项目分组 key；不合组（非 Git/身份不足/旧服务）时为 null。 */
   projectKeyForWorkspace: (workspaceKey: string) => string | null;
+  /** 最近一次读取中 listWorktrees 瞬时失败的项目（展示"状态未知/重试"用）。 */
+  failedListProjectKeys: ReadonlySet<string>;
   /** 重新读取 git 台账（发现列表随菜单展开等显式时机刷新）。 */
   refresh: () => void;
 }
@@ -37,6 +39,21 @@ export interface ProjectWorktreeFacts {
   factsByWorkspaceKey: Record<string, string | null>;
   /** projectKey → git 台账里的工作树列表（空 = 无发现或远端不支持）。 */
   treesByProjectKey: Record<string, GitWorktreeEntry[]>;
+  /**
+   * listWorktrees 瞬时失败的项目。不可达 ≠ 已删除（R14）：调用方保留这些项目的
+   * 上次已知列表并允许显式重试；-32601（旧远端不支持）不算失败，按无发现静默降级。
+   */
+  failedListProjectKeys: string[];
+}
+
+/** 与 codezAgentService 同判据：-32601 是旧远端的正常降级，不是瞬时故障。 */
+function isUnsupportedRemoteMethod(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === -32601
+  );
 }
 
 function isLocalWorkspaceTab(tab: WorkspaceTabState): boolean {
@@ -97,7 +114,7 @@ export async function fetchProjectWorktreeFacts(params: {
     }),
   );
   if (isCancelled?.()) {
-    return { factsByWorkspaceKey: facts, treesByProjectKey: {} };
+    return { factsByWorkspaceKey: facts, treesByProjectKey: {}, failedListProjectKeys: [] };
   }
 
   const groups = deriveProjectGroups(
@@ -105,6 +122,7 @@ export async function fetchProjectWorktreeFacts(params: {
   );
 
   const trees: Record<string, GitWorktreeEntry[]> = {};
+  const failedListProjectKeys: string[] = [];
   await Promise.all(
     groups.map(async (group) => {
       const anchor = group.members[0];
@@ -124,11 +142,14 @@ export async function fetchProjectWorktreeFacts(params: {
         }
       } catch (error) {
         onDowngrade?.("worktree-list", group.projectKey, error);
+        if (!isUnsupportedRemoteMethod(error)) {
+          failedListProjectKeys.push(group.projectKey);
+        }
       }
     }),
   );
 
-  return { factsByWorkspaceKey: facts, treesByProjectKey: trees };
+  return { factsByWorkspaceKey: facts, treesByProjectKey: trees, failedListProjectKeys };
 }
 
 /** 同一 key 的降级只在首次 warn（可诊断），后续 debug 静音（旧远端是预期形态）。 */
@@ -162,6 +183,9 @@ export function useProjectWorktreeDiscovery(): ProjectWorktreeDiscovery {
   const [treesByProjectKey, setTreesByProjectKey] = useState<Record<string, GitWorktreeEntry[]>>(
     {},
   );
+  const [failedListProjectKeys, setFailedListProjectKeys] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
 
   const refresh = useCallback(() => setRefreshIndex((index) => index + 1), []);
 
@@ -181,7 +205,18 @@ export function useProjectWorktreeDiscovery(): ProjectWorktreeDiscovery {
         return;
       }
       setFactsByWorkspaceKey(result.factsByWorkspaceKey);
-      setTreesByProjectKey(result.treesByProjectKey);
+      setTreesByProjectKey((previous) => {
+        const next = { ...result.treesByProjectKey };
+        for (const projectKey of result.failedListProjectKeys) {
+          // 瞬时失败保留上次已知树列表：失败缺省不等于台账为空，
+          // 避免一次远端抖动把切换器里已知的树抹成"没有"。
+          if (previous[projectKey]) {
+            next[projectKey] = previous[projectKey];
+          }
+        }
+        return next;
+      });
+      setFailedListProjectKeys(new Set(result.failedListProjectKeys));
     });
     return () => {
       cancelled = true;
@@ -221,9 +256,10 @@ export function useProjectWorktreeDiscovery(): ProjectWorktreeDiscovery {
       entriesByProjectKey,
       projectKeyForWorkspace: (workspaceKey: string) =>
         projectKeyByWorkspaceKey.get(workspaceKey) ?? null,
+      failedListProjectKeys,
       refresh,
     };
     // tabSignature 代表 tab 集合变化；facts/trees 是台账读取结果。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [factsByWorkspaceKey, treesByProjectKey, tabSignature, refresh]);
+  }, [factsByWorkspaceKey, treesByProjectKey, failedListProjectKeys, tabSignature, refresh]);
 }

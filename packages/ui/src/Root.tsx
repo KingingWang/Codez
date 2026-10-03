@@ -67,6 +67,7 @@ import { consumeZcodeJwtInvalidRestartMarker } from "@/root/codezJwtInvalidResta
 import { useDesktopNativeThemeSync } from "@/root/useDesktopNativeThemeSync.js";
 import { useRootPlatformEffects } from "@/root/useRootPlatformEffects.js";
 import { useRootWorkspaceActions } from "@/root/useRootWorkspaceActions.js";
+import { useWorktreeOpenActions } from "@/root/useWorktreeOpenActions.js";
 import { useBotBroadcastEffects } from "@/root/useBotBroadcastEffects.js";
 import { registerBaseWorkspaceServices } from "@/store/remoteWorkspaceSessionStore.js";
 import type { RootProps } from "@/root/types.js";
@@ -586,6 +587,7 @@ function RootInner({
     handleCancelRemoteProject,
     handleSelectRemoteProject,
     handleConnectRemote,
+    handleOpenDiscoveredRemoteWorktree,
     handleReconnectRemoteWorkspace,
     handleRemoteWorkspaceTabsClosed,
   } = useRemoteWorkspaceHistory({
@@ -603,6 +605,16 @@ function RootInner({
     activateTabByPath,
     addTab,
     onWorkspaceActivated: handleRemoteWorkspaceActivated,
+  });
+
+  // 发现条目的三意图打开编排（R5）：决策在纯函数 worktreeOpenIntent，
+  // 这里把 activate / 本地打开 / 远程打开三种既有能力接到一个入口。
+  const { handleOpenWorktreeEntry } = useWorktreeOpenActions({
+    intl,
+    tabStoreApi,
+    allowOpenWorkspace,
+    handleSelectProject,
+    handleOpenDiscoveredRemoteWorktree,
   });
 
   useEffect(() => {
@@ -1089,6 +1101,7 @@ function RootInner({
             isSettingsTabActive={isSettingsTabActive}
             handleConnectRemote={handleConnectRemote}
             handleSelectRemoteProject={handleSelectRemoteProject}
+            handleOpenWorktreeEntry={handleOpenWorktreeEntry}
             handleCancelRemoteProject={handleCancelRemoteProject}
             handleReconnectRemoteWorkspace={handleReconnectRemoteWorkspace}
             handleCreateTask={handleCreateTask}
