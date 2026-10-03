@@ -631,7 +631,12 @@ test("bridge start warms official marketplace registration from the cached snaps
     registered = true;
     return { marketplaceName: "codez-plugins-official", installedRoot: root, alreadyAdded: false };
   };
-  for (let i = 0; i < 100 && !registered; i++) await tick();
+  // 预热涉及线程池文件读：事件循环存在 pending setImmediate 时 poll 阶段不会阻塞
+  // 等待 I/O，固定 tick 数在慢/高负载 runner 上可能先于文件读完成（CI linux/arm64
+  // 实测在此断言失败），因此轮询必须按墙钟截止时间而非固定 tick 数。
+  const warmDeadline = Date.now() + 5_000;
+  while (!registered && Date.now() < warmDeadline)
+    await new Promise<void>((resolve) => setTimeout(resolve, 5));
   assert.equal(registered, true);
   assert.deepEqual(h.calls.find((call) => call.method === "marketplace/add")?.params, {
     source: root,
