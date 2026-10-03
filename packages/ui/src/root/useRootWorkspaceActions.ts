@@ -361,11 +361,11 @@ export function useRootWorkspaceActions({
   ]);
 
   const handleSelectProject = useCallback(
-    async (path: string) => {
+    async (path: string, options?: { throwOnError?: boolean }) => {
       logger.info("[Root] handleSelectProject called with path:", path);
       try {
         const wslUncWorkspace = parseWslUncWorkspacePath(path);
-        if (wslUncWorkspace && onOpenRemoteConnection) {
+        if (wslUncWorkspace && onOpenRemoteConnection && !options?.throwOnError) {
           const shouldOpenWslConnection = await requestConfirmation({
             title: intl.formatMessage({ id: "workspace.wslUncPrompt.title" }),
             description: intl.formatMessage(
@@ -410,18 +410,25 @@ export function useRootWorkspaceActions({
           // 导致 SSH 场景在打开项目后再次命中不存在的 setting channel。
           // 只有本地窗口才维护最近项目，远程窗口只负责打开当前 workspace。
           logger.info("[Root] calling settingService.get()...");
-          const settings = await services.settingService.get();
-          const updated = [
-            path,
-            ...settings.recentProjects.filter((projectPath) => projectPath !== path),
-          ].slice(0, 10);
-          await services.settingService.update({ recentProjects: updated });
+          try {
+            const settings = await services.settingService.get();
+            const updated = [
+              path,
+              ...settings.recentProjects.filter((projectPath) => projectPath !== path),
+            ].slice(0, 10);
+            await services.settingService.update({ recentProjects: updated });
+          } catch (error) {
+            // 打开已完成，最近项目的辅助持久化失败不能让创建步骤误报“打开失败”。
+            logger.warn("[Root] 更新最近项目失败", { error });
+          }
           // Dock/Jump List 的系统最近文档入口已经下线，这里只保留应用内 recentProjects，
           // 避免系统最近项和项目选择页列表重复维护，造成两个入口内容漂移。
           logger.info("[Root] settingService.update() done");
         }
       } catch (err) {
         logger.error("[Root] handleSelectProject error:", err);
+        // 既有入口仍自行处理错误；工作树步骤需要真实结果，才能仅重试打开。
+        if (options?.throwOnError) throw err;
       }
     },
     [

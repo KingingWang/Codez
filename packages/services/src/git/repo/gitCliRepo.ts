@@ -17,6 +17,10 @@ import type {
   GitPushResult,
   GitWorktreeEntry,
   GitWorktreeListResult,
+  GitWorktreeCreatePreview,
+  GitWorktreeCreatePreviewRequest,
+  GitWorktreeCreateRequest,
+  GitWorktreeCreateResult,
 } from "@codez/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import {
@@ -52,6 +56,7 @@ import {
   toInvalidBranchNameIssue,
   toDiffResult,
 } from "./gitCliHelpers.js";
+import { createGitWorktreeCreationHelper } from "./gitWorktreeCreation.js";
 import {
   createEmptySummary,
   type GitBranchComparisonChange,
@@ -648,6 +653,13 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
   const workspaceRepositoryInfoRequests = new Map<string, Promise<GitWorkspaceRepositoryInfo>>();
   const statusRequests = new Map<string, Promise<GitStatusSnapshot>>();
   const collapsedUntrackedRepoRoots = new Set<string>();
+  let repo: GitCliRepo;
+  const worktreeCreation = createGitWorktreeCreationHelper({
+    commandProvider,
+    parseWorktreeListPorcelain,
+    resolveRepository: (workspacePath) => repo.resolveRepository(workspacePath),
+    invalidateRepository: invalidate,
+  });
 
   function executeGitStatus(resolution: GitResolvedRepository, untrackedMode: "all" | "normal") {
     return commandProvider.run({
@@ -812,7 +824,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
     );
   }
 
-  return {
+  repo = {
     invalidate,
 
     async resolveRepository(workspacePath: string): Promise<GitResolvedRepository> {
@@ -1137,6 +1149,17 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
           status.summary.headRefType === "branch" ? status.summary.branchName : null,
         ),
       };
+    },
+
+    // 创建操作放在独立 helper，保持本 adapter 只承担命令 glue。
+    async previewWorktreeCreation(
+      params: GitWorktreeCreatePreviewRequest,
+    ): Promise<GitWorktreeCreatePreview> {
+      return await worktreeCreation.preview(params);
+    },
+
+    async createWorktree(params: GitWorktreeCreateRequest): Promise<GitWorktreeCreateResult> {
+      return await worktreeCreation.create(params);
     },
 
     async listWorktrees(workspacePath: string): Promise<GitWorktreeListResult> {
@@ -1869,4 +1892,5 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
       };
     },
   };
+  return repo;
 }

@@ -28,6 +28,10 @@ import type {
   GitFileChange,
   GitSwitchBranchRequest,
   GitWorktreeListResult,
+  GitWorktreeCreatePreview,
+  GitWorktreeCreatePreviewRequest,
+  GitWorktreeCreateRequest,
+  GitWorktreeCreateResult,
 } from "@codez/shared";
 import { ServiceChannels } from "@codez/shared";
 import { createServiceDescriptor } from "../descriptors.js";
@@ -37,6 +41,10 @@ export interface IGitService {
   getWorkspaceRepositoryInfo(params: GitRepositoryRequest): Promise<GitWorkspaceRepositoryInfo>;
   getLocalBranches(params: GitRepositoryRequest): Promise<GitLocalBranchListResult>;
   listWorktrees(params: GitRepositoryRequest): Promise<GitWorktreeListResult>;
+  previewWorktreeCreation(
+    params: GitWorktreeCreatePreviewRequest,
+  ): Promise<GitWorktreeCreatePreview>;
+  createWorktree(params: GitWorktreeCreateRequest): Promise<GitWorktreeCreateResult>;
   getCommitGraph(params: GitCommitGraphRequest): Promise<GitCommitGraphResult>;
   switchBranch(params: GitSwitchBranchRequest): Promise<GitBranchMutationResult>;
   createBranchAndSwitch(params: GitCreateBranchRequest): Promise<GitBranchMutationResult>;

@@ -4,6 +4,7 @@ import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
+  ReactNode,
 } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { GripHorizontal, LoaderIcon } from "lucide-react";
@@ -41,6 +42,9 @@ import { WorkspacePluginPreview } from "@/WorkspacePluginPreview.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { GitBranchSwitcher } from "@/GitBranchSwitcher.js";
 import { ProjectWorktreeSwitcher } from "@/ProjectWorktreeSwitcher.js";
+import { WorktreeSessionMenu } from "@/WorktreeSessionMenu.js";
+import { CurrentWorkspaceConcurrencyHint } from "@/CurrentWorkspaceConcurrencyHint.js";
+import { useWorktreeCreation } from "@/hooks/useWorktreeCreation.js";
 import { useProjectWorktreeDiscovery } from "@/hooks/useProjectWorktreeDiscovery.js";
 import type { WorktreeDiscoveryEntry } from "@/lib/projectGrouping.js";
 import { shouldShowWorktreeSwitcher } from "@/lib/worktreeSwitcherDisplay.js";
@@ -533,15 +537,102 @@ export const WorkspaceShellLayout = memo(
     const handleOpenWorktreeEntry = useCallback(
       (entry: WorktreeDiscoveryEntry) => {
         if (!onOpenWorktreeEntry || !worktreeProjectGroup) return;
-        onOpenWorktreeEntry({
+        void onOpenWorktreeEntry({
           entry,
           projectMemberKeys: worktreeProjectGroup.members.map(
             (member) => member.workspaceIdentity?.trim() || member.workspacePath,
           ),
           isRemoteScope: worktreeProjectGroup.scope !== LOCAL_WORKSPACE_SCOPE,
-        });
+        }).catch(() => undefined);
       },
       [onOpenWorktreeEntry, worktreeProjectGroup],
+    );
+    const handleCreatedWorktree = useCallback(
+      async (result: import("@codez/shared").GitWorktreeCreateResult) => {
+        if (!onOpenWorktreeEntry) throw new Error("Worktree open is unsupported");
+        await onOpenWorktreeEntry({
+          entry: {
+            path: result.workspacePath,
+            branchName: result.branchName,
+            headCommitHash: result.baselineCommit,
+            isMain: false,
+            isDetached: false,
+            isLocked: false,
+            lockReason: null,
+            isPrunable: false,
+            prunableReason: null,
+            isOpen: false,
+          },
+          projectMemberKeys: worktreeProjectGroup
+            ? worktreeProjectGroup.members.map(
+                (member) => member.workspaceIdentity?.trim() || member.workspacePath,
+              )
+            : [workspaceKey],
+          isRemoteScope: worktreeProjectGroup
+            ? worktreeProjectGroup.scope !== LOCAL_WORKSPACE_SCOPE
+            : Boolean(workspaceIdentity?.trim()),
+          intent: "new-session",
+        });
+        worktreeDiscovery.refresh();
+      },
+      [onOpenWorktreeEntry, worktreeProjectGroup, workspaceKey,
+        workspaceIdentity, worktreeDiscovery.refresh],
+    );
+    const handleOpenOccupiedWorktree = useCallback(
+      (path: string) => {
+        const entry = worktreeEntries.find((item) => item.path === path);
+        if (entry) {
+          handleOpenWorktreeEntry(entry);
+          return;
+        }
+        // 分支预览可能比发现投影更新，未加载条目不能阻止跳转。
+        if (onOpenWorktreeEntry) {
+          void onOpenWorktreeEntry({
+            entry: {
+              path,
+              branchName: null,
+              headCommitHash: null,
+              isMain: false,
+              isDetached: false,
+              isLocked: false,
+              lockReason: null,
+              isPrunable: false,
+              prunableReason: null,
+              isOpen: false,
+            },
+            projectMemberKeys: [workspaceKey],
+            isRemoteScope: Boolean(workspaceIdentity?.trim()),
+          }).catch(() => undefined);
+        }
+      },
+      [handleOpenWorktreeEntry, worktreeEntries, onOpenWorktreeEntry, workspaceKey, workspaceIdentity],
+    );
+    const worktreeCreation = useWorktreeCreation({
+      workspacePath: workspaceAbsPath,
+      workspaceIdentity,
+      remoteSessionId: workspaceRemoteSessionId,
+      allowOpenWorkspace: allowOpenWorkspace && Boolean(onOpenWorktreeEntry) && !workspaceReadOnlyReason,
+      onCreated: handleCreatedWorktree,
+      onOpenOccupied: handleOpenOccupiedWorktree,
+    });
+    const refreshWorktreeMenu = useCallback(() => {
+      worktreeDiscovery.refresh();
+      worktreeCreation.refreshAvailability();
+    }, [worktreeDiscovery.refresh, worktreeCreation.refreshAvailability]);
+    const newTaskMenu = useCallback(
+      (onCreateCurrent: () => void): ReactNode => (
+        <WorktreeSessionMenu
+          onRefresh={refreshWorktreeMenu}
+          onCreateCurrent={onCreateCurrent}
+          onCreateWorktree={worktreeCreation.openDialog}
+          disabledReason={worktreeCreation.disabledReason}
+          entries={worktreeEntries}
+          onOpenEntry={handleOpenWorktreeEntry}
+          allowOpenWorkspace={allowOpenWorkspace}
+        />
+      ),
+      [worktreeCreation.openDialog, worktreeCreation.disabledReason, worktreeEntries,
+        handleOpenWorktreeEntry, allowOpenWorkspace, refreshWorktreeMenu],
     );
     const screenshotSurfaceRequest = useBrowserScreenshotSurfaceRequest(
       sidePaneState?.tabs ?? [],
@@ -1776,6 +1867,13 @@ export const WorkspaceShellLayout = memo(
               avoidPopoverCollisions={false}
             />
           ) : null}
+          {!isOfficeMode && activeWorkspacePurpose === "project" ? (
+            <CurrentWorkspaceConcurrencyHint
+              workspacePath={workspaceAbsPath}
+              workspaceIdentity={workspaceIdentity}
+              remoteSessionId={workspaceRemoteSessionId}
+            />
+          ) : null}
         </>
       ),
       [
@@ -2457,6 +2555,7 @@ export const WorkspaceShellLayout = memo(
                 >
                   <WorkflowRunOpenProvider onOpenRun={handleOpenSidebarWorkflowRun}>
                   <WorkspaceSidebar
+                    newTaskMenu={newTaskMenu}
                     workspacePath={workspaceAbsPath}
                     workspaceRemoteSessionId={workspaceRemoteSessionId}
                     activePreviewPath={activePreviewPath}
@@ -2622,6 +2721,23 @@ export const WorkspaceShellLayout = memo(
                         className="border-b"
                       >
                         <WorkspaceHeader
+                          workspaceSwitcher={
+                            !isOfficeMode &&
+                            activeWorkspacePurpose === "project" &&
+                            onOpenWorktreeEntry &&
+                            shouldShowWorktreeSwitcher(worktreeEntries) ? (
+                              <ProjectWorktreeSwitcher
+                                workspacePath={workspaceAbsPath}
+                                entries={worktreeEntries}
+                                isRefreshFailed={isWorktreeListRefreshFailed}
+                                allowOpenWorkspace={allowOpenWorkspace}
+                                onOpenEntry={handleOpenWorktreeEntry}
+                                onRefresh={worktreeDiscovery.refresh}
+                                className="px-0 pt-0"
+                                popoverSide="bottom"
+                              />
+                            ) : undefined
+                          }
                           reserveWindowControls={!isSidePaneVisible}
                           variant={activeTaskId === null ? "draft" : "task"}
                           draftDropTargetController={
@@ -2999,6 +3115,7 @@ export const WorkspaceShellLayout = memo(
             </div>
           ) : null}
         </div>
+        {worktreeCreation.dialog}
       </DesktopWindowFrame>
       </SavedWorkflowHubProvider>
     );

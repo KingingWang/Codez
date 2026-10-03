@@ -273,6 +273,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   onFileTreeOpenChange,
   onWebRemoteTaskOpen,
   onWebRemoteTaskSwitchingChange,
+  newTaskMenu,
 }: {
   workspacePath: string;
   workspaceRemoteSessionId?: string;
@@ -329,6 +330,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   onFileTreeOpenChange?: (open: boolean) => void;
   onWebRemoteTaskOpen?: (options: { crossWorkspace: boolean }) => void;
   onWebRemoteTaskSwitchingChange?: (switching: boolean) => void;
+  newTaskMenu?: (onCreateCurrent: () => void) => ReactNode;
 }) {
   const { intl, localePreference, setLocalePreference } = useCodezIntl();
   const handleTaskRowSelect = useCallback(
@@ -1554,6 +1556,18 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
 
   // Bugfix：Footer 使用 memo，内联 JSX 会让无关的侧栏更新也穿透其稳定引用边界。
   const sidebarBottomActivity = useMemo(() => <SidebarBottomActivity />, []);
+  const handleCreateDefaultTask = () => {
+    if (workspaceReadOnly) return;
+    if (taskViewMode === "grouped") {
+      if (createGroupedTaskDraftAction) {
+        createGroupedTaskDraftAction();
+        return;
+      }
+      onCreateTask({ groupedDraftPlacement: { type: "top" } });
+      return;
+    }
+    onCreateTask({ createSource: "project" });
+  };
 
   return (
     <aside
@@ -1587,20 +1601,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
             <WorkspaceNewTaskTooltip disabledReason={workspaceReadOnlyReason}>
               <NewTaskButtonGroup
                 disabled={workspaceReadOnly}
-                onCreateTask={() => {
-                  if (workspaceReadOnly) {
-                    return;
-                  }
-                  if (taskViewMode === "grouped") {
-                    if (createGroupedTaskDraftAction) {
-                      createGroupedTaskDraftAction();
-                      return;
-                    }
-                    onCreateTask({ groupedDraftPlacement: { type: "top" } });
-                    return;
-                  }
-                  onCreateTask({ createSource: "project" });
-                }}
+                onCreateTask={handleCreateDefaultTask}
+                menuContent={newTaskMenu?.(handleCreateDefaultTask)}
+                menuLabel={intl.formatMessage({ id: "worktree.menu.label" })}
               />
             </WorkspaceNewTaskTooltip>
             <Button

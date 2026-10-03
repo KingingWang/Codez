@@ -4,6 +4,9 @@ import type {
   GitBranchComparison,
   GitCancelGenerateCommitMessageResult,
   GitFileChange,
+  GitWorktreeCreatePreviewRequest,
+  GitWorktreeCreateRequest,
+  GitWorktreeCreateResult,
   GitChangeSectionId,
 } from "@codez/shared";
 import { isPathInWorkspaceScope, normalizeGitPath, toWorkspaceRelativeGitPath } from "./config.js";
@@ -215,6 +218,14 @@ export function createGitService(options?: {
 
     async listWorktrees(params) {
       return await repo.listWorktrees(params.workspacePath);
+    },
+
+    async previewWorktreeCreation(params: GitWorktreeCreatePreviewRequest) {
+      return await repo.previewWorktreeCreation(params);
+    },
+
+    async createWorktree(params: GitWorktreeCreateRequest): Promise<GitWorktreeCreateResult> {
+      return await repo.createWorktree(params);
     },
 
     async getCommitGraph(params) {
