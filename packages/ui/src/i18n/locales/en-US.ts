@@ -1331,6 +1331,7 @@ const enUS: Record<string, string> = {
     "Another Git operation is still in progress. Finish it before switching branches.",
   "git.branchSwitcher.error.branchInOtherWorktree":
     "That branch is already checked out in another worktree.",
+  "git.branchSwitcher.checkedOutAt": "Checked out: {path}",
   "git.branchSwitcher.error.unknown": "Switching branches failed. Please try again.",
   "git.branchSwitcher.error.requestFailed": "Branch operation failed: {error}",
   "gitGraph.title": "Git Graph",

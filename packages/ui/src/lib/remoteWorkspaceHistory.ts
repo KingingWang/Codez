@@ -6,6 +6,7 @@ import type {
   RemoteTargetSnapshot,
   RemoteWorkspaceSessionEntry,
 } from "@codez/shared";
+import { buildRemoteWorkspaceScope } from "@codez/shared";
 import type { WindowTabState } from "@/store/tabStore.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
 
@@ -115,23 +116,10 @@ function normalizeWorkspacePathForIdentity(path: string): string {
 }
 
 function getRemoteWorkspaceAuthorityKey(target: RemoteTarget | RemoteTargetSnapshot): string {
-  switch (target.kind) {
-    case "ssh": {
-      const normalizedHost = target.host.trim().toLowerCase();
-      const normalizedUsername = target.username.trim();
-      const normalizedPort = target.port ?? 22;
-      return ["ssh", normalizedHost, normalizedPort, normalizedUsername].join(":");
-    }
-    case "wsl": {
-      // WSL 默认用户与 root/其他显式用户的文件权限边界不同，
-      // workspace identity 必须区分显式 user，避免 session、缓存和队列串用。
-      const user = getWslRemoteTargetUser(target);
-      const base = ["wsl", target.distro ?? "default"];
-      return user ? [...base, user].join(":") : base.join(":");
-    }
-    case "docker":
-      return ["docker", target.container].join(":");
-  }
+  // authority 规范化与项目分组作用域同一来源（shared/remote-workspace-identity），
+  // 消除两套规则漂移（WSL 空 distro 等边缘形态）；本模块只保留
+  // "remote:<authority>:<path>" 的既有 identity 拼装格式。
+  return buildRemoteWorkspaceScope(target).slice("remote:".length);
 }
 
 export function buildRemoteWorkspaceIdentity(

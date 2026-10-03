@@ -1224,6 +1224,7 @@ const zhCN: Record<string, string> = {
     "当前仓库还有进行中的 Git 操作，完成后再切换分支。",
   "git.branchSwitcher.error.branchInOtherWorktree":
     "目标分支已在其他 worktree 中被检出，当前工作区无法直接切换。",
+  "git.branchSwitcher.checkedOutAt": "已检出：{path}",
   "git.branchSwitcher.error.unknown": "切换分支失败，请稍后重试。",
   "git.branchSwitcher.error.requestFailed": "分支操作失败：{error}",
   "gitGraph.title": "Git 图谱",

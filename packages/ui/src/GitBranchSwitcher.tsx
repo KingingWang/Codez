@@ -290,6 +290,21 @@ export function GitBranchSwitcher({
                               {currentBranchDirtyLabel}
                             </p>
                           ) : null}
+                          {!isCurrent && branch.worktreePath ? (
+                            <p
+                              className="truncate pt-0.5 text-ui-base text-foreground-subtle"
+                              title={branch.worktreePath}
+                            >
+                              {intl.formatMessage(
+                                { id: "git.branchSwitcher.checkedOutAt" },
+                                {
+                                  path:
+                                    branch.worktreePath.split("/").filter(Boolean).pop() ??
+                                    branch.worktreePath,
+                                },
+                              )}
+                            </p>
+                          ) : null}
                         </div>
                       </CommandItem>
                     );

@@ -14,6 +14,18 @@ import type { RemoteTarget } from "./remoteTarget.js";
 
 export type RemoteWorkspaceIdentityKind = "ssh" | "wsl" | "docker";
 
+/** 本地 workspace 的项目分组作用域常量（与远端 authority 作用域不可能冲突）。 */
+export const LOCAL_WORKSPACE_SCOPE = "local";
+
+/**
+ * 作用域构造的最小结构入参：RemoteTarget 与 RemoteTargetSnapshot 都满足。
+ * 只读取身份字段，不接触 secret。
+ */
+export type RemoteWorkspaceScopeTarget =
+  | { kind: "ssh"; host: string; port?: number; username: string }
+  | { kind: "wsl"; distro?: string; user?: string }
+  | { kind: "docker"; container: string };
+
 export interface ParsedRemoteWorkspaceIdentity {
   kind: RemoteWorkspaceIdentityKind;
   /** 远端真实路径（posix 归一形态）。 */
@@ -45,29 +57,37 @@ function normalizeWorkspacePathForIdentity(workspacePath: string): string {
  */
 export function buildRemoteWorkspaceIdentity(workspacePath: string, target: RemoteTarget): string {
   const normalizedPath = normalizeWorkspacePathForIdentity(workspacePath);
-  switch (target.kind) {
-    case "ssh":
-      return `remote:ssh:${target.host.trim().toLowerCase()}:${target.port ?? 22}:${target.username.trim()}:${normalizedPath}`;
-    case "wsl": {
-      const distro = target.distro?.trim() || "default";
-      const user = target.user?.trim();
-      return user
-        ? `remote:wsl:${distro}:${user}:${normalizedPath}`
-        : `remote:wsl:${distro}:${normalizedPath}`;
-    }
-    case "docker":
-      return `remote:docker:${target.container}:${normalizedPath}`;
-  }
+  return `${buildRemoteWorkspaceScope(target)}:${normalizedPath}`;
 }
 
 /**
- * 解析远程 workspace identity；非法/非远程 identity 返回 null（调用方回落
- * 「按本地 workspacePath 处理」）。只提取 workspacePath——authority 细节
- * （host/port 等）对消费方（CLI 运行在远端机器上）无意义，不透出。
+ * 统一构造远程 workspace 的项目分组作用域（identity 去掉路径段后的 authority 部分）。
+ * 只用于项目分组与工作树发现条目去重，不替换会话/草稿/运行时的身份键。
+ * 与 buildRemoteWorkspaceIdentity 共用同一份 authority 规范化规则，保证
+ * 同一远端的不同工作树作用域一致、不同远端作用域必然不同。
  */
-export function parseRemoteWorkspaceIdentity(
+export function buildRemoteWorkspaceScope(target: RemoteWorkspaceScopeTarget): string {
+  switch (target.kind) {
+    case "ssh":
+      return `remote:ssh:${target.host.trim().toLowerCase()}:${target.port ?? 22}:${target.username.trim()}`;
+    case "wsl": {
+      const distro = target.distro?.trim() || "default";
+      const user = target.user?.trim();
+      return user ? `remote:wsl:${distro}:${user}` : `remote:wsl:${distro}`;
+    }
+    case "docker":
+      return `remote:docker:${target.container}`;
+  }
+}
+
+interface ParsedRemoteWorkspaceIdentitySegments extends ParsedRemoteWorkspaceIdentity {
+  /** authority 部分（remote:ssh:host:port:user 等），与 buildRemoteWorkspaceScope 输出一致。 */
+  scope: string;
+}
+
+function parseRemoteWorkspaceIdentitySegments(
   identity: string,
-): ParsedRemoteWorkspaceIdentity | null {
+): ParsedRemoteWorkspaceIdentitySegments | null {
   if (!identity.startsWith(REMOTE_IDENTITY_PREFIX)) {
     return null;
   }
@@ -104,7 +124,36 @@ export function parseRemoteWorkspaceIdentity(
   if (!workspacePath.startsWith("/")) {
     return null;
   }
-  return { kind, workspacePath };
+  // cursor 指向 path 段起点，其前一个字符必为 authority 与 path 的分隔冒号。
+  return {
+    kind,
+    workspacePath,
+    scope: identity.slice(0, REMOTE_IDENTITY_PREFIX.length + cursor - 1),
+  };
+}
+
+/**
+ * 解析远程 workspace identity；非法/非远程 identity 返回 null（调用方回落
+ * 「按本地 workspacePath 处理」）。只提取 workspacePath——authority 细节
+ * （host/port 等）对消费方（CLI 运行在远端机器上）无意义，不透出。
+ */
+export function parseRemoteWorkspaceIdentity(
+  identity: string,
+): ParsedRemoteWorkspaceIdentity | null {
+  const segments = parseRemoteWorkspaceIdentitySegments(identity);
+  if (!segments) {
+    return null;
+  }
+  return { kind: segments.kind, workspacePath: segments.workspacePath };
+}
+
+/**
+ * 从已有 workspace identity 提取项目分组作用域（authority 部分）。
+ * 供只有 identity 没有 RemoteTarget 的存量状态（如持久化 tab）分组使用；
+ * 非法或非远程 identity 返回 null，调用方据此放弃分组而不是猜测合组。
+ */
+export function parseRemoteWorkspaceScope(identity: string): string | null {
+  return parseRemoteWorkspaceIdentitySegments(identity)?.scope ?? null;
 }
 
 /** identity 是否是远程 workspace identity（可被 parseRemoteWorkspaceIdentity 解析）。 */

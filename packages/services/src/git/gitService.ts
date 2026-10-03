@@ -213,6 +213,10 @@ export function createGitService(options?: {
       return await repo.listLocalBranches(params.workspacePath);
     },
 
+    async listWorktrees(params) {
+      return await repo.listWorktrees(params.workspacePath);
+    },
+
     async getCommitGraph(params) {
       const snapshot = await repo.getCommitGraph(
         params.workspacePath,

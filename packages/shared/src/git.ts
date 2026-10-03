@@ -40,6 +40,12 @@ export interface GitRepositorySummary {
   workspaceInRepoPath: string;
   /** Git 元数据 watcher 边界；workspace 内容 watcher 由 UI 按 workspace Host 平台决定。 */
   autoRefreshWatchPaths: GitRepositoryAutoRefreshWatchPath[];
+  /**
+   * 宿主端规范化后的 git common dir 绝对路径（同一仓库的所有工作树共享同一值），
+   * 用作项目分组的 Git 事实原料。非仓库 / git 不可用 / 查询失败时为 null。
+   * 旧版本远端服务不返回该字段，消费方必须按缺失处理且不猜测合组。
+   */
+  gitCommonDir?: string | null;
   branchName: string | null;
   trackingBranchName: string | null;
   headRefType: GitHeadRefType;
@@ -134,6 +140,8 @@ export interface GitWorkspaceRepositoryInfo {
   workspacePath: string;
   kind: GitWorkspaceRepositoryKind;
   isGitAvailable: boolean;
+  /** 宿主端规范化后的 common dir；非仓库 / git 不可用 / 旧版服务时为 null 或缺失。 */
+  gitCommonDir?: string | null;
 }
 
 export interface GitSwitchBranchRequest extends GitRepositoryRequest {
@@ -168,12 +176,43 @@ export interface GitLocalBranch {
   upstreamName: string | null;
   commitHash: string | null;
   commitTimestampMs: number | null;
+  /**
+   * 该分支当前被检出的工作树路径（宿主端规范化）；未被任何工作树检出时为 null。
+   * 旧版本远端服务不返回该字段，缺失等同于"未知"，不得当作"空闲"。
+   */
+  worktreePath?: string | null;
 }
 
 export interface GitLocalBranchListResult {
   headRefType: GitHeadRefType;
   currentBranchName: string | null;
   branches: GitLocalBranch[];
+}
+
+/**
+ * `git worktree list --porcelain` 的只读投影。发现 ≠ 打开：
+ * 该结果只描述 git 台账里登记的工作树，不代表它们已被应用激活。
+ */
+export interface GitWorktreeEntry {
+  /** 宿主端规范化后的工作树树根绝对路径。 */
+  path: string;
+  /** 仓库主目录（porcelain 首条记录）。 */
+  isMain: boolean;
+  branchName: string | null;
+  headCommitHash: string | null;
+  isDetached: boolean;
+  /** lock 只防止元数据被清理 / 树被移动删除，不代表目录不可访问。 */
+  isLocked: boolean;
+  lockReason: string | null;
+  isPrunable: boolean;
+  prunableReason: string | null;
+}
+
+export interface GitWorktreeListResult {
+  workspacePath: string;
+  isGitAvailable: boolean;
+  isRepository: boolean;
+  worktrees: GitWorktreeEntry[];
 }
 
 export interface GitBranchMutationIssue {
