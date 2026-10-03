@@ -6,6 +6,7 @@ import type {
   BotRemoteWorkspaceReconnectedEvent,
   IPlatformService,
   RemoteSessionClosedEvent,
+  RemoteTarget,
   RemoteWorkspaceSessionEntry,
 } from "@codez/shared";
 import { buildSshRemoteHostKey, createUuid, stripRemoteTargetSecrets } from "@codez/shared";
@@ -1032,6 +1033,59 @@ export function useRemoteWorkspaceHistory({
     ],
   );
 
+  /**
+   * 显式打开发现的远程 worktree（specs/git-worktree-projects.md R5）。
+   * 复用与连接弹窗选目录完全同一条打开流程：新建连接 → canonicalize →
+   * 绑定 session 上下文 → 持久化会话条目 → addTab 原子激活 → 刷新任务列表。
+   * 新树解析为自己的 workspaceIdentity，不沿用来源树的身份或绑定。
+   */
+  const handleOpenDiscoveredRemoteWorktree = useCallback(
+    async (params: {
+      anchorWorkspaceKey: string;
+      remoteTarget: RemoteTarget;
+      workspacePath: string;
+    }) => {
+      if (!canUseRemoteWorkspace) {
+        throw new Error("Remote workspace is disabled in this mode");
+      }
+      const { anchorWorkspaceKey, remoteTarget, workspacePath } = params;
+      // tab 里的 target 已脱敏（密码/私钥口令被 strip）；从锚点工作区的持久化
+      // 会话条目取 credential key 重新水化，与手动重连同一凭据来源。
+      const anchorSnapshot = remoteWorkspaceSessionsRef.current.find(
+        (entry) => (entry.workspaceIdentity?.trim() || entry.workspacePath) === anchorWorkspaceKey,
+      )?.target;
+      const credentials = {
+        password:
+          anchorSnapshot?.kind === "ssh" && anchorSnapshot.passwordCredentialKey
+            ? await services.credentialService.load(anchorSnapshot.passwordCredentialKey)
+            : null,
+        privateKeyPassphrase:
+          anchorSnapshot?.kind === "ssh" && anchorSnapshot.privateKeyPassphraseCredentialKey
+            ? await services.credentialService.load(
+                anchorSnapshot.privateKeyPassphraseCredentialKey,
+              )
+            : null,
+      };
+      const connectTarget = createRemoteTargetFromSnapshot(remoteTarget, credentials);
+      const sessionId = await connectRemoteWorkspaceTarget(connectTarget);
+      try {
+        await handleSelectRemoteProject(sessionId, workspacePath);
+      } catch (error) {
+        // select 流程在 bind 失败时已自行回收 session；其余失败路径这里兜底回收，
+        // 不留下没有 tab 的悬挂连接。重复 dispose 是幂等 no-op。
+        await handleCancelRemoteProject(sessionId).catch(() => undefined);
+        throw error;
+      }
+    },
+    [
+      canUseRemoteWorkspace,
+      connectRemoteWorkspaceTarget,
+      handleCancelRemoteProject,
+      handleSelectRemoteProject,
+      services.credentialService,
+    ],
+  );
+
   const handleConnectRemote = useCallback(
     async (
       options: Parameters<IPlatformService["connectRemote"]>[0],
@@ -1382,6 +1436,7 @@ export function useRemoteWorkspaceHistory({
     handleCancelRemoteProject,
     handleSelectRemoteProject,
     handleConnectRemote,
+    handleOpenDiscoveredRemoteWorktree,
     handleReconnectRemoteWorkspace,
     handleOpenRemoteWorkspaceFromHistory,
     handleRemoteWorkspaceTabsClosed,
