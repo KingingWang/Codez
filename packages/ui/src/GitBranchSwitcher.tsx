@@ -28,6 +28,7 @@ import {
 } from "@/git-branch-switcher/GitBranchDialogs.js";
 import { GitGraphDialog } from "@/git-graph/GitGraphDialog.js";
 import { useGitBranchSwitcher } from "@/hooks/useGitBranchSwitcher.js";
+import { GitWorktreeMenuActions, useGitWorktreeMenu } from "@/GitWorktreeMenu.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   matchesGitBranchSearch,
@@ -47,6 +48,7 @@ import {
 
 interface GitBranchSwitcherProps {
   workspacePath: string;
+  workspaceIdentity?: string | null;
   gitSummary: GitRepositorySummary;
   dirtyFileCount: number;
   onRefreshGit: () => void;
@@ -63,6 +65,7 @@ interface GitBranchSwitcherProps {
 
 export function GitBranchSwitcher({
   workspacePath,
+  workspaceIdentity,
   gitSummary,
   dirtyFileCount,
   onRefreshGit,
@@ -80,6 +83,7 @@ export function GitBranchSwitcher({
   const numberFormatter = new Intl.NumberFormat(locale);
   const commandListRef = useRef<HTMLDivElement | null>(null);
   const [gitGraphDialogOpen, setGitGraphDialogOpen] = useState(false);
+  const worktreeMenu = useGitWorktreeMenu(workspacePath, workspaceIdentity);
   const {
     open,
     setOpen,
@@ -106,6 +110,11 @@ export function GitBranchSwitcher({
     headRefType: gitSummary.headRefType,
     onRefreshGit,
   });
+  useEffect(() => {
+    if (open && showFooterActions) {
+      worktreeMenu?.onRefresh();
+    }
+  }, [open, showFooterActions, worktreeMenu?.onRefresh]);
 
   const isVisible = gitSummary.isGitAvailable && gitSummary.isRepository;
   const displayedCurrentBranchName =
@@ -368,6 +377,12 @@ export function GitBranchSwitcher({
                     id: "git.branchSwitcher.createAction",
                   })}
                 </Button>
+                <GitWorktreeMenuActions
+                  workspacePath={workspacePath}
+                  workspaceIdentity={workspaceIdentity}
+                  disabled={mutationPending}
+                  onBeforeAction={() => setOpen(false)}
+                />
                 <Button
                   type="button"
                   variant="ghost"

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { access, readFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
@@ -19,6 +19,20 @@ test(
   },
   async () => {
     assert.match(qaRoot, /codez-worktree-qa-/);
+    // 原生会话初始化使用隔离 QA 配置；地址不提供模型服务，测试不发送任何回合。
+    const nativeHome = join(qaRoot, "home", ".codex");
+    await mkdir(nativeHome, { recursive: true });
+    await writeFile(
+      join(nativeHome, "config.toml"),
+      `model = "qa-no-turn"
+model_provider = "qa-local"
+[model_providers.qa-local]
+name = "QA local - no model calls"
+base_url = "http://127.0.0.1:9/v1"
+wire_api = "responses"
+requires_openai_auth = false
+`,
+    );
     const source = join(qaRoot, "project");
     const git = async (cwd, args) => (await run("git", args, { cwd })).stdout.trim();
     const head = await git(source, ["rev-parse", "HEAD"]);
@@ -55,23 +69,37 @@ test(
       assert.deepEqual(await navigation(), before);
       assert.equal(await page.getByRole("menu").count(), 0);
       await page.getByRole("textbox").first().fill(sourceDraft);
-      const options = page.getByRole("button", { name: "新建会话选项", exact: true });
-      const openCreation = async () => {
-        await options.click();
-        await page.getByRole("menuitem", { name: /^新的独立工作区/ }).waitFor();
-        await page.waitForFunction(() => {
-          const item = [...document.querySelectorAll('[role="menuitem"]')].find((entry) =>
-            entry.textContent.startsWith("新的独立工作区"),
-          );
-          return item && !item.hasAttribute("data-disabled");
-        });
+      const composer = page.locator('[contenteditable="true"][role="textbox"]').first();
+
+      // 普通新建分支与工作树创建是两个入口。先分别取消一次，锁住菜单展开和
+      // 普通分支入口都不会抢占草稿、增加标签页或改变工作区归属。
+      const branchSwitcher = page.getByRole("button", { name: "切换 Git 分支", exact: true });
+      const openBranchMenu = async () => {
+        await branchSwitcher.click();
+        await page.getByRole("button", { name: "创建并检出新分支...", exact: true }).waitFor();
         assert.deepEqual(await navigation(), before);
-        await page.getByRole("menuitem", { name: "新的独立工作区", exact: true }).click();
+      };
+      await openBranchMenu();
+      await page.getByRole("button", { name: "创建并检出新分支...", exact: true }).click();
+      const branchDialogText = await page.getByRole("dialog").innerText();
+      assert.match(branchDialogText, /创建并检出新分支/);
+      assert.doesNotMatch(branchDialogText, /保存位置|创建工作区/);
+      await page.getByRole("button", { name: "取消", exact: true }).click();
+      await page.getByRole("dialog").waitFor({ state: "hidden" });
+      assert.deepEqual(await navigation(), before);
+      assert.equal(await composer.innerText(), sourceDraft);
+
+      const openCreation = async () => {
+        await branchSwitcher.click();
+        await page.getByRole("button", { name: "新建独立工作区（工作树）…", exact: true }).click();
         await page.getByRole("dialog").waitFor();
+        assert.match(await page.getByRole("dialog").innerText(), /创建工作区/);
       };
       await openCreation();
       await page.getByRole("button", { name: "取消", exact: true }).click();
-      assert.equal(await page.getByRole("textbox").first().innerText(), sourceDraft);
+      await page.getByRole("dialog").waitFor({ state: "hidden" });
+      assert.deepEqual(await navigation(), before);
+      assert.equal(await composer.innerText(), sourceDraft);
       await openCreation();
       await page.getByLabel("新分支名", { exact: true }).fill(branch);
       await page.waitForFunction(() => {
@@ -117,7 +145,67 @@ test(
       assert.equal(await page.getByRole("textbox").first().innerText(), sourceDraft);
       await switchTo(target);
       assert.equal(await page.getByRole("textbox").first().innerText(), targetDraft);
+
+      // 普通新建分支仍只改变当前目录的检出分支，不创建额外树或抢占草稿。
+      const plainBranch = `qa/plain-${Date.now()}`;
+      const treesBeforeBranch = await git(source, ["worktree", "list", "--porcelain"]);
+      const beforeBranch = await navigation();
+      await branchSwitcher.click();
+      await page.getByRole("button", { name: "创建并检出新分支...", exact: true }).click();
+      await page.locator("#git-branch-switcher-create-input").fill(plainBranch);
+      await page.getByRole("button", { name: "创建并切换", exact: true }).click();
+      await page.getByRole("dialog").waitFor({ state: "hidden" });
+      assert.equal(await git(target, ["branch", "--show-current"]), plainBranch);
+      assert.deepEqual(await navigation(), beforeBranch);
+      assert.equal(await composer.innerText(), targetDraft);
+      const treesAfterBranch = await git(source, ["worktree", "list", "--porcelain"]);
+      assert.deepEqual(
+        treesAfterBranch.match(/^worktree .+$/gm),
+        treesBeforeBranch.match(/^worktree .+$/gm),
+      );
       assert.deepEqual(errors, []);
+    } finally {
+      await browser.close();
+    }
+  },
+);
+
+test(
+  "real empty session exposes worktree creation in its branch menu without model turns",
+  { skip: !qaRoot, timeout: 30_000 },
+  async () => {
+    assert.match(qaRoot, /codez-worktree-qa-/);
+    const browser = await chromium.connectOverCDP(cdp);
+    try {
+      const page = browser.contexts()[0].pages()[0];
+      const moduleUrl = `/@fs${join(process.cwd(), "packages/ui/src/store/remoteWorkspaceSessionStore.ts")}`;
+      const session = await page.evaluate(async (url) => {
+        const { useRemoteWorkspaceSessionStore } = await import(url);
+        const services = useRemoteWorkspaceSessionStore.getState().baseServices;
+        const workspacePath = window.__codezTabStoreE2E.getState().activeWorkspacePath;
+        const task = await services.codezTaskService.createTask({
+          workspacePath,
+          v4Create: true,
+        });
+        const store = window.__codezSessionStoreE2E.getState();
+        store.upsertOptimisticTaskListItem(workspacePath, task);
+        store.setActiveTaskId(workspacePath, task.taskId);
+        return { workspacePath, taskId: task.taskId };
+      }, moduleUrl);
+      await page.getByRole("button", { name: "展开状态", exact: true }).click();
+      await page.getByTestId("chat-summary-panel").waitFor();
+      await page.getByRole("button", { name: "切换 Git 分支", exact: true }).click();
+      await page.getByRole("button", { name: "新建独立工作区（工作树）…", exact: true }).click();
+      await page.getByLabel("新分支名", { exact: true }).waitFor();
+      await page.getByRole("button", { name: "取消", exact: true }).click();
+      await page.getByRole("dialog").waitFor({ state: "hidden" });
+      const after = await page.evaluate((path) => {
+        return {
+          workspacePath: window.__codezTabStoreE2E.getState().activeWorkspacePath,
+          taskId: window.__codezSessionStoreE2E.getState().getWorkspaceState(path).activeTaskId,
+        };
+      }, session.workspacePath);
+      assert.deepEqual(after, session);
     } finally {
       await browser.close();
     }

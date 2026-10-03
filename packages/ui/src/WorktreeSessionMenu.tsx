@@ -8,6 +8,43 @@ import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { WorktreeDiscoveryEntry } from "@/lib/projectGrouping.js";
 import { useEffect } from "react";
 
+export function WorktreeExistingMenuItems({
+  entries,
+  onOpenEntry,
+  allowOpenWorkspace,
+}: {
+  entries: WorktreeDiscoveryEntry[];
+  onOpenEntry: (entry: WorktreeDiscoveryEntry) => void;
+  allowOpenWorkspace: boolean;
+}) {
+  const { intl } = useCodezIntl();
+  if (entries.length === 0) {
+    return (
+      <DropdownMenuItem disabled>
+        {intl.formatMessage({ id: "worktree.menu.unavailable" })}
+      </DropdownMenuItem>
+    );
+  }
+  return entries.map((entry) => (
+    <DropdownMenuItem
+      key={entry.path}
+      disabled={!allowOpenWorkspace && !entry.isOpen}
+      onSelect={() => onOpenEntry(entry)}
+      className="flex-col items-start gap-0.5"
+    >
+      <span className="max-w-full truncate">{entry.branchName ?? entry.path}</span>
+      <span className="max-w-full truncate text-ui-xs text-foreground-subtle" title={entry.path}>
+        {entry.path}
+      </span>
+      {!allowOpenWorkspace && !entry.isOpen ? (
+        <span className="text-ui-xs">
+          {intl.formatMessage({ id: "worktree.open.unsupported" })}
+        </span>
+      ) : null}
+    </DropdownMenuItem>
+  ));
+}
+
 /** 只展示轻量条目；打开菜单不会注册工作区、连接或草稿。 */
 export function WorktreeSessionMenu({
   onCreateCurrent,
@@ -48,33 +85,11 @@ export function WorktreeSessionMenu({
           {intl.formatMessage({ id: "worktree.menu.existing" })}
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="max-w-80">
-          {entries.length === 0 ? (
-            <DropdownMenuItem disabled>
-              {intl.formatMessage({ id: "worktree.menu.unavailable" })}
-            </DropdownMenuItem>
-          ) : (
-            entries.map((entry) => (
-              <DropdownMenuItem
-                key={entry.path}
-                disabled={!allowOpenWorkspace && !entry.isOpen}
-                onSelect={() => onOpenEntry(entry)}
-                className="flex-col items-start gap-0.5"
-              >
-                <span className="max-w-full truncate">{entry.branchName ?? entry.path}</span>
-                <span
-                  className="max-w-full truncate text-ui-xs text-foreground-subtle"
-                  title={entry.path}
-                >
-                  {entry.path}
-                </span>
-                {!allowOpenWorkspace && !entry.isOpen ? (
-                  <span className="text-ui-xs">
-                    {intl.formatMessage({ id: "worktree.open.unsupported" })}
-                  </span>
-                ) : null}
-              </DropdownMenuItem>
-            ))
-          )}
+          <WorktreeExistingMenuItems
+            entries={entries}
+            allowOpenWorkspace={allowOpenWorkspace}
+            onOpenEntry={onOpenEntry}
+          />
         </DropdownMenuSubContent>
       </DropdownMenuSub>
     </>

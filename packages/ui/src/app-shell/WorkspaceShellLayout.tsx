@@ -41,6 +41,7 @@ import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
 import { WorkspacePluginPreview } from "@/WorkspacePluginPreview.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { GitBranchSwitcher } from "@/GitBranchSwitcher.js";
+import { GitWorktreeMenuProvider, type GitWorktreeMenuValue } from "@/GitWorktreeMenu.js";
 import { ProjectWorktreeSwitcher } from "@/ProjectWorktreeSwitcher.js";
 import { WorktreeSessionMenu } from "@/WorktreeSessionMenu.js";
 import { CurrentWorkspaceConcurrencyHint } from "@/CurrentWorkspaceConcurrencyHint.js";
@@ -633,6 +634,21 @@ export const WorkspaceShellLayout = memo(
       ),
       [worktreeCreation.openDialog, worktreeCreation.disabledReason, worktreeEntries,
         handleOpenWorktreeEntry, allowOpenWorkspace, refreshWorktreeMenu],
+    );
+    const gitWorktreeMenu = useMemo<GitWorktreeMenuValue>(
+      () => ({
+        workspacePath: workspaceAbsPath,
+        workspaceIdentity,
+        disabledReason: worktreeCreation.disabledReason,
+        entries: worktreeEntries,
+        allowOpenWorkspace,
+        onCreate: worktreeCreation.openDialog,
+        onOpenEntry: handleOpenWorktreeEntry,
+        onRefresh: refreshWorktreeMenu,
+      }),
+      [workspaceAbsPath, workspaceIdentity, worktreeCreation.disabledReason,
+        worktreeCreation.openDialog, worktreeEntries, allowOpenWorkspace,
+        handleOpenWorktreeEntry, refreshWorktreeMenu],
     );
     const screenshotSurfaceRequest = useBrowserScreenshotSurfaceRequest(
       sidePaneState?.tabs ?? [],
@@ -1855,6 +1871,7 @@ export const WorkspaceShellLayout = memo(
           ) : !isOfficeMode && activeWorkspacePurpose === "project" ? (
             <GitBranchSwitcher
               workspacePath={workspaceAbsPath}
+              workspaceIdentity={workspaceIdentity}
               gitSummary={gitState.summary}
               dirtyFileCount={gitDirtyFileCount}
               onRefreshGit={handleRefreshGit}
@@ -2472,6 +2489,7 @@ export const WorkspaceShellLayout = memo(
       // 完成卡上那两个壳级落点（docs/dynamic-workflow/transcript-and-notifications.md「Saving the
       // run, and running it again」）：芯片开到中枢那一页、「再次运行」启动后切到新会话。只包桌面
       // 这一支——手机远控壳本来就不提供中枢，那边芯片是纯文字。
+      <GitWorktreeMenuProvider value={gitWorktreeMenu}>
       <SavedWorkflowHubProvider
         openWorkflow={handleOpenSavedWorkflowInHub}
         navigateToRun={handleNavigateToLaunchedRun}
@@ -3118,6 +3136,7 @@ export const WorkspaceShellLayout = memo(
         {worktreeCreation.dialog}
       </DesktopWindowFrame>
       </SavedWorkflowHubProvider>
+      </GitWorktreeMenuProvider>
     );
   },
 );

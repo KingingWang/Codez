@@ -440,6 +440,7 @@ function GitStatusSection({
         </button>
         <GitBranchSwitcher
           workspacePath={workspacePath}
+          workspaceIdentity={workspaceIdentity}
           gitSummary={gitSummary}
           dirtyFileCount={git.dirtyFileCount}
           onRefreshGit={onRefreshGit}
