@@ -42,9 +42,12 @@ import { GroupItem, GroupedTaskItem } from "@/workspace-grouped-tasks/items.js";
 import { GroupDragOverlay } from "@/workspace-grouped-tasks/group-drag-overlay.js";
 import { VirtualizedGroupedTopLevelList } from "@/workspace-grouped-tasks/virtualized-top-level-list.js";
 import { GroupedDraftTaskRow } from "@/workspace-grouped-tasks/draft-task-row.js";
+import { RunningTasksStrip } from "@/workspace-grouped-tasks/running-tasks-strip.js";
 import { StickyGroupHeader } from "@/workspace-grouped-tasks/sticky-group-header.js";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
 import {
+  collectGroupedTaskKeysOutsideWorkspace,
+  collectRunningGroupedTasks,
   findTaskInGroupedView,
   filterGroupedViewByTaskKeys,
   getGroupedTaskGroupIds,
@@ -523,6 +526,7 @@ export function WorkspaceGroupedTasksSection({
   activeWorkspacePath,
   activeWorkspaceIdentity,
   activeTaskId,
+  workspaceFilterKey,
   onSelectTask,
   onCreateTask,
   onOpenFileTree,
@@ -538,6 +542,8 @@ export function WorkspaceGroupedTasksSection({
   activeWorkspacePath: string;
   activeWorkspaceIdentity?: string;
   activeTaskId: string | null;
+  /** R4 工作区筛选：非空时只显示该工作区（buildTaskWorkspaceKey）的任务。 */
+  workspaceFilterKey?: string | null;
   onSelectTask: (workspacePath: string, taskId: string, workspaceIdentity?: string) => void;
   onCreateTask: (request?: CreateTaskRequest) => void;
   onOpenFileTree?: (target: {
@@ -607,10 +613,20 @@ export function WorkspaceGroupedTasksSection({
     workspaceTabs,
   });
   const [archivingTaskKeys, setArchivingTaskKeys] = useState<ReadonlySet<string>>(() => new Set());
-  const view = useMemo(
-    () => filterGroupedViewByTaskKeys(authoritativeView, archivingTaskKeys),
-    [archivingTaskKeys, authoritativeView],
-  );
+  const view = useMemo(() => {
+    // 工作区筛选与归档中隐藏合并为同一次纯派生：两处都只是「暂时不显示」，
+    // 不写回 grouped view 的持久顺序，取消筛选后原列表原样恢复。
+    const hiddenTaskKeys = workspaceFilterKey?.trim()
+      ? new Set([
+          ...archivingTaskKeys,
+          ...collectGroupedTaskKeysOutsideWorkspace(authoritativeView, workspaceFilterKey),
+        ])
+      : archivingTaskKeys;
+    return filterGroupedViewByTaskKeys(authoritativeView, hiddenTaskKeys);
+  }, [archivingTaskKeys, authoritativeView, workspaceFilterKey]);
+  // R4 行内工作区标签：多工作区混排且未筛选时常驻；筛选后列表只剩一个工作区，
+  // 标签冗余（筛选 chip 已标明归属）。
+  const showTaskWorkspaceLabel = workspaceTabs.length >= 2 && !workspaceFilterKey?.trim();
 
   useEffect(() => {
     if (archivingTaskKeys.size === 0) {
@@ -1529,6 +1545,7 @@ export function WorkspaceGroupedTasksSection({
             activeTaskId={activeTaskId}
             getTaskRemoteSessionId={getTaskRemoteSessionId}
             getTaskWorkspaceLabel={getTaskWorkspaceLabel}
+            showWorkspaceLabel={showTaskWorkspaceLabel}
             onSelectTask={onSelectTask}
             onCloseTask={handleCloseTask}
             onOpenFileTree={onOpenFileTree ? handleOpenTaskFileTree : undefined}
@@ -1569,6 +1586,7 @@ export function WorkspaceGroupedTasksSection({
           groups={groups}
           remoteSessionId={getTaskRemoteSessionId(node.task)}
           workspaceLabel={getTaskWorkspaceLabel(node.task)}
+          showWorkspaceLabel={showTaskWorkspaceLabel}
           activeWorkspacePath={activeWorkspacePath}
           activeWorkspaceIdentity={activeWorkspaceIdentity}
           activeTaskId={activeTaskId}
@@ -1596,6 +1614,7 @@ export function WorkspaceGroupedTasksSection({
       draftWorkspaceLabel,
       getTaskRemoteSessionId,
       getTaskWorkspaceLabel,
+      showTaskWorkspaceLabel,
       groupedDraftTask?.placement,
       groups,
       handleCloseGroupedDraftTask,
@@ -1681,6 +1700,8 @@ export function WorkspaceGroupedTasksSection({
     </DragOverlay>
   );
 
+  const runningStripTasks = useMemo(() => collectRunningGroupedTasks(view), [view]);
+
   return (
     <>
       <TaskRenameDialog
@@ -1722,6 +1743,16 @@ export function WorkspaceGroupedTasksSection({
               onClose={handleCloseGroupedDraftTask}
             />
           ) : null}
+          {/* R4 运行中/待确认浮出层：数据源是已筛选 view，随工作区筛选自动收敛；
+              只读 activity sidecar，不为未打开工作区启动运行时。 */}
+          <RunningTasksStrip
+            tasks={runningStripTasks}
+            activeWorkspacePath={activeWorkspacePath}
+            activeWorkspaceIdentity={activeWorkspaceIdentity}
+            activeTaskId={activeTaskId}
+            getTaskWorkspaceLabel={getTaskWorkspaceLabel}
+            onSelectTask={onSelectTask}
+          />
           <VirtualizedGroupedTopLevelList
             nodes={view.nodes}
             isGroupCollapsed={isGroupCollapsed}

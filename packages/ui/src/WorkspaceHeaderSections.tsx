@@ -452,7 +452,12 @@ export function WorkspaceHeaderTitleSection({
           <Button
             type="button"
             variant="ghost"
-            size={compact ? "icon-sm" : "icon-md"}
+            size={compact ? "sm" : "default"}
+            className={cn(
+              "h-7 max-w-48 min-w-0 justify-start gap-1.5 rounded-lg px-2",
+              compact && "h-6 max-w-40",
+              "@max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:px-0",
+            )}
             data-testid={TID_WORKSPACE_PATH}
             aria-label={[workspaceContextLabel, workspaceBranchLabel].filter(Boolean).join(" · ")}
             onClick={() => setWorkspaceContextOpen(true)}
@@ -462,6 +467,9 @@ export function WorkspaceHeaderTitleSection({
             ) : (
               <Folder className="size-4 text-foreground-subtle" />
             )}
+            <span className="min-w-0 truncate text-ui-sm text-foreground-subtle @max-[560px]/workspace-header:hidden">
+              {workspaceContextLabel}
+            </span>
           </Button>
         </ControlHintTooltip>
       ) : null}

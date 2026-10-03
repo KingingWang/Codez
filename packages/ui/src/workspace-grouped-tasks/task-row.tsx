@@ -50,6 +50,7 @@ function GroupedTaskRowComponent({
   activeWorkspaceIdentity,
   activeTaskId,
   workspaceLabel,
+  showWorkspaceLabel,
   onSelectTask,
   onCloseTask,
   onOpenFileTree,
@@ -71,6 +72,8 @@ function GroupedTaskRowComponent({
   activeWorkspaceIdentity?: string;
   activeTaskId: string | null;
   workspaceLabel: string;
+  /** R4 工作区标签：多工作区混排且未筛选时行内常驻；默认 false 保持单工作区视图干净。 */
+  showWorkspaceLabel?: boolean;
   onSelectTask: (workspacePath: string, taskId: string, workspaceIdentity?: string) => void;
   onCloseTask: (task: CodezTaskMeta) => void;
   onOpenFileTree?: (task: CodezTaskMeta) => void;
@@ -183,6 +186,14 @@ function GroupedTaskRowComponent({
           {/* grouped task 标题超出时不要显示省略号，右侧渐隐能保留标题连续性，避免和右侧状态元信息挤在一起。*/}
           {taskTitle}
         </TaskTitleOverflowText>
+        {showWorkspaceLabel ? (
+          <span
+            data-testid="task-row-workspace-label"
+            className="flex max-w-28 shrink-0 items-center rounded bg-surface px-1.5 py-0.5 text-ui-xs text-foreground-subtle"
+          >
+            <span className="truncate">{workspaceLabel}</span>
+          </span>
+        ) : null}
         <span className="ml-auto flex shrink-0 items-center gap-1.5 text-ui-sm text-foreground-subtle">
           {task.pendingInteraction ? (
             <TaskInteractionBadge
@@ -383,6 +394,14 @@ function GroupedTaskRowComponent({
           {/* grouped task 标题超出时不要显示省略号，右侧渐隐能保留标题连续性，避免和右侧状态元信息挤在一起。*/}
           {taskTitle}
         </TaskTitleOverflowText>
+        {showWorkspaceLabel ? (
+          <span
+            data-testid="task-row-workspace-label"
+            className="flex max-w-28 shrink-0 items-center rounded bg-surface px-1.5 py-0.5 text-ui-xs text-foreground-subtle"
+          >
+            <span className="truncate">{workspaceLabel}</span>
+          </span>
+        ) : null}
         <span className="ml-auto flex shrink-0 items-center gap-1.5 text-ui-sm text-foreground-subtle">
           {task.pendingInteraction ? (
             <TaskInteractionBadge

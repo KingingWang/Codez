@@ -2,6 +2,8 @@
 import type { CodezGroupedTaskView, CodezGroupedTaskViewNode } from "@codez/services";
 import type { CodezTaskMeta } from "@codez/shared";
 import type { GroupedDraftTaskPlacement } from "@/store/codezSessionStoreTypes.js";
+import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
+import { getTaskListAttention, isTaskListRowActive } from "@/v4/taskListRowActivity.js";
 import { taskKey } from "@/workspace-grouped-tasks/ids.js";
 
 function cloneView(view: CodezGroupedTaskView): CodezGroupedTaskView {
@@ -129,6 +131,44 @@ function filterGroupedViewByTaskKeys(
   }
 
   return changed ? { nodes } : view;
+}
+
+/**
+ * 工作区筛选（git-worktree-projects R4）：收集不在目标工作区内的任务 key，
+ * 配合 filterGroupedViewByTaskKeys 隐藏。workspaceKey 与列表去重同构
+ * （identity?.trim() || path），本地/远程天然隔离。
+ */
+function collectGroupedTaskKeysOutsideWorkspace(
+  view: CodezGroupedTaskView,
+  workspaceKey: string,
+): ReadonlySet<string> {
+  const keys = new Set<string>();
+  for (const node of view.nodes) {
+    const tasks = node.type === "task" ? [node.task] : node.tasks;
+    for (const task of tasks) {
+      if (buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity) !== workspaceKey) {
+        keys.add(taskKey(task));
+      }
+    }
+  }
+  return keys;
+}
+
+/**
+ * 运行中/待确认任务浮出（R4）：运行层（回合在跑或挂着后台工作）或有待处理交互的
+ * 任务。判定复用列表行的同一套 sidecar 派生，浮出层与行内状态永远不会不一致。
+ */
+function collectRunningGroupedTasks(view: CodezGroupedTaskView): CodezTaskMeta[] {
+  const tasks: CodezTaskMeta[] = [];
+  for (const node of view.nodes) {
+    const nodeTasks = node.type === "task" ? [node.task] : node.tasks;
+    for (const task of nodeTasks) {
+      if (isTaskListRowActive(task) || getTaskListAttention(task) !== null) {
+        tasks.push(task);
+      }
+    }
+  }
+  return tasks;
 }
 
 function findTaskInGroupedView(
@@ -563,6 +603,8 @@ function moveTaskToTopByMenu(
 export {
   areAllGroupedTaskGroupsExpanded,
   cloneView,
+  collectGroupedTaskKeysOutsideWorkspace,
+  collectRunningGroupedTasks,
   filterGroupedViewByTaskKeys,
   findTaskInGroupedView,
   getGroupedTaskGroupIds,

@@ -43,6 +43,7 @@ export function WorkspaceTimelineTasksSection({
   activeWorkspacePath,
   activeWorkspaceIdentity,
   activeTaskId,
+  workspaceFilterKey,
   taskSortBy,
   groupByDate = true,
   taskRowVariant = "timeline",
@@ -53,6 +54,8 @@ export function WorkspaceTimelineTasksSection({
   activeWorkspacePath: string;
   activeWorkspaceIdentity?: string;
   activeTaskId: string | null;
+  /** R4 工作区筛选：非空时只显示该工作区（buildTaskWorkspaceKey）的任务。 */
+  workspaceFilterKey?: string | null;
   taskSortBy: "created" | "updated";
   groupByDate?: boolean;
   taskRowVariant?: "default" | "timeline";
@@ -173,10 +176,18 @@ export function WorkspaceTimelineTasksSection({
     );
   }, [remoteTimelineItemsByWorkspaceKey, remoteWorkspaceKeys]);
   const sortedItems = useMemo(() => {
-    return [...localItems, ...remoteItems].sort((left, right) =>
+    const merged = [...localItems, ...remoteItems].sort((left, right) =>
       compareCodezTaskListItems(left, right, taskSortBy),
     );
-  }, [localItems, remoteItems, taskSortBy]);
+    // R4 工作区筛选：纯展示过滤，不触碰远端缓存与本地查询结果，清除筛选即恢复。
+    if (!workspaceFilterKey?.trim()) {
+      return merged;
+    }
+    return merged.filter(
+      (item) =>
+        buildTaskWorkspaceKey(item.workspacePath, item.workspaceIdentity) === workspaceFilterKey,
+    );
+  }, [localItems, remoteItems, taskSortBy, workspaceFilterKey]);
   const items = sortedItems.slice(0, visibleTaskLimit);
   const itemByKey = useMemo(() => {
     const nextItemByKey = new Map<string, CodezTaskMeta>();

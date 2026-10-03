@@ -56,6 +56,7 @@ function GroupedTaskItemComponent({
   activeWorkspaceIdentity,
   activeTaskId,
   workspaceLabel,
+  showWorkspaceLabel,
   onSelectTask,
   onCloseTask,
   onOpenFileTree,
@@ -77,6 +78,7 @@ function GroupedTaskItemComponent({
   activeWorkspaceIdentity?: string;
   activeTaskId: string | null;
   workspaceLabel: string;
+  showWorkspaceLabel?: boolean;
   onSelectTask: (workspacePath: string, taskId: string, workspaceIdentity?: string) => void;
   onCloseTask: (task: CodezTaskMeta) => void;
   onOpenFileTree?: (task: CodezTaskMeta) => void;
@@ -101,6 +103,7 @@ function GroupedTaskItemComponent({
         activeWorkspaceIdentity={activeWorkspaceIdentity}
         activeTaskId={activeTaskId}
         workspaceLabel={workspaceLabel}
+        showWorkspaceLabel={showWorkspaceLabel}
         onSelectTask={onSelectTask}
         onCloseTask={onCloseTask}
         onOpenFileTree={onOpenFileTree}

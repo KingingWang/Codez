@@ -7,13 +7,19 @@ export type SidebarTaskSortBy = "created" | "updated";
 interface SidebarTaskPreferences {
   organizeBy: SidebarTaskOrganizeBy;
   sortBy: SidebarTaskSortBy;
+  /** 任务优先视图的工作区筛选：null = 全部工作区；取值是 buildTaskWorkspaceKey 的结果。 */
+  workspaceFilterKey: string | null;
 }
 
 const SIDEBAR_TASK_PREFERENCES_STORAGE_KEY = "codez-sidebar-task-preferences";
 
 const DEFAULT_SIDEBAR_TASK_PREFERENCES: SidebarTaskPreferences = {
-  organizeBy: "project",
+  // git-worktree-projects R4：会话列表默认按任务标题组织（任务优先），工作区退为
+  // 标签与筛选条件，不再强迫沿「项目 → 工作区 → 会话」层级找任务。已存储偏好的
+  // 用户不受影响（readSidebarTaskPreferences 只在缺字段时回填默认值）。
+  organizeBy: "grouped",
   sortBy: "updated",
+  workspaceFilterKey: null,
 };
 
 function isSidebarTaskOrganizeBy(value: unknown): value is SidebarTaskOrganizeBy {
@@ -46,6 +52,10 @@ export function readSidebarTaskPreferences(
       sortBy: isSidebarTaskSortBy(parsed.sortBy)
         ? parsed.sortBy
         : DEFAULT_SIDEBAR_TASK_PREFERENCES.sortBy,
+      workspaceFilterKey:
+        typeof parsed.workspaceFilterKey === "string" && parsed.workspaceFilterKey.trim()
+          ? parsed.workspaceFilterKey
+          : null,
     };
   } catch {
     return DEFAULT_SIDEBAR_TASK_PREFERENCES;
@@ -65,6 +75,7 @@ export function persistSidebarTaskPreferences(
       JSON.stringify({
         organizeBy: preferences.organizeBy,
         sortBy: preferences.sortBy,
+        workspaceFilterKey: preferences.workspaceFilterKey,
       }),
     );
   } catch {

@@ -20,6 +20,7 @@ import {
   Folder,
   FolderOpen,
   Hash,
+  Layers,
   ListFilter,
   Maximize2,
   MessageCircleCheck,
@@ -92,6 +93,7 @@ import {
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { setPendingSettingsSectionIntent } from "@/lib/settingsNavigation.js";
 import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
+import { getPathLeaf } from "@/lib/path.js";
 import {
   increaseWorkspaceTaskVisibleLimit,
   resolveVisibleWorkspaceTaskKeys,
@@ -396,6 +398,11 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   const [taskSortBy, setTaskSortBy] = useState<TaskSortBy>(
     () => readSidebarTaskPreferences().sortBy,
   );
+  // R4 工作区筛选：只在任务优先视图（grouped/timeline）生效；值为
+  // buildTaskWorkspaceKey，null = 全部工作区。
+  const [workspaceFilterKey, setWorkspaceFilterKey] = useState<string | null>(
+    () => readSidebarTaskPreferences().workspaceFilterKey,
+  );
   const [purposeSectionPreferences, setPurposeSectionPreferences] = useState(
     readSidebarPurposeSectionPreferences,
   );
@@ -555,8 +562,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
     persistSidebarTaskPreferences({
       organizeBy: taskOrganizeBy,
       sortBy: taskSortBy,
+      workspaceFilterKey,
     });
-  }, [taskOrganizeBy, taskSortBy]);
+  }, [taskOrganizeBy, taskSortBy, workspaceFilterKey]);
   useEffect(() => {
     if (taskOrganizeBy === "project" || taskOrganizeBy === "chronological") {
       setWorkspaceTaskOrganizeBy(taskOrganizeBy);
@@ -567,6 +575,21 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
     taskOrganizeBy,
   });
   const effectiveTaskViewMode = taskViewMode;
+  // R4 工作区筛选：目标工作区关闭后回退「全部」（不回写存储，同名工作区重开即恢复）；
+  // 入口只在任务优先视图（grouped/timeline）且同时打开多个工作区时出现（R2 复杂度按需）。
+  const effectiveWorkspaceFilterKey = useMemo(() => {
+    if (!workspaceFilterKey?.trim()) {
+      return null;
+    }
+    return workspaceTabs.some(
+      (tab) =>
+        buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity) === workspaceFilterKey,
+    )
+      ? workspaceFilterKey
+      : null;
+  }, [workspaceFilterKey, workspaceTabs]);
+  const showWorkspaceFilterOptions =
+    workspaceTabs.length >= 2 && (taskViewMode === "grouped" || taskViewMode === "timeline");
   const visibleWorkspaceTaskKeys = useMemo(
     () =>
       resolveVisibleWorkspaceTaskKeys({
@@ -1199,9 +1222,85 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                       </DropdownMenuRadioGroup>
                     </>
                   ) : null}
+                  {showWorkspaceFilterOptions ? (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>
+                        {intl.formatMessage({
+                          id: "workspaceSidebar.filterByWorkspace",
+                        })}
+                      </DropdownMenuLabel>
+                      <DropdownMenuRadioGroup
+                        value={effectiveWorkspaceFilterKey ?? "all"}
+                        onValueChange={(value) => {
+                          setWorkspaceFilterKey(value === "all" ? null : value);
+                        }}
+                      >
+                        <DropdownMenuRadioItem value="all">
+                          <Layers className="size-4" />
+                          {intl.formatMessage({
+                            id: "workspaceSidebar.allWorkspaces",
+                          })}
+                        </DropdownMenuRadioItem>
+                        {workspaceTabs.map((tab) => {
+                          const tabKey = buildTaskWorkspaceKey(
+                            tab.workspacePath,
+                            tab.workspaceIdentity,
+                          );
+                          return (
+                            <DropdownMenuRadioItem key={tabKey} value={tabKey}>
+                              {tab.workspaceIdentity?.trim() ? (
+                                <Cloud className="size-4" />
+                              ) : (
+                                <Folder className="size-4" />
+                              )}
+                              <span className="min-w-0 truncate">
+                                {tab.label || getPathLeaf(tab.workspacePath) || tab.workspacePath}
+                              </span>
+                            </DropdownMenuRadioItem>
+                          );
+                        })}
+                      </DropdownMenuRadioGroup>
+                    </>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}
+            {effectiveWorkspaceFilterKey
+              ? (() => {
+                  const filteredTab = workspaceTabs.find(
+                    (tab) =>
+                      buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity) ===
+                      effectiveWorkspaceFilterKey,
+                  );
+                  if (!filteredTab) {
+                    return null;
+                  }
+                  return (
+                    <button
+                      type="button"
+                      data-testid="workspace-filter-chip"
+                      className="flex min-w-0 shrink items-center gap-1 rounded-md bg-accent px-1.5 py-0.5 text-ui-xs text-foreground hover:bg-hover"
+                      title={intl.formatMessage({
+                        id: "workspaceSidebar.clearWorkspaceFilter",
+                      })}
+                      onClick={() => setWorkspaceFilterKey(null)}
+                    >
+                      {filteredTab.workspaceIdentity?.trim() ? (
+                        <Cloud className="size-3 shrink-0" />
+                      ) : (
+                        <Folder className="size-3 shrink-0" />
+                      )}
+                      <span className="max-w-24 truncate">
+                        {filteredTab.label ||
+                          getPathLeaf(filteredTab.workspacePath) ||
+                          filteredTab.workspacePath}
+                      </span>
+                      <X className="size-3 shrink-0" />
+                    </button>
+                  );
+                })()
+              : null}
             {showArchivedTasks ? (
               <div
                 ref={setArchivedActionsContainer}
@@ -1240,6 +1339,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
       showArchivedTasks,
       showTaskSortOptions,
       showTaskViewFilter,
+      effectiveWorkspaceFilterKey,
+      showWorkspaceFilterOptions,
+      workspaceTabs,
       showWorkspaceViewOptions,
       taskSortBy,
       taskViewMode,
@@ -1392,6 +1494,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                     activeWorkspacePath={workspacePath}
                     activeWorkspaceIdentity={workspaceIdentity}
                     activeTaskId={activeTaskId}
+                    workspaceFilterKey={effectiveWorkspaceFilterKey}
                     onSelectTask={onSelectTask}
                     onCreateTask={onCreateTask}
                     onOpenFileTree={(target) => {
@@ -1412,6 +1515,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                     activeWorkspacePath={workspacePath}
                     activeWorkspaceIdentity={workspaceIdentity}
                     activeTaskId={activeTaskId}
+                    workspaceFilterKey={effectiveWorkspaceFilterKey}
                     taskSortBy={taskSortBy}
                     onSelectTask={handleTaskRowSelect}
                   />
