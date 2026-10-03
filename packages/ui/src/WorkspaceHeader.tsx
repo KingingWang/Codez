@@ -7,7 +7,7 @@ import type {
   RemoteTarget,
   UserInfo,
 } from "@codez/shared";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { TID_WORKSPACE_HEADER } from "@codez/shared";
 import type { ConversationDropTargetController } from "@/v4/composer/conversationDropTarget.js";
 import { cn } from "@/components/lib/utils.js";
@@ -62,6 +62,7 @@ export function WorkspaceHeader({
   onReloadSession,
   reloadSessionDisabled,
   reloadSessionPending,
+  workspaceSwitcher,
 }: {
   variant?: WorkspaceHeaderVariant;
   draftDropTargetController?: ConversationDropTargetController | null;
@@ -113,6 +114,7 @@ export function WorkspaceHeader({
   onCreateTask: () => void;
   onOpenWorkspace: () => void;
   allowOpenWorkspace?: boolean;
+  workspaceSwitcher?: ReactNode;
 }) {
   const [selectedEditor, setSelectedEditor] = useState<EditorInfo | null>(null);
   const shouldOffsetHeaderForWindowControls = !isSidebarVisible;
@@ -197,6 +199,9 @@ export function WorkspaceHeader({
         ) : (
           <div className="min-w-0 flex-1" aria-hidden="true" />
         )}
+        {variant === "task" && workspaceSwitcher ? (
+          <div className="shrink-0 [app-region:no-drag]">{workspaceSwitcher}</div>
+        ) : null}
         <WorkspaceHeaderActionSection
           variant={variant}
           activeTaskId={activeTaskId}

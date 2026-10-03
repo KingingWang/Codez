@@ -69,6 +69,17 @@ test("未打开的本地树：open-local", () => {
   assert.deepEqual(route, { kind: "open-local", workspacePath: "/repo-wt feature" });
 });
 
+test("发现投影尚未刷新时，按目标身份识别已打开树，重复打开不重置现场", () => {
+  const route = resolveWorktreeOpenRoute({
+    entry: fakeEntry({ path: "/repo-wt", isOpen: false }),
+    tabs: [fakeTab({ id: "created", workspacePath: "/repo-wt" })],
+    allowOpenWorkspace: true,
+    projectMemberKeys: ["/repo"],
+    isRemoteScope: false,
+  });
+  assert.deepEqual(route, { kind: "activate", tabId: "created" });
+});
+
 test("Web 远控禁用打开：unsupported 且明确原因", () => {
   const route = resolveWorktreeOpenRoute({
     entry: fakeEntry({}),

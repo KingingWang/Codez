@@ -264,6 +264,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   automationsActive = false,
   pluginStoreActive = false,
   onFileTreeOpenChange,
+  newTaskMenu,
 }: {
   workspacePath: string;
   workspaceRemoteSessionId?: string;
@@ -316,6 +317,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   automationsActive?: boolean;
   pluginStoreActive?: boolean;
   onFileTreeOpenChange?: (open: boolean) => void;
+  newTaskMenu?: (onCreateCurrent: () => void) => ReactNode;
 }) {
   const { intl, localePreference, setLocalePreference } = useCodezIntl();
   const handleTaskRowSelect = useCallback(
@@ -1353,6 +1355,19 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
     ],
   );
 
+  const handleCreateDefaultTask = () => {
+    if (workspaceReadOnly) return;
+    if (taskViewMode === "grouped") {
+      if (createGroupedTaskDraftAction) {
+        createGroupedTaskDraftAction();
+        return;
+      }
+      onCreateTask({ groupedDraftPlacement: { type: "top" } });
+      return;
+    }
+    onCreateTask({ createSource: "project" });
+  };
+
   return (
     <aside
       data-testid={TID_SIDEBAR}
@@ -1372,20 +1387,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
             <WorkspaceNewTaskTooltip disabledReason={workspaceReadOnlyReason}>
               <NewTaskButtonGroup
                 disabled={workspaceReadOnly}
-                onCreateTask={() => {
-                  if (workspaceReadOnly) {
-                    return;
-                  }
-                  if (taskViewMode === "grouped") {
-                    if (createGroupedTaskDraftAction) {
-                      createGroupedTaskDraftAction();
-                      return;
-                    }
-                    onCreateTask({ groupedDraftPlacement: { type: "top" } });
-                    return;
-                  }
-                  onCreateTask({ createSource: "project" });
-                }}
+                onCreateTask={handleCreateDefaultTask}
+                menuContent={newTaskMenu?.(handleCreateDefaultTask)}
+                menuLabel={intl.formatMessage({ id: "worktree.menu.label" })}
               />
             </WorkspaceNewTaskTooltip>
             <Button

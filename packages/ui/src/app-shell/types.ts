@@ -103,7 +103,8 @@ export interface AppProps {
     entry: import("@/lib/projectGrouping.js").WorktreeDiscoveryEntry;
     projectMemberKeys: readonly string[];
     isRemoteScope: boolean;
-  }) => void;
+    intent?: "open" | "new-session";
+  }) => Promise<void>;
   onOpenRemoteWorkspace?: () => void;
   onCreateScratchWorkspace: (name: string) => Promise<string | null>;
   remoteConnectionInProgress?: boolean;

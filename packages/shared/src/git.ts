@@ -215,6 +215,41 @@ export interface GitWorktreeListResult {
   worktrees: GitWorktreeEntry[];
 }
 
+export type GitWorktreeCreateMode = "new-branch" | "existing-branch";
+
+export interface GitWorktreeCreatePreviewRequest {
+  workspacePath: string;
+  operationId: string;
+  mode: GitWorktreeCreateMode;
+  branchName: string;
+  startPoint?: string;
+  targetPath?: string;
+}
+
+export interface GitWorktreeCreatePreview {
+  workspacePath: string;
+  repoRoot: string;
+  gitCommonDir: string;
+  mode: GitWorktreeCreateMode;
+  branchName: string;
+  startPoint: string;
+  baselineCommit: string;
+  targetPath: string;
+  sourceBranchName: string | null;
+  occupiedPath: string | null;
+}
+
+export interface GitWorktreeCreateRequest extends GitWorktreeCreatePreview {
+  operationId: string;
+}
+
+export interface GitWorktreeCreateResult {
+  workspacePath: string;
+  branchName: string;
+  baselineCommit: string;
+  created: boolean;
+}
+
 export interface GitBranchMutationIssue {
   code: GitBranchMutationIssueCode;
   message: string;

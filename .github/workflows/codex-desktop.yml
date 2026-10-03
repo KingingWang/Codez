@@ -55,7 +55,7 @@ jobs:
       - name: Codex service, desktop and remote deployment regressions (Linux once)
         run: pnpm exec tsx --test packages/services/test/codex*.test.ts packages/desktop/test/codex*.test.ts packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts packages/server/test/codex*.test.ts
       - name: Git worktree service and shared identity regressions (Linux once)
-        run: pnpm exec tsx --test packages/services/test/gitWorktree.test.ts packages/shared/test/remoteWorkspaceScope.test.ts
+        run: pnpm exec tsx --test packages/services/test/gitWorktree.test.ts packages/services/test/gitWorktreeCreation.test.ts packages/shared/test/remoteWorkspaceScope.test.ts
       - name: Codex UI settings regressions (Linux once)
         run: pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test packages/ui/src/settings/codex/*.test.ts packages/ui/src/settings/codex/*.test.tsx
       # 这些回归不在 settings/codex 目录，必须显式纳入，防止 rebase 后修复失守。
@@ -80,6 +80,12 @@ jobs:
           packages/ui/src/hooks/useProjectWorktreeDiscovery.test.ts
           packages/ui/src/lib/worktreeSwitcherDisplay.test.ts
           packages/ui/src/root/worktreeOpenIntent.test.ts
+          packages/ui/src/root/worktreeOpenExecution.test.ts
+          packages/ui/src/NewTaskButtonGroup.test.tsx
+          packages/ui/src/CurrentWorkspaceConcurrencyHint.test.ts
+          packages/ui/src/CreateWorktreeDialog.test.tsx
+          packages/ui/src/hooks/useWorktreeCreation.test.ts
+          packages/ui/src/v4/workbenchNewTaskTarget.test.ts
           packages/ui/src/lib/sidebarTaskPreferences.test.ts
           packages/ui/src/workspace-grouped-tasks/view.test.ts
       - name: Assemble four remote targets without compiling Codex

@@ -5,6 +5,8 @@ import type { WorktreeDiscoveryEntry } from "@/lib/projectGrouping.js";
 import { logger } from "@/logger.js";
 import { resolveAnchorRemoteTarget, resolveWorktreeOpenRoute } from "@/root/worktreeOpenIntent.js";
 import type { TabStore } from "@/store/tabStore.js";
+import { isWorkspaceTab } from "@/store/tabStore.js";
+import { executeWorktreeOpenRoute } from "@/root/worktreeOpenExecution.js";
 
 /**
  * 发现条目的打开编排（specs/git-worktree-projects.md R5）。
@@ -19,6 +21,7 @@ export interface OpenWorktreeEntryRequest {
   projectMemberKeys: readonly string[];
   /** 项目分组的来源作用域是否为远端（分组层事实）。 */
   isRemoteScope: boolean;
+  intent?: "open" | "new-session";
 }
 
 export function useWorktreeOpenActions({
@@ -27,11 +30,13 @@ export function useWorktreeOpenActions({
   allowOpenWorkspace,
   handleSelectProject,
   handleOpenDiscoveredRemoteWorktree,
+  startDraftInWorkspace,
 }: {
   intl: ReturnType<typeof import("@/i18n/IntlProvider.js").useCodezIntl>["intl"];
   tabStoreApi: TabStore;
   allowOpenWorkspace: boolean;
-  handleSelectProject: (path: string) => Promise<void>;
+  handleSelectProject: (path: string, options?: { throwOnError?: boolean }) => Promise<void>;
+  startDraftInWorkspace: (path: string, identity?: string) => void;
   handleOpenDiscoveredRemoteWorktree: (params: {
     anchorWorkspaceKey: string;
     remoteTarget: import("@codez/shared").RemoteTarget;
@@ -39,10 +44,10 @@ export function useWorktreeOpenActions({
   }) => Promise<void>;
 }) {
   // 重复打开保护（R5）：同一目标身份的在途打开直接复用在途过程，不重复建连。
-  const inflightOpenKeysRef = useRef(new Set<string>());
+  const inflightOpenKeysRef = useRef(new Map<string, Promise<void>>());
 
   const handleOpenWorktreeEntry = useCallback(
-    (request: OpenWorktreeEntryRequest) => {
+    async (request: OpenWorktreeEntryRequest) => {
       const tabs = tabStoreApi.getState().tabs;
       const route = resolveWorktreeOpenRoute({
         entry: request.entry,
@@ -55,40 +60,36 @@ export function useWorktreeOpenActions({
           projectMemberKeys: request.projectMemberKeys,
         }),
       });
-      switch (route.kind) {
-        case "activate":
-          // 已打开 → 只激活既有实例，保留会话、草稿与布局，不进 startDraft。
-          tabStoreApi.getState().activateTab(route.tabId);
-          return;
-        case "open-local":
-          void handleSelectProject(route.workspacePath);
-          return;
-        case "open-remote": {
-          if (inflightOpenKeysRef.current.has(route.workspaceIdentity)) {
-            return;
-          }
-          inflightOpenKeysRef.current.add(route.workspaceIdentity);
-          void handleOpenDiscoveredRemoteWorktree({
-            anchorWorkspaceKey: route.anchorWorkspaceKey,
-            remoteTarget: route.remoteTarget,
-            workspacePath: route.workspacePath,
-          })
-            .catch((error: unknown) => {
-              logger.warn("[Root] 打开发现的远程 worktree 失败", {
-                workspacePath: route.workspacePath,
-                error,
-              });
-              toast(getErrorMessage(error));
-            })
-            .finally(() => {
-              inflightOpenKeysRef.current.delete(route.workspaceIdentity);
-            });
-          return;
-        }
-        case "unsupported":
-          // R15：能力缺失呈现明确文案，不假装成功也不静默无响应。
-          toast(intl.formatMessage({ id: "worktree.open.unsupported" }));
-          return;
+      try {
+        await executeWorktreeOpenRoute({
+          route,
+          intent: request.intent,
+          inflight: inflightOpenKeysRef.current,
+          actions: {
+            activate: (id) => tabStoreApi.getState().activateTab(id),
+            startDraft: (id) => {
+              const tab = tabStoreApi.getState().tabs.find((item) => item.id === id);
+              if (tab && isWorkspaceTab(tab)) {
+                startDraftInWorkspace(tab.workspacePath, tab.workspaceIdentity);
+              }
+            },
+            openLocal: (path) => handleSelectProject(path, { throwOnError: true }),
+            openRemote: (target) =>
+              handleOpenDiscoveredRemoteWorktree({
+                anchorWorkspaceKey: target.anchorWorkspaceKey,
+                remoteTarget: target.remoteTarget,
+                workspacePath: target.workspacePath,
+              }),
+          },
+        });
+      } catch (error) {
+        logger.warn("[Root] 打开独立工作区失败", { workspacePath: request.entry.path, error });
+        toast(
+          route.kind === "unsupported"
+            ? intl.formatMessage({ id: "worktree.open.unsupported" })
+            : getErrorMessage(error),
+        );
+        throw error;
       }
     },
     [
@@ -97,6 +98,7 @@ export function useWorktreeOpenActions({
       handleSelectProject,
       intl,
       tabStoreApi,
+      startDraftInWorkspace,
     ],
   );
 

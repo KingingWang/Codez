@@ -614,6 +614,7 @@ function RootInner({
     tabStoreApi,
     allowOpenWorkspace,
     handleSelectProject,
+    startDraftInWorkspace,
     handleOpenDiscoveredRemoteWorktree,
   });
 

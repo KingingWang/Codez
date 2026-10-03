@@ -10,6 +10,10 @@ import type {
   GitRepositorySummary,
   GitWorkspaceRepositoryInfo,
   GitWorktreeListResult,
+  GitWorktreeCreatePreview,
+  GitWorktreeCreatePreviewRequest,
+  GitWorktreeCreateRequest,
+  GitWorktreeCreateResult,
 } from "@codez/shared";
 
 export interface GitLineStat {
@@ -84,6 +88,10 @@ export interface GitCliRepo {
   getIgnoredPaths(workspacePath: string, paths: string[]): Promise<string[]>;
   listLocalBranches(workspacePath: string): Promise<GitLocalBranchListResult>;
   listWorktrees(workspacePath: string): Promise<GitWorktreeListResult>;
+  previewWorktreeCreation(
+    params: GitWorktreeCreatePreviewRequest,
+  ): Promise<GitWorktreeCreatePreview>;
+  createWorktree(params: GitWorktreeCreateRequest): Promise<GitWorktreeCreateResult>;
   switchBranch(workspacePath: string, targetBranchName: string): Promise<GitBranchMutationResult>;
   createBranchAndSwitch(
     workspacePath: string,
