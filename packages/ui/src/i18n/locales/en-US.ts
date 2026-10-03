@@ -1344,6 +1344,8 @@ const enUS: Record<string, string> = {
   "worktree.open.unsupported": "This connection doesn't support that action",
   "worktree.menu.label": "New session options",
   "worktree.menu.current": "Current workspace",
+  "git.branchSwitcher.createWorktreeAction": "New independent workspace (worktree)…",
+  "git.branchSwitcher.openWorktreeAction": "Open existing workspace…",
   "worktree.menu.new": "New independent workspace",
   "worktree.menu.existing": "Existing workspaces…",
   "worktree.menu.unavailable": "Not loaded or no available workspaces",

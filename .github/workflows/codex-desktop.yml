@@ -82,6 +82,7 @@ jobs:
           packages/ui/src/root/worktreeOpenIntent.test.ts
           packages/ui/src/root/worktreeOpenExecution.test.ts
           packages/ui/src/NewTaskButtonGroup.test.tsx
+          packages/ui/src/GitWorktreeMenu.test.tsx
           packages/ui/src/CurrentWorkspaceConcurrencyHint.test.ts
           packages/ui/src/CreateWorktreeDialog.test.tsx
           packages/ui/src/hooks/useWorktreeCreation.test.ts

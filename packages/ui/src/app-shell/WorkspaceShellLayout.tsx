@@ -37,6 +37,7 @@ import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
 import { WorkspacePluginPreview } from "@/WorkspacePluginPreview.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { GitBranchSwitcher } from "@/GitBranchSwitcher.js";
+import { GitWorktreeMenuProvider, type GitWorktreeMenuValue } from "@/GitWorktreeMenu.js";
 import { ProjectWorktreeSwitcher } from "@/ProjectWorktreeSwitcher.js";
 import { WorktreeSessionMenu } from "@/WorktreeSessionMenu.js";
 import { CurrentWorkspaceConcurrencyHint } from "@/CurrentWorkspaceConcurrencyHint.js";
@@ -502,6 +503,28 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
       worktreeEntries,
       handleOpenWorktreeEntry,
       allowOpenWorkspace,
+      refreshWorktreeMenu,
+    ],
+  );
+  const gitWorktreeMenu = useMemo<GitWorktreeMenuValue>(
+    () => ({
+      workspacePath: workspaceAbsPath,
+      workspaceIdentity,
+      disabledReason: worktreeCreation.disabledReason,
+      entries: worktreeEntries,
+      allowOpenWorkspace,
+      onCreate: worktreeCreation.openDialog,
+      onOpenEntry: handleOpenWorktreeEntry,
+      onRefresh: refreshWorktreeMenu,
+    }),
+    [
+      workspaceAbsPath,
+      workspaceIdentity,
+      worktreeCreation.disabledReason,
+      worktreeCreation.openDialog,
+      worktreeEntries,
+      allowOpenWorkspace,
+      handleOpenWorktreeEntry,
       refreshWorktreeMenu,
     ],
   );
@@ -1360,6 +1383,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
         ) : !isOfficeMode && activeWorkspacePurpose === "project" ? (
           <GitBranchSwitcher
             workspacePath={workspaceAbsPath}
+            workspaceIdentity={workspaceIdentity}
             gitSummary={gitState.summary}
             dirtyFileCount={gitDirtyFileCount}
             onRefreshGit={handleRefreshGit}
@@ -1679,7 +1703,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
     [workspaceKey, isSidebarVisible],
   );
 
-  return (
+  const content = (
     <DesktopWindowFrame
       title={`Codez / ${getPathLeaf(workspaceAbsPath)}`}
       showHeader
@@ -2165,4 +2189,5 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
       {worktreeCreation.dialog}
     </DesktopWindowFrame>
   );
+  return <GitWorktreeMenuProvider value={gitWorktreeMenu}>{content}</GitWorktreeMenuProvider>;
 });

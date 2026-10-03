@@ -1237,6 +1237,8 @@ const zhCN: Record<string, string> = {
   "worktree.open.unsupported": "此连接暂不支持该操作",
   "worktree.menu.label": "新建会话选项",
   "worktree.menu.current": "当前工作区",
+  "git.branchSwitcher.createWorktreeAction": "新建独立工作区（工作树）…",
+  "git.branchSwitcher.openWorktreeAction": "打开已有工作区…",
   "worktree.menu.new": "新的独立工作区",
   "worktree.menu.existing": "已有工作区…",
   "worktree.menu.unavailable": "尚未加载或暂无可用工作区",
