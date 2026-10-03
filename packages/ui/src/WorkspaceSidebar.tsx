@@ -895,7 +895,10 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   const activePrimaryTaskMode: PrimaryTaskMode =
     taskOrganizeBy === "grouped" ? "grouped" : "workspace";
   const workspaceTaskViewValue = taskOrganizeBy === "chronological" ? "chronological" : "project";
-  const showTaskViewFilter = activePrimaryTaskMode === "workspace" || showArchivedTasks;
+  // grouped 模式下 organize/sort 段不渲染，但工作区筛选段（showWorkspaceFilterOptions）
+  // 仍在同一菜单内，所以筛选按钮要在 grouped 且多工作区时保持可见。
+  const showTaskViewFilter =
+    activePrimaryTaskMode === "workspace" || showArchivedTasks || showWorkspaceFilterOptions;
   const showWorkspaceViewOptions = activePrimaryTaskMode === "workspace" && !showArchivedTasks;
   const showTaskSortOptions = activePrimaryTaskMode === "workspace" || showArchivedTasks;
   const handlePrimaryTaskModeChange = useCallback(

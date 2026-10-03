@@ -627,6 +627,9 @@ export function WorkspaceGroupedTasksSection({
   // R4 行内工作区标签：多工作区混排且未筛选时常驻；筛选后列表只剩一个工作区，
   // 标签冗余（筛选 chip 已标明归属）。
   const showTaskWorkspaceLabel = workspaceTabs.length >= 2 && !workspaceFilterKey?.trim();
+  // 运行中/待确认浮出层数据。注意这是 hook：必须位于 shouldHideGroupedTaskContent
+  // 数据门禁（下方条件 return null）之前，否则门禁开合会改变 hook 数量。
+  const runningStripTasks = useMemo(() => collectRunningGroupedTasks(view), [view]);
 
   useEffect(() => {
     if (archivingTaskKeys.size === 0) {
@@ -1699,8 +1702,6 @@ export function WorkspaceGroupedTasksSection({
       ) : null}
     </DragOverlay>
   );
-
-  const runningStripTasks = useMemo(() => collectRunningGroupedTasks(view), [view]);
 
   return (
     <>
