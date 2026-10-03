@@ -73,6 +73,7 @@ export function GroupItem({
   mobileActiveTaskKey,
   getTaskRemoteSessionId,
   getTaskWorkspaceLabel,
+  showWorkspaceLabel,
   onSelectTask,
   onCloseTask,
   onOpenFileTree,
@@ -106,11 +107,8 @@ export function GroupItem({
   mobileActiveTaskKey?: string | null;
   getTaskRemoteSessionId: (task: CodezTaskMeta) => string | undefined;
   getTaskWorkspaceLabel: (task: CodezTaskMeta) => string;
-  onSelectTask: (
-    workspacePath: string,
-    taskId: string,
-    workspaceIdentity?: string,
-  ) => void;
+  showWorkspaceLabel?: boolean;
+  onSelectTask: (workspacePath: string, taskId: string, workspaceIdentity?: string) => void;
   onCloseTask: (task: CodezTaskMeta) => void;
   onOpenFileTree?: (task: CodezTaskMeta) => void;
   onCreateTask: () => void;
@@ -750,6 +748,7 @@ export function GroupItem({
                     groups={groups}
                     getTaskRemoteSessionId={getTaskRemoteSessionId}
                     getTaskWorkspaceLabel={getTaskWorkspaceLabel}
+                    showWorkspaceLabel={showWorkspaceLabel}
                     activeWorkspacePath={activeWorkspacePath}
                     activeWorkspaceIdentity={activeWorkspaceIdentity}
                     activeTaskId={activeTaskId}
@@ -781,6 +780,7 @@ export function GroupItem({
                       groups={groups}
                       getTaskRemoteSessionId={getTaskRemoteSessionId}
                       getTaskWorkspaceLabel={getTaskWorkspaceLabel}
+                      showWorkspaceLabel={showWorkspaceLabel}
                       activeWorkspacePath={activeWorkspacePath}
                       activeWorkspaceIdentity={activeWorkspaceIdentity}
                       activeTaskId={activeTaskId}

@@ -3,6 +3,8 @@ export { taskKey } from "@/workspace-grouped-tasks/ids.js";
 export {
   areAllGroupedTaskGroupsExpanded,
   cloneView,
+  collectGroupedTaskKeysOutsideWorkspace,
+  collectRunningGroupedTasks,
   filterGroupedViewByTaskKeys,
   findTaskInGroupedView,
   getGroupedTaskGroupIds,

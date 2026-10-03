@@ -80,6 +80,8 @@ jobs:
           packages/ui/src/hooks/useProjectWorktreeDiscovery.test.ts
           packages/ui/src/lib/worktreeSwitcherDisplay.test.ts
           packages/ui/src/root/worktreeOpenIntent.test.ts
+          packages/ui/src/lib/sidebarTaskPreferences.test.ts
+          packages/ui/src/workspace-grouped-tasks/view.test.ts
       - name: Assemble four remote targets without compiling Codex
         run: node scripts/codex-runtime-remote-assets.mjs
       - name: Native standalone remote package smoke

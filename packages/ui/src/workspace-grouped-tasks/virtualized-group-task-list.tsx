@@ -49,6 +49,7 @@ export function VirtualizedGroupedTaskList({
   mobileActiveTaskKey,
   getTaskRemoteSessionId,
   getTaskWorkspaceLabel,
+  showWorkspaceLabel,
   onSelectTask,
   onCloseTask,
   onOpenFileTree,
@@ -69,6 +70,7 @@ export function VirtualizedGroupedTaskList({
   mobileActiveTaskKey?: string | null;
   getTaskRemoteSessionId: (task: CodezTaskMeta) => string | undefined;
   getTaskWorkspaceLabel: (task: CodezTaskMeta) => string;
+  showWorkspaceLabel?: boolean;
   onSelectTask: (workspacePath: string, taskId: string, workspaceIdentity?: string) => void;
   onCloseTask: (task: CodezTaskMeta) => void;
   onOpenFileTree?: (task: CodezTaskMeta) => void;
@@ -159,6 +161,7 @@ export function VirtualizedGroupedTaskList({
         groups={groups}
         remoteSessionId={getTaskRemoteSessionId(task)}
         workspaceLabel={getTaskWorkspaceLabel(task)}
+        showWorkspaceLabel={showWorkspaceLabel}
         activeWorkspacePath={activeWorkspacePath}
         activeWorkspaceIdentity={activeWorkspaceIdentity}
         activeTaskId={activeTaskId}
@@ -182,6 +185,7 @@ export function VirtualizedGroupedTaskList({
       activeWorkspacePath,
       getTaskRemoteSessionId,
       getTaskWorkspaceLabel,
+      showWorkspaceLabel,
       groupId,
       groups,
       mobileActiveTaskKey,
