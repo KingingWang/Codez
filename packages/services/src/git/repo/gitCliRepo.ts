@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, realpath, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve, sep } from "node:path";
 import type {
@@ -15,6 +15,8 @@ import type {
   GitLocalBranchListResult,
   GitWorkspaceRepositoryInfo,
   GitPushResult,
+  GitWorktreeEntry,
+  GitWorktreeListResult,
 } from "@codez/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import {
@@ -39,6 +41,7 @@ import {
   ensureRepositoryAvailable,
   fileExists,
   inferKindFromNumstat,
+  isBareRepositoryResult,
   isMissingWorkingDirectoryResult,
   isNotRepositoryResult,
   normalizeInputPath,
@@ -121,6 +124,45 @@ function normalizeWatchPath(path: string): string {
   }
 
   return trimmed.replace(/[\\/]+$/, "");
+}
+
+/**
+ * 项目分组/发现条目去重用的宿主端路径规范化：相对路径按 Git 命令的 cwd 解析成绝对
+ * 路径（与 buildAutoRefreshWatchPaths 对 --git-common-dir 的规则一致），统一分隔符
+ * 并去掉收尾斜杠，保证同一台主机上同一目录产出同一字符串。UI 不二次加工该值。
+ */
+function normalizeHostGitPath(path: string, commandCwd: string): string {
+  const trimmed = path.trim();
+  return normalizeAbsoluteHostPath(isAbsolute(trimmed) ? trimmed : resolve(commandCwd, trimmed));
+}
+
+/** Git 已给出绝对路径时的宿主端规范化（统一分隔符、去收尾斜杠）。 */
+function normalizeAbsoluteHostPath(path: string): string {
+  return normalizeWatchPath(path.trim()).replace(/\\/g, "/");
+}
+
+/**
+ * 分组用 common dir 的宿主端解析。主目录经符号链接路径打开时，相对 common dir
+ * 会解析出链接形态（<link>/.git），而 linked worktree 台账由 git 输出物理路径，
+ * 两者不合会把同一仓库拆成两个项目分组（评审 M1 实测复现）。这里统一 realpath
+ * 对齐物理路径；realpath 失败（权限/竞态删除）保守回退未解析值，不影响主流程。
+ * 不采用 `rev-parse --path-format=absolute`：它要求 git ≥ 2.31，会抬高仓库
+ * 现有的 2.23 地板（switch --no-guess / restore），让旧 git 主机整体不可用。
+ */
+async function resolveGitCommonDirForGrouping(
+  workspacePath: string,
+  rawGitCommonDir: string,
+): Promise<string | null> {
+  const trimmed = rawGitCommonDir.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const normalized = normalizeHostGitPath(trimmed, workspacePath);
+  try {
+    return normalizeAbsoluteHostPath(await realpath(normalized));
+  } catch {
+    return normalized;
+  }
 }
 
 function addAutoRefreshWatchPath(
@@ -347,13 +389,76 @@ function toBranchMutationSuccess(params: {
   };
 }
 
+/**
+ * 解析 `git worktree list --porcelain`。porcelain 每行一个字段，空行分隔记录，
+ * 路径行整行即路径（不转义、不支持 -z），首条记录恒为仓库主目录。
+ * locked/prunable 可带同行原因；lock 不代表目录不可访问（R14 两个维度分离）。
+ */
+function parseWorktreeListPorcelain(stdout: string): GitWorktreeEntry[] {
+  const entries: GitWorktreeEntry[] = [];
+  let current: GitWorktreeEntry | null = null;
+  const flush = () => {
+    if (current) {
+      entries.push(current);
+      current = null;
+    }
+  };
+
+  for (const line of stdout.replace(/\r\n/g, "\n").split("\n")) {
+    if (line.length === 0) {
+      flush();
+      continue;
+    }
+    if (line.startsWith("worktree ")) {
+      flush();
+      current = {
+        path: normalizeAbsoluteHostPath(line.slice("worktree ".length)),
+        isMain: false,
+        branchName: null,
+        headCommitHash: null,
+        isDetached: false,
+        isLocked: false,
+        lockReason: null,
+        isPrunable: false,
+        prunableReason: null,
+      };
+      continue;
+    }
+    if (!current) {
+      continue;
+    }
+    if (line.startsWith("HEAD ")) {
+      current.headCommitHash = line.slice("HEAD ".length).trim() || null;
+    } else if (line.startsWith("branch ")) {
+      const ref = line.slice("branch ".length).trim();
+      current.branchName = ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : ref;
+    } else if (line === "detached") {
+      current.isDetached = true;
+    } else if (line === "locked") {
+      current.isLocked = true;
+    } else if (line.startsWith("locked ")) {
+      current.isLocked = true;
+      current.lockReason = line.slice("locked ".length) || null;
+    } else if (line === "prunable") {
+      current.isPrunable = true;
+    } else if (line.startsWith("prunable ")) {
+      current.isPrunable = true;
+      current.prunableReason = line.slice("prunable ".length) || null;
+    }
+    // bare / 未识别属性忽略：bare 主记录天然 branchName 为 null，不影响分组与发现。
+  }
+  flush();
+
+  return entries.map((entry, index) => ({ ...entry, isMain: index === 0 }));
+}
+
 function parseBranchRefRecords(stdout: string, currentBranchName: string | null): GitLocalBranch[] {
   return stdout
     .replace(/\r\n/g, "\n")
     .split("\n")
     .filter((line) => line.length > 0)
     .map((line): GitLocalBranch | null => {
-      const [name, upstreamName, commitHash, commitTimestamp] = line.split("\0");
+      const [name, upstreamName, commitHash, commitTimestamp, worktreePath] = line.split("\0");
       if (!name) {
         return null;
       }
@@ -365,6 +470,7 @@ function parseBranchRefRecords(stdout: string, currentBranchName: string | null)
         upstreamName: upstreamName || null,
         commitHash: commitHash || null,
         commitTimestampMs: Number.isNaN(timestampSeconds) ? null : timestampSeconds * 1000,
+        worktreePath: worktreePath?.trim() ? normalizeAbsoluteHostPath(worktreePath) : null,
       };
     })
     .filter((branch): branch is GitLocalBranch => Boolean(branch))
@@ -719,6 +825,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
             workspacePath,
             repoRoot: workspacePath,
             workspaceInRepoPath: ".",
+            gitCommonDir: null,
             autoRefreshWatchPaths: [],
             isGitAvailable: false,
             isRepository: false,
@@ -745,6 +852,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
               workspacePath,
               repoRoot: workspacePath,
               workspaceInRepoPath: ".",
+              gitCommonDir: null,
               autoRefreshWatchPaths: [],
               isGitAvailable: true,
               isRepository: false,
@@ -756,6 +864,19 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
               workspacePath,
               repoRoot: workspacePath,
               workspaceInRepoPath: ".",
+              gitCommonDir: null,
+              autoRefreshWatchPaths: [],
+              isGitAvailable: true,
+              isRepository: false,
+            };
+          }
+
+          if (isBareRepositoryResult(result)) {
+            return {
+              workspacePath,
+              repoRoot: workspacePath,
+              workspaceInRepoPath: ".",
+              gitCommonDir: null,
               autoRefreshWatchPaths: [],
               isGitAvailable: true,
               isRepository: false,
@@ -775,6 +896,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
           workspacePath,
           repoRoot,
           workspaceInRepoPath: normalizeWorkspaceInRepoPath(lines[1] ?? ""),
+          gitCommonDir: await resolveGitCommonDirForGrouping(workspacePath, lines[3] ?? ""),
           autoRefreshWatchPaths: buildAutoRefreshWatchPaths({
             workspacePath,
             absoluteGitDir: lines[2]?.trim() ?? "",
@@ -797,6 +919,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
               workspacePath,
               kind: "not-repository",
               isGitAvailable: resolution.isGitAvailable,
+              gitCommonDir: null,
             };
           }
 
@@ -808,6 +931,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
                 workspacePath,
                 kind: "main-tree",
                 isGitAvailable: true,
+                gitCommonDir: resolution.gitCommonDir,
               };
             }
 
@@ -828,11 +952,14 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
                 // `<main-tree>/.git/worktrees/<name>`；这里只要命中这个结构就判为 worktree。
                 // 其它 `.git` 文件形态（如 submodule / separate-git-dir）一律按 main-tree 放行，
                 // 因为迁移过滤不是强依赖，宁可少过滤也不要误杀正常记录。
+                // spec 接口面要求把该识别提升为正式契约语义；阶段二清理流程（R13）消费
+                // kind 之前必须完成提升，当前消费方仍只有迁移过滤。
                 if (normalizedGitDir.includes("/.git/worktrees/")) {
                   return {
                     workspacePath,
                     kind: "linked-worktree",
                     isGitAvailable: true,
+                    gitCommonDir: resolution.gitCommonDir,
                   };
                 }
               }
@@ -847,6 +974,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
             workspacePath,
             kind: "main-tree",
             isGitAvailable: true,
+            gitCommonDir: resolution.gitCommonDir,
           };
         },
       );
@@ -898,6 +1026,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
             workspacePath: resolution.workspacePath,
             repoRoot: resolution.repoRoot,
             workspaceInRepoPath: resolution.workspaceInRepoPath,
+            gitCommonDir: resolution.gitCommonDir,
             autoRefreshWatchPaths: resolution.autoRefreshWatchPaths,
             branchName: parsedStatus.branchName,
             trackingBranchName: parsedStatus.trackingBranchName,
@@ -989,7 +1118,11 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         args: [
           "for-each-ref",
           "refs/heads",
-          "--format=%(refname:short)%00%(upstream:short)%00%(objectname)%00%(committerdate:unix)",
+          // %(worktreepath)（git ≥ 2.23）给出该分支被检出的工作树路径，
+          // 空闲分支为空串；分支切换器用它主动标注占用，而不是点击后才报错。
+          // 版本地板与既有 switch --no-guess / restore 一致（2.23+）；低于该版本的
+          // 主机会未知 atom 报错（失败可见），与此前切分支能力不可用是同一地板。
+          "--format=%(refname:short)%00%(upstream:short)%00%(objectname)%00%(committerdate:unix)%00%(worktreepath)",
         ],
         timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
         maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
@@ -1003,6 +1136,34 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
           result.stdout,
           status.summary.headRefType === "branch" ? status.summary.branchName : null,
         ),
+      };
+    },
+
+    async listWorktrees(workspacePath: string): Promise<GitWorktreeListResult> {
+      // 只读发现：只把 git 台账里的工作树投影给上层，不触发任何工作区激活。
+      const resolution = await this.resolveRepository(workspacePath);
+      if (!resolution.isGitAvailable || !resolution.isRepository) {
+        return {
+          workspacePath,
+          isGitAvailable: resolution.isGitAvailable,
+          isRepository: false,
+          worktrees: [],
+        };
+      }
+
+      const result = await commandProvider.run({
+        cwd: resolution.repoRoot,
+        args: ["worktree", "list", "--porcelain"],
+        timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+      });
+      ensureGitCommandSucceeded("git worktree list --porcelain", result);
+
+      return {
+        workspacePath,
+        isGitAvailable: true,
+        isRepository: true,
+        worktrees: parseWorktreeListPorcelain(result.stdout),
       };
     },
 

@@ -207,6 +207,15 @@ export function isNotRepositoryResult(result: GitCommandExecutionResult): boolea
   return stderr.includes("not a git repository") || stderr.includes("outside repository");
 }
 
+/**
+ * bare 仓库没有工作树，`rev-parse --show-toplevel` 以
+ * "this operation must be run in a work tree" 失败。bare 仓库不能作为 workspace
+ * （status/diff/提交均无意义），按"非可用仓库"降级而不是抛错（R16：任何路径不报错）。
+ */
+export function isBareRepositoryResult(result: GitCommandExecutionResult): boolean {
+  return result.stderr.toLowerCase().includes("must be run in a work tree");
+}
+
 export function isMissingWorkingDirectoryResult(result: GitCommandExecutionResult): boolean {
   const stderr = result.stderr.toLowerCase();
   return (

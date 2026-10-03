@@ -54,6 +54,8 @@ jobs:
       - run: node --test scripts/test-codex-distribution*.mjs
       - name: Codex service, desktop and remote deployment regressions (Linux once)
         run: pnpm exec tsx --test packages/services/test/codex*.test.ts packages/desktop/test/codex*.test.ts packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts packages/server/test/codex*.test.ts
+      - name: Git worktree service and shared identity regressions (Linux once)
+        run: pnpm exec tsx --test packages/services/test/gitWorktree.test.ts packages/shared/test/remoteWorkspaceScope.test.ts
       - name: Codex UI settings regressions (Linux once)
         run: pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test packages/ui/src/settings/codex/*.test.ts packages/ui/src/settings/codex/*.test.tsx
       # 这些回归不在 settings/codex 目录，必须显式纳入，防止 rebase 后修复失守。
@@ -73,6 +75,9 @@ jobs:
           packages/ui/src/TaskActionMenuContent.test.tsx
           packages/ui/src/v4/composer/composerDraftModeNormalization.test.ts
           packages/ui/src/v4/composer/codexFullAccessAcknowledgement.test.ts
+          packages/ui/src/lib/projectGrouping.test.ts
+          packages/ui/src/lib/remoteWorkspaceIdentityConsistency.test.ts
+          packages/ui/src/hooks/useProjectWorktreeDiscovery.test.ts
       - name: Assemble four remote targets without compiling Codex
         run: node scripts/codex-runtime-remote-assets.mjs
       - name: Native standalone remote package smoke
