@@ -201,6 +201,44 @@ Acceptance for follow-up delivery:
   row/entity, an idle turn, native `thread/revert`, fresh paginated history and a
   new epoch before `turn/start`. `workspaceMode: rewind` is rejected before mutation.
 
+### Conversation tail window and history paging
+
+- The Codex publisher has no durable delta/replay log: every projection change
+  republishes a whole snapshot and the client applies it as a full replacement.
+  Rows a client paged in through `rows/range` are therefore dropped by the next
+  frame, so the published tail window must be self-sufficient for the turn it
+  already covers.
+- The wire window starts at the last `snapshotTailWindowRows` rows and then
+  extends backwards to the first row of the oldest turn that base covers. The
+  extension is bounded by `snapshotTailWindowRows * 16` rows and by
+  `logicalFrameAssemblyMaxBytes / 4` bytes, because the window is republished on
+  every projection change and tool rows can reach the 64 KiB preview cap. It
+  never crosses into an older turn; earlier turns remain the client's
+  `rows/range` responsibility.
+- The window keeps `rowId` contiguous because `loadOlder` only pages backwards
+  from the window head and a hole in the middle can never be refilled. The single
+  exception is the oldest covered turn's `turnHeader`, which is kept even when the
+  caps truncate that turn's middle: a window whose leading turn has no header makes
+  the client re-run incomplete-leading-turn hydration on every frame, turning
+  full-snapshot publishing into a paging storm.
+- `rows.firstRowId` and `rows.totalCount` keep whole-projection semantics; only
+  `rows.window` is trimmed. The client decides "already at the top" from
+  `window[0].rowId === firstRowId`, so rewriting `firstRowId` to follow the trim
+  makes `hasOlderRows` permanently false and silently disables `rows/range`
+  paging, question-directory hydration and the load-older affordance. This matches
+  the CLI publisher, which slices `window` only.
+- Native Chat/Anthropic SSE reuses one `itemId` for every assistant message
+  (`msg_assistant`) and every reasoning segment (`reasoning_<choice>`) within a
+  turn, so Codex collapses a whole turn into one `reasoning` plus one
+  `agentMessage` item pinned at the turn head. Repeated IDs inside one turn stay
+  invalid per the identity rule above and remain an upstream defect; the bridge
+  must not mint per-occurrence IDs, because paginated history reload collapses
+  them again and would diverge from the live projection. The turn-anchored window
+  is what keeps those head-pinned narrative rows visible despite the collapse.
+- Known limitation, unchanged: while a turn streams, a client that paged back into
+  older turns loses those rows on the next full snapshot and must page again.
+  Removing that needs a real delta log in the Codex publisher.
+
 ## Desktop surfaces
 
 ### Settings deep links and honest diagnostics copy
