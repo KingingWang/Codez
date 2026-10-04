@@ -436,13 +436,15 @@ export function createCodexSessionEventProjection(params: {
 
     // 内存上界：窗口已滑走且不属于活动回合的行状态可以丢弃
     // （文本只增不改、retry 换新 rowId，滑出窗口的行不会再产生差分）。
-    const firstRowId = snapshot.rows.firstRowId;
-    if (firstRowId !== null) {
+    // 水位是**下发窗口首行**，不是 rows.firstRowId：后者是全序口径，客户端用它判定是否
+    // 已到顶（specs/codex-desktop-adapter.md），拿它当窗口水位会让回收永不触发。
+    const windowHeadRowId = snapshot.rows.window[0]?.rowId;
+    if (windowHeadRowId !== undefined) {
       for (const rowId of emittedTextByRowId.keys()) {
-        if (rowId < firstRowId) emittedTextByRowId.delete(rowId);
+        if (rowId < windowHeadRowId) emittedTextByRowId.delete(rowId);
       }
       for (const [rowId, state] of toolStateByRowId) {
-        if (rowId < firstRowId && state.terminal) toolStateByRowId.delete(rowId);
+        if (rowId < windowHeadRowId && state.terminal) toolStateByRowId.delete(rowId);
       }
     }
 

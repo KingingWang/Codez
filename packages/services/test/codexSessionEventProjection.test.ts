@@ -108,6 +108,7 @@ function snapshot(
   rows: readonly ConversationRow[],
   phase: SessionPhase,
   lastError: ConversationSnapshot["control"]["lastError"] = null,
+  firstRowId?: number | null,
 ): ConversationSnapshot {
   return {
     sessionId: SESSION_ID,
@@ -115,19 +116,23 @@ function snapshot(
     rows: {
       window: [...rows],
       totalCount: rows.length,
-      firstRowId: rows.length > 0 ? rows[0]!.rowId : null,
+      firstRowId: firstRowId ?? (rows.length > 0 ? rows[0]!.rowId : null),
     },
   } as unknown as ConversationSnapshot;
 }
 
-function frame(rows: readonly ConversationRow[], phase: SessionPhase): ConversationTopicFrame {
+function frame(
+  rows: readonly ConversationRow[],
+  phase: SessionPhase,
+  firstRowId?: number | null,
+): ConversationTopicFrame {
   return {
     topic: `conversation/${SESSION_ID}`,
     subscriptionId: "sub-1",
     fromSeq: 0,
     toSeq: 1,
     sentAt: Date.now(),
-    payload: { kind: "snapshot", snapshot: snapshot(rows, phase) },
+    payload: { kind: "snapshot", snapshot: snapshot(rows, phase, null, firstRowId) },
   } as unknown as ConversationTopicFrame;
 }
 
@@ -382,4 +387,37 @@ test("deltas frame without baseline is dropped", () => {
     },
   } as unknown as ConversationTopicFrame;
   assert.deepEqual(projection.acceptFrame(deltasFrame), []);
+});
+
+// rows.firstRowId 是全序口径（客户端据此判定是否已到顶），不是下发窗口的水位。
+// codex 尾窗按 turn 边界对齐后窗口首行会远大于 firstRowId，Bot 投影的内存回收必须跟着
+// 窗口首行走，否则回收永不触发（specs/codex-desktop-adapter.md）。
+test("memory pruning follows the published window head, not the whole-order firstRowId", () => {
+  const projection = createCodexSessionEventProjection({ sessionId: SESSION_ID });
+  const header = turnHeaderRow("turn-1", "running");
+  const historyText = assistantTextRow("turn-1", "old answer", "complete");
+  const liveText = assistantTextRow("turn-1", "partial", "streaming");
+  const globalFirstRowId = header.rowId;
+
+  // 首帧基线：已完成的历史文本只登记不补事件，streaming 尾巴发一次。
+  const first = projection.acceptFrame(
+    frame([header, historyText, liveText], "running", globalFirstRowId),
+  );
+  assert.deepEqual(types(first), ["turn.started", "model.streaming:text_delta"]);
+
+  // 窗口向前滑动，历史文本行落到窗口之外；全序 firstRowId 仍停在 header。
+  projection.acceptFrame(frame([liveText], "running", globalFirstRowId));
+
+  // 历史行重新回到窗口：状态已按窗口首行回收，所以按新行重发全文。
+  const again = projection.acceptFrame(
+    frame([header, historyText, liveText], "running", globalFirstRowId),
+  );
+  assert.ok(
+    again.some(
+      (event) =>
+        event.type === "model.streaming" &&
+        (event.payload as { delta?: string }).delta === "old answer",
+    ),
+    `期望按窗口首行回收历史行状态，实际 ${JSON.stringify(types(again))}`,
+  );
 });

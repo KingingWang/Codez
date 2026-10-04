@@ -13,6 +13,7 @@ import { projectThread, projectSessionsIndex } from "./projection.js";
 import { array, object, string } from "./json.js";
 import { projectTurnFileChanges } from "./file-changes.js";
 import { itemEntityId } from "./projection-rows.js";
+import { projectConversationTailWindow } from "./projection-window.js";
 import type { AttachmentStore, AttachmentReadAuthorization } from "./attachments.js";
 
 function safeUsageCount(value: unknown): number | undefined {
@@ -261,8 +262,10 @@ export class BridgeSnapshots {
     if (topic.startsWith("conversation/")) {
       const snapshot = await this.conversation(topic.slice("conversation/".length));
       // 历史分页和实时尾窗分离，避免一个大型历史会话超出物理传输预算。
-      snapshot.rows.window = snapshot.rows.window.slice(-60);
-      snapshot.rows.firstRowId = snapshot.rows.window[0]?.rowId ?? null;
+      // firstRowId/totalCount 必须保持全序口径：客户端以 window[0].rowId === firstRowId
+      // 判定是否已到顶，跟随截尾改写会让 hasOlderRows 恒为 false，rows/range 分页、
+      // 问题目录补齐与「加载更早」入口全部静默失效（specs/codex-desktop-adapter.md）。
+      snapshot.rows.window = projectConversationTailWindow(snapshot.rows.window);
       return { snapshot, seq: snapshot.seq, logEpoch: snapshot.logEpoch };
     }
     if (topic === `sessions-index/${this.workspaceId}`) {
