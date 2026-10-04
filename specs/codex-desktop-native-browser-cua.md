@@ -323,6 +323,70 @@ consistent, but treats the tab as window-scoped: it matches any workspace and an
 the owner window, and the pane reveals only when a native tab is newly created. Replayed or
 restored ready events mount in the background and never steal focus.
 
+### Human actions on window-scoped browser tabs
+
+The synthetic owner is an Agent routing and guest-attachment identity, not a chat-draft
+identity. When a user selects a page element from a native browser tab or one of its popups,
+the renderer captures the _displayed workspace_ path and identity at the start of that
+selection. The selected element is offered only to the focused, enabled composer in that
+workspace. Switching workspace or closing the tab before selection completes must not attach
+the result to a different workspace. Ordinary workspace-owned Browser Use tabs continue to
+use their frozen workspace identity. Neither action changes the native tab's Main owner,
+session, lease, or remote-session scope.
+
+When a live native browser tab requests a `target=_blank`/`window.open` page, Main still
+denies Electron's unmanaged popup and forwards its original synthetic owner and source tab
+ID. The renderer creates a Browser side-pane tab with the **same synthetic guest owner**;
+it must not replace that owner with the currently displayed conversation just to make the
+tab visible. Popups opened from an existing native popup inherit that same owner even
+if the new human guest has not yet been claimed (`unclaimed-iab`). A native-owned popup
+is window-scoped for side-pane visibility while it remains in the current workspace's
+side-pane state, like its source. It takes focus only if its source tab is still selected
+and the side pane is visible when the popup arrives. Otherwise it mounts in the background
+and never steals focus. A stale source tab or mismatched owner must not be reclassified
+as a native popup.
+
+The side pane is the single tab/visibility owner; the composer alone owns unsent element
+contexts. Main continues to own guest routing. Each popup event creates one tab using the
+existing open-browser path, with no retry, parallel queue, or persisted chat context. The
+native synthetic scope is preserved on guest attach, residency, and close; the temporary
+displayed-workspace scope is used only for a user's add-to-chat intent.
+
+```text
+native guest (synthetic Main owner)
+  ├─ user selects element → renderer captures displayed workspace → focused composer
+  └─ popup event + source tab → side-pane tab (same synthetic Main owner)
+       ├─ source still selected and pane visible → reveal popup
+       └─ stale/inactive source → no focus transfer
+```
+
+Acceptance scenarios:
+
+1. A native browser tab is visible in workspace A; selecting a page element adds one chip
+   to A's focused composer and sends its content with A's next prompt. Switching to
+   workspace B before the selection settles cannot add a chip to B. A normal Browser Use
+   tab retains its original workspace identity.
+2. A native tab opens a valid new-window link while selected: the popup is visible and
+   selected in the side pane and its guest keeps the synthetic Main owner. A popup from
+   that popup remains visible and keeps the same synthetic owner. A background
+   source cannot steal focus. Native popups remain visible when the user changes task
+   within the same workspace. A workspace switch retains existing side-pane memory
+   behavior instead of introducing a second window-global tab registry.
+3. A popup from a closed tab or a source/owner mismatch is not promoted to a visible
+   native tab. A normal human or workspace-owned Agent popup retains its existing
+   workspace/session routing, and a same-tab link still navigates in its existing guest.
+
+Desktop E2E scenario: serve a local page with a visible `#pick-target` and a
+`target=_blank` link, then create its tab through the native browser MCP in a window
+with an editable workspace chat. Click the element-picker button and `#pick-target`;
+assert one web-element chip in that chat, submit, and assert the submitted message
+contains the page-element context. Return to the native tab, click the new-window
+link with the picker off, and assert a visible, selected popup tab whose guest still
+has the native synthetic owner. Repeat with a different workspace/conversation
+focused: the native tab remains usable, and no late selection is delivered to the
+previous or newly focused composer. A normal human browser tab on the same fixture
+must continue to navigate and add an element after its page finishes loading.
+
 ## Failure semantics
 
 - Invalid request schema: reject without dispatch and return `invalid_request`.
