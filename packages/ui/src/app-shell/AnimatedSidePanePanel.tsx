@@ -74,6 +74,7 @@ import { formatTaskRelativeTime } from "@/lib/taskListItemPresentation.js";
 import {
   shouldMountSidePaneContent,
   shouldMountBrowserTabGuest,
+  resolveBrowserSidePaneGuestScope,
   type BrowserSidePaneTab,
   type BrowserUseSidePaneTab,
   type BrowserSidePaneMetadata,
@@ -1282,7 +1283,9 @@ export function AnimatedSidePanePanel({
                             faviconUrl={tab.faviconUrl}
                             workspacePath={workspaceAbsPath}
                             workspaceIdentity={workspaceIdentity}
-                            remoteSessionId={tab.remoteSessionId ?? workspaceRemoteSessionId}
+                            // Bug 原因：原生 Agent popup 若以当前 workspace 重新 attach，
+                            // Main 的 synthetic guest owner/lease 会与 tab 冻结归属失配。
+                            {...resolveBrowserSidePaneGuestScope(tab, workspaceRemoteSessionId)}
                             residencyGeneration={tab.residencyGeneration}
                             sessionId={tab.ownerTaskId ?? "unscoped"}
                             onUrlChange={(url) => onBrowserUrlChange(tab.id, url)}

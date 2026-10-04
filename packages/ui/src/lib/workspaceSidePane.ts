@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- Side pane tab 状态集中维护 Browser/Git/CodeViewer/Treemapping/Whiteboard 的打开、复用、关闭和排序规则；拆分需要同步迁移现有内存恢复逻辑。 */
 import {
   NATIVE_BROWSER_CUA_SESSION_ID,
+  NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX,
   createUuid,
   type BrowserTabResidencyState,
 } from "@codez/shared";
@@ -1076,7 +1077,7 @@ function sidePaneTabMatchesWorkspace(
 ): boolean {
   // 原生浏览器 tab 的 workspaceKey 是 synthetic（native-browser-cua:*），guest 实际
   // 挂在收到事件的窗口里，按窗口级可见处理。
-  if (isNativeBrowserCuaSidePaneTab(tab)) return true;
+  if (isNativeBrowserCuaWindowTab(tab)) return true;
   return tab.workspaceKey == null || tab.workspaceKey === activeWorkspaceKey;
 }
 
@@ -1088,6 +1089,69 @@ function sidePaneTabMatchesWorkspace(
  */
 export function isNativeBrowserCuaSidePaneTab(tab: WorkspaceSidePaneTab): boolean {
   return tab.type === "browser-use" && tab.sessionId === NATIVE_BROWSER_CUA_SESSION_ID;
+}
+
+/** 原生工具打开的 popup 保留 synthetic guest owner，与来源 tab 同属窗口级可见范围。 */
+export function isNativeBrowserCuaWindowTab(tab: WorkspaceSidePaneTab): boolean {
+  return (
+    isNativeBrowserCuaSidePaneTab(tab) ||
+    (tab.type === "browser" &&
+      tab.agentOpened === true &&
+      tab.ownerTaskId === NATIVE_BROWSER_CUA_SESSION_ID &&
+      Boolean(tab.workspaceKey?.startsWith(NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX)))
+  );
+}
+
+/** Human popup 的 guest attach 保持 native owner；只有普通 browser 才继承当前远端会话。 */
+export function resolveBrowserSidePaneGuestScope(
+  tab: BrowserSidePaneTab,
+  activeRemoteSessionId?: string | null,
+): { workspaceKey: string | undefined; remoteSessionId: string | undefined } {
+  if (isNativeBrowserCuaWindowTab(tab)) {
+    return {
+      workspaceKey: tab.workspaceKey ?? undefined,
+      remoteSessionId: tab.remoteSessionId ?? undefined,
+    };
+  }
+  return {
+    workspaceKey: undefined,
+    remoteSessionId: tab.remoteSessionId ?? activeRemoteSessionId ?? undefined,
+  };
+}
+
+/** 只认当前侧栏中仍存活且 owner 精确匹配的来源；不能靠 synthetic 字符串猜归属。 */
+export function getNativeBrowserCuaPopupSource(
+  state: WorkspaceSidePaneState | null,
+  request: {
+    sourceTabId?: string;
+    sessionId?: string;
+    workspaceKey?: string | null;
+    remoteSessionId?: string;
+  },
+): WorkspaceSidePaneTab | undefined {
+  if (
+    !request.sourceTabId ||
+    request.sessionId !== NATIVE_BROWSER_CUA_SESSION_ID ||
+    !request.workspaceKey?.startsWith(NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX)
+  ) {
+    return undefined;
+  }
+  return state?.tabs.find(
+    (tab) =>
+      (tab.type === "browser" || tab.type === "browser-use") &&
+      isNativeBrowserCuaWindowTab(tab) &&
+      tab.workspaceKey === request.workspaceKey &&
+      (tab.remoteSessionId ?? "") === (request.remoteSessionId ?? "") &&
+      (tab.type === "browser-use" ? tab.tabId : tab.id) === request.sourceTabId,
+  );
+}
+
+export function shouldRevealNativeBrowserCuaPopup(
+  state: WorkspaceSidePaneState | null,
+  sourceTab: WorkspaceSidePaneTab | undefined,
+  isPaneVisible: boolean,
+): boolean {
+  return Boolean(sourceTab && isPaneVisible && state?.activeTabId === sourceTab.id);
 }
 
 /**
@@ -1127,6 +1191,7 @@ function getVisibleSidePaneTabsByScope(
   return tabs.filter((tab) => {
     if (!sidePaneTabMatchesWorkspace(tab, scope.workspaceKey)) return false;
     if (isWorkspaceGlobalSidePaneTab(tab)) return true;
+    if (tab.type === "browser" && isNativeBrowserCuaWindowTab(tab)) return true;
     if (tab.type === "browser-use")
       return isNativeBrowserCuaSidePaneTab(tab) || tab.sessionId === scope.ownerTaskId;
     if (

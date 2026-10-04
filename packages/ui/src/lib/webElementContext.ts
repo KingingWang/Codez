@@ -1,3 +1,8 @@
+import {
+  NATIVE_BROWSER_CUA_SESSION_ID,
+  NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX,
+} from "@codez/shared";
+
 export const WEB_ELEMENT_CONTEXT_ADD_TO_CHAT_EVENT = "codez:web-element-context-add-to-chat";
 export const WEB_ELEMENT_CONTEXT_REMOVE_FROM_CHAT_EVENT =
   "codez:web-element-context-remove-from-chat";
@@ -70,6 +75,22 @@ export function getWebElementContextWorkspaceKey(
   workspaceIdentity?: string,
 ) {
   return workspaceIdentity?.trim() || workspacePath;
+}
+
+export function resolveWebElementContextWorkspaceIdentity(options: {
+  browserWorkspaceKey?: string;
+  browserSessionId?: string;
+  workspaceIdentity?: string;
+}): string | undefined {
+  // Bug 原因：原生浏览器的 synthetic key 只用于 Main guest 鉴权；传给聊天端会被
+  // 当前真实 workspace key 拒绝。用户主动选取时沿用点击时显示的工作区身份。
+  if (
+    options.browserSessionId === NATIVE_BROWSER_CUA_SESSION_ID &&
+    options.browserWorkspaceKey?.startsWith(NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX)
+  ) {
+    return options.workspaceIdentity;
+  }
+  return options.browserWorkspaceKey ?? options.workspaceIdentity;
 }
 
 export function isWebElementContextAddToChatEvent(

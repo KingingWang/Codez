@@ -9,6 +9,7 @@ import { usePlatform } from "@/hooks/usePlatform.js";
 import { useWebElementPicker } from "@/hooks/useWebElementPicker.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
+import { resolveWebElementContextWorkspaceIdentity } from "@/lib/webElementContext.js";
 import { BrowserToolbar } from "@/EmbeddedBrowserPaneParts.js";
 import { BrowserViewportSurface } from "@/browser-use/BrowserViewportSurface.js";
 import { BrowserViewportToolbar } from "@/browser-use/BrowserViewportToolbar.js";
@@ -402,7 +403,11 @@ export function UnifiedBrowserView({
     executeJs: (script) =>
       webview ? webview.executeJavaScript(script, true) : Promise.resolve({ status: "cancelled" }),
     workspacePath: workspacePath ?? "",
-    workspaceIdentity: workspaceKey ?? workspaceIdentity,
+    workspaceIdentity: resolveWebElementContextWorkspaceIdentity({
+      browserWorkspaceKey: workspaceKey,
+      browserSessionId: sessionId,
+      workspaceIdentity,
+    }),
   });
 
   // ---- 从 webview 同步 chrome 状态（url/前进后退/标题）----

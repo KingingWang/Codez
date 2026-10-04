@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createUuid } from "@codez/shared";
+import { NATIVE_BROWSER_CUA_SESSION_ID, createUuid } from "@codez/shared";
 import type { EmbeddedBrowserOpenUrlRequest, IPlatformService } from "@codez/shared";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 // 保活：side pane terminal 跨 workspace 会话上移到模块级 registry。
@@ -46,6 +46,9 @@ import {
   activateGitSidePane,
   getActiveSidePaneTab,
   getVisibleSidePaneTabs,
+  getNativeBrowserCuaPopupSource,
+  resolveBrowserSidePaneGuestScope,
+  shouldRevealNativeBrowserCuaPopup,
   sidePaneOwnerKey,
   markBrowserUseSidePaneTabOperation,
   reorderSidePaneTab,
@@ -138,11 +141,8 @@ export function useAppPanels(options: {
   isDesktop?: boolean;
   /**
    * 展示语义：视图当前是否呈现给用户（设置页覆盖时为 false）。
-   * 本 hook 刻意不消费它——Browser View 事件是 main 侧权威转发，订阅不能受可见性影响，
-   * 详见下方订阅 effect 的时序约束注释。
-   * 入参保留的唯一理由是回归护栏：useAppPanelsBrowserViewLifecycle 的四条用例靠传 false 表达
-   * “设置页覆盖中”，一旦有人把可见性重新写回订阅条件，这些用例会立即失败。删掉入参，
-   * 那层保护也就跟着消失了。
+   * Browser View 权威事件的订阅不能受可见性影响；仅用它判定 native popup 是否可抢焦点。
+   * 设置页覆盖时仍须接收事件并后台挂载，不能因 effect 清理而丢失 ready/open。
    */
   isWorkspaceVisible?: boolean;
   supportsEmbeddedBrowser?: boolean;
@@ -213,6 +213,8 @@ export function useAppPanels(options: {
   sidePaneOwnerIdRef.current = sidePaneOwnerId;
   const activeWorkspaceKeyRef = useRef(activeWorkspaceKey);
   activeWorkspaceKeyRef.current = activeWorkspaceKey;
+  const isWorkspaceVisibleRef = useRef(options.isWorkspaceVisible !== false);
+  isWorkspaceVisibleRef.current = options.isWorkspaceVisible !== false;
   const activeTabByOwnerRef = useRef<Map<string, string>>(new Map());
   const activeSidePaneMemoryKeyRef = useRef<string | null>(sidePaneMemoryKey);
   const latestSidePaneMemoryRef = useRef({
@@ -382,14 +384,34 @@ export function useAppPanels(options: {
     (request: string | EmbeddedBrowserOpenUrlRequest) => {
       const payload: EmbeddedBrowserOpenUrlRequest =
         typeof request === "string" ? { url: request, disposition: "foreground-tab" } : request;
+      const sourceState = latestSidePaneMemoryRef.current.sidePaneState;
+      const nativePopupSource =
+        payload.sessionId === NATIVE_BROWSER_CUA_SESSION_ID
+          ? getNativeBrowserCuaPopupSource(sourceState, payload)
+          : undefined;
+      if (payload.sessionId === NATIVE_BROWSER_CUA_SESSION_ID && !nativePopupSource) {
+        // Bug 原因：过期/跨 owner 的 native popup 不能按 synthetic key 建一个永远不可见的 tab。
+        logger.warn("[App] 忽略无有效来源的原生浏览器 popup", {
+          sourceTabId: payload.sourceTabId,
+        });
+        return;
+      }
       const sourceWorkspaceKey = payload.workspaceKey ?? activeWorkspaceKeyRef.current;
       const sourceSessionId = payload.sessionId ?? sidePaneOwnerIdRef.current;
-      const sourceRemoteSessionId =
-        payload.remoteSessionId ?? workspaceRemoteSessionId ?? undefined;
+      const sourceRemoteSessionId = nativePopupSource
+        ? payload.remoteSessionId
+        : (payload.remoteSessionId ?? workspaceRemoteSessionId ?? undefined);
       const isCurrentOwner =
         sourceWorkspaceKey === activeWorkspaceKeyRef.current &&
         (sourceRemoteSessionId ?? "") === (workspaceRemoteSessionId ?? "") &&
         sourceSessionId === sidePaneOwnerIdRef.current;
+      const shouldReveal =
+        isCurrentOwner ||
+        shouldRevealNativeBrowserCuaPopup(
+          sourceState,
+          nativePopupSource,
+          isWorkspaceVisibleRef.current && !latestSidePaneMemoryRef.current.isSidePaneCollapsed,
+        );
       if (!supportsEmbeddedBrowser) {
         // Web 端没有内置浏览器面板，这里退回浏览器新标签，至少保证外链是可访问的。
         window.open(payload.url, "_blank", "noopener,noreferrer");
@@ -402,22 +424,24 @@ export function useAppPanels(options: {
       const targetTabId = `browser:${createUuid()}`;
       // Agent 控制的 guest 触发 popup 时，新的页面仍属于模型操作链路；不能把它
       // 当作人类新开的 Browser tab，继承 setting.json 中保存的自由尺寸/缩放偏好。
-      const agentOpened = isAgentOpenedBrowserPopup(payload);
+      // Bug 原因：native popup 首次 attach 时 browserId 可能仍是 unclaimed-iab；
+      // 连续打开的新窗口必须沿 live 来源继承窗口级归属，不能靠该临时 browserId 推断。
+      const agentOpened = Boolean(nativePopupSource) || isAgentOpenedBrowserPopup(payload);
       // webview popup 事件原来只携带 URL，迟到的对话 1 事件会被当前对话 2
       // 的 owner 接管。保留来源 scope，并且只有来源仍是当前 owner 时才抢焦点。
-      if (!isShareUrl && isCurrentOwner) {
+      if (!isShareUrl && shouldReveal) {
         setBrowserNavigationRequest({
           id: createUuid(),
           targetTabId,
           url: payload.url,
         });
       }
-      if (isCurrentOwner) revealSidePaneForCurrentOwner();
+      if (shouldReveal) revealSidePaneForCurrentOwner();
       logger.info(
-        `[App] ${isCurrentOwner ? "切换" : "后台挂载"}右侧面板 mode=browser workspace=${sourceWorkspaceKey} sessionId=${sourceSessionId} url=${payload.url}`,
+        `[App] ${shouldReveal ? "切换" : "后台挂载"}右侧面板 mode=browser workspace=${sourceWorkspaceKey} sessionId=${sourceSessionId} url=${payload.url}`,
       );
       commitOpenedSidePaneState((current) =>
-        isShareUrl
+        isShareUrl && !nativePopupSource
           ? openOrActivateBrowserSidePaneByUrl(current, {
               initialUrl: payload.url,
               ownerTaskId: sourceSessionId,
@@ -432,7 +456,7 @@ export function useAppPanels(options: {
               // 这两条路径都带 ownerTaskId，stampSidePaneTabsOwnership 不会再补 scope，
               // remoteSessionId 必须在创建时就冻结，否则远程下这个 tab 关不掉。
               ...(sourceRemoteSessionId ? { remoteSessionId: sourceRemoteSessionId } : {}),
-              activate: isCurrentOwner,
+              activate: shouldReveal,
               agentOpened,
             }),
       );
@@ -1365,12 +1389,12 @@ export function useAppPanels(options: {
       try {
         await Promise.all(
           browserTabs.map((tab) => {
-            // 与 attach 侧同源：human tab 兜底到 workspaceRemoteSessionId，browser-use 不兜底。
-            // 不同源就会 scope 失配 → main 拒绝授权 → UI 壳永不移除 → tab 关不掉。
+            // Bug 原因：原生 popup 属于 human tab，但 Main guest owner 是窗口级 synthetic scope；
+            // close 必须复用 attach 同一个远端归属判据，不能兜底到当前远端会话。
             const scopedRemoteSessionId =
               tab.type === "browser-use"
                 ? tab.remoteSessionId
-                : (tab.remoteSessionId ?? workspaceRemoteSessionId);
+                : resolveBrowserSidePaneGuestScope(tab, workspaceRemoteSessionId).remoteSessionId;
             return platform.browserViewCloseTab!({
               tabId: tab.type === "browser-use" ? tab.tabId : tab.id,
               workspaceKey: tab.workspaceKey ?? activeWorkspaceKeyRef.current,
