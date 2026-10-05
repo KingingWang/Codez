@@ -19,18 +19,18 @@ import {
   turnMode,
   type ResolveAttachments,
 } from "./command-input.js";
-import { preemptByInterrupt, turnPermissionIntent } from "./control-common.js";
+import {
+  assertWritableThreadState,
+  preemptByInterrupt,
+  turnPermissionIntent,
+  WriterConflictError,
+} from "./control-common.js";
 import { array, object, string, unsupported } from "./json.js";
 import { projectThread } from "./projection.js";
 import { createNativeSession } from "./command-create.js";
 import { formatRewindNotice, type RewindNoticeStore } from "./rewind-notice.js";
-
-/** writer-conflict 只读会话上的既有会话命令拒绝；admit 映射为 guard.codex.writerConflict。 */
-export class WriterConflictError extends Error {
-  constructor() {
-    super("Thread is read-only: another writer holds the session lock");
-  }
-}
+import { createSelectionSideSession } from "./selection-side-session-command.js";
+import { applySelectionSideChatBoundary } from "./selection-side-chat.js";
 
 export interface CommandContext {
   rpc: CodexRpcPort;
@@ -131,11 +131,7 @@ export class CommandRouter {
     if (command.type === "createSession") return createNativeSession(command, this.context);
     const sessionId = string(command.sessionId, "sessionId");
     const state = await store.ensure(sessionId);
-    // writer-conflict 只读：另一进程持有该线程写锁。deny-by-default——除 forkAssistant
-    // （thread/fork 读源线程 rollout、不取源写锁，是只读会话唯一的逃生通道）外，
-    // 既有会话命令一律在此拒绝；不做逐命令枚举，未来的写命令也自动被覆盖。
-    if (state.readOnly === "writer-conflict" && command.type !== "forkAssistant")
-      throw new WriterConflictError();
+    assertWritableThreadState(state, command.type);
     const native = { threadId: sessionId };
     // config.toml 生效值读取上下文；权限覆盖仅在档位迁移时下发（specs/codex-permission-modes.md）。
     const controlContext = { rpc, cwd: store.cwd };
@@ -171,7 +167,8 @@ export class CommandRouter {
         // 撤销通知随下一条用户文本进入 Codex 事实；peek 不消费，
         // native 请求失败时通知保留，下一次发送重试。
         const rewindNotice = this.context.rewindNotices?.peek(sessionId);
-        const text = rewindNotice ? `${formatRewindNotice(rewindNotice)}\n\n${p.text}` : p.text;
+        const rawText = rewindNotice ? `${formatRewindNotice(rewindNotice)}\n\n${p.text}` : p.text;
+        const text = applySelectionSideChatBoundary(state.sideChat, state.thread, rawText);
         const input = await nativeInput(text, p.attachments, sessionId, attachments);
         // busy 默认入队：排队消息立即可见、可编辑/删除；steer 只保留给显式 guide（specs/codex-desktop-adapter.md）。
         const delivery = p.requestedDelivery ?? (running ? "queue" : "startNow");
@@ -350,6 +347,8 @@ export class CommandRouter {
         await store.reloadAfterHistoryChange(string(result.id));
         return { type: "forkAssistant", sessionId: string(result.id) };
       }
+      case "createSelectionSideSession":
+        return createSelectionSideSession(command, this.context);
       case "editUserQuery":
       case "retryTurn": {
         const p =

@@ -3,6 +3,7 @@ import type { CodexRpcPort } from "./contract.js";
 import type { ThreadStateStore } from "./thread-state.js";
 import { decorateNativeThread, selectionOverrides, turnMode } from "./command-input.js";
 import { turnPermissionIntent } from "./control-common.js";
+import { isSelectionSideChatThread } from "./selection-side-chat.js";
 import { object, string, unsupported } from "./json.js";
 import { projectLegacySnapshot } from "./projection.js";
 import { readControlModelSettings } from "./control-presentation.js";
@@ -28,11 +29,14 @@ export async function handleLegacySession(
   };
   if (method === "session/list") {
     return {
-      sessions: (await store.list()).map((thread) => {
-        const session = projectLegacySnapshot(thread, store.cwd).session;
-        session.workspace = workspace;
-        return session;
-      }),
+      // 辅助对话 child 与任务列表同一隐藏规则（spec: codex-selection-side-chat）。
+      sessions: (await store.list())
+        .filter((thread) => !isSelectionSideChatThread(thread))
+        .map((thread) => {
+          const session = projectLegacySnapshot(thread, store.cwd).session;
+          session.workspace = workspace;
+          return session;
+        }),
     };
   }
   let sessionId: string;

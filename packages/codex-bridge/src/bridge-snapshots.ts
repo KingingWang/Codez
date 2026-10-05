@@ -140,6 +140,8 @@ export class BridgeSnapshots {
         state.apiRetry && state.apiRetry.turnId === object(array(state.thread.turns).at(-1)).id
           ? state.apiRetry.status
           : null,
+      // 辅助对话 child：fork 继承的父历史只进模型上下文，不进 UI 投影。
+      ...(state.sideChat ? { hiddenTurnIds: state.sideChat.inheritedTurnIds } : {}),
     });
     // Batch A/B 的稀疏事实边界：只有原生明确给到的非负安全整数才是观测值。
     // 旧 dense usage 字段保持缺省（UI 展示为不可用），不能把缺席/坏值归零。

@@ -14,6 +14,7 @@ import {
 } from "@codez/shared/codez-protocol-v4";
 import { codexThreadSchema, isCodexKnownItem, type CodexThread } from "./codex-types.js";
 import { projectRows } from "./projection-rows.js";
+import { isSelectionSideChatThread } from "./selection-side-chat.js";
 import { projectQueue, type QueueAdmissionFacts } from "./projection-queue.js";
 
 export { projectRows, projectInputText } from "./projection-rows.js";
@@ -38,6 +39,8 @@ export interface ProjectThreadOptions {
   usage?: SessionUsageState;
   availability?: Partial<SessionActionAvailability>;
   apiRetry?: ApiRetryState | null;
+  /** 辅助对话 child 的继承 turn id 集合：投影跳过（spec: codex-selection-side-chat）。 */
+  hiddenTurnIds?: ReadonlySet<string>;
 }
 
 export interface SessionsIndexOptions {
@@ -143,7 +146,7 @@ export function projectThread(
   const interactions = pendingInteractionSchema
     .array()
     .parse(options.interactions ?? options.pendingInteractions ?? []);
-  const rows = projectRows(source, interactions);
+  const rows = projectRows(source, interactions, options.hiddenTurnIds);
   const state = control(source, options.apiRetry);
   const waiting = source.status.type === "active" && source.status.activeFlags.length > 0;
   const unavailable = { allowed: false as const, reasonCode: "guard.codex.capabilityUnknown" };
@@ -254,9 +257,10 @@ export function projectSessionsIndex(
   options: SessionsIndexOptions,
 ): SessionsIndexSnapshot {
   const workspaceId = workspaceKey(options);
-  const sessions = canonicalNativeThreads(threads).map((thread) =>
-    projectSessionSummary(thread, workspaceId),
-  );
+  const sessions = canonicalNativeThreads(threads)
+    // 辅助对话 child 不进任务列表；身份由持久化 threadSource 判定，重启后一致。
+    .filter((thread) => !isSelectionSideChatThread(thread))
+    .map((thread) => projectSessionSummary(thread, workspaceId));
   return sessionsIndexSnapshotSchema.parse({
     protocolVersion: 1,
     workspaceId,

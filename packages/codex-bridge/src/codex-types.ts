@@ -142,6 +142,9 @@ export const codexThreadSchema = z.object({
   cwd: z.string(),
   forkedFromId: id.nullish(),
   parentThreadId: id.nullish(),
+  // 原生 ThreadSource::Feature(String) 原样回读；辅助对话 child 的持久化标记
+  // （spec: codex-selection-side-chat），thread/read 与 thread/list 均携带。
+  threadSource: z.string().nullish(),
   status: codexThreadStatusSchema,
   turns: z.array(codexTurnSchema),
   // Native token usage is additive telemetry. Unknown or malformed fields must never

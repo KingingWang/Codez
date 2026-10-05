@@ -200,3 +200,21 @@ export async function preemptByInterrupt(
     // 抢占尝试不以前置中断成败为门禁；最终一致性由紧随的 start 请求裁决。
   }
 }
+/** writer-conflict 只读会话上的既有会话命令拒绝；admit 映射为 guard.codex.writerConflict。 */
+export class WriterConflictError extends Error {
+  constructor() {
+    super("Thread is read-only: another writer holds the session lock");
+  }
+}
+
+/** fork 类逃生通道：读源 rollout、不取源写锁（spec: codex-selection-side-chat）。 */
+const FORK_ESCAPE_COMMANDS = new Set(["forkAssistant", "createSelectionSideSession"]);
+
+/** writer-conflict 只读 deny-by-default：除逃生通道外，既有会话命令一律拒绝。 */
+export function assertWritableThreadState(
+  state: { readOnly?: string | null },
+  commandType: string,
+): void {
+  if (state.readOnly === "writer-conflict" && !FORK_ESCAPE_COMMANDS.has(commandType))
+    throw new WriterConflictError();
+}

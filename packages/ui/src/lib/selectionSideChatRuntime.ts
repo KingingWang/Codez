@@ -16,6 +16,21 @@ export function buildSelectionSideChatKey(workspaceKey: string, parentSessionId:
 }
 
 /**
+ * 复用既有 child 前的存活探测（session/read）在不同运行时下的「不存在」错误签名不同：
+ * legacy codez-cli 抛 sessionNotFound；codex-bridge 抛 DeletedThreadError
+ * （"Thread was deleted; refresh the session list"）或原生 thread-not-found 错误。
+ * 三种签名统一视为「child 已消失，需要重建」；其余错误照常上抛。
+ */
+export function isSelectionSideChatMissingError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("sessionNotFound") ||
+    message.includes("Thread was deleted") ||
+    /thread.*not found/i.test(message)
+  );
+}
+
+/**
  * 同一个用户手势在 command pending 期间只创建一次；完成后立即释放 parent scope，
  * 让固定入口的下一次点击可以创建新的 child，而不是退化回旧的单例绑定。
  */
