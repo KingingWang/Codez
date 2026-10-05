@@ -244,10 +244,15 @@ function itemRow(
 export function projectRows(
   thread: CodexThread,
   interactions: readonly PendingInteraction[] = [],
+  /** 辅助对话 child 的继承 turn：整段跳过，不进 rows（spec: codex-selection-side-chat）。 */
+  hiddenTurnIds?: ReadonlySet<string>,
 ): ConversationRow[] {
   const rows: ConversationRow[] = [];
   const turnIds = new Set<string>();
-  for (const turn of thread.turns) {
+  const turns = hiddenTurnIds?.size
+    ? thread.turns.filter((turn) => !hiddenTurnIds.has(turn.id))
+    : thread.turns;
+  for (const turn of turns) {
     if (turn.itemsView !== "full")
       throw new Error("Codex conversation projection requires full turn items");
     if (turnIds.has(turn.id)) throw new Error(`Duplicate Codex turn ID: ${turn.id}`);

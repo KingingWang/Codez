@@ -150,7 +150,7 @@ test("read-only snapshot keeps fork, blocks write availability and suppresses ed
   assert.deepEqual(assistant?.actions, { canFork: true });
 });
 
-test("deny-by-default: every existing-session command except forkAssistant is rejected", async (t) => {
+test("deny-by-default: every existing-session command except the fork escape hatches is rejected", async (t) => {
   const h = await conflictedSetup(t);
   // 订阅等价物：客户端据此拿到 CAS 水位与行身份。
   await h.store.ensure(sessionId);
@@ -187,6 +187,7 @@ test("deny-by-default: every existing-session command except forkAssistant is re
   }
   assert.equal(h.rpc.calls.length, callsAfterLoad, "no write command may reach native RPC");
   // fork 豁免：只读源线程（fork 读 rollout、不取源写锁），新线程正常加载。
+  // createSelectionSideSession 同属 fork 逃生通道，豁免路径见 selection-side-chat.test.ts。
   const fork = await h.execute(
     h.command(
       "forkAssistant",

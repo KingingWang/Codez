@@ -7,6 +7,10 @@ import { mergeNativeTurn } from "./merge-turn.js";
 import { canonicalNativeThreads } from "./projection.js";
 import { CodexRpcError } from "./rpc-errors.js";
 import { applyNativeRetry, type NativeRetryState } from "./native-retry-status.js";
+import {
+  resolveSelectionSideChatBoundary,
+  type SelectionSideChatBoundary,
+} from "./selection-side-chat.js";
 import { upsertTurnPlanUpdate } from "./turn-plan-update.js";
 
 export class DeletedThreadError extends Error {
@@ -33,6 +37,8 @@ export interface ThreadProjectionState {
   apiRetry: NativeRetryState;
   /** writer-conflict：另一进程持有该线程写锁，投影为只读降级；恢复需 invalidate 后重新 load。 */
   readOnly?: "writer-conflict";
+  /** 辅助对话 child 的继承裁剪边界（spec: codex-selection-side-chat）；load 时按父线程求交重建。 */
+  sideChat?: SelectionSideChatBoundary;
 }
 
 /** A disposable projection cache. All durable facts and queue admission belong to Codex. */
@@ -164,7 +170,10 @@ export class ThreadStateStore {
       merged.set(key, old ? mergeNativeTurn(object(old), object(turn)) : turn);
     }
     thread.turns = [...merged.values()];
+
     const state = this.put(thread);
+    // 辅助对话 child 重建继承裁剪边界；父读取失败 fail-open 不裁剪（spec: codex-selection-side-chat）。
+    state.sideChat = await resolveSelectionSideChatBoundary(this.rpc, thread);
     if (readOnly) state.readOnly = readOnly;
     this.loaded.add(id);
     // 原生 queue/list 不属于已验证的免锁读集合；只读降级跳过队列读取（队列变更命令
