@@ -281,6 +281,7 @@ import {
   clearSelectionSideChat,
   createSelectionSideChat,
   isSelectionSideChatBlocked,
+  isSelectionSideChatMissingError,
   registerSelectionSideChatOpener,
   setSelectionSideChatBlocked,
   subscribeSelectionSideChatRuntime,
@@ -2005,7 +2006,9 @@ export function SessionPane({
               messageLimit: 1,
             });
           } catch (error) {
-            if (!String(error).includes("sessionNotFound")) throw error;
+            // bridge 运行时下「child 不存在」的签名与 legacy sessionNotFound 不同，
+            // 三种签名统一由谓词判定；其余错误照常上抛。
+            if (!isSelectionSideChatMissingError(error)) throw error;
             // 多开后 tab id 包含 child，旧单例实现依靠新 child 覆盖同一个父 tab
             // 来移除失效项已不成立。这里显式携带 replacesChildSessionId，让宿主原子删旧开新。
             replacesChildSessionId = targetChildSessionId;
@@ -2039,7 +2042,8 @@ export function SessionPane({
             (ack.status !== "accepted" && ack.status !== "duplicate") ||
             ack.result?.type !== "createSelectionSideSession"
           ) {
-            throw new Error(ack.reasonCode ?? "createSelectionSideSession 被拒绝");
+            // ACK 的 message 携带原生可操作错误详情（如 thread/fork 失败原因），优先透出。
+            throw new Error(ack.message ?? ack.reasonCode ?? "createSelectionSideSession 被拒绝");
           }
           return ack.result.sessionId;
         });
@@ -2064,6 +2068,8 @@ export function SessionPane({
           parentSessionId: sessionId,
           workspaceKey,
         });
+        // 生产渲染进程日志不可见（"点了没反应"），必须走既有 toast 让用户看到失败原因。
+        toast(`创建辅助对话失败：${error instanceof Error ? error.message : String(error)}`);
       }
     },
     [
@@ -2112,7 +2118,8 @@ export function SessionPane({
           (ack.status !== "accepted" && ack.status !== "duplicate") ||
           ack.result?.type !== "createSelectionSideSession"
         ) {
-          throw new Error(ack.reasonCode ?? "createSelectionSideSession 被拒绝");
+          // ACK 的 message 携带原生可操作错误详情（如 thread/fork 失败原因），优先透出。
+          throw new Error(ack.message ?? ack.reasonCode ?? "createSelectionSideSession 被拒绝");
         }
         return ack.result.sessionId;
       });

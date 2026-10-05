@@ -24,8 +24,11 @@ import { array, object, string, unsupported } from "./json.js";
 import { projectThread } from "./projection.js";
 import { createNativeSession } from "./command-create.js";
 import { formatRewindNotice, type RewindNoticeStore } from "./rewind-notice.js";
+import { createSelectionSideSession } from "./selection-side-session-command.js";
+import { applySelectionSideChatBoundary } from "./selection-side-chat.js";
 
 /** writer-conflict 只读会话上的既有会话命令拒绝；admit 映射为 guard.codex.writerConflict。 */
+const FORK_ESCAPE_COMMANDS = new Set(["forkAssistant", "createSelectionSideSession"]);
 export class WriterConflictError extends Error {
   constructor() {
     super("Thread is read-only: another writer holds the session lock");
@@ -131,10 +134,8 @@ export class CommandRouter {
     if (command.type === "createSession") return createNativeSession(command, this.context);
     const sessionId = string(command.sessionId, "sessionId");
     const state = await store.ensure(sessionId);
-    // writer-conflict 只读：另一进程持有该线程写锁。deny-by-default——除 forkAssistant
-    // （thread/fork 读源线程 rollout、不取源写锁，是只读会话唯一的逃生通道）外，
-    // 既有会话命令一律在此拒绝；不做逐命令枚举，未来的写命令也自动被覆盖。
-    if (state.readOnly === "writer-conflict" && command.type !== "forkAssistant")
+    // writer-conflict 只读：deny-by-default，仅 fork 类逃生通道（读源 rollout、不取源写锁）豁免。
+    if (state.readOnly === "writer-conflict" && !FORK_ESCAPE_COMMANDS.has(command.type))
       throw new WriterConflictError();
     const native = { threadId: sessionId };
     // config.toml 生效值读取上下文；权限覆盖仅在档位迁移时下发（specs/codex-permission-modes.md）。
@@ -171,7 +172,8 @@ export class CommandRouter {
         // 撤销通知随下一条用户文本进入 Codex 事实；peek 不消费，
         // native 请求失败时通知保留，下一次发送重试。
         const rewindNotice = this.context.rewindNotices?.peek(sessionId);
-        const text = rewindNotice ? `${formatRewindNotice(rewindNotice)}\n\n${p.text}` : p.text;
+        const rawText = rewindNotice ? `${formatRewindNotice(rewindNotice)}\n\n${p.text}` : p.text;
+        const text = applySelectionSideChatBoundary(state.sideChat, state.thread, rawText);
         const input = await nativeInput(text, p.attachments, sessionId, attachments);
         const delivery = p.requestedDelivery ?? (running ? "guide" : "startNow");
         if (delivery === "queue" || (delivery === "guide" && running))
@@ -347,6 +349,8 @@ export class CommandRouter {
         await store.reloadAfterHistoryChange(string(result.id));
         return { type: "forkAssistant", sessionId: string(result.id) };
       }
+      case "createSelectionSideSession": // 辅助对话 child（spec: codex-selection-side-chat）
+        return createSelectionSideSession(command, this.context);
       case "editUserQuery":
       case "retryTurn": {
         const p =
