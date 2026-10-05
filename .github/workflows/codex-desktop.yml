@@ -208,9 +208,13 @@ jobs:
 
   release:
     needs: build
+    # 自动发布只认 main 分支 push。侧分支/tag push 曾经也会发布 prerelease，虽然不会
+    # 被标成 Latest，但会占据 release 列表最新一条，手动下载安装包时极易装错构建。
+    # 需要非 main 的安装包时用 workflow_dispatch(publish=true) 显式触发。
     if: >-
       github.repository == 'KingingWang/Codez' &&
-      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish))
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: codex-release

@@ -38,15 +38,31 @@ CI uses Node 24.14.0 and pnpm 10.33.2, frozen dependency installation, typecheck
 lint, architecture and adapter tests. Build six native targets with fail-fast
 disabled to collect independent results, but never mask an individual failure.
 Smoke-test Codex handshake and package resources. Upload installers and SHA256
-manifests. Every branch/tag push builds and automatically publishes a public
-release after all six targets pass; pull requests never publish. Build jobs need
-read-only repository permissions.
+manifests. Every branch and tag push builds and runs the full gate, but only a
+main-branch push automatically publishes a public release after all six targets
+pass; side-branch and tag pushes stop at verified build artifacts, and pull
+requests never publish. Build jobs need read-only repository permissions.
 
 The Linux regression gate also explicitly runs the UI tests for workspace-scoped automation model reads, valid default-model submission, and clean-repository Git tools. These tests live outside `settings/codex/` and must not be lost by relying on that directory glob alone. Test-path coverage is asserted by the workflow regression test; native six-target build, smoke and release gates stay unchanged.
 
 Each native build calls the root `pnpm typecheck` once; that script already includes the Codex bridge typecheck. Do not repeat the bridge typecheck as a separate workflow command. A regression asserts both the root-script coverage and the absence of the redundant command, without dropping any per-platform check.
 
 ## Per-push release publication
+
+Automatic publication is main-only. A side-branch or tag push used to publish a
+prerelease as well: it never took the Latest slot, but it did take the newest row
+of the release list, and manually downloading that row silently installed a build
+without main's fixes. Because every build reports the same `package.json`
+version, the desktop auto-updater can never hand over a newer build either, so
+the release list is the only real install path and its top row must always be a
+main build.
+
+Two layers enforce that and both are regression-tested. The workflow's
+`release.if` admits a `push` only for `refs/heads/main`, and `releaseIdentity`
+throws for any non-main `push`, so a later workflow edit cannot quietly reopen
+the path. Non-main installers stay available through an explicit
+`workflow_dispatch` with `publish=true`; those keep their prerelease marking and
+never become Latest.
 
 ## Product identity
 
@@ -78,18 +94,22 @@ with corresponding regenerated checksum manifests, avoiding GitHub name rewritin
 
 Push runs do not share a branch concurrency group: a later push must not replace
 an earlier pending build. Only superseded PR checks may be cancelled. Main pushes
-publish stable releases; other refs publish prereleases. Only a build that still
-matches the current main head is eligible to become Latest, preventing an older
-slow build from deliberately replacing a newer main result. Manual dispatch keeps
-an explicit publish switch, enabled by default. The workflow token creates release
-tags without a separate user-token push loop. GitHub's explicit workflow-skip commit
-markers and platform/account execution limits remain external trigger constraints.
+publish stable releases; every other ref publishes only through manual dispatch
+and stays a prerelease. Only a build that still matches the current main head is
+eligible to become Latest, preventing an older slow build from deliberately
+replacing a newer main result. Manual dispatch keeps an explicit publish switch,
+enabled by default. The workflow token creates release tags without a separate
+user-token push loop. GitHub's explicit workflow-skip commit markers and
+platform/account execution limits remain external trigger constraints.
 
-Acceptance includes trigger/concurrency/permission tests; six-target completeness,
-checksum corruption and duplicate/path rejection; draft upload failure; same-run
-rerun; published-release immutability; and one actual main-push release with all
-six targets and public download assets. Existing validated source/installer records
-remain historical evidence, not proof of this new publishing path.
+Acceptance includes trigger/concurrency/permission tests, the main-only automatic
+publication guard asserted at both the workflow condition and `releaseIdentity`
+layers, and a dispatched non-main run still publishing as a non-Latest
+prerelease; six-target completeness, checksum corruption and duplicate/path
+rejection; draft upload failure; same-run rerun; published-release immutability;
+and one actual main-push release with all six targets and public download assets.
+Existing validated source/installer records remain historical evidence, not proof
+of this new publishing path.
 
 macOS: DMG; Windows: NSIS; Linux: AppImage/DEB initially. A platform is accepted
 only after its actual job succeeds. Unsigned artifacts are labelled as such;
@@ -176,8 +196,9 @@ participates in updates. Checksum manifests and release upload validation cover
 the exact asset sets above; anything else fails closed.
 
 The release job still creates a draft, uploads and verifies the full set, then
-publishes: current-main stable builds become Latest, other refs stay
-non-Latest prereleases that `allowPrerelease=false` never offers. Runtime
+publishes: current-main stable builds become Latest, and the only other refs that
+ever reach publication are manually dispatched ones, which stay non-Latest
+prereleases that `allowPrerelease=false` never offers. Runtime
 behavior keeps the shared desktop policy: `autoDownload` remains `false`, the
 user's auto-download preference drives any background download, and no
 unconditional background install happens. Preview/production flavors retain

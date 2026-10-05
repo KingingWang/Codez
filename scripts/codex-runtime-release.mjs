@@ -18,6 +18,12 @@ export function releaseIdentity(env) {
     throw new Error("Release requires exact commit");
   if (!/^[1-9][0-9]*$/.test(env.GITHUB_RUN_ID ?? "")) throw new Error("Invalid workflow run ID");
   if (!/^refs\/(heads|tags)\/.+/.test(env.GITHUB_REF ?? "")) throw new Error("Invalid release ref");
+  // 自动发布只认 main 分支 push。侧分支/tag push 会在 release 列表顶部压出 prerelease，
+  // 虽然不会被标成 Latest，但手动下载安装包时极易装错构建。非 main 的发布必须由
+  // workflow_dispatch(publish=true) 显式触发。这里与 workflow 的 release.if 是同一约束，
+  // 双层 fail-closed，避免只改一处后又被另一次 workflow 编辑悄悄放开。
+  if (env.GITHUB_EVENT_NAME === "push" && env.GITHUB_REF !== "refs/heads/main")
+    throw new Error("Automatic push releases require refs/heads/main");
   return {
     repository: env.GITHUB_REPOSITORY,
     sha: env.GITHUB_SHA,
