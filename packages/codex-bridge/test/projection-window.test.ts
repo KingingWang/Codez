@@ -158,3 +158,72 @@ test("published snapshot keeps whole-projection firstRowId and totalCount", asyn
   assert.ok(published.rows.window[0]!.rowId > published.rows.firstRowId!);
   assert.equal(published.rows.window[0]?.kind, "turnHeader");
 });
+
+function rowBytesOf(row: ConversationRow): number {
+  return Buffer.byteLength(JSON.stringify(row), "utf8");
+}
+
+function assertAscendingRowIds(window: readonly ConversationRow[]) {
+  for (let index = 1; index < window.length; index++)
+    assert.ok(
+      window[index]!.rowId > window[index - 1]!.rowId,
+      `窗口 rowId 非升序：${window[index - 1]!.rowId} -> ${window[index]!.rowId}`,
+    );
+}
+
+// 回归：工具行终态 output 单条可达 toolOutputFinalHead+Tail=64KiB，基础尾窗 60 行最坏就能
+// 吃掉 ~3.75MiB。叙事行若与工具行共用同一预算，补齐额度会被饿死到 0，表现退回
+// 「整轮只剩工具行，用户消息/思考/正文全部消失」。叙事行必须有独立预算。
+test("narrative rows survive when tool bytes exhaust the whole budget", () => {
+  const tools = limits.snapshotTailWindowRows * 3;
+  const rows = projectedRows(turnFixture("a", tools));
+  const oneRow = rowBytesOf(rows[rows.length - 1]!);
+  // 预算刚好只够基础尾窗：工具行完全没有向前补齐的额度。
+  const window = projectConversationTailWindow(rows, {
+    maxBytes: limits.snapshotTailWindowRows * oneRow,
+  });
+
+  for (const kind of ["turnHeader", "userInput", "reasoning", "assistantText"])
+    assert.equal(kindsOf(window).has(kind), true, `${kind} 被工具行挤掉`);
+  assert.equal(window[0]?.kind, "turnHeader");
+  assert.equal(window[0]?.rowId, 0);
+  assert.equal(window.length, limits.snapshotTailWindowRows + narrativeRowsPerTurn);
+  assertAscendingRowIds(window);
+  // 叙事行不允许重复：turnHeader 既被 head 收到，也是 leading header 兜底的目标。
+  assert.equal(new Set(window.map((row) => row.rowId)).size, window.length);
+});
+
+test("mixed budget keeps a contiguous tool run and still collects earlier narrative rows", () => {
+  const tools = limits.snapshotTailWindowRows * 3;
+  const rows = projectedRows(turnFixture("a", tools));
+  const oneRow = rowBytesOf(rows[rows.length - 1]!);
+  const extraToolRows = 30;
+  const window = projectConversationTailWindow(rows, {
+    maxBytes: (limits.snapshotTailWindowRows + extraToolRows) * oneRow + Math.floor(oneRow / 2),
+  });
+
+  const base = rows.length - limits.snapshotTailWindowRows;
+  assert.equal(window[0]?.kind, "turnHeader");
+  assert.equal(window.length, narrativeRowsPerTurn + limits.snapshotTailWindowRows + extraToolRows);
+  // 头部是整轮叙事，尾部是连续工具段；两段之间允许 rowId 空洞（apply.ts 对未加载 rowId
+  // 的 upsert 是 no-op，row.removed 按 rowId 过滤，渲染单元按 turnId 分组）。
+  assert.equal(window[narrativeRowsPerTurn - 1]?.kind, "assistantText");
+  assert.equal(window[narrativeRowsPerTurn]?.rowId, base - extraToolRows);
+  assertAscendingRowIds(window);
+  assert.equal(new Set(window.map((row) => row.rowId)).size, window.length);
+});
+
+test("the narrative budget is itself bounded", () => {
+  const tools = limits.snapshotTailWindowRows * 3;
+  const rows = projectedRows(turnFixture("a", tools));
+  const oneRow = rowBytesOf(rows[rows.length - 1]!);
+  const window = projectConversationTailWindow(rows, {
+    maxBytes: limits.snapshotTailWindowRows * oneRow,
+    narrativeMaxBytes: 0,
+  });
+
+  // 叙事预算为 0 时退回「基础尾窗 + 强制保留的 leading turnHeader」，不会无界扩展。
+  assert.equal(window.length, limits.snapshotTailWindowRows + 1);
+  assert.equal(window[0]?.kind, "turnHeader");
+  assert.equal(window[1]?.rowId, rows.length - limits.snapshotTailWindowRows);
+});

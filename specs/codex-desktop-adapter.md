@@ -215,12 +215,26 @@ Acceptance for follow-up delivery:
   every projection change and tool rows can reach the 64 KiB preview cap. It
   never crosses into an older turn; earlier turns remain the client's
   `rows/range` responsibility.
-- The window keeps `rowId` contiguous because `loadOlder` only pages backwards
-  from the window head and a hole in the middle can never be refilled. The single
-  exception is the oldest covered turn's `turnHeader`, which is kept even when the
-  caps truncate that turn's middle: a window whose leading turn has no header makes
-  the client re-run incomplete-leading-turn hydration on every frame, turning
-  full-snapshot publishing into a paging storm.
+- Extension has two budgets, not one. Tool rows extend the contiguous run only
+  while the total byte budget lasts; `turnHeader` / `userInput` / `reasoning` /
+  `assistantText` rows draw on a reserved narrative budget (half of the total) and
+  keep being collected after the tool budget is spent. The base window is
+  mandatory and can itself reach ~3.75 MiB when 60 tool rows hit the 64 KiB
+  preview cap, so a single shared budget starves the narrative to zero and
+  reproduces the original defect: the whole turn collapses to tool rows and the
+  user's own input plus every intermediate answer disappear. Narrative rows are
+  what the user reads and are small in practice - one real 217-row turn carried
+  430 KiB of `commandExecution` against 20 KiB of reasoning plus messages.
+- The window is therefore `rowId`-ascending but not always contiguous: once the
+  tool budget is spent, the retained narrative rows sit ahead of a gap in the tool
+  sequence. Gaps are safe on the client (`apply.ts` treats an upsert for an
+  unloaded `rowId` as a no-op, `row.removed` filters by `rowId`, and render units
+  group by `turnId`), and `loadOlder` still pages backwards from
+  `window[0].rowId`; only the gap itself cannot be refilled while the turn
+  streams. The oldest covered turn's `turnHeader` is always retained even when the
+  caps truncate that turn's middle: a window whose leading turn has no header
+  makes the client re-run incomplete-leading-turn hydration on every frame,
+  turning full-snapshot publishing into a paging storm.
 - `rows.firstRowId` and `rows.totalCount` keep whole-projection semantics; only
   `rows.window` is trimmed. The client decides "already at the top" from
   `window[0].rowId === firstRowId`, so rewriting `firstRowId` to follow the trim
@@ -238,6 +252,8 @@ Acceptance for follow-up delivery:
 - Known limitation, unchanged: while a turn streams, a client that paged back into
   older turns loses those rows on the next full snapshot and must page again.
   Removing that needs a real delta log in the Codex publisher.
+  The same holds for a tool-row gap left by an exhausted byte budget: it is only
+  refilled once the turn goes idle and the client pages again.
 
 ## Desktop surfaces
 
