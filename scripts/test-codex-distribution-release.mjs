@@ -133,18 +133,33 @@ function fakeGithub({
   return { state, run };
 }
 
-test("release identity is exact-commit/run-scoped and rejects PRs and foreign repositories", () => {
+test("release identity rejects PRs, foreign repositories and non-main pushes", () => {
   assert.equal(releaseIdentity(env).tag, `codez-build-12345-${sha.slice(0, 12)}`);
-  assert.equal(releaseIdentity({ ...env, GITHUB_REF: "refs/heads/feature" }).prerelease, true);
+  assert.equal(
+    releaseIdentity({ ...env, GITHUB_EVENT_NAME: "workflow_dispatch" }).prerelease,
+    false,
+  );
+  // 非 main 只能由手动 dispatch 发布，且必须继续标成 prerelease。
+  assert.equal(
+    releaseIdentity({
+      ...env,
+      GITHUB_REF: "refs/heads/feature",
+      GITHUB_EVENT_NAME: "workflow_dispatch",
+    }).prerelease,
+    true,
+  );
   for (const override of [
     { GITHUB_EVENT_NAME: "pull_request" },
     { GITHUB_REPOSITORY: "zai-org/ZCode" },
     { GITHUB_SHA: "main" },
     { GITHUB_RUN_ID: "../bad" },
+    // 侧分支/tag 的 push 不再自动发布：它们会占据 release 列表最新一条，手动下载
+    // 安装包时极易装错构建（曾因此误判会话内容丢失的修复没有生效）。
+    { GITHUB_REF: "refs/heads/feature" },
+    { GITHUB_REF: "refs/tags/codez-build-1-aaaaaaaaaaaa" },
   ])
     assert.throws(() => releaseIdentity({ ...env, ...override }));
 });
-
 test("all six targets yield their exact installer plus updater asset sets", async (t) => {
   const assets = await collectReleaseAssets(await fixture(t));
   // mac: dmg+zip+2 blockmap+yml(5) ×2 arch；win: exe+blockmap+yml(3) ×2；linux: AppImage+deb+yml(3) ×2（AppImage 无 blockmap）。
@@ -269,19 +284,22 @@ test("transient upload resets are retried and still fully verified", async (t) =
   assert.equal(github.state.uploadAttempts, 24);
 });
 
-test("older main and feature results do not become Latest", async (t) => {
-  for (const ref of ["refs/heads/main", "refs/heads/feature"]) {
+test("older main and dispatched feature results do not become Latest", async (t) => {
+  // 侧分支 push 已在 releaseIdentity 层被拒绝，这里用 dispatch 复现非 main 的发布路径。
+  for (const [ref, eventName] of [
+    ["refs/heads/main", "push"],
+    ["refs/heads/feature", "workflow_dispatch"],
+  ]) {
     const github = fakeGithub({ mainSha: "b".repeat(40) });
     await publishCodexRelease({
       directory: await fixture(t),
-      env: { ...env, GITHUB_REF: ref },
+      env: { ...env, GITHUB_REF: ref, GITHUB_EVENT_NAME: eventName },
       run: github.run,
     });
     assert.ok(github.state.calls.at(-1).includes("--latest=false"));
     if (ref.endsWith("feature")) assert.ok(github.state.calls.at(-1).includes("--prerelease=true"));
   }
 });
-
 test("foreign target or published incomplete release is never overwritten", async (t) => {
   for (const existing of [
     { draft: true, target_commitish: "wrong", assets: [] },

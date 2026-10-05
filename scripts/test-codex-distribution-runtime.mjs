@@ -74,6 +74,11 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   );
   assert.equal(release.needs, "build");
   assert.match(release.if, /github.event_name == 'push'/);
+  // 侧分支/tag push 不再自动发布：release 列表顶部必须始终是 main 的构建，否则手动
+  // 下载时极易装到侧分支 prerelease（曾因此装错构建，误判内容丢失修复没有生效）。
+  // 手动 dispatch 仍是非 main 出包的唯一入口，所以这里同时锁住两条分支条件。
+  assert.match(release.if, /github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/);
+  assert.match(release.if, /github\.event_name == 'workflow_dispatch' && inputs\.publish/);
   assert.doesNotMatch(release.if, /refs\/tags/);
   assert.equal(release.permissions.contents, "write");
   assert.equal(workflow.on.workflow_dispatch.inputs.publish.default, true);
