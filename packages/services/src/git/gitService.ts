@@ -228,6 +228,22 @@ export function createGitService(options?: {
       return await repo.createWorktree(params);
     },
 
+    async previewWorktreeRemoval(params) {
+      return await repo.previewWorktreeRemoval(params);
+    },
+
+    async removeWorktree(params) {
+      return await repo.removeWorktree(params);
+    },
+
+    async previewBranchDeletion(params) {
+      return await repo.previewBranchDeletion(params);
+    },
+
+    async deleteBranch(params) {
+      return await repo.deleteBranch(params);
+    },
+
     async getCommitGraph(params) {
       const snapshot = await repo.getCommitGraph(
         params.workspacePath,

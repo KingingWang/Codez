@@ -16,8 +16,17 @@ import { resolveLogoutProviderFamilyDomain } from "@/lib/providerFamilyDomainSet
 import { isRendererReloadNavigation } from "@/lib/rendererNavigation.js";
 import { parseWslUncWorkspacePath } from "@/lib/wslUncWorkspace.js";
 import { logger } from "@/logger.js";
+import {
+  normalizeWorkspacePathForComparison,
+  resolveWorkspaceSourceScope,
+} from "@/lib/projectGrouping.js";
 import { openFolderFromWorkspaceEntry } from "@/root/openWorkspaceFolderEntry.js";
+import {
+  admitRootWorkspaceSelection,
+  getRootWorkspaceSelectionRejection,
+} from "@/root/rootWorkspaceSelectionAdmission.js";
 import { useConversationWorkspaceActions } from "@/root/useConversationWorkspaceActions.js";
+import { isWorktreeRemovalInFlight } from "@/store/worktreeRemovalGuardStore.js";
 import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { isWorkspaceReadOnly, type TabStore, type TabStoreState } from "@/store/tabStore.js";
 import type { RootProps } from "@/root/types.js";
@@ -202,6 +211,24 @@ export function useRootWorkspaceActions({
         return;
       }
 
+      // W8 删除窗口拦截（审查 ④）：落点或其父工作树正在删除时拒绝新任务，
+      // 避免把草稿/任务调度进将被移除的目录。scope 解析失败容错放行，与发现
+      // 打开路径同一口径。
+      const newTaskScope = resolveWorkspaceSourceScope({
+        workspacePath: newTaskTarget.workspacePath,
+        workspaceIdentity: newTaskTarget.workspaceIdentity,
+      });
+      if (
+        newTaskScope &&
+        isWorktreeRemovalInFlight(
+          newTaskScope,
+          normalizeWorkspacePathForComparison(newTaskTarget.workspacePath),
+        )
+      ) {
+        setWorkspaceActionError(intl.formatMessage({ id: "worktree.remove.inFlight" }));
+        return;
+      }
+
       // 仅禁用按钮无法覆盖桌面菜单和快捷键；启动期失效 workspace
       // 必须在动作边界再次校验，避免历史只读页被隐式切回可发送草稿态。
       if (
@@ -364,6 +391,16 @@ export function useRootWorkspaceActions({
     async (path: string, options?: { throwOnError?: boolean }) => {
       logger.info("[Root] handleSelectProject called with path:", path);
       try {
+        // W8 入口 guard 必须先于 WSL 确认等交互执行；交互完成后 admission
+        // 还会在平台 IPC 前后复检，覆盖删除窗口晚到的情况。
+        const entryRejection = getRootWorkspaceSelectionRejection(
+          path,
+          intl.formatMessage({ id: "worktree.remove.inFlight" }),
+        );
+        if (entryRejection !== null) {
+          setWorkspaceActionError(entryRejection);
+          throw new Error(entryRejection);
+        }
         const wslUncWorkspace = parseWslUncWorkspacePath(path);
         if (wslUncWorkspace && onOpenRemoteConnection && !options?.throwOnError) {
           const shouldOpenWslConnection = await requestConfirmation({
@@ -390,18 +427,29 @@ export function useRootWorkspaceActions({
           }
         }
 
-        // 桌面端：检查是否已有其他窗口打开了该目录，如果是则激活该窗口对应 tab
-        const result = await platform.activateOrSetWorkspace(path);
-        if (result.activated) {
+        // W8：IPC 等待期间删除可能开始；admission helper 会在入口和 IPC 返回后
+        // 各复检一次，只有复检通过才允许本窗口 addTab/startDraft。
+        const result = await admitRootWorkspaceSelection({
+          path,
+          removalMessage: intl.formatMessage({ id: "worktree.remove.inFlight" }),
+          activateOrSetWorkspace: (targetPath) => platform.activateOrSetWorkspace(targetPath),
+          commit: (targetPath) => {
+            // 新增 tab（如果已在本窗口打开则激活它）
+            addTab(targetPath);
+            // 打开 workspace 是 workspace-only 意图，不是“继续上次会话”。
+            // 即使命中已存在 tab，也必须清掉该 workspace 的 activeTaskId 并回到单 pane 草稿。
+            startDraftInWorkspace(targetPath);
+          },
+        });
+        if (result.status === "rejected") {
+          setWorkspaceActionError(result.message);
+          throw new Error(result.message);
+        }
+        if (result.status === "activated") {
           logger.info("[Root] 目录已在其他窗口打开，已激活该窗口对应 tab，跳过重复打开");
           return;
         }
 
-        // 新增 tab（如果已在本窗口打开则激活它）
-        addTab(path);
-        // 打开 workspace 是 workspace-only 意图，不是“继续上次会话”。
-        // 即使命中已存在 tab，也必须清掉该 workspace 的 activeTaskId 并回到单 pane 草稿。
-        startDraftInWorkspace(path);
         setWorkspaceActionError(null);
 
         // 更新最近项目列表

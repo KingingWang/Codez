@@ -1,5 +1,20 @@
 import type { Locale } from "./protocol.js";
 
+export type {
+  GitWorktreeRemoveIssueCode,
+  GitWorktreeRemovePreviewRequest,
+  GitWorktreeRemovalPreview,
+  GitWorktreeRemoveRequest,
+  GitWorktreeRemoveResult,
+  GitWorktreeRemoveIssue,
+  GitBranchDeleteIssueCode,
+  GitBranchDeletePreviewRequest,
+  GitBranchDeletePreview,
+  GitDeleteBranchRequest,
+  GitBranchDeleteResult,
+  GitBranchDeleteIssue,
+} from "./gitRemoval.js";
+
 export type GitHeadRefType = "branch" | "detached";
 
 export type GitChangeKind = "modified" | "added" | "deleted" | "renamed";

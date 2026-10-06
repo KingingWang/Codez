@@ -17,8 +17,10 @@ import {
   ChevronDownIcon,
   FolderGit2Icon,
   GitBranchIcon,
+  GitForkIcon,
   LockIcon,
   RefreshCwIcon,
+  Trash2Icon,
 } from "lucide-react";
 
 /**
@@ -37,6 +39,11 @@ interface ProjectWorktreeSwitcherProps {
   allowOpenWorkspace: boolean;
   onOpenEntry: (entry: WorktreeDiscoveryEntry) => void;
   onRefresh: () => void;
+  /** 行尾删除入口（IA4）：主目录不渲染；门控统一在删除确认弹层内解释。 */
+  onRemoveEntry?: (entry: WorktreeDiscoveryEntry) => void;
+  /** 底部新建入口（IA2）：与分支菜单入口指向同一创建对话框。 */
+  onCreateWorktree?: () => void;
+  createDisabledReason?: string | null;
   className?: string;
   popoverClassName?: string;
   popoverSide?: "top" | "bottom" | "left" | "right";
@@ -49,6 +56,9 @@ export function ProjectWorktreeSwitcher({
   allowOpenWorkspace,
   onOpenEntry,
   onRefresh,
+  onRemoveEntry,
+  onCreateWorktree,
+  createDisabledReason,
   className,
   popoverClassName,
   popoverSide = "top",
@@ -199,12 +209,55 @@ export function ProjectWorktreeSwitcher({
                           </div>
                         ) : null}
                       </div>
+                      {!entry.isMain && onRemoveEntry ? (
+                        <button
+                          type="button"
+                          aria-label={intl.formatMessage({ id: "worktree.remove.action" })}
+                          title={intl.formatMessage({ id: "worktree.remove.action" })}
+                          className="mt-0.5 shrink-0 rounded p-1 text-foreground-subtle hover:bg-menu-hover hover:text-danger"
+                          onMouseDown={(event) => {
+                            // 不截断会让 cmdk 把点击当成行选择（打开工作区）。
+                            event.preventDefault();
+                            event.stopPropagation();
+                          }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setOpen(false);
+                            onRemoveEntry(entry);
+                          }}
+                        >
+                          <Trash2Icon className="size-3.5" />
+                        </button>
+                      ) : null}
                     </CommandItem>
                   );
                 })}
               </CommandGroup>
             </CommandList>
           </Command>
+          {onCreateWorktree ? (
+            <div className="border-t border-border/50 p-1">
+              <button
+                type="button"
+                disabled={Boolean(createDisabledReason)}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-ui-base text-foreground hover:bg-menu-hover disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => {
+                  setOpen(false);
+                  onCreateWorktree();
+                }}
+              >
+                <GitForkIcon className="size-3.5 shrink-0 text-foreground-subtle" />
+                <span className="min-w-0 flex-1">
+                  {intl.formatMessage({ id: "worktree.menu.new" })}
+                  {createDisabledReason ? (
+                    <span className="block text-ui-sm text-foreground-subtle">
+                      {createDisabledReason}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            </div>
+          ) : null}
           {isRefreshFailed ? (
             <button
               type="button"

@@ -1,10 +1,15 @@
 import { useCallback, useRef } from "react";
 import { toast } from "@/components/ui/toast.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
-import type { WorktreeDiscoveryEntry } from "@/lib/projectGrouping.js";
+import {
+  normalizeWorkspacePathForComparison,
+  resolveWorkspaceSourceScope,
+  type WorktreeDiscoveryEntry,
+} from "@/lib/projectGrouping.js";
+import { isWorktreeRemovalInFlight } from "@/store/worktreeRemovalGuardStore.js";
 import { logger } from "@/logger.js";
 import { resolveAnchorRemoteTarget, resolveWorktreeOpenRoute } from "@/root/worktreeOpenIntent.js";
-import type { TabStore } from "@/store/tabStore.js";
+import type { TabStore, WorkspaceTabState } from "@/store/tabStore.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
 import { executeWorktreeOpenRoute } from "@/root/worktreeOpenExecution.js";
 
@@ -49,6 +54,22 @@ export function useWorktreeOpenActions({
   const handleOpenWorktreeEntry = useCallback(
     async (request: OpenWorktreeEntryRequest) => {
       const tabs = tabStoreApi.getState().tabs;
+      // W8 删除窗口拦截：目标正在删除时拒绝激活/打开；scope 解析失败时容错放行
+      // （删除侧注册守卫时总有分组 scope，这里解析不到意味着目标不在删除中）。
+      const anchorTab = tabs.find(
+        (tab): tab is WorkspaceTabState =>
+          isWorkspaceTab(tab) &&
+          request.projectMemberKeys.includes(tab.workspaceIdentity?.trim() || tab.workspacePath),
+      );
+      const scope = anchorTab ? resolveWorkspaceSourceScope(anchorTab) : null;
+      if (
+        scope &&
+        isWorktreeRemovalInFlight(scope, normalizeWorkspacePathForComparison(request.entry.path))
+      ) {
+        const message = intl.formatMessage({ id: "worktree.remove.inFlight" });
+        toast(message);
+        throw new Error(message);
+      }
       const route = resolveWorktreeOpenRoute({
         entry: request.entry,
         tabs,

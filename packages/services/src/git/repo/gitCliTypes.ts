@@ -14,6 +14,14 @@ import type {
   GitWorktreeCreatePreviewRequest,
   GitWorktreeCreateRequest,
   GitWorktreeCreateResult,
+  GitWorktreeRemovePreviewRequest,
+  GitWorktreeRemovalPreview,
+  GitWorktreeRemoveRequest,
+  GitWorktreeRemoveResult,
+  GitBranchDeletePreviewRequest,
+  GitBranchDeletePreview,
+  GitDeleteBranchRequest,
+  GitBranchDeleteResult,
 } from "@codez/shared";
 
 export interface GitLineStat {
@@ -92,6 +100,12 @@ export interface GitCliRepo {
     params: GitWorktreeCreatePreviewRequest,
   ): Promise<GitWorktreeCreatePreview>;
   createWorktree(params: GitWorktreeCreateRequest): Promise<GitWorktreeCreateResult>;
+  previewWorktreeRemoval(
+    params: GitWorktreeRemovePreviewRequest,
+  ): Promise<GitWorktreeRemovalPreview>;
+  removeWorktree(params: GitWorktreeRemoveRequest): Promise<GitWorktreeRemoveResult>;
+  previewBranchDeletion(params: GitBranchDeletePreviewRequest): Promise<GitBranchDeletePreview>;
+  deleteBranch(params: GitDeleteBranchRequest): Promise<GitBranchDeleteResult>;
   switchBranch(workspacePath: string, targetBranchName: string): Promise<GitBranchMutationResult>;
   createBranchAndSwitch(
     workspacePath: string,
