@@ -1,24 +1,16 @@
 import { createContext, useContext, type ReactNode } from "react";
-import { FolderOpen, GitFork } from "lucide-react";
+import { GitFork } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
-import type { WorktreeDiscoveryEntry } from "@/lib/projectGrouping.js";
-import { WorktreeExistingMenuItems } from "@/WorktreeSessionMenu.js";
 
 export interface GitWorktreeMenuValue {
   workspacePath: string;
   workspaceIdentity?: string | null;
   disabledReason?: string | null;
-  entries: WorktreeDiscoveryEntry[];
-  allowOpenWorkspace: boolean;
   onCreate: () => void;
-  onOpenEntry: (entry: WorktreeDiscoveryEntry) => void;
   onRefresh: () => void;
+  /** 分支行尾删除入口（specs/git-worktree-removal.md B1）：shell 持有的删除编排。 */
+  onDeleteBranch?: (branchName: string) => void;
 }
 
 const GitWorktreeMenuContext = createContext<GitWorktreeMenuValue | null>(null);
@@ -90,30 +82,6 @@ export function GitWorktreeMenuActions({
           {menu.disabledReason ? <span className="text-ui-xs">{menu.disabledReason}</span> : null}
         </span>
       </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="lg"
-            className={buttonClass}
-            disabled={disabled}
-          >
-            <FolderOpen className="size-4 text-foreground-subtle" />
-            {intl.formatMessage({ id: "git.branchSwitcher.openWorktreeAction" })}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="max-w-80">
-          <WorktreeExistingMenuItems
-            entries={menu.entries}
-            allowOpenWorkspace={menu.allowOpenWorkspace}
-            onOpenEntry={(entry) => {
-              onBeforeAction();
-              menu.onOpenEntry(entry);
-            }}
-          />
-        </DropdownMenuContent>
-      </DropdownMenu>
     </>
   );
 }

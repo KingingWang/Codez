@@ -32,6 +32,14 @@ import type {
   GitWorktreeCreatePreviewRequest,
   GitWorktreeCreateRequest,
   GitWorktreeCreateResult,
+  GitWorktreeRemovePreviewRequest,
+  GitWorktreeRemovalPreview,
+  GitWorktreeRemoveRequest,
+  GitWorktreeRemoveResult,
+  GitBranchDeletePreviewRequest,
+  GitBranchDeletePreview,
+  GitDeleteBranchRequest,
+  GitBranchDeleteResult,
 } from "@codez/shared";
 import { ServiceChannels } from "@codez/shared";
 import { createServiceDescriptor } from "../descriptors.js";
@@ -45,6 +53,12 @@ export interface IGitService {
     params: GitWorktreeCreatePreviewRequest,
   ): Promise<GitWorktreeCreatePreview>;
   createWorktree(params: GitWorktreeCreateRequest): Promise<GitWorktreeCreateResult>;
+  previewWorktreeRemoval(
+    params: GitWorktreeRemovePreviewRequest,
+  ): Promise<GitWorktreeRemovalPreview>;
+  removeWorktree(params: GitWorktreeRemoveRequest): Promise<GitWorktreeRemoveResult>;
+  previewBranchDeletion(params: GitBranchDeletePreviewRequest): Promise<GitBranchDeletePreview>;
+  deleteBranch(params: GitDeleteBranchRequest): Promise<GitBranchDeleteResult>;
   getCommitGraph(params: GitCommitGraphRequest): Promise<GitCommitGraphResult>;
   switchBranch(params: GitSwitchBranchRequest): Promise<GitBranchMutationResult>;
   createBranchAndSwitch(params: GitCreateBranchRequest): Promise<GitBranchMutationResult>;

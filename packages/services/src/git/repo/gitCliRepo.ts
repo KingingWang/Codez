@@ -57,6 +57,8 @@ import {
   toDiffResult,
 } from "./gitCliHelpers.js";
 import { createGitWorktreeCreationHelper } from "./gitWorktreeCreation.js";
+import { createGitWorktreeRemovalHelper } from "./gitWorktreeRemoval.js";
+import { createGitBranchDeletionHelper } from "./gitBranchDeletion.js";
 import {
   createEmptySummary,
   type GitBranchComparisonChange,
@@ -396,7 +398,7 @@ function toBranchMutationSuccess(params: {
 
 /**
  * 解析 `git worktree list --porcelain`。porcelain 每行一个字段，空行分隔记录，
- * 路径行整行即路径（不转义、不支持 -z），首条记录恒为仓库主目录。
+ * -z 按 NUL 分隔字段，避免换行/引号路径被误解析；兼容旧调用的逐行格式。
  * locked/prunable 可带同行原因；lock 不代表目录不可访问（R14 两个维度分离）。
  */
 function parseWorktreeListPorcelain(stdout: string): GitWorktreeEntry[] {
@@ -409,7 +411,10 @@ function parseWorktreeListPorcelain(stdout: string): GitWorktreeEntry[] {
     }
   };
 
-  for (const line of stdout.replace(/\r\n/g, "\n").split("\n")) {
+  const nulDelimited = stdout.includes("\0");
+  for (const line of nulDelimited
+    ? stdout.split("\0")
+    : stdout.replace(/\r\n/g, "\n").split("\n")) {
     if (line.length === 0) {
       flush();
       continue;
@@ -417,7 +422,11 @@ function parseWorktreeListPorcelain(stdout: string): GitWorktreeEntry[] {
     if (line.startsWith("worktree ")) {
       flush();
       current = {
-        path: normalizeAbsoluteHostPath(line.slice("worktree ".length)),
+        path: nulDelimited
+          ? process.platform === "win32"
+            ? line.slice(9).replace(/\\/g, "/")
+            : line.slice(9)
+          : normalizeAbsoluteHostPath(line.slice(9)),
         isMain: false,
         branchName: null,
         headCommitHash: null,
@@ -657,6 +666,17 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
   const worktreeCreation = createGitWorktreeCreationHelper({
     commandProvider,
     parseWorktreeListPorcelain,
+    resolveRepository: (workspacePath) => repo.resolveRepository(workspacePath),
+    invalidateRepository: invalidate,
+  });
+  const worktreeRemoval = createGitWorktreeRemovalHelper({
+    commandProvider,
+    resolveRepository: (workspacePath) => repo.resolveRepository(workspacePath),
+    listWorktrees: (workspacePath) => repo.listWorktrees(workspacePath),
+    invalidateRepository: invalidate,
+  });
+  const branchDeletion = createGitBranchDeletionHelper({
+    commandProvider,
     resolveRepository: (workspacePath) => repo.resolveRepository(workspacePath),
     invalidateRepository: invalidate,
   });
@@ -1162,6 +1182,22 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
       return await worktreeCreation.create(params);
     },
 
+    async previewWorktreeRemoval(params) {
+      return await worktreeRemoval.preview(params);
+    },
+
+    async removeWorktree(params) {
+      return await worktreeRemoval.remove(params);
+    },
+
+    async previewBranchDeletion(params) {
+      return await branchDeletion.preview(params);
+    },
+
+    async deleteBranch(params) {
+      return await branchDeletion.delete(params);
+    },
+
     async listWorktrees(workspacePath: string): Promise<GitWorktreeListResult> {
       // 只读发现：只把 git 台账里的工作树投影给上层，不触发任何工作区激活。
       const resolution = await this.resolveRepository(workspacePath);
@@ -1176,7 +1212,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
 
       const result = await commandProvider.run({
         cwd: resolution.repoRoot,
-        args: ["worktree", "list", "--porcelain"],
+        args: ["worktree", "list", "--porcelain", "-z"],
         timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
         maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
       });

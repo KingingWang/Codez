@@ -41,7 +41,9 @@ import { GitWorktreeMenuProvider, type GitWorktreeMenuValue } from "@/GitWorktre
 import { ProjectWorktreeSwitcher } from "@/ProjectWorktreeSwitcher.js";
 import { WorktreeSessionMenu } from "@/WorktreeSessionMenu.js";
 import { CurrentWorkspaceConcurrencyHint } from "@/CurrentWorkspaceConcurrencyHint.js";
+import { useBranchDeletion } from "@/hooks/useBranchDeletion.js";
 import { useWorktreeCreation } from "@/hooks/useWorktreeCreation.js";
+import { useWorktreeRemoval } from "@/hooks/useWorktreeRemoval.js";
 import { useProjectWorktreeDiscovery } from "@/hooks/useProjectWorktreeDiscovery.js";
 import type { WorktreeDiscoveryEntry } from "@/lib/projectGrouping.js";
 import { shouldShowWorktreeSwitcher } from "@/lib/worktreeSwitcherDisplay.js";
@@ -481,6 +483,35 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
     onCreated: handleCreatedWorktree,
     onOpenOccupied: handleOpenOccupiedWorktree,
   });
+  const worktreeProjectMemberKeys = useMemo(
+    () =>
+      worktreeProjectGroup
+        ? worktreeProjectGroup.members.map(
+            (member) => member.workspaceIdentity?.trim() || member.workspacePath,
+          )
+        : [workspaceKey],
+    [worktreeProjectGroup, workspaceKey],
+  );
+  // 删除工作树/分支（specs/git-worktree-removal.md）：弹层与流程归本层唯一持有；
+  // 切换器与分支菜单保持只读展示，只透传命令回调。
+  const worktreeRemoval = useWorktreeRemoval({
+    workspacePath: workspaceAbsPath,
+    workspaceIdentity,
+    remoteSessionId: workspaceRemoteSessionId,
+    projectScope: worktreeProjectGroup?.scope ?? null,
+    projectMemberKeys: worktreeProjectMemberKeys,
+    onRemoved: worktreeDiscovery.refresh,
+    onOpenWorktreePath: handleOpenOccupiedWorktree,
+  });
+  const branchDeletion = useBranchDeletion({
+    workspacePath: workspaceAbsPath,
+    workspaceIdentity,
+    remoteSessionId: workspaceRemoteSessionId,
+    // 分支列表在菜单每次展开时重新拉取（useGitBranchSwitcher loadBranches on open），
+    // 删除成功无需额外刷新通道。
+    onDeleted: () => undefined,
+    onOpenWorktreePath: handleOpenOccupiedWorktree,
+  });
   const refreshWorktreeMenu = useCallback(() => {
     worktreeDiscovery.refresh();
     worktreeCreation.refreshAvailability();
@@ -511,21 +542,17 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
       workspacePath: workspaceAbsPath,
       workspaceIdentity,
       disabledReason: worktreeCreation.disabledReason,
-      entries: worktreeEntries,
-      allowOpenWorkspace,
       onCreate: worktreeCreation.openDialog,
-      onOpenEntry: handleOpenWorktreeEntry,
       onRefresh: refreshWorktreeMenu,
+      onDeleteBranch: branchDeletion.openDeletion,
     }),
     [
       workspaceAbsPath,
       workspaceIdentity,
       worktreeCreation.disabledReason,
       worktreeCreation.openDialog,
-      worktreeEntries,
-      allowOpenWorkspace,
-      handleOpenWorktreeEntry,
       refreshWorktreeMenu,
+      branchDeletion.openDeletion,
     ],
   );
   const screenshotSurfaceRequest = useBrowserScreenshotSurfaceRequest(sidePaneState?.tabs ?? []);
@@ -1368,6 +1395,9 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
             allowOpenWorkspace={allowOpenWorkspace}
             onOpenEntry={handleOpenWorktreeEntry}
             onRefresh={worktreeDiscovery.refresh}
+            onRemoveEntry={worktreeRemoval.openRemoval}
+            onCreateWorktree={worktreeCreation.openDialog}
+            createDisabledReason={worktreeCreation.disabledReason}
             className="px-0 pt-0"
             popoverClassName="w-72"
           />
@@ -1901,6 +1931,9 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                                 allowOpenWorkspace={allowOpenWorkspace}
                                 onOpenEntry={handleOpenWorktreeEntry}
                                 onRefresh={worktreeDiscovery.refresh}
+                                onRemoveEntry={worktreeRemoval.openRemoval}
+                                onCreateWorktree={worktreeCreation.openDialog}
+                                createDisabledReason={worktreeCreation.disabledReason}
                                 className="px-0 pt-0"
                                 popoverSide="bottom"
                               />
@@ -2187,6 +2220,8 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
         </ScopedErrorBoundary>
       </div>
       {worktreeCreation.dialog}
+      {worktreeRemoval.dialog}
+      {branchDeletion.dialog}
     </DesktopWindowFrame>
   );
   return <GitWorktreeMenuProvider value={gitWorktreeMenu}>{content}</GitWorktreeMenuProvider>;

@@ -1345,7 +1345,6 @@ const enUS: Record<string, string> = {
   "worktree.menu.label": "New session options",
   "worktree.menu.current": "Current workspace",
   "git.branchSwitcher.createWorktreeAction": "New independent workspace (worktree)…",
-  "git.branchSwitcher.openWorktreeAction": "Open existing workspace…",
   "worktree.menu.new": "New independent workspace",
   "worktree.menu.existing": "Existing workspaces…",
   "worktree.menu.unavailable": "Not loaded or no available workspaces",
@@ -1400,6 +1399,64 @@ const enUS: Record<string, string> = {
   "worktree.create.disabled.gitUnavailable":
     "Git is unavailable, so independent workspaces can't be created.",
   "worktree.create.disabled.failed": "Couldn't confirm creation capability yet. Try again later.",
+  "worktree.remove.action": "Delete linked workspace…",
+  "worktree.remove.title": "Delete linked workspace",
+  "worktree.remove.description":
+    "The directory will be permanently deleted. The branch and session history are kept.",
+  "worktree.remove.path": "Location",
+  "worktree.remove.branch": "Branch",
+  "worktree.remove.detachedHead": "Detached HEAD ({hash})",
+  "worktree.remove.previewPending": "Checking what deletion would discard…",
+  "worktree.remove.section.changes": "Changes that will be discarded ({count})",
+  "worktree.remove.section.attention": "Local config to review ({count})",
+  "worktree.remove.confirmDiscardChanges":
+    "I understand the {count} item(s) above will be permanently discarded",
+  "worktree.remove.confirmDiscardDetached":
+    "This HEAD commit isn't referenced by any branch; I understand deleting will drop the reference",
+  "worktree.remove.confirm": "Permanently delete this directory",
+  "worktree.remove.removing": "Deleting…",
+  "worktree.remove.retry": "Retry",
+  "worktree.remove.retryUnknown": "Retry the same operation",
+  "worktree.remove.blocked.current":
+    "This is the workspace you're using. Switch to another workspace in this project first.",
+  "worktree.remove.blocked.running": "This workspace has running tasks. Stop them before deleting.",
+  "worktree.remove.blocked.running.jump": "Go to that workspace",
+  "worktree.remove.blocked.locked":
+    "This workspace is protected{reason}. Run git worktree unlock in a terminal first.",
+  "worktree.remove.unreachable":
+    "The directory is unreachable. Check the mount or connection and retry. Nothing will be deleted.",
+  "worktree.remove.riskUnknown":
+    "Couldn't determine what deletion would affect. Retry—unknown risk doesn't mean no risk.",
+  "worktree.remove.statusChanged":
+    "The target changed while you were confirming. The list has been refreshed—please review and confirm again.",
+  "worktree.remove.resultUnknown": "Deletion result unknown",
+  "worktree.remove.resultUnknownHint":
+    "The connection dropped mid-deletion, so it may have completed. Retrying safely checks the same operation.",
+  "worktree.remove.failed": "Deletion failed: {error}",
+  "worktree.remove.releaseUnavailable":
+    "The workspace runtime connection is unavailable. Reconnect before deleting.",
+  "worktree.remove.done": "Linked workspace deleted",
+  "worktree.remove.inFlight": "This workspace is being deleted and can't be opened right now.",
+  "git.branchDelete.action": "Delete branch {branch}…",
+  "git.branchDelete.title": "Delete branch",
+  "git.branchDelete.description":
+    "Only the local branch {branch} is deleted. Remote-tracking branches are not affected.",
+  "git.branchDelete.branch": "Branch",
+  "git.branchDelete.lastCommit": "Last commit",
+  "git.branchDelete.mergeState": "Merge state",
+  "git.branchDelete.merged": "Merged",
+  "git.branchDelete.unmerged": "Has unmerged commits",
+  "git.branchDelete.mergeUnknown": "Merge state unknown",
+  "git.branchDelete.confirmForce": "I understand unmerged commits will lose their branch reference",
+  "git.branchDelete.occupied": "Checked out at {path}. Switch away or delete that workspace first.",
+  "git.branchDelete.blocked.current": "You can't delete the current branch.",
+  "git.branchDelete.moved":
+    "The branch moved while you were confirming. Review the updated info and confirm again.",
+  "git.branchDelete.confirm": "Delete branch",
+  "git.branchDelete.deleting": "Deleting…",
+  "git.branchDelete.previewPending": "Loading branch info…",
+  "git.branchDelete.failed": "Deletion failed: {error}",
+  "git.branchDelete.done": "Branch deleted",
   "git.branchSwitcher.error.unknown": "Switching branches failed. Please try again.",
   "git.branchSwitcher.error.requestFailed": "Branch operation failed: {error}",
   "gitGraph.title": "Git Graph",
