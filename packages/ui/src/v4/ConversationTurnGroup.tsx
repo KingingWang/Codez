@@ -100,6 +100,7 @@ interface ConversationTurnGroupProps {
   context: ConversationRowRenderContext;
   onFork?: (target: ConversationRowTarget) => void;
   onRetry?: (target: ConversationRowTarget) => void;
+  onContinue?: (target: ConversationRowTarget) => void;
   onFeedbackChange?: AssistantFeedbackHandler;
   onEdit?: (
     target: ConversationRowTarget,
@@ -1115,6 +1116,7 @@ function ConversationTurnGroupImpl({
   context,
   onFork,
   onRetry,
+  onContinue,
   onFeedbackChange,
   onEdit,
   shareSelection,
@@ -1245,12 +1247,11 @@ function ConversationTurnGroupImpl({
     return { enabled: true, reason: "available" };
   }, [unit.header?.actions?.canRewindFiles, unit.header?.fileChanges, unit.isRunning]);
 
-  // 中断轮恢复入口：能否继续、继续打哪一行都由 render unit 唯一裁决
-  //（行级 actions.canRetry + isLastTurn）；宿主未注入 onRetry（只读会话、writer-conflict
-  // 只读、分享侧聊）时整块不渲染，UI 不再另立第二套 phase guard。
+  // 中断轮续做入口与回滚 retry 分离；能否继续只由最后一轮中断事实裁决，
+  // 宿主未注入 onContinue（只读、writer-conflict、分享侧聊）时不渲染。
   const interruptedContinueTarget = useMemo(
-    () => (onRetry ? resolveInterruptedTurnContinueTarget(unit) : undefined),
-    [onRetry, unit],
+    () => (onContinue ? resolveInterruptedTurnContinueTarget(unit) : undefined),
+    [onContinue, unit],
   );
 
   // workflow 通知卡开头的轮去掉轮顶 padding：卡片只贴上一轮 pb-5 的常规流内间距。
@@ -1478,8 +1479,11 @@ function ConversationTurnGroupImpl({
         />
       )}
       {/* 轮尾恢复入口：手动 stop 后这一轮以 completedInterrupted 收口，「继续」常显。 */}
-      {interruptedContinueTarget && onRetry ? (
-        <ConversationTurnContinueAction target={interruptedContinueTarget} onContinue={onRetry} />
+      {interruptedContinueTarget && onContinue ? (
+        <ConversationTurnContinueAction
+          target={interruptedContinueTarget}
+          onContinue={onContinue}
+        />
       ) : null}
     </section>
   );

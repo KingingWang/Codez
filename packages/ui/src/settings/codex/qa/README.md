@@ -152,10 +152,11 @@ the checker rejects a different renderer URL and does not attach to another app.
 It sends one text prompt to the held loopback provider, clicks the composer stop
 control while the native turn is running, and asserts the interrupted turn end
 renders an always-visible `v4-retry-<rowId>` continue entry. Clicking it must dispatch
-`retryTurn` (the provider sees a second request), truncate the stopped partial output,
-and hide the entry while the rerun runs and after it completes.
-Recorded verification — September 28, 2026: `/tmp/codex-ui-interrupted-continue-QLLeNO/`
-(four checks, one interrupted and one completed native turn, zero page errors).
+`sendText` in the same thread (the provider sees a second request), retain the
+interrupted turn and its completed tool history, and hide the entry while the
+continuation runs and after it completes. The checker verifies that both the
+original input and the continuation remain visible. A completed-tool fixture
+should be used for manual verification of actual model-context reuse.
 
 Fresh full-turn **actual dev.mjs** verification passed on 2026-09-22:
 `/tmp/codex-ui-desktop-conversation-gqtR57/results.json` (six checks, three completed

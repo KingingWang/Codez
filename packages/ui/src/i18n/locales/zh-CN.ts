@@ -4471,7 +4471,9 @@ const zhCN: Record<string, string> = {
   "chat.stop.short": "停止",
   "chat.turn.continue": "继续",
   "chat.turn.continue.description":
-    "重新执行本轮：截断已停止的输出，用原输入重跑（使用当前模型与配置）",
+    "保留已完成的工具结果，从中断处接着执行（使用当前模型与思考强度）",
+  "chat.turn.continue.prompt":
+    "请继续刚才中断的任务。利用本对话里已完成的工具调用和结果，不要从头重复已完成的工作；从尚未完成的部分接着执行。",
   "chat.promptEnhance.title": "增强提示词",
   "chat.promptEnhance.description": "使用当前选中的模型配置润色这条草稿。",
   "chat.promptEnhance.cancel": "取消增强",

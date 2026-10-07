@@ -133,6 +133,7 @@ import { ConversationDraftEmptyState } from "@/v4/ConversationDraftEmptyState.js
 import { ConversationDraftSuggestedPromptsContainer } from "@/v4/ConversationDraftSuggestedPromptsContainer.js";
 import { ConversationHeader, type PaneWorkspaceBadge } from "@/v4/ConversationHeader.js";
 import { ConversationQueuePanel } from "@/v4/ConversationQueuePanel.js";
+import { isCurrentInterruptedContinueTarget } from "@/v4/conversationTurnContinue.js";
 import { projectPendingGuideQueue } from "@/v4/pendingGuideProjection.js";
 import { ConversationQuotaBanner } from "@/v4/ConversationQuotaBanner.js";
 import { PendingCommandRecoveryBanner } from "@/v4/PendingCommandRecoveryBanner.js";
@@ -449,6 +450,11 @@ function submissionConfigFromCommand(
         : candidate.mode === "plan",
   };
 }
+
+type PaneSendOptions = ConversationComposerSendOptions & {
+  /** 仅续做按钮携带；发送前重新确认同一中断轮，并把当前投影版本交给 owner。 */
+  interruptedContinueTarget?: ConversationRowTarget;
+};
 
 function isConversationFileDrag(dataTransfer: DataTransfer): boolean {
   const types = Array.from(dataTransfer.types);
@@ -2668,7 +2674,7 @@ export function SessionPane({
   const dispatchSendTextAfterConfig = useCallback(
     async (
       text: string,
-      options: ConversationComposerSendOptions | undefined,
+      options: PaneSendOptions | undefined,
       createSourceAtSend: SessionCreateSource,
     ) => {
       let onAcceptedSelection: (() => void) | undefined;
@@ -2791,7 +2797,10 @@ export function SessionPane({
       }
       if (slashCommand === null || slashCommand.kind === "sendGoalCommand") {
         const original = submission.modelSelection;
-        const chosen = isDesktop ? original : await recommendStartPlan(original);
+        const chosen =
+          isDesktop || options?.interruptedContinueTarget
+            ? original
+            : await recommendStartPlan(original);
         if (!chosen) return "blocked" as const;
         if (chosen !== original) {
           onAcceptedSelection = captureAcceptedModelSelection(chosen, original);
@@ -3039,6 +3048,22 @@ export function SessionPane({
         return;
       }
       // 附件 ref 已在 composer 预传状态机中收口。
+      // Bug 原因：旧「继续」走 retryTurn 回滚历史；现在复用普通 sendText，
+      // 但只允许按钮所见的最后一轮仍是中断态，配置屏障和远端 admission 两次校验。
+      const continueTarget = options?.interruptedContinueTarget;
+      const beforeSend = snapshotRef.current;
+      if (
+        continueTarget &&
+        (!beforeSend ||
+          beforeSend.sessionId !== sessionId ||
+          !isCurrentInterruptedContinueTarget(
+            beforeSend.control.phase,
+            beforeSend.rows.window,
+            continueTarget,
+          ))
+      ) {
+        return "blocked" as const;
+      }
       const ack = await dispatchSubmissionCommand(
         "sendText",
         {
@@ -3058,8 +3083,8 @@ export function SessionPane({
           ...(sharedContextRefs?.length ? { context_refs: sharedContextRefs } : {}),
         },
         sessionId,
-        undefined,
-        undefined,
+        continueTarget ? beforeSend?.revision : undefined,
+        continueTarget ? beforeSend?.logEpoch : undefined,
         options?.telemetrySeed,
       );
       if (ack.reasonCode === "guard.heldQueueConfirmationStale") {
@@ -3108,7 +3133,7 @@ export function SessionPane({
   );
 
   const dispatchSendText = useCallback(
-    (text: string, options?: ConversationComposerSendOptions) => {
+    (text: string, options?: PaneSendOptions) => {
       const createSource = useCodezSessionStore
         .getState()
         .getWorkspaceState(workspacePath, workspaceIdentity).draftCreateSource;
@@ -3149,10 +3174,7 @@ export function SessionPane({
   }, []);
 
   const handleSendText = useCallback(
-    async (
-      text: string,
-      options?: ConversationComposerSendOptions,
-    ): Promise<ConversationComposerSendResult> => {
+    async (text: string, options?: PaneSendOptions): Promise<ConversationComposerSendResult> => {
       // 发送前冻结本次 admission 预期：command ACK 回来时 projection 可能已经切到 running，
       // 不能用更新后的 enqueue mode 反推刚提交的 prompt 是否原本立即发送。
       const shouldFocusLatest = shouldFocusTimelineAfterComposerSend({
@@ -3304,6 +3326,55 @@ export function SessionPane({
         });
     },
     [dispatchRetryTurn],
+  );
+
+  // ACK accepted 到首个权威 snapshot 之间，重复点击不能生成第二个 commandId。
+  // 这里只记 renderer-local pending key；是否已接纳仍由 owner 的版本和命令账本裁决。
+  const pendingContinueKeyRef = useRef<string | null>(null);
+  const handleContinue = useCallback(
+    (target: ConversationRowTarget) => {
+      const current = snapshotRef.current;
+      if (
+        !sessionId ||
+        !current ||
+        !isCurrentInterruptedContinueTarget(current.control.phase, current.rows.window, target)
+      ) {
+        return;
+      }
+      const pendingKey = `${sessionId}:${target.entityId}`;
+      if (pendingContinueKeyRef.current === pendingKey) return;
+      const submission = createSubmissionFromComposer();
+      if (!submission) {
+        toast(intl.formatMessage({ id: "chat.error.sendFailed" }));
+        return;
+      }
+      const heldQueue = current.inputRouting.mode === "choice";
+      const options: PaneSendOptions = {
+        submission,
+        interruptedContinueTarget: target,
+        ...(heldQueue
+          ? {
+              heldQueueDisposition: "keepQueueAndSend",
+              expectedHeldQueueItemIds: current.queue.items.map((item) => item.queueItemId),
+            }
+          : {}),
+      };
+      pendingContinueKeyRef.current = pendingKey;
+      void handleSendText(intl.formatMessage({ id: "chat.turn.continue.prompt" }), options)
+        .then((result) => {
+          if (result === "blocked" || result === "confirmationRequired") {
+            pendingContinueKeyRef.current = null;
+            logger.warn("[v4-pane] 续做提交未通过配置或中断轮校验");
+          }
+        })
+        .catch((error: unknown) => {
+          pendingContinueKeyRef.current = null;
+          logger.warn("[v4-pane] 续做提交失败", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+    },
+    [createSubmissionFromComposer, handleSendText, intl, sessionId],
   );
 
   const handleAssistantFeedback = useCallback(
@@ -4975,6 +5046,7 @@ export function SessionPane({
               rowContext={rowContext}
               onFork={forkActionsEnabled ? handleFork : undefined}
               onRetry={retryActionsEnabled ? handleRetry : undefined}
+              onContinue={retryActionsEnabled ? handleContinue : undefined}
               onFeedbackChange={
                 !readOnly && !selectionSideChat && sessionId && messageFeedbackSupported
                   ? handleAssistantFeedback

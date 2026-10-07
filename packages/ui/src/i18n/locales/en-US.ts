@@ -4790,7 +4790,9 @@ const enUS: Record<string, string> = {
   "chat.stop.short": "Stop",
   "chat.turn.continue": "Continue",
   "chat.turn.continue.description":
-    "Re-run this turn: discards the stopped output and resends the original input with the current model and configuration",
+    "Keep completed tool results and continue the interrupted task with the current model and reasoning level",
+  "chat.turn.continue.prompt":
+    "Continue the interrupted task using the completed tool calls and results in this conversation. Do not repeat finished work; pick up from what remains.",
   "chat.promptEnhance.title": "Enhance prompt",
   "chat.promptEnhance.description":
     "Refine the current draft with the selected model configuration.",

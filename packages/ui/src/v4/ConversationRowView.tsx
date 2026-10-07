@@ -1487,9 +1487,9 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
 /**
  * 中断轮末尾的「继续」入口。
  *
- * 手动 stop 后整轮以 completedInterrupted 收口，会话空闲但界面没有任何恢复路径。
- * 点击后由 retryTurn 截断本轮 partial 输出、用原 user prompt（含原附件）重跑整轮；
- * 停止后改过的模型/配置对重跑生效——这是 retryTurn 的既有语义，UI 不快照停止时的配置。
+ * 原因：旧入口借用 retryTurn，截断已完成工具历史并重发原始任务。
+ * 现在交给 SessionPane 在同一会话追加续做请求，保留停止前的工具结果，
+ * 并冻结点击时选中的模型与思考强度。
  * 常显而非并进 hover-only 动作栏：它是中断后唯一的恢复入口，且手机远控没有 hover。
  */
 export const ConversationTurnContinueAction = memo(function ConversationTurnContinueAction({
@@ -1497,7 +1497,7 @@ export const ConversationTurnContinueAction = memo(function ConversationTurnCont
   onContinue,
   className,
 }: {
-  /** retryTurn 的行级目标；由 resolveInterruptedTurnContinueTarget 裁决，必须自带 canRetry 权威。 */
+  /** 中断轮稳定行标识；发送前仍需检查目标是否属于最后一轮。 */
   target: ConversationRowTarget;
   onContinue: (target: ConversationRowTarget) => void;
   className?: string;
@@ -1506,7 +1506,7 @@ export const ConversationTurnContinueAction = memo(function ConversationTurnCont
   const label = intl.formatMessage({ id: "chat.turn.continue" });
   const description = intl.formatMessage({ id: "chat.turn.continue.description" });
   const handleContinue = useCallback(() => {
-    logger.info("[ConversationRowView] 中断轮继续：截断 partial 输出并重跑原 prompt", {
+    logger.info("[ConversationRowView] 中断轮继续：保留历史并提交续做请求", {
       targetEntityId: target.entityId,
       targetRowId: target.rowId,
     });
