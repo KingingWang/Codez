@@ -128,6 +128,20 @@ test("each native build typechecks the Codex bridge once through the root script
   assert.equal(commands.filter((command) => command === bridgeTypecheck).length, 0);
 });
 
+test("native validation has a step-scoped 4 GiB Node heap budget", async () => {
+  const require = createRequire(new URL("../packages/desktop/package.json", import.meta.url));
+  const workflow = require("yaml").parse(
+    await readFile(new URL("../.github/workflows/codex-desktop.yml", import.meta.url), "utf8"),
+  );
+  const { build } = workflow.jobs;
+  const validation = build.steps.find((step) => step.run?.split("\n").includes("pnpm typecheck"));
+  assert.ok(validation);
+  assert.equal(validation.env?.NODE_OPTIONS, "--max-old-space-size=4096");
+  assert.equal(workflow.env?.NODE_OPTIONS, undefined);
+  assert.equal(build.env.NODE_OPTIONS, undefined);
+  assert.equal(build.steps.filter((step) => step.env?.NODE_OPTIONS).length, 1);
+});
+
 async function loadRuntimeModule(t, source, flavor = "codex", plugins = []) {
   const directory = await mkdtemp(join(tmpdir(), "codez-identity-test-"));
   t.after(() => rm(directory, { recursive: true, force: true }));

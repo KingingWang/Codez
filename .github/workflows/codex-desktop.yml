@@ -162,6 +162,10 @@ jobs:
       - name: Mock distribution regression tests (before network downloads)
         run: node --test scripts/test-codex-distribution*.mjs
       - name: Typecheck, lint, architecture and adapter tests
+        env:
+          # 两个 macOS runner 的默认约 2 GiB 堆不足以完成全量 tsc；仅验证步骤放宽，
+          # 避免将 CI 内存配置带入运行时 smoke 或打包产物。
+          NODE_OPTIONS: --max-old-space-size=4096
         run: |
           pnpm typecheck
           pnpm lint
