@@ -84,20 +84,22 @@ try {
   await continueEntry.first().click();
   await until(
     async () => (await state()).requests.length === 2,
-    "retryTurn dispatches a new native request",
+    "continuation dispatches a new native request",
   );
   await until(
     async () => (await continueEntry.count()) === 0,
     "continue entry disappears once the new turn runs",
   );
-  await page.screenshot({ path: join(evidence, "continue-rerunning.png"), fullPage: true });
-  checks.push("Continue truncates the stopped turn and reruns the original prompt as a new turn");
+  await page.screenshot({ path: join(evidence, "continue-running.png"), fullPage: true });
+  checks.push(
+    "Continue starts a new turn in the same thread without reverting the interrupted turn",
+  );
 
   await fetch(new URL("/qa/release", mockUrl), { method: "POST" });
   await page.getByText("Isolated desktop QA response 2", { exact: true }).first().waitFor();
   await until(async () => !(await stop.isVisible()), "stop control hidden after completion");
   await until(async () => (await continueEntry.count()) === 0, "completed turn offers no continue");
-  await page.screenshot({ path: join(evidence, "rerun-completed.png"), fullPage: true });
+  await page.screenshot({ path: join(evidence, "continue-completed.png"), fullPage: true });
   const final = await state();
   assert.deepEqual(final.interrupted, [1]);
   assert.deepEqual(final.completed, [2]);
@@ -105,13 +107,10 @@ try {
   checks.push("Provider observed exactly one interrupted and one completed turn");
 
   const bodyText = await page.locator("body").innerText();
-  assert.equal(
-    bodyText.includes("Isolated desktop QA response 1"),
-    false,
-    "stopped partial output must be truncated",
-  );
+  assert.match(bodyText, /QA interrupted turn: stop then continue with the same prompt/);
+  assert.match(bodyText, /Continue the interrupted task|请继续刚才中断的任务/);
   assert.match(bodyText, /Isolated desktop QA response 2/);
-  checks.push("Stopped partial output is gone from the conversation after the rerun");
+  checks.push("Original task and new continuation remain visible together after completion");
 
   assert.deepEqual(errors, []);
   await writeFile(

@@ -1,11 +1,12 @@
 // 中断轮的「继续」恢复入口裁决：能否继续、继续打哪一行。
 //
-// 状态所有者仍是 codex bridge / CLI 的行级投影：这里只读 `turnHeader.state` 与
-// `actions.canRetry`，不缓存中断态、不按 row kind 猜目标，也不另立第二套 phase guard。
+// 状态所有者仍是 codex bridge / CLI 的行级投影：这里只读中断轮事实，
+// 不缓存中断态；`canRetry` 只授权回滚，不能作为续做的前提。
 import type {
   AssistantTextRow,
   ConversationRow,
   ConversationRowTarget,
+  SessionControl,
   UserInputRow,
 } from "@codez/shared/codez-protocol-v4";
 import type { ConversationTurnRenderUnit } from "@/v4/conversationTurnRenderUnits.js";
@@ -19,13 +20,10 @@ function isAssistantTextRow(row: ConversationRow): row is AssistantTextRow {
 }
 
 /**
- * 手动 stop 后这一轮以 completedInterrupted 收口，返回重跑原 prompt 的 retryTurn 目标行。
+ * 手动 stop 后这一轮以 completedInterrupted 收口，返回供续做按钮识别的稳定行。
  *
- * 只允许最后一轮：retryTurn 在 codex bridge 侧等价于 `thread/revert{beforeTurnId}` +
- * 重发原 userMessage，指向历史中断轮会连带截断其后所有轮次。
- * 目标行必须自带 `actions.canRetry` 权威——bridge 空闲态把它打在 userInput 行、
- * legacy CLI 打在最新 assistantText 行，两种投影都由同一裁决命中；
- * 权威缺席时返回 undefined，入口不渲染，不产生必然被命令层拒绝的按钮。
+ * 原因：旧「继续」借用了 canRetry，点击即 rewind，丢失本轮工具上下文。
+ * 续做使用 sendText 新增一轮，只允许最新中断轮，行 ID 仅用于点击时检查旧视图。
  */
 export function resolveInterruptedTurnContinueTarget(
   unit: ConversationTurnRenderUnit,
@@ -39,15 +37,34 @@ export function resolveInterruptedTurnContinueTarget(
   if (!interrupted) return undefined;
   const userRows = unit.renderRows.filter(isUserInputRow);
   const candidates: readonly ConversationRow[] = [
-    // 重跑的是「原 user prompt」，realUser 行就是它的 canonical 载体；
-    // steer/排队输入与 assistant 行只是同轮其它可重试锚点，按 CLI row 全序兜底。
+    // realUser 是本轮稳定可见的首选标识；长工具链尾窗可能只剩工具行。
     ...userRows.filter((row) => row.origin === "realUser"),
     ...userRows.filter((row) => row.origin !== "realUser"),
     ...unit.renderRows.filter(isAssistantTextRow),
+    ...unit.renderRows,
   ];
   for (const row of candidates) {
     const entityId = row.entityId;
-    if (row.actions?.canRetry === true && entityId) return { rowId: row.rowId, entityId };
+    if (entityId) return { rowId: row.rowId, entityId };
   }
   return undefined;
+}
+
+/** 配置屏障之后、真正发送之前，重新核验按钮看到的中断轮仍是最新一轮。 */
+export function isCurrentInterruptedContinueTarget(
+  phase: SessionControl["phase"],
+  rows: readonly ConversationRow[],
+  target: ConversationRowTarget,
+): boolean {
+  if (phase !== "completedInterrupted") return false;
+  const targetRow = rows.find(
+    (row) => row.rowId === target.rowId && row.entityId === target.entityId,
+  );
+  const lastRow = rows.at(-1);
+  if (!targetRow || !lastRow || targetRow.turnId !== lastRow.turnId) return false;
+  const header = rows.findLast(
+    (row) => row.kind === "turnHeader" && row.turnId === targetRow.turnId,
+  );
+  // 冷恢复尾窗可能裁掉 header；此时以 phase + 最后一行所属 turn 为同一权威降级。
+  return !header || (header.kind === "turnHeader" && header.state === "completedInterrupted");
 }

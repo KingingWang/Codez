@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { projectThread } from "../src/projection.js";
+import { codexThreadSchema } from "../src/codex-types.js";
 import { CommandRouter } from "../src/commands.js";
 import { CommandLedger } from "../src/command-ledger.js";
 import { ThreadStateStore } from "../src/thread-state.js";
@@ -219,6 +220,50 @@ test("stop checks expectedTurn and cannot interrupt a later run", async (t) => {
   assert.equal((await h.execute(command)).status, "accepted");
   await h.execute(command);
   assert.deepEqual(h.rpc.params("turn/interrupt"), [{ threadId: sessionId, turnId: "live-turn" }]);
+});
+
+test("interrupted turn continues in the same thread without reverting completed tool context", async (t) => {
+  const h = await setup(t);
+  const interrupted = h.authority.thread.turns[0]!;
+  interrupted.status = "interrupted";
+  interrupted.items.push({
+    type: "commandExecution",
+    id: "completed-tool",
+    command: "pwd",
+    cwd,
+    status: "completed",
+    aggregatedOutput: "/workspace",
+    exitCode: 0,
+  });
+  h.store.markStarted(structuredClone(h.authority.thread));
+  const current = h.store.get(sessionId)!;
+  const command = {
+    ...h.command(
+      "sendText",
+      {
+        text: "Continue using the completed tool result; do not restart.",
+        modelSelection: {
+          providerId: "openai",
+          modelId: "new-model",
+          options: { reasoningLevel: "high" },
+        },
+      },
+      "continue-interrupted",
+    ),
+    baseRevision: current.revision,
+    baseLogEpoch: current.epoch,
+  };
+  const accepted = await h.execute(command);
+  assert.equal(accepted.status, "accepted");
+  assert.deepEqual(h.rpc.methods(), ["turn/start"]);
+  assert.equal(h.rpc.params("turn/start")[0]?.model, "new-model");
+  assert.equal(h.rpc.params("turn/start")[0]?.effort, "high");
+  const retained = codexThreadSchema.parse(h.store.get(sessionId)?.thread);
+  assert.ok(retained.turns[0]?.items.some((item) => item.id === "completed-tool"));
+  assert.equal(retained.turns[0]?.status, "interrupted");
+  assert.equal(retained.turns.length, 2);
+  assert.deepEqual(await h.execute(command), accepted);
+  assert.equal(h.rpc.params("turn/start").length, 1);
 });
 
 test("CAS rejects stale revision/epoch and invalid envelopes without side effects", async (t) => {

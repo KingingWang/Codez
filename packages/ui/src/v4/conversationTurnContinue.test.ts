@@ -6,11 +6,14 @@ import type {
   TurnHeaderRow,
   UserInputRow,
 } from "@codez/shared/codez-protocol-v4";
-import { resolveInterruptedTurnContinueTarget } from "@/v4/conversationTurnContinue.js";
+import {
+  isCurrentInterruptedContinueTarget,
+  resolveInterruptedTurnContinueTarget,
+} from "@/v4/conversationTurnContinue.js";
 import { buildConversationTurnRenderUnits } from "@/v4/conversationTurnRenderUnits.js";
 
 // 行 fixture 只填裁决真正读取的字段：turnHeader.state 决定终态，
-// userInput/assistantText 的 actions.canRetry + entityId 决定目标行。
+// userInput/assistantText 的 entityId 用于在发送前识别被中断轮。
 function turnHeader(rowId: number, turnId: string, state: TurnHeaderRow["state"]): TurnHeaderRow {
   return {
     rowId,
@@ -72,7 +75,7 @@ function lastUnit(rows: ConversationRow[], sessionPhase: "running" | "completedI
   return buildConversationTurnRenderUnits(rows, { sessionPhase }).at(-1)!;
 }
 
-test("手动停止的最后一轮给出 retryTurn 目标行（bridge 把 canRetry 打在 userInput 行）", () => {
+test("手动停止的最后一轮给出续做目标行", () => {
   assert.deepEqual(
     resolveInterruptedTurnContinueTarget(lastUnit(codexInterruptedRows(), "completedInterrupted")),
     { rowId: 2, entityId: "user-2" },
@@ -91,7 +94,7 @@ test("正常完成的轮不出现继续入口", () => {
   );
 });
 
-test("历史中断轮不给入口：retryTurn 会连带截断其后所有轮次", () => {
+test("历史中断轮不给入口：只能继续当前最后一轮", () => {
   const rows: ConversationRow[] = [
     ...codexInterruptedRows(),
     turnHeader(4, "t2", "completedSuccess"),
@@ -111,26 +114,76 @@ test("运行中的轮不给入口", () => {
   assert.equal(resolveInterruptedTurnContinueTarget(lastUnit(rows, "running")), undefined);
 });
 
-test("行级 canRetry 缺席时不渲染必然被命令层拒绝的按钮", () => {
+test("续做不依赖用于回滚重试的 canRetry 权限", () => {
   const rows: ConversationRow[] = [
     turnHeader(1, "t1", "completedInterrupted"),
     userInput(2, "t1"),
     assistantText(3, "t1", "interrupted"),
   ];
-  assert.equal(
-    resolveInterruptedTurnContinueTarget(lastUnit(rows, "completedInterrupted")),
-    undefined,
-  );
+  assert.deepEqual(resolveInterruptedTurnContinueTarget(lastUnit(rows, "completedInterrupted")), {
+    rowId: 2,
+    entityId: "user-2",
+  });
 });
 
-test("legacy CLI 投影把 canRetry 打在 assistantText 行时同样命中", () => {
+test("legacy CLI 的中断轮优先用原始 userInput 标识，不读取 assistant 的重试权限", () => {
   const rows: ConversationRow[] = [
     turnHeader(1, "t1", "completedInterrupted"),
     userInput(2, "t1", { canEdit: true, editDisposition: "rewind" }),
     assistantText(3, "t1", "interrupted", { canRetry: true }),
   ];
   assert.deepEqual(resolveInterruptedTurnContinueTarget(lastUnit(rows, "completedInterrupted")), {
-    rowId: 3,
-    entityId: "assistant-3",
+    rowId: 2,
+    entityId: "user-2",
   });
+});
+
+test("异步配置屏障后仅最新中断轮可继续，旧行和新运行轮均不得发送", () => {
+  const rows = codexInterruptedRows();
+  const target = { rowId: 2, entityId: "user-2" };
+  assert.equal(isCurrentInterruptedContinueTarget("completedInterrupted", rows, target), true);
+  assert.equal(
+    isCurrentInterruptedContinueTarget("completedInterrupted", rows, {
+      rowId: 2,
+      entityId: "stale",
+    }),
+    false,
+  );
+  assert.equal(isCurrentInterruptedContinueTarget("running", rows, target), false);
+  assert.equal(
+    isCurrentInterruptedContinueTarget(
+      "completedInterrupted",
+      [...rows, turnHeader(4, "t2", "completedInterrupted"), userInput(5, "t2")],
+      target,
+    ),
+    false,
+  );
+});
+
+test("长工具链的尾窗只剩工具行时仍可继续，且点击目标属于当前中断轮", () => {
+  const tool: ConversationRow = {
+    rowId: 77,
+    turnId: "t1",
+    entityId: "tool-77",
+    createdAt: 0,
+    createdAtSeq: 77,
+    kind: "toolCall",
+    toolCallId: "completed-tool",
+    toolName: "Bash",
+    status: "success",
+    inputText: "pwd",
+    output: { text: "/workspace" },
+  };
+  const unit = lastUnit([tool], "completedInterrupted");
+  const target = resolveInterruptedTurnContinueTarget(unit);
+  assert.deepEqual(target, { rowId: 77, entityId: "tool-77" });
+  assert.equal(isCurrentInterruptedContinueTarget("completedInterrupted", [tool], target!), true);
+  assert.equal(
+    isCurrentInterruptedContinueTarget(
+      "completedInterrupted",
+      [turnHeader(1, "older", "completedSuccess"), tool],
+      target!,
+    ),
+    true,
+  );
 });

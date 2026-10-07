@@ -322,7 +322,13 @@ export class CommandInbox {
       };
     }
 
-    if (COMMANDS_REQUIRING_BASE_REVISION.has(envelope.type)) {
+    // Bug 原因：旧「继续」复用 retryTurn 会回滚工具历史；改走 sendText 后，
+    // 带所见版本的续做请求必须在同一 admission gate 校验，不能被晚到命令排进新 turn。
+    // 普通 sendText 没有 CAS 字段，仍沿用原有队列准入。
+    const guardedSend =
+      envelope.type === "sendText" &&
+      (envelope.baseRevision !== undefined || envelope.baseLogEpoch !== undefined);
+    if (COMMANDS_REQUIRING_BASE_REVISION.has(envelope.type) || guardedSend) {
       if (envelope.baseRevision === undefined) {
         return {
           kind: "ack",
@@ -337,7 +343,11 @@ export class CommandInbox {
       }
       const logEpoch =
         envelope.sessionId === null ? null : this.host.getLogEpoch(envelope.sessionId);
-      if (ROW_TARGETING_COMMANDS.has(envelope.type) && envelope.baseLogEpoch !== logEpoch) {
+      if (
+        (ROW_TARGETING_COMMANDS.has(envelope.type) ||
+          (guardedSend && envelope.baseLogEpoch !== undefined)) &&
+        envelope.baseLogEpoch !== logEpoch
+      ) {
         return {
           kind: "ack",
           remember: false,
