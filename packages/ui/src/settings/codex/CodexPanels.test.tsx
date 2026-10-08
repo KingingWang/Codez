@@ -9,6 +9,8 @@ import { PlatformProvider } from "@/hooks/usePlatform.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
 import { CodexAccountPanel } from "./CodexAccountPanel.js";
 import { CodexConfigPanel } from "./CodexConfigPanel.js";
+import { CodexTitleModelSettings } from "./CodexTitleModelSettings.js";
+import { appSettingsSchema } from "@codez/shared";
 import { CodexMcpPanel } from "./CodexMcpPanel.js";
 import { CodexSkillsPanel, CodexPluginsPanel } from "./CodexResourcesPanel.js";
 import { CodexHistoryPanel, HistoryRunRow } from "./CodexHistoryPanel.js";
@@ -103,6 +105,44 @@ test("missing configuration version visibly disables writes and errors remain ac
   assert.match(html, /No writable user configuration layer/);
   assert.match(html, /disabled=""[^>]*>Write value/);
   assert.match(html, /disabled=""[^>]*>Write batch/);
+});
+
+test("title model controls distinguish global default and inherited workspace value", () => {
+  const catalog = {
+    providerId: "openai",
+    models: [],
+    groups: [
+      {
+        providerId: "openai",
+        providerName: "OpenAI",
+        models: [
+          {
+            id: "title-model",
+            model: "gpt-5.6-luna",
+            displayName: "Luna",
+            description: "Title model",
+            hidden: false,
+            isDefault: false,
+            defaultReasoningEffort: "low",
+            supportedReasoningEfforts: [],
+          },
+        ],
+      },
+    ],
+    preferredSelection: null,
+  };
+  const html = render(
+    <CodexTitleModelSettings
+      settings={appSettingsSchema.parse({})}
+      catalog={catalog}
+      workspacePath="/project"
+      update={async () => {}}
+    />,
+  );
+  assert.match(html, /Global title model/);
+  assert.match(html, /This workspace/);
+  assert.match(html, /Inherit global default/);
+  assert.match(html, /Luna/);
 });
 
 test("invalid JSON drafts report the syntax detail in the active locale", () => {

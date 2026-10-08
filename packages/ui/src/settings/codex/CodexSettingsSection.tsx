@@ -13,6 +13,8 @@ import { CodexNotice, CodexSection } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
 import { useCodexNativeBrowserCuaCapability } from "./useCodexNativeBrowserCua.js";
 import { useSettings } from "@/hooks/useSettingService.js";
+import { useCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
+import { CodexTitleModelSettings } from "./CodexTitleModelSettings.js";
 
 export type CodexSettingsPanel =
   | "account"
@@ -70,7 +72,17 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
   const text = useCodexMessages();
   const controller = useCodexSettings(props);
   const [panel, setPanel] = useState<CodexSettingsPanel>(props.initialPanel ?? "account");
-  const { settings: appSettings, update: updateAppSettings } = useSettings();
+  const {
+    settings: appSettings,
+    error: appSettingsError,
+    update: updateAppSettings,
+  } = useSettings();
+  const titleModelCatalog = useCodexModelCatalog({
+    workspacePath: props.workspacePath ?? "",
+    workspaceIdentity: props.workspaceIdentity,
+    remoteSessionId: props.remoteSessionId,
+    enabled: panel === "models" && controller.enabled,
+  });
   const nativeBrowserCuaCapability = useCodexNativeBrowserCuaCapability(
     controller.services,
     controller.remote,
@@ -130,7 +142,21 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
             <CodexAccountPanel controller={controller} />
           </div>
           {panel === "models" || panel === "config" ? (
-            <CodexConfigPanel key={panel} controller={controller} advanced={panel === "config"} />
+            <>
+              <CodexConfigPanel key={panel} controller={controller} advanced={panel === "config"} />
+              {panel === "models" && props.workspacePath ? (
+                <CodexTitleModelSettings
+                  key={props.workspaceIdentity?.trim() || props.workspacePath}
+                  settings={appSettings}
+                  catalog={titleModelCatalog.catalog}
+                  catalogError={titleModelCatalog.error}
+                  workspacePath={props.workspacePath}
+                  workspaceIdentity={props.workspaceIdentity}
+                  settingsError={appSettingsError}
+                  update={updateAppSettings}
+                />
+              ) : null}
+            </>
           ) : null}
           {panel === "skills" ? <CodexSkillsPanel controller={controller} /> : null}
           {panel === "agents" ? (

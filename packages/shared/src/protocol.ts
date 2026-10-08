@@ -5,6 +5,7 @@ import type { ProviderFamilyConnectionSelectionSettings } from "./provider-famil
 import type { WorkspacePurpose } from "./workspacePurpose.js";
 import type { EmbeddedBrowserViewportPreference } from "./browser-use/command-metadata.js";
 import type { ModelSelection } from "./model-selection.js";
+import type { CodexTitleModel } from "./codex-runtime.js";
 
 // ── Domain types ──
 
@@ -303,6 +304,10 @@ export interface AppSettings {
   messageStreamShowTodos?: boolean;
   /** 是否允许 Agent 通过内置浏览器 MCP 工具控制桌面内置浏览器；不影响用户手动使用的浏览器面板。 */
   nativeBrowserControlEnabled?: boolean;
+  /** Codex 辅助标题生成的默认模型；独立于原生聊天模型。 */
+  codexTitleDefaultModel?: CodexTitleModel;
+  /** 工作区身份 → 显式标题模型覆盖；缺席即继承默认。 */
+  codexTitleWorkspaceModels?: Record<string, CodexTitleModel>;
   /** 是否把连续的只读工具调用聚合成 Explore。 */
   toolGroupingExploreEnabled?: boolean;
   /** 是否把连续的非只读 Shell 工具调用聚合成 Terminal。 */

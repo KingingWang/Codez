@@ -111,7 +111,12 @@ export class AuxiliaryText {
     return method === "workspace/generateText" || method === "workspace/cancelGenerateText";
   }
 
-  async handle(method: string, params: unknown): Promise<unknown> {
+  /** The third argument is bridge-internal only; Host RPC never supplies a response schema. */
+  async handle(
+    method: string,
+    params: unknown,
+    outputSchema?: Record<string, unknown>,
+  ): Promise<unknown> {
     if (method === "workspace/cancelGenerateText") {
       const p = input(codezWorkspaceCancelGenerateTextParamsSchema, params);
       const op = this.operations.get(p.operationId);
@@ -157,7 +162,7 @@ export class AuxiliaryText {
       DEADLINE_MS,
     );
     try {
-      const text = await Promise.race([this.execute(op, p), op.abort.promise]);
+      const text = await Promise.race([this.execute(op, p, outputSchema), op.abort.promise]);
       return codezWorkspaceGenerateTextResultSchema.parse({
         text,
         selection: p.selection,
@@ -202,7 +207,11 @@ export class AuxiliaryText {
     if (op.stopped) throw op.stopped;
   }
 
-  private async execute(op: Operation, p: CodezWorkspaceGenerateTextParams): Promise<string> {
+  private async execute(
+    op: Operation,
+    p: CodezWorkspaceGenerateTextParams,
+    outputSchema?: Record<string, unknown>,
+  ): Promise<string> {
     try {
       const { config } = z
         .object({ config: z.object({ mcp_servers: z.record(z.string(), object).optional() }) })
@@ -257,6 +266,7 @@ export class AuxiliaryText {
           await this.options.rpc.request("turn/start", {
             threadId: op.threadId,
             input: [{ type: "text", text: p.prompt!, text_elements: [] }],
+            ...(outputSchema ? { outputSchema } : {}),
             ...(p.selection.options?.reasoningLevel
               ? { effort: p.selection.options.reasoningLevel }
               : {}),

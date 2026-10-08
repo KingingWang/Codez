@@ -11,6 +11,7 @@ import {
 } from "./browser-use/command-metadata.js";
 import { providerFamilyConnectionSelectionSettingsSchema } from "./provider-family-connection-selection.js";
 import { modelSelectionSchema } from "./model-selection.js";
+import { codexTitleModelSchema, DEFAULT_CODEX_TITLE_MODEL } from "./codex-runtime.js";
 
 /** 引导职业枚举；单独导出供 onboarding 记录回填 settings 时做窄化校验。 */
 const appSettingsOccupationSchema = z.enum([
@@ -450,6 +451,8 @@ const appSettingsObjectSchema = z.object({
   messageStreamShowTodos: z.boolean().default(false),
   // 内置浏览器 Agent 工具（native Browser/CUA MCP）全局开关；默认开启，桌面 Main 订阅即时生效。
   nativeBrowserControlEnabled: z.boolean().default(true),
+  codexTitleDefaultModel: codexTitleModelSchema.default(DEFAULT_CODEX_TITLE_MODEL),
+  codexTitleWorkspaceModels: z.record(z.string().min(1), codexTitleModelSchema).default({}),
   toolGroupingExploreEnabled: z.boolean().default(true),
   toolGroupingTerminalEnabled: z.boolean().default(true),
   toolGroupingChangesEnabled: z.boolean().default(false),
@@ -524,6 +527,8 @@ export const appSettingsPatchSchema = z.object({
   messageStreamShowReasoningMigrationInitialized: z.boolean().optional(),
   messageStreamShowTodos: z.boolean().optional(),
   nativeBrowserControlEnabled: z.boolean().optional(),
+  codexTitleDefaultModel: codexTitleModelSchema.optional(),
+  codexTitleWorkspaceModels: z.record(z.string().min(1), codexTitleModelSchema).optional(),
   toolGroupingExploreEnabled: z.boolean().optional(),
   toolGroupingTerminalEnabled: z.boolean().optional(),
   toolGroupingChangesEnabled: z.boolean().optional(),

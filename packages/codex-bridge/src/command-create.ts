@@ -14,6 +14,7 @@ import {
   type ResolveAttachments,
 } from "./command-input.js";
 import { string, unsupported } from "./json.js";
+import type { SessionTitleCoordinator } from "./session-title.js";
 
 export async function createNativeSession(
   command: CommandEnvelope,
@@ -22,6 +23,7 @@ export async function createNativeSession(
     store: ThreadStateStore;
     workspaceId: string;
     attachments?: ResolveAttachments;
+    title?: SessionTitleCoordinator;
   },
 ): Promise<CommandResult> {
   const { rpc, store, workspaceId, attachments } = context;
@@ -59,6 +61,7 @@ export async function createNativeSession(
     store.applySettings(sessionId, settings);
   }
   if (p.firstInput) {
+    if (p.titleGenerationModel) context.title?.arm(sessionId, p.titleGenerationModel);
     const turnParams = {
       threadId: sessionId,
       clientUserMessageId: command.commandId,

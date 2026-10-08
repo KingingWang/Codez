@@ -72,6 +72,7 @@ import { WORKSPACE_FILE_DRAG_MIME } from "@/lib/workspaceFileDrag.js";
 import { buildChatSessionScrollMemoryKey } from "@/lib/chatSessionScrollMemory.js";
 import type { MessageFileLinkTarget } from "@/components/ai-elements/message.js";
 import { useServices } from "@/hooks/useServices.js";
+import { useCodexTitleModel } from "@/hooks/useCodexTitleModel.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import type { SessionOpenTrigger } from "@/lib/sessionOpenArmsTelemetry.js";
 import { useDynamicWorkflowAvailability } from "@/hooks/useDynamicWorkflowAvailability.js";
@@ -1190,6 +1191,7 @@ export function SessionPane({
   );
 
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
+  const readTitleModel = useCodexTitleModel(workspacePath, workspaceIdentity);
   const workspaceConfigOptions = useCodezSessionStore(
     (store) => store.getWorkspaceState(workspacePath, workspaceIdentity).configOptions,
   );
@@ -2679,6 +2681,18 @@ export function SessionPane({
     ) => {
       let onAcceptedSelection: (() => void) | undefined;
       const dispatchSubmissionCommand = async (...args: Parameters<typeof dispatchCommand>) => {
+        if (
+          (args[0] === "sendText" &&
+            (!snapshotRef.current ||
+              snapshotRef.current.sessionId !== args[2] ||
+              snapshotRef.current.rows.totalCount === 0)) ||
+          (args[0] === "createSession" && args[1].firstInput)
+        ) {
+          const titleGenerationModel = await readTitleModel();
+          if (titleGenerationModel) {
+            args[1] = { ...args[1], titleGenerationModel };
+          }
+        }
         const ack = await dispatchCommand(...args);
         // 在原 accepted 边界写回推荐选择，早于新 Session 的草稿转移；失败不改用户意图。
         if (ack.status === "accepted" && submissionConfigFromCommand(args[0], args[1]))
@@ -3105,6 +3119,7 @@ export function SessionPane({
     },
     [
       dispatchCommand,
+      readTitleModel,
       recommendStartPlan,
       isDesktop,
       codexModels.readCurrent,

@@ -183,6 +183,25 @@ nodes:
         symbol: ConversationV4Gateway
       - file: apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/session-flow.ts
         symbol: sendText
+  - id: capability.codex-session-title
+    kind: capability
+    label: Codex automatic session title and model preference
+    aliases:
+      - auto rename session
+      - title generation model
+      - 自动命名
+      - 自动标题
+      - 标题模型
+    codeSeeds:
+      - file: packages/codex-bridge/src/session-title.ts
+        symbol: SessionTitleCoordinator
+      - file: packages/ui/src/settings/codex/CodexTitleModelSettings.tsx
+        symbol: CodexTitleModelSettings
+      - file: packages/shared/src/codex-runtime.ts
+        symbol: resolveCodexTitleModel
+    invariants:
+      - "SettingService owns default and workspace override; native Codex owns the thread name.
+        Manual names win over a pending local suggestion."
   - id: state.conversation-projection
     kind: state-owner
     label: Client conversation projection and pending optimistic overlay
@@ -384,6 +403,16 @@ nodes:
       - file: apps/codez-cli/packages/core/src/runtime/methods/turn-model.ts
         symbol: applySubmissionExecutionState
 edges:
+  - from: capability.codex-session-title
+    to: capability.conversation-runtime
+    type: updates-native-thread-name-after-first-input
+    rank: must-inspect
+    condition: New top-level Codex sessions only; no history backfill.
+  - from: capability.codex-session-title
+    to: capability.model-selection
+    type: reads-workspace-catalog-options-from
+    rank: should-inspect
+    condition: Title model preference does not change the conversation model selection.
   - from: capability.model-selection
     to: surface.conversation-model-control
     type: renders-in
