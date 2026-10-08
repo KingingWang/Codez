@@ -70,6 +70,7 @@ import type {
 } from "@/v4/legacyChatViewTypes.js";
 import {
   anchorActionAfterContentChange,
+  classifyTimelineScrollSource,
   historyPrefetchTriggerPx,
   initialFollowing,
   isAtBottom,
@@ -99,7 +100,6 @@ const RUNNING_WORK_DURATION_TICK_MS = 1000;
 const COMPOSER_MESSAGE_MASK_FADE_PX = 24;
 const COMPOSER_MESSAGE_MASK_TRANSPARENT_HEIGHT_PX = 96;
 const USER_SCROLL_INTENT_TTL_MS = 1200;
-const LAYOUT_SCROLL_GUARD_MS = 250;
 const CONTENT_WIDTH_RESIZE_SETTLE_MS = 120;
 const SCROLL_MEMORY_RESTORE_TOLERANCE_PX = 1;
 
@@ -476,7 +476,6 @@ function ConversationTimelineImpl({
   }>({ intent: "none", observedAt: 0 });
   const touchClientYRef = useRef<number | null>(null);
   const scrollbarPointerIdRef = useRef<number | null>(null);
-  const layoutScrollGuardUntilRef = useRef(0);
   const userAdjustedScrollSinceRestoreRef = useRef(false);
   const suppressVirtualizerAdjustmentDuringRestoreRef = useRef(false);
   const latestScrollMemoryStateRef = useRef<{
@@ -801,10 +800,6 @@ function ConversationTimelineImpl({
     return Date.now() - current.observedAt <= USER_SCROLL_INTENT_TTL_MS ? current.intent : "none";
   }, []);
 
-  const markLayoutScrollGuard = useCallback(() => {
-    layoutScrollGuardUntilRef.current = Date.now() + LAYOUT_SCROLL_GUARD_MS;
-  }, []);
-
   const markUserScrollIntent = useCallback(
     (intent: TimelineUserScrollIntent) => {
       if (intent === "none") return;
@@ -1117,7 +1112,6 @@ function ConversationTimelineImpl({
 
       const scrollElement = scrollRef.current;
       if (!scrollElement) return;
-      markLayoutScrollGuard();
       const following = reconcileFollowingForContentAnchor({
         following: followingRef.current,
         metrics: {
@@ -1140,7 +1134,6 @@ function ConversationTimelineImpl({
     getActiveUserScrollIntent,
     isContentWidthChanging,
     liveUnit?.key,
-    markLayoutScrollGuard,
     scrollToBottom,
   ]);
 
@@ -1189,16 +1182,10 @@ function ConversationTimelineImpl({
       programmaticScrollFrameRef.current !== null &&
       Math.abs(element.scrollTop - lastObservedScrollTopRef.current) < 1;
     const userScrollIntent = getActiveUserScrollIntent();
-    // 用户输入优先；其余 scroll 若落在内容/测高 guard 内视为布局补偿，guard 外的
-    // 未分类事件继续按真实用户滚动处理，兼容原生滚动条和辅助技术。
-    const scrollSource =
-      userScrollIntent !== "none"
-        ? "user"
-        : programmaticScroll
-          ? "programmatic"
-          : Date.now() <= layoutScrollGuardUntilRef.current
-            ? "layout"
-            : "user";
+    // Bug 原因：模型增量、live tail 转虚拟行和异步测高可以晚于 250ms guard
+    // 才触发浏览器 scroll；把这种未分类事件当成用户回底会重新开启 following。
+    // 只有捕获到 wheel/touch/键盘/滚动条意图才允许 scroll 落点恢复跟随。
+    const scrollSource = classifyTimelineScrollSource({ userScrollIntent, programmaticScroll });
     // virtualizer 的原生 offset observer 会先于 React onScroll 入账；到这里即可确认它
     // 已看见恢复后的真实 scrollTop。用户滚动也应立即结束保护窗，把滚动权交还用户。
     if (scrollSource !== "layout") {
@@ -1597,7 +1584,6 @@ function ConversationTimelineImpl({
         }));
     if (adjustment !== null && scrollRef.current) {
       const element = scrollRef.current;
-      markLayoutScrollGuard();
       element.scrollTop += adjustment;
       // 程序化平移同样入账，避免被下方贴底对账误读为「未观察滚动」。
       lastObservedScrollTopRef.current = element.scrollTop;
@@ -1624,7 +1610,6 @@ function ConversationTimelineImpl({
   // 若同帧有用户向上滚动，capture handler 会先登记 awayFromBottom，本 effect 必须让位。
   useLayoutEffect(() => {
     const element = scrollRef.current;
-    markLayoutScrollGuard();
     if (element) {
       const following = reconcileFollowingForContentAnchor({
         following: followingRef.current,
@@ -1647,7 +1632,6 @@ function ConversationTimelineImpl({
   }, [
     getActiveUserScrollIntent,
     isContentWidthChanging,
-    markLayoutScrollGuard,
     commitFollowing,
     headerSlotHeight,
     pendingGuideKey,

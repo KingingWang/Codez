@@ -3502,9 +3502,8 @@ export function SessionPane({
     (queueItemId: string) => {
       const current = snapshotRef.current;
       if (!sessionId || current === null) return;
-      // 用户明确点击“立即发送”时，视觉意图等价于点击“滚动到底部”；command 的
-      // reserve/stop/promote 生命周期仍由 CLI 裁决，不把滚动状态混入协议。
-      focusTimelineToLatest();
+      // Bug 原因：立即发送只决定 queue admission，不代表用户已放弃阅读上文。
+      // 让 timeline 自己的 following 状态决定新轮次是否贴底。
       void dispatchCommand("sendQueuedNow", { queueItemId }, sessionId, current.revision).then(
         (ack) => {
           if (ack.status !== "accepted" && ack.status !== "noop") {
@@ -3513,7 +3512,7 @@ export function SessionPane({
         },
       );
     },
-    [dispatchCommand, focusTimelineToLatest, sessionId],
+    [dispatchCommand, sessionId],
   );
 
   const handleReorderQueueItem = useCallback(

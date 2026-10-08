@@ -48,6 +48,18 @@ function nextFollowingAfterScroll(
 type TimelineScrollEventSource = "user" | "programmatic" | "layout";
 
 /**
+ * Bug 原因：模型/虚拟列表异步布局可在固定 guard 超时后才派发 scroll。
+ * 没有捕获到用户输入时不能仅凭滚动落点推断用户回底。
+ */
+export function classifyTimelineScrollSource(input: {
+  userScrollIntent: TimelineUserScrollIntent;
+  programmaticScroll: boolean;
+}): TimelineScrollEventSource {
+  if (input.userScrollIntent !== "none") return "user";
+  return input.programmaticScroll ? "programmatic" : "layout";
+}
+
+/**
  * scroll 事件后的滚动权裁决。布局/程序化 scroll 不得改变用户意图；只有用户输入
  * 才按最终落点决定是否跟随。
  */

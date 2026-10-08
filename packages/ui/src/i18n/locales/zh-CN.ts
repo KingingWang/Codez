@@ -2203,7 +2203,8 @@ const zhCN: Record<string, string> = {
   "settings.autoDownloadAndInstallUpdatesDescription":
     "开启后检测到更新会自动开始下载；下载完成后，如有任务正在运行，重启更新前仍会要求确认。",
   "settings.notification": "任务通知",
-  "settings.notificationDescription": "任务完成、失败或需要确认时发送桌面通知。",
+  "settings.notificationDescription":
+    "任务完成、失败或需要确认时发送通知，包括其他会话的待处理提醒。",
   "settings.notificationSound": "通知声音",
   "settings.notificationSoundDescription": "通知开启后，可单独关闭任务通知提示音。",
   "notification.taskWithTitle": "任务：{title}",
@@ -2215,6 +2216,8 @@ const zhCN: Record<string, string> = {
   "notification.inputRequired": "需要你的回复",
   "notification.planApprovalRequired": "计划等待确认",
   "notification.planApprovalBody": "请确认计划后继续执行",
+  "notification.openTask": "查看任务",
+  "notification.dismiss": "关闭",
   "notification.command": "命令：{command}",
   "notification.file": "文件：{paths}",
   "settings.closeToTrayOnWindows": "关闭窗口时隐藏到托盘",

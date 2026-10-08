@@ -2357,7 +2357,7 @@ const enUS: Record<string, string> = {
     "When enabled, updates start downloading as soon as they are found. Restart still requires confirmation when tasks are running.",
   "settings.notification": "Task notifications",
   "settings.notificationDescription":
-    "Send desktop notifications when a task completes, fails, or needs approval.",
+    "Notify when a task completes, fails, or needs approval, including reminders from other conversations.",
   "settings.notificationSound": "Notification sound",
   "settings.notificationSoundDescription":
     "When notifications are enabled, you can mute the task notification sound separately.",
@@ -2370,6 +2370,8 @@ const enUS: Record<string, string> = {
   "notification.inputRequired": "Your response is needed",
   "notification.planApprovalRequired": "Plan awaiting approval",
   "notification.planApprovalBody": "Review the plan to continue.",
+  "notification.openTask": "Open task",
+  "notification.dismiss": "Dismiss",
   "notification.command": "Command: {command}",
   "notification.file": "File: {paths}",
   "settings.closeToTrayOnWindows": "Hide to tray when closing window",
