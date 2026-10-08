@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, mkdir, writeFile, rm, symlink } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -22,13 +22,17 @@ test(
     await mkdir(codexHome);
     await mkdir(directory);
     await symlink(directory, workspace, process.platform === "win32" ? "junction" : "dir");
-    const { server, requests } = createSmokeModelServer({ reuseItemId: true });
+    const modelRequests = [];
+    const { server, requests } = createSmokeModelServer({
+      reuseItemId: true,
+      onRequest: (body) => modelRequests.push(body),
+    });
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
     const port = server.address().port;
     await writeFile(
       join(codexHome, "config.toml"),
-      `model_provider = "smoke"\nmodel = "gpt-5.2"\napproval_policy = "never"\nsandbox_mode = "read-only"\n[model_providers.smoke]\nname = "Isolated test"\nbase_url = "http://127.0.0.1:${port}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n[analytics]\nenabled = false\n`,
+      `developer_instructions = "Synthetic user desktop instructions."\nmodel_provider = "smoke"\nmodel = "gpt-5.2"\napproval_policy = "never"\nsandbox_mode = "read-only"\n[model_providers.smoke]\nname = "Isolated test"\nbase_url = "http://127.0.0.1:${port}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n[analytics]\nenabled = false\n`,
     );
     const binary = await stageCodexBinary();
     const bridge = await buildCodexBridge();
@@ -38,6 +42,7 @@ test(
       CODEZ_CODEX_BRIDGE_TEST_DIAGNOSTICS: "1",
       CODEZ_CODEX_BRIDGE_HOME: join(temporary, "bridge-state"),
       CODEZ_WORKSPACE_IDENTITY: workspace,
+      CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED: "1",
     };
     for (const key of [
       "PATH",
@@ -114,6 +119,20 @@ test(
         operationId: "auxiliary-1",
       });
       assert.equal(generated.text, "Bridge smoke response");
+      const developerText = (body) =>
+        (body.input ?? [])
+          .filter((item) => item.role === "developer")
+          .flatMap((item) => item.content ?? [])
+          .map((part) => part.text ?? "")
+          .join("\n");
+      const checkDesktopContext = (body) => {
+        const text = developerText(body);
+        assert.equal(text.split("<codez-desktop-context>").length - 1, 1);
+        assert.ok(text.includes("Synthetic user desktop instructions."));
+        assert.ok(text.includes("$...$") && text.includes("$$...$$"));
+        assert.match(text, /outside Markdown table cells/);
+      };
+      assert.equal(developerText(modelRequests[0]).includes("<codez-desktop-context>"), false);
       const config = await rpc("v4/conversation/subscribe", {
         topic: `workspace-config/${workspace}`,
         connectionId: "desktop",
@@ -198,6 +217,7 @@ test(
         "actual Codex response reaches V4 rows",
       );
       assert.ok(requests() > 0);
+      checkDesktopContext(modelRequests.at(-1));
       const firstImage = await rpc("v4/command", {
         commandId: "start-image",
         clientId: "desktop",
@@ -241,6 +261,54 @@ test(
         "two real turns reuse the native message ID but keep turn-scoped entity IDs",
       );
       assert.equal(new Set(completedAnswers.map((row) => row.entityId)).size, 2);
+      const forked = await rpc("v4/command", {
+        commandId: "fork-context",
+        clientId: "desktop",
+        sessionId,
+        type: "forkAssistant",
+        baseRevision: twoTurnRows.atRevision,
+        baseLogEpoch: twoTurnRows.atLogEpoch,
+        payload: {
+          target: { rowId: completedAnswers[0].rowId, entityId: completedAnswers[0].entityId },
+        },
+        issuedAt: Date.now(),
+      });
+      assert.equal(forked.status, "accepted", forked.message);
+      const childId = forked.result.sessionId;
+      const childSend = await rpc("v4/command", {
+        commandId: "fork-context-send",
+        clientId: "desktop",
+        sessionId: childId,
+        type: "sendText",
+        payload: { text: "Forked math smoke", requestedDelivery: "startNow" },
+        issuedAt: Date.now(),
+      });
+      assert.equal(childSend.status, "accepted", childSend.message);
+      const forkDeadline = Date.now() + 20000;
+      let forkCompleted = false;
+      while (Date.now() < forkDeadline) {
+        const snapshot = await rpc("v4/conversation/rowsRange", { sessionId: childId, limit: 200 });
+        if (
+          snapshot.rows.filter((row) => row.kind === "assistantText" && row.state === "complete")
+            .length >= 2
+        ) {
+          forkCompleted = true;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      assert.ok(forkCompleted, "forked native thread completes a model turn");
+      checkDesktopContext(modelRequests.at(-1));
+      // 原生线程仍被 fork 引用时禁止删除父线程；先清理本测试创建的子线程。
+      const deletedChild = await rpc("v4/command", {
+        commandId: "fork-context-delete",
+        clientId: "desktop",
+        sessionId: childId,
+        type: "deleteSession",
+        payload: {},
+        issuedAt: Date.now(),
+      });
+      assert.equal(deletedChild.status, "accepted", deletedChild.message);
       await stop();
       rpc = start();
       const resumed = await rpc("v4/conversation/subscribe", {
@@ -340,6 +408,13 @@ test(
         payload: {},
         issuedAt: Date.now(),
       });
+      checkDesktopContext(modelRequests.at(-1));
+      assert.ok(
+        (await readFile(join(codexHome, "config.toml"), "utf8")).startsWith(
+          'developer_instructions = "Synthetic user desktop instructions."\n',
+        ),
+        "desktop injection never writes the user configuration",
+      );
       assert.equal(deleted.status, "accepted", deleted.message);
       await assert.rejects(
         rpc("v4/attachment/read", {

@@ -18,6 +18,7 @@ import {
 } from "./rpc-framing.js";
 import { shutdownCodex } from "./rpc-shutdown.js";
 import { codexServerArgv } from "./codex-server-argv.js";
+import { prepareCodexDesktopContext } from "./desktop-context.js";
 
 type Pending = {
   resolve: (value: unknown) => void;
@@ -356,7 +357,8 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
       ) {
         throw new CodexTransportError("INVALID", "Invalid or reserved handshake method");
       }
-      return request(method, params) as Promise<T>;
+      const prepared = await prepareCodexDesktopContext(method, params, options, request);
+      return request(method, prepared) as Promise<T>;
     },
     async respond(id, result) {
       await reply(id, { id, result: result === undefined ? null : result });

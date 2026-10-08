@@ -3,7 +3,10 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { CODEZ_WORKSPACE_IDENTITY_ENV } from "@codez/shared";
+import {
+  CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
+  CODEZ_WORKSPACE_IDENTITY_ENV,
+} from "@codez/shared";
 import {
   resolveCodexBridgeCommand,
   usesCodexBridgeRuntime,
@@ -107,6 +110,7 @@ test("development launches the built bridge with Node and a native executable en
       env: {
         ELECTRON_RUN_AS_NODE: "1",
         CODEZ_CODEX_COMMAND: "/native codex/二进制",
+        [CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV]: "1",
         [CODEZ_WORKSPACE_IDENTITY_ENV]: context.workspaceKey,
       },
     });
@@ -124,6 +128,28 @@ test("development launches the built bridge with Node and a native executable en
       resolveCodexBridgeCommand(context, { cwd, env: {} }).env?.CODEZ_CODEX_COMMAND,
       "codex",
     );
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test("desktop context capability follows Host presentation, not an inherited environment", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "codez-codex-presentation-"));
+  const bridge = join(cwd, "packages/codex-bridge/dist/bridge.cjs");
+  try {
+    await mkdir(dirname(bridge), { recursive: true });
+    await writeFile(bridge, "");
+    for (const presentationSurface of ["desktop", undefined] as const) {
+      const command = resolveCodexBridgeCommand(
+        { ...context, presentationSurface },
+        { cwd, env: { [CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV]: "1" } },
+      );
+      assert.equal(
+        command.env?.[CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV],
+        presentationSurface === "desktop" ? "1" : "0",
+      );
+      assert.equal(command.env?.[CODEZ_WORKSPACE_IDENTITY_ENV], context.workspaceKey);
+    }
   } finally {
     await rm(cwd, { recursive: true, force: true });
   }

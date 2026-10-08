@@ -1,4 +1,4 @@
-import type { CodexRpcPort } from "./contract.js";
+import type { CodexProcessOptions, CodexRpcPort } from "./contract.js";
 
 export async function readCodexModels(rpc: CodexRpcPort): Promise<unknown> {
   return rpc.request("model/list", { limit: 100 });
@@ -10,3 +10,8 @@ export const nativeBrowserCuaCapabilityExample = {
     cuaAvailable: false,
   },
 } as const;
+
+export const nativeDesktopContextExample: Pick<CodexProcessOptions, "desktopContextPromptEnabled"> =
+  {
+    desktopContextPromptEnabled: true,
+  };
