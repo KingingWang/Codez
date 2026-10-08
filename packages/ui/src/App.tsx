@@ -64,8 +64,8 @@ import {
 import { useTaskSidePaneMemoryBridge } from "@/app-shell/useTaskSidePaneMemoryBridge.js";
 import { resolveAppWorkspaceRpcTarget } from "@/app-shell/workspaceRpcTarget.js";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
-import { useWorkspaceTerminalTaskNotifications } from "@/hooks/useTaskNotifications.js";
 import { useMarketingTaskCompletionRefresh } from "@/components/marketing-touch/useMarketingTaskCompletionRefresh.js";
+import { useWorkspaceTaskNotifications } from "@/hooks/useTaskNotifications.js";
 import { useOffPeakTaskNotifications } from "@/hooks/useOffPeakTaskNotifications.js";
 import type { AppProps, WorkspaceMainView } from "@/app-shell/types.js";
 import type {
@@ -289,15 +289,6 @@ export function App({
     ...(workspaceIdentity ? { workspaceIdentity } : {}),
     ...(workspaceRemoteSessionId ? { endpointKey: workspaceRemoteSessionId } : {}),
     rpcReady: workspaceRpcReady,
-  });
-  useWorkspaceTerminalTaskNotifications({
-    workspacePath: workspaceAbsPath,
-    ...(workspaceIdentity ? { workspaceIdentity } : {}),
-    ...(workspaceRemoteSessionId ? { endpointKey: workspaceRemoteSessionId } : {}),
-    enabled: notificationEnabled,
-    rpcReady: workspaceRpcReady,
-    platform,
-    formatMessage: intl.formatMessage,
   });
   // 闲时任务终态/等确认通知：仅桌面本地链路，main 进程按 status:taskId 去重多窗口重复。
   useOffPeakTaskNotifications({
@@ -943,6 +934,18 @@ export function App({
     },
     [handleOpenAutomations],
   );
+  useWorkspaceTaskNotifications({
+    workspacePath: workspaceAbsPath,
+    ...(workspaceIdentity ? { workspaceIdentity } : {}),
+    ...(workspaceRemoteSessionId ? { endpointKey: workspaceRemoteSessionId } : {}),
+    activeTaskId,
+    viewingActiveTask: isWorkspaceVisible && workspaceMainView === "chat",
+    onNavigateToTask: (taskId) => handleSelectTask(workspaceAbsPath, taskId, workspaceIdentity),
+    enabled: notificationEnabled,
+    rpcReady: workspaceRpcReady,
+    platform,
+    formatMessage: intl.formatMessage,
+  });
   const handleOpenPluginStoreForScope = useCallback(
     (_target: PluginStoreOpenTarget = {}) => {
       // Workspace Marketplace 已收敛为全局入口。兼容旧事件中的 Workspace key，但返回
