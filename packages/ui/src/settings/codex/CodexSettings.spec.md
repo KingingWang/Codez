@@ -38,6 +38,15 @@ effective configuration, resource installation state, or accepted commands.
 - A dedicated Codex section contains native account, model/reasoning,
   configuration/requirements, skills, MCP, and plugin/marketplace controls.
   Legacy provider/skill/MCP/plugin deep links render the Codex surface on desktop.
+- The Models panel also exposes Codez's automatic session-title model preference, separately
+  from native conversation defaults. It shows an editable global default and a current-workspace
+  choice that either inherits the default or overrides it. Candidate provider/model pairs come
+  from the selected workspace's native catalog; an unavailable saved choice remains visible
+  with an explanation rather than being silently replaced. Title choices save immediately and
+  announce success, separately from the native configuration form's Save button. Changing
+  workspace identity resets the title controls' local pending/success/error presentation; a
+  completed save for the previous identity cannot be announced as the new workspace's save. See
+  `specs/codex-desktop-session-title.md` for ownership and generation rules.
 - The section's internal panel tabs are the same navigation as the Settings
   sidebar entries: switching a tab that has a sidebar counterpart also moves
   the outer active section, so the page title and sidebar highlight always

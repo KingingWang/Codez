@@ -184,6 +184,118 @@ test("auxiliary dispatch precedes legacy unsupported control route and waits for
   assert.equal(h.listeners(), 2, "only runtime notification/request listeners remain");
 });
 
+test("first-input command generates a native title through the isolated auxiliary path", async (t) => {
+  const h = await fixture(t);
+  h.authority.thread = {
+    ...threadFixture(),
+    id: "created",
+    name: null,
+    preview: "Please investigate the build failure",
+    turns: [],
+  };
+  h.handlers["thread/start"] = (params) => ({
+    thread: {
+      ...h.authority.thread,
+      id: params.ephemeral ? "title-aux" : "created",
+      ephemeral: !!params.ephemeral,
+    },
+    cwd,
+    model: params.model ?? "fixture-model",
+    modelProvider: params.modelProvider ?? "openai",
+    approvalPolicy: "never",
+    sandbox: { type: "readOnly", networkAccess: false },
+  });
+  h.handlers["turn/start"] = (params) => {
+    if (params.threadId === "title-aux") {
+      queueMicrotask(() => {
+        h.emit("item/completed", {
+          threadId: "title-aux",
+          turnId: "title-turn",
+          item: {
+            id: "title-answer",
+            type: "agentMessage",
+            text: '{"title":"Investigate build failure"}',
+            phase: "final_answer",
+          },
+        });
+        h.emit("turn/completed", {
+          threadId: "title-aux",
+          turn: { id: "title-turn", status: "completed", items: [] },
+        });
+      });
+      return { turn: { id: "title-turn" } };
+    }
+    return { turn: { id: "main-turn" } };
+  };
+  h.handlers["thread/read"] = () => ({ thread: h.authority.thread });
+  h.handlers["thread/turns/list"] = () => ({
+    data: h.authority.thread.turns,
+    nextCursor: null,
+  });
+  h.handlers["thread/name/set"] = (params) => {
+    h.authority.thread.name = params.name as string;
+    h.emit("thread/name/updated", {
+      threadId: "created",
+      threadName: params.name,
+    });
+    return {};
+  };
+  const ack = await h.runtime.request(V4_METHODS.command, {
+    ...create("title-create"),
+    payload: {
+      workspaceId,
+      titleGenerationModel: { providerId: "openai", modelId: "fixture-model" },
+      firstInput: { text: "Please investigate the build failure" },
+    },
+  });
+  assert.equal((ack.result as { status: string }).status, "accepted");
+  const user = {
+    id: "main-user",
+    type: "userMessage",
+    content: [{ type: "text", text: "Please investigate the build failure" }],
+  };
+  h.authority.thread.turns = [
+    {
+      id: "main-turn",
+      itemsView: "full",
+      status: "inProgress",
+      error: null,
+      startedAt: 121,
+      completedAt: null,
+      items: [user],
+    },
+  ];
+  h.emit("turn/started", {
+    threadId: "created",
+    turn: { id: "main-turn", status: "inProgress", items: [] },
+  });
+  h.emit("item/completed", { threadId: "created", turnId: "main-turn", item: user });
+  const deadline = Date.now() + 3_000;
+  while (h.authority.thread.name === null && Date.now() < deadline) await tick();
+  assert.equal(h.authority.thread.name, "Investigate build failure");
+  assert.equal(h.calls.filter((call) => call.method === "thread/name/set").length, 1);
+  assert.equal(
+    h.calls.filter(
+      (call) =>
+        call.method === "thread/start" &&
+        (call.params as { ephemeral?: boolean }).ephemeral === true,
+    ).length,
+    1,
+  );
+  const titleTurn = h.calls.find(
+    (call) =>
+      call.method === "turn/start" &&
+      (call.params as { threadId?: string }).threadId === "title-aux",
+  );
+  assert.ok(titleTurn);
+  assert.deepEqual((titleTurn.params as { outputSchema: unknown }).outputSchema, {
+    type: "object",
+    properties: { title: { type: "string", minLength: 1, maxLength: 36 } },
+    required: ["title"],
+    additionalProperties: false,
+  });
+});
+
 test("runtime cancellation and close abort auxiliary work, interrupt exact turn and remove listeners", async (t) => {
   for (const action of ["cancel", "close"])
     await t.test(action, async (t) => {

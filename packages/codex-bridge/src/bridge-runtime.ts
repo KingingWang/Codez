@@ -25,6 +25,7 @@ import { projectTurnFileChanges } from "./file-changes.js";
 import { projectCodexHistoryRuns } from "./history-runs.js";
 import { join } from "node:path";
 import { AuxiliaryText } from "./auxiliary-text.js";
+import { SessionTitleCoordinator } from "./session-title.js";
 import { scopeWorkspaceParams, handleCodexNativeRequest } from "./request-scope.js";
 import type { BridgeFailureOrigin } from "./diagnostics.js";
 
@@ -53,6 +54,7 @@ export class BridgeRuntime {
   private readonly subscriptions: BridgeSubscriptions;
   private readonly attachments: AttachmentStore;
   private readonly auxiliary: AuxiliaryText;
+  private readonly title: SessionTitleCoordinator;
   private readonly officialPlugins: OfficialPluginMarketplace | undefined;
   private readonly unsubscribe: (() => void)[] = [];
   private eventTail: Promise<void> = Promise.resolve();
@@ -62,6 +64,8 @@ export class BridgeRuntime {
     const { rpc, cwd, workspaceId, stateRoot, notify } = options;
     this.store = new ThreadStateStore(rpc, cwd);
     this.auxiliary = new AuxiliaryText({ rpc, cwd });
+    const titleDeps = { rpc, store: this.store, auxiliary: this.auxiliary, cwd, workspaceId };
+    this.title = new SessionTitleCoordinator(titleDeps);
     this.officialPlugins = options.officialMarketplaceRoot
       ? new OfficialPluginMarketplace(options.officialMarketplaceRoot)
       : undefined;
@@ -80,6 +84,7 @@ export class BridgeRuntime {
       workspaceId,
       attachments: (refs, sessionId) => this.attachments.toNativeInput(refs, sessionId),
       rewindNotices: this.rewindNotices,
+      title: this.title,
     });
     this.snapshots = new BridgeSnapshots(
       { rpc, cwd, auxiliary: this.auxiliary },
@@ -109,6 +114,7 @@ export class BridgeRuntime {
             const params = object(event.params ?? {});
             // 事件已在 eventTail 上串行；await 保证归属解析不会让后到的事件插队。
             await this.store.apply(event);
+            void this.title.onNotification(event).catch(() => {});
             if (event.method === "serverRequest/resolved") {
               await this.interactions.resolved(string(params.threadId), params.requestId);
             }
@@ -374,6 +380,7 @@ export class BridgeRuntime {
 
   async close(): Promise<void> {
     this.closed = true;
+    this.title.close();
     for (const dispose of this.unsubscribe) dispose();
     this.subscriptions.close();
     // 派生资源清理失败不能跳过原生进程关闭，避免 Host 重启后残留上一代运行时。

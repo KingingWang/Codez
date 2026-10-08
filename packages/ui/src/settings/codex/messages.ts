@@ -65,6 +65,17 @@ const en = {
   signedIn: "Signed in",
   continue: "Continue to workspace",
   model: "Default model",
+  titleModelTitle: "Automatic session titles",
+  titleModelHelp:
+    "A new session uses one background Codex request. Changes save immediately; the workspace inherits the global model unless overridden. Unavailable models leave the original preview unchanged.",
+  titleModelGlobal: "Global title model",
+  titleModelWorkspace: "This workspace",
+  titleModelInherit: "Inherit global default",
+  titleModelUnavailable:
+    "Selected title model is unavailable in this workspace. Automatic titles will be skipped.",
+  titleModelSettingsUnavailable:
+    "Title model settings could not be read. Refresh before changing them.",
+  titleModelSaved: "Title model saved. New sessions use this choice.",
   effort: "Reasoning effort",
   approval: "Approval policy",
   sandbox: "Sandbox mode",
@@ -250,6 +261,15 @@ const zh: Record<keyof typeof en, string> = {
   signedIn: "已登录",
   continue: "进入工作区",
   model: "默认模型",
+  titleModelTitle: "会话自动标题",
+  titleModelHelp:
+    "新会话会额外发起一次后台 Codex 请求。选择后立即保存；工作区默认继承全局模型，模型不可用时保留原始预览。",
+  titleModelGlobal: "全局标题模型",
+  titleModelWorkspace: "当前工作区",
+  titleModelInherit: "继承全局默认",
+  titleModelUnavailable: "所选标题模型在当前工作区不可用，将跳过自动命名。",
+  titleModelSettingsUnavailable: "无法读取标题模型设置，请刷新后再修改。",
+  titleModelSaved: "标题模型已保存，后续新会话将使用该选择。",
   effort: "推理强度",
   approval: "审批策略",
   sandbox: "沙箱模式",

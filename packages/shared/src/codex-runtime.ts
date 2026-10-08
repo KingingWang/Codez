@@ -1,5 +1,33 @@
 import { z } from "zod";
 
+export const codexTitleModelSchema = z
+  .object({
+    providerId: z.string().trim().min(1),
+    modelId: z.string().trim().min(1),
+  })
+  .strict();
+export type CodexTitleModel = z.infer<typeof codexTitleModelSchema>;
+export const DEFAULT_CODEX_TITLE_MODEL: CodexTitleModel = {
+  providerId: "openai",
+  modelId: "gpt-5.6-luna",
+};
+
+export function resolveCodexTitleModel(
+  settings: {
+    codexTitleDefaultModel?: CodexTitleModel;
+    codexTitleWorkspaceModels?: Record<string, CodexTitleModel>;
+  },
+  workspacePath: string,
+  workspaceIdentity?: string,
+): CodexTitleModel {
+  const key = workspaceIdentity?.trim() || workspacePath;
+  return (
+    settings.codexTitleWorkspaceModels?.[key] ??
+    settings.codexTitleDefaultModel ??
+    DEFAULT_CODEX_TITLE_MODEL
+  );
+}
+
 /** Settings-only native RPC allowlist. Thread/tool/filesystem RPCs are not exposed here. */
 export const codexRequestMethodSchema = z.enum([
   "account/read",

@@ -80,6 +80,7 @@ import { WORKSPACE_FILE_DRAG_MIME } from "@/lib/workspaceFileDrag.js";
 import { buildChatSessionScrollMemoryKey } from "@/lib/chatSessionScrollMemory.js";
 import type { MessageFileLinkTarget } from "@/components/ai-elements/message.js";
 import { useServices } from "@/hooks/useServices.js";
+import { useCodexTitleModel } from "@/hooks/useCodexTitleModel.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { browserGlobalNoticeStore } from "@/global-notice/globalNoticeStore.js";
 import {
@@ -1624,6 +1625,7 @@ export function SessionPane({
       }
     }
   }, [highspeedAutoShareClock, highspeedCardService, highspeedTurnVersion, sessionId, snapshot]);
+  const readTitleModel = useCodexTitleModel(workspacePath, workspaceIdentity);
   const workspaceConfigOptions = useCodezSessionStore(
     (store) => store.getWorkspaceState(workspacePath, workspaceIdentity).configOptions,
   );
@@ -3367,6 +3369,15 @@ export function SessionPane({
       const prepareHighspeedTurn = prepareHighspeedTurnFrom(highspeedOriginAtSend);
       const dispatchSubmissionCommand = async (...args: Parameters<typeof dispatchCommand>) => {
         if (
+          (args[0] === "sendText" &&
+            (!snapshotRef.current || snapshotRef.current.sessionId !== args[2] ||
+              snapshotRef.current.rows.totalCount === 0)) ||
+          (args[0] === "createSession" && args[1].firstInput)
+        ) {
+          const titleGenerationModel = await readTitleModel();
+          if (titleGenerationModel) args[1] = { ...args[1], titleGenerationModel };
+        }
+        if (
           args[0] === "sendText" &&
           args[2] &&
           baseWorkspaceServices.genUiService &&
@@ -3822,6 +3833,7 @@ export function SessionPane({
     },
     [
       dispatchCommand,
+      readTitleModel,
       recommendStartPlan,
       baseWorkspaceServices,
       isDesktop,

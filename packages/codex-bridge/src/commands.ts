@@ -31,6 +31,7 @@ import { createNativeSession } from "./command-create.js";
 import { formatRewindNotice, type RewindNoticeStore } from "./rewind-notice.js";
 import { createSelectionSideSession } from "./selection-side-session-command.js";
 import { applySelectionSideChatBoundary } from "./selection-side-chat.js";
+import type { SessionTitleCoordinator } from "./session-title.js";
 
 export interface CommandContext {
   rpc: CodexRpcPort;
@@ -44,6 +45,7 @@ export interface CommandContext {
    * 缺省时 sendText 不注入，保持旧嵌入方/测试语义。
    */
   rewindNotices?: RewindNoticeStore;
+  title?: SessionTitleCoordinator;
 }
 
 /** Per-thread serialization covers admission decisions, not native execution. */
@@ -141,11 +143,8 @@ export class CommandRouter {
     switch (command.type) {
       case "sendText": {
         const p = commandPayloadSchemas.sendText.parse(command.payload);
-        // 跨 provider 换模型由 codex 原生按 catalog per-model provider 路由
-        // （turn_context.with_model），无需拒绝；线程 provider 记录跟随最近一次
-        // 选择更新（specs/codex-model-provider-grouping.md）。原生报告的
-        // ThreadSettings.model_provider 是创建期固定身份，不作执行依据。
-
+        // 原生按 catalog 的 per-model provider 路由；线程 provider 跟随本次选择。
+        // 创建期 ThreadSettings.model_provider 不代表执行归属（specs/codex-model-provider-grouping.md）。
         if (p.context_refs?.length) unsupported("shared-context execution");
         // heldQueueDisposition 只在 legacy held(choice) 路由下有事务语义（clear/keep
         // 队列后 startNow）；Codex 没有 held queue，投影永不报 choice，该字段无事务
@@ -172,6 +171,7 @@ export class CommandRouter {
         const input = await nativeInput(text, p.attachments, sessionId, attachments);
         // busy 默认入队：排队消息立即可见、可编辑/删除；steer 只保留给显式 guide（specs/codex-desktop-adapter.md）。
         const delivery = p.requestedDelivery ?? (running ? "queue" : "startNow");
+        if (p.titleGenerationModel) this.context.title?.arm(sessionId, p.titleGenerationModel);
         if (delivery === "queue" || (delivery === "guide" && running))
           assertUnchangedInputSettings(p, state.thread);
         if (delivery === "queue") {
@@ -235,14 +235,15 @@ export class CommandRouter {
         if (running) throw new Error("Wait for the active turn before compacting");
         await rpc.request("thread/compact/start", native);
         break;
-      case "renameSession":
-        await rpc.request("thread/name/set", {
-          ...native,
-          name: commandPayloadSchemas.renameSession.parse(command.payload).title,
-        });
+      case "renameSession": {
+        const title = commandPayloadSchemas.renameSession.parse(command.payload).title;
+        await (this.context.title?.manualRename(sessionId, title) ??
+          rpc.request("thread/name/set", { ...native, name: title }));
         break;
+      }
       case "deleteSession":
         if (running) throw new Error("Stop the active turn before deleting");
+        this.context.title?.cancel(sessionId);
         await rpc.request("thread/delete", native);
         store.remove(sessionId);
         break;
@@ -351,6 +352,7 @@ export class CommandRouter {
         return createSelectionSideSession(command, this.context);
       case "editUserQuery":
       case "retryTurn": {
+        this.context.title?.cancel(sessionId);
         const p =
           command.type === "editUserQuery"
             ? commandPayloadSchemas.editUserQuery.parse(command.payload)

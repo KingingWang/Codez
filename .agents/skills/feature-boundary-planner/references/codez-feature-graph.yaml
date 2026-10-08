@@ -17,6 +17,19 @@ rules:
     - "evidence-only"
 
 nodes:
+  - id: capability.codex-session-title
+    kind: capability
+    label: Codex automatic session title and model preference
+    aliases: [auto rename session, title generation model, 自动命名, 自动标题, 标题模型]
+    codeSeeds:
+      - file: packages/codex-bridge/src/session-title.ts
+        symbol: SessionTitleCoordinator
+      - file: packages/ui/src/settings/codex/CodexTitleModelSettings.tsx
+        symbol: CodexTitleModelSettings
+      - file: packages/shared/src/codex-runtime.ts
+        symbol: resolveCodexTitleModel
+    invariants:
+      - SettingService owns default and workspace override; native Codex owns the thread name. Manual names win over a pending local suggestion.
   - id: surface.codex-followup-composer
     kind: ui-surface
     label: Codex composer per-send Queue or Guide choice
@@ -5045,6 +5058,16 @@ nodes:
         symbol: "BotTopicPreparationList"
 
 edges:
+  - from: capability.codex-session-title
+    to: capability.conversation-runtime
+    type: updates-native-thread-name-after-first-input
+    rank: must-inspect
+    condition: New top-level Codex sessions only; no history backfill.
+  - from: capability.codex-session-title
+    to: capability.model-selection
+    type: reads-workspace-catalog-options-from
+    rank: should-inspect
+    condition: Title model preference does not change the conversation model selection.
   - from: capability.conversation-runtime
     to: surface.codex-followup-composer
     type: exposes-busy-followup-at

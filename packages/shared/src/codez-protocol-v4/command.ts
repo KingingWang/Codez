@@ -9,6 +9,7 @@ import { conversationRowTargetSchema, timestampSchema } from "./core.js";
 import { attachmentRefSchema } from "./attachment-ref.js";
 import { v4ConversationFileRewindPreviewResultSchema } from "./transport.js";
 import { modelSelectionSchema } from "../model-selection.js";
+import { codexTitleModelSchema } from "../codex-runtime.js";
 import { modelExecutionSchema } from "../model-execution.js";
 import { submissionModeSchema } from "./submission.js";
 import { botGroupInputSourceSchema, codezAutomationBotDeliveryTargetSchema } from "../bots.js";
@@ -54,6 +55,7 @@ export const commandPayloadSchemas = {
   createSession: z.object({
     workspaceId: z.string(),
     permissionScope: z.literal("session").optional(),
+    titleGenerationModel: codexTitleModelSchema.optional(),
     firstInput: z
       .object({
         text: z.string(),
@@ -92,6 +94,7 @@ export const commandPayloadSchemas = {
   sendText: z
     .object({
       text: z.string(),
+      titleGenerationModel: codexTitleModelSchema.optional(),
       attachments: z.array(attachmentRefSchema).optional(),
       // Desktop Cmd/Ctrl+Enter 只覆盖本次 busy input，不改 session followupMode。
       // startNow 由 CLI 原子抢占当前 turn，不经过 queue admission。
