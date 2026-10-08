@@ -7,6 +7,15 @@ allows fake transports in tests. Unknown mutations fail closed, and mutations
 with an unknown outcome are never blindly retried. No real user credentials are
 used by tests. See specs/codex-desktop-adapter.md for recovery and delivery rules.
 
+The Host-authorized `desktopContextPromptEnabled` process option adds a native
+developer section at the transport's create/resume/fork admission boundary.
+`desktop-context.ts` owns its text and composition. Effective user developer
+instructions are preserved, configuration reads are fresh and failures reject
+admission before mutation. Model/base and collaboration instructions are never
+replaced; configuration files and history are never rewritten. Ephemeral/system
+generators and non-desktop processes are unchanged. See
+specs/codex-desktop-context-prompt.md for precedence and recovery boundaries.
+
 Presentation identities are turn-scoped; raw native IDs remain the RPC authority.
 The session index collapses duplicate native thread records without changing
 history. Sidebar invalidation shares the existing coalescing publisher but never

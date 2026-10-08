@@ -62,11 +62,24 @@ export async function startDesktopMockProvider({ reuseItemId = false } = {}) {
       const images = (input.input ?? [])
         .flatMap((item) => item.content ?? [])
         .filter((part) => part.type === "input_image");
+      const desktopSections = (input.input ?? [])
+        .filter((item) => item.role === "developer")
+        .flatMap((item) => item.content ?? [])
+        .filter((part) => part.type === "input_text")
+        .flatMap(
+          (part) =>
+            (part.text ?? "").match(/<codez-desktop-context>[\s\S]*?<\/codez-desktop-context>/g) ??
+            [],
+        );
       // Store only fixture diagnostics, not native system prompts or credentials.
       requests.push({
         model: input.model,
         imageCount: images.length,
         imageIsDataUrl: images.every((image) => image.image_url?.startsWith("data:image/")),
+        desktopContextSections: desktopSections.length,
+        hasDesktopMathGuidance: desktopSections.some(
+          (text) => text.includes("$...$") && text.includes("$$...$$"),
+        ),
       });
       if (retryFailuresRemaining > 0) {
         retryFailuresRemaining -= 1;

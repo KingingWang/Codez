@@ -183,6 +183,22 @@ nodes:
         symbol: ConversationV4Gateway
       - file: apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/session-flow.ts
         symbol: sendText
+  - id: capability.codex-desktop-context
+    kind: capability
+    label: Host-scoped native Codex desktop developer instructions
+    aliases:
+      - desktop context prompt
+      - math delimiters
+      - 桌面提示词
+      - 数学公式
+    codeSeeds:
+      - file: packages/codex-bridge/src/desktop-context.ts
+        symbol: prepareCodexDesktopContext
+      - file: packages/services/src/codez-agent/codexBridgeCommand.ts
+        symbol: resolveCodexBridgeCommand
+    invariants:
+      - "Host presentation authorizes injection; native Codex owns session context.
+        Preserve user instructions and exclude ephemeral/system threads."
   - id: capability.codex-session-title
     kind: capability
     label: Codex automatic session title and model preference

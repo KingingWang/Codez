@@ -28,6 +28,8 @@ export interface CodexProcessOptions {
   updatePlanToolEnabled?: boolean;
   /** 仅桌面 Host 提供的当前 bridge 实例 MCP 配置，不持久化到用户配置。 */
   desktopMcpServers?: DesktopCodexMcpServer[];
+  /** Host-authorized desktop context on native create/resume/fork; never writes user config. */
+  desktopContextPromptEnabled?: boolean;
   /** Ordinary outbound RPC/write timeout in milliseconds; defaults to 30 seconds. */
   requestTimeoutMs?: number;
   /** Optional positive server-interaction deadline in milliseconds. Omitted means no expiry;

@@ -74,8 +74,11 @@ CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/q
 ```
 
 This sends only a generated 1-pixel image and fixture text through the real
-Electron/Host/native bridge to an in-process no-auth loopback provider. It holds
-the response to verify busy controls and `/plan`, then releases a deterministic
+Electron/Host/native bridge to an in-process no-auth loopback provider. It verifies
+that every native model request contains exactly one
+desktop context section with dollar-delimited math guidance. The mock records
+only counts/booleans for this check, never system/developer prompts or user input.
+It holds the response to verify busy controls and `/plan`, then releases a deterministic
 response without tools. A busy plain send enqueues into the visible native queue
 card; the test exercises edit (recall into the composer) and delete, re-queues a
 fixture image, releases the current turn, and observes automatic native image

@@ -94,9 +94,16 @@ try {
     clickToObservedProviderMs: Math.round(performance.now() - firstSendAt),
   });
   const first = (await state()).requests[0];
-  assert.deepEqual(first, { model: "ui-qa-offline", imageCount: 1, imageIsDataUrl: true });
+  assert.deepEqual(first, {
+    model: "ui-qa-offline",
+    imageCount: 1,
+    imageIsDataUrl: true,
+    desktopContextSections: 1,
+    hasDesktopMathGuidance: true,
+  });
   checks.push(
     "NewTask first image reaches actual pinned native and loopback provider as input_image under explicit custom model",
+    "Actual Electron/Host injects one native desktop section with dollar-delimited math guidance",
   );
   await until(() =>
     page.getByRole("combobox", { name: "Default model", exact: true }).isDisabled(),
@@ -254,6 +261,13 @@ try {
   await until(() => page.getByRole("combobox", { name: "Default model", exact: true }).isEnabled());
   assert.deepEqual((await state()).completed, [1, 2, 3, 5, 7]);
   assert.deepEqual((await state()).interrupted, [4, 6]);
+  assert.ok(
+    (await state()).requests.every(
+      (request) => request.desktopContextSections === 1 && request.hasDesktopMathGuidance,
+    ),
+    "queued and preempted turns retain exactly one desktop context",
+  );
+  checks.push("Every queued and preempted native model request retains desktop context");
   assert.deepEqual(errors, []);
   await writeFile(
     join(evidence, "results.json"),

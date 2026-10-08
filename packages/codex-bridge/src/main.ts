@@ -12,6 +12,7 @@ import {
   CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY,
   desktopCodexMcpServersSchema,
   CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE,
+  CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
 } from "@codez/shared";
 import { parseNativeBrowserCuaFacts, runNativeBrowserCuaMcp } from "./native-browser-cua-mcp.js";
 import { describeBridgeFailure, type BridgeFailureOrigin } from "./diagnostics.js";
@@ -33,6 +34,8 @@ async function main(): Promise<void> {
     cwd,
     // Host 按设置页“显示待办”开关注入；update_plan 注册于原生配置加载期，进程内不可热切换。
     updatePlanToolEnabled: process.env[CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY]?.trim() === "1",
+    desktopContextPromptEnabled:
+      process.env[CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV]?.trim() === "1",
     desktopMcpServers: process.env[CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]
       ? desktopCodexMcpServersSchema.parse(
           JSON.parse(process.env[CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]),

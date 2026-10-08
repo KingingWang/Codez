@@ -23,9 +23,16 @@ export function pixelPng() {
   ]);
 }
 
-export function createSmokeModelServer({ reuseItemId = false } = {}) {
+export function createSmokeModelServer({ reuseItemId = false, onRequest } = {}) {
   let requestCount = 0;
   const server = createServer((req, res) => {
+    if (onRequest) {
+      let body = "";
+      req.on("data", (chunk) => {
+        body += chunk;
+      });
+      req.once("end", () => onRequest(JSON.parse(body)));
+    }
     req.resume();
     requestCount += 1;
     const item = {

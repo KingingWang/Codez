@@ -1,6 +1,9 @@
 import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
-import { CODEZ_WORKSPACE_IDENTITY_ENV } from "@codez/shared";
+import {
+  CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
+  CODEZ_WORKSPACE_IDENTITY_ENV,
+} from "@codez/shared";
 import type {
   CodezAgentCommand,
   CodezAgentCommandResolverContext,
@@ -81,6 +84,9 @@ export function resolveCodexBridgeCommand(
     env: {
       ELECTRON_RUN_AS_NODE: "1",
       CODEZ_CODEX_COMMAND: native,
+      // 桌面能力来自 Host 装配事实；不能让终端/普通远端继承到上一个进程的 enabled=1。
+      [CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV]:
+        context.presentationSurface === "desktop" ? "1" : "0",
       // process.cwd() 可能变成物理路径；Host 的本地 path-fallback key 不能随之变化。
       [CODEZ_WORKSPACE_IDENTITY_ENV]: context.workspaceKey,
     },
