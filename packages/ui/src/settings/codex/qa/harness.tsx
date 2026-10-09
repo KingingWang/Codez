@@ -36,6 +36,7 @@ import { MessageFeedbackFixture } from "./message-feedback-fixture.js";
 import { createCatalogModelsFixture } from "./catalog-models-fixture.js";
 import { config, model, otherWorkspaceConfig, platform, questions } from "./harnessConfig.js";
 import { AdditionalFixtures } from "./additional-fixtures.js";
+import { MappedProviderFixture, mappedProviderScenario } from "./mapped-provider-fixture.js";
 import {
   createProjectDiscoveryLocalServices,
   initializeProjectDiscoveryFixture,
@@ -43,7 +44,6 @@ import {
   ProjectDiscoveryTabSeeder,
 } from "./project-discovery-fixture.js";
 import "@/styles.css";
-const projectDiscoveryLocalServices = createProjectDiscoveryLocalServices();
 const requests: Array<CodexRequest & { workspacePath?: string }> = [];
 let modelFailure = false;
 let providerCatalogFailure = true;
@@ -60,8 +60,7 @@ const services = {
   codezAgentService: {
     onAgentRuntimeRestarted: emptyEvent,
     async readCodexCatalog() {
-      // 根因：composer 已增加 Host 目录读取边界，旧夹具未实现而使模型就绪失败。
-      // 目录未配置时按真实服务合同返回空映射，模型回退到激活 provider 组。
+      // composer 依赖 Host 目录边界；未配置目录时返回空映射，模型回退到激活 provider 组。
       catalogReads++;
       return { path: null, models: [] };
     },
@@ -144,7 +143,7 @@ const services = {
       throw new Error("Legacy registry subscribed");
     },
   },
-  codezSessionService: projectDiscoveryLocalServices.codezSessionService,
+  codezSessionService: createProjectDiscoveryLocalServices().codezSessionService,
 } as unknown as IServiceAccessor;
 initializeProjectDiscoveryFixture();
 function Harness() {
@@ -393,7 +392,7 @@ createRoot(document.getElementById("root")!).render(
           <ProjectDiscoveryTabSeeder />
           <CodezIntlProvider initialLocale="en-US">
             <TooltipProvider>
-              <Harness />
+              {mappedProviderScenario ? <MappedProviderFixture services={services} /> : <Harness />}
             </TooltipProvider>
           </CodezIntlProvider>
         </TabStoreProvider>

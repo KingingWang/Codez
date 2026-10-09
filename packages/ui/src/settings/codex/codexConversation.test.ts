@@ -299,6 +299,85 @@ test("unavailable catalog, removed models and unsupported native effort block su
   assert.ok(Object.isFrozen(frozen.modelSelection.options));
 });
 
+test("mapped preferred models are ready even when the config provider owns no models", async () => {
+  for (const configuredModel of [undefined, "native"]) {
+    const result = await readCodexModelCatalog(
+      "/native/workspace",
+      async (request) =>
+        request.method === "config/read"
+          ? {
+              config: {
+                model_provider: "config-provider",
+                ...(configuredModel ? { model: configuredModel } : {}),
+                model_reasoning_effort: "high",
+              },
+              origins: {},
+              layers: [],
+            }
+          : { data: [nativeModel], nextCursor: null },
+      async () => ({ models: [{ slug: "native", provider: "model-owner" }] }),
+    );
+    const expected = {
+      providerId: "model-owner",
+      modelId: "native",
+      options: { reasoningLevel: "high" },
+    };
+    assert.deepEqual(result.preferredSelection, expected);
+    assert.deepEqual(resolveCodexSelection(result), expected);
+    assert.equal(isCodexSelectionReady(result, expected), true);
+    assert.deepEqual(
+      createComposerSubmissionConfig(
+        { mode: "yolo", planEnabled: true, modelSelection: resolveCodexSelection(result)! },
+        null,
+        result,
+      ),
+      { mode: "yolo", planEnabled: true, modelSelection: expected },
+    );
+  }
+});
+
+test("stale config-provider drafts heal without resetting a non-default model or high effort", () => {
+  const second = { ...nativeModel, model: "second", isDefault: false };
+  const mapped = {
+    ...catalog,
+    providerId: "config-provider",
+    models: [nativeModel, second],
+    groups: [{ providerId: "model-owner", providerName: "Owner", models: [nativeModel, second] }],
+    preferredSelection: { ...selection, providerId: "model-owner" },
+  };
+  const stale = {
+    providerId: "config-provider",
+    modelId: "second",
+    options: { reasoningLevel: "high" },
+  };
+  const healed = resolveCodexSelection(mapped, stale);
+  assert.deepEqual(healed, { ...stale, providerId: "model-owner" });
+  assert.equal(healed?.options, stale.options);
+  assert.equal(isCodexSelectionReady(mapped, healed), true);
+  assert.equal(resolveCodexSelection(mapped, healed), healed);
+  assert.equal(isCodexSelectionReady(mapped, stale), false, "raw stale identity is not ready");
+  assert.equal(resolveCodexSelection(mapped, { ...stale, modelId: "removed" }), null);
+  assert.equal(
+    resolveCodexSelection(mapped, { ...stale, providerId: "foreign-host" }),
+    mapped.preferredSelection,
+  );
+  assert.equal(
+    isCodexSelectionReady(
+      mapped,
+      resolveCodexSelection(mapped, { ...stale, options: { reasoningLevel: "unsupported" } }),
+    ),
+    false,
+  );
+  const ambiguous = {
+    ...mapped,
+    groups: [
+      ...mapped.groups,
+      { providerId: "another-owner", providerName: "Other", models: [second] },
+    ],
+  };
+  assert.equal(resolveCodexSelection(ambiguous, stale), null);
+});
+
 test("native answers use IDs or string indices, never question text or nested answers", () => {
   const questions = readCodexQuestions({
     questions: [

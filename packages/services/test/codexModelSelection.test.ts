@@ -607,7 +607,7 @@ test("codex 视图：catalog provider 映射把模型分成多 provider 组", as
       ["openai-my", "Openai-my", ["gpt-6-sol"]],
     ],
   );
-  // preferredSelection 保持配置事实（激活 provider + 配置模型）。
+  // 配置模型没有映射时，preferredSelection 回退激活 provider，保留配置模型。
   assert.deepEqual(view.preferredSelection, {
     providerId: "ollama1",
     modelId: "kimi-k3",
@@ -689,6 +689,92 @@ test("codex 视图：catalog 映射读取失败降级为单激活 provider 组",
     ["kimi-k3", "gpt-6-sol"],
   );
   service.dispose();
+});
+
+test("codex 视图：配置 provider 无分组时首选归目录 owner，旧选择保留模型与 high", async () => {
+  for (const configuredModel of [undefined, "glm-5.3"]) {
+    const backend: FakeCodexBackend = {
+      config: {
+        model_provider: "config-provider",
+        ...(configuredModel ? { model: configuredModel } : {}),
+        model_reasoning_effort: "high",
+      },
+      pages: [
+        {
+          data: [nativeModel("glm-5.3", { isDefault: true }), nativeModel("second")],
+          nextCursor: null,
+        },
+      ],
+    };
+    const { send } = createFakeSender(backend);
+    const service = createCodexModelSelectionService({
+      send,
+      readCatalogProviderMap: async () => ({
+        path: "/catalog.json",
+        models: [
+          { slug: "glm-5.3", provider: "model-owner" },
+          { slug: "second", provider: "model-owner" },
+        ],
+      }),
+    });
+    try {
+      const view = await service.getView({ selection: null, workspace: WORKSPACE });
+      assert.deepEqual(view.preferredSelection, {
+        providerId: "model-owner",
+        modelId: "glm-5.3",
+        options: { reasoningLevel: "high" },
+      });
+      const preferred = await service.getView({
+        selection: view.preferredSelection,
+        workspace: WORKSPACE,
+      });
+      assert.equal(preferred.selectionIssue, undefined);
+      assert.deepEqual(preferred.effectiveSelection, view.preferredSelection);
+      const stale = {
+        providerId: "config-provider",
+        modelId: "second",
+        options: { reasoningLevel: "high" },
+      };
+      const healed = await service.getView({ selection: stale, workspace: WORKSPACE });
+      assert.equal(healed.selectionIssue, undefined);
+      assert.deepEqual(healed.effectiveSelection, { ...stale, providerId: "model-owner" });
+      const foreign = await service.getView({
+        selection: { ...stale, providerId: "foreign-host" },
+        workspace: WORKSPACE,
+      });
+      assert.equal(foreign.selectionIssue, "provider-not-found");
+      const missing = await service.getView({
+        selection: { ...stale, modelId: "removed" },
+        workspace: WORKSPACE,
+      });
+      assert.equal(missing.selectionIssue, "model-not-found");
+      const unsupported = await service.getView({
+        selection: { ...stale, options: { reasoningLevel: "unsupported" } },
+        workspace: WORKSPACE,
+      });
+      assert.equal(unsupported.selectionIssue, "reasoning-level-not-supported");
+    } finally {
+      service.dispose();
+    }
+  }
+});
+
+test("codex effective 解析：无分组的配置 provider 不治愈跨组同名歧义", () => {
+  const model = nativeModel("shared");
+  const catalog = {
+    ...buildCodexHostModelCatalog({ model_provider: "config-provider" }, [model]),
+    groups: [
+      { providerId: "owner-a", providerName: "A", models: [model] },
+      { providerId: "owner-b", providerName: "B", models: [model] },
+    ],
+  };
+  const result = resolveCodexEffectiveModelSelection(catalog, {
+    providerId: "config-provider",
+    modelId: "shared",
+    options: { reasoningLevel: "high" },
+  });
+  assert.equal(result.effectiveSelection, null);
+  assert.equal(result.selectionIssue, "model-not-found");
 });
 
 test("codex effective 解析：同名条目映射到同一组时按组去重治愈", async () => {

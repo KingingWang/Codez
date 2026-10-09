@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { startDesktopMockProvider } from "./desktop-mock-provider.mjs";
 import { isolatedElectronSandboxEnv } from "./desktop-probe-env.mjs";
 import { assertQaCdpPortAvailable } from "./desktop-probe-ports.mjs";
+import { createMappedProviderQaConfig } from "./desktop-mapped-provider-config.mjs";
 const root = process.cwd();
 const packaged = process.env.CODEX_UI_QA_PACKAGED === "1";
 function qaPort(name, fallback) {
@@ -30,9 +31,19 @@ const mock =
   process.env.CODEX_UI_QA_MOCK === "1"
     ? await startDesktopMockProvider({ reuseItemId: process.env.CODEX_UI_QA_REUSE_ITEM_ID === "1" })
     : null;
+const mappedConfig =
+  process.env.CODEX_UI_QA_MAPPED_PROVIDER === "1"
+    ? createMappedProviderQaConfig(
+        join(isolated, "codex/catalog.json"),
+        mock?.url ?? "http://127.0.0.1:9",
+      )
+    : null;
+if (mappedConfig)
+  await writeFile(join(isolated, "codex/catalog.json"), JSON.stringify(mappedConfig.catalog));
 await writeFile(
   join(isolated, "codex/config.toml"),
-  `model_provider = "ui_qa"\nmodel = "ui-qa-offline"\napproval_policy = "never"\nsandbox_mode = "read-only"\n[model_providers.ui_qa]\nname = "Isolated UI QA"\nbase_url = "${mock?.url ?? "http://127.0.0.1:9"}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n${mock ? "request_max_retries = 0\n" : ""}[analytics]\nenabled = false\n`,
+  mappedConfig?.config ??
+    `model_provider = "ui_qa"\nmodel = "ui-qa-offline"\napproval_policy = "never"\nsandbox_mode = "read-only"\n[model_providers.ui_qa]\nname = "Isolated UI QA"\nbase_url = "${mock?.url ?? "http://127.0.0.1:9"}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n${mock ? "request_max_retries = 0\n" : ""}[analytics]\nenabled = false\n`,
 );
 let nativeOverride;
 if (packaged) {

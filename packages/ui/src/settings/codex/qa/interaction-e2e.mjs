@@ -8,6 +8,7 @@ import { createServer } from "vite";
 import { chromium } from "playwright-core";
 import { verifyProjectDiscovery } from "./project-discovery-e2e.mjs";
 import { verifyCodexMemoryLocale } from "./memory-locale-e2e.mjs";
+import { verifyMappedProviderComposer } from "./mapped-provider-e2e.mjs";
 import {
   captureOptionalAgentBrowserSnapshot,
   createCatalogConfigReadCounter,
@@ -56,6 +57,7 @@ const result = async () => JSON.parse(await page.getByTestId("result").innerText
 const catalogConfigReads = createCatalogConfigReadCounter(page, result);
 const waitEnabled = (name) => waitFixtureButtonEnabled(page, name);
 try {
+  await verifyMappedProviderComposer(page, evidence, checks);
   await page.goto("http://127.0.0.1:5188/");
   await waitEnabled("Send fixture");
   assert.equal(await page.getByTestId("legacy-reads").innerText(), "Legacy registry reads: 0");
