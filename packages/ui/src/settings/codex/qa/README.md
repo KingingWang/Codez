@@ -91,6 +91,20 @@ On failure it writes the UI text, errors, sanitized mock request diagnostics and
 a screenshot, and releases the held response. It does not automatically retry
 commands or move attachment refs between sessions.
 
+For the mapped-provider cold-start regression, launch a **fresh** probe with
+`CODEX_UI_QA_MOCK=1 CODEX_UI_QA_MAPPED_PROVIDER=1`, then use its printed mock URL:
+
+```sh
+CODEX_UI_QA_MOCK_URL=http://127.0.0.1:PORT node packages/ui/src/settings/codex/qa/desktop-mapped-provider-check.mjs
+```
+
+This isolated native catalog has GLM-5.3 owned by `ui_qa`, while the configured
+`ui_qa_config` provider owns no visible models. Both providers use the same
+no-auth loopback mock. It checks cold-start GLM-5.3/high button submission and
+Enter submission through actual Electron/Host/native, without switching models;
+Shift+Enter remains newline. No external GLM inference or macOS runtime is tested.
+The default probe config and existing desktop runners remain unchanged.
+
 For native busy follow-ups, use a different **fresh** mock probe and run
 `desktop-followup-check.mjs` with that probe's `mockProvider` URL. It tests the
 default queue, explicit per-send Guide, inverse Ctrl modifier, local waiting
@@ -210,6 +224,17 @@ Stop the probe after verification; retain temporary evidence only.
 ```sh
 node packages/ui/src/settings/codex/qa/interaction-e2e.mjs
 ```
+
+For just the mapped-provider regression (also included in the full suite):
+
+```sh
+CHOKIDAR_USEPOLLING=1 node packages/ui/src/settings/codex/qa/mapped-provider-runner.mjs
+```
+
+It mounts the actual catalog/draft hooks, model controls and Lexical input.
+Cold-start defaults and persisted non-default/high drafts must send without
+manual model toggles; reload preserves text, effort, permission and plan;
+button and Enter freeze the same config, and Shift+Enter does not send.
 
 The separate Help-menu product-identity runner mounts the real shared Help
 button under Codex, production and Preview Vite defines. For each flavor it

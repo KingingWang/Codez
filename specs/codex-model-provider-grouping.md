@@ -52,8 +52,13 @@ catalog/read ──→ 新增 bridge 控制面方法：host 本地读 catalog �
   - 显式配置但不在目录中的模型（configuredSelection）归入激活 provider 组。
 - `ModelSelectionView.providers` 按组展开为多 provider 视图；`providerId` 语义
   从「codex 配置 provider」变为「模型实际归属的 catalog provider」。
+- 目录内模型的 `preferredSelection`（显式配置模型或目录默认模型）必须使用
+  `catalog/read` 的实际 provider；无映射才回退配置 provider。模型和推理档位
+  仍遵循配置优先规则。否则新任务会显示正确模型/档位，却因选择不属于任何组
+  而禁用发送；切换模型后才偶然恢复。
 - 选择解析（`resolveCodexEffectiveModelSelection` / UI `resolveCodexSelection`）：
-  先在 providerId 对应组内精确匹配模型；provider 是已知组但组内未命中时，跨组
+  先在 providerId 对应组内精确匹配模型；provider 是已知组或当前配置 provider
+  （即使其全部模型已映射到别组、没有独立分组）但组内未命中时，跨组
   唯一匹配则治愈为该组（兼容修复前存储的「激活 provider + 其他组模型」旧值）；
   完全陌生的 provider（legacy/其他 Host 残留）不猜归属，维持既有
   provider-not-found（services）/ 迁移到 preferredSelection（UI 草稿）口径；
@@ -90,6 +95,21 @@ catalog/read ──→ 新增 bridge 控制面方法：host 本地读 catalog �
   行为与修复前完全一致。
 - legacy Provider Registry 路径不经过本分组逻辑，行为不变。
 - Bot 存储的旧选择值经跨组治愈逻辑兼容，不做数据迁移。
+- Composer 草稿继续由 `useDraftConfigControl` 持有原意图，展示与提交通过现有
+  resolver 派生完整选择；恢复仅修正 provider，保留模型、显式 `high` 等档位、
+  正文、权限档位与 plan。不增加同步 effect、超时重试、配置写入或第二套状态。
+  不主动修改已运行线程；提交与忙碌输入的校验保持不变。
+
+```text
+Host config / model / catalog 事实
+          ↓ 按目录归属生成 preferredSelection
+Composer 草稿 owner（新任务默认 / 已存储选择）
+          ↓ resolver 唯一匹配修正 provider，保留模型和档位
+完整选择投影 → 严格提交校验 → 既有 Host command admission
+```
+
+上述恢复是工作区内的选择解析，不改变 workspaceIdentity 隔离、owner/lease、
+desktop continuous 或 mobile replayable 的传输与恢复语义。
 
 ## GUI 验证夹具与验收
 
@@ -104,3 +124,8 @@ catalog/read ──→ 新增 bridge 控制面方法：host 本地读 catalog �
 - 验证顺序：配置/目录/模型读取 → 草稿就绪 → 发送 → 命令投影；
   目录辅助读取失败只触发已定义降级。测试只使用隔离的模拟 Host，
   不写入用户 Codex 配置或凭据；这不能替代真实 Electron/Host 验证。
+- 回归场景：配置 provider 不拥有任何可见模型时，冷启动 GLM-5.3/high
+  新任务无需手动切模即可按钮发送和 Enter 发送；已有「配置 provider + 非默认
+  目录模型 + high」草稿修正归属但不重置模型/档位/权限/正文；刷新后仍可用。
+  Shift+Enter 仍换行；陌生 provider 维持原有迁移/拒绝规则、不猜归属；
+  跨组同名歧义、模型移除、非法档位仍阻断。

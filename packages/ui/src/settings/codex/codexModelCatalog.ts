@@ -119,7 +119,8 @@ export async function readCodexModelCatalog(
       configuredSelection ??
       (model && effort
         ? {
-            providerId,
+            // 根因：配置 provider 不一定拥有默认模型，沿用它会让新任务显示正常却无法发送。
+            providerId: providerMap.get(model.model) ?? providerId,
             modelId: model.model,
             options: { reasoningLevel: effort },
           }
@@ -127,16 +128,17 @@ export async function readCodexModelCatalog(
   };
 }
 
-/** 目录内按 (providerId, modelId) 定位；未知 provider 或组内未命中时跨组唯一命中则治愈。 */
+/** 目录内按 (providerId, modelId) 定位；已知 provider 未命中时跨组唯一命中则治愈。 */
 export function findCodexCatalogModel(
-  catalog: Pick<CodexModelCatalog, "groups">,
+  catalog: Pick<CodexModelCatalog, "providerId" | "groups">,
   selection: { providerId: string; modelId: string },
 ): { group: CodexModelProviderGroup; model: CodexModel } | null {
   const group = catalog.groups.find((entry) => entry.providerId === selection.providerId);
-  // 未知 provider（legacy/其他 Host 残留）不猜归属，由调用方按既有口径处理。
-  if (!group) return null;
-  const inGroup = group.models.find((candidate) => candidate.model === selection.modelId);
-  if (inGroup) return { group, model: inGroup };
+  // 配置 provider 的全部模型可能已归到别组；它仍是本工作区已知身份，允许旧草稿唯一匹配修正。
+  // 其他未知 provider（legacy/其他 Host 残留）不猜归属，由调用方按既有口径处理。
+  if (!group && selection.providerId !== catalog.providerId) return null;
+  const inGroup = group?.models.find((candidate) => candidate.model === selection.modelId);
+  if (group && inGroup) return { group, model: inGroup };
   // 组内未命中：兼容分组引入前存储的「激活 provider + 其他组模型」旧值，
   // 跨组唯一命中（按组去重）则治愈为模型实际归属组；同名多组共存时不猜归属。
   const matches = catalog.groups
@@ -184,9 +186,13 @@ export function resolveCodexSelection(
       options: { reasoningLevel: model.defaultReasoningEffort },
     };
   }
-  // 已知 provider 组内的模型被移除 = 明确无效（阻断）；完全陌生的 provider
+  // 已知 provider 的模型被移除或归属有歧义 = 明确无效（阻断）；完全陌生的 provider
   // （legacy/其他 Host 残留）= 迁移到首选，不阻断草稿。
-  if (catalog.groups.some((group) => group.providerId === selection.providerId)) return null;
+  if (
+    selection.providerId === catalog.providerId ||
+    catalog.groups.some((group) => group.providerId === selection.providerId)
+  )
+    return null;
   return catalog.preferredSelection;
 }
 
