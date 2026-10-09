@@ -556,6 +556,12 @@ export class CodezAgentProcessManager {
     string,
     Set<AbortController>
   >();
+  /**
+   * 工作树删除隔离（specs/git-worktree-removal.md W5a）：删除编排先隔离再释放，
+   * 隔离期间任何 getClient（含 UI 恢复与新订阅触发的 start）对该 workspaceKey
+   * 一律拒绝，闭合"释放后、物理删除前重新 spawn 持有目录句柄"的竞态。
+   */
+  private readonly removalQuarantineByWorkspaceKey = new Set<string>();
   private readonly storageStartupEmitter = new Emitter<{
     workspaceKey: string;
     snapshot: CodezAgentStorageStartupSnapshot;
@@ -847,6 +853,11 @@ export class CodezAgentProcessManager {
       throw new Error("Codez agent process manager is disposed.");
     }
     const workspaceKey = resolveWorkspaceKey(params);
+    if (this.removalQuarantineByWorkspaceKey.has(workspaceKey)) {
+      throw new Error(
+        `Codez agent runtime is unavailable because the workspace is being removed: ${workspaceKey}`,
+      );
+    }
     const existing = this.processesByWorkspaceKey.get(workspaceKey);
     if (existing && !existing.child.killed) {
       return existing.client;
@@ -1384,6 +1395,19 @@ export class CodezAgentProcessManager {
         reason: error instanceof Error ? error.message : String(error),
       };
     }
+  }
+
+  /** 进入删除隔离：后续 getClient 对该 workspace 拒绝 spawn（W5a）。 */
+  quarantineWorkspaceForRemoval(params: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+  }): void {
+    this.removalQuarantineByWorkspaceKey.add(resolveWorkspaceKey(params));
+  }
+
+  /** 解除删除隔离；删除结束（成功/失败）必须成对调用。 */
+  releaseWorkspaceRemovalHold(params: { workspacePath: string; workspaceIdentity?: string }): void {
+    this.removalQuarantineByWorkspaceKey.delete(resolveWorkspaceKey(params));
   }
 
   async disposeWorkspace(params: {

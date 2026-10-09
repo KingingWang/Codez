@@ -984,6 +984,13 @@ export interface ICodezAgentService {
   hasActiveCuaOperationTurn(): boolean;
   disposeWorkspace(params: CodezAgentWorkspaceTarget): Promise<void>;
   /**
+   * 工作树删除隔离（specs/git-worktree-removal.md W5a）：隔离期间该 workspace 的
+   * 新 agent spawn 一律被拒绝，闭合释放→物理删除之间的 respawn 竞态。
+   * 与 releaseWorkspaceRemovalHold 必须成对调用；Host 内存态，Host 重启自愈。
+   */
+  quarantineWorkspaceForRemoval(params: CodezAgentWorkspaceTarget): void;
+  releaseWorkspaceRemovalHold(params: CodezAgentWorkspaceTarget): void;
+  /**
    * 设置变更要求重造本进程全部活动 workspace runtime（当前唯一消费者是 codex bridge 的
    * update_plan 开关：工具注册发生在 app-server 配置加载期，只能随进程重启生效，
    * 见 specs/codex-desktop-update-plan.md）。非 codex bridge runtime 时为空操作。

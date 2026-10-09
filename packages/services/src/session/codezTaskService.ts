@@ -209,6 +209,25 @@ export interface ICodezTaskService {
     provider?: CodezProvider;
   }): Promise<void>;
 
+  /**
+   * 工作树删除隔离（specs/git-worktree-removal.md W5a）：隔离期间该 workspace 的
+   * 新 agent spawn 一律被拒绝，闭合释放→物理删除之间的 respawn 竞态
+   *（Windows 目录占用导致 remove Permission denied 的实测根因）。
+   * 删除编排顺序：quarantine → closeTab → releaseWorkspacePreparation → remove
+   * → releaseWorkspaceRemovalHold（finally，best-effort）。
+   * Host 内存态，渲染进程崩溃导致的泄漏由 Host 重启自愈。
+   */
+  quarantineWorkspaceForRemoval(params: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+  }): Promise<void>;
+
+  /** 解除删除隔离；删除结束（成功/失败）必须成对调用，失败仅记录不影响删除结果。 */
+  releaseWorkspaceRemovalHold(params: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+  }): Promise<void>;
+
   // ---- Task/Session 管理 ----
 
   /** 创建 Codez session 并同步 task 索引。 */

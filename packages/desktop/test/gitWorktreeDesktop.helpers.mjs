@@ -118,7 +118,9 @@ export async function verifyWorktreeRemovalReleaseRetries({ page, dialog, confir
         releaseCalls: window.__worktreeRemovalReleaseQA.releaseCalls,
         removeCalls: window.__worktreeRemovalReleaseQA.removeCalls,
       })),
-      { releaseCalls: 3, removeCalls: 1 },
+      // W5a 起成功路径对目标路径有两次释放：先无条件释放树根 runtime（无 tab 也释放，
+      // 防止释放期间 UI 恢复重新拉起的 agent 残留），再由 closeTabsForRemoval 释放根 tab。
+      { releaseCalls: 4, removeCalls: 1 },
     );
   } finally {
     await page.evaluate(() => {

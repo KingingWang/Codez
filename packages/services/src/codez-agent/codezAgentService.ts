@@ -6292,6 +6292,14 @@ export function createCodezAgentService(
       await disposeWorkspaceRuntime(params);
     },
 
+    quarantineWorkspaceForRemoval(params) {
+      processManager.quarantineWorkspaceForRemoval(params);
+    },
+
+    releaseWorkspaceRemovalHold(params) {
+      processManager.releaseWorkspaceRemovalHold(params);
+    },
+
     async disposeActiveWorkspaceRuntimes(params): Promise<void> {
       await disposeActiveRuntimesForConfigChange(params.reason);
     },

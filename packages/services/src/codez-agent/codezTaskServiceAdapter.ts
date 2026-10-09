@@ -1798,6 +1798,14 @@ export function createCodezTaskServiceAdapter(
       await options.codezAgentService.disposeWorkspace(normalizeWorkspaceParams(params));
     },
 
+    async quarantineWorkspaceForRemoval(params): Promise<void> {
+      options.codezAgentService.quarantineWorkspaceForRemoval(normalizeWorkspaceParams(params));
+    },
+
+    async releaseWorkspaceRemovalHold(params): Promise<void> {
+      options.codezAgentService.releaseWorkspaceRemovalHold(normalizeWorkspaceParams(params));
+    },
+
     async createTask(params): Promise<CodezTaskCreateResult> {
       const target = normalizeWorkspaceParams(params);
       const requestedSelection =

@@ -107,6 +107,17 @@
   作用域内 `workspacePath` 等于 targetPath 或位于其下的所有 tab（树根与子目录
   都算）。释放先行也是 Windows 兼容要求：运行时/进程持有目录句柄时 remove 会
   失败。关闭编排失败则中止删除并进入 error 态。删除不附带删分支、删会话记录。
+- **W5a Host 侧 spawn 隔离（进程准入所有者）**：仅释放存量 runtime 不够——
+  释放与 remove 之间，UI 恢复逻辑或新订阅可能为同一 workspace 重新 spawn
+  agent（实测竞态：释放返回 OK 后 30ms 内新 agent 已以目标目录为 cwd 启动，
+  Windows 删除仍 Permission denied）。因此关闭编排必须先在
+  `CodezAgentProcessManager` 注册 workspace 级"删除隔离"（新 RPC
+  `quarantineWorkspaceForRemoval`），隔离期间 `getClient` 对该 workspaceKey
+  一律拒绝 spawn（含 pending start 之后到达的新 start）；随后才关闭 tab、
+  await `releaseWorkspacePreparation`、执行 remove；remove 结束（成功/失败）
+  经新 RPC `releaseWorkspaceRemovalHold` 解除隔离。解除在弹层 finally 中总是
+  执行且 best-effort（失败仅记日志，不掩盖删除结果）。隔离是 Host 内存态：
+  渲染进程崩溃导致的泄漏由 Host 重启自愈，不做 TTL 兜底。
 - **W6 服务端复检（安全核心）**：`removeWorktree` 执行前必须自己重列台账，确认
   目标路径属于该仓库、不是主目录、未被 lock；再重算内容级指纹比对。**删除权
   依据 git 台账实时事实；UI 传入的路径、文案、勾选都不是授权依据**。来源标记
@@ -133,6 +144,8 @@
     异步打开不仅在入口检查：平台打开请求返回后、实际激活/建 tab/启动草稿之前
     必须再次检查，防止删除开始前发出的打开请求在删除期间迟到提交。
     执行结束（成功/失败/弹层关闭）出清。集合是窗口内 UI 状态，不持久化。
+  - UI 集合只覆盖渲染进程 admission；agent 进程 spawn 准入的竞态由 W5a 的
+    Host 侧删除隔离闭合，两者互为补充、不可替代。
 - **W9 内容级指纹**：`statusFingerprint` = 对以下内容的稳定哈希——head commit、
   每个相关文件（已跟踪改动 + 未跟踪 + 敏感配置文件）的
   `(path, section, kind, size, sha256(文件字节))`。规则：
@@ -281,12 +294,12 @@ export interface GitBranchDeleteResult {
 
 ## 并发保证边界（明示，不过度承诺）
 
-| 操作           | 保护机制                                                         | 残余窗口                                                                                                                                                    |
-| -------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 干净工作树删除 | 不带 `--force`：保留 git 原生 dirty 检查作为额外防线             | Git 检查后仍可能有外部写入；ignored 配置的新写入不触发 dirty 拒绝。不承诺文件系统原子删除                                                                   |
-| 脏工作树删除   | 执行前内容级指纹复检，窗口压缩到 RPC 内毫秒级                    | `--force` 无 git 级兜底；复检后、删除瞬间的外部新写入会一并丢失。属勾选确认的明示语义                                                                       |
-| 分支删除       | `update-ref -d <ref> <expectedOID>` 原子比较删除，tip 推进被拦截 | 占用/合并检查与 update-ref 之间：他处恰好在此窗口 checkout 该分支时 update-ref 不感知占用。概率极低，属用户并行操作的明示冲突；窗口内 tip 推进仍被 CAS 拦截 |
-| 运行态/激活    | W8：确认后 UI 复检 + 删除中集合拦截 admission/激活               | 跨窗口运行与激活无法感知（非目标），依赖影响预览兜底                                                                                                        |
+| 操作           | 保护机制                                                                                                                        | 残余窗口                                                                                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 干净工作树删除 | 不带 `--force`：保留 git 原生 dirty 检查作为额外防线                                                                            | Git 检查后仍可能有外部写入；ignored 配置的新写入不触发 dirty 拒绝。不承诺文件系统原子删除                                                                   |
+| 脏工作树删除   | 执行前内容级指纹复检，窗口压缩到 RPC 内毫秒级                                                                                   | `--force` 无 git 级兜底；复检后、删除瞬间的外部新写入会一并丢失。属勾选确认的明示语义                                                                       |
+| 分支删除       | `update-ref -d <ref> <expectedOID>` 原子比较删除，tip 推进被拦截                                                                | 占用/合并检查与 update-ref 之间：他处恰好在此窗口 checkout 该分支时 update-ref 不感知占用。概率极低，属用户并行操作的明示冲突；窗口内 tip 推进仍被 CAS 拦截 |
+| 运行态/激活    | W8：确认后 UI 复检 + 删除中集合拦截 admission/激活；W5a：Host 进程管理器对目标 workspace 的 spawn 准入在释放→删除窗口内一律拒绝 | 跨窗口运行与激活无法感知（非目标），依赖影响预览兜底；terminal/文件监视等其他目录持有方未纳入隔离（已知差距）                                               |
 
 ## 状态所有者与事件顺序
 
@@ -445,6 +458,17 @@ export interface GitBranchDeleteResult {
   物理删除只在释放成功后发生。`worktreeRemovalGuardStore` 按 scope 精确 + 目录
   前缀匹配，发现打开、普通打开与新任务 admission 三处入口均查询守卫；
   普通打开在平台 IPC 返回后、实际提交 UI 激活之前再次查询守卫。
+- W5a 隔离落地（Windows 实测修复）：用户在 Windows 实测「可创建、删除报
+  `git worktree remove failed: Permission denied`」，日志显示释放成功后
+  renderer 的 v4 会话订阅在释放→删除窗口内为目标 workspace 重新 spawn 了
+  agent（cwd 在目标目录内），存量释放的快照覆盖不到它。修复按 spec W5a：
+  `CodezAgentProcessManager` 增加 workspaceKey 级删除隔离集合，`getClient`
+  准入时对隔离 key 一律拒绝；`codezAgentService`/`codezTaskService` 透传
+  `quarantineWorkspaceForRemoval`/`releaseWorkspaceRemovalHold`（RPC 经
+  ProxyChannel 自动暴露）。UI `executeRemoval` 顺序：收集目标（树根 + 打开的
+  tab，经 `useWorktreeRemovalTargets`）→ 任一 codezTaskService 缺失即中止 →
+  全部隔离 → 无条件释放树根 runtime（无 tab 也释放）→ closeTabsForRemoval →
+  removeWorktree → finally 总是 best-effort 解除隔离。
 - 入口：`ProjectWorktreeSwitcher` 行尾删除按钮（主目录不渲染）+ 底部
   「新的独立工作区」；`GitBranchListItem` 行尾删除按钮（当前分支不渲染）；
   分支菜单撤掉「打开已有工作区…」。弹层为 `RemoveWorktreeDialog` /
