@@ -82,3 +82,58 @@ export async function closeWorkspaceTabsBeforeRemoval({
   }
   for (const { tab } of prepared) closeTab(tab.tabId);
 }
+
+/** 删除隔离/释放目标：目标树根或打开 tab 对应 workspace 的服务句柄（W5a）。 */
+export interface WorkspaceRemovalHoldTarget {
+  workspacePath: string;
+  workspaceIdentity: string | null;
+  codezTaskService: Pick<
+    ICodezTaskService,
+    "quarantineWorkspaceForRemoval" | "releaseWorkspacePreparation" | "releaseWorkspaceRemovalHold"
+  > | null;
+}
+
+/**
+ * W5a 删除隔离（specs/git-worktree-removal.md）：先隔离全部目标的 agent spawn 准入，
+ * 再释放/删除。仅释放存量 runtime 不够——实测释放返回后 30ms 内 UI 恢复即可为同一
+ * workspace 重新 spawn 出 cwd 在目标目录里的 agent，Windows 删除仍 Permission denied。
+ * 任一隔离调用失败即抛出，调用方必须中止删除。
+ */
+export async function quarantineWorkspaceRemovalTargets(
+  targets: readonly WorkspaceRemovalHoldTarget[],
+): Promise<void> {
+  await Promise.all(
+    targets.map(async (target) => {
+      if (!target.codezTaskService) return;
+      await target.codezTaskService.quarantineWorkspaceForRemoval({
+        workspacePath: target.workspacePath,
+        ...(target.workspaceIdentity ? { workspaceIdentity: target.workspaceIdentity } : {}),
+      });
+    }),
+  );
+}
+
+/**
+ * 删除结束（成功/失败）后解除隔离，必须与 quarantineWorkspaceRemovalTargets 成对。
+ * best-effort：单个解除失败仅记录，不掩盖删除结果；Host 内存态，泄漏由 Host 重启自愈。
+ */
+export async function releaseWorkspaceRemovalHolds(
+  targets: readonly WorkspaceRemovalHoldTarget[],
+): Promise<void> {
+  await Promise.all(
+    targets.map(async (target) => {
+      if (!target.codezTaskService) return;
+      try {
+        await target.codezTaskService.releaseWorkspaceRemovalHold({
+          workspacePath: target.workspacePath,
+          ...(target.workspaceIdentity ? { workspaceIdentity: target.workspaceIdentity } : {}),
+        });
+      } catch (error: unknown) {
+        logger.warn("[WorktreeRemoval] 解除删除隔离失败", {
+          workspaceKey: target.workspaceIdentity ?? target.workspacePath,
+          error,
+        });
+      }
+    }),
+  );
+}

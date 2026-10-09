@@ -6,16 +6,17 @@ import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
 import { normalizeWorkspacePathForComparison } from "@/lib/projectGrouping.js";
 import { isRemoteWorkspaceDisconnectedError } from "@/lib/remoteWorkspaceServiceError.js";
-import { closeWorkspaceTabsBeforeRemoval } from "@/lib/workspaceRuntimeRelease.js";
+import {
+  closeWorkspaceTabsBeforeRemoval,
+  quarantineWorkspaceRemovalTargets,
+  releaseWorkspaceRemovalHolds,
+  releaseWorkspaceRuntimeBeforeRemoval,
+} from "@/lib/workspaceRuntimeRelease.js";
 import { hasRunningWorkspaceChat } from "@/lib/workspaceRemovalSafety.js";
 import { logger } from "@/logger.js";
 import { useCodezSessionStore } from "@/store/codezSessionStore.js";
-import {
-  getRegisteredBaseWorkspaceServices,
-  useRemoteWorkspaceSessionStore,
-} from "@/store/remoteWorkspaceSessionStore.js";
 import { useTabStoreApi } from "@/store/TabStoreProvider.js";
-import { isWorkspaceTab, type WorkspaceTabState } from "@/store/tabStore.js";
+import { isWorkspaceTab } from "@/store/tabStore.js";
 import { invalidateTaskQueryCacheByScopes } from "@/store/taskQueryCacheStore.js";
 import {
   buildWorktreeRemovalGuardKey,
@@ -30,6 +31,7 @@ import {
   type WorktreeRemovalState,
   type WorktreeRemovalUiFacts,
 } from "./worktreeRemovalModel.js";
+import { useWorktreeRemovalTargets } from "./useWorktreeRemovalTargets.js";
 
 /**
  * 删除工作树流程的唯一所有者（specs/git-worktree-removal.md）。
@@ -76,6 +78,12 @@ export function useWorktreeRemoval(params: UseWorktreeRemovalParams) {
     params.workspaceIdentity,
   );
   const tabStoreApi = useTabStoreApi();
+  const { resolveTabTaskService, collectRemovalHoldTargets } = useWorktreeRemovalTargets({
+    workspacePath: params.workspacePath,
+    workspaceIdentity: params.workspaceIdentity,
+    remoteSessionId: params.remoteSessionId,
+    codezTaskService: resolution.services.codezTaskService,
+  });
   const [session, setSession] = useState<WorktreeRemovalSession | null>(null);
   const [state, setState] = useState<WorktreeRemovalState>(createInitialWorktreeRemovalState);
   const sessionRef = useRef(session);
@@ -132,24 +140,6 @@ export function useWorktreeRemoval(params: UseWorktreeRemovalParams) {
       };
     },
     [params.projectMemberKeys, params.workspaceIdentity, params.workspacePath, tabStoreApi],
-  );
-
-  const resolveTabTaskService = useCallback(
-    (tab: { workspacePath: string; workspaceIdentity: string | null; tabId: string }) => {
-      const tabs = tabStoreApi.getState().tabs;
-      const source = tabs.find((item) => isWorkspaceTab(item) && item.id === tab.tabId) as
-        | WorkspaceTabState
-        | undefined;
-      const remoteSessionId = source?.remoteSessionId?.trim();
-      if (remoteSessionId) {
-        return (
-          useRemoteWorkspaceSessionStore.getState().sessionsById[remoteSessionId]?.services
-            .codezTaskService ?? null
-        );
-      }
-      return getRegisteredBaseWorkspaceServices()?.codezTaskService ?? null;
-    },
-    [tabStoreApi],
   );
 
   /**
@@ -288,8 +278,26 @@ export function useWorktreeRemoval(params: UseWorktreeRemovalParams) {
           )
         : null;
       if (guardKey) useWorktreeRemovalGuardStore.getState().markDeleting(guardKey);
+      const { rootTarget, holdTargets } = collectRemovalHoldTargets(
+        target.entry,
+        freshFacts.openTabs,
+      );
       try {
-        // W5：关闭编排（含 runtime 释放）必须完成后才物理删除；释放失败抛错即中止。
+        // 服务缺失 = 无法隔离/释放，Windows 持锁删目录会失败；中止且不关闭任何 tab。
+        if (holdTargets.some((holdTarget) => !holdTarget.codezTaskService)) {
+          throw new Error(intl.formatMessage({ id: "worktree.remove.releaseUnavailable" }));
+        }
+        // W5a：先隔离全部目标的 agent spawn 准入，闭合释放→删除之间的 respawn 竞态。
+        await quarantineWorkspaceRemovalTargets(holdTargets);
+        // W5：目标树根自身 runtime 无论有无 tab 都要先释放（Windows 目录占用）。
+        await releaseWorkspaceRuntimeBeforeRemoval({
+          tab: {
+            workspacePath: rootTarget.workspacePath,
+            workspaceIdentity: rootTarget.workspaceIdentity ?? undefined,
+          },
+          codezTaskService: resolution.services.codezTaskService,
+        });
+        // W5：tab 关闭编排（释放 + closeTab + 缓存失效）必须完成后才物理删除。
         await closeTabsForRemoval(freshFacts.openTabs);
         await resolution.services.gitService.removeWorktree(request);
         if (sessionRef.current !== target) return;
@@ -330,9 +338,20 @@ export function useWorktreeRemoval(params: UseWorktreeRemovalParams) {
         }));
       } finally {
         if (guardKey) useWorktreeRemovalGuardStore.getState().unmarkDeleting(guardKey);
+        // W5a：隔离必须成对解除；best-effort，不掩盖删除结果。部分隔离成功时
+        // 对未隔离目标的解除是无害 no-op。
+        await releaseWorkspaceRemovalHolds(holdTargets);
       }
     },
-    [closeTabsForRemoval, computeUiFacts, intl, params, resolution.services.gitService],
+    [
+      closeTabsForRemoval,
+      collectRemovalHoldTargets,
+      computeUiFacts,
+      intl,
+      params,
+      resolution.services.codezTaskService,
+      resolution.services.gitService,
+    ],
   );
 
   const confirmRemoval = useCallback(async () => {
