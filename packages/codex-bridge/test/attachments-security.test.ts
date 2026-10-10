@@ -20,6 +20,7 @@ import {
   v4AttachmentCommitResultSchema,
 } from "@codez/shared/codez-protocol-v4";
 import { AttachmentStore } from "../src/attachments.js";
+import { parseNativeFileReference } from "../src/native-file-reference.js";
 
 const common = { connectionId: "connection", sessionId: "draft", uploadId: "upload" };
 const sha = (bytes: Buffer) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -144,7 +145,7 @@ test("512 KiB chunks stream to disk and preserve UTF-8 across chunk boundaries",
   assert.equal(input?.type, "text");
   if (input?.type === "text") {
     const resolved = await store.resolve(ref.ref, "draft");
-    assert.ok(input.text.includes(resolved.path));
+    assert.equal(parseNativeFileReference(input.text)?.path, resolved.path);
     assert.deepEqual(await readFile(resolved.path), bytes);
   }
 });
@@ -172,7 +173,10 @@ test("native text above 1 MiB remains a complete readable file reference", async
   const [input] = await store.toNativeInput([ref], "draft");
   assert.equal(input?.type, "text");
   if (input?.type !== "text") throw new Error("Expected file reference");
-  assert.ok(input.text.includes((await store.resolve(ref.ref, "draft")).path));
+  assert.equal(
+    parseNativeFileReference(input.text)?.path,
+    (await store.resolve(ref.ref, "draft")).path,
+  );
 });
 
 test("bounded operation admission and close settle outstanding calls", async (t) => {
