@@ -45,6 +45,12 @@ import {
 
 const buildMetadata = getBuildMetadata();
 const targetPlatform = getTargetPlatform();
+// electron-builder 的 Arch 枚举是数字；beforePack 必须先归一化再校验
+// Codex staging，不能依赖未声明的全局变量或平台字符串。
+const ELECTRON_BUILDER_ARCH = {
+  1: "x64",
+  3: "arm64",
+};
 // 修复原因：Windows Chrome 导入入口已暂时隐藏，默认安装包不应继续携带、签名或校验原生 helper。
 // 代码和完整供应链保留在显式 opt-in 后，便于未来恢复而不影响当前发布流程。
 const shouldPackageWindowsBrowserImportHelper =
