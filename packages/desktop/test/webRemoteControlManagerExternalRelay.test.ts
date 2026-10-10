@@ -1,14 +1,24 @@
 import { EventEmitter } from "node:events";
+import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { WebSocket, WebSocketServer } from "ws";
+import { ChannelClient, ChannelServer, Emitter, VSBuffer } from "@codez/rpc";
+import { createAcknowledgedWebRemoteControlRelayProtocol } from "@codez/client";
+import { ServiceCollection, createServiceDescriptor } from "@codez/services";
 import type {
   AppSettings,
   WebRemoteControlAppPayload,
   WebRemoteControlTaskTarget,
   WebRemoteControlWorkspaceTarget,
 } from "@codez/shared";
-import { buildCodezEndpointUrls, encodeWebRemoteControlRpcTransportMessage } from "@codez/shared";
+import {
+  ServiceChannels,
+  buildCodezEndpointUrls,
+  encodeWebRemoteControlRpcTransportMessage,
+} from "@codez/shared";
 import { createWebRemoteControlManager } from "../src/main/webRemoteControlManager.js";
 import { createWebRemoteControlFeatureGate } from "../src/main/webRemoteControlFeatureGate.js";
+import { WebRemoteControlDeviceTransport } from "../src/main/webRemoteControlTransport.js";
 
 function createFakePort() {
   const emitter = new EventEmitter();
@@ -27,6 +37,7 @@ type AttachWorkspaceHost = Parameters<
 >[0]["attachWorkspaceHost"];
 
 function createManagerHarness(options?: {
+  relayWsUrl?: string;
   featureEnabled?: boolean;
   delayReadyMs?: number;
   canSendPayload?: () => boolean;
@@ -84,7 +95,7 @@ function createManagerHarness(options?: {
   const disposeWorkspaceHostAttachmentsForRemoteSession =
     options?.disposeWorkspaceHostAttachmentsForRemoteSession ?? vi.fn();
   const manager = createWebRemoteControlManager({
-    relayWsUrl: "ws://relay.test/ws",
+    relayWsUrl: options?.relayWsUrl ?? "ws://relay.test/ws",
     mobileRemoteControlUrl: "https://zcode.z.ai/remote/v3",
     getEndpointUrls: options?.getEndpointUrls,
     deviceMid: "mid-1",
@@ -143,45 +154,48 @@ function createManagerHarness(options?: {
     disposeWorkspaceHostAttachmentsForWindow,
     disposeWorkspaceHostAttachmentsForRemoteSession,
     onStatusChanged: options?.onStatusChanged,
-    createDeviceTransport: (transportOptions) => ({
-      start: () => {
-        latestTransportOptions = transportOptions;
-        transportStartCount += 1;
-        emitTransportState = transportOptions.onStateChange;
-        const markReady = () => {
-          const registeredAuth = options?.registeredAuths?.[transportStartCount - 1] ?? {
-            deviceSid: "sid-1",
-            passHash: "hash-1",
-          };
-          deliverPayload = transportOptions.onPayload;
-          if (transportOptions.auth.mode === "register") {
-            transportOptions.onRegisteredAuth(registeredAuth);
-          }
-          transportOptions.onStateChange("waiting_terminal");
-        };
-        if (options?.delayReadyMs !== undefined) {
-          setTimeout(markReady, options.delayReadyMs);
-          return;
-        }
-        markReady();
-      },
-      sendPayload: (payload) => {
-        if (options?.canSendPayload && !options.canSendPayload()) {
-          return false;
-        }
-        sentPayloads.push(payload);
-        return true;
-      },
-      measurePayloadBytes: (payload) => JSON.stringify(payload).length,
-      sendPayloadResult: (payload) => {
-        if (options?.canSendPayload && !options.canSendPayload()) {
-          return { kind: "unavailable" as const };
-        }
-        sentPayloads.push(payload);
-        return { kind: "sent" as const, bytes: JSON.stringify(payload).length };
-      },
-      dispose: disposeTransport,
-    }),
+    createDeviceTransport: (transportOptions) =>
+      options?.relayWsUrl
+        ? new WebRemoteControlDeviceTransport(transportOptions)
+        : {
+            start: () => {
+              latestTransportOptions = transportOptions;
+              transportStartCount += 1;
+              emitTransportState = transportOptions.onStateChange;
+              const markReady = () => {
+                const registeredAuth = options?.registeredAuths?.[transportStartCount - 1] ?? {
+                  deviceSid: "sid-1",
+                  passHash: "hash-1",
+                };
+                deliverPayload = transportOptions.onPayload;
+                if (transportOptions.auth.mode === "register") {
+                  transportOptions.onRegisteredAuth(registeredAuth);
+                }
+                transportOptions.onStateChange("waiting_terminal");
+              };
+              if (options?.delayReadyMs !== undefined) {
+                setTimeout(markReady, options.delayReadyMs);
+                return;
+              }
+              markReady();
+            },
+            sendPayload: (payload) => {
+              if (options?.canSendPayload && !options.canSendPayload()) {
+                return false;
+              }
+              sentPayloads.push(payload);
+              return true;
+            },
+            measurePayloadBytes: (payload) => JSON.stringify(payload).length,
+            sendPayloadResult: (payload) => {
+              if (options?.canSendPayload && !options.canSendPayload()) {
+                return { kind: "unavailable" as const };
+              }
+              sentPayloads.push(payload);
+              return { kind: "sent" as const, bytes: JSON.stringify(payload).length };
+            },
+            dispose: disposeTransport,
+          },
   });
 
   return {
@@ -291,6 +305,211 @@ async function createPrimedRemoteTaskSyncHarness(
 }
 
 describe("createWebRemoteControlManager external relay", () => {
+  it("runs upstream mobile bootstrap, bridge, task reads and commands over real WebSockets", async () => {
+    // 测试 relay 只转发消息，不改线上 relay，也不接触真实用户任务或账号。
+    const relay = new WebSocketServer({ host: "127.0.0.1", port: 0 });
+    const peers = new Map<string, WebSocket>();
+    const wirePayloads: Array<Record<string, unknown>> = [];
+    relay.on("connection", (socket) => {
+      let role = "";
+      socket.on("message", (raw) => {
+        const message = JSON.parse(raw.toString());
+        if (message.type === "device_register_init") {
+          socket.send(JSON.stringify({ type: "device_register_ack", device_sid: "sid-1" }));
+        } else if (message.type === "auth_init") {
+          role = message.role;
+          peers.set(role, socket);
+          socket.send(JSON.stringify({ type: "auth_challenge", nonce: "nonce-test" }));
+        } else if (message.type === "auth_response") {
+          socket.send(
+            JSON.stringify({
+              type: "auth_ack",
+              device_sid: "sid-1",
+              pair_status: "matched",
+            }),
+          );
+        } else if (message.type === "pair_status_query") {
+          socket.send(JSON.stringify({ type: "pair_status_ack", pair_status: "matched" }));
+        } else if (message.type === "data") {
+          wirePayloads.push(message.payload);
+          const peer = peers.get(role === "device" ? "terminal" : "device");
+          if (peer?.readyState === WebSocket.OPEN) peer.send(raw.toString());
+        }
+      });
+    });
+    await new Promise<void>((resolve) => relay.once("listening", resolve));
+    const relayWsUrl = `ws://127.0.0.1:${(relay.address() as AddressInfo).port}`;
+    const port = createFakePort();
+    const hostInput = new Emitter<VSBuffer>();
+    let host: ChannelServer | undefined;
+    const admitted: unknown[] = [];
+    const task = createTaskTarget();
+    port.postMessage.mockImplementation((bytes: unknown) => {
+      if (bytes instanceof Uint8Array) hostInput.fire(VSBuffer.wrap(bytes));
+    });
+    port.start.mockImplementation(() => {
+      host = new ChannelServer(
+        {
+          onMessage: hostInput.event,
+          send: (buffer) => queueMicrotask(() => port.emit("message", { data: buffer.buffer })),
+        },
+        "same-window-host",
+        1000,
+        false,
+        "upstream",
+      );
+      new ServiceCollection()
+        .register(createServiceDescriptor(ServiceChannels.CodezTask), {
+          listTasks: async () => [task],
+        })
+        .register(createServiceDescriptor(ServiceChannels.CodezSession), {
+          readSession: async () => ({ sessionId: task.taskId, title: task.title }),
+        })
+        .register(createServiceDescriptor(ServiceChannels.CodezAgent), {
+          sendConversationCommandV4: async (command: unknown) => {
+            admitted.push(command);
+            return { status: "accepted", commandId: "command-mobile" };
+          },
+          attachmentReadV4: async () => ({ bytes: new Uint8Array([1, 2, 3]) }),
+        })
+        .exposeOnChannelServer(host);
+    });
+    const attachWorkspaceHost = vi.fn(async () => ({
+      entryId: "shared-window-host",
+      attachmentId: "mobile-attachment",
+      process: {} as never,
+      port: port as never,
+    }));
+    const h = createManagerHarness({ relayWsUrl, attachWorkspaceHost });
+    const mobilePayloads: Array<Record<string, unknown>> = [];
+    let mobile: WebSocket | undefined;
+    let adapter: ReturnType<typeof createAcknowledgedWebRemoteControlRelayProtocol> | undefined;
+    let rpc: ChannelClient | undefined;
+    const send = (payload: Record<string, unknown>) =>
+      mobile!.send(JSON.stringify({ type: "data", payload }));
+    const waitForPayload = async (type: string, requestId: string) => {
+      await vi.waitFor(() =>
+        expect(
+          mobilePayloads.some(
+            (payload) => payload.zcode_type === type && payload.requestId === requestId,
+          ),
+        ).toBe(true),
+      );
+      return mobilePayloads.find(
+        (payload) => payload.zcode_type === type && payload.requestId === requestId,
+      )!;
+    };
+    const connectMobile = async () => {
+      mobile = new WebSocket(relayWsUrl);
+      mobile.on("message", (raw) => {
+        const message = JSON.parse(raw.toString());
+        if (message.type === "auth_challenge") {
+          mobile!.send(
+            JSON.stringify({
+              type: "auth_response",
+              device_sid: "sid-1",
+              proof: "synthetic-proof",
+            }),
+          );
+        } else if (message.type === "data") {
+          const { zcode_type, ...fields } = message.payload;
+          mobilePayloads.push(message.payload);
+          // 模拟未改动的上游：它只读取 zcode_type，而不是依赖 fork 的入站兼容函数。
+          if (zcode_type === "rpc-frame" || zcode_type === "rpc-frame-ack") {
+            adapter?.acceptPayload({ codez_type: zcode_type, ...fields });
+          }
+        }
+      });
+      await new Promise<void>((resolve) => mobile!.once("open", resolve));
+      mobile.send(
+        JSON.stringify({
+          type: "auth_init",
+          role: "terminal",
+          device_sid: "sid-1",
+          meta: { platform: "web", version: "3.15.1", name: "Synthetic mobile" },
+        }),
+      );
+    };
+    try {
+      await h.manager.start(1, { workspacePath: localWorkspace.workspacePath });
+      h.manager.syncAvailableWorkspaces(1, [localWorkspace]);
+      h.manager.syncAvailableTasks(1, [task]);
+      await connectMobile();
+      send({ zcode_type: "bootstrap-request", requestId: "mobile-bootstrap" });
+      const bootstrap = await waitForPayload("bootstrap-response", "mobile-bootstrap");
+      expect(bootstrap.result).toMatchObject({ workspaces: [localWorkspace], tasks: [task] });
+      expect(attachWorkspaceHost).not.toHaveBeenCalled();
+      send({
+        zcode_type: "workspace-bridge-open",
+        requestId: "mobile-bridge",
+        bridgeSessionId: "bridge-mobile",
+        bridgeGeneration: 1,
+        recoveryId: "recovery-mobile",
+        workspaceKey: localWorkspace.workspacePath,
+      });
+      await waitForPayload("workspace-bridge-ready", "mobile-bridge");
+      adapter = createAcknowledgedWebRemoteControlRelayProtocol({
+        bridgeSessionId: "bridge-mobile",
+        bridgeGeneration: 1,
+        recoveryId: "recovery-mobile",
+        sendFrame: (frame) => {
+          const { codez_type, ...fields } = frame;
+          send({ zcode_type: codez_type, ...fields });
+          return true;
+        },
+      });
+      rpc = new ChannelClient(adapter.protocol);
+      // ChannelServer 的 Initialize 可能早于 bridge-ready 抵达；按上游 bootstrap 的顺序暂存再接入。
+      for (const payload of mobilePayloads) {
+        if (payload.zcode_type === "rpc-frame") {
+          const { zcode_type, ...fields } = payload;
+          adapter.acceptPayload({ codez_type: zcode_type, ...fields });
+        }
+      }
+      expect(await rpc.getChannel("zcode-task").call("listTasks", {})).toEqual([task]);
+      expect(await rpc.getChannel("zcode-session").call("readSession", {})).toEqual({
+        sessionId: task.taskId,
+        title: task.title,
+      });
+      const command = {
+        commandId: "command-mobile",
+        sessionId: task.taskId,
+        type: "sendText",
+        payload: { text: "E2E_MOBILE_UPSTREAM_INPUT" },
+      };
+      expect(
+        await rpc.getChannel("zcode-agent").call("sendConversationCommandV4", [command]),
+      ).toMatchObject({ status: "accepted" });
+      expect(admitted).toEqual([command]);
+      expect(await rpc.getChannel("zcode-agent").call("attachmentReadV4", {})).toEqual({
+        bytes: new Uint8Array([1, 2, 3]),
+      });
+      expect(attachWorkspaceHost).toHaveBeenCalledTimes(1);
+      expect(
+        wirePayloads.every(
+          (payload) => typeof payload.zcode_type === "string" && !("codez_type" in payload),
+        ),
+      ).toBe(true);
+      mobile.close();
+      await new Promise<void>((resolve) => mobile!.once("close", resolve));
+      await connectMobile();
+      send({ zcode_type: "bootstrap-request", requestId: "mobile-reconnect" });
+      expect((await waitForPayload("bootstrap-response", "mobile-reconnect")).result).toMatchObject(
+        { tasks: [task] },
+      );
+      expect(admitted).toHaveLength(1);
+    } finally {
+      rpc?.dispose();
+      adapter?.dispose();
+      await h.manager.stop(1);
+      mobile?.terminate();
+      host?.dispose();
+      hostInput.dispose();
+      for (const socket of relay.clients) socket.terminate();
+      await new Promise<void>((resolve) => relay.close(() => resolve()));
+    }
+  });
+
   it("returns the desktop's own version before a workspace bridge is attached", async () => {
     const h = createManagerHarness();
     await h.manager.start(1, { workspacePath: localWorkspace.workspacePath });

@@ -181,6 +181,14 @@ export const ServiceChannels = {
 
 export type ServiceChannelName = (typeof ServiceChannels)[keyof typeof ServiceChannels];
 
+/** 上游托管手机页的公共频道别名，不能随产品品牌重命名。 */
+export const UpstreamServiceChannelAliases: Readonly<Partial<Record<ServiceChannelName, string>>> =
+  {
+    [ServiceChannels.CodezTask]: "zcode-task",
+    [ServiceChannels.CodezAgent]: "zcode-agent",
+    [ServiceChannels.CodezSession]: "zcode-session",
+  };
+
 // ============================================================================
 // 平台频道 —— 仅 Desktop main 进程能处理的操作（Electron IPC）
 // ============================================================================

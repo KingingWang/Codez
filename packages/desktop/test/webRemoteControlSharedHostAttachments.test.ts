@@ -55,7 +55,7 @@ describe("createWebRemoteControlSharedHostAttachments", () => {
         requestId: expect.any(String),
         attachmentId: attachment.attachmentId,
         clientMode: "web-remote-replayable",
-        scope: { kind: "local" },
+        scope: { kind: "local", workspacePath: "/repo/demo" },
       },
       [ports.port2],
     );

@@ -1,5 +1,14 @@
 # Conversation Session Case Catalog
 
+## 上游托管手机页与 Codez/Codex（2026-10-11）
+
+MOBILE-UPSTREAM-01（accepted，manual-review/pending）：上游页面原样加载，手机连接桌面
+已有 Host，读取模型、创建任务并获得回复；刷新后恢复相同 task 并继续发送，不能重复首发。
+MOBILE-UPSTREAM-02：运行中排队、停止保留队列、显式继续完成。仅控制测试模型响应时序，
+不更改上游 relay、网页或实际业务状态。协议边界见
+[spec](../specs/mobile-remote-upstream-wire-compatibility.md)；
+真实手机/macOS 发布包、线上 relay 和远程 workspace 仍需独立验证。
+
 SHR22 补充验收：用户／项目自定义 profile 只支持 agents 根目录直接文件。服务与独立 CLI 测试覆盖初始化、热更新、重扫和插件递归发现不变；现有双 Host Desktop 用例加入深层用户文件，核对初始化及后续父轮实际 provider 请求不包含该定义，不新增 fixture 或 CI 准入。
 
 2026-09-18：实施 SHR22 目录监听修复；直接监听已有配置路径，缺失时切换已有父目录。补目录生命周期、稳定补扫及取消/I/O 测试，复用跨 Host Desktop 验证首次创建和重建。Windows 空目录移动使用随 scope 释放的原生父目录结构订阅；父目录检查不推迟已排队文件批次。六组 pending Desktop 最终 11/11 通过；macOS / Windows / 大小写敏感卷相关单测通过。既有红灯证据及平台跳过项保留，详见 `docs/subagent-runtime-refresh.md`。

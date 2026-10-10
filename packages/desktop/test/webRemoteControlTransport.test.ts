@@ -757,7 +757,7 @@ describe("WebRemoteControlDeviceTransport", () => {
 
     expect(sentAfterMatched).toBe(true);
     expect(relay.messages.find((message) => message.type === "data")).toMatchObject({
-      payload: { codez_type: "workspace-list-response", requestId: "req-2" },
+      payload: { zcode_type: "workspace-list-response", requestId: "req-2" },
     });
     transport.dispose();
   });
@@ -1295,60 +1295,68 @@ describe("WebRemoteControlDeviceTransport", () => {
     }
   });
 
-  it("forwards only parsed data payloads after paired and redacts invalid payload logs", async () => {
-    const payloads: WebRemoteControlAppPayload[] = [];
-    const logger = createLogger();
-    const [validFrame] = encodeWebRemoteControlRpcTransportMessage(new Uint8Array([1, 2, 3]), {
-      bridgeSessionId: "bridge-1",
-      firstPhysicalSeq: 1,
-      messageSeq: 1,
-    });
-    const relay = await createRelayServer(({ message, socket }) => {
-      if (message.type === "auth_init") {
-        socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
-        );
-      }
-      if (message.type === "pair_status_query") {
-        socket.send(
-          JSON.stringify({
-            type: "data",
-            payload: { ...validFrame, seq: -1, raw: "secret" },
-          }),
-        );
-        socket.send(
-          JSON.stringify({
-            type: "data",
-            payload: validFrame,
-          }),
-        );
-      }
-    });
+  it.each(["codez_type", "zcode_type"])(
+    "forwards only parsed %s data after paired and redacts invalid payload logs",
+    async (discriminator) => {
+      const payloads: WebRemoteControlAppPayload[] = [];
+      const onRawTransportPayload = vi.fn(() => false);
+      const logger = createLogger();
+      const [validFrame] = encodeWebRemoteControlRpcTransportMessage(new Uint8Array([1, 2, 3]), {
+        bridgeSessionId: "bridge-1",
+        firstPhysicalSeq: 1,
+        messageSeq: 1,
+      });
+      const { codez_type, ...frameFields } = validFrame;
+      const wireFrame = { [discriminator]: codez_type, ...frameFields };
+      const relay = await createRelayServer(({ message, socket }) => {
+        if (message.type === "auth_init") {
+          socket.send(
+            JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          );
+        }
+        if (message.type === "pair_status_query") {
+          socket.send(
+            JSON.stringify({
+              type: "data",
+              payload: { ...wireFrame, seq: -1, raw: "secret" },
+            }),
+          );
+          socket.send(
+            JSON.stringify({
+              type: "data",
+              payload: wireFrame,
+            }),
+          );
+        }
+      });
 
-    const transport = new WebRemoteControlDeviceTransport({
-      relayWsUrl: relay.url,
-      deviceMid: "mid-1",
-      auth: { mode: "persisted", deviceSid: "sid-1", passHash: "hash-1" },
-      meta: { platform: "darwin", version: "1.0.0", name: "Mac" },
-      authProvider: {
-        createPassword: () => "password",
-        createPassHash: () => "hash-1",
-        calculateProof: () => "proof",
-      },
-      heartbeatIntervalMs: 20,
-      logger,
-      onRegisteredAuth: () => {},
-      onStateChange: () => {},
-      onPayload: (payload) => payloads.push(payload),
-      onError: () => {},
-      onInvalidPersistedAuth: async () => {},
-    });
+      const transport = new WebRemoteControlDeviceTransport({
+        relayWsUrl: relay.url,
+        deviceMid: "mid-1",
+        auth: { mode: "persisted", deviceSid: "sid-1", passHash: "hash-1" },
+        meta: { platform: "darwin", version: "1.0.0", name: "Mac" },
+        authProvider: {
+          createPassword: () => "password",
+          createPassHash: () => "hash-1",
+          calculateProof: () => "proof",
+        },
+        heartbeatIntervalMs: 20,
+        logger,
+        onRegisteredAuth: () => {},
+        onStateChange: () => {},
+        onPayload: (payload) => payloads.push(payload),
+        onRawTransportPayload,
+        onError: () => {},
+        onInvalidPersistedAuth: async () => {},
+      });
 
-    transport.start();
-    await waitUntil(() => payloads.length === 1);
+      transport.start();
+      await waitUntil(() => payloads.length === 1);
 
-    expect(payloads[0]).toMatchObject({ codez_type: "rpc-frame", seq: 1 });
-    expect(JSON.stringify(logger.warn.mock.calls)).not.toContain("secret");
-    transport.dispose();
-  });
+      expect(payloads[0]).toMatchObject({ codez_type: "rpc-frame", seq: 1 });
+      expect(onRawTransportPayload).toHaveBeenCalledWith(validFrame);
+      expect(JSON.stringify(logger.warn.mock.calls)).not.toContain("secret");
+      transport.dispose();
+    },
+  );
 });

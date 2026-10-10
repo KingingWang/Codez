@@ -19,7 +19,10 @@ import {
 import { codezProviderSchema } from "./providers.js";
 import { REMOTE_ASSET_INSTALL_MODES } from "./remoteAssetInstallMode.js";
 import { isKnownRemoteResourcePackageId } from "./remoteResourcePackages.js";
-import type { WebRemoteControlAppPayload } from "./web-remote-control.js";
+import {
+  normalizeWebRemoteControlWirePayload,
+  type WebRemoteControlAppPayload,
+} from "./web-remote-control.js";
 import { PROTOCOL_V4_LIMITS } from "./codez-protocol-v4/core.js";
 import { sessionWorkflowActivitySchema } from "./codez-protocol-v4/sessions-index-workflow-activity.js";
 import {
@@ -382,7 +385,9 @@ export const webRemoteControlAppPayloadSchema = z.union(webRemoteControlAppPaylo
 export function parseWebRemoteControlAppPayload(
   payload: unknown,
 ): WebRemoteControlAppPayload | null {
-  const result = webRemoteControlAppPayloadSchema.safeParse(payload);
+  const result = webRemoteControlAppPayloadSchema.safeParse(
+    normalizeWebRemoteControlWirePayload(payload),
+  );
   return result.success ? (result.data as WebRemoteControlAppPayload) : null;
 }
 
@@ -553,7 +558,14 @@ export type WindowHostRemoteWorkspaceDescriptor = z.infer<
 >;
 
 export const windowHostAttachmentScopeSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("local") }).strict(),
+  z
+    .object({
+      kind: z.literal("local"),
+      // 手机 attachment 可绑定 workspace，但 local workspace 仍复用同一窗口 Host。
+      workspacePath: nonEmptyStringSchema.optional(),
+      workspaceIdentity: nonEmptyStringSchema.optional(),
+    })
+    .strict(),
   z
     .object({
       kind: z.literal("remote"),

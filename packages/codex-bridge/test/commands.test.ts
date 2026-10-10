@@ -66,6 +66,50 @@ test("create rejects another workspace before any native mutation", async (t) =>
   assert.deepEqual(h.rpc.calls, []);
 });
 test("native input intent is never silently lost", verifyNativeInputIntent);
+test("mobile resume starts native queue head once without a shadow auto-drain policy", async (t) => {
+  const h = await setup(t);
+  queueMutations(h);
+  h.state.queue = [queued("obsolete-local-entry")];
+  const command = h.command("setAutoDrain", { autoDrain: true }, "mobile-resume");
+  const ack = await h.execute(command);
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.methods(), [
+    "thread/queue/list",
+    "thread/queue/start",
+    "thread/queue/list",
+  ]);
+  assert.deepEqual(h.rpc.params("thread/queue/start"), [
+    { threadId: sessionId, queuedSubmissionId: "q1" },
+  ]);
+  assert.deepEqual(h.state.queue, [queued("q2")]);
+  assert.deepEqual(await h.execute(command), ack);
+  assert.equal(
+    h.rpc.params("thread/queue/start").length,
+    1,
+    "duplicate cannot consume the next item",
+  );
+});
+test("mobile resume of an empty native queue does not create a turn", async (t) => {
+  const h = await setup(t);
+  h.authority.queue = [];
+  const ack = await h.execute(h.command("setAutoDrain", { autoDrain: true }));
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.methods(), ["thread/queue/list"]);
+});
+test("native pause policy and busy resume stay unsupported without mutation", async (t) => {
+  for (const [busy, autoDrain] of [
+    [false, false],
+    [true, true],
+  ] as const) {
+    await t.test(`${busy}:${autoDrain}`, async (t) => {
+      const h = await setup(t, busy);
+      const ack = await h.execute(h.command("setAutoDrain", { autoDrain }));
+      assert.equal(ack.status, "failed");
+      assert.match(ack.message ?? "", /does not support/);
+      assert.deepEqual(h.rpc.calls, []);
+    });
+  }
+});
 test("replayable bot sendText payload (heldQueueDisposition + selection) is admitted", async (t) => {
   // Host codezTaskServiceAdapter 的 replayable sendText 载荷形状：
   // { text, heldQueueDisposition: "keepQueueAndSend", modelSelection }，

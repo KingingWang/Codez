@@ -14,6 +14,7 @@
  * 3. 后续远端 connect / scoped attachment 都由同一 Host 处理
  */
 import { createHostDatabaseStartup } from "./hostDatabaseStartup.js";
+import { scopeModelSelectionServiceForAttachment } from "./modelSelectionAttachmentScope.js";
 import { createHostNetworkCapture } from "./hostNetworkCapture.js";
 import { randomUUID } from "node:crypto";
 import { createPluginSandboxRegistrationBridge } from "./pluginSandbox/index.js";
@@ -2016,9 +2017,8 @@ async function createWindowRemoteConnectionHandle(params: {
             });
           };
           pushDesktopBrowserControl();
-          const unsubscribeDesktopBrowserControl = nativeBrowserCuaMcpState.subscribe(
-            pushDesktopBrowserControl,
-          );
+          const unsubscribeDesktopBrowserControl =
+            nativeBrowserCuaMcpState.subscribe(pushDesktopBrowserControl);
           const desktopBrowserCommandDisposable =
             remoteCodezAgentService.onDynamicDesktopBrowserCommandRequest()((request) => {
               void (async () => {
@@ -2416,7 +2416,13 @@ function exposeServicesOnMessagePort(
   // renderer 会立即发请求但 channel 还没注册，导致 "Unknown channel" 超时错误。
   // attach 模式复用已就绪服务，必须立即初始化新的 RPC MessagePort。
   logger.info(`creating ChannelServer (deferInit=${deferInit})`);
-  const rawServer = new ChannelServer(protocol, "host", 1000, deferInit);
+  const rawServer = new ChannelServer(
+    protocol,
+    "host",
+    1000,
+    deferInit,
+    clientMode === "web-remote-replayable" ? "upstream" : "codez",
+  );
   const loggedServer = new LoggingChannelServer(rawServer, logRpc);
   const server = new NetworkTelemetryChannelServer(loggedServer);
   const agentService = services.getOptional(ICodezAgentService);
@@ -2431,6 +2437,13 @@ function exposeServicesOnMessagePort(
   const overrides = new Map<string, unknown>([
     [IWindowControllerService.channelName, controllerAttachment],
   ]);
+  const modelSelectionService = services.getOptional(IModelSelectionService);
+  if (modelSelectionService) {
+    overrides.set(
+      IModelSelectionService.channelName,
+      scopeModelSelectionServiceForAttachment(modelSelectionService, clientMode, attachmentScope),
+    );
+  }
   // 远端媒体必须按 attachment 的 clientMode 选择数据面：桌面使用 Host loopback Range，手机保持 inline。
   const remoteMediaPreviewProxy =
     attachmentScope.kind === "remote" && clientMode === "desktop-continuous"

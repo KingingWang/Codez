@@ -30,6 +30,7 @@ import { createNativeSession } from "./command-create.js";
 import { formatRewindNotice, type RewindNoticeStore } from "./rewind-notice.js";
 import { createSelectionSideSession } from "./selection-side-session-command.js";
 import { editQueuedInput } from "./queue-edit.js";
+import { resumeNativeQueue, startNativeQueuedSubmission } from "./queue-start.js";
 import { applySelectionSideChatBoundary } from "./selection-side-chat.js";
 import type { SessionTitleCoordinator } from "./session-title.js";
 
@@ -289,12 +290,15 @@ export class CommandRouter {
         const p = commandPayloadSchemas.sendQueuedNow.parse(command.payload);
         // busy 抢占：interrupt 后队列不因 Interrupted idle 自动 dispatch，其余队列项保留。
         if (running) await preemptByInterrupt(rpc, native, string(running.id, "turnId"));
-        const response = await rpc.request("thread/queue/start", {
-          ...native,
-          queuedSubmissionId: p.queueItemId,
-        });
-        store.acceptTurnResponse(sessionId, response);
-        await store.refreshQueue(sessionId);
+        await startNativeQueuedSubmission(rpc, store, sessionId, p.queueItemId);
+        break;
+      }
+      case "setAutoDrain": {
+        const p = commandPayloadSchemas.setAutoDrain.parse(command.payload);
+        if (!p.autoDrain || running) unsupported("native queue pause policy or busy resume");
+        // Bugfix：上游手机的“继续”调用 setAutoDrain，原桥接直接拒绝，停止后无法继续。
+        // Codex 无持久 auto-drain policy；空闲时显式启动原生队首，不复制队列或重发输入。
+        await resumeNativeQueue(rpc, store, sessionId);
         break;
       }
       case "editQueueItem": {

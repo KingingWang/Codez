@@ -13,6 +13,7 @@ import {
   getWebRemoteControlHeartbeatJitterMs,
   getWebRemoteControlReconnectJitterMs,
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
+  normalizeWebRemoteControlWirePayload,
   parseWebRemoteControlAppPayload,
   type WebRemoteControlAppPayload,
   type WebRemoteControlRelayDeviceMeta,
@@ -103,6 +104,7 @@ function safePayloadMetadata(payload: unknown): Record<string, string | undefine
   const record = payload as Record<string, unknown>;
   return {
     codez_type: typeof record.codez_type === "string" ? record.codez_type : undefined,
+    zcode_type: typeof record.zcode_type === "string" ? record.zcode_type : undefined,
     requestId: typeof record.requestId === "string" ? record.requestId : undefined,
     bridgeSessionId:
       typeof record.bridgeSessionId === "string" ? record.bridgeSessionId : undefined,
@@ -279,8 +281,7 @@ export class WebRemoteControlDeviceTransport {
       if (socket !== this.socket) {
         return;
       }
-      const negotiatedExtensions =
-        typeof socket.extensions === "string" ? socket.extensions : "";
+      const negotiatedExtensions = typeof socket.extensions === "string" ? socket.extensions : "";
       this.options.logger.info("[web-remote-control] external relay negotiated extensions", {
         perMessageDeflate: negotiatedExtensions.includes("permessage-deflate"),
         extensions: negotiatedExtensions || undefined,
@@ -306,7 +307,9 @@ export class WebRemoteControlDeviceTransport {
       if (socket !== this.socket) {
         return;
       }
-      if (estimateRawDataBytes(raw) > WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes) {
+      if (
+        estimateRawDataBytes(raw) > WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes
+      ) {
         this.options.logger.warn("[web-remote-control] oversize external relay message dropped", {
           bytes: estimateRawDataBytes(raw),
           maxBytes: WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes,
@@ -531,6 +534,8 @@ export class WebRemoteControlDeviceTransport {
       return;
     }
 
+    // Bugfix：上游 raw RPC 也用 zcode_type，须在进入既有 ACK/CRC owner 前归一。
+    payload = normalizeWebRemoteControlWirePayload(payload);
     if (isRawTransportCandidate(payload) && this.options.onRawTransportPayload?.(payload)) {
       return;
     }

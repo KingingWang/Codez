@@ -88,5 +88,7 @@ Bot 消息 / Automation 派发 / UI 订阅
 - legacy runtime 与 standalone server 完全不经过本服务，行为不变。
 - UI desktop composer 已走 `CodexModelCatalog`，不受影响；移动 Web composer 在
   传入 workspace 后由同一 View 提供候选（此前为空视图，无法提交）。
+  上游托管手机页未传此 fork 参数时，由已有 Host attachment 绑定目标并过滤事件，
+  不改变基础服务的无 workspace 语义，见 [手机 wire 兼容](mobile-remote-upstream-wire-compatibility.md)。
 - 定时任务/手动 Automation 派发经 `resolveAutomationSubmissionModelSelection`
   传入 workspace 解析，行为与 Bot 对齐。

@@ -25,8 +25,8 @@ export function projectCodexQueue(queue: unknown): CodexQueueList {
  * submissions use explicit unavailable sentinels: clientId=codex-external, admittedAt=0,
  * admissionSeq=0. These are not measured facts and must not establish admission ordering.
  * queuePosition alone follows the native list. No shadow queue or ledger is retained here.
- * autoDrain controls stay unavailable: false is a disabled UI value,
- * not a claim that Codex implements the Codez pause/auto-drain contract.
+ * autoDrain remains false, not a claim that Codex implements Codez's persistent policy.
+ * Mobile's explicit idle resume maps to native queue/start, not a shadow drain loop.
  */
 export function projectQueue(
   queue: unknown,

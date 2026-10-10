@@ -7,6 +7,31 @@ import {
 import { WebRemoteControlRelayPayloadSerializer } from "../src/webRemoteControlRelayPayloadSerializer.js";
 
 describe("WebRemoteControlRelayPayloadSerializer", () => {
+  it("emits only the upstream wire discriminator without mutating the internal payload", () => {
+    const serializer = new WebRemoteControlRelayPayloadSerializer();
+    const payload = Object.freeze({
+      codez_type: "bootstrap-response" as const,
+      requestId: "bootstrap-upstream",
+      success: true as const,
+      result: { windowControlSessionId: "sid-1", workspaces: [], tasks: [] },
+    });
+    const prepared = serializer.prepare(payload, 100);
+    expect(JSON.parse(prepared.json)).toEqual({
+      type: "data",
+      payload: {
+        zcode_type: "bootstrap-response",
+        requestId: "bootstrap-upstream",
+        success: true,
+        result: payload.result,
+      },
+      client_ts: 100,
+    });
+    expect(payload.codez_type).toBe("bootstrap-response");
+    expect(payload).not.toHaveProperty("zcode_type");
+    expect(prepared.bytes).toBe(new TextEncoder().encode(prepared.json).byteLength);
+    expect(serializer.prepare(payload, 200)).toBe(prepared);
+  });
+
   it("reuses the identical final JSON and byte count for one immutable raw payload", () => {
     const serializer = new WebRemoteControlRelayPayloadSerializer();
     const [payload] = encodeWebRemoteControlRpcTransportMessage(new Uint8Array([1, 2, 3]), {

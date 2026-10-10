@@ -517,7 +517,11 @@ describe("WebRemoteControlTerminalTransport", () => {
 
     transport.start();
     await waitUntil(() => heartbeatCount >= 2, 5_000, "second pair status heartbeat");
-    await waitUntil(() => states.at(-1) === "paired", 5_000, "paired again after waiting heartbeat");
+    await waitUntil(
+      () => states.at(-1) === "paired",
+      5_000,
+      "paired again after waiting heartbeat",
+    );
 
     expect(failures).toEqual([]);
     expect(states).toContain("waiting");
@@ -1102,52 +1106,60 @@ describe("WebRemoteControlTerminalTransport", () => {
     transport.dispose();
   });
 
-  it("drops invalid data payloads and forwards parsed payloads only", async () => {
-    const payloads: WebRemoteControlAppPayload[] = [];
-    const [validFrame] = encodeWebRemoteControlRpcTransportMessage(new Uint8Array([1, 2, 3]), {
-      bridgeSessionId: "bridge-1",
-      firstPhysicalSeq: 1,
-      messageSeq: 1,
-    });
-    const relay = await createRelayServer(({ message, socket }) => {
-      if (message.type === "auth_init") {
-        socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
-        );
-        socket.send(
-          JSON.stringify({
-            type: "data",
-            payload: { ...validFrame, seq: -1 },
-          }),
-        );
-        socket.send(
-          JSON.stringify({
-            type: "data",
-            payload: validFrame,
-          }),
-        );
-      }
-    });
+  it.each(["codez_type", "zcode_type"])(
+    "drops invalid %s data and forwards parsed payloads only",
+    async (discriminator) => {
+      const payloads: WebRemoteControlAppPayload[] = [];
+      const onRawTransportPayload = vi.fn(() => false);
+      const [validFrame] = encodeWebRemoteControlRpcTransportMessage(new Uint8Array([1, 2, 3]), {
+        bridgeSessionId: "bridge-1",
+        firstPhysicalSeq: 1,
+        messageSeq: 1,
+      });
+      const { codez_type, ...frameFields } = validFrame;
+      const wireFrame = { [discriminator]: codez_type, ...frameFields };
+      const relay = await createRelayServer(({ message, socket }) => {
+        if (message.type === "auth_init") {
+          socket.send(
+            JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          );
+          socket.send(
+            JSON.stringify({
+              type: "data",
+              payload: { ...wireFrame, seq: -1 },
+            }),
+          );
+          socket.send(
+            JSON.stringify({
+              type: "data",
+              payload: wireFrame,
+            }),
+          );
+        }
+      });
 
-    const transport = new WebRemoteControlTerminalTransport({
-      relayWsUrl: relay.url,
-      deviceSid: "sid-1",
-      passHash: "hash-1",
-      WebSocketCtor: WebSocket as unknown as typeof globalThis.WebSocket,
-      authProvider: { calculateProof: async () => "proof" },
-      onPayload: (payload) => payloads.push(payload),
-      onStateChange: () => {},
-      onFailure: () => {},
-      onError: () => {},
-      reloadPage: () => {},
-    });
+      const transport = new WebRemoteControlTerminalTransport({
+        relayWsUrl: relay.url,
+        deviceSid: "sid-1",
+        passHash: "hash-1",
+        WebSocketCtor: WebSocket as unknown as typeof globalThis.WebSocket,
+        authProvider: { calculateProof: async () => "proof" },
+        onPayload: (payload) => payloads.push(payload),
+        onRawTransportPayload,
+        onStateChange: () => {},
+        onFailure: () => {},
+        onError: () => {},
+        reloadPage: () => {},
+      });
 
-    transport.start();
-    await waitUntil(() => payloads.length === 1);
+      transport.start();
+      await waitUntil(() => payloads.length === 1);
 
-    expect(payloads[0]).toMatchObject({ codez_type: "rpc-frame", seq: 1 });
-    transport.dispose();
-  });
+      expect(payloads[0]).toMatchObject({ codez_type: "rpc-frame", seq: 1 });
+      expect(onRawTransportPayload).toHaveBeenCalledWith(validFrame);
+      transport.dispose();
+    },
+  );
 
   it("rejects matching pending requests on app errors only", async () => {
     const sent: WebRemoteControlAppPayload[] = [];

@@ -181,7 +181,7 @@ export type WebRemoteControlRelayOutgoingMessage =
   | WebRemoteControlRelayAuthInit
   | WebRemoteControlRelayAuthResponse
   | WebRemoteControlRelayPairStatusQuery
-  | WebRemoteControlRelayDataMessage<WebRemoteControlAppPayload>;
+  | WebRemoteControlRelayDataMessage<WebRemoteControlWireAppPayload>;
 
 export type WebRemoteControlRelayIncomingMessage =
   | WebRemoteControlRelayDeviceRegisterAck
@@ -712,6 +712,32 @@ export type WebRemoteControlAppPayload =
   | WebRemoteControlBridgeDegradedPayload
   | WebRemoteControlAppErrorPayload
   | WebRemoteControlMobileDiagnosticPayload;
+
+type UpstreamWirePayload<T> = T extends { codez_type: infer TType }
+  ? Omit<T, "codez_type"> & { zcode_type: TType }
+  : never;
+
+export type WebRemoteControlWireAppPayload = UpstreamWirePayload<WebRemoteControlAppPayload>;
+
+/** 只转换外部 relay 字段；不改变内部路由、RPC 字节或业务状态。 */
+export function toWebRemoteControlWirePayload(
+  payload: WebRemoteControlAppPayload,
+): WebRemoteControlWireAppPayload {
+  // Bugfix：二维码打开的是上游托管页面，品牌重命名不能改变它的 wire discriminator。
+  const { codez_type, ...fields } = payload;
+  return { zcode_type: codez_type, ...fields } as WebRemoteControlWireAppPayload;
+}
+
+/** 输入仍是不可信数据，归一之后必须继续经过原有 schema / raw RPC 校验。 */
+export function normalizeWebRemoteControlWirePayload(payload: unknown): unknown {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
+  const record = payload as Record<string, unknown>;
+  if (!("zcode_type" in record)) return payload;
+  // 两种字段同时出现时拒绝，避免普通业务 schema 的 strip 隐藏歧义或 raw strict 校验被绕过。
+  if ("codez_type" in record) return null;
+  const { zcode_type, ...fields } = record;
+  return { codez_type: zcode_type, ...fields };
+}
 
 export interface WebRemoteControlWorkspaceTarget {
   workspacePath: string;

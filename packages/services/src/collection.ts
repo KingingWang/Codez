@@ -1,4 +1,5 @@
 import { ProxyChannel, type IChannelServer } from "@codez/rpc";
+import { UpstreamServiceChannelAliases, type ServiceChannelName } from "@codez/shared";
 import type { ServiceDescriptor } from "./descriptors.js";
 
 /**
@@ -33,10 +34,11 @@ export class ServiceCollection {
   ): void {
     for (const [channelName, instance] of this._services) {
       const exposed = overrides.get(channelName) ?? instance;
-      server.registerChannel(
-        channelName,
-        ProxyChannel.fromService(exposed as Record<string, unknown>),
-      );
+      const channel = ProxyChannel.fromService(exposed as Record<string, unknown>);
+      server.registerChannel(channelName, channel);
+      // Bugfix：上游手机页使用 zcode-*；别名必须复用 scoped override，不能绕过 owner/lease。
+      const upstreamAlias = UpstreamServiceChannelAliases[channelName as ServiceChannelName];
+      if (upstreamAlias) server.registerChannel(upstreamAlias, channel);
     }
   }
 }

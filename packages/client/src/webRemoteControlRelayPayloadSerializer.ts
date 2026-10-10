@@ -1,7 +1,9 @@
 import {
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
+  toWebRemoteControlWirePayload,
   type WebRemoteControlAppPayload,
   type WebRemoteControlRelayDataMessage,
+  type WebRemoteControlWireAppPayload,
 } from "@codez/shared";
 
 export type WebRemoteControlPayloadSendResult =
@@ -10,7 +12,7 @@ export type WebRemoteControlPayloadSendResult =
   | { kind: "oversize"; bytes: number; maxBytes: number };
 
 export interface SerializedWebRemoteControlRelayPayload {
-  readonly message: WebRemoteControlRelayDataMessage<WebRemoteControlAppPayload>;
+  readonly message: WebRemoteControlRelayDataMessage<WebRemoteControlWireAppPayload>;
   readonly json: string;
   readonly bytes: number;
 }
@@ -31,9 +33,9 @@ export class WebRemoteControlRelayPayloadSerializer {
   ): SerializedWebRemoteControlRelayPayload {
     const cached = this.cache.get(payload);
     if (cached) return cached;
-    const message: WebRemoteControlRelayDataMessage<WebRemoteControlAppPayload> = {
+    const message: WebRemoteControlRelayDataMessage<WebRemoteControlWireAppPayload> = {
       type: "data",
-      payload,
+      payload: toWebRemoteControlWirePayload(payload),
       client_ts: clientTimestamp,
     };
     const json = JSON.stringify(message);

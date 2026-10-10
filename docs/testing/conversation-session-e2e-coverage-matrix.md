@@ -1,5 +1,12 @@
 # Conversation Session E2E Coverage Matrix
 
+## 上游托管手机页兼容（manual-review/pending）
+
+| Case               | 状态    | 验证入口                                                                     | 合同                                                                                           |
+| ------------------ | ------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| MOBILE-UPSTREAM-01 | pending | `packages/desktop/test/e2e/manual-review/pending/mobile-remote-upstream.mjs` | 原样上游网页 + 本地透传 WS + 本项目 Host + 实际 Codex：模型、首发回复、刷新恢复同一 task、跟进 |
+| MOBILE-UPSTREAM-02 | pending | 同上（controlled-response）                                                  | running 输入排队、Stop 保留队列、显式继续完成；不宣称线上 relay 或真实手机已验证               |
+
 SHR22 范围补充：`subagentRuntimeConfig.test.ts` 验证用户／项目扫描不进入子目录及重载隔离；`subagentRuntimeConfigWatcher.test.ts` 验证真实热更新和目录重建范围；`subagentsService.test.ts` 与 Bootstrap `subagents.test.ts` 验证 Settings／独立 CLI 第一层加载，保留插件递归发现。复用 cross-host pending 的 SHR22，断言两个 Host 的初始化及后续父轮 provider 请求不包含预置深层用户定义。
 
 2026-09-18：实施 SHR22 目录监听修复；直接监听已有配置路径，缺失时切换已有父目录。补目录生命周期、稳定补扫及取消/I/O 测试，复用跨 Host Desktop 验证首次创建和重建。Windows 空目录移动使用随 scope 释放的原生父目录结构订阅；父目录检查不推迟已排队文件批次。六组 pending Desktop 最终 11/11 通过；macOS / Windows / 大小写敏感卷相关单测通过。既有红灯证据及平台跳过项保留，详见 `docs/subagent-runtime-refresh.md`。
