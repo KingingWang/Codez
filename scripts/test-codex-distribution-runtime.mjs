@@ -31,19 +31,28 @@ test("workflow gates six native targets, four bundled remote targets and isolate
     assert.ok(job.steps.find((step) => step.run === "pnpm install --frozen-lockfile"));
   }
   const { build, release } = workflow.jobs;
-  for (const command of [
-    "pnpm exec tsx --test packages/services/test/codex*.test.ts packages/desktop/test/codex*.test.ts packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts packages/server/test/codex*.test.ts",
-    "pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test packages/ui/src/settings/codex/*.test.ts packages/ui/src/settings/codex/*.test.tsx",
-  ]) {
-    assert.equal(
-      workflow.jobs["remote-assets"].steps.filter((step) => step.run === command).length,
-      1,
-    );
-    assert.equal(
-      build.steps.some((step) => step.run === command),
-      false,
-    );
-  }
+  const remoteRuns = workflow.jobs["remote-assets"].steps.map((step) => step.run ?? "");
+  const nativeRegressionRun = (command) =>
+    command.includes("pnpm exec tsx --test") &&
+    command.includes("packages/services/test/codex*.test.ts") &&
+    command.includes("packages/desktop/test/codex*.test.ts") &&
+    command.includes("packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts") &&
+    command.includes("packages/server/test/codex*.test.ts");
+  assert.equal(remoteRuns.filter(nativeRegressionRun).length, 1);
+  assert.equal(
+    build.steps.some((step) => nativeRegressionRun(step.run ?? "")),
+    false,
+  );
+
+  const uiRegressionRun = (command) =>
+    command.includes("pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test") &&
+    command.includes("packages/ui/src/settings/codex/*.test.ts") &&
+    command.includes("packages/ui/src/settings/codex/*.test.tsx");
+  assert.equal(remoteRuns.filter(uiRegressionRun).length, 1);
+  assert.equal(
+    build.steps.some((step) => uiRegressionRun(step.run ?? "")),
+    false,
+  );
   assert.equal(
     new Set(build.strategy.matrix.include.map(({ os, arch }) => `${os}-${arch}`)).size,
     6,
