@@ -10,7 +10,7 @@ describe("codex bridge contract", () => {
   it("example model read uses the native model/list RPC once", async () => {
     const requests: Array<{ method: string; params: unknown }> = [];
     const rpc: CodexRpcPort = {
-      request: async <T = unknown>(method, params) => {
+      request: async <T = unknown>(method: string, params?: unknown) => {
         requests.push({ method, params });
         return { models: [] } as T;
       },
