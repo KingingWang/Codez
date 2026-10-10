@@ -1,4 +1,13 @@
-import { mkdtemp, readFile, readlink, rm, mkdir, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdtemp,
+  readFile,
+  readlink,
+  rm,
+  mkdir,
+  symlink,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -212,6 +221,10 @@ describe("dev Electron app bundle", () => {
       arch: "arm64",
     });
     await writeFile(join(sourceMacOS, "Electron"), "source-v2", "utf8");
+    // 某些文件系统在同一时间片内改写同尺寸文件时不会推进 mtime；显式推进
+    // 时间戳，确保这个夹具稳定覆盖“源启动器发生变化”这一缓存失效前提。
+    const changedAt = new Date(Date.now() + 1_000);
+    await utimes(join(sourceMacOS, "Electron"), changedAt, changedAt);
 
     await prepareDevElectronAppBundle({
       electronAppPath: sourceApp,
