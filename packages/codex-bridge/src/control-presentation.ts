@@ -41,19 +41,39 @@ const skillsResponseSchema = z.object({
   ),
 });
 
+/**
+ * 线程级已生效的模型选择。legacy 会话回包（session/setModel、session/resume 等）的
+ * current 必须来自线程状态而不是全局 config.toml；仅目录（available）与缺省档
+ * 仍由全局视图提供。无线程模型时不传 override，行为与原全局视图一致。
+ */
+export interface ControlModelThreadOverride {
+  model?: string;
+  modelProvider?: string;
+  reasoningEffort?: string;
+}
+
 export async function readControlModelSettings(
   context: BridgeControlContext,
+  threadOverride?: ControlModelThreadOverride,
 ): Promise<CodezSessionSettingsState> {
   const [config, models] = await Promise.all([
     readConfig(context),
     readPages(context, "model/list", modelSchema, { includeHidden: false }),
   ]);
-  const providerId = config.model_provider || "openai";
+  // 线程级显式选择优先于全局 config.toml：session/setModel 经 thread/settings/update
+  // 生效后，回包若改用全局视图会把会话当前模型打回旧值（Bot 切模型"不生效"根因）。
+  // 全局 config 只提供目录与缺省档；线程已生效的模型/档位以 override 为准。
+  const providerId = threadOverride?.modelProvider || config.model_provider || "openai";
+  const requestedModel = threadOverride?.model || config.model || undefined;
   const selected =
-    models.find((model) => model.model === config.model) ??
-    (!config.model ? models.find((model) => model.isDefault) : undefined);
-  const modelId = config.model || selected?.model;
-  const reasoningLevel = config.model_reasoning_effort || selected?.defaultReasoningEffort;
+    models.find((model) => model.model === requestedModel) ??
+    (!requestedModel ? models.find((model) => model.isDefault) : undefined);
+  const modelId = requestedModel || selected?.model;
+  // 档位必须与 current 描述同一模型：线程档缺省时回落到线程模型的目录默认档，
+  // 不借用全局 config 里另一个模型的档位。
+  const reasoningLevel = threadOverride
+    ? threadOverride.reasoningEffort || selected?.defaultReasoningEffort
+    : config.model_reasoning_effort || selected?.defaultReasoningEffort;
   const levels = (selected?.supportedReasoningEfforts ?? []).map((effort) => ({
     value: effort.reasoningEffort,
     label: effort.reasoningEffort,

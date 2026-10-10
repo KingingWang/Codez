@@ -77,3 +77,128 @@ test("remote read/resume/list retain identity consumed by the task-index writer"
   );
   assert.deepEqual(local.session.workspace, { workspacePath: cwd, workspaceKey: cwd });
 });
+
+test("legacy setModel 回包与后续 read 的 current 以线程级设置为准（不回落全局 config）", async () => {
+  // 回归：回包 settings 曾整体改用全局 config/read 视图，session/setModel 生效后
+  // current 仍停在旧模型，Bot 状态卡与 task index 回填永远不会变。
+  const cwd = "/workspace";
+  const catalogEntry = (
+    model: string,
+    isDefault: boolean,
+    efforts: readonly string[],
+    defaultEffort: string,
+  ) => ({
+    id: model,
+    model,
+    displayName: model,
+    description: "",
+    hidden: false,
+    isDefault,
+    inputModalities: ["text"],
+    defaultReasoningEffort: defaultEffort,
+    supportedReasoningEfforts: efforts.map((effort) => ({
+      reasoningEffort: effort,
+      description: "",
+    })),
+  });
+  const updates: unknown[] = [];
+  const rpc = {
+    async request(method: string, params: unknown) {
+      if (method === "config/read")
+        return {
+          config: {
+            model: "deepseek-v4-flash",
+            model_provider: "openai-o",
+            model_reasoning_effort: "high",
+          },
+        };
+      if (method === "model/list")
+        return {
+          data: [
+            catalogEntry("deepseek-v4-flash", true, ["high", "max"], "high"),
+            catalogEntry("GLM-5.3", false, ["max"], "max"),
+          ],
+          nextCursor: null,
+        };
+      if (method === "thread/settings/update") {
+        updates.push(params);
+        return {};
+      }
+      throw new Error(`unexpected ${method}`);
+    },
+  } as unknown as CodexRpcPort;
+  const store = new ThreadStateStore(rpc, cwd);
+  const thread = threadFixture();
+  store.markStarted({
+    ...thread,
+    model: "deepseek-v4-flash",
+    modelProvider: "openai-o",
+    reasoningEffort: "high",
+  });
+  const changed = codezSessionStateSnapshotSchema.parse(
+    await handleLegacySession(
+      "session/setModel",
+      {
+        sessionId: thread.id,
+        model: {
+          providerId: "ollama1",
+          modelId: "GLM-5.3",
+          options: { reasoningLevel: "max" },
+        },
+      },
+      rpc,
+      store,
+      cwd,
+    ),
+  );
+  assert.deepEqual(changed.settings.model.current, {
+    providerId: "ollama1",
+    modelId: "GLM-5.3",
+    options: { reasoningLevel: "max" },
+  });
+  assert.equal(changed.settings.thoughtLevel.current, "max");
+  // 档位目录必须与 current 描述同一线程模型，不能是全局 config 模型的档位表。
+  assert.deepEqual(
+    changed.settings.thoughtLevel.available.map((level) => level.value),
+    ["max"],
+  );
+  assert.deepEqual(updates, [{ threadId: thread.id, model: "GLM-5.3", effort: "max" }]);
+  // 后续 read/resume 保持线程级真值；task facade 据此回填 task index。
+  for (const method of ["session/read", "session/resume"]) {
+    const reread = codezSessionStateSnapshotSchema.parse(
+      await handleLegacySession(method, { sessionId: thread.id }, rpc, store, cwd),
+    );
+    assert.equal(reread.settings.model.current?.modelId, "GLM-5.3");
+    assert.equal(reread.settings.model.current?.providerId, "ollama1");
+    assert.equal(reread.settings.thoughtLevel.current, "max");
+  }
+});
+
+test("legacy 线程尚无模型事实时 settings 保持全局 config 视图", async () => {
+  const cwd = "/workspace";
+  const rpc = {
+    async request(method: string) {
+      if (method === "config/read")
+        return {
+          config: {
+            model: "deepseek-v4-flash",
+            model_provider: "openai-o",
+            model_reasoning_effort: "high",
+          },
+        };
+      if (method === "model/list") return { data: [], nextCursor: null };
+      throw new Error(`unexpected ${method}`);
+    },
+  } as unknown as CodexRpcPort;
+  const store = new ThreadStateStore(rpc, cwd);
+  const thread = threadFixture();
+  store.markStarted({ ...thread, model: "", modelProvider: "", reasoningEffort: undefined });
+  const snapshot = codezSessionStateSnapshotSchema.parse(
+    await handleLegacySession("session/read", { sessionId: thread.id }, rpc, store, cwd),
+  );
+  assert.deepEqual(snapshot.settings.model.current, {
+    providerId: "openai-o",
+    modelId: "deepseek-v4-flash",
+    options: { reasoningLevel: "high" },
+  });
+});

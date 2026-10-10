@@ -4,9 +4,29 @@ import type { ThreadStateStore } from "./thread-state.js";
 import { decorateNativeThread, selectionOverrides, turnMode } from "./command-input.js";
 import { turnPermissionIntent } from "./control-common.js";
 import { isSelectionSideChatThread } from "./selection-side-chat.js";
-import { object, string, unsupported } from "./json.js";
+import { object, string, unsupported, type JsonObject } from "./json.js";
 import { projectLegacySnapshot } from "./projection.js";
-import { readControlModelSettings } from "./control-presentation.js";
+import {
+  readControlModelSettings,
+  type ControlModelThreadOverride,
+} from "./control-presentation.js";
+
+/**
+ * 线程已生效的模型选择 → 控制面视图 override。线程还没有模型事实（新线程水合前）
+ * 时保持全局 config 视图；不能把空字符串/非字符串脏值当成选择下发。
+ */
+function threadModelOverride(thread: JsonObject): ControlModelThreadOverride | undefined {
+  const model = typeof thread.model === "string" ? thread.model.trim() : "";
+  if (!model) return undefined;
+  const modelProvider = typeof thread.modelProvider === "string" ? thread.modelProvider.trim() : "";
+  const reasoningEffort =
+    typeof thread.reasoningEffort === "string" ? thread.reasoningEffort.trim() : "";
+  return {
+    model,
+    ...(modelProvider ? { modelProvider } : {}),
+    ...(reasoningEffort ? { reasoningEffort } : {}),
+  };
+}
 
 export async function handleLegacySession(
   method: string,
@@ -107,6 +127,13 @@ export async function handleLegacySession(
   }
   const snapshot = projectLegacySnapshot(state.thread, store.cwd);
   snapshot.session.workspace = workspace;
-  snapshot.settings = await readControlModelSettings(controlContext);
+  // 修复根因：回包 settings 曾整体替换为全局 config 视图（config/read + model/list），
+  // 把刚经 thread/settings/update 生效的线程级模型/档位覆盖回 config.toml 默认，
+  // Bot（飞书/Telegram/微信）切模型后回包、任务索引回填与状态卡全部停在旧模型。
+  // 目录与缺省档仍由全局视图提供；current 以线程状态（store.applySettings 后的真值）为准。
+  snapshot.settings = await readControlModelSettings(
+    controlContext,
+    threadModelOverride(state.thread),
+  );
   return shared.codezSessionStateSnapshotSchema.parse(snapshot);
 }

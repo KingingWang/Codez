@@ -58,6 +58,14 @@ Bot 消息 / Automation 派发 / UI 订阅
 
 ## 失败语义
 
+- legacy 会话回包（`session/setModel`、`session/resume`、`session/read` 等）的
+  `settings.model.current` / `settings.thoughtLevel.current` 是线程级事实，归
+  bridge 线程状态所有（`thread/settings/update` + `store.applySettings` 后的值）；
+  全局 `config/read` 视图只提供目录（`available`）与缺省档。曾把回包 settings
+  整体替换为全局 config 视图，导致 setModel 生效后回包、task index 回填与 Bot
+  状态卡全部停在旧模型——表象即「Bot 切换模型不生效」（2026-10-11 macOS 日志
+  实测回归，`codez-bridge/legacy-sessions.ts` 现以线程 override 调
+  `readControlModelSettings`）。
 - Codex RPC 失败：`getView` 抛错；Bot 捕获后按既有「无法解析」路径回复，
   不落错误状态。
 - `/new` 草稿继承：`task.model` 是 picker 展示格式 `provider/model$effort`
