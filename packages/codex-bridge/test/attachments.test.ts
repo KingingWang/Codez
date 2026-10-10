@@ -114,7 +114,8 @@ test("native file references keep complete oversized text and binary bytes tool-
     assert.equal(input[0]?.type, "text");
     if (input[0]?.type !== "text") throw new Error("Expected file reference");
     const resolved = await store.resolve(ref.ref, common.sessionId);
-    assert.ok(input[0].text.includes(resolved.path));
+    // 原生说明会 JSON 转义 Windows 反斜杠；校验解码后的路径，不能匹配原始文本。
+    assert.equal(parseNativeFileReference(input[0].text)?.path, resolved.path);
     assert.ok(!input[0].text.includes("a".repeat(64 * 1024)));
     assert.deepEqual(await readFile(resolved.path), bytes);
   }
@@ -522,7 +523,10 @@ for (const mime of ["video/mp4", "audio/wav", "application/pdf", "application/oc
     const [input] = await store.toNativeInput([{ ...ref, mime: "text/plain" }], common.sessionId);
     assert.equal(input?.type, "text");
     if (input?.type !== "text") throw new Error("Expected file reference");
-    assert.ok(input.text.includes((await store.resolve(ref.ref, common.sessionId)).path));
+    assert.equal(
+      parseNativeFileReference(input.text)?.path,
+      (await store.resolve(ref.ref, common.sessionId)).path,
+    );
   });
 }
 
@@ -532,7 +536,10 @@ test("invalid UTF-8 text remains file-readable and native input array is bounded
   const [input] = await store.toNativeInput([ref], common.sessionId);
   assert.equal(input?.type, "text");
   if (input?.type !== "text") throw new Error("Expected file reference");
-  assert.ok(input.text.includes((await store.resolve(ref.ref, common.sessionId)).path));
+  assert.equal(
+    parseNativeFileReference(input.text)?.path,
+    (await store.resolve(ref.ref, common.sessionId)).path,
+  );
   await assert.rejects(
     store.toNativeInput(
       Array.from({ length: 65 }, () => ref),

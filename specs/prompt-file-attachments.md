@@ -68,6 +68,13 @@ or invalid UTF-8 prohibits text inlining even if MIME is `text/plain`. CLI
 core and the bridge apply this rule independently at their existing file
 resolution boundaries; neither keeps a second attachment state owner.
 
+Native file-reference and inline-envelope headers display filenames and paths
+as JSON strings. Escaping is presentation-only: parsing the marker must recover
+the exact original path, including Windows drive, UNC and verbatim paths.
+Tests compare the parsed path with the bridge-owned blob path, not raw path
+inclusion in the escaped header. Malformed or noncanonical envelopes retain
+their existing fail-closed behavior; no storage or protocol migration is needed.
+
 ```text
 paste / select / drop -> composer File -> bounded upload -> bridge blob / CLI artifact
                                                |
@@ -117,6 +124,9 @@ existing idempotency and recovery rules.
    empty model input, on both bridge and CLI paths. Exactly 20 MiB and
    over-20 MiB uploads have distinct outcomes. Small image and existing
    media behavior remains unchanged.
+7. Reference-only and inline envelopes round-trip POSIX, Windows drive, UNC
+   and verbatim paths unchanged on every test platform. Their headers use
+   JSON-escaped paths and filenames, including spaces, Unicode and quotes.
 
 The previous metadata-only and truncated artifact outputs are not migrated:
 they do not contain recoverable original bytes. New uploads use the complete
