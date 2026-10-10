@@ -5,6 +5,7 @@ import type { CodexNotification, CodexRpcPort } from "./contract.js";
 import type { AuxiliaryText } from "./auxiliary-text.js";
 import { readCatalogProviderMap } from "./control-catalog.js";
 import { array, object, string } from "./json.js";
+import { CodexTransportError } from "./rpc-errors.js";
 import { isSelectionSideChatThread } from "./selection-side-chat.js";
 
 const MAX_PROMPT_BYTES = 960;
@@ -127,11 +128,13 @@ export class SessionTitleCoordinator {
   }
 
   private async generate(threadId: string, attempt: Attempt, input: string): Promise<void> {
+    let stage: "availability" | "generation" | "native-read" | "native-write" = "availability";
     try {
       if (!(await this.available(attempt.selection))) return;
       if (this.attempts.get(threadId) !== attempt) return;
       const operationId = randomUUID();
       attempt.operationId = operationId;
+      stage = "generation";
       const result = auxiliaryResult.parse(
         await this.deps.auxiliary.handle(
           "workspace/generateText",
@@ -159,6 +162,7 @@ export class SessionTitleCoordinator {
       );
       const title = parseTitle(result.text);
       if (!title || this.attempts.get(threadId) !== attempt) return;
+      stage = "native-read";
       await this.serialize(threadId, async () => {
         if (this.closed || this.attempts.get(threadId) !== attempt) return;
         const read = object(await this.deps.rpc.request("thread/read", { threadId }));
@@ -180,11 +184,26 @@ export class SessionTitleCoordinator {
           this.attempts.get(threadId) !== attempt
         )
           return;
+        stage = "native-write";
         await this.deps.rpc.request("thread/name/set", { threadId, name: title });
       });
-    } catch {
-      // 失败只影响标题；不回传原始 prompt、模型响应或用户路径，也不重试未知写入。
-      process.stderr.write("Codex desktop bridge warn: automatic title failed; keeping preview.\n");
+    } catch (cause) {
+      // 修复依据：原有 stderr 只进入 Host 的 debug 路径，导出日志看不到原生配置错误。
+      // 仅记录阶段和有限错误码，不输出原始错误、prompt、模型响应或用户路径。
+      const code =
+        cause instanceof CodexTransportError
+          ? cause.code
+          : typeof cause === "object" &&
+              cause !== null &&
+              "code" in cause &&
+              typeof cause.code === "number" &&
+              Number.isSafeInteger(cause.code) &&
+              Math.abs(cause.code) < 10_000_000
+            ? String(cause.code)
+            : "unknown";
+      process.stderr.write(
+        `Codex desktop bridge warn: automatic title failed; stage=${stage}; code=${code}\n`,
+      );
     } finally {
       if (this.attempts.get(threadId) === attempt) this.attempts.delete(threadId);
     }

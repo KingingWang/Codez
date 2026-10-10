@@ -9,6 +9,7 @@ import { codezWorkspaceGenerateTextResultSchema } from "@codez/shared";
 import type { CodexProcess, CodexNotification } from "../src/contract.js";
 import { AuxiliaryText } from "../src/auxiliary-text.js";
 import { createCodexProcess } from "../src/codex-process.js";
+import { SessionTitleCoordinator } from "../src/session-title.js";
 
 const params = {
   workspace: { workspacePath: "/workspace", workspaceKey: "fixture" },
@@ -112,7 +113,9 @@ test("restricted ephemeral request waits for actual completion and disposes list
   assert.deepEqual(start.environments, []);
   assert.deepEqual(start.dynamicTools, []);
   assert.deepEqual(start.runtimeWorkspaceRoots, []);
-  assert.deepEqual(start.config.mcp_servers, { fixture: { enabled: false } });
+  assert.deepEqual(start.config.mcp_servers, {
+    fixture: { command: "must-not-run", enabled: false },
+  });
   for (const feature of [
     "shell_tool",
     "unified_exec",
@@ -140,6 +143,57 @@ test("restricted ephemeral request waits for actual completion and disposes list
   assert.equal(f.notifications.size + f.closes.size, 0);
   assert.equal(f.calls.filter((call) => call.method === "thread/unsubscribe").length, 1);
   assert.equal(f.calls.filter((call) => call.method === "turn/interrupt").length, 0);
+});
+
+test("stdio, HTTP and dotted MCP names retain only disabled transport identifiers", async () => {
+  const f = fixture();
+  f.handlers["config/read"] = () => ({
+    config: {
+      mcp_servers: {
+        "user.dotted": {
+          command: "must-not-run",
+          args: ["--sensitive"],
+          env: { TOKEN: "secret" },
+          tool_timeout_sec: null,
+        },
+        remote: {
+          url: "https://example.invalid/mcp",
+          http_headers: { Authorization: "secret" },
+          enabled: true,
+        },
+      },
+    },
+  });
+  const pending = f.auxiliary.handle("workspace/generateText", params);
+  await f.started.promise;
+  const start = f.calls.find((call) => call.method === "thread/start")!.params as {
+    config: { mcp_servers: unknown };
+  };
+  assert.deepEqual(start.config.mcp_servers, {
+    "user.dotted": { command: "must-not-run", enabled: false },
+    remote: { url: "https://example.invalid/mcp", enabled: false },
+  });
+  f.complete();
+  await pending;
+});
+
+test("missing or ambiguous MCP transport fails before creating an auxiliary thread", async () => {
+  for (const server of [
+    { enabled: true },
+    { command: "", enabled: true },
+    { command: "stdio", url: "https://example.invalid/mcp" },
+  ]) {
+    const f = fixture();
+    f.handlers["config/read"] = () => ({ config: { mcp_servers: { unsupported: server } } });
+    await assert.rejects(f.auxiliary.handle("workspace/generateText", params), {
+      code: -32000,
+    });
+    assert.deepEqual(
+      f.calls.map(({ method }) => method),
+      ["config/read"],
+    );
+    assert.equal(f.notifications.size + f.closes.size, 0);
+  }
 });
 
 test("completion before turn/start reply is retained, not lost or applied to another turn", async () => {
@@ -320,7 +374,15 @@ test(
     await mkdir(codexHome);
     t.after(() => rm(temporary, { recursive: true, force: true }));
     const modelRequests: Record<string, unknown>[] = [];
+    let mcpRequests = 0;
+    let titleMode = false;
     const server = createServer((request, response) => {
+      if (request.url === "/mcp") {
+        mcpRequests++;
+        response.writeHead(503);
+        response.end();
+        return;
+      }
       const chunks: Buffer[] = [];
       request.on("data", (chunk: Buffer) => chunks.push(chunk));
       request.on("end", () => {
@@ -330,7 +392,15 @@ test(
           id: "msg-aux",
           role: "assistant",
           status: "completed",
-          content: [{ type: "output_text", text: "fix: isolated commit helper", annotations: [] }],
+          content: [
+            {
+              type: "output_text",
+              text: titleMode
+                ? '{"title":"Isolated session title"}'
+                : "fix: isolated commit helper",
+              annotations: [],
+            },
+          ],
         };
         const completed = {
           id: "resp-aux",
@@ -369,15 +439,22 @@ test(
     const address = server.address();
     assert.ok(address && typeof address !== "string");
     const marker = join(temporary, "forbidden-side-effect");
+    const desktopMarker = join(temporary, "desktop-mcp-side-effect");
     const command = [
       process.execPath,
       "-e",
       `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'unsafe')`,
     ];
+    const desktopCommand = [
+      process.execPath,
+      "-e",
+      `require('node:fs').writeFileSync(${JSON.stringify(desktopMarker)}, 'unsafe')`,
+    ];
     const config =
       `model_provider = "fixture"\nmodel = "gpt-5.2"\nnotify = ${JSON.stringify(command)}\n` +
       `[model_providers.fixture]\nname = "Isolated fixture"\nbase_url = "http://127.0.0.1:${address.port}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n` +
-      `[mcp_servers.forbidden]\ncommand = ${JSON.stringify(command[0])}\nargs = ${JSON.stringify(command.slice(1))}\nrequired = true\n` +
+      `[mcp_servers."user.dotted"]\ncommand = ${JSON.stringify(command[0])}\nargs = ${JSON.stringify(command.slice(1))}\n` +
+      `[mcp_servers.http]\nurl = "http://127.0.0.1:${address.port}/mcp"\n` +
       `[analytics]\nenabled = false\n`;
     const configPath = join(codexHome, "config.toml");
     await writeFile(configPath, config);
@@ -401,6 +478,14 @@ test(
       executable: process.env.CODEX_AUXILIARY_TEST_BINARY!,
       cwd,
       env,
+      desktopMcpServers: [
+        {
+          name: "codez-desktop-browser-cua",
+          command: desktopCommand[0]!,
+          args: desktopCommand.slice(1),
+          env: { DESKTOP_TEST_TOKEN: "must-not-be-forwarded" },
+        },
+      ],
     });
     const auxiliary = new AuxiliaryText({ rpc, cwd });
     t.after(async () => {
@@ -420,7 +505,63 @@ test(
     assert.deepEqual(modelRequests[0]?.tools, []);
     assert.equal(await readFile(configPath, "utf8"), config);
     await assert.rejects(access(marker));
+    await assert.rejects(access(desktopMarker));
+    assert.equal(mcpRequests, 0);
     const listed = await rpc.request<{ data: unknown[] }>("thread/list", { limit: 100 });
     assert.deepEqual(listed.data, []);
+
+    // The same process should also set one native title for a real first user item.
+    titleMode = true;
+    const main = await rpc.request<{ thread: Record<string, unknown> & { id: string } }>(
+      "thread/start",
+      {
+        cwd,
+        model: "gpt-5.2",
+        modelProvider: "fixture",
+        sandbox: "read-only",
+        approvalPolicy: "never",
+      },
+    );
+    const mainId = main.thread.id;
+    const title = new SessionTitleCoordinator({
+      rpc,
+      store: { get: () => ({ thread: main.thread }) },
+      auxiliary,
+      cwd,
+      workspaceId: cwd,
+    });
+    const titled = Promise.withResolvers<void>();
+    const detach = rpc.onNotification((event) => {
+      const p = event.params as { threadId?: string; item?: { type?: string } };
+      if (
+        event.method === "item/completed" &&
+        p.threadId === mainId &&
+        p.item?.type === "userMessage"
+      )
+        void title.onNotification(event).then(titled.resolve, titled.reject);
+    });
+    t.after(() => {
+      title.close();
+      detach();
+    });
+    title.arm(mainId, { providerId: "fixture", modelId: "gpt-5.2" });
+    const deadline = setTimeout(
+      () => titled.reject(new Error("Native first user item never completed")),
+      10_000,
+    );
+    try {
+      await rpc.request("turn/start", {
+        threadId: mainId,
+        input: [{ type: "text", text: "Please investigate the build failure", text_elements: [] }],
+      });
+      await titled.promise;
+    } finally {
+      clearTimeout(deadline);
+    }
+    const named = await rpc.request<{ thread: { name: string | null } }>("thread/read", {
+      threadId: mainId,
+    });
+    assert.equal(named.thread.name, "Isolated session title");
+    assert.equal(modelRequests.length, 3);
   },
 );

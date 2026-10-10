@@ -143,6 +143,46 @@ test("invalid output keeps preview without another model attempt", async () => {
   );
 });
 
+test("auxiliary failure keeps preview and logs only a bounded stage and code", async (t) => {
+  const lines: string[] = [];
+  t.mock.method(process.stderr, "write", (chunk: string | Uint8Array) => {
+    lines.push(String(chunk));
+    return true;
+  });
+  const f = fixture();
+  const coordinator = new SessionTitleCoordinator({
+    rpc: f.rpc,
+    store: { get: () => ({ thread: f.thread }) },
+    auxiliary: {
+      async handle() {
+        throw Object.assign(new Error("secret prompt /workspace user.dotted"), { code: -32600 });
+      },
+    },
+    cwd: "/project",
+    workspaceId: "remote:A",
+  });
+  coordinator.arm("thread-1", { providerId: "openai", modelId: "gpt-5.6-luna" });
+  await coordinator.onNotification({
+    method: "item/completed",
+    params: {
+      threadId: "thread-1",
+      item: {
+        type: "userMessage",
+        id: "item-1",
+        content: [{ type: "text", text: "Please investigate the build failure" }],
+      },
+    },
+  });
+  assert.equal(f.thread.name, null);
+  assert.equal(
+    f.calls.some(({ method }) => method === "thread/name/set"),
+    false,
+  );
+  assert.deepEqual(lines, [
+    "Codex desktop bridge warn: automatic title failed; stage=generation; code=-32600\n",
+  ]);
+});
+
 test("an API-key account can use a model listed by native Codex", async () => {
   const f = fixture();
   f.setConfigured("openai", "gpt-5.6-codex");

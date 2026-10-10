@@ -222,6 +222,18 @@ export class AuxiliaryText {
           }),
         );
       this.check(op);
+      // 修复依据：进程级 -c 注入的 MCP 表会被同名线程配置整表覆盖；仅传
+      // enabled=false 会丢失必需的传输字段，config/read 的归一化空值又不能直接回填。
+      // 只保留禁用项的传输标识，避免携带 env、headers 或其它敏感配置。
+      const mcpServers = Object.fromEntries(
+        Object.entries(config.mcp_servers ?? {}).map(([name, server]) => {
+          if (typeof server.command === "string" && server.command.trim() && server.url == null)
+            return [name, { command: server.command, enabled: false }];
+          if (typeof server.url === "string" && server.url.trim() && server.command == null)
+            return [name, { url: server.url, enabled: false }];
+          throw error(-32000, "Auxiliary MCP transport unavailable");
+        }),
+      );
       const overrides = {
         ...Object.fromEntries(disabledFeatures.map((feature) => [`features.${feature}`, false])),
         "orchestrator.skills.enabled": false,
@@ -232,9 +244,7 @@ export class AuxiliaryText {
         web_search: "disabled",
         notify: [],
         project_doc_max_bytes: 0,
-        mcp_servers: Object.fromEntries(
-          Object.keys(config.mcp_servers ?? {}).map((name) => [name, { enabled: false }]),
-        ),
+        mcp_servers: mcpServers,
       };
       const raw = await this.options.rpc.request("thread/start", {
         cwd: this.options.cwd,
