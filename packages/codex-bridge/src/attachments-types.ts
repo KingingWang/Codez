@@ -25,8 +25,9 @@ import type { ConversationRowTarget } from "@codez/shared/codez-protocol-v4";
  *   authorization; main still gates the current user row. Text boundaries cannot be recovered.
  * - Desktop continuous and mobile replayable use the same transactions and authorization.
  * - Read/stat require a fresh authoritative user-row check from main on every call.
- * - Native conversion is all-or-error: images become localImage, UTF-8 text becomes text;
- *   unsupported/binary content is never silently omitted. Main owns session/row admission.
+ * - Native conversion is all-or-error: images become localImage, complete small UTF-8
+ *   text becomes text, and all other files become validated private path references.
+ *   Nothing is silently truncated or omitted. Main owns session/row admission.
  * - Idempotency receipts are process-local, TTL-bound and capped at 512; no crash exactly-once.
  * - Storage is private to this bridge, not a legacy artifact or credential migration.
  */

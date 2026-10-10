@@ -14,6 +14,10 @@ import {
   v4ConversationAttachmentStatResultSchema,
   type AttachmentRef,
 } from "@codez/shared/codez-protocol-v4";
+import {
+  formatNativeFileReference,
+  formatNativeInlineFileReference,
+} from "./native-file-reference.js";
 import type { CodexUserInput } from "./codex-types.js";
 import { AttachmentFiles, openAttachmentFile } from "./attachments-files.js";
 import { AttachmentUploads } from "./attachments-upload.js";
@@ -31,6 +35,41 @@ export type {
 
 const MAX_OPERATIONS = 64;
 const MAX_TEXT_BYTES = 1024 * 1024;
+const INLINE_TEXT_MAX_CHARS = 64 * 1024;
+const INLINE_TEXT_MAX_FILE_BYTES = 256 * 1024;
+
+function isTextFile(mime: string, filename: string): boolean {
+  return (
+    mime.startsWith("text/") ||
+    /^(application\/(json|xml|javascript|x-yaml))$/u.test(mime) ||
+    (mime === "application/octet-stream" &&
+      /\.(cjs|conf|cpp|cs|css|csv|go|h|hpp|html|ini|java|js|json|jsx|log|md|mjs|py|rs|sh|sql|toml|ts|tsx|txt|xml|yaml|yml)$/iu.test(
+        filename,
+      ))
+  );
+}
+
+function isKnownBinaryFile(filename: string): boolean {
+  return /\.(7z|avi|db|docx?|exe|gif|gz|jpe?g|mp[34]|pdf|png|rar|sqlite|tar|wasm|webp|woff2?|xlsx?|zip)$/iu.test(
+    filename,
+  );
+}
+
+function hasBinaryBytes(buffer: Buffer): boolean {
+  // 原因：ZIP 的 PK 头是合法 UTF-8/ASCII；错误的 text/plain MIME 不能据此将压缩包当正文。
+  if (
+    (buffer.length >= 4 &&
+      buffer[0] === 0x50 &&
+      buffer[1] === 0x4b &&
+      ((buffer[2] === 3 && buffer[3] === 4) ||
+        (buffer[2] === 5 && buffer[3] === 6) ||
+        (buffer[2] === 7 && buffer[3] === 8))) ||
+    buffer.subarray(0, 4).toString("ascii") === "%PDF" ||
+    (buffer[0] === 0x1f && buffer[1] === 0x8b)
+  )
+    return true;
+  return buffer.some((byte) => byte === 0 || (byte < 32 && ![9, 10, 12, 13].includes(byte)));
+}
 
 export class AttachmentStore {
   private readonly files: AttachmentFiles;
@@ -171,8 +210,12 @@ export class AttachmentStore {
   /** Restore persisted metadata from a native path; main still owns projection/row authorization.
    * No match for unrelated/missing/cross-scope files; corrupt or unsafe storage rejects.
    */
-  findNativeAttachment(path: string, sessionId: string): Promise<AttachmentRef | undefined> {
-    return this.serial(() => this.files.findNativeAttachment(path, sessionId));
+  findNativeAttachment(
+    path: string,
+    sessionId: string,
+    inlineChecksum?: string,
+  ): Promise<AttachmentRef | undefined> {
+    return this.serial(() => this.files.findNativeAttachment(path, sessionId, inlineChecksum));
   }
 
   /** Host-only: recover/import a bounded authoritative native userMessage image, never client URLs.
@@ -198,32 +241,82 @@ export class AttachmentStore {
         if (totalBytes > LIMITS.attachmentUploadMaxStagedBytes) throw attachmentFault("inputLimit");
         if (resolved.mime.startsWith("image/"))
           result.push({ type: "localImage", path: resolved.path });
-        else if (
-          resolved.mime.startsWith("text/") ||
-          /^(application\/(json|xml|javascript|x-yaml))$/.test(resolved.mime)
-        ) {
-          textBytes += resolved.bytes;
-          if (textBytes > MAX_TEXT_BYTES) throw attachmentFault("textInputLimit");
-          const file = await openAttachmentFile(resolved.path, MAX_TEXT_BYTES);
-          try {
-            const buffer = Buffer.alloc(resolved.bytes);
-            let offset = 0;
-            while (offset < buffer.length) {
-              const { bytesRead } = await file.read(buffer, offset, buffer.length - offset, offset);
-              if (!bytesRead) throw attachmentFault("lengthMismatch");
-              offset += bytesRead;
-            }
-            let text: string;
+        else {
+          let inline: string | undefined;
+          if (
+            input.sourceKind !== "clipboard-text" &&
+            resolved.bytes > 0 &&
+            isTextFile(resolved.mime, resolved.fileName) &&
+            !isKnownBinaryFile(resolved.fileName) &&
+            resolved.bytes <= INLINE_TEXT_MAX_FILE_BYTES &&
+            textBytes + resolved.bytes <= MAX_TEXT_BYTES
+          ) {
+            const file = await openAttachmentFile(resolved.path, INLINE_TEXT_MAX_FILE_BYTES);
             try {
-              text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
-            } catch {
-              throw attachmentFault("invalidUtf8");
+              const buffer = Buffer.alloc(resolved.bytes);
+              let offset = 0;
+              while (offset < buffer.length) {
+                const { bytesRead } = await file.read(
+                  buffer,
+                  offset,
+                  buffer.length - offset,
+                  offset,
+                );
+                if (!bytesRead) throw attachmentFault("lengthMismatch");
+                offset += bytesRead;
+              }
+              try {
+                if (!hasBinaryBytes(buffer)) {
+                  const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+                    buffer,
+                  );
+                  if (text.length <= INLINE_TEXT_MAX_CHARS) inline = text;
+                }
+              } catch {
+                // 原因：文本 MIME 也可能携带损坏/二进制字节；不能把替换字符当原文送进上下文。
+                // 保留已校验的完整 blob，让 Agent 自己按需读取。
+              }
+            } finally {
+              await file.close();
             }
-            result.push({ type: "text", text, text_elements: [] });
-          } finally {
-            await file.close();
           }
-        } else throw attachmentFault("nativeTypeUnsupported");
+          const attachment = {
+            ref: resolved.ref,
+            fileName: resolved.fileName,
+            mime: resolved.mime,
+            bytes: resolved.bytes,
+            ...(input.sourceKind ? { sourceKind: input.sourceKind } : {}),
+          };
+          const inlineInput =
+            inline === undefined
+              ? undefined
+              : formatNativeInlineFileReference({
+                  attachment,
+                  path: resolved.path,
+                  text: inline,
+                });
+          if (
+            inlineInput !== undefined &&
+            textBytes + Buffer.byteLength(inlineInput, "utf8") <= MAX_TEXT_BYTES
+          ) {
+            textBytes += Buffer.byteLength(inlineInput, "utf8");
+            // 原因：裸文本丢失附件身份，原生队列编辑会替换掉它；携带有界内容与原始 ref 一同往返。
+            result.push({
+              type: "text",
+              text: inlineInput,
+              text_elements: [],
+            });
+          } else {
+            result.push({
+              type: "text",
+              text: formatNativeFileReference({
+                attachment,
+                path: resolved.path,
+              }),
+              text_elements: [],
+            });
+          }
+        }
       }
       return result;
     });

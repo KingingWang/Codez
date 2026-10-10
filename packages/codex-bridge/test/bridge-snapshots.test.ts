@@ -7,6 +7,7 @@ import { ThreadStateStore } from "../src/thread-state.js";
 import type { CodexRpcPort } from "../src/contract.js";
 import type { AttachmentStore } from "../src/attachments.js";
 import { threadFixture } from "./projection-fixtures.test.js";
+import { formatNativeFileReference } from "../src/native-file-reference.js";
 
 const cwd = "/workspace";
 function port(): CodexRpcPort {
@@ -137,4 +138,51 @@ test("attachment restoration follows turn-scoped row identity when native item I
     }),
     true,
   );
+});
+
+test("binary refs remain chips in native history and queue without exposing private markers", async () => {
+  const thread = threadFixture();
+  const ref: AttachmentRef = {
+    ref: "codez-attachment://00000000-0000-4000-8000-000000000001",
+    fileName: "archive.zip",
+    mime: "application/zip",
+    bytes: 4,
+  };
+  const path = "/private/objects/00000000-0000-4000-8000-000000000001.data";
+  const marker = formatNativeFileReference({ attachment: ref, path });
+  thread.turns[0]!.items[0] = {
+    type: "userMessage",
+    id: "user-1",
+    content: [{ type: "text", text: `Inspect this\n${marker}`, text_elements: [] }],
+  };
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  const state = store.markStarted(thread);
+  state.queue = [
+    {
+      id: "queue-1",
+      clientUserMessageId: "command-1",
+      input: [{ type: "text", text: marker, text_elements: [] }],
+    },
+  ];
+  const attachments = {
+    async findNativeAttachment(candidate: string, sessionId: string) {
+      assert.equal(candidate, path);
+      assert.equal(sessionId, thread.id);
+      return ref;
+    },
+  } as unknown as AttachmentStore;
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+    attachments,
+  );
+  const snapshot = await snapshots.conversation(thread.id);
+  const user = snapshot.rows.window.find((row) => row.kind === "userInput");
+  assert.equal(user?.text, "Inspect this");
+  assert.deepEqual(user?.attachments, [ref]);
+  assert.deepEqual(snapshot.queue.items[0]?.attachments, [ref]);
+  assert.equal(snapshot.queue.items[0]?.text, "");
 });

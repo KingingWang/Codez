@@ -5,9 +5,8 @@
 //    - 图片：content 直接携带 URI，core 的 attachment-artifacts 解析链在模型请求时
 //      读回 data URL（与 externalizePromptAttachments 的产物同形，不在这里内联解码，
 //      避免大图在命令层放大内存）。
-//    - PDF：保留 URI 交给 core 的 PDF resolver；其他非图片：读回 artifact 并按旧
-//      decodeTextProtocolAttachment 语义解成 ≤64KiB 文本
-//      内容（超限/解不开 → 只保留展示元信息，不伪造内容）。
+//    - PDF：保留 URI 交给 core 的 PDF resolver；其他非图片：从会话 artifact
+//      物化原始字节为 Agent 可读私有路径，再由 core 决定全文或路径引用。
 // 2. 本地路径 ref（desktop 直传绝对路径）——按旧 mapProtocolPromptAttachment 的
 //    localPath 分支映射为 path 引用，core 已有读取阈值与降级策略。
 import type { TurnAttachment } from "@codez/core";
@@ -15,7 +14,6 @@ import type { AttachmentRef } from "@codez/shared/codez-protocol-v4";
 import type { CodezApp } from "../../app/types.js";
 
 const URI_REF_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//;
-const INLINE_TEXT_ATTACHMENT_MAX_BYTES = 64 * 1024;
 
 function isUriAttachmentRef(ref: string): boolean {
   return URI_REF_PATTERN.test(ref);
@@ -23,11 +21,12 @@ function isUriAttachmentRef(ref: string): boolean {
 
 function displayMetaOf(
   ref: AttachmentRef,
-): Pick<TurnAttachment, "filename" | "mimeType" | "sizeBytes"> {
+): Pick<TurnAttachment, "filename" | "mimeType" | "sizeBytes" | "sourceKind"> {
   return {
     filename: ref.fileName,
     mimeType: ref.mime,
     sizeBytes: ref.bytes,
+    ...(ref.sourceKind ? { sourceKind: ref.sourceKind } : {}),
   };
 }
 
@@ -41,21 +40,6 @@ function isVideoRef(ref: AttachmentRef): boolean {
 
 function isPdfRef(ref: AttachmentRef): boolean {
   return ref.mime.split(";", 1)[0]?.trim().toLowerCase() === "application/pdf";
-}
-
-/** data URL（data:<mime>;base64,<payload>）→ utf8 文本；非 base64 data URL 原样返回正文。 */
-function decodeDataUrlText(content: string): string | undefined {
-  if (!content.startsWith("data:")) return content;
-  const commaIndex = content.indexOf(",");
-  if (commaIndex === -1) return undefined;
-  const header = content.slice(0, commaIndex);
-  const payload = content.slice(commaIndex + 1);
-  if (!header.includes(";base64")) return decodeURIComponent(payload);
-  try {
-    return Buffer.from(payload, "base64").toString("utf8");
-  } catch {
-    return undefined;
-  }
 }
 
 async function mapAttachmentRef(app: CodezApp, ref: AttachmentRef): Promise<TurnAttachment> {
@@ -84,20 +68,13 @@ async function mapAttachmentRef(app: CodezApp, ref: AttachmentRef): Promise<Turn
     // PDF URI ref 必须保留 durable URI，交给 core 读取 data URL；不能按 UTF-8 文本解码。
     return { content: ref.ref, path: ref.fileName, type: "pdf", ...displayMeta };
   }
-  // 非图片 URI ref：按旧 decodeTextProtocolAttachment 语义还原 ≤64KiB 文本内容。
-  if (ref.bytes > INLINE_TEXT_ATTACHMENT_MAX_BYTES) {
-    return { type: "file", ...displayMeta };
-  }
-  try {
-    const artifact = await app.readToolResultArtifact(ref.ref);
-    const text = decodeDataUrlText(artifact.content);
-    return text !== undefined
-      ? { content: text, path: ref.fileName, type: "file", ...displayMeta }
-      : { type: "file", ...displayMeta };
-  } catch {
-    // 引用失效（TTL 回收/写失败）：保留展示元信息，不让整次发送失败。
-    return { type: "file", ...displayMeta };
-  }
+  // 原因：旧路径超过 64KiB 就只留下元信息，模型既未见全文，也无法按路径读取。
+  // 缺失或物化失败必须拒绝本次发送，保留草稿供重试，绝不能伪造成功。
+  return {
+    path: await app.materializePromptAttachment(ref.ref),
+    type: "file",
+    ...displayMeta,
+  };
 }
 
 /**

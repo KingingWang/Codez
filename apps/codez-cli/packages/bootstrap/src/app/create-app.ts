@@ -1000,6 +1000,15 @@ export async function createCodezApp(options: CodezAppOptions): Promise<CodezApp
         modelAdapter.setModelIoFullRetentionEnabled(enabled),
       readToolResultArtifact: (uri) =>
         artifactStore.readToolResultArtifact({ uri, trace: traceContext }),
+      materializePromptAttachment: async (uri) => {
+        if (!artifactStore.ensurePromptAttachmentPath)
+          throw new Error("Prompt attachment file materialization is unavailable");
+        return artifactStore.ensurePromptAttachmentPath({
+          uri,
+          sessionId,
+          maxBytes: 20 * 1024 * 1024,
+        });
+      },
       // wire/staging 全程是 decoded chunk；只有完整 checksum commit 后才在
       // CLI 进程内恢复既有 data-URL artifact 形态，保持 provider 读取链兼容。
       writePromptAttachment: async (input) => {

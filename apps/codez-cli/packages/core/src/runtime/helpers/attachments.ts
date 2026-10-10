@@ -1,5 +1,5 @@
 import { basename, resolvePath } from "../deps.js";
-import { READ_DEFAULT_MAX_LINES, READ_MAX_FILE_SIZE_BYTES } from "@codez/contracts";
+import { isCoreError, READ_MAX_FILE_SIZE_BYTES } from "@codez/contracts";
 import type {
   FilePartSource,
   FileSystemPort,
@@ -40,6 +40,28 @@ type ResolveAttachmentOptions = {
   turnId?: TurnId;
   workingDirectory: string;
 };
+
+function isKnownBinaryFile(filename: string): boolean {
+  return /\.(7z|avi|db|docx?|exe|gif|gz|jpe?g|mp[34]|pdf|png|rar|sqlite|tar|wasm|webp|woff2?|xlsx?|zip)$/iu.test(
+    filename,
+  );
+}
+
+function hasBinaryBytes(bytes: Uint8Array): boolean {
+  // 原因：PK ZIP 头本身是合法 UTF-8；即使 MIME/文件名都声称是纯文本也不能预读压缩包。
+  if (
+    (bytes.length >= 4 &&
+      bytes[0] === 0x50 &&
+      bytes[1] === 0x4b &&
+      ((bytes[2] === 3 && bytes[3] === 4) ||
+        (bytes[2] === 5 && bytes[3] === 6) ||
+        (bytes[2] === 7 && bytes[3] === 8))) ||
+    (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) ||
+    (bytes[0] === 0x1f && bytes[1] === 0x8b)
+  )
+    return true;
+  return bytes.some((byte) => byte === 0 || (byte < 32 && ![9, 10, 12, 13].includes(byte)));
+}
 
 /**
  * 附件 → TurnStarted 事件的轻量展示元信息（TurnAttachmentMeta）。
@@ -209,7 +231,7 @@ async function resolveLocalFileAttachment(
   },
 ): Promise<ResolvedTurnAttachment> {
   const absolutePath = resolvePath(options.workingDirectory, attachment.path!);
-  const filename = basename(absolutePath);
+  const filename = attachment.filename ?? basename(absolutePath);
   const mime = "text/plain";
   const source: FilePartSource = {
     type: "file",
@@ -231,11 +253,28 @@ async function resolveLocalFileAttachment(
       });
     }
 
-    if (!isTextLikePath(absolutePath)) {
+    if (stat.sizeBytes === 0) {
+      // 原因：空文本的模型输入也是空的；交付可读取路径才保留文件存在这一事实。
+      return resolvedPathReferenceAttachment(attachment, attachment.path!, {
+        filename,
+        mime: attachment.mimeType ?? mime,
+        sizeBytes: 0,
+        source,
+        reason: "empty_file",
+      });
+    }
+
+    const declaredMime = attachment.mimeType?.split(";", 1)[0]?.trim().toLowerCase();
+    const textLike =
+      !isKnownBinaryFile(filename) &&
+      (declaredMime?.startsWith("text/") ||
+        /^(application\/(json|xml|javascript|x-yaml))$/u.test(declaredMime ?? "") ||
+        ((!declaredMime || declaredMime === "application/octet-stream") && isTextLikePath(filename)));
+    if (!textLike) {
       // 疑似二进制文件不能误当文本读入 prompt，只交付路径引用给后续工具处理。
       return resolvedPathReferenceAttachment(attachment, attachment.path!, {
         filename,
-        mime: inferAttachmentMimeFromPath(absolutePath),
+        mime: attachment.mimeType ?? inferAttachmentMimeFromPath(filename),
         sizeBytes: stat.sizeBytes,
         source,
         reason: "binary_file",
@@ -254,20 +293,45 @@ async function resolveLocalFileAttachment(
       });
     }
 
-    const isOversizedText = stat.sizeBytes > READ_MAX_FILE_SIZE_BYTES;
+    const pathReference = () =>
+      resolvedPathReferenceAttachment(attachment, attachment.path!, {
+        filename,
+        mime: attachment.mimeType ?? "text/plain",
+        sizeBytes: stat.sizeBytes,
+        source,
+        reason: "text_too_large",
+      });
+    if (stat.sizeBytes > READ_MAX_FILE_SIZE_BYTES) return pathReference();
+    const raw = await options.fileSystemPort.readBinaryFile(
+      { path: absolutePath, maxBytes: READ_MAX_FILE_SIZE_BYTES, trace: options.traceContext },
+      { signal: options.abortSignal },
+    );
+    if (hasBinaryBytes(raw.content)) {
+      return resolvedPathReferenceAttachment(attachment, attachment.path!, {
+        filename,
+        mime: attachment.mimeType ?? inferAttachmentMimeFromPath(filename),
+        sizeBytes: stat.sizeBytes,
+        source,
+        reason: "binary_file",
+      });
+    }
+    let decoded: string;
+    try {
+      decoded = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(raw.content);
+    } catch {
+      // 原因：MIME/扩展名不能证明内容是有效文本；替换字符会不可逆地改变原文件。
+      return pathReference();
+    }
+    if (decoded.length > 64 * 1024) return pathReference();
     const read = await readTextFileForModel({
       abortSignal: options.abortSignal,
+      allowPartialFallback: false,
       filePath: absolutePath,
       fileSystemPort: options.fileSystemPort,
-      ...(isOversizedText
-        ? {
-            allowPartialFallback: true,
-            limit: READ_DEFAULT_MAX_LINES,
-            offset: 1,
-          }
-        : {}),
       trace: options.traceContext,
     });
+    if (read.truncated || read.content !== decoded.replace(/\r\n?/gu, "\n"))
+      return pathReference();
     return {
       contentBlock: { type: "text", text: read.content },
       filename,
@@ -294,12 +358,16 @@ async function resolveLocalFileAttachment(
       source,
       url: attachment.path!,
     };
-  } catch {
-    return resolvedPlaceholderAttachment(attachment, attachment.path!, "attachment_read_failed", {
-      filename,
-      mime,
-      source,
-    });
+  } catch (error) {
+    if (isCoreError(error) && error.context?.code === "read_output_too_many_tokens") {
+      return resolvedPathReferenceAttachment(attachment, attachment.path!, {
+        filename,
+        mime: attachment.mimeType ?? mime,
+        source,
+        reason: "text_too_large",
+      });
+    }
+    throw error;
   }
 }
 

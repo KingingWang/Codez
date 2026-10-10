@@ -129,9 +129,12 @@ then executes the shipped Node, server, bridge and Codex resources.
   synchronized with native Codex CLI thread archive state.
 - A lost mutation reply can have an unknown outcome; mutations are not blindly
   retried. Reconnection uses authoritative snapshots, not a claimed durable delta log.
-- Images and UTF-8 text attachments are supported; unsupported binary formats are
-  rejected. Original text-attachment boundaries cannot be reconstructed from native
-  merged text. Oversized unprojectable conversation content errors explicitly.
+- Images and complete small UTF-8 text attachments use native inputs. Binary,
+  deferred pasted text, and files that cannot be inlined completely use a
+  session-owned Agent-readable path; the bridge validates and recovers their
+  attachment refs from native history and queue. Existing pre-fix truncated
+  attachments cannot recover missing original bytes. Oversized unprojectable
+  conversation content errors explicitly.
 
 These limits are acceptance boundaries, not evidence that the corresponding legacy
 features were migrated. See `docs/codex-desktop.md` for runtime and configuration use.

@@ -929,7 +929,7 @@ export const v4AttachmentPutParamsSchema = z
     fileName: z.string().min(1),
     mime: z.string().min(1),
     // base64（不带 data: 前缀）；解码后字节数 ≤ PROTOCOL_V4_LIMITS.attachmentMaxBytes。
-    dataBase64: z.string().min(1),
+    dataBase64: z.string(),
   })
   .strict();
 export type V4AttachmentPutParams = z.infer<typeof v4AttachmentPutParamsSchema>;

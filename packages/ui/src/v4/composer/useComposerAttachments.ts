@@ -7,12 +7,14 @@ import { WORKSPACE_FILE_DRAG_MIME } from "@/lib/workspaceFileDrag.js";
 import {
   MAX_CHAT_ATTACHMENTS,
   MissingInlinePdfContentError,
+  OversizedInlineFileAttachmentError,
   OversizedInlinePdfAttachmentError,
   OversizedInlineVideoAttachmentError,
   createChatComposerAttachment,
   createChatComposerPathAttachment,
   createClipboardTextAttachmentFilenameForDate,
   createClipboardTextPathComposerAttachment,
+  countClipboardTextLines,
   formatAttachmentSize,
   revokeChatComposerAttachment,
   serializeChatComposerAttachment,
@@ -158,6 +160,7 @@ function isTransientAttachmentUploadError(error: unknown): boolean {
   if (isAbortError(error)) return false;
   if (error instanceof OversizedInlineVideoAttachmentError) return false;
   if (error instanceof OversizedInlinePdfAttachmentError) return false;
+  if (error instanceof OversizedInlineFileAttachmentError) return false;
   if (error instanceof MissingInlinePdfContentError) return false;
   if (
     error instanceof Error &&
@@ -377,6 +380,7 @@ export function useComposerAttachments(
               fileName: item.filename,
               mime: item.mimeType,
               bytes: result.bytes,
+              ...(item.sourceKind ? { sourceKind: item.sourceKind } : {}),
             },
             result.staged,
             target.sessionId,
@@ -435,14 +439,23 @@ export function useComposerAttachments(
                     maxSize: formatAttachmentSize(error.maxSizeBytes),
                   },
                 )
-              : error instanceof MissingInlinePdfContentError
+              : error instanceof OversizedInlineFileAttachmentError
                 ? intl.formatMessage(
-                    { id: "chat.attachments.missingInlinePdfContent" },
-                    { filename: error.filename },
+                    { id: "chat.attachments.oversizedInlineFile" },
+                    {
+                      filename: error.filename,
+                      size: formatAttachmentSize(error.sizeBytes),
+                      maxSize: formatAttachmentSize(error.maxSizeBytes),
+                    },
                   )
-                : error instanceof Error
-                  ? error.message
-                  : String(error);
+                : error instanceof MissingInlinePdfContentError
+                  ? intl.formatMessage(
+                      { id: "chat.attachments.missingInlinePdfContent" },
+                      { filename: error.filename },
+                    )
+                  : error instanceof Error
+                    ? error.message
+                    : String(error);
         const transient = isTransientAttachmentUploadError(error);
         if (transient && current.autoRetryCount < 1) {
           updateItem(targetScopeKey, attachmentId, (item) => ({
@@ -698,6 +711,7 @@ export function useComposerAttachments(
                   fileName: attachment.filename,
                   mime: attachment.mimeType,
                   bytes: attachment.sizeBytes,
+                  ...(attachment.sourceKind ? { sourceKind: attachment.sourceKind } : {}),
                 },
               }
             : {}),
@@ -803,8 +817,17 @@ export function useComposerAttachments(
       event.preventDefault();
       event.stopPropagation?.();
       if (nativeCodex) {
-        addAttachmentFiles([
-          new File([text], createClipboardTextAttachmentFilenameForDate(), { type: "text/plain" }),
+        addPreparedAttachments([
+          {
+            ...createChatComposerAttachment(
+              new File([text], createClipboardTextAttachmentFilenameForDate(), {
+                type: "text/plain",
+              }),
+            ),
+            sourceKind: "clipboard-text",
+            lineCount: countClipboardTextLines(text),
+            charCount: text.length,
+          },
         ]);
         return;
       }

@@ -99,6 +99,12 @@ export interface MediaAttachmentPathEnsureRequest {
   mediaType: string;
 }
 
+export interface PromptAttachmentPathEnsureRequest {
+  uri: string;
+  sessionId: SessionId;
+  maxBytes: number;
+}
+
 export type MediaAttachmentPathResult =
   | { status: "ready"; path: string }
   | { status: "unsupported" };
@@ -138,4 +144,6 @@ export interface ToolArtifactStorePort {
   ensureMediaAttachmentPath?(
     request: MediaAttachmentPathEnsureRequest,
   ): Promise<MediaAttachmentPathResult>;
+  /** Materialize the original uploaded bytes, never the Base64/data-URL artifact file. */
+  ensurePromptAttachmentPath?(request: PromptAttachmentPathEnsureRequest): Promise<string>;
 }

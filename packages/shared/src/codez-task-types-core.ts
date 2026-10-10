@@ -199,7 +199,7 @@ export interface CodezPromptFileAttachment {
   sizeBytes: number;
   /** 附件来源；clipboard-text 表示由长文本粘贴落盘生成，agent 只应按临时文件引用处理。 */
   sourceKind?: "clipboard-text";
-  /** 旧版/无路径环境的兼容回退；新桌面 GUI 不再为普通文件发送 base64。 */
+  /** 无路径文件的完整原始字节；仅在 renderer 内部 put，wire 仍分片上传。 */
   dataBase64?: string;
   /** 无本地路径时的小文本回退；有 localPath 时由 agent 自行读取。 */
   textContent?: string;

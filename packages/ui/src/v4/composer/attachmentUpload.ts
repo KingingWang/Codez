@@ -4,8 +4,8 @@
 // 分派规则（与 CLI attachment-refs.ts 的映射对偶）：
 // - localPath（desktop 主流：native picker / 拖拽 getPathForFile / 长粘贴临时文件 /
 //   oversized 大图路径降级）→ ref 直接携带绝对路径，零上传；
-// - dataBase64（粘贴截图等内联图）→ 高层 put（内部 begin/chunk/commit）→ artifact ref；
-// - textContent（无路径文本，web 回退面）→ 编码后同走 put；
+// - dataBase64（截图或无路径文件的完整原始字节）→ 高层 put（内部 begin/chunk/commit）→ artifact ref；
+// - textContent（旧版兼容输入）→ 编码后同走 put；
 // - 三者皆无（元信息-only）→ 丢弃并告警（无内容可发，不伪造引用）。
 import type { CodezPromptAttachment } from "@codez/shared";
 import type {
@@ -56,10 +56,13 @@ export async function uploadComposerAttachment(
       fileName,
       mime,
       bytes: sizeBytes ?? 0,
+      ...("sourceKind" in attachment && attachment.sourceKind
+        ? { sourceKind: attachment.sourceKind }
+        : {}),
     };
   }
   const dataBase64 =
-    "dataBase64" in attachment && attachment.dataBase64
+    "dataBase64" in attachment && attachment.dataBase64 !== undefined
       ? attachment.dataBase64
       : "textContent" in attachment && attachment.textContent !== undefined
         ? encodeTextToBase64(attachment.textContent)
@@ -76,5 +79,8 @@ export async function uploadComposerAttachment(
     fileName,
     mime,
     bytes: sizeBytes ?? base64ByteLength(dataBase64),
+    ...("sourceKind" in attachment && attachment.sourceKind
+      ? { sourceKind: attachment.sourceKind }
+      : {}),
   };
 }

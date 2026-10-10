@@ -8,6 +8,7 @@ export const attachmentRefSchema = z
     mime: z.string(),
     bytes: z.number(),
     previewRef: z.string().optional(),
+    sourceKind: z.literal("clipboard-text").optional(),
   })
   .strict();
 

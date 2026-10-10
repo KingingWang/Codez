@@ -8,6 +8,7 @@ import {
 import { PROTOCOL_V4_LIMITS } from "@codez/shared/codez-protocol-v4";
 import {
   OversizedInlineImageAttachmentError,
+  OversizedInlineFileAttachmentError,
   OversizedInlinePdfAttachmentError,
   OversizedInlineVideoAttachmentError,
 } from "@/lib/chatAttachmentErrors.js";
@@ -16,13 +17,13 @@ import {
   countClipboardTextLines,
   createClipboardTextAttachmentFilename,
   inferAttachmentMimeType,
-  isTextLikeAttachment,
 } from "@/lib/chatAttachmentMetadata.js";
 
 export {
   MissingInlineImageContentError,
   MissingInlinePdfContentError,
   OversizedInlineImageAttachmentError,
+  OversizedInlineFileAttachmentError,
   OversizedInlinePdfAttachmentError,
   OversizedInlineVideoAttachmentError,
 } from "@/lib/chatAttachmentErrors.js";
@@ -39,7 +40,6 @@ const INLINE_VIDEO_ATTACHMENT_MAX_BYTES = Math.min(
   VIDEO_INPUT_MAX_BYTES,
   PROTOCOL_V4_LIMITS.attachmentMaxBytes,
 );
-const INLINE_TEXT_ATTACHMENT_MAX_CHARS = 64 * 1024;
 
 export type ChatComposerAttachmentSourceKind = "clipboard-text";
 
@@ -60,24 +60,7 @@ const PDF_MIME_TYPE = "application/pdf";
 
 function normalizeComposerMimeType(mimeType: string): string {
   const normalized = mimeType.split(";", 1)[0]?.trim().toLowerCase() ?? "";
-  return normalized === PDF_MIME_TYPE ? PDF_MIME_TYPE : mimeType;
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result);
-        return;
-      }
-      reject(new Error("读取附件失败"));
-    };
-    reader.onerror = () => {
-      reject(reader.error ?? new Error("读取附件失败"));
-    };
-    reader.readAsDataURL(file);
-  });
+  return normalized || "application/octet-stream";
 }
 
 export function createChatComposerAttachment(
@@ -250,16 +233,23 @@ export async function serializeChatComposerAttachment(
     };
   }
 
-  const textContent =
-    attachment.file && isTextLikeAttachment(attachment)
-      ? await readAttachmentText(attachment.file)
-      : undefined;
+  if (!attachment.file) throw new Error("附件缺少可读取内容");
+  if (attachment.sizeBytes > PROTOCOL_V4_LIMITS.attachmentMaxBytes) {
+    // 原因：过去仅把文本前 64K 字符上传，超出的内容既不在模型上下文，也没有可读文件。
+    // 始终上传完整原始字节；不能完整上传时明确拒绝，绝不生成半份附件。
+    throw new OversizedInlineFileAttachmentError({
+      filename: attachment.filename,
+      maxSizeBytes: PROTOCOL_V4_LIMITS.attachmentMaxBytes,
+      sizeBytes: attachment.sizeBytes,
+    });
+  }
   return {
     kind: "file",
     filename: attachment.filename,
     mimeType,
     sizeBytes: attachment.sizeBytes,
-    ...(textContent !== undefined ? { textContent } : {}),
+    ...(attachment.sourceKind ? { sourceKind: attachment.sourceKind } : {}),
+    dataBase64: await readAttachmentBase64(attachment),
   };
 }
 
@@ -267,12 +257,12 @@ async function readAttachmentBase64(attachment: ChatComposerAttachment): Promise
   if (!attachment.file) {
     throw new Error("附件缺少可读取内容");
   }
-  const dataUrl = await readFileAsDataUrl(attachment.file);
-  const base64MarkerIndex = dataUrl.indexOf(",");
-  if (base64MarkerIndex === -1) {
-    throw new Error("附件数据格式不正确");
+  const bytes = new Uint8Array(await attachment.file.arrayBuffer());
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
   }
-  return dataUrl.slice(base64MarkerIndex + 1);
+  return btoa(binary);
 }
 
 export function isImageChatComposerAttachment(attachment: ChatComposerAttachment): boolean {
@@ -290,11 +280,4 @@ export function isPdfChatComposerAttachment(attachment: ChatComposerAttachment):
 /** 图片与视频同属媒体组：输入框与消息流统一按媒体卡片渲染。 */
 export function isMediaChatComposerAttachment(attachment: ChatComposerAttachment): boolean {
   return isImageChatComposerAttachment(attachment) || isVideoChatComposerAttachment(attachment);
-}
-
-async function readAttachmentText(file: File): Promise<string> {
-  const text = await file.text();
-  return text.length > INLINE_TEXT_ATTACHMENT_MAX_CHARS
-    ? `${text.slice(0, INLINE_TEXT_ATTACHMENT_MAX_CHARS)}\n\n[内容过长，已截断]`
-    : text;
 }
