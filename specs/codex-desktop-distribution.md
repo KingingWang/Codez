@@ -50,6 +50,14 @@ vendor files are byte-stable across Windows and POSIX checkouts, and their
 manifest SHA256 values are verified before copying them into the desktop
 runtime; line-ending conversion must never alter a vendored asset.
 
+Codex packages do not carry the legacy `resources/glm` agent plugins. Their
+`afterPack` checks therefore skip the legacy CUA Sharp and koffi asset assertions,
+while retaining Codex runtime, remote assets, PTY and native-resource checks.
+Explicit legacy builds still require the target-specific CUA native assets;
+Sharp keeps its existing real-producer gate. Regression tests execute both
+assertions for all six targets and verify that missing legacy assets still fail
+legacy packaging.
+
 The Linux regression gate also explicitly runs the UI tests for workspace-scoped automation model reads, valid default-model submission, and clean-repository Git tools. These tests live outside `settings/codex/` and must not be lost by relying on that directory glob alone. Test-path coverage is asserted by the workflow regression test; native six-target build, smoke and release gates stay unchanged.
 
 Each native build calls the root `pnpm typecheck` once; that script already includes the Codex bridge typecheck. Do not repeat the bridge typecheck as a separate workflow command. A regression asserts both the root-script coverage and the absence of the redundant command, without dropping any per-platform check.

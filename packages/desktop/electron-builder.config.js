@@ -23,7 +23,10 @@ import {
   resolveDesktopRuntime,
 } from "./scripts/desktop-product-identity.mjs";
 import { createWindowsPowerShellSecurityArgs } from "./scripts/powershell-command.mjs";
-import { isSharpRequiredByComputerUse, verifyStagedSharp } from "./scripts/sharp-package-assets.mjs";
+import {
+  isSharpRequiredByComputerUse,
+  verifyStagedSharp,
+} from "./scripts/sharp-package-assets.mjs";
 import { isRealComputerUseProducerInstalled } from "./scripts/computer-use-producer.mjs";
 import { verifyStagedKoffi } from "./scripts/koffi-package-assets.mjs";
 import {
@@ -495,7 +498,9 @@ function assertPackagedNodePtyPrebuild(context) {
 }
 
 function assertPackagedCuaSharp(context) {
-  if (!isSharpRequiredByComputerUse({ desktopPackageRoot })) return;
+  // Codex 桌面包使用独立的原生 Codex runtime，不携带 legacy 的 resources/glm
+  // agent 目录；CUA 的 Sharp 资产断言只适用于仍打包 GLM agent 的 legacy 产品。
+  if (isCodexBuild || !isSharpRequiredByComputerUse({ desktopPackageRoot })) return;
   const problems = [
     [
       "packages/browser-use-plugin",
@@ -524,6 +529,9 @@ function assertPackagedCuaSharp(context) {
 }
 
 function assertPackagedCuaKoffi(context) {
+  // 与 Sharp 保持同一产品边界：Codex 包不打包 resources/glm，也不应要求 legacy
+  // CUA 插件的 koffi staging。legacy 包仍必须提供目标平台的原生 addon。
+  if (isCodexBuild) return;
   const problems = verifyStagedKoffi({
     resourcesDir: resolvePackagedResourcesDir(context),
     targetPlatform,
