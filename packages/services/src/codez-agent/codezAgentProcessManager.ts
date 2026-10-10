@@ -28,6 +28,7 @@ import {
 } from "../runtime-tools/providerRuntimeResolver.js";
 import { isEffectiveDevelopmentNodeEnv } from "#src/runtime-tools/nodeEnv.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
+import { parseCodexBridgeTitleDiagnostic } from "./codexBridgeTitleDiagnostic.js";
 import { CodezProtocolClient } from "./codezProtocolClient.js";
 import { CodezStdioTransport } from "./codezStdioTransport.js";
 import { readCodezStdioTapDevState } from "./codezStdioTapDevConfig.js";
@@ -1091,6 +1092,12 @@ export class CodezAgentProcessManager {
               },
             }),
           );
+          return;
+        }
+        const titleDiagnostic = parseCodexBridgeTitleDiagnostic(line);
+        if (titleDiagnostic) {
+          // 修复依据：标题失败不会终止进程，不能只放进 debug stderr/退出 tail。
+          warnLog("Codex automatic title failed; keeping preview", titleDiagnostic);
           return;
         }
         stderrTail.append(line);

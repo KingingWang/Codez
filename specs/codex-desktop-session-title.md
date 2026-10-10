@@ -48,6 +48,10 @@ SettingService (global default + workspace override)
   native name and first-user-item identity. A failed generation or write is non-fatal, is not
   automatically retried, and does not alter the preview. A bridge restart reads the native name
   but does not backfill an unfinished attempt.
+- Auxiliary configuration failure remains local to this one attempted title. The bridge emits a
+  bounded failure stage and native error code to a production `warn` log, never the raw RPC
+  message, prompt, response, workspace path, MCP name or credential. It does not change the
+  conversation model, retry the attempt or write a fallback title.
 - `thread/name/set` has no native compare-and-set. Another independent Codex client may rename
   between the final read and automatic write; cross-process absolute priority is not promised
   without upgrading the pinned native executable. In-app manual titles remain authoritative.
@@ -68,3 +72,7 @@ SettingService (global default + workspace override)
 5. The settings controls remain accessible with keyboard and translated labels, including on a
    narrow viewport. Desktop continuous updates and mobile replayable recovery show the same
    native name and preserve a manual shell override.
+6. With desktop MCP injected at native process startup, a new session's first input of at least
+   ten Unicode characters can complete the same isolated title flow without launching that MCP.
+   A failed auxiliary configuration keeps the preview and emits one redacted warning. Short
+   inputs such as “你好” still do not request a title.

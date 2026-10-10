@@ -17,7 +17,7 @@ caller → workspace/generateText → BridgeRuntime auxiliary owner
 
 - The auxiliary owner rejects duplicate operation ids and limits concurrent admission.
 - The thread is `ephemeral`, read-only, non-networked, approval-free, has no environments, dynamic tools, or workspace roots, and uses exactly the selected provider/model/reasoning.
-- Native configuration is read, never written. Model tools, MCP, hooks, plugins, agents, browser/computer use, shell, search, artifacts, and persistent context features are disabled. Existing MCP entries are individually disabled.
+- Native configuration is read, never written. Model tools, MCP, hooks, plugins, agents, browser/computer use, shell, search, artifacts, and persistent context features are disabled. For each effective MCP entry, including process-CLI-injected desktop servers and names containing dots, the ephemeral thread receives a disabled entry with only its minimum transport identifier (`command` for stdio or `url` for HTTP). Do not round-trip environment variables, headers, nullable timeouts or other normalized configuration. An unknown or missing transport fails before `thread/start`, rather than starting a thread with an enabled MCP server.
 - Generation has a 30-second deadline, is cancellable by exact operation/thread/turn identity, and cleans up listeners and the ephemeral thread on completion, failure, cancellation, close, disconnect, deadline, or malformed native output.
 - Caller cancellation uses `workspace/cancelGenerateText`. It never mutates an unrelated turn and never replays `workspace/generateText`.
 - Git owns an operation-to-controller map on Host. The renderer sends a serializable workspace-scoped cancel command by `operationId`; no `AbortSignal` crosses the Git RPC boundary.
@@ -38,3 +38,4 @@ caller → workspace/generateText → BridgeRuntime auxiliary owner
 3. A duplicate operation id is rejected before a second turn.
 4. Capability unsupported/unavailable/malformed, legacy runtime, and disconnected runtime paths make no auxiliary request and show a disabled/degraded control.
 5. Git generation issues no provider preparation or doomed native request and never automatically retries after failure.
+6. With a CLI-injected desktop MCP and a user-configured MCP (including a dotted name), an isolated generation has no model tools or MCP startup side effects; the main process configuration remains unchanged. An HTTP MCP is likewise disabled. Missing/unknown MCP transport starts no auxiliary thread.

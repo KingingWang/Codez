@@ -218,6 +218,19 @@ nodes:
     invariants:
       - "SettingService owns default and workspace override; native Codex owns the thread name.
         Manual names win over a pending local suggestion."
+  - id: service.codex-auxiliary-text
+    kind: service
+    label: Restricted native Codex text generation for titles and Git commit messages
+    aliases:
+      - auxiliary text
+      - title helper
+      - 辅助生成
+    codeSeeds:
+      - file: packages/codex-bridge/src/auxiliary-text.ts
+        symbol: AuxiliaryText
+    invariants:
+      - "BridgeRuntime owns only ephemeral operations. Native MCP entries are disabled for each
+        isolated thread, including desktop process overrides; no tools or config writes."
   - id: state.conversation-projection
     kind: state-owner
     label: Client conversation projection and pending optimistic overlay
@@ -419,6 +432,11 @@ nodes:
       - file: apps/codez-cli/packages/core/src/runtime/methods/turn-model.ts
         symbol: applySubmissionExecutionState
 edges:
+  - from: capability.codex-session-title
+    to: service.codex-auxiliary-text
+    type: generates-one-restricted-suggestion-through
+    rank: must-inspect
+    condition: First substantive user input on a new top-level Codex session only.
   - from: capability.codex-session-title
     to: capability.conversation-runtime
     type: updates-native-thread-name-after-first-input
