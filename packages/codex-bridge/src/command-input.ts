@@ -1,13 +1,57 @@
 import type { ModelSelection } from "@codez/shared";
 import type { AttachmentRef } from "@codez/shared/codez-protocol-v4";
 import { array, object, unsupported, type JsonObject } from "./json.js";
+import { extractNativeFileReferences } from "./native-file-reference.js";
 
-/** The native edit replaces the entire input array; retain media when editing only text. */
-export function replaceQueuedText(queue: unknown[], id: string, text: string): unknown[] {
+/** Native queue edit replaces the whole input array; only verified file parts may survive it. */
+export async function replaceQueuedText(
+  queue: unknown[],
+  id: string,
+  text: string,
+  sessionId: string,
+  resolve?: ResolveAttachments,
+): Promise<unknown[]> {
   const queued = queue.map(object).find((item) => item.id === id);
   if (!queued) throw new Error("Queue changed before editing");
-  const nonText = array(queued.input).filter((part) => object(part).type !== "text");
-  const input = [...(text ? [{ type: "text", text, text_elements: [] }] : []), ...nonText];
+  const retained: ({ kind: "part"; value: unknown } | { kind: "marker"; index: number })[] = [];
+  const markers: { attachment: AttachmentRef; original: string }[] = [];
+  for (const part of array(queued.input)) {
+    const value = object(part);
+    if (value.type !== "text") {
+      retained.push({ kind: "part", value: part });
+      continue;
+    }
+    const partText = typeof value.text === "string" ? value.text : "";
+    for (const marker of extractNativeFileReferences(partText)) {
+      if (!resolve) unsupported("file references without a staging store");
+      // 原因：原生 queue/update 会替换所有 input；仅记下可解析的附件片段，
+      // 稍后按原顺序成批重解析，保持 1 MiB 总额决策及小文本全文。
+      markers.push({
+        attachment: marker.attachment,
+        original: partText.slice(marker.start, marker.end),
+      });
+      retained.push({ kind: "marker", index: markers.length - 1 });
+    }
+  }
+  const restored = markers.length
+    ? await resolve!(
+        markers.map((entry) => entry.attachment),
+        sessionId,
+      )
+    : [];
+  if (
+    restored.length !== markers.length ||
+    restored.some((part, index) => object(part).text !== markers[index]?.original)
+  )
+    throw new Error("Queued attachment is unavailable");
+  const input = [
+    ...(text ? [{ type: "text", text, text_elements: [] }] : []),
+    ...retained.map((part) =>
+      part.kind === "marker"
+        ? { type: "text", text: markers[part.index]!.original, text_elements: [] }
+        : part.value,
+    ),
+  ];
   if (!input.length) throw new Error("Input cannot be empty");
   return input;
 }

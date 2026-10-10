@@ -168,7 +168,11 @@ export class AttachmentFiles {
     return `${PREFIX}${id}`;
   }
 
-  async findNativeAttachment(path: string, sessionId: string): Promise<AttachmentRef | undefined> {
+  async findNativeAttachment(
+    path: string,
+    sessionId: string,
+    inlineChecksum?: string,
+  ): Promise<AttachmentRef | undefined> {
     if (typeof path !== "string" || !isAbsolute(path) || !sessionId) return undefined;
     const id = basename(path, ".data");
     // 原生历史的 path 也不能直接读取：只接受本 store 生成的精确路径，再按 ref 验证归属。
@@ -176,6 +180,7 @@ export class AttachmentFiles {
     if (!idPattern.test(id) || path !== join(this.root, "objects", `${id}.data`)) return undefined;
     try {
       const resolved = await this.resolve(`${PREFIX}${id}`, sessionId);
+      if (inlineChecksum !== undefined && resolved.checksum !== inlineChecksum) return undefined;
       return {
         ref: resolved.ref,
         fileName: resolved.fileName,

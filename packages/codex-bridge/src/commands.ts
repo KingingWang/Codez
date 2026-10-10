@@ -13,7 +13,6 @@ import type { CommandLedger } from "./command-ledger.js";
 import {
   decorateNativeThread,
   assertUnchangedInputSettings,
-  replaceQueuedText,
   nativeInput,
   selectionOverrides,
   turnMode,
@@ -30,6 +29,7 @@ import { projectThread } from "./projection.js";
 import { createNativeSession } from "./command-create.js";
 import { formatRewindNotice, type RewindNoticeStore } from "./rewind-notice.js";
 import { createSelectionSideSession } from "./selection-side-session-command.js";
+import { editQueuedInput } from "./queue-edit.js";
 import { applySelectionSideChatBoundary } from "./selection-side-chat.js";
 import type { SessionTitleCoordinator } from "./session-title.js";
 
@@ -299,13 +299,7 @@ export class CommandRouter {
       }
       case "editQueueItem": {
         const p = commandPayloadSchemas.editQueueItem.parse(command.payload);
-        await store.refreshQueue(sessionId);
-        await rpc.request("thread/queue/update", {
-          ...native,
-          queuedSubmissionId: p.queueItemId,
-          input: replaceQueuedText(state.queue, p.queueItemId, p.newText),
-        });
-        await store.refreshQueue(sessionId);
+        await editQueuedInput(rpc, store, sessionId, p, attachments);
         break;
       }
       case "deleteQueueItem": {

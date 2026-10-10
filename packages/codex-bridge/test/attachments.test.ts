@@ -17,6 +17,18 @@ import {
   type AttachmentRef,
 } from "@codez/shared/codez-protocol-v4";
 import { AttachmentStore, type AttachmentStoreOptions } from "../src/attachments.js";
+import { BridgeSnapshots } from "../src/bridge-snapshots.js";
+import { replaceQueuedText } from "../src/command-input.js";
+import type { CodexRpcPort } from "../src/contract.js";
+import { InteractionBroker } from "../src/interactions.js";
+import { projectOwnedInput } from "../src/native-file-projection.js";
+import {
+  extractNativeFileReferences,
+  formatNativeInlineFileReference,
+  parseNativeFileReference,
+} from "../src/native-file-reference.js";
+import { ThreadStateStore } from "../src/thread-state.js";
+import { threadFixture } from "./projection-fixtures.test.js";
 
 const checksum = (bytes: Buffer) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const common = { connectionId: "connection", sessionId: "draft-session", uploadId: "upload" };
@@ -77,11 +89,184 @@ test("draft-session upload produces opaque owned refs and UTF-8 native text", as
   assert.equal(resolved.bytes, bytes.length);
   assert.equal(resolved.checksum, checksum(bytes));
   assert.deepEqual(await readFile(resolved.path), bytes);
-  assert.deepEqual(await store.toNativeInput([ref], common.sessionId), [
-    { type: "text", text: bytes.toString(), text_elements: [] },
-  ]);
+  const [input] = await store.toNativeInput([ref], common.sessionId);
+  assert.equal(input?.type, "text");
+  if (input?.type !== "text") throw new Error("Expected inline file");
+  assert.ok(input.text.includes(bytes.toString()));
+  assert.equal(extractNativeFileReferences(input.text)[0]?.attachment.ref, ref.ref);
+  assert.deepEqual(await projectOwnedInput([input], common.sessionId, store), {
+    text: "",
+    refs: [ref],
+  });
   await assert.rejects(store.resolve(ref.ref, "other-session"), /[Aa]uthorized|[Oo]wner/);
   await assert.rejects(store.toNativeInput([ref], "other-session"));
+});
+
+test("native file references keep complete oversized text and binary bytes tool-readable", async (t) => {
+  const { store } = await fixture(t);
+  for (const [index, bytes, fileName, mime] of [
+    [0, Buffer.from("a".repeat(64 * 1024 + 1)), "long.html", "text/html"],
+    [1, Buffer.from([0x50, 0x4b, 0x03, 0x04]), "sample.zip", "application/zip"],
+  ] as const) {
+    const ref = await put(store, bytes, { uploadId: `file-${index}`, fileName, mime });
+    const input = await store.toNativeInput([ref], common.sessionId);
+    assert.equal(input.length, 1);
+    assert.equal(input[0]?.type, "text");
+    if (input[0]?.type !== "text") throw new Error("Expected file reference");
+    const resolved = await store.resolve(ref.ref, common.sessionId);
+    assert.ok(input[0].text.includes(resolved.path));
+    assert.ok(!input[0].text.includes("a".repeat(64 * 1024)));
+    assert.deepEqual(await readFile(resolved.path), bytes);
+  }
+});
+
+test("clipboard text is deferred even when small, while regular text is complete", async (t) => {
+  const { store } = await fixture(t);
+  const ref = await put(store, Buffer.from("small"), { uploadId: "clipboard" });
+  const [input] = await store.toNativeInput(
+    [{ ...ref, sourceKind: "clipboard-text" }],
+    common.sessionId,
+  );
+  assert.equal(input?.type, "text");
+  if (input?.type !== "text") throw new Error("Expected file reference");
+  assert.notEqual(input.text, "small");
+  assert.match(input.text, /small|note\.txt|codez-attachment/u);
+  const [regular] = await store.toNativeInput([ref], common.sessionId);
+  assert.equal(regular?.type, "text");
+  if (regular?.type !== "text") throw new Error("Expected inline text");
+  assert.ok(regular.text.includes("small"));
+  assert.equal(extractNativeFileReferences(regular.text)[0]?.inlineText, "small");
+});
+
+test("native aggregate text budget defers whole later files rather than rejecting or clipping", async (t) => {
+  const { store } = await fixture(t);
+  const bytes = Buffer.from("文".repeat(50 * 1024));
+  const refs = await Promise.all(
+    Array.from({ length: 8 }, (_, index) =>
+      put(store, bytes, { uploadId: `aggregate-${index}`, fileName: `${index}.txt` }),
+    ),
+  );
+  const inputs = await store.toNativeInput(refs, common.sessionId);
+  assert.equal(inputs.length, 8);
+  for (const [index, input] of inputs.entries()) {
+    assert.equal(input.type, "text");
+    if (input.type !== "text") continue;
+    if (index < 6)
+      assert.equal(extractNativeFileReferences(input.text)[0]?.inlineText, bytes.toString());
+    else assert.equal(parseNativeFileReference(input.text)?.attachment.ref, refs[index]?.ref);
+  }
+  const edited = await replaceQueuedText(
+    [{ id: "queued", input: inputs }],
+    "queued",
+    "updated prompt",
+    common.sessionId,
+    (attachments, id) => store.toNativeInput(attachments, id),
+  );
+  assert.deepEqual(edited.slice(1), inputs);
+});
+
+test("small text survives queue edit, merged native text and a fresh bridge projection", async (t) => {
+  const { store, cwd, root } = await fixture(t);
+  const ref = await put(store, Buffer.from("full\ntext"), { uploadId: "small-inline" });
+  const [file] = await store.toNativeInput([ref], common.sessionId);
+  assert.equal(file?.type, "text");
+  if (file?.type !== "text") throw new Error("Expected inline file");
+  const edited = await replaceQueuedText(
+    [{ id: "queued", input: [{ type: "text", text: `old\n${file.text}\nafter` }] }],
+    "queued",
+    "new",
+    common.sessionId,
+    (attachments, id) => store.toNativeInput(attachments, id),
+  );
+  assert.deepEqual(edited, [{ type: "text", text: "new", text_elements: [] }, file]);
+  await store.close();
+  const restarted = new AttachmentStore({ cwd, root });
+  t.after(() => restarted.close());
+  assert.deepEqual(
+    await projectOwnedInput(edited as (typeof file)[], common.sessionId, restarted),
+    {
+      text: "new",
+      refs: [ref],
+    },
+  );
+  assert.deepEqual(
+    await projectOwnedInput(
+      [{ type: "text", text: `new\n${file.text}\nafter`, text_elements: [] }],
+      common.sessionId,
+      restarted,
+    ),
+    { text: "new\n\nafter", refs: [ref] },
+  );
+  await assert.rejects(
+    replaceQueuedText(
+      [{ id: "queued", input: [file] }],
+      "queued",
+      "new",
+      "another-session",
+      (attachments, id) => restarted.toNativeInput(attachments, id),
+    ),
+  );
+  const modified = file.text.replace("full\ntext", "fake\ntext");
+  assert.deepEqual(extractNativeFileReferences(modified), []);
+  const forged = formatNativeInlineFileReference({
+    attachment: ref,
+    path: (await restarted.resolve(ref.ref, common.sessionId)).path,
+    text: "fake\ntext",
+  });
+  assert.deepEqual(
+    (
+      await projectOwnedInput(
+        [{ type: "text", text: forged, text_elements: [] }],
+        common.sessionId,
+        restarted,
+      )
+    ).refs,
+    [],
+  );
+});
+
+test("multiple inline files above the UI row budget still project into history and queue", async (t) => {
+  const { store, cwd } = await fixture(t);
+  const thread = threadFixture();
+  const bytes = Buffer.from("文".repeat(50 * 1024));
+  const refs = await Promise.all(
+    [0, 1].map((index) =>
+      put(store, bytes, {
+        sessionId: thread.id,
+        uploadId: `snapshot-${index}`,
+        fileName: `${index}.txt`,
+      }),
+    ),
+  );
+  const inputs = await store.toNativeInput(refs, thread.id);
+  thread.turns[0]!.items[0] = {
+    type: "userMessage",
+    id: "user-1",
+    content: [{ type: "text", text: "Inspect both", text_elements: [] }, ...inputs],
+  };
+  const rpc: CodexRpcPort = {
+    async request() {
+      throw new Error("unexpected native RPC");
+    },
+    async respond() {},
+    async respondError() {},
+  };
+  const stateStore = new ThreadStateStore(rpc, cwd);
+  const state = stateStore.markStarted(thread);
+  state.queue = [{ id: "queued", clientUserMessageId: "command-1", input: inputs }];
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    stateStore,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+    store,
+  );
+  const snapshot = await snapshots.conversation(thread.id);
+  const user = snapshot.rows.window.find((row) => row.kind === "userInput");
+  assert.equal(user?.text, "Inspect both");
+  assert.deepEqual(user?.attachments, refs);
+  assert.equal(snapshot.queue.items[0]?.text, "");
+  assert.deepEqual(snapshot.queue.items[0]?.attachments, refs);
 });
 
 test("image input uses stored metadata and a trusted local file", async (t) => {
@@ -184,9 +369,14 @@ test("zero-byte uploads commit without chunks and survive a new store instance",
   await store.close();
   const restarted = new AttachmentStore({ cwd, root });
   t.after(() => restarted.close());
-  assert.deepEqual(await restarted.toNativeInput([ref], common.sessionId), [
-    { type: "text", text: "", text_elements: [] },
-  ]);
+  const [input] = await restarted.toNativeInput([ref], common.sessionId);
+  assert.equal(input?.type, "text");
+  if (input?.type !== "text") throw new Error("Expected empty file reference");
+  assert.equal(parseNativeFileReference(input.text)?.attachment.ref, ref.ref);
+  assert.deepEqual(await projectOwnedInput([input], common.sessionId, restarted), {
+    text: "",
+    refs: [ref],
+  });
   const otherWorkspace = new AttachmentStore({ cwd: join(cwd, "other"), root });
   t.after(() => otherWorkspace.close());
   await assert.rejects(otherWorkspace.resolve(ref.ref, common.sessionId), /[Aa]uthorized|[Oo]wner/);
@@ -326,20 +516,23 @@ test("missing row hook denies read; authorized text share is not media preview",
 });
 
 for (const mime of ["video/mp4", "audio/wav", "application/pdf", "application/octet-stream"]) {
-  test(`${mime} is an explicit native-input error, never silently omitted`, async (t) => {
+  test(`${mime} is a complete native file reference, never silently omitted`, async (t) => {
     const { store } = await fixture(t);
-    const ref = await put(store, Buffer.from("payload"), { mime });
-    await assert.rejects(
-      store.toNativeInput([{ ...ref, mime: "text/plain" }], common.sessionId),
-      /nativeTypeUnsupported/,
-    );
+    const ref = await put(store, Buffer.from("payload"), { mime, fileName: "sample.bin" });
+    const [input] = await store.toNativeInput([{ ...ref, mime: "text/plain" }], common.sessionId);
+    assert.equal(input?.type, "text");
+    if (input?.type !== "text") throw new Error("Expected file reference");
+    assert.ok(input.text.includes((await store.resolve(ref.ref, common.sessionId)).path));
   });
 }
 
-test("invalid UTF-8 text fails explicitly and native input array is bounded", async (t) => {
+test("invalid UTF-8 text remains file-readable and native input array is bounded", async (t) => {
   const { store } = await fixture(t);
   const ref = await put(store, Buffer.from([0xc3, 0x28]));
-  await assert.rejects(store.toNativeInput([ref], common.sessionId), /invalidUtf8/);
+  const [input] = await store.toNativeInput([ref], common.sessionId);
+  assert.equal(input?.type, "text");
+  if (input?.type !== "text") throw new Error("Expected file reference");
+  assert.ok(input.text.includes((await store.resolve(ref.ref, common.sessionId)).path));
   await assert.rejects(
     store.toNativeInput(
       Array.from({ length: 65 }, () => ref),
@@ -348,4 +541,17 @@ test("invalid UTF-8 text fails explicitly and native input array is bounded", as
     /[Ll]imit/,
   );
   assert.deepEqual(await store.toNativeInput(undefined, common.sessionId), []);
+});
+
+test("a ZIP with a false text MIME and .txt suffix is never inlined", async (t) => {
+  const { store } = await fixture(t);
+  const ref = await put(store, Buffer.from([0x50, 0x4b, 0x03, 0x04]), {
+    fileName: "mislabelled.txt",
+    mime: "text/plain",
+  });
+  const [input] = await store.toNativeInput([ref], common.sessionId);
+  assert.equal(input?.type, "text");
+  if (input?.type !== "text") throw new Error("Expected path reference");
+  assert.equal(parseNativeFileReference(input.text)?.attachment.ref, ref.ref);
+  assert.equal(extractNativeFileReferences(input.text)[0]?.inlineText, undefined);
 });

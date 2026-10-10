@@ -10,9 +10,11 @@ import type { InteractionBroker } from "./interactions.js";
 import { readControlModelSettings, readControlPresentation } from "./control-presentation.js";
 import { projectThreadMode } from "./command-input.js";
 import { projectThread, projectSessionsIndex } from "./projection.js";
-import { array, object, string } from "./json.js";
+import { array, object } from "./json.js";
 import { projectTurnFileChanges } from "./file-changes.js";
 import { itemEntityId } from "./projection-rows.js";
+import { codexThreadSchema, codexUserInputSchema } from "./codex-types.js";
+import { projectOwnedInput } from "./native-file-projection.js";
 import { projectConversationTailWindow } from "./projection-window.js";
 import type { AttachmentStore, AttachmentReadAuthorization } from "./attachments.js";
 
@@ -128,13 +130,62 @@ export class BridgeSnapshots {
 
   async conversation(id: string): Promise<ConversationSnapshot> {
     const state = await this.store.ensure(id);
-    const snapshot = projectThread(state.thread, {
+    const attachmentStore = this.attachments;
+    const userProjections = new Map<string, Awaited<ReturnType<typeof projectOwnedInput>>>();
+    const queueProjections = new Map<string, Awaited<ReturnType<typeof projectOwnedInput>>>();
+    const nativeThread = attachmentStore ? codexThreadSchema.parse(state.thread) : undefined;
+    // 原因：原生模型输入可包含多份完整内联文件，原始正文在剥离附件前可能超过 UI 单行预算。
+    // 先按会话所有权逐项校验并派生展示文本，避免历史规模超过 store 的并发操作上限；
+    // 再让纯投影执行行预算。只复制本次快照输入，不修改原生事实或另存队列。
+    let presentationThread: unknown = state.thread;
+    if (attachmentStore && nativeThread) {
+      const turns: typeof nativeThread.turns = [];
+      for (const turn of nativeThread.turns) {
+        const items: typeof turn.items = [];
+        for (const item of turn.items) {
+          if (item.type !== "userMessage" || state.sideChat?.inheritedTurnIds.has(turn.id)) {
+            items.push(item);
+            continue;
+          }
+          const projected = await projectOwnedInput(
+            codexUserInputSchema.array().parse(array(item.content)),
+            id,
+            attachmentStore,
+          );
+          userProjections.set(itemEntityId(turn.id, item.id), projected);
+          items.push({
+            ...item,
+            content: [{ type: "text", text: projected.text, text_elements: [] }],
+          });
+        }
+        turns.push({ ...turn, items });
+      }
+      presentationThread = { ...nativeThread, turns };
+    }
+    let presentationQueue: unknown[] = state.queue;
+    if (attachmentStore) {
+      presentationQueue = [];
+      for (const entry of state.queue) {
+        const source = object(entry);
+        const projected = await projectOwnedInput(
+          codexUserInputSchema.array().parse(array(source.input)),
+          id,
+          attachmentStore,
+        );
+        if (typeof source.id === "string") queueProjections.set(source.id, projected);
+        presentationQueue.push({
+          ...source,
+          input: [{ type: "text", text: projected.text, text_elements: [] }],
+        });
+      }
+    }
+    const snapshot = projectThread(presentationThread, {
       workspacePath: this.store.cwd,
       workspaceId: this.workspaceId,
       logEpoch: state.epoch,
       seq: state.seq,
       revision: state.revision,
-      queue: state.queue,
+      queue: presentationQueue,
       interactions: this.interactions.list(id),
       apiRetry:
         state.apiRetry && state.apiRetry.turnId === object(array(state.thread.turns).at(-1)).id
@@ -178,6 +229,14 @@ export class BridgeSnapshots {
       // busy 也可用：命令层 interrupt+start 抢占（specs/codex-desktop-adapter.md）。
       sendQueuedNow: writerConflict ? writerBlocked : allowed,
     };
+    if (this.attachments) {
+      for (const queueItem of snapshot.queue.items) {
+        const projected = queueProjections.get(queueItem.queueItemId);
+        if (!projected) continue;
+        queueItem.text = projected.text;
+        queueItem.attachments = projected.refs;
+      }
+    }
     for (const row of snapshot.rows.window) {
       if (idle && row.kind === "assistantText") row.actions = { canFork: true };
       if (idle && !writerConflict && row.kind === "userInput")
@@ -208,34 +267,12 @@ export class BridgeSnapshots {
         }
       }
       if (row.kind === "userInput" && this.attachments) {
-        // entityId 是 turn 作用域的稳定展示键；与投影同一纯函数比较即可找回原始
-        // userMessage，不做解码，也不依赖 rowId/header 的位置布局。
-        const turn = array(state.thread.turns)
-          .map(object)
-          .find((candidate) => candidate.id === row.turnId);
-        const entityId = row.entityId;
-        const nativeTurnId = typeof turn?.id === "string" ? turn.id : undefined;
-        const user =
-          typeof entityId === "string" && nativeTurnId !== undefined
-            ? array(turn?.items)
-                .map(object)
-                .find(
-                  (item) =>
-                    item.type === "userMessage" &&
-                    itemEntityId(nativeTurnId, string(item.id)) === entityId,
-                )
-            : undefined;
-        const refs = await Promise.all(
-          array(user?.content).map(async (part) => {
-            const input = object(part);
-            return input.type === "localImage" && typeof input.path === "string"
-              ? this.attachments!.findNativeAttachment(input.path, id)
-              : input.type === "image" && typeof input.url === "string"
-                ? this.attachments!.findNativeImageAttachment(input.url, id)
-                : undefined;
-          }),
-        );
-        row.attachments = refs.filter((ref) => ref !== undefined);
+        // entityId 仍是 turn 作用域展示键；与预投影后的唯一派生结果对应。
+        const projected = userProjections.get(row.entityId ?? "");
+        if (projected) {
+          row.text = projected.text;
+          row.attachments = projected.refs;
+        }
       }
     }
     if (this.store.get(id) !== state) throw new DeletedThreadError();

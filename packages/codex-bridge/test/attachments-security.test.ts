@@ -142,7 +142,11 @@ test("512 KiB chunks stream to disk and preserve UTF-8 across chunk boundaries",
   assert.deepEqual(await readdir(join(root, "staging")), []);
   const [input] = await store.toNativeInput([ref], "draft");
   assert.equal(input?.type, "text");
-  if (input?.type === "text") assert.equal(input.text, bytes.toString());
+  if (input?.type === "text") {
+    const resolved = await store.resolve(ref.ref, "draft");
+    assert.ok(input.text.includes(resolved.path));
+    assert.deepEqual(await readFile(resolved.path), bytes);
+  }
 });
 
 test("staging capacity reserves declared bytes, abort releases capacity", async (t) => {
@@ -162,10 +166,13 @@ test("staging capacity reserves declared bytes, abort releases capacity", async 
   await begin(store, empty, { totalBytes: LIMITS.attachmentMaxBytes, totalChunks: 40 });
 });
 
-test("native text above 1 MiB fails explicitly rather than truncating or dropping", async (t) => {
+test("native text above 1 MiB remains a complete readable file reference", async (t) => {
   const { store } = await fixture(t);
   const ref = await upload(store, Buffer.alloc(1024 * 1024 + 1, 97));
-  await assert.rejects(store.toNativeInput([ref], "draft"), /textInputLimit/);
+  const [input] = await store.toNativeInput([ref], "draft");
+  assert.equal(input?.type, "text");
+  if (input?.type !== "text") throw new Error("Expected file reference");
+  assert.ok(input.text.includes((await store.resolve(ref.ref, "draft")).path));
 });
 
 test("bounded operation admission and close settle outstanding calls", async (t) => {

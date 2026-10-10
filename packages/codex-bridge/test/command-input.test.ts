@@ -5,9 +5,11 @@ import {
   decorateNativeThread,
   projectThreadMode,
   rememberThreadMode,
+  replaceQueuedText,
   turnMode,
   turnPermissionOverrides,
 } from "../src/command-input.js";
+import { formatNativeFileReference } from "../src/native-file-reference.js";
 
 const workspaceWrite = {
   type: "workspaceWrite",
@@ -16,6 +18,54 @@ const workspaceWrite = {
   excludeTmpdirEnvVar: false,
   excludeSlashTmp: false,
 };
+
+test("queue text edit preserves only a verified native file reference", async () => {
+  const ref = {
+    ref: "codez-attachment://00000000-0000-4000-8000-000000000001",
+    fileName: "archive.zip",
+    mime: "application/zip",
+    bytes: 4,
+  };
+  const marker = formatNativeFileReference({
+    attachment: ref,
+    path: "/private/attachments/00000000-0000-4000-8000-000000000001.data",
+  });
+  const queue = [
+    {
+      id: "q1",
+      input: [
+        { type: "text", text: "old" },
+        { type: "text", text: marker },
+      ],
+    },
+  ];
+  assert.deepEqual(
+    await replaceQueuedText(queue, "q1", "new", "thread-1", async () => [
+      { type: "text", text: marker, text_elements: [] },
+    ]),
+    [
+      { type: "text", text: "new", text_elements: [] },
+      { type: "text", text: marker, text_elements: [] },
+    ],
+  );
+  assert.deepEqual(
+    await replaceQueuedText(
+      [{ id: "q1", input: [{ type: "text", text: `old\n${marker}` }] }],
+      "q1",
+      "new",
+      "thread-1",
+      async () => [{ type: "text", text: marker }],
+    ),
+    [
+      { type: "text", text: "new", text_elements: [] },
+      { type: "text", text: marker, text_elements: [] },
+    ],
+  );
+  await assert.rejects(
+    replaceQueuedText(queue, "q1", "new", "thread-2", async () => []),
+    /unavailable/,
+  );
+});
 
 test("queue/steer cannot silently discard a changed native model or permission intent", () => {
   const thread = {
