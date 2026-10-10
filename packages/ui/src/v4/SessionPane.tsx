@@ -649,9 +649,14 @@ export function SessionPane({
   } = useV4Conversation();
   const platform = useOptionalPlatform();
   const services = useServices();
-  const { conversationShareService, highspeedCardService, usageStatsService,
-    modelSelectionService, codezSessionService, codezTaskService } =
-    services;
+  const {
+    conversationShareService,
+    highspeedCardService,
+    usageStatsService,
+    modelSelectionService,
+    codezSessionService,
+    codezTaskService,
+  } = services;
   const desktopFileRewindCapability = useCodexDesktopFileRewindCapability(
     services.codezAgentService,
     {
@@ -3370,7 +3375,8 @@ export function SessionPane({
       const dispatchSubmissionCommand = async (...args: Parameters<typeof dispatchCommand>) => {
         if (
           (args[0] === "sendText" &&
-            (!snapshotRef.current || snapshotRef.current.sessionId !== args[2] ||
+            (!snapshotRef.current ||
+              snapshotRef.current.sessionId !== args[2] ||
               snapshotRef.current.rows.totalCount === 0)) ||
           (args[0] === "createSession" && args[1].firstInput)
         ) {
@@ -3952,6 +3958,14 @@ export function SessionPane({
   );
   // 上面那个 ref 的唯一赋值点（见 handleSendWorkflowSaveRequest 的说明）。
   sendTextRef.current = handleSendText;
+  const sendPluginUiText = useCallback(
+    async (text: string, options: PaneSendOptions) => {
+      // Composer ACK 新增 commandId；插件入口仍只消费既有状态，不另建 admission 路径。
+      const result = await dispatchSendText(text, options);
+      return typeof result === "object" ? result.status : result;
+    },
+    [dispatchSendText],
+  );
 
   const handleComposerDraftStateChange = useCallback(
     (state: { hasContent: boolean; busy: boolean }) => {
@@ -4288,12 +4302,7 @@ export function SessionPane({
         }
       });
     },
-    [
-      captureHighspeedPaneOrigin,
-      dispatchCommand,
-      prepareHighspeedTurnFrom,
-      sessionId,
-    ],
+    [captureHighspeedPaneOrigin, dispatchCommand, prepareHighspeedTurnFrom, sessionId],
   );
 
   const handleReorderQueueItem = useCallback(
@@ -5704,7 +5713,7 @@ export function SessionPane({
       remoteSessionId={remoteSessionId}
       sessionId={sessionId}
       readOnly={readOnly}
-      sendText={dispatchSendText}
+      sendText={sendPluginUiText}
       uploadAttachment={pluginUiUploadAttachment}
       projectionStore={sessionLeaseReady ? lease?.store : null}
     >

@@ -100,7 +100,7 @@ describe("idle-time task Figma layout contracts", () => {
 
   it("keeps the idle-time entry component available without mounting it on the draft homepage", () => {
     const dockStart = sessionPaneSource.indexOf(
-      "const conversationBottomDockContent = readOnly ? null :",
+      "const conversationBottomDockContent = composerSuppressed ? null :",
     );
     const dockEnd = sessionPaneSource.indexOf("\n  );\n", dockStart);
     const dockSource = sessionPaneSource.slice(dockStart, dockEnd);

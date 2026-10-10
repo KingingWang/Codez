@@ -59,7 +59,7 @@ function setupBase() {
     return `sub-${connection.connectionId}-${serial}`;
   };
   const mocks = {
-    helloConversationV4: vi.fn(),
+    helloConversationV4: vi.fn(async () => ({ capabilities: {} })),
     initializeConversationV4: vi.fn(),
     subscribeConversationV4: vi.fn(async (params: unknown) => ({
       ack: {

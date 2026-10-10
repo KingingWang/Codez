@@ -101,6 +101,9 @@ vi.mock("@/v4/ConversationDraftSuggestedPromptsContainer.js", () => ({
   ConversationDraftSuggestedPromptsContainer: () => null,
 }));
 
+vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
+  useCodexModelCatalog: () => ({ status: "unavailable", reload: vi.fn(), readCurrent: vi.fn() }),
+}));
 vi.mock("@/hooks/useServices.js", () => ({
   useServices: () => ({
     botsService: mocks.botsService,

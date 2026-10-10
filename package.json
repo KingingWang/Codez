@@ -2,6 +2,7 @@
   "name": "codez",
   "version": "3.15.1",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "dev:web": "concurrently -k -n server,web -c blue,green \"pnpm --filter @codez/server dev\" \"pnpm --filter @codez/web dev\"",
@@ -35,7 +36,7 @@
     "test:e2e:container:conversation": "bash scripts/test-desktop-e2e-container.sh conversation-session-verified",
     "test:e2e:container:plugins": "bash scripts/test-desktop-e2e-container.sh plugins-verified",
     "test:coverage": "vitest run --coverage --exclude \"packages/desktop/test/e2e/**/*.test.ts\"",
-    "test:unit": "vitest run --exclude \"packages/desktop/test/e2e/**/*.test.ts\"",
+    "test:unit": "node scripts/run-lint-staged-vitest.mjs run-all",
     "test:unit:affected": "node scripts/run-affected-unit-tests.mjs",
     "test:docker:web-app-gateway": "node scripts/test-web-app-gateway-reset.mjs",
     "verify:pre-push": "pnpm run lint && pnpm run architecture:check -- --changed && pnpm run test:unit:affected",
@@ -127,6 +128,5 @@
       "@ai-sdk/openai-compatible@2.0.60": "patches/@ai-sdk__openai-compatible@2.0.60.patch",
       "@ai-sdk/anthropic@3.0.81": "patches/@ai-sdk__anthropic@3.0.81.patch"
     }
-  },
-  "license": "Apache-2.0"
+  }
 }

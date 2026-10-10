@@ -62,6 +62,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     const fallbackCwd = "/Users/demo/.codez/workspace/default";
 
     createWindow({
+      nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
       logger: { info: vi.fn(), warn: vi.fn() },
@@ -128,6 +129,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     const spawnHostProcess = vi.fn(() => ({ pid: 1235 }) as never);
 
     createWindow({
+      nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
       logger: { info: vi.fn(), warn: vi.fn() },
@@ -190,6 +192,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     const reattachRemoteWorkspaceSessionsForWindow = vi.fn();
 
     createWindow({
+      nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
       logger: { info: vi.fn(), warn: vi.fn() },
@@ -254,6 +257,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     const fallbackPatch = { PATH: "/usr/local/bin:/usr/bin:/bin" };
 
     createWindow({
+      nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
       logger: { info: vi.fn(), warn: vi.fn() },
@@ -312,6 +316,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     const fallbackPatch = { PATH: "/usr/local/bin:/usr/bin:/bin" };
 
     createWindow({
+      nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
       logger: { info: vi.fn(), warn: vi.fn() },
@@ -371,6 +376,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     const spawnHostProcess = vi.fn(() => ({ pid: 1239 }) as never);
 
     createWindow({
+      nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
       logger: { info: vi.fn(), warn: vi.fn() },

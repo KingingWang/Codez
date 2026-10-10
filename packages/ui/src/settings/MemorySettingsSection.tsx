@@ -367,6 +367,8 @@ function MemoryExtractionModelSelect({
     ],
     [followLabel, persist, value],
   );
+  // memo 子组件复用回调引用，避免每次渲染都使模型选择器的浅比较失效。
+  const handleValueChange = useCallback((next: string) => void persist(next), [persist]);
 
   return (
     <span
@@ -381,7 +383,7 @@ function MemoryExtractionModelSelect({
         showManageModelsAction={false}
         lockReasonMessage=""
         isItemLocked={MEMORY_MODEL_ITEM_NEVER_LOCKED}
-        onValueChange={(next) => void persist(next)}
+        onValueChange={handleValueChange}
         footerActions={footerActions}
         manageModelsLabel={intl.formatMessage({
           id: "chat.toolbar.model.manageModels",

@@ -524,8 +524,8 @@ describe("pluginStoreListing", () => {
     );
     expect(sorted.map((group) => group.marketplace)).toEqual([
       // 最近刷新的在前；同刻（codez-plugins-test / paid-demo-market）按显示名字母序。
-      "paid-demo-market",
       "codez-plugins-test",
+      "paid-demo-market",
       "claude-plugins-official",
       "never-refreshed",
     ]);

@@ -169,7 +169,7 @@ test("Git native model discovery and auxiliary generation never prepare legacy p
           new URL("../../../config/provider/codez-builtin.json", import.meta.url),
         ),
         serviceAuthorityMode: runtime === "deployed" ? "desktop-attached-remote" : "desktop-local",
-        agentRuntimeContext: {
+        agentTelemetry: {
           runtimeSurface: runtime === "deployed" ? "remote_workspace_host" : "desktop_local_host",
         },
         ...(runtime === "custom-legacy" ? { codezAgentCommandResolver: () => null } : {}),

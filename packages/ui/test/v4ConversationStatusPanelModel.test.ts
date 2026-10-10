@@ -562,7 +562,7 @@ describe("buildConversationStatusPanelModel", () => {
     ]);
   });
 
-  it("does not show git tools for a clean repository without worktree line changes", () => {
+  it("retains collapsed git tools for a clean repository without worktree line changes", () => {
     const model = buildConversationStatusPanelModel({
       gitSummary: gitSummary({ isDirty: false, ahead: 0 }),
       gitDirtyFileCount: 0,
@@ -572,8 +572,8 @@ describe("buildConversationStatusPanelModel", () => {
       backgroundWorks: [],
     });
 
-    expect(model.hasContent).toBe(false);
-    expect(model.git).toBeNull();
+    expect(model.hasContent).toBe(true);
+    expect(model.git).not.toBeNull();
   });
 
   it("lists only terminal ExitPlanMode rows with markdown, newest first", () => {

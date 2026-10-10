@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Codex 问题映射与上游权限回执共用会话关联和通知生命周期。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CodexQuestionDialog } from "@/settings/codex/CodexQuestionDialog.js";
 import { readCodexQuestions } from "@/settings/codex/codexQuestions.js";

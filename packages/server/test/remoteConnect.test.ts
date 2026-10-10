@@ -278,7 +278,7 @@ describe("connectRemote", () => {
     });
     connection.dispose();
 
-    expect(backend.commands[0]).toContain('CODEZ_SERVER_RUNTIME_ROOT="$HOME/.codez/server"');
+    expect(backend.commands[0]).toContain("CODEZ_SERVER_RUNTIME_ROOT=\"$HOME\"'/.codez/server'");
     expect(backend.commands[0]).not.toContain(retiredProxyEnvName);
   });
 

@@ -16,6 +16,7 @@ const h = vi.hoisted(() => {
   }));
   const clearEmbeddedBrowserData = vi.fn(async () => ({ success: true }));
   const initialize = vi.fn(async () => {});
+  const updateSettings = vi.fn(async () => {});
   const setEnabled = vi.fn(async (_pluginId: string, enabled: boolean) => {
     pluginState.plugins[0].enabled = enabled;
   });
@@ -39,8 +40,31 @@ const h = vi.hoisted(() => {
     initialize,
     pluginState,
     setEnabled,
+    updateSettings,
   };
 });
+
+// section 使用原生 Codex 卡片；这里隔离 Host IO，卡片/能力握手另有原生回归与桌面检查。
+vi.mock("@/hooks/useCodexSettings.js", () => ({
+  useCodexSettings: () => ({
+    services: {},
+    remote: false,
+    snapshot: {},
+    enabled: true,
+    busy: false,
+    loading: false,
+  }),
+}));
+vi.mock("@/settings/codex/useCodexNativeBrowserCua.js", () => ({
+  useCodexNativeBrowserCuaCapability: () => undefined,
+  useCodexNativeBrowserCuaDescriptor: () => ({}),
+}));
+vi.mock("@/hooks/useSettingService.js", () => ({
+  useSettings: () => ({
+    settings: { nativeBrowserControlEnabled: true },
+    update: h.updateSettings,
+  }),
+}));
 
 vi.mock("@/hooks/usePlatform.js", () => ({
   usePlatform: () => ({
@@ -59,6 +83,7 @@ vi.mock("@/hooks/useCodezSessionService.js", () => ({
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
   useCodezIntl: () => ({
+    locale: "zh-CN",
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -170,16 +195,16 @@ describe("BrowserSettingsSection", () => {
     }
   });
 
-  it("BS-037 导入登录状态与内置浏览器控制开关同卡片，且排在开关之后", () => {
+  it("导入登录状态与原生浏览器控制位于同一分区，且排在开关之后", () => {
     renderSection();
 
-    const controlSwitch = screen.getByRole("switch", { name: "settings.browser.control.title" });
+    const controlSwitch = screen.getByRole("switch", { name: "允许 Agent 控制内置浏览器" });
     const importButton = screen.getByRole("button", { name: "settings.browser.import.action" });
-    const controlCard = controlSwitch.closest('[data-slot="card"]');
+    const controlCard = controlSwitch.closest("section");
 
     // 断言前先确认取到了卡片容器，避免 closest 返回 null 时后续断言退化成永真
     expect(controlCard).not.toBeNull();
-    // 导入登录状态是"开启内置浏览器控制"之后的配套动作，同卡片才能表达先后关系
+    // fork 复用原生 MCP 卡片；登录数据导入仍在同一分区中跟随开关。
     expect(controlCard?.contains(importButton)).toBe(true);
     expect(
       controlSwitch.compareDocumentPosition(importButton) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -202,24 +227,16 @@ describe("BrowserSettingsSection", () => {
     ).toBe(true);
   });
 
-  it("复用官方 browser-use plugin 开关并初始化当前 workspace", async () => {
+  it("原生浏览器开关写入 app settings，不触发旧 browser-use plugin 配置", async () => {
     renderSection();
 
-    expect(h.initialize).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workspacePath: "/workspace",
-        workspaceIdentity: "workspace-id",
-      }),
-    );
-    fireEvent.click(screen.getByRole("switch", { name: "settings.browser.control.title" }));
+    fireEvent.click(screen.getByRole("switch", { name: "允许 Agent 控制内置浏览器" }));
 
     await waitFor(() => {
-      expect(h.setEnabled).toHaveBeenCalledWith(
-        "browser-use@codez-plugins-official",
-        false,
-        expect.anything(),
-      );
+      expect(h.updateSettings).toHaveBeenCalledWith({ nativeBrowserControlEnabled: false });
     });
+    expect(h.initialize).not.toHaveBeenCalled();
+    expect(h.setEnabled).not.toHaveBeenCalled();
   });
 
   it("桌面端一键导入 Chrome 当前 Profile 的 Cookie 与 LocalStorage", async () => {
@@ -236,9 +253,7 @@ describe("BrowserSettingsSection", () => {
     renderSection(true, true);
 
     expect(screen.queryByRole("button", { name: "settings.browser.import.action" })).toBeNull();
-    expect(
-      screen.getByRole("button", { name: "settings.browser.clearCache.action" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "settings.browser.clearCache.action" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "settings.browser.clearAll.action" })).toBeTruthy();
     expect(
       screen.queryByRole("checkbox", { name: "settings.browser.import.adminConsent" }),

@@ -134,13 +134,26 @@ export const useDynamicWorkflowAvailabilityStore = create<DynamicWorkflowAvailab
     },
 
     reload(service): Promise<void> {
-      return loadDynamicWorkflowConfig(service, {}, set);
+      if (activeService !== service) return Promise.resolve();
+      const generation = serviceGeneration;
+      return loadDynamicWorkflowConfig(
+        service,
+        {},
+        (snapshot) => {
+          if (generation === serviceGeneration) set(snapshot);
+        },
+        () => {
+          if (generation === serviceGeneration) settledService = service;
+        },
+      );
     },
   }),
 );
 
 /** 测试用：清掉快照与「已出结果」闩。 */
 export function resetDynamicWorkflowAvailabilityStoreForTests(): void {
+  serviceGeneration += 1;
+  activeService = null;
   inFlight = null;
   settledService = null;
   useDynamicWorkflowAvailabilityStore.setState({ ...INITIAL_SNAPSHOT });

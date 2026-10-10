@@ -36,6 +36,7 @@ describe("Root 账号刷新生命周期", () => {
     // 订阅已拆到独立 hook；真实挂载全部 effect，不能再假定第一个 effect 负责订阅。
     const { unmount } = renderHook(() =>
       useRootOAuthEffects({
+        startupMode: "legacy",
         accountIntentKey: "test-account/individual",
         platform: {
           onOAuthCallback: vi.fn(() => vi.fn()),

@@ -509,8 +509,8 @@ describe("SubagentsSection", () => {
     ]);
 
     expect(groups.map(([key, items]) => [key, items[0]?.id])).toEqual([
-      ["computer-use@codez-plugins-official", "official-agent"],
       ["codez-cua@custom-marketplace", "custom-agent"],
+      ["computer-use@codez-plugins-official", "official-agent"],
     ]);
   });
 

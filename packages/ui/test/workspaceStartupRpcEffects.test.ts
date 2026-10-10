@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { IServiceAccessor } from "@codez/services";
 import { useEnsureWorkspaceMcpLoaded } from "@/hooks/useEnsureWorkspaceMcpLoaded.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
-import { useWorkspaceTerminalTaskNotifications } from "@/hooks/useTaskNotifications.js";
+import { useWorkspaceTaskNotifications as useWorkspaceTerminalTaskNotifications } from "@/hooks/useTaskNotifications.js";
 import { setMcpStoreDirectoryService, setMcpStorePlatform, useMcpStore } from "@/store/mcpStore.js";
 import { DEFAULT_MCP_CONFIG } from "@/store/mcpStoreHelpers.js";
 

@@ -6397,6 +6397,8 @@ export function createCodezAgentService(
           // Codex bridge 不支持旧 Hooks 审批写入，不能向 UI 广告该能力。
           workspaceHookReview: !usesDefaultCodexBridge,
           independentPlanState: true,
+          // 合并后只关闭 Codex 的旧工作流；显式 legacy CLI 仍有已实现的增量通道。
+          ...(!usesDefaultCodexBridge ? { workflowRunDeltas: true } : {}),
           // Codex bridge 尚无 DWF 增量投影；Host 不能自制 legacy workflow capability。
           ...(codexCapabilities
             ? {

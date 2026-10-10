@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 权威队列共用 bot 来源展示、附件编辑与 Codex 立即发送动作。 */
 import { BotChannelMessageContent } from "@/v4/ChannelMentionContent.js";
 import { parsePromptConversationSelections } from "@/lib/conversationSelectionReference.js";
 import { ConversationSelectionReferenceChip } from "@/v4/composer/ConversationSelectionReferenceChip.js";

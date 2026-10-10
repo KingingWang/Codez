@@ -14,9 +14,7 @@ const TASK_PATH_ITEM_INDEX = 6;
 const TASK_LOG_PATH_ITEM_INDEX = 7;
 const PROVIDER_CONFIG_ITEM_INDEX = 8;
 
-function renderMenu(
-  overrides: Partial<React.ComponentProps<typeof TaskActionMenuContent>> = {},
-) {
+function renderMenu(overrides: Partial<React.ComponentProps<typeof TaskActionMenuContent>> = {}) {
   const itemStates: Array<{ disabled?: boolean }> = [];
 
   const html = renderToStaticMarkup(
@@ -92,7 +90,7 @@ describe("TaskActionMenuContent", () => {
     expect(itemStates[PROVIDER_CONFIG_ITEM_INDEX]?.disabled).toBe(false);
   });
 
-  it("日志文件未落盘但路径已知时仍允许复制路径", () => {
+  it("日志文件未落盘时禁止复制幽灵路径", () => {
     const { itemStates } = renderMenu({
       taskNativeSessionLogFile: {
         loading: false,
@@ -101,7 +99,7 @@ describe("TaskActionMenuContent", () => {
       },
     });
 
-    expect(itemStates[TASK_LOG_PATH_ITEM_INDEX]?.disabled).toBe(false);
+    expect(itemStates[TASK_LOG_PATH_ITEM_INDEX]?.disabled).toBe(true);
   });
 
   it("新建未落库任务只禁用依赖 taskId 的动作", () => {

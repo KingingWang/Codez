@@ -22,6 +22,8 @@ const gitSummary: GitRepositorySummary = {
   isGitAvailable: true,
   isRepository: true,
 };
+const worktreeChangeSummary = { added: 0, removed: 0 };
+const refreshGit = () => {};
 
 test("clean repository keeps a visible collapsed Git tools entry", () => {
   const html = renderToStaticMarkup(
@@ -30,9 +32,9 @@ test("clean repository keeps a visible collapsed Git tools entry", () => {
         <ConversationStatusPanel
           workspacePath="/fixture/project"
           gitSummary={gitSummary}
-          gitWorktreeChangeSummary={{ added: 0, removed: 0 }}
+          gitWorktreeChangeSummary={worktreeChangeSummary}
           summaryPanelVariantOverride="mini"
-          onRefreshGit={() => {}}
+          onRefreshGit={refreshGit}
         />
       </TooltipProvider>
     </CodezIntlProvider>,
@@ -50,9 +52,9 @@ test("ahead repository displays commit or push in the expanded Git tools section
           <ConversationStatusPanel
             workspacePath="/fixture/project"
             gitSummary={gitSummary}
-            gitWorktreeChangeSummary={{ added: 0, removed: 0 }}
+            gitWorktreeChangeSummary={worktreeChangeSummary}
             summaryPanelVariantOverride="panel"
-            onRefreshGit={() => {}}
+            onRefreshGit={refreshGit}
           />
         </ServiceProvider>
       </TooltipProvider>

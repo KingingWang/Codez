@@ -328,6 +328,12 @@ test("Bot /new 继承带 $ 档位后缀的 task.model 时首发不再误报模�
         updatedAt: Date.now(),
       },
     ] as Awaited<ReturnType<ICodezTaskService["listTasks"]>>;
+  // 上游已把继承事实收敛到任务服务；显示值仍带后缀，但不能再作为模型事实源。
+  taskService.getTaskModelSelection = async () => ({
+    providerId: "ollama1",
+    modelId: "deepseek-v4-flash",
+    options: { reasoningLevel: "xhigh" },
+  });
   const service: IBotsService = createBotsService({
     credentialService: createCredentialServiceStub(),
     codezTaskService: taskService,

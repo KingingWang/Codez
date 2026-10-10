@@ -53,7 +53,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: node --test scripts/test-codex-distribution*.mjs
       - name: Codex service, desktop and remote deployment regressions (Linux once)
-        run: pnpm exec tsx --test packages/services/test/codex*.test.ts packages/desktop/test/codex*.test.ts packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts packages/server/test/codex*.test.ts
+        run: |
+          # 上游配置测试使用 Vitest；不能交给 node:test，也不能丢掉覆盖。
+          node_tests=()
+          for file in packages/services/test/codex*.test.ts; do
+            if [[ "$file" != packages/services/test/codexConfigToml.test.ts ]]; then
+              node_tests+=("$file")
+            fi
+          done
+          pnpm exec tsx --test "${node_tests[@]}" packages/desktop/test/codex*.test.ts packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts packages/server/test/codex*.test.ts
+          pnpm exec vitest run packages/services/test/codexConfigToml.test.ts packages/client/test/remoteServiceAccess.test.ts
       - name: Git worktree service and shared identity regressions (Linux once)
         run: pnpm exec tsx --test packages/services/test/gitWorktree.test.ts packages/services/test/gitWorktreeCreation.test.ts packages/shared/test/remoteWorkspaceScope.test.ts
       - name: Codex UI settings regressions (Linux once)

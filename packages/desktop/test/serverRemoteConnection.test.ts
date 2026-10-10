@@ -186,7 +186,7 @@ describe("server remote connection", () => {
         })),
       })
       .register(ICodezAgentService, {
-        helloConversationV4: vi.fn(),
+        helloConversationV4: vi.fn(async () => ({ capabilities: {} })),
         initializeConversationV4: vi.fn(),
       } as never);
     const server = createHttpServer(services, 0, {
@@ -251,7 +251,7 @@ describe("server remote connection", () => {
 
   it("connector 使用 token 贯穿受保护的 capability endpoint 与 /ws/host", async () => {
     const services = new ServiceCollection().register(ICodezAgentService, {
-      helloConversationV4: vi.fn(),
+      helloConversationV4: vi.fn(async () => ({ capabilities: {} })),
       initializeConversationV4: vi.fn(),
     } as never);
     const server = createHttpServer(services, 0, {
@@ -298,6 +298,7 @@ describe("server remote connection", () => {
       const samples = new Emitter<AgentLaneResourceSample>();
       const onResourceSample = vi.fn(() => samples.event);
       const service = {
+        helloConversationV4: vi.fn(async () => ({ capabilities: {} })),
         onDynamicProcessResourceSample: onResourceSample,
         onDynamicMcpTelemetry: () => Event.None,
         // 模拟旧服务只有旧两项事件；误订阅新事件会沿真实 WebSocket/RPC 路径抛错。
@@ -365,7 +366,7 @@ describe("server remote connection", () => {
 
   it("/ws/host 只接受已申请的一次性 capability，重放被拒绝", async () => {
     const services = new ServiceCollection().register(ICodezAgentService, {
-      helloConversationV4: vi.fn(),
+      helloConversationV4: vi.fn(async () => ({ capabilities: {} })),
       initializeConversationV4: vi.fn(),
     } as never);
     const server = createHttpServer(services, 0);

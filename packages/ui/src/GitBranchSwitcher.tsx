@@ -1,11 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react";
+/* eslint-disable max-lines -- 分支菜单合并安全删除与上游键盘/滚动交互，复用现有 mutation owner。 */
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { GitRepositorySummary } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -15,11 +9,7 @@ import {
   CommandInput,
   CommandList,
 } from "@/components/ui/command.js";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover.js";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
 import { cn } from "@/components/lib/utils.js";
 import {
   GitBranchCreateDialog,
@@ -38,13 +28,7 @@ import {
   isCoarseTouchDevice,
   shouldRestoreChatInputFocusAfterPickerClose,
 } from "@/lib/pickerFocus.js";
-import {
-  ChevronDownIcon,
-  GitBranchIcon,
-  GitGraph,
-  LoaderIcon,
-  PlusIcon,
-} from "lucide-react";
+import { ChevronDownIcon, GitBranchIcon, GitGraph, LoaderIcon, PlusIcon } from "lucide-react";
 
 interface GitBranchSwitcherProps {
   workspacePath: string;
@@ -117,8 +101,7 @@ export function GitBranchSwitcher({
   }, [open, showFooterActions, worktreeMenu?.onRefresh]);
 
   const isVisible = gitSummary.isGitAvailable && gitSummary.isRepository;
-  const displayedCurrentBranchName =
-    branchesResult?.currentBranchName ?? gitSummary.branchName;
+  const displayedCurrentBranchName = branchesResult?.currentBranchName ?? gitSummary.branchName;
   const triggerLabel = useMemo(
     () =>
       resolveGitBranchTriggerLabel({
@@ -152,8 +135,7 @@ export function GitBranchSwitcher({
     });
   }, [gitSummary.headRefType, intl, switchAssistState, triggerLabel]);
   const branchSearchFilter = useCallback(
-    (value: string, search: string) =>
-      matchesGitBranchSearch(value, search) ? 1 : 0,
+    (value: string, search: string) => (matchesGitBranchSearch(value, search) ? 1 : 0),
     [],
   );
 
@@ -164,9 +146,7 @@ export function GitBranchSwitcher({
 
     const frameId = window.requestAnimationFrame(() => {
       const selectedItem =
-        commandListRef.current?.querySelector<HTMLElement>(
-          '[data-branch-current="true"]',
-        ) ?? null;
+        commandListRef.current?.querySelector<HTMLElement>('[data-branch-current="true"]') ?? null;
       selectedItem?.scrollIntoView({ block: "nearest" });
     });
 
@@ -175,11 +155,10 @@ export function GitBranchSwitcher({
     };
   }, [branchesResult, open]);
 
-  const handleContentKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLDivElement>) => {
-      if (event.key !== "Tab") {
-        return;
-      }
+  const handleContentKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") {
+      return;
+    }
 
     const highlightedItem =
       event.currentTarget.querySelector<HTMLElement>(
@@ -193,11 +172,9 @@ export function GitBranchSwitcher({
       return;
     }
 
-      event.preventDefault();
-      highlightedItem.click();
-    },
-    [],
-  );
+    event.preventDefault();
+    highlightedItem.click();
+  }, []);
 
   if (!isVisible) {
     return null;
@@ -222,9 +199,7 @@ export function GitBranchSwitcher({
               className={cn(
                 "min-w-0 rounded-full text-ui-base/relaxed",
                 // Bugfix: 手机远控聊天页底部空间很窄，分支名会挤压输入工具栏；远控模式只保留图标入口。
-                compactForRemoteControl
-                  ? "size-8 px-0"
-                  : "max-w-full pl-3 pr-2",
+                compactForRemoteControl ? "size-8 px-0" : "max-w-full pl-3 pr-2",
                 triggerClassName,
               )}
             >
@@ -267,9 +242,7 @@ export function GitBranchSwitcher({
               if (!(target instanceof HTMLElement)) {
                 return;
               }
-              const searchInput = target.querySelector<HTMLElement>(
-                '[data-slot="command-input"]',
-              );
+              const searchInput = target.querySelector<HTMLElement>('[data-slot="command-input"]');
               searchInput?.focus();
             }}
             onCloseAutoFocus={(event) => {
@@ -281,9 +254,7 @@ export function GitBranchSwitcher({
               ) {
                 return;
               }
-              const input = document.querySelector<HTMLElement>(
-                '[data-testid="chat-input"]',
-              );
+              const input = document.querySelector<HTMLElement>('[data-testid="chat-input"]');
               input?.focus();
             }}
           >

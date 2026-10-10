@@ -283,10 +283,10 @@ describe("Plugin capability projection", () => {
     const groups = groupScopedSkillsBySource(selected, "User");
 
     expect(groups.map((group) => [group.id, group.label])).toEqual([
-      ["plugin:computer-use@codez-plugins-official", "computer-use"],
       ["plugin:codez-cua@custom-marketplace", "codez-cua"],
+      ["plugin:computer-use@codez-plugins-official", "computer-use"],
     ]);
-    expect(groups.map((group) => group.skills[0]?.id)).toEqual(["official-skill", "custom-skill"]);
+    expect(groups.map((group) => group.skills[0]?.id)).toEqual(["custom-skill", "official-skill"]);
   });
 
   it("does not select a same-name plugin command from another marketplace", () => {

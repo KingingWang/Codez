@@ -1,5 +1,6 @@
+/* eslint-disable max-lines -- QA fixture 集中注入隔离 Host 与交互场景，保持一份可复现的运行状态。 */
 // Browser-only fixture: real UI/hooks, injected Host authority, no filesystem or native credentials.
-import { StrictMode, useState } from "react";
+import { StrictMode, useCallback, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { IServiceAccessor } from "@codez/services";
 import type {
@@ -176,6 +177,16 @@ function Harness() {
       : null,
   });
   const submission = createComposerSubmissionConfig(draft.draftConfig, null, read.catalog);
+  const handlePickerOpenChange = useCallback(
+    (value: V4ComposerConfigPicker, open: boolean) => setPicker(open ? value : null),
+    [],
+  );
+  const handleSwitchMode = useCallback(
+    (value: Parameters<typeof draft.handleDraftSwitchMode>[0]) => {
+      if (!busy) draft.handleDraftSwitchMode(value);
+    },
+    [busy, draft.handleDraftSwitchMode],
+  );
   const conversation = {
     sendCommand: async (envelope: { commandId: string; payload: unknown }) => {
       interactionCommandCount += 1;
@@ -307,10 +318,8 @@ function Harness() {
           draftConfig={draft.draftConfig}
           disabled={busy}
           activeConfigPicker={picker}
-          onConfigPickerOpenChange={(value, open) => setPicker(open ? value : null)}
-          onSwitchMode={(value) => {
-            if (!busy) draft.handleDraftSwitchMode(value);
-          }}
+          onConfigPickerOpenChange={handlePickerOpenChange}
+          onSwitchMode={handleSwitchMode}
         />
         <CodexComposerModelControls
           read={read}

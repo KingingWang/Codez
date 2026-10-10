@@ -71,7 +71,7 @@ function setupBase() {
     return `sub-${connection.connectionId}-${serial}`;
   };
   const base = {
-    helloConversationV4: vi.fn(),
+    helloConversationV4: vi.fn(async () => ({ capabilities: {} })),
     initializeConversationV4: vi.fn(),
     subscribeConversationV4: vi.fn(async (params: unknown) => ({
       ack: {
@@ -222,6 +222,9 @@ describe("CodezAgent connection-scoped service facade", () => {
   // `.strict()` 的 clientHello capabilities 里回声明；host 再把这条连接的声明当可信位注入订阅。
   it("hello 宣告 workflowRunDeltas，clientHello 声明后才成为订阅上的可信位", async () => {
     const { base } = setupBase();
+    vi.mocked(base.helloConversationV4).mockResolvedValue({
+      capabilities: { workflowRunDeltas: true },
+    });
     const declared = createCodezAgentConnectionScope(base, {
       connectionId: "deltas-declared",
       clientMode: "desktop-continuous",
@@ -273,6 +276,16 @@ describe("CodezAgent connection-scoped service facade", () => {
       clientMode: "web-remote-replayable",
     });
     expect(calls[1]?.[0]).not.toHaveProperty("workflowRunDeltas");
+  });
+
+  it("base runtime 未支持 workflowRunDeltas 时 attachment 不自行宣告", async () => {
+    const { base } = setupBase();
+    const scope = createCodezAgentConnectionScope(base, {
+      connectionId: "workflow-unsupported",
+      clientMode: "desktop-continuous",
+    });
+    const hello = await scope.service.helloConversationV4();
+    expect(hello.capabilities).not.toHaveProperty("workflowRunDeltas");
   });
 
   it("trusted relay 把下游 clientHello 的 workflowRunDeltas 原样带到上游订阅", async () => {

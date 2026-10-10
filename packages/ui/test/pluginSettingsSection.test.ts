@@ -173,7 +173,10 @@ describe("Plugin settings section", () => {
     );
     expect(marketplaceSource).not.toContain("PluginScopeMenu");
     expect(marketplaceSource).not.toContain("PluginConfigControls");
-    expect(marketplaceSource).not.toContain("setEnabled");
+    // fork 保留插件商店的 user-scope 开关，但没有 workspace-scope 配置写入。
+    expect(marketplaceSource).toContain(
+      'setPluginEnabled(pluginId, enabled, pluginManagementService, "user")',
+    );
     expect(marketplaceSource).toContain('configScope: "user"');
     expect(marketplaceSource).toMatch(
       /installPlugin\([\s\S]*?item\.name,[\s\S]*?item\.marketplace,[\s\S]*?pluginManagementService,[\s\S]*?"user"/,

@@ -675,6 +675,8 @@ export function createCodezAgentConnectionScope(
         ...hello,
         capabilities: {
           ...hello.capabilities,
+          // 能力事实由 base runtime 持有；attachment 只转发显式支持，不自行赋予 Codex。
+          ...(upstream.capabilities.workflowRunDeltas === true ? { workflowRunDeltas: true } : {}),
           ...(codex ? { codex } : {}),
           ...(codexUnavailable ? { codexUnavailable } : {}),
         },

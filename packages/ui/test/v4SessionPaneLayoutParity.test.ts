@@ -88,6 +88,9 @@ vi.mock("@/hooks/useSettingService.js", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
+  useCodexModelCatalog: () => ({ status: "unavailable", reload: vi.fn(), readCurrent: vi.fn() }),
+}));
 vi.mock("@/hooks/useServices.js", () => ({
   useOptionalServices: () => null,
   useServices: () => ({

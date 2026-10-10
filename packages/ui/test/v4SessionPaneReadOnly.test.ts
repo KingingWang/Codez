@@ -90,6 +90,10 @@ vi.mock("@/hooks/useSettingService.js", () => ({
   }),
 }));
 
+// 此夹具验证 legacy pane；原生目录有独立回归，不依赖这里未挂载的 TabStore。
+vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
+  useCodexModelCatalog: () => ({ status: "unavailable", reload: vi.fn(), readCurrent: vi.fn() }),
+}));
 vi.mock("@/hooks/useServices.js", () => ({
   useOptionalServices: () => null,
   useServices: () => ({

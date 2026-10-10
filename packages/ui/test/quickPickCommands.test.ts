@@ -71,7 +71,6 @@ describe("createQuickPickCommands", () => {
     expect(commands.map((command) => command.id)).toEqual([
       "new-task",
       "open-workspace",
-      "suggested-settings",
       "toggle-sidebar",
       "toggle-terminal",
       "toggle-preview",
@@ -95,13 +94,11 @@ describe("createQuickPickCommands", () => {
     expect(commands.find((command) => command.id === "new-task")).toMatchObject({
       sectionId: "suggested",
     });
-    expect(commands.find((command) => command.id === "suggested-settings")).toMatchObject({
+    expect(commands.find((command) => command.id === "suggested-settings")).toBeUndefined();
+    expect(commands.find((command) => command.id === "settings")).toMatchObject({
       sectionId: "suggested",
       titleId: "quickPick.command.settings",
       icon: "settings",
-    });
-    expect(commands.find((command) => command.id === "settings")).toMatchObject({
-      sectionId: "configure",
     });
     expect(commands.find((command) => command.id === "switch-theme")).toMatchObject({
       sectionId: "configure",

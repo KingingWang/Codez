@@ -7,6 +7,7 @@ import type { DynamicWorkflowMode } from "./dynamic-workflow-feature.js";
 import type { EmbeddedBrowserViewportPreference } from "./browser-use/command-metadata.js";
 import type { ModelSelection } from "./model-selection.js";
 import type { CodexTitleModel } from "./codex-runtime.js";
+import type { CodezProvider } from "./codez-task-types-core.js";
 
 // ── Domain types ──
 

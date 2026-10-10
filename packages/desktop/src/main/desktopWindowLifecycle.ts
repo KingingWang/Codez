@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 窗口生命周期集中维护上游 Host attachment 与 fork 原生浏览器能力的同一装配边界。 */
 import { getDatabaseStartupPortPayload } from "./databaseStartupRelay.js";
 import { randomUUID } from "node:crypto";
 import { app, BrowserWindow, Menu, MessageChannelMain } from "electron";

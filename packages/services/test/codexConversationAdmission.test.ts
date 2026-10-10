@@ -115,7 +115,10 @@ for (const runtime of ["desktop", "deployed"] as const) {
         assert.deepEqual(sent.at(-1), {
           id: sent.length,
           method: V4_METHODS.command,
-          params: envelope,
+          params:
+            envelope.type === "sendText"
+              ? { ...envelope, payload: { ...envelope.payload, inputOrigin: "desktop" } }
+              : envelope,
         });
       }
       assert.equal(

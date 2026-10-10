@@ -6,7 +6,7 @@ import type {
   RemoteTargetSnapshot,
   RemoteWorkspaceSessionEntry,
 } from "@codez/shared";
-import { buildRemoteWorkspaceScope } from "@codez/shared";
+import { buildRemoteWorkspaceScope, buildServerRemoteWorkspaceIdentity } from "@codez/shared";
 import type { WindowTabState } from "@/store/tabStore.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
 
@@ -501,9 +501,7 @@ export function buildPersistedWorkspaceSessionEntries(
     entries.push({
       kind: "local",
       workspacePath: tab.workspacePath,
-      ...(tab.workspacePurpose
-        ? { workspacePurpose: tab.workspacePurpose }
-        : {}),
+      ...(tab.workspacePurpose ? { workspacePurpose: tab.workspacePurpose } : {}),
     });
     return entries;
   }, []);

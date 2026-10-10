@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCipheriv, pbkdf2Sync } from "node:crypto";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import * as fileSystem from "node:fs/promises";
+import * as chromeProfileDiscovery from "../src/main/chromeProfileDiscovery.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { backup, DatabaseSync } from "node:sqlite";
@@ -776,21 +778,40 @@ describe("browserDataManager", () => {
     await mkdir(levelDbPath, { recursive: true });
     await writeFile(
       join(levelDbPath, "000001.ldb"),
-      Buffer.from("binary\0META:https://chat.z.ai", "latin1"),
+      Buffer.from("binary\0META:https://chat.z.ai\0", "latin1"),
     );
-
-    const result = await importChromeLocalStorage({
-      profilePath,
-      platform: "aix",
-      logger,
-      targetSession: {} as Electron.Session,
+    await expect(
+      discoverChromeLocalStorageOrigins(join(profilePath, "Local Storage")),
+    ).resolves.toEqual(["https://chat.z.ai"]);
+    const originalCopy = fileSystem.cp;
+    const copy = vi.spyOn(fileSystem, "cp").mockImplementation(async (...args) => {
+      await originalCopy(...args);
+      await expect(discoverChromeLocalStorageOrigins(String(args[1]))).resolves.toEqual([
+        "https://chat.z.ai",
+      ]);
     });
+    // platform="aix" 仍可能通过 PATH 找到本机 Chrome；缺安装的分支必须由探测结果固定。
+    const executable = vi
+      .spyOn(chromeProfileDiscovery, "resolveChromeExecutablePath")
+      .mockResolvedValue(null);
 
-    expect(result).toMatchObject({
-      originsImported: 0,
-      originsFailed: 1,
-      error: "chrome_executable_not_found",
-    });
+    try {
+      const result = await importChromeLocalStorage({
+        profilePath,
+        platform: "aix",
+        logger,
+        targetSession: {} as Electron.Session,
+      });
+      expect(copy).toHaveBeenCalledOnce();
+      expect(result).toMatchObject({
+        originsImported: 0,
+        originsFailed: 1,
+        error: "chrome_executable_not_found",
+      });
+    } finally {
+      copy.mockRestore();
+      executable.mockRestore();
+    }
   });
 
   it("普通清理保留 Cookie，全量清理使用 Electron 全存储清理", async () => {

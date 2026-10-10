@@ -60,7 +60,7 @@ describe("ensureProviderFamilyDomainMigration", () => {
   it("从旧 active OAuth provider 迁移 providerFamilyDomain", async () => {
     const services = createServices({ activeProvider: "zai" });
 
-    await ensureProviderFamilyDomainMigration(services);
+    await ensureProviderFamilyDomainMigration(services, () => true);
 
     expect(services.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -75,7 +75,7 @@ describe("ensureProviderFamilyDomainMigration", () => {
       selectableProviderIds: [BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan],
     });
 
-    await ensureProviderFamilyDomainMigration(services);
+    await ensureProviderFamilyDomainMigration(services, () => true);
 
     expect(services.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -93,7 +93,7 @@ describe("ensureProviderFamilyDomainMigration", () => {
       ],
     });
 
-    await ensureProviderFamilyDomainMigration(services);
+    await ensureProviderFamilyDomainMigration(services, () => true);
 
     expect(services.update).toHaveBeenCalledWith(
       expect.not.objectContaining({
@@ -113,7 +113,7 @@ describe("ensureProviderFamilyDomainMigration", () => {
       selectableProviderIds: [],
     });
 
-    await ensureProviderFamilyDomainMigration(services);
+    await ensureProviderFamilyDomainMigration(services, () => true);
 
     expect(services.update).not.toHaveBeenCalled();
   });
@@ -127,7 +127,7 @@ describe("ensureProviderFamilyDomainMigration", () => {
       activeProvider: "zai",
     });
 
-    await ensureProviderFamilyDomainMigration(services);
+    await ensureProviderFamilyDomainMigration(services, () => true);
 
     expect(services.update).not.toHaveBeenCalled();
   });

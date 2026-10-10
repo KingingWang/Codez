@@ -1133,7 +1133,6 @@ function ConversationTimelineImpl({
       const viewportHeightChanged = observedViewportHeight !== element.clientHeight;
       observedViewportHeight = element.clientHeight;
       if (nextWidth === stableContentWidthRef.current && !viewportHeightChanged) return;
-      markLayoutScrollGuard();
       commitFollowing(
         reconcileFollowingForContentAnchor({
           following: followingRef.current,
@@ -1233,7 +1232,6 @@ function ConversationTimelineImpl({
   }, [
     commitFollowing,
     getActiveUserScrollIntent,
-    markLayoutScrollGuard,
     measureElement,
     renderUnits.length === 0,
     scrollToBottom,

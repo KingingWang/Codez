@@ -7,18 +7,23 @@ import ts from "typescript";
 
 it("真实入口 JSX 在匿名时不渲染，登录后展示邀请好友和奖励徽标", async () => {
   const source = await readFile("packages/ui/src/WorkspaceSidebarFooter.tsx", "utf8");
-  const end = source.indexOf("{onLogin && !user");
-  const start = source.lastIndexOf("{user ? (", end);
+  const start = source.lastIndexOf(
+    "{!isDesktop && user ? (",
+    source.indexOf('data-testid="rewards-menu-item"'),
+  );
+  const end = source.indexOf(") : null}", start) + ") : null}".length;
+  expect(start).toBeGreaterThanOrEqual(0);
   const expression = source.slice(start, end).trim().slice(1, -1);
   const script = ts.transpileModule(`const result = (${expression}); result;`, {
     compilerOptions: { jsx: ts.JsxEmit.React },
     fileName: "entry.tsx",
   }).outputText;
-  const render = (user: object | null) =>
+  const render = (user: object | null, isDesktop = false) =>
     renderToStaticMarkup(
       runInNewContext(script, {
         React,
         user,
+        isDesktop,
         DropdownMenuItem: "div",
         Gift: "svg",
         Badge: "span",
@@ -27,6 +32,7 @@ it("真实入口 JSX 在匿名时不渲染，登录后展示邀请好友和奖�
       }),
     );
   expect(render(null)).toBe("");
+  expect(render({ id: "test-user" }, true)).toBe("");
   expect(render({ id: "test-user" })).toContain('data-testid="rewards-menu-item"');
   expect(render({ id: "test-user" })).toContain('data-testid="rewards-reward-badge"');
 });
@@ -43,7 +49,9 @@ it("奖励中心使用礼物图标，账号头像仍使用 User", async () => {
   expect(entry).toContain("<Badge");
   expect(entry).toContain('id: "rewards.menuTitle"');
   expect(entry).toContain('id: "rewards.menuBadge"');
-  expect(source).toMatch(/\{user \? \(\s*<DropdownMenuItem[^\n]*data-testid="rewards-menu-item"/);
+  expect(source).toMatch(
+    /\{!isDesktop && user \? \(\s*<DropdownMenuItem[^\n]*data-testid="rewards-menu-item"/,
+  );
   expect(source).toContain('<User className="size-4" />');
 });
 

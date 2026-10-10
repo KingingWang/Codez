@@ -33,10 +33,11 @@ afterEach(() => {
 });
 
 describe("sidebarTaskPreferences", () => {
-  it("默认使用 project 和 updated", () => {
+  it("默认使用 grouped 和 updated，未筛选 workspace", () => {
     expect(readSidebarTaskPreferences(createStorageMock())).toEqual({
-      organizeBy: "project",
+      organizeBy: "grouped",
       sortBy: "updated",
+      workspaceFilterKey: null,
     });
   });
 
@@ -44,13 +45,14 @@ describe("sidebarTaskPreferences", () => {
     const storage = createStorageMock();
 
     persistSidebarTaskPreferences(
-      { organizeBy: "chronological", sortBy: "created" },
+      { organizeBy: "chronological", sortBy: "created", workspaceFilterKey: null },
       storage,
     );
 
     expect(readSidebarTaskPreferences(storage)).toEqual({
       organizeBy: "chronological",
       sortBy: "created",
+      workspaceFilterKey: null,
     });
   });
 
@@ -63,8 +65,9 @@ describe("sidebarTaskPreferences", () => {
     });
 
     expect(readSidebarTaskPreferences(storage)).toEqual({
-      organizeBy: "project",
+      organizeBy: "grouped",
       sortBy: "updated",
+      workspaceFilterKey: null,
     });
   });
 
@@ -72,11 +75,16 @@ describe("sidebarTaskPreferences", () => {
     installThrowingLocalStorageGetter();
 
     expect(readSidebarTaskPreferences()).toEqual({
-      organizeBy: "project",
+      organizeBy: "grouped",
       sortBy: "updated",
+      workspaceFilterKey: null,
     });
     expect(() =>
-      persistSidebarTaskPreferences({ organizeBy: "chronological", sortBy: "created" }),
+      persistSidebarTaskPreferences({
+        organizeBy: "chronological",
+        sortBy: "created",
+        workspaceFilterKey: null,
+      }),
     ).not.toThrow();
   });
 });

@@ -34,6 +34,23 @@ test("buildRemoteWorkspaceScope 与 identity 共享 authority 规范化", () => 
   assert.equal(buildRemoteWorkspaceScope(docker), "remote:docker:dev-box");
 });
 
+test("server identity 与工作树分组使用同一 authority，并兼容旧格式", () => {
+  const server = {
+    kind: "server",
+    serverId: " Server-A ",
+    url: "https://example.invalid",
+  } as const;
+  const scope = buildRemoteWorkspaceScope(server);
+  assert.equal(scope, "remote:server:server-a");
+  assert.equal(parseRemoteWorkspaceScope(buildRemoteWorkspaceIdentity("/repo", server)), scope);
+  assert.equal(
+    parseRemoteWorkspaceScope(buildRemoteWorkspaceIdentity("/repo-worktree", server)),
+    scope,
+  );
+  assert.equal(parseRemoteWorkspaceScope("remote:server:server-a:/repo"), scope);
+  assert.notEqual(buildRemoteWorkspaceScope({ ...server, serverId: "server-b" }), scope);
+});
+
 test("parseRemoteWorkspaceScope 与构造互为往返", () => {
   const targets = [
     { kind: "ssh", host: "example.com", port: 2222, username: "dev" },

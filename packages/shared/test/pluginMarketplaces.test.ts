@@ -8,7 +8,7 @@ describe("DEFAULT_PLUGIN_MARKETPLACES", () => {
         id: "codez-plugins-official",
         name: "codez-plugins-official",
         pluginCount: 0,
-        source: "https://cdn-zcode.z.ai/codez/official-plugin/marketplace.json",
+        source: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
       }),
       expect.objectContaining({
         id: "claude-plugins-official",

@@ -3,6 +3,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { delimiter, join } from "node:path";
+import { discoverNodeUnitTests, isNodeTestFile } from "./unit-test-frameworks.mjs";
 
 const ROOT_UNIT_E2E_GLOB = "packages/desktop/test/e2e/**/*.test.ts";
 
@@ -10,8 +11,7 @@ function resolvePnpmCliPath(env) {
   const npmExecPath = env.npm_execpath;
   if (
     npmExecPath &&
-    (npmExecPath.toLowerCase().includes("\\pnpm\\") ||
-      npmExecPath.toLowerCase().includes("/pnpm/"))
+    (npmExecPath.toLowerCase().includes("\\pnpm\\") || npmExecPath.toLowerCase().includes("/pnpm/"))
   ) {
     return npmExecPath;
   }
@@ -108,20 +108,23 @@ function parseArgs(argv) {
 
 const { mode, files } = parseArgs(process.argv.slice(2));
 
-if (mode !== "run" && mode !== "related") {
+if (mode !== "run" && mode !== "related" && mode !== "run-all") {
   console.error(
-    "Usage: node scripts/run-lint-staged-vitest.mjs <run|related> [--files-manifest <path>|<files...>]",
+    "Usage: node scripts/run-lint-staged-vitest.mjs <run|related|run-all> [--files-manifest <path>|<files...>]",
   );
   process.exit(1);
 }
 
-if (files.length === 0) {
+if (files.length === 0 && mode !== "run-all") {
   process.exit(0);
 }
 
+const nativeTests =
+  mode === "run" ? files.filter((file) => isNodeTestFile(file)) : discoverNodeUnitTests();
+const vitestFiles = mode === "run" ? files.filter((file) => !isNodeTestFile(file)) : files;
 const vitestArgs =
-  mode === "run"
-    ? ["exec", "vitest", "run", "--exclude", ROOT_UNIT_E2E_GLOB, ...files]
+  mode !== "related"
+    ? ["exec", "vitest", "run", "--exclude", ROOT_UNIT_E2E_GLOB, ...vitestFiles]
     : [
         "exec",
         "vitest",
@@ -133,15 +136,28 @@ const vitestArgs =
         ...files,
       ];
 
-const result = spawnPnpm(vitestArgs, {
-  env: createCleanGitEnv(),
-  stdio: "inherit",
-});
+const options = { env: createCleanGitEnv(), stdio: "inherit" };
+if (nativeTests.length > 0) {
+  const nativeResult = spawnPnpm(
+    [
+      "exec",
+      "tsx",
+      "--tsconfig",
+      "packages/ui/tsconfig.json",
+      "--test",
+      "--test-concurrency=4",
+      ...nativeTests,
+    ],
+    options,
+  );
+  if (nativeResult.error) console.error(nativeResult.error.message);
+  if (nativeResult.status !== 0) process.exit(nativeResult.status ?? 1);
+}
+if (mode === "run" && vitestFiles.length === 0) process.exit(0);
+const result = spawnPnpm(vitestArgs, options);
 
 if (result.error) {
-  console.error(
-    `[lint-staged vitest] failed to spawn pnpm: ${result.error.message}`,
-  );
+  console.error(`[lint-staged vitest] failed to spawn pnpm: ${result.error.message}`);
 }
 
 process.exitCode = result.status ?? 1;

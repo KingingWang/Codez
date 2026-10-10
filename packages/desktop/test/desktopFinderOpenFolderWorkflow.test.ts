@@ -26,7 +26,7 @@ describe("desktopFinderOpenFolderWorkflow", () => {
     });
 
     const infoPlist = readInfoPlist(homeDir);
-    expect(infoPlist).toContain("<string>在Codez中打开</string>");
+    expect(infoPlist).toContain("<string>在 Codez 中打开</string>");
     expect(infoPlist).not.toContain("<string>Open in Codez</string>");
     expect(refreshServicesIndex).toHaveBeenCalledTimes(1);
   });
@@ -45,7 +45,7 @@ describe("desktopFinderOpenFolderWorkflow", () => {
 
     const infoPlist = readInfoPlist(homeDir);
     expect(infoPlist).toContain("<string>Open in Codez</string>");
-    expect(infoPlist).not.toContain("<string>在Codez中打开</string>");
+    expect(infoPlist).not.toContain("<string>在 Codez 中打开</string>");
     expect(infoPlist).toContain("<string>5</string>");
     expect(refreshServicesIndex).toHaveBeenCalledTimes(1);
   });

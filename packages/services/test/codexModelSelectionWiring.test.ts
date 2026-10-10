@@ -98,7 +98,7 @@ test("codex runtime：Host IModelSelectionService 走 Codex 原生目录，不�
       new URL("../../../config/provider/codez-builtin.json", import.meta.url),
     ),
     serviceAuthorityMode: "desktop-local",
-    agentRuntimeContext: { runtimeSurface: "desktop_local_host" },
+    agentTelemetry: { runtimeSurface: "desktop_local_host" },
     prepareLegacyAccountConnections: async () => {
       assert.fail("must not prepare legacy account");
     },

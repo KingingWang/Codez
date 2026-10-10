@@ -11,7 +11,6 @@ export const attachmentRefSchema = z
     sourceKind: attachmentSourceKindSchema.optional(),
     messageCount: z.number().int().nonnegative().optional(),
     previewRef: z.string().optional(),
-    sourceKind: z.literal("clipboard-text").optional(),
   })
   .strict();
 

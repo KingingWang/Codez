@@ -43,6 +43,7 @@ describe("handleOAuthCallbackSuccess", () => {
     };
 
     await handleOAuthCallbackSuccess({
+      isCurrent: () => true,
       result: {
         kind: "session",
         provider: BIGMODEL_PROVIDER_ID,
@@ -87,6 +88,7 @@ describe("handleOAuthCallbackSuccess", () => {
 
     await expect(
       handleOAuthCallbackSuccess({
+        isCurrent: () => true,
         result: {
           kind: "session",
           provider: BIGMODEL_PROVIDER_ID,
@@ -143,6 +145,7 @@ describe("handleOAuthCallbackSuccess", () => {
     };
 
     await handleOAuthCallbackSuccess({
+      isCurrent: () => true,
       result: {
         kind: "session",
         provider: BIGMODEL_PROVIDER_ID,
@@ -185,6 +188,7 @@ describe("handleOAuthCallbackSuccess", () => {
     };
 
     await handleOAuthCallbackSuccess({
+      isCurrent: () => true,
       result: {
         kind: "session",
         provider: ZAI_PROVIDER_ID,
@@ -227,6 +231,7 @@ describe("handleOAuthCallbackSuccess", () => {
     };
 
     await handleOAuthCallbackSuccess({
+      isCurrent: () => true,
       result: {
         kind: "session",
         provider: ZAI_PROVIDER_ID,

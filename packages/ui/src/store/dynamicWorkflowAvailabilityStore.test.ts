@@ -64,3 +64,30 @@ test("a new legacy Host does not wait for or accept a previous Host's workflow r
   assert.equal(state.getState().enabled, false);
   state.getState().disableForUnsupportedRuntime();
 });
+
+test("reload uses the current Host contract and cannot re-enable workflow after Codex takeover", async () => {
+  let releaseReload!: (value: { mode: "alwaysOn"; enabled: true; source: "remote" }) => void;
+  const pendingConfig = new Promise<{ mode: "alwaysOn"; enabled: true; source: "remote" }>(
+    (resolve) => {
+      releaseReload = resolve;
+    },
+  );
+  const options: unknown[] = [];
+  const service = {
+    getDynamicWorkflowClientConfig: (option: unknown) => {
+      options.push(option);
+      return options.length === 1
+        ? Promise.resolve({ mode: "disabled", enabled: false, source: "remote" })
+        : pendingConfig;
+    },
+  } as unknown as ICodingPlanSubscriptionService;
+  const state = useDynamicWorkflowAvailabilityStore;
+  await state.getState().ensureLoaded(service);
+  const reload = state.getState().reload(service);
+  assert.deepEqual(options, [{}, {}]);
+  state.getState().disableForUnsupportedRuntime();
+  releaseReload({ mode: "alwaysOn", enabled: true, source: "remote" });
+  await reload;
+  assert.equal(state.getState().enabled, false);
+  assert.equal(state.getState().config, null);
+});

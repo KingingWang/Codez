@@ -277,7 +277,10 @@ describe("node.ts lazy CUA spawn helper selection", () => {
 
   it("routes darwin through the lazy branch with the stable broker socket (MC-3)", () => {
     expect(spawnEnvStart).toBeGreaterThanOrEqual(0);
-    const cuaBlock = source.slice(spawnEnvStart, spawnEnvStart + 4000);
+    const cuaBlock = source.slice(
+      source.indexOf("const cuaPluginEnabled", spawnEnvStart),
+      source.indexOf("const telemetryEnv", spawnEnvStart),
+    );
     const darwinIdx = cuaBlock.indexOf('process.platform === "darwin"');
     expect(darwinIdx).toBeGreaterThanOrEqual(0);
     expect(cuaBlock.slice(darwinIdx, darwinIdx + 60)).toContain("win32");

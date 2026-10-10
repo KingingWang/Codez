@@ -26,6 +26,8 @@ function renderMenu(
       taskSessionFile={taskSessionFile}
       activeSessionId="task-1"
       taskNativeSessionLogFile={taskNativeSessionLogFile}
+      providerConfigFile={{ loading: false, path: null, exists: false }}
+      onOpenProviderConfig={() => {}}
       Item={({ disabled, children }) => (
         <div data-disabled={disabled ? "true" : "false"}>{children}</div>
       )}

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { shouldFocusTimelineAfterComposerSend } from "@/v4/promptScrollFocusPolicy.js";
 
 describe("V4 prompt scroll focus policy", () => {
-  it("focuses the latest content after draft and start-now sends", () => {
+  it("focuses only draft sends and preserves subsequent start-now reading position", () => {
     expect(
       shouldFocusTimelineAfterComposerSend({
         draftMode: true,
@@ -14,7 +14,7 @@ describe("V4 prompt scroll focus policy", () => {
         draftMode: false,
         inputRoutingMode: "startNow",
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("preserves the reading position when the new prompt only enqueues", () => {
@@ -26,20 +26,20 @@ describe("V4 prompt scroll focus policy", () => {
     ).toBe(false);
   });
 
-  it("focuses after either held-queue choice because both start immediately", () => {
+  it("preserves reading position after either held-queue choice", () => {
     expect(
       shouldFocusTimelineAfterComposerSend({
         draftMode: false,
         inputRoutingMode: "choice",
         heldQueueDisposition: "clearQueueAndSend",
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       shouldFocusTimelineAfterComposerSend({
         draftMode: false,
         inputRoutingMode: "choice",
         heldQueueDisposition: "keepQueueAndSend",
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 });

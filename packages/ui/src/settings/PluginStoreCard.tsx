@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 商店卡片合并官方 Codex 兼容状态与上游权益动作，保留同一动作 owner。 */
 import {
   Crown,
   Download,

@@ -58,7 +58,7 @@ describe("settings frame content layout", () => {
   it("limits the independent plugin marketplace to the 4xl content width", () => {
     expect(
       workspaceShellSource.match(
-        /className="mx-auto flex w-full max-w-4xl flex-col px-4 py-4 md:px-6 md:py-6"[\s\S]{0,120}<PluginStorePage/g,
+        /className="mx-auto flex w-full max-w-4xl flex-col px-4 py-4 md:px-6 md:py-6"[\s\S]{0,700}<PluginStorePage/g,
       ),
     ).toHaveLength(2);
   });

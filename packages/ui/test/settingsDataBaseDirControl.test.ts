@@ -16,9 +16,9 @@ const EXPECTED_NATIVE_SEARCH_DESCRIPTION_ZH =
 const EXPECTED_NATIVE_SEARCH_DESCRIPTION_EN =
   "Use enhanced Find and Grep in new sessions and sessions restored after an app restart. Active sessions keep their current setting; Find remains unchanged on Windows.";
 const EXPECTED_MEMORY_DESCRIPTION_ZH =
-  "在工作区中保存并复用长期上下文，新会话生效。开启后可能增加模型调用和 Token 成本。";
+  "在工作区中保存并复用长期上下文，修改立即生效。开启后可能增加模型调用和 Token 成本。";
 const EXPECTED_MEMORY_DESCRIPTION_EN =
-  "Save and reuse long-term context in workspaces. Applies to new sessions and may increase model requests and token costs.";
+  "Save and reuse long-term context in workspaces. Changes apply immediately and may increase model requests and token costs.";
 const EXPECTED_ASK_AUTO_RESOLUTION_DESCRIPTION_ZH =
   "开启后，Agent 提问 5 分钟未回答会自动继续；关闭后，当前和后续提问会一直等待你的回答。";
 const EXPECTED_ASK_AUTO_RESOLUTION_DESCRIPTION_EN =
@@ -257,7 +257,7 @@ describe("GeneralSectionContent data directory control", () => {
   it("ModelIO 全量保留默认关闭，并通过标准设置开关提交", async () => {
     const onModelIoFullRetentionEnabledChange = vi.fn(async () => {});
 
-    await renderGeneralSection({ onModelIoFullRetentionEnabledChange });
+    await renderGeneralSection({ isDesktop: false, onModelIoFullRetentionEnabledChange });
 
     const modelIoSwitch = capturedSwitches.find(
       (entry) => entry["aria-label"] === "完整保留模型 I/O",
@@ -434,6 +434,7 @@ describe("GeneralSectionContent data directory control", () => {
     const onAskUserQuestionAutoResolutionEnabledChange = vi.fn(async () => {});
 
     const markup = await renderGeneralSection({
+      isDesktop: false,
       askUserQuestionAutoResolutionEnabled: false,
       onAskUserQuestionAutoResolutionEnabledChange,
     });

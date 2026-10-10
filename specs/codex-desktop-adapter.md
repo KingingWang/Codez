@@ -7,6 +7,30 @@ feature parity. A capability is not accepted until its test evidence exists.
 
 ## Scope
 
+### Upstream v3.15.1 compatibility
+
+Rebase preserves every fork behavior and its regression suite. The obsolete
+3.14.4 version bump and previous generated dependency inventory are superseded
+by 3.15.1 and a freshly generated inventory; neither contains product behavior.
+The Codex bridge and distribution implementation remain unchanged by replay.
+
+Keep upstream guarded mode alongside Codex custom, and apply the Codex-only
+mode rejection at the upstream's new input-admission owner. Window-owned native
+browser relay targets desktop-spawned remote backends, not independently owned
+server environments. Retain upstream topic-history attachment metadata and
+full-file upload bytes. Plugin/Gen UI sends use the same composer command path
+and normalize the accepted result without losing command correlation.
+
+Acceptance includes typecheck, lint, architecture, native bridge/distribution
+tests, attachment and remote identity tests, composer/queue/continue/scroll and
+worktree safety regressions, and an isolated desktop smoke. Upstream path
+renames and service signatures must not silently disable fork UI entrypoints.
+
+The upstream root Vitest gate must not collect fork `node:test` suites as empty
+Vitest suites. Root unit and affected-test commands retain both frameworks:
+Vitest runs its own suites; Node runs native suites in isolated processes with
+bounded concurrency. Source-related checks conservatively run all native suites.
+
 Replace the desktop's model execution with the unmodified `KingingWang/codex`
 app-server, initially pinned to `codex-20260921-084453` / commit `40b83ea62f`.
 All implementation and generated protocol artifacts live in this repository.
@@ -532,6 +556,13 @@ disabled, including when a previously enabled legacy response arrives late.
 Web and explicit legacy Hosts retain the existing one-fetch-per-service
 behavior. This gate does not imply that unsupported workflows have acquired
 native parity.
+
+The existing legacy runtime still advertises `workflowRunDeltas`. The base
+Agent service owns that runtime fact; attachment hello forwards it only when
+the base service explicitly advertises it. A native Codex or unavailable bridge
+must not acquire legacy workflow support from an attachment or client claim.
+Acceptance: legacy hello plus client declaration preserves trusted deltas on
+subscriptions; a Codex hello without the capability does not advertise deltas.
 
 ```text
 legacy Root effect → old OAuth / Provider / workflow read

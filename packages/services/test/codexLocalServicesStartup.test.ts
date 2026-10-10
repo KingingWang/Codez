@@ -154,7 +154,7 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
                 mode === "remote" || mode === "deployed-codex"
                   ? ("desktop-attached-remote" as const)
                   : ("desktop-local" as const),
-              agentRuntimeContext: {
+              agentTelemetry: {
                 runtimeSurface:
                   mode === "remote" || mode === "deployed-codex"
                     ? ("remote_workspace_host" as const)
