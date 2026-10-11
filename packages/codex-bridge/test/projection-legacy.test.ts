@@ -33,6 +33,20 @@ test("legacy compatibility view parses the real schema and preserves stable mess
   assert.equal(result.runtime.eventSeq, 0);
 });
 
+test("legacy sessionKind marks selection side-chat children from persisted threadSource", () => {
+  const sideChat = threadFixture();
+  sideChat.forkedFromId = "parent-1";
+  sideChat.threadSource = "codez_selection_side_chat";
+  const snapshot = projectLegacySnapshot(sideChat, "/workspace");
+  assert.equal(snapshot.session.sessionKind, "selection_side_chat");
+  assert.equal(snapshot.session.parentSessionId, "parent-1");
+
+  // 无标记的 fork 保持原语义，不受辅助对话身份影响。
+  const plainFork = threadFixture();
+  plainFork.forkedFromId = "parent-1";
+  assert.equal(projectLegacySnapshot(plainFork, "/workspace").session.sessionKind, "fork");
+});
+
 test("legacy history omits model binding when native model is unknown", () => {
   const thread = threadFixture();
   thread.model = null;

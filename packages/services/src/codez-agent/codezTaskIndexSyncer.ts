@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- task index 的 v4 帧摄入、snapshot upsert 和 workspace 广播必须共享同一份闭包状态。 */
 import { repairSubagentTaskIndex } from "#src/codez-agent/repairSubagentTaskIndex.js";
+import { repairSelectionSideChatTaskIndex } from "#src/codez-agent/repairSelectionSideChatTaskIndex.js";
 import {
   deriveCodezTaskStatusFromSessionSnapshot,
   generateTraceId,
@@ -1157,6 +1158,21 @@ export function createCodezTaskIndexSyncer(
           logger.warn(
             undefined,
             `子代理历史列表索引修复失败 workspace=${resolveWorkspaceKey(state.target)}`,
+            error,
+          );
+        });
+        void repairSelectionSideChatTaskIndex({
+          target: state.target,
+          visibleSessionIds: new Set(nextSummaries.keys()),
+          agentService,
+          taskIndexRepo,
+          isCurrent: () => isLiveState(state) && state.indexSubscriptionGeneration === generation,
+          onRemoved: () =>
+            emitWorkspaceTaskListChanged(state.target, undefined, "task_meta_changed"),
+        }).catch((error) => {
+          logger.warn(
+            undefined,
+            `辅助对话历史列表索引修复失败 workspace=${resolveWorkspaceKey(state.target)}`,
             error,
           );
         });
