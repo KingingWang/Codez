@@ -8,6 +8,7 @@ export async function startDesktopMockProvider({ reuseItemId = false } = {}) {
   const completed = [];
   const interrupted = [];
   let hold = true;
+  let failStream = false;
   let retryFailuresRemaining = 0;
   const server = createServer(async (req, res) => {
     if (req.url === "/qa" && req.method === "GET") {
@@ -20,6 +21,7 @@ export async function startDesktopMockProvider({ reuseItemId = false } = {}) {
           completed,
           interrupted,
           retryFailuresRemaining,
+          failStream,
         }),
       );
       return;
@@ -27,6 +29,16 @@ export async function startDesktopMockProvider({ reuseItemId = false } = {}) {
     if (req.url === "/qa/retry-twice" && req.method === "POST") {
       retryFailuresRemaining = 2;
       res.end("armed");
+      return;
+    }
+    if (req.url === "/qa/fail-stream" && req.method === "POST") {
+      failStream = true;
+      res.end("armed synthetic stream failure");
+      return;
+    }
+    if (req.url === "/qa/recover-stream" && req.method === "POST") {
+      failStream = false;
+      res.end("recovered");
       return;
     }
     if (req.url === "/qa/hold" && req.method === "POST") {
@@ -116,6 +128,23 @@ export async function startDesktopMockProvider({ reuseItemId = false } = {}) {
         type: "response.created",
         response: { ...response, status: "in_progress", output: [] },
       });
+      // 合成 Responses 终态错误：由真实 Codex 决定重试和 failed，测试不伪造 Bridge/UI 状态。
+      if (failStream) {
+        send({
+          type: "response.failed",
+          response: {
+            ...response,
+            status: "failed",
+            output: [],
+            error: {
+              code: "server_error",
+              message: "E2E_CODEX_STREAM_FAILURE",
+            },
+          },
+        });
+        res.end();
+        return;
+      }
       const finish = () => {
         if (res.destroyed || res.writableEnded) return;
         send({

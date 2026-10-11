@@ -302,6 +302,44 @@ Acceptance for follow-up delivery:
   defect, not a convenience. Both task action menus and grouped task context
   menus must keep a non-null path with `exists: false` disabled.
 
+### Failed native turns remain usable
+
+- A native `failed` turn is an execution result, not a permanent input-admission
+  failure. Once no native turn is active and no approval/question is pending,
+  retain `control.phase = error`, the error banner and failed history, but project
+  `inputRouting.mode = startNow`. The user can type and explicitly start another
+  turn without dismissing the error, switching tasks or restarting the app.
+- Codex may retain `thread.status = systemError` after a model error until the
+  next turn starts. An explicit latest `failed` turn is the recovery boundary;
+  a system error without that terminal fact remains blocked. Active/unloaded
+  turns, pending interactions and writer-conflict guards remain unchanged.
+- Native Codex owns turn/error state and queue admission. The bridge changes
+  only derived input routing: no timer, automatic retry, history revert, queue
+  drain, new state owner or special SSH path is introduced.
+- Live desktop-continuous snapshots and web-remote-replayable resubscription
+  derive the same decision, including after a bridge/history reload. Host
+  workspace identity, remoteSessionId, lease and stale-command guards are unchanged.
+
+```text
+Codex error -> systemError -> turn/completed(failed) -> bridge snapshot
+                                                     | error remains visible
+                                                     | input: startNow
+                                                     v
+UI explicit send -> existing Host/lease -> turn/start -> Codex clears old error
+```
+
+Acceptance:
+
+1. Inject a terminal Responses stream error in an isolated real Electron →
+   Host → bridge → pinned Codex → loopback provider. Verify the error remains
+   visible, the composer is editable, and explicit follow-up succeeds in the
+   same thread. Fault injection is synthetic and never uses real credentials.
+2. Reload the renderer while the failed turn is latest; history and the error
+   remain, the composer stays editable, and Enter sends one new turn.
+3. Unit/integration tests cover idle and systemError failed turns, both delivery
+   modes and cold history, while preserving approval/question, active-unloaded,
+   unresolved system-error and writer-conflict boundaries.
+
 ### Native model retry visibility
 
 - Codex alone decides whether a model request is retrying. An app-server `error`

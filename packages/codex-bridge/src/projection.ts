@@ -149,6 +149,10 @@ export function projectThread(
   const rows = projectRows(source, interactions, options.hiddenTurnIds);
   const state = control(source, options.apiRetry);
   const waiting = source.status.type === "active" && source.status.activeFlags.length > 0;
+  // Bug 原因：把上一回合 failed 当作永久 admission 错误，GUI 会一直禁用输入框。
+  // Codex 的 systemError 可保留到下一轮；仅在已有明确失败终态时开放显式续发，
+  // 错误/历史仍保留，审批、未加载的 active turn 和未知系统错误继续走原门禁。
+  const unresolvedError = state.phase === "error" && source.turns.at(-1)?.status !== "failed";
   const unavailable = { allowed: false as const, reasonCode: "guard.codex.capabilityUnknown" };
   return conversationSnapshotSchema.parse({
     protocolVersion: 1,
@@ -169,7 +173,7 @@ export function projectThread(
       ...options.availability,
     },
     inputRouting:
-      waiting || interactions.length > 0 || state.phase === "error"
+      waiting || interactions.length > 0 || unresolvedError
         ? { mode: "reject", reasonCode: "guard.codex.authorityRequired" }
         : state.phase === "running"
           ? state.canStop

@@ -826,6 +826,68 @@ test("path-only create fallback is retained but explicit foreign identity is rej
   assert.equal(h.calls.filter((call) => call.method === "turn/start").length, 0);
 });
 
+for (const clientMode of ["desktop-continuous", "web-remote-replayable"]) {
+  test(`${clientMode} publishes failed-turn recovery live and on cold resubscribe`, async (t) => {
+    const h = await fixture(t);
+    const topic = "conversation/thread-1";
+    h.authority.thread.status = { type: "active", activeFlags: [] };
+    h.authority.thread.turns[0]!.status = "inProgress";
+    const subscribed = await h.runtime.request(
+      V4_METHODS.conversationSubscribe,
+      subscribe(topic, clientMode),
+    );
+    await subscribed.afterResponse!();
+    h.emit("thread/status/changed", {
+      threadId: "thread-1",
+      status: { type: "systemError" },
+    });
+    const error = {
+      message: "stream disconnected before completion: E2E_CODEX_STREAM_FAILURE",
+    };
+    h.emit("turn/completed", {
+      threadId: "thread-1",
+      turn: {
+        id: "turn-1",
+        status: "failed",
+        error,
+        completedAt: 125,
+        items: [],
+      },
+    });
+    // publisher 与 native event tail 都是异步的，等待实际终态帧而不是固定超时。
+    await t.waitFor(() =>
+      assert.match(JSON.stringify(h.frames.at(-1)), /E2E_CODEX_STREAM_FAILURE/),
+    );
+    const live = JSON.stringify(h.frames.at(-1));
+    assert.match(live, /"phase":"error"/);
+    assert.match(live, /E2E_CODEX_STREAM_FAILURE/);
+    assert.match(live, /"mode":"startNow"/);
+    assert.equal(h.calls.filter((call) => call.method === "turn/start").length, 0);
+    assert.equal(h.calls.filter((call) => call.method === "thread/revert").length, 0);
+
+    // 模拟已落盘历史：新 Bridge 实例重新 load，不能借 live cache 才恢复输入。
+    h.authority.thread.status = { type: "systemError" };
+    Object.assign(h.authority.thread.turns[0]!, {
+      status: "failed",
+      error,
+      completedAt: 125,
+    });
+    const coldRuntime = await fixture(t);
+    coldRuntime.authority.thread = structuredClone(h.authority.thread);
+    const reopened = await coldRuntime.runtime.request(
+      V4_METHODS.conversationSubscribe,
+      subscribe(topic, clientMode),
+    );
+    await reopened.afterResponse!();
+    const cold = JSON.stringify(coldRuntime.frames.at(-1));
+    assert.match(cold, /"mode":"startNow"/);
+    assert.match(cold, /"phase":"error"/);
+    assert.match(cold, /E2E_CODEX_STREAM_FAILURE/);
+    assert.equal(coldRuntime.calls.filter((call) => call.method === "turn/start").length, 0);
+    assert.equal(coldRuntime.calls.filter((call) => call.method === "thread/read").length, 1);
+  });
+}
+
 test("writer-conflict subscribe degrades to read-only; resync invalidates it and retries resume", async (t) => {
   const h = await fixture(t);
   let conflicted = true;
