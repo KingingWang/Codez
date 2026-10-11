@@ -4232,7 +4232,11 @@ export const codezCatalogReadModelsResultSchema = z
 export type CodezCatalogReadModelsResult = z.infer<typeof codezCatalogReadModelsResultSchema>;
 
 export const codezCatalogWriteModelParamsSchema = z
-  .object({ workspace: codezWorkspaceRefSchema, model: codezCatalogModelEntrySchema })
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    model: codezCatalogModelEntrySchema,
+    originalSlug: nonEmptyString.optional(),
+  })
   .strict();
 export const codezCatalogDeleteModelParamsSchema = z
   .object({ workspace: codezWorkspaceRefSchema, slug: nonEmptyString })

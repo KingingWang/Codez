@@ -43,6 +43,8 @@ export const enProviders = {
   providerModelsEmpty: "No catalog models.",
   modelAdd: "Add model",
   modelSlug: "Model slug",
+  modelSlugEditHelp:
+    "Changing the slug replaces this catalog entry in place; update config.model separately if the default model should follow.",
   modelSlugHelp: "Unique model id sent to the provider API; cannot be changed after creation.",
   modelProvider: "Provider",
   modelDisplayName: "Display name",
@@ -105,6 +107,7 @@ export const zhProviders: Record<keyof typeof enProviders, string> = {
   providerModelsEmpty: "目录中暂无模型。",
   modelAdd: "添加模型",
   modelSlug: "模型 slug",
+  modelSlugEditHelp: "修改 slug 会原地替换该目录条目；如需默认模型跟随，请单独更新 config.model。",
   modelSlugHelp: "发送给供应商 API 的唯一模型 id；创建后不可修改。",
   modelProvider: "所属供应商",
   modelDisplayName: "显示名称",

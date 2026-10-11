@@ -8,9 +8,19 @@ export function createCatalogModelsFixture() {
   };
   let writes = 0;
   let disposals = 0;
+  let originalSlugRenames = 0;
+  let lastWrite: { model: CodezCatalogModelEntry; originalSlug?: string } | null = null;
   return {
     read: async () => ({ path: "/isolated/catalog.json", models: [model] }),
-    write: async ({ model: next }: { model: CodezCatalogModelEntry }) => {
+    write: async ({
+      model: next,
+      originalSlug,
+    }: {
+      model: CodezCatalogModelEntry;
+      originalSlug?: string;
+    }) => {
+      if (originalSlug !== undefined && next.slug !== originalSlug) originalSlugRenames++;
+      lastWrite = { model: next, originalSlug };
       model = next;
       writes++;
       return { path: "/isolated/catalog.json", models: [model] };
@@ -26,6 +36,12 @@ export function createCatalogModelsFixture() {
     },
     get disposals() {
       return disposals;
+    },
+    get originalSlugRenames() {
+      return originalSlugRenames;
+    },
+    get lastWrite() {
+      return lastWrite;
     },
   };
 }

@@ -274,6 +274,25 @@ export async function verifySingleCatalogModelAndRestart(page, settings, result,
   checks.push(
     "Catalog model visibility switch has a target-specific name and matching checked state",
   );
+  await catalogModels.getByRole("button", { name: "Edit", exact: true }).click();
+  const slugInput = catalogModels.getByRole("textbox", { name: "Model slug", exact: true });
+  assert.equal(await slugInput.isDisabled(), false);
+  await slugInput.fill("renamed-model");
+  await catalogModels.getByRole("button", { name: "Save model", exact: true }).click();
+  await catalogModels.getByRole("button", { name: "Delete renamed-model" }).waitFor();
+  const renamed = await inspectRpcLog(page, result);
+  assert.deepEqual(renamed.catalogLastWrite, {
+    model: {
+      slug: "renamed-model",
+      provider: "referenced-provider",
+      display_name: "second-model",
+      visibility: "hidden",
+    },
+    originalSlug: "second-model",
+  });
+  assert.equal(renamed.catalogWrites, persisted.catalogWrites + 1);
+  assert.equal(renamed.catalogOriginalSlugRenames, 1);
+  checks.push("Catalog model edits can rename the slug through the original-slug write boundary");
   const restartRuntime = settings.getByRole("button", { name: "Restart runtime now" });
   await restartRuntime.waitFor();
   await restartRuntime.click();

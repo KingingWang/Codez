@@ -18,6 +18,7 @@ import {
 } from "./codexMemorySettings.js";
 import {
   codexCatalogModelTemplate,
+  codexCatalogModelWriteParams,
   codexCatalogModelView,
   codexModelEntryFromForm,
   codexModelFormFrom,
@@ -1061,4 +1062,37 @@ test("model entry builder overlays identity fields on the raw JSON and rejects b
     description: undefined,
     hidden: true,
   });
+});
+
+test("catalog model write params preserve the original slug only for edits", () => {
+  const workspace = { workspacePath: "/fixture/workspace", workspaceIdentity: "fixture-identity" };
+  const edited = codexCatalogModelWriteParams(
+    {
+      originalSlug: "old-model",
+      slug: "new-model",
+      provider: "ollama1",
+      displayName: "New",
+      description: "",
+      hidden: false,
+      rawJson: JSON.stringify({ slug: "old-model", provider: "ollama1" }),
+    },
+    workspace,
+  );
+  assert.deepEqual(edited, {
+    ...workspace,
+    model: { slug: "new-model", provider: "ollama1", display_name: "New", visibility: "list" },
+    originalSlug: "old-model",
+  });
+  const created = codexCatalogModelWriteParams(
+    {
+      slug: "new-model",
+      provider: "ollama1",
+      displayName: "New",
+      description: "",
+      hidden: false,
+      rawJson: JSON.stringify({ slug: "template", provider: "ollama1" }),
+    },
+    workspace,
+  );
+  assert.equal("originalSlug" in created, false);
 });

@@ -129,19 +129,38 @@ async function readCatalogModels(
   });
 }
 
-/** catalog/writeModel：按 slug upsert（同 slug 整条替换，否则追加），原子落盘。 */
+/**
+ * catalog/writeModel：按 slug upsert（同 slug 整条替换，否则追加），原子落盘。
+ * 编辑改名传 originalSlug：单次读改写内在原位置替换，不串联新增/删除。
+ */
 async function writeCatalogModel(
   context: BridgeControlContext,
   method: string,
   model: s.CodezCatalogModelEntry,
+  originalSlug?: string,
 ): Promise<s.CodezCatalogReadResult> {
   const path = await resolveCatalogPath(context);
   if (!path) failure(method, "model_catalog_json is not configured");
   const existing = await readCatalogFile(method, path, true);
-  const index = existing.models.findIndex((entry) => entry.slug === model.slug);
+  const index = existing.models.findIndex((entry) =>
+    originalSlug === undefined ? entry.slug === model.slug : entry.slug === originalSlug,
+  );
   const models = [...existing.models];
-  if (index >= 0) models[index] = model;
-  else models.push(model);
+  if (index < 0 && originalSlug !== undefined) {
+    // 原始条目已被外部进程删除/改名时不能伪造成功，也不能把改名写成新增。
+    failure(method, `model "${originalSlug}" not found in catalog ${path}`);
+  }
+  if (index < 0) models.push(model);
+  else if (originalSlug !== undefined && originalSlug !== model.slug) {
+    const conflict = models.findIndex(
+      (entry, position) => position !== index && entry.slug === model.slug,
+    );
+    if (conflict >= 0) {
+      // 目标 slug 必须唯一；拒绝后保持原始文件字节，避免 GUI 变成新增重复条目。
+      failure(method, `model "${model.slug}" already exists in catalog ${path}`);
+    }
+    models[index] = model;
+  } else models[index] = model;
   await writeCatalogFileAtomic(method, path, models);
   return catalogMapping(path, models);
 }
@@ -184,7 +203,7 @@ export async function handleCatalogRequest(
   if (method === "catalog/writeModel") {
     const p = input(s.codezCatalogWriteModelParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
-    return writeCatalogModel(context, method, p.model);
+    return writeCatalogModel(context, method, p.model, p.originalSlug);
   }
   if (method === "catalog/deleteModel") {
     const p = input(s.codezCatalogDeleteModelParamsSchema, params, method);

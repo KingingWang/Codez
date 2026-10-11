@@ -210,6 +210,52 @@ test("catalog/writeModel upserts by slug and persists the full entry atomically"
   ]);
 });
 
+test("catalog/writeModel with originalSlug renames in place without duplicating the old entry", async () => {
+  const original = JSON.stringify(
+    {
+      models: [
+        { slug: "old-model", provider: "ollama1", context_window: 128000 },
+        { slug: "other-model", provider: "openai-my" },
+      ],
+    },
+    null,
+    2,
+  );
+  const f = await fixture(`${original}\n`);
+  const context = {
+    rpc: rpcWithConfig({ model_catalog_json: f.catalogPath }),
+    cwd: f.cwd,
+  };
+  const workspace = { workspace: { workspacePath: f.cwd, workspaceKey: f.cwd } };
+  const request = (originalSlug: string, slug: string) =>
+    handleCatalogRequest(
+      "catalog/writeModel",
+      {
+        ...workspace,
+        originalSlug,
+        model: { slug, provider: "ollama1", context_window: 256000 },
+      },
+      context,
+    );
+  const result = s.codezCatalogReadResultSchema.parse(await request("old-model", "new-model"));
+  assert.deepEqual(result.models, [
+    { slug: "new-model", provider: "ollama1" },
+    { slug: "other-model", provider: "openai-my" },
+  ]);
+  const file = JSON.parse(await readFile(f.catalogPath, "utf8")) as {
+    models: Record<string, unknown>[];
+  };
+  assert.deepEqual(file.models, [
+    { slug: "new-model", provider: "ollama1", context_window: 256000 },
+    { slug: "other-model", provider: "openai-my" },
+  ]);
+  const renamed = await readFile(f.catalogPath, "utf8");
+
+  await assert.rejects(request("new-model", "other-model"), /already exists/);
+  await assert.rejects(request("missing-model", "another-model"), /not found/);
+  assert.equal(await readFile(f.catalogPath, "utf8"), renamed, "rejected renames preserve bytes");
+});
+
 test("catalog/writeModel creates a missing catalog file from an empty model list", async () => {
   const f = await fixture();
   const context = {

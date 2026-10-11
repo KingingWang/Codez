@@ -179,12 +179,12 @@ export function CodexCatalogModelFormView({
       <Field
         id="codex-model-slug"
         label={text.modelSlug}
-        help={creating ? text.modelSlugHelp : undefined}
+        help={creating ? text.modelSlugHelp : text.modelSlugEditHelp}
       >
         <Input
           id="codex-model-slug"
           value={form.slug}
-          disabled={disabled || !creating}
+          disabled={disabled}
           placeholder="my-model-v1"
           onChange={(event) => onChange({ ...form, slug: event.target.value })}
         />

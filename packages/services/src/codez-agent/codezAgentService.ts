@@ -4787,7 +4787,11 @@ export function createCodezAgentService(
       const client = await getReadOnlyClient(params);
       return client.request(
         codezProtocolMethods.catalogWriteModel,
-        { workspace: buildWorkspaceRef(params), model: params.model },
+        {
+          workspace: buildWorkspaceRef(params),
+          model: params.model,
+          originalSlug: params.originalSlug,
+        },
         codezCatalogReadResultSchema,
       );
     },

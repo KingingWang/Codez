@@ -22,7 +22,11 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
   保留配置）。其余能力字段（context_window、reasoning levels 等约 30 个）经
   **单模型高级 JSON 编辑器**维护：编辑表单内折叠区直接编辑该条目的完整
   JSON；新增模型时从同 provider 现有首条模型复制能力模板，只允许先改
-  slug/display_name/description/provider。
+  slug/display_name/description/provider。编辑已有模型时 slug 允许修改，用于
+  供应商模型版本升级后的原地替换；改名是 `catalog/writeModel` 的单次原子
+  目录写入（传 `originalSlug`），不是 GUI 串联“新增 + 删除”。若旧 slug 是
+  `config.model`，沿用删除默认模型的既有语义：显示警告并允许保存，新线程
+  回退到 provider 偏好模型；GUI 不得暗中改写全局默认模型。
 - 操作约束：
   - 供应商 id 仅允许 `[A-Za-z0-9_-]+`（config/batchWrite keyPath 按 `.` 分段，
     id 含点会破坏路径语义；TOML 裸键同口径）。
@@ -97,9 +101,11 @@ model_catalog_json 文件     ──bridge catalog/* 本地控制面写──→
   返回目录文件中的完整原始条目（含全部能力字段），供管理表单与高级 JSON
   编辑器使用；未配置目录文件时 `path` 为 null、`models` 为空。
   每条目至少校验为带 string `slug` 的对象，否则整条目读取失败诚实报错。
-- `catalog/writeModel`：`{ workspace, model: <完整条目 JSON> }`。按 slug
-  upsert：同 slug 替换整条，否则追加到 models 末尾。条目必须是带非空 string
-  `slug` 的对象。原子写（同目录 tmp 文件 + rename）。
+- `catalog/writeModel`：`{ workspace, model: <完整条目 JSON>, originalSlug? }`。
+  缺省 `originalSlug` 时按新 slug upsert：同 slug 替换整条，否则追加到 models
+  末尾。编辑改名时传非空 `originalSlug`：必须命中一个旧条目并在其原位置整条
+  替换；新 slug 与其他条目冲突、旧条目不存在时拒绝写入且文件字节不变。条目
+  必须是带非空 string `slug` 的对象。原子写（同目录 tmp 文件 + rename）。
 - `catalog/deleteModel`：`{ workspace, slug }`。按 slug 删除；不存在时报
   未找到错误（调用方据此提示，不当成功处理）；最后一条目录模型则拒绝，
   仍返回明确错误，文件原始字节不变。

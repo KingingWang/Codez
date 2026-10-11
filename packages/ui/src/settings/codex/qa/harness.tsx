@@ -296,6 +296,8 @@ function Harness() {
               legacyReads,
               catalogReads,
               catalogWrites: catalogModelsFixture.writes,
+              catalogOriginalSlugRenames: catalogModelsFixture.originalSlugRenames,
+              catalogLastWrite: catalogModelsFixture.lastWrite,
               catalogModelVisibility: catalogModelsFixture.visibility,
               runtimeDisposals: catalogModelsFixture.disposals,
               interactionCommandCount,

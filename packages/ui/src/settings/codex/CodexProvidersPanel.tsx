@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
 import {
   codexCatalogModelTemplate,
+  codexCatalogModelWriteParams,
   codexCatalogModelView,
   codexConfiguredDefaultModel,
   codexModelEntryFromForm,
@@ -178,7 +179,9 @@ export function CodexProvidersPanel({
     const agent = controller.services.codezAgentService;
     void controller
       .run(() =>
-        writeCatalog(() => agent.writeCodexCatalogModel({ ...workspaceRef, model: entry })),
+        writeCatalog(() =>
+          agent.writeCodexCatalogModel(codexCatalogModelWriteParams(modelForm, workspaceRef)),
+        ),
       )
       .then((ok) => {
         if (ok) setModelForm(null);

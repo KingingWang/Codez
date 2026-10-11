@@ -742,7 +742,10 @@ export interface ICodezAgentService {
    */
   readCodexCatalogModels(params: CodezAgentWorkspaceTarget): Promise<CodezCatalogReadModelsResult>;
   writeCodexCatalogModel(
-    params: CodezAgentWorkspaceTarget & { model: CodezCatalogModelEntry },
+    params: CodezAgentWorkspaceTarget & {
+      model: CodezCatalogModelEntry;
+      originalSlug?: string;
+    },
   ): Promise<CodezCatalogReadResult>;
   deleteCodexCatalogModel(
     params: CodezAgentWorkspaceTarget & { slug: string },

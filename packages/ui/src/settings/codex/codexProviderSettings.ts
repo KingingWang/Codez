@@ -239,7 +239,7 @@ export function codexCatalogModelTemplate(
 }
 
 export interface CodexModelForm {
-  /** 编辑态为原始 slug（定位用）；slug 字段允许改（= 另存新条目后删旧条，UI 层组合）。 */
+  /** 编辑态为原始 slug（定位旧条目）；slug 字段允许编辑时原位改名。 */
   originalSlug?: string;
   slug: string;
   provider: string;
@@ -293,4 +293,20 @@ export function codexModelEntryFromForm(form: CodexModelForm): CodezCatalogModel
   if (form.description.trim()) entry.description = form.description.trim();
   else delete entry.description;
   return entry as CodezCatalogModelEntry;
+}
+
+/** 编辑态必须携带原始 slug；创建态不发送该字段，保持新增/upsert 旧语义。 */
+export function codexCatalogModelWriteParams<
+  T extends { workspacePath: string; workspaceIdentity?: string },
+>(
+  form: CodexModelForm,
+  workspace: T,
+): T & { model: CodezCatalogModelEntry; originalSlug?: string } {
+  const entry = codexModelEntryFromForm(form);
+  if (!entry) throw new Error("Invalid catalog model form");
+  return {
+    ...workspace,
+    model: entry,
+    ...(form.originalSlug ? { originalSlug: form.originalSlug } : {}),
+  };
 }

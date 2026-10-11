@@ -231,6 +231,15 @@ For just the mapped-provider regression (also included in the full suite):
 CHOKIDAR_USEPOLLING=1 node packages/ui/src/settings/codex/qa/mapped-provider-runner.mjs
 ```
 
+For the targeted catalog-model slug edit regression (also included in the full suite):
+
+```sh
+node packages/ui/src/settings/codex/qa/provider-model-slug-e2e.mjs
+```
+
+Set `CODEZ_UI_QA_CHROME=/path/to/browser` when this runner should use another
+installed Chromium/Chrome executable.
+
 It mounts the actual catalog/draft hooks, model controls and Lexical input.
 Cold-start defaults and persisted non-default/high drafts must send without
 manual model toggles; reload preserves text, effort, permission and plan;
