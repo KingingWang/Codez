@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,6 +13,7 @@ import {
   publishCodexBuildSelection,
   resolveCodexBuildSelection,
 } from "./codex-runtime.mjs";
+import { createMockCodexPackage } from "./test-codex-package-fixture.mjs";
 
 test("public remote preparation defaults to Codex and requires explicit legacy opt-in", async () => {
   const calls = [];
@@ -86,17 +86,17 @@ test("distribution snapshots and build selection survive concurrent workspace br
   const snapshot = await snapshotCodexBridge({ bridgePath, root });
   await writeFile(bridgePath, "concurrent second bridge");
   assert.equal(await readFile(snapshot, "utf8"), "first bridge");
-  const bytes = Buffer.from("native fixture");
-  const manifest = await loadCodexManifest();
-  manifest.assets["linux-x64"].size = bytes.length;
-  manifest.assets["linux-x64"].sha256 = createHash("sha256").update(bytes).digest("hex");
+  const manifest = structuredClone(await loadCodexManifest());
   const target = { os: "linux", arch: "x64", key: "linux-x64" };
+  const asset = await createMockCodexPackage(root, target);
+  manifest.assets[target.key].size = asset.size;
+  manifest.assets[target.key].sha256 = asset.sha256;
   const options = { root, manifest, target };
   const directory = await stageCodexRuntime({
     ...options,
     bridgePath: snapshot,
     env: {},
-    fetchImpl: async () => new Response(bytes),
+    fetchImpl: async () => new Response(asset.bytes),
   });
   await publishCodexBuildSelection({ ...options, directory });
   const selected = await resolveCodexBuildSelection(options);

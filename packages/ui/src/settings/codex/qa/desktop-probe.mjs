@@ -51,7 +51,8 @@ if (packaged) {
     access(packagedExecutable),
     access(join(packagedRoot, "resources/app.asar")),
     access(join(packagedRoot, "resources/codex/bridge.cjs")),
-    access(join(packagedRoot, "resources/codex/codex")),
+    access(join(packagedRoot, "resources/codex/bin/codex")),
+    access(join(packagedRoot, "resources/codex/bin/codex-code-mode-host")),
   ]);
 } else {
   const manifest = JSON.parse(
@@ -60,8 +61,8 @@ if (packaged) {
   nativeOverride = resolve(
     root,
     "packages/desktop/bundled-agents/linux-x64",
-    `codex-${manifest.assets["linux-x64"].sha256}`,
-    "codex",
+    `package-${manifest.assets["linux-x64"].sha256}`,
+    "bin/codex",
   );
   await access(nativeOverride);
 }

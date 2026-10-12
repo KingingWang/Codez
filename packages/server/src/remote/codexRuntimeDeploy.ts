@@ -12,7 +12,14 @@ import {
 } from "./remoteAssetLiveIdentity.js";
 import { quotePosixPathArg } from "./posixShell.js";
 
-export const CODEX_REMOTE_REQUIRED_FILES = ["codex", "bridge.cjs", "distribution.json"];
+export const CODEX_REMOTE_REQUIRED_FILES = [
+  "bin/codex",
+  "bin/codex-code-mode-host",
+  "codex-package.json",
+  "codex-path/rg",
+  "bridge.cjs",
+  "distribution.json",
+];
 
 export function assertCodexRemoteEnvironment(env: RemoteEnvironment): void {
   if (!["linux", "darwin"].includes(env.platform) || !["x64", "arm64"].includes(env.arch)) {
@@ -78,7 +85,11 @@ export async function deployCodexRuntime(
       throw new Error(`Codex remote installation missing required file: ${file}`);
     }
   }
-  await waitForClose(await backend.exec(buildRemoteChmodExecutableCommand(`${remoteDir}/codex`)));
+  for (const name of ["bin/codex", "bin/codex-code-mode-host", "codex-path/rg"]) {
+    await waitForClose(
+      await backend.exec(buildRemoteChmodExecutableCommand(`${remoteDir}/${name}`)),
+    );
+  }
   options.signal?.throwIfAborted();
   // 安装/权限设置失败不得写成功身份；下次连接仍在原 deploy lock 内重试。
   await writeRemoteAssetComponentMeta(backend, { id: componentId, platformArch, sha256 });

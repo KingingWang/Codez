@@ -10,12 +10,12 @@ import {
 } from "./codex-runtime-resolve-latest.mjs";
 
 const TARGET_ASSET_NAMES = {
-  "darwin-x64": "codex-macos-x86_64",
-  "darwin-arm64": "codex-macos-aarch64",
-  "linux-x64": "codex-linux-x86_64-musl",
-  "linux-arm64": "codex-linux-aarch64-musl",
-  "win32-x64": "codex-windows-x86_64.exe",
-  "win32-arm64": "codex-windows-aarch64.exe",
+  "darwin-x64": "codex-package-x86_64-apple-darwin.tar.gz",
+  "darwin-arm64": "codex-package-aarch64-apple-darwin.tar.gz",
+  "linux-x64": "codex-package-x86_64-unknown-linux-musl.tar.gz",
+  "linux-arm64": "codex-package-aarch64-unknown-linux-musl.tar.gz",
+  "win32-x64": "codex-package-x86_64-pc-windows-msvc.tar.gz",
+  "win32-arm64": "codex-package-aarch64-pc-windows-msvc.tar.gz",
 };
 
 function fakeRelease(overrides = {}) {
@@ -34,7 +34,7 @@ function fakeRelease(overrides = {}) {
 
 test("latest fork release resolves into a valid six-target manifest", () => {
   const manifest = buildManifestFromLatestRelease(fakeRelease());
-  assert.equal(manifest.schemaVersion, 1);
+  assert.equal(manifest.schemaVersion, 2);
   assert.equal(manifest.repository, "KingingWang/codex");
   assert.equal(manifest.tag, "codex-20260922-232812");
   assert.equal(Object.keys(manifest.assets).length, 6);
@@ -93,7 +93,9 @@ test("lookup retries transient failures then returns the manifest", async () => 
 test("incomplete latest uses one older complete stable release without mixing native targets", async () => {
   const latest = fakeRelease({
     tag_name: "codex-20260930-142651",
-    assets: fakeRelease().assets.filter((asset) => asset.name !== "codex-windows-x86_64.exe"),
+    assets: fakeRelease().assets.filter(
+      (asset) => asset.name !== "codex-package-x86_64-pc-windows-msvc.tar.gz",
+    ),
   });
   const prior = fakeRelease();
   const urls = [];
@@ -117,7 +119,9 @@ test("latest wins if it finishes uploading before the bounded release list is re
   const latest = fakeRelease({ tag_name: "codex-20260930-142651" });
   const incomplete = {
     ...latest,
-    assets: latest.assets.filter((asset) => asset.name !== "codex-windows-aarch64.exe"),
+    assets: latest.assets.filter(
+      (asset) => asset.name !== "codex-package-aarch64-pc-windows-msvc.tar.gz",
+    ),
   };
   const manifest = await resolveLatestCodexManifest({
     fetchImpl: async (url) => ({

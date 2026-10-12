@@ -120,6 +120,7 @@ try {
     const directory = await prepareCodexRuntime();
     process.env.CODEZ_CODEX_COMMAND = resolve(
       directory,
+      "bin",
       process.platform === "win32" ? "codex.exe" : "codex",
     );
     process.env.CODEZ_CODEX_BRIDGE_PATH = resolve(

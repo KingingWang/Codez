@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { pathToFileURL } from "node:url";
 import {
@@ -10,7 +10,7 @@ import {
   resolveCodexTarget,
   selectCodexAsset,
   stageCodexBinary,
-  verifyCodexBinary,
+  verifyCodexPackage,
 } from "./codex-runtime.mjs";
 
 export async function smokeCodexRuntime() {
@@ -18,7 +18,11 @@ export async function smokeCodexRuntime() {
   if (target.os !== process.platform || target.arch !== process.arch)
     throw new Error("Codex smoke must run natively for its matrix target");
   const binary = await stageCodexBinary({ target });
-  await verifyCodexBinary(binary, selectCodexAsset(await loadCodexManifest(), target));
+  await verifyCodexPackage({
+    directory: dirname(dirname(binary)),
+    target,
+    asset: selectCodexAsset(await loadCodexManifest(), target),
+  });
   const temporary = await mkdtemp(join(tmpdir(), "codez-codex-smoke-"));
   // 测试不继承 API key、账号 token 或用户的 Codex 配置，只传进程启动必需环境。
   const env = { CODEX_HOME: join(temporary, "config") };
@@ -45,6 +49,19 @@ export async function smokeCodexRuntime() {
   );
   let child;
   try {
+    // 初始化主程序不会加载工具宿主；单独执行一次，验证其平台架构与权限均可用。
+    const toolHost = spawn(
+      join(
+        dirname(binary),
+        target.os === "win32" ? "codex-code-mode-host.exe" : "codex-code-mode-host",
+      ),
+      ["--help"],
+      { cwd: temporary, env, shell: false, stdio: ["ignore", "ignore", "pipe"], timeout: 15_000 },
+    );
+    toolHost.stderr.resume();
+    const [hostCode] = await once(toolHost, "close");
+    if (hostCode !== 0) throw new Error(`Codex tool host launch failed: ${hostCode}`);
+    console.log("[codex-smoke] native tool host launched");
     const schemaDir = join(temporary, "schema");
     const generator = spawn(
       binary,

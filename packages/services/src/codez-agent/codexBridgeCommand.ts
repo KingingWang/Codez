@@ -70,11 +70,23 @@ export function resolveCodexBridgeCommand(
     (packaged || deployedBridge
       ? join(
           dirname(bridge),
+          "bin",
           (runtime.platform ?? process.platform) === "win32" ? "codex.exe" : "codex",
         )
       : "codex");
   if ((packaged || deployedBridge) && !nativeOverride && !existsSync(native)) {
     throw new Error(`Codex executable missing: ${native}. Reinstall the packaged app.`);
+  }
+  if ((packaged || deployedBridge) && !nativeOverride) {
+    // 修复原因：app-server 的 initialize 即使没有工具宿主也能成功，直到模型调用 Bash/浏览器才报 ENOENT。
+    const helper = join(
+      dirname(native),
+      (runtime.platform ?? process.platform) === "win32"
+        ? "codex-code-mode-host.exe"
+        : "codex-code-mode-host",
+    );
+    if (!existsSync(helper))
+      throw new Error(`Codex tool host missing: ${helper}. Reinstall a complete packaged app.`);
   }
   // 原生 Codex 不认识 --surface/--prepare-storage；只把可执行文件交给独立 bridge。
   return {

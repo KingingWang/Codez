@@ -21,13 +21,23 @@ const loggers = { log() {}, logWarn() {} };
 
 async function fixture(root: string, target: string, contents = target) {
   const source = join(root, `fixture-${target}`);
-  await mkdir(source, { recursive: true });
-  for (const name of ["codex", "bridge.cjs", "distribution.json"])
+  const members = [
+    "bin/codex",
+    "bin/codex-code-mode-host",
+    "codex-package.json",
+    "codex-path/rg",
+    "codex-resources/resource.txt",
+    "bridge.cjs",
+    "distribution.json",
+  ];
+  for (const name of members) {
+    await mkdir(dirname(join(source, name)), { recursive: true });
     await writeFile(join(source, name), contents);
+  }
   const archive = join(source, "fixture.tar.gz");
   await createTarGzArchive(
     archive,
-    ["codex", "bridge.cjs", "distribution.json"].map((name) => ({
+    members.map((name) => ({
       sourcePath: join(source, name),
       archivePath: name,
     })),
@@ -79,18 +89,21 @@ test("real archives materialize codex mount in isolated target/SHA caches, with 
       consumer.materialize(["codex-runtime"]),
     ]);
     assert.equal(first, second);
-    assert.equal(await readFile(join(first, "codex/codex"), "utf8"), target);
+    assert.equal(await readFile(join(first, "codex/bin/codex"), "utf8"), target);
     paths.add(first);
-    await writeFile(join(first, "codex/codex"), "corrupted cache");
+    await writeFile(join(first, "codex/bin/codex"), "corrupted cache");
     const repaired = await consumer.materialize(["codex-runtime"]);
-    assert.equal(await readFile(join(repaired, "codex/codex"), "utf8"), target);
+    assert.equal(await readFile(join(repaired, "codex/bin/codex"), "utf8"), target);
     assert.equal((await consumer.readManifest()).manifest.platformArch, target);
   }
   assert.equal(paths.size, 4, "fixed codex mount must never alias across targets");
   await fixture(root, "linux-x64", "new release same version");
   const refreshed = await source(root, cache, "linux-x64").materialize(["codex-runtime"]);
   assert.ok(!paths.has(refreshed));
-  assert.equal(await readFile(join(refreshed, "codex/codex"), "utf8"), "new release same version");
+  assert.equal(
+    await readFile(join(refreshed, "codex/bin/codex"), "utf8"),
+    "new release same version",
+  );
 });
 
 test("bundled manifest, path, mount and SHA failures are closed without network fallback", async (t) => {
@@ -247,7 +260,13 @@ test(
       true,
     );
     const installedRoot = join(temporary, ".codez-codex/server");
-    for (const name of ["node", "codez-server.cjs", "codex/codex", "codex/bridge.cjs"])
+    for (const name of [
+      "node",
+      "codez-server.cjs",
+      "codex/bin/codex",
+      "codex/bin/codex-code-mode-host",
+      "codex/bridge.cjs",
+    ])
       assert.equal(await computeFileSha256(join(installedRoot, name)), contract.files[name], name);
     const run = promisify(execFile);
     assert.equal(
@@ -265,7 +284,7 @@ test(
       metadata.version,
     );
     assert.match(
-      (await run(join(installedRoot, "codex/codex"), ["--version"], { env, timeout: 15_000 }))
+      (await run(join(installedRoot, "codex/bin/codex"), ["--version"], { env, timeout: 15_000 }))
         .stdout,
       /codex/i,
     );

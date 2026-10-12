@@ -44,7 +44,14 @@ function stream(stdoutText = "", exitCode = 0): StdioStream {
 
 function fixture() {
   const files = new Set(
-    ["codex", "bridge.cjs", "distribution.json"].map((p) => `${root}/codex/${p}`),
+    [
+      "bin/codex",
+      "bin/codex-code-mode-host",
+      "codex-package.json",
+      "codex-path/rg",
+      "bridge.cjs",
+      "distribution.json",
+    ].map((p) => `${root}/codex/${p}`),
   );
   const commands: string[] = [];
   const installs: Parameters<RemoteAssetInstaller["installDirectory"]>[0][] = [];
@@ -117,7 +124,7 @@ test("startup expands remote home, preserves network authority, and never forwar
     },
     { authoritative: true, httpProxy: "http://127.0.0.1:18080", noProxy: "localhost" },
   );
-  assert.match(command, /CODEZ_CODEX_COMMAND="\$HOME"'\/\.codez-codex\/server\/codex\/codex'/);
+  assert.match(command, /CODEZ_CODEX_COMMAND="\$HOME"'\/\.codez-codex\/server\/codex\/bin\/codex'/);
   assert.match(
     command,
     /CODEZ_CODEX_BRIDGE_PATH="\$HOME"'\/\.codez-codex\/server\/codex\/bridge.cjs'/,
@@ -191,7 +198,7 @@ test("matching Codex SHA and required files skip installation", async () => {
 test("missing file, changed SHA, or forced refresh replaces the whole component", async () => {
   for (const reason of ["missing", "sha", "force"] as const) {
     const f = fixture();
-    if (reason === "missing") f.files.delete(`${root}/codex/bridge.cjs`);
+    if (reason === "missing") f.files.delete(`${root}/codex/bin/codex-code-mode-host`);
     if (reason === "sha")
       f.setMetadata(
         JSON.stringify({
@@ -210,7 +217,14 @@ test("missing file, changed SHA, or forced refresh replaces the whole component"
         componentId: "codex-runtime",
         sourceRelativePath: "codex",
         remoteDir: `${root}/codex`,
-        requiredRelativePaths: ["codex", "bridge.cjs", "distribution.json"],
+        requiredRelativePaths: [
+          "bin/codex",
+          "bin/codex-code-mode-host",
+          "codex-package.json",
+          "codex-path/rg",
+          "bridge.cjs",
+          "distribution.json",
+        ],
         forceRefresh: reason === "force",
       },
     ]);

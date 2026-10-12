@@ -5,12 +5,12 @@ import { pathToFileURL } from "node:url";
 const CODEX_REPOSITORY = "KingingWang/codex";
 const CODEX_TAG_PATTERN = /^codex-\d{8}-\d{6}$/;
 const TARGET_ASSET_NAMES = {
-  "darwin-x64": "codex-macos-x86_64",
-  "darwin-arm64": "codex-macos-aarch64",
-  "linux-x64": "codex-linux-x86_64-musl",
-  "linux-arm64": "codex-linux-aarch64-musl",
-  "win32-x64": "codex-windows-x86_64.exe",
-  "win32-arm64": "codex-windows-aarch64.exe",
+  "darwin-x64": "codex-package-x86_64-apple-darwin.tar.gz",
+  "darwin-arm64": "codex-package-aarch64-apple-darwin.tar.gz",
+  "linux-x64": "codex-package-x86_64-unknown-linux-musl.tar.gz",
+  "linux-arm64": "codex-package-aarch64-unknown-linux-musl.tar.gz",
+  "win32-x64": "codex-package-x86_64-pc-windows-msvc.tar.gz",
+  "win32-arm64": "codex-package-aarch64-pc-windows-msvc.tar.gz",
 };
 
 class MissingCodexReleaseAssetError extends Error {}
@@ -34,7 +34,7 @@ export function buildManifestFromLatestRelease(release) {
       throw new Error(`Codex release ${release.tag_name} is missing a verified asset: ${name}`);
     assets[key] = { name, size: asset.size, sha256 };
   }
-  return { schemaVersion: 1, repository: CODEX_REPOSITORY, tag: release.tag_name, assets };
+  return { schemaVersion: 2, repository: CODEX_REPOSITORY, tag: release.tag_name, assets };
 }
 
 export async function resolveLatestCodexManifest(options = {}) {

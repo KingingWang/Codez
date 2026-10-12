@@ -20,6 +20,7 @@ import {
   type RemoteAssetManifestRef,
 } from "./remoteAssetCache.js";
 import { extractTarGzArchive } from "./localTarGz.js";
+import { CODEX_REMOTE_REQUIRED_FILES } from "./codexRuntimeDeploy.js";
 import type { DeployLoggers } from "./deployShared.js";
 
 const READY = ".bundled-ready";
@@ -154,7 +155,7 @@ function requiredFiles(component: RemoteAssetManifestComponent, target: string):
     case "node-pty":
       return target.startsWith("darwin-") ? ["pty.node", "spawn-helper"] : ["pty.node"];
     case "codex-runtime":
-      return ["codex", "bridge.cjs", "distribution.json"];
+      return CODEX_REMOTE_REQUIRED_FILES;
     case "bfs":
       return ["bfs"];
     case "ripgrep":

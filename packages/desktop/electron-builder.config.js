@@ -857,11 +857,9 @@ export default {
           {
             from: codexStaging.directory,
             to: "codex",
-            filter: [
-              targetPlatform.os === "win32" ? "codex.exe" : "codex",
-              "bridge.cjs",
-              "distribution.json",
-            ],
+            // 修复原因：单独复制 codex 主程序会漏掉同包工具宿主与 zsh/rg 等原生资源。
+            // 暂存目录已逐文件校验并拒绝多余文件；打包保留完整上游相对布局。
+            filter: ["**/*"],
           },
         ]
       : [
@@ -905,7 +903,16 @@ export default {
     // codex 已启用 electron-updater 自动更新，macOS 的 Squirrel.Mac 只能用 zip 产物更新，
     // dmg 无法驱动更新链路；zip 仅服务更新源，dmg 保留为手动安装入口。非 codex 仍只出 dmg。
     target: isCodexBuild ? ["dmg", "zip"] : ["dmg"],
-    ...(isCodexBuild ? { binaries: ["Resources/codex/codex"] } : {}),
+    ...(isCodexBuild
+      ? {
+          binaries: [
+            "Resources/codex/bin/codex",
+            "Resources/codex/bin/codex-code-mode-host",
+            "Resources/codex/codex-path/rg",
+            "Resources/codex/codex-resources/zsh/bin/zsh",
+          ],
+        }
+      : {}),
     category: "public.app-category.developer-tools",
     artifactName: buildDesktopArtifactName("mac"),
     extendInfo: {

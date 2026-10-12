@@ -26,6 +26,7 @@ test(
     const { server, requests } = createSmokeModelServer({
       reuseItemId: true,
       onRequest: (body) => modelRequests.push(body),
+      toolCallPrompt: "Native tool host smoke",
     });
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
@@ -400,6 +401,51 @@ test(
           break;
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
+      const toolCommand = await rpc("v4/command", {
+        commandId: "native-tool-host",
+        clientId: "desktop",
+        sessionId,
+        type: "sendText",
+        payload: { text: "Native tool host smoke", requestedDelivery: "startNow" },
+        issuedAt: Date.now(),
+      });
+      assert.equal(toolCommand.status, "accepted", toolCommand.message);
+      const toolDeadline = Date.now() + 20000;
+      const hasToolOutput = () =>
+        modelRequests.some((request) =>
+          (request.input ?? []).some(
+            (item) =>
+              item.type === "function_call_output" &&
+              JSON.stringify(item.output).includes("codez-native-tool-host-smoke"),
+          ),
+        );
+      while (Date.now() < toolDeadline && !hasToolOutput())
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      if (!hasToolOutput())
+        t.diagnostic(
+          `Tool outputs: ${JSON.stringify(modelRequests.slice(-2).flatMap((request) => (request.input ?? []).filter((item) => item.type === "function_call_output")))}`,
+        );
+      assert.ok(
+        hasToolOutput(),
+        "native code-mode host executes a real Bash command and returns its output to the model",
+      );
+      let toolCompleted = false;
+      while (Date.now() < toolDeadline) {
+        const state = await rpc("v4/conversation/rowsRange", { sessionId, limit: 200 });
+        if (
+          state.rows.some(
+            (row) =>
+              row.kind === "turnHeader" &&
+              row.sourceCommandId === "native-tool-host" &&
+              row.state === "completedSuccess",
+          )
+        ) {
+          toolCompleted = true;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      assert.ok(toolCompleted, "native tool turn completes before session deletion");
       const deleted = await rpc("v4/command", {
         commandId: "delete-1",
         clientId: "mobile",

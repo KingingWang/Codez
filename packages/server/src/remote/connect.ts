@@ -387,7 +387,7 @@ export function buildRemoteServerCommand(
       "CODEZ_DESKTOP_RUNTIME='codex'",
       `CODEZ_DATA_BASE_DIR=${quotePosixPathArg("~/.codez-codex")}`,
       `CODEZ_HOME=${quotePosixPathArg("~/.codez-codex/.codez")}`,
-      `CODEZ_CODEX_COMMAND=${quotePosixPathArg(`${REMOTE_RUNTIME.root}/codex/codex`)}`,
+      `CODEZ_CODEX_COMMAND=${quotePosixPathArg(`${REMOTE_RUNTIME.root}/codex/bin/codex`)}`,
       `CODEZ_CODEX_BRIDGE_PATH=${quotePosixPathArg(`${REMOTE_RUNTIME.root}/codex/bridge.cjs`)}`,
       `CODEZ_CODEX_BRIDGE_HOME=${quotePosixPathArg("~/.codez-codex/bridge")}`,
     );

@@ -129,11 +129,14 @@ export async function prepareCodexRemotePackage({
         CODEZ_DESKTOP_RUNTIME: "codex",
         CODEZ_SERVER_RUNTIME_ROOT: "<runtimeRoot>",
         CODEZ_CODEX_BRIDGE_PATH: "<runtimeRoot>/codex/bridge.cjs",
-        CODEZ_CODEX_COMMAND: "<runtimeRoot>/codex/codex",
+        CODEZ_CODEX_COMMAND: "<runtimeRoot>/codex/bin/codex",
         CODEZ_CODEX_BRIDGE_HOME: "~/.codez-codex/bridge",
         CODEZ_DATA_BASE_DIR: "~/.codez-codex",
         CODEZ_HOME: "~/.codez-codex/.codez",
       },
+      codexPackageSha256: JSON.parse(
+        await readFile(join(directory, "codex/distribution.json"), "utf8"),
+      ).packageSha256,
     };
     await writeFile(
       join(directory, "runtime-package.json"),

@@ -23,8 +23,68 @@ bounded list still fails closed (bounded retries may repeat the read).
 Drafts and prereleases never enter the stable desktop distribution. The chosen
 run-scoped manifest and tag are shared by every job; the checked-in manifest
 remains the local-development fallback, never the CI fallback. Download only
-the selected target asset, validate before atomic staging, and package it
+the selected target's complete `codex-package-<target>.tar.gz` asset, validate
+its GitHub SHA256/size before extraction and atomic staging, and package it
 outside ASAR. No adjacent checkout dependency.
+
+## Complete native Codex package (tool-host repair)
+
+The standalone `codex-macos-aarch64` executable is not a complete tool runtime.
+The fork's matching package archive contains `bin/codex`,
+`bin/codex-code-mode-host`, `codex-package.json`, `codex-path/rg`, and
+platform-specific `codex-resources/` executables. Codez 3.15.1 copied only the
+standalone executable and bridge, so a fresh install could initialize app-server
+yet fail Bash and browser tool calls with `codex-code-mode-host: No such file or
+directory`. Reinstalling the same installer cannot supply the missing file.
+
+The release resolver accepts a stable release only when **all six** package
+archives carry positive sizes and valid SHA256 digests. Manifest schema v2
+selects package archives rather than standalone binary assets; the local
+fallback is also a complete package release. Keep upstream's package-relative
+layout under `resources/codex/` (and the remote `codex/` mount), alongside
+Codez's `bridge.cjs` and `distribution.json`:
+
+```text
+codex/
+  bin/codex[.exe]
+  bin/codex-code-mode-host[.exe]
+  codex-package.json
+  codex-path/rg[.exe]
+  codex-resources/...
+  bridge.cjs
+  distribution.json
+```
+
+Build scripts own verified archive download, safe relative-path extraction,
+target/layout validation, executable-mode and per-file integrity checks, and
+immutable staging. Electron Builder and remote producers consume that one
+staged package; the Host bridge resolver invokes `codex/bin/codex[.exe]`.
+Remote descriptors and bundled-asset verification must agree on the package
+digest and executable path. No UI, session, queue, relay, or workspace owner
+changes; desktop continuous and mobile replayable remain separate consumers
+of the same running Host.
+
+```mermaid
+sequenceDiagram
+    participant CI as "CI / local staging"
+    participant U as "Verified Codex release"
+    participant P as "Desktop / remote package"
+    participant H as "Host"
+    CI->>U: "resolve one stable tag and six package digests"
+    U-->>CI: "target tar.gz"
+    CI->>CI: "verify SHA256, layout, target and tool host; atomic stage"
+    CI->>P: "copy complete package plus bridge"
+    P->>P: "afterPack validates required files and hashes"
+    H->>P: "start bin/codex; native tool host stays adjacent"
+```
+
+| Case        | Setup → action                                                     | Acceptance evidence                                                                                                                                     |
+| ----------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PKG-TOOL-01 | Incomplete latest release → resolve                                | Use one prior stable tag containing all six verified package assets; never mix versions or accept standalone-only releases.                             |
+| PKG-TOOL-02 | Corrupted, truncated or unsafe package → stage                     | Reject before publishing; a missing or tampered tool host, package manifest, path helper or bridge fails verification.                                  |
+| PKG-TOOL-03 | Six native targets → package                                       | Each installer preserves package layout and executable permissions/signing; `afterPack` rejects a missing tool host, not just a missing `codex` binary. |
+| PKG-TOOL-04 | Four remote targets → materialize/install                          | The same package and `bin/codex` path survive component hashing, cache repair and Host startup without a legacy runtime fallback.                       |
+| PKG-TOOL-05 | Real native binary + isolated loopback model → request a Bash tool | The tool executes and returns a result under a temporary home/workspace; an initialize-only handshake is insufficient release evidence.                 |
 
 Acceptance: given incomplete latest + a complete prior stable release, resolve
 the prior release with its own six verified digests; if the latest finishes before
@@ -252,7 +312,7 @@ Installs older than the first updater-enabled release can never discover it
 because their updater was disabled; they must install that one version manually
 from the release page. Afterwards updates are automatic.
 
-Remote Codex requires a native Codex binary plus bridge, Node compatible with
+Remote Codex requires the complete native Codex package plus bridge, Node compatible with
 the bridge, server bundle, PTY and search components. A Codex component is not
 a GLM component and must not be renamed to satisfy the old deployer. Producer
 manifests and hashes are distinct; deployment must also adopt a fork-specific

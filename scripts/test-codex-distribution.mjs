@@ -34,6 +34,7 @@ import {
 } from "./codex-runtime-node.mjs";
 import { prepareCodexRemotePackage } from "./codex-runtime-remote-package.mjs";
 import { runCodexTar } from "./codex-runtime-archive.mjs";
+import { createMockCodexPackage } from "./test-codex-package-fixture.mjs";
 
 const bytes = Buffer.from("mock native executable\n");
 const sha256 = createHash("sha256").update(bytes).digest("hex");
@@ -44,19 +45,22 @@ async function fixture(t) {
   const bridgePath = join(root, "bridge.cjs");
   await writeFile(bridgePath, "// mock bridge\n");
   const manifest = structuredClone(await loadCodexManifest());
-  manifest.assets["linux-x64"].sha256 = sha256;
-  manifest.assets["linux-x64"].size = bytes.length;
+  const target = resolveCodexTarget({ CODEZ_TARGET_OS: "linux", CODEZ_TARGET_ARCH: "x64" });
+  const packageAsset = await createMockCodexPackage(root, target);
+  manifest.assets[target.key].sha256 = packageAsset.sha256;
+  manifest.assets[target.key].size = packageAsset.size;
   return {
     root,
     bridgePath,
     manifest,
-    target: resolveCodexTarget({ CODEZ_TARGET_OS: "linux", CODEZ_TARGET_ARCH: "x64" }),
-    fetchImpl: async () => new Response(bytes),
+    target,
+    packageAsset,
+    fetchImpl: async () => new Response(packageAsset.bytes),
     env: {},
   };
 }
 
-test("manifest pins exactly six native binaries with release digests", async () => {
+test("manifest pins exactly six complete native packages with release digests", async () => {
   // 固定清单是本地开发的回退；CI 每次运行会解析 fork 最新 release 并通过
   // CODEZ_CODEX_MANIFEST 覆盖。这里显式传空环境，确保读的是仓库内的回退清单。
   const manifest = await loadCodexManifest({});
@@ -70,6 +74,7 @@ test("manifest pins exactly six native binaries with release digests", async () 
       assert.match(asset.sha256, /^[a-f0-9]{64}$/);
       assert.ok(asset.size > 1_000_000);
       assert.equal(asset.binaryName, os === "win32" ? "codex.exe" : "codex");
+      assert.match(asset.name, /^codex-package-.*\.tar\.gz$/);
       assert.equal(new URL(asset.url).hostname, "github.com");
       assert.ok(asset.url.endsWith(`/${asset.name}`));
     }
@@ -96,29 +101,32 @@ test("downloads only selected asset, stages complete resources, and verifies cac
   const urls = [];
   options.fetchImpl = async (url) => {
     urls.push(url);
-    return new Response(bytes);
+    return new Response(options.packageAsset.bytes);
   };
   const directory = await stageCodexRuntime(options);
   assert.equal(urls.length, 1);
-  assert.ok(urls[0].endsWith("codex-linux-x86_64-musl"));
-  assert.equal(await readFile(join(directory, "codex"), "utf8"), bytes.toString());
+  assert.ok(urls[0].endsWith("codex-package-x86_64-unknown-linux-musl.tar.gz"));
+  assert.equal(
+    await readFile(join(directory, "bin/codex-code-mode-host"), "utf8"),
+    "mock native tool host\n",
+  );
   await verifyCodexResources({ directory, target: options.target, manifest: options.manifest });
   assert.equal(await stageCodexRuntime(options), directory);
   assert.equal(urls.length, 1);
-  await writeFile(join(directory, "codex"), "corruption");
+  await writeFile(join(directory, "bin/codex-code-mode-host"), "corruption");
   await assert.rejects(
     verifyCodexResources({ directory, target: options.target, manifest: options.manifest }),
-    /checksum|size/,
+    /checksum|size|integrity/,
   );
 });
 
 test("checksum, HTTP, size and stream failures never publish partial resources", async (t) => {
-  for (const fetchImpl of [
-    async () => new Response(Buffer.alloc(bytes.length, 0)),
-    async () => new Response("unavailable", { status: 503 }),
-    async () => new Response("short"),
-    async () => new Response(Buffer.alloc(bytes.length + 1)),
-    async () =>
+  for (const makeFetch of [
+    (asset) => async () => new Response(Buffer.alloc(asset.size, 0)),
+    () => async () => new Response("unavailable", { status: 503 }),
+    () => async () => new Response("short"),
+    (asset) => async () => new Response(Buffer.alloc(asset.size + 1)),
+    () => async () =>
       new Response(
         new ReadableStream({
           start(controller) {
@@ -128,24 +136,44 @@ test("checksum, HTTP, size and stream failures never publish partial resources",
       ),
   ]) {
     const options = await fixture(t);
-    await assert.rejects(stageCodexRuntime({ ...options, fetchImpl }));
+    await assert.rejects(
+      stageCodexRuntime({
+        ...options,
+        fetchImpl: makeFetch(options.packageAsset),
+      }),
+    );
     assert.deepEqual(await readdir(join(options.root, "linux-x64")), []);
   }
 });
 
-test("all six targets stage only their native executable filename", async (t) => {
+test("all six targets stage the package-relative tool host and resources", async (t) => {
   const options = await fixture(t);
   for (const key of Object.keys(options.manifest.assets)) {
     const [os, arch] = key.split("-");
     const target = resolveCodexTarget({ CODEZ_TARGET_OS: os, CODEZ_TARGET_ARCH: arch });
-    options.manifest.assets[key].sha256 = sha256;
-    options.manifest.assets[key].size = bytes.length;
-    const directory = await stageCodexRuntime({ ...options, target });
+    const asset = await createMockCodexPackage(options.root, target);
+    options.manifest.assets[key].sha256 = asset.sha256;
+    options.manifest.assets[key].size = asset.size;
+    const directory = await stageCodexRuntime({
+      ...options,
+      target,
+      fetchImpl: async () => new Response(asset.bytes),
+    });
     assert.deepEqual((await readdir(directory)).sort(), [
+      "bin",
       "bridge.cjs",
-      os === "win32" ? "codex.exe" : "codex",
+      "codex-package.json",
+      "codex-path",
+      "codex-resources",
       "distribution.json",
     ]);
+    assert.equal(
+      await readFile(
+        join(directory, "bin", `codex-code-mode-host${os === "win32" ? ".exe" : ""}`),
+        "utf8",
+      ),
+      "mock native tool host\n",
+    );
     await verifyCodexResources({ directory, target, manifest: options.manifest });
   }
 });
@@ -169,7 +197,7 @@ test("concurrent publishers converge without replacing a complete version", asyn
 
 test("real HTTP stream from loopback produces the pinned local fixture", async (t) => {
   const options = await fixture(t);
-  const server = createServer((_request, response) => response.end(bytes));
+  const server = createServer((_request, response) => response.end(options.packageAsset.bytes));
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   t.after(
@@ -190,11 +218,11 @@ test("bridge changes during download cannot publish a mixed version", async (t) 
   const options = await fixture(t);
   options.fetchImpl = async () => {
     await writeFile(options.bridgePath, "changed while downloading");
-    return new Response(bytes);
+    return new Response(options.packageAsset.bytes);
   };
   await assert.rejects(stageCodexRuntime(options), /bridge checksum/);
   const entries = await readdir(join(options.root, "linux-x64"));
-  assert.deepEqual(entries, [`codex-${sha256}`]);
+  assert.deepEqual(entries, [`package-${options.packageAsset.sha256}`]);
 });
 
 test("schema output rejects outside paths and symlink escapes before executing", async (t) => {
@@ -219,7 +247,10 @@ test("failed refresh preserves previous resource pair", async (t) => {
   options.manifest.assets["linux-x64"].sha256 = "0".repeat(64);
   await assert.rejects(stageCodexRuntime(options), /checksum/);
   assert.equal(await readFile(join(directory, "bridge.cjs"), "utf8"), "// mock bridge\n");
-  assert.equal(await readFile(join(directory, "codex"), "utf8"), bytes.toString());
+  assert.equal(
+    await readFile(join(directory, "bin/codex-code-mode-host"), "utf8"),
+    "mock native tool host\n",
+  );
 });
 
 test("unsafe manifest names, missing digests and local overrides are rejected", async (t) => {
@@ -235,6 +266,32 @@ test("unsafe manifest names, missing digests and local overrides are rejected", 
   await assert.rejects(
     stageCodexRuntime({ ...options, env: { CI: "true", CODEZ_CODEX_BINARY: "/tmp/untrusted" } }),
     /override/,
+  );
+});
+
+test("a digest-valid archive without the code-mode host is rejected before staging", async (t) => {
+  const options = await fixture(t);
+  const incomplete = await createMockCodexPackage(options.root, options.target, {
+    omitToolHost: true,
+  });
+  options.manifest.assets[options.target.key].sha256 = incomplete.sha256;
+  options.manifest.assets[options.target.key].size = incomplete.size;
+  await assert.rejects(
+    stageCodexRuntime({ ...options, fetchImpl: async () => new Response(incomplete.bytes) }),
+    /code-mode-host|tool host/,
+  );
+});
+
+test("a digest-valid archive with a linked tool host is rejected before extraction", async (t) => {
+  const options = await fixture(t);
+  const linked = await createMockCodexPackage(options.root, options.target, {
+    linkToolHost: true,
+  });
+  options.manifest.assets[options.target.key].sha256 = linked.sha256;
+  options.manifest.assets[options.target.key].size = linked.size;
+  await assert.rejects(
+    stageCodexRuntime({ ...options, fetchImpl: async () => new Response(linked.bytes) }),
+    /Unsafe Codex package archive entry/,
   );
 });
 
@@ -405,13 +462,21 @@ test("remote producer archives Codex resources and separates consumer integratio
   assert.equal(descriptor.nodeVersion, "24.14.0");
   assert.equal(descriptor.runtimeRoot, "~/.codez-codex/server");
   assert.match(descriptor.requiredEnv.CODEZ_CODEX_BRIDGE_PATH, /\/codex\/bridge.cjs$/);
+  assert.match(descriptor.requiredEnv.CODEZ_CODEX_COMMAND, /\/codex\/bin\/codex$/);
   const { stdout } = await runCodexTar({
     mode: "list",
     archivePath: join(outputRoot, descriptor.artifactPath),
   });
   assert.deepEqual(stdout.trim().split(/\r?\n/).sort(), [
+    "bin/",
+    "bin/codex",
+    "bin/codex-code-mode-host",
     "bridge.cjs",
-    "codex",
+    "codex-package.json",
+    "codex-path/",
+    "codex-path/rg",
+    "codex-resources/",
+    "codex-resources/resource.txt",
     "distribution.json",
   ]);
   const archive = await readFile(join(outputRoot, descriptor.artifactPath));

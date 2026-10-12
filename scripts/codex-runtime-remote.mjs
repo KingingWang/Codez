@@ -38,7 +38,14 @@ export async function prepareCodexRemoteComponent({
       mode: "create",
       archivePath: archive,
       directory,
-      entries: ["codex", "bridge.cjs", "distribution.json"],
+      entries: [
+        "bin",
+        "codex-package.json",
+        "codex-path",
+        "codex-resources",
+        "bridge.cjs",
+        "distribution.json",
+      ],
     });
     const sha256 = await sha256File(archive);
     const artifactPath = `codex-runtime-${target.key}-${sha256}.tar.gz`;
@@ -51,12 +58,13 @@ export async function prepareCodexRemoteComponent({
       sha256,
       artifactPath,
       mount: "codex",
-      binarySha256: metadata.sha256,
+      packageSha256: metadata.packageSha256,
+      binarySha256: metadata.files[`bin/${target.os === "win32" ? "codex.exe" : "codex"}`],
       bridgeSha256: metadata.bridgeSha256,
       runtimeRoot: "~/.codez-codex/server",
       nodeVersion: "24.14.0",
       requiredEnv: {
-        CODEZ_CODEX_COMMAND: "<runtimeRoot>/codex/codex",
+        CODEZ_CODEX_COMMAND: "<runtimeRoot>/codex/bin/codex",
         CODEZ_CODEX_BRIDGE_PATH: "<runtimeRoot>/codex/bridge.cjs",
         CODEZ_CODEX_BRIDGE_HOME: "~/.codez-codex/bridge",
       },

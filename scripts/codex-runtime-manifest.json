@@ -1,37 +1,37 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "repository": "KingingWang/codex",
-  "tag": "codex-20260922-232812",
+  "tag": "codex-20261011-011326",
   "assets": {
     "darwin-x64": {
-      "name": "codex-macos-x86_64",
-      "size": 279793348,
-      "sha256": "4f143204225ee980da7cc7dac5cc79aac471408d7c4790f2f9aeb40b575beb37"
+      "name": "codex-package-x86_64-apple-darwin.tar.gz",
+      "size": 145923236,
+      "sha256": "a65c1833cc7dd5e092905679c13c60fca7232a598bd4f4d554d19d9fa257624b"
     },
     "darwin-arm64": {
-      "name": "codex-macos-aarch64",
-      "size": 264296336,
-      "sha256": "614771e7c6f7748b27cbea9c87a625b8f5600b333bd20176dcd15a2b71255af2"
+      "name": "codex-package-aarch64-apple-darwin.tar.gz",
+      "size": 137362824,
+      "sha256": "e98fcccea4c87f950f6fcfa21dbf6697dc1560883685817c5ac798b62169d8b9"
     },
     "linux-x64": {
-      "name": "codex-linux-x86_64-musl",
-      "size": 313351176,
-      "sha256": "e72ead231ae86ba7ac4650f8737c0582d5f1a871cb48c28035151fead4a0910f"
+      "name": "codex-package-x86_64-unknown-linux-musl.tar.gz",
+      "size": 157740348,
+      "sha256": "b9e387ae9e5fc5b7ef73cd4021e96bdf4438c29bbc1c96fdd9c16ebb683f87cb"
     },
     "linux-arm64": {
-      "name": "codex-linux-aarch64-musl",
-      "size": 273884072,
-      "sha256": "ceb61a28c667e0885ab5ac4d3e7e31054443e73541f8a41facfb20bd7262c716"
+      "name": "codex-package-aarch64-unknown-linux-musl.tar.gz",
+      "size": 147406854,
+      "sha256": "7eea59a18a93498c2c9421df8b09799aab5eba33ae8e55977d106d6f644127bc"
     },
     "win32-x64": {
-      "name": "codex-windows-x86_64.exe",
-      "size": 354381312,
-      "sha256": "81e44a8ff8d6a3840f32b28f972e45549aa2668b8c3a11a927189986adbf0d19"
+      "name": "codex-package-x86_64-pc-windows-msvc.tar.gz",
+      "size": 165996894,
+      "sha256": "b2c8352dc8f93481b83ab1c4240e4ef626932e2e54532737b92e1472ded44b86"
     },
     "win32-arm64": {
-      "name": "codex-windows-aarch64.exe",
-      "size": 296226304,
-      "sha256": "6593815ea920e0ac63cf729a4aa60a4e078cbae2f824e6d7352bffa8a9aea0c3"
+      "name": "codex-package-aarch64-pc-windows-msvc.tar.gz",
+      "size": 152877186,
+      "sha256": "dac7724b62fa51c695de83c03e06238d5ebb98719959e48ec6d9736f60509856"
     }
   }
 }

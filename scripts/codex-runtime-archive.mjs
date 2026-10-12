@@ -3,7 +3,7 @@ import { posix, win32 } from "node:path";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
-const modes = { create: "-czf", extract: "-xzf", list: "-tzf" };
+const modes = { create: "-czf", extract: "-xzf", list: "-tzf", listVerbose: "-tvzf" };
 
 export function createCodexTarInvocation({
   mode,

@@ -64,7 +64,7 @@ export async function smokeCodexRemoteBundle(root = codexRemoteRoot) {
       CODEZ_DESKTOP_RUNTIME: "codex",
       CODEZ_DATA_BASE_DIR: join(directory, "data"),
       CODEZ_CODEX_BRIDGE_HOME: join(directory, "bridge-home"),
-      CODEZ_CODEX_COMMAND: join(directory, "codex/codex"),
+      CODEZ_CODEX_COMMAND: join(directory, "codex/bin/codex"),
       CODEZ_CODEX_BRIDGE_PATH: join(directory, "codex/bridge.cjs"),
     };
     const binary = join(directory, "node");

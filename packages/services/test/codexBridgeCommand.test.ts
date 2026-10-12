@@ -29,14 +29,16 @@ test("deployed bridge env wins over packaged/dev discovery even without desktop 
   try {
     await mkdir(dirname(bridge), { recursive: true });
     await writeFile(bridge, "");
-    await writeFile(join(dirname(bridge), "codex"), "");
+    await mkdir(join(dirname(bridge), "bin"));
+    await writeFile(join(dirname(bridge), "bin", "codex"), "");
+    await writeFile(join(dirname(bridge), "bin", "codex-code-mode-host"), "");
     delete process.env.CODEZ_AGENT_SERVER_COMMAND;
     delete process.env.CODEZ_CODEX_COMMAND;
     delete process.env.CODEZ_DESKTOP_RUNTIME;
     process.env.CODEZ_CODEX_BRIDGE_PATH = bridge;
     const command = resolveDefaultCodezAgentCommand({ ...context, presentationSurface: undefined });
     assert.deepEqual(command?.args, [bridge]);
-    assert.equal(command?.env?.CODEZ_CODEX_COMMAND, join(dirname(bridge), "codex"));
+    assert.equal(command?.env?.CODEZ_CODEX_COMMAND, join(dirname(bridge), "bin", "codex"));
     assert.equal(command?.supportsStorageStartup, undefined);
     assert.throws(
       () =>
@@ -163,12 +165,29 @@ for (const platform of ["linux", "darwin", "win32"] as const) {
     try {
       await mkdir(dirname(bridge), { recursive: true });
       await writeFile(bridge, "");
-      const native = join(resourcesPath, "codex", platform === "win32" ? "codex.exe" : "codex");
+      const native = join(
+        resourcesPath,
+        "codex",
+        "bin",
+        platform === "win32" ? "codex.exe" : "codex",
+      );
       assert.throws(
         () => resolveCodexBridgeCommand(context, { cwd, resourcesPath, platform, env: {} }),
         /Codex executable missing/,
       );
+      await mkdir(dirname(native), { recursive: true });
       await writeFile(native, "");
+      assert.throws(
+        () => resolveCodexBridgeCommand(context, { cwd, resourcesPath, platform, env: {} }),
+        /Codex tool host missing/,
+      );
+      await writeFile(
+        join(
+          dirname(native),
+          platform === "win32" ? "codex-code-mode-host.exe" : "codex-code-mode-host",
+        ),
+        "",
+      );
       const command = resolveCodexBridgeCommand(context, { cwd, resourcesPath, platform, env: {} });
       assert.deepEqual(command.args, [bridge]);
       assert.equal(command.env?.CODEZ_CODEX_COMMAND, native);

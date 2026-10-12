@@ -35,7 +35,11 @@ export async function verifyCodexRemoteAssets({
       Object.hasOwn(contract, "deploymentReady") ||
       Object.hasOwn(contract, "missingConsumers") ||
       contract.files?.["codex/bridge.cjs"] !== bridgeSha256 ||
-      contract.files?.["codex/codex"] !== native.assets[key].sha256 ||
+      contract.codexPackageSha256 !== native.assets[key].sha256 ||
+      !contract.files?.["codex/bin/codex"] ||
+      !contract.files?.["codex/bin/codex-code-mode-host"] ||
+      !contract.files?.["codex/codex-package.json"] ||
+      !contract.files?.["codex/codex-path/rg"] ||
       contract.node?.archiveSha256 !== node.assets[key]
     )
       throw new Error(`Stale remote runtime ${key}; regenerate Codex remote assets`);

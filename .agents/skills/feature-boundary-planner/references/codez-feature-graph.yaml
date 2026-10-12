@@ -794,6 +794,12 @@ nodes:
     codeSeeds:
       - symbol: "runDesktopProductionBuild"
         file: "packages/desktop/scripts/run-production-build.mjs"
+      - symbol: "stageCodexRuntime"
+        file: "scripts/codex-runtime.mjs"
+      - symbol: "buildManifestFromLatestRelease"
+        file: "scripts/codex-runtime-resolve-latest.mjs"
+    invariants:
+      - "Desktop and remote Codex artifacts preserve the verified full native package, including code-mode tool host and its resources; initialize-only smoke is not tool execution evidence."
 
   - id: "capability.development-storage-isolation"
     kind: "capability"
