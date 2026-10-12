@@ -1,4 +1,4 @@
-// MOBILE-UPSTREAM-01：未改动的上游手机页面 + 本项目 Main/Host 服务 + 真实 Codex。
+// 历史 MOBILE-UPSTREAM-01：原样上游页面不支持新版 E2EE；此脚本不再是当前入口的验收证据。
 // 仅在浏览器测试环境中将 WS 接到本地透传 fixture，不修改或注册线上 relay。
 // 运行：pnpm exec tsx packages/desktop/test/e2e/manual-review/pending/mobile-remote-upstream.mjs
 import assert from "node:assert/strict";

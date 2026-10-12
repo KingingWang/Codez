@@ -10,7 +10,7 @@
 
 ### 使用流程与页面
 
-1. 在桌面打开 Web 远控对话框，启动远控并取得二维码或连接链接；手机浏览器打开链接后完成配对。
+1. 在桌面打开 Web 远控对话框，启动远控并取得二维码或连接链接；手机浏览器从独立可信静态站点打开页面，完成 relay 配对及端到端握手后才访问工作区。
 2. 窄屏首次扫码默认进入任务首页，可按工作区分组或跨工作区时间线浏览任务。
    二维码携带的初始任务用于选中和定位，不直接跳进聊天页。
 3. 点击任务进入聊天；工作区的新建任务入口进入该工作区的草稿页。跨工作区操作先切换 bridge，
@@ -24,6 +24,8 @@
 无本地偏好时默认使用 `zai-dark`。
 
 ### 能力与边界
+
+端到端加密的产品规则、信任边界和验收场景见[手机远控端到端加密](./end-to-end-encryption.md)。
 
 - 可浏览目标窗口已有的工作区与任务、打开会话、发送输入、新建任务，并处理会话中的权限和交互请求。
 - 远程工作区复用桌面已有连接与服务 scope；首页重连恢复已有工作区，不提供手机新建
@@ -61,18 +63,20 @@
 
 ## 入口
 
-Desktop 和 mobile web 只在标准 test endpoint 上切换到测试 relay，production 与其他自定义
-endpoint 继续使用生产 relay：
+Desktop 和 mobile web 继续使用当前 endpoint 对应的 relay；新版桌面的可信手机页面默认是
+`https://kingingwang.github.io/Codez/remote/v4/`，由仓库 GitHub Pages 独立发布。
+`CODEZ_WEB_REMOTE_CONTROL_E2EE_URL` 可在可信桌面本地环境显式覆盖此入口，但不能从 relay
+或 endpoint 响应读取。页面不可用时不得回退到旧版同源明文二维码。
+`CODEZ_WEB_REMOTE_CONTROL_URL` 仅供非打包开发调试：
 
 ```bash
 production/default: wss://zcode.z.ai/ws
 test endpoint:       wss://zcode.z.ai/ws
 ```
 
-`CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL` 仍是最高优先级的显式调试覆盖。没有覆盖时，仅当规范化后的
-endpoint origin 为 `https://zcode.z.ai` 才使用测试 relay；production 与 localhost/custom
-endpoint 保持生产 relay，避免扩大自定义 endpoint 的既有语义。二维码页面 URL 仍由 App 版本在
-`/remote/v3` 与 `/remote/v4` 之间派生；`CODEZ_WEB_REMOTE_CONTROL_URL` 只用于显式调试覆盖。
+`CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL` 仍是最高优先级的 relay 调试覆盖。新版二维码的
+手机页面来源不再由 endpoint URL 自动派生；旧 `/remote/v3`、`/remote/v4` 入口保留给旧版 App，
+不能用于新版桌面的加密业务连接。
 
 开发时可以把手机页指向本地 web：
 
@@ -88,7 +92,13 @@ pnpm dev:desktop
 `remote.html` 这类页面文件。生产部署只需要把 `packages/web/dist` 交给 nginx 托管，并把入口路径
 映射回 `index.html`。
 
-当前保留四条静态部署链路：
+下列四条同源部署是旧版 App 的兼容入口，不能充当新版的可信 E2EE 手机页面。
+新版的 GitHub Actions 工作流把带 `/Codez/remote/v4/` 资源 base 的 bundle 发布到仓库
+GitHub Pages 项目站点；入口位于 `/Codez/remote/v4/`。页面只从可信发布源加载脚本，
+HTML 设置 `Referrer-Policy: no-referrer`。先确认 Pages 及真实 relay Origin/opaque payload
+兼容性，再发布指向该默认页面的桌面版本；本地 mock 测试不能代替此发布门禁。
+
+当前保留四条兼容静态部署链路：
 
 ```text
 v2:
@@ -235,14 +245,17 @@ auth_ack / matched
 配对身份是 `device_sid`。QR URL 是：
 
 ```text
-/remote/v4?sid=<device_sid>&hash=<pass_hash>&t=<timestamp>&mid=<device_mid>&name=<device_name>&app_version=<app_version>
+https://kingingwang.github.io/Codez/remote/v4/?sid=<device_sid>&hash=<pass_hash>&t=<timestamp>&mid=<device_mid>&name=<device_name>&app_version=<app_version>#e2ee=v1&k=<e2ee_pairing_key>
 ```
 
-`hash` 是 HMAC key material，只出现在 QR URL 和 credential 存储中，不写入日志、OAuth state 或 setting.json。
+`hash` 是 relay 已知的 HMAC 配对材料，不能充当加密密钥。新版二维码另带
+`#e2ee=v1&k=<32-byte-base64url>`，只在本地 credential 存储和手机页面的 URL fragment
+出现；fragment 不进入 HTTP 请求。用户分享完整二维码仍等同于交出远控访问权。
 
 ## App Payload
 
-`data.payload` 使用 `codez_type` 区分业务消息：
+`data.payload` 首先是 `e2ee-hello/response/finish/rekey` 或 `e2ee-record`；
+握手证明和 AEAD 校验通过后，记录明文才使用 `codez_type` 区分下列业务消息：
 
 - `bootstrap-request` / `bootstrap-response`
 - `workspace-list-request` / `workspace-list-response` / `workspace-list-updated`
@@ -280,7 +293,9 @@ bytes。raw frame/ACK 不进入 desktop main 的普通 50 项 app payload buffer
 只把它保存在当前 window runtime，并通过 `getWebRemoteControlStatus()` 暴露给桌面端；它不参与
 workspace identity、session 绑定、缓存 key 或 relay 配对判定。
 
-Desktop 和 mobile 收到 relay `data.payload` 后必须先走 `parseWebRemoteControlAppPayload()`。无效 payload 只记录安全元数据，不记录原始 JSON。
+Desktop 和 mobile 收到 relay `data.payload` 后必须先通过加密连接的严格 wire 校验、
+解密与轮次检查，随后才走 `parseWebRemoteControlAppPayload()`；raw RPC 的快捷路径也
+不能绕过这层。无效 payload 只记录安全原因，不记录原始 JSON。
 
 `workspace-list-updated` 只用于 desktop renderer 已经通过 `syncWebRemoteControlTasks` /
 `syncWebRemoteControlWorkspaces` 同步新快照后，把同一份 `WebRemoteControlWorkspaceListResult`
@@ -445,9 +460,9 @@ CLI runtime restart 会改变 `logEpoch` 并触发 snapshot。上一进程已 ad
 
 Mobile web 连接流程：
 
-1. 解析 `sid/hash/t/mid/name/app_version`
+1. 解析 `sid/hash/t/mid/name/app_version` 及 fragment 中的 `e2ee=v1&k`；无合法加密密钥时在连 relay 前拒绝。
 2. 通过 `WebRemoteControlTerminalTransport` 认证为 `terminal`
-3. paired 后发送 `bootstrap-request`；v4 使用响应中的可选 `desktopAppVersion` 校验 URL。
+3. relay matched 后先校验桌面端的加密握手与 ready 记录；只有认证成功的 paired 才发送加密 `bootstrap-request`。v4 使用响应中的可选 `desktopAppVersion` 校验 URL。
    首次不一致时校正并导航，已进入页面时保留页面并提示确认后重新加载；旧桌面缺字段时保持原行为。
    重连/回前台时即使 bridge 健康也重新校验，具体边界见 [v4 版本同步](./remote-v4-static-deployment.md#v4-url-与桌面实际版本同步)。
 4. 按 `mobileViewState -> initialViewState -> first workspace` 选择初始 workspace

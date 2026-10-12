@@ -2,6 +2,7 @@ import {
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   toWebRemoteControlWirePayload,
   type WebRemoteControlAppPayload,
+  type WebRemoteControlE2eeWirePayload,
   type WebRemoteControlRelayDataMessage,
   type WebRemoteControlWireAppPayload,
 } from "@codez/shared";
@@ -12,7 +13,9 @@ export type WebRemoteControlPayloadSendResult =
   | { kind: "oversize"; bytes: number; maxBytes: number };
 
 export interface SerializedWebRemoteControlRelayPayload {
-  readonly message: WebRemoteControlRelayDataMessage<WebRemoteControlWireAppPayload>;
+  readonly message: WebRemoteControlRelayDataMessage<
+    WebRemoteControlWireAppPayload | WebRemoteControlE2eeWirePayload
+  >;
   readonly json: string;
   readonly bytes: number;
 }
@@ -27,15 +30,25 @@ export interface SerializedWebRemoteControlRelayPayload {
 export class WebRemoteControlRelayPayloadSerializer {
   private readonly cache = new WeakMap<object, SerializedWebRemoteControlRelayPayload>();
 
+  constructor(
+    private readonly options: {
+      seal?(payload: WebRemoteControlWireAppPayload): WebRemoteControlE2eeWirePayload;
+    } = {},
+  ) {}
+
   prepare(
     payload: WebRemoteControlAppPayload,
     clientTimestamp = Date.now(),
   ): SerializedWebRemoteControlRelayPayload {
     const cached = this.cache.get(payload);
     if (cached) return cached;
-    const message: WebRemoteControlRelayDataMessage<WebRemoteControlWireAppPayload> = {
+    const message: WebRemoteControlRelayDataMessage<
+      WebRemoteControlWireAppPayload | WebRemoteControlE2eeWirePayload
+    > = {
       type: "data",
-      payload: toWebRemoteControlWirePayload(payload),
+      payload: this.options.seal
+        ? this.options.seal(toWebRemoteControlWirePayload(payload))
+        : toWebRemoteControlWirePayload(payload),
       client_ts: clientTimestamp,
     };
     const json = JSON.stringify(message);
@@ -46,6 +59,12 @@ export class WebRemoteControlRelayPayloadSerializer {
     });
     this.cache.set(payload, prepared);
     return prepared;
+  }
+
+  prepareControl(payload: WebRemoteControlE2eeWirePayload): SerializedWebRemoteControlRelayPayload {
+    const message = { type: "data" as const, payload, client_ts: Date.now() };
+    const json = JSON.stringify(message);
+    return Object.freeze({ message, json, bytes: new TextEncoder().encode(json).byteLength });
   }
 
   isOversize(prepared: SerializedWebRemoteControlRelayPayload): boolean {

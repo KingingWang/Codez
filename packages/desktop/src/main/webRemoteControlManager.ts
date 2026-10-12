@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { MessagePortProtocol, type MessagePortLike, type MessagePortPayload } from "@codez/rpc";
 import {
   createAcknowledgedWebRemoteControlRelayProtocol,
+  generateWebRemoteControlPairingKey,
   type AcknowledgedWebRemoteControlRelayProtocolAdapter,
   type WebRemoteControlPayloadSendResult,
 } from "@codez/client";
@@ -14,7 +15,9 @@ import {
   buildWebRemoteControlPairResultTelemetry,
   classifyRemoteUsageError,
   parseRemoteWorkspaceIdentity,
+  parseWebRemoteControlE2eeQrFragment,
   WEB_REMOTE_CONTROL_OUTBOUND_PAYLOAD_BUFFER_TIMEOUT_MS,
+  WEB_REMOTE_CONTROL_E2EE_RPC_PHYSICAL_BUDGET,
   type CodezEndpointUrls,
   resolveWebRemoteControlWorkspaceKey,
   type WebRemoteControlAppPayload,
@@ -133,6 +136,7 @@ interface WebRemoteControlManagerDependencies {
   getEndpointUrls?: () => Promise<CodezEndpointUrls> | CodezEndpointUrls;
   relayWsUrl: string;
   mobileRemoteControlUrl: string;
+  allowInsecureLoopbackPage?: boolean;
   deviceMid: string;
   deviceName: string;
   appVersion: string;
@@ -952,6 +956,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         bridgeSessionId: bridgeRuntime.bridgeSessionId,
         bridgeGeneration: bridgeRuntime.bridgeGeneration,
         recoveryId: bridgeRuntime.recoveryId,
+        maxPhysicalFrameBytes: WEB_REMOTE_CONTROL_E2EE_RPC_PHYSICAL_BUDGET,
         measureFrameBytes: (frame) =>
           runtime.transport.measurePayloadBytes?.(frame) ??
           measureWebRemoteControlRpcRelayEnvelopeBytes(frame),
@@ -1204,7 +1209,12 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
   ): void {
     const previousTransportState = runtime.transportState;
     runtime.transportState = state;
-    if (state === "connecting" || state === "registering" || state === "authenticating") {
+    if (
+      state === "connecting" ||
+      state === "registering" ||
+      state === "authenticating" ||
+      state === "securing"
+    ) {
       if (runtime.mobileConnected) {
         // Bugfix: 已配对会话的 relay 短抖会先经历 connecting/authenticating。
         // 旧逻辑把 dialog 立刻切成“启动中”，用户会误以为远控重新启动；这里在宽限期内保持 active。
@@ -1295,6 +1305,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
   function createQrUrl(
     auth: { deviceSid: string; passHash: string },
     mobileRemoteControlUrl: string,
+    e2eeKey: string,
     theme?: WebRemoteControlContext["theme"],
   ): string {
     return buildWebRemoteControlExternalQrUrl({
@@ -1305,6 +1316,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       deviceMid: dependencies.deviceMid,
       deviceName: dependencies.deviceName,
       appVersion: dependencies.appVersion,
+      e2eeKey,
       theme,
     });
   }
@@ -1329,13 +1341,41 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       await stopWindowRuntime(windowId, "restart");
       const endpointUrls = await dependencies.getEndpointUrls?.();
       const relayWsUrl = endpointUrls?.relayWsUrl ?? dependencies.relayWsUrl;
-      const mobileRemoteControlUrl = endpointUrls?.remoteUrl ?? dependencies.mobileRemoteControlUrl;
+      // QR 入口是桌面可信发布配置，不接受 endpoint/relay 决定手机脚本所在 origin。
+      const mobileRemoteControlUrl = dependencies.mobileRemoteControlUrl;
+      const trustedUrl = new URL(mobileRemoteControlUrl);
+      const relayUrl = new URL(relayWsUrl);
+      const localDevelopmentPage =
+        dependencies.allowInsecureLoopbackPage === true &&
+        trustedUrl.protocol === "http:" &&
+        (trustedUrl.hostname === "localhost" || trustedUrl.hostname === "127.0.0.1");
+      if (
+        (trustedUrl.protocol !== "https:" && !localDevelopmentPage) ||
+        trustedUrl.hostname === relayUrl.hostname ||
+        trustedUrl.username ||
+        trustedUrl.password ||
+        trustedUrl.search ||
+        trustedUrl.hash
+      ) {
+        throw new Error(
+          "A separate trusted HTTPS mobile page is required for encrypted remote control.",
+        );
+      }
 
       dependencies.logger.info(
         `[web-remote-control] start window=${windowId} workspace=${context.workspacePath} remoteSession=${context.remoteSessionId ?? "none"} relay=${relayWsUrl}`,
       );
 
-      const storedAuth = await dependencies.authStorageProvider.load();
+      let storedAuth = await dependencies.authStorageProvider.load();
+      if (
+        storedAuth &&
+        !parseWebRemoteControlE2eeQrFragment(`#e2ee=v1&k=${storedAuth.e2eeKey ?? ""}`)
+      ) {
+        // 旧 QR 没有端到端密钥；先清除 relay 配对，再创建新的完整凭据，绝不复用明文入口。
+        await dependencies.authStorageProvider.clear();
+        storedAuth = undefined;
+      }
+      const e2eeKey = storedAuth?.e2eeKey ?? generateWebRemoteControlPairingKey();
       const transportAuth: WebRemoteControlDeviceTransportAuth = storedAuth
         ? {
             mode: "persisted",
@@ -1369,6 +1409,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
           relayWsUrl,
           deviceMid: dependencies.deviceMid,
           auth: transportAuth,
+          e2eeKey,
           meta: {
             platform: process.platform,
             version: dependencies.appVersion,
@@ -1383,7 +1424,10 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
           },
           onStateChange: (state) => {
             mapTransportState(runtime, state);
-            if ((state === "waiting_terminal" || state === "paired") && readyAuth) {
+            if (
+              (state === "waiting_terminal" || state === "securing" || state === "paired") &&
+              readyAuth
+            ) {
               resolveReady();
             }
           },
@@ -1400,6 +1444,11 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
             // 对端 peer 未换代，也不证明此前 data 已交付。必须重放同 bridge 的未 ACK 批次；
             // adapter 会按 messageSeq 去重，且重放不刷新原始 45 秒 queued age。
             relayProtocol.replayUnacknowledged();
+          },
+          onE2eeReset: () => {
+            disposeRuntimeBridgeResources(runtime);
+            runtime.pendingOutboundPayloads.length = 0;
+            clearPendingOutboundPayloadTimer(runtime);
           },
           onError: (error) => {
             dependencies.logger.warn("[web-remote-control] external relay device error", {
@@ -1455,7 +1504,13 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       }
 
       if (registeredAuth) {
-        await dependencies.authStorageProvider.save(registeredAuth);
+        try {
+          await dependencies.authStorageProvider.save({ ...registeredAuth, e2eeKey });
+        } catch (error) {
+          await stopWindowRuntime(windowId, "e2ee-pairing-persist-failed");
+          await dependencies.authStorageProvider.clear();
+          throw error;
+        }
       }
 
       try {
@@ -1469,7 +1524,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         throw error;
       }
 
-      const qrUrl = createQrUrl(auth, mobileRemoteControlUrl, context.theme);
+      const qrUrl = createQrUrl(auth, mobileRemoteControlUrl, e2eeKey, context.theme);
       runtime!.deviceSid = auth.deviceSid;
       runtime!.passHash = auth.passHash;
       runtime!.qrUrl = qrUrl;

@@ -15,6 +15,7 @@ export type WebRemoteControlTerminalTransportState =
   | "connecting"
   | "authenticating"
   | "waiting"
+  | "securing"
   | "paired"
   | "reconnecting"
   | "suspended"

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AppSettings } from "@codez/shared";
 import {
   WEB_REMOTE_CONTROL_EXTERNAL_RELAY_PASS_HASH_CREDENTIAL_KEY,
+  WEB_REMOTE_CONTROL_E2EE_PAIRING_CREDENTIAL_KEY,
   createWebRemoteControlRelayAuthStorageProvider,
 } from "../src/main/webRemoteControlRelayAuthStorageProvider.js";
 
@@ -39,6 +40,18 @@ function createHarness(initialSettings: AppSettings = { recentProjects: [], loca
 }
 
 describe("createWebRemoteControlRelayAuthStorageProvider", () => {
+  it("keeps the content key only in credentials and removes it with the relay pairing", async () => {
+    const { credentials, patches, provider } = createHarness();
+    const e2eeKey = "A".repeat(43);
+    await provider.save({ deviceSid: "sid-2", passHash: "relay-hash", e2eeKey });
+    expect(credentials[WEB_REMOTE_CONTROL_E2EE_PAIRING_CREDENTIAL_KEY]).toBe(e2eeKey);
+    expect(JSON.stringify(patches)).not.toContain(e2eeKey);
+    await expect(provider.load()).resolves.toEqual({
+      deviceSid: "sid-2", passHash: "relay-hash", e2eeKey,
+    });
+    await provider.clear();
+    expect(credentials[WEB_REMOTE_CONTROL_E2EE_PAIRING_CREDENTIAL_KEY]).toBeUndefined();
+  });
   it("stores only deviceSid in settings and passHash in credential storage", async () => {
     const { credentials, patches, provider } = createHarness();
 
@@ -87,6 +100,7 @@ describe("createWebRemoteControlRelayAuthStorageProvider", () => {
     expect(operations).toEqual([
       expect.stringContaining("patch:"),
       `delete:${WEB_REMOTE_CONTROL_EXTERNAL_RELAY_PASS_HASH_CREDENTIAL_KEY}`,
+      `delete:${WEB_REMOTE_CONTROL_E2EE_PAIRING_CREDENTIAL_KEY}`,
       expect.stringContaining("patch:"),
       `save:${WEB_REMOTE_CONTROL_EXTERNAL_RELAY_PASS_HASH_CREDENTIAL_KEY}:new-hash`,
     ]);
@@ -96,11 +110,16 @@ describe("createWebRemoteControlRelayAuthStorageProvider", () => {
   it("redacts passHash in logs", async () => {
     const { logger, provider } = createHarness();
 
-    await provider.save({ deviceSid: "device-sid-abcdef", passHash: "raw-secret-hash" });
+    await provider.save({
+      deviceSid: "device-sid-abcdef",
+      passHash: "raw-secret-hash",
+      e2eeKey: "A".repeat(43),
+    });
     await provider.clear();
 
     const loggedText = JSON.stringify([...logger.info.mock.calls, ...logger.warn.mock.calls]);
     expect(loggedText).not.toContain("raw-secret-hash");
+    expect(loggedText).not.toContain("A".repeat(43));
     expect(loggedText).toContain("hasPassHash");
     expect(loggedText).toContain("abcdef");
   });

@@ -133,6 +133,7 @@ import {
   resolveExplicitStartupWorkspaceBootstrap,
 } from "./startupWorkspaceDeepLinkGate.js";
 import { createWebRemoteControlManager } from "./webRemoteControlManager.js";
+import { resolveWebRemoteControlPageUrl } from "./webRemoteControlPageUrl.js";
 import { createNodeWebRemoteControlRelayAuthProvider } from "./webRemoteControlRelayAuthProvider.js";
 import { createWebRemoteControlRelayAuthStorageProvider } from "./webRemoteControlRelayAuthStorageProvider.js";
 import { createWebRemoteControlFeatureGate } from "./webRemoteControlFeatureGate.js";
@@ -982,12 +983,10 @@ const armsUserIdentitySync = createArmsUserIdentitySync({
   setUser: (user) => armsRum.setConfig("user", user),
 });
 const webRemoteControlAppVersion = CODEZ_VERSION || app.getVersion();
-const defaultCodezEndpointUrls = buildCodezEndpointUrls(DEFAULT_CODEZ_ENDPOINT_ORIGIN, {
-  appVersion: webRemoteControlAppVersion,
-});
 const webRemoteControlRelayWsEnvOverride =
   process.env["CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL"]?.trim();
 const webRemoteControlUrlEnvOverride = process.env["CODEZ_WEB_REMOTE_CONTROL_URL"]?.trim();
+const webRemoteControlE2eeUrl = process.env["CODEZ_WEB_REMOTE_CONTROL_E2EE_URL"]?.trim();
 
 function extractOpenWorkspacePathFromDeepLinkUrl(url: string): string | null {
   try {
@@ -1022,14 +1021,20 @@ const webRemoteControlManager = createWebRemoteControlManager({
         endpointOrigin: derived.origin,
         overrideUrl: webRemoteControlRelayWsEnvOverride,
       }),
-      remoteUrl: webRemoteControlUrlEnvOverride || derived.remoteUrl,
+      remoteUrl: derived.remoteUrl,
     };
   },
   relayWsUrl: resolveWebRemoteControlRelayWsUrl({
     endpointOrigin: DEFAULT_CODEZ_ENDPOINT_ORIGIN,
     overrideUrl: webRemoteControlRelayWsEnvOverride,
   }),
-  mobileRemoteControlUrl: webRemoteControlUrlEnvOverride || defaultCodezEndpointUrls.remoteUrl,
+  // 页面发布源独立于 relay；旧覆盖仅供非打包的本地开发使用。
+  mobileRemoteControlUrl: resolveWebRemoteControlPageUrl({
+    isPackaged: app.isPackaged,
+    e2eeUrl: webRemoteControlE2eeUrl,
+    legacyUrl: webRemoteControlUrlEnvOverride,
+  }),
+  allowInsecureLoopbackPage: !app.isPackaged,
   deviceMid,
   deviceName: hostname(),
   appVersion: webRemoteControlAppVersion,

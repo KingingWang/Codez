@@ -295,6 +295,7 @@ export * from "./streaming-tool-input-preview.js";
 export * from "./tool-plan-adapter.js";
 export * from "./permission-request-preview.js";
 export * from "./web-remote-control.js";
+export * from "./web-remote-control-e2ee.js";
 export * from "./web-remote-control-heartbeat.js";
 export * from "./web-remote-control-rpc-transport.js";
 export * from "./settings-sync.js";

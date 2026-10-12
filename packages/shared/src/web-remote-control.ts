@@ -15,6 +15,7 @@ import type {
 import type { CodezProvider } from "./codez-task-types-core.js";
 import type { SessionWorkflowActivity } from "./codez-protocol-v4/sessions-index-workflow-activity.js";
 import type { WebRemoteControlRpcTransportPayload } from "./web-remote-control-rpc-transport.js";
+import type { WebRemoteControlE2eeWirePayload } from "./web-remote-control-e2ee.js";
 import type { WorkspacePurpose } from "./workspacePurpose.js";
 
 export const WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS = 120_000;
@@ -181,14 +182,16 @@ export type WebRemoteControlRelayOutgoingMessage =
   | WebRemoteControlRelayAuthInit
   | WebRemoteControlRelayAuthResponse
   | WebRemoteControlRelayPairStatusQuery
-  | WebRemoteControlRelayDataMessage<WebRemoteControlWireAppPayload>;
+  | WebRemoteControlRelayDataMessage<
+      WebRemoteControlWireAppPayload | WebRemoteControlE2eeWirePayload
+    >;
 
 export type WebRemoteControlRelayIncomingMessage =
   | WebRemoteControlRelayDeviceRegisterAck
   | WebRemoteControlRelayAuthChallenge
   | WebRemoteControlRelayAuthAck
   | WebRemoteControlRelayPairStatusAck
-  | WebRemoteControlRelayDataMessage<WebRemoteControlAppPayload>
+  | WebRemoteControlRelayDataMessage<WebRemoteControlAppPayload | WebRemoteControlE2eeWirePayload>
   | WebRemoteControlRelayError;
 
 export interface WebRemoteControlRelayAuthProofVector {
@@ -224,6 +227,7 @@ export interface WebRemoteControlExternalQrParams {
   deviceName?: string;
   appVersion?: string;
   theme?: WebRemoteControlThemeSeed;
+  e2eeKey?: string;
 }
 
 export interface BuildWebRemoteControlExternalQrUrlOptions extends WebRemoteControlExternalQrParams {
@@ -278,6 +282,7 @@ export function buildWebRemoteControlExternalQrUrl({
   deviceName,
   appVersion,
   theme,
+  e2eeKey,
 }: BuildWebRemoteControlExternalQrUrlOptions): string {
   const url = new URL(baseUrl);
   url.searchParams.set("sid", deviceSid);
@@ -293,12 +298,41 @@ export function buildWebRemoteControlExternalQrUrl({
   if (appVersion?.trim()) {
     url.searchParams.set("app_version", appVersion);
   }
+  if (e2eeKey !== undefined) {
+    if (!/^[A-Za-z0-9_-]{43}$/u.test(e2eeKey)) {
+      throw new Error("Invalid Web remote control encryption key");
+    }
+    url.hash = new URLSearchParams({ e2ee: "v1", k: e2eeKey }).toString();
+  }
   void theme;
   // Bugfix: 手机端主题现在固定走本地默认 dark，不再通过二维码 URL 透传 theme。
   // 之前 theme 参数会把桌面端主题耦合到手机首次进入行为，后续维护和排障都更复杂。
   // 这里保留入参仅做向后兼容，避免旧调用点一次性改动过大。
 
   return url.toString();
+}
+
+export function parseWebRemoteControlE2eeQrFragment(fragment: string): string | null {
+  const params = new URLSearchParams(fragment.replace(/^#/u, ""));
+  if (
+    params.get("e2ee") !== "v1" ||
+    params.getAll("e2ee").length !== 1 ||
+    params.getAll("k").length !== 1
+  ) {
+    return null;
+  }
+  const key = params.get("k");
+  if (!key || !/^[A-Za-z0-9_-]{43}$/u.test(key)) return null;
+  try {
+    const base64 = key.replace(/-/gu, "+").replace(/_/gu, "/") + "=";
+    const decoded = atob(base64);
+    return decoded.length === 32 &&
+      btoa(decoded).replace(/\+/gu, "-").replace(/\//gu, "_").replace(/=+$/u, "") === key
+      ? key
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export function parseWebRemoteControlExternalQrParams(

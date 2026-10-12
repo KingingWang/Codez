@@ -22,6 +22,7 @@ import {
 } from "@codez/client";
 import {
   WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS,
+  WEB_REMOTE_CONTROL_E2EE_RPC_PHYSICAL_BUDGET,
   resolveWebRemoteControlRelayWsUrl,
 } from "@codez/shared";
 import { WebCallbackPage } from "./auth/WebCallbackPage.js";
@@ -70,6 +71,7 @@ import type {
 import {
   matchesWebRemoteControlRoutePath,
   parseWebRemoteControlExternalQrParams,
+  parseWebRemoteControlE2eeQrFragment,
   resolveWebRemoteControlFailureReasonFromCloseCode,
   resolveWebRemoteControlInitialWorkspaceSelection,
   resolveWebRemoteControlWorkspaceKey,
@@ -95,7 +97,10 @@ import {
 import { collectWebRemoteControlMobileDeviceInfo } from "./webRemoteControlDeviceInfo.js";
 import { createWebRemoteControlVersionGuard } from "./webRemoteControlVersion.js";
 import { showWebRemoteControlVersionNotice } from "./webRemoteControlVersionNotice.js";
-import { resolveWebRemoteControlRoutePath } from "./webRemoteControlRoute.js";
+import {
+  isVersionedWebRemoteControlRoute,
+  resolveWebRemoteControlRoutePath,
+} from "./webRemoteControlRoute.js";
 import {
   registerWebRemoteControlWorkspaceBridgeServices,
   type WebRemoteControlWorkspaceBridgeServiceRegistration,
@@ -1405,6 +1410,14 @@ function resolveWebRemoteControlLoadingCopy(state: WebRemoteControlTerminalTrans
           : "Connection established. Syncing workspace and tasks.",
         steps,
       };
+    case "securing":
+      return {
+        title: zh ? "正在建立端到端加密…" : "Establishing end-to-end encryption…",
+        description: zh
+          ? "正在校验桌面端身份，完成前不会同步工作区。"
+          : "Verifying the desktop before syncing any workspace data.",
+        steps,
+      };
     case "suspended":
       return {
         title: zh ? "页面在后台，等待恢复…" : "Page is in background, waiting to recover…",
@@ -1462,11 +1475,14 @@ function renderWebRemoteControlLoading(state: WebRemoteControlTerminalTransportS
 
 async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): Promise<void> {
   const relayParams = parseWebRemoteControlExternalQrParams(params);
-  if (!relayParams) {
+  const e2eeKey = parseWebRemoteControlE2eeQrFragment(window.location.hash);
+  if (!relayParams || !e2eeKey) {
     renderWebRemoteControlFailure(
       toWebRemoteControlFailure(
         "invalid-mobile-connection",
-        "Missing or invalid Web remote control relay parameters.",
+        isZhLocale()
+          ? "加密远控链接缺少有效密钥，请重新扫描桌面上的二维码。"
+          : "Missing or invalid encrypted remote-control pairing link. Scan the new desktop QR code.",
       ),
     );
     return;
@@ -1484,10 +1500,15 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
   let currentTaskId: string | undefined;
   let currentRecoveryId: string | undefined;
   let nextBridgeGeneration = 0;
-  const checkVersionOnRecovery = window.location.pathname.replace(/\/+$/, "") === "/remote/v4";
+  const routePath = resolveWebRemoteControlRoutePath(import.meta.env);
+  const checkVersionOnRecovery = isVersionedWebRemoteControlRoute(
+    window.location.pathname,
+    routePath,
+  );
   let disposeVersionNotice: (() => void) | undefined;
   const versionGuard = createWebRemoteControlVersionGuard({
     requestBootstrap: () => requestBootstrap(),
+    routePath,
     getUrl: () => window.location.href,
     isPageReady: () => ready,
     navigate: (url) => window.location.replace(url),
@@ -1693,12 +1714,21 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
     relayWsUrl: resolveExternalRelayWsUrl(),
     deviceSid: relayParams.deviceSid,
     passHash: relayParams.passHash,
+    e2eeKey,
     deviceMid: relayParams.deviceMid,
     appVersion: relayParams.appVersion,
     authProvider: createBrowserWebRemoteControlRelayAuthProvider(),
     onRawTransportPayload: (payload) => activeRelayProtocol?.acceptPayload(payload) ?? false,
     onRawTransportFault: (reasonCode) => {
       activeRelayProtocol?.markDegraded(reasonCode);
+    },
+    onE2eeReset: () => {
+      // 加密轮次已失效：丢弃旧 bridge，等新握手成功的 paired 边沿再走已有 bootstrap。
+      // 不在这里触发 raw adapter 的故障恢复，否则会与正在进行的 transport 重握手竞争。
+      activeRelayProtocol?.dispose();
+      activeRelayProtocol = undefined;
+      activeBridgeServiceRegistration?.dispose();
+      activeBridgeServiceRegistration = undefined;
     },
     onPayload: (payload) => {
       if (terminated) {
@@ -1988,6 +2018,7 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
         bridgeSessionId: response.bridge.bridgeSessionId,
         bridgeGeneration: response.bridge.bridgeGeneration,
         recoveryId: response.bridge.recoveryId,
+        maxPhysicalFrameBytes: WEB_REMOTE_CONTROL_E2EE_RPC_PHYSICAL_BUDGET,
         measureFrameBytes: (frame) => transport.measurePayloadBytes(frame),
         sendFrame: (frame) => {
           if (versionGuard.isBlocked()) return false;

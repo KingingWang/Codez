@@ -32,6 +32,7 @@ class AcknowledgedRelayProtocol implements AcknowledgedWebRemoteControlRelayProt
   private readonly measureFrameBytes: NonNullable<
     AcknowledgedWebRemoteControlRelayProtocolOptions["measureFrameBytes"]
   >;
+  private readonly maxPhysicalFrameBytes: number | undefined;
   private readonly highWaterMarkBytes: number;
   private readonly lowWaterMarkBytes: number;
   private readonly replayBufferMaxBytes: number;
@@ -77,6 +78,7 @@ class AcknowledgedRelayProtocol implements AcknowledgedWebRemoteControlRelayProt
     this.sendFrame = options.sendFrame;
     this.measureFrameBytes =
       options.measureFrameBytes ?? measureWebRemoteControlRpcRelayEnvelopeBytes;
+    this.maxPhysicalFrameBytes = options.maxPhysicalFrameBytes;
     const limits = resolveAcknowledgedRelayLimits(options);
     this.highWaterMarkBytes = limits.highWaterMarkBytes;
     this.lowWaterMarkBytes = limits.lowWaterMarkBytes;
@@ -89,9 +91,7 @@ class AcknowledgedRelayProtocol implements AcknowledgedWebRemoteControlRelayProt
       () => {
         const oldest = this.outboundBatches.oldest;
         return {
-          oldestData: oldest
-            ? { queuedAt: oldest.queuedAt, messageSeq: oldest.messageSeq }
-            : null,
+          oldestData: oldest ? { queuedAt: oldest.queuedAt, messageSeq: oldest.messageSeq } : null,
           pendingAck:
             this.pendingAckQueuedAt === null || this.pendingAckMessageSeq === null
               ? null
@@ -129,6 +129,7 @@ class AcknowledgedRelayProtocol implements AcknowledgedWebRemoteControlRelayProt
         ...this.identity,
         firstPhysicalSeq: this.nextPhysicalSeq,
         messageSeq: this.nextMessageSeq,
+        maxPhysicalFrameBytes: this.maxPhysicalFrameBytes,
       });
     } catch (error) {
       this.enterDegraded({
@@ -336,11 +337,14 @@ class AcknowledgedRelayProtocol implements AcknowledgedWebRemoteControlRelayProt
   private scheduleAssemblyTimer(): void {
     if (this.assemblyTimer || !this.assembler?.nextExpiryAt) return;
     const deadline = this.assembler.nextExpiryAt;
-    this.assemblyTimer = setTimeout(() => {
-      this.assemblyTimer = undefined;
-      const result = this.assembler?.expire(this.now());
-      if (result?.kind === "fault") this.enterDegraded(result.fault);
-    }, Math.max(0, deadline - this.now()));
+    this.assemblyTimer = setTimeout(
+      () => {
+        this.assemblyTimer = undefined;
+        const result = this.assembler?.expire(this.now());
+        if (result?.kind === "fault") this.enterDegraded(result.fault);
+      },
+      Math.max(0, deadline - this.now()),
+    );
   }
   private clearAssemblyTimer(): void {
     if (this.assemblyTimer) clearTimeout(this.assemblyTimer);

@@ -1,12 +1,14 @@
 /* eslint-disable max-lines -- 外部 relay transport 需要集中维护握手、配对、心跳和重连状态机。 */
 import { WebSocket, type RawData } from "ws";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
+  createWebRemoteControlE2eeSession,
   WebRemoteControlRelayPayloadSerializer,
   type WebRemoteControlPayloadSendResult,
 } from "@codez/client";
 import {
   WEB_REMOTE_CONTROL_HEARTBEAT_ACK_TIMEOUT_MS,
+  WEB_REMOTE_CONTROL_E2EE_HANDSHAKE_TIMEOUT_MS,
   WEB_REMOTE_CONTROL_HEARTBEAT_INTERVAL_MS,
   WEB_REMOTE_CONTROL_RECONNECT_JITTER_MS,
   getWebRemoteControlHeartbeatDelayMs,
@@ -14,8 +16,10 @@ import {
   getWebRemoteControlReconnectJitterMs,
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   normalizeWebRemoteControlWirePayload,
+  parseWebRemoteControlE2eeWirePayload,
   parseWebRemoteControlAppPayload,
   type WebRemoteControlAppPayload,
+  type WebRemoteControlE2eeWirePayload,
   type WebRemoteControlRelayDeviceMeta,
   type WebRemoteControlRelayIncomingMessage,
   type WebRemoteControlRelayOutgoingMessage,
@@ -32,6 +36,7 @@ export type WebRemoteControlDeviceTransportState =
   | "registering"
   | "authenticating"
   | "waiting_terminal"
+  | "securing"
   | "paired"
   | "kicked"
   | "error";
@@ -51,6 +56,7 @@ export interface WebRemoteControlDeviceTransportOptions {
   relayWsUrl: string;
   deviceMid: string;
   auth: WebRemoteControlDeviceTransportAuth;
+  e2eeKey?: string;
   meta: WebRemoteControlRelayDeviceMeta;
   authProvider: WebRemoteControlRelayAuthProvider;
   heartbeatIntervalMs?: number;
@@ -73,6 +79,7 @@ export interface WebRemoteControlDeviceTransportOptions {
   onRawTransportFault?(reasonCode: string): void;
   onError(error: Error): void;
   onSendReady?(event: { kind: "same-socket" | "reconnected-socket" }): void;
+  onE2eeReset?(): void;
   onInvalidPersistedAuth(): Promise<void>;
 }
 
@@ -199,9 +206,15 @@ export class WebRemoteControlDeviceTransport {
   private connectAttempt = 0;
   private socketGeneration = 0;
   private lastPairedSocketGeneration = 0;
-  private readonly payloadSerializer = new WebRemoteControlRelayPayloadSerializer();
+  private payloadSerializer = new WebRemoteControlRelayPayloadSerializer();
+  private e2ee?: ReturnType<typeof createWebRemoteControlE2eeSession>;
+  private e2eeHandshakeTimer?: ReturnType<typeof setTimeout>;
 
   constructor(private readonly options: WebRemoteControlDeviceTransportOptions) {
+    // 旧明文构造只保留给现存 transport fixture；真实 Main 必须显式注入独立的二维码密钥。
+    if (!options.e2eeKey && process.env.NODE_ENV !== "test") {
+      throw new Error("Web remote control requires an end-to-end encryption key");
+    }
     this.activeAuth = options.auth;
     this.deviceSid = options.auth.mode === "persisted" ? options.auth.deviceSid : undefined;
   }
@@ -221,10 +234,14 @@ export class WebRemoteControlDeviceTransport {
   }
 
   measurePayloadBytes(payload: WebRemoteControlAppPayload): number {
+    if (this.options.e2eeKey && !this.e2ee?.isReady()) {
+      throw new Error("e2ee.notReady");
+    }
     return this.payloadSerializer.prepare(payload).bytes;
   }
 
   sendPayloadResult(payload: WebRemoteControlAppPayload): WebRemoteControlPayloadSendResult {
+    if (this.options.e2eeKey && !this.e2ee?.isReady()) return { kind: "unavailable" };
     const prepared = this.payloadSerializer.prepare(payload);
     if (this.payloadSerializer.isOversize(prepared)) {
       return {
@@ -243,6 +260,7 @@ export class WebRemoteControlDeviceTransport {
 
   dispose(): void {
     this.manuallyClosed = true;
+    this.resetE2ee();
     this.clearReconnectTimer();
     this.stopHeartbeat();
     this.clearStaleWaitingRecoveryTimer();
@@ -351,6 +369,7 @@ export class WebRemoteControlDeviceTransport {
         return;
       }
       this.stopHeartbeat();
+      this.resetE2ee();
       if (this.suppressNextCloseReconnect) {
         this.suppressNextCloseReconnect = false;
         return;
@@ -440,6 +459,7 @@ export class WebRemoteControlDeviceTransport {
     this.lastPairStatusAckAt = Date.now();
     this.armHeartbeatAckWatchdog();
     if (status === "waiting") {
+      this.resetE2ee();
       if (this.wasPaired) {
         // Bugfix: relay 偶发把已配对会话的一次心跳 ACK 报成 waiting。
         // 首次 waiting 先进入“可恢复怀疑态”（staleWaitingCount>0，sendPayload 会暂停业务发送），
@@ -469,6 +489,34 @@ export class WebRemoteControlDeviceTransport {
             : "reconnected-socket";
       this.staleWaitingCount = 0;
       this.clearStaleWaitingRecoveryTimer();
+      if (this.options.e2eeKey) {
+        if (!this.e2ee) {
+          this.e2ee = createWebRemoteControlE2eeSession({
+            role: "device",
+            deviceSid: this.deviceSid!,
+            pairingKey: this.options.e2eeKey,
+            send: (payload) => this.sendE2eeControl(payload),
+          });
+          this.e2ee.start();
+          this.setState("securing");
+          this.armE2eeHandshakeDeadline();
+          // Desktop socket 可以在手机 socket 未换代时重建；通知手机主动开始新握手。
+          // 该信号不承载业务权限，恶意 relay 最多造成拒绝服务，不能生成证明或密文。
+          this.sendE2eeControl({
+            zcode_type: "e2ee-rekey",
+            v: 1,
+            sid: this.deviceSid!,
+            nonce: this.createE2eeRekeyNonce(),
+          });
+        }
+        this.wasPaired = true;
+        this.lastPairedSocketGeneration = this.socketGeneration;
+        this.startHeartbeat();
+        if (this.e2ee?.isReady() && sendReadyKind) {
+          this.options.onSendReady?.({ kind: sendReadyKind });
+        }
+        return;
+      }
       this.setState("paired");
       this.wasPaired = true;
       this.lastPairedSocketGeneration = this.socketGeneration;
@@ -530,10 +578,48 @@ export class WebRemoteControlDeviceTransport {
   }
 
   private handleDataPayload(payload: unknown): void {
-    if (this.state !== "paired") {
+    if (this.state !== "paired" && this.state !== "securing") {
       return;
     }
 
+    if (this.options.e2eeKey) {
+      try {
+        const wire = parseWebRemoteControlE2eeWirePayload(payload);
+        if (wire?.zcode_type === "e2ee-hello" && this.e2ee?.isReady()) {
+          // 同一 device socket 可被新 terminal 接管；旧 bridge 与密钥必须先失效，
+          // 再接受新手机的临时公钥，不能把新 hello 当作旧轮次数据。
+          this.resetE2ee();
+          this.e2ee = createWebRemoteControlE2eeSession({
+            role: "device",
+            deviceSid: this.deviceSid!,
+            pairingKey: this.options.e2eeKey,
+            send: (message) => this.sendE2eeControl(message),
+          });
+          this.e2ee.start();
+          this.setState("securing");
+          this.armE2eeHandshakeDeadline();
+        }
+        const result = this.e2ee?.accept(payload);
+        if (!result) throw new Error("e2ee.unexpectedPayload");
+        if (result.kind === "ready") {
+          const session = this.e2ee!;
+          this.payloadSerializer = new WebRemoteControlRelayPayloadSerializer({
+            seal: (wire) => session.prepare(wire),
+          });
+          this.clearE2eeHandshakeDeadline();
+          this.setState("paired");
+          this.startHeartbeat();
+          this.armHeartbeatAckWatchdog();
+          this.options.onSendReady?.({ kind: "reconnected-socket" });
+          return;
+        }
+        if (result.kind !== "payload" && result.kind !== "duplicate-rpc") return;
+        payload = result.payload;
+      } catch {
+        this.enterError(new Error("e2ee.authenticationFailed"));
+        return;
+      }
+    }
     // Bugfix：上游 raw RPC 也用 zcode_type，须在进入既有 ACK/CRC owner 前归一。
     payload = normalizeWebRemoteControlWirePayload(payload);
     if (isRawTransportCandidate(payload) && this.options.onRawTransportPayload?.(payload)) {
@@ -548,6 +634,42 @@ export class WebRemoteControlDeviceTransport {
     }
 
     this.options.onPayload(parsed);
+  }
+
+  private sendE2eeControl(payload: WebRemoteControlE2eeWirePayload): void {
+    const prepared = this.payloadSerializer.prepareControl(payload);
+    if (
+      this.payloadSerializer.isOversize(prepared) ||
+      !this.sendSerialized(prepared.message, prepared.json)
+    ) {
+      this.enterError(new Error("e2ee.handshakeSendFailed"));
+    }
+  }
+
+  private createE2eeRekeyNonce(): string {
+    return randomBytes(16).toString("base64url");
+  }
+
+  private resetE2ee(): void {
+    this.clearE2eeHandshakeDeadline();
+    if (!this.e2ee) return;
+    this.e2ee.dispose();
+    this.e2ee = undefined;
+    this.payloadSerializer = new WebRemoteControlRelayPayloadSerializer();
+    this.options.onE2eeReset?.();
+  }
+
+  private armE2eeHandshakeDeadline(): void {
+    this.clearE2eeHandshakeDeadline();
+    this.e2eeHandshakeTimer = setTimeout(() => {
+      this.e2eeHandshakeTimer = undefined;
+      if (!this.e2ee?.isReady()) this.enterError(new Error("e2ee.handshakeTimeout"));
+    }, WEB_REMOTE_CONTROL_E2EE_HANDSHAKE_TIMEOUT_MS);
+  }
+
+  private clearE2eeHandshakeDeadline(): void {
+    if (this.e2eeHandshakeTimer) clearTimeout(this.e2eeHandshakeTimer);
+    this.e2eeHandshakeTimer = undefined;
   }
 
   private startHeartbeat(): void {

@@ -1,7 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { resolveWebRemoteControlRoutePath } from "../src/webRemoteControlRoute.js";
+import {
+  isVersionedWebRemoteControlRoute,
+  resolveWebRemoteControlRoutePath,
+} from "../src/webRemoteControlRoute.js";
 
 describe("resolveWebRemoteControlRoutePath", () => {
   it("注入路由变量时页面入口固定为 /remote/v4，资源 base 可以带版本目录", () => {
@@ -28,6 +31,15 @@ describe("resolveWebRemoteControlRoutePath", () => {
       }),
     ).toBe("/remote/v3");
     expect(resolveWebRemoteControlRoutePath({ BASE_URL: "/" })).toBe("/remote");
+  });
+
+  it("GitHub Pages 项目前缀同时用于页面入口和 v4 版本校验", () => {
+    const routePath = resolveWebRemoteControlRoutePath({ BASE_URL: "/Codez/remote/v4/" });
+    expect(routePath).toBe("/Codez/remote/v4");
+    expect(isVersionedWebRemoteControlRoute("/Codez/remote/v4/", routePath)).toBe(true);
+    expect(isVersionedWebRemoteControlRoute("/remote/v4", routePath)).toBe(false);
+    expect(isVersionedWebRemoteControlRoute("/Codez/remote/v3", routePath)).toBe(false);
+    expect(isVersionedWebRemoteControlRoute("/remote/v3", "/remote/v3")).toBe(false);
   });
 
   it("源码保留发布脚本识别版本化 base 能力所依赖的变量引用", async () => {

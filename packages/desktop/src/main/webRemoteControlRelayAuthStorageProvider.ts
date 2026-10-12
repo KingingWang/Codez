@@ -3,10 +3,12 @@ import type { AppSettings } from "@codez/shared";
 
 export const WEB_REMOTE_CONTROL_EXTERNAL_RELAY_PASS_HASH_CREDENTIAL_KEY =
   "web-remote-control:external-relay:pass_hash";
+export const WEB_REMOTE_CONTROL_E2EE_PAIRING_CREDENTIAL_KEY = "web-remote-control:e2ee:pairing-key";
 
 export interface WebRemoteControlRelayStoredAuth {
   deviceSid: string;
   passHash: string;
+  e2eeKey?: string;
 }
 
 export interface WebRemoteControlRelayAuthStorageProvider {
@@ -44,6 +46,7 @@ export function createWebRemoteControlRelayAuthStorageProvider({
   const clear = async () => {
     await patchSettings({ webRemoteControlExternalRelayDevice: undefined });
     await credentialService.delete(WEB_REMOTE_CONTROL_EXTERNAL_RELAY_PASS_HASH_CREDENTIAL_KEY);
+    await credentialService.delete(WEB_REMOTE_CONTROL_E2EE_PAIRING_CREDENTIAL_KEY);
     logger?.info("[web-remote-control] external relay auth cleared", {
       hasDeviceSid: false,
       hasPassHash: false,
@@ -57,8 +60,11 @@ export function createWebRemoteControlRelayAuthStorageProvider({
       const passHash = (
         await credentialService.load(WEB_REMOTE_CONTROL_EXTERNAL_RELAY_PASS_HASH_CREDENTIAL_KEY)
       )?.trim();
+      const e2eeKey = (
+        await credentialService.load(WEB_REMOTE_CONTROL_E2EE_PAIRING_CREDENTIAL_KEY)
+      )?.trim();
 
-      if (!deviceSid && !passHash) {
+      if (!deviceSid && !passHash && !e2eeKey) {
         return undefined;
       }
 
@@ -73,11 +79,15 @@ export function createWebRemoteControlRelayAuthStorageProvider({
 
       logger?.info("[web-remote-control] external relay auth loaded", {
         ...safeAuthLogFields({ deviceSid, passHash }),
+        hasE2eeKey: Boolean(e2eeKey),
       });
-      return { deviceSid, passHash };
+      return { deviceSid, passHash, ...(e2eeKey ? { e2eeKey } : {}) };
     },
 
     async save(auth: WebRemoteControlRelayStoredAuth): Promise<void> {
+      if (auth.e2eeKey) {
+        await credentialService.save(WEB_REMOTE_CONTROL_E2EE_PAIRING_CREDENTIAL_KEY, auth.e2eeKey);
+      }
       await patchSettings({
         webRemoteControlExternalRelayDevice: { deviceSid: auth.deviceSid },
       });
@@ -87,6 +97,7 @@ export function createWebRemoteControlRelayAuthStorageProvider({
       );
       logger?.info("[web-remote-control] external relay auth saved", {
         ...safeAuthLogFields(auth),
+        hasE2eeKey: Boolean(auth.e2eeKey),
       });
     },
 

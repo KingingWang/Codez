@@ -3,7 +3,11 @@ import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket, WebSocketServer } from "ws";
 import { ChannelClient, ChannelServer, Emitter, VSBuffer } from "@codez/rpc";
-import { createAcknowledgedWebRemoteControlRelayProtocol } from "@codez/client";
+import {
+  createAcknowledgedWebRemoteControlRelayProtocol,
+  createWebRemoteControlE2eeSession,
+} from "@codez/client";
+import { parseWebRemoteControlE2eeQrFragment } from "@codez/shared";
 import { ServiceCollection, createServiceDescriptor } from "@codez/services";
 import type {
   AppSettings,
@@ -38,12 +42,14 @@ type AttachWorkspaceHost = Parameters<
 
 function createManagerHarness(options?: {
   relayWsUrl?: string;
+  mobileRemoteControlUrl?: string;
   featureEnabled?: boolean;
   delayReadyMs?: number;
   canSendPayload?: () => boolean;
-  storedAuth?: { deviceSid: string; passHash: string };
+  storedAuth?: { deviceSid: string; passHash: string; e2eeKey?: string };
   startupRestoreContext?: NonNullable<AppSettings["webRemoteControlLastEnabledContext"]>;
   startupRestoreClearError?: Error;
+  authSaveError?: Error;
   registeredAuths?: Array<{ deviceSid: string; passHash: string }>;
   attachWorkspaceHost?: AttachWorkspaceHost;
   releaseWorkspaceHostAttachment?: (attachmentId: string) => void;
@@ -96,7 +102,7 @@ function createManagerHarness(options?: {
     options?.disposeWorkspaceHostAttachmentsForRemoteSession ?? vi.fn();
   const manager = createWebRemoteControlManager({
     relayWsUrl: options?.relayWsUrl ?? "ws://relay.test/ws",
-    mobileRemoteControlUrl: "https://zcode.z.ai/remote/v3",
+    mobileRemoteControlUrl: options?.mobileRemoteControlUrl ?? "https://trusted.example/remote/v3",
     getEndpointUrls: options?.getEndpointUrls,
     deviceMid: "mid-1",
     deviceName: "MacBook",
@@ -109,6 +115,7 @@ function createManagerHarness(options?: {
     authStorageProvider: {
       load: async () => storedAuth,
       save: async (auth) => {
+        if (options?.authSaveError) throw options.authSaveError;
         storedAuth = auth;
         settings.webRemoteControlExternalRelayDevice = { deviceSid: auth.deviceSid };
       },
@@ -305,7 +312,50 @@ async function createPrimedRemoteTaskSyncHarness(
 }
 
 describe("createWebRemoteControlManager external relay", () => {
-  it("runs upstream mobile bootstrap, bridge, task reads and commands over real WebSockets", async () => {
+  it("rejects a mobile page served by the relay origin before registering a device", async () => {
+    const { manager, getLatestTransportOptions } = createManagerHarness({
+      relayWsUrl: "wss://relay.example/ws",
+      mobileRemoteControlUrl: "https://relay.example/remote/v4",
+    });
+    await expect(manager.start(1, { workspacePath: "/workspace/demo" })).rejects.toThrow(
+      "separate trusted HTTPS",
+    );
+    expect(getLatestTransportOptions()).toBeUndefined();
+  });
+  it("generates a QR fragment key distinct from relay credentials and injects it into transport", async () => {
+    const { manager, getLatestTransportOptions } = createManagerHarness();
+    const result = await manager.start(1, { workspacePath: "/workspace/demo" });
+    const url = new URL(result.qrUrl);
+    const key = parseWebRemoteControlE2eeQrFragment(url.hash);
+    expect(key).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(url.searchParams.has("k")).toBe(false);
+    expect(key).not.toBe(url.searchParams.get("hash"));
+    expect(getLatestTransportOptions()?.e2eeKey).toBe(key);
+  });
+  it("rotates a legacy relay-only pairing before showing an encrypted QR", async () => {
+    const { manager, getStoredAuth } = createManagerHarness({
+      storedAuth: { deviceSid: "legacy-sid", passHash: "legacy-hash" },
+      registeredAuths: [{ deviceSid: "new-sid", passHash: "new-hash" }],
+    });
+    const result = await manager.start(1, { workspacePath: "/workspace/demo" });
+    expect(result.qrUrl).toContain("sid=new-sid");
+    expect(result.qrUrl).not.toContain("legacy-sid");
+    expect(getStoredAuth()?.e2eeKey).toBe(
+      parseWebRemoteControlE2eeQrFragment(new URL(result.qrUrl).hash),
+    );
+  });
+  it("closes the transport and shows no QR when content-key persistence fails", async () => {
+    const { manager, disposeTransport, getStoredAuth } = createManagerHarness({
+      authSaveError: new Error("credential store unavailable"),
+    });
+    await expect(manager.start(1, { workspacePath: "/workspace/demo" })).rejects.toThrow(
+      "credential store unavailable",
+    );
+    expect(disposeTransport).toHaveBeenCalledOnce();
+    expect(manager.getStatus(1).qrUrl).toBeUndefined();
+    expect(getStoredAuth()).toBeUndefined();
+  });
+  it("runs encrypted mobile bootstrap, bridge, task reads and commands over real WebSockets", async () => {
     // 测试 relay 只转发消息，不改线上 relay，也不接触真实用户任务或账号。
     const relay = new WebSocketServer({ host: "127.0.0.1", port: 0 });
     const peers = new Map<string, WebSocket>();
@@ -385,8 +435,9 @@ describe("createWebRemoteControlManager external relay", () => {
     let mobile: WebSocket | undefined;
     let adapter: ReturnType<typeof createAcknowledgedWebRemoteControlRelayProtocol> | undefined;
     let rpc: ChannelClient | undefined;
-    const send = (payload: Record<string, unknown>) =>
-      mobile!.send(JSON.stringify({ type: "data", payload }));
+    let crypto: ReturnType<typeof createWebRemoteControlE2eeSession> | undefined;
+    const sendWire = (payload: unknown) => mobile!.send(JSON.stringify({ type: "data", payload }));
+    const send = (payload: Record<string, unknown>) => sendWire(crypto!.prepare(payload));
     const waitForPayload = async (type: string, requestId: string) => {
       await vi.waitFor(() =>
         expect(
@@ -401,6 +452,14 @@ describe("createWebRemoteControlManager external relay", () => {
     };
     const connectMobile = async () => {
       mobile = new WebSocket(relayWsUrl);
+      crypto = createWebRemoteControlE2eeSession({
+        role: "terminal",
+        deviceSid: "sid-1",
+        pairingKey: parseWebRemoteControlE2eeQrFragment(
+          new URL(h.manager.getStatus(1).qrUrl!).hash,
+        )!,
+        send: sendWire,
+      });
       mobile.on("message", (raw) => {
         const message = JSON.parse(raw.toString());
         if (message.type === "auth_challenge") {
@@ -411,10 +470,14 @@ describe("createWebRemoteControlManager external relay", () => {
               proof: "synthetic-proof",
             }),
           );
+        } else if (message.type === "auth_ack" && message.pair_status === "matched") {
+          crypto!.start();
         } else if (message.type === "data") {
-          const { zcode_type, ...fields } = message.payload;
-          mobilePayloads.push(message.payload);
-          // 模拟未改动的上游：它只读取 zcode_type，而不是依赖 fork 的入站兼容函数。
+          const result = crypto!.accept(message.payload);
+          if (result.kind !== "payload" && result.kind !== "duplicate-rpc") return;
+          const payload = result.payload as Record<string, unknown>;
+          const { zcode_type, ...fields } = payload;
+          mobilePayloads.push(payload);
           if (zcode_type === "rpc-frame" || zcode_type === "rpc-frame-ack") {
             adapter?.acceptPayload({ codez_type: zcode_type, ...fields });
           }
@@ -435,6 +498,7 @@ describe("createWebRemoteControlManager external relay", () => {
       h.manager.syncAvailableWorkspaces(1, [localWorkspace]);
       h.manager.syncAvailableTasks(1, [task]);
       await connectMobile();
+      await vi.waitFor(() => expect(crypto?.isReady()).toBe(true));
       send({ zcode_type: "bootstrap-request", requestId: "mobile-bootstrap" });
       const bootstrap = await waitForPayload("bootstrap-response", "mobile-bootstrap");
       expect(bootstrap.result).toMatchObject({ workspaces: [localWorkspace], tasks: [task] });
@@ -487,12 +551,16 @@ describe("createWebRemoteControlManager external relay", () => {
       expect(attachWorkspaceHost).toHaveBeenCalledTimes(1);
       expect(
         wirePayloads.every(
-          (payload) => typeof payload.zcode_type === "string" && !("codez_type" in payload),
+          (payload) =>
+            typeof payload.zcode_type === "string" &&
+            !("codez_type" in payload) &&
+            !("requestId" in payload),
         ),
       ).toBe(true);
       mobile.close();
       await new Promise<void>((resolve) => mobile!.once("close", resolve));
       await connectMobile();
+      await vi.waitFor(() => expect(crypto?.isReady()).toBe(true));
       send({ zcode_type: "bootstrap-request", requestId: "mobile-reconnect" });
       expect((await waitForPayload("bootstrap-response", "mobile-reconnect")).result).toMatchObject(
         { tasks: [task] },
@@ -738,7 +806,7 @@ describe("createWebRemoteControlManager external relay", () => {
     expect(JSON.stringify(readyPayload)).not.toContain("wsUrl");
   });
 
-  it("uses the current endpoint resolver for relay and QR URL on each start", async () => {
+  it("uses the endpoint resolver for relay but pins the QR page independently", async () => {
     const { getLatestTransportOptions, manager } = createManagerHarness({
       getEndpointUrls: () => buildCodezEndpointUrls("http://localhost:3030"),
     });
@@ -747,7 +815,7 @@ describe("createWebRemoteControlManager external relay", () => {
     const status = manager.getStatus(1);
 
     expect(getLatestTransportOptions()?.relayWsUrl).toBe("ws://localhost:3030/ws");
-    expect(status.qrUrl).toContain("http://localhost:3030/remote/v3?");
+    expect(status.qrUrl).toContain("https://trusted.example/remote/v3?");
   });
 
   it("does not append theme params to the mobile QR URL", async () => {
@@ -861,7 +929,7 @@ describe("createWebRemoteControlManager external relay", () => {
   it("resets persisted relay auth and returns a new QR URL when refreshing leaked pairing material", async () => {
     const disposeWorkspaceHostAttachmentsForWindow = vi.fn();
     const { disposeTransport, getStoredAuth, manager } = createManagerHarness({
-      storedAuth: { deviceSid: "sid-old", passHash: "hash-old" },
+      storedAuth: { deviceSid: "sid-old", passHash: "hash-old", e2eeKey: "A".repeat(43) },
       registeredAuths: [
         { deviceSid: "sid-unused", passHash: "hash-unused" },
         { deviceSid: "sid-new", passHash: "hash-new" },
@@ -882,7 +950,14 @@ describe("createWebRemoteControlManager external relay", () => {
     expect(refreshed.qrUrl).toContain("hash=hash-new");
     expect(refreshed.qrUrl).not.toContain("sid=sid-old");
     expect(refreshed.qrUrl).not.toContain("hash=hash-old");
-    expect(getStoredAuth()).toEqual({ deviceSid: "sid-new", passHash: "hash-new" });
+    expect(getStoredAuth()).toEqual({
+      deviceSid: "sid-new",
+      passHash: "hash-new",
+      e2eeKey: parseWebRemoteControlE2eeQrFragment(new URL(refreshed.qrUrl).hash),
+    });
+    expect(parseWebRemoteControlE2eeQrFragment(new URL(oldStatus.qrUrl!).hash)).not.toBe(
+      parseWebRemoteControlE2eeQrFragment(new URL(refreshed.qrUrl).hash),
+    );
     expect(disposeTransport).toHaveBeenCalledTimes(1);
     expect(disposeWorkspaceHostAttachmentsForWindow).toHaveBeenCalledWith(1, "leaked-qr");
   });

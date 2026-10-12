@@ -1992,6 +1992,7 @@ const zhCN: Record<string, string> = {
   "webRemoteControl.failure.desktopDisconnected":
     "桌面端已经断开连接，当前 Web 远程控制无法继续使用。",
   "webRemoteControl.failure.invalidMobileConnection": "当前手机连接已失效，请刷新页面后重新连接。",
+  "webRemoteControl.failure.e2eeConfiguration": "手机远控需要配置独立可信的 HTTPS 页面；当前无法安全启动。",
   "webRemoteControl.failure.desktopBootstrapTimeout":
     "桌面端响应超时，请确认窗口仍在运行后刷新页面。",
   "webRemoteControl.failure.connectionRecoveryTimeout":

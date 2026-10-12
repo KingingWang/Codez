@@ -1,11 +1,7 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 /* eslint-disable max-lines -- Web 远程控制弹层集中处理启动、状态轮询、二维码和错误文案，后续稳定后再拆分子组件。 */
-import type {
-  BotProvider,
-  WebRemoteControlFailure,
-  WebRemoteControlStatus,
-} from "@codez/shared";
+import type { BotProvider, WebRemoteControlFailure, WebRemoteControlStatus } from "@codez/shared";
 import { resolveWebRemoteControlWorkspaceKey } from "@codez/shared";
 import {
   Bot as BotIcon,
@@ -84,9 +80,7 @@ export function isSameWebRemoteControlTarget(
   return Boolean(status.windowControlSessionId ?? status.sessionId);
 }
 
-export function isReusableWebRemoteControlSession(
-  status: WebRemoteControlStatus,
-): boolean {
+export function isReusableWebRemoteControlSession(status: WebRemoteControlStatus): boolean {
   if (status.status === "idle" || status.status === "error") {
     return false;
   }
@@ -156,8 +150,7 @@ export function getWebRemoteControlStatusTagLabel(
   formatMessage: ReturnType<typeof useCodezIntl>["intl"]["formatMessage"],
 ): string {
   const deviceName =
-    status.mobileDeviceInfo?.browserPlatform?.trim() ||
-    status.mobileDeviceInfo?.name?.trim();
+    status.mobileDeviceInfo?.browserPlatform?.trim() || status.mobileDeviceInfo?.name?.trim();
 
   if (deviceName) {
     return deviceName;
@@ -191,10 +184,8 @@ function isSameWebRemoteControlStatus(
     left.mobileConnected === right.mobileConnected &&
     left.mobileDeviceInfo?.updatedAt === right.mobileDeviceInfo?.updatedAt &&
     left.mobileDeviceInfo?.userAgent === right.mobileDeviceInfo?.userAgent &&
-    left.mobileDeviceInfo?.viewport?.width ===
-      right.mobileDeviceInfo?.viewport?.width &&
-    left.mobileDeviceInfo?.viewport?.height ===
-      right.mobileDeviceInfo?.viewport?.height &&
+    left.mobileDeviceInfo?.viewport?.width === right.mobileDeviceInfo?.viewport?.width &&
+    left.mobileDeviceInfo?.viewport?.height === right.mobileDeviceInfo?.viewport?.height &&
     left.qrUrl === right.qrUrl &&
     left.connectUrl === right.connectUrl &&
     left.workspacePath === right.workspacePath &&
@@ -346,18 +337,18 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        const visibleMessage = message.includes("separate trusted HTTPS mobile page")
+          ? intl.formatMessage({ id: "webRemoteControl.failure.e2eeConfiguration" })
+          : message;
         if (!cancelled) {
           setStatus({
             status: "error",
             workspacePath,
             remoteSessionId,
-            error: message,
+            error: visibleMessage,
           });
           toast(
-            intl.formatMessage(
-              { id: "webRemoteControl.startFailed" },
-              { error: message },
-            ),
+            intl.formatMessage({ id: "webRemoteControl.startFailed" }, { error: visibleMessage }),
           );
         }
         logger.error("[WebRemoteControlDialog] 启动 Web 远程控制失败", {
@@ -379,15 +370,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
     return () => {
       cancelled = true;
     };
-  }, [
-    intl,
-    open,
-    platform,
-    remoteSessionId,
-    workspaceIdentity,
-    workspacePath,
-    initialTaskId,
-  ]);
+  }, [intl, open, platform, remoteSessionId, workspaceIdentity, workspacePath, initialTaskId]);
 
   useEffect(() => {
     if (!open) {
@@ -418,9 +401,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
         }
 
         setStatus((currentStatus) =>
-          isSameWebRemoteControlStatus(currentStatus, nextStatus)
-            ? currentStatus
-            : nextStatus,
+          isSameWebRemoteControlStatus(currentStatus, nextStatus) ? currentStatus : nextStatus,
         );
       } catch {
         // Bugfix: Web 远程控制的状态变化发生在 main / relay 侧，
@@ -482,16 +463,8 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      toast(
-        intl.formatMessage(
-          { id: "webRemoteControl.copyLinkFailed" },
-          { error: message },
-        ),
-      );
-      logger.error(
-        "[WebRemoteControlDialog] 复制 Web 远程控制链接失败",
-        message,
-      );
+      toast(intl.formatMessage({ id: "webRemoteControl.copyLinkFailed" }, { error: message }));
+      logger.error("[WebRemoteControlDialog] 复制 Web 远程控制链接失败", message);
     }
   };
 
@@ -534,12 +507,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      toast(
-        intl.formatMessage(
-          { id: "webRemoteControl.refreshQr.failed" },
-          { error: message },
-        ),
-      );
+      toast(intl.formatMessage({ id: "webRemoteControl.refreshQr.failed" }, { error: message }));
       logger.error("[WebRemoteControlDialog] 刷新 Web 远程控制二维码失败", {
         workspacePath,
         workspaceIdentity: workspaceIdentity ?? "none",
@@ -565,12 +533,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      toast(
-        intl.formatMessage(
-          { id: "webRemoteControl.stopFailed" },
-          { error: message },
-        ),
-      );
+      toast(intl.formatMessage({ id: "webRemoteControl.stopFailed" }, { error: message }));
       logger.error("[WebRemoteControlDialog] 关闭 Web 远程控制失败", message);
     } finally {
       setLoading(false);
@@ -720,17 +683,14 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                   {failureDescription ? (
                     <div className="mt-3 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-ui-base/relaxed text-destructive">
                       <p>{failureDescription}</p>
-                      {status.failure?.message &&
-                      status.failure.message !== failureDescription ? (
+                      {status.failure?.message && status.failure.message !== failureDescription ? (
                         <p className="mt-1 text-ui-xs/relaxed opacity-80">
                           {status.failure.message}
                         </p>
                       ) : null}
                     </div>
                   ) : status.error ? (
-                    <p className="mt-3 text-ui-base/relaxed text-destructive">
-                      {status.error}
-                    </p>
+                    <p className="mt-3 text-ui-base/relaxed text-destructive">{status.error}</p>
                   ) : null}
                   <div
                     data-testid="web-remote-control-copy-link-row"

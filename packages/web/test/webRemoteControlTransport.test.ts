@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket, WebSocketServer } from "ws";
 import type { AddressInfo } from "node:net";
 import {
+  createWebRemoteControlE2eeSession,
+  generateWebRemoteControlPairingKey,
+} from "@codez/client";
+import {
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS,
   encodeWebRemoteControlRpcTransportMessage,
@@ -161,6 +165,162 @@ afterEach(async () => {
 });
 
 describe("WebRemoteControlTerminalTransport", () => {
+  it("fails closed when relay matches but never forwards the authenticated handshake", async () => {
+    const states: WebRemoteControlTerminalTransportState[] = [];
+    const failures: WebRemoteControlFailure[] = [];
+    const relay = await createRelayServer(({ message, socket }) => {
+      if (message.type === "auth_init") {
+        socket.send(JSON.stringify({ type: "auth_challenge", nonce: "nonce-1" }));
+      } else if (message.type === "auth_response") {
+        socket.send(
+          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+        );
+      }
+    });
+    const transport = new WebRemoteControlTerminalTransport({
+      relayWsUrl: relay.url,
+      deviceSid: "sid-1",
+      passHash: "relay-known",
+      e2eeKey: generateWebRemoteControlPairingKey(),
+      e2eeHandshakeTimeoutMs: 100,
+      WebSocketCtor: WebSocket as unknown as typeof globalThis.WebSocket,
+      authProvider: { calculateProof: async () => "proof" },
+      onPayload: () => {
+        throw new Error("unauthenticated payload reached app");
+      },
+      onStateChange: (state) => states.push(state),
+      onFailure: (failure) => failures.push(failure),
+      onError: () => {},
+      reloadPage: () => {},
+    });
+    try {
+      transport.start();
+      await waitUntil(() => states.includes("securing"), 3_000);
+      expect(() =>
+        transport.measurePayloadBytes({
+          codez_type: "app-error",
+          reason: "unexpected-error",
+          error: "not-yet-authenticated",
+        }),
+      ).toThrow("e2ee.notReady");
+      await waitUntil(() => failures.length === 1, 3_000);
+      expect(states).not.toContain("paired");
+      expect(
+        transport.sendPayload({
+          codez_type: "app-error",
+          reason: "unexpected-error",
+          error: "blocked",
+        }),
+      ).toBe(false);
+      expect(failures[0]?.reason).toBe("invalid-mobile-connection");
+    } finally {
+      transport.dispose();
+    }
+  });
+  it("authenticates the desktop before accepting app data and never sends plaintext business payload", async () => {
+    const key = generateWebRemoteControlPairingKey();
+    const states: WebRemoteControlTerminalTransportState[] = [];
+    const received: WebRemoteControlAppPayload[] = [];
+    const peerReceived: unknown[] = [];
+    const failures: unknown[] = [];
+    let peerEpoch = 0;
+    let resetCount = 0;
+    let peer: ReturnType<typeof createWebRemoteControlE2eeSession>;
+    let peerSocket: WebSocket;
+    const makePeer = () => {
+      peerEpoch += 1;
+      peer = createWebRemoteControlE2eeSession({
+        role: "device",
+        deviceSid: "sid-1",
+        pairingKey: key,
+        send: (payload) => peerSocket.send(JSON.stringify({ type: "data", payload })),
+      });
+      peer.start();
+    };
+    const relay = await createRelayServer(({ message, socket }) => {
+      peerSocket = socket;
+      if (message.type === "auth_init") {
+        socket.send(JSON.stringify({ type: "auth_challenge", nonce: "nonce-1" }));
+      } else if (message.type === "auth_response") {
+        makePeer();
+        socket.send(
+          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+        );
+      } else if (message.type === "data") {
+        const result = peer.accept(message.payload);
+        if (result.kind === "ready") {
+          socket.send(
+            JSON.stringify({
+              type: "data",
+              payload: peer.prepare({
+                zcode_type: "app-error",
+                reason: "unexpected-error",
+                error: peerEpoch === 1 ? "encrypted desktop" : "new encrypted epoch",
+              }),
+            }),
+          );
+        }
+        if (result.kind === "payload") peerReceived.push(result.payload);
+      }
+    });
+    const transport = new WebRemoteControlTerminalTransport({
+      relayWsUrl: relay.url,
+      deviceSid: "sid-1",
+      passHash: "relay-known",
+      e2eeKey: key,
+      WebSocketCtor: WebSocket as unknown as typeof globalThis.WebSocket,
+      authProvider: { calculateProof: async () => "proof" },
+      onPayload: (payload) => received.push(payload),
+      onStateChange: (state) => states.push(state),
+      onFailure: (failure) => failures.push(failure),
+      onE2eeReset: () => {
+        resetCount += 1;
+      },
+      onError: () => {},
+      reloadPage: () => {},
+    });
+    try {
+      transport.start();
+      await waitUntil(() => states.includes("paired") && received.length === 1, 3_000);
+      expect(states).toContain("securing");
+      expect(received[0]).toMatchObject({ codez_type: "app-error", error: "encrypted desktop" });
+      expect(
+        transport.sendPayload({
+          codez_type: "app-error",
+          reason: "unexpected-error",
+          error: "private phone",
+        }),
+      ).toBe(true);
+      await waitUntil(() => peerReceived.length === 1, 3_000);
+      expect(peerReceived[0]).toMatchObject({ zcode_type: "app-error", error: "private phone" });
+      expect(JSON.stringify(relay.messages)).not.toContain("private phone");
+      makePeer();
+      peerSocket!.send(
+        JSON.stringify({
+          type: "data",
+          payload: { zcode_type: "e2ee-rekey", v: 1, sid: "sid-1", nonce: "A".repeat(22) },
+        }),
+      );
+      await waitUntil(() => received.length === 2, 3_000);
+      expect(states.filter((state) => state === "paired")).toHaveLength(2);
+      expect(received[1]).toMatchObject({ codez_type: "app-error", error: "new encrypted epoch" });
+      expect(resetCount).toBe(1);
+      peerSocket!.send(
+        JSON.stringify({
+          type: "data",
+          payload: {
+            zcode_type: "app-error",
+            reason: "unexpected-error",
+            error: "untrusted plaintext",
+          },
+        }),
+      );
+      await waitUntil(() => failures.length === 1, 3_000);
+      expect(received).toHaveLength(2);
+    } finally {
+      transport.dispose();
+    }
+  });
   it("uses the measured final JSON verbatim for initial send and replay", async () => {
     const states: WebRemoteControlTerminalTransportState[] = [];
     const relay = await createRelayServer(({ message, socket }) => {

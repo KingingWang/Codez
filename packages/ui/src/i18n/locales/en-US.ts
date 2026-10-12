@@ -2142,6 +2142,8 @@ const enUS: Record<string, string> = {
     "The desktop side disconnected, so this Web remote control session can no longer continue.",
   "webRemoteControl.failure.invalidMobileConnection":
     "The current mobile connection is no longer valid. Reload the page and reconnect.",
+  "webRemoteControl.failure.e2eeConfiguration":
+    "Mobile remote control requires a separate trusted HTTPS page and cannot start securely yet.",
   "webRemoteControl.failure.desktopBootstrapTimeout":
     "The desktop window did not respond in time. Make sure it is still running, then reload.",
   "webRemoteControl.failure.connectionRecoveryTimeout":

@@ -1,5 +1,9 @@
 # 手机远控与上游托管页面的协议兼容
 
+> 历史协议兼容记录：新版桌面手机远控要求端到端加密，不能再用原样上游托管页面
+> 完成业务连接。当前产品合同见
+> [手机远控端到端加密](../docs/web-remote-control/end-to-end-encryption.md)。
+
 ## 问题与产品规则
 
 2026-10-11 导出的日志显示 desktop device 已进入 `paired`，随后带 bootstrap

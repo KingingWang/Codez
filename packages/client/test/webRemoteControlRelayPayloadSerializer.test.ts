@@ -5,8 +5,42 @@ import {
   type WebRemoteControlAppPayload,
 } from "@codez/shared";
 import { WebRemoteControlRelayPayloadSerializer } from "../src/webRemoteControlRelayPayloadSerializer.js";
+import {
+  createWebRemoteControlE2eeSession,
+  generateWebRemoteControlPairingKey,
+} from "../src/webRemoteControlE2ee.js";
 
 describe("WebRemoteControlRelayPayloadSerializer", () => {
+  it("meters exactly the immutable encrypted outer JSON, including replay", () => {
+    const key = generateWebRemoteControlPairingKey();
+    const phonePackets: unknown[] = [];
+    const desktopPackets: unknown[] = [];
+    const phone = createWebRemoteControlE2eeSession({
+      role: "terminal", deviceSid: "sid", pairingKey: key, send: (packet) => phonePackets.push(packet),
+    });
+    const desktop = createWebRemoteControlE2eeSession({
+      role: "device", deviceSid: "sid", pairingKey: key, send: (packet) => desktopPackets.push(packet),
+    });
+    phone.start();
+    desktop.accept(phonePackets.shift());
+    phone.accept(desktopPackets.shift());
+    desktop.accept(phonePackets.shift());
+    phone.accept(desktopPackets.shift());
+    const serializer = new WebRemoteControlRelayPayloadSerializer({
+      seal: (wire) => phone.prepare(wire),
+    });
+    const plaintext: WebRemoteControlAppPayload = {
+      codez_type: "app-error", reason: "unexpected-error", error: "private",
+    };
+    const prepared = serializer.prepare(plaintext, 100);
+    expect(prepared.json).not.toContain("private");
+    expect(prepared.bytes).toBe(new TextEncoder().encode(prepared.json).byteLength);
+    expect(serializer.prepare(plaintext, 200)).toBe(prepared);
+    expect(desktop.accept(prepared.message.payload)).toMatchObject({
+      kind: "payload",
+      payload: { zcode_type: "app-error", error: "private" },
+    });
+  });
   it("emits only the upstream wire discriminator without mutating the internal payload", () => {
     const serializer = new WebRemoteControlRelayPayloadSerializer();
     const payload = Object.freeze({

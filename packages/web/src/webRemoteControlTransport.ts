@@ -1,10 +1,12 @@
 /* eslint-disable max-lines -- 外部 relay terminal transport 需要集中维护握手、配对、请求等待和重连状态机。 */
 import {
+  createWebRemoteControlE2eeSession,
   WebRemoteControlRelayPayloadSerializer,
   type WebRemoteControlPayloadSendResult,
 } from "@codez/client";
 import {
   WEB_REMOTE_CONTROL_HEARTBEAT_ACK_TIMEOUT_MS,
+  WEB_REMOTE_CONTROL_E2EE_HANDSHAKE_TIMEOUT_MS,
   WEB_REMOTE_CONTROL_HEARTBEAT_INTERVAL_MS,
   WEB_REMOTE_CONTROL_RECONNECT_JITTER_MS,
   getWebRemoteControlHeartbeatDelayMs,
@@ -12,8 +14,10 @@ import {
   getWebRemoteControlReconnectJitterMs,
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   normalizeWebRemoteControlWirePayload,
+  parseWebRemoteControlE2eeWirePayload,
   parseWebRemoteControlAppPayload,
   type WebRemoteControlAppPayload,
+  type WebRemoteControlE2eeWirePayload,
   type WebRemoteControlFailure,
   type WebRemoteControlRelayIncomingMessage,
   type WebRemoteControlRelayOutgoingMessage,
@@ -25,6 +29,7 @@ export type WebRemoteControlTerminalTransportState =
   | "authenticating"
   | "waiting"
   | "paired"
+  | "securing"
   | "reconnecting"
   | "suspended"
   | "kicked"
@@ -97,12 +102,14 @@ interface WebRemoteControlTerminalTransportOptions {
   relayWsUrl: string;
   deviceSid: string;
   passHash: string;
+  e2eeKey?: string;
   deviceMid?: string;
   appVersion?: string;
   WebSocketCtor?: typeof globalThis.WebSocket;
   heartbeatIntervalMs?: number;
   heartbeatJitterMs?: number;
   heartbeatAckTimeoutMs?: number;
+  e2eeHandshakeTimeoutMs?: number;
   reconnectJitterMs?: number;
   healthCheckTimeoutMs?: number;
   desktopOfflineGraceMs?: number;
@@ -124,6 +131,7 @@ interface WebRemoteControlTerminalTransportOptions {
   onError(error: Error): void;
   onDiagnostic?(diagnostic: WebRemoteControlTerminalTransportDiagnostic): void;
   onSendReady?(event: { kind: "same-socket" | "reconnected-socket" }): void;
+  onE2eeReset?(): void;
   reloadPage(): void;
 }
 
@@ -253,9 +261,14 @@ export class WebRemoteControlTerminalTransport {
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private desktopOfflineFailureTimer?: ReturnType<typeof setTimeout>;
   private readonly traceRelayMessages = import.meta.env.DEV;
-  private readonly payloadSerializer = new WebRemoteControlRelayPayloadSerializer();
+  private payloadSerializer = new WebRemoteControlRelayPayloadSerializer();
+  private e2ee?: ReturnType<typeof createWebRemoteControlE2eeSession>;
+  private e2eeHandshakeTimer?: ReturnType<typeof setTimeout>;
 
   constructor(private readonly options: WebRemoteControlTerminalTransportOptions) {
+    if (!options.e2eeKey && import.meta.env.MODE !== "test") {
+      throw new Error("Web remote control requires an end-to-end encryption key");
+    }
     this.WebSocketCtor = options.WebSocketCtor ?? globalThis.WebSocket;
   }
 
@@ -336,6 +349,7 @@ export class WebRemoteControlTerminalTransport {
         state: this.state,
       });
       this.stopHeartbeat();
+      this.resetE2ee();
       this.clearWaitingTimer();
       this.clearStaleWaitingRecoveryTimer();
       if (this.intentionallyClosed) {
@@ -363,10 +377,14 @@ export class WebRemoteControlTerminalTransport {
   }
 
   measurePayloadBytes(payload: WebRemoteControlAppPayload): number {
+    if (this.options.e2eeKey && !this.e2ee?.isReady()) {
+      throw new Error("e2ee.notReady");
+    }
     return this.payloadSerializer.prepare(payload).bytes;
   }
 
   sendPayloadResult(payload: WebRemoteControlAppPayload): WebRemoteControlPayloadSendResult {
+    if (this.options.e2eeKey && !this.e2ee?.isReady()) return { kind: "unavailable" };
     const prepared = this.payloadSerializer.prepare(payload);
     if (this.payloadSerializer.isOversize(prepared)) {
       return {
@@ -441,6 +459,7 @@ export class WebRemoteControlTerminalTransport {
 
   dispose(): void {
     this.intentionallyClosed = true;
+    this.resetE2ee();
     this.stopHeartbeat();
     this.clearWaitingTimer();
     this.clearStaleWaitingRecoveryTimer();
@@ -497,6 +516,7 @@ export class WebRemoteControlTerminalTransport {
     this.armHeartbeatAckWatchdog();
     this.emitDiagnostic({ type: "pair-status", pairStatus: status, state: this.state });
     if (status === "waiting") {
+      this.resetE2ee();
       if (this.wasPaired) {
         // Bugfix: codez-remote-hub 的 waiting 是合法配对状态，表示当前 device 不在 hub 里，
         // 不是 terminal WS 损坏信号。已配对后降级为 waiting 时保持同一条手机端 WS，
@@ -529,6 +549,29 @@ export class WebRemoteControlTerminalTransport {
       this.clearDesktopOfflineFailureTimer();
       this.clearReconnectTimer();
       this.clearWaitingTimer();
+      if (this.options.e2eeKey) {
+        if (!this.e2ee) {
+          this.e2ee = createWebRemoteControlE2eeSession({
+            role: "terminal",
+            deviceSid: this.options.deviceSid,
+            pairingKey: this.options.e2eeKey,
+            send: (payload) => this.sendE2eeControl(payload),
+          });
+          this.setState("securing");
+          this.e2ee.start();
+          this.armE2eeHandshakeDeadline();
+        } else if (this.e2ee.isReady()) {
+          this.setState("paired");
+        }
+        this.wasPaired = true;
+        this.hadPairedSession = true;
+        this.lastPairedSocketGeneration = this.socketGeneration;
+        this.startHeartbeat();
+        if (this.e2ee?.isReady() && sendReadyKind) {
+          this.options.onSendReady?.({ kind: sendReadyKind });
+        }
+        return;
+      }
       this.setState("paired");
       this.wasPaired = true;
       this.hadPairedSession = true;
@@ -573,6 +616,48 @@ export class WebRemoteControlTerminalTransport {
   }
 
   private handleDataPayload(payload: unknown): void {
+    if (this.options.e2eeKey) {
+      try {
+        const wire = parseWebRemoteControlE2eeWirePayload(payload);
+        if (wire?.zcode_type === "e2ee-rekey" && wire.sid === this.options.deviceSid) {
+          if (this.e2ee?.isReady()) {
+            this.resetE2ee();
+            this.e2ee = createWebRemoteControlE2eeSession({
+              role: "terminal",
+              deviceSid: this.options.deviceSid,
+              pairingKey: this.options.e2eeKey,
+              send: (message) => this.sendE2eeControl(message),
+            });
+            this.setState("securing");
+            this.e2ee.start();
+            this.armE2eeHandshakeDeadline();
+          }
+          return;
+        }
+        const result = this.e2ee?.accept(payload);
+        if (!result) throw new Error("e2ee.unexpectedPayload");
+        if (result.kind === "ready") {
+          const session = this.e2ee!;
+          this.payloadSerializer = new WebRemoteControlRelayPayloadSerializer({
+            seal: (wire) => session.prepare(wire),
+          });
+          this.clearE2eeHandshakeDeadline();
+          this.setState("paired");
+          this.startHeartbeat();
+          this.armHeartbeatAckWatchdog();
+          this.options.onSendReady?.({ kind: "reconnected-socket" });
+          return;
+        }
+        if (result.kind !== "payload" && result.kind !== "duplicate-rpc") return;
+        payload = result.payload;
+      } catch {
+        this.enterTerminalFailure({
+          reason: "invalid-mobile-connection",
+          message: "End-to-end authentication failed.",
+        });
+        return;
+      }
+    }
     // Bugfix：fork Web 与上游 desktop 同样复用现有 raw RPC owner，不另建兼容传输。
     payload = normalizeWebRemoteControlWirePayload(payload);
     if (isRawTransportCandidate(payload) && this.options.onRawTransportPayload?.(payload)) {
@@ -583,6 +668,46 @@ export class WebRemoteControlTerminalTransport {
       return;
     }
     this.options.onPayload(parsed);
+  }
+
+  private sendE2eeControl(payload: WebRemoteControlE2eeWirePayload): void {
+    const prepared = this.payloadSerializer.prepareControl(payload);
+    if (
+      this.payloadSerializer.isOversize(prepared) ||
+      !this.sendSerialized(prepared.message, prepared.json)
+    ) {
+      this.enterTerminalFailure({
+        reason: "invalid-mobile-connection",
+        message: "End-to-end handshake could not be sent.",
+      });
+    }
+  }
+
+  private resetE2ee(): void {
+    this.clearE2eeHandshakeDeadline();
+    if (!this.e2ee) return;
+    this.e2ee.dispose();
+    this.e2ee = undefined;
+    this.payloadSerializer = new WebRemoteControlRelayPayloadSerializer();
+    this.options.onE2eeReset?.();
+  }
+
+  private armE2eeHandshakeDeadline(): void {
+    this.clearE2eeHandshakeDeadline();
+    this.e2eeHandshakeTimer = setTimeout(() => {
+      this.e2eeHandshakeTimer = undefined;
+      if (!this.e2ee?.isReady()) {
+        this.enterTerminalFailure({
+          reason: "invalid-mobile-connection",
+          message: "End-to-end handshake timed out.",
+        });
+      }
+    }, this.options.e2eeHandshakeTimeoutMs ?? WEB_REMOTE_CONTROL_E2EE_HANDSHAKE_TIMEOUT_MS);
+  }
+
+  private clearE2eeHandshakeDeadline(): void {
+    if (this.e2eeHandshakeTimer) clearTimeout(this.e2eeHandshakeTimer);
+    this.e2eeHandshakeTimer = undefined;
   }
 
   private startHeartbeat(): void {
