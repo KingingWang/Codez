@@ -232,6 +232,20 @@ function itemRow(
               ? "complete"
               : "interrupted",
       };
+    case "imageView":
+      // view_image 工具卡片（specs/codex-desktop-image-view.md）：
+      // core 只在图片成功附加后产生 imageView item（失败走工具错误、无 item），
+      // 所以状态恒为 success，不从 turn 派生。toolName 用原生工具名 view_image，
+      // UI identity 的 /^(?:read|view|...)(?:_|$)/i 会把它归入 file-read family，
+      // 复用 Read 文件卡片——文件名可点击，预览面板渲染图片内容。
+      return {
+        ...base,
+        kind: "toolCall",
+        toolCallId: item.id,
+        toolName: "view_image",
+        status: "success",
+        ...projectToolInput({ path: item.path }),
+      };
     default:
       return toolRow(item, base, turn, interactions);
   }

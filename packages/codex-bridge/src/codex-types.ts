@@ -81,6 +81,13 @@ const codexKnownItemSchema = z.discriminatedUnion("type", [
       .nullish(),
     error: z.object({ message: z.string() }).nullish(),
   }),
+  // view_image 工具调用：core 只在图片读取成功后产生该 item，因此没有 status 字段。
+  // path 是 LegacyAppPathString（原生绝对路径字符串）。投影语义见 specs/codex-desktop-image-view.md。
+  z.object({
+    type: z.literal("imageView"),
+    id,
+    path: z.string(),
+  }),
 ]);
 export type CodexKnownItem = z.infer<typeof codexKnownItemSchema>;
 const knownItemTypes = new Set(

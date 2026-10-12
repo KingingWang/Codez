@@ -10,13 +10,7 @@ import { threadFixture } from "./projection-fixtures.test.js";
 
 test("unknown native items remain visible but malformed known items fail closed", () => {
   const thread = threadFixture();
-  const nativeTypes = [
-    "webSearch",
-    "imageView",
-    "contextCompaction",
-    "collabAgentToolCall",
-    "futureItem",
-  ];
+  const nativeTypes = ["webSearch", "contextCompaction", "collabAgentToolCall", "futureItem"];
   thread.turns[0]!.items.push(
     ...nativeTypes.map((type) => ({ type, id: type, detail: { preserved: true } })),
   );
@@ -52,6 +46,29 @@ test("availability overrides advertise only caller-certified capabilities", () =
   assert.equal(snapshot.availability.fork.allowed, true);
   assert.equal(snapshot.availability.queueEdit.allowed, true);
   assert.equal(snapshot.availability.pauseGoal.allowed, false);
+});
+
+// specs/codex-desktop-image-view.md：view_image 成功附加图片后产生的 imageView item
+// 投影成 read 语义的工具卡（toolName view_image → UI file-read family → 可点击文件 chip），
+// 不再落进 unknown 的 raw JSON 兜底卡。item 只在成功路径产生，状态恒为 success。
+test("imageView items project as read-family tool cards carrying the image path", () => {
+  const thread = threadFixture();
+  thread.turns[0]!.items.push({
+    type: "imageView",
+    id: "img-1",
+    path: "/tmp/screenshot.png",
+  });
+  const snapshot = projectThread(thread, { workspacePath: "/workspace" });
+  assert.deepEqual(conversationSnapshotSchema.parse(snapshot), snapshot);
+  const row = snapshot.rows.window.at(-1);
+  assert.equal(row?.kind, "toolCall");
+  if (row?.kind !== "toolCall") return;
+  assert.equal(row.entityId, "codex:turn:turn-1:item:img-1");
+  assert.equal(row.toolCallId, "img-1");
+  assert.equal(row.toolName, "view_image");
+  assert.equal(row.status, "success");
+  assert.deepEqual(row.input, { path: "/tmp/screenshot.png" });
+  assert.equal(row.output, undefined);
 });
 
 const toolItems: CodexThreadItem[] = [
