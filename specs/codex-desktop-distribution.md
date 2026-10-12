@@ -86,6 +86,14 @@ sequenceDiagram
 | PKG-TOOL-04 | Four remote targets → materialize/install                          | The same package and `bin/codex` path survive component hashing, cache repair and Host startup without a legacy runtime fallback.                       |
 | PKG-TOOL-05 | Real native binary + isolated loopback model → request a Bash tool | The tool executes and returns a result under a temporary home/workspace; an initialize-only handshake is insufficient release evidence.                 |
 
+Cross-target distribution regressions may run on a host with a different filesystem
+mode model (for example, staging a POSIX target fixture on Windows). In that case,
+content, layout and checksums are still enforced, but the POSIX executable bit is
+not inferred from the host filesystem; the six-target native matrix performs the
+executable-mode check on matching Linux/macOS hosts. PKG-TOOL-05 keeps its
+temporary home/workspace and loopback-model isolation, but uses full-access native
+permissions where hosted Linux runners cannot configure the bubblewrap namespace.
+
 Acceptance: given incomplete latest + a complete prior stable release, resolve
 the prior release with its own six verified digests; if the latest finishes before
 the list read, use latest instead. Ignore draft/prerelease candidates. Reject

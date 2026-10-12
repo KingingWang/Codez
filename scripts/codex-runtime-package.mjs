@@ -128,7 +128,13 @@ export async function inspectCodexPackage(directory, target, extraFiles = []) {
   for (const name of [binary, host, search]) {
     if (!files.includes(name))
       throw new Error(`Missing Codex package tool host or binary: ${name}`);
-    if (target.os !== "win32" && !((await lstat(join(directory, name))).mode & 0o111))
+    // Windows 宿主没有可靠的 POSIX execute-bit 文件系统语义；跨目标分发回归仍验证
+    // 内容和布局，真实可执行模式由对应 Linux/macOS CI 目标在本地解包后强制检查。
+    if (
+      target.os !== "win32" &&
+      target.os === process.platform &&
+      !((await lstat(join(directory, name))).mode & 0o111)
+    )
       throw new Error(`Codex package executable mode missing: ${name}`);
   }
   return { binary: join(directory, ...posix.normalize(binary).split("/")), files: files.sort() };

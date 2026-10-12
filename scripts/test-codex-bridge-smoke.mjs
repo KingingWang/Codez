@@ -33,7 +33,7 @@ test(
     const port = server.address().port;
     await writeFile(
       join(codexHome, "config.toml"),
-      `developer_instructions = "Synthetic user desktop instructions."\nmodel_provider = "smoke"\nmodel = "gpt-5.2"\napproval_policy = "never"\nsandbox_mode = "read-only"\n[model_providers.smoke]\nname = "Isolated test"\nbase_url = "http://127.0.0.1:${port}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n[analytics]\nenabled = false\n`,
+      `developer_instructions = "Synthetic user desktop instructions."\nmodel_provider = "smoke"\nmodel = "gpt-5.2"\napproval_policy = "never"\nsandbox_mode = "danger-full-access"\n[model_providers.smoke]\nname = "Isolated test"\nbase_url = "http://127.0.0.1:${port}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n[analytics]\nenabled = false\n`,
     );
     const binary = await stageCodexBinary();
     const bridge = await buildCodexBridge();

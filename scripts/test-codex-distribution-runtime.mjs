@@ -300,7 +300,10 @@ test("Finder workflow has a separate name, bundle id and protocol", async (t) =>
 
 test("early bootstrap ignores upstream settings and namespaces a fork custom root", async (t) => {
   const home = await mkdtemp(join(tmpdir(), "codez-bootstrap-test-"));
+  const previousDataBaseDir = process.env.CODEZ_DATA_BASE_DIR;
+  delete process.env.CODEZ_DATA_BASE_DIR;
   t.after(() => {
+    process.env.CODEZ_DATA_BASE_DIR = previousDataBaseDir;
     delete globalThis.__codexTestBase;
     return rm(home, { recursive: true, force: true });
   });
