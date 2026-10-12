@@ -75,6 +75,13 @@ test("completed native file add advertises real counts and a guarded rewind row 
   assert.equal(row?.fileChanges?.additions, 2);
   assert.equal(row?.fileChanges?.deletions, 0);
   assert.equal(row?.actions?.canRewindFiles, true);
+  const tool = snapshot.rows.window.find(
+    (entry) => entry.kind === "toolCall" && entry.toolCallId === "new-file",
+  );
+  assert.equal(tool?.kind === "toolCall" && tool.output?.display?.kind, "file_diff");
+  if (tool?.kind === "toolCall" && tool.output?.display?.kind === "file_diff") {
+    assert.deepEqual(tool.output.display.structuredPatch[0]?.lines, ["+first", "+second"]);
+  }
 });
 
 test("attachment restoration follows turn-scoped row identity when native item IDs are reused", async () => {

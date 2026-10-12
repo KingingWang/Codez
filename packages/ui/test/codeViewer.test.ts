@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getSingularPatch } from "@pierre/diffs";
+import { scopeCodeViewerSource } from "../src/lib/codeViewerWorkspaceScope.js";
 import {
   buildUnifiedDiff,
   getToolCallCodeContentPreview,
@@ -11,6 +12,37 @@ import {
 } from "../src/lib/codeViewer.js";
 
 describe("codeViewer helpers", () => {
+  it("将工具的相对 diff 路径限定到当前远程 workspace，不覆盖已有来源身份", () => {
+    const scope = {
+      workspacePath: "/remote/project",
+      workspaceIdentity: "ssh:host-a:/remote/project",
+      workspaceRemoteSessionId: "remote-a",
+    };
+    expect(
+      scopeCodeViewerSource(
+        { type: "patch", title: "demo.ts", path: "src/demo.ts", patch: "+new" },
+        scope,
+      ),
+    ).toMatchObject(scope);
+    expect(
+      scopeCodeViewerSource(
+        {
+          type: "patch",
+          title: "other.ts",
+          patch: "+other",
+          workspacePath: "/other",
+          workspaceIdentity: "ssh:host-b:/other",
+          workspaceRemoteSessionId: "remote-b",
+        },
+        scope,
+      ),
+    ).toMatchObject({
+      workspacePath: "/other",
+      workspaceIdentity: "ssh:host-b:/other",
+      workspaceRemoteSessionId: "remote-b",
+    });
+  });
+
   it("infers language from file extension", () => {
     expect(inferCodeLanguage("/tmp/example.tsx")).toBe("tsx");
     expect(inferCodeLanguage("/tmp/example.py")).toBe("python");

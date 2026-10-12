@@ -75,6 +75,20 @@ nodes:
         symbol: CommandRouter
       - file: packages/codex-bridge/src/projection.ts
         symbol: projectThread
+  - id: service.codex-native-file-change-display
+    kind: service
+    label: Bounded native Codex fileChange tool display projection
+    aliases: [原生编辑 Diff, ApplyPatch fileChange, native file diff]
+    docs:
+      - specs/codex-desktop-adapter.md
+      - docs/ui/tool-display-rendering.md
+    codeSeeds:
+      - file: packages/codex-bridge/src/projection-rows.ts
+        symbol: toolRow
+      - file: packages/codex-bridge/src/file-changes.ts
+        symbol: projectTurnFileChanges
+    invariants:
+      - Native fileChange is the only per-tool diff authority; turn-level fileChanges is a separate final-turn summary. Derived display must fit the V4 row budget and preserve desktop/mobile terminal equivalence.
   - id: "capability.permission-full-access"
     kind: "capability"
     label: "Approval full access updates task and pending input permissions"
@@ -2457,6 +2471,8 @@ nodes:
       - "TaskOutput card"
       - "RespondToCoordinator card"
       - "工具调用卡片"
+      - "原生编辑 Diff"
+      - "ApplyPatch 工具卡"
       - "CUA Group"
       - "Computer Use 工具聚合"
     docs:
@@ -2469,6 +2485,10 @@ nodes:
         file: "packages/ui/src/ToolCallBlocks.tsx"
       - symbol: "toolCallRowToLegacyNode"
         file: "packages/ui/src/v4/toolCallRowAdapter.ts"
+      - symbol: "EditToolCallBlock"
+        file: "packages/ui/src/ToolCallBlocks/renderers/edit.tsx"
+      - symbol: "readRawToolCallFileSummaries"
+        file: "packages/ui/src/ToolCallBlocks/fileSummaries.ts"
       - symbol: "ProductProjection"
         file: "apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/product-projection.ts"
       - symbol: "prepareCuaGroupFlowItems"
@@ -6970,6 +6990,11 @@ edges:
     to: "surface.conversation-tool-call"
     type: "renders-in"
     rank: "must-inspect"
+  - from: service.codex-native-file-change-display
+    to: "surface.conversation-tool-call"
+    type: "projects-native-file-diffs-to"
+    rank: "must-inspect"
+    condition: "Only native Codex fileChange items; old Codez file_diff rows keep their existing source and render behavior."
   - from: "surface.conversation-tool-call"
     to: "state.conversation-projection"
     type: "projects-from"

@@ -5152,6 +5152,10 @@ const zhCN: Record<string, string> = {
   "chat.toolCall.edit.editing": "正在编辑",
   "chat.toolCall.edit.edited": "已编辑",
   "chat.toolCall.edit.multipleFiles": "{count} 个文件",
+  "chat.toolCall.edit.omittedFiles": "此预览还有 {count} 个文件未展示。",
+  "chat.toolCall.edit.partialDiff": "部分 Diff",
+  "chat.toolCall.edit.previewTruncated": "这里只展示了部分 Diff。",
+  "chat.toolCall.edit.previewUnavailable": "此文件暂无可用的 Diff 预览。",
   "chat.toolCall.snapshot.notice":
     "该工具有 {fields} 个字段被裁剪，当前显示预览 {previewBytes} / {fullBytes}",
   "chat.toolCall.snapshot.loadFull": "加载完整工具数据",

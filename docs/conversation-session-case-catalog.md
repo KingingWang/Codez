@@ -1290,6 +1290,22 @@ O20/O21 的 E2E 剪枝：不新增 GUI E2E。O20 由 `core/tests/tool-executor-t
 O18 的 E2E 剪枝：复用 BG25 已完成的本地 background Agent，仅覆盖 `TaskOutput` 的 `success + completed + 非空 output` 专属卡片和一次真实展开；不再重复 running/not_ready、timeout、failed/lost、cancelled/killed/stopped、空 output、2,000/2,001 截断、历史无 display、冷恢复或手机 replayable。前述组合继续由 Core display、V4 projection/wire 与共享 UI renderer 定向测试机械覆盖。
 O19 的 E2E 剪枝：只覆盖两个真实可达的 tool execution error：TaskOutput 未知 task id，以及 RespondToCoordinator 缺少必填 `message` 的 schema validation error。当前组合 E2E 已覆盖错误终态、统一的“执行失败”文案、正文隐藏原始错误和父子可见性边界；两张卡 hover 失败状态后验证既有 `ToolLayout` tooltip 的 WDIO 断言尚未补齐，因此覆盖状态保持 `partial`。RespondToCoordinator 的业务 `status=failed` 需要注入一个会抛错的 coordinator port，而正常生产 enqueue 只是同步 runtime command 入队；本 case 不为测试新增 fault hook，该分支继续由 Core 与 renderer focused tests 覆盖。denied、stopped、timeout、未知 display 和兼容 fallback 不与错误链路做笛卡尔积。
 
+## NFD. 原生 Codex 文件工具 Diff 展示
+
+本组只修复原生 `fileChange` 到聊天工具卡的展示投影。它不替换 O10-O14 的轮次文件
+摘要、Review 和 rewind，也不把某次工具的 patch 当作该轮最终 before/after。
+
+| ID    | Setup                                                                                | Action                                                      | Assertions                                                                                                      | Evidence                                        | Review   |
+| ----- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------- |
+| NFD01 | 桌面 Codex session，完成的 `fileChange` 含单文件 update                              | 展开 ApplyPatch 工具行并点文件 chip                         | 摘要有文件名及完整事实的 `+1/-1`；内联有删除/新增代码行，侧栏 diff 指向同一文件；不是空详情                     | native item、V4 display、UI 与侧栏              | accepted |
+| NFD02 | 一次原生 fileChange 包含 add、delete、update 与 rename                               | 展开工具行及每个子文件                                      | 每个文件有独立 patch 与正确操作/path，创建/删除头使用 `/dev/null`，rename 打开目标；总数及行数不按截断预览重算  | bridge schema、UI focused test                  | accepted |
+| NFD03 | fileChange 超过 8 hunks/160 行或单 row 字节预算，或含过多文件                        | 展开工具行                                                  | 仅展示有界预览和省略提示，保留真实总数与统计；不会拒绝快照或把残缺 patch 当全文；完整轮次变更仍由原 Review 读取 | bridge budget、wire/snapshot 与 UI focused test | accepted |
+| NFD04 | 原生行经历 running/approval、failed/declined、cold resume；另有旧 Codez file_diff 行 | 分别渲染桌面 continuous、手机 replayable 终态与 Office 模式 | 待应用不声称已写入，失败保留错误；live/cold/手机的终态一致；旧行与 Office 隐藏正文规则不回归                    | bridge projection、V4 schema 与 UI focused test | accepted |
+
+NFD 的交互 E2E 只取桌面本地单文件成功编辑并冷恢复（NFD01 的代表），
+多文件/失败/大小边界与手机 replayable 由 focused 测试覆盖；不与 queue、
+fork、background 或 Git worktree 状态做全排列。
+
 ## BDO. Bash 直接文件输出回归
 
 BDO01–BDO06 复用已经确认的 Bash 直写、5 GiB 软阈值和根退出结算合同，具体 setup/action/

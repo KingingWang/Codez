@@ -225,6 +225,30 @@ Acceptance for follow-up delivery:
   row/entity, an idle turn, native `thread/revert`, fresh paginated history and a
   new epoch before `turn/start`. `workspaceMode: rewind` is rejected before mutation.
 
+### Native file-change tool display
+
+- A native `fileChange` item is the authoritative source for one `ApplyPatch` tool row. Its
+  `changes[]` are per-file facts (`path`, `kind`, `diff`): `add` and `delete` carry the full file
+  body, while `update` carries unified hunks. The bridge derives a bounded, validated
+  `ToolCallRow.output.display` from those facts; it does not infer a diff from concatenated
+  `output.text`, the current Git worktree, or a different turn's file summary.
+- A single file uses the existing `file_diff` display; multiple files use `file_diffs` with
+  individual entries. Each visible file shows its path, operation, full-fact additions/deletions
+  and a structured patch. Rename displays the source and destination and opens the destination.
+  The tool row retains its native item ID and status. Pending/approval diffs are proposed changes,
+  not a claim that they were applied; failed/declined rows keep their failure outcome.
+- The inline preview retains the existing file-tool limit of eight hunks and 160 diff lines.
+  The entire derived display is also bounded by the row budget, including path metadata; when
+  files or lines are omitted, preserve accurate total counts and an explicit truncation flag.
+  The UI may show the bounded preview and a truncation notice, but must not offer it as the
+  complete per-tool diff. No new full-output store or per-tool fetch API is created. The existing
+  turn-level `fileChanges` query and Review action remain the route to the full available turn
+  changes; they must not be substituted for a particular tool's change set.
+- Desktop live projection, paged/cold history and mobile replayable snapshots carry the same
+  typed display. This is a presentation projection only: no extra file write, command, queue,
+  owner/lease, or delivery path. Legacy Codez `file_diff` rows and Office mode's hidden inline
+  details keep their existing behavior.
+
 ### Conversation tail window and history paging
 
 - The Codex publisher has no durable delta/replay log: every projection change

@@ -13,6 +13,7 @@ import {
   type CodexUserInput,
 } from "./codex-types.js";
 import { assertRowBudget, projectToolInput, projectToolOutput } from "./projection-bounds.js";
+import { projectNativeFileChangeDisplay } from "./native-file-change-display.js";
 import {
   codexEventMarker,
   collabAgentToolCallRow,
@@ -59,7 +60,10 @@ export function itemEntityId(turnId: string, itemId: string): string {
 interface CodexPlanUpdateItem {
   type: "planUpdate";
   id: string;
-  plan: Array<{ step: string; status: "pending" | "in_progress" | "completed" }>;
+  plan: Array<{
+    step: string;
+    status: "pending" | "in_progress" | "completed";
+  }>;
   explanation?: string;
 }
 
@@ -126,6 +130,10 @@ function toolRow(
     common.output = projectToolOutput(
       item.changes.map((change) => `${change.path}\n${change.diff}`).join("\n"),
     );
+    // 原因：原生 changes 是数组，而旧 UI 摘要只识别按文件组织的 display；
+    // output.text 又可能被截断，必须在桥接时从原生事实生成有界的结构化预览。
+    const display = projectNativeFileChangeDisplay(item.changes);
+    if (display) common.output.display = display;
   } else {
     common.toolName = `mcp__${item.server}__${item.tool}`;
     Object.assign(common, projectToolInput(item.arguments));
@@ -198,7 +206,12 @@ function itemRow(
       ),
       ...(status === "pendingApproval" ? { approvalInteractionId: approval?.interactionId } : {}),
       ...(status === "error"
-        ? { error: { code: "codex.item.failed", message: `Codex ${item.type} failed` } }
+        ? {
+            error: {
+              code: "codex.item.failed",
+              message: `Codex ${item.type} failed`,
+            },
+          }
         : {}),
     };
   }

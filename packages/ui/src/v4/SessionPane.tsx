@@ -75,6 +75,7 @@ import { cn } from "@/components/lib/utils.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
+import { scopeCodeViewerSource } from "@/lib/codeViewerWorkspaceScope.js";
 import type { OpenAutomationsMain } from "@/lib/taskNavigationHistory.js";
 import { WORKSPACE_FILE_DRAG_MIME } from "@/lib/workspaceFileDrag.js";
 import { buildChatSessionScrollMemoryKey } from "@/lib/chatSessionScrollMemory.js";
@@ -2842,6 +2843,20 @@ export function SessionPane({
     if (result !== "sent") throw new Error(`workflow save request not sent: ${result}`);
   }, []);
 
+  const openScopedCodeViewer = useCallback(
+    (source: CodeViewerSource) => {
+      // 原因：Codex fileChange 可以给出 workspace-relative path；仅传 patch/path 会让
+      // 侧栏“打开原文件”在远程 workspace 中失去 identity/session 路由。
+      onOpenCodeViewer?.(
+        scopeCodeViewerSource(source, {
+          workspacePath,
+          workspaceIdentity,
+          workspaceRemoteSessionId: remoteSessionId ?? undefined,
+        }),
+      );
+    },
+    [onOpenCodeViewer, remoteSessionId, workspaceIdentity, workspacePath],
+  );
   const rowContext = useMemo<ConversationRowRenderContext>(
     () => ({
       nativeCodex: isDesktop,
@@ -2866,7 +2881,7 @@ export function SessionPane({
       onNavigateToRow: handleNavigateToRow,
       onOpenBrowserUrl,
       onOpenAutomationsMain,
-      onOpenCodeViewer,
+      onOpenCodeViewer: openScopedCodeViewer,
       onAutoOpenAssistantPptx: handleAutoOpenAssistantPptx,
       assistantPreviewPptxAutoOpenTarget,
       onOpenFileLink,
@@ -2937,7 +2952,7 @@ export function SessionPane({
       handleNavigateToRow,
       onOpenBrowserUrl,
       onOpenAutomationsMain,
-      onOpenCodeViewer,
+      openScopedCodeViewer,
       handleAutoOpenAssistantPptx,
       assistantPreviewPptxAutoOpenTarget,
       onOpenFileLink,

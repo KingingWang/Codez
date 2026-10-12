@@ -12,7 +12,11 @@ test("unknown native items remain visible but malformed known items fail closed"
   const thread = threadFixture();
   const nativeTypes = ["futureItem"];
   thread.turns[0]!.items.push(
-    ...nativeTypes.map((type) => ({ type, id: type, detail: { preserved: true } })),
+    ...nativeTypes.map((type) => ({
+      type,
+      id: type,
+      detail: { preserved: true },
+    })),
   );
   const snapshot = projectThread(thread, { workspacePath: "/workspace" });
   const fallback = snapshot.rows.window.slice(-nativeTypes.length);
@@ -295,8 +299,8 @@ const toolItems: CodexThreadItem[] = [
         kind: { type: "update", move_path: null },
         diff: "@@ -1 +1 @@\n-old\n+new",
       },
-      { path: "two.ts", kind: { type: "add" }, diff: "+new file" },
-      { path: "three.ts", kind: { type: "delete" }, diff: "-old file" },
+      { path: "two.ts", kind: { type: "add" }, diff: "new file" },
+      { path: "three.ts", kind: { type: "delete" }, diff: "old file" },
     ],
   },
   {
@@ -330,8 +334,67 @@ test("command, file-change and MCP rows preserve structured input/output and val
     ],
   );
   assert.equal(tools[0]?.output?.text, "hello");
-  assert.deepEqual(tools[0]?.input, { command: "printf hello", cwd: "/workspace" });
-  assert.match(tools[1]?.output?.text ?? "", /three\.ts\n-old file/);
+  assert.deepEqual(tools[0]?.input, {
+    command: "printf hello",
+    cwd: "/workspace",
+  });
+  assert.match(tools[1]?.output?.text ?? "", /three\.ts\nold file/);
+  assert.deepEqual(tools[1]?.output?.display, {
+    kind: "file_diffs",
+    totalFiles: 3,
+    additions: 2,
+    deletions: 2,
+    files: [
+      {
+        kind: "file_diff",
+        filePath: "one.ts",
+        operation: "update",
+        additions: 1,
+        deletions: 1,
+        structuredPatch: [
+          {
+            oldStart: 1,
+            oldLines: 1,
+            newStart: 1,
+            newLines: 1,
+            lines: ["-old", "+new"],
+          },
+        ],
+      },
+      {
+        kind: "file_diff",
+        filePath: "two.ts",
+        operation: "add",
+        additions: 1,
+        deletions: 0,
+        structuredPatch: [
+          {
+            oldStart: 0,
+            oldLines: 0,
+            newStart: 1,
+            newLines: 1,
+            lines: ["+new file"],
+          },
+        ],
+      },
+      {
+        kind: "file_diff",
+        filePath: "three.ts",
+        operation: "delete",
+        additions: 0,
+        deletions: 1,
+        structuredPatch: [
+          {
+            oldStart: 1,
+            oldLines: 1,
+            newStart: 0,
+            newLines: 0,
+            lines: ["-old file"],
+          },
+        ],
+      },
+    ],
+  });
   assert.deepEqual(tools[2]?.display, {
     kind: "mcp_tool",
     serverName: "fixture",
@@ -342,6 +405,81 @@ test("command, file-change and MCP rows preserve structured input/output and val
     tools.every((row) => row.startedAt === undefined && row.endedAt === undefined),
     true,
   );
+});
+
+test("native file-change display survives large inputs with exact counts and bounded preview", () => {
+  const thread = threadFixture();
+  const body = Array.from({ length: 300 }, (_, index) => `line ${index}`).join("\n");
+  thread.turns[0]!.items.push({
+    type: "fileChange",
+    id: "large-patch",
+    status: "completed",
+    changes: [{ path: "src/large.ts", kind: { type: "add" }, diff: body }],
+  });
+  const snapshot = projectThread(thread, { workspacePath: "/workspace" });
+  assert.deepEqual(conversationSnapshotSchema.parse(snapshot), snapshot);
+  const row = snapshot.rows.window.find(
+    (item) => item.kind === "toolCall" && item.toolCallId === "large-patch",
+  );
+  assert.equal(row?.kind, "toolCall");
+  if (row?.kind !== "toolCall") return;
+  assert.equal(row.output?.display?.kind, "file_diff");
+  if (row.output?.display?.kind !== "file_diff") return;
+  assert.equal(row.output.display.additions, 300);
+  assert.equal(row.output.display.deletions, 0);
+  assert.equal(row.output.display.truncated, true);
+  assert.equal(row.output.display.structuredPatch[0]?.lines.length, 160);
+});
+
+test("native file-change display bounds file count and escaped bytes without losing totals", () => {
+  const thread = threadFixture();
+  thread.turns[0]!.items.push({
+    type: "fileChange",
+    id: "many-files",
+    status: "completed",
+    changes: Array.from({ length: 40 }, (_, index) => ({
+      path: `src/file-${index}.ts`,
+      kind: { type: "add" as const },
+      diff: index === 0 ? `"\\\u0000`.repeat(30_000) : `line ${index}\n`,
+    })),
+  });
+  const snapshot = projectThread(thread, { workspacePath: "/workspace" });
+  const row = snapshot.rows.window.find(
+    (item) => item.kind === "toolCall" && item.toolCallId === "many-files",
+  );
+  assert.equal(row?.kind, "toolCall");
+  if (row?.kind !== "toolCall") return;
+  assert.equal(row.input, undefined);
+  assert.equal(row.output?.display?.kind, "file_diffs");
+  if (row.output?.display?.kind !== "file_diffs") return;
+  assert.equal(row.output.display.totalFiles, 40);
+  assert.equal(row.output.display.additions, 40);
+  assert.equal(row.output.display.files.length, 32);
+  assert.equal(row.output.display.truncated, true);
+  assert.ok(Buffer.byteLength(JSON.stringify(row.output.display), "utf8") <= 48 * 1024);
+});
+
+test("native rename display keeps the source path and opens the destination", () => {
+  const thread = threadFixture();
+  thread.turns[0]!.items.push({
+    type: "fileChange",
+    id: "rename",
+    status: "completed",
+    changes: [
+      {
+        path: "src/before.ts",
+        kind: { type: "update", move_path: "src/after.ts" },
+        diff: "@@ -1 +1 @@\n-old\n+new",
+      },
+    ],
+  });
+  const row = projectThread(thread, {
+    workspacePath: "/workspace",
+  }).rows.window.find((item) => item.kind === "toolCall" && item.toolCallId === "rename");
+  assert.equal(row?.kind === "toolCall" && row.output?.display?.kind, "file_diff");
+  if (row?.kind !== "toolCall" || row.output?.display?.kind !== "file_diff") return;
+  assert.equal(row.output.display.filePath, "src/before.ts");
+  assert.equal(row.output.display.movePath, "src/after.ts");
 });
 
 test("tool failures and declines remain distinct, including nonzero command exits", () => {
@@ -355,7 +493,13 @@ test("tool failures and declines remain distinct, including nonzero command exit
     thread.turns[0]!.status = "inProgress";
     thread.status = { type: "active", activeFlags: [] };
     thread.turns[0]!.items = [
-      { type: "commandExecution", id: "cmd", command: "pwd", cwd: "/workspace", status },
+      {
+        type: "commandExecution",
+        id: "cmd",
+        command: "pwd",
+        cwd: "/workspace",
+        status,
+      },
     ];
     const row = projectThread(thread, { workspacePath: "/workspace" }).rows.window[1];
     assert.equal(row?.kind === "toolCall" && row.status, expected);
@@ -411,7 +555,10 @@ test("pending approvals are validated and tied to the matching tool, not other t
   assert.equal(snapshot.control.canStop, true);
   assert.throws(() => projectThread(thread, { ...options, pendingInteractions: [] }), /not both/);
   assert.throws(() =>
-    projectThread(thread, { ...options, interactions: [{ ...interaction, kind: "userInput" }] }),
+    projectThread(thread, {
+      ...options,
+      interactions: [{ ...interaction, kind: "userInput" }],
+    }),
   );
   if (interaction.payload.kind === "permission") interaction.payload.summary = "Changed by caller";
   assert.notDeepEqual(snapshot.pendingInteractions, [interaction]);

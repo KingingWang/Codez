@@ -5495,6 +5495,10 @@ const enUS: Record<string, string> = {
   "chat.toolCall.edit.editing": "Editing",
   "chat.toolCall.edit.edited": "Edited",
   "chat.toolCall.edit.multipleFiles": "{count} files",
+  "chat.toolCall.edit.omittedFiles": "{count} more files are not shown in this preview.",
+  "chat.toolCall.edit.partialDiff": "partial diff",
+  "chat.toolCall.edit.previewTruncated": "Only part of this diff is shown.",
+  "chat.toolCall.edit.previewUnavailable": "No diff preview is available for this file.",
   "chat.toolCall.snapshot.notice":
     "{fields} tool field(s) were truncated. Showing preview {previewBytes} / {fullBytes}.",
   "chat.toolCall.snapshot.loadFull": "Load full tool data",
