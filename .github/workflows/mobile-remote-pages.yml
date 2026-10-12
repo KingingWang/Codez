@@ -1,0 +1,64 @@
+name: Encrypted mobile remote page
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: mobile-remote-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.repository == 'KingingWang/Codez'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify encrypted mobile transport, route and desktop pairing
+        run: >-
+          pnpm exec vitest run
+          packages/client/test/webRemoteControlE2ee.test.ts
+          packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts
+          packages/desktop/test/webRemoteControlPageUrl.test.ts
+          packages/web/test/webRemoteControlRoute.test.ts
+          packages/web/test/webRemoteControlVersion.test.ts
+          packages/web/test/webRemoteControlTransport.test.ts
+      - run: pnpm typecheck
+      - name: Build encrypted mobile remote page
+        env:
+          CODEZ_ENV: production
+        run: pnpm --filter @codez/web exec vite build --base=/Codez/remote/v4/
+      - name: Verify project-path assets before publication
+        run: node --test scripts/test-web-remote-control-pages.mjs
+      - name: Stage GitHub Pages project route
+        run: |
+          mkdir -p .pages/remote/v4
+          rsync -a --exclude '*.map' packages/web/dist/ .pages/remote/v4/
+          touch .pages/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .pages
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
