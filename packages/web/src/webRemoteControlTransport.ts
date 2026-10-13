@@ -620,10 +620,11 @@ export class WebRemoteControlTerminalTransport {
       try {
         const wire = parseWebRemoteControlE2eeWirePayload(payload);
         if (wire?.zcode_type === "e2ee-rekey" && wire.sid === this.options.deviceSid) {
-          // Bugfix: 桌面 socket 重建后发来 rekey 时，手机可能正处于上一轮换的握手中段
-          // （旧 hello 已随旧 device socket 丢失）。只在 ready 时响应会造成双方等待
-          // 握手超时的僵局；只要已有会话就废弃重来，relay 伪造 rekey 最多造成拒绝服务。
-          if (this.e2ee) {
+          // Bugfix: 握手中段（非 ready）绝不能响应 rekey 重置会话：桌面在 matched 后必发
+          // rekey，与手机 hello 交叉时若重置，手机收到的 response 对应的是已废弃的 hello，
+          // proof 必失败 → 手机重建 → 桌面 waiting/matched 再发 rekey，形成无限活锁
+          //（表现为扫码后无限失败重试）。握手中段的停滞由握手超时（可恢复重建）兜底。
+          if (this.e2ee?.isReady()) {
             this.resetE2ee();
             this.e2ee = createWebRemoteControlE2eeSession({
               role: "terminal",

@@ -1450,6 +1450,49 @@ describe("WebRemoteControlDeviceTransport", () => {
     };
   }
 
+  it("completes pairing when the phone hello crosses the device rekey on matched", async () => {
+    // 回归：扫码配对时设备 matched 后必发 rekey，手机 hello 与其交叉到达。
+    // 设备端任意阶段重置响应 hello，手机端握手中段忽略 rekey，握手必须一次完成。
+    const key = generateWebRemoteControlPairingKey();
+    const states: WebRemoteControlDeviceTransportState[] = [];
+    const errors: Error[] = [];
+    let phone: E2eeSession | undefined;
+    const relay = await createRelayServer(({ message, socket }) => {
+      if (message.type === "auth_init") {
+        socket.send(
+          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+        );
+        // 手机扫码后立即开始握手，不等设备 rekey（与设备 matched 后的 rekey 交叉）。
+        phone = createWebRemoteControlE2eeSession({
+          role: "terminal",
+          deviceSid: "sid-1",
+          pairingKey: key,
+          send: (payload) => socket.send(JSON.stringify({ type: "data", payload })),
+        });
+        phone.start();
+        return;
+      }
+      if (message.type !== "data") return;
+      const wire = message.payload;
+      if (wire?.zcode_type === "e2ee-rekey") return;
+      try {
+        phone?.accept(wire);
+      } catch {
+        // 测试替身只驱动协议流。
+      }
+    });
+    const transport = createE2eeTransport(relay.url, key, states, errors);
+    try {
+      transport.start();
+      await waitUntil(() => states.includes("paired") && phone?.isReady() === true);
+      expect(states).not.toContain("error");
+      expect(errors).toHaveLength(0);
+      expect(relay.getConnectionCount()).toBe(1);
+    } finally {
+      transport.dispose();
+    }
+  });
+
   it("restarts the e2ee handshake when a refreshed phone sends a new hello mid-handshake", async () => {
     const key = generateWebRemoteControlPairingKey();
     const states: WebRemoteControlDeviceTransportState[] = [];

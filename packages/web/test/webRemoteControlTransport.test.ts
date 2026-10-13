@@ -558,6 +558,88 @@ describe("WebRemoteControlTerminalTransport", () => {
       transport.dispose();
     }
   });
+  it("ignores e2ee-rekey while a handshake is in flight and completes pairing", async () => {
+    // 回归：桌面 matched 后必发 rekey，与手机 hello 交叉到达。若握手中段响应 rekey
+    // 重置会话，手机收到的 response 将对应已废弃的 hello，proof 必失败并触发重建，
+    // 与桌面 waiting→matched 的 rekey 形成无限活锁（扫码后无限失败重试）。
+    const key = generateWebRemoteControlPairingKey();
+    const states: WebRemoteControlTerminalTransportState[] = [];
+    const received: WebRemoteControlAppPayload[] = [];
+    const failures: WebRemoteControlFailure[] = [];
+    let peer: ReturnType<typeof createWebRemoteControlE2eeSession>;
+    let resetCount = 0;
+    let helloCount = 0;
+    const relay = await createRelayServer(({ message, socket }) => {
+      if (message.type === "auth_init") {
+        socket.send(JSON.stringify({ type: "auth_challenge", nonce: "nonce-1" }));
+      } else if (message.type === "auth_response") {
+        peer = createWebRemoteControlE2eeSession({
+          role: "device",
+          deviceSid: "sid-1",
+          pairingKey: key,
+          send: (payload) => socket.send(JSON.stringify({ type: "data", payload })),
+        });
+        peer.start();
+        socket.send(
+          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+        );
+        // 模拟桌面 matched 后紧随的 rekey，与手机 hello 交叉。
+        socket.send(
+          JSON.stringify({
+            type: "data",
+            payload: { zcode_type: "e2ee-rekey", v: 1, sid: "sid-1", nonce: "A".repeat(22) },
+          }),
+        );
+      } else if (message.type === "data") {
+        const wire = message.payload;
+        if (wire?.zcode_type === "e2ee-hello") helloCount += 1;
+        try {
+          const result = peer.accept(wire);
+          if (result.kind === "ready") {
+            socket.send(
+              JSON.stringify({
+                type: "data",
+                payload: peer.prepare({
+                  zcode_type: "app-error",
+                  reason: "unexpected-error",
+                  error: "paired",
+                }),
+              }),
+            );
+          }
+        } catch {
+          // 测试替身只驱动协议流。
+        }
+      }
+    });
+    const transport = new WebRemoteControlTerminalTransport({
+      relayWsUrl: relay.url,
+      deviceSid: "sid-1",
+      passHash: "relay-known",
+      e2eeKey: key,
+      WebSocketCtor: WebSocket as unknown as typeof globalThis.WebSocket,
+      authProvider: { calculateProof: async () => "proof" },
+      onPayload: (payload) => received.push(payload),
+      onStateChange: (state) => states.push(state),
+      onFailure: (failure) => failures.push(failure),
+      onE2eeReset: () => {
+        resetCount += 1;
+      },
+      onError: () => {},
+      reloadPage: () => {},
+    });
+    try {
+      transport.start();
+      await waitUntil(() => states.includes("paired") && received.length === 1, 3_000);
+      // 握手中段的 rekey 被忽略：全程只发一次 hello、不重置会话、不失败。
+      expect(helloCount).toBe(1);
+      expect(resetCount).toBe(0);
+      expect(failures).toHaveLength(0);
+      expect(relay.getConnectionCount()).toBe(1);
+    } finally {
+      transport.dispose();
+    }
+  });
   it("uses the measured final JSON verbatim for initial send and replay", async () => {
     const states: WebRemoteControlTerminalTransportState[] = [];
     const relay = await createRelayServer(({ message, socket }) => {
