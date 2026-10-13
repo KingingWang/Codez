@@ -1909,7 +1909,17 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
     }
     return platformResponse.result as WebRemoteControlPlatformMethodResultMap[K];
   };
-  const listWorkspaces = async (): Promise<WebRemoteControlWorkspaceListResult> => {
+  // Bugfix: 恢复/重挂窗口内 MobileTaskHome 与外层壳可能同时发起列表请求，
+  // 546 个任务的响应约 375KiB，并发重复请求在移动链路上是实打实的带宽放大。
+  // 列表是幂等只读请求，在途期间合并为一次，完成后再发起才重新请求。
+  let listWorkspacesInFlight: Promise<WebRemoteControlWorkspaceListResult> | null = null;
+  const listWorkspaces = (): Promise<WebRemoteControlWorkspaceListResult> => {
+    listWorkspacesInFlight ??= requestWorkspaceListOnce().finally(() => {
+      listWorkspacesInFlight = null;
+    });
+    return listWorkspacesInFlight;
+  };
+  const requestWorkspaceListOnce = async (): Promise<WebRemoteControlWorkspaceListResult> => {
     const requestWorkspaceList = async () => {
       const requestId = createWebRemoteControlRequestId("workspace-list");
       return requestAppPayload(
@@ -2069,6 +2079,7 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
     services: Awaited<ReturnType<typeof connectViaProtocol>>,
     bridge: WebRemoteControlExternalWorkspaceBridge,
     initialNavigationIntent?: WebRemoteControlMobileNavigationIntent,
+    initialWorkspaceList?: WebRemoteControlWorkspaceListResult,
   ) => {
     if (terminated || versionGuard.isBlocked()) return;
     ready = true;
@@ -2102,6 +2113,10 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
             }
             initialTaskId={bridge.initialTaskId}
             initialWebRemoteControlMobileNavigationIntent={initialNavigationIntent}
+            // bootstrap 响应已含完整任务列表，直接作为首页初始快照：
+            // 否则每次 bridge 重建（恢复循环期间每次降级都会）首页挂载都会再发
+            // 一次约 375KiB 的 workspace-list-request，徒增移动链路负担。
+            initialWebRemoteControlWorkspaceList={initialWorkspaceList}
             webRemoteControlTerminalTransportState={terminalTransportState}
             initialWorkspaceLoadingFallback={<WebRemoteControlLoadingScreen state="paired" />}
             restoreSession={false}
@@ -2241,7 +2256,18 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
     const result = await openWorkspaceBridge(selectedWorkspace.workspaceKey, {
       taskId: selectedWorkspace.taskId,
     });
-    renderExternalRelayRoot(result.services, result.bridge);
+    renderExternalRelayRoot(result.services, result.bridge, undefined, {
+      workspaces: bootstrapResult.workspaces,
+      tasks: bootstrapResult.tasks,
+      activeWorkspaceKey:
+        bootstrapResult.mobileViewState?.activeWorkspaceKey ??
+        bootstrapResult.initialViewState?.activeWorkspaceKey ??
+        selectedWorkspace.workspaceKey,
+      activeTaskId:
+        bootstrapResult.mobileViewState?.activeTaskId ??
+        bootstrapResult.initialViewState?.activeTaskId ??
+        selectedWorkspace.taskId,
+    });
   };
 
   const lifecycle = createWebRemoteControlLifecycleRecovery({

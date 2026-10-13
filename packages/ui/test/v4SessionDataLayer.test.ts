@@ -35,6 +35,7 @@ import {
   mergeOlderRows,
   shouldAutoLoadIncompleteLeadingTurn,
 } from "@/v4/conversationProjectionStore.js";
+import { clearConversationSnapshotHandoffs } from "@/v4/conversationSnapshotHandoff.js";
 import type { ConversationTransport } from "@/v4/transport.js";
 import {
   SUBSCRIPTION_CONTENT_REJECTED,
@@ -367,6 +368,9 @@ describe("ConversationProjectionStore", () => {
   let store: ConversationProjectionStore;
 
   beforeEach(() => {
+    // 模块级快照交接缓存是生产行为（bridge 重建恢复用）；每个用例从干净状态开始，
+    // 避免上个用例 close 写入的交接污染「首连无 base」这类断言。
+    clearConversationSnapshotHandoffs();
     transport = new FakeTransport();
     store = new ConversationProjectionStore("conversation/s1", transport);
     // 帧路由在 SessionDataLayer；store 独测时手工接线。
@@ -1489,6 +1493,7 @@ describe("SessionDataLayer", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    clearConversationSnapshotHandoffs();
     transport = new FakeTransport();
     layer = new SessionDataLayer({ transport, keepWarmMs: 30_000 });
   });

@@ -21,6 +21,10 @@ import {
   type TopicFrameDeliveryKind,
 } from "@codez/shared/codez-protocol-v4";
 import { logger } from "@/logger.js";
+import {
+  takeConversationSnapshotHandoff,
+  writeConversationSnapshotHandoff,
+} from "@/v4/conversationSnapshotHandoff.js";
 import type { ConversationTurnNavigatorHydrationResult } from "@/v4/conversationTurnNavigatorHelpers.js";
 import type { ConversationTransport } from "@/v4/transport.js";
 import { ConversationRowPool } from "@/v4/conversationRowSharing.js";
@@ -280,7 +284,7 @@ uiMemoryDiagnosticsRegistry.register("projection", () => {
 });
 
 export class ConversationProjectionStore {
-  private state: ConversationStoreState = INITIAL_STATE;
+  private state: ConversationStoreState;
   private readonly listeners = new Set<() => void>();
   private readonly modelTransitionListeners = new Set<
     (transition: SessionModelTransition) => void
@@ -342,6 +346,24 @@ export class ConversationProjectionStore {
     // SessionDataLayer 注入跨 store 共享的池，独立构造时退化为 store 内共享。
     private readonly rowPool: ConversationRowPool = new ConversationRowPool(),
   ) {
+    // 重挂恢复（手机远控 bridge 重建会整体重挂 React 树）：若上一个同 topic store
+    // close 时交接了一致快照，直接以它为初始状态。connect() 会自动把它作为
+    // subscribe base 请求 CLI 增量续传，避免每次恢复都全量重发数百条消息；
+    // 命中期间 UI 立即有内容可渲染，不再白屏转圈。CLI 拒绝 base 时按既有规则
+    // 发全量快照整体替换，一致性仍由协议裁决。
+    const handoffSnapshot = takeConversationSnapshotHandoff(this.topic);
+    this.state = handoffSnapshot
+      ? { ...INITIAL_STATE, snapshot: handoffSnapshot }
+      : INITIAL_STATE;
+    if (handoffSnapshot) {
+      logger.lifecycle.info("v4 conversation store restored from snapshot handoff", {
+        event: "v4.conversation.store.snapshot_handoff",
+        module: "ui.v4.conversation_projection_store",
+        seq: handoffSnapshot.seq,
+        status: "completed",
+        topic: this.topic,
+      });
+    }
     liveProjectionStores.add(this);
     this.offAssemblyFault = transport.onAssemblyFault((fault) => {
       if (fault.topic === this.topic) {
@@ -1393,6 +1415,12 @@ export class ConversationProjectionStore {
   async close(): Promise<void> {
     if (this.closed) return;
     liveProjectionStores.delete(this);
+    // 跨重挂交接：快照是已完整应用的一致投影（store 水位不变量），写给下一个
+    // 同 topic store 做 subscribe base。手机远控 bridge 重建时这一步让恢复从
+    // 「全量重订阅数 MB 首帧」降为「增量续传」，是打破降级循环的关键。
+    if (this.state.snapshot) {
+      writeConversationSnapshotHandoff(this.topic, this.state.snapshot);
+    }
     const closeStartedAt = monotonicNow();
     logger.lifecycle.info("v4 conversation store close started", {
       event: "v4.conversation.store.close.started",
