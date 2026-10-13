@@ -338,6 +338,18 @@ test("model selection writes the native model name and rejects unsupported effor
   );
 });
 
+test("empty capability table models save only the model without an effort write", () => {
+  // 空能力表 = 模型没有档位维度（spec：CodexSettings.spec.md）：写入原生未声明的
+  // effort 会被 config.toml 拒绝或静默误导，保存只写模型本身。
+  const noEffortModel = { ...model, supportedReasoningEfforts: [] };
+  assert.deepEqual(codexModelEdits(noEffortModel, ""), [
+    { keyPath: "model", value: "test-model", mergeStrategy: "replace" },
+  ]);
+  assert.deepEqual(codexModelEdits(noEffortModel, "medium"), [
+    { keyPath: "model", value: "test-model", mergeStrategy: "replace" },
+  ]);
+});
+
 test("native plugin parsing and install selectors distinguish local and remote marketplaces", () => {
   const response = codexPluginsResponseSchema.parse({
     marketplaces: [{ name: "market", path: null, plugins: [plugin] }],

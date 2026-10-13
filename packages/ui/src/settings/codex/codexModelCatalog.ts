@@ -1,4 +1,4 @@
-import type { CodexModel, ModelSelection } from "@codez/shared";
+import type { CodexModel, CodezConfigOption, ModelSelection } from "@codez/shared";
 import { readCodexResource, type CodexRequestSender } from "./codexSettingsData.js";
 
 /** 模型按 catalog provider 的分组（specs/codex-model-provider-grouping.md）。 */
@@ -204,9 +204,60 @@ export function isCodexSelectionReady(
   if (!catalog.groups.some((group) => group.providerId === selection.providerId)) return false;
   if (selection.modelId === catalog.configuredSelection?.modelId) return true;
   const model = catalog.models.find((candidate) => candidate.model === selection.modelId);
+  // 空能力表 = 模型没有档位维度：不就绪校验不适用档位匹配（spec：CodexSettings.spec.md）。
+  if (model && model.supportedReasoningEfforts.length === 0) return true;
   return Boolean(
     model?.supportedReasoningEfforts.some(
       (effort) => effort.reasoningEffort === selection.options?.reasoningLevel,
     ),
   );
+}
+
+/**
+ * Composer 档位控件的选项形状（spec：CodexSettings.spec.md 空 supportedReasoningEfforts
+ * 语义）。空能力表 = 模型没有档位维度：不伪造可选列表，有当前/默认档位时按原生事实
+ * 渲染只读单档，两者都缺则不渲染控件。配置模型未进入发现时档位同样是原生事实，
+ * 有当前值时渲染单档。
+ */
+export function resolveCodexComposerThoughtOption(params: {
+  model?: CodexModel;
+  configuredSelected: boolean;
+  current: string;
+  label: string;
+}): CodezConfigOption | null {
+  const { model, configuredSelected, current, label } = params;
+  if (model) {
+    if (model.supportedReasoningEfforts.length === 0) {
+      const fixed = current || model.defaultReasoningEffort;
+      return fixed
+        ? {
+            id: "codex-reasoning-effort",
+            name: label,
+            type: "select",
+            currentValue: fixed,
+            options: [{ value: fixed, name: fixed }],
+          }
+        : null;
+    }
+    return {
+      id: "codex-reasoning-effort",
+      name: label,
+      type: "select",
+      currentValue: current,
+      options: model.supportedReasoningEfforts.map((entry) => ({
+        value: entry.reasoningEffort,
+        name: entry.reasoningEffort,
+      })),
+    };
+  }
+  if (configuredSelected && current) {
+    return {
+      id: "codex-reasoning-effort",
+      name: label,
+      type: "select",
+      currentValue: current,
+      options: [{ value: current, name: current }],
+    };
+  }
+  return null;
 }

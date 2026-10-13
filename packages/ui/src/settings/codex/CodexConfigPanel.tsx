@@ -269,7 +269,9 @@ export function CodexConfigPanel({
                       model?.supportedReasoningEfforts.map((entry) => entry.reasoningEffort) ?? [],
                     )
               }
-              disabled={disabled || !model}
+              // 空能力表 = 模型没有档位维度：禁用档位选择而不是渲染空下拉（spec：
+              // CodexSettings.spec.md 空 supportedReasoningEfforts 语义）。
+              disabled={disabled || !model || model.supportedReasoningEfforts.length === 0}
               onChange={setDraftEffort}
             />
             <ConfigSelect
@@ -295,9 +297,12 @@ export function CodexConfigPanel({
               disabled ||
               (configured
                 ? !approval && !sandbox
-                : !model?.supportedReasoningEfforts.some(
-                    (entry) => entry.reasoningEffort === effort,
-                  ))
+                : !model ||
+                  // 空能力表没有档位可校验，保存只写模型（见 codexModelEdits）。
+                  (model.supportedReasoningEfforts.length > 0 &&
+                    !model.supportedReasoningEfforts.some(
+                      (entry) => entry.reasoningEffort === effort,
+                    )))
             }
             onClick={saveDefaults}
           >

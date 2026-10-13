@@ -329,6 +329,10 @@ export function codexUserConfigTarget(config: CodexConfigResponse | undefined) {
 }
 
 export function codexModelEdits(model: CodexModel, effort: string) {
+  // 空能力表 = 模型没有档位维度：保存只写模型本身，不写原生未声明的 effort
+  // （spec：CodexSettings.spec.md 空 supportedReasoningEfforts 语义）。
+  if (model.supportedReasoningEfforts.length === 0)
+    return [{ keyPath: "model", value: model.model, mergeStrategy: "replace" as const }];
   if (!model.supportedReasoningEfforts.some((entry) => entry.reasoningEffort === effort)) {
     throw new Error("Unsupported reasoning effort for this model");
   }

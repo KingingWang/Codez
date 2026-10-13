@@ -18,6 +18,7 @@ import {
   readCodexModelCatalog,
   resolveCodexSelection,
   isCodexSelectionReady,
+  resolveCodexComposerThoughtOption,
 } from "./codexModelCatalog.js";
 import { resolveComposerFollowupDelivery } from "@/v4/composer/followupModeSettings.js";
 
@@ -297,6 +298,69 @@ test("unavailable catalog, removed models and unsupported native effort block su
     catalog,
   )!;
   assert.ok(Object.isFrozen(frozen.modelSelection.options));
+});
+
+test("empty capability table models are selection-ready without an effort dimension", () => {
+  // 空能力表 = 模型没有档位维度（spec：CodexSettings.spec.md）：不就绪校验不适用
+  // 档位匹配，否则该模型会永久阻断发送。
+  const plainModel = codexModelSchema.parse({
+    ...nativeModel,
+    id: "plain-id",
+    model: "plain",
+    defaultReasoningEffort: "",
+    supportedReasoningEfforts: [],
+  });
+  const plainCatalog = {
+    ...catalog,
+    models: [plainModel],
+    groups: [
+      { providerId: "native-provider", providerName: "native-provider", models: [plainModel] },
+    ],
+  };
+  const plainSelection = { providerId: "native-provider", modelId: "plain" };
+  assert.equal(isCodexSelectionReady(plainCatalog, plainSelection), true);
+  const frozen = createComposerSubmissionConfig(
+    { mode: "build", modelSelection: plainSelection },
+    null,
+    plainCatalog,
+  );
+  assert.equal(frozen?.modelSelection.modelId, "plain");
+  assert.equal(frozen?.modelSelection.options, undefined);
+  // Composer 档位控件不伪造可选列表：有当前档位时渲染只读单档，当前/默认都缺时不渲染。
+  assert.deepEqual(
+    resolveCodexComposerThoughtOption({
+      model: plainModel,
+      configuredSelected: false,
+      current: "xhigh",
+      label: "Reasoning effort",
+    }),
+    {
+      id: "codex-reasoning-effort",
+      name: "Reasoning effort",
+      type: "select",
+      currentValue: "xhigh",
+      options: [{ value: "xhigh", name: "xhigh" }],
+    },
+  );
+  assert.equal(
+    resolveCodexComposerThoughtOption({
+      model: plainModel,
+      configuredSelected: false,
+      current: "",
+      label: "Reasoning effort",
+    }),
+    null,
+  );
+  // 有能力表的模型不受影响：档位选项原样展开。
+  assert.equal(
+    resolveCodexComposerThoughtOption({
+      model: nativeModel,
+      configuredSelected: false,
+      current: "medium",
+      label: "Reasoning effort",
+    })?.options?.length,
+    2,
+  );
 });
 
 test("mapped preferred models are ready even when the config provider owns no models", async () => {

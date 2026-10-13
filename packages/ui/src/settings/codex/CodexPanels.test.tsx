@@ -10,7 +10,7 @@ import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
 import { CodexAccountPanel } from "./CodexAccountPanel.js";
 import { CodexConfigPanel } from "./CodexConfigPanel.js";
 import { CodexTitleModelSettings } from "./CodexTitleModelSettings.js";
-import { appSettingsSchema } from "@codez/shared";
+import { appSettingsSchema, codexModelSchema } from "@codez/shared";
 import { CodexMcpPanel } from "./CodexMcpPanel.js";
 import { CodexSkillsPanel, CodexPluginsPanel } from "./CodexResourcesPanel.js";
 import { CodexHistoryPanel, HistoryRunRow } from "./CodexHistoryPanel.js";
@@ -105,6 +105,45 @@ test("missing configuration version visibly disables writes and errors remain ac
   assert.match(html, /No writable user configuration layer/);
   assert.match(html, /disabled=""[^>]*>Write value/);
   assert.match(html, /disabled=""[^>]*>Write batch/);
+});
+
+test("empty capability table disables the effort picker but keeps model save writable", () => {
+  // 空能力表 = 模型没有档位维度（spec：CodexSettings.spec.md）：档位选择禁用，
+  // 保存仍可只写模型，不能因为档位校验把保存按钮永久禁用。
+  const plain = codexModelSchema.parse({
+    id: "plain-id",
+    model: "plain-model",
+    displayName: "Plain",
+    description: "No reasoning dimension",
+    hidden: false,
+    isDefault: true,
+    defaultReasoningEffort: "",
+    supportedReasoningEfforts: [],
+  });
+  const html = render(
+    <CodexConfigPanel
+      controller={{
+        ...controller,
+        snapshot: {
+          config: {
+            data: {
+              config: { model: "plain-model" },
+              origins: {},
+              layers: [
+                { name: { type: "user", file: "/fixture/config.toml" }, version: "v1", config: {} },
+              ],
+            },
+          },
+          requirements: {
+            data: { requirements: { allowedApprovalPolicies: null, allowedSandboxModes: null } },
+          },
+          models: { data: { data: [plain], nextCursor: null } },
+        },
+      }}
+    />,
+  );
+  assert.match(html, /<button[^>]*disabled=""[^>]*aria-label="Reasoning effort"/);
+  assert.match(html, /<button(?![^>]*disabled="")[^>]*>Save<\/button>/);
 });
 
 test("title model controls distinguish global default and inherited workspace value", () => {

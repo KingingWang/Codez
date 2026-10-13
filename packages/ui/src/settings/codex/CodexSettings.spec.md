@@ -146,6 +146,13 @@ read-only pill when discovery returned no capability list). The catalog refresh
 affordance is an icon-only control; busy locking disables the same controls
 without inline banner text, matching the legacy composer surfaces.
 
+A discovered model whose `supportedReasoningEfforts` is empty has no reasoning
+dimension. Selection readiness must not require an effort value for it, the
+composer renders a fixed read-only pill with the current/default value (or no
+control when neither exists), and the settings panel disables the effort picker
+instead of showing an empty dropdown. Saving defaults for such a model writes
+only the model, never an effort the native capability table does not declare.
+
 For native busy/prewarming/stopping snapshots, disable model, reasoning, permission
 and plan changes (including keyboard/`/plan` paths). Do not disable same-settings
 guide/queue sends. Immediately before admission, compare frozen settings against

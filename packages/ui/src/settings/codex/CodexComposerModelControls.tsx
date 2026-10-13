@@ -18,6 +18,7 @@ import { resolveSessionTaskUsage } from "@/v4/composer/codexSessionUsage.js";
 import { resolveV4ModelTriggerDisplay } from "@/v4/composer/modelTriggerDisplay.js";
 import type { V4ComposerConfigPicker } from "@/v4/composer/configPickerState.js";
 import { useCodexMessages } from "./messages.js";
+import { resolveCodexComposerThoughtOption } from "./codexModelCatalog.js";
 
 const COMPOSER_INPUT_SELECTOR = `[data-testid="${TID_V4_COMPOSER_INPUT}"]`;
 
@@ -115,31 +116,16 @@ export function CodexComposerModelControls({
 
   // 配置模型未返回能力表时，档位是原生事实而非可选项：单档只读 Pill 与共享控件
   // 的固定档位渲染一致，不伪造能力列表（spec：configuredSelection 语义）。
-  const thoughtOption = useMemo<CodezConfigOption | null>(() => {
-    const current = selection?.options?.reasoningLevel ?? "";
-    if (model) {
-      return {
-        id: "codex-reasoning-effort",
-        name: text.effort,
-        type: "select",
-        currentValue: current,
-        options: model.supportedReasoningEfforts.map((entry) => ({
-          value: entry.reasoningEffort,
-          name: entry.reasoningEffort,
-        })),
-      };
-    }
-    if (configuredSelected && current) {
-      return {
-        id: "codex-reasoning-effort",
-        name: text.effort,
-        type: "select",
-        currentValue: current,
-        options: [{ value: current, name: current }],
-      };
-    }
-    return null;
-  }, [configuredSelected, model, selection?.options?.reasoningLevel, text.effort]);
+  const thoughtOption = useMemo<CodezConfigOption | null>(
+    () =>
+      resolveCodexComposerThoughtOption({
+        model,
+        configuredSelected: Boolean(configuredSelected),
+        current: selection?.options?.reasoningLevel ?? "",
+        label: text.effort,
+      }),
+    [configuredSelected, model, selection?.options?.reasoningLevel, text.effort],
+  );
 
   const handleModelPickerOpenChange = useCallback(
     (open: boolean) => onConfigPickerOpenChange?.("model", open),
