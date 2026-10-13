@@ -237,6 +237,10 @@ export const codexThreadSchema = z.object({
   // 原生 ThreadSource::Feature(String) 原样回读；辅助对话 child 的持久化标记
   // （spec: codex-selection-side-chat），thread/read 与 thread/list 均携带。
   threadSource: z.string().nullish(),
+  // 子代理身份（原生 thread metadata 的 agent_nickname/agent_role）：只用于子会话标题
+  // 与目录展示，父线程 item 不带这两个事实（specs/codex-desktop-subagent-drilldown.md）。
+  agentNickname: z.string().nullish(),
+  agentRole: z.string().nullish(),
   status: codexThreadStatusSchema,
   turns: z.array(codexTurnSchema),
   // Native token usage is additive telemetry. Unknown or malformed fields must never

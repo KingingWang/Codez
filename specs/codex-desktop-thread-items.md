@@ -19,13 +19,13 @@ pinned Codex checkout (read-only reference, never a build input).
 | `imageView` | toolCall `view_image`, `input.path`, always `success` | read-family file chip; click opens image preview (specs/codex-desktop-image-view.md) |
 | `webSearch` | toolCall `web_search`, `input.query`, always `success` | search family card |
 | `imageGeneration` | toolCall `image_generation`, status from item, input `{ revisedPrompt?, savedPath? }` | fallback card; `result` (base64 image) never enters the row |
-| `collabAgentToolCall` | toolCall named after the collab tool, status mapped, input carries prompt/thread ids/model, `agentsStates` rendered as output lines | `spawn_agent` hits the agent family card; the four v1 analytics-only tools use `codex_collab_*` names to avoid hijacking native renderers |
+| `collabAgentToolCall` | toolCall named after the collab tool, status mapped, input carries prompt/thread ids/model, `agentsStates` rendered as output lines; `spawnAgent` additionally anchors one `subagent` row | `spawn_agent` hits the agent family card and becomes clickable (specs/codex-desktop-subagent-drilldown.md); the four v1 analytics-only tools use `codex_collab_*` names to avoid hijacking native renderers |
 | `dynamicToolCall` | toolCall `<namespace>.<tool>` (or bare `tool`), status mapped, input = arguments, output = text content items | fallback card; media content items become `[image]`/`[audio]` placeholders |
 | `functionCallOutput` | toolCall named after the function, `success`, output text only | fallback card (hook-synthesized outputs; rare) |
 | `contextCompaction` | timelineMarker `codexEvent/contextCompaction` | divider line, assistantWork lane |
 | `enteredReviewMode` / `exitedReviewMode` | timelineMarker `codexEvent/reviewEnter` or `reviewExit`, `detail` = review | divider line |
 | `hookPrompt` | timelineMarker `codexEvent/hookPrompt`, `detail` = fragment text (capped) | divider line |
-| `subAgentActivity` | timelineMarker `codexEvent/subagentStarted`, `subagentInteracted`, `subagentInterrupted` or `subagentCompleted`, `detail` = agentPath | divider line |
+| `subAgentActivity` | timelineMarker `codexEvent/subagentStarted`, `subagentInteracted`, `subagentInterrupted` or `subagentCompleted`, `detail` = agentPath; `agentThreadId` drives the `subagent` row lifecycle | divider line plus drill-down identity |
 | `sleep` | timelineMarker `codexEvent/sleep`, `detail` = duration | divider line |
 
 ## Rules and boundaries
@@ -45,9 +45,10 @@ pinned Codex checkout (read-only reference, never a build input).
   renderer localizes every event kind; the share/readonly timeline does not
   recognize it and skips the row (existing default-null behavior), which is
   acceptable degradation.
-- Subagent drill-down (subscribing the receiver thread as a child session) is
-  intentionally not part of this change; the collab card shows prompt and
-  per-agent status lines without nesting rows.
+- Subagent drill-down is specified separately in
+  specs/codex-desktop-subagent-drilldown.md: the child thread is subscribed as a
+  read-only session, and the collab card keeps showing prompt and per-agent
+  status lines without nesting child rows.
 
 ## Acceptance
 

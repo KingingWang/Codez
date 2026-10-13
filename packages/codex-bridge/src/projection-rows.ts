@@ -25,6 +25,12 @@ import {
   webSearchRow,
   type RowBase,
 } from "./projection-item-extras.js";
+import {
+  collectSubagentFacts,
+  subagentEntityId,
+  subagentRow,
+  subagentRowAnchors,
+} from "./subagent-projection.js";
 
 /** Explicit textual fallbacks: no fake attachment refs, byte counts or MIME facts. */
 export function projectInputText(input: readonly CodexUserInput[]): string {
@@ -303,6 +309,8 @@ export function projectRows(
   const turns = hiddenTurnIds?.size
     ? thread.turns.filter((turn) => !hiddenTurnIds.has(turn.id))
     : thread.turns;
+  // 子代理事实先整体聚合：终态可能出现在锚点之后的 turn，逐 item 决策会先显示 running 再回跳。
+  const subagentAnchors = subagentRowAnchors(collectSubagentFacts(thread, hiddenTurnIds));
   for (const turn of turns) {
     if (turn.itemsView !== "full")
       throw new Error("Codex conversation projection requires full turn items");
@@ -365,6 +373,21 @@ export function projectRows(
           ),
         ),
       );
+      // subagent 行紧跟锚点 item（spawn 优先）：UI 的配对要求同 turnId + parentToolCallId，
+      // 配对成功后该行不单独渲染，只把「打开子会话」入口挂到 agent 卡片上。
+      for (const fact of subagentAnchors.get(`${turn.id}\u0000${item.id}`) ?? []) {
+        rows.push(
+          assertRowBudget(
+            conversationRowSchema.parse(
+              subagentRow(fact, {
+                ...base,
+                rowId: rows.length,
+                entityId: subagentEntityId(fact.childThreadId),
+              }),
+            ),
+          ),
+        );
+      }
     }
   }
   return rows;

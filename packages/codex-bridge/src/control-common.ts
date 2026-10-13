@@ -207,14 +207,24 @@ export class WriterConflictError extends Error {
   }
 }
 
+/** 子代理会话只读拒绝；reasonCode 与原生 flavor 同词（guard.subagentReadOnly）。
+ * 依据：原生 V2 子线程由父 driver 拥有，客户端 resume 只能成为订阅者，不接受直接输入。 */
+export class SubagentReadOnlyError extends Error {
+  constructor() {
+    super("Subagent sessions are read-only");
+  }
+}
+
 /** fork 类逃生通道：读源 rollout、不取源写锁（spec: codex-selection-side-chat）。 */
 const FORK_ESCAPE_COMMANDS = new Set(["forkAssistant", "createSelectionSideSession"]);
 
-/** writer-conflict 只读 deny-by-default：除逃生通道外，既有会话命令一律拒绝。 */
+/** 只读线程 deny-by-default：除逃生通道外，既有会话命令一律拒绝。 */
 export function assertWritableThreadState(
   state: { readOnly?: string | null },
   commandType: string,
 ): void {
-  if (state.readOnly === "writer-conflict" && !FORK_ESCAPE_COMMANDS.has(commandType))
-    throw new WriterConflictError();
+  if (!state.readOnly || FORK_ESCAPE_COMMANDS.has(commandType)) return;
+  if (state.readOnly === "subagent-child") throw new SubagentReadOnlyError();
+  // 未知只读原因同样 fail-closed：宁可拒绝写，也不能让只读线程被误判成可写。
+  throw new WriterConflictError();
 }

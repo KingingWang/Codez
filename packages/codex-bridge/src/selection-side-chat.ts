@@ -1,5 +1,6 @@
 import type { CodexRpcPort } from "./contract.js";
 import { array, object, string } from "./json.js";
+import { paginateNativeRows } from "./native-paging.js";
 
 /**
  * 辅助对话（selection side chat）child 线程的标记、边界指令与继承裁剪规则。
@@ -78,18 +79,12 @@ export async function resolveSelectionSideChatBoundary(
     return undefined;
   try {
     const parentThreadId = thread.forkedFromId;
-    const parentTurnIds = new Set<string>();
-    let cursor: string | undefined;
-    const seen = new Set<string>();
-    do {
-      const page = object(
-        await rpc.request("thread/turns/list", { threadId: parentThreadId, cursor, limit: 100 }),
-      );
-      for (const turn of array(page.data)) parentTurnIds.add(string(object(turn).id));
-      cursor = typeof page.nextCursor === "string" ? page.nextCursor : undefined;
-      if (cursor && seen.has(cursor)) throw new Error("Repeated native history cursor");
-      if (cursor) seen.add(cursor);
-    } while (cursor);
+    // 分页终止判定共用 native-paging；抛错仍落在本函数的 fail-open catch 内。
+    const parentTurnIds = new Set(
+      (
+        await paginateNativeRows(rpc, "thread/turns/list", { threadId: parentThreadId }, "history")
+      ).map((turn) => string(object(turn).id)),
+    );
     return {
       parentThreadId,
       inheritedTurnIds: new Set(

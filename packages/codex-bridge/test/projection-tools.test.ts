@@ -247,7 +247,9 @@ test("lifecycle items project as codexEvent timeline markers", () => {
     },
     { type: "sleep", id: "sleep-1", durationMs: 5000 },
   );
-  const rows = projectThread(thread, { workspacePath: "/workspace" }).rows.window.slice(-6);
+  // subAgentActivity 现在除了分隔线还会产出一条 subagent 行（下钻入口，映射为 null），
+  // 所以窗口多一行（specs/codex-desktop-subagent-drilldown.md）。
+  const rows = projectThread(thread, { workspacePath: "/workspace" }).rows.window.slice(-7);
   assert.deepEqual(
     rows.map((row) =>
       row.kind === "timelineMarker" && row.marker.type === "codexEvent"
@@ -260,6 +262,7 @@ test("lifecycle items project as codexEvent timeline markers", () => {
       ["reviewExit", "review current changes", "assistantWork"],
       ["hookPrompt", "injected context", "assistantWork"],
       ["subagentStarted", "worker[1]", "assistantWork"],
+      null,
       ["sleep", "5s", "assistantWork"],
     ],
   );

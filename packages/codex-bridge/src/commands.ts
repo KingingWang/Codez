@@ -21,6 +21,7 @@ import {
 import {
   assertWritableThreadState,
   preemptByInterrupt,
+  SubagentReadOnlyError,
   turnPermissionIntent,
   WriterConflictError,
 } from "./control-common.js";
@@ -34,10 +35,7 @@ import { resumeNativeQueue, startNativeQueuedSubmission } from "./queue-start.js
 import { applySelectionSideChatBoundary } from "./selection-side-chat.js";
 import type { SessionTitleCoordinator } from "./session-title.js";
 import type { CodexProviderKeyGate } from "./provider-key-gate.js";
-import {
-  codexThreadProviderId,
-  editUserQueryOrRetryTurn,
-} from "./commands-edit-retry.js";
+import { codexThreadProviderId, editUserQueryOrRetryTurn } from "./commands-edit-retry.js";
 
 export interface CommandContext {
   rpc: CodexRpcPort;
@@ -114,22 +112,29 @@ export class CommandRouter {
         };
       }
     } catch (error) {
-      ack =
-        error instanceof WriterConflictError
-          ? {
-              commandId: command.commandId,
-              status: "rejected",
-              reasonCode: "guard.codex.writerConflict",
-              message: error.message,
-              revisionAtDecision: 0,
-            }
-          : {
-              commandId: command.commandId,
-              status: "failed",
-              revisionAtDecision: 0,
-              reasonCode: "codex.commandFailed",
-              message: error instanceof Error ? error.message : "Native request failed",
-            };
+      // 只读线程上的拒绝是产品语义（rejected + guard reasonCode），不是命令失败：
+      // 子代理会话用原生同词 guard.subagentReadOnly，写锁冲突保持 guard.codex.writerConflict。
+      const readOnlyReasonCode =
+        error instanceof SubagentReadOnlyError
+          ? "guard.subagentReadOnly"
+          : error instanceof WriterConflictError
+            ? "guard.codex.writerConflict"
+            : undefined;
+      ack = readOnlyReasonCode
+        ? {
+            commandId: command.commandId,
+            status: "rejected",
+            reasonCode: readOnlyReasonCode,
+            message: error instanceof Error ? error.message : "Session is read-only",
+            revisionAtDecision: 0,
+          }
+        : {
+            commandId: command.commandId,
+            status: "failed",
+            revisionAtDecision: 0,
+            reasonCode: "codex.commandFailed",
+            message: error instanceof Error ? error.message : "Native request failed",
+          };
     }
     await ledger.finish(command.sessionId, ack);
     return commandAckSchema.parse(ack);

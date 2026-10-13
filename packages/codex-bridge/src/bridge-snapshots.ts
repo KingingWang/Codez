@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { formatModelPickerValue, getCodexPermissionModes } from "@codez/shared";
 import {
+  subagentProjectionStateSchema,
   workspaceConfigSnapshotSchema,
   type ConversationSnapshot,
 } from "@codez/shared/codez-protocol-v4";
@@ -16,76 +17,9 @@ import { itemEntityId } from "./projection-rows.js";
 import { codexThreadSchema, codexUserInputSchema } from "./codex-types.js";
 import { projectOwnedInput } from "./native-file-projection.js";
 import { projectConversationTailWindow } from "./projection-window.js";
+import { subagentsStateFromRows } from "./subagent-projection.js";
+import { sparseNativeUsage } from "./bridge-snapshot-usage.js";
 import type { AttachmentStore, AttachmentReadAuthorization } from "./attachments.js";
-
-function safeUsageCount(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
-}
-
-function sparseNativeUsage(value: unknown): ConversationSnapshot["usage"] | undefined {
-  if (typeof value !== "object" || value === null) return undefined;
-  const usage = value as Record<string, unknown>;
-  const total =
-    typeof usage.total === "object" && usage.total !== null
-      ? (usage.total as Record<string, unknown>)
-      : undefined;
-  const last =
-    typeof usage.last === "object" && usage.last !== null
-      ? (usage.last as Record<string, unknown>)
-      : undefined;
-  const inputTokens = safeUsageCount(total?.inputTokens);
-  const outputTokens = safeUsageCount(total?.outputTokens);
-  const cacheReadTokens = safeUsageCount(total?.cachedInputTokens);
-  const cacheWriteTokens = safeUsageCount(total?.cacheWriteInputTokens);
-  const usedTokens = safeUsageCount(last?.totalTokens);
-  const maxTokens = safeUsageCount(usage.modelContextWindow);
-  if (
-    inputTokens === undefined &&
-    outputTokens === undefined &&
-    cacheReadTokens === undefined &&
-    cacheWriteTokens === undefined &&
-    usedTokens === undefined &&
-    maxTokens === undefined
-  ) {
-    return undefined;
-  }
-  const hasContextWindow = usedTokens !== undefined || maxTokens !== undefined;
-  const codexObserved: NonNullable<ConversationSnapshot["usage"]["codexObserved"]> = {
-    ...(inputTokens !== undefined ? { inputTokens } : {}),
-    ...(outputTokens !== undefined ? { outputTokens } : {}),
-    ...(cacheReadTokens !== undefined ? { cacheReadTokens } : {}),
-    ...(cacheWriteTokens !== undefined ? { cacheWriteTokens } : {}),
-    ...(hasContextWindow
-      ? {
-          contextWindow: {
-            ...(usedTokens !== undefined ? { usedTokens } : {}),
-            ...(maxTokens !== undefined ? { maxTokens } : {}),
-          },
-        }
-      : {}),
-  };
-  return {
-    // Dense fields are compatibility-only. They are emitted solely when at least one
-    // corresponding native fact exists; unavailable sibling fields remain absent from
-    // codexObserved and UI must mark them unavailable.
-    cumulative: {
-      inputTokens: inputTokens ?? 0,
-      outputTokens: outputTokens ?? 0,
-      cacheReadTokens: cacheReadTokens ?? 0,
-      cacheWriteTokens: cacheWriteTokens ?? 0,
-    },
-    ...(hasContextWindow
-      ? {
-          contextWindow: {
-            usedTokens: usedTokens ?? 0,
-            maxTokens: maxTokens ?? 0,
-            autoCompactThresholdTokens: null,
-          },
-        }
-      : { contextWindow: null }),
-    codexObserved,
-  };
-}
 
 export class BridgeSnapshots {
   private readonly indexEpoch = randomUUID();
@@ -215,20 +149,45 @@ export class BridgeSnapshots {
     // 其余写操作的 availability 与命令层的 deny guard 同一 reasonCode，UI 直接禁用。
     const writerConflict = state.readOnly === "writer-conflict";
     if (writerConflict) snapshot.writerConflict = { readOnly: true };
-    const writerBlocked = { allowed: false as const, reasonCode: "guard.codex.writerConflict" };
+    // 子代理会话只读不设 writerConflict（那条文案语义是「被别的窗口/进程占用」），
+    // 只用 availability 报禁用；reasonCode 与原生 flavor 同词，UI tooltip 直接复用。
+    const readOnlyBlocked = state.readOnly
+      ? {
+          allowed: false as const,
+          reasonCode:
+            state.readOnly === "subagent-child"
+              ? "guard.subagentReadOnly"
+              : "guard.codex.writerConflict",
+        }
+      : undefined;
     snapshot.availability = {
       ...snapshot.availability,
       fork: idle ? allowed : { allowed: false, reasonCode: "guard.codex.activeTurn" },
-      compact: writerConflict
-        ? writerBlocked
-        : idle
-          ? allowed
-          : { allowed: false, reasonCode: "guard.codex.activeTurn" },
-      switchModelConfig: writerConflict ? writerBlocked : allowed,
-      queueEdit: writerConflict ? writerBlocked : allowed,
+      compact:
+        readOnlyBlocked ??
+        (idle ? allowed : { allowed: false, reasonCode: "guard.codex.activeTurn" }),
+      switchModelConfig: readOnlyBlocked ?? allowed,
+      queueEdit: readOnlyBlocked ?? allowed,
       // busy 也可用：命令层 interrupt+start 抢占（specs/codex-desktop-adapter.md）。
-      sendQueuedNow: writerConflict ? writerBlocked : allowed,
+      sendQueuedNow: readOnlyBlocked ?? allowed,
     };
+    // 子代理下钻（specs/codex-desktop-subagent-drilldown.md）：running/ended 从已投影的
+    // subagent 行派生，不额外请求原生；revision 交给 store 记账，语义不变则不递增。
+    // 必须在 tail window 截断前用完整 rows 计算，否则旧会话的子代理会从目录里消失。
+    const subagents = subagentsStateFromRows(snapshot.rows.window, {
+      isChildActive: (childThreadId) => {
+        const status = this.store.nativeThreadStatus(childThreadId);
+        return status ? status.type === "active" : undefined;
+      },
+    });
+    snapshot.subagents = subagentProjectionStateSchema.parse({
+      revision: this.store.rememberSubagents(
+        id,
+        JSON.stringify(subagents),
+        subagents.childSessionIds.length,
+      ),
+      ...subagents,
+    });
     if (this.attachments) {
       for (const queueItem of snapshot.queue.items) {
         const projected = queueProjections.get(queueItem.queueItemId);

@@ -6,6 +6,7 @@ import { turnPermissionIntent } from "./control-common.js";
 import { isSelectionSideChatThread } from "./selection-side-chat.js";
 import { object, string, unsupported, type JsonObject } from "./json.js";
 import { projectLegacySnapshot } from "./projection.js";
+import { listSessionSubagents } from "./session-subagents.js";
 import {
   readControlModelSettings,
   type ControlModelThreadOverride,
@@ -59,6 +60,8 @@ export async function handleLegacySession(
         }),
     };
   }
+  // 子代理目录：子线程被 sourceKinds 挡在任务列表外，这是唯一按父查询子线程的入口。
+  if (method === "session/subagents") return listSessionSubagents(p, rpc, store);
   let sessionId: string;
   if (method === "session/create") {
     const parsed = shared.codezSessionCreateParamsSchema.parse(p);

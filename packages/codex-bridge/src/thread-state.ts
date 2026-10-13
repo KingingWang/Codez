@@ -1,45 +1,25 @@
 import { randomUUID } from "node:crypto";
 import type { CodexNotification, CodexRpcPort } from "./contract.js";
 import { array, object, string, type JsonObject } from "./json.js";
-import { decorateNativeThread, rememberThreadMode } from "./command-input.js";
+import { rememberThreadMode } from "./command-input.js";
 import { sameExecutionPath } from "./execution-path.js";
 import { mergeNativeTurn } from "./merge-turn.js";
+import { paginateNativeRows } from "./native-paging.js";
 import { canonicalNativeThreads } from "./projection.js";
-import { CodexRpcError } from "./rpc-errors.js";
-import { applyNativeRetry, type NativeRetryState } from "./native-retry-status.js";
+import { applyNativeRetry } from "./native-retry-status.js";
+import { resolveSelectionSideChatBoundary } from "./selection-side-chat.js";
 import {
-  resolveSelectionSideChatBoundary,
-  type SelectionSideChatBoundary,
-} from "./selection-side-chat.js";
+  attachThreadForLoad,
+  parentThreadIdOf,
+  parentThreadOwnedByWorkspace,
+} from "./thread-load.js";
+import { DeletedThreadError, type ThreadProjectionState } from "./thread-state-types.js";
 import { upsertTurnPlanUpdate } from "./turn-plan-update.js";
 
-export class DeletedThreadError extends Error {
-  constructor() {
-    super("Thread was deleted; refresh the session list");
-  }
-}
-
-/** Codex 写锁冲突签名（rollout/writer_lock.rs：InvalidRequest + 固定文案），两者同时匹配才算冲突。 */
-export function isWriterConflictError(error: unknown): boolean {
-  return (
-    error instanceof CodexRpcError &&
-    error.code === -32600 &&
-    error.message.includes("already has an active writer")
-  );
-}
-
-export interface ThreadProjectionState {
-  thread: JsonObject;
-  queue: unknown[];
-  revision: number;
-  seq: number;
-  epoch: string;
-  apiRetry: NativeRetryState;
-  /** writer-conflict：另一进程持有该线程写锁，投影为只读降级；恢复需 invalidate 后重新 load。 */
-  readOnly?: "writer-conflict";
-  /** 辅助对话 child 的继承裁剪边界（spec: codex-selection-side-chat）；load 时按父线程求交重建。 */
-  sideChat?: SelectionSideChatBoundary;
-}
+// 本文件仍是 store 词汇表的对外入口（与 projection.ts 的 facade 惯例一致）：
+// 定义移到 thread-state-types.ts 只是为了把 store 主体压回 400 行上限内。
+export { DeletedThreadError } from "./thread-state-types.js";
+export type { ThreadProjectionState } from "./thread-state-types.js";
 
 /** A disposable projection cache. All durable facts and queue admission belong to Codex. */
 export class ThreadStateStore {
@@ -70,11 +50,38 @@ export class ThreadStateStore {
     this.loaded.delete(id);
   }
 
-  /** 只读降级条目是可恢复的：subscribe/resync 前失效它，下一次 ensure 重新 load 并重试 resume。 */
+  /** 只读降级条目是可恢复的：subscribe/resync 前失效它，下一次 ensure 重新 load 并重试 resume。
+   * 子代理线程同理——原生未加载（notLoaded）时 bridge 故意不 resume（见 thread-load.ts），
+   * 下一次订阅要重新判定它是否已被父线程加载进本进程；已 attach 的条目保持缓存，
+   * 否则每次 resync 都要重放整段子线程历史。 */
   invalidate(id: string): void {
-    if (this.states.get(id)?.readOnly !== "writer-conflict") return;
+    const state = this.states.get(id);
+    const recoverable =
+      state?.readOnly === "writer-conflict" ||
+      (state?.readOnly === "subagent-child" && state.attached !== true);
+    if (!recoverable) return;
     this.states.delete(id);
     this.loaded.delete(id);
+  }
+
+  /** 子线程原生状态（未加载则 undefined）：只用于把已停止的 child 从 running 里去掉。 */
+  nativeThreadStatus(id: string): JsonObject | undefined {
+    const thread = this.states.get(id)?.thread;
+    return thread ? object(thread.status) : undefined;
+  }
+
+  /** subagents 投影 revision 记账：空目录恒 0，非空至少 1，仅语义变化时递增（renderer CAS）。 */
+  rememberSubagents(id: string, semantic: string, childCount: number): number {
+    const previous = this.states.get(id)?.subagents;
+    const revision =
+      childCount === 0
+        ? 0
+        : previous && previous.semantic === semantic
+          ? Math.max(1, previous.revision)
+          : Math.max(1, (previous?.revision ?? 0) + 1);
+    const state = this.states.get(id);
+    if (state) state.subagents = { revision, semantic };
+    return revision;
   }
 
   private assertAvailable(id: string): void {
@@ -123,44 +130,39 @@ export class ThreadStateStore {
     const read = object(await this.rpc.request("thread/read", { threadId: id }));
     this.assertAvailable(id);
     const metadata = object(read.thread);
+    // 子代理线程身份来自原生 parentThreadId；child id 只由父线程 item 产出，但订阅入口在
+    // renderer，所以不能凭 id 放权：cwd 不一致时必须先证明父线程属于本工作区。
+    const parentThreadId = parentThreadIdOf(metadata);
     // 路径不是远端身份，但本进程只能操作其 Host 已授权工作区中的线程。
     // 原生 thread/read 返回物理路径；Host 可能传入符号链接或 Windows 短名拼写，
     // 字符串相等会把同一目录的会话误判成别的工作区，导致恢复历史失败。
-    if (!(await sameExecutionPath(metadata.cwd, this.cwd)))
+    // 子代理可能跑在隔离 worktree 里（cwd 与父不同）；只读下钻按父归属放行。
+    const ownedByWorkspace = await sameExecutionPath(metadata.cwd, this.cwd);
+    const ownedByParent =
+      !ownedByWorkspace &&
+      parentThreadId !== undefined &&
+      (await parentThreadOwnedByWorkspace(
+        this.rpc,
+        this.states.get(parentThreadId)?.thread,
+        this.cwd,
+        parentThreadId,
+      ));
+    if (!ownedByWorkspace && !ownedByParent)
       throw new Error("Thread belongs to a different workspace");
-    let thread: Record<string, unknown>;
-    let readOnly: ThreadProjectionState["readOnly"];
-    try {
-      const resumed = object(await this.rpc.request("thread/resume", { threadId: id }));
-      this.assertAvailable(id);
-      thread = decorateNativeThread(resumed);
-    } catch (error) {
-      // 另一 writer（CLI/另一窗口）持有写锁时 resume 以 InvalidRequest 拒绝，但历史仍可读：
-      // 用 lock-free 的 thread/read envelope（与 resume 响应同构，同过 decorateNativeThread）
-      // 投影并标记只读；签名不匹配的错误照旧抛出，不能把普通失败误判成冲突。
-      if (!isWriterConflictError(error)) throw error;
-      this.assertAvailable(id);
-      thread = decorateNativeThread(read);
-      readOnly = "writer-conflict";
-    }
-    const turns: unknown[] = [];
-    let cursor: string | undefined;
-    const seen = new Set<string>();
-    do {
-      const page = object(
-        await this.rpc.request("thread/turns/list", {
-          threadId: id,
-          cursor,
-          limit: 100,
-          sortDirection: "asc",
-          itemsView: "full",
-        }),
-      );
-      turns.push(...array(page.data));
-      cursor = typeof page.nextCursor === "string" ? page.nextCursor : undefined;
-      if (cursor && seen.has(cursor)) throw new Error("Repeated native history cursor");
-      if (cursor) seen.add(cursor);
-    } while (cursor);
+    // attach 与只读降级的分流规则集中在 thread-load.ts（含子代理冷启拒绝路径）。
+    const { thread, readOnly, attached } = await attachThreadForLoad({
+      rpc: this.rpc,
+      id,
+      read,
+      parentThreadId,
+      assertAvailable: () => this.assertAvailable(id),
+    });
+    const turns = await paginateNativeRows(
+      this.rpc,
+      "thread/turns/list",
+      { threadId: id, sortDirection: "asc", itemsView: "full" },
+      "history",
+    );
     // resume 到分页读取期间的通知不能被旧历史覆盖；同 id 的 live turn 优先。
     const live = array(this.states.get(id)?.thread.turns);
     const merged = new Map(turns.map((turn) => [string(object(turn).id), turn]));
@@ -175,6 +177,7 @@ export class ThreadStateStore {
     // 辅助对话 child 重建继承裁剪边界；父读取失败 fail-open 不裁剪（spec: codex-selection-side-chat）。
     state.sideChat = await resolveSelectionSideChatBoundary(this.rpc, thread);
     if (readOnly) state.readOnly = readOnly;
+    if (parentThreadId) state.attached = attached;
     this.loaded.add(id);
     // 原生 queue/list 不属于已验证的免锁读集合；只读降级跳过队列读取（队列变更命令
     // 已被 deny guard 拦截），避免可选数据让整次只读加载失败。
@@ -235,19 +238,12 @@ export class ThreadStateStore {
   async refreshQueue(id: string): Promise<void> {
     const state = this.states.get(id);
     if (!state) return;
-    const values: unknown[] = [];
-    let cursor: string | undefined;
-    const seen = new Set<string>();
-    do {
-      const page = object(
-        await this.rpc.request("thread/queue/list", { threadId: id, cursor, limit: 100 }),
-      );
-      values.push(...array(page.data));
-      cursor = typeof page.nextCursor === "string" ? page.nextCursor : undefined;
-      if (cursor && seen.has(cursor)) throw new Error("Repeated native queue cursor");
-      if (cursor) seen.add(cursor);
-    } while (cursor);
-    state.queue = values;
+    state.queue = await paginateNativeRows(
+      this.rpc,
+      "thread/queue/list",
+      { threadId: id },
+      "queue",
+    );
     this.touch(id);
   }
 
@@ -361,33 +357,24 @@ export class ThreadStateStore {
   }
 
   async list(): Promise<unknown[]> {
-    const threads: unknown[] = [];
-    let cursor: string | undefined;
-    const seen = new Set<string>();
-    do {
-      const page = object(
-        await this.rpc.request("thread/list", {
-          cwd: this.cwd,
-          cursor,
-          limit: 100,
-          // 原生默认只列当前 provider 的交互来源；项目历史应包含 CLI/exec 与桌面
-          // 创建的会话，切换 provider 也不能让旧记录消失。空数组显式取消 provider 过滤。
-          modelProviders: [],
-          sourceKinds: ["cli", "vscode", "exec", "appServer"],
-          archived: false,
-        }),
-      );
-      const rows = array(page.data);
-      // CLI/exec 落盘的是规范化物理路径；按物理目录过滤，别名拼写才不会把列表判空。
-      const owned = await Promise.all(
-        rows.map((row) => sameExecutionPath(object(row).cwd, this.cwd)),
-      );
-      threads.push(...rows.filter((_, index) => owned[index]));
-      cursor = typeof page.nextCursor === "string" ? page.nextCursor : undefined;
-      if (cursor && seen.has(cursor)) throw new Error("Repeated native thread cursor");
-      if (cursor) seen.add(cursor);
-    } while (cursor);
+    const rows = await paginateNativeRows(
+      this.rpc,
+      "thread/list",
+      {
+        cwd: this.cwd,
+        // 原生默认只列当前 provider 的交互来源；项目历史应包含 CLI/exec 与桌面
+        // 创建的会话，切换 provider 也不能让旧记录消失。空数组显式取消 provider 过滤。
+        modelProviders: [],
+        sourceKinds: ["cli", "vscode", "exec", "appServer"],
+        archived: false,
+      },
+      "thread",
+    );
+    // CLI/exec 落盘的是规范化物理路径；按物理目录过滤，别名拼写才不会把列表判空。
+    const owned = await Promise.all(
+      rows.map((row) => sameExecutionPath(object(row).cwd, this.cwd)),
+    );
     // 分页只收集原始事实；完整校验与同 ID rollout 选择由投影单一 owner 处理。
-    return canonicalNativeThreads(threads);
+    return canonicalNativeThreads(rows.filter((_, index) => owned[index]));
   }
 }

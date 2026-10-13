@@ -50,3 +50,14 @@ text, fabricates retry counts or replays mutations. Model progress, terminal
 notifications and turn completion clear the observation. Both delivery modes
 read the same current snapshot; native thread history cannot restore the status
 after a bridge restart.
+
+Subagent child threads stay Codex-owned: the parent thread's collab items are the
+only source of child identity, and a child is projected as a read-only session
+(`readOnly: "subagent-child"`) that never accepts writes, never enters the
+session index, and is listed only through `session/subagents` by parent id.
+Attach uses the native resume path only while Codex already has the child loaded
+(`idle`/`active`), where resume means replay-plus-subscribe; a `notLoaded` child is
+projected from lock-free reads without resume, because resuming it rewrites the
+child rollout and bumps the `updatedAt` that `session/subagents` reports as
+`endedAt`. Any resume refusal still degrades to a read-only snapshot instead of
+failing the view. See specs/codex-desktop-subagent-drilldown.md.
