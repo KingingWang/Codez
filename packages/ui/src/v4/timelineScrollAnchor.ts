@@ -111,6 +111,13 @@ export function shouldAdjustVirtualizerForItemSizeChange(input: {
 /** 未观察滚动的判定容差：小于该值的 scrollTop 回退视为亚像素抖动，不算用户上滚。 */
 export const UNOBSERVED_SCROLL_EPSILON_PX = 2;
 
+/**
+ * 用户上滚检测容差：当 scrollTop 减少超过该值时，认为用户已明确上滚。
+ * 取值需大于亚像素抖动和 virtualizer 补偿量，但小于用户有意义的滚动距离。
+ * 用于在 scroll 事件入账前抢先解除 following，防止内容更新夺走滚动权。
+ */
+export const USER_UPSCROLL_THRESHOLD_PX = 8;
+
 export type TimelineUserScrollIntent =
   | "none"
   | "awayFromBottom"
@@ -171,12 +178,13 @@ export function timelineKeyboardScrollIntent(input: {
  * totalSize/rowCount 变化的 React commit（流式 delta、ResizeObserver 测高修正、
  * composer 尺寸变化引起的窗口重算），贴底 effect 会拿着**过期的 following=true**
  * 把 scrollTop 拽回底部，且回弹落点让随后的 scroll 事件把跟随判回 true——
- * 用户/测试的上滚被整体吞掉（“resize/测量 commit 夺走滚动权”）。
+ * 用户/测试的上滚被整体吞掉（"resize/测量 commit 夺走滚动权"）。
  *
  * 对账规则（在贴底动作之前执行，输入为 commit 时刻的实时指标）：
  * 1. 明确向上滚动 → 立即解除跟随，同帧 terminal/layout commit 也必须让位；
  * 2. 没有用户输入 → 原样保持 following，virtualizer/折叠导致的 scrollTop 回退不算上滚；
  * 3. 方向未知或向下的用户输入 → 落点在底则恢复跟随，明显回退则解除，其余保持。
+ * 4. 未观察到的上滚（scrollTop 减少超过阈值）→ 立即解除跟随，防止竞态夺权。
  */
 export function reconcileFollowingForContentAnchor(input: {
   /** 当前跟随态（scroll 事件驱动的既有值）。 */
@@ -191,13 +199,28 @@ export function reconcileFollowingForContentAnchor(input: {
   scrollEpsilonPx?: number;
 }): boolean {
   const userScrollIntent = input.userScrollIntent ?? "unknown";
+  
+  // 规则 1：明确向上滚动 → 立即解除跟随
   if (userScrollIntent === "awayFromBottom") return false;
-  if (userScrollIntent === "none") return input.following;
-  if (
-    isAtBottom(input.metrics, input.bottomEpsilonPx ?? BOTTOM_ANCHOR_EPSILON_PX)
-  ) {
+  
+  // 规则 2：没有用户输入 → 原样保持 following
+  if (userScrollIntent === "none") {
+    // 规则 4：未观察到的上滚检测
+    // 如果 scrollTop 比上次记录值小超过阈值，说明用户已上滚（但 scroll 事件还没入账）
+    // 此时必须解除跟随，否则后续的 scrollToBottom() 会夺走滚动权
+    const upscrollDelta = input.lastObservedScrollTop - input.metrics.scrollTop;
+    if (upscrollDelta > USER_UPSCROLL_THRESHOLD_PX) {
+      return false;
+    }
+    return input.following;
+  }
+  
+  // 规则 3：方向未知或向下的用户输入
+  if (isAtBottom(input.metrics, input.bottomEpsilonPx ?? BOTTOM_ANCHOR_EPSILON_PX)) {
     return true;
   }
+  
+  // 规则 4：未观察到的上滚（兜底检查）
   const unobservedUpscroll =
     input.metrics.scrollTop <
     input.lastObservedScrollTop -
@@ -205,6 +228,7 @@ export function reconcileFollowingForContentAnchor(input: {
   if (unobservedUpscroll) {
     return false;
   }
+  
   return input.following;
 }
 
