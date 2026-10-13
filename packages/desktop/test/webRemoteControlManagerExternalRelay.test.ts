@@ -312,6 +312,25 @@ async function createPrimedRemoteTaskSyncHarness(
 }
 
 describe("createWebRemoteControlManager external relay", () => {
+  it("logs safe relay error context without credentials or payloads", async () => {
+    const { manager, logger, getLatestTransportOptions } = createManagerHarness();
+    await manager.start(1, { workspacePath: localWorkspace.workspacePath });
+    getLatestTransportOptions()?.onError(new Error("untrusted relay detail"), {
+      relayCode: "INTERNAL",
+      state: "authenticating",
+      lastControlType: "auth_init",
+      connectAttempt: 2,
+    });
+    expect(logger.warn).toHaveBeenCalledWith("[web-remote-control] external relay device error", {
+      message: "INTERNAL",
+      relayCode: "INTERNAL",
+      state: "authenticating",
+      lastControlType: "auth_init",
+      connectAttempt: 2,
+    });
+    await manager.stop(1);
+  });
+
   it("rejects a mobile page served by the relay origin before registering a device", async () => {
     const { manager, getLatestTransportOptions } = createManagerHarness({
       relayWsUrl: "wss://relay.example/ws",

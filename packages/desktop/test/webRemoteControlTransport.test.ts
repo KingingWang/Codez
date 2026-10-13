@@ -12,6 +12,7 @@ import {
 } from "@codez/client";
 import {
   WebRemoteControlDeviceTransport,
+  type WebRemoteControlDeviceTransportErrorContext,
   type WebRemoteControlDeviceTransportState,
 } from "../src/main/webRemoteControlTransport.js";
 
@@ -1177,6 +1178,197 @@ describe("WebRemoteControlDeviceTransport", () => {
     transport.dispose();
   });
 
+  it("backs off repeated INTERNAL during device authentication and recovers without rotating auth", async () => {
+    const errors: string[] = [];
+    const errorContexts: (WebRemoteControlDeviceTransportErrorContext | undefined)[] = [];
+    const states: WebRemoteControlDeviceTransportState[] = [];
+    const authInitTimes: number[] = [];
+    const invalidations: string[] = [];
+    const logger = createLogger();
+    let firstWaiting = true;
+    const relay = await createRelayServer(({ message, socket }) => {
+      if (message.type === "pair_status_query" && firstWaiting) {
+        firstWaiting = false;
+        socket.send(JSON.stringify({ type: "error", code: "INTERNAL", message: "INTERNAL" }));
+        socket.close();
+        return;
+      }
+      if (message.type !== "auth_init") return;
+      authInitTimes.push(Date.now());
+      if (authInitTimes.length === 2 || authInitTimes.length === 3) {
+        socket.send(JSON.stringify({ type: "error", code: "INTERNAL", message: "INTERNAL" }));
+        return;
+      }
+      socket.send(
+        JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "waiting" }),
+      );
+    });
+
+    const transport = new WebRemoteControlDeviceTransport({
+      relayWsUrl: relay.url,
+      deviceMid: "mid-1",
+      auth: { mode: "persisted", deviceSid: "sid-1", passHash: "hash-1" },
+      meta: { platform: "darwin", version: "1.0.0", name: "Mac" },
+      authProvider: {
+        createPassword: () => "password",
+        createPassHash: () => "hash-1",
+        calculateProof: () => "proof",
+      },
+      heartbeatIntervalMs: 10,
+      heartbeatJitterMs: 0,
+      reconnectDelayMs: 20,
+      reconnectJitterMs: 0,
+      logger,
+      onRegisteredAuth: () => {},
+      onStateChange: (state) => states.push(state),
+      onPayload: () => {},
+      onError: (error, context) => {
+        errors.push(error.message);
+        errorContexts.push(context);
+      },
+      onInvalidPersistedAuth: async () => {
+        invalidations.push("cleared");
+      },
+    });
+
+    try {
+      transport.start();
+      await waitUntil(
+        () => authInitTimes.length === 4 && states.at(-1) === "waiting_terminal",
+        3_000,
+      );
+      expect(authInitTimes[2] - authInitTimes[1]).toBeGreaterThanOrEqual(35);
+      expect(authInitTimes[3] - authInitTimes[2]).toBeGreaterThanOrEqual(75);
+      expect(errors).toEqual(["INTERNAL", "INTERNAL", "INTERNAL"]);
+      expect(errorContexts).toEqual([
+        {
+          relayCode: "INTERNAL",
+          state: "waiting_terminal",
+          lastControlType: "pair_status_query",
+          connectAttempt: 1,
+        },
+        {
+          relayCode: "INTERNAL",
+          state: "authenticating",
+          lastControlType: "auth_init",
+          connectAttempt: 2,
+        },
+        {
+          relayCode: "INTERNAL",
+          state: "authenticating",
+          lastControlType: "auth_init",
+          connectAttempt: 3,
+        },
+      ]);
+      expect(invalidations).toEqual([]);
+      expect(relay.messages.filter((message) => message.type === "device_register_init")).toEqual(
+        [],
+      );
+      // 只有第一次由 relay 关闭的 socket 算断线；鉴权失败后的本地主动重建不重复报警。
+      expect(
+        logger.warn.mock.calls.filter(
+          ([message]) => message === "[web-remote-control] external relay device disconnected",
+        ),
+      ).toHaveLength(1);
+    } finally {
+      transport.dispose();
+    }
+  });
+
+  it("recovers when a device auth attempt stays open without a challenge or ack", async () => {
+    const errors: string[] = [];
+    const errorContexts: (WebRemoteControlDeviceTransportErrorContext | undefined)[] = [];
+    const states: WebRemoteControlDeviceTransportState[] = [];
+    let authInitCount = 0;
+    const relay = await createRelayServer(({ message, socket }) => {
+      if (message.type !== "auth_init") return;
+      authInitCount += 1;
+      if (authInitCount === 1) {
+        socket.send(JSON.stringify({ type: "error", code: "INTERNAL", message: "INTERNAL" }));
+      } else if (authInitCount === 3) {
+        socket.send(
+          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "waiting" }),
+        );
+      }
+    });
+    const transport = new WebRemoteControlDeviceTransport({
+      relayWsUrl: relay.url,
+      deviceMid: "mid-1",
+      auth: { mode: "persisted", deviceSid: "sid-1", passHash: "hash-1" },
+      meta: { platform: "darwin", version: "1.0.0", name: "Mac" },
+      authProvider: {
+        createPassword: () => "password",
+        createPassHash: () => "hash-1",
+        calculateProof: () => "proof",
+      },
+      authTimeoutMs: 40,
+      reconnectDelayMs: 10,
+      reconnectJitterMs: 0,
+      logger: createLogger(),
+      onRegisteredAuth: () => {},
+      onStateChange: (state) => states.push(state),
+      onPayload: () => {},
+      onError: (error, context) => {
+        errors.push(error.message);
+        errorContexts.push(context);
+      },
+      onInvalidPersistedAuth: async () => {},
+    });
+
+    try {
+      transport.start();
+      await waitUntil(() => authInitCount === 3 && states.at(-1) === "waiting_terminal", 2_000);
+      expect(errors).toContain("External relay authentication timed out");
+      expect(errorContexts.at(-1)).toMatchObject({
+        state: "authenticating",
+        lastControlType: "auth_init",
+        connectAttempt: 2,
+      });
+      expect(relay.getConnectionCount()).toBe(3);
+      // 有效 ACK 必须取消截止，不得在已恢复的 waiting_terminal 上误重建。
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      expect(relay.getConnectionCount()).toBe(3);
+      transport.dispose();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(relay.getConnectionCount()).toBe(3);
+    } finally {
+      transport.dispose();
+    }
+  });
+
+  it("cancels the auth deadline when device remote control is stopped", async () => {
+    const errors: string[] = [];
+    const relay = await createRelayServer(() => {
+      // relay 接受 WebSocket 和 auth_init，但不回复鉴权消息。
+    });
+    const transport = new WebRemoteControlDeviceTransport({
+      relayWsUrl: relay.url,
+      deviceMid: "mid-1",
+      auth: { mode: "persisted", deviceSid: "sid-1", passHash: "hash-1" },
+      meta: { platform: "darwin", version: "1.0.0", name: "Mac" },
+      authProvider: {
+        createPassword: () => "password",
+        createPassHash: () => "hash-1",
+        calculateProof: () => "proof",
+      },
+      authTimeoutMs: 30,
+      reconnectDelayMs: 10,
+      logger: createLogger(),
+      onRegisteredAuth: () => {},
+      onStateChange: () => {},
+      onPayload: () => {},
+      onError: (error) => errors.push(error.message),
+      onInvalidPersistedAuth: async () => {},
+    });
+
+    transport.start();
+    await waitUntil(() => relay.messages.some((message) => message.type === "auth_init"));
+    transport.dispose();
+    await new Promise((resolve) => setTimeout(resolve, 70));
+    expect(errors).toEqual([]);
+    expect(relay.getConnectionCount()).toBe(1);
+  });
+
   it("keeps the device socket open when paired data forwarding reports no pair", async () => {
     const errors: string[] = [];
     const states: WebRemoteControlDeviceTransportState[] = [];
@@ -1661,6 +1853,8 @@ describe("WebRemoteControlDeviceTransport", () => {
       transport.start();
       await waitUntil(() => errors.some((error) => error.message === "e2ee.handshakeTimeout"));
       await waitUntil(() => states.includes("paired"));
+      // 桌面端先进入 paired，手机端收到 ready 密文还要经过异步 WS 投递；等双方都完成。
+      await waitUntil(() => phone?.isReady() === true);
       expect(states).not.toContain("error");
       expect(relay.getConnectionCount()).toBeGreaterThanOrEqual(2);
       expect(phone?.isReady()).toBe(true);

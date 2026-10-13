@@ -240,7 +240,38 @@ auth_ack / matched
                          30 秒无 ACK → 本地重连
 ```
 
-心跳使用递归 `setTimeout`，每轮重新抽样，平均周期仍为 10 秒；不得补发页面后台或系统休眠期间错过的历史心跳。30 秒是时间型 ACK deadline，不按固定次数推断失败；watchdog 触发的重连增加小幅随机延迟，明确错误、用户停止和前台恢复等路径保持原有立即恢复语义。心跳 payload 与 relay 协议 schema 不变。
+心跳使用递归 `setTimeout`，每轮重新抽样，平均周期仍为 10 秒；不得补发页面后台或系统休眠期间错过的历史心跳。30 秒是时间型 ACK deadline，不按固定次数推断失败；watchdog 触发的重连增加小幅随机延迟。连续 relay `INTERNAL` 与鉴权悬停按下述规则退避；用户停止和前台恢复仍保持原有立即生效语义。心跳 payload 与 relay 协议 schema 不变。
+
+### Relay `INTERNAL` 与鉴权悬停
+
+Desktop Main 的 device transport 独占 socket、鉴权截止时间和连续失败计数；Manager 只接收状态/错误投影，不轮换配对凭据或创建新 Host。外部 relay 返回 `INTERNAL` 不能证明 E2EE 密钥错误：`matched` 之前既不开始 E2EE 握手，也不开放业务发送。处于 `waiting_terminal` 的 socket 收到 `INTERNAL` 时先保持等待；若 relay 随后关闭连接，再进入重连。鉴权中的 `INTERNAL` 则废弃当前 socket，不把本地主动关闭再次记录成 relay 断线。
+
+连续 `INTERNAL` 或鉴权无响应应继续自动恢复，但不能每秒无限重试：Desktop 从 1 秒起指数退避，附加有界抖动，最长 30 秒；只有收到有效 `auth_ack` 才重置连续失败计数。`device_register_init` / `auth_init` 发出后 15 秒仍无鉴权完成响应，认定这一条 socket 的鉴权悬停，关闭并按同一退避路径重试。超时/错误只失效本次 socket；其迟到的 ACK、close 和 data 不得改写新连接。手动停止取消所有截止与重连定时器。`AUTH_FAILED` 的既有凭据失效流程、`KICKED` 的既有语义不变。
+
+主日志对本次 `INTERNAL` 恢复路径保留 `code`、当前 transport 状态、最近一次发出的控制消息类型和连接尝试序号，不记录 relay 提供的原始 `INTERNAL` 错误文本；对 socket 关闭只记安全的关闭码。新增诊断字段不包含证明、配对凭据、URL、密钥或 `data.payload`。最近控制消息仅供定位阶段，不宣称一定是错误的因果请求；不得通过关闭日志重复计算同一次本地主动重建。
+
+```mermaid
+sequenceDiagram
+    participant D as "Desktop Main（socket/重试唯一所有者）"
+    participant R as "外部 relay"
+    participant M as "Manager（状态投影）"
+    D->>R: "auth_init"
+    R-->>D: "auth_ack: waiting"
+    R-->>D: "INTERNAL + close"
+    D-->>M: "可恢复错误与等待/重连状态"
+    D->>R: "退避后重建 socket、auth_init"
+    alt "relay 再次返回 INTERNAL"
+        R-->>D: "INTERNAL"
+        D->>R: "增长退避后重新鉴权"
+    else "relay 无响应"
+        Note over D: "15 秒鉴权截止，仅失效本次 socket"
+        D->>R: "退避后重新鉴权"
+    end
+    R-->>D: "auth_ack"
+    D-->>M: "清除失败计数，恢复等待配对"
+```
+
+验收场景：首次进入 `waiting_terminal` 后收到 `INTERNAL`/close，随后数次鉴权 `INTERNAL`，重连间隔递增且不轮换 QR/凭据，relay 恢复后同一 transport 回到 `waiting_terminal`；若某次鉴权只收到 WebSocket open 而没有 challenge/ACK，截止后仍能继续重连并恢复；两种路径均不启动 E2EE/Host attachment，也不产生“本地主动关闭又报 relay 断开”的重复日志。有效 ACK、手动停止、`AUTH_FAILED`、`KICKED` 和已经配对的加密业务路径保持原语义。
 
 配对身份是 `device_sid`。QR URL 是：
 

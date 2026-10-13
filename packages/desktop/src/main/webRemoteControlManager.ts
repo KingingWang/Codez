@@ -1450,9 +1450,11 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
             runtime.pendingOutboundPayloads.length = 0;
             clearPendingOutboundPayloadTimer(runtime);
           },
-          onError: (error) => {
+          onError: (error, context) => {
             dependencies.logger.warn("[web-remote-control] external relay device error", {
-              message: error.message,
+              // Bugfix：relay 错误文本不受本地控制，可能回显请求参数；有协议码时只记码。
+              message: context?.relayCode ?? error.message,
+              ...context,
             });
           },
           onInvalidPersistedAuth: async () => {

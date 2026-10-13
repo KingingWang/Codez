@@ -21,6 +21,7 @@ import {
   type WebRemoteControlAppPayload,
   type WebRemoteControlE2eeWirePayload,
   type WebRemoteControlRelayDeviceMeta,
+  type WebRemoteControlRelayErrorCode,
   type WebRemoteControlRelayIncomingMessage,
   type WebRemoteControlRelayOutgoingMessage,
 } from "@codez/shared";
@@ -52,6 +53,13 @@ export type WebRemoteControlDeviceTransportAuth =
       passHash: string;
     };
 
+export interface WebRemoteControlDeviceTransportErrorContext {
+  relayCode?: WebRemoteControlRelayErrorCode;
+  state: WebRemoteControlDeviceTransportState;
+  lastControlType?: WebRemoteControlRelayOutgoingMessage["type"];
+  connectAttempt: number;
+}
+
 export interface WebRemoteControlDeviceTransportOptions {
   relayWsUrl: string;
   deviceMid: string;
@@ -62,6 +70,7 @@ export interface WebRemoteControlDeviceTransportOptions {
   heartbeatIntervalMs?: number;
   heartbeatJitterMs?: number;
   heartbeatAckTimeoutMs?: number;
+  authTimeoutMs?: number;
   e2eeHandshakeTimeoutMs?: number;
   reconnectJitterMs?: number;
   reconnectDelayMs?: number;
@@ -78,7 +87,7 @@ export interface WebRemoteControlDeviceTransportOptions {
   onPayload(payload: WebRemoteControlAppPayload): void;
   onRawTransportPayload?(payload: unknown): boolean;
   onRawTransportFault?(reasonCode: string): void;
-  onError(error: Error): void;
+  onError(error: Error, context?: WebRemoteControlDeviceTransportErrorContext): void;
   onSendReady?(event: { kind: "same-socket" | "reconnected-socket" }): void;
   onE2eeReset?(): void;
   onInvalidPersistedAuth(): Promise<void>;
@@ -198,6 +207,7 @@ export class WebRemoteControlDeviceTransport {
   private lastPairStatusAckAt = 0;
   private heartbeatTimer?: ReturnType<typeof setTimeout>;
   private heartbeatAckWatchdogTimer?: ReturnType<typeof setTimeout>;
+  private authDeadlineTimer?: ReturnType<typeof setTimeout>;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private staleWaitingRecoveryTimer?: ReturnType<typeof setTimeout>;
   // Bugfix: relay message trace 在开发态也会按消息流频率写入 logs/web-remote-control。
@@ -205,6 +215,8 @@ export class WebRemoteControlDeviceTransport {
   private readonly traceRelayMessages = false;
   private connectStartedAt = 0;
   private connectAttempt = 0;
+  private consecutiveRelayFailures = 0;
+  private lastControlType?: WebRemoteControlRelayOutgoingMessage["type"];
   private socketGeneration = 0;
   private lastPairedSocketGeneration = 0;
   private payloadSerializer = new WebRemoteControlRelayPayloadSerializer();
@@ -227,6 +239,7 @@ export class WebRemoteControlDeviceTransport {
     this.lastPairedSocketGeneration = 0;
     this.staleWaitingCount = 0;
     this.lastPairStatusAckAt = 0;
+    this.consecutiveRelayFailures = 0;
     this.connect();
   }
 
@@ -261,6 +274,7 @@ export class WebRemoteControlDeviceTransport {
 
   dispose(): void {
     this.manuallyClosed = true;
+    this.clearAuthDeadline();
     this.resetE2ee();
     this.clearReconnectTimer();
     this.stopHeartbeat();
@@ -272,9 +286,11 @@ export class WebRemoteControlDeviceTransport {
 
   private connect(): void {
     this.clearReconnectTimer();
+    this.clearAuthDeadline();
     this.stopHeartbeat();
     this.clearStaleWaitingRecoveryTimer();
     this.connectAttempt += 1;
+    this.lastControlType = undefined;
     this.socketGeneration += 1;
     this.connectStartedAt = Date.now();
     this.setState("connecting");
@@ -314,6 +330,7 @@ export class WebRemoteControlDeviceTransport {
           meta: this.options.meta,
           client_ts: Date.now(),
         });
+        this.armAuthDeadline();
         return;
       }
 
@@ -365,10 +382,11 @@ export class WebRemoteControlDeviceTransport {
       this.options.onError(error);
     });
 
-    socket.on("close", () => {
+    socket.on("close", (code) => {
       if (socket !== this.socket) {
         return;
       }
+      this.clearAuthDeadline();
       this.stopHeartbeat();
       this.resetE2ee();
       if (this.suppressNextCloseReconnect) {
@@ -376,14 +394,18 @@ export class WebRemoteControlDeviceTransport {
         return;
       }
       if (!this.manuallyClosed && !this.terminalClose) {
-        this.options.logger.warn("[web-remote-control] external relay device disconnected");
+        this.options.logger.warn("[web-remote-control] external relay device disconnected", {
+          code,
+          state: this.state,
+          connectAttempt: this.connectAttempt,
+        });
         if (this.state !== "paired") {
           noteWebRemoteRelayConnectAttempt(Date.now() - this.connectStartedAt, false, {
             attempt: this.connectAttempt,
           });
         }
         noteWebRemoteRelayReconnect();
-        this.scheduleReconnect();
+        this.scheduleReconnect(this.getRecoverableReconnectDelayMs());
       }
     });
   }
@@ -427,6 +449,10 @@ export class WebRemoteControlDeviceTransport {
         break;
       }
       case "auth_ack":
+        this.clearAuthDeadline();
+        this.consecutiveRelayFailures = 0;
+        this.applyPairStatus(message.pair_status);
+        break;
       case "pair_status_ack": {
         this.applyPairStatus(message.pair_status);
         break;
@@ -452,6 +478,7 @@ export class WebRemoteControlDeviceTransport {
       meta: this.options.meta,
       client_ts: Date.now(),
     });
+    this.armAuthDeadline();
   }
 
   private applyPairStatus(status: "waiting" | "matched"): void {
@@ -531,6 +558,7 @@ export class WebRemoteControlDeviceTransport {
     code: "AUTH_FAILED" | "DEVICE_OFFLINE" | "KICKED" | "WRONG_PARAM" | "INTERNAL",
     message: string,
   ): Promise<void> {
+    this.clearAuthDeadline();
     if (code === "KICKED") {
       // Bugfix: KICKED 的业务语义是同一远控链接只能有一个手机 terminal。
       // desktop device 端在心跳超时后重建 socket 时也可能短暂收到该错误，不能因此关闭桌面远控 runtime。
@@ -560,13 +588,14 @@ export class WebRemoteControlDeviceTransport {
     }
 
     if (code === "INTERNAL") {
+      this.consecutiveRelayFailures += 1;
       if (this.state === "paired" || this.state === "waiting_terminal") {
-        this.enterWaitingForPairAfterRelayError(new Error(message || code));
+        this.enterWaitingForPairAfterRelayError(new Error(message || code), code);
         return;
       }
       // Bugfix: 外部 relay 在 terminal 快速刷新/重连时可能短暂返回 INTERNAL。
       // 这类错误不代表用户主动结束配对，不能设置 terminalClose，否则 close 后不会自动重连。
-      this.enterRecoverableError(new Error(message || code));
+      this.enterRecoverableError(new Error(message || code), code);
       return;
     }
 
@@ -767,6 +796,43 @@ export class WebRemoteControlDeviceTransport {
     }
   }
 
+  private armAuthDeadline(): void {
+    this.clearAuthDeadline();
+    const socket = this.socket;
+    this.authDeadlineTimer = setTimeout(() => {
+      this.authDeadlineTimer = undefined;
+      if (
+        socket !== this.socket ||
+        this.manuallyClosed ||
+        this.terminalClose ||
+        (this.state !== "registering" && this.state !== "authenticating")
+      ) {
+        return;
+      }
+      // Bugfix：relay WS 可保持 open 却不再回复 challenge/ACK；不能让鉴权态永久悬停。
+      // 截止只约束当前 socket，迟到的响应由 socket identity 守卫丢弃。
+      this.consecutiveRelayFailures += 1;
+      this.enterRecoverableError(new Error("External relay authentication timed out"));
+    }, this.options.authTimeoutMs ?? 15_000);
+  }
+
+  private clearAuthDeadline(): void {
+    if (this.authDeadlineTimer) clearTimeout(this.authDeadlineTimer);
+    this.authDeadlineTimer = undefined;
+  }
+
+  private getRecoverableReconnectDelayMs(): number {
+    const baseDelayMs = this.options.reconnectDelayMs ?? 1_000;
+    if (this.consecutiveRelayFailures === 0) return baseDelayMs;
+    // Bugfix：连续 INTERNAL 后固定 1 秒重建会反复撞上 relay 未清理的连接/故障窗口。
+    // 有界退避保留无限次恢复能力；只有有效 auth_ack 才清除失败计数。
+    return Math.min(
+      30_000,
+      baseDelayMs * 2 ** Math.min(this.consecutiveRelayFailures - 1, 5) +
+        this.getReconnectJitterMs(),
+    );
+  }
+
   private scheduleReconnect(delayMs = this.options.reconnectDelayMs ?? 1_000): void {
     if (this.manuallyClosed || this.terminalClose) {
       return;
@@ -806,6 +872,7 @@ export class WebRemoteControlDeviceTransport {
   }
 
   private reconnectAfterStaleWaiting(reconnectDelayMs = 0): void {
+    this.clearAuthDeadline();
     this.clearStaleWaitingRecoveryTimer();
     this.stopHeartbeat();
     this.clearReconnectTimer();
@@ -834,6 +901,7 @@ export class WebRemoteControlDeviceTransport {
 
   private enterError(error: Error): void {
     this.terminalClose = true;
+    this.clearAuthDeadline();
     this.stopHeartbeat();
     this.clearStaleWaitingRecoveryTimer();
     this.setState("error");
@@ -857,24 +925,50 @@ export class WebRemoteControlDeviceTransport {
     this.reconnectAfterStaleWaiting(this.getReconnectJitterMs());
   }
 
-  private enterRecoverableError(error: Error): void {
+  private enterRecoverableError(error: Error, relayCode?: WebRemoteControlRelayErrorCode): void {
+    this.clearAuthDeadline();
     this.stopHeartbeat();
     this.clearStaleWaitingRecoveryTimer();
+    const context = this.createErrorContext(relayCode);
     this.setState("error");
-    this.options.onError(error);
-    this.socket?.close();
+    this.options.onError(error, context);
+    // Bugfix：这是本地主动废弃的 socket，不应再由 close 回调记录一次 relay 断线，
+    // 也不能让它用固定 1 秒延迟覆盖当前连续失败的退避调度。
+    const staleSocket = this.socket;
+    this.socket = undefined;
+    staleSocket?.close();
+    noteWebRemoteRelayConnectAttempt(Date.now() - this.connectStartedAt, false, {
+      error,
+      attempt: this.connectAttempt,
+    });
+    noteWebRemoteRelayReconnect();
+    this.scheduleReconnect(this.getRecoverableReconnectDelayMs());
   }
 
-  private enterWaitingForPairAfterRelayError(error: Error): void {
+  private enterWaitingForPairAfterRelayError(
+    error: Error,
+    relayCode: WebRemoteControlRelayErrorCode,
+  ): void {
     // Bugfix: codez-remote-hub 在已认证连接上转发 data 找不到对端时只返回 INTERNAL，
     // 不会关闭当前 device WS。这里不能把“手机端暂时不在”升级成桌面全局 WS 断开，
     // 只暂停业务发送并继续用 pair_status_query 等待 terminal 重新 matched。
-    this.options.onError(error);
+    this.options.onError(error, this.createErrorContext(relayCode));
     this.clearStaleWaitingRecoveryTimer();
     this.staleWaitingCount = 0;
     this.wasPaired = false;
     this.startHeartbeat();
     this.setState("waiting_terminal");
+  }
+
+  private createErrorContext(
+    relayCode?: WebRemoteControlRelayErrorCode,
+  ): WebRemoteControlDeviceTransportErrorContext {
+    return {
+      ...(relayCode ? { relayCode } : {}),
+      state: this.state,
+      ...(this.lastControlType ? { lastControlType: this.lastControlType } : {}),
+      connectAttempt: this.connectAttempt,
+    };
   }
 
   private setState(state: WebRemoteControlDeviceTransportState): void {
@@ -915,7 +1009,9 @@ export class WebRemoteControlDeviceTransport {
       });
       return false;
     }
-    return this.sendSerialized(message, serialized);
+    const sent = this.sendSerialized(message, serialized);
+    if (sent) this.lastControlType = message.type;
+    return sent;
   }
 
   private sendSerialized(
