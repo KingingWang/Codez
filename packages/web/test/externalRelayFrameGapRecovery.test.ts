@@ -254,6 +254,11 @@ function setupExternalRelayGlobals(pathname = "/remote") {
       href: `https://zcode.z.ai${pathname}?sid=sid-1&hash=hash-1&t=1&mid=mid-1&app_version=1.0.0`,
       replace: navigateMock,
       search: "?sid=sid-1&hash=hash-1&t=1&mid=mid-1&app_version=1.0.0",
+      // 原因：e2ee 加密配对后 main.tsx 的 bootstrap 会读 window.location.hash 解析加密密钥；
+      // 桩缺少 hash 时 parseWebRemoteControlE2eeQrFragment 收到 undefined 直接抛错，
+      // bootstrap 以未处理 rejection 中断，relayProtocolOptions 永远为空。
+      // "A".repeat(43) 是合法的 43 位 base64url 密钥（解码为 32 字节且可无损往返）。
+      hash: `#e2ee=v1&k=${"A".repeat(43)}`,
     },
   });
   vi.stubGlobal("navigator", {
