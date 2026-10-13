@@ -111,6 +111,16 @@ export function projectThreadMode(thread: JsonObject): string {
   return "custom";
 }
 
+/**
+ * custom 不请求权限覆盖（specs/codex-permission-modes.md），queue/steer 从不应用设置，
+ * 与 custom 及推导出的放宽档（yolo/edit）投影天然兼容——bridge 重启后 remembered 档
+ * 丢失，不能把"跟随 config.toml"的持久化草稿误判为覆盖意图。build 投影只来自本进程
+ * 记住的显式收紧，与 custom 草稿是真实分歧，仍视为变更。
+ */
+function customInputCompatibleWithProjection(inputMode: string, projectedMode: string): boolean {
+  return inputMode === "custom" && projectedMode !== "build";
+}
+
 export function assertUnchangedInputSettings(
   input: { modelSelection?: ModelSelection; mode?: string; planEnabled?: boolean },
   thread: JsonObject,
@@ -124,7 +134,10 @@ export function assertUnchangedInputSettings(
         selection.providerId !== thread.modelProvider ||
         (selection.options?.reasoningLevel !== undefined &&
           selection.options.reasoningLevel !== thread.reasoningEffort))) ||
-    (input.mode !== undefined && (input.mode === "plan" ? !plan : input.mode !== mode)) ||
+    (input.mode !== undefined &&
+      (input.mode === "plan"
+        ? !plan
+        : input.mode !== mode && !customInputCompatibleWithProjection(input.mode, mode))) ||
     (input.planEnabled !== undefined && input.planEnabled !== plan)
   ) {
     unsupported("per-input settings on queue/steer; change thread settings before submitting");

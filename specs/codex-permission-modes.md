@@ -24,6 +24,7 @@ Plan 保持独立勾选维度（`planEnabled` → `collaborationMode`），与�
 - 投影规则（snapshot `config.mode` 与 queue 守卫共用同一推导）：
   1. 本进程记住的显式档位优先；
   2. 否则按线程生效值推导：`dangerFullAccess → yolo`；`approvalsReviewer=auto_review → edit`；其余 → `custom`（无显式选择即跟随原生，与旧 build "保留原生权限"行为等价）。
+- queue/steer 守卫的档位维度按"是否携带覆盖意图"判定：`custom` 不请求权限覆盖（queue/steer 从不应用设置），与 `custom` 及推导出的放宽档（`yolo`/`edit`）投影兼容——bridge 重启后 remembered 档丢失会把"跟随 config.toml"的持久化草稿误判为覆盖意图，导致 busy 引导/排队被永久拒绝。`build` 投影只来自本进程记住的显式收紧，`custom` 草稿与之是真实分歧，仍拒绝。UI 的 `codexSubmissionMatchesThread` 与 bridge 的 `assertUnchangedInputSettings` 必须保持同一条规则。
 - 档位切换只编辑草稿，随下一次 startNow 提交经 `turn/start` 生效；busy/queue 场景维持既有守卫（per-input 设置变更拒绝 + UI toast）。
 - `custom → 放宽态恢复`：bridge 读取 `config/read` 的 `sandbox_mode` / `approval_policy` / `approvals_reviewer` 显式下发；读取失败或值为 granular 等不可映射形态时，回退 `workspaceWrite + on-request + user` 基线。恢复动作必须复位 `approvalsReviewer`，不允许只改沙箱留下 AI 代批。
 

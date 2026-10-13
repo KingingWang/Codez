@@ -111,6 +111,53 @@ test("queue/steer cannot silently discard a changed native model or permission i
   assert.throws(() => assertUnchangedInputSettings({ mode: "plan" }, thread), /settings/);
 });
 
+test("queue/steer accepts custom input on derived relaxed projections", () => {
+  // 无 remembered 档的放宽线程（bridge 重启后）：推导为 yolo/edit；custom 不携带
+  // 权限覆盖意图，queue/steer 不应用设置，必须放行（specs/codex-permission-modes.md）。
+  const relaxed = {
+    model: "m",
+    modelProvider: "p",
+    reasoningEffort: "high",
+    sandboxPolicy: { type: "dangerFullAccess" },
+    collaborationMode: { mode: "default" },
+  };
+  assert.equal(projectThreadMode(relaxed), "yolo");
+  assert.doesNotThrow(() =>
+    assertUnchangedInputSettings(
+      {
+        mode: "custom",
+        planEnabled: false,
+        modelSelection: { modelId: "m", providerId: "p", options: { reasoningLevel: "high" } },
+      },
+      relaxed,
+    ),
+  );
+  const autoReviewed = {
+    ...relaxed,
+    sandboxPolicy: { type: "workspaceWrite" },
+    approvalsReviewer: "auto_review",
+  };
+  assert.equal(projectThreadMode(autoReviewed), "edit");
+  assert.doesNotThrow(() => assertUnchangedInputSettings({ mode: "custom" }, autoReviewed));
+  // 本进程记住的显式 yolo 与 custom 草稿同样兼容（线程按用户显式选择运行）。
+  const explicitYolo = { ...relaxed };
+  rememberThreadMode(explicitYolo, "yolo");
+  assert.doesNotThrow(() => assertUnchangedInputSettings({ mode: "custom" }, explicitYolo));
+  // 本进程记住的显式 build 是收紧意图：custom 草稿与之是真实分歧，继续拒绝。
+  const explicitBuild = { ...relaxed };
+  rememberThreadMode(explicitBuild, "build");
+  assert.throws(() => assertUnchangedInputSettings({ mode: "custom" }, explicitBuild), /settings/);
+  // custom 兼容规则不影响其余维度：模型变更仍拒绝。
+  assert.throws(
+    () =>
+      assertUnchangedInputSettings(
+        { mode: "custom", modelSelection: { modelId: "different", providerId: "p" } },
+        relaxed,
+      ),
+    /settings/,
+  );
+});
+
 test("thread mode projection prefers the remembered explicit choice", () => {
   // 无记录：按原生生效值推导。
   assert.equal(projectThreadMode({}), "custom");

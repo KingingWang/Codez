@@ -550,3 +550,54 @@ test("native busy guide and idle queue reject changed settings but allow equal s
   assert.equal(codexSubmissionSettingsAllowed(submission, null, "queue"), false);
   assert.equal(codexSubmissionSettingsAllowed(submission, null), true);
 });
+
+test("custom draft stays queue/guide compatible with derived relaxed mode projections", () => {
+  const submission = { modelSelection: selection, mode: "custom" as const, planEnabled: false };
+  const busyControl = { phase: "running", canStop: true, stopState: "stoppable" };
+  const baseConfig = {
+    provider: selection.providerId,
+    model: selection.modelId,
+    thought: "medium",
+    planEnabled: false,
+  };
+  // bridge 重启后 remembered 档丢失：relaxed 线程推导为 yolo/edit，而持久化草稿仍是
+  // 新任务默认的 custom。custom 不携带权限覆盖意图，queue/guide 必须放行
+  // （specs/codex-permission-modes.md）。
+  for (const projectedMode of ["custom", "yolo", "edit"] as const) {
+    const snapshot = {
+      control: busyControl,
+      config: { ...baseConfig, mode: projectedMode },
+    } as Pick<ConversationSnapshot, "control" | "config">;
+    assert.equal(codexSubmissionSettingsAllowed(submission, snapshot, "guide"), true);
+    assert.equal(codexSubmissionSettingsAllowed(submission, snapshot, "queue"), true);
+  }
+  // build 投影只来自本进程记住的显式收紧：custom 草稿与之是真实分歧，继续拒绝。
+  const rememberedBuild = {
+    control: busyControl,
+    config: { ...baseConfig, mode: "build" },
+  } as Pick<ConversationSnapshot, "control" | "config">;
+  assert.equal(codexSubmissionSettingsAllowed(submission, rememberedBuild, "guide"), false);
+  // 其余维度不受 custom 兼容规则影响：模型/档位/plan 变更仍拒绝。
+  assert.equal(
+    codexSubmissionSettingsAllowed(
+      { ...submission, modelSelection: { ...selection, modelId: "other" } },
+      {
+        control: busyControl,
+        config: { ...baseConfig, mode: "yolo" },
+      } as Pick<ConversationSnapshot, "control" | "config">,
+      "guide",
+    ),
+    false,
+  );
+  assert.equal(
+    codexSubmissionSettingsAllowed(
+      { ...submission, planEnabled: true },
+      {
+        control: busyControl,
+        config: { ...baseConfig, mode: "yolo" },
+      } as Pick<ConversationSnapshot, "control" | "config">,
+      "queue",
+    ),
+    false,
+  );
+});

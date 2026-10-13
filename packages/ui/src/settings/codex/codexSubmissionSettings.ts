@@ -45,13 +45,18 @@ export function codexSubmissionMatchesThread(
 ): boolean {
   const selected = submission.modelSelection;
   const current = config.modelSelection;
+  const threadMode = config.mode;
   // bridge 投影已将 readOnly/workspaceWrite 统一为 build；不能把 readonly 当成权限变更。
   return (
     selected.providerId === (current?.providerId ?? config.provider) &&
     selected.modelId === (current?.modelId ?? config.model) &&
     (selected.options?.reasoningLevel === undefined ||
       selected.options.reasoningLevel === (current?.options?.reasoningLevel ?? config.thought)) &&
-    submission.mode === config.mode &&
+    // custom 不携带权限覆盖意图；bridge 重启后 remembered 档丢失会把 relaxed 线程推导为
+    // yolo/edit（specs/codex-permission-modes.md），据此拒绝会把 queue/guide 永久锁死。
+    // build 投影只来自显式收紧，custom 草稿与之是真实分歧，继续拒绝。
+    (submission.mode === threadMode ||
+      (submission.mode === "custom" && (threadMode === "yolo" || threadMode === "edit"))) &&
     submission.planEnabled === (config.planEnabled ?? false)
   );
 }
