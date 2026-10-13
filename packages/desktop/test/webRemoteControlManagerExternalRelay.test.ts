@@ -6,6 +6,7 @@ import { ChannelClient, ChannelServer, Emitter, VSBuffer } from "@codez/rpc";
 import {
   createAcknowledgedWebRemoteControlRelayProtocol,
   createWebRemoteControlE2eeSession,
+  type WebRemoteControlPayloadSendResult,
 } from "@codez/client";
 import { parseWebRemoteControlE2eeQrFragment } from "@codez/shared";
 import { ServiceCollection, createServiceDescriptor } from "@codez/services";
@@ -23,6 +24,11 @@ import {
 import { createWebRemoteControlManager } from "../src/main/webRemoteControlManager.js";
 import { createWebRemoteControlFeatureGate } from "../src/main/webRemoteControlFeatureGate.js";
 import { WebRemoteControlDeviceTransport } from "../src/main/webRemoteControlTransport.js";
+import {
+  WEB_REMOTE_CONTROL_APP_PAYLOAD_PLAINTEXT_BUDGET_BYTES,
+  WEB_REMOTE_CONTROL_TASK_TITLE_MAX_CHARS,
+  measureWebRemoteControlAppPayloadBytes,
+} from "../src/main/webRemoteControlPayloadBudget.js";
 
 function createFakePort() {
   const emitter = new EventEmitter();
@@ -46,21 +52,36 @@ function createManagerHarness(options?: {
   featureEnabled?: boolean;
   delayReadyMs?: number;
   canSendPayload?: () => boolean;
+  sendPayloadResult?: (
+    payload: WebRemoteControlAppPayload,
+  ) => WebRemoteControlPayloadSendResult | undefined;
   storedAuth?: { deviceSid: string; passHash: string; e2eeKey?: string };
-  startupRestoreContext?: NonNullable<AppSettings["webRemoteControlLastEnabledContext"]>;
+  startupRestoreContext?: NonNullable<
+    AppSettings["webRemoteControlLastEnabledContext"]
+  >;
   startupRestoreClearError?: Error;
   authSaveError?: Error;
   registeredAuths?: Array<{ deviceSid: string; passHash: string }>;
   attachWorkspaceHost?: AttachWorkspaceHost;
   releaseWorkspaceHostAttachment?: (attachmentId: string) => void;
-  disposeWorkspaceHostAttachmentsForWindow?: (windowId: number, reason: string) => void;
+  disposeWorkspaceHostAttachmentsForWindow?: (
+    windowId: number,
+    reason: string,
+  ) => void;
   disposeWorkspaceHostAttachmentsForRemoteSession?: (
     remoteSessionId: string,
     reason: string,
   ) => void;
-  reconnectWorkspace?: (windowId: number, workspaceKey: string) => Promise<void>;
-  onStatusChanged?: Parameters<typeof createWebRemoteControlManager>[0]["onStatusChanged"];
-  getEndpointUrls?: Parameters<typeof createWebRemoteControlManager>[0]["getEndpointUrls"];
+  reconnectWorkspace?: (
+    windowId: number,
+    workspaceKey: string,
+  ) => Promise<void>;
+  onStatusChanged?: Parameters<
+    typeof createWebRemoteControlManager
+  >[0]["onStatusChanged"];
+  getEndpointUrls?: Parameters<
+    typeof createWebRemoteControlManager
+  >[0]["getEndpointUrls"];
   reportRemoteUsageEvent?: Parameters<
     typeof createWebRemoteControlManager
   >[0]["reportRemoteUsageEvent"];
@@ -75,15 +96,25 @@ function createManagerHarness(options?: {
   let storedAuth = options?.storedAuth;
   let startupRestoreContext = options?.startupRestoreContext;
   let transportStartCount = 0;
-  let deliverPayload: ((payload: WebRemoteControlAppPayload) => void) | undefined;
+  let deliverPayload:
+    | ((payload: WebRemoteControlAppPayload) => void)
+    | undefined;
   let latestTransportOptions:
     | Parameters<
-        NonNullable<Parameters<typeof createWebRemoteControlManager>[0]["createDeviceTransport"]>
+        NonNullable<
+          Parameters<
+            typeof createWebRemoteControlManager
+          >[0]["createDeviceTransport"]
+        >
       >[0]
     | undefined;
   let emitTransportState:
     | Parameters<
-        NonNullable<Parameters<typeof createWebRemoteControlManager>[0]["createDeviceTransport"]>
+        NonNullable<
+          Parameters<
+            typeof createWebRemoteControlManager
+          >[0]["createDeviceTransport"]
+        >
       >[0]["onStateChange"]
     | undefined;
   const disposeTransport = vi.fn();
@@ -95,14 +126,16 @@ function createManagerHarness(options?: {
     process: {} as never,
     port: createFakePort() as never,
   }));
-  const releaseWorkspaceHostAttachment = options?.releaseWorkspaceHostAttachment ?? vi.fn();
+  const releaseWorkspaceHostAttachment =
+    options?.releaseWorkspaceHostAttachment ?? vi.fn();
   const disposeWorkspaceHostAttachmentsForWindow =
     options?.disposeWorkspaceHostAttachmentsForWindow ?? vi.fn();
   const disposeWorkspaceHostAttachmentsForRemoteSession =
     options?.disposeWorkspaceHostAttachmentsForRemoteSession ?? vi.fn();
   const manager = createWebRemoteControlManager({
     relayWsUrl: options?.relayWsUrl ?? "ws://relay.test/ws",
-    mobileRemoteControlUrl: options?.mobileRemoteControlUrl ?? "https://trusted.example/remote/v3",
+    mobileRemoteControlUrl:
+      options?.mobileRemoteControlUrl ?? "https://trusted.example/remote/v3",
     getEndpointUrls: options?.getEndpointUrls,
     deviceMid: "mid-1",
     deviceName: "MacBook",
@@ -117,7 +150,9 @@ function createManagerHarness(options?: {
       save: async (auth) => {
         if (options?.authSaveError) throw options.authSaveError;
         storedAuth = auth;
-        settings.webRemoteControlExternalRelayDevice = { deviceSid: auth.deviceSid };
+        settings.webRemoteControlExternalRelayDevice = {
+          deviceSid: auth.deviceSid,
+        };
       },
       clear: async () => {
         storedAuth = undefined;
@@ -137,7 +172,9 @@ function createManagerHarness(options?: {
         startupRestoreContext = undefined;
       },
     },
-    featureGate: createWebRemoteControlFeatureGate(options?.featureEnabled ?? true),
+    featureGate: createWebRemoteControlFeatureGate(
+      options?.featureEnabled ?? true,
+    ),
     logger,
     platformHandlers: {
       isDockerAvailable: async () => true,
@@ -153,10 +190,12 @@ function createManagerHarness(options?: {
         skippedCount: 0,
       }),
     },
-    reconnectWorkspace: options?.reconnectWorkspace ?? vi.fn(async () => undefined),
+    reconnectWorkspace:
+      options?.reconnectWorkspace ?? vi.fn(async () => undefined),
     reportRemoteUsageEvent,
     reportRendererTelemetryEvent,
-    attachWorkspaceHost: options?.attachWorkspaceHost ?? defaultAttachWorkspaceHost,
+    attachWorkspaceHost:
+      options?.attachWorkspaceHost ?? defaultAttachWorkspaceHost,
     releaseWorkspaceHostAttachment,
     disposeWorkspaceHostAttachmentsForWindow,
     disposeWorkspaceHostAttachmentsForRemoteSession,
@@ -170,7 +209,9 @@ function createManagerHarness(options?: {
               transportStartCount += 1;
               emitTransportState = transportOptions.onStateChange;
               const markReady = () => {
-                const registeredAuth = options?.registeredAuths?.[transportStartCount - 1] ?? {
+                const registeredAuth = options?.registeredAuths?.[
+                  transportStartCount - 1
+                ] ?? {
                   deviceSid: "sid-1",
                   passHash: "hash-1",
                 };
@@ -195,11 +236,18 @@ function createManagerHarness(options?: {
             },
             measurePayloadBytes: (payload) => JSON.stringify(payload).length,
             sendPayloadResult: (payload) => {
+              const override = options?.sendPayloadResult?.(payload);
+              if (override) {
+                return override;
+              }
               if (options?.canSendPayload && !options.canSendPayload()) {
                 return { kind: "unavailable" as const };
               }
               sentPayloads.push(payload);
-              return { kind: "sent" as const, bytes: JSON.stringify(payload).length };
+              return {
+                kind: "sent" as const,
+                bytes: JSON.stringify(payload).length,
+              };
             },
             dispose: disposeTransport,
           },
@@ -225,7 +273,9 @@ function createManagerHarness(options?: {
       }
       deliverPayload(payload);
     },
-    emitTransportState: (state: Parameters<NonNullable<typeof emitTransportState>>[0]) => {
+    emitTransportState: (
+      state: Parameters<NonNullable<typeof emitTransportState>>[0],
+    ) => {
       if (!emitTransportState) {
         throw new Error("transport not started");
       }
@@ -275,7 +325,9 @@ async function createPrimedTaskSyncHarness(
   taskOverrides: Partial<WebRemoteControlTaskTarget> = {},
 ) {
   const harness = createManagerHarness();
-  await harness.manager.start(1, { workspacePath: localWorkspace.workspacePath });
+  await harness.manager.start(1, {
+    workspacePath: localWorkspace.workspacePath,
+  });
   harness.manager.syncAvailableWorkspaces(1, [localWorkspace]);
   const task = createTaskTarget(taskOverrides);
   harness.manager.syncAvailableTasks(1, [task]);
@@ -287,7 +339,9 @@ async function createPrimedWorkspaceSyncHarness(
   workspaceOverrides: Partial<WebRemoteControlWorkspaceTarget> = {},
 ) {
   const harness = createManagerHarness();
-  await harness.manager.start(1, { workspacePath: localWorkspace.workspacePath });
+  await harness.manager.start(1, {
+    workspacePath: localWorkspace.workspacePath,
+  });
   const workspace = { ...remoteWorkspace, ...workspaceOverrides };
   harness.manager.syncAvailableWorkspaces(1, [workspace]);
   harness.sentPayloads.length = 0;
@@ -313,7 +367,8 @@ async function createPrimedRemoteTaskSyncHarness(
 
 describe("createWebRemoteControlManager external relay", () => {
   it("logs safe relay error context without credentials or payloads", async () => {
-    const { manager, logger, getLatestTransportOptions } = createManagerHarness();
+    const { manager, logger, getLatestTransportOptions } =
+      createManagerHarness();
     await manager.start(1, { workspacePath: localWorkspace.workspacePath });
     getLatestTransportOptions()?.onError(new Error("untrusted relay detail"), {
       relayCode: "INTERNAL",
@@ -321,13 +376,16 @@ describe("createWebRemoteControlManager external relay", () => {
       lastControlType: "auth_init",
       connectAttempt: 2,
     });
-    expect(logger.warn).toHaveBeenCalledWith("[web-remote-control] external relay device error", {
-      message: "INTERNAL",
-      relayCode: "INTERNAL",
-      state: "authenticating",
-      lastControlType: "auth_init",
-      connectAttempt: 2,
-    });
+    expect(logger.warn).toHaveBeenCalledWith(
+      "[web-remote-control] external relay device error",
+      {
+        message: "INTERNAL",
+        relayCode: "INTERNAL",
+        state: "authenticating",
+        lastControlType: "auth_init",
+        connectAttempt: 2,
+      },
+    );
     await manager.stop(1);
   });
 
@@ -336,9 +394,9 @@ describe("createWebRemoteControlManager external relay", () => {
       relayWsUrl: "wss://relay.example/ws",
       mobileRemoteControlUrl: "https://relay.example/remote/v4",
     });
-    await expect(manager.start(1, { workspacePath: "/workspace/demo" })).rejects.toThrow(
-      "separate trusted HTTPS",
-    );
+    await expect(
+      manager.start(1, { workspacePath: "/workspace/demo" }),
+    ).rejects.toThrow("separate trusted HTTPS");
     expect(getLatestTransportOptions()).toBeUndefined();
   });
   it("generates a QR fragment key distinct from relay credentials and injects it into transport", async () => {
@@ -367,9 +425,9 @@ describe("createWebRemoteControlManager external relay", () => {
     const { manager, disposeTransport, getStoredAuth } = createManagerHarness({
       authSaveError: new Error("credential store unavailable"),
     });
-    await expect(manager.start(1, { workspacePath: "/workspace/demo" })).rejects.toThrow(
-      "credential store unavailable",
-    );
+    await expect(
+      manager.start(1, { workspacePath: "/workspace/demo" }),
+    ).rejects.toThrow("credential store unavailable");
     expect(disposeTransport).toHaveBeenCalledOnce();
     expect(manager.getStatus(1).qrUrl).toBeUndefined();
     expect(getStoredAuth()).toBeUndefined();
@@ -384,11 +442,18 @@ describe("createWebRemoteControlManager external relay", () => {
       socket.on("message", (raw) => {
         const message = JSON.parse(raw.toString());
         if (message.type === "device_register_init") {
-          socket.send(JSON.stringify({ type: "device_register_ack", device_sid: "sid-1" }));
+          socket.send(
+            JSON.stringify({
+              type: "device_register_ack",
+              device_sid: "sid-1",
+            }),
+          );
         } else if (message.type === "auth_init") {
           role = message.role;
           peers.set(role, socket);
-          socket.send(JSON.stringify({ type: "auth_challenge", nonce: "nonce-test" }));
+          socket.send(
+            JSON.stringify({ type: "auth_challenge", nonce: "nonce-test" }),
+          );
         } else if (message.type === "auth_response") {
           socket.send(
             JSON.stringify({
@@ -398,7 +463,9 @@ describe("createWebRemoteControlManager external relay", () => {
             }),
           );
         } else if (message.type === "pair_status_query") {
-          socket.send(JSON.stringify({ type: "pair_status_ack", pair_status: "matched" }));
+          socket.send(
+            JSON.stringify({ type: "pair_status_ack", pair_status: "matched" }),
+          );
         } else if (message.type === "data") {
           wirePayloads.push(message.payload);
           const peer = peers.get(role === "device" ? "terminal" : "device");
@@ -420,7 +487,8 @@ describe("createWebRemoteControlManager external relay", () => {
       host = new ChannelServer(
         {
           onMessage: hostInput.event,
-          send: (buffer) => queueMicrotask(() => port.emit("message", { data: buffer.buffer })),
+          send: (buffer) =>
+            queueMicrotask(() => port.emit("message", { data: buffer.buffer })),
         },
         "same-window-host",
         1000,
@@ -432,7 +500,10 @@ describe("createWebRemoteControlManager external relay", () => {
           listTasks: async () => [task],
         })
         .register(createServiceDescriptor(ServiceChannels.CodezSession), {
-          readSession: async () => ({ sessionId: task.taskId, title: task.title }),
+          readSession: async () => ({
+            sessionId: task.taskId,
+            title: task.title,
+          }),
         })
         .register(createServiceDescriptor(ServiceChannels.CodezAgent), {
           sendConversationCommandV4: async (command: unknown) => {
@@ -452,21 +523,29 @@ describe("createWebRemoteControlManager external relay", () => {
     const h = createManagerHarness({ relayWsUrl, attachWorkspaceHost });
     const mobilePayloads: Array<Record<string, unknown>> = [];
     let mobile: WebSocket | undefined;
-    let adapter: ReturnType<typeof createAcknowledgedWebRemoteControlRelayProtocol> | undefined;
+    let adapter:
+      | ReturnType<typeof createAcknowledgedWebRemoteControlRelayProtocol>
+      | undefined;
     let rpc: ChannelClient | undefined;
-    let crypto: ReturnType<typeof createWebRemoteControlE2eeSession> | undefined;
-    const sendWire = (payload: unknown) => mobile!.send(JSON.stringify({ type: "data", payload }));
-    const send = (payload: Record<string, unknown>) => sendWire(crypto!.prepare(payload));
+    let crypto:
+      | ReturnType<typeof createWebRemoteControlE2eeSession>
+      | undefined;
+    const sendWire = (payload: unknown) =>
+      mobile!.send(JSON.stringify({ type: "data", payload }));
+    const send = (payload: Record<string, unknown>) =>
+      sendWire(crypto!.prepare(payload));
     const waitForPayload = async (type: string, requestId: string) => {
       await vi.waitFor(() =>
         expect(
           mobilePayloads.some(
-            (payload) => payload.zcode_type === type && payload.requestId === requestId,
+            (payload) =>
+              payload.zcode_type === type && payload.requestId === requestId,
           ),
         ).toBe(true),
       );
       return mobilePayloads.find(
-        (payload) => payload.zcode_type === type && payload.requestId === requestId,
+        (payload) =>
+          payload.zcode_type === type && payload.requestId === requestId,
       )!;
     };
     const connectMobile = async () => {
@@ -489,11 +568,15 @@ describe("createWebRemoteControlManager external relay", () => {
               proof: "synthetic-proof",
             }),
           );
-        } else if (message.type === "auth_ack" && message.pair_status === "matched") {
+        } else if (
+          message.type === "auth_ack" &&
+          message.pair_status === "matched"
+        ) {
           crypto!.start();
         } else if (message.type === "data") {
           const result = crypto!.accept(message.payload);
-          if (result.kind !== "payload" && result.kind !== "duplicate-rpc") return;
+          if (result.kind !== "payload" && result.kind !== "duplicate-rpc")
+            return;
           const payload = result.payload as Record<string, unknown>;
           const { zcode_type, ...fields } = payload;
           mobilePayloads.push(payload);
@@ -508,7 +591,11 @@ describe("createWebRemoteControlManager external relay", () => {
           type: "auth_init",
           role: "terminal",
           device_sid: "sid-1",
-          meta: { platform: "web", version: "3.15.1", name: "Synthetic mobile" },
+          meta: {
+            platform: "web",
+            version: "3.15.1",
+            name: "Synthetic mobile",
+          },
         }),
       );
     };
@@ -519,8 +606,14 @@ describe("createWebRemoteControlManager external relay", () => {
       await connectMobile();
       await vi.waitFor(() => expect(crypto?.isReady()).toBe(true));
       send({ zcode_type: "bootstrap-request", requestId: "mobile-bootstrap" });
-      const bootstrap = await waitForPayload("bootstrap-response", "mobile-bootstrap");
-      expect(bootstrap.result).toMatchObject({ workspaces: [localWorkspace], tasks: [task] });
+      const bootstrap = await waitForPayload(
+        "bootstrap-response",
+        "mobile-bootstrap",
+      );
+      expect(bootstrap.result).toMatchObject({
+        workspaces: [localWorkspace],
+        tasks: [task],
+      });
       expect(attachWorkspaceHost).not.toHaveBeenCalled();
       send({
         zcode_type: "workspace-bridge-open",
@@ -549,8 +642,12 @@ describe("createWebRemoteControlManager external relay", () => {
           adapter.acceptPayload({ codez_type: zcode_type, ...fields });
         }
       }
-      expect(await rpc.getChannel("zcode-task").call("listTasks", {})).toEqual([task]);
-      expect(await rpc.getChannel("zcode-session").call("readSession", {})).toEqual({
+      expect(await rpc.getChannel("zcode-task").call("listTasks", {})).toEqual([
+        task,
+      ]);
+      expect(
+        await rpc.getChannel("zcode-session").call("readSession", {}),
+      ).toEqual({
         sessionId: task.taskId,
         title: task.title,
       });
@@ -561,10 +658,14 @@ describe("createWebRemoteControlManager external relay", () => {
         payload: { text: "E2E_MOBILE_UPSTREAM_INPUT" },
       };
       expect(
-        await rpc.getChannel("zcode-agent").call("sendConversationCommandV4", [command]),
+        await rpc
+          .getChannel("zcode-agent")
+          .call("sendConversationCommandV4", [command]),
       ).toMatchObject({ status: "accepted" });
       expect(admitted).toEqual([command]);
-      expect(await rpc.getChannel("zcode-agent").call("attachmentReadV4", {})).toEqual({
+      expect(
+        await rpc.getChannel("zcode-agent").call("attachmentReadV4", {}),
+      ).toEqual({
         bytes: new Uint8Array([1, 2, 3]),
       });
       expect(attachWorkspaceHost).toHaveBeenCalledTimes(1);
@@ -581,9 +682,9 @@ describe("createWebRemoteControlManager external relay", () => {
       await connectMobile();
       await vi.waitFor(() => expect(crypto?.isReady()).toBe(true));
       send({ zcode_type: "bootstrap-request", requestId: "mobile-reconnect" });
-      expect((await waitForPayload("bootstrap-response", "mobile-reconnect")).result).toMatchObject(
-        { tasks: [task] },
-      );
+      expect(
+        (await waitForPayload("bootstrap-response", "mobile-reconnect")).result,
+      ).toMatchObject({ tasks: [task] });
       expect(admitted).toHaveLength(1);
     } finally {
       rpc?.dispose();
@@ -600,7 +701,10 @@ describe("createWebRemoteControlManager external relay", () => {
   it("returns the desktop's own version before a workspace bridge is attached", async () => {
     const h = createManagerHarness();
     await h.manager.start(1, { workspacePath: localWorkspace.workspacePath });
-    h.deliverPayload({ codez_type: "bootstrap-request", requestId: "version-check" });
+    h.deliverPayload({
+      codez_type: "bootstrap-request",
+      requestId: "version-check",
+    });
     expect(h.sentPayloads).toContainEqual(
       expect.objectContaining({
         codez_type: "bootstrap-response",
@@ -609,6 +713,95 @@ describe("createWebRemoteControlManager external relay", () => {
       }),
     );
     expect(h.defaultAttachWorkspaceHost).not.toHaveBeenCalled();
+    await h.manager.stop(1);
+  });
+
+  it("bounds bootstrap-response within the relay frame budget when the task list is huge", async () => {
+    // 回归 2026-10-13 事故：900+ 任务、KB 级标题把 bootstrap-response 顶过 1MiB 物理帧上限，
+    // 桌面整条拒发，手机永远 desktop-bootstrap-timeout（“桌面端响应超时”）。
+    const h = createManagerHarness();
+    await h.manager.start(1, { workspacePath: localWorkspace.workspacePath });
+    h.manager.syncAvailableWorkspaces(1, [localWorkspace]);
+    const tasks = Array.from({ length: 2000 }, (_, index) =>
+      createTaskTarget({
+        taskId: `task-${index}`,
+        title: `t${index}-${"x".repeat(1000)}`,
+        updatedAt: 1_000_000 - index,
+      }),
+    );
+    h.manager.syncAvailableTasks(1, tasks);
+    h.sentPayloads.length = 0;
+
+    h.deliverPayload({
+      codez_type: "bootstrap-request",
+      requestId: "huge-bootstrap",
+    });
+
+    const response = h.sentPayloads.find(
+      (payload) =>
+        payload.codez_type === "bootstrap-response" &&
+        payload.requestId === "huge-bootstrap",
+    );
+    expect(response).toBeDefined();
+    if (response?.codez_type !== "bootstrap-response") {
+      throw new Error("bootstrap-response missing");
+    }
+    const responseBytes = measureWebRemoteControlAppPayloadBytes(response);
+    expect(responseBytes).toBeLessThanOrEqual(
+      WEB_REMOTE_CONTROL_APP_PAYLOAD_PLAINTEXT_BUDGET_BYTES,
+    );
+    // 明文预算密封后必须低于 1MiB 物理帧硬上限（base64 ×4/3 + nonce/tag/envelope）。
+    expect(Math.ceil((responseBytes + 40) / 3) * 4 + 256).toBeLessThanOrEqual(
+      1024 * 1024,
+    );
+    const boundedTasks = response.result.tasks;
+    expect(boundedTasks.length).toBeGreaterThan(0);
+    expect(boundedTasks.length).toBeLessThan(tasks.length);
+    // 保留最新任务前缀；标题全部截到展示上限。
+    expect(boundedTasks[0]?.taskId).toBe("task-0");
+    expect(
+      boundedTasks.every(
+        (task) => task.title.length <= WEB_REMOTE_CONTROL_TASK_TITLE_MAX_CHARS,
+      ),
+    ).toBe(true);
+    expect(h.logger.warn).toHaveBeenCalledWith(
+      "[web-remote-control] trimmed workspace list app payload",
+      expect.objectContaining({
+        codezType: "bootstrap-response",
+        truncatedTitleCount: tasks.length,
+        droppedTaskCount: expect.any(Number),
+      }),
+    );
+    await h.manager.stop(1);
+  });
+
+  it("retries workspace-list-updated when the previous push was dropped as oversize", async () => {
+    // Bugfix 回归：旧逻辑先记推送签名再发送；oversize 被丢弃后相同快照被当成重复不再重试。
+    let oversize = true;
+    const h = createManagerHarness({
+      sendPayloadResult: (payload) =>
+        oversize && payload.codez_type === "workspace-list-updated"
+          ? { kind: "oversize", bytes: 2_000_000, maxBytes: 1024 * 1024 }
+          : undefined,
+    });
+    await h.manager.start(1, { workspacePath: localWorkspace.workspacePath });
+    h.manager.syncAvailableWorkspaces(1, [localWorkspace]);
+    const task = createTaskTarget();
+    h.manager.syncAvailableTasks(1, [task]);
+    expect(
+      h.sentPayloads.filter(
+        (payload) => payload.codez_type === "workspace-list-updated",
+      ),
+    ).toHaveLength(0);
+
+    oversize = false;
+    h.manager.syncAvailableTasks(1, [task]);
+
+    expect(
+      h.sentPayloads.filter(
+        (payload) => payload.codez_type === "workspace-list-updated",
+      ),
+    ).toHaveLength(1);
     await h.manager.stop(1);
   });
   afterEach(() => {
@@ -621,9 +814,9 @@ describe("createWebRemoteControlManager external relay", () => {
     const authorization = manager.authorizeStart(1, context);
 
     await manager.startAuthorized(1, context, authorization);
-    await expect(manager.startAuthorized(1, context, authorization)).rejects.toThrow(
-      "already used",
-    );
+    await expect(
+      manager.startAuthorized(1, context, authorization),
+    ).rejects.toThrow("already used");
     await manager.stop(1);
   });
 
@@ -634,7 +827,9 @@ describe("createWebRemoteControlManager external relay", () => {
 
     await manager.stop(1);
 
-    await expect(manager.startAuthorized(1, context, authorization)).rejects.toThrow("invalid");
+    await expect(
+      manager.startAuthorized(1, context, authorization),
+    ).rejects.toThrow("invalid");
   });
 
   it("授权票据拒绝窗口或 workspace 目标不匹配", async () => {
@@ -642,12 +837,12 @@ describe("createWebRemoteControlManager external relay", () => {
     const context = { workspacePath: localWorkspace.workspacePath };
     const authorization = manager.authorizeStart(1, context);
 
-    await expect(manager.startAuthorized(2, context, authorization)).rejects.toThrow(
-      "target mismatch",
-    );
-    await expect(manager.startAuthorized(1, context, authorization)).rejects.toThrow(
-      "already used",
-    );
+    await expect(
+      manager.startAuthorized(2, context, authorization),
+    ).rejects.toThrow("target mismatch");
+    await expect(
+      manager.startAuthorized(1, context, authorization),
+    ).rejects.toThrow("already used");
   });
 
   it("授权票据超过短 TTL 后不可消费", async () => {
@@ -659,11 +854,14 @@ describe("createWebRemoteControlManager external relay", () => {
 
     vi.advanceTimersByTime(30_001);
 
-    await expect(manager.startAuthorized(1, context, authorization)).rejects.toThrow("expired");
+    await expect(
+      manager.startAuthorized(1, context, authorization),
+    ).rejects.toThrow("expired");
   });
 
   it("按首次配对和重连上报低频配对成功事件", async () => {
-    const { emitTransportState, manager, reportRemoteUsageEvent } = createManagerHarness();
+    const { emitTransportState, manager, reportRemoteUsageEvent } =
+      createManagerHarness();
 
     await manager.start(1, { workspacePath: localWorkspace.workspacePath });
     emitTransportState("paired");
@@ -704,9 +902,10 @@ describe("createWebRemoteControlManager external relay", () => {
       port: createFakePort() as never,
       remoteKind: "ssh" as const,
     }));
-    const { deliverPayload, manager, reportRemoteUsageEvent } = createManagerHarness({
-      attachWorkspaceHost,
-    });
+    const { deliverPayload, manager, reportRemoteUsageEvent } =
+      createManagerHarness({
+        attachWorkspaceHost,
+      });
 
     await manager.start(1, {
       workspacePath: remoteWorkspace.workspacePath,
@@ -744,9 +943,10 @@ describe("createWebRemoteControlManager external relay", () => {
         code: "REMOTE_SESSION_MISSING",
       });
     });
-    const { deliverPayload, manager, reportRemoteUsageEvent } = createManagerHarness({
-      attachWorkspaceHost,
-    });
+    const { deliverPayload, manager, reportRemoteUsageEvent } =
+      createManagerHarness({
+        attachWorkspaceHost,
+      });
 
     await manager.start(1, { workspacePath: localWorkspace.workspacePath });
     manager.syncAvailableWorkspaces(1, [localWorkspace]);
@@ -833,7 +1033,9 @@ describe("createWebRemoteControlManager external relay", () => {
     await manager.start(1, { workspacePath: "/workspace/demo" });
     const status = manager.getStatus(1);
 
-    expect(getLatestTransportOptions()?.relayWsUrl).toBe("ws://localhost:3030/ws");
+    expect(getLatestTransportOptions()?.relayWsUrl).toBe(
+      "ws://localhost:3030/ws",
+    );
     expect(status.qrUrl).toContain("https://trusted.example/remote/v3?");
   });
 
@@ -892,30 +1094,39 @@ describe("createWebRemoteControlManager external relay", () => {
   });
 
   it("stops the active runtime when clearing startup recovery state fails", async () => {
-    const { disposeTransport, disposeWorkspaceHostAttachmentsForWindow, manager } =
-      createManagerHarness({
-        startupRestoreClearError: new Error("settings write failed"),
-      });
+    const {
+      disposeTransport,
+      disposeWorkspaceHostAttachmentsForWindow,
+      manager,
+    } = createManagerHarness({
+      startupRestoreClearError: new Error("settings write failed"),
+    });
     await manager.start(1, { workspacePath: "/workspace/demo" });
 
     await expect(manager.stop(1)).rejects.toThrow("settings write failed");
 
     expect(manager.getStatus(1)).toEqual({ status: "idle" });
     expect(disposeTransport).toHaveBeenCalledOnce();
-    expect(disposeWorkspaceHostAttachmentsForWindow).toHaveBeenCalledWith(1, "manual-stop");
+    expect(disposeWorkspaceHostAttachmentsForWindow).toHaveBeenCalledWith(
+      1,
+      "manual-stop",
+    );
   });
 
   it("restores the previous target only after its current workspace context is available", async () => {
-    const { getStartupRestoreContext, getLatestTransportOptions, manager } = createManagerHarness({
-      startupRestoreContext: {
-        workspacePath: "/workspace/demo",
-        workspaceIdentity: "remote:ssh:host:/workspace/demo",
-        initialTaskId: "task-1",
-      },
-    });
+    const { getStartupRestoreContext, getLatestTransportOptions, manager } =
+      createManagerHarness({
+        startupRestoreContext: {
+          workspacePath: "/workspace/demo",
+          workspaceIdentity: "remote:ssh:host:/workspace/demo",
+          initialTaskId: "task-1",
+        },
+      });
 
     await expect(
-      manager.restorePreviouslyEnabled(1, [{ workspacePath: "/workspace/other" }]),
+      manager.restorePreviouslyEnabled(1, [
+        { workspacePath: "/workspace/other" },
+      ]),
     ).resolves.toBe(false);
     expect(manager.getStatus(1)).toEqual({ status: "idle" });
 
@@ -948,7 +1159,11 @@ describe("createWebRemoteControlManager external relay", () => {
   it("resets persisted relay auth and returns a new QR URL when refreshing leaked pairing material", async () => {
     const disposeWorkspaceHostAttachmentsForWindow = vi.fn();
     const { disposeTransport, getStoredAuth, manager } = createManagerHarness({
-      storedAuth: { deviceSid: "sid-old", passHash: "hash-old", e2eeKey: "A".repeat(43) },
+      storedAuth: {
+        deviceSid: "sid-old",
+        passHash: "hash-old",
+        e2eeKey: "A".repeat(43),
+      },
       registeredAuths: [
         { deviceSid: "sid-unused", passHash: "hash-unused" },
         { deviceSid: "sid-new", passHash: "hash-new" },
@@ -972,13 +1187,20 @@ describe("createWebRemoteControlManager external relay", () => {
     expect(getStoredAuth()).toEqual({
       deviceSid: "sid-new",
       passHash: "hash-new",
-      e2eeKey: parseWebRemoteControlE2eeQrFragment(new URL(refreshed.qrUrl).hash),
+      e2eeKey: parseWebRemoteControlE2eeQrFragment(
+        new URL(refreshed.qrUrl).hash,
+      ),
     });
-    expect(parseWebRemoteControlE2eeQrFragment(new URL(oldStatus.qrUrl!).hash)).not.toBe(
+    expect(
+      parseWebRemoteControlE2eeQrFragment(new URL(oldStatus.qrUrl!).hash),
+    ).not.toBe(
       parseWebRemoteControlE2eeQrFragment(new URL(refreshed.qrUrl).hash),
     );
     expect(disposeTransport).toHaveBeenCalledTimes(1);
-    expect(disposeWorkspaceHostAttachmentsForWindow).toHaveBeenCalledWith(1, "leaked-qr");
+    expect(disposeWorkspaceHostAttachmentsForWindow).toHaveBeenCalledWith(
+      1,
+      "leaked-qr",
+    );
   });
 
   it("does not clear persisted relay auth when refreshing pairing is blocked by the feature gate", async () => {
@@ -987,11 +1209,14 @@ describe("createWebRemoteControlManager external relay", () => {
       storedAuth: { deviceSid: "sid-old", passHash: "hash-old" },
     });
 
-    await expect(manager.resetPairing(1, { workspacePath: "/workspace/demo" })).rejects.toThrow(
-      "Web remote control is disabled in this build",
-    );
+    await expect(
+      manager.resetPairing(1, { workspacePath: "/workspace/demo" }),
+    ).rejects.toThrow("Web remote control is disabled in this build");
 
-    expect(getStoredAuth()).toEqual({ deviceSid: "sid-old", passHash: "hash-old" });
+    expect(getStoredAuth()).toEqual({
+      deviceSid: "sid-old",
+      passHash: "hash-old",
+    });
     expect(disposeTransport).not.toHaveBeenCalled();
   });
 
@@ -1022,7 +1247,9 @@ describe("createWebRemoteControlManager external relay", () => {
       taskId: "task-1",
     });
     await vi.waitFor(() =>
-      expect(sentPayloads).toContainEqual(expect.objectContaining({ bridgeSessionId: "bridge-1" })),
+      expect(sentPayloads).toContainEqual(
+        expect.objectContaining({ bridgeSessionId: "bridge-1" }),
+      ),
     );
 
     deliverPayload({
@@ -1033,7 +1260,9 @@ describe("createWebRemoteControlManager external relay", () => {
       taskId: "task-1",
     });
     await vi.waitFor(() =>
-      expect(sentPayloads).toContainEqual(expect.objectContaining({ bridgeSessionId: "bridge-2" })),
+      expect(sentPayloads).toContainEqual(
+        expect.objectContaining({ bridgeSessionId: "bridge-2" }),
+      ),
     );
 
     expect(attachWorkspaceHost).toHaveBeenCalledTimes(2);
@@ -1063,7 +1292,10 @@ describe("createWebRemoteControlManager external relay", () => {
     ]);
 
     sentPayloads.length = 0;
-    deliverPayload({ codez_type: "workspace-list-request", requestId: "list-1" });
+    deliverPayload({
+      codez_type: "workspace-list-request",
+      requestId: "list-1",
+    });
 
     await vi.waitFor(() =>
       expect(sentPayloads).toContainEqual(
@@ -1141,14 +1373,20 @@ describe("createWebRemoteControlManager external relay", () => {
   });
 
   it.each([
-    ["displayStatus", { displayStatus: "running" }, { displayStatus: "completed" }],
+    [
+      "displayStatus",
+      { displayStatus: "running" },
+      { displayStatus: "completed" },
+    ],
     ["hasBackgroundWork", {}, { hasBackgroundWork: true }],
     [
       "workflowActivity",
       {},
       {
         workflowActivity: {
-          runs: [{ runId: "run-1", status: "running", phases: [], agentsWorking: 0 }],
+          runs: [
+            { runId: "run-1", status: "running", phases: [], agentsWorking: 0 },
+          ],
         },
       },
     ],
@@ -1184,21 +1422,29 @@ describe("createWebRemoteControlManager external relay", () => {
     ["pinned", {}, { pinned: true }],
     ["archived", {}, { archived: true }],
   ] satisfies Array<
-    [string, Partial<WebRemoteControlTaskTarget>, Partial<WebRemoteControlTaskTarget>]
-  >)("pushes workspace list updates when task %s changes", async (_field, initial, patch) => {
-    const { manager, sentPayloads, task } = await createPrimedTaskSyncHarness(initial);
+    [
+      string,
+      Partial<WebRemoteControlTaskTarget>,
+      Partial<WebRemoteControlTaskTarget>,
+    ]
+  >)(
+    "pushes workspace list updates when task %s changes",
+    async (_field, initial, patch) => {
+      const { manager, sentPayloads, task } =
+        await createPrimedTaskSyncHarness(initial);
 
-    manager.syncAvailableTasks(1, [{ ...task, ...patch }]);
+      manager.syncAvailableTasks(1, [{ ...task, ...patch }]);
 
-    expect(sentPayloads).toContainEqual(
-      expect.objectContaining({
-        codez_type: "workspace-list-updated",
-        result: expect.objectContaining({
-          tasks: [expect.objectContaining({ taskId: task.taskId, ...patch })],
+      expect(sentPayloads).toContainEqual(
+        expect.objectContaining({
+          codez_type: "workspace-list-updated",
+          result: expect.objectContaining({
+            tasks: [expect.objectContaining({ taskId: task.taskId, ...patch })],
+          }),
         }),
-      }),
-    );
-  });
+      );
+    },
+  );
 
   it.each([
     ["connectionState", {}, { connectionState: "reconnecting" }],
@@ -1209,31 +1455,42 @@ describe("createWebRemoteControlManager external relay", () => {
       { lastConnectionError: "authentication failed" },
     ],
   ] satisfies Array<
-    [string, Partial<WebRemoteControlWorkspaceTarget>, Partial<WebRemoteControlWorkspaceTarget>]
-  >)("pushes workspace list updates when workspace %s changes", async (_field, initial, patch) => {
-    const { manager, sentPayloads, workspace } = await createPrimedWorkspaceSyncHarness(initial);
+    [
+      string,
+      Partial<WebRemoteControlWorkspaceTarget>,
+      Partial<WebRemoteControlWorkspaceTarget>,
+    ]
+  >)(
+    "pushes workspace list updates when workspace %s changes",
+    async (_field, initial, patch) => {
+      const { manager, sentPayloads, workspace } =
+        await createPrimedWorkspaceSyncHarness(initial);
 
-    manager.syncAvailableWorkspaces(1, [{ ...workspace, ...patch }]);
+      manager.syncAvailableWorkspaces(1, [{ ...workspace, ...patch }]);
 
-    expect(sentPayloads).toContainEqual(
-      expect.objectContaining({
-        codez_type: "workspace-list-updated",
-        result: expect.objectContaining({
-          workspaces: expect.arrayContaining([
-            expect.objectContaining({
-              workspaceIdentity: workspace.workspaceIdentity,
-              ...patch,
-            }),
-          ]),
+      expect(sentPayloads).toContainEqual(
+        expect.objectContaining({
+          codez_type: "workspace-list-updated",
+          result: expect.objectContaining({
+            workspaces: expect.arrayContaining([
+              expect.objectContaining({
+                workspaceIdentity: workspace.workspaceIdentity,
+                ...patch,
+              }),
+            ]),
+          }),
         }),
-      }),
-    );
-  });
+      );
+    },
+  );
 
   it("pushes workspace list updates when a task remote session changes", async () => {
-    const { manager, sentPayloads, task } = await createPrimedRemoteTaskSyncHarness();
+    const { manager, sentPayloads, task } =
+      await createPrimedRemoteTaskSyncHarness();
 
-    manager.syncAvailableTasks(1, [{ ...task, remoteSessionId: "remote-session-2" }]);
+    manager.syncAvailableTasks(1, [
+      { ...task, remoteSessionId: "remote-session-2" },
+    ]);
 
     expect(sentPayloads).toContainEqual(
       expect.objectContaining({
@@ -1261,10 +1518,11 @@ describe("createWebRemoteControlManager external relay", () => {
   });
 
   it("does not collide when task signature fields contain control separators", async () => {
-    const { manager, sentPayloads, task } = await createPrimedRemoteTaskSyncHarness({
-      title: "Title\u0001session",
-      remoteSessionId: "tail",
-    });
+    const { manager, sentPayloads, task } =
+      await createPrimedRemoteTaskSyncHarness({
+        title: "Title\u0001session",
+        remoteSessionId: "tail",
+      });
 
     manager.syncAvailableTasks(1, [
       {
@@ -1311,11 +1569,16 @@ describe("createWebRemoteControlManager external relay", () => {
         success: true,
       }),
     );
-    expect(reconnectWorkspace).toHaveBeenCalledWith(1, "remote:ssh:host:/workspace/demo");
+    expect(reconnectWorkspace).toHaveBeenCalledWith(
+      1,
+      "remote:ssh:host:/workspace/demo",
+    );
   });
 
   it("releases stale attachments when an older bridge open completes after reconnect", async () => {
-    let resolveFirst: ((value: Awaited<ReturnType<AttachWorkspaceHost>>) => void) | undefined;
+    let resolveFirst:
+      | ((value: Awaited<ReturnType<AttachWorkspaceHost>>) => void)
+      | undefined;
     const attachWorkspaceHost = vi
       .fn<AttachWorkspaceHost>()
       .mockImplementationOnce(
@@ -1354,7 +1617,9 @@ describe("createWebRemoteControlManager external relay", () => {
       workspaceKey: "/workspace/demo",
     });
     await vi.waitFor(() =>
-      expect(sentPayloads).toContainEqual(expect.objectContaining({ bridgeSessionId: "bridge-2" })),
+      expect(sentPayloads).toContainEqual(
+        expect.objectContaining({ bridgeSessionId: "bridge-2" }),
+      ),
     );
 
     resolveFirst?.({
@@ -1365,13 +1630,16 @@ describe("createWebRemoteControlManager external relay", () => {
     });
 
     await vi.waitFor(() =>
-      expect(releaseWorkspaceHostAttachment).toHaveBeenCalledWith("attachment-1"),
+      expect(releaseWorkspaceHostAttachment).toHaveBeenCalledWith(
+        "attachment-1",
+      ),
     );
     expect(releaseWorkspaceHostAttachment).not.toHaveBeenCalledWith("");
     expect(
       sentPayloads.filter(
         (payload) =>
-          payload.codez_type === "workspace-bridge-ready" && payload.bridgeSessionId === "bridge-1",
+          payload.codez_type === "workspace-bridge-ready" &&
+          payload.bridgeSessionId === "bridge-1",
       ),
     ).toEqual([]);
   });
@@ -1416,37 +1684,40 @@ describe("createWebRemoteControlManager external relay", () => {
     ["DESKTOP_HOST_MISSING", "desktop-disconnected"],
     ["REMOTE_SESSION_MISSING", "workspace-closed"],
     ["REMOTE_WORKSPACE_IDENTITY_MISSING", "unsupported-action"],
-  ] as const)("maps workspace bridge attach error %s to %s", async (code, reason) => {
-    const attachWorkspaceHost = vi.fn<AttachWorkspaceHost>(async () => {
-      throw Object.assign(new Error(`attach failed: ${code}`), { code });
-    });
-    const { deliverPayload, manager, sentPayloads } = createManagerHarness({
-      attachWorkspaceHost,
-    });
+  ] as const)(
+    "maps workspace bridge attach error %s to %s",
+    async (code, reason) => {
+      const attachWorkspaceHost = vi.fn<AttachWorkspaceHost>(async () => {
+        throw Object.assign(new Error(`attach failed: ${code}`), { code });
+      });
+      const { deliverPayload, manager, sentPayloads } = createManagerHarness({
+        attachWorkspaceHost,
+      });
 
-    await manager.start(1, { workspacePath: "/workspace/demo" });
-    manager.syncAvailableWorkspaces(1, [
-      { workspacePath: "/workspace/demo", label: "demo", kind: "local" },
-    ]);
+      await manager.start(1, { workspacePath: "/workspace/demo" });
+      manager.syncAvailableWorkspaces(1, [
+        { workspacePath: "/workspace/demo", label: "demo", kind: "local" },
+      ]);
 
-    deliverPayload({
-      codez_type: "workspace-bridge-open",
-      requestId: `req-${code}`,
-      bridgeSessionId: `bridge-${code}`,
-      workspaceKey: "/workspace/demo",
-    });
+      deliverPayload({
+        codez_type: "workspace-bridge-open",
+        requestId: `req-${code}`,
+        bridgeSessionId: `bridge-${code}`,
+        workspaceKey: "/workspace/demo",
+      });
 
-    await vi.waitFor(() => {
-      expect(sentPayloads).toContainEqual(
-        expect.objectContaining({
-          codez_type: "workspace-bridge-error",
-          requestId: `req-${code}`,
-          bridgeSessionId: `bridge-${code}`,
-          reason,
-        }),
-      );
-    });
-  });
+      await vi.waitFor(() => {
+        expect(sentPayloads).toContainEqual(
+          expect.objectContaining({
+            codez_type: "workspace-bridge-error",
+            requestId: `req-${code}`,
+            bridgeSessionId: `bridge-${code}`,
+            reason,
+          }),
+        );
+      });
+    },
+  );
 
   it("production feature gate rejects start before returning QR material", async () => {
     const { manager } = createManagerHarness({ featureEnabled: false });
@@ -1536,9 +1807,10 @@ describe("createWebRemoteControlManager external relay", () => {
 
   it("flushes buffered outbound payloads after a normal reconnect becomes paired", async () => {
     let canSendPayload = true;
-    const { deliverPayload, emitTransportState, manager, sentPayloads } = createManagerHarness({
-      canSendPayload: () => canSendPayload,
-    });
+    const { deliverPayload, emitTransportState, manager, sentPayloads } =
+      createManagerHarness({
+        canSendPayload: () => canSendPayload,
+      });
 
     await manager.start(1, {
       workspacePath: "/workspace/demo",
@@ -1594,11 +1866,14 @@ describe("createWebRemoteControlManager external relay", () => {
       ),
     );
 
-    const [frame] = encodeWebRemoteControlRpcTransportMessage(new Uint8Array([1]), {
-      bridgeSessionId: "bridge-1",
-      firstPhysicalSeq: 1,
-      messageSeq: 1,
-    });
+    const [frame] = encodeWebRemoteControlRpcTransportMessage(
+      new Uint8Array([1]),
+      {
+        bridgeSessionId: "bridge-1",
+        firstPhysicalSeq: 1,
+        messageSeq: 1,
+      },
+    );
     deliverPayload(frame);
     deliverPayload(frame);
 
@@ -1634,11 +1909,14 @@ describe("createWebRemoteControlManager external relay", () => {
     );
 
     sentPayloads.length = 0;
-    const [gapFrame] = encodeWebRemoteControlRpcTransportMessage(new Uint8Array([2]), {
-      bridgeSessionId: "bridge-1",
-      firstPhysicalSeq: 2,
-      messageSeq: 1,
-    });
+    const [gapFrame] = encodeWebRemoteControlRpcTransportMessage(
+      new Uint8Array([2]),
+      {
+        bridgeSessionId: "bridge-1",
+        firstPhysicalSeq: 2,
+        messageSeq: 1,
+      },
+    );
     deliverPayload(gapFrame);
 
     expect(hostPort.postMessage).not.toHaveBeenCalled();
@@ -1658,11 +1936,16 @@ describe("createWebRemoteControlManager external relay", () => {
       process: {} as never,
       port: hostPort as never,
     }));
-    const { deliverPayload, emitTransportSendReady, emitTransportState, manager, sentPayloads } =
-      createManagerHarness({
-        attachWorkspaceHost,
-        canSendPayload: () => canSendPayload,
-      });
+    const {
+      deliverPayload,
+      emitTransportSendReady,
+      emitTransportState,
+      manager,
+      sentPayloads,
+    } = createManagerHarness({
+      attachWorkspaceHost,
+      canSendPayload: () => canSendPayload,
+    });
 
     await manager.start(1, { workspacePath: "/workspace/demo" });
     manager.syncAvailableWorkspaces(1, [
@@ -1690,8 +1973,12 @@ describe("createWebRemoteControlManager external relay", () => {
     canSendPayload = true;
     emitTransportSendReady("same-socket");
 
-    expect(sentPayloads.filter((payload) => payload.codez_type === "rpc-frame")).toHaveLength(51);
-    expect(sentPayloads.some((payload) => payload.codez_type === "bridge-degraded")).toBe(false);
+    expect(
+      sentPayloads.filter((payload) => payload.codez_type === "rpc-frame"),
+    ).toHaveLength(51);
+    expect(
+      sentPayloads.some((payload) => payload.codez_type === "bridge-degraded"),
+    ).toBe(false);
   });
 
   it("does not apply the ordinary app buffer timeout to raw bridge frames", async () => {
@@ -1704,11 +1991,16 @@ describe("createWebRemoteControlManager external relay", () => {
       process: {} as never,
       port: hostPort as never,
     }));
-    const { deliverPayload, emitTransportSendReady, emitTransportState, manager, sentPayloads } =
-      createManagerHarness({
-        attachWorkspaceHost,
-        canSendPayload: () => canSendPayload,
-      });
+    const {
+      deliverPayload,
+      emitTransportSendReady,
+      emitTransportState,
+      manager,
+      sentPayloads,
+    } = createManagerHarness({
+      attachWorkspaceHost,
+      canSendPayload: () => canSendPayload,
+    });
 
     await manager.start(1, { workspacePath: "/workspace/demo" });
     manager.syncAvailableWorkspaces(1, [
@@ -1735,8 +2027,12 @@ describe("createWebRemoteControlManager external relay", () => {
     canSendPayload = true;
     emitTransportSendReady("same-socket");
 
-    expect(sentPayloads.filter((payload) => payload.codez_type === "rpc-frame")).toHaveLength(1);
-    expect(sentPayloads.some((payload) => payload.codez_type === "bridge-degraded")).toBe(false);
+    expect(
+      sentPayloads.filter((payload) => payload.codez_type === "rpc-frame"),
+    ).toHaveLength(1);
+    expect(
+      sentPayloads.some((payload) => payload.codez_type === "bridge-degraded"),
+    ).toBe(false);
   });
 
   it("replays lost-ACK raw frames after same-socket peer readiness and stops after cumulative ACK", async () => {
@@ -1747,8 +2043,13 @@ describe("createWebRemoteControlManager external relay", () => {
       process: {} as never,
       port: hostPort as never,
     }));
-    const { deliverPayload, emitTransportSendReady, emitTransportState, manager, sentPayloads } =
-      createManagerHarness({ attachWorkspaceHost });
+    const {
+      deliverPayload,
+      emitTransportSendReady,
+      emitTransportState,
+      manager,
+      sentPayloads,
+    } = createManagerHarness({ attachWorkspaceHost });
 
     await manager.start(1, { workspacePath: "/workspace/demo" });
     manager.syncAvailableWorkspaces(1, [
@@ -1769,11 +2070,15 @@ describe("createWebRemoteControlManager external relay", () => {
 
     sentPayloads.length = 0;
     hostPort.emit("message", { data: new Uint8Array([1, 2, 3]) });
-    expect(sentPayloads.filter((payload) => payload.codez_type === "rpc-frame")).toHaveLength(1);
+    expect(
+      sentPayloads.filter((payload) => payload.codez_type === "rpc-frame"),
+    ).toHaveLength(1);
     const firstFrame = sentPayloads[0];
 
     emitTransportSendReady("same-socket");
-    expect(sentPayloads.filter((payload) => payload.codez_type === "rpc-frame")).toHaveLength(2);
+    expect(
+      sentPayloads.filter((payload) => payload.codez_type === "rpc-frame"),
+    ).toHaveLength(2);
     expect(sentPayloads[1]).toBe(firstFrame);
 
     deliverPayload({
@@ -1782,7 +2087,9 @@ describe("createWebRemoteControlManager external relay", () => {
       ackMessageSeq: 1,
     });
     emitTransportSendReady("reconnected-socket");
-    expect(sentPayloads.filter((payload) => payload.codez_type === "rpc-frame")).toHaveLength(3);
+    expect(
+      sentPayloads.filter((payload) => payload.codez_type === "rpc-frame"),
+    ).toHaveLength(3);
 
     deliverPayload({
       codez_type: "rpc-frame-ack",
@@ -1790,7 +2097,9 @@ describe("createWebRemoteControlManager external relay", () => {
       ackMessageSeq: 1,
     });
     emitTransportSendReady("reconnected-socket");
-    expect(sentPayloads.filter((payload) => payload.codez_type === "rpc-frame")).toHaveLength(3);
+    expect(
+      sentPayloads.filter((payload) => payload.codez_type === "rpc-frame"),
+    ).toHaveLength(3);
   });
 
   it("forwards raw adapter saturated/drained edges only to the owning host attachment", async () => {
@@ -1801,9 +2110,10 @@ describe("createWebRemoteControlManager external relay", () => {
       process: {} as never,
       port: hostPort as never,
     }));
-    const { deliverPayload, emitTransportState, manager, sentPayloads } = createManagerHarness({
-      attachWorkspaceHost,
-    });
+    const { deliverPayload, emitTransportState, manager, sentPayloads } =
+      createManagerHarness({
+        attachWorkspaceHost,
+      });
 
     await manager.start(1, { workspacePath: "/workspace/demo" });
     manager.syncAvailableWorkspaces(1, [
@@ -1893,7 +2203,8 @@ describe("createWebRemoteControlManager external relay", () => {
   });
 
   it("手机 session_create 保留来源和手机 context，宿主只转发一次", async () => {
-    const { deliverPayload, manager, reportRendererTelemetryEvent } = createManagerHarness();
+    const { deliverPayload, manager, reportRendererTelemetryEvent } =
+      createManagerHarness();
     await manager.start(1, { workspacePath: "/workspace/demo" });
     const event = {
       elementName: "session_create",
@@ -1952,7 +2263,11 @@ describe("createWebRemoteControlManager external relay", () => {
     await manager.start(1, { workspacePath: "/workspace/z-code" });
     manager.syncAvailableWorkspaces(1, [
       { workspacePath: "/workspace/z-code", label: "z-code", kind: "local" },
-      { workspacePath: "/workspace/cgx-dev-web", label: "cgx-dev-web", kind: "local" },
+      {
+        workspacePath: "/workspace/cgx-dev-web",
+        label: "cgx-dev-web",
+        kind: "local",
+      },
     ]);
 
     deliverPayload({
@@ -1986,7 +2301,10 @@ describe("createWebRemoteControlManager external relay", () => {
     await manager.start(1, { workspacePath: "/workspace/demo" });
     await manager.stop(1);
 
-    expect(disposeWorkspaceHostAttachmentsForWindow).toHaveBeenCalledWith(1, "manual-stop");
+    expect(disposeWorkspaceHostAttachmentsForWindow).toHaveBeenCalledWith(
+      1,
+      "manual-stop",
+    );
   });
 
   it("disposes workspace host attachments when a remote session fails", async () => {
@@ -2022,10 +2340,9 @@ describe("createWebRemoteControlManager external relay", () => {
       message: "closed",
     });
 
-    expect(disposeWorkspaceHostAttachmentsForRemoteSession).toHaveBeenCalledWith(
-      "remote-session-1",
-      "remote-closed",
-    );
+    expect(
+      disposeWorkspaceHostAttachmentsForRemoteSession,
+    ).toHaveBeenCalledWith("remote-session-1", "remote-closed");
   });
 
   it("keeps the desktop relay session alive when a waiting remote workspace session closes", async () => {
@@ -2050,10 +2367,11 @@ describe("createWebRemoteControlManager external relay", () => {
       failure: undefined,
     });
     expect(disposeTransport).not.toHaveBeenCalled();
-    expect(sentPayloads).not.toContainEqual(expect.objectContaining({ codez_type: "app-error" }));
-    expect(disposeWorkspaceHostAttachmentsForRemoteSession).toHaveBeenCalledWith(
-      "remote-session-1",
-      "remote-closed",
+    expect(sentPayloads).not.toContainEqual(
+      expect.objectContaining({ codez_type: "app-error" }),
     );
+    expect(
+      disposeWorkspaceHostAttachmentsForRemoteSession,
+    ).toHaveBeenCalledWith("remote-session-1", "remote-closed");
   });
 });

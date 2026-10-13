@@ -79,6 +79,8 @@ sequenceDiagram
 3. 上游 raw RPC 分片和 ACK 在 desktop/web transport 都进入既有 raw 路由；
    不被静默吞掉或转入不带 ACK 的旧路径。
 4. final JSON 字节数、1MiB 硬边界和 replay JSON 一致性保持。
+   bootstrap / workspace-list 等单帧 app payload 的内容侧预算与裁剪规则见
+   [手机远控 app payload 字节预算](../docs/web-remote-control/app-payload-budget.md)。
 5. 上游和已发布 fork 的 task/agent/session 频道都可访问同一个 connection override；
    主 collection 不变，嵌套二进制可双向解码。
 6. 本地 WebSocket 集成覆盖配对、bootstrap、workspace bridge、真实 RPC 读写，
