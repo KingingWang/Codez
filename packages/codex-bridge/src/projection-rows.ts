@@ -13,6 +13,17 @@ import {
   type CodexUserInput,
 } from "./codex-types.js";
 import { assertRowBudget, projectToolInput, projectToolOutput } from "./projection-bounds.js";
+import {
+  codexEventMarker,
+  collabAgentToolCallRow,
+  dynamicToolCallRow,
+  functionCallOutputRow,
+  imageGenerationRow,
+  imageViewRow,
+  subAgentActivityMarker,
+  webSearchRow,
+  type RowBase,
+} from "./projection-item-extras.js";
 
 /** Explicit textual fallbacks: no fake attachment refs, byte counts or MIME facts. */
 export function projectInputText(input: readonly CodexUserInput[]): string {
@@ -58,10 +69,6 @@ function isCodexPlanUpdateItem(
   return item.type === "planUpdate" && Array.isArray((item as { plan?: unknown }).plan);
 }
 
-type RowBase = Pick<
-  ConversationRow,
-  "rowId" | "entityId" | "turnId" | "productTurnId" | "createdAt" | "createdAtSeq" | "visibility"
->;
 type ToolItem = Extract<
   CodexKnownItem,
   { type: "commandExecution" | "fileChange" | "mcpToolCall" }
@@ -233,19 +240,36 @@ function itemRow(
               : "interrupted",
       };
     case "imageView":
-      // view_image 工具卡片（specs/codex-desktop-image-view.md）：
-      // core 只在图片成功附加后产生 imageView item（失败走工具错误、无 item），
-      // 所以状态恒为 success，不从 turn 派生。toolName 用原生工具名 view_image，
-      // UI identity 的 /^(?:read|view|...)(?:_|$)/i 会把它归入 file-read family，
-      // 复用 Read 文件卡片——文件名可点击，预览面板渲染图片内容。
-      return {
-        ...base,
-        kind: "toolCall",
-        toolCallId: item.id,
-        toolName: "view_image",
-        status: "success",
-        ...projectToolInput({ path: item.path }),
-      };
+      return imageViewRow(item, base);
+    case "webSearch":
+      return webSearchRow(item, base);
+    case "imageGeneration":
+      return imageGenerationRow(item, base);
+    case "collabAgentToolCall":
+      return collabAgentToolCallRow(item, base);
+    case "dynamicToolCall":
+      return dynamicToolCallRow(item, base);
+    case "functionCallOutput":
+      return functionCallOutputRow(item, base);
+    case "contextCompaction":
+      // 原生 item 只有 id（core 的 ContextCompactedEvent 无载荷），来源 manual/auto 不可知，
+      // 因此不走 compact marker（origin 必填会伪造来源），用 codexEvent 分隔线。
+      return codexEventMarker(base, "contextCompaction");
+    case "enteredReviewMode":
+      return codexEventMarker(base, "reviewEnter", item.review);
+    case "exitedReviewMode":
+      return codexEventMarker(base, "reviewExit", item.review);
+    case "hookPrompt":
+      // hook 注入的 prompt 片段（如 UserPromptSubmit hook 上下文），截断防大行。
+      return codexEventMarker(
+        base,
+        "hookPrompt",
+        item.fragments.map((fragment) => fragment.text.trim()).join("\n"),
+      );
+    case "subAgentActivity":
+      return subAgentActivityMarker(item, base);
+    case "sleep":
+      return codexEventMarker(base, "sleep", `${Math.round(item.durationMs / 1000)}s`);
     default:
       return toolRow(item, base, turn, interactions);
   }

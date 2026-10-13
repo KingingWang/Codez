@@ -88,6 +88,91 @@ const codexKnownItemSchema = z.discriminatedUnion("type", [
     id,
     path: z.string(),
   }),
+  // 以下登记补齐 pinned ThreadItem 全集（specs/codex-desktop-thread-items.md），
+  // 形状对照 schema/typescript/v2/ThreadItem.ts；展示语义由 projection-rows 决定。
+  z.object({
+    type: z.literal("webSearch"),
+    id,
+    query: z.string(),
+    action: json.nullish(),
+    results: z.array(json).nullish(),
+  }),
+  z.object({
+    type: z.literal("imageGeneration"),
+    id,
+    status: z.string(),
+    revisedPrompt: z.string().nullish(),
+    // result 是 base64 图片本体：登记仅为校验存在性，投影层绝不带进 row（行预算）。
+    result: z.string(),
+    transparentBackground: z.boolean().optional(),
+    failure: json.nullish(),
+    savedPath: z.string().optional(),
+  }),
+  // 多代理协作工具调用。tool/status 是驱动投影的判别字段，按 pinned 枚举收紧；
+  // agentsStates 内层 status 只做展示，协议新增取值不应拒收整段历史，故放宽为 string。
+  z.object({
+    type: z.literal("collabAgentToolCall"),
+    id,
+    tool: z.enum([
+      "spawnAgent",
+      "sendInput",
+      "resumeAgent",
+      "wait",
+      "closeAgent",
+      "sendMessage",
+      "followupTask",
+      "interruptAgent",
+      "listAgents",
+    ]),
+    status: z.enum(["inProgress", "completed", "failed", "interrupted"]),
+    senderThreadId: z.string(),
+    receiverThreadIds: z.array(z.string()),
+    prompt: z.string().nullish(),
+    model: z.string().nullish(),
+    reasoningEffort: z.string().nullish(),
+    agentsStates: z.record(
+      z.string(),
+      z.object({ status: z.string(), message: z.string().nullish() }),
+    ),
+  }),
+  z.object({
+    type: z.literal("subAgentActivity"),
+    id,
+    kind: z.enum(["started", "interacted", "interrupted", "completed"]),
+    agentThreadId: z.string(),
+    agentPath: z.string(),
+    model: z.string().nullish(),
+    reasoningEffort: z.string().nullish(),
+  }),
+  z.object({
+    type: z.literal("dynamicToolCall"),
+    id,
+    namespace: z.string().nullish(),
+    tool: z.string(),
+    arguments: json,
+    status: z.enum(["inProgress", "completed", "failed"]),
+    contentItems: z.array(json).nullish(),
+    success: z.boolean().nullish(),
+    durationMs: z.number().nullish(),
+  }),
+  // hook 合成的工具输出（hook_runtime 拦截结果）。output 为 string 或 content items。
+  z.object({
+    type: z.literal("functionCallOutput"),
+    id,
+    name: z.string(),
+    namespace: z.string().nullish(),
+    output: z.union([z.string(), z.array(json)]),
+  }),
+  // hook 注入的 prompt（fragments 是带 hookRunId 的文本片段）。
+  z.object({
+    type: z.literal("hookPrompt"),
+    id,
+    fragments: z.array(z.object({ text: z.string(), hookRunId: z.string() })),
+  }),
+  z.object({ type: z.literal("sleep"), id, durationMs: z.number() }),
+  z.object({ type: z.literal("enteredReviewMode"), id, review: z.string() }),
+  z.object({ type: z.literal("exitedReviewMode"), id, review: z.string() }),
+  z.object({ type: z.literal("contextCompaction"), id }),
 ]);
 export type CodexKnownItem = z.infer<typeof codexKnownItemSchema>;
 const knownItemTypes = new Set(

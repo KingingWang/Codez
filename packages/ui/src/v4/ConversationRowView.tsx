@@ -24,6 +24,7 @@ import {
   FileIcon,
   GitBranchIcon,
   GoalIcon,
+  InfoIcon,
   PencilIcon,
   PlayIcon,
   ThumbsDownIcon,
@@ -1898,6 +1899,12 @@ const MARKER_MODEL_ICON = (
     className="size-3.5 shrink-0 text-[var(--color-foreground-subtle)]"
   />
 );
+const MARKER_EVENT_ICON = (
+  <InfoIcon
+    aria-hidden="true"
+    className="size-3.5 shrink-0 text-[var(--color-foreground-subtle)]"
+  />
+);
 
 /**
  * 系统标记分隔线壳：两侧细横线 + 居中「图标 + 文案」pill，视觉对齐旧版
@@ -2088,6 +2095,24 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
           ),
         };
       }
+      case "codexEvent":
+        // codex 原生事件分隔线（specs/codex-desktop-thread-items.md）：
+        // label 走本地化，detail（review 描述 / hook 文本 / agentPath / 时长）追加在后。
+        return {
+          icon: MARKER_EVENT_ICON,
+          running: false,
+          label: (
+            <>
+              <span>{intl.formatMessage({ id: `chat.codexEvent.${marker.event}` })}</span>
+              {marker.detail ? (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  <span>{marker.detail}</span>
+                </>
+              ) : null}
+            </>
+          ),
+        };
       default:
         return null;
     }

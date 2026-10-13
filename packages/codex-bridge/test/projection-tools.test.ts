@@ -10,7 +10,7 @@ import { threadFixture } from "./projection-fixtures.test.js";
 
 test("unknown native items remain visible but malformed known items fail closed", () => {
   const thread = threadFixture();
-  const nativeTypes = ["webSearch", "contextCompaction", "collabAgentToolCall", "futureItem"];
+  const nativeTypes = ["futureItem"];
   thread.turns[0]!.items.push(
     ...nativeTypes.map((type) => ({ type, id: type, detail: { preserved: true } })),
   );
@@ -69,6 +69,209 @@ test("imageView items project as read-family tool cards carrying the image path"
   assert.equal(row.status, "success");
   assert.deepEqual(row.input, { path: "/tmp/screenshot.png" });
   assert.equal(row.output, undefined);
+});
+
+// specs/codex-desktop-thread-items.md：pinned ThreadItem 全集都有显式投影。
+test("webSearch projects as a search-family tool card carrying the query", () => {
+  const thread = threadFixture();
+  thread.turns[0]!.items.push({
+    type: "webSearch",
+    id: "ws-1",
+    query: "codex app-server ThreadItem",
+    action: null,
+    results: null,
+  });
+  const row = projectThread(thread, { workspacePath: "/workspace" }).rows.window.at(-1);
+  assert.equal(row?.kind, "toolCall");
+  if (row?.kind !== "toolCall") return;
+  assert.equal(row.toolName, "web_search");
+  assert.equal(row.status, "success");
+  assert.deepEqual(row.input, { query: "codex app-server ThreadItem" });
+});
+
+test("imageGeneration never leaks base64 results and maps status", () => {
+  const thread = threadFixture();
+  thread.turns[0]!.items.push({
+    type: "imageGeneration",
+    id: "gen-1",
+    status: "completed",
+    revisedPrompt: "a cat",
+    result: "BASE64_IMAGE_BYTES_NEVER_IN_ROW",
+    failure: null,
+    savedPath: "/tmp/cat.png",
+  });
+  const snapshot = projectThread(thread, { workspacePath: "/workspace" });
+  const row = snapshot.rows.window.at(-1);
+  assert.equal(row?.kind, "toolCall");
+  if (row?.kind !== "toolCall") return;
+  assert.equal(row.toolName, "image_generation");
+  assert.equal(row.status, "success");
+  assert.deepEqual(row.input, { revisedPrompt: "a cat", savedPath: "/tmp/cat.png" });
+  assert.equal(JSON.stringify(snapshot).includes("BASE64_IMAGE_BYTES_NEVER_IN_ROW"), false);
+
+  const failed = threadFixture();
+  failed.turns[0]!.items.push({
+    type: "imageGeneration",
+    id: "gen-2",
+    status: "failed",
+    revisedPrompt: null,
+    result: "",
+    failure: { type: "usageLimitExceeded", limitId: "image", resetsAt: null },
+  });
+  const failedRow = projectThread(failed, { workspacePath: "/workspace" }).rows.window.at(-1);
+  assert.equal(failedRow?.kind, "toolCall");
+  if (failedRow?.kind !== "toolCall") return;
+  assert.equal(failedRow.status, "error");
+  assert.match(failedRow.error?.message ?? "", /usageLimitExceeded/);
+});
+
+test("collabAgentToolCall projects real tool names, mapped status and per-agent states", () => {
+  const thread = threadFixture();
+  thread.turns[0]!.items.push(
+    {
+      type: "collabAgentToolCall",
+      id: "spawn-1",
+      tool: "spawnAgent",
+      status: "inProgress",
+      senderThreadId: "thread-1",
+      receiverThreadIds: ["thread-2"],
+      prompt: "inspect the codebase",
+      model: null,
+      reasoningEffort: null,
+      agentsStates: {},
+    },
+    {
+      type: "collabAgentToolCall",
+      id: "wait-1",
+      tool: "wait",
+      status: "completed",
+      senderThreadId: "thread-1",
+      receiverThreadIds: ["thread-2"],
+      prompt: null,
+      model: null,
+      reasoningEffort: null,
+      agentsStates: { "thread-2": { status: "completed", message: "done" } },
+    },
+    {
+      type: "collabAgentToolCall",
+      id: "msg-1",
+      tool: "sendMessage",
+      status: "completed",
+      senderThreadId: "thread-1",
+      receiverThreadIds: [],
+      prompt: "ping",
+      model: null,
+      reasoningEffort: null,
+      agentsStates: {},
+    },
+  );
+  const rows = projectThread(thread, { workspacePath: "/workspace" }).rows.window;
+  const tools = rows.filter((row) => row.kind === "toolCall");
+  const [spawn, wait, msg] = tools.slice(-3);
+  assert.equal(spawn?.toolName, "spawn_agent");
+  assert.equal(spawn?.status, "running");
+  assert.deepEqual(spawn?.input, {
+    prompt: "inspect the codebase",
+    senderThreadId: "thread-1",
+    receiverThreadIds: ["thread-2"],
+  });
+  assert.equal(wait?.toolName, "wait_agent");
+  assert.equal(wait?.status, "success");
+  assert.match(wait?.output?.text ?? "", /thread-2: completed — done/);
+  // v1 analytics-only 工具必须避开原生 SendMessage 渲染器。
+  assert.equal(msg?.toolName, "codex_collab_send_message");
+});
+
+test("dynamicToolCall and functionCallOutput project text without media bytes", () => {
+  const thread = threadFixture();
+  thread.turns[0]!.items.push(
+    {
+      type: "dynamicToolCall",
+      id: "dyn-1",
+      namespace: "codez",
+      tool: "summarize",
+      arguments: { topic: "x" },
+      status: "completed",
+      contentItems: [
+        { type: "inputText", text: "summary text" },
+        { type: "inputImage", imageUrl: "data:image/png;base64,AAA" },
+      ],
+      success: true,
+      durationMs: 12,
+    },
+    {
+      type: "functionCallOutput",
+      id: "fco-1",
+      name: "hooked_tool",
+      namespace: null,
+      output: [{ type: "inputText", text: "hook output" }],
+    },
+  );
+  const rows = projectThread(thread, { workspacePath: "/workspace" }).rows.window;
+  const [dyn, fco] = rows.slice(-2);
+  assert.equal(dyn?.kind, "toolCall");
+  if (dyn?.kind !== "toolCall") return;
+  assert.equal(dyn.toolName, "codez.summarize");
+  assert.equal(dyn.status, "success");
+  assert.deepEqual(dyn.input, { topic: "x" });
+  assert.equal(dyn.output?.text, "summary text\n[image]");
+  assert.equal(fco?.kind, "toolCall");
+  if (fco?.kind !== "toolCall") return;
+  assert.equal(fco.toolName, "hooked_tool");
+  assert.equal(fco.output?.text, "hook output");
+});
+
+test("lifecycle items project as codexEvent timeline markers", () => {
+  const thread = threadFixture();
+  thread.turns[0]!.items.push(
+    { type: "contextCompaction", id: "cc-1" },
+    { type: "enteredReviewMode", id: "rev-1", review: "review current changes" },
+    { type: "exitedReviewMode", id: "rev-2", review: "review current changes" },
+    {
+      type: "hookPrompt",
+      id: "hook-1",
+      fragments: [{ text: "injected context", hookRunId: "run-1" }],
+    },
+    {
+      type: "subAgentActivity",
+      id: "act-1",
+      kind: "started",
+      agentThreadId: "thread-2",
+      agentPath: "worker[1]",
+      model: null,
+      reasoningEffort: null,
+    },
+    { type: "sleep", id: "sleep-1", durationMs: 5000 },
+  );
+  const rows = projectThread(thread, { workspacePath: "/workspace" }).rows.window.slice(-6);
+  assert.deepEqual(
+    rows.map((row) =>
+      row.kind === "timelineMarker" && row.marker.type === "codexEvent"
+        ? [row.marker.event, row.marker.detail ?? null, row.lane]
+        : null,
+    ),
+    [
+      ["contextCompaction", null, "assistantWork"],
+      ["reviewEnter", "review current changes", "assistantWork"],
+      ["reviewExit", "review current changes", "assistantWork"],
+      ["hookPrompt", "injected context", "assistantWork"],
+      ["subagentStarted", "worker[1]", "assistantWork"],
+      ["sleep", "5s", "assistantWork"],
+    ],
+  );
+});
+
+test("hookPrompt detail is capped so large injected context fits the row budget", () => {
+  const thread = threadFixture();
+  thread.turns[0]!.items.push({
+    type: "hookPrompt",
+    id: "hook-big",
+    fragments: [{ text: "x".repeat(2000), hookRunId: "run-1" }],
+  });
+  const row = projectThread(thread, { workspacePath: "/workspace" }).rows.window.at(-1);
+  assert.equal(row?.kind, "timelineMarker");
+  if (row?.kind !== "timelineMarker" || row.marker.type !== "codexEvent") return;
+  assert.equal(row.marker.detail?.length, 501);
 });
 
 const toolItems: CodexThreadItem[] = [

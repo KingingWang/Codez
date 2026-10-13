@@ -1,0 +1,57 @@
+# Codex desktop thread item projection coverage
+
+## Outcome
+
+Every item type in the pinned app-server v2 `ThreadItem` union is a known,
+explicitly projected bridge item. Nothing the model does falls back to the
+generic raw-JSON card (`codex.<type>`) anymore; the fallback remains only for
+genuinely future item types and stays fail-closed for malformed known items.
+
+Wire reference: `app-server-protocol/schema/typescript/v2/ThreadItem.ts` in the
+pinned Codex checkout (read-only reference, never a build input).
+
+## Projection table
+
+| Codex item | v4 row | Presentation |
+| --- | --- | --- |
+| `userMessage` / `agentMessage` / `plan` / `reasoning` | existing text rows | unchanged |
+| `commandExecution` / `fileChange` / `mcpToolCall` | existing toolCall rows | unchanged |
+| `imageView` | toolCall `view_image`, `input.path`, always `success` | read-family file chip; click opens image preview (specs/codex-desktop-image-view.md) |
+| `webSearch` | toolCall `web_search`, `input.query`, always `success` | search family card |
+| `imageGeneration` | toolCall `image_generation`, status from item, input `{ revisedPrompt?, savedPath? }` | fallback card; `result` (base64 image) never enters the row |
+| `collabAgentToolCall` | toolCall named after the collab tool, status mapped, input carries prompt/thread ids/model, `agentsStates` rendered as output lines | `spawn_agent` hits the agent family card; the four v1 analytics-only tools use `codex_collab_*` names to avoid hijacking native renderers |
+| `dynamicToolCall` | toolCall `<namespace>.<tool>` (or bare `tool`), status mapped, input = arguments, output = text content items | fallback card; media content items become `[image]`/`[audio]` placeholders |
+| `functionCallOutput` | toolCall named after the function, `success`, output text only | fallback card (hook-synthesized outputs; rare) |
+| `contextCompaction` | timelineMarker `codexEvent/contextCompaction` | divider line, assistantWork lane |
+| `enteredReviewMode` / `exitedReviewMode` | timelineMarker `codexEvent/reviewEnter` or `reviewExit`, `detail` = review | divider line |
+| `hookPrompt` | timelineMarker `codexEvent/hookPrompt`, `detail` = fragment text (capped) | divider line |
+| `subAgentActivity` | timelineMarker `codexEvent/subagentStarted`, `subagentInteracted`, `subagentInterrupted` or `subagentCompleted`, `detail` = agentPath | divider line |
+| `sleep` | timelineMarker `codexEvent/sleep`, `detail` = duration | divider line |
+
+## Rules and boundaries
+
+- Codex owns thread state; the bridge only translates. Status is taken from the
+  item (`collabAgentToolCall`, `dynamicToolCall`, `imageGeneration`) or fixed to
+  `success` when the item's existence already proves the event happened
+  (`webSearch`, `imageView`, `functionCallOutput`).
+- Status mapping: `inProgress` to `running`, `completed` to `success`,
+  `failed` to `error`, `interrupted`/`declined` to `cancelled`.
+- Media bytes never enter rows: `imageGeneration.result` and
+  `dynamicToolCall`/`functionCallOutput` image or audio content items are
+  reduced to placeholders; only text and paths are projected.
+- `hookPrompt` detail is capped (500 chars) so a hook injecting large context
+  cannot blow up the row budget.
+- The `codexEvent` timeline marker is an additive protocol variant. The live
+  renderer localizes every event kind; the share/readonly timeline does not
+  recognize it and skips the row (existing default-null behavior), which is
+  acceptable degradation.
+- Subagent drill-down (subscribing the receiver thread as a child session) is
+  intentionally not part of this change; the collab card shows prompt and
+  per-agent status lines without nesting rows.
+
+## Acceptance
+
+- Bridge unit tests pin the projection of every newly known item type, and the
+  unknown-fallback test only lists a synthetic `futureItem`.
+- Malformed known items still fail closed (existing test).
+- UI unit test: a `codexEvent` marker row renders the localized divider label.

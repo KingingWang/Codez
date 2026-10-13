@@ -8,10 +8,7 @@ import { highspeedMessageMetaSchema } from "../highspeed.js";
 import { executionOutputPreviewSchema } from "../execution-output-preview.js";
 import { timestampSchema } from "./core.js";
 import { conversationInputSourceSchema } from "./input-intent.js";
-import {
-  backgroundResultOriginMetaSchema,
-  workflowLaunchMetaSchema,
-} from "./workflow-row-meta.js";
+import { backgroundResultOriginMetaSchema, workflowLaunchMetaSchema } from "./workflow-row-meta.js";
 import { attachmentRefSchema } from "./attachment-ref.js";
 
 // RowBase。rowId：session 内单调、永不复用、事件日志的确定性纯函数。
@@ -401,6 +398,25 @@ export const timelineMarkerPayloadSchema = z.union([
   z.object({
     type: z.literal("checkpointRestored"),
     checkpointId: z.string(),
+  }),
+  // Codex 原生运行时事件（specs/codex-desktop-thread-items.md）：contextCompaction、
+  // review 模式进出、hook 注入提示、子代理活动、sleep。原生 item 不携带
+  // origin/tokens 等 CLI 侧事实，不能与 compact 等现有 variant 混用（会伪造来源），
+  // 因此单列一个 variant；event 是封闭枚举，detail 只放短展示文本（bridge 截断）。
+  z.object({
+    type: z.literal("codexEvent"),
+    event: z.enum([
+      "contextCompaction",
+      "reviewEnter",
+      "reviewExit",
+      "hookPrompt",
+      "subagentStarted",
+      "subagentInteracted",
+      "subagentInterrupted",
+      "subagentCompleted",
+      "sleep",
+    ]),
+    detail: z.string().optional(),
   }),
 ]);
 export type TimelineMarkerPayload = z.infer<typeof timelineMarkerPayloadSchema>;

@@ -1992,7 +1992,8 @@ const zhCN: Record<string, string> = {
   "webRemoteControl.failure.desktopDisconnected":
     "桌面端已经断开连接，当前 Web 远程控制无法继续使用。",
   "webRemoteControl.failure.invalidMobileConnection": "当前手机连接已失效，请刷新页面后重新连接。",
-  "webRemoteControl.failure.e2eeConfiguration": "手机远控需要配置独立可信的 HTTPS 页面；当前无法安全启动。",
+  "webRemoteControl.failure.e2eeConfiguration":
+    "手机远控需要配置独立可信的 HTTPS 页面；当前无法安全启动。",
   "webRemoteControl.failure.desktopBootstrapTimeout":
     "桌面端响应超时，请确认窗口仍在运行后刷新页面。",
   "webRemoteControl.failure.connectionRecoveryTimeout":
@@ -4967,6 +4968,15 @@ const zhCN: Record<string, string> = {
   "chat.contextCompaction.failed": "上下文压缩失败",
   "chat.contextCompaction.interrupted": "上下文压缩已中断",
   "chat.contextCompaction.retry": "重试",
+  "chat.codexEvent.contextCompaction": "上下文已压缩",
+  "chat.codexEvent.reviewEnter": "进入代码审查",
+  "chat.codexEvent.reviewExit": "退出代码审查",
+  "chat.codexEvent.hookPrompt": "Hook 注入提示",
+  "chat.codexEvent.subagentStarted": "子代理已开始",
+  "chat.codexEvent.subagentInteracted": "与子代理交互",
+  "chat.codexEvent.subagentInterrupted": "子代理已中断",
+  "chat.codexEvent.subagentCompleted": "子代理已完成",
+  "chat.codexEvent.sleep": "休眠等待",
   "chat.goalVerification.checking": "目标校验中",
   "chat.goalVerification.incomplete": "目标未完成，任务继续",
   "chat.goalVerification.complete": "目标已完成，任务结束",
