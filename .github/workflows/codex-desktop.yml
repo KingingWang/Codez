@@ -54,15 +54,20 @@ jobs:
       - run: node --test scripts/test-codex-distribution*.mjs
       - name: Codex service, desktop and remote deployment regressions (Linux once)
         run: |
-          # 上游配置测试使用 Vitest；不能交给 node:test，也不能丢掉覆盖。
+          # services 的 codex*.test.ts 混用 node:test 与 Vitest：按文件内容分流，
+          # 新增 Vitest 文件不能再被 node:test 误跑（文件名特判曾经漏掉新增文件）。
           node_tests=()
+          vitest_tests=()
           for file in packages/services/test/codex*.test.ts; do
-            if [[ "$file" != packages/services/test/codexConfigToml.test.ts ]]; then
+            if grep -qE 'from "node:test"' "$file"; then
               node_tests+=("$file")
+            else
+              vitest_tests+=("$file")
             fi
           done
           pnpm exec tsx --test "${node_tests[@]}" packages/desktop/test/codex*.test.ts packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts packages/server/test/codex*.test.ts
-          pnpm exec vitest run packages/services/test/codexConfigToml.test.ts packages/client/test/remoteServiceAccess.test.ts
+          # remoteServiceAccess 始终在 Vitest 侧；vitest_tests 为空时退化为只跑它。
+          pnpm exec vitest run packages/client/test/remoteServiceAccess.test.ts "${vitest_tests[@]}"
       - name: Git worktree service and shared identity regressions (Linux once)
         run: pnpm exec tsx --test packages/services/test/gitWorktree.test.ts packages/services/test/gitWorktreeCreation.test.ts packages/shared/test/remoteWorkspaceScope.test.ts
       - name: Codex UI settings regressions (Linux once)
