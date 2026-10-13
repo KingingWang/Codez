@@ -33,6 +33,11 @@ import { editQueuedInput } from "./queue-edit.js";
 import { resumeNativeQueue, startNativeQueuedSubmission } from "./queue-start.js";
 import { applySelectionSideChatBoundary } from "./selection-side-chat.js";
 import type { SessionTitleCoordinator } from "./session-title.js";
+import type { CodexProviderKeyGate } from "./provider-key-gate.js";
+import {
+  codexThreadProviderId,
+  editUserQueryOrRetryTurn,
+} from "./commands-edit-retry.js";
 
 export interface CommandContext {
   rpc: CodexRpcPort;
@@ -47,6 +52,7 @@ export interface CommandContext {
    */
   rewindNotices?: RewindNoticeStore;
   title?: SessionTitleCoordinator;
+  providerKeyGate?: CodexProviderKeyGate;
 }
 
 /** Per-thread serialization covers admission decisions, not native execution. */
@@ -164,6 +170,10 @@ export class CommandRouter {
           p.toolDisallowlist?.length
         )
           unsupported("legacy execution context; this intent cannot be safely applied by Codex");
+        // 本机临时 Key 未安装的供应商在 queue/steer/start 任一投递前统一拒绝（入队即承诺执行）。
+        await this.context.providerKeyGate?.assertTurnAllowed(
+          p.modelSelection?.providerId ?? codexThreadProviderId(state.thread),
+        );
         // 撤销通知随下一条用户文本进入 Codex 事实；peek 不消费，
         // native 请求失败时通知保留，下一次发送重试。
         const rewindNotice = this.context.rewindNotices?.peek(sessionId);
@@ -234,6 +244,7 @@ export class CommandRouter {
       }
       case "compact":
         if (running) throw new Error("Wait for the active turn before compacting");
+        await this.context.providerKeyGate?.assertTurnAllowed(codexThreadProviderId(state.thread));
         await rpc.request("thread/compact/start", native);
         break;
       case "renameSession": {
@@ -350,42 +361,17 @@ export class CommandRouter {
         return createSelectionSideSession(command, this.context);
       case "editUserQuery":
       case "retryTurn": {
-        this.context.title?.cancel(sessionId);
-        const p =
-          command.type === "editUserQuery"
-            ? commandPayloadSchemas.editUserQuery.parse(command.payload)
-            : commandPayloadSchemas.retryTurn.parse(command.payload);
-        if (running) throw new Error("Stop the active turn before changing conversation history");
-        if ("workspaceMode" in p && p.workspaceMode === "rewind")
-          unsupported("file rewind; Codex history revert does not undo files");
-        const snapshot = projectThread(state.thread, { workspacePath: store.cwd });
-        const row = snapshot.rows.window.find(
-          (candidate) =>
-            candidate.rowId === p.target.rowId && candidate.entityId === p.target.entityId,
-        );
-        if (!row) throw new Error("Target row no longer exists");
-        const turn = array(state.thread.turns)
-          .map(object)
-          .find((candidate) => candidate.id === row.turnId);
-        const user = array(turn?.items)
-          .map(object)
-          .find((item) => item.type === "userMessage");
-        if (!user) throw new Error("Original user input is unavailable");
-        const edit =
-          command.type === "editUserQuery"
-            ? commandPayloadSchemas.editUserQuery.parse(command.payload)
-            : undefined;
-        const input = edit
-          ? await nativeInput(edit.newText, edit.attachments, sessionId, attachments)
-          : user.content;
-        await rpc.request("thread/revert", { ...native, beforeTurnId: row.turnId });
-        await store.reloadAfterHistoryChange(sessionId);
-        const response = await rpc.request("turn/start", {
-          ...native,
-          input,
-          clientUserMessageId: command.commandId,
+        await editUserQueryOrRetryTurn({
+          command,
+          rpc,
+          store,
+          state,
+          sessionId,
+          running,
+          attachments,
+          title: this.context.title,
+          providerKeyGate: this.context.providerKeyGate,
         });
-        store.acceptTurnResponse(sessionId, response);
         break;
       }
       default:

@@ -549,8 +549,9 @@ export async function runSSHCommand(
 export async function createSSHReplayTunnel(
   config: SSHConnectionConfig,
   caseMarker: string,
+  localBaseURL?: string,
 ): Promise<ReplayTunnel> {
-  const replayBaseURL = await resolveSeededReplayBaseUrl();
+  const replayBaseURL = localBaseURL ?? (await resolveSeededReplayBaseUrl());
   if (!replayBaseURL) {
     throw new Error(`${caseMarker}: 没有找到本轮 replay provider URL`);
   }

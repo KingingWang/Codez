@@ -18,7 +18,11 @@ import type {
   WebRemoteControlWorkspaceTarget,
 } from "./web-remote-control.js";
 import type { AppSettings, Locale } from "./protocol.js";
-import type { StorageCleanRequest, StorageCleanResult, StorageUsageSnapshot } from "./storage.js";
+import type {
+  StorageCleanRequest,
+  StorageCleanResult,
+  StorageUsageSnapshot,
+} from "./storage.js";
 import type {
   ArmsCustomEventPayload,
   ConfigureFinalArmsCustomEventE2ERequest,
@@ -128,6 +132,8 @@ export const ServiceChannels = {
   ModelSelection: "model-selection",
   /** 远端 Environment 内部 Provider Provisioning target */
   ProviderProvisioningTarget: "provider-provisioning-target",
+  /** Codex 原生自定义供应商的本机临时 Key（Window Host 私有实现，Renderer 只传本次输入） */
+  CodexNativeProviderKey: "codex-native-provider-key",
   /** 本地 usage 统计服务 */
   UsageStats: "usage-stats",
   /** Coding Plan 订阅购买服务 */
@@ -179,15 +185,17 @@ export const ServiceChannels = {
   OnboardingRecord: "onboarding-record",
 } as const;
 
-export type ServiceChannelName = (typeof ServiceChannels)[keyof typeof ServiceChannels];
+export type ServiceChannelName =
+  (typeof ServiceChannels)[keyof typeof ServiceChannels];
 
 /** 上游托管手机页的公共频道别名，不能随产品品牌重命名。 */
-export const UpstreamServiceChannelAliases: Readonly<Partial<Record<ServiceChannelName, string>>> =
-  {
-    [ServiceChannels.CodezTask]: "zcode-task",
-    [ServiceChannels.CodezAgent]: "zcode-agent",
-    [ServiceChannels.CodezSession]: "zcode-session",
-  };
+export const UpstreamServiceChannelAliases: Readonly<
+  Partial<Record<ServiceChannelName, string>>
+> = {
+  [ServiceChannels.CodezTask]: "zcode-task",
+  [ServiceChannels.CodezAgent]: "zcode-agent",
+  [ServiceChannels.CodezSession]: "zcode-session",
+};
 
 // ============================================================================
 // 平台频道 —— 仅 Desktop main 进程能处理的操作（Electron IPC）
@@ -229,7 +237,8 @@ export const PlatformChannels = {
   /** 取消当前窗口正在进行中的远程连接 */
   CancelPendingRemoteConnection: "codez:cancel-pending-remote-connection",
   /** Renderer → Main：绑定远程 logical session 的 canonical workspace context */
-  BindRemoteWorkspaceSessionContext: "codez:bind-remote-workspace-session-context",
+  BindRemoteWorkspaceSessionContext:
+    "codez:bind-remote-workspace-session-context",
   /** 为当前 workspace 开启 Web 远程控制 */
   StartWebRemoteControl: "codez:start-web-remote-control",
   ResetWebRemoteControlPairing: "codez:reset-web-remote-control-pairing",
@@ -264,7 +273,8 @@ export const PlatformChannels = {
   /** Renderer → Main：同步当前窗口可供 Web 远程控制展示的 task 快照 */
   SyncWebRemoteControlTasks: "codez:sync-web-remote-control-tasks",
   /** Main → Renderer：手机端请求重连当前窗口里的远程 workspace */
-  WebRemoteControlReconnectWorkspace: "codez:web-remote-control-reconnect-workspace",
+  WebRemoteControlReconnectWorkspace:
+    "codez:web-remote-control-reconnect-workspace",
   /** Renderer → Main：同步当前窗口的未读 task 数 */
   SyncWindowUnreadCount: "codez:sync-window-unread-count",
   /** Renderer → Main：当前窗口 active task，只更新 Main 的临时焦点映射。 */
@@ -294,11 +304,14 @@ export const PlatformChannels = {
   /** Main → Renderer：Agent 设置/重置目标 tab viewport */
   BrowserViewViewportChanged: "codez:browser-view-viewport-changed",
   /** Main → Renderer：截图前请求 owner renderer 准备后台 guest 合成表面。 */
-  BrowserViewScreenshotSurfacePrepare: "codez:browser-view-screenshot-surface-prepare",
+  BrowserViewScreenshotSurfacePrepare:
+    "codez:browser-view-screenshot-surface-prepare",
   /** Renderer → Main：目标 guest 连续两个 animation frame 的 viewport 已稳定。 */
-  BrowserViewScreenshotSurfaceReady: "codez:browser-view-screenshot-surface-ready",
+  BrowserViewScreenshotSurfaceReady:
+    "codez:browser-view-screenshot-surface-ready",
   /** Main → Renderer：截图结束或准备失败，释放临时后台合成层。 */
-  BrowserViewScreenshotSurfaceRelease: "codez:browser-view-screenshot-surface-release",
+  BrowserViewScreenshotSurfaceRelease:
+    "codez:browser-view-screenshot-surface-release",
   /** Main → Renderer：agent close 命令 detach 受控 guest 后，通知 renderer 卸载对应 tab */
   BrowserViewCloseTab: "codez:browser-view-close-tab",
   /** Main → Renderer：预算淘汰时卸载 guest，但保留 logical tab shell。 */
@@ -369,7 +382,8 @@ export const PlatformChannels = {
    * 在 dragstart 里就收窗：startDrag 只是把 drag session 交给 OS，非阻塞，drag source
    * 立刻消失可能打断正在进行的拖拽。
    */
-  NotifyCuaHelperPermissionDragEnded: "codez:notify-cua-helper-permission-drag-ended",
+  NotifyCuaHelperPermissionDragEnded:
+    "codez:notify-cua-helper-permission-drag-ended",
   /** Renderer → Main：上报 OAuth state 用于 deep link 路由 */
   OAuthRegisterState: "codez:oauth-register-state",
   /** Main → Renderer：转发 deep link URL */
@@ -391,7 +405,8 @@ export const PlatformChannels = {
   /** Renderer → Main：读取 Renderer 用户操作 Trace 灰度配置。 */
   GetRendererActionTraceConfig: "codez:get-renderer-action-trace-config",
   /** Main → Renderer：Renderer 用户操作 Trace 灰度配置变化。 */
-  RendererActionTraceConfigChanged: "codez:renderer-action-trace-config-changed",
+  RendererActionTraceConfigChanged:
+    "codez:renderer-action-trace-config-changed",
   /** Renderer → Main：发送已结束的 ui_action batch。 */
   ReportRendererActionTraceBatch: "codez:report-renderer-action-trace-batch",
   /** Renderer → Main：主窗口 renderer 每 60 秒的 heap 读数，单向 send，不需要回执。 */
@@ -402,7 +417,8 @@ export const PlatformChannels = {
   /** E2E preload → Main：清空 sendCustom 最终参数的内存 ring。 */
   ClearFinalArmsCustomEventsE2E: "codez:e2e:clear-final-arms-custom-events",
   /** E2E preload → Main：配置只针对目标 event name 的真实网络抑制。 */
-  ConfigureFinalArmsCustomEventsE2E: "codez:e2e:configure-final-arms-custom-events",
+  ConfigureFinalArmsCustomEventsE2E:
+    "codez:e2e:configure-final-arms-custom-events",
   /** Renderer → Main：触发任务完成/失败的系统通知 */
   ShowTaskNotification: "codez:show-task-notification",
   /** Main → Preload：通知 renderer 播放任务通知提示音 */
@@ -439,13 +455,17 @@ export const PlatformChannels = {
   /** Renderer → Main：清理内置浏览器缓存或全部站点数据。 */
   ClearEmbeddedBrowserData: "codez:clear-embedded-browser-data",
   /** Renderer → Main：读取内置浏览器站点权限记录（设置页「网站权限」） */
-  GetEmbeddedBrowserSitePermissions: "codez:get-embedded-browser-site-permissions",
+  GetEmbeddedBrowserSitePermissions:
+    "codez:get-embedded-browser-site-permissions",
   /** Renderer → Main：修改/删除单条站点权限（state="ask" 表示删除） */
-  SetEmbeddedBrowserSitePermission: "codez:set-embedded-browser-site-permission",
+  SetEmbeddedBrowserSitePermission:
+    "codez:set-embedded-browser-site-permission",
   /** Renderer → Main：清空全部站点权限记录 */
-  ClearEmbeddedBrowserSitePermissions: "codez:clear-embedded-browser-site-permissions",
+  ClearEmbeddedBrowserSitePermissions:
+    "codez:clear-embedded-browser-site-permissions",
   /** Renderer → Main：重置单个站点的全部权限记录（站点权限设置标签页「重置」） */
-  ResetEmbeddedBrowserSitePermission: "codez:reset-embedded-browser-site-permission",
+  ResetEmbeddedBrowserSitePermission:
+    "codez:reset-embedded-browser-site-permission",
   /** Main → Renderer：通知有新版本已下载完毕，可以重启安装 */
   UpdateReady: "codez:update-ready",
   /** Main → Renderer：用户手动点击"检查更新"后的结果反馈（toast 用） */
@@ -463,7 +483,8 @@ export const PlatformChannels = {
   /** Renderer → Main：读取自动更新偏好 */
   GetAutoUpdatePreferences: "codez:get-auto-update-preferences",
   /** Renderer → Main：写入“自动下载并安装更新”偏好 */
-  SetAutoDownloadAndInstallUpdates: "codez:set-auto-download-and-install-updates",
+  SetAutoDownloadAndInstallUpdates:
+    "codez:set-auto-download-and-install-updates",
   /** Renderer → Main：查询桌面端正在运行的会话数量 */
   GetDesktopSessionActivity: "codez:get-desktop-session-activity",
   /** Renderer → Main：读取当前窗口页面缩放档位 */
@@ -504,7 +525,8 @@ export const PlatformChannels = {
   GetDeviceId: "codez:get-device-id",
 } as const;
 
-export type PlatformChannelName = (typeof PlatformChannels)[keyof typeof PlatformChannels];
+export type PlatformChannelName =
+  (typeof PlatformChannels)[keyof typeof PlatformChannels];
 
 // ============================================================================
 // 内置 WebView 频道 —— 固定 guest preload ↔ embedder renderer
@@ -627,7 +649,8 @@ export const HostMessageTypes = {
   /** main → host：Bot 远端 workspace 重连结果 */
   BotRemoteWorkspaceReconnectResult: "bot-remote-workspace-reconnect-result",
   /** main → host：Bot 远端 workspace 连接状态查询结果 */
-  BotRemoteWorkspaceConnectionStatusResult: "bot-remote-workspace-connection-status-result",
+  BotRemoteWorkspaceConnectionStatusResult:
+    "bot-remote-workspace-connection-status-result",
   /** main → host：Bot 远端 workspace runtime RPC 端口 */
   BotRemoteWorkspaceRuntimePort: "bot-remote-workspace-runtime-port",
   /** main → host：把 session message 投递到该 host 管理的目标 session */
@@ -643,7 +666,8 @@ export const HostMessageTypes = {
   /** main → host：browser-use 命令执行结果（CDP 执行完回传，按 requestId 关联） */
   BrowserExecuteResult: "browser-execute-result",
   /** main → host：本地视频 canonical path 授权结果 */
-  LocalMediaPreviewPathAuthorizeResult: "local-media-preview-path-authorize-result",
+  LocalMediaPreviewPathAuthorizeResult:
+    "local-media-preview-path-authorize-result",
   /** main → host：插件 UI 沙箱登记结果（PluginSandboxRegisterResultPayload） */
   PluginSandboxRegisterResult: "plugin-sandbox-register-result",
   /** Main → Host：全局前台 Codez 窗口派生的 producer focus fact。 */
@@ -652,6 +676,8 @@ export const HostMessageTypes = {
   NativeBrowserCuaMcpServersChanged: "native-browser-cua-mcp-servers-changed",
   /** main → host：要求 Host 现读本地 Source，并同步指定 Remote Environment。 */
   ProviderProvisioningExecute: "provider-provisioning-execute",
+  /** main → host：Codex 原生临时 Key 跨连接轮换事务的阶段结果（按 requestId 关联）。 */
+  CodexProviderKeyRotationResult: "codex-provider-key-rotation-result",
   /** main → host：资源管理器请求 Host 采样其后代进程（Agent / MCP / 终端）的 CPU 与内存 */
   ResourceUsageSnapshotRequest: "resource-usage-snapshot-request",
   ResourceUsageSnapshotCancel: "resource-usage-snapshot-cancel",
@@ -724,9 +750,11 @@ export const HostResponseTypes = {
   /** host → main：Bot 请求创建远端 workspace session */
   BotRemoteWorkspaceReconnectRequest: "bot-remote-workspace-reconnect-request",
   /** host → main：Bot 查询当前窗口是否已有远端 workspace session */
-  BotRemoteWorkspaceConnectionStatusRequest: "bot-remote-workspace-connection-status-request",
+  BotRemoteWorkspaceConnectionStatusRequest:
+    "bot-remote-workspace-connection-status-request",
   /** host → main：Bot 请求远端 workspace runtime RPC 端口 */
-  BotRemoteWorkspaceRuntimePortRequest: "bot-remote-workspace-runtime-port-request",
+  BotRemoteWorkspaceRuntimePortRequest:
+    "bot-remote-workspace-runtime-port-request",
   /** host → main：Agent 请求向另一个 session 发送消息 */
   SessionMessageSendRequested: "session-message-send-requested",
   /** host → main：声明一个 Codez Agent session 当前归属该 host */
@@ -746,7 +774,8 @@ export const HostResponseTypes = {
   /** host → main：执行一条 browser-use 命令（main 用 WebContentsView+CDP 执行，按 requestId 关联） */
   BrowserExecuteRequest: "browser-execute-request",
   /** host → main：请求授权 Agent 已精确校验的本地视频路径 */
-  LocalMediaPreviewPathAuthorizeRequest: "local-media-preview-path-authorize-request",
+  LocalMediaPreviewPathAuthorizeRequest:
+    "local-media-preview-path-authorize-request",
   /** host → main：登记已校验的插件 UI HTML 与 CSP，换取 sandbox 句柄（PluginSandboxRegisterRequestPayload） */
   PluginSandboxRegisterRequest: "plugin-sandbox-register-request",
   /** host → main：RPC 网络遥测批次（channel.command 成功率/耗时） */
@@ -755,6 +784,11 @@ export const HostResponseTypes = {
   ProviderProvisioningSourceChanged: "provider-provisioning-source-changed",
   /** host → main：一次 Remote Environment 同步执行完毕。 */
   ProviderProvisioningExecutionResult: "provider-provisioning-execution-result",
+  /**
+   * host → main：Codex 原生临时 Key 保存事务请求 Main 协调跨连接屏障。
+   * 只携带阶段与环境身份，Key 值由每个 Window Host 自行现读本机凭据，不经 Main。
+   */
+  CodexProviderKeyRotationRequest: "codex-provider-key-rotation-request",
 } as const;
 
 // ============================================================================

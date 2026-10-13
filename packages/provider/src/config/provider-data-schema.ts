@@ -33,11 +33,32 @@ export const apiKeyAccessDataSchema = z
   .object({
     type: z.enum(["api-key", "zhipu-coding-plan-api-key"]),
     apiKey: z.string().nullable().optional(),
+    apiKeyEnv: z
+      .string()
+      .regex(/^CODEZ_MODEL_API_KEY_[A-F0-9]{6,64}$/)
+      .nullable()
+      .optional(),
     apiKeyManagementUrl: z.string().url().nullable().optional(),
   })
   .strict();
-export const completeApiKeyAccessDataSchema = apiKeyAccessDataSchema.extend({
-  apiKey: nonBlankRequiredString,
+export const completeApiKeyAccessDataSchema = apiKeyAccessDataSchema.superRefine((access, ctx) => {
+  const inline = Boolean(access.apiKey?.trim());
+  const runtimeEnv = Boolean(access.apiKeyEnv?.trim());
+  if (!inline && !runtimeEnv) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["apiKey"],
+      message: "API Key 或临时环境变量引用不能为空",
+      params: { configIssueCode: "required-field-missing" },
+    });
+  }
+  if (inline && runtimeEnv) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["apiKeyEnv"],
+      message: "明文 Key 和临时环境变量引用不能同时生效",
+    });
+  }
 });
 
 export const completeZhipuAccountAccessDataSchema = z

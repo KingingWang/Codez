@@ -1,4 +1,5 @@
 import { withoutRequestVerificationHeaders } from "@codez/shared";
+import { getCapturedCodezModelApiKey } from "@codez/shared/runtime-env";
 /* eslint-disable max-lines -- AI SDK 模型执行装配集中维护 provider factory、鉴权和网络错误适配，拆分会让状态同步更脆弱。 */
 // ============================================================
 // Vercel AI SDK model execution
@@ -353,6 +354,12 @@ export class AiSdkModelExecution {
   }
 
   private resolveApiKey(providerConfig: AiSdkProviderConfig): string | undefined {
+    if (providerConfig.access.type !== "zhipu-account" && providerConfig.access.apiKeyEnv) {
+      const key = getCapturedCodezModelApiKey(providerConfig.access.apiKeyEnv);
+      // 临时 Key 只在 Agent 启动时捕获到进程私有存储；缺失时必须先于 SDK 网络 I/O 失败。
+      if (!key) throw new Error("临时环境变量 API Key 不可用，请重新连接工作区");
+      return key;
+    }
     return providerConfig.apiKey;
   }
 

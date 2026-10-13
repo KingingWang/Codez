@@ -4130,22 +4130,28 @@ export function createCodezAgentService(
   // disposeActiveWorkspaceRuntimes 与桌面浏览器开关共用的释放实现：
   // 只有 codex bridge runtime 消费这类进程级 env 配置；legacy CLI workspace 不注入，
   // 重启它们只会平白打断进行中的任务。
-  const disposeActiveRuntimesForConfigChange = async (reason: string): Promise<void> => {
-    if (!usesDefaultCodexBridge) return;
+  const disposeActiveRuntimesForConfigChange = async (
+    reason: string,
+    includeLegacy = false,
+  ): Promise<void> => {
+    if (!usesDefaultCodexBridge && !includeLegacy) return;
     const actives = [...activeClientsByWorkspaceKey.values()];
-    await Promise.all(
-      actives.map(async (active) => {
-        try {
-          await disposeWorkspaceRuntime(active.workspace);
-        } catch (error) {
-          // best-effort：单个 workspace 释放失败不能阻断其它 workspace 应用新配置。
-          logger.warn(undefined, "dispose workspace runtime for config change failed", {
-            reason,
-            message: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }),
+    const results = await Promise.allSettled(
+      actives.map((active) => disposeWorkspaceRuntime(active.workspace)),
     );
+    const failures = results.filter(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    if (includeLegacy && failures.length) {
+      throw new Error(`Provider Key 变更时 ${failures.length} 个 Agent 未能停止`);
+    }
+    for (const failure of failures) {
+      // 旧 Codex 设置刷新保持既有 best-effort；临时 Key 模式已在上面 fail-closed。
+      logger.warn(undefined, "dispose workspace runtime for config change failed", {
+        reason,
+        message: String(failure.reason),
+      });
+    }
   };
 
   return {
@@ -7173,7 +7179,7 @@ export function createCodezAgentService(
     },
 
     async disposeActiveWorkspaceRuntimes(params): Promise<void> {
-      await disposeActiveRuntimesForConfigChange(params.reason);
+      await disposeActiveRuntimesForConfigChange(params.reason, params.includeLegacy);
     },
 
     async updateDesktopBrowserControl(params): Promise<void> {

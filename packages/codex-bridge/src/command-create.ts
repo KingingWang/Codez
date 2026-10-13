@@ -15,6 +15,7 @@ import {
 } from "./command-input.js";
 import { string, unsupported } from "./json.js";
 import type { SessionTitleCoordinator } from "./session-title.js";
+import type { CodexProviderKeyGate } from "./provider-key-gate.js";
 
 export async function createNativeSession(
   command: CommandEnvelope,
@@ -24,6 +25,7 @@ export async function createNativeSession(
     workspaceId: string;
     attachments?: ResolveAttachments;
     title?: SessionTitleCoordinator;
+    providerKeyGate?: CodexProviderKeyGate;
   },
 ): Promise<CommandResult> {
   const { rpc, store, workspaceId, attachments } = context;
@@ -62,6 +64,8 @@ export async function createNativeSession(
   }
   if (p.firstInput) {
     if (p.titleGenerationModel) context.title?.arm(sessionId, p.titleGenerationModel);
+    // 首条输入即将发起模型请求；缺本机临时 Key 的供应商在此处 fail-closed。
+    await context.providerKeyGate?.assertTurnAllowed(selection?.providerId ?? p.config?.provider);
     const turnParams = {
       threadId: sessionId,
       clientUserMessageId: command.commandId,

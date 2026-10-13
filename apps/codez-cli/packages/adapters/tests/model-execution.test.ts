@@ -2,14 +2,47 @@ import http, { type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { generateText, jsonSchema, Output } from "ai";
 import { describe, expect, it, vi } from "vitest";
+import { ApiKeyAccessConfig, ProviderApiConfig, ProviderConfig, type RegistryProviderConfig } from "@codez/provider";
+import {
+  resetCapturedCodezModelApiKeysForTest,
+  sanitizeCodezRuntimeEnv,
+} from "@codez/shared/runtime-env";
 import { createAnthropicCompatFetch } from "../src/model/anthropic-stream-compat.js";
 import {
   ProviderBusinessError,
+  AiSdkModelExecution,
   createProviderBusinessErrorFetch,
 } from "../src/model/model-execution.js";
 import { TestProviderConfigFixture } from "./test-provider-config.js";
 
 describe("AI SDK Provider execution", () => {
+  it("resolves a captured startup Key and fails before network if it is absent", () => {
+    const name = "CODEZ_MODEL_API_KEY_ABC123";
+    const config = new ProviderConfig({
+      group: "standard-personal",
+      access: new ApiKeyAccessConfig({ apiKeyEnv: name }),
+      api: new ProviderApiConfig({
+        type: "openai-chat-completions",
+        baseUrl: "https://example.com/v1",
+      }),
+    }) as RegistryProviderConfig;
+    const execution = new AiSdkModelExecution();
+    const input = {
+      providerId: "custom",
+      modelId: "test-model",
+      providerConfig: config,
+      supportsJsonSchemaOutput: false,
+      optionSpecs: {
+        reasoningLevel: { map: "{}" },
+        maxOutputTokens: { map: "{}" },
+      },
+    };
+    resetCapturedCodezModelApiKeysForTest();
+    expect(() => execution.bindModel(input)).toThrow("临时环境变量 API Key 不可用");
+    sanitizeCodezRuntimeEnv({ [name]: "local-secret" });
+    expect(() => execution.bindModel(input)).not.toThrow();
+    resetCapturedCodezModelApiKeysForTest();
+  });
   it("adds Authorization alongside x-api-key for Anthropic provider requests", async () => {
     const receivedHeaders: http.IncomingHttpHeaders[] = [];
     const endpointRoutingPort = {

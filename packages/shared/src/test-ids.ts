@@ -471,6 +471,7 @@ export const TID_MODEL_PROVIDER_START_PLAN_SWITCH_PREFIX =
 export const TID_MODEL_PROVIDER_CONNECTION_MODE_ITEM = "model-provider-connection-mode-item";
 /** 模型供应商详情 API Key 输入框 */
 export const TID_MODEL_PROVIDER_API_KEY_INPUT = "model-provider-api-key-input";
+export const TID_MODEL_PROVIDER_KEY_MODE_SELECT = "model-provider-key-mode-select";
 /** 模型供应商名称编辑按钮 */
 export const TID_MODEL_PROVIDER_NAME_EDIT_BUTTON = "model-provider-name-edit-button";
 /** 模型供应商名称编辑输入框 */

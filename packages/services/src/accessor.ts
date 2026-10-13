@@ -27,6 +27,7 @@ import type {
   IModelSelectionService,
   IProviderSettingsService,
 } from "./model-provider/providerFacadeServices.js";
+import type { ICodexNativeProviderKeyService } from "./model-provider/codexNativeProviderKeyService.js";
 import type { IUsageStatsService } from "./usage-stats/usageStats.js";
 import type { ICodingPlanSubscriptionService } from "./coding-plan-subscription/codingPlanSubscription.js";
 import type { IClientConfigService } from "./client-config/clientConfig.js";
@@ -81,6 +82,11 @@ export interface IServiceAccessor {
   readonly providerSettingsService: IProviderSettingsService;
   /** 当前 Environment Registry 发布的唯一模型选择 View。 */
   readonly modelSelectionService: IModelSelectionService;
+  /**
+   * Codex 原生供应商的本机临时 Key（spec: codex-provider-runtime-env-key）。
+   * Server remote 等宿主不提供；Renderer 经 RPC 访问时以调用失败判定不支持。
+   */
+  readonly codexNativeProviderKeyService?: ICodexNativeProviderKeyService;
   readonly usageStatsService: IUsageStatsService;
   readonly codingPlanSubscriptionService: ICodingPlanSubscriptionService;
   readonly clientConfigService: IClientConfigService;

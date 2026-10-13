@@ -1,5 +1,8 @@
 // Descriptors & collection (browser-safe)
-export { type ServiceDescriptor, createServiceDescriptor } from "./descriptors.js";
+export {
+  type ServiceDescriptor,
+  createServiceDescriptor,
+} from "./descriptors.js";
 export { ServiceCollection } from "./collection.js";
 export {
   IModelSelectionService,
@@ -19,6 +22,7 @@ export {
   type AccountRequestAuthResolver,
 } from "./model-provider/accountRequestAuthService.js";
 export { IProviderProvisioningTargetService } from "./model-provider/providerProvisioning.js";
+export { ICodexNativeProviderKeyService } from "./model-provider/codexNativeProviderKeyService.js";
 export {
   collectServiceMemoryDiagnostics,
   memoryDiagnosticsRegistry,
@@ -228,7 +232,10 @@ export {
   PROJECT_MEMORY_FILE_CHANGED_ERROR_CODE,
   PROJECT_MEMORY_PREVIEW_LIMIT_EXCEEDED_ERROR_CODE,
 } from "./memory/memory.js";
-export type { ProjectMemoryFileSummary, ProjectMemoryWorkspaceSummary } from "./memory/memory.js";
+export type {
+  ProjectMemoryFileSummary,
+  ProjectMemoryWorkspaceSummary,
+} from "./memory/memory.js";
 
 // OutputStyle service — IOutputStyleService is both a type (interface) and value (descriptor).
 export { IOutputStyleService } from "./output-style/outputStyle.js";

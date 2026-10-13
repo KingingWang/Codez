@@ -3289,6 +3289,18 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.endpointNoMatch": "No matching endpoint",
   "settings.modelProvider.apiKey": "API key",
   "settings.modelProvider.apiKeyPlaceholder": "Enter API key",
+  "settings.modelProvider.keyMode": "Key storage",
+  "settings.modelProvider.keyMode.config": "Write to config file",
+  "settings.modelProvider.keyMode.runtime": "Temporary environment variable (no remote file)",
+  "settings.modelProvider.keyMode.runtimeHint":
+    "The key is saved only in local Codez data. People sharing the remote OS account may still use it while the process runs. Rotate keys previously synced to the remote.",
+  "settings.modelProvider.keyMode.runtimeSaved":
+    "Key saved locally; enter a new value and click Save to replace it.",
+  "settings.modelProvider.keyMode.save": "Save temporary key",
+  "settings.modelProvider.keyMode.confirmTitle": "Change provider key?",
+  "settings.modelProvider.keyMode.confirmDescription":
+    "Running tasks may be interrupted. Accepted input will not be resent automatically. Confirm to apply the new key.",
+  "settings.modelProvider.keyMode.confirmAction": "Confirm change",
   "settings.modelProvider.apiKeyDisabledHint": "Set an API key to enable this provider.",
   "settings.modelProvider.getApiKey": "Get API key",
   "settings.modelProvider.viewUsage": "View usage",

@@ -14,6 +14,8 @@ import {
   sanitizeCodezRuntimeEnv,
   getCapturedCodezAgentTelemetryEnv,
   resetCapturedCodezAgentTelemetryEnvForTest,
+  getCapturedCodezModelApiKey,
+  resetCapturedCodezModelApiKeysForTest,
 } from "../src/runtimeEnv.js";
 
 describe("runtimeEnv", () => {
@@ -62,6 +64,16 @@ describe("runtimeEnv", () => {
       NODE_EXTRA_CA_CERTS: "/tmp/root-ca.pem",
       npm_config_proxy: "http://npm-proxy.example:8080",
     });
+  });
+
+  it("captures a model-only key before sanitizing tool and MCP environments", () => {
+    const name = "CODEZ_MODEL_API_KEY_ABC123";
+    const source = { [name]: "test-model-secret", PATH: "/bin" };
+    expect(sanitizeCodezRuntimeEnv(source)).toEqual({ PATH: "/bin" });
+    expect(getCapturedCodezModelApiKey(name)).toBe("test-model-secret");
+    expect(buildCodezToolEnvPassthroughEnv(source)).toEqual({});
+    resetCapturedCodezModelApiKeysForTest();
+    expect(getCapturedCodezModelApiKey(name)).toBeUndefined();
   });
 
   it("ignores invalid passthrough JSON and non-network keys", () => {

@@ -1139,7 +1139,10 @@ export interface ICodezAgentService {
    * 见 specs/codex-desktop-update-plan.md）。非 codex bridge runtime 时为空操作。
    * best-effort：单个 workspace 释放失败不阻断其它 workspace，调用方不据此判失败。
    */
-  disposeActiveWorkspaceRuntimes(params: { reason: string }): Promise<void>;
+  disposeActiveWorkspaceRuntimes(params: {
+    reason: string;
+    includeLegacy?: boolean;
+  }): Promise<void>;
   disposeAll(): void;
 }
 

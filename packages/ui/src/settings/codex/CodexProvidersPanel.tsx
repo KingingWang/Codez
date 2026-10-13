@@ -9,30 +9,34 @@ import { Switch } from "@/components/ui/switch.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
 import {
   codexCatalogModelTemplate,
-  codexCatalogModelWriteParams,
-  codexCatalogModelView,
+  codexCatalogModelGroups,
   codexConfiguredDefaultModel,
-  codexModelEntryFromForm,
   codexModelFormFrom,
-  codexProviderCreateEdits,
   codexProviderDeleteBlock,
-  codexProviderDeleteEdits,
   codexProviderFormError,
   codexProviderFormFrom,
   codexProviderSetDefaultEdits,
   codexProvidersView,
-  codexProviderUpdateEdits,
-  type CodexCatalogModelView,
+  isCodexManagedEnvKey,
   type CodexConfigEdit,
   type CodexModelForm,
   type CodexProviderForm,
   type CodexProviderView,
 } from "./codexProviderSettings.js";
+import {
+  deleteCodexProviderWithKeyCleanup,
+  saveCodexProviderWithKeySource,
+} from "./codexProviderKeyFlow.js";
 import { codexUserConfigTarget } from "./codexSettingsData.js";
 import { CodexCatalogModelFormView, CodexProviderFormView } from "./CodexProviderForms.js";
 import { CodexProviderRow } from "./CodexProviderRow.js";
 import { CodexConfirmButton, CodexNotice, CodexSection } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
+import {
+  useCodexManagedKeyState,
+  useCodexProviderKeySupport,
+} from "./useCodexProviderKeySupport.js";
+import { useCodexCatalogModelActions } from "./useCodexCatalogModelActions.js";
 
 interface CatalogState {
   path: string | null;
@@ -74,6 +78,15 @@ export function CodexProvidersPanel({
         : null,
     [workspacePath, workspaceIdentity],
   );
+  const keyService = controller.services.codexNativeProviderKeyService;
+  const keySourceSupported = useCodexProviderKeySupport(
+    controller.services,
+    controller.enabled,
+    workspaceRef?.workspacePath,
+  );
+  // 本机临时 Key 的凭据存在性；仅控制提示展示，安全判定在 Host/bridge。
+  const { managedKeyConfigured, probeProvider, reset: resetManagedKeyState } =
+    useCodexManagedKeyState(keyService, keySourceSupported);
 
   const loadCatalog = useCallback(async () => {
     if (!workspaceRef) return;
@@ -99,22 +112,10 @@ export function CodexProvidersPanel({
     [config, catalog],
   );
   const defaultModel = codexConfiguredDefaultModel(config);
-  const modelGroups = useMemo(() => {
-    const groups = new Map<string, { label: string; entries: CodexCatalogModelView[] }>();
-    for (const entry of catalog?.models ?? []) {
-      const view = codexCatalogModelView(entry);
-      const key = view.provider ?? "";
-      const label = providers.find((provider) => provider.id === key)?.name ?? (key || entry.slug);
-      const bucket = groups.get(key);
-      if (bucket) bucket.entries.push(view);
-      else groups.set(key, { label, entries: [view] });
-    }
-    const ordered = [
-      ...providers.map((provider) => provider.id),
-      ...[...groups.keys()].filter((key) => !providers.some((p) => p.id === key)),
-    ];
-    return ordered.filter((key) => groups.has(key)).map((key) => ({ key, ...groups.get(key)! }));
-  }, [catalog, providers]);
+  const modelGroups = useMemo(
+    () => codexCatalogModelGroups(catalog?.models ?? [], providers),
+    [catalog, providers],
+  );
 
   async function writeEdits(edits: CodexConfigEdit[]) {
     setNotice(null);
@@ -124,14 +125,6 @@ export function CodexProvidersPanel({
     };
     const result = codexConfigWriteResponseSchema.parse(await controller.request(request));
     setNotice(result.status === "okOverridden" ? text.overridden : text.saved);
-  }
-
-  async function writeCatalog(operation: () => Promise<unknown>) {
-    setNotice(null);
-    await operation();
-    await loadCatalog();
-    setCatalogStale(true);
-    setNotice(text.modelCatalogStale);
   }
 
   const submitProvider = () => {
@@ -147,11 +140,25 @@ export function CodexProvidersPanel({
       return;
     }
     setFormError(null);
-    const edits = creating ? codexProviderCreateEdits(form) : codexProviderUpdateEdits(form);
     void controller
-      .run(() => writeEdits(edits))
+      .run(async () => {
+        // 顺序契约（spec: codex-provider-runtime-env-key）：先建立跨连接屏障并写
+        // 本机凭据，再写 config.toml 引用，最后逐连接安装并解除屏障。
+        await saveCodexProviderWithKeySource(
+          {
+            keyService,
+            keySourceSupported,
+            unsupportedMessage: text.providerKeySourceUnsupported,
+            writeEdits,
+          },
+          { form, creating },
+        );
+      })
       .then((ok) => {
-        if (ok) setProviderForm(null);
+        if (ok) {
+          setProviderForm(null);
+          resetManagedKeyState();
+        }
       });
   };
 
@@ -165,64 +172,32 @@ export function CodexProvidersPanel({
       return;
     }
     setFormError(null);
-    void controller.run(() => writeEdits(codexProviderDeleteEdits(view.id)));
-  };
-
-  const submitModel = () => {
-    if (!modelForm || !workspaceRef) return;
-    const entry = codexModelEntryFromForm(modelForm);
-    if (!entry) {
-      setFormError(text.modelInvalid);
-      return;
-    }
-    setFormError(null);
-    const agent = controller.services.codezAgentService;
-    void controller
-      .run(() =>
-        writeCatalog(() =>
-          agent.writeCodexCatalogModel(codexCatalogModelWriteParams(modelForm, workspaceRef)),
-        ),
-      )
-      .then((ok) => {
-        if (ok) setModelForm(null);
-      });
-  };
-
-  const deleteModel = (slug: string) => {
-    if (!workspaceRef) return;
-    const agent = controller.services.codezAgentService;
     void controller.run(() =>
-      writeCatalog(() => agent.deleteCodexCatalogModel({ ...workspaceRef, slug })),
-    );
-  };
-
-  const toggleModelHidden = (view: CodexCatalogModelView) => {
-    if (!workspaceRef) return;
-    const source = catalog?.models.find((entry) => entry.slug === view.slug);
-    if (!source) return;
-    const agent = controller.services.codezAgentService;
-    void controller.run(() =>
-      writeCatalog(() =>
-        agent.writeCodexCatalogModel({
-          ...workspaceRef,
-          model: { ...source, visibility: view.hidden ? "list" : "hidden" },
-        }),
+      deleteCodexProviderWithKeyCleanup(
+        {
+          keyService,
+          keySourceSupported,
+          unsupportedMessage: text.providerKeySourceUnsupported,
+          writeEdits,
+        },
+        view,
       ),
     );
   };
 
-  const restartRuntime = () => {
-    if (!workspaceRef) return;
-    const agent = controller.services.codezAgentService;
-    void controller.run(async () => {
-      await agent.disposeWorkspace(workspaceRef);
-      // dispose 后的首次请求立即拉起新 runtime（代际 >1 → onAgentRuntimeRestarted →
-      // composer 模型下拉重拉 model/list），新 app-server 重读目录文件。
-      await loadCatalog();
-      setCatalogStale(false);
-      setNotice(text.saved);
+  const { submitModel, deleteModel, toggleModelHidden, restartRuntime } =
+    useCodexCatalogModelActions({
+      controller,
+      workspaceRef,
+      catalog,
+      modelForm,
+      text,
+      setFormError,
+      setModelForm,
+      setCatalogStale,
+      setNotice,
+      loadCatalog,
     });
-  };
 
   return (
     <div className="space-y-4">
@@ -250,6 +225,7 @@ export function CodexProvidersPanel({
               setFormError(null);
               setModelForm(null);
               setProviderForm({ form: codexProviderFormFrom(view), creating: false });
+              probeProvider(view);
             }}
             onDelete={() => deleteProvider(view)}
           />
@@ -263,6 +239,7 @@ export function CodexProvidersPanel({
               setFormError(null);
               setModelForm(null);
               setProviderForm({ form: codexProviderFormFrom(), creating: true });
+              resetManagedKeyState();
             }}
           >
             {text.providerAdd}
@@ -274,9 +251,22 @@ export function CodexProvidersPanel({
             creating={providerForm.creating}
             disabled={Boolean(disabled)}
             error={null}
+            keySourceSupported={keySourceSupported}
+            hasAuthCommand={
+              providers.find((provider) => provider.id === providerForm.form.id.trim())
+                ?.hasAuthCommand
+            }
+            externalEnvKey={(() => {
+              const envKey = providerForm.form.initialEnvKey;
+              return envKey && !isCodexManagedEnvKey(envKey) ? envKey : undefined;
+            })()}
+            managedKeyConfigured={managedKeyConfigured}
             onChange={(form) => setProviderForm({ ...providerForm, form })}
             onSubmit={submitProvider}
-            onCancel={() => setProviderForm(null)}
+            onCancel={() => {
+              setProviderForm(null);
+              resetManagedKeyState();
+            }}
           />
         ) : null}
       </CodexSection>

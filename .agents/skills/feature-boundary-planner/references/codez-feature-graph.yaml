@@ -40,7 +40,14 @@ nodes:
   - id: capability.codex-session-title
     kind: capability
     label: Codex automatic session title and model preference
-    aliases: [auto rename session, title generation model, 自动命名, 自动标题, 标题模型]
+    aliases:
+      [
+        auto rename session,
+        title generation model,
+        自动命名,
+        自动标题,
+        标题模型,
+      ]
     codeSeeds:
       - file: packages/codex-bridge/src/session-title.ts
         symbol: SessionTitleCoordinator
@@ -114,8 +121,19 @@ nodes:
   - id: "capability.plugin-store-mode-order"
     kind: "capability"
     label: "Public plugin categories ordered by interface mode"
-    aliases: ["插件分类排序", "Code Work 插件排序", "pluginStoreOrder", "@ 插件排序", "+ 插件排序"]
-    docs: ["docs/plugins/plugin-store-mode-order.md", "docs/plugin-marketplace-ui-ux.md"]
+    aliases:
+      [
+        "插件分类排序",
+        "Code Work 插件排序",
+        "pluginStoreOrder",
+        "@ 插件排序",
+        "+ 插件排序",
+      ]
+    docs:
+      [
+        "docs/plugins/plugin-store-mode-order.md",
+        "docs/plugin-marketplace-ui-ux.md",
+      ]
     codeSeeds:
       - file: "packages/ui/src/settings/PluginStoreListView.tsx"
         symbol: "PluginStoreListView"
@@ -180,7 +198,11 @@ nodes:
     kind: "capability"
     label: "Background Bash live output details"
     aliases: ["后台 Bash 输出", "后台终端进展", "background Bash logs"]
-    docs: ["docs/background-bash-output-details.md", "docs/bash-background-parity.md"]
+    docs:
+      [
+        "docs/background-bash-output-details.md",
+        "docs/bash-background-parity.md",
+      ]
     codeSeeds:
       - file: "packages/ui/src/v4/ConversationStatusPanel.tsx"
         symbol: "RunningStatusItem"
@@ -197,7 +219,11 @@ nodes:
     kind: "capability"
     label: "General and coding interface modes"
     aliases: ["通用模式", "编程模式"]
-    docs: ["docs/ui/general-coding-mode.md", "docs/testing/general-coding-mode-verification.md"]
+    docs:
+      [
+        "docs/ui/general-coding-mode.md",
+        "docs/testing/general-coding-mode-verification.md",
+      ]
     codeSeeds:
       - file: "packages/ui/src/lib/interfaceMode.ts"
         symbol: "normalizeInterfaceMode"
@@ -220,7 +246,8 @@ nodes:
   - id: "capability.dangerous-command-approval"
     kind: "capability"
     label: "Guarded permission mode"
-    aliases: ["guarded", "dangerousCommandRules", "危险命令确认", "强制单次确认"]
+    aliases:
+      ["guarded", "dangerousCommandRules", "危险命令确认", "强制单次确认"]
     docs:
       - "docs/dangerous-command-approval-v1-plan.md"
     codeSeeds:
@@ -299,7 +326,11 @@ nodes:
     kind: "capability"
     label: "Community and feedback client configuration"
     aliases: ["用户社群", "帮助配置", "feedbackUrl"]
-    docs: ["docs/ui/settings-community-link-config.md", "docs/testing/help-client-config-e2e.md"]
+    docs:
+      [
+        "docs/ui/settings-community-link-config.md",
+        "docs/testing/help-client-config-e2e.md",
+      ]
     codeSeeds:
       - file: "packages/shared/src/helpAppConfig.ts"
         symbol: "createHelpAppConfigReader"
@@ -1811,6 +1842,69 @@ nodes:
       - "Provisioning is deduplicated by Remote Environment rather than Workspace, window, workspacePath, workspaceIdentity, or remoteSessionId; one lane provides single-flight plus a latest-state trailing refresh."
       - "Desktop Main coordinates only Environment identity, trigger, generation, and correlation metadata. The selected Local Host reads Config and allowlisted credentials and sends the envelope to the Remote Target; Main never receives Config or Secret values."
       - "Desktop continuous and Web remote replayable session-delivery semantics are invariant under Provider Provisioning."
+
+  - id: "capability.provider-runtime-env-key"
+    kind: "capability"
+    label: "Personal API Key runtime environment source"
+    aliases:
+      - "临时环境变量 Key"
+      - "Provider Key 不落远端配置"
+      - "runtime environment API Key"
+    docs:
+      - "specs/provider-runtime-env-api-key.md"
+      - "docs/remote/provider-provisioning.md"
+    codeSeeds:
+      - symbol: "ApiKeyAccessConfig"
+        file: "packages/provider/src/config/provider-config.ts"
+      - symbol: "InlineEditableProviderCard"
+        file: "packages/ui/src/settings/model-provider-section/InlineEditableProviderCard.tsx"
+      - symbol: "createProviderProvisioningSource"
+        file: "packages/services/src/model-provider/providerProvisioningSource.ts"
+      - symbol: "AiSdkModelExecution"
+        file: "apps/codez-cli/packages/adapters/src/model/model-execution.ts"
+    invariants:
+      - "Environment mode keeps the value in the Desktop local credential owner; remote disk receives only a reference, and each remote connection receives its own volatile key before ready."
+      - "A process environment is not a per-person security boundary on a shared OS account; the mode does not promise exclusive use while connected."
+      - "Bash/MCP/plugin children never inherit the dedicated model key variable; missing or stale keys fail closed before model network I/O."
+
+  - id: "capability.codex-native-provider-runtime-env-key"
+    kind: "capability"
+    label: "Native Codex custom provider device-local environment Key source"
+    aliases:
+      - "Codex env_key"
+      - "Codex 原生临时 Key"
+      - "默认 Codex 供应商 Key"
+    docs:
+      - "specs/codex-provider-runtime-env-key.md"
+      - "specs/codex-model-provider-management.md"
+    codeSeeds:
+      - symbol: "CodexProvidersPanel"
+        file: "packages/ui/src/settings/codex/CodexProvidersPanel.tsx"
+      - symbol: "codexProvidersView"
+        file: "packages/ui/src/settings/codex/codexProviderSettings.ts"
+      - symbol: "createLocalServices"
+        file: "packages/services/src/node.ts"
+      - symbol: "createRemoteProviderProvisioningExecutor"
+        file: "packages/desktop/src/host/remoteProviderProvisioningService.ts"
+      - symbol: "createCodexNativeProviderKeyService"
+        file: "packages/services/src/model-provider/codexNativeProviderKey.ts"
+      - symbol: "createCodexProviderKeyGate"
+        file: "packages/codex-bridge/src/provider-key-gate.ts"
+      - symbol: "coordinateCodexKeyRotation"
+        file: "packages/desktop/src/main/desktopRemoteSessions.ts"
+    invariants:
+      - "Only native custom model_providers use env_key; legacy Personal Provider config and credentials stay separate."
+      - "The desktop credential owner holds the value; remote Codex config holds only the reference. A shared remote OS account and native tool children are not isolated from a running process environment."
+      - "Missing local credentials allow a remote settings-capable connection but the bridge gate fails before model network I/O; a per-Environment cross-window barrier stops old Agent input before credential/config mutation and releases only after per-connection installation acknowledgement."
+
+  - id: "surface.codex-native-provider-settings"
+    kind: "ui-surface"
+    label: "Default Codex settings custom provider form"
+    codeSeeds:
+      - symbol: "CodexProviderFormView"
+        file: "packages/ui/src/settings/codex/CodexProviderForms.tsx"
+      - symbol: "CodexProvidersPanel"
+        file: "packages/ui/src/settings/codex/CodexProvidersPanel.tsx"
 
   - id: "capability.remote-file-actions"
     kind: "capability"
@@ -5099,7 +5193,14 @@ nodes:
     kind: "capability"
     label: "Localized plugin management and bundled Plugin Creator draft entry"
     aliases:
-      ["plugin-creator", "创建插件", "插件本地化", "添加插件市场", "拼音搜索", "插件默认展开"]
+      [
+        "plugin-creator",
+        "创建插件",
+        "插件本地化",
+        "添加插件市场",
+        "拼音搜索",
+        "插件默认展开",
+      ]
     docs: ["docs/plugin-creator.md", "docs/plugin-capabilities-settings.md"]
     codeSeeds:
       - file: "packages/ui/src/settings/PluginAddMenu.tsx"
@@ -5118,8 +5219,14 @@ nodes:
   - id: "capability.bot-group-collaboration"
     kind: "capability"
     label: "Bot group and topic collaboration"
-    aliases: ["群聊机器人", "话题续接", "ReplyToChannel", "渠道提及", "Bot 历史附件"]
-    docs: ["docs/bots-feishu-group-collaboration.md", "docs/bots-topic-input-materials.md", "docs/testing/bots-e2e-coverage-matrix.md"]
+    aliases:
+      ["群聊机器人", "话题续接", "ReplyToChannel", "渠道提及", "Bot 历史附件"]
+    docs:
+      [
+        "docs/bots-feishu-group-collaboration.md",
+        "docs/bots-topic-input-materials.md",
+        "docs/testing/bots-e2e-coverage-matrix.md",
+      ]
     codeSeeds:
       - file: "packages/services/src/bots/botsService.ts"
         symbol: "createBotsService"
@@ -6531,6 +6638,34 @@ edges:
     type: "projects-local-config-into-remote-environment-for"
     rank: "must-inspect"
     condition: "A replace-style envelope updates the Remote Environment stores and refreshes its Registry; it does not transfer a Registry Snapshot or mutate existing Active Models."
+  - from: "capability.provider-runtime-env-key"
+    to: "surface.provider-settings"
+    type: "selects-key-source-in"
+    rank: "must-inspect"
+    condition: "Only manually configured API-key access exposes inline versus runtime environment; account and Codex-native providers remain separate."
+  - from: "capability.provider-runtime-env-key"
+    to: "capability.remote-provider-provisioning"
+    type: "redacts-persistent-config-and-installs-per-connection"
+    rank: "must-inspect"
+    condition: "Config remains Environment-scoped; volatile secrets are installed separately for every online SSH/WSL/Docker connection before ready."
+  - from: "capability.codex-native-provider-runtime-env-key"
+    to: "surface.codex-native-provider-settings"
+    type: "selects-key-source-in"
+    rank: "must-inspect"
+    condition: "Native Codex config.toml is the provider authority; the form writes env_key + device credential or experimental_bearer_token per key source."
+  - from: "capability.codex-native-provider-runtime-env-key"
+    to: "capability.provider-runtime-env-key"
+    type: "shares-security-goal-without-sharing-config-or-tool-isolation"
+    rank: "invariant-only"
+    condition: "Native Codex app-server may pass its process environment to MCP/tools; the legacy no-tool-inheritance guarantee does not apply."
+  - from: "capability.codex-native-provider-runtime-env-key"
+    to: "boundary.desktop-continuous"
+    type: "must-not-change-delivery-semantics"
+    rank: "invariant-only"
+  - from: "capability.codex-native-provider-runtime-env-key"
+    to: "boundary.web-remote-replayable"
+    type: "must-not-change-recovery-semantics"
+    rank: "invariant-only"
   - from: "capability.remote-provider-provisioning"
     to: "capability.workspace-identity"
     type: "deduplicates-by-remote-environment-beyond"

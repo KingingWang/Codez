@@ -1,6 +1,10 @@
 import { Button } from "@/components/ui/button.js";
 import { CodexConfirmButton } from "./CodexSettingsParts.js";
-import { codexProviderDeleteBlock, type CodexProviderView } from "./codexProviderSettings.js";
+import {
+  codexProviderDeleteBlock,
+  isCodexManagedEnvKey,
+  type CodexProviderView,
+} from "./codexProviderSettings.js";
 import { useCodexMessages } from "./messages.js";
 
 export function CodexProviderRow({
@@ -32,6 +36,11 @@ export function CodexProviderRow({
               {text.providerDefaultBadge}
             </span>
           ) : null}
+          {isCodexManagedEnvKey(view.envKey) ? (
+            <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-ui-sm text-foreground-subtle">
+              {text.providerDeviceKeyBadge}
+            </span>
+          ) : null}
         </p>
         <p className="break-all font-mono text-ui-sm text-foreground-subtlest">
           {view.id} · {view.wireApi}
@@ -41,21 +50,35 @@ export function CodexProviderRow({
             : text.providerModelCountUnknown}
         </p>
         {!view.isDefault && view.modelCount > 0 ? (
-          <p className="text-ui-sm text-foreground-subtle">{text.providerDeleteModelsBlocked}</p>
+          <p className="text-ui-sm text-foreground-subtle">
+            {text.providerDeleteModelsBlocked}
+          </p>
         ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {!view.isDefault ? (
-          <Button variant="outline" size="sm" disabled={disabled} onClick={onSetDefault}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={onSetDefault}
+          >
             {text.providerSetDefault}
           </Button>
         ) : null}
-        <Button variant="outline" size="sm" disabled={disabled} onClick={onEdit}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          onClick={onEdit}
+        >
           {text.providerEdit}
         </Button>
         <CodexConfirmButton
           label={text.providerDelete}
-          disabled={disabled || codexProviderDeleteBlock(view, catalogReady) !== null}
+          disabled={
+            disabled || codexProviderDeleteBlock(view, catalogReady) !== null
+          }
           onConfirm={onDelete}
         />
       </div>

@@ -3073,6 +3073,17 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.endpointNoMatch": "没有匹配的接口地址",
   "settings.modelProvider.apiKey": "API Key",
   "settings.modelProvider.apiKeyPlaceholder": "输入 API Key",
+  "settings.modelProvider.keyMode": "Key 保存方式",
+  "settings.modelProvider.keyMode.config": "写入配置文件",
+  "settings.modelProvider.keyMode.runtime": "临时环境变量（远端不落盘）",
+  "settings.modelProvider.keyMode.runtimeHint":
+    "Key 只保存在本机 Codez 数据中；远端进程运行期间，同一系统账户的其他人仍可能使用。旧 Key 如曾同步到远端，请轮换。",
+  "settings.modelProvider.keyMode.runtimeSaved": "Key 已保存在本机；输入新值后点击保存。",
+  "settings.modelProvider.keyMode.save": "保存临时 Key",
+  "settings.modelProvider.keyMode.confirmTitle": "更改模型供应商 Key？",
+  "settings.modelProvider.keyMode.confirmDescription":
+    "正在运行的任务可能被中断，已接受的输入不会自动重发。确认后应用新 Key。",
+  "settings.modelProvider.keyMode.confirmAction": "确认更改",
   "settings.modelProvider.apiKeyDisabledHint": "设置 API Key 后即可启用。",
   "settings.modelProvider.getApiKey": "获取 API Key",
   "settings.modelProvider.viewUsage": "查看用量",

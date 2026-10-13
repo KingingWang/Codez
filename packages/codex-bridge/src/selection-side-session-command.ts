@@ -16,11 +16,13 @@ import {
   SELECTION_SIDE_CHAT_THREAD_SOURCE,
   withSelectionSideChatBoundary,
 } from "./selection-side-chat.js";
+import type { CodexProviderKeyGate } from "./provider-key-gate.js";
 
 export interface SelectionSideSessionContext {
   rpc: CodexRpcPort;
   store: ThreadStateStore;
   attachments?: ResolveAttachments;
+  providerKeyGate?: CodexProviderKeyGate;
 }
 
 /**
@@ -51,6 +53,8 @@ export async function createSelectionSideSession(
     childId,
     attachments,
   );
+  // fork 继承父线程供应商；显式选择优先，缺省时由门禁回退到 config 默认供应商。
+  await context.providerKeyGate?.assertTurnAllowed(p.firstInput.modelSelection?.providerId);
   const started = await rpc.request("turn/start", {
     threadId: childId,
     input: childInput,

@@ -16,6 +16,10 @@ import {
 } from "@codez/shared";
 import { parseNativeBrowserCuaFacts, runNativeBrowserCuaMcp } from "./native-browser-cua-mcp.js";
 import { describeBridgeFailure, type BridgeFailureOrigin } from "./diagnostics.js";
+import {
+  createCodexProviderKeyGate,
+  parseBlockedCodexProviderIds,
+} from "./provider-key-gate.js";
 
 async function main(): Promise<void> {
   if (process.argv[2] === CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE) {
@@ -96,6 +100,11 @@ async function main(): Promise<void> {
     void stop(false);
   });
   await rpc.initialize();
+  // 本机临时 Key 门禁：Host 在 spawn 时注入缺凭据的供应商 id；缺省为空集即全部放行。
+  const providerKeyGate = createCodexProviderKeyGate({
+    rpc,
+    blockedProviderIds: parseBlockedCodexProviderIds(),
+  });
   runtime = new BridgeRuntime({
     rpc,
     cwd,
@@ -105,6 +114,7 @@ async function main(): Promise<void> {
     notify: (method, params) => write({ method, params }),
     fatal,
     nativeBrowserCua: parseNativeBrowserCuaFacts(),
+    providerKeyGate,
   });
   const framer = new RpcFramer();
   const receive = (message: RpcEnvelope): boolean => {
@@ -129,6 +139,11 @@ async function main(): Promise<void> {
               id,
               error: { code: -32000, message: "Codex response exceeds the bridge frame limit" },
             });
+          }
+          // 配置写入成功后门禁的默认供应商缓存必须失效；多窗口/外部写入由
+          // Host 侧轮换屏障重启进程兜底（新进程重新读取）。
+          if (message.method === "config/batchWrite" || message.method === "config/value/write") {
+            providerKeyGate.invalidateConfig();
           }
           await response.afterResponse?.();
         },

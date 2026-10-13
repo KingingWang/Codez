@@ -30,6 +30,45 @@ function personalRepository(root: string) {
 }
 
 describe("Provider Provisioning Source", () => {
+  it("keeps runtime-environment API keys out of the persisted envelope", async () => {
+    const root = await mkdtemp(join(tmpdir(), "codez-provider-provisioning-source-"));
+    const repository = personalRepository(root);
+    await repository.update(() => ({
+      providers: parsePersonalProviderConfigMap({
+        providerRules: [
+          {
+            providerId: "custom",
+            config: {
+              group: "standard-personal",
+              access: { type: "api-key", apiKeyEnv: "CODEZ_MODEL_API_KEY_ABC123" },
+              api: { type: "openai-chat-completions", baseUrl: "https://example.com/v1" },
+              personalModelIds: ["model-a"],
+            },
+          },
+        ],
+      }),
+      models: ModelConfigRules.empty(),
+    }));
+    const load = vi.fn(async () => "local-only-secret");
+    const source = createProviderProvisioningSource({
+      personalRepository: repository,
+      settingService: { get: vi.fn(async () => ({})) } as never,
+      credentialFilePath: join(root, "credentials.json"),
+      personalConfigFilePath: join(root, "provider_config.json"),
+      credentialService: { load },
+    });
+
+    const envelope = await source.read("sync-env");
+    expect(envelope.schemaVersion).toBe(3);
+    expect(JSON.stringify(envelope)).not.toContain("local-only-secret");
+    expect(await source.readRuntimeApiKeys()).toEqual({
+      configFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/u),
+      keys: [{ name: "CODEZ_MODEL_API_KEY_ABC123", value: "local-only-secret" }],
+    });
+    expect(load).toHaveBeenCalledWith("provider-runtime-key:custom");
+    repository.dispose();
+  });
+
   it("exports sparse Personal Config, default, account settings and only provider credentials", async () => {
     const root = await mkdtemp(join(tmpdir(), "codez-provider-provisioning-source-"));
     const credentialsPath = join(root, "credentials.json");

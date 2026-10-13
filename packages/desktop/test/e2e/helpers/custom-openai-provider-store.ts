@@ -32,6 +32,7 @@ const E2E_MODEL_CONTEXT_WINDOW = 200_000;
 const E2E_MODEL_MAX_OUTPUT_TOKENS = 32_000;
 
 interface SeedCustomOpenAIProviderOptions {
+  apiKey?: string;
   inputModalities?: readonly E2EProviderModality[];
   modelId: string;
   providerId: string;
@@ -39,6 +40,7 @@ interface SeedCustomOpenAIProviderOptions {
 }
 
 export async function seedCustomOpenAIChatCompletionsProvider({
+  apiKey,
   inputModalities,
   modelId,
   providerId,
@@ -54,7 +56,7 @@ export async function seedCustomOpenAIChatCompletionsProvider({
   const providerConfig = new ProviderConfig({
     // 新格式要求个人 Provider 明确分组，否则只有配置记录而无可执行模型。
     group: "standard-personal",
-    access: new ApiKeyAccessConfig({ apiKey: getUpstreamApiKey() }),
+    access: new ApiKeyAccessConfig({ apiKey: apiKey ?? getUpstreamApiKey() }),
     api: new ProviderApiConfig({ type: "openai-chat-completions", baseUrl: baseURL }),
     personalModelIds: [modelId],
   });
@@ -74,6 +76,7 @@ export async function seedCustomOpenAIChatCompletionsProvider({
 
   // 返回值只是 E2E 对 Personal Config 的观察投影，不参与任何运行时装配。
   return createSeededOpenAIProvider({
+    apiKey,
     baseURL,
     inputModalities,
     modelId,
@@ -131,6 +134,7 @@ function createE2EModelConfig(
 }
 
 function createSeededOpenAIProvider({
+  apiKey,
   baseURL,
   inputModalities,
   modelId,
@@ -152,7 +156,7 @@ function createSeededOpenAIProvider({
     id: providerId,
     name: providerName,
     apiFormat: "openai-chat-completions",
-    apiKey: getUpstreamApiKey(),
+    apiKey: apiKey ?? getUpstreamApiKey(),
     apiKeyRequired: true,
     defaultKind: "openai-compatible",
     endpoints: { baseURL, paths: { "openai-compatible": "" } },

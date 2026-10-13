@@ -30,6 +30,7 @@ import {
   codexProvidersView,
   codexProviderSetDefaultEdits,
   codexProviderUpdateEdits,
+  isCodexManagedEnvKey,
 } from "./codexProviderSettings.js";
 import {
   codexUserApprovalOptions,
@@ -47,11 +48,17 @@ import {
   getCodexNativeBrowserCuaLegacyRegistration,
 } from "./codexSettingsData.js";
 import { roleFormToWriteInput } from "./CodexAgentsPanel.js";
-import { codexPanelToSection, codexSectionToPanel } from "./codexSettingsNav.js";
+import {
+  codexPanelToSection,
+  codexSectionToPanel,
+} from "./codexSettingsNav.js";
 import { selectedCodexHistorySessionId } from "./codexHistorySelection.js";
 import { getDefaultWorkspaceState } from "@/store/codezSessionStoreTypes.js";
 import { useCodezSessionStore } from "@/store/codezSessionStore.js";
-import { parseCodexConfigBatchEdits, parseCodexConfigValueEdit } from "./codexConfigValidation.js";
+import {
+  parseCodexConfigBatchEdits,
+  parseCodexConfigValueEdit,
+} from "./codexConfigValidation.js";
 
 const model = codexModelSchema.parse({
   id: "catalog-id",
@@ -61,7 +68,9 @@ const model = codexModelSchema.parse({
   hidden: false,
   isDefault: true,
   defaultReasoningEffort: "medium",
-  supportedReasoningEfforts: [{ reasoningEffort: "medium", description: "Balanced" }],
+  supportedReasoningEfforts: [
+    { reasoningEffort: "medium", description: "Balanced" },
+  ],
 });
 const plugin = {
   id: "sample@market",
@@ -83,7 +92,13 @@ test("native configuration form validates JSON and native edit schema before mut
     parseCodexConfigBatchEdits(
       '[{"keyPath":"approval_policy","value":"on-request","mergeStrategy":"replace"}]',
     ),
-    [{ keyPath: "approval_policy", value: "on-request", mergeStrategy: "replace" }],
+    [
+      {
+        keyPath: "approval_policy",
+        value: "on-request",
+        mergeStrategy: "replace",
+      },
+    ],
   );
   assert.throws(() => parseCodexConfigValueEdit("model", "{"));
   assert.throws(() => parseCodexConfigBatchEdits("{"));
@@ -96,20 +111,37 @@ test("history selection reads the active task only from the matching workspace i
     ...useCodezSessionStore.getState(),
     workspaces: {
       "/same": { ...getDefaultWorkspaceState(), activeTaskId: "local-thread" },
-      "remote:A": { ...getDefaultWorkspaceState(), activeTaskId: "remote-thread" },
+      "remote:A": {
+        ...getDefaultWorkspaceState(),
+        activeTaskId: "remote-thread",
+      },
       "remote:B": { ...getDefaultWorkspaceState(), activeTaskId: null },
     },
   };
   assert.equal(selectedCodexHistorySessionId(state, "/same"), "local-thread");
-  assert.equal(selectedCodexHistorySessionId(state, "/same", "remote:A"), "remote-thread");
-  assert.equal(selectedCodexHistorySessionId(state, "/same", "remote:B"), undefined);
-  assert.equal(selectedCodexHistorySessionId(state, "/same", "remote:C"), undefined);
-  assert.equal(selectedCodexHistorySessionId(state, null, "remote:A"), undefined);
+  assert.equal(
+    selectedCodexHistorySessionId(state, "/same", "remote:A"),
+    "remote-thread",
+  );
+  assert.equal(
+    selectedCodexHistorySessionId(state, "/same", "remote:B"),
+    undefined,
+  );
+  assert.equal(
+    selectedCodexHistorySessionId(state, "/same", "remote:C"),
+    undefined,
+  );
+  assert.equal(
+    selectedCodexHistorySessionId(state, null, "remote:A"),
+    undefined,
+  );
 });
 
 test("retired untrusted approval is never offered as an explicit user configuration", () => {
   assert.deepEqual(codexUserApprovalOptions(), ["on-request", "never"]);
-  assert.deepEqual(codexUserApprovalOptions(["untrusted", "on-request"]), ["on-request"]);
+  assert.deepEqual(codexUserApprovalOptions(["untrusted", "on-request"]), [
+    "on-request",
+  ]);
 });
 
 test("settings allowlist rejects execution, filesystem and unknown methods", () => {
@@ -121,7 +153,11 @@ test("settings allowlist rejects execution, filesystem and unknown methods", () 
     "plugin/marketplace/add",
     "unknown",
   ]) {
-    assert.equal(codexRequestSchema.safeParse({ method }).success, false, method);
+    assert.equal(
+      codexRequestSchema.safeParse({ method }).success,
+      false,
+      method,
+    );
   }
   for (const method of [
     "account/read",
@@ -145,21 +181,32 @@ test("settings allowlist rejects execution, filesystem and unknown methods", () 
     "marketplace/remove",
     "marketplace/upgrade",
   ]) {
-    assert.equal(codexRequestSchema.safeParse({ method }).success, true, method);
+    assert.equal(
+      codexRequestSchema.safeParse({ method }).success,
+      true,
+      method,
+    );
   }
   assert.equal(
-    codexRequestSchema.safeParse({ method: "account/read", id: "injected" }).success,
+    codexRequestSchema.safeParse({ method: "account/read", id: "injected" })
+      .success,
     false,
   );
   assert.deepEqual(
-    codexRequestSchema.parse({ method: "config/read", params: { cwd: "/fixture" } }),
+    codexRequestSchema.parse({
+      method: "config/read",
+      params: { cwd: "/fixture" },
+    }),
     { method: "config/read", params: { cwd: "/fixture" } },
   );
 });
 
 test("account parsing accepts native variants without inventing a logged-in state", () => {
   assert.equal(
-    codexAccountReadResponseSchema.parse({ account: null, requiresOpenaiAuth: false }).account,
+    codexAccountReadResponseSchema.parse({
+      account: null,
+      requiresOpenaiAuth: false,
+    }).account,
     null,
   );
   assert.equal(
@@ -170,11 +217,15 @@ test("account parsing accepts native variants without inventing a logged-in stat
     "chatgpt",
   );
   assert.equal(
-    codexAccountReadResponseSchema.safeParse({ account: { email: "fixture" } }).success,
+    codexAccountReadResponseSchema.safeParse({ account: { email: "fixture" } })
+      .success,
     false,
   );
   assert.equal(
-    codexLoginResponseSchema.safeParse({ type: "chatgpt", authUrl: "https://example.com" }).success,
+    codexLoginResponseSchema.safeParse({
+      type: "chatgpt",
+      authUrl: "https://example.com",
+    }).success,
     false,
   );
   const login = codexLoginResponseSchema.parse({
@@ -197,8 +248,14 @@ test("authorization URLs reject privileged schemes, credentials and insecure rem
   ]) {
     assert.throws(() => codexAuthorizationUrl(url), url);
   }
-  assert.equal(codexAuthorizationUrl("https://example.com/login"), "https://example.com/login");
-  assert.equal(codexAuthorizationUrl("http://localhost:1455/auth"), "http://localhost:1455/auth");
+  assert.equal(
+    codexAuthorizationUrl("https://example.com/login"),
+    "https://example.com/login",
+  );
+  assert.equal(
+    codexAuthorizationUrl("http://localhost:1455/auth"),
+    "http://localhost:1455/auth",
+  );
 });
 
 test("writes use the base native user layer, not a project/profile origin version", () => {
@@ -206,7 +263,12 @@ test("writes use the base native user layer, not a project/profile origin versio
     config: {},
     origins: {},
     layers: [
-      { name: { type: "project" }, version: "project-v1", config: {}, disabledReason: null },
+      {
+        name: { type: "project" },
+        version: "project-v1",
+        config: {},
+        disabledReason: null,
+      },
       {
         name: { type: "user", file: "/fixture/profile.toml", profile: "work" },
         version: "profile-v2",
@@ -234,7 +296,13 @@ test("native config layers may omit disabledReason", () => {
     codexConfigResponseSchema.safeParse({
       config: {},
       origins: {},
-      layers: [{ name: { type: "user", file: "/fixture/config.toml" }, version: "v1", config: {} }],
+      layers: [
+        {
+          name: { type: "user", file: "/fixture/config.toml" },
+          version: "v1",
+          config: {},
+        },
+      ],
     }).success,
     true,
   );
@@ -243,7 +311,11 @@ test("native config layers may omit disabledReason", () => {
 test("model selection writes the native model name and rejects unsupported effort", () => {
   assert.deepEqual(codexModelEdits(model, "medium"), [
     { keyPath: "model", value: "test-model", mergeStrategy: "replace" },
-    { keyPath: "model_reasoning_effort", value: "medium", mergeStrategy: "replace" },
+    {
+      keyPath: "model_reasoning_effort",
+      value: "medium",
+      mergeStrategy: "replace",
+    },
   ]);
   assert.throws(() => codexModelEdits(model, "xhigh"));
   assert.equal(
@@ -253,8 +325,9 @@ test("model selection writes the native model name and rejects unsupported effor
     true,
   );
   assert.equal(
-    codexConfigEditsSchema.safeParse([{ keyPath: "", value: "fixture", mergeStrategy: "replace" }])
-      .success,
+    codexConfigEditsSchema.safeParse([
+      { keyPath: "", value: "fixture", mergeStrategy: "replace" },
+    ]).success,
     false,
   );
   assert.equal(
@@ -272,14 +345,22 @@ test("native plugin parsing and install selectors distinguish local and remote m
     featuredPluginIds: [],
   });
   assert.equal(response.marketplaces[0]?.plugins[0]?.id, plugin.id);
-  assert.equal(codexPluginsResponseSchema.safeParse({ data: [plugin] }).success, false);
+  assert.equal(
+    codexPluginsResponseSchema.safeParse({ data: [plugin] }).success,
+    false,
+  );
   assert.deepEqual(
-    codexPluginInstallRequest({ name: "market", path: null, plugins: [] }, plugin).params,
+    codexPluginInstallRequest(
+      { name: "market", path: null, plugins: [] },
+      plugin,
+    ).params,
     { pluginName: "sample", remoteMarketplaceName: "market" },
   );
   assert.deepEqual(
-    codexPluginInstallRequest({ name: "market", path: "/fixture/market.json", plugins: [] }, plugin)
-      .params,
+    codexPluginInstallRequest(
+      { name: "market", path: "/fixture/market.json", plugins: [] },
+      plugin,
+    ).params,
     { pluginName: "sample", marketplacePath: "/fixture/market.json" },
   );
   assert.throws(() =>
@@ -298,13 +379,17 @@ test("native plugin parsing and install selectors distinguish local and remote m
 
 test("model and MCP readers consume all native pages and reject looping cursors", async () => {
   const calls: CodexRequest[] = [];
-  const data = await readCodexResource("models", "/fixture", async (request) => {
-    calls.push(request);
-    return {
-      data: [{ ...model, id: String(calls.length) }],
-      nextCursor: calls.length === 1 ? "next" : null,
-    };
-  });
+  const data = await readCodexResource(
+    "models",
+    "/fixture",
+    async (request) => {
+      calls.push(request);
+      return {
+        data: [{ ...model, id: String(calls.length) }],
+        nextCursor: calls.length === 1 ? "next" : null,
+      };
+    },
+  );
   assert.equal(data.data.length, 2);
   assert.deepEqual(calls[1]?.params, { includeHidden: false, cursor: "next" });
   let page = 0;
@@ -314,7 +399,10 @@ test("model and MCP readers consume all native pages and reject looping cursors"
   }));
   assert.equal(mcp.nextCursor, null);
   await assert.rejects(
-    readCodexResource("mcp", "/fixture", async () => ({ data: [], nextCursor: "loop" })),
+    readCodexResource("mcp", "/fixture", async () => ({
+      data: [],
+      nextCursor: "loop",
+    })),
     /cursor/,
   );
 });
@@ -329,7 +417,9 @@ test("workspace reads carry native cwd and malformed lists fail rather than look
     forceReload: true,
   });
   await assert.rejects(
-    readCodexResource("skills", "/fixture", async () => ({ data: [{ skills: [] }] })),
+    readCodexResource("skills", "/fixture", async () => ({
+      data: [{ skills: [] }],
+    })),
   );
   await assert.rejects(
     readCodexResource("mcp", "/fixture", async () => ({
@@ -340,7 +430,15 @@ test("workspace reads carry native cwd and malformed lists fail rather than look
 });
 
 test("legacy settings routes resolve to Codex or explicit unsupported capability notices", () => {
-  for (const route of ["codex", "modelProvider", "skill", "subagents", "mcp", "plugin", "memory"])
+  for (const route of [
+    "codex",
+    "modelProvider",
+    "skill",
+    "subagents",
+    "mcp",
+    "plugin",
+    "memory",
+  ])
     assert.equal(isCodexSettingsSection(route), true);
   for (const route of ["computerUse", "migration"])
     assert.equal(isCodexUnsupportedSection(route), true);
@@ -410,7 +508,10 @@ test("agent role form validates like the bridge and omits blank optional fields"
     { name: "researcher", developerInstructions: "You research." },
   );
   // 编辑（originalName 存在）时不走新建字符集校验，名称保持锁定值。
-  assert.equal(roleFormToWriteInput({ ...base, originalName: "researcher" }).name, "researcher");
+  assert.equal(
+    roleFormToWriteInput({ ...base, originalName: "researcher" }).name,
+    "researcher",
+  );
   for (const bad of [
     { ...base, name: " " },
     { ...base, name: "has.dot" },
@@ -423,7 +524,11 @@ test("agent role form validates like the bridge and omits blank optional fields"
   }
   // 编辑既有非常规字符集角色：bridge 按原名定位，不重新派生文件名。
   assert.equal(
-    roleFormToWriteInput({ ...base, name: "weird—name", originalName: "weird—name" }).name,
+    roleFormToWriteInput({
+      ...base,
+      name: "weird—name",
+      originalName: "weird—name",
+    }).name,
     "weird—name",
   );
 });
@@ -443,7 +548,9 @@ const nativeDescriptor = {
 function nativeLegacyConfig(registration: unknown, version = "v1") {
   const mcpServers = {
     "other-mcp": { command: "/fixture/other" },
-    ...(registration === undefined ? {} : { "codez-desktop-browser-cua": registration }),
+    ...(registration === undefined
+      ? {}
+      : { "codez-desktop-browser-cua": registration }),
   };
   return codexConfigResponseSchema.parse({
     config: { mcp_servers: mcpServers },
@@ -487,12 +594,14 @@ test("legacy native Browser/CUA cleanup rereads, deletes only the exact value, t
     {
       async request(value) {
         calls.push(value);
-        if (value.method === "config/read") return nativeLegacyConfig(nativeLegacyValue, "v2");
+        if (value.method === "config/read")
+          return nativeLegacyConfig(nativeLegacyValue, "v2");
         if (value.method === "mcpServerStatus/list")
           return {
             data: [],
             nextCursor:
-              calls.filter((entry) => entry.method === "mcpServerStatus/list").length === 1
+              calls.filter((entry) => entry.method === "mcpServerStatus/list")
+                .length === 1
                 ? "next"
                 : null,
           };
@@ -514,8 +623,13 @@ test("legacy native Browser/CUA cleanup rereads, deletes only the exact value, t
 
 test("session-only browser override is not mistaken for a user-level legacy registration", () => {
   const config = nativeLegacyConfig(undefined);
-  config.config.mcp_servers = { "codez-desktop-browser-cua": nativeLegacyValue };
-  assert.equal(getCodexNativeBrowserCuaLegacyRegistration(config, nativeDescriptor), "none");
+  config.config.mcp_servers = {
+    "codez-desktop-browser-cua": nativeLegacyValue,
+  };
+  assert.equal(
+    getCodexNativeBrowserCuaLegacyRegistration(config, nativeDescriptor),
+    "none",
+  );
 });
 
 test("legacy native Browser/CUA cleanup fails closed on stale version and customized value", async () => {
@@ -525,7 +639,10 @@ test("legacy native Browser/CUA cleanup fails closed on stale version and custom
       {
         async request(value) {
           calls.push(value);
-          return nativeLegacyConfig({ ...nativeLegacyValue, args: ["/custom/bridge.cjs"] });
+          return nativeLegacyConfig({
+            ...nativeLegacyValue,
+            args: ["/custom/bridge.cjs"],
+          });
         },
       },
       nativeDescriptor,
@@ -608,7 +725,10 @@ test("native Browser/CUA legacy comparison recognizes only exact generated value
     "none",
   );
   assert.equal(
-    getCodexNativeBrowserCuaLegacyRegistration(nativeLegacyConfig(null), nativeDescriptor as never),
+    getCodexNativeBrowserCuaLegacyRegistration(
+      nativeLegacyConfig(null),
+      nativeDescriptor as never,
+    ),
     "none",
   );
   assert.equal(
@@ -625,10 +745,14 @@ test("native Browser/CUA legacy comparison recognizes only exact generated value
         ...nativeLegacyValue,
         env: {
           ...nativeLegacyValue.env,
-          CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/user/codez-native-browser-cua-default.token",
+          CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE:
+            "/user/codez-native-browser-cua-default.token",
         },
       }),
-      { ...nativeDescriptor, tokenFile: "/user/codez-native-browser-cua-default-7.token" } as never,
+      {
+        ...nativeDescriptor,
+        tokenFile: "/user/codez-native-browser-cua-default-7.token",
+      } as never,
     ),
     "codez-generated",
   );
@@ -639,7 +763,8 @@ test("native Browser/CUA legacy comparison recognizes only exact generated value
         ...nativeLegacyValue,
         env: {
           ...nativeLegacyValue.env,
-          CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/user/codez-native-browser-cua-dev-build.token",
+          CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE:
+            "/user/codez-native-browser-cua-dev-build.token",
         },
       }),
       {
@@ -696,7 +821,10 @@ test("native Browser/CUA legacy comparison recognizes only exact generated value
           CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/user/custom.token",
         },
       }),
-      { ...nativeDescriptor, tokenFile: "/user/codez-native-browser-cua-default-7.token" } as never,
+      {
+        ...nativeDescriptor,
+        tokenFile: "/user/codez-native-browser-cua-default-7.token",
+      } as never,
     ),
     "customized",
   );
@@ -724,7 +852,8 @@ test("native Browser/CUA legacy comparison recognizes only exact generated value
           calls.push(value);
           if (value.method === "config/read")
             return nativeLegacyConfig(nativeLegacyValue, `v${++configs}`);
-          if (value.method === "mcpServerStatus/list") return { data: [], nextCursor: "loop" };
+          if (value.method === "mcpServerStatus/list")
+            return { data: [], nextCursor: "loop" };
           return {};
         },
       },
@@ -732,7 +861,10 @@ test("native Browser/CUA legacy comparison recognizes only exact generated value
     ),
     /Invalid Codex pagination cursor/u,
   );
-  assert.equal(calls.filter((entry) => entry.method === "mcpServerStatus/list").length, 2);
+  assert.equal(
+    calls.filter((entry) => entry.method === "mcpServerStatus/list").length,
+    2,
+  );
 });
 
 test("codexMemoryConfigView reads effective feature flag and raw memories table", () => {
@@ -793,7 +925,9 @@ test("codexMemoryEdit builds replace edits and null removes a key", () => {
 });
 
 test("codexMemoryNumberEdit validates range and resets on empty input", () => {
-  const field = CODEX_MEMORY_NUMBER_FIELDS.find((entry) => entry.key === "maxRolloutsPerStartup");
+  const field = CODEX_MEMORY_NUMBER_FIELDS.find(
+    (entry) => entry.key === "maxRolloutsPerStartup",
+  );
   assert.ok(field);
   assert.deepEqual(codexMemoryNumberEdit(field, "4"), {
     keyPath: "memories.max_rollouts_per_startup",
@@ -825,7 +959,10 @@ test("providers view reads model_providers with token presence only and default-
           requires_openai_auth: true,
           experimental_bearer_token: "sk-secret-value",
         },
-        "openai-my": { base_url: "http://127.0.0.1:39081/v1", wire_api: "responses" },
+        "openai-my": {
+          base_url: "http://127.0.0.1:39081/v1",
+          wire_api: "responses",
+        },
       },
     },
     origins: {},
@@ -844,6 +981,8 @@ test("providers view reads model_providers with token presence only and default-
       wireApi: "responses",
       requiresOpenaiAuth: false,
       hasBearerToken: false,
+      envKey: undefined,
+      hasAuthCommand: false,
       isDefault: true,
       modelCount: 1,
     },
@@ -855,6 +994,8 @@ test("providers view reads model_providers with token presence only and default-
       requiresOpenaiAuth: true,
       // 只保留存在性；明文 token 绝不进入视图（UI 不回显）。
       hasBearerToken: true,
+      envKey: undefined,
+      hasAuthCommand: false,
       isDefault: false,
       modelCount: 2,
     },
@@ -862,8 +1003,121 @@ test("providers view reads model_providers with token presence only and default-
   assert.equal(JSON.stringify(view).includes("sk-secret-value"), false);
 });
 
+test("providers view projects env_key references and auth command without values", () => {
+  const config = codexConfigResponseSchema.parse({
+    config: {
+      model_providers: {
+        managed: {
+          base_url: "http://127.0.0.1:39080/v1",
+          env_key: "CODEZ_CODEX_API_KEY_AAAA0000BBBB1111",
+        },
+        external: {
+          base_url: "http://127.0.0.1:39081/v1",
+          env_key: "MY_OWN_ENV",
+        },
+        withauth: {
+          base_url: "http://127.0.0.1:39082/v1",
+          auth: { command: "token-cli" },
+        },
+      },
+    },
+    origins: {},
+    layers: null,
+  });
+  const view = codexProvidersView(config, []);
+  const byId = new Map(view.map((entry) => [entry.id, entry]));
+  assert.equal(
+    byId.get("managed")?.envKey,
+    "CODEZ_CODEX_API_KEY_AAAA0000BBBB1111",
+  );
+  assert.equal(isCodexManagedEnvKey(byId.get("managed")?.envKey), true);
+  assert.equal(isCodexManagedEnvKey(byId.get("external")?.envKey), false);
+  assert.equal(byId.get("withauth")?.hasAuthCommand, true);
+  // 视图不含任何 Key 值字段。
+  assert.equal(JSON.stringify(view).includes("token-cli"), false);
+});
+
+test("provider key source edits: managed env_key vs config file semantics", () => {
+  const base = codexProviderFormFrom({
+    id: "acme",
+    name: "acme",
+    baseUrl: "http://127.0.0.1:9000/v1",
+    wireApi: "chat",
+    requiresOpenaiAuth: false,
+    hasBearerToken: true,
+    envKey: "CODEZ_CODEX_API_KEY_AAAA0000BBBB1111",
+    hasAuthCommand: false,
+    isDefault: false,
+    modelCount: 0,
+  });
+  // 既有 App 托管引用 → 编辑表单回到「本机保存」来源。
+  assert.equal(base.keySource, "runtime-env");
+  assert.equal(base.initialEnvKey, "CODEZ_CODEX_API_KEY_AAAA0000BBBB1111");
+
+  const runtimeEnv = codexProviderUpdateEdits(
+    { ...base, bearerToken: "" },
+    { envName: "CODEZ_CODEX_API_KEY_AAAA0000BBBB1111" },
+  );
+  assert.deepEqual(runtimeEnv.at(-2), {
+    keyPath: "model_providers.acme.env_key",
+    value: "CODEZ_CODEX_API_KEY_AAAA0000BBBB1111",
+    mergeStrategy: "replace",
+  });
+  // 本机保存模式必须移除明文键。
+  assert.deepEqual(runtimeEnv.at(-1), {
+    keyPath: "model_providers.acme.experimental_bearer_token",
+    value: null,
+    mergeStrategy: "replace",
+  });
+  assert.equal(
+    JSON.stringify(runtimeEnv).includes('experimental_bearer_token", value: "'),
+    false,
+  );
+
+  // 切回配置文件：移除 env_key 引用，按输入写入明文。
+  const backToFile = codexProviderUpdateEdits({
+    ...base,
+    keySource: "config-file",
+    bearerToken: "sk-new",
+  });
+  assert.deepEqual(backToFile.at(-2), {
+    keyPath: "model_providers.acme.env_key",
+    value: null,
+    mergeStrategy: "replace",
+  });
+  assert.deepEqual(backToFile.at(-1), {
+    keyPath: "model_providers.acme.experimental_bearer_token",
+    value: "sk-new",
+    mergeStrategy: "replace",
+  });
+
+  // runtime-env 缺 envName 是编程错误：拒绝构造半状态配置。
+  assert.throws(() => codexProviderUpdateEdits({ ...base, bearerToken: "" }));
+  assert.throws(() => codexProviderCreateEdits(base));
+});
+
+test("provider form validation requires an explicit key for new runtime-env providers", () => {
+  const form = {
+    ...codexProviderFormFrom(),
+    id: "acme",
+    baseUrl: "http://127.0.0.1:9000/v1",
+    keySource: "runtime-env" as const,
+  };
+  assert.equal(codexProviderFormError(form, true, []), "providerTokenRequired");
+  assert.equal(
+    codexProviderFormError({ ...form, bearerToken: "sk-1" }, true, []),
+    null,
+  );
+  // 编辑态留空 = 保留既有凭据，不视为错误。
+  assert.equal(codexProviderFormError(form, false, []), null);
+});
+
 test("provider form validation gates id pattern, duplicates and base url", () => {
-  const form = { ...codexProviderFormFrom(), id: "bad.id", baseUrl: "http://x" };
+  const form = {
+    ...codexProviderFormFrom(),
+    id: "bad.id",
+    baseUrl: "http://x",
+  };
   assert.equal(codexProviderFormError(form, true, []), "providerIdInvalid");
   assert.equal(
     codexProviderFormError({ ...form, id: "taken" }, true, ["taken"]),
@@ -874,14 +1128,23 @@ test("provider form validation gates id pattern, duplicates and base url", () =>
     "providerBaseUrlRequired",
   );
   // base_url 与原生 Url::parse 同口径：非法/非 http(s)/缺 host 一律拒绝落盘。
-  for (const bad of ["not-a-url", "ftp://host/v1", "http://", "//host/v1", "https://"]) {
+  for (const bad of [
+    "not-a-url",
+    "ftp://host/v1",
+    "http://",
+    "//host/v1",
+    "https://",
+  ]) {
     assert.equal(
       codexProviderFormError({ ...form, id: "ok-id", baseUrl: bad }, true, []),
       "providerBaseUrlInvalid",
       `expected invalid base url rejection for ${bad}`,
     );
   }
-  for (const good of ["http://127.0.0.1:34185/v1", "https://api.example.com/v1"]) {
+  for (const good of [
+    "http://127.0.0.1:34185/v1",
+    "https://api.example.com/v1",
+  ]) {
     assert.equal(
       codexProviderFormError({ ...form, id: "ok-id", baseUrl: good }, true, []),
       null,
@@ -889,12 +1152,20 @@ test("provider form validation gates id pattern, duplicates and base url", () =>
     );
   }
   assert.equal(
-    codexProviderFormError({ ...form, id: "ok-id_2", baseUrl: "http://x" }, true, ["ok-id_2"]),
+    codexProviderFormError(
+      { ...form, id: "ok-id_2", baseUrl: "http://x" },
+      true,
+      ["ok-id_2"],
+    ),
     "providerIdTaken",
   );
   // 编辑态不校验 id（输入框已禁用），只校验 base url。
   assert.equal(
-    codexProviderFormError({ ...form, id: "ok-id", baseUrl: "http://x" }, false, []),
+    codexProviderFormError(
+      { ...form, id: "ok-id", baseUrl: "http://x" },
+      false,
+      [],
+    ),
     null,
   );
 });
@@ -924,7 +1195,11 @@ test("provider create writes the whole table; update edits per field and keeps t
   ]);
   // 更新：逐字段写，保留未知手编 key；token 仅在输入新值时写。
   assert.deepEqual(codexProviderUpdateEdits({ ...form, bearerToken: "" }), [
-    { keyPath: "model_providers.my-provider.name", value: "Mine", mergeStrategy: "replace" },
+    {
+      keyPath: "model_providers.my-provider.name",
+      value: "Mine",
+      mergeStrategy: "replace",
+    },
     {
       keyPath: "model_providers.my-provider.base_url",
       value: "http://127.0.0.1:9000/v1",
@@ -942,17 +1217,29 @@ test("provider create writes the whole table; update edits per field and keeps t
     },
   ]);
   // 清除 token → 写 null 删键。
-  const clearing = codexProviderUpdateEdits({ ...form, bearerToken: "", clearBearerToken: true });
+  const clearing = codexProviderUpdateEdits({
+    ...form,
+    bearerToken: "",
+    clearBearerToken: true,
+  });
   assert.deepEqual(clearing.at(-1), {
     keyPath: "model_providers.my-provider.experimental_bearer_token",
     value: null,
     mergeStrategy: "replace",
   });
   assert.deepEqual(codexProviderDeleteEdits("my-provider"), [
-    { keyPath: "model_providers.my-provider", value: null, mergeStrategy: "replace" },
+    {
+      keyPath: "model_providers.my-provider",
+      value: null,
+      mergeStrategy: "replace",
+    },
   ]);
   assert.deepEqual(codexProviderSetDefaultEdits("my-provider"), [
-    { keyPath: "model_provider", value: "my-provider", mergeStrategy: "replace" },
+    {
+      keyPath: "model_provider",
+      value: "my-provider",
+      mergeStrategy: "replace",
+    },
   ]);
 });
 
@@ -975,7 +1262,10 @@ test("provider deletion fails closed on an unproven catalog from one decision so
     codexProviderDeleteBlock({ isDefault: false, modelCount: 2 }, true),
     "providerDeleteModelsBlocked",
   );
-  assert.equal(codexProviderDeleteBlock({ isDefault: false, modelCount: 0 }, true), null);
+  assert.equal(
+    codexProviderDeleteBlock({ isDefault: false, modelCount: 0 }, true),
+    null,
+  );
 });
 
 test("catalog model template strips identity fields from the same-provider entry", () => {
@@ -1001,7 +1291,10 @@ test("catalog model template strips identity fields from the same-provider entry
     supported_reasoning_levels: [{ effort: "high", description: "d" }],
   });
   // 无同 provider 模板时退回首条；完全无模型时给最小骨架。
-  assert.deepEqual(codexCatalogModelTemplate([], "p"), { provider: "p", visibility: "list" });
+  assert.deepEqual(codexCatalogModelTemplate([], "p"), {
+    provider: "p",
+    visibility: "list",
+  });
 });
 
 test("model entry builder overlays identity fields on the raw JSON and rejects bad input", () => {
@@ -1050,10 +1343,18 @@ test("model entry builder overlays identity fields on the raw JSON and rejects b
     null,
   );
   // 表单往返：编辑态初始 JSON 即条目本身。
-  const source = { slug: "a", provider: "p", display_name: "A", context_window: 1 };
+  const source = {
+    slug: "a",
+    provider: "p",
+    display_name: "A",
+    context_window: 1,
+  };
   const form = codexModelFormFrom(source, {});
   assert.equal(form.originalSlug, "a");
-  assert.deepEqual(codexModelEntryFromForm(form), { ...source, visibility: "list" });
+  assert.deepEqual(codexModelEntryFromForm(form), {
+    ...source,
+    visibility: "list",
+  });
   // 视图投影：hidden 判定与 display_name 回退。
   assert.deepEqual(codexCatalogModelView({ slug: "b", visibility: "hidden" }), {
     slug: "b",
@@ -1065,7 +1366,10 @@ test("model entry builder overlays identity fields on the raw JSON and rejects b
 });
 
 test("catalog model write params preserve the original slug only for edits", () => {
-  const workspace = { workspacePath: "/fixture/workspace", workspaceIdentity: "fixture-identity" };
+  const workspace = {
+    workspacePath: "/fixture/workspace",
+    workspaceIdentity: "fixture-identity",
+  };
   const edited = codexCatalogModelWriteParams(
     {
       originalSlug: "old-model",
@@ -1080,7 +1384,12 @@ test("catalog model write params preserve the original slug only for edits", () 
   );
   assert.deepEqual(edited, {
     ...workspace,
-    model: { slug: "new-model", provider: "ollama1", display_name: "New", visibility: "list" },
+    model: {
+      slug: "new-model",
+      provider: "ollama1",
+      display_name: "New",
+      visibility: "list",
+    },
     originalSlug: "old-model",
   });
   const created = codexCatalogModelWriteParams(

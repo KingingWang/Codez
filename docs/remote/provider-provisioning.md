@@ -141,7 +141,7 @@ snapshot、queue、owner/lease 和 `workspaceIdentity` 边界不变。
 
 OAuth → Project Token 迁移后，`account-provider:*:api-key` 不再属于同步 allowlist。
 Source 不解密或发送旧账号 Key；Target 不读取、覆盖或删除已有旧/手工 Key。
-新 Source 固定输出 `schemaVersion=2`，表达只替换 OAuth allowlist 的语义；新 Target 接受 v1/v2，v1 旧 `account-provider` 条目校验后忽略，结果数量仅统计实际同步的 OAuth 条目。v2 不允许账号 Key 条目。
+普通配置文件模式的 Source 输出 `schemaVersion=2`；Personal Config 包含临时 Key 引用时输出 v3。v2/v3 都只替换 OAuth allowlist；Target 接受 v1/v2/v3，v1 旧 `account-provider` 条目校验后忽略，结果数量仅统计实际同步的 OAuth 条目。v2/v3 不允许账号 Key 条目。
 旧 Target 仅接受 v1，会在事务和任何 Store 写入之前拒绝 v2。Host 按现有同步失败语义报告失败，不把信封降级为 v1，也不透传旧 Key；远端已有 OAuth、Key 和配置保持不动，升级 Target 后才能同步。磁盘幂等状态版本不变。
 
 ```text
@@ -152,6 +152,26 @@ Source 不解密或发送旧账号 Key；Target 不读取、覆盖或删除已�
 
 目标 Host 用同步的登录态和自己的 Key ID 缓存换 Token；短期 Token 和 ID 缓存不跨 Environment 传输。
 显式手工 Provider 的 Key 仍随 Personal Config 同步。此变更不修改现有同步 lane、事务回滚或 desktop continuous/mobile replayable 边界。
+
+选择「临时环境变量 Key」模式时，上句仅适用于选择「配置文件」的手工 Provider。
+临时模式的 Personal Config 只包含 Key 来源/专用变量引用，明文只保留在 Desktop
+Local Environment 的 Credential Store。目标的磁盘事务完成不代表临时 Key 已安装：
+每条 SSH/WSL/Docker 在线连接由自己的 Window Host 经可信连接安装一次远端 Host
+内存凭据，然后才可发布该连接 ready；重连或 Host 重启即使得到
+`already-applied` 也必须重新安装。Main 继续只调度不读取 Secret，现有 Environment
+级磁盘同步 lane 不改成 Workspace 级，也不代替逐连接的临时安装。
+安装 RPC 携带 Personal Config 内容指纹，目标先与正式配置核对再替换进程内值；
+同一连接的安装串行读取/执行以免旧响应覆盖新 Key。配置文件模式首连不调用新增 RPC，
+临时模式切回配置文件时发送空集合清理该连接内存。开发模式 Server remote 在
+v3 配置写入之前拒绝该模式。
+
+临时 Key 不在 Provider Provisioning 的持久化 Envelope/状态记录、远端
+`provider_config.json`、`credentials.json`、shell 启动命令、日志或 Renderer 中出现。
+目标缺能力、安装失败或本机凭据丢失一律 fail-closed，不降级为原明文 Key。
+运行中切换模式或修改 Key 须确认中断旧 Agent 后生效；网络断开仍终止现有远端
+stdio runtime，不新增离线任务。开发模式 Server remote 的常驻服务不支持此模式。
+产品状态、用户提示和验收用例见
+`specs/provider-runtime-env-api-key.md`。
 
 不导出 SSH 密码/私钥、Bot 凭据、MCP OAuth token、插件 Secret 或其它通用 Credential key。
 

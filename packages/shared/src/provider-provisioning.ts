@@ -73,22 +73,44 @@ export type ProviderProvisioningCredentialEntry = z.infer<
 
 export const providerProvisioningEnvelopeSchema = z
   .object({
-    // v2 的缺失账号 Key 不再代表删除；旧 Target 必须在任何写入前拒绝该信封。
-    schemaVersion: z.union([z.literal(1), z.literal(2)]),
+    // v3 允许 Personal Config 中引用临时 Key；旧 Target 必须在任何写入前拒绝。
+    schemaVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
     syncId: nonEmptyString,
     personalConfig: providerProvisioningPersonalConfigSchema,
     accountSettings: providerProvisioningAccountSettingsSchema,
     credentials: z.array(providerProvisioningCredentialEntrySchema).max(256),
   })
   .strict()
-  .refine(
-    (value) =>
-      value.schemaVersion === 1 ||
-      value.credentials.every((entry) => entry.scope === "oauth-session"),
-    { message: "Provisioning v2 only accepts OAuth credentials", path: ["credentials"] },
-  );
+  .superRefine((value, ctx) => {
+    if (
+      value.schemaVersion !== 1 &&
+      value.credentials.some((entry) => entry.scope !== "oauth-session")
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Provisioning v${value.schemaVersion} only accepts OAuth credentials`,
+        path: ["credentials"],
+      });
+    }
+  });
 
 export type ProviderProvisioningEnvelope = z.infer<typeof providerProvisioningEnvelopeSchema>;
+
+/** 临时值只经可信连接安装到目标 Host 内存，绝不属于 Provisioning 磁盘信封。 */
+export const providerRuntimeApiKeySchema = z
+  .object({
+    name: z.string().regex(/^CODEZ_MODEL_API_KEY_[A-F0-9]{6,64}$/),
+    value: nonEmptyString,
+  })
+  .strict();
+export const providerRuntimeApiKeyInstallSchema = z
+  .object({
+    configFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    keys: z.array(providerRuntimeApiKeySchema).max(256),
+  })
+  .strict();
+export type ProviderRuntimeApiKey = z.infer<typeof providerRuntimeApiKeySchema>;
+export type ProviderRuntimeApiKeyInstall = z.infer<typeof providerRuntimeApiKeyInstallSchema>;
 
 /** 跨进程只透传固定阶段码，不能把远端自由文本作为可公开诊断信息。 */
 export const providerProvisioningErrorCodeSchema = z.enum([

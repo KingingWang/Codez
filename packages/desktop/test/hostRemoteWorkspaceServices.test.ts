@@ -2,7 +2,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ChannelClient, ChannelServer, createQueuePair, Emitter, ProxyChannel } from "@codez/rpc";
+import {
+  ChannelClient,
+  ChannelServer,
+  createQueuePair,
+  Emitter,
+  ProxyChannel,
+} from "@codez/rpc";
 import {
   ServiceCollection,
   IFileService,
@@ -66,11 +72,15 @@ function createTempHome(): string {
   return home;
 }
 
-function createPresetFetchMock(modelContextBudgetStrategy: "legacy" | "preflight-v1" = "legacy") {
+function createPresetFetchMock(
+  modelContextBudgetStrategy: "legacy" | "preflight-v1" = "legacy",
+) {
   return vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.includes("192.168.100.166") || url.includes("/v1/models")) {
-      throw new Error(`Retired preset endpoints must not be requested remotely: ${url}`);
+      throw new Error(
+        `Retired preset endpoints must not be requested remotely: ${url}`,
+      );
     }
     if (url.includes("/api/v2/releases/latest")) {
       return new Response(
@@ -105,7 +115,8 @@ function createPresetFetchMock(modelContextBudgetStrategy: "legacy" | "preflight
 }
 
 function makeRemoteServices() {
-  const runtimePreferencesEmitter = new Emitter<CodezAgentSessionRuntimePreferencesRequest>();
+  const runtimePreferencesEmitter =
+    new Emitter<CodezAgentSessionRuntimePreferencesRequest>();
 
   return {
     fileService: { remote: "file" },
@@ -114,7 +125,9 @@ function makeRemoteServices() {
     systemService: { remote: "system" },
     terminalService: { remote: "terminal" },
     codezAgentService: {
-      onDynamicSessionRuntimePreferencesRequest: vi.fn(() => runtimePreferencesEmitter.event),
+      onDynamicSessionRuntimePreferencesRequest: vi.fn(
+        () => runtimePreferencesEmitter.event,
+      ),
       respondSessionRuntimePreferences: vi.fn(async () => undefined),
     },
     runtimePreferencesEmitter,
@@ -138,6 +151,8 @@ function makeRemoteServices() {
 
 function remoteWorkspaceHostOptions(onError = vi.fn()) {
   return {
+    environmentKey: "ssh:test@example:22",
+    codexKeyRotationBridge: { request: async () => {} },
     localOnboardingRecordService: createOnboardingRecordStub(),
     promptAttachmentTransferService: {} as never,
     runtimePreferencesBridge: {
@@ -180,20 +195,29 @@ describe("remote workspace host service wiring", () => {
       parentPort: null,
       createRemotePromptAttachmentTaskService: passthroughService,
       createRemotePromptAttachmentSessionService: passthroughService,
-      createReportingRemoteCodezTaskService: (service) => ({ wrapped: service }) as never,
+      createReportingRemoteCodezTaskService: (service) =>
+        ({ wrapped: service }) as never,
     });
 
     expect(services.get(IFileService)).toBe(remoteServices.fileService);
     expect(services.get(IGitService)).toBe(remoteServices.gitService);
-    expect(services.get(IGitCheckpointService)).toBe(remoteServices.gitCheckpointService);
+    expect(services.get(IGitCheckpointService)).toBe(
+      remoteServices.gitCheckpointService,
+    );
     expect(services.get(ISystemService)).toBe(remoteServices.systemService);
     expect(services.get(ITerminalService)).toBe(remoteServices.terminalService);
-    expect(services.get(IFileWatcherService)).toBe(remoteServices.fileWatcherService);
+    expect(services.get(IFileWatcherService)).toBe(
+      remoteServices.fileWatcherService,
+    );
     expect(services.get(ICodezTaskService)).toEqual({
       wrapped: remoteServices.codezTaskService,
     });
-    expect(services.get(ICodezAgentService)).toBe(remoteServices.codezAgentService);
-    expect(services.get(ICodezSessionService)).toBe(remoteServices.codezSessionService);
+    expect(services.get(ICodezAgentService)).toBe(
+      remoteServices.codezAgentService,
+    );
+    expect(services.get(ICodezSessionService)).toBe(
+      remoteServices.codezSessionService,
+    );
 
     expect(services.get(IClientConfigService)).toBe(clientConfigService);
     expect(services.get(ISettingService)).toBeTruthy();
@@ -201,14 +225,22 @@ describe("remote workspace host service wiring", () => {
     expect(services.get(IBroadcastService)).toBeTruthy();
     expect(services.get(IBotsService)).toBeTruthy();
     expect(services.get(IOAuthService)).toBeTruthy();
-    expect(services.get(IModelSelectionService)).toBe(remoteServices.modelSelectionService);
-    expect(services.get(IProviderSettingsService)).toBe(remoteServices.providerSettingsService);
+    expect(services.get(IModelSelectionService)).toBe(
+      remoteServices.modelSelectionService,
+    );
+    expect(services.get(IProviderSettingsService)).toBe(
+      remoteServices.providerSettingsService,
+    );
     expect(services.get(IUsageStatsService)).toBeTruthy();
     expect(services.get(IClientConfigService)).toBe(clientConfigService);
     expect(services.get(ISkillsService)).toBe(remoteServices.skillsService);
-    expect(services.get(ISkillSyncService)).toBe(remoteServices.skillSyncService);
+    expect(services.get(ISkillSyncService)).toBe(
+      remoteServices.skillSyncService,
+    );
     expect(services.get(IMcpSyncService)).toBe(remoteServices.mcpSyncService);
-    expect(services.get(IPluginSyncService)).toBe(remoteServices.pluginSyncService);
+    expect(services.get(IPluginSyncService)).toBe(
+      remoteServices.pluginSyncService,
+    );
     expect(services.get(IPluginsService)).toBe(remoteServices.pluginsService);
     expect(services.get(ICommandsService)).toBe(remoteServices.commandsService);
     expect(services.get(ISubagentsService)).toBeTruthy();
@@ -258,7 +290,9 @@ describe("remote workspace host service wiring", () => {
       try {
         // 远程集合曾漏注册通道；即使 owner 已有记录，手机也只能收到 Unknown channel。
         await record.claimAnonymousRecord();
-        await expect(record.shouldOnboard("mobile-device")).resolves.toBe(false);
+        await expect(record.shouldOnboard("mobile-device")).resolves.toBe(
+          false,
+        );
         await record.dismissOnboarding("mobile-device");
         const entry = {
           occupation: "developer",
@@ -275,8 +309,12 @@ describe("remote workspace host service wiring", () => {
         expect(other.shouldOnboard).not.toHaveBeenCalled();
         expect(other.dismissOnboarding).not.toHaveBeenCalled();
         expect(other.appendRecord).not.toHaveBeenCalled();
-        vi.mocked(owner.shouldOnboard).mockRejectedValueOnce(new Error("record read failed"));
-        await expect(record.shouldOnboard("mobile-device")).rejects.toThrow("record read failed");
+        vi.mocked(owner.shouldOnboard).mockRejectedValueOnce(
+          new Error("record read failed"),
+        );
+        await expect(record.shouldOnboard("mobile-device")).rejects.toThrow(
+          "record read failed",
+        );
       } finally {
         client.dispose();
         server.dispose();
@@ -298,7 +336,9 @@ describe("remote workspace host service wiring", () => {
         assertCurrent: vi.fn(async () => undefined),
       };
       if (sharedOwner)
-        vi.spyOn(nodeServices, "getAccountRequestAuthService").mockReturnValue(owner);
+        vi.spyOn(nodeServices, "getAccountRequestAuthService").mockReturnValue(
+          owner,
+        );
       const urls: string[] = [];
       vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
         const url = String(input);
@@ -306,7 +346,9 @@ describe("remote workspace host service wiring", () => {
         let data: unknown;
         if (url.endsWith("/getCustomerInfo"))
           data = {
-            organizations: [{ organizationId: "org", projects: [{ projectId: "project" }] }],
+            organizations: [
+              { organizationId: "org", projects: [{ projectId: "project" }] },
+            ],
           };
         else if (url.includes("/api_keys") && !url.endsWith("/access_tokens"))
           data = [
@@ -324,9 +366,15 @@ describe("remote workspace host service wiring", () => {
             expiresAt: Date.now() / 1000 + 600,
           };
         else if (url.includes("/querySubscribeDetail"))
-          data = { hasSubscription: true, status: "EFFECTIVE", memberGrantStatus: "VALID" };
+          data = {
+            hasSubscription: true,
+            status: "EFFECTIVE",
+            memberGrantStatus: "VALID",
+          };
         else if (url.includes("/quota/limit")) {
-          expect(new Headers(init?.headers).get("authorization")).toBe("project-token");
+          expect(new Headers(init?.headers).get("authorization")).toBe(
+            "project-token",
+          );
           data = { level: "pro", limits: [] };
         } else data = [];
         return new Response(JSON.stringify({ code: 200, data }), {
@@ -375,9 +423,9 @@ describe("remote workspace host service wiring", () => {
           quota: { level: "pro" },
         });
         expect(urls.some((url) => url.includes("/copy/"))).toBe(false);
-        expect(urls.filter((url) => url.endsWith("/access_tokens"))).toHaveLength(
-          sharedOwner ? 0 : 1,
-        );
+        expect(
+          urls.filter((url) => url.endsWith("/access_tokens")),
+        ).toHaveLength(sharedOwner ? 0 : 1);
         expect(owner.resolveCurrent).toHaveBeenCalledTimes(sharedOwner ? 1 : 0);
       } finally {
         rmSync(home, { recursive: true, force: true });
@@ -394,7 +442,10 @@ describe("remote workspace host service wiring", () => {
     "fallback $family team=$team 的 401 指纹到达 PAT owner 并只刷新一次",
     async ({ family, team }) => {
       const home = createTempHome();
-      const authFactory = vi.spyOn(nodeServices, "createAccountRequestAuthService");
+      const authFactory = vi.spyOn(
+        nodeServices,
+        "createAccountRequestAuthService",
+      );
       let issued = 0;
       vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
         const url = String(input);
@@ -403,9 +454,13 @@ describe("remote workspace host service wiring", () => {
         expect(url).not.toContain("/api/auth/z/login");
         let data: unknown;
         if (url.endsWith("/getCustomerInfo")) {
-          expect(authorization).toBe(family === "zai" ? "Bearer business-jwt" : "business-jwt");
+          expect(authorization).toBe(
+            family === "zai" ? "Bearer business-jwt" : "business-jwt",
+          );
           data = {
-            organizations: [{ organizationId: "org", projects: [{ projectId: "project" }] }],
+            organizations: [
+              { organizationId: "org", projects: [{ projectId: "project" }] },
+            ],
           };
         } else if (url.endsWith("/access_tokens")) {
           expect(authorization).toBe("Bearer business-jwt");
@@ -470,17 +525,24 @@ describe("remote workspace host service wiring", () => {
         const retry = {
           ...input,
           expectedAccountScope: first.accountScope,
-          rejectedProjectTokenFingerprint: await projectAccessTokenFingerprint(first.apiKey!),
+          rejectedProjectTokenFingerprint: await projectAccessTokenFingerprint(
+            first.apiKey!,
+          ),
         };
         const recovered = await Promise.all([
           auth.resolveCurrent(retry),
           auth.resolveCurrent(retry),
         ]);
-        expect(recovered.map((value) => value.apiKey)).toEqual(["pat-2", "pat-2"]);
+        expect(recovered.map((value) => value.apiKey)).toEqual([
+          "pat-2",
+          "pat-2",
+        ]);
         expect((await auth.resolveCurrent(retry)).apiKey).toBe("pat-2");
         expect(issued).toBe(2);
         await credentials.save(`oauth:${family}:access_token`, "other-login");
-        await expect(auth.resolveCurrent(retry)).rejects.toThrow("project_token_scope_invalidated");
+        await expect(auth.resolveCurrent(retry)).rejects.toThrow(
+          "project_token_scope_invalidated",
+        );
         expect(issued).toBe(2);
       } finally {
         rmSync(home, { recursive: true, force: true });
@@ -490,7 +552,9 @@ describe("remote workspace host service wiring", () => {
 
   it("bridges app-global runtime preferences without a workspace-scoped subscription", async () => {
     const home = createTempHome();
-    vi.spyOn(globalThis, "fetch").mockImplementation(createPresetFetchMock("preflight-v1"));
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      createPresetFetchMock("preflight-v1"),
+    );
     const remoteServices = makeRemoteServices();
     const services = createRemoteWorkspaceServiceCollection({
       clientConfigService,
@@ -527,7 +591,8 @@ describe("remote workspace host service wiring", () => {
 
       await vi.waitFor(() => {
         expect(
-          remoteServices.codezAgentService.onDynamicSessionRuntimePreferencesRequest,
+          remoteServices.codezAgentService
+            .onDynamicSessionRuntimePreferencesRequest,
         ).toHaveBeenCalledWith();
         expect(
           remoteServices.codezAgentService.respondSessionRuntimePreferences,
@@ -682,9 +747,13 @@ describe("remote workspace host service wiring", () => {
 
     expect(services.get(IClientConfigService)).toBe(clientConfigService);
     expect(services.get(ISkillsService)).toBe(remoteServices.skillsService);
-    expect(services.get(ISkillSyncService)).toBe(remoteServices.skillSyncService);
+    expect(services.get(ISkillSyncService)).toBe(
+      remoteServices.skillSyncService,
+    );
     expect(services.get(IMcpSyncService)).toBe(remoteServices.mcpSyncService);
-    expect(services.get(IPluginSyncService)).toBe(remoteServices.pluginSyncService);
+    expect(services.get(IPluginSyncService)).toBe(
+      remoteServices.pluginSyncService,
+    );
     expect(services.get(IPluginsService)).toBe(remoteServices.pluginsService);
     expect(services.get(ICommandsService)).toBe(remoteServices.commandsService);
   });
@@ -715,16 +784,32 @@ describe("remote workspace host service wiring", () => {
 
     expect(services.get(IClientConfigService)).toBe(clientConfigService);
     expect(services.get(ISettingService)).toBe(remoteServices.settingService);
-    expect(services.get(IOnboardingRecordService)).toBe(remoteServices.onboardingRecordService);
-    expect(services.get(ICredentialService)).toBe(remoteServices.credentialService);
-    expect(services.get(IBroadcastService)).toBe(remoteServices.broadcastService);
+    expect(services.get(IOnboardingRecordService)).toBe(
+      remoteServices.onboardingRecordService,
+    );
+    expect(services.get(ICredentialService)).toBe(
+      remoteServices.credentialService,
+    );
+    expect(services.get(IBroadcastService)).toBe(
+      remoteServices.broadcastService,
+    );
     expect(services.get(IBotsService)).toBe(remoteServices.botsService);
     expect(services.get(IOAuthService)).toBe(remoteServices.oauthService);
-    expect(services.get(IModelSelectionService)).toBe(remoteServices.modelSelectionService);
-    expect(services.get(IProviderSettingsService)).toBe(remoteServices.providerSettingsService);
-    expect(services.get(IUsageStatsService)).toBe(remoteServices.usageStatsService);
-    expect(services.get(ISubagentsService)).toBe(remoteServices.subagentsService);
-    expect(services.get(ISettingsSyncService)).toBe(remoteServices.settingsSyncService);
+    expect(services.get(IModelSelectionService)).toBe(
+      remoteServices.modelSelectionService,
+    );
+    expect(services.get(IProviderSettingsService)).toBe(
+      remoteServices.providerSettingsService,
+    );
+    expect(services.get(IUsageStatsService)).toBe(
+      remoteServices.usageStatsService,
+    );
+    expect(services.get(ISubagentsService)).toBe(
+      remoteServices.subagentsService,
+    );
+    expect(services.get(ISettingsSyncService)).toBe(
+      remoteServices.settingsSyncService,
+    );
   });
 
   it("materializes web remote task prompts before the reporting wrapper observes them", async () => {
@@ -738,7 +823,8 @@ describe("remote workspace host service wiring", () => {
     } as const;
     const remoteAttachment = {
       ...hostAttachment,
-      localPath: "/home/tester/.codez/tmp/prompt-attachments/input-1/01-pasted.txt",
+      localPath:
+        "/home/tester/.codez/tmp/prompt-attachments/input-1/01-pasted.txt",
     };
     const rawSendPrompt = vi.fn(async () => undefined);
     const observedByReporting: unknown[] = [];
@@ -754,7 +840,10 @@ describe("remote workspace host service wiring", () => {
       createRemotePromptAttachmentTaskService: (service) =>
         createRemotePromptAttachmentTaskService(service, {
           materializePromptAttachments: async (params) => ({
-            content: params.content.replace("/tmp/host-paste.txt", remoteAttachment.localPath),
+            content: params.content.replace(
+              "/tmp/host-paste.txt",
+              remoteAttachment.localPath,
+            ),
             attachments: [remoteAttachment],
           }),
         }),
@@ -784,7 +873,8 @@ describe("remote workspace host service wiring", () => {
     const expectedParams = {
       taskId: "task-1",
       traceId: "input-1",
-      content: "read /home/tester/.codez/tmp/prompt-attachments/input-1/01-pasted.txt",
+      content:
+        "read /home/tester/.codez/tmp/prompt-attachments/input-1/01-pasted.txt",
       attachments: [remoteAttachment],
     };
     expect(observedByReporting).toEqual([expectedParams]);

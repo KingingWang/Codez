@@ -47,6 +47,9 @@ export function serializeRegistryProviderConfig(
         ? {
             type: config.access.type,
             apiKey: config.access.apiKey,
+            ...(config.access.apiKeyEnv === undefined
+              ? {}
+              : { apiKeyEnv: config.access.apiKeyEnv }),
             ...(config.access.apiKeyManagementUrl === undefined
               ? {}
               : { apiKeyManagementUrl: config.access.apiKeyManagementUrl }),

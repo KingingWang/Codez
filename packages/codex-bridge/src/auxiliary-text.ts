@@ -8,10 +8,12 @@ import {
   type CodezWorkspaceGenerateTextParams,
 } from "@codez/shared";
 import type { CodexProcess, CodexNotification } from "./contract.js";
+import type { CodexProviderKeyGate } from "./provider-key-gate.js";
 
 export interface AuxiliaryTextOptions {
   rpc: CodexProcess;
   cwd: string;
+  providerKeyGate?: CodexProviderKeyGate;
 }
 const DEADLINE_MS = 30_000;
 const MAX_TEXT_BYTES = 64 * 1024;
@@ -246,6 +248,8 @@ export class AuxiliaryText {
         project_doc_max_bytes: 0,
         mcp_servers: mcpServers,
       };
+      // 标题/提交信息等辅助生成同样是模型请求；缺本机临时 Key 的供应商在此 fail-closed。
+      await this.options.providerKeyGate?.assertTurnAllowed(p.selection.providerId);
       const raw = await this.options.rpc.request("thread/start", {
         cwd: this.options.cwd,
         model: p.selection.modelId,

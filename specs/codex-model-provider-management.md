@@ -12,9 +12,12 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
 - 供应商字段（MVP）：id、name、base_url、wire_api（chat/responses）、
   API Key（`experimental_bearer_token`）、requires_openai_auth。id 创建后不可改
   （TOML 表键即身份；改名 = 新建 + 删除）。
-- API Key 明文写入 config.toml（codex 原生 `experimental_bearer_token` 字段，
-  RedactedString 日志打码；桌面端尤其 macOS 无法可靠注入环境变量，`env_key`
-  引用模式对 GUI 用户不可用）。**UI 只写不回显**：config/read 会返回明文，
+- 配置文件来源的 API Key 明文写入 config.toml（codex 原生
+  `experimental_bearer_token` 字段，RedactedString 日志打码）。本机临时来源由
+  Codez Credential Store 持值，Codex `env_key` 仅存引用；App 在 Agent spawn
+  时定向注入，不依赖 Finder/终端继承环境。完整边界与验收见
+  [codex-provider-runtime-env-key.md](./codex-provider-runtime-env-key.md)。
+  **UI 只写不回显**：config/read 会返回原有明文，
   面板只呈现「已配置」状态；输入新值才覆盖，留空 = 不修改；提供「清除」
   （写 null 删键）。
 - 模型字段（MVP）：slug、provider（下拉，限已有供应商）、display_name、

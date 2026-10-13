@@ -7,13 +7,24 @@ export const CODEZ_REMOTE_RUNTIME_NETWORK_AUTHORITY_ENV_KEY =
 export const CODEZ_REMOTE_HTTP_PROXY_ENV_KEY = "CODEZ_REMOTE_HTTP_PROXY";
 export const CODEZ_REMOTE_NO_PROXY_ENV_KEY = "CODEZ_REMOTE_NO_PROXY";
 export const CODEZ_AGENT_CA_CERT_ENV_KEY = "CODEZ_AGENT_CA_CERT";
-export const CODEZ_TOOL_ENV_PASSTHROUGH_ENV_KEY = "CODEZ_TOOL_ENV_PASSTHROUGH_JSON";
+export const CODEZ_TOOL_ENV_PASSTHROUGH_ENV_KEY =
+  "CODEZ_TOOL_ENV_PASSTHROUGH_JSON";
 /** Host 按 messageStreamShowTodos 设置注入 codex bridge；bridge 据此为 app-server 开启 update_plan 工具。 */
-export const CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY = "CODEZ_CODEX_UPDATE_PLAN_ENABLED";
+export const CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY =
+  "CODEZ_CODEX_UPDATE_PLAN_ENABLED";
+/**
+ * Host 按本机凭据可用性注入 codex bridge 的「禁止发起模型请求的供应商 id」列表（csv）。
+ * 仅承载 provider id，不含任何 Key 材料；bridge 在 turn 准入时按此 fail-closed。
+ * 见 specs/codex-provider-runtime-env-key.md。
+ */
+export const CODEZ_CODEX_BLOCKED_PROVIDER_IDS_ENV_KEY =
+  "CODEZ_CODEX_BLOCKED_PROVIDER_IDS";
 /** Desktop Main 将服务端裁决的单功能灰度结果传给 Local/Remote Host。 */
-export const CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV = "CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED";
+export const CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV =
+  "CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED";
 export const CODEZ_CUA_PRODUCT_HELPER_ENV_KEY = "CODEZ_CUA_PRODUCT_HELPER";
-export const CODEZ_CUA_BROKER_SOCKET_ENV_KEY = "CODEZ_CUA_PERMISSION_BROKER_SOCKET";
+export const CODEZ_CUA_BROKER_SOCKET_ENV_KEY =
+  "CODEZ_CUA_PERMISSION_BROKER_SOCKET";
 /** Shared node_repl host marker; unlike the broker bearer values it is not a secret. */
 export const CODEZ_CUA_NODE_REPL_HOST_ENV_KEY = "CODEZ_CUA_NODE_REPL_HOST";
 // One-knob local-development bundle. Setting CODEZ_CUA_DEV_MODE implies the internal feature
@@ -33,12 +44,15 @@ export function isCuaDevModeRequested(env: EnvRecord = process.env): boolean {
   return explicit === "1" || explicit === "true" || explicit === "on";
 }
 
-export function isCodezCuaInternalFeatureEnabled(env: EnvRecord = process.env): boolean {
+export function isCodezCuaInternalFeatureEnabled(
+  env: EnvRecord = process.env,
+): boolean {
   // CUA 现已默认打包进正式版（plugin staged + Helper enabled），不再需要显式 env flag。
   // DEV_MODE 仍然 implied（开发一键），PRODUCT_HELPER=0/off/false 可显式关闭。
   if (isCuaDevModeRequested(env)) return true;
   const explicit = env[CODEZ_CUA_PRODUCT_HELPER_ENV_KEY]?.trim().toLowerCase();
-  if (explicit === "0" || explicit === "false" || explicit === "off") return false;
+  if (explicit === "0" || explicit === "false" || explicit === "off")
+    return false;
   return true;
 }
 
@@ -94,6 +108,7 @@ const SANITIZED_RUNTIME_ENV_KEYS = [
   "CODEZ_TELEMETRY_RUNTIME_SURFACE",
   "CODEZ_TELEMETRY_RUNTIME_DISTRIBUTION",
 ] as const;
+const CODEZ_MODEL_API_KEY_ENV_PATTERN = /^CODEZ_MODEL_API_KEY_[A-F0-9]{6,64}$/;
 
 const NON_TOOL_PASSTHROUGH_RUNTIME_ENV_KEYS = [
   "NODE_ENV",
@@ -111,9 +126,15 @@ const NON_TOOL_PASSTHROUGH_RUNTIME_ENV_KEYS = [
 const SANITIZED_PACKAGE_MANAGER_ENV_PATTERN =
   /^(npm_config|yarn|pnpm)_(http_proxy|https_proxy|proxy|all_proxy|no_proxy|cafile|ca)$/i;
 
-export function normalizeCodezRuntimeEnv(value: string | undefined): CodezRuntimeEnv | undefined {
+export function normalizeCodezRuntimeEnv(
+  value: string | undefined,
+): CodezRuntimeEnv | undefined {
   const normalized = value?.trim().toLowerCase();
-  if (normalized === "development" || normalized === "production" || normalized === "test") {
+  if (
+    normalized === "development" ||
+    normalized === "production" ||
+    normalized === "test"
+  ) {
     return normalized;
   }
   return undefined;
@@ -136,8 +157,32 @@ interface CapturedCuaBrokerCredentials {
   refreshMarker?: string;
 }
 
-let capturedCuaBrokerCredentials: Readonly<CapturedCuaBrokerCredentials> | undefined;
+let capturedCuaBrokerCredentials:
+  | Readonly<CapturedCuaBrokerCredentials>
+  | undefined;
 const capturedCodezAgentTelemetryEnv: Record<string, string> = {};
+const capturedCodezModelApiKeys = new Map<string, string>();
+
+function captureCodezModelApiKeys(
+  env: Record<string, string | undefined>,
+): void {
+  for (const [key, value] of Object.entries(env)) {
+    if (CODEZ_MODEL_API_KEY_ENV_PATTERN.test(key) && value?.trim()) {
+      capturedCodezModelApiKeys.set(key, value);
+    }
+  }
+}
+
+/** Agent 进程内模型请求专用；绝不把返回值放入工具或插件的环境。 */
+export function getCapturedCodezModelApiKey(name: string): string | undefined {
+  return CODEZ_MODEL_API_KEY_ENV_PATTERN.test(name)
+    ? capturedCodezModelApiKeys.get(name)
+    : undefined;
+}
+
+export function resetCapturedCodezModelApiKeysForTest(): void {
+  capturedCodezModelApiKeys.clear();
+}
 
 // CUA broker socket 会被上面的 sanitize 从子进程 env 中剔除（confused-deputy 防护 —— 不能让
 // 其它 MCP server / Bash / tool 子进程直接驱动已授权 Helper）。但 CLI 入口在 bootstrap
@@ -146,10 +191,13 @@ const capturedCodezAgentTelemetryEnv: Record<string, string> = {};
 // （fail-open，违反 "Python/uvx must never become the implicit permission owner"）。因此在剔除前把
 // 凭据捕获进本进程私有存储，只经 getCapturedCodezCuaBrokerCredentials() 暴露给 bootstrap 的定向
 // 注入路径，绝不写回任何子进程 env。
-function captureCodezCuaBrokerCredentials(env: Record<string, string | undefined>): void {
+function captureCodezCuaBrokerCredentials(
+  env: Record<string, string | undefined>,
+): void {
   const socket = env[CODEZ_CUA_BROKER_SOCKET_ENV_KEY]?.trim();
   const pluginAuthority = env[CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]?.trim();
-  const refreshMarker = env["CODEZ_CUA_PERMISSION_BROKER_REFRESH_MARKER"]?.trim();
+  const refreshMarker =
+    env["CODEZ_CUA_PERMISSION_BROKER_REFRESH_MARKER"]?.trim();
   // 连接没有口令：socket + authority（config-provenance 随机数）同批出现才构成有效凭据组；
   // 半组说明上游注入不完整或正在轮换。
   if (socket && pluginAuthority) {
@@ -166,8 +214,13 @@ function captureCodezCuaBrokerCredentials(env: Record<string, string | undefined
   }
 }
 
-function captureCodezAgentTelemetryEnv(env: Record<string, string | undefined>): void {
-  Object.assign(capturedCodezAgentTelemetryEnv, readCodezAgentTelemetryEnv(env));
+function captureCodezAgentTelemetryEnv(
+  env: Record<string, string | undefined>,
+): void {
+  Object.assign(
+    capturedCodezAgentTelemetryEnv,
+    readCodezAgentTelemetryEnv(env),
+  );
 }
 
 /**
@@ -211,11 +264,12 @@ export function resetCapturedCodezAgentTelemetryEnvForTest(): void {
   }
 }
 
-export function sanitizeCodezRuntimeEnv<T extends Record<string, string | undefined>>(
-  env: T,
-): Record<string, string> {
+export function sanitizeCodezRuntimeEnv<
+  T extends Record<string, string | undefined>,
+>(env: T): Record<string, string> {
   captureCodezCuaBrokerCredentials(env);
   captureCodezAgentTelemetryEnv(env);
+  captureCodezModelApiKeys(env);
   const sanitized: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
     if (value === undefined || shouldSanitizeCodezRuntimeEnvKey(key)) {
@@ -226,7 +280,9 @@ export function sanitizeCodezRuntimeEnv<T extends Record<string, string | undefi
   return sanitized;
 }
 
-export function buildCodezToolEnvPassthroughEnv(env: EnvRecord): Record<string, string> {
+export function buildCodezToolEnvPassthroughEnv(
+  env: EnvRecord,
+): Record<string, string> {
   const captured = readCodezToolEnvPassthroughEnv(env);
 
   for (const [key, value] of Object.entries(env)) {
@@ -239,7 +295,9 @@ export function buildCodezToolEnvPassthroughEnv(env: EnvRecord): Record<string, 
   return stringifyCodezToolEnvPassthroughEnv(captured);
 }
 
-export function readCodezToolEnvPassthroughEnv(env: EnvRecord): Record<string, string> {
+export function readCodezToolEnvPassthroughEnv(
+  env: EnvRecord,
+): Record<string, string> {
   const raw = env[CODEZ_TOOL_ENV_PASSTHROUGH_ENV_KEY];
   if (!raw) {
     return {};
@@ -267,9 +325,12 @@ export function readCodezToolEnvPassthroughEnv(env: EnvRecord): Record<string, s
   }
 }
 
-export function sanitizeCodezRuntimeEnvInPlace(env: Record<string, string | undefined>): void {
+export function sanitizeCodezRuntimeEnvInPlace(
+  env: Record<string, string | undefined>,
+): void {
   captureCodezCuaBrokerCredentials(env);
   captureCodezAgentTelemetryEnv(env);
+  captureCodezModelApiKeys(env);
   for (const key of Object.keys(env)) {
     if (shouldSanitizeCodezRuntimeEnvKey(key)) {
       delete env[key];
@@ -288,6 +349,7 @@ function isCodezAgentTelemetryEnvKey(key: string): boolean {
 export function shouldSanitizeCodezRuntimeEnvKey(key: string): boolean {
   const upperKey = key.toUpperCase();
   return (
+    CODEZ_MODEL_API_KEY_ENV_PATTERN.test(upperKey) ||
     SANITIZED_RUNTIME_ENV_KEYS.some((candidate) => candidate === upperKey) ||
     SANITIZED_PACKAGE_MANAGER_ENV_PATTERN.test(key)
   );
@@ -295,10 +357,17 @@ export function shouldSanitizeCodezRuntimeEnvKey(key: string): boolean {
 
 export function shouldCaptureCodezToolEnvPassthroughKey(key: string): boolean {
   const upperKey = key.toUpperCase();
+  if (CODEZ_MODEL_API_KEY_ENV_PATTERN.test(upperKey)) {
+    return false;
+  }
   if (isCodezAgentTelemetryEnvKey(upperKey)) {
     return false;
   }
-  if (NON_TOOL_PASSTHROUGH_RUNTIME_ENV_KEYS.some((candidate) => candidate === upperKey)) {
+  if (
+    NON_TOOL_PASSTHROUGH_RUNTIME_ENV_KEYS.some(
+      (candidate) => candidate === upperKey,
+    )
+  ) {
     return false;
   }
   return shouldSanitizeCodezRuntimeEnvKey(key);
@@ -307,11 +376,15 @@ export function shouldCaptureCodezToolEnvPassthroughKey(key: string): boolean {
 function stringifyCodezToolEnvPassthroughEnv(
   captured: Record<string, string>,
 ): Record<string, string> {
-  const entries = Object.entries(captured).sort(([left], [right]) => left.localeCompare(right));
+  const entries = Object.entries(captured).sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
   if (entries.length === 0) {
     return {};
   }
   return {
-    [CODEZ_TOOL_ENV_PASSTHROUGH_ENV_KEY]: JSON.stringify(Object.fromEntries(entries)),
+    [CODEZ_TOOL_ENV_PASSTHROUGH_ENV_KEY]: JSON.stringify(
+      Object.fromEntries(entries),
+    ),
   };
 }

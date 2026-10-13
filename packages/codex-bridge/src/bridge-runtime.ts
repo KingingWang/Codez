@@ -42,6 +42,7 @@ export interface BridgeRuntimeOptions {
   notify(method: string, params: unknown): Promise<void>;
   fatal(error: Error, origin?: BridgeFailureOrigin): void;
   nativeBrowserCua?: BridgeControlContext["nativeBrowserCua"];
+  providerKeyGate?: import("./provider-key-gate.js").CodexProviderKeyGate;
 }
 
 export class BridgeRuntime {
@@ -63,7 +64,7 @@ export class BridgeRuntime {
   constructor(private readonly options: BridgeRuntimeOptions) {
     const { rpc, cwd, workspaceId, stateRoot, notify } = options;
     this.store = new ThreadStateStore(rpc, cwd);
-    this.auxiliary = new AuxiliaryText({ rpc, cwd });
+    this.auxiliary = new AuxiliaryText({ rpc, cwd, providerKeyGate: options.providerKeyGate });
     const titleDeps = { rpc, store: this.store, auxiliary: this.auxiliary, cwd, workspaceId };
     this.title = new SessionTitleCoordinator(titleDeps);
     this.officialPlugins = options.officialMarketplaceRoot
@@ -85,6 +86,7 @@ export class BridgeRuntime {
       attachments: (refs, sessionId) => this.attachments.toNativeInput(refs, sessionId),
       rewindNotices: this.rewindNotices,
       title: this.title,
+      providerKeyGate: options.providerKeyGate,
     });
     this.snapshots = new BridgeSnapshots(
       { rpc, cwd, auxiliary: this.auxiliary },

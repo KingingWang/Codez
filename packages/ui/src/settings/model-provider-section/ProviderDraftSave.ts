@@ -52,6 +52,7 @@ export function resolvePendingProviderDraftSave({
   const urlChanged = !readOnlyEndpoints && baseURL !== (provider.config.api?.baseUrl ?? "");
   const keyChanged =
     isApiKeyAccess(provider.config.access) &&
+    !provider.config.access.apiKeyEnv &&
     draft.apiKeyValue !== (provider.config.access.apiKey ?? "");
   if (!labelChanged && !typeChanged && !urlChanged && !keyChanged) return null;
 

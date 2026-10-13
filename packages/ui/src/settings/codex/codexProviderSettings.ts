@@ -1,4 +1,8 @@
-import type { CodexConfigResponse, CodezCatalogModelEntry } from "@codez/shared";
+import {
+  isCodexNativeProviderKeyEnvName,
+  type CodexConfigResponse,
+  type CodezCatalogModelEntry,
+} from "@codez/shared";
 
 /**
  * Codex 模型供应商与目录模型的设置视图（spec: specs/codex-model-provider-management.md）。
@@ -16,13 +20,26 @@ export interface CodexProviderView {
   requiresOpenaiAuth: boolean;
   /** 只呈现「已配置」状态；config/read 返回的明文绝不进入视图。 */
   hasBearerToken: boolean;
+  /** config.toml 中的 env_key 引用（可能是 App 托管或用户手工外部变量）。 */
+  envKey?: string;
+  /** 用户手编的 [auth] 命令鉴权；与 env_key/明文互斥，GUI 不托管。 */
+  hasAuthCommand: boolean;
   isDefault: boolean;
   /** 调用方 join 的 catalog 引用数，用于删除保护提示。 */
   modelCount: number;
 }
 
+export type CodexProviderKeySource = "config-file" | "runtime-env";
+
+/** App 托管的环境变量引用；手工外部 env_key 返回 false（不显示为「本机保存」）。 */
+export function isCodexManagedEnvKey(envKey: string | undefined): boolean {
+  return envKey !== undefined && isCodexNativeProviderKeyEnvName(envKey);
+}
+
 function optionalString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
+  return typeof value === "string" && value.trim() !== ""
+    ? value.trim()
+    : undefined;
 }
 
 export function codexProvidersView(
@@ -38,7 +55,8 @@ export function codexProvidersView(
   const countByProvider = new Map<string, number>();
   for (const model of catalogModels) {
     const provider = optionalString(model.provider);
-    if (provider) countByProvider.set(provider, (countByProvider.get(provider) ?? 0) + 1);
+    if (provider)
+      countByProvider.set(provider, (countByProvider.get(provider) ?? 0) + 1);
   }
   return Object.entries(table)
     .filter(([, value]) => value && typeof value === "object")
@@ -51,12 +69,18 @@ export function codexProvidersView(
         wireApi: entry.wire_api === "responses" ? "responses" : "chat",
         requiresOpenaiAuth: entry.requires_openai_auth === true,
         // RedactedString 序列化为 string；只取存在性。
-        hasBearerToken: optionalString(entry.experimental_bearer_token) !== undefined,
+        hasBearerToken:
+          optionalString(entry.experimental_bearer_token) !== undefined,
+        envKey: optionalString(entry.env_key),
+        hasAuthCommand: typeof entry.auth === "object" && entry.auth !== null,
         isDefault: id === defaultId,
         modelCount: countByProvider.get(id) ?? 0,
       };
     })
-    .sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.id.localeCompare(b.id));
+    .sort(
+      (a, b) =>
+        Number(b.isDefault) - Number(a.isDefault) || a.id.localeCompare(b.id),
+    );
 }
 
 /** config.toml 中显式配置、但目录里不存在的默认模型 id（删除模型的警告判断用）。 */
@@ -75,20 +99,30 @@ export interface CodexProviderForm {
   baseUrl: string;
   wireApi: CodexProviderWireApi;
   requiresOpenaiAuth: boolean;
+  /** Key 来源：写入配置文件（旧语义）或本机保存+临时环境变量（spec: codex-provider-runtime-env-key）。 */
+  keySource: CodexProviderKeySource;
   /** 仅输入新值时写入；与 clearBearerToken 互斥。 */
   bearerToken: string;
   clearBearerToken: boolean;
+  /** 编辑态记录的原有 env_key 引用；用于保存时决定是否移除该键。 */
+  initialEnvKey?: string;
 }
 
-export function codexProviderFormFrom(view?: CodexProviderView): CodexProviderForm {
+export function codexProviderFormFrom(
+  view?: CodexProviderView,
+): CodexProviderForm {
   return {
     id: view?.id ?? "",
     name: view?.name ?? "",
     baseUrl: view?.baseUrl ?? "",
     wireApi: view?.wireApi ?? "chat",
     requiresOpenaiAuth: view?.requiresOpenaiAuth ?? false,
+    keySource: isCodexManagedEnvKey(view?.envKey)
+      ? "runtime-env"
+      : "config-file",
     bearerToken: "",
     clearBearerToken: false,
+    ...(view?.envKey ? { initialEnvKey: view.envKey } : {}),
   };
 }
 
@@ -105,13 +139,34 @@ function edit(keyPath: string, value: unknown): CodexConfigEdit {
   return { keyPath, value, mergeStrategy: "replace" };
 }
 
-function providerTableValue(form: CodexProviderForm): Record<string, unknown> {
+/** runtime-env 模式必须携带 Host 生成的 envName；调用方应先完成 prepareKeySource。 */
+export interface CodexProviderKeyResolution {
+  envName?: string;
+}
+
+function providerTableValue(
+  form: CodexProviderForm,
+  keyResolution?: CodexProviderKeyResolution,
+): Record<string, unknown> {
+  if (form.keySource === "runtime-env") {
+    if (!keyResolution?.envName)
+      throw new Error("Missing managed env name for provider key");
+    return {
+      name: form.name.trim() || form.id,
+      base_url: form.baseUrl.trim(),
+      wire_api: form.wireApi,
+      requires_openai_auth: form.requiresOpenaiAuth,
+      env_key: keyResolution.envName,
+    };
+  }
   return {
     name: form.name.trim() || form.id,
     base_url: form.baseUrl.trim(),
     wire_api: form.wireApi,
     requires_openai_auth: form.requiresOpenaiAuth,
-    ...(form.bearerToken ? { experimental_bearer_token: form.bearerToken } : {}),
+    ...(form.bearerToken
+      ? { experimental_bearer_token: form.bearerToken }
+      : {}),
   };
 }
 
@@ -128,7 +183,10 @@ export function isCodexProviderBaseUrlValid(baseUrl: string): boolean {
   }
   // hostname 检查是主防线（个别引擎对 "http://" 不抛错而给出空 host），
   // try/catch 只负责语法非法的输入；两者共同对齐原生 Url::parse 的失败面。
-  return (url.protocol === "http:" || url.protocol === "https:") && url.hostname.length > 0;
+  return (
+    (url.protocol === "http:" || url.protocol === "https:") &&
+    url.hostname.length > 0
+  );
 }
 
 /** 校验表单；返回错误文案键，合法返回 null。 */
@@ -141,24 +199,41 @@ export function codexProviderFormError(
   | "providerIdTaken"
   | "providerBaseUrlRequired"
   | "providerBaseUrlInvalid"
+  | "providerTokenRequired"
   | null {
   if (creating) {
-    if (!CODEX_PROVIDER_ID_PATTERN.test(form.id.trim())) return "providerIdInvalid";
+    if (!CODEX_PROVIDER_ID_PATTERN.test(form.id.trim()))
+      return "providerIdInvalid";
     if (existingIds.includes(form.id.trim())) return "providerIdTaken";
+    // 新建选本机保存时必须显式输入 Key；不允许静默复用同名供应商的历史凭据。
+    if (form.keySource === "runtime-env" && !form.bearerToken.trim())
+      return "providerTokenRequired";
   }
   if (!form.baseUrl.trim()) return "providerBaseUrlRequired";
-  if (!isCodexProviderBaseUrlValid(form.baseUrl)) return "providerBaseUrlInvalid";
+  if (!isCodexProviderBaseUrlValid(form.baseUrl))
+    return "providerBaseUrlInvalid";
   return null;
 }
 
 /** 新建 = 整表 replace（新键无未知字段需要保留）。 */
-export function codexProviderCreateEdits(form: CodexProviderForm): CodexConfigEdit[] {
+export function codexProviderCreateEdits(
+  form: CodexProviderForm,
+  keyResolution?: CodexProviderKeyResolution,
+): CodexConfigEdit[] {
   // 新建表单上 clearBearerToken 无语义（token 未输入即不存在），防御性忽略。
-  return [edit(`model_providers.${form.id.trim()}`, providerTableValue(form))];
+  return [
+    edit(
+      `model_providers.${form.id.trim()}`,
+      providerTableValue(form, keyResolution),
+    ),
+  ];
 }
 
 /** 更新 = 逐字段 replace/delete，保留用户手编的未知 key（chat_stream/query_params 等）。 */
-export function codexProviderUpdateEdits(form: CodexProviderForm): CodexConfigEdit[] {
+export function codexProviderUpdateEdits(
+  form: CodexProviderForm,
+  keyResolution?: CodexProviderKeyResolution,
+): CodexConfigEdit[] {
   const id = form.id.trim();
   const base = `model_providers.${id}`;
   const edits = [
@@ -167,9 +242,20 @@ export function codexProviderUpdateEdits(form: CodexProviderForm): CodexConfigEd
     edit(`${base}.wire_api`, form.wireApi),
     edit(`${base}.requires_openai_auth`, form.requiresOpenaiAuth),
   ];
-  if (form.clearBearerToken) edits.push(edit(`${base}.experimental_bearer_token`, null));
-  else if (form.bearerToken)
-    edits.push(edit(`${base}.experimental_bearer_token`, form.bearerToken));
+  if (form.keySource === "runtime-env") {
+    if (!keyResolution?.envName)
+      throw new Error("Missing managed env name for provider key");
+    // 本机保存：config.toml 只留 env_key 引用，明文键必须移除。
+    edits.push(edit(`${base}.env_key`, keyResolution.envName));
+    edits.push(edit(`${base}.experimental_bearer_token`, null));
+  } else {
+    // 显式选择配置文件来源时移除原有 env_key 引用（含用户手工外部变量）。
+    if (form.initialEnvKey) edits.push(edit(`${base}.env_key`, null));
+    if (form.clearBearerToken)
+      edits.push(edit(`${base}.experimental_bearer_token`, null));
+    else if (form.bearerToken)
+      edits.push(edit(`${base}.experimental_bearer_token`, form.bearerToken));
+  }
   return edits;
 }
 
@@ -211,7 +297,9 @@ export interface CodexCatalogModelView {
   hidden: boolean;
 }
 
-export function codexCatalogModelView(entry: CodezCatalogModelEntry): CodexCatalogModelView {
+export function codexCatalogModelView(
+  entry: CodezCatalogModelEntry,
+): CodexCatalogModelView {
   return {
     slug: entry.slug,
     provider: optionalString(entry.provider),
@@ -221,12 +309,48 @@ export function codexCatalogModelView(entry: CodezCatalogModelEntry): CodexCatal
   };
 }
 
+export interface CodexCatalogModelGroup {
+  key: string;
+  label: string;
+  entries: CodexCatalogModelView[];
+}
+
+/** 目录模型按 provider 分组：provider 顺序与供应商列表一致，未匹配组排在最后。 */
+export function codexCatalogModelGroups(
+  models: readonly CodezCatalogModelEntry[],
+  providers: readonly CodexProviderView[],
+): CodexCatalogModelGroup[] {
+  const groups = new Map<
+    string,
+    { label: string; entries: CodexCatalogModelView[] }
+  >();
+  for (const entry of models) {
+    const view = codexCatalogModelView(entry);
+    const key = view.provider ?? "";
+    const label =
+      providers.find((provider) => provider.id === key)?.name ??
+      (key || entry.slug);
+    const bucket = groups.get(key);
+    if (bucket) bucket.entries.push(view);
+    else groups.set(key, { label, entries: [view] });
+  }
+  const ordered = [
+    ...providers.map((provider) => provider.id),
+    ...[...groups.keys()].filter((key) => !providers.some((p) => p.id === key)),
+  ];
+  return ordered
+    .filter((key) => groups.has(key))
+    .map((key) => ({ key, ...groups.get(key)! }));
+}
+
 /** 新增模型的能力模板：同 provider 首条模型剥离身份字段；无模板时给最小骨架。 */
 export function codexCatalogModelTemplate(
   models: readonly CodezCatalogModelEntry[],
   providerId: string,
 ): Record<string, unknown> {
-  const source = models.find((entry) => optionalString(entry.provider) === providerId) ?? models[0];
+  const source =
+    models.find((entry) => optionalString(entry.provider) === providerId) ??
+    models[0];
   if (!source) return { provider: providerId, visibility: "list" };
   const {
     slug: _slug,
@@ -260,8 +384,10 @@ export function codexModelFormFrom(
     slug: entry?.slug ?? "",
     provider: optionalString(base.provider) ?? "",
     displayName:
-      optionalString((base as Record<string, unknown>).display_name) ?? (entry ? entry.slug : ""),
-    description: optionalString((base as Record<string, unknown>).description) ?? "",
+      optionalString((base as Record<string, unknown>).display_name) ??
+      (entry ? entry.slug : ""),
+    description:
+      optionalString((base as Record<string, unknown>).description) ?? "",
     hidden: (base as Record<string, unknown>).visibility === "hidden",
     rawJson: JSON.stringify(base, null, 2),
   };
@@ -271,7 +397,9 @@ export function codexModelFormFrom(
  * 表单 → catalog 条目：rawJson 提供能力字段，简单字段覆盖身份字段。
  * rawJson 非法或缺 slug/provider 时返回 null，由 UI 提示。
  */
-export function codexModelEntryFromForm(form: CodexModelForm): CodezCatalogModelEntry | null {
+export function codexModelEntryFromForm(
+  form: CodexModelForm,
+): CodezCatalogModelEntry | null {
   const slug = form.slug.trim();
   const provider = form.provider.trim();
   if (!slug || !provider) return null;

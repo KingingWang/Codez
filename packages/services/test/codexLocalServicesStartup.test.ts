@@ -228,6 +228,8 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
             spawnEnv,
             mode === "codex"
               ? {
+                  // 缺凭据名单无条件注入空串：显式屏蔽继承的同名变量（spec: codex-provider-runtime-env-key）。
+                  CODEZ_CODEX_BLOCKED_PROVIDER_IDS: "",
                   HTTP_PROXY: "http://127.0.0.1:19080",
                   HTTPS_PROXY: "http://127.0.0.1:19080",
                   ALL_PROXY: "http://127.0.0.1:19080",
@@ -249,6 +251,7 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
                   ]),
                 }
               : {
+                  CODEZ_CODEX_BLOCKED_PROVIDER_IDS: "",
                   HTTP_PROXY: "http://127.0.0.1:19080",
                   HTTPS_PROXY: "http://127.0.0.1:19080",
                   ALL_PROXY: "http://127.0.0.1:19080",

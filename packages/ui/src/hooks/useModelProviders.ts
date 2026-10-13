@@ -84,6 +84,14 @@ export function useModelProviders(target: {
     },
     [commitProviderSettingsView, providerSettingsService],
   );
+  const saveApiKeySource = useCallback(
+    async (input: Parameters<typeof providerSettingsService.saveApiKeySource>[0]) => {
+      const savedView = await providerSettingsService.saveApiKeySource(input);
+      commitProviderSettingsView(savedView);
+      return savedView;
+    },
+    [commitProviderSettingsView, providerSettingsService],
+  );
 
   const createPersonalProvider = useCallback(
     async (input?: Parameters<typeof providerSettingsService.createPersonalProvider>[0]) => {
@@ -223,6 +231,7 @@ export function useModelProviders(target: {
     refreshing,
     refresh,
     saveProvider,
+    saveApiKeySource,
     createPersonalProvider,
     addPersonalModel,
     savePersonalModelDraft,

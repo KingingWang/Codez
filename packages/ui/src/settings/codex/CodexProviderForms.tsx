@@ -33,7 +33,9 @@ function Field({
         {label}
       </label>
       {children}
-      {help ? <p className="text-ui-sm text-foreground-subtlest">{help}</p> : null}
+      {help ? (
+        <p className="text-ui-sm text-foreground-subtlest">{help}</p>
+      ) : null}
     </div>
   );
 }
@@ -43,6 +45,10 @@ export function CodexProviderFormView({
   creating,
   disabled,
   error,
+  keySourceSupported,
+  hasAuthCommand,
+  externalEnvKey,
+  managedKeyConfigured,
   onChange,
   onSubmit,
   onCancel,
@@ -51,11 +57,28 @@ export function CodexProviderFormView({
   creating: boolean;
   disabled: boolean;
   error?: string | null;
+  /** Host 是否提供本机临时 Key 服务；false 时隐藏来源选择并退回配置文件语义。 */
+  keySourceSupported: boolean;
+  /** 编辑态：该供应商配置了 [auth] 命令鉴权（与 env_key 互斥）。 */
+  hasAuthCommand?: boolean;
+  /** 编辑态：现有的非 App 托管 env_key 引用（用户手工外部变量）。 */
+  externalEnvKey?: string;
+  /** 编辑态 runtime-env：本机凭据是否已存在；false 时提示需重新输入。 */
+  managedKeyConfigured?: boolean;
   onChange: (form: CodexProviderForm) => void;
   onSubmit: () => void;
   onCancel: () => void;
 }) {
   const text = useCodexMessages();
+  const keySourceLockedReason = form.requiresOpenaiAuth
+    ? text.providerKeySourceConflictsOpenaiAuth
+    : hasAuthCommand
+      ? text.providerKeySourceConflictsAuthCommand
+      : keySourceSupported
+        ? null
+        : text.providerKeySourceUnsupported;
+  const runtimeEnvSelected =
+    form.keySource === "runtime-env" && !keySourceLockedReason;
   return (
     <div className="space-y-3 rounded-lg border border-border bg-surface p-3">
       <Field
@@ -86,7 +109,9 @@ export function CodexProviderFormView({
           value={form.baseUrl}
           disabled={disabled}
           placeholder="https://api.example.com/v1"
-          onChange={(event) => onChange({ ...form, baseUrl: event.target.value })}
+          onChange={(event) =>
+            onChange({ ...form, baseUrl: event.target.value })
+          }
         />
       </Field>
       <Field id="codex-provider-wire-api" label={text.providerWireApi}>
@@ -94,10 +119,16 @@ export function CodexProviderFormView({
           value={form.wireApi}
           disabled={disabled}
           onValueChange={(value) =>
-            onChange({ ...form, wireApi: value === "responses" ? "responses" : "chat" })
+            onChange({
+              ...form,
+              wireApi: value === "responses" ? "responses" : "chat",
+            })
           }
         >
-          <SelectTrigger id="codex-provider-wire-api" aria-label={text.providerWireApi}>
+          <SelectTrigger
+            id="codex-provider-wire-api"
+            aria-label={text.providerWireApi}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -106,10 +137,65 @@ export function CodexProviderFormView({
           </SelectContent>
         </Select>
       </Field>
+      {keySourceSupported && !hasAuthCommand && !form.requiresOpenaiAuth ? (
+        <Field id="codex-provider-key-source" label={text.providerKeySource}>
+          <Select
+            value={form.keySource}
+            disabled={disabled}
+            onValueChange={(value) =>
+              onChange({
+                ...form,
+                keySource:
+                  value === "runtime-env" ? "runtime-env" : "config-file",
+                // 切换来源时清空草稿，避免把待写明文误当作待保存的本机 Key。
+                bearerToken: "",
+                clearBearerToken: false,
+              })
+            }
+          >
+            <SelectTrigger
+              id="codex-provider-key-source"
+              aria-label={text.providerKeySource}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="config-file">
+                {text.providerKeySourceConfigFile}
+              </SelectItem>
+              <SelectItem value="runtime-env">
+                {text.providerKeySourceRuntimeEnv}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+      ) : null}
+      {runtimeEnvSelected ? (
+        <p className="text-ui-sm text-foreground-subtlest">
+          {text.providerKeySourceRuntimeEnvWarning}
+        </p>
+      ) : null}
+      {externalEnvKey ? (
+        <p className="break-all text-ui-sm text-foreground-subtlest">
+          {text.providerExternalEnvKeyNotice}{" "}
+          <span className="font-mono">env_key={externalEnvKey}</span>
+        </p>
+      ) : null}
+      {keySourceLockedReason && form.keySource === "runtime-env" ? (
+        <p className="text-ui-sm text-foreground-subtlest">
+          {keySourceLockedReason}
+        </p>
+      ) : null}
       <Field
         id="codex-provider-token"
         label={text.providerToken}
-        help={form.bearerToken ? undefined : text.providerTokenHelp}
+        help={
+          form.bearerToken
+            ? undefined
+            : form.keySource === "runtime-env"
+              ? text.providerTokenRuntimeEnvHelp
+              : text.providerTokenHelp
+        }
       >
         <Input
           id="codex-provider-token"
@@ -118,35 +204,62 @@ export function CodexProviderFormView({
           disabled={disabled || form.clearBearerToken}
           placeholder={text.providerTokenConfigured}
           autoComplete="off"
-          onChange={(event) => onChange({ ...form, bearerToken: event.target.value })}
-        />
-      </Field>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-ui-sm text-foreground-subtle">{text.providerTokenClear}</p>
-        <Switch
-          aria-label={text.providerTokenClear}
-          checked={form.clearBearerToken}
-          disabled={disabled}
-          onCheckedChange={(checked) =>
-            onChange({ ...form, clearBearerToken: checked, bearerToken: "" })
+          onChange={(event) =>
+            onChange({ ...form, bearerToken: event.target.value })
           }
         />
-      </div>
+      </Field>
+      {form.keySource === "runtime-env" && managedKeyConfigured === false ? (
+        <p className="text-ui-sm text-foreground-subtle">
+          {text.providerKeyNotInstalled}
+        </p>
+      ) : null}
+      {form.keySource === "config-file" ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-ui-sm text-foreground-subtle">
+            {text.providerTokenClear}
+          </p>
+          <Switch
+            aria-label={text.providerTokenClear}
+            checked={form.clearBearerToken}
+            disabled={disabled}
+            onCheckedChange={(checked) =>
+              onChange({ ...form, clearBearerToken: checked, bearerToken: "" })
+            }
+          />
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-ui-sm text-foreground-subtle">{text.providerRequiresOpenaiAuth}</p>
+        <p className="text-ui-sm text-foreground-subtle">
+          {text.providerRequiresOpenaiAuth}
+        </p>
         <Switch
           aria-label={text.providerRequiresOpenaiAuth}
           checked={form.requiresOpenaiAuth}
           disabled={disabled}
-          onCheckedChange={(checked) => onChange({ ...form, requiresOpenaiAuth: checked })}
+          onCheckedChange={(checked) =>
+            onChange({
+              ...form,
+              requiresOpenaiAuth: checked,
+              // Codex 在 requires_openai_auth 下忽略 env_key；开启时退回配置文件来源。
+              ...(checked ? { keySource: "config-file" as const } : {}),
+            })
+          }
         />
       </div>
-      {error ? <p className="text-ui-sm text-red-600 dark:text-red-400">{error}</p> : null}
+      {error ? (
+        <p className="text-ui-sm text-red-600 dark:text-red-400">{error}</p>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <Button size="sm" disabled={disabled} onClick={onSubmit}>
           {text.providerSave}
         </Button>
-        <Button size="sm" variant="ghost" disabled={disabled} onClick={onCancel}>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={disabled}
+          onClick={onCancel}
+        >
           {text.providerCancel}
         </Button>
       </div>
@@ -195,7 +308,10 @@ export function CodexCatalogModelFormView({
           disabled={disabled}
           onValueChange={(value) => onChange({ ...form, provider: value })}
         >
-          <SelectTrigger id="codex-model-provider" aria-label={text.modelProvider}>
+          <SelectTrigger
+            id="codex-model-provider"
+            aria-label={text.modelProvider}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -212,7 +328,9 @@ export function CodexCatalogModelFormView({
           id="codex-model-display-name"
           value={form.displayName}
           disabled={disabled}
-          onChange={(event) => onChange({ ...form, displayName: event.target.value })}
+          onChange={(event) =>
+            onChange({ ...form, displayName: event.target.value })
+          }
         />
       </Field>
       <Field id="codex-model-description" label={text.modelDescription}>
@@ -220,7 +338,9 @@ export function CodexCatalogModelFormView({
           id="codex-model-description"
           value={form.description}
           disabled={disabled}
-          onChange={(event) => onChange({ ...form, description: event.target.value })}
+          onChange={(event) =>
+            onChange({ ...form, description: event.target.value })
+          }
         />
       </Field>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -242,16 +362,27 @@ export function CodexCatalogModelFormView({
           value={form.rawJson}
           disabled={disabled}
           spellCheck={false}
-          onChange={(event) => onChange({ ...form, rawJson: event.target.value })}
+          onChange={(event) =>
+            onChange({ ...form, rawJson: event.target.value })
+          }
         />
-        <p className="text-ui-sm text-foreground-subtlest">{text.modelAdvancedJsonHelp}</p>
+        <p className="text-ui-sm text-foreground-subtlest">
+          {text.modelAdvancedJsonHelp}
+        </p>
       </details>
-      {error ? <p className="text-ui-sm text-red-600 dark:text-red-400">{error}</p> : null}
+      {error ? (
+        <p className="text-ui-sm text-red-600 dark:text-red-400">{error}</p>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <Button size="sm" disabled={disabled} onClick={onSubmit}>
           {text.modelSave}
         </Button>
-        <Button size="sm" variant="ghost" disabled={disabled} onClick={onCancel}>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={disabled}
+          onClick={onCancel}
+        >
           {text.providerCancel}
         </Button>
       </div>

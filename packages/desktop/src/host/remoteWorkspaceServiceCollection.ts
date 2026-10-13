@@ -38,6 +38,7 @@ import {
   IOutputStyleService,
   ISettingsSyncService,
   IPromptAttachmentTransferService,
+  ICodexNativeProviderKeyService,
   type IServiceAccessor,
 } from "@codez/services";
 import {
@@ -70,6 +71,7 @@ import {
   createMemoryService,
   createOutputStyleService,
   createRemoteConversationShareArtifactSource,
+  createCodexNativeProviderKeyService,
   OAuthCredentialRepo,
 } from "@codez/services/node";
 import {
@@ -88,19 +90,26 @@ import {
   registerRemoteProviderProvisioningExecutor,
 } from "./remoteProviderProvisioningService.js";
 
-const runtimePreferencesLogger = createServiceLogger("remote-runtime-preferences");
+const runtimePreferencesLogger = createServiceLogger(
+  "remote-runtime-preferences",
+);
 const CODEZ_JWT_TOKEN_KEY = "codezjwttoken";
 const conversationShareLog = createServiceLogger("conversation-share");
 
 function createUnsupportedRemoteConversationShareService(): IConversationShareService {
   return createUnsupportedConversationShareService({
-    message: "Conversation sharing is not available for this client or remote target",
+    message:
+      "Conversation sharing is not available for this client or remote target",
     onRejected: (action) => {
-      conversationShareLog.warn(undefined, "conversation share action rejected", {
-        action,
-        kind: "feature_disabled",
-        reason: "server_remote_unsupported",
-      });
+      conversationShareLog.warn(
+        undefined,
+        "conversation share action rejected",
+        {
+          action,
+          kind: "feature_disabled",
+          reason: "server_remote_unsupported",
+        },
+      );
     },
   });
 }
@@ -109,11 +118,23 @@ export function createRemoteWorkspaceServiceCollection(params: {
   clientConfigService: IClientConfigService;
   connectionServices: IServiceAccessor;
   sourceServices?: ServiceCollection;
+  /** 目标 Remote Environment 稳定身份（buildRemoteEnvironmentKey），用于本机凭据隔离。 */
+  environmentKey: string;
+  /**
+   * Codex 原生临时 Key 的跨连接屏障（spec: codex-provider-runtime-env-key）：
+   * 由 host/index.ts 注入，经 parentPort 与 Main 做 request/response 关联；
+   * 只携带阶段与环境身份，Key 值不经 Main。
+   */
+  codexKeyRotationBridge: {
+    request(phase: "begin" | "commit" | "rollback"): Promise<void>;
+  };
   localOnboardingRecordService: IOnboardingRecordService;
   parentPort: Parameters<typeof createBroadcastService>[0];
   createReportingRemoteCodezTaskService: <T extends object>(service: T) => T;
   createRemotePromptAttachmentTaskService: <T extends object>(service: T) => T;
-  createRemotePromptAttachmentSessionService: <T extends object>(service: T) => T;
+  createRemotePromptAttachmentSessionService: <T extends object>(
+    service: T,
+  ) => T;
   promptAttachmentTransferService: IPromptAttachmentTransferService;
   runtimePreferencesBridge: {
     onError: (error: unknown) => void;
@@ -121,15 +142,19 @@ export function createRemoteWorkspaceServiceCollection(params: {
 }): ServiceCollection {
   assertLegacyRemoteWorkspaceRpcContract(params.connectionServices);
   const localSettingService = createSettingService();
-  let fallbackTokenClient: ReturnType<typeof createAccountProjectTokenClient> | undefined;
+  let fallbackTokenClient:
+    | ReturnType<typeof createAccountProjectTokenClient>
+    | undefined;
   const localCredentialService = createCredentialService({
     onDidMutate: ({ key }) => {
-      if (key.startsWith("oauth:") || key === CODEZ_JWT_TOKEN_KEY) fallbackTokenClient?.clear();
+      if (key.startsWith("oauth:") || key === CODEZ_JWT_TOKEN_KEY)
+        fallbackTokenClient?.clear();
     },
   });
-  const localAccountProviderCredentialStore = createAccountProviderCredentialStore({
-    credentialService: localCredentialService,
-  });
+  const localAccountProviderCredentialStore =
+    createAccountProviderCredentialStore({
+      credentialService: localCredentialService,
+    });
   const hostApiNetworkTransport = createHostApiNetworkTransport(async () => {
     const settings = await localSettingService.get();
     return {
@@ -142,16 +167,24 @@ export function createRemoteWorkspaceServiceCollection(params: {
     fetchImpl: hostApiNetworkTransport.fetch,
   });
   const localBroadcastService = createBroadcastService(params.parentPort);
-  let handleOAuthProviderLogout: ReturnType<typeof createOAuthProviderLogoutHandler> | null = null;
-  const localOAuthCredentialRepo = new OAuthCredentialRepo(localCredentialService, {
-    onCorruptOAuthSessionCleared: async (providers) => {
-      // remote workspace host 读写的是本机 OAuth 凭据。
-      // 损坏恢复必须和 local host 一样清理 Start/Coding Plan 派生 provider，避免手机 remote 残留旧 key。
-      await Promise.all(
-        providers.map((provider) => handleOAuthProviderLogout?.(provider) ?? Promise.resolve()),
-      );
+  let handleOAuthProviderLogout: ReturnType<
+    typeof createOAuthProviderLogoutHandler
+  > | null = null;
+  const localOAuthCredentialRepo = new OAuthCredentialRepo(
+    localCredentialService,
+    {
+      onCorruptOAuthSessionCleared: async (providers) => {
+        // remote workspace host 读写的是本机 OAuth 凭据。
+        // 损坏恢复必须和 local host 一样清理 Start/Coding Plan 派生 provider，避免手机 remote 残留旧 key。
+        await Promise.all(
+          providers.map(
+            (provider) =>
+              handleOAuthProviderLogout?.(provider) ?? Promise.resolve(),
+          ),
+        );
+      },
     },
-  });
+  );
   const readLocalAccountProviderSettings = async () => {
     const settings = await localSettingService.get();
     return {
@@ -160,20 +193,32 @@ export function createRemoteWorkspaceServiceCollection(params: {
     };
   };
   const loadLocalAccountIdentity = async (family: ProviderFamilyDomain) => {
-    const providerId = family === "zai" ? ZAI_PROVIDER_ID : BIGMODEL_PROVIDER_ID;
-    return (await localOAuthCredentialRepo.loadUserProfile(providerId))?.id ?? null;
+    const providerId =
+      family === "zai" ? ZAI_PROVIDER_ID : BIGMODEL_PROVIDER_ID;
+    return (
+      (await localOAuthCredentialRepo.loadUserProfile(providerId))?.id ?? null
+    );
   };
   const localAccountRequestAuthService =
-    (params.sourceServices ? getAccountRequestAuthService(params.sourceServices) : undefined) ??
+    (params.sourceServices
+      ? getAccountRequestAuthService(params.sourceServices)
+      : undefined) ??
     (() => {
       // 旧实现仅取磁盘 Key 且 resolve 恒为空；迁移后须复用正式 owner 或在此边界换证。
-      const tokenClient = createAccountProjectTokenClient(localApiClient, localCredentialService);
+      const tokenClient = createAccountProjectTokenClient(
+        localApiClient,
+        localCredentialService,
+      );
       fallbackTokenClient = tokenClient;
       // 401 恢复必须把失败 PAT 指纹贯穿个人/团队回调，否则缓存会再次返回被拒绝的凭据。
       const credentialResolver = createAccountProviderCredentialService({
         async loadOAuthAccessToken(family) {
-          const providerId = family === "zai" ? ZAI_PROVIDER_ID : BIGMODEL_PROVIDER_ID;
-          return (await localOAuthCredentialRepo.loadTokenSet(providerId))?.accessToken ?? null;
+          const providerId =
+            family === "zai" ? ZAI_PROVIDER_ID : BIGMODEL_PROVIDER_ID;
+          return (
+            (await localOAuthCredentialRepo.loadTokenSet(providerId))
+              ?.accessToken ?? null
+          );
         },
         async resolveProviderMaterial(
           family,
@@ -202,9 +247,15 @@ export function createRemoteWorkspaceServiceCollection(params: {
               readSettings: readLocalAccountProviderSettings,
               loadAccountIdentity: loadLocalAccountIdentity,
             }),
-          loadOAuthTokenSet: (providerId) => localOAuthCredentialRepo.loadTokenSet(providerId),
-          async loadIndividualPlanMaterial(providerId, family, rejectedProjectTokenFingerprint) {
-            const oauthProviderId = family === "zai" ? ZAI_PROVIDER_ID : BIGMODEL_PROVIDER_ID;
+          loadOAuthTokenSet: (providerId) =>
+            localOAuthCredentialRepo.loadTokenSet(providerId),
+          async loadIndividualPlanMaterial(
+            providerId,
+            family,
+            rejectedProjectTokenFingerprint,
+          ) {
+            const oauthProviderId =
+              family === "zai" ? ZAI_PROVIDER_ID : BIGMODEL_PROVIDER_ID;
             const accountIdentity = (
               await localOAuthCredentialRepo.loadUserProfile(oauthProviderId)
             )?.id;
@@ -216,8 +267,13 @@ export function createRemoteWorkspaceServiceCollection(params: {
               rejectedProjectTokenFingerprint,
             });
           },
-          resolveTeamPlanMaterial: async (access, rejectedProjectTokenFingerprint) => {
-            const accountIdentity = await loadLocalAccountIdentity(access.family);
+          resolveTeamPlanMaterial: async (
+            access,
+            rejectedProjectTokenFingerprint,
+          ) => {
+            const accountIdentity = await loadLocalAccountIdentity(
+              access.family,
+            );
             if (!accountIdentity) return null;
             return resolveAccountTeamPlanRuntimeMaterial({
               apiClient: localApiClient,
@@ -231,10 +287,11 @@ export function createRemoteWorkspaceServiceCollection(params: {
         }),
       );
     })();
-  const localCodingPlanSubscriptionService = createCodingPlanSubscriptionService({
-    apiClient: localApiClient,
-    credentialService: localCredentialService,
-  });
+  const localCodingPlanSubscriptionService =
+    createCodingPlanSubscriptionService({
+      apiClient: localApiClient,
+      credentialService: localCredentialService,
+    });
   handleOAuthProviderLogout = createOAuthProviderLogoutHandler({
     accountProviderCredentialStore: localAccountProviderCredentialStore,
   });
@@ -252,19 +309,36 @@ export function createRemoteWorkspaceServiceCollection(params: {
       params.connectionServices.fileService,
     ),
   });
-  const reportingRemoteCodezTaskService = params.createReportingRemoteCodezTaskService(
-    params.connectionServices.codezTaskService,
-  );
+  const reportingRemoteCodezTaskService =
+    params.createReportingRemoteCodezTaskService(
+      params.connectionServices.codezTaskService,
+    );
   // 手机 remote 的 replayable mirror 在 reporting wrapper 中发布用户消息；
   // 附件物化必须包在 reporting 外层，确保 mirror 和真正发给远端 agent 的 prompt 使用同一份远端路径。
   const remoteCodezTaskService = params.createRemotePromptAttachmentTaskService(
     reportingRemoteCodezTaskService,
   );
-  const remoteCodezSessionService = params.createRemotePromptAttachmentSessionService(
-    params.connectionServices.codezSessionService,
-  );
+  const remoteCodezSessionService =
+    params.createRemotePromptAttachmentSessionService(
+      params.connectionServices.codezSessionService,
+    );
   const remoteProviderProvisioningService =
-    createRemoteProviderProvisioningExecutorFromWorkspace(params);
+    createRemoteProviderProvisioningExecutorFromWorkspace({
+      ...params,
+      codexKeys: {
+        environmentKey: params.environmentKey,
+        credentialService: localCredentialService,
+      },
+    });
+  // Codex 原生供应商的本机临时 Key（spec: codex-provider-runtime-env-key）：
+  // 凭据与注册表读写都发生在窗口 Host 的本机 Store；跨连接屏障经 Main 协调。
+  const codexNativeProviderKeyService = createCodexNativeProviderKeyService({
+    environmentKey: params.environmentKey,
+    credentialService: localCredentialService,
+    beginRotation: () => params.codexKeyRotationBridge.request("begin"),
+    installKeys: (commit) =>
+      params.codexKeyRotationBridge.request(commit ? "commit" : "rollback"),
+  });
 
   // desktop-attached remote 的 Agent 运行在远端，但 app-global 设置权威仍在
   // desktop shared Host。通过窄化的 runtime-preferences 请求原路返回，避免远端读取自己的 setting。
@@ -287,7 +361,10 @@ export function createRemoteWorkspaceServiceCollection(params: {
         requestContext,
       );
       void (async () => {
-        const trackStage = <T>(stage: string, promise: Promise<T>): Promise<T> => {
+        const trackStage = <T>(
+          stage: string,
+          promise: Promise<T>,
+        ): Promise<T> => {
           const stageStartedAt = Date.now();
           return promise.then(
             (value) => {
@@ -303,33 +380,46 @@ export function createRemoteWorkspaceServiceCollection(params: {
               return value;
             },
             (error: unknown) => {
-              runtimePreferencesLogger.warn(undefined, "runtime preferences host stage failed", {
-                ...requestContext,
-                durationMs: Math.max(0, Date.now() - stageStartedAt),
-                error: error instanceof Error ? error.message : String(error),
-                stage,
-              });
+              runtimePreferencesLogger.warn(
+                undefined,
+                "runtime preferences host stage failed",
+                {
+                  ...requestContext,
+                  durationMs: Math.max(0, Date.now() - stageStartedAt),
+                  error: error instanceof Error ? error.message : String(error),
+                  stage,
+                },
+              );
               throw error;
             },
           );
         };
         let resolution:
-          | { status: "resolved"; preferences: CodezSessionRuntimePreferencesResult }
+          | {
+              status: "resolved";
+              preferences: CodezSessionRuntimePreferencesResult;
+            }
           | { status: "failed"; message: string };
         try {
           // 与本地 Host 同源：固定预算不依赖配置网关，远程/手机偏好响应不再串行等待网络。
-          const settings = await trackStage("settings", localSettingService.get());
-          const modelContextBudgetStrategy = DEFAULT_CODEZ_MODEL_CONTEXT_BUDGET_STRATEGY;
+          const settings = await trackStage(
+            "settings",
+            localSettingService.get(),
+          );
+          const modelContextBudgetStrategy =
+            DEFAULT_CODEZ_MODEL_CONTEXT_BUDGET_STRATEGY;
           resolution = {
             status: "resolved",
             preferences: {
               askUserQuestionAutoResolutionEnabled:
                 settings.askUserQuestionAutoResolutionEnabled !== false,
-              nativeSearchEnhancementsEnabled: settings.nativeSearchEnhancementsEnabled !== false,
+              nativeSearchEnhancementsEnabled:
+                settings.nativeSearchEnhancementsEnabled !== false,
               memoryEnabled: settings.memoryEnabled === true,
               modelContextBudgetStrategy,
               // remote workspace 与本地 Host 保持同一 scope 边界，首次执行不得再次等待 client config。
-              ...(request.scope === "user-execution" && settings.integratedTerminalShell
+              ...(request.scope === "user-execution" &&
+              settings.integratedTerminalShell
                 ? { integratedTerminalShell: settings.integratedTerminalShell }
                 : {}),
             },
@@ -339,28 +429,42 @@ export function createRemoteWorkspaceServiceCollection(params: {
             status: "failed",
             message: error instanceof Error ? error.message : String(error),
           };
-          runtimePreferencesLogger.warn(undefined, "runtime preferences host resolution failed", {
-            ...requestContext,
-            durationMs: Math.max(0, Date.now() - startedAt),
-            error: resolution.message,
-          });
+          runtimePreferencesLogger.warn(
+            undefined,
+            "runtime preferences host resolution failed",
+            {
+              ...requestContext,
+              durationMs: Math.max(0, Date.now() - startedAt),
+              error: resolution.message,
+            },
+          );
         }
         // 只把设置读取失败编码为 -32603；发送失败交给最终 onError 记录，不能重试同一请求。
-        await params.connectionServices.codezAgentService.respondSessionRuntimePreferences({
-          requestId: request.requestId,
-          resolution,
-        });
-        runtimePreferencesLogger.info(undefined, "runtime preferences host response sent", {
-          ...requestContext,
-          durationMs: Math.max(0, Date.now() - startedAt),
-          resolutionStatus: resolution.status,
-        });
+        await params.connectionServices.codezAgentService.respondSessionRuntimePreferences(
+          {
+            requestId: request.requestId,
+            resolution,
+          },
+        );
+        runtimePreferencesLogger.info(
+          undefined,
+          "runtime preferences host response sent",
+          {
+            ...requestContext,
+            durationMs: Math.max(0, Date.now() - startedAt),
+            resolutionStatus: resolution.status,
+          },
+        );
       })().catch((error: unknown) => {
-        runtimePreferencesLogger.warn(undefined, "runtime preferences host response failed", {
-          ...requestContext,
-          durationMs: Math.max(0, Date.now() - startedAt),
-          error: error instanceof Error ? error.message : String(error),
-        });
+        runtimePreferencesLogger.warn(
+          undefined,
+          "runtime preferences host response failed",
+          {
+            ...requestContext,
+            durationMs: Math.max(0, Date.now() - startedAt),
+            error: error instanceof Error ? error.message : String(error),
+          },
+        );
         onError(error);
       });
     },
@@ -373,13 +477,17 @@ export function createRemoteWorkspaceServiceCollection(params: {
   const services = new ServiceCollection()
     .register(IFileService, params.connectionServices.fileService)
     .register(IGitService, params.connectionServices.gitService)
-    .register(IGitCheckpointService, params.connectionServices.gitCheckpointService)
+    .register(
+      IGitCheckpointService,
+      params.connectionServices.gitCheckpointService,
+    )
     .register(ISystemService, params.connectionServices.systemService)
     .register(ITerminalService, params.connectionServices.terminalService)
     .register(ISettingService, localSettingService)
     // 手机重建远程 Root 后曾因缺少此通道误弹引导；复用 Local Host owner，保持记录与登录态同源。
     .register(IOnboardingRecordService, params.localOnboardingRecordService)
     .register(ICredentialService, localCredentialService)
+    .register(ICodexNativeProviderKeyService, codexNativeProviderKeyService)
     .register(IBroadcastService, localBroadcastService)
     .register(ICodezTaskService, remoteCodezTaskService)
     .register(ICodezAgentService, params.connectionServices.codezAgentService)
@@ -408,8 +516,14 @@ export function createRemoteWorkspaceServiceCollection(params: {
     )
     // Provider/Model 事实属于目标 Environment。远端 workspace 的选择和设置视图
     // 必须直接读取远端 Registry，不能继续显示 Desktop 本地 Provider。
-    .register(IModelSelectionService, params.connectionServices.modelSelectionService)
-    .register(IProviderSettingsService, params.connectionServices.providerSettingsService)
+    .register(
+      IModelSelectionService,
+      params.connectionServices.modelSelectionService,
+    )
+    .register(
+      IProviderSettingsService,
+      params.connectionServices.providerSettingsService,
+    )
     .register(
       IUsageStatsService,
       createUsageStatsService({
@@ -419,9 +533,15 @@ export function createRemoteWorkspaceServiceCollection(params: {
         codezAgentService: params.connectionServices.codezAgentService,
       }),
     )
-    .register(ICodingPlanSubscriptionService, localCodingPlanSubscriptionService)
+    .register(
+      ICodingPlanSubscriptionService,
+      localCodingPlanSubscriptionService,
+    )
     .register(IClientConfigService, params.clientConfigService)
-    .register(IClientScenesService, createClientScenesService({ apiClient: localApiClient }))
+    .register(
+      IClientScenesService,
+      createClientScenesService({ apiClient: localApiClient }),
+    )
     // 远端 workspace 的项目级 skills/plugins/commands 位于 SSH/Docker 文件系统。
     // 这里必须透出远端服务，避免本机服务拿远端 workspacePath 去本机目录扫描。
     .register(ISkillsService, params.connectionServices.skillsService)
@@ -430,9 +550,15 @@ export function createRemoteWorkspaceServiceCollection(params: {
     .register(IPluginSyncService, params.connectionServices.pluginSyncService)
     .register(IPluginsService, params.connectionServices.pluginsService)
     // 远端设置页插件管理也必须打到远端 agent（插件目录在远端文件系统）。
-    .register(IPluginManagementService, params.connectionServices.pluginManagementService)
+    .register(
+      IPluginManagementService,
+      params.connectionServices.pluginManagementService,
+    )
     .register(ICommandsService, params.connectionServices.commandsService)
-    .register(ISubagentsService, createSubagentsService({ isDesktopRuntime: true }))
+    .register(
+      ISubagentsService,
+      createSubagentsService({ isDesktopRuntime: true }),
+    )
     .register(IHooksService, params.connectionServices.hooksService)
     .register(IMemoryService, createMemoryService())
     .register(IOutputStyleService, createOutputStyleService())
@@ -440,9 +566,15 @@ export function createRemoteWorkspaceServiceCollection(params: {
       ISettingsSyncService,
       createSettingsSyncService({ settingService: localSettingService }),
     )
-    .register(IPromptAttachmentTransferService, params.promptAttachmentTransferService);
+    .register(
+      IPromptAttachmentTransferService,
+      params.promptAttachmentTransferService,
+    );
   registerHostApiNetworkTransportForDispose(services, hostApiNetworkTransport);
-  registerRemoteProviderProvisioningExecutor(services, remoteProviderProvisioningService);
+  registerRemoteProviderProvisioningExecutor(
+    services,
+    remoteProviderProvisioningService,
+  );
   return services;
 }
 
@@ -455,16 +587,24 @@ export function createServerRemoteWorkspaceServiceCollection(params: {
   // Server remote 连接的是一个已经运行的完整 Codez server。
   // Host 只做 RPC 转接，不替 server 决定 workspace/runtime/model-provider 归属。
   const remoteProviderProvisioningService =
-    createRemoteProviderProvisioningExecutorFromWorkspace(params);
+    createRemoteProviderProvisioningExecutorFromWorkspace({
+      ...params,
+      allowRuntimeApiKeys: false,
+    });
   const services = new ServiceCollection()
     .register(IFileService, params.connectionServices.fileService)
     .register(
       IMediaPreviewService,
       params.connectionServices.mediaPreviewService ??
-        createMediaPreviewService({ fileService: params.connectionServices.fileService }),
+        createMediaPreviewService({
+          fileService: params.connectionServices.fileService,
+        }),
     )
     .register(IGitService, params.connectionServices.gitService)
-    .register(IGitCheckpointService, params.connectionServices.gitCheckpointService)
+    .register(
+      IGitCheckpointService,
+      params.connectionServices.gitCheckpointService,
+    )
     .register(ISystemService, params.connectionServices.systemService)
     .register(ITerminalService, params.connectionServices.terminalService)
     .register(ISettingService, params.connectionServices.settingService)
@@ -472,31 +612,52 @@ export function createServerRemoteWorkspaceServiceCollection(params: {
     .register(IBroadcastService, params.connectionServices.broadcastService)
     .register(ICodezTaskService, params.connectionServices.codezTaskService)
     .register(ICodezAgentService, params.connectionServices.codezAgentService)
-    .register(ICodezSessionService, params.connectionServices.codezSessionService)
-    .register(IConversationShareService, createUnsupportedRemoteConversationShareService())
+    .register(
+      ICodezSessionService,
+      params.connectionServices.codezSessionService,
+    )
+    .register(
+      IConversationShareService,
+      createUnsupportedRemoteConversationShareService(),
+    )
     .register(IBotsService, params.connectionServices.botsService)
     .register(IFileWatcherService, params.connectionServices.fileWatcherService)
     .register(IOAuthService, params.connectionServices.oauthService)
-    .register(IModelSelectionService, params.connectionServices.modelSelectionService)
-    .register(IProviderSettingsService, params.connectionServices.providerSettingsService)
+    .register(
+      IModelSelectionService,
+      params.connectionServices.modelSelectionService,
+    )
+    .register(
+      IProviderSettingsService,
+      params.connectionServices.providerSettingsService,
+    )
     .register(IUsageStatsService, params.connectionServices.usageStatsService)
     .register(
       ICodingPlanSubscriptionService,
       params.connectionServices.codingPlanSubscriptionService,
     )
     .register(IClientConfigService, params.clientConfigService)
-    .register(IClientScenesService, params.connectionServices.clientScenesService)
+    .register(
+      IClientScenesService,
+      params.connectionServices.clientScenesService,
+    )
     .register(ISkillsService, params.connectionServices.skillsService)
     .register(ISkillSyncService, params.connectionServices.skillSyncService)
     .register(IMcpSyncService, params.connectionServices.mcpSyncService)
     .register(IPluginsService, params.connectionServices.pluginsService)
-    .register(IPluginManagementService, params.connectionServices.pluginManagementService)
+    .register(
+      IPluginManagementService,
+      params.connectionServices.pluginManagementService,
+    )
     .register(ISubagentsService, params.connectionServices.subagentsService)
     .register(ICommandsService, params.connectionServices.commandsService)
     .register(IHooksService, params.connectionServices.hooksService)
     .register(IMemoryService, params.connectionServices.memoryService)
     .register(IOutputStyleService, params.connectionServices.outputStyleService)
-    .register(ISettingsSyncService, params.connectionServices.settingsSyncService)
+    .register(
+      ISettingsSyncService,
+      params.connectionServices.settingsSyncService,
+    )
     .register(
       IPromptAttachmentTransferService,
       params.connectionServices.promptAttachmentTransferService,
@@ -504,8 +665,14 @@ export function createServerRemoteWorkspaceServiceCollection(params: {
   // Server 的设置与 OAuth 由 Server 持有，引导记录也必须透传同一服务，不能借用桌面记录。
   // 保留 accessor 的可选能力约定；当前 RemoteServiceAccess 会提供此代理。
   if (params.connectionServices.onboardingRecordService) {
-    services.register(IOnboardingRecordService, params.connectionServices.onboardingRecordService);
+    services.register(
+      IOnboardingRecordService,
+      params.connectionServices.onboardingRecordService,
+    );
   }
-  registerRemoteProviderProvisioningExecutor(services, remoteProviderProvisioningService);
+  registerRemoteProviderProvisioningExecutor(
+    services,
+    remoteProviderProvisioningService,
+  );
   return services;
 }

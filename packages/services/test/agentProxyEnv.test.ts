@@ -261,8 +261,9 @@ describe("node.ts wires the authoritative origin into resolveSpawnEnv", () => {
     // 承重项：必须用 resolveCurrentCodezEndpointOrigin（含 settings 覆盖）。
     // 接成 resolveRuntimeCodezEndpointOrigin(process.env) 会让这次修复完全失效，
     // 而两侧仍然"看起来"都在解析 origin。
-    expect(spawnEnvBlock).toContain(
-      "buildAgentEndpointOriginEnv(await resolveCurrentCodezEndpointOrigin())",
+    // 源码可能被 prettier 折成多行，用正则容忍空白差异。
+    expect(spawnEnvBlock).toMatch(
+      /buildAgentEndpointOriginEnv\(\s*await\s+resolveCurrentCodezEndpointOrigin\(\)\s*,?\s*\)/,
     );
   });
 });
@@ -290,7 +291,12 @@ describe("node.ts lazy CUA spawn helper selection", () => {
 
   it("keeps win32 spawn off the acquire path (MC-4)", () => {
     expect(spawnEnvStart).toBeGreaterThanOrEqual(0);
-    const cuaBlock = source.slice(spawnEnvStart, spawnEnvStart + 6000);
+    // 与 MC-3 同取 cuaPluginEnabled..telemetryEnv 区间：resolveSpawnEnv 闭包前段
+    // 随新注入（临时 Key、桌面 MCP 清单等）变长，固定字符窗口会静默漏掉后面的代码。
+    const cuaBlock = source.slice(
+      source.indexOf("const cuaPluginEnabled", spawnEnvStart),
+      source.indexOf("const telemetryEnv", spawnEnvStart),
+    );
     expect(cuaBlock).toContain("getStableCuaPipeName()");
     expect(cuaBlock.indexOf("getOrCreateDefaultCuaProductHelper(context)")).toBe(-1);
     expect(cuaBlock).toContain("CODEZ_CUA_WIN_HELPER_RECIPE");
