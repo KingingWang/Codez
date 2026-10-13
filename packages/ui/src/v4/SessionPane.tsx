@@ -192,6 +192,7 @@ import { WorkspaceHookPendingBanner } from "@/v4/WorkspaceHookPendingBanner.js";
 import { ConversationStatusPanel } from "@/v4/ConversationStatusPanel.js";
 import { useGitAuxiliaryCapability } from "@/capabilities/useGitAuxiliaryCapability.js";
 import { useCodexAutoReviewApprovals } from "@/capabilities/useCodexAutoReviewApprovals.js";
+import { useCodexNativeHost } from "@/capabilities/useCodexNativeHost.js";
 import {
   isCodexDesktopFileRewindAvailable,
   useCodexDesktopFileRewindCapability,
@@ -690,6 +691,13 @@ export function SessionPane({
     onRuntimeRestart,
     onRuntimeLifecycle,
   });
+  // 手机远控没有桌面 catalog；hello 能力投影是唯一权威的对端 Codex 事实，
+  // 命中后为 composer 开启与桌面一致的排队/引导选择（仅 UI 意图，命令仍走同一条链路）。
+  const codexNativeRemoteHost = useCodexNativeHost(
+    services.codezAgentService,
+    { workspacePath, ...(workspaceIdentity ? { workspaceIdentity } : {}) },
+    !isDesktop && compactForRemoteControl,
+  );
   // 子智能体详情的会话内容仍只读；文件撤销恢复的是 workspace，必须作为独立能力判断。
   // 该判定还决定 preview/apply 的通道分流（Desktop 事务服务 vs legacy v4 command），
   // 必须早于两个 handler 的定义，故从 rowContext memo 附近上移到这里。
@@ -3848,7 +3856,7 @@ export function SessionPane({
       // 原生 turn/steer 在注入前不进入 queue/list；将本次 native ACK 的
       // commandId 只回传给发起端 Composer，使临时提示可与真实 userInput
       // 的 sourceCommandId 精确对账，不在 Renderer 建立第二份已接纳队列。
-      if (isDesktop && options?.requestedDelivery === "guide") {
+      if (options?.requestedDelivery === "guide") {
         return { status: "sent" as const, commandId: ack.commandId };
       }
     },
@@ -5511,6 +5519,7 @@ export function SessionPane({
       modelSelectionState={modelSelectionRead.state}
       modelSelectionReload={modelSelectionRead.reload}
       codexModelCatalog={isDesktop ? codexModels : undefined}
+      nativeCodexSession={isDesktop || codexNativeRemoteHost}
       codexAutoReviewSupported={codexAutoReviewSupported}
       attachmentSessionId={effectiveSessionId}
       attachmentPut={attachmentPut}

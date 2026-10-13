@@ -129,14 +129,10 @@ try {
   assert.equal((await result()).modelSelection.options.reasoningLevel, "high");
   checks.push("Active conversation initializes native model/effort, not global defaults");
   await page.getByRole("button", { name: "Toggle native busy" }).click();
-  assert.equal(
-    await page.getByRole("combobox", { name: "Default model", exact: true }).isDisabled(),
-    true,
-  );
-  assert.equal(
-    await page.getByRole("combobox", { name: "Reasoning effort", exact: true }).isDisabled(),
-    true,
-  );
+  const models = page.getByTestId("codex-composer-models");
+  for (const testId of ["chat-model-select-trigger", "chat-thought-level-select-trigger"]) {
+    assert.equal(await models.getByTestId(testId).isDisabled(), true);
+  }
   assert.equal(
     await page.getByRole("button", { name: "Switch mode", exact: true }).isDisabled(),
     true,
@@ -155,13 +151,14 @@ try {
     "Busy projection disables real native model/effort and mode/plan controls; same-settings send remains enabled and idle unlocks controls",
   );
   await page.getByRole("button", { name: "Toggle configured custom model" }).click();
-  const models = page.getByTestId("codex-composer-models");
-  await models.getByRole("combobox", { name: "Default model" }).click();
+  await models.getByTestId("chat-model-select-trigger").click();
   await page
-    .getByRole("option", { name: "vendor/private · Configured in Codex", exact: true })
+    .getByRole("menuitemradio", { name: "vendor/private · Configured in Codex", exact: true })
     .click();
-  assert.equal(await models.getByRole("combobox", { name: "Reasoning effort" }).count(), 0);
-  await page.getByText("Reasoning effort: custom-effort", { exact: true }).waitFor();
+  // 配置模型未进入发现：不伪造能力 picker，档位渲染为只读固定 Pill（与旧版共享控件同规则）。
+  const fixedThought = models.getByTestId("chat-thought-level-select-trigger");
+  assert.equal(await fixedThought.getAttribute("data-thought-level-fixed"), "true");
+  assert.match(await fixedThought.innerText(), /custom-effort/);
   await page.getByRole("button", { name: "Send fixture", exact: true }).click();
   await page.waitForFunction(() =>
     document.querySelector('[data-testid="result"]')?.textContent?.includes("vendor/private"),

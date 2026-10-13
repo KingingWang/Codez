@@ -138,6 +138,14 @@ into a catalog capability record. Its configured reasoning is preserved (includi
 omission); unknown reasoning capabilities are not restricted to OpenAI's list.
 Unconfigured unknown models and different providers remain blocked.
 
+The Codex composer reuses the shared chat toolbar visuals: the context-usage
+ring reads the native sparse usage projection, the model picker is the shared
+provider/model menu (catalog groups, configured model listed first when absent
+from discovery), and reasoning uses the shared thought-level control (a fixed
+read-only pill when discovery returned no capability list). The catalog refresh
+affordance is an icon-only control; busy locking disables the same controls
+without inline banner text, matching the legacy composer surfaces.
+
 For native busy/prewarming/stopping snapshots, disable model, reasoning, permission
 and plan changes (including keyboard/`/plan` paths). Do not disable same-settings
 guide/queue sends. Immediately before admission, compare frozen settings against

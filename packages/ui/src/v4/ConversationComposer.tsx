@@ -443,6 +443,11 @@ export interface ConversationComposerProps {
   /** Model Selection 首次读取失败后的显式重试入口。 */
   modelSelectionReload?: () => void;
   codexModelCatalog?: CodexModelCatalogRead;
+  /**
+   * 对端 Host 是 Codex bridge（手机远控等无桌面 catalog 的链路）。
+   * 只开启排队/引导选择与 native 投递意图；模型目录控件仍走旧 Selection View。
+   */
+  nativeCodexSession?: boolean;
   /** Approve for me（autoReviewApprovals 能力）是否受原生支持；未支持时权限菜单隐藏 edit 档。 */
   codexAutoReviewSupported?: boolean;
   /** 草稿态使用预热 session 作附件 transaction 载体。 */
@@ -554,6 +559,7 @@ function ConversationComposerImpl({
   modelSelectionState = MODEL_SELECTION_LOADING_STATE,
   modelSelectionReload,
   codexModelCatalog,
+  nativeCodexSession = false,
   codexAutoReviewSupported = false,
   attachmentSessionId = null,
   attachmentPut,
@@ -1248,6 +1254,9 @@ function ConversationComposerImpl({
   }, [activeTurnId, sessionId, workspaceKey]);
   const nativeSettingsLocked =
     Boolean(codexModelCatalog) && (pending || isCodexComposerBusy(snapshot));
+  // 桌面 catalog 链路或远控 hello 侦测任一成立即原生 Codex 会话；
+  // 排队/引导选择器与投递意图在两条链路保持一致（桌面/手机 UI 统一）。
+  const nativeCodexFollowup = Boolean(codexModelCatalog) || nativeCodexSession;
   const modifiedEnterReversesDelivery = modifiedEnterSubmits && canStop;
   const hasText = text.trim().length > 0;
   const hasDraftToSubmit =
@@ -1570,7 +1579,7 @@ function ConversationComposerImpl({
           return;
         }
         setHeldQueueConfirmation(null);
-        if (codexModelCatalog) setCodexFollowupIntent("queue");
+        if (nativeCodexFollowup) setCodexFollowupIntent("queue");
         if (
           codexModelCatalog &&
           requestedDelivery === "guide" &&
@@ -1643,6 +1652,7 @@ function ConversationComposerImpl({
     [
       attachmentsApi,
       codexModelCatalog,
+      nativeCodexFollowup,
       conversationSelectionReferences,
       conversationTelemetry,
       draftConfig,
@@ -1709,7 +1719,7 @@ function ConversationComposerImpl({
         undefined,
         undefined,
         resolveComposerFollowupDelivery({
-          nativeCodex: Boolean(codexModelCatalog),
+          nativeCodex: nativeCodexFollowup,
           busy: Boolean(snapshotRef.current?.control.canStop),
           nativeIntent: codexFollowupIntent,
           followupMode: snapshotRef.current?.config.followupMode,
@@ -1718,7 +1728,7 @@ function ConversationComposerImpl({
       );
       return false;
     },
-    [codexFollowupIntent, codexModelCatalog, submit],
+    [codexFollowupIntent, nativeCodexFollowup, submit],
   );
 
   const handleModifiedEditorSubmit = useCallback(
@@ -1731,7 +1741,7 @@ function ConversationComposerImpl({
         undefined,
         undefined,
         resolveComposerFollowupDelivery({
-          nativeCodex: Boolean(codexModelCatalog),
+          nativeCodex: nativeCodexFollowup,
           busy: Boolean(snapshotRef.current?.control.canStop),
           nativeIntent: codexFollowupIntent,
           followupMode: snapshotRef.current?.config.followupMode,
@@ -1740,7 +1750,7 @@ function ConversationComposerImpl({
       );
       return false;
     },
-    [codexFollowupIntent, codexModelCatalog, submit],
+    [codexFollowupIntent, nativeCodexFollowup, submit],
   );
 
   const handleClearQueueSend = useCallback(() => {
@@ -1816,7 +1826,7 @@ function ConversationComposerImpl({
   // 有历史空闲 → followUpAsk；有历史处理中 → followUpQueue。
   const placeholder = intl.formatMessage({
     id:
-      codexModelCatalog && canStop && codexFollowupIntent === "guide"
+      nativeCodexFollowup && canStop && codexFollowupIntent === "guide"
         ? "chat.followup.mode.guide.placeholder"
         : resolveChatPlaceholderKey({
             hasHistoryMessages: (snapshot?.rows.totalCount ?? 0) > 0,
@@ -1826,7 +1836,7 @@ function ConversationComposerImpl({
   });
   const sendTooltipTitle = intl.formatMessage({
     id:
-      codexModelCatalog && canStop
+      nativeCodexFollowup && canStop
         ? codexFollowupIntent === "guide"
           ? "chat.followup.guideCurrent"
           : "chat.followup.addToQueue"
@@ -1839,7 +1849,7 @@ function ConversationComposerImpl({
     canSend,
     modifierPressed: primaryModifierPressed,
     followupMode:
-      codexModelCatalog && canStop ? codexFollowupIntent : snapshot?.config.followupMode,
+      nativeCodexFollowup && canStop ? codexFollowupIntent : snapshot?.config.followupMode,
     isApplePlatform: appleKeyboardPlatform,
   });
   const resolvedSendTooltipTitle = modifierTooltip
@@ -2288,6 +2298,9 @@ function ConversationComposerImpl({
               selection={draftConfig?.modelSelection}
               disabled={disabled}
               busy={nativeSettingsLocked}
+              usage={composerUsage}
+              activeConfigPicker={activeConfigPicker}
+              onConfigPickerOpenChange={handleConfigPickerOpenChange}
               onSelectModel={handleSelectModelTrace}
               onSelectThought={onSelectThought}
             />
@@ -2323,7 +2336,7 @@ function ConversationComposerImpl({
             />
           )}
         </span>
-        {codexModelCatalog && canStop && mode !== "reject" ? (
+        {nativeCodexFollowup && canStop && mode !== "reject" ? (
           <CodexFollowupModeMenu
             intent={codexFollowupIntent}
             disabled={disabled || pending}
@@ -2390,6 +2403,7 @@ function ConversationComposerImpl({
       codexModelCatalog,
       codexFollowupIntent,
       setCodexFollowupIntent,
+      nativeCodexFollowup,
       nativeSettingsLocked,
       modelSelectionState,
       modelSelectionView,

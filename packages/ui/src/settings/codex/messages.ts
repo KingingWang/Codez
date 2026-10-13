@@ -12,7 +12,6 @@ const en = {
     "Explicit native configuration; model capabilities were not returned by discovery.",
   busySettings:
     "Model, reasoning and permissions are locked while Codex is busy. Wait for idle to change settings.",
-  busyShort: "Locked",
   settingsMismatch:
     "Codex queue/guide cannot override thread settings. Wait for idle and send normally, or restore the thread's current settings. Your draft is preserved.",
   attachmentSessionLost:
@@ -213,7 +212,6 @@ const zh: Record<keyof typeof en, string> = {
   nativeDefault: "原生默认值",
   configuredHelp: "使用原生显式配置；模型发现未返回其能力信息。",
   busySettings: "Codex 忙碌时锁定模型、推理和权限设置。请等待空闲后再修改。",
-  busyShort: "已锁定",
   settingsMismatch:
     "Codex 队列/引导输入不能覆盖线程设置。请等待空闲后正常发送，或恢复线程当前设置。草稿已保留。",
   attachmentSessionLost: "附件所属会话已改变。请重新附加文件后发送；草稿已保留。",

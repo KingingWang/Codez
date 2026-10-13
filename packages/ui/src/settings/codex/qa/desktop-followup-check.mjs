@@ -52,7 +52,7 @@ try {
   const composer = page.getByTestId("v4-composer-input");
   const send = page.getByTestId("v4-composer-send");
   const choice = page.getByTestId("v4-codex-followup-mode");
-  await page.getByRole("combobox", { name: "Default model" }).waitFor();
+  await page.getByTestId("chat-model-select-trigger").waitFor();
   assert.equal(await choice.count(), 0, "Idle composer hides busy-only choice");
   await composer.fill("QA hold first turn. No tools.");
   await send.click();
@@ -119,7 +119,8 @@ try {
   assert.ok(narrowChoice && narrowChoice.x >= 0 && narrowChoice.x + narrowChoice.width <= 720);
   assert.ok(narrowQueue && narrowQueue.x >= 0 && narrowQueue.x + narrowQueue.width <= 720);
   assert.ok(narrowModelInfo && narrowModelInfo.height <= 36, "Busy model facts stay one line");
-  await page.getByRole("status", { name: /Model, reasoning and permissions are locked/ }).waitFor();
+  // 忙碌锁定无内联说明文字：模型/档位控件保持禁用态即可（spec：disabled controls, no banner）。
+  assert.equal(await page.getByTestId("chat-model-select-trigger").isDisabled(), true);
   await page.screenshot({ path: join(evidence, "followup-narrow-dark.png"), fullPage: true });
   checks.push("Queue, Guide hint and mode selector fit a narrow desktop window in dark theme");
   await page.setViewportSize({ width: 1200, height: 800 });
