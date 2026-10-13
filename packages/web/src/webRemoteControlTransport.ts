@@ -620,7 +620,10 @@ export class WebRemoteControlTerminalTransport {
       try {
         const wire = parseWebRemoteControlE2eeWirePayload(payload);
         if (wire?.zcode_type === "e2ee-rekey" && wire.sid === this.options.deviceSid) {
-          if (this.e2ee?.isReady()) {
+          // Bugfix: 桌面 socket 重建后发来 rekey 时，手机可能正处于上一轮换的握手中段
+          // （旧 hello 已随旧 device socket 丢失）。只在 ready 时响应会造成双方等待
+          // 握手超时的僵局；只要已有会话就废弃重来，relay 伪造 rekey 最多造成拒绝服务。
+          if (this.e2ee) {
             this.resetE2ee();
             this.e2ee = createWebRemoteControlE2eeSession({
               role: "terminal",
@@ -650,11 +653,17 @@ export class WebRemoteControlTerminalTransport {
         }
         if (result.kind !== "payload" && result.kind !== "duplicate-rpc") return;
         payload = result.payload;
-      } catch {
-        this.enterTerminalFailure({
-          reason: "invalid-mobile-connection",
-          message: "End-to-end authentication failed.",
-        });
+      } catch (error) {
+        // Bugfix: 跨轮次旧记录按 spec 一律丢弃；peer 换代时的 in-flight 旧帧不应触发重连。
+        if (
+          error instanceof Error &&
+          (error.message === "e2ee.staleEpoch" || error.message === "e2ee.staleRecord")
+        ) {
+          return;
+        }
+        this.recoverFromE2eeFailure(
+          error instanceof Error ? error : new Error("e2ee.authenticationFailed"),
+        );
         return;
       }
     }
@@ -676,11 +685,17 @@ export class WebRemoteControlTerminalTransport {
       this.payloadSerializer.isOversize(prepared) ||
       !this.sendSerialized(prepared.message, prepared.json)
     ) {
-      this.enterTerminalFailure({
-        reason: "invalid-mobile-connection",
-        message: "End-to-end handshake could not be sent.",
-      });
+      // Bugfix: 握手消息发送失败多为 socket 半开/抖动，走可恢复重建而不是失败页。
+      this.recoverFromE2eeFailure(new Error("e2ee.handshakeSendFailed"));
     }
+  }
+
+  private recoverFromE2eeFailure(error: Error): void {
+    // Bugfix: e2ee 失败不等于 relay 连接不可用；旧逻辑 enterTerminalFailure 直接进失败页
+    // 且不再自动恢复。这里废弃当前临时密钥并复用既有 socket 重建路径，重新 matched 后
+    // 自动重发 hello 完成握手；期间业务入口保持关闭，UI 停留可恢复的重连态。
+    this.resetE2ee();
+    this.recoverFromRelayInternal(error.message);
   }
 
   private resetE2ee(): void {
@@ -697,10 +712,9 @@ export class WebRemoteControlTerminalTransport {
     this.e2eeHandshakeTimer = setTimeout(() => {
       this.e2eeHandshakeTimer = undefined;
       if (!this.e2ee?.isReady()) {
-        this.enterTerminalFailure({
-          reason: "invalid-mobile-connection",
-          message: "End-to-end handshake timed out.",
-        });
+        // Bugfix: 握手超时只说明本轮未完成（对端短暂离开/帧丢失），重建 socket 重试，
+        // 不再进失败页。
+        this.recoverFromE2eeFailure(new Error("e2ee.handshakeTimeout"));
       }
     }, this.options.e2eeHandshakeTimeoutMs ?? WEB_REMOTE_CONTROL_E2EE_HANDSHAKE_TIMEOUT_MS);
   }

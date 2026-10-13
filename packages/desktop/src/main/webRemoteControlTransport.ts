@@ -62,6 +62,7 @@ export interface WebRemoteControlDeviceTransportOptions {
   heartbeatIntervalMs?: number;
   heartbeatJitterMs?: number;
   heartbeatAckTimeoutMs?: number;
+  e2eeHandshakeTimeoutMs?: number;
   reconnectJitterMs?: number;
   reconnectDelayMs?: number;
   logger: {
@@ -585,9 +586,12 @@ export class WebRemoteControlDeviceTransport {
     if (this.options.e2eeKey) {
       try {
         const wire = parseWebRemoteControlE2eeWirePayload(payload);
-        if (wire?.zcode_type === "e2ee-hello" && this.e2ee?.isReady()) {
+        if (wire?.zcode_type === "e2ee-hello" && wire.sid === this.deviceSid) {
           // 同一 device socket 可被新 terminal 接管；旧 bridge 与密钥必须先失效，
           // 再接受新手机的临时公钥，不能把新 hello 当作旧轮次数据。
+          // Bugfix: 手机刷新/恢复可能落在上一轮握手中段；旧逻辑仅在 ready 时重置会话，
+          // 中段 hello 会被 accept 判为 invalidHandshakeState 并 terminal 断开。任意阶段
+          // 收到 hello 都废弃旧会话重新开始，单次交错握手不再终结整段远控连接。
           this.resetE2ee();
           this.e2ee = createWebRemoteControlE2eeSession({
             role: "device",
@@ -615,8 +619,18 @@ export class WebRemoteControlDeviceTransport {
         }
         if (result.kind !== "payload" && result.kind !== "duplicate-rpc") return;
         payload = result.payload;
-      } catch {
-        this.enterError(new Error("e2ee.authenticationFailed"));
+      } catch (error) {
+        // Bugfix: 跨轮次的旧记录在 peer 换代/恢复期间属于正常流量（spec：一律丢弃），
+        // 直接丢帧不触发重连，否则 in-flight 旧帧会把刚恢复的会话再次打死。
+        if (
+          error instanceof Error &&
+          (error.message === "e2ee.staleEpoch" || error.message === "e2ee.staleRecord")
+        ) {
+          return;
+        }
+        this.recoverFromE2eeFailure(
+          error instanceof Error ? error : new Error("e2ee.authenticationFailed"),
+        );
         return;
       }
     }
@@ -642,7 +656,8 @@ export class WebRemoteControlDeviceTransport {
       this.payloadSerializer.isOversize(prepared) ||
       !this.sendSerialized(prepared.message, prepared.json)
     ) {
-      this.enterError(new Error("e2ee.handshakeSendFailed"));
+      // Bugfix: 握手消息发送失败多是 socket 半开/抖动，走可恢复重建而不是 terminal 断开。
+      this.recoverFromE2eeFailure(new Error("e2ee.handshakeSendFailed"));
     }
   }
 
@@ -663,8 +678,10 @@ export class WebRemoteControlDeviceTransport {
     this.clearE2eeHandshakeDeadline();
     this.e2eeHandshakeTimer = setTimeout(() => {
       this.e2eeHandshakeTimer = undefined;
-      if (!this.e2ee?.isReady()) this.enterError(new Error("e2ee.handshakeTimeout"));
-    }, WEB_REMOTE_CONTROL_E2EE_HANDSHAKE_TIMEOUT_MS);
+      // Bugfix: 握手超时只说明本轮未完成（手机短暂离开/帧丢失），废弃会话并重建 socket
+      // 等待手机重新 hello；不再 terminal 断开，避免单次超时永久杀死远控连接。
+      if (!this.e2ee?.isReady()) this.recoverFromE2eeFailure(new Error("e2ee.handshakeTimeout"));
+    }, this.options.e2eeHandshakeTimeoutMs ?? WEB_REMOTE_CONTROL_E2EE_HANDSHAKE_TIMEOUT_MS);
   }
 
   private clearE2eeHandshakeDeadline(): void {
@@ -822,6 +839,22 @@ export class WebRemoteControlDeviceTransport {
     this.setState("error");
     this.options.onError(error);
     this.socket?.close();
+  }
+
+  private recoverFromE2eeFailure(error: Error): void {
+    // Bugfix: e2ee 证明失败/握手超时/发送失败不代表 relay 连接不可用。旧逻辑 enterError
+    // 置 terminalClose 永久断连且不再重试，手机只能等用户手动重开远控（生产日志表现为
+    // e2ee.authenticationFailed 之后数小时无任何 relay 活动）。这里废弃当前临时密钥并沿用
+    // 带抖动的 socket 重建；matched 后自动新建会话并发送 e2ee-rekey 触发手机重新握手。
+    // 业务入口在握手完成前保持关闭（e2ee 未 ready 时 sendPayloadResult 返回 unavailable），
+    // 不削弱 fail-closed 语义。
+    this.options.logger.warn(
+      "[web-remote-control] external relay device e2ee failure, rebuilding socket",
+      { message: error.message },
+    );
+    this.options.onError(error);
+    this.resetE2ee();
+    this.reconnectAfterStaleWaiting(this.getReconnectJitterMs());
   }
 
   private enterRecoverableError(error: Error): void {

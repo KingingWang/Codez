@@ -13,12 +13,12 @@
 
 - Desktop Main 持有安装/窗口级 `K_pair`、当前加密连接及已有 bridge 路由；credential service 是 `K_pair` 的唯一持久化落点，AppSettings 只存非敏感 `deviceSid`。桌面发行配置决定可信页面默认 URL，本地开发可显式覆盖，relay 只提供 WebSocket endpoint，不能改页面 URL。
 - 手机 transport 持有当前页面的配对密钥和短生命周期加密连接；UI 仅显示就绪/错误投影。共享 client 模块提供无状态密码学原语和连接级加密适配；shared 模块声明二维码参数和严格的握手/密文 wire schema。
-- relay 的 `matched` 只允许开始端到端握手。手机发送版本、`deviceSid`、新鲜临时 X25519 公钥及随机数；桌面回复自己的公钥和随机数，以及绑定双方 transcript 和角色的 `K_pair` HMAC；手机校验并回传自己的证明。桌面校验后发送经会话密钥认证的就绪记录，手机收到后才发 bootstrap。握手有界超时，任一步失败都关闭业务入口。
+- relay 的 `matched` 只允许开始端到端握手。手机发送版本、`deviceSid`、新鲜临时 X25519 公钥及随机数；桌面回复自己的公钥和随机数，以及绑定双方 transcript 和角色的 `K_pair` HMAC；手机校验并回传自己的证明。桌面校验后发送经会话密钥认证的就绪记录，手机收到后才发 bootstrap。握手有界超时，任一步失败都关闭业务入口。"关闭业务入口"指握手完成前不 attach Host、不接受业务帧，而不是永久终止传输：握手证明失败、握手超时或握手消息发送失败时，两端各自废弃当前临时密钥并沿既有 socket 重建与抖动重连路径重试握手，桌面在重建命中 `matched` 后照旧发送 `e2ee-rekey`；重试不设次数上限，单次损坏帧不得使整段远控连接进入终态。跨轮次的旧记录仍一律丢弃且不触发重连。
 - 双端使用 HKDF-SHA-256 混合临时 X25519 shared secret 与 `K_pair`，以完整握手 transcript 作上下文，派生方向独立的 XChaCha20-Poly1305 密钥、nonce 前缀和轮次 ID。临时私钥在派生后丢弃；版本、方向、轮次、`deviceSid`、单调序号均进入 AEAD AAD。
 - `data.payload` 除握手和加密记录外不接受任何业务消息。加密记录的明文是现有上游 `zcode_type` 业务 payload；解密、鉴权和重放检查完成后，才允许旧的 wire 归一、strict schema、raw frame/ACK 快捷路径及 workspace 路由。握手前不得 attach Host。
 - 同一轮次每方向使用单调 nonce/record 序号；相同序号仅允许字节完全一致的已认证 RPC frame 重发，并交给既有 acknowledged adapter 去重与补 ACK；其他重复业务记录不再投递。跨轮次的旧记录一律丢弃。密文与最终 relay JSON 在首次计量时固定，重发原样使用缓存，不重新加密或刷新排队年龄。
 - 配对从 `matched` 离开、peer 换代、socket 重建或显式停止时废弃会话密钥、短期 buffer 和旧 bridge；重新握手后通过同一个 `web-remote-replayable` attachment 的 snapshot/gap 及 `commands/query` 恢复，不自动重发 ACK 不明的变更。桌面 `desktop-continuous` 仍走原直接连接。
-- Desktop socket 换代而手机仍保持同一 socket 时，Desktop 发送不带业务授权的 `e2ee-rekey` 提醒手机重建临时密钥；同一 Desktop socket 收到新手机的 hello 时也先废弃旧 bridge/密钥。relay 可伪造提醒造成拒绝服务，但不能完成证明或得到业务访问权。
+- Desktop socket 换代而手机仍保持同一 socket 时，Desktop 发送不带业务授权的 `e2ee-rekey` 提醒手机重建临时密钥；同一 Desktop socket 收到新手机的 hello 时也先废弃旧 bridge/密钥，且 hello 在任意握手阶段（含上一轮换未完成时）到达都同样废弃旧会话重新开始。relay 可伪造提醒造成拒绝服务，但不能完成证明或得到业务访问权。
 
 ```mermaid
 sequenceDiagram

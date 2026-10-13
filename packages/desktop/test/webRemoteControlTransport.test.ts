@@ -7,6 +7,10 @@ import {
   type WebRemoteControlAppPayload,
 } from "@codez/shared";
 import {
+  createWebRemoteControlE2eeSession,
+  generateWebRemoteControlPairingKey,
+} from "@codez/client";
+import {
   WebRemoteControlDeviceTransport,
   type WebRemoteControlDeviceTransportState,
 } from "../src/main/webRemoteControlTransport.js";
@@ -162,7 +166,11 @@ describe("WebRemoteControlDeviceTransport", () => {
     const relay = await createRelayServer(({ message, socket }) => {
       if (message.type === "auth_init") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -229,7 +237,11 @@ describe("WebRemoteControlDeviceTransport", () => {
     const relay = await createRelayServer(({ message, socket }) => {
       if (message.type === "auth_init") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
         socket.send(exact);
         socket.send(oversize);
@@ -310,7 +322,11 @@ describe("WebRemoteControlDeviceTransport", () => {
     const relay = await createRelayServer(({ message, socket }) => {
       if (message.type === "auth_init") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -358,7 +374,11 @@ describe("WebRemoteControlDeviceTransport", () => {
         }
         if (message.type === "auth_response") {
           socket.send(
-            JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+            JSON.stringify({
+              type: "auth_ack",
+              device_sid: "sid-1",
+              pair_status: "matched",
+            }),
           );
         }
       },
@@ -416,7 +436,11 @@ describe("WebRemoteControlDeviceTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "waiting" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "waiting",
+          }),
         );
       }
     });
@@ -461,7 +485,11 @@ describe("WebRemoteControlDeviceTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -512,12 +540,20 @@ describe("WebRemoteControlDeviceTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "waiting" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "waiting",
+          }),
         );
       }
       if (message.type === "pair_status_query") {
         socket.send(
-          JSON.stringify({ type: "pair_status_ack", device_sid: "sid-1", pair_status: "waiting" }),
+          JSON.stringify({
+            type: "pair_status_ack",
+            device_sid: "sid-1",
+            pair_status: "waiting",
+          }),
         );
       }
     });
@@ -560,7 +596,11 @@ describe("WebRemoteControlDeviceTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -608,7 +648,11 @@ describe("WebRemoteControlDeviceTransport", () => {
       if (!staleAckInjected && firstRelaySocket) {
         staleAckInjected = true;
         firstRelaySocket.send(
-          JSON.stringify({ type: "pair_status_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "pair_status_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
       return originalClose.call(this);
@@ -625,7 +669,11 @@ describe("WebRemoteControlDeviceTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -684,7 +732,11 @@ describe("WebRemoteControlDeviceTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
       if (message.type === "pair_status_query") {
@@ -771,7 +823,11 @@ describe("WebRemoteControlDeviceTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
       if (message.type === "pair_status_query") {
@@ -824,7 +880,11 @@ describe("WebRemoteControlDeviceTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
       if (message.type === "pair_status_query") {
@@ -899,12 +959,20 @@ describe("WebRemoteControlDeviceTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
       if (message.type === "pair_status_query") {
         socket.send(
-          JSON.stringify({ type: "pair_status_ack", device_sid: "sid-1", pair_status: "waiting" }),
+          JSON.stringify({
+            type: "pair_status_ack",
+            device_sid: "sid-1",
+            pair_status: "waiting",
+          }),
         );
       }
     });
@@ -942,7 +1010,12 @@ describe("WebRemoteControlDeviceTransport", () => {
   it("reuses registered device auth instead of registering again after reconnect", async () => {
     const relay = await createRelayServer(({ message, socket }) => {
       if (message.type === "device_register_init") {
-        socket.send(JSON.stringify({ type: "device_register_ack", device_sid: "sid-registered" }));
+        socket.send(
+          JSON.stringify({
+            type: "device_register_ack",
+            device_sid: "sid-registered",
+          }),
+        );
       }
       if (message.type === "auth_init") {
         socket.send(JSON.stringify({ type: "auth_challenge", nonce: "nonce-1" }));
@@ -1015,12 +1088,21 @@ describe("WebRemoteControlDeviceTransport", () => {
     const relay = await createRelayServer(({ message, socket, messages }) => {
       if (message.type === "auth_init") {
         socket.send(
-          JSON.stringify({ type: "error", code: "AUTH_FAILED", message: "bad persisted auth" }),
+          JSON.stringify({
+            type: "error",
+            code: "AUTH_FAILED",
+            message: "bad persisted auth",
+          }),
         );
         socket.close();
       }
       if (messages.filter((item) => item.type === "device_register_init").length === 1) {
-        socket.send(JSON.stringify({ type: "device_register_ack", device_sid: "sid-new" }));
+        socket.send(
+          JSON.stringify({
+            type: "device_register_ack",
+            device_sid: "sid-new",
+          }),
+        );
       }
     });
 
@@ -1058,7 +1140,13 @@ describe("WebRemoteControlDeviceTransport", () => {
     const errors: string[] = [];
     const relay = await createRelayServer(({ message, socket }) => {
       if (message.type === "auth_init") {
-        socket.send(JSON.stringify({ type: "error", code: "INTERNAL", message: "relay bounced" }));
+        socket.send(
+          JSON.stringify({
+            type: "error",
+            code: "INTERNAL",
+            message: "relay bounced",
+          }),
+        );
         socket.close();
       }
     });
@@ -1099,16 +1187,30 @@ describe("WebRemoteControlDeviceTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
       if (message.type === "data") {
         pairStatus = "waiting";
-        socket.send(JSON.stringify({ type: "error", code: "INTERNAL", message: "no such pair" }));
+        socket.send(
+          JSON.stringify({
+            type: "error",
+            code: "INTERNAL",
+            message: "no such pair",
+          }),
+        );
       }
       if (message.type === "pair_status_query") {
         socket.send(
-          JSON.stringify({ type: "pair_status_ack", device_sid: "sid-1", pair_status: pairStatus }),
+          JSON.stringify({
+            type: "pair_status_ack",
+            device_sid: "sid-1",
+            pair_status: pairStatus,
+          }),
         );
       }
     });
@@ -1166,11 +1268,21 @@ describe("WebRemoteControlDeviceTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
       if (message.type === "pair_status_query") {
-        socket.send(JSON.stringify({ type: "error", code: "WRONG_PARAM", message: "bad request" }));
+        socket.send(
+          JSON.stringify({
+            type: "error",
+            code: "WRONG_PARAM",
+            message: "bad request",
+          }),
+        );
       }
     });
 
@@ -1208,7 +1320,13 @@ describe("WebRemoteControlDeviceTransport", () => {
     const states: WebRemoteControlDeviceTransportState[] = [];
     const relay = await createRelayServer(({ message, socket }) => {
       if (message.type === "auth_init") {
-        socket.send(JSON.stringify({ type: "error", code: "WRONG_PARAM", message: "bad request" }));
+        socket.send(
+          JSON.stringify({
+            type: "error",
+            code: "WRONG_PARAM",
+            message: "bad request",
+          }),
+        );
       }
     });
 
@@ -1239,6 +1357,298 @@ describe("WebRemoteControlDeviceTransport", () => {
     transport.dispose();
   });
 
+  // ===== e2ee 失败自动恢复 =====
+
+  type E2eeSession = ReturnType<typeof createWebRemoteControlE2eeSession>;
+
+  function createE2eeTransport(
+    relayUrl: string,
+    key: string,
+    states: WebRemoteControlDeviceTransportState[],
+    errors: Error[],
+    extras?: Partial<ConstructorParameters<typeof WebRemoteControlDeviceTransport>[0]>,
+  ): WebRemoteControlDeviceTransport {
+    return new WebRemoteControlDeviceTransport({
+      relayWsUrl: relayUrl,
+      deviceMid: "mid-1",
+      auth: { mode: "persisted", deviceSid: "sid-1", passHash: "hash-1" },
+      e2eeKey: key,
+      meta: { platform: "darwin", version: "1.0.0", name: "Mac" },
+      authProvider: {
+        createPassword: () => "password",
+        createPassHash: () => "hash-1",
+        calculateProof: () => "proof",
+      },
+      reconnectJitterMs: 1,
+      logger: createLogger(),
+      onRegisteredAuth: () => {},
+      onStateChange: (state) => states.push(state),
+      onPayload: () => {},
+      onError: (error) => errors.push(error),
+      onInvalidPersistedAuth: async () => {},
+      ...extras,
+    });
+  }
+
+  // 手机侧测试替身：relay handler 内置 terminal 会话自动完成握手；
+  // corruptFinishProofs 让前 N 次握手的 finish proof 被篡改（设备侧 proof 校验失败）。
+  async function createE2eeRelayHarness(key: string, options?: { corruptFinishProofs?: number }) {
+    let corruptLeft = options?.corruptFinishProofs ?? 0;
+    let phone: E2eeSession | undefined;
+    let phoneSocket: WebSocket | undefined;
+    const startPhone = (socket: WebSocket) => {
+      phoneSocket = socket;
+      phone = createWebRemoteControlE2eeSession({
+        role: "terminal",
+        deviceSid: "sid-1",
+        pairingKey: key,
+        send: (payload) => {
+          let out = payload;
+          if (out.zcode_type === "e2ee-finish" && corruptLeft > 0) {
+            corruptLeft -= 1;
+            out = { ...out, proof: "A".repeat(43) };
+          }
+          socket.send(JSON.stringify({ type: "data", payload: out }));
+        },
+      });
+      phone.start();
+    };
+    const relay = await createRelayServer(({ message, socket }) => {
+      if (message.type === "auth_init") {
+        socket.send(
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
+        );
+        return;
+      }
+      if (message.type !== "data") return;
+      const wire = message.payload;
+      if (wire?.zcode_type === "e2ee-rekey") {
+        startPhone(socket);
+        return;
+      }
+      try {
+        phone?.accept(wire);
+      } catch {
+        // 测试替身只驱动协议流；设备重置会话后手机侧抛错可忽略。
+      }
+    });
+    return {
+      relay,
+      currentPhone: () => phone,
+      refreshPhone: () => {
+        if (!phoneSocket) throw new Error("phone not started");
+        startPhone(phoneSocket);
+      },
+      sendRaw: (payload: unknown) => {
+        if (!phoneSocket) throw new Error("phone not started");
+        phoneSocket.send(JSON.stringify({ type: "data", payload }));
+      },
+    };
+  }
+
+  it("restarts the e2ee handshake when a refreshed phone sends a new hello mid-handshake", async () => {
+    const key = generateWebRemoteControlPairingKey();
+    const states: WebRemoteControlDeviceTransportState[] = [];
+    const errors: Error[] = [];
+    let phone2: E2eeSession | undefined;
+    let firstResponseHeld = false;
+    const relay = await createRelayServer(({ message, socket }) => {
+      if (message.type === "auth_init") {
+        socket.send(
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
+        );
+        return;
+      }
+      if (message.type !== "data") return;
+      const wire = message.payload;
+      if (wire?.zcode_type === "e2ee-rekey") {
+        // 第一台手机开始握手，但它的 response 会被扣住（模拟刷新前的停滞）。
+        const phone1 = createWebRemoteControlE2eeSession({
+          role: "terminal",
+          deviceSid: "sid-1",
+          pairingKey: key,
+          send: (payload) => socket.send(JSON.stringify({ type: "data", payload })),
+        });
+        phone1.start();
+        return;
+      }
+      if (wire?.zcode_type === "e2ee-response" && !firstResponseHeld) {
+        // 握手中段模拟手机刷新：全新会话直接发新 hello，旧会话被丢弃。
+        firstResponseHeld = true;
+        phone2 = createWebRemoteControlE2eeSession({
+          role: "terminal",
+          deviceSid: "sid-1",
+          pairingKey: key,
+          send: (payload) => socket.send(JSON.stringify({ type: "data", payload })),
+        });
+        phone2.start();
+        return;
+      }
+      try {
+        phone2?.accept(wire);
+      } catch {
+        // 同上：替身只驱动协议流。
+      }
+    });
+    const transport = createE2eeTransport(relay.url, key, states, errors);
+    try {
+      transport.start();
+      await waitUntil(() => states.includes("paired") && phone2?.isReady() === true);
+      expect(states).not.toContain("error");
+      expect(errors).toHaveLength(0);
+      expect(relay.getConnectionCount()).toBe(1);
+    } finally {
+      transport.dispose();
+    }
+  });
+
+  it("rebuilds the socket instead of entering a terminal error when the e2ee proof is invalid", async () => {
+    const key = generateWebRemoteControlPairingKey();
+    const states: WebRemoteControlDeviceTransportState[] = [];
+    const errors: Error[] = [];
+    const harness = await createE2eeRelayHarness(key, {
+      corruptFinishProofs: 1,
+    });
+    const transport = createE2eeTransport(harness.relay.url, key, states, errors);
+    try {
+      transport.start();
+      // 第一轮握手 proof 被篡改 → 设备校验失败；应自动重建 socket 而不是 terminal 断开。
+      await waitUntil(() => errors.some((error) => error.message === "e2ee.authenticationFailed"));
+      await waitUntil(() => states.includes("paired"));
+      expect(harness.relay.getConnectionCount()).toBeGreaterThanOrEqual(2);
+      expect(states).not.toContain("error");
+      expect(harness.currentPhone()?.isReady()).toBe(true);
+    } finally {
+      transport.dispose();
+    }
+  });
+
+  it("drops stale epoch records without reconnecting or failing", async () => {
+    const key = generateWebRemoteControlPairingKey();
+    const states: WebRemoteControlDeviceTransportState[] = [];
+    const errors: Error[] = [];
+    const payloads: WebRemoteControlAppPayload[] = [];
+    const harness = await createE2eeRelayHarness(key);
+    const transport = createE2eeTransport(harness.relay.url, key, states, errors, {
+      onPayload: (payload) => payloads.push(payload),
+    });
+    try {
+      transport.start();
+      await waitUntil(() => states.includes("paired"));
+      // 第一轮 epoch 的密文，先扣住不发。
+      const staleRecord = harness.currentPhone()!.prepare({
+        codez_type: "app-error",
+        reason: "unexpected-error",
+        error: "stale epoch",
+      });
+      // 手机刷新：同一 socket 上重新握手，进入新 epoch。
+      harness.refreshPhone();
+      await waitUntil(() => states.filter((state) => state === "paired").length === 2);
+      // 旧轮次迟到帧必须被丢弃且不触发任何状态变化；紧跟新轮次密文验证链路仍可用。
+      harness.sendRaw(staleRecord);
+      harness.sendRaw(
+        harness.currentPhone()!.prepare({
+          codez_type: "app-error",
+          reason: "unexpected-error",
+          error: "fresh epoch",
+        }),
+      );
+      await waitUntil(() =>
+        payloads.some((payload) => (payload as { error?: string }).error === "fresh epoch"),
+      );
+      expect(
+        payloads.some((payload) => (payload as { error?: string }).error === "stale epoch"),
+      ).toBe(false);
+      expect(harness.relay.getConnectionCount()).toBe(1);
+      expect(states).not.toContain("error");
+      expect(errors).toHaveLength(0);
+    } finally {
+      transport.dispose();
+    }
+  });
+
+  it("rebuilds the socket when the e2ee handshake times out instead of entering a terminal error", async () => {
+    const key = generateWebRemoteControlPairingKey();
+    const states: WebRemoteControlDeviceTransportState[] = [];
+    const errors: Error[] = [];
+    let phone: E2eeSession | undefined;
+    const relay = await createRelayServer(({ message, socket }) => {
+      if (message.type === "auth_init") {
+        socket.send(
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
+        );
+        return;
+      }
+      if (message.type !== "data") return;
+      const wire = message.payload;
+      if (wire?.zcode_type === "e2ee-rekey") {
+        // 第一次连接的握手无人应答，等待超时重建；重建后的第二次连接完成握手。
+        if (relay.getConnectionCount() < 2) return;
+        phone = createWebRemoteControlE2eeSession({
+          role: "terminal",
+          deviceSid: "sid-1",
+          pairingKey: key,
+          send: (payload) => socket.send(JSON.stringify({ type: "data", payload })),
+        });
+        phone.start();
+        return;
+      }
+      try {
+        phone?.accept(wire);
+      } catch {
+        // 同上：替身只驱动协议流。
+      }
+    });
+    const transport = createE2eeTransport(relay.url, key, states, errors, {
+      e2eeHandshakeTimeoutMs: 150,
+    });
+    try {
+      transport.start();
+      await waitUntil(() => errors.some((error) => error.message === "e2ee.handshakeTimeout"));
+      await waitUntil(() => states.includes("paired"));
+      expect(states).not.toContain("error");
+      expect(relay.getConnectionCount()).toBeGreaterThanOrEqual(2);
+      expect(phone?.isReady()).toBe(true);
+    } finally {
+      transport.dispose();
+    }
+  });
+
+  it("keeps retrying after repeated e2ee failures without entering a terminal error", async () => {
+    const key = generateWebRemoteControlPairingKey();
+    const states: WebRemoteControlDeviceTransportState[] = [];
+    const errors: Error[] = [];
+    // 前两轮握手 proof 都被篡改；无限抖动重试必须在第三轮恢复，且永不进入 error 终态。
+    const harness = await createE2eeRelayHarness(key, {
+      corruptFinishProofs: 2,
+    });
+    const transport = createE2eeTransport(harness.relay.url, key, states, errors);
+    try {
+      transport.start();
+      await waitUntil(() => states.includes("paired"));
+      expect(harness.relay.getConnectionCount()).toBeGreaterThanOrEqual(3);
+      expect(states).not.toContain("error");
+      expect(errors.filter((error) => error.message === "e2ee.authenticationFailed")).toHaveLength(
+        2,
+      );
+      expect(harness.currentPhone()?.isReady()).toBe(true);
+    } finally {
+      transport.dispose();
+    }
+  });
+
   it("recovers desktop device transport from relay KICKED without entering a terminal state", async () => {
     const states: WebRemoteControlDeviceTransportState[] = [];
     let authInitCount = 0;
@@ -1259,7 +1669,11 @@ describe("WebRemoteControlDeviceTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "waiting" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "waiting",
+          }),
         );
       }
     });
@@ -1311,7 +1725,11 @@ describe("WebRemoteControlDeviceTransport", () => {
       const relay = await createRelayServer(({ message, socket }) => {
         if (message.type === "auth_init") {
           socket.send(
-            JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+            JSON.stringify({
+              type: "auth_ack",
+              device_sid: "sid-1",
+              pair_status: "matched",
+            }),
           );
         }
         if (message.type === "pair_status_query") {

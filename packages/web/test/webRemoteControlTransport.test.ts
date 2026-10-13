@@ -10,6 +10,7 @@ import {
   WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS,
   encodeWebRemoteControlRpcTransportMessage,
   type WebRemoteControlAppPayload,
+  type WebRemoteControlFailure,
 } from "@codez/shared";
 import {
   WebRemoteControlTerminalTransport,
@@ -165,7 +166,7 @@ afterEach(async () => {
 });
 
 describe("WebRemoteControlTerminalTransport", () => {
-  it("fails closed when relay matches but never forwards the authenticated handshake", async () => {
+  it("fails closed and keeps retrying when relay matches but never forwards the authenticated handshake", async () => {
     const states: WebRemoteControlTerminalTransportState[] = [];
     const failures: WebRemoteControlFailure[] = [];
     const relay = await createRelayServer(({ message, socket }) => {
@@ -173,7 +174,11 @@ describe("WebRemoteControlTerminalTransport", () => {
         socket.send(JSON.stringify({ type: "auth_challenge", nonce: "nonce-1" }));
       } else if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -203,7 +208,9 @@ describe("WebRemoteControlTerminalTransport", () => {
           error: "not-yet-authenticated",
         }),
       ).toThrow("e2ee.notReady");
-      await waitUntil(() => failures.length === 1, 3_000);
+      // Bugfix: 握手超时不再进失败页，而是重建 socket 无限重试；业务入口保持关闭。
+      await waitUntil(() => relay.getConnectionCount() >= 2, 3_000);
+      expect(failures).toHaveLength(0);
       expect(states).not.toContain("paired");
       expect(
         transport.sendPayload({
@@ -212,7 +219,6 @@ describe("WebRemoteControlTerminalTransport", () => {
           error: "blocked",
         }),
       ).toBe(false);
-      expect(failures[0]?.reason).toBe("invalid-mobile-connection");
     } finally {
       transport.dispose();
     }
@@ -244,7 +250,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       } else if (message.type === "auth_response") {
         makePeer();
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       } else if (message.type === "data") {
         const result = peer.accept(message.payload);
@@ -283,7 +293,10 @@ describe("WebRemoteControlTerminalTransport", () => {
       transport.start();
       await waitUntil(() => states.includes("paired") && received.length === 1, 3_000);
       expect(states).toContain("securing");
-      expect(received[0]).toMatchObject({ codez_type: "app-error", error: "encrypted desktop" });
+      expect(received[0]).toMatchObject({
+        codez_type: "app-error",
+        error: "encrypted desktop",
+      });
       expect(
         transport.sendPayload({
           codez_type: "app-error",
@@ -292,18 +305,29 @@ describe("WebRemoteControlTerminalTransport", () => {
         }),
       ).toBe(true);
       await waitUntil(() => peerReceived.length === 1, 3_000);
-      expect(peerReceived[0]).toMatchObject({ zcode_type: "app-error", error: "private phone" });
+      expect(peerReceived[0]).toMatchObject({
+        zcode_type: "app-error",
+        error: "private phone",
+      });
       expect(JSON.stringify(relay.messages)).not.toContain("private phone");
       makePeer();
       peerSocket!.send(
         JSON.stringify({
           type: "data",
-          payload: { zcode_type: "e2ee-rekey", v: 1, sid: "sid-1", nonce: "A".repeat(22) },
+          payload: {
+            zcode_type: "e2ee-rekey",
+            v: 1,
+            sid: "sid-1",
+            nonce: "A".repeat(22),
+          },
         }),
       );
       await waitUntil(() => received.length === 2, 3_000);
       expect(states.filter((state) => state === "paired")).toHaveLength(2);
-      expect(received[1]).toMatchObject({ codez_type: "app-error", error: "new encrypted epoch" });
+      expect(received[1]).toMatchObject({
+        codez_type: "app-error",
+        error: "new encrypted epoch",
+      });
       expect(resetCount).toBe(1);
       peerSocket!.send(
         JSON.stringify({
@@ -315,8 +339,221 @@ describe("WebRemoteControlTerminalTransport", () => {
           },
         }),
       );
-      await waitUntil(() => failures.length === 1, 3_000);
-      expect(received).toHaveLength(2);
+      // Bugfix: 明文注入/坏帧不再进失败页；手机废弃当前会话并重建 socket，
+      // 重新握手后链路恢复（每轮 ready 后 peer 都会再发一条 app-error）。
+      await waitUntil(() => received.length === 3, 3_000);
+      expect(failures).toHaveLength(0);
+      expect(received[2]).toMatchObject({
+        codez_type: "app-error",
+        error: "new encrypted epoch",
+      });
+    } finally {
+      transport.dispose();
+    }
+  });
+  it("drops stale epoch records without reconnecting or failing", async () => {
+    const key = generateWebRemoteControlPairingKey();
+    const states: WebRemoteControlTerminalTransportState[] = [];
+    const received: WebRemoteControlAppPayload[] = [];
+    const failures: WebRemoteControlFailure[] = [];
+    let peer: ReturnType<typeof createWebRemoteControlE2eeSession>;
+    let peerSocket: WebSocket;
+    let peerEpoch = 0;
+    const makePeer = () => {
+      peerEpoch += 1;
+      peer = createWebRemoteControlE2eeSession({
+        role: "device",
+        deviceSid: "sid-1",
+        pairingKey: key,
+        send: (payload) => peerSocket.send(JSON.stringify({ type: "data", payload })),
+      });
+      peer.start();
+    };
+    const relay = await createRelayServer(({ message, socket }) => {
+      peerSocket = socket;
+      if (message.type === "auth_init") {
+        socket.send(JSON.stringify({ type: "auth_challenge", nonce: "nonce-1" }));
+      } else if (message.type === "auth_response") {
+        makePeer();
+        socket.send(
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
+        );
+      } else if (message.type === "data") {
+        try {
+          const result = peer.accept(message.payload);
+          if (result.kind === "ready") {
+            socket.send(
+              JSON.stringify({
+                type: "data",
+                payload: peer.prepare({
+                  zcode_type: "app-error",
+                  reason: "unexpected-error",
+                  error: `epoch-${peerEpoch}`,
+                }),
+              }),
+            );
+          }
+        } catch {
+          // 测试替身只驱动协议流；手机重置会话后桌面侧抛错可忽略。
+        }
+      }
+    });
+    const transport = new WebRemoteControlTerminalTransport({
+      relayWsUrl: relay.url,
+      deviceSid: "sid-1",
+      passHash: "relay-known",
+      e2eeKey: key,
+      WebSocketCtor: WebSocket as unknown as typeof globalThis.WebSocket,
+      authProvider: { calculateProof: async () => "proof" },
+      onPayload: (payload) => received.push(payload),
+      onStateChange: (state) => states.push(state),
+      onFailure: (failure) => failures.push(failure),
+      onError: () => {},
+      reloadPage: () => {},
+    });
+    try {
+      transport.start();
+      await waitUntil(() => states.includes("paired") && received.length === 1, 3_000);
+      // 第一轮 epoch 的密文，先扣住不发。
+      const staleRecord = peer.prepare({
+        zcode_type: "app-error",
+        reason: "unexpected-error",
+        error: "stale epoch",
+      });
+      // 桌面 socket 换代 → rekey → 手机重新握手进入新 epoch。
+      makePeer();
+      peerSocket!.send(
+        JSON.stringify({
+          type: "data",
+          payload: {
+            zcode_type: "e2ee-rekey",
+            v: 1,
+            sid: "sid-1",
+            nonce: "A".repeat(22),
+          },
+        }),
+      );
+      await waitUntil(() => received.length === 2, 3_000);
+      // 旧轮次迟到帧必须被丢弃且不触发重连/失败；紧跟新轮次密文验证链路仍可用。
+      peerSocket!.send(JSON.stringify({ type: "data", payload: staleRecord }));
+      peerSocket!.send(
+        JSON.stringify({
+          type: "data",
+          payload: peer.prepare({
+            zcode_type: "app-error",
+            reason: "unexpected-error",
+            error: "fresh epoch",
+          }),
+        }),
+      );
+      await waitUntil(() => received.length === 3, 3_000);
+      expect(received.map((payload) => (payload as { error?: string }).error)).toEqual([
+        "epoch-1",
+        "epoch-2",
+        "fresh epoch",
+      ]);
+      expect(failures).toHaveLength(0);
+      expect(relay.getConnectionCount()).toBe(1);
+      expect(states).not.toContain("error");
+    } finally {
+      transport.dispose();
+    }
+  });
+  it("recovers from an unexpected e2ee handshake frame without a terminal failure", async () => {
+    const key = generateWebRemoteControlPairingKey();
+    const states: WebRemoteControlTerminalTransportState[] = [];
+    const received: WebRemoteControlAppPayload[] = [];
+    const failures: WebRemoteControlFailure[] = [];
+    let peer: ReturnType<typeof createWebRemoteControlE2eeSession>;
+    let peerSocket: WebSocket;
+    let peerEpoch = 0;
+    const makePeer = () => {
+      peerEpoch += 1;
+      peer = createWebRemoteControlE2eeSession({
+        role: "device",
+        deviceSid: "sid-1",
+        pairingKey: key,
+        send: (payload) => peerSocket.send(JSON.stringify({ type: "data", payload })),
+      });
+      peer.start();
+    };
+    const relay = await createRelayServer(({ message, socket }) => {
+      peerSocket = socket;
+      if (message.type === "auth_init") {
+        socket.send(JSON.stringify({ type: "auth_challenge", nonce: "nonce-1" }));
+      } else if (message.type === "auth_response") {
+        makePeer();
+        socket.send(
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
+        );
+      } else if (message.type === "data") {
+        try {
+          const result = peer.accept(message.payload);
+          if (result.kind === "ready") {
+            socket.send(
+              JSON.stringify({
+                type: "data",
+                payload: peer.prepare({
+                  zcode_type: "app-error",
+                  reason: "unexpected-error",
+                  error: `epoch-${peerEpoch}`,
+                }),
+              }),
+            );
+          }
+        } catch {
+          // 测试替身只驱动协议流。
+        }
+      }
+    });
+    const transport = new WebRemoteControlTerminalTransport({
+      relayWsUrl: relay.url,
+      deviceSid: "sid-1",
+      passHash: "relay-known",
+      e2eeKey: key,
+      WebSocketCtor: WebSocket as unknown as typeof globalThis.WebSocket,
+      authProvider: { calculateProof: async () => "proof" },
+      onPayload: (payload) => received.push(payload),
+      onStateChange: (state) => states.push(state),
+      onFailure: (failure) => failures.push(failure),
+      onError: () => {},
+      reloadPage: () => {},
+    });
+    try {
+      transport.start();
+      await waitUntil(() => states.includes("paired") && received.length === 1, 3_000);
+      // 合法 schema 但阶段错误的握手帧（手机已 ready）→ 废弃会话并重建 socket 恢复，
+      // 不再进失败页。
+      peerSocket!.send(
+        JSON.stringify({
+          type: "data",
+          payload: {
+            zcode_type: "e2ee-response",
+            v: 1,
+            sid: "sid-1",
+            publicKey: "A".repeat(43),
+            nonce: "A".repeat(22),
+            proof: "A".repeat(43),
+          },
+        }),
+      );
+      await waitUntil(() => received.length === 2, 3_000);
+      expect(received[1]).toMatchObject({
+        codez_type: "app-error",
+        error: "epoch-2",
+      });
+      expect(failures).toHaveLength(0);
+      expect(relay.getConnectionCount()).toBe(2);
+      expect(states).toContain("reconnecting");
+      expect(states).not.toContain("error");
     } finally {
       transport.dispose();
     }
@@ -329,7 +566,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -396,7 +637,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
         socket.send(exact);
         socket.send(oversize);
@@ -471,7 +716,11 @@ describe("WebRemoteControlTerminalTransport", () => {
         }
         if (message.type === "auth_response") {
           socket.send(
-            JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+            JSON.stringify({
+              type: "auth_ack",
+              device_sid: "sid-1",
+              pair_status: "matched",
+            }),
           );
         }
       },
@@ -539,7 +788,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -587,7 +840,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
       if (message.type === "pair_status_query") {
@@ -698,12 +955,20 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
       if (message.type === "pair_status_query") {
         socket.send(
-          JSON.stringify({ type: "pair_status_ack", device_sid: "sid-1", pair_status: "waiting" }),
+          JSON.stringify({
+            type: "pair_status_ack",
+            device_sid: "sid-1",
+            pair_status: "waiting",
+          }),
         );
       }
     });
@@ -742,7 +1007,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
       if (message.type === "pair_status_query") {
@@ -793,7 +1062,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -833,7 +1106,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
         if (!closedFirstPairedSocket) {
           closedFirstPairedSocket = true;
@@ -890,7 +1167,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -925,15 +1206,29 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
       if (message.type === "data") {
-        socket.send(JSON.stringify({ type: "error", code: "INTERNAL", message: "no such pair" }));
+        socket.send(
+          JSON.stringify({
+            type: "error",
+            code: "INTERNAL",
+            message: "no such pair",
+          }),
+        );
       }
       if (message.type === "pair_status_query") {
         socket.send(
-          JSON.stringify({ type: "pair_status_ack", device_sid: "sid-1", pair_status: "waiting" }),
+          JSON.stringify({
+            type: "pair_status_ack",
+            device_sid: "sid-1",
+            pair_status: "waiting",
+          }),
         );
       }
     });
@@ -955,7 +1250,10 @@ describe("WebRemoteControlTerminalTransport", () => {
 
     transport.start();
     await waitUntil(() => states.includes("paired"));
-    const sent = transport.sendPayload({ codez_type: "bootstrap-request", requestId: "req-1" });
+    const sent = transport.sendPayload({
+      codez_type: "bootstrap-request",
+      requestId: "req-1",
+    });
 
     await waitUntil(() => states.includes("waiting"));
     await new Promise((resolve) => setTimeout(resolve, 80));
@@ -974,7 +1272,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -1018,13 +1320,21 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
       if (message.type === "pair_status_query") {
         heartbeatCount += 1;
         socket.send(
-          JSON.stringify({ type: "pair_status_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "pair_status_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -1063,7 +1373,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -1098,7 +1412,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       }
       if (message.type === "auth_response") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
         );
       }
     });
@@ -1135,7 +1453,11 @@ describe("WebRemoteControlTerminalTransport", () => {
     const relay = await createRelayServer(({ message, socket }) => {
       if (message.type === "auth_init") {
         socket.send(
-          JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "waiting" }),
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "waiting",
+          }),
         );
       }
     });
@@ -1281,7 +1603,11 @@ describe("WebRemoteControlTerminalTransport", () => {
       const relay = await createRelayServer(({ message, socket }) => {
         if (message.type === "auth_init") {
           socket.send(
-            JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "matched" }),
+            JSON.stringify({
+              type: "auth_ack",
+              device_sid: "sid-1",
+              pair_status: "matched",
+            }),
           );
           socket.send(
             JSON.stringify({
@@ -1332,8 +1658,11 @@ describe("WebRemoteControlTerminalTransport", () => {
     });
     const promise = requester.requestAppPayload(
       { codez_type: "bootstrap-request", requestId: "req-1" },
-      (payload): payload is WebRemoteControlAppPayload & { codez_type: "bootstrap-response" } =>
-        payload.codez_type === "bootstrap-response" && payload.requestId === "req-1",
+      (
+        payload,
+      ): payload is WebRemoteControlAppPayload & {
+        codez_type: "bootstrap-response";
+      } => payload.codez_type === "bootstrap-response" && payload.requestId === "req-1",
     );
 
     requester.acceptPayload({
@@ -1349,7 +1678,9 @@ describe("WebRemoteControlTerminalTransport", () => {
       error: "closed",
     });
 
-    await expect(promise).rejects.toMatchObject({ reason: "desktop-disconnected" });
+    await expect(promise).rejects.toMatchObject({
+      reason: "desktop-disconnected",
+    });
     expect(sent).toEqual([{ codez_type: "bootstrap-request", requestId: "req-1" }]);
   });
 
@@ -1378,8 +1709,11 @@ describe("WebRemoteControlTerminalTransport", () => {
 
     const promise = requester.requestAppPayload(
       { codez_type: "bootstrap-request", requestId: "req-unsent" },
-      (payload): payload is WebRemoteControlAppPayload & { codez_type: "bootstrap-response" } =>
-        payload.codez_type === "bootstrap-response" && payload.requestId === "req-unsent",
+      (
+        payload,
+      ): payload is WebRemoteControlAppPayload & {
+        codez_type: "bootstrap-response";
+      } => payload.codez_type === "bootstrap-response" && payload.requestId === "req-unsent",
     );
 
     await expect(promise).rejects.toMatchObject({
