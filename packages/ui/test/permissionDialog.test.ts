@@ -42,6 +42,35 @@ function renderPermissionDialog(
 }
 
 describe("PermissionDialog", () => {
+  it("renders native MCP tool approval as localized choices without a text field", () => {
+    const html = renderPermissionDialog({
+      type: "permission_request",
+      taskId: "task-mcp-approval",
+      traceId: "trace-mcp-approval",
+      requestId: "request-mcp-approval",
+      description: 'Allow the codez-desktop-browser-cua MCP server to run tool "cua_status"?',
+      kind: "mcp__codez-desktop-browser-cua__approval",
+      options: [
+        { optionId: "accept", kind: "allowOnce", name: "Allow", response: { decision: "allow" } },
+        {
+          optionId: "acceptForSession",
+          kind: "allowAlways",
+          name: "Allow for this session",
+          response: { decision: "allow" },
+        },
+        { optionId: "cancel", kind: "custom", name: "Cancel", response: { decision: "deny" } },
+      ],
+      raw: { toolName: "mcp__codez-desktop-browser-cua__approval" },
+    });
+
+    expect(html).toContain("需要权限");
+    expect(html).toContain("允许本会话");
+    expect(html).toContain("本会话内后续相同工具调用不再询问");
+    expect(html).toContain('aria-label="取消"');
+    expect(html).not.toContain("<input");
+    expect(html).not.toContain("<textarea");
+  });
+
   it("renders the optional feedback input only when V4 enables it", () => {
     const withoutFeedback = renderPermissionDialog({
       type: "permission_request",

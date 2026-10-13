@@ -10,6 +10,18 @@
 
 ## 上游托管手机页与 Codez/Codex（2026-10-11）
 
+### 原生 Codex MCP 工具审批（CMA）
+
+| ID    | Setup                                                                                                                                         | Action                                          | Assertion                                                                                                           | Evidence                                   | Review   |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | -------- |
+| CMA01 | 桌面 Codex session 的 `codez-desktop-browser-cua` 调用 `cua_status`；原生发出带 `codex_approval_kind=mcp_tool_call`、空 schema 的 elicitation | 用户在弹窗选择 Allow                            | 展示允许/取消而非文本框；Bridge 向同一原生请求回 `action=accept`，工具实际完成；pending 清场                        | bridge reverse-RPC + desktop continuous UI | accepted |
+| CMA02 | 同一审批待决，或 `_meta.persist` 仅提供 session/always 中一部分                                                                               | 选择 Cancel、已提供的持久选项或伪造未提供的选项 | Cancel 回 `action=cancel` 且工具不执行；持久授权只带对应 `_meta.persist`；伪造和迟到应答拒绝，普通 MCP 表单仍为输入 | bridge focused test + UI projection        | accepted |
+
+CMA 的 GUI 代表只取本地桌面 `desktop-continuous` 的一次允许闭环；
+Cancel、持久选项、普通表单和 stale reply 由 focused 测试覆盖。手机
+`web-remote-replayable` 复用同一 pending interaction snapshot/owner 路由，
+不以桌面 GUI 通过声称真实重连已验证。
+
 MOBILE-UPSTREAM-01（historical，E2EE 升级后不再可执行）：上游页面原样加载，手机连接桌面
 已有 Host，读取模型、创建任务并获得回复；刷新后恢复相同 task 并继续发送，不能重复首发。
 MOBILE-UPSTREAM-02（historical）：运行中排队、停止保留队列、显式继续完成。仅控制测试模型响应时序，

@@ -6486,6 +6486,8 @@ const enUS: Record<string, string> = {
   "chat.permission.approve": "Allow",
   "chat.permission.approveAlways": "Always allow",
   "chat.permission.allowForSession": "Allow for session",
+  "chat.permission.allowForSession.description":
+    "Don't ask again for this tool during this session",
   "chat.permission.responseFailed": "Approval did not complete. Please retry.",
   "chat.permission.fullAccess": "Full access",
   "chat.permission.fullAccess.description":

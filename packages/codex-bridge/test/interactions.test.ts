@@ -61,6 +61,107 @@ test("question answers preserve native question ids", async () => {
   await broker.resolve("thread", broker.list("thread")[0]!.interactionId, { freeText: "A" });
   assert.deepEqual(responses, [{ id: "rpc", result: { answers: { flavor: { answers: ["A"] } } } }]);
 });
+
+test("native MCP tool approval offers choices instead of free text and replies with the selected action", async () => {
+  const { broker, responses } = setup();
+  const params = {
+    threadId: "thread",
+    turnId: "turn",
+    serverName: "codez-desktop-browser-cua",
+    mode: "form",
+    message: 'Allow the codez-desktop-browser-cua MCP server to run tool "cua_status"?',
+    requestedSchema: { type: "object", properties: {} },
+    _meta: { codex_approval_kind: "mcp_tool_call", persist: ["session", "always"] },
+  };
+  await broker.accept({ id: "allow-rpc", method: "mcpServer/elicitation/request", params });
+  const pending = broker.list("thread")[0]!;
+  assert.equal(pending.turnId, "turn");
+  assert.equal(pending.payload.kind, "permission");
+  assert.deepEqual(
+    pending.payload.kind === "permission"
+      ? pending.payload.options.map(({ optionId }) => optionId)
+      : [],
+    ["accept", "acceptForSession", "acceptAlways", "cancel"],
+  );
+  await assert.rejects(
+    broker.resolve("thread", pending.interactionId, { freeText: "allow" }),
+    /not offered/,
+  );
+  await broker.resolve("thread", pending.interactionId, { optionId: "accept" });
+  assert.deepEqual(responses, [
+    { id: "allow-rpc", result: { action: "accept", content: null, _meta: null } },
+  ]);
+  await assert.rejects(
+    broker.resolve("thread", pending.interactionId, { optionId: "accept" }),
+    /stale/,
+  );
+
+  for (const [optionId, expected] of [
+    ["acceptForSession", { action: "accept", content: null, _meta: { persist: "session" } }],
+    ["acceptAlways", { action: "accept", content: null, _meta: { persist: "always" } }],
+    ["cancel", { action: "cancel", content: null, _meta: null }],
+  ] as const) {
+    await broker.accept({ id: optionId, method: "mcpServer/elicitation/request", params });
+    await broker.resolve("thread", broker.list("thread")[0]!.interactionId, { optionId });
+    assert.deepEqual(responses.at(-1), { id: optionId, result: expected });
+  }
+});
+
+test("MCP tool approval cannot invent persistence; ordinary MCP forms remain user input", async () => {
+  const { broker, responses } = setup();
+  const params = {
+    threadId: "thread",
+    serverName: "test-server",
+    mode: "form",
+    message: "Allow this tool?",
+    requestedSchema: { type: "object", properties: {} },
+    _meta: { codex_approval_kind: "mcp_tool_call", persist: "session" },
+  };
+  await broker.accept({ id: 1, method: "mcpServer/elicitation/request", params });
+  const pending = broker.list("thread")[0]!;
+  assert.equal(pending.payload.kind, "permission");
+  assert.deepEqual(
+    pending.payload.kind === "permission"
+      ? pending.payload.options.map(({ optionId }) => optionId)
+      : [],
+    ["accept", "acceptForSession", "cancel"],
+  );
+  await assert.rejects(
+    broker.resolve("thread", pending.interactionId, { optionId: "acceptAlways" }),
+    /not offered/,
+  );
+  await broker.resolve("thread", pending.interactionId, { optionId: "cancel" });
+  assert.deepEqual(responses, [
+    { id: 1, result: { action: "cancel", content: null, _meta: null } },
+  ]);
+
+  for (const [id, override] of [
+    [2, { _meta: {}, requestedSchema: params.requestedSchema }],
+    [
+      3,
+      {
+        _meta: params._meta,
+        requestedSchema: { type: "object", properties: { name: { type: "string" } } },
+      },
+    ],
+  ] as const) {
+    await broker.accept({
+      id,
+      method: "mcpServer/elicitation/request",
+      params: { ...params, ...override },
+    });
+    const ordinary = broker.list("thread")[0]!;
+    assert.equal(ordinary.payload.kind, "userInput");
+    await broker.resolve("thread", ordinary.interactionId, {
+      action: "accept",
+      content: { name: "ok" },
+    });
+    assert.deepEqual(responses.at(-1), {
+      id,
+      result: { action: "accept", content: { name: "ok" }, _meta: null },
+    });
+  }
+});
 test("unknown reverse methods fail closed", async () => {
   const { broker, responses } = setup();
   await broker.accept({ id: 9, method: "new/unsafe", params: {} });

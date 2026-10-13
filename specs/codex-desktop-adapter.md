@@ -82,6 +82,35 @@ closed, and native config/skills/plugin requests stay on the canonical execution
   late replies cannot approve another run. Unknown request kinds fail closed.
   Human approvals/questions have no default RPC deadline; an explicit interaction
   deadline is independent of the bounded ordinary RPC/write deadline.
+- Native MCP tool-call approval arrives as `mcpServer/elicitation/request` with
+  `mode: "form"`, `_meta.codex_approval_kind: "mcp_tool_call"` and an empty
+  object `requestedSchema`. It is a choice, not a form answer. The bridge owns
+  its pending reverse-RPC identity and projects it as a V4 permission with
+  Allow, optional session/always grants only when `_meta.persist` offers them,
+  and Cancel. The renderer sends the selected option ID through the existing
+  `resolveInteraction` command; the bridge validates that exact offered option
+  and replies to the original native request with `action: "accept"` (and only
+  the selected supported `_meta.persist`) or `action: "cancel"`, never a
+  free-text answer or implicit approval. Unmarked/non-empty-schema MCP forms
+  retain the ordinary user-input path. Duplicate, stale, cross-thread, and
+  failed native writes retain the existing broker's fail-closed behavior.
+  The same pending projection is delivered live on desktop-continuous and
+  recovered via the existing web-remote-replayable snapshot route; neither
+  Main nor renderer owns an accepted permission.
+
+```text
+native MCP tool approval → bridge pending reverse RPC → V4 permission projection
+  → renderer option → resolveInteraction → bridge validates offered option
+  → one native elicitation response → native tool runs or is cancelled
+desktop: continuous; mobile: replayable snapshot/gap repair of the same pending ID
+```
+
+Acceptance: a marked empty-schema `cua_status` request presents Allow/Cancel
+without a text field, Allow executes the tool, Cancel does not, and offered
+session/always choices return only their corresponding native persistence
+metadata. An ordinary MCP form still asks for input; forged option IDs or
+unoffered persistence never reach Codex.
+
 - Native settings reads are method-allowlisted and cwd-scoped. Explicit foreign
   workspace identities are rejected even for the same local path; local callers
   without an identity retain the path fallback. Plugin paths must come from the

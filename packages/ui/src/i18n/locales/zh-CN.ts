@@ -6177,6 +6177,7 @@ const zhCN: Record<string, string> = {
   "chat.permission.approve": "允许",
   "chat.permission.approveAlways": "始终允许",
   "chat.permission.allowForSession": "允许本会话",
+  "chat.permission.allowForSession.description": "本会话内后续相同工具调用不再询问",
   "chat.permission.responseFailed": "审批未完成，请重试。",
   "chat.permission.fullAccess": "完全访问",
   "chat.permission.fullAccess.description": "授予 Agent 完全访问权限，不再确认。",

@@ -449,6 +449,42 @@ test("approval accept/decline/cancel routes exact reverse request once through b
   assert.equal(h.rpc.replies.length, 3);
 });
 
+test("MCP tool approval uses the existing resolveInteraction command once", async (t) => {
+  const h = await setup(t, true);
+  await h.broker.accept({
+    id: "mcp-rpc",
+    method: "mcpServer/elicitation/request",
+    params: {
+      threadId: sessionId,
+      turnId: "live-turn",
+      serverName: "codez-desktop-browser-cua",
+      mode: "form",
+      message: 'Allow the codez-desktop-browser-cua MCP server to run tool "cua_status"?',
+      requestedSchema: { type: "object", properties: {} },
+      _meta: { codex_approval_kind: "mcp_tool_call" },
+    },
+  });
+  const interaction = h.broker.list(sessionId)[0]!;
+  assert.equal(interaction.payload.kind, "permission");
+  assert.deepEqual(
+    interaction.payload.kind === "permission"
+      ? interaction.payload.options.map(({ optionId }) => optionId)
+      : [],
+    ["accept", "cancel"],
+  );
+  const command = h.command(
+    "resolveInteraction",
+    { interactionId: interaction.interactionId, answer: { optionId: "accept" } },
+    "approve-mcp",
+  );
+  assert.equal((await h.execute(command)).status, "accepted");
+  assert.equal((await h.execute(command)).status, "accepted");
+  assert.deepEqual(h.rpc.replies, [
+    { id: "mcp-rpc", result: { action: "accept", content: null, _meta: null } },
+  ]);
+  assert.deepEqual(h.broker.list(sessionId), []);
+});
+
 test("approval write failure is awaited and cannot be retried under a new command ID", async (t) => {
   const h = await setup(t, true);
   const interactionId = await approval(h);

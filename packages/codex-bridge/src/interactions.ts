@@ -17,6 +17,8 @@ export interface InteractionAnswer {
   content?: Record<string, unknown>;
 }
 
+const MCP_TOOL_APPROVAL_KIND = "mcp_tool_call";
+
 /** Reverse-RPC identities are scoped to this process lifetime, never reconstructed from history. */
 export class InteractionBroker {
   private readonly pending = new Map<string, Pending>();
@@ -53,14 +55,14 @@ export class InteractionBroker {
       request.method === "item/tool/requestUserInput"
         ? this.questionPayload(params)
         : request.method === "mcpServer/elicitation/request"
-          ? {
+          ? (this.mcpToolApprovalPayload(params, interactionId) ?? {
               kind: "userInput",
               prompt: String(params.message ?? "MCP input requested"),
               freeText: true,
               toolName: String(params.serverName),
               schema: params.requestedSchema,
               input: params,
-            }
+            })
           : this.permissionPayload(request.method, params);
     const interaction = pendingInteractionSchema.parse({
       interactionId,
@@ -79,6 +81,69 @@ export class InteractionBroker {
       turnId: typeof params.turnId === "string" ? params.turnId : undefined,
     });
     await this.changed(threadId);
+  }
+
+  private mcpToolApprovalPayload(params: JsonObject, interactionId: string): JsonObject | null {
+    const meta = params._meta;
+    const schema = params.requestedSchema;
+    // 原因：原生 MCP tool approval 是空 schema 的 action，不是让用户填字符串的 form。
+    // 只认 Codex 明确标记且无字段的请求，普通 MCP elicitation 仍走输入通道。
+    if (
+      params.mode !== "form" ||
+      !meta ||
+      typeof meta !== "object" ||
+      Array.isArray(meta) ||
+      (meta as JsonObject).codex_approval_kind !== MCP_TOOL_APPROVAL_KIND ||
+      !schema ||
+      typeof schema !== "object" ||
+      Array.isArray(schema) ||
+      (schema as JsonObject).type !== "object" ||
+      !("properties" in schema) ||
+      !schema.properties ||
+      typeof schema.properties !== "object" ||
+      Array.isArray(schema.properties) ||
+      Object.keys(schema.properties).length > 0
+    ) {
+      return null;
+    }
+    const serverName = string(params.serverName, "MCP server");
+    const summary = string(params.message, "MCP approval message");
+    const toolName = `mcp__${serverName}__approval`;
+    const persist = (meta as JsonObject).persist;
+    const supports = (mode: string) =>
+      persist === mode || (Array.isArray(persist) && persist.includes(mode));
+    return {
+      kind: "permission",
+      // Codex 尚未在 elicitation request 中关联 tool item；使用交互 ID 防误挂另一工具行。
+      toolCallId: interactionId,
+      toolName,
+      summary,
+      detail: { toolName },
+      options: [
+        { optionId: "accept", label: "Allow", kind: "allowOnce", response: { decision: "allow" } },
+        ...(supports("session")
+          ? [
+              {
+                optionId: "acceptForSession",
+                label: "Allow for this session",
+                kind: "allowAlways",
+                response: { decision: "allow" },
+              },
+            ]
+          : []),
+        ...(supports("always")
+          ? [
+              {
+                optionId: "acceptAlways",
+                label: "Always allow",
+                kind: "allowAlways",
+                response: { decision: "allow" },
+              },
+            ]
+          : []),
+        { optionId: "cancel", label: "Cancel", kind: "custom", response: { decision: "deny" } },
+      ],
+    };
   }
 
   private permissionPayload(method: string, params: JsonObject): JsonObject {
@@ -158,11 +223,29 @@ export class InteractionBroker {
       }
       response = { answers };
     } else if (entry.request.method === "mcpServer/elicitation/request") {
-      response = {
-        action: answer.action ?? "cancel",
-        content: answer.content ?? null,
-        _meta: null,
-      };
+      if (entry.interaction.payload.kind === "permission") {
+        const optionId = answer.optionId;
+        if (!entry.interaction.payload.options.some((option) => option.optionId === optionId)) {
+          throw new Error("Approval decision was not offered by Codex");
+        }
+        // 原因：freeText 的 "allow" 不是原生 action；持久授权也必须来自已提供的选项。
+        response = {
+          action: optionId === "cancel" ? "cancel" : "accept",
+          content: null,
+          _meta:
+            optionId === "acceptForSession"
+              ? { persist: "session" }
+              : optionId === "acceptAlways"
+                ? { persist: "always" }
+                : null,
+        };
+      } else {
+        response = {
+          action: answer.action ?? "cancel",
+          content: answer.content ?? null,
+          _meta: null,
+        };
+      }
     } else {
       const decision = answer.optionId ?? answer.action ?? "cancel";
       if (

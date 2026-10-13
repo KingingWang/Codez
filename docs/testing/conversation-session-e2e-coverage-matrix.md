@@ -1076,6 +1076,13 @@ BTA01/BTA02/BTA05/BTA08 的 Desktop manual-review 证据。无状态迁移后的
 
 `FSR/O10-O14` 是 v4 turn 文件摘要与 workspace-only 文件撤销边界；`FSC/O16` 单独证明完整冷启动恢复，不扩大到 compact/fork/goal、queue 抢占、权限阻塞、background task、remote workspace 或 mobile replayable 叉乘。`BGR/O18` 只取本地 desktop continuous 的 completed Agent success 代表；`BGR/O19` 只取两个 execution error 代表，不与 running/timeout、业务 queue failure、2,000 字符边界、冷恢复或 mobile replayable 做笛卡尔积；当前正文与终态断言已覆盖，补齐两次失败状态 hover 后方可恢复为 `covered`。
 
+## 原生 Codex MCP 工具审批（CMA）
+
+| ID    | 状态    | 证据                                   | 覆盖口径                                                                                    |
+| ----- | ------- | -------------------------------------- | ------------------------------------------------------------------------------------------- |
+| CMA01 | planned | bridge/UI focused；桌面 Codex GUI 待审 | marked empty-schema 工具审批 Allow 后原生工具完成；不把自由文本当作允许                     |
+| CMA02 | planned | bridge focused                         | Cancel、session/always 选项门禁、普通 MCP form 与 stale reply；手机 replayable 真实重连待证 |
+
 ## 原生 Codex 文件工具 Diff（NFD）
 
 | ID    | 状态    | 证据                                                          | 覆盖口径                                                                    |
