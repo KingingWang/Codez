@@ -81,9 +81,12 @@ describe("mobile remote E2EE", () => {
     const { mobile: healthyMobile, desktop } = pairedSessions();
     expect(() => desktop.accept({ zcode_type: "bootstrap-request" })).toThrow();
     const record = healthyMobile.prepare({ zcode_type: "bootstrap-request" });
-    expect(() =>
-      desktop.accept({ ...record, ciphertext: `${record.ciphertext.slice(0, -2)}AA` }),
-    ).toThrow();
+    // 篡改必须确定性地改变密文：原 base64 恰好以 "AA" 结尾时（约 1/4096）
+    // slice+拼接会得到原串，accept 不抛错，CI 上曾因此概率性失败。
+    const tamperedCiphertext = record.ciphertext.endsWith("AA")
+      ? `${record.ciphertext.slice(0, -2)}BB`
+      : `${record.ciphertext.slice(0, -2)}AA`;
+    expect(() => desktop.accept({ ...record, ciphertext: tamperedCiphertext })).toThrow();
     expect(desktop.accept(record)).toEqual({
       kind: "payload",
       payload: { zcode_type: "bootstrap-request" },
