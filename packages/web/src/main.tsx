@@ -97,6 +97,7 @@ import {
 import { collectWebRemoteControlMobileDeviceInfo } from "./webRemoteControlDeviceInfo.js";
 import { createWebRemoteControlVersionGuard } from "./webRemoteControlVersion.js";
 import { showWebRemoteControlVersionNotice } from "./webRemoteControlVersionNotice.js";
+import { createWebRemoteControlRecoveryBackoff } from "./webRemoteControlRecoveryBackoff.js";
 import {
   isVersionedWebRemoteControlRoute,
   resolveWebRemoteControlRoutePath,
@@ -1500,6 +1501,27 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
   let currentTaskId: string | undefined;
   let currentRecoveryId: string | undefined;
   let nextBridgeGeneration = 0;
+  // bridge 降级 → 自动恢复的退避：连续降级时逐次拉长恢复间隔，打断
+  // "降级→全量恢复→洪水再降级"的活锁（生产日志实测 12~17 秒一轮、持续数小时）。
+  const recoveryBackoff = createWebRemoteControlRecoveryBackoff();
+  let delayedRecoveryTimer: ReturnType<typeof setTimeout> | undefined;
+  const scheduleDegradedRecovery = (reason: string): void => {
+    const delayMs = recoveryBackoff.noteDegradation();
+    if (delayMs <= 0) {
+      void recoverVisibleSession(reason);
+      return;
+    }
+    // 合并窗口内的多次降级：只保留一个延迟恢复， delay 已按次数增长。
+    if (delayedRecoveryTimer !== undefined) return;
+    if (!import.meta.env.PROD) {
+      console.warn("[web-remote-control] delay degraded recovery", { reason, delayMs });
+    }
+    delayedRecoveryTimer = setTimeout(() => {
+      delayedRecoveryTimer = undefined;
+      if (terminated || isPageUnloading) return;
+      void recoverVisibleSession(reason);
+    }, delayMs);
+  };
   const routePath = resolveWebRemoteControlRoutePath(import.meta.env);
   const checkVersionOnRecovery = isVersionedWebRemoteControlRoute(
     window.location.pathname,
@@ -1647,6 +1669,11 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
     if (recovering || isPageUnloading || terminated || versionGuard.isBlocked()) {
       return;
     }
+    // 用户主动生命周期恢复（回前台/刷新/网络恢复）清零降级退避计数：
+    // 用户在场的恢复按最快路径执行；若仍降级，计数会重新累计。
+    if (isLifecycleRecoveryReason(reason)) {
+      recoveryBackoff.reset();
+    }
     recovering = true;
     const preferredWorkspaceKey = currentWorkspaceKey;
     const preferredTaskId = currentTaskId;
@@ -1748,7 +1775,9 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
       if (payload.codez_type === "bridge-degraded") {
         if (payload.bridgeSessionId === activeRelayProtocol?.getBridgeSessionId()) {
           activeRelayProtocol?.markDegraded();
-          void recoverVisibleSession(payload.reason);
+          // 降级驱动的自动恢复走退避调度；连续降级时拉长间隔，
+          // 避免恢复洪水把刚重建的 bridge 再次打爆（活锁）。
+          scheduleDegradedRecovery(payload.reason);
         }
         return;
       }
@@ -2047,7 +2076,8 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
             reasonCode: fault.reasonCode,
           });
         }
-        void recoverVisibleSession(fault.reasonCode);
+        // 本地协议降级（frame gap/fault）与桌面通知的 bridge-degraded 走同一退避。
+        scheduleDegradedRecovery(fault.reasonCode);
       });
       const services = connectViaProtocol(relayProtocol.protocol);
       const bridgeServiceRegistration = registerWebRemoteControlWorkspaceBridgeServices({

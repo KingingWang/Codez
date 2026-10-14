@@ -55,6 +55,30 @@ bridge 降级
   workspaces/tasks 直接作为 `initialWebRemoteControlWorkspaceList` 传给 Root，
   bridge 模式下首页挂载不再重复发 workspace-list-request。
 
+## 2026-10-14 追加：压缩、推送节流与恢复退避
+
+同日第二轮生产日志（macOS 桌面 + 手机前台可见）显示增量交接之外仍有两处
+结构性洪水源，加上 E2EE 密文使 permessage-deflate 完全失效（见
+[端到端加密](./end-to-end-encryption.md)「应用层压缩（relay-gzip）」），
+活锁仍可自激。追加三条边界：
+
+- **relay-gzip 应用层压缩（先压缩后加密）**：桌面→手机下行大 payload 以
+  gzip 信封传输，replay buffer 计量的 outer bytes 同步缩小约一个量级。
+- **桌面任务列表推送节流**：`syncAvailableTasks`/`syncAvailableWorkspaces`
+  的 `workspace-list-updated` 推送按窗口尾沿合并（默认 1.5s，测试可注入
+  `workspaceListPushThrottleMs`）。运行中任务每次 displayStatus /
+  workflowActivity / unreadAt 翻转都会改变签名，无节流时每次翻转都全量推
+  整份列表（456 任务约 283KB/次，实测一秒内十几次）。窗口内只保留一个
+  定时器，触发时重新构建结果与签名，手机最终拿到最新态而非中间态；
+  请求响应路径（bootstrap / workspace-list request）不节流。
+- **手机恢复退避**：`bridge-degraded`（桌面通知）与本地协议降级
+  （frame gap/fault）驱动的自动恢复进入滑动窗口计数，前 2 次立即恢复，
+  第 3 次起按 5s/10s/20s 递增、30s 封顶延迟（
+  `packages/web/src/webRemoteControlRecoveryBackoff.ts`）。窗口 120s 内无
+  降级自动清零；用户生命周期恢复（回前台/pageshow/online/手动）不受退避
+  影响并清零计数。恢复仍由 `recoverVisibleSession` 单 owner 执行，延迟
+  只推迟发起时刻，不改变增量交接语义。
+
 ## 不做什么
 
 - 不改 replay buffer / 高水位 / 45 秒 grace 的取值：降级本身是正确的有界

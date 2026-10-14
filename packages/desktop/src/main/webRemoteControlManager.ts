@@ -154,6 +154,9 @@ interface WindowControlRuntime {
   trafficInbound: WebRemoteControlTrafficWindow;
   trafficOutbound: WebRemoteControlTrafficWindow;
   trafficFlushTimer?: ReturnType<typeof setInterval>;
+  /** workspace-list-updated 推送节流：最近一次实际发送时间与尾沿定时器。 */
+  lastWorkspaceListPushedAt?: number;
+  workspaceListPushThrottleTimer?: ReturnType<typeof setTimeout>;
 }
 
 interface WebRemoteControlManagerDependencies {
@@ -208,12 +211,21 @@ interface WebRemoteControlManagerDependencies {
   createDeviceTransport?: (
     options: WebRemoteControlDeviceTransportOptions,
   ) => WebRemoteControlDeviceTransportLike;
+  /**
+   * workspace-list-updated 推送节流窗口（毫秒），默认
+   * WORKSPACE_LIST_PUSH_THROTTLE_MS；测试可注入 0 关闭节流。
+   */
+  workspaceListPushThrottleMs?: number;
 }
 
 // Bugfix: 外部 relay 首次鉴权会受边缘层冷启动和网络抖动影响，实测可能略超 15s。
 // 这里等待到 30s，避免在 device 已经快进入 waiting_terminal 时过早销毁可用连接。
 const EXTERNAL_RELAY_QR_READY_TIMEOUT_MS = 30_000;
 const MOBILE_DISCONNECT_STATUS_GRACE_MS = 3_000;
+// 任务列表推送节流窗口：运行中的任务每次状态翻转都会改变推送签名，
+// 无节流时每次翻转都全量推送整份列表（456 个任务约 283KB），移动链路上
+// 是持续数百 KB/s 的洪水，还会把 rpc replay buffer 打到溢出降级。
+const WORKSPACE_LIST_PUSH_THROTTLE_MS = 1_500;
 
 function createFailure(
   reason: WebRemoteControlFailureReason,
@@ -340,6 +352,8 @@ export function createWebRemoteControlManager(
   dependencies: WebRemoteControlManagerDependencies,
 ) {
   const runtimes = new Map<number, WindowControlRuntime>();
+  const workspaceListPushThrottleMs =
+    dependencies.workspaceListPushThrottleMs ?? WORKSPACE_LIST_PUSH_THROTTLE_MS;
   const startAuthorizations = new Map<
     string,
     WebRemoteControlStartAuthorization
@@ -554,6 +568,16 @@ export function createWebRemoteControlManager(
     }
     clearTimeout(runtime.mobileDisconnectGraceTimer);
     runtime.mobileDisconnectGraceTimer = undefined;
+  }
+
+  function clearWorkspaceListPushThrottleTimer(
+    runtime: WindowControlRuntime,
+  ): void {
+    if (!runtime.workspaceListPushThrottleTimer) {
+      return;
+    }
+    clearTimeout(runtime.workspaceListPushThrottleTimer);
+    runtime.workspaceListPushThrottleTimer = undefined;
   }
 
   function buildRuntimeStatus(
@@ -799,6 +823,7 @@ export function createWebRemoteControlManager(
     disposeRuntimeBridgeResources(runtime);
     clearPendingOutboundPayloadTimer(runtime);
     clearMobileDisconnectGraceTimer(runtime);
+    clearWorkspaceListPushThrottleTimer(runtime);
     runtime.pendingOutboundPayloads.length = 0;
     runtime.transport.dispose();
     runtime.status = "error";
@@ -831,6 +856,7 @@ export function createWebRemoteControlManager(
     stopTrafficAccounting(runtime);
     clearPendingOutboundPayloadTimer(runtime);
     clearMobileDisconnectGraceTimer(runtime);
+    clearWorkspaceListPushThrottleTimer(runtime);
     runtime.pendingOutboundPayloads.length = 0;
     runtime.transport.dispose();
     dependencies.disposeWorkspaceHostAttachmentsForWindow(windowId, reason);
@@ -1107,6 +1133,26 @@ export function createWebRemoteControlManager(
       return;
     }
 
+    // Bugfix：运行中的任务每次 displayStatus/workflowActivity/unreadAt 翻转都会
+    // 触发一次全量列表推送（实测 456 个任务约 283KB/次，日志中一秒内十几次），
+    // 手机端解密渲染速度跟不上，relay 未 ACK 字节数最终打爆 8MiB replay buffer
+    // 使 bridge 降级，形成"降级→恢复→再洪水→再降级"活锁。这里按固定窗口做
+    // 尾沿合并：窗口内只保留一个定时器，触发时重新构建结果与签名，保证手机
+    // 最终收到的是最新状态，而不是期间每一个中间态。
+    const now = Date.now();
+    const lastPushedAt = runtime.lastWorkspaceListPushedAt ?? 0;
+    const waitMs = lastPushedAt + workspaceListPushThrottleMs - now;
+    if (waitMs > 0) {
+      if (!runtime.workspaceListPushThrottleTimer) {
+        runtime.workspaceListPushThrottleTimer = setTimeout(() => {
+          runtime.workspaceListPushThrottleTimer = undefined;
+          // 窗口结束重新进入本函数：重新构建快照并重新判定节流，手机拿到最新态。
+          pushWorkspaceListUpdated(runtime);
+        }, waitMs);
+      }
+      return;
+    }
+
     // Bugfix：签名必须在 payload 真正被接受后再记录。oversize 被丢弃的旧逻辑会先记签名，
     // 之后相同内容的快照被判为重复不再重试，手机永远等不到这份列表。
     const accepted = sendAppPayload(runtime, {
@@ -1115,6 +1161,7 @@ export function createWebRemoteControlManager(
     });
     if (accepted) {
       pushedWorkspaceListSignaturesByWindowId.set(runtime.windowId, signature);
+      runtime.lastWorkspaceListPushedAt = now;
     }
   }
 

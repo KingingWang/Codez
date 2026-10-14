@@ -85,6 +85,7 @@ function createManagerHarness(options?: {
   reportRemoteUsageEvent?: Parameters<
     typeof createWebRemoteControlManager
   >[0]["reportRemoteUsageEvent"];
+  workspaceListPushThrottleMs?: number;
 }) {
   const sentPayloads: WebRemoteControlAppPayload[] = [];
   const logger = {
@@ -140,6 +141,8 @@ function createManagerHarness(options?: {
     deviceMid: "mid-1",
     deviceName: "MacBook",
     appVersion: "1.5.0",
+    // 测试默认关闭推送节流（既有用例断言同步推送）；节流行为由专用用例覆盖。
+    workspaceListPushThrottleMs: options?.workspaceListPushThrottleMs ?? 0,
     authProvider: {
       createPassword: () => "password",
       createPassHash: () => "hash-1",
@@ -804,6 +807,48 @@ describe("createWebRemoteControlManager external relay", () => {
     ).toHaveLength(1);
     await h.manager.stop(1);
   });
+
+  it("throttles workspace-list-updated pushes and delivers only the latest state per window", async () => {
+    // 生产场景：运行中的任务每次状态翻转都触发全量列表推送（实测 283KB/次、
+    // 一秒内十几次），移动链路被打爆。节流窗口内合并推送，窗口结束只发最新态。
+    // 用小窗口 + 真实定时器：窗口内的"不推"断言是同步的，不依赖时序；
+    // 等待 3 倍窗口保证尾沿定时器一定已触发（setTimeout 不会提前开火）。
+    const throttleMs = 100;
+    const h = createManagerHarness({ workspaceListPushThrottleMs: throttleMs });
+    await h.manager.start(1, { workspacePath: localWorkspace.workspacePath });
+    h.manager.syncAvailableWorkspaces(1, [localWorkspace]);
+    const base = createTaskTarget({ displayStatus: "running" });
+    h.manager.syncAvailableTasks(1, [base]);
+    const pushed = () =>
+      h.sentPayloads.filter(
+        (payload) => payload.codez_type === "workspace-list-updated",
+      );
+    // syncAvailableWorkspaces 的首次推送立即发生；syncTasks 落在窗口内被合并。
+    expect(pushed()).toHaveLength(1);
+
+    // 窗口内连续变化不再立即推送，只保留一个尾沿定时器。
+    h.manager.syncAvailableTasks(1, [{ ...base, title: "t2" }]);
+    h.manager.syncAvailableTasks(1, [{ ...base, title: "t3" }]);
+    expect(pushed()).toHaveLength(1);
+
+    // 窗口结束尾沿只补一份最新快照（t3），中间态（t2/base 标题）不补发。
+    await new Promise((resolve) => setTimeout(resolve, throttleMs * 3));
+    expect(pushed()).toHaveLength(2);
+    expect(pushed()[1]).toEqual(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          tasks: [expect.objectContaining({ title: "t3" })],
+        }),
+      }),
+    );
+
+    // 节流窗口之外的新变化立即推送。
+    await new Promise((resolve) => setTimeout(resolve, throttleMs * 3));
+    h.manager.syncAvailableTasks(1, [{ ...base, title: "t4" }]);
+    expect(pushed()).toHaveLength(3);
+    await h.manager.stop(1);
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });
