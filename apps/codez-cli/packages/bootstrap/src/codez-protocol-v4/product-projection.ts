@@ -415,6 +415,13 @@ function nonNegativeInteger(value: number, fallback: number): number {
   return Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback;
 }
 
+// apiRetry 是 counted/codex 两变体 union；只有 counted 变体携带 reasonCode。
+// 读取处统一经这里收窄，避免对 codex 变体做不存在的属性访问。
+function readCountedApiRetryReasonCode(apiRetry: ApiRetryState | null): string | undefined {
+  if (!apiRetry || "source" in apiRetry) return undefined;
+  return apiRetry.reasonCode;
+}
+
 interface FileToolInputPreviewState {
   lastPublishedAt: number | null;
   pendingAppend: string;
@@ -2490,7 +2497,10 @@ export class ProductProjection {
               payload.streamRecovery.retryNumber,
               payload.streamRecovery.maxRetries,
               this.ms(event),
-              this.snapshot.control.apiRetry?.reasonCode ?? "fault.network.sseDisconnected",
+              // 修复原因：apiRetry 是 union，codex 变体没有 reasonCode；只有 counted 变体
+              // 才允许读出旧 reasonCode 延续重试标签，否则回退到断流默认码。
+              readCountedApiRetryReasonCode(this.snapshot.control.apiRetry) ??
+                "fault.network.sseDisconnected",
             ),
           );
         }
@@ -2550,7 +2560,9 @@ export class ProductProjection {
         payload.retryNumber,
         payload.maxRetries,
         this.ms(event),
-        this.snapshot.control.apiRetry?.reasonCode ?? "fault.network.sseDisconnected",
+        // 同上：union 变体收窄后才允许读取 reasonCode。
+        readCountedApiRetryReasonCode(this.snapshot.control.apiRetry) ??
+          "fault.network.sseDisconnected",
       ),
     );
   }

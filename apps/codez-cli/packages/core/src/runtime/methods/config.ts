@@ -32,6 +32,7 @@ import { orderProviderVisibleToolContracts } from "../../tool/provider-visible-o
 import { projectToolModelContract } from "../../tool/model-contract.js";
 import { rebuildContextPrefix } from "./context-refresh.js";
 import { loadProjectMemoryIndexContent } from "./context.js";
+import { ACTIVE_PROJECT_MEMORY_RETRIEVAL_BRANCH } from "../../memory/project-memory-retrieval-branch.js";
 import { filterEmbeddedSearchRuntimeVisibleTools } from "./embedded-search-branch.js";
 import {
   getSessionShellSelection as readSessionShellSelection,
@@ -100,7 +101,14 @@ export async function applyMemoryRuntimeConfig(
 
   const traceContext = this.rootTraceContext;
   this.memoryRoot = await this.loadProjectMemoryRoot(traceContext);
-  this.memoryIndexContent = await loadProjectMemoryIndexContent(this, this.memoryRoot);
+  // 修复原因：热重载路径漏传 retrievalBranch，tsc 直接报错；且缺省 undefined 会让
+  // `retrievalBranch !== "default-index"` 判定为真，MEMORY.md 索引内容在设置热更后被静默清空。
+  // 这里与 context.ts 首轮初始化保持同一分支常量。
+  this.memoryIndexContent = await loadProjectMemoryIndexContent(
+    this,
+    this.memoryRoot,
+    ACTIVE_PROJECT_MEMORY_RETRIEVAL_BRANCH,
+  );
   // 活动 Turn 的 context prefix 已冻结；turn 结束后的 rebuild 自然读取新值。
   if (!this.activeTurn) {
     rebuildContextPrefix(this);
