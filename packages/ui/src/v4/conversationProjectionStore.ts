@@ -164,17 +164,46 @@ const TERMINAL_PLAN_STATUSES: ReadonlySet<ToolCallRow["status"]> = new Set([
   "cancelled",
 ]);
 
+function isTerminalExitPlanModeRow(row: ConversationRow): row is ToolCallRow {
+  return (
+    row.kind === "toolCall" &&
+    row.toolName === "ExitPlanMode" &&
+    TERMINAL_PLAN_STATUSES.has(row.status)
+  );
+}
+
+function isRealUserInputRow(row: ConversationRow): boolean {
+  return row.kind === "userInput" && row.origin === "realUser";
+}
+
+/**
+ * Codex bridge 没有增量 delta 日志，每次流式或状态更新都发布完整 snapshot 帧。
+ * 若同 logEpoch 的单调 snapshot 无条件递增 planDirectoryRevision，会导致每帧都触发一次
+ * `v4/conversation/plans` 全量历史投影查询（大长会话单次 ~130ms，形成持续 RPC 风暴）。
+ * 仅当首次建立基线、切换 logEpoch、水位回退，或窗口内终态 ExitPlanMode 集合实际变化时失效。
+ */
+function shouldInvalidatePlanDirectoryOnSnapshot(
+  previous: ConversationSnapshot | null,
+  next: ConversationSnapshot,
+): boolean {
+  if (!previous || previous.logEpoch !== next.logEpoch || next.seq < previous.seq) {
+    return true;
+  }
+  const prevPlans = previous.rows.window.filter(isTerminalExitPlanModeRow);
+  const nextPlans = next.rows.window.filter(isTerminalExitPlanModeRow);
+  if (prevPlans.length !== nextPlans.length) return true;
+  return prevPlans.some((row, index) => {
+    const candidate = nextPlans[index];
+    return !candidate || candidate.rowId !== row.rowId || candidate.status !== row.status;
+  });
+}
+
 function shouldInvalidatePlanDirectory(frame: ConversationTopicFrame): boolean {
   if (frame.payload.kind === "snapshot") return true;
   return frame.payload.deltas.some((delta) => {
     if (delta.op === "row.removed") return true;
     if (delta.op !== "row.appended" && delta.op !== "row.upserted") return false;
-    const row = delta.row;
-    return (
-      row.kind === "toolCall" &&
-      row.toolName === "ExitPlanMode" &&
-      TERMINAL_PLAN_STATUSES.has(row.status)
-    );
+    return isTerminalExitPlanModeRow(delta.row);
   });
 }
 
@@ -182,18 +211,33 @@ function shouldInvalidatePlanDirectory(frame: ConversationTopicFrame): boolean {
  * 问题导航目录是否需要失效。
  * not-enough-queries 终态曾只以 logEpoch 判定，导致同一 epoch
  * 内追加 real-user query 后永久命中缓存。判定条件：
- * - snapshot 整体替换 → true（全新状态，终态作废）；
+ * - 首次/跨 logEpoch snapshot 或窗口内 realUser userInput 集合变化 → true；
  * - row.removed → true（rewind/分支裁剪改变可导航 query 集合）；
  * - row.appended/row.upserted 命中 realUser userInput → true（新增/变更用户问题）；
  * - 其余 delta（assistant text、tool、reasoning 流式）→ false，不触发重探测。
  */
+function shouldInvalidateTurnNavigatorDirectoryOnSnapshot(
+  previous: ConversationSnapshot | null,
+  next: ConversationSnapshot,
+): boolean {
+  if (!previous || previous.logEpoch !== next.logEpoch || next.seq < previous.seq) {
+    return true;
+  }
+  const prevQueries = previous.rows.window.filter(isRealUserInputRow);
+  const nextQueries = next.rows.window.filter(isRealUserInputRow);
+  if (prevQueries.length !== nextQueries.length) return true;
+  return prevQueries.some((row, index) => {
+    const candidate = nextQueries[index];
+    return !candidate || candidate.rowId !== row.rowId || candidate.entityId !== row.entityId;
+  });
+}
+
 function shouldInvalidateTurnNavigatorDirectory(frame: ConversationTopicFrame): boolean {
   if (frame.payload.kind === "snapshot") return true;
   return frame.payload.deltas.some((delta) => {
     if (delta.op === "row.removed") return true;
     if (delta.op !== "row.appended" && delta.op !== "row.upserted") return false;
-    const row = delta.row;
-    return row.kind === "userInput" && row.origin === "realUser";
+    return isRealUserInputRow(delta.row);
   });
 }
 
@@ -699,14 +743,19 @@ export class ConversationProjectionStore {
   ): void {
     if (frame.payload.kind === "snapshot") {
       const hadAppliedBase = this.subscriptionHasAppliedBase;
+      const previousSnapshot = this.state.snapshot;
       const snapshot = this.shareSnapshotRows(frame.payload.snapshot);
-      logSubagentProjectionTransition(this.topic, this.state.snapshot, snapshot, "snapshot");
+      logSubagentProjectionTransition(this.topic, previousSnapshot, snapshot, "snapshot");
       // 规则 1：整体替换，扔掉手里的一切换新的（行对象按值复用旧引用，语义仍是整体替换）。
       this.setState({
         snapshot,
-        planDirectoryRevision: this.state.planDirectoryRevision + 1,
-        // snapshot 整体替换后 real-user query 集合可能已变，终态缓存必须失效。
-        turnNavigatorDirectoryRevision: this.state.turnNavigatorDirectoryRevision + 1,
+        ...(shouldInvalidatePlanDirectoryOnSnapshot(previousSnapshot, snapshot)
+          ? { planDirectoryRevision: this.state.planDirectoryRevision + 1 }
+          : {}),
+        // snapshot 首次到达、切换 logEpoch 或 real-user query 集合变化时，终态缓存必须失效。
+        ...(shouldInvalidateTurnNavigatorDirectoryOnSnapshot(previousSnapshot, snapshot)
+          ? { turnNavigatorDirectoryRevision: this.state.turnNavigatorDirectoryRevision + 1 }
+          : {}),
       });
       this.subscriptionHasAppliedBase = true;
       this.reconcileOptimistic(snapshot);

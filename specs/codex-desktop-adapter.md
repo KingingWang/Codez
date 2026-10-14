@@ -335,14 +335,25 @@ Acceptance for follow-up delivery:
 - When the client receives a newer snapshot in the same `logEpoch` (monotonic
   `seq`, no branch rewind), `ConversationProjectionStore` retains any older rows
   (`rowId < nextSnapshot.rows.window[0].rowId` and `rowId >= nextSnapshot.rows.firstRowId`)
-  already anchored to `firstRowId` (either present from the start of the conversation
-  or paged into the local window via `rows/range`), so a user reading earlier turns
+  already loaded into the local window (either present from the start of the conversation
+  or paged in via `rows/range`, including partial upward paging before reaching `firstRowId`),
+  so a user reading earlier turns
   while a turn streams does not have their viewport yanked downward on every
   tool/reasoning update or when the wire tail window slides past an earlier turn.
   On an epoch change (edit/retry rewind or runtime restart), the new snapshot replaces
   the window completely so removed branch rows are never revived. A tool-row gap inside
   the active turn left by an exhausted byte budget is still only refilled once that turn
   scrolls past the tail window and the client pages again.
+- Because the Codex publisher emits full `snapshot` frames on every projection
+  update, `ConversationProjectionStore` must not unconditionally increment
+  `planDirectoryRevision` or `turnNavigatorDirectoryRevision` on same-`logEpoch`
+  streaming snapshots. On same-`logEpoch` monotonic snapshots, `planDirectoryRevision`
+  increments only when the terminal `ExitPlanMode` row set in the snapshot window
+  changes, and `turnNavigatorDirectoryRevision` increments only when the
+  `realUser` `userInput` row set in the snapshot window changes; initial snapshots
+  and `logEpoch` changes still invalidate both directories. This prevents an
+  idle or streaming `v4/conversation/plans` RPC storm and repeated turn-navigator
+  full-history hydration on every snapshot frame.
 
 ## Desktop surfaces
 

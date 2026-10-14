@@ -573,6 +573,23 @@ describe("ConversationProjectionStore", () => {
     await store.refreshPlans();
     const afterSnapshot = store.getState().planDirectoryRevision;
 
+    // 同 logEpoch 的流式 snapshot 若未改变终态 ExitPlanMode 集合，不应无条件递增 revision（防 Codex 全量 snapshot 触发 plans RPC 风暴）
+    transport.emit(
+      makeFrame("sub-1", 0, 5, {
+        kind: "snapshot",
+        snapshot: makeSnapshot({
+          seq: 5,
+          logEpoch: "epoch-1",
+          rows: {
+            window: [assistantRow(2, "streaming update")],
+            totalCount: 2,
+            firstRowId: 1,
+          },
+        }),
+      }),
+    );
+    expect(store.getState().planDirectoryRevision).toBe(afterSnapshot);
+
     transport.emit(
       makeFrame("sub-1", 5, 6, {
         kind: "deltas",
@@ -2277,5 +2294,77 @@ describe("ConversationProjectionStore.loadOlder", () => {
     expect(freshStore.getState().snapshot!.rows.window).toHaveLength(80);
     expect(freshStore.getState().snapshot!.rows.window[0]!.rowId).toBe(1);
     expect(freshStore.getState().snapshot!.rows.window.at(-1)!.rowId).toBe(80);
+
+    // 手机端分段向上翻页（只拉取了 101..200，尚未到达 firstRowId=1）后，
+    // 即使收到下一帧只含 201..260 的尾窗 snapshot，也必须保留已拉取的 101..200，
+    // 且不因工具/思考流式 snapshot 递增 turnNavigatorDirectoryRevision 或 planDirectoryRevision。
+    const partialTransport = new FakeTransport();
+    const partialStore = new ConversationProjectionStore(
+      "conversation/s-partial",
+      partialTransport,
+    );
+    partialTransport.onFrame((frame) => partialStore.handleFrame(frame));
+    partialTransport.subscribeImpl = (params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-partial" },
+      initialFrame: makeFrame(
+        subscriptionId,
+        0,
+        10,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            seq: 10,
+            logEpoch: "epoch-partial",
+            rows: {
+              window: olderRows(201, 260),
+              totalCount: 260,
+              firstRowId: 1,
+            },
+          }),
+        },
+        params.topic,
+      ),
+    });
+    await partialStore.connect();
+    partialTransport.rowsRangeImpl = (params) => {
+      expect(params.beforeRowId).toBe(201);
+      return {
+        rows: olderRows(141, 200),
+        atSeq: 10,
+        atRevision: 10,
+        atLogEpoch: "epoch-partial",
+        hasMore: true,
+      };
+    };
+    await partialStore.loadOlder();
+    expect(partialStore.getState().snapshot!.rows.window[0]!.rowId).toBe(141);
+    const planRevBefore = partialStore.getState().planDirectoryRevision;
+    const navRevBefore = partialStore.getState().turnNavigatorDirectoryRevision;
+
+    partialStore.handleFrame(
+      makeFrame(
+        partialStore.getState().subscriptionId!,
+        0,
+        11,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            seq: 11,
+            logEpoch: "epoch-partial",
+            rows: {
+              window: olderRows(205, 264),
+              totalCount: 264,
+              firstRowId: 1,
+            },
+          }),
+        },
+        "conversation/s-partial",
+      ),
+    );
+    const partialWindow = partialStore.getState().snapshot!.rows.window;
+    expect(partialWindow[0]!.rowId).toBe(141);
+    expect(partialWindow.at(-1)!.rowId).toBe(264);
+    expect(partialStore.getState().planDirectoryRevision).toBe(planRevBefore);
+    expect(partialStore.getState().turnNavigatorDirectoryRevision).toBe(navRevBefore);
   });
 });
