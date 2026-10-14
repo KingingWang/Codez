@@ -41,6 +41,7 @@ async function asset(path) {
 
 export async function collectReleaseAssets(directory, env) {
   const folders = await readdir(directory, { withFileTypes: true });
+  const producerIndexSha = await sha256File(join(directory, "codex-remote-assets", "index.json"));
   const result = [];
   const seen = new Set();
   for (const os of Object.keys(platformNames)) {
@@ -56,6 +57,11 @@ export async function collectReleaseAssets(directory, env) {
       if (matches.length !== 1 || !matches[0].isDirectory())
         throw new Error(`Missing or ambiguous target: ${key}`);
       const dir = join(directory, matches[0].name);
+      // 六个 afterPack 回执必须与唯一生产者逐字节一致；同 tag/version 不代表
+      // 组件 SHA 一致，Windows 自行重打包曾让发布成功的安装包仍然下载到 404。
+      const packagedIndex = await asset(join(dir, `codex-remote-index-${key}.json`));
+      if (packagedIndex.sha256 !== producerIndexSha)
+        throw new Error(`Packaged remote index mismatch: ${key}`);
       const checksum = join(dir, `SHA256SUMS-${key}.txt`);
       await asset(checksum);
       const lines = (await readFile(checksum, "utf8")).trim().split("\n");

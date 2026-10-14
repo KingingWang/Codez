@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
-import desktopBuilderConfig from "../electron-builder.config.js";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { resolveDesktopProductIdentity } from "../scripts/desktop-product-identity.mjs";
+
+// rpm/pacman 是 legacy 产品的既有分发契约；Codex 明确只出 AppImage/deb。
+// 在导入配置前声明产品，避免默认 Codex 分支要求单测先准备真实发行制品。
+vi.stubEnv("CODEZ_DESKTOP_RUNTIME", "legacy");
+afterAll(() => vi.unstubAllEnvs());
+const { default: desktopBuilderConfig } = await import("../electron-builder.config.js");
 
 // Linux 打包目标契约：rpm 是 deb 之外的安装分发格式，不能改变既有更新链路。
 // latest.yml / electron-updater 在 Linux 上固定以 AppImage 作为更新产物，

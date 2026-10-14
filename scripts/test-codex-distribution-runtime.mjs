@@ -151,6 +151,34 @@ test("native validation has a step-scoped 4 GiB Node heap budget", async () => {
   assert.equal(build.steps.filter((step) => step.env?.NODE_OPTIONS).length, 1);
 });
 
+test("native builds consume remote producer assets read-only and upload packaged-index receipts", async () => {
+  const require = createRequire(new URL("../packages/desktop/package.json", import.meta.url));
+  const workflow = require("yaml").parse(
+    await readFile(new URL("../.github/workflows/codex-desktop.yml", import.meta.url), "utf8"),
+  );
+  const producer = workflow.jobs["remote-assets"];
+  const { build, release } = workflow.jobs;
+  assert.equal(producer.env.CODEZ_CODEX_REMOTE_ASSETS_READONLY, undefined);
+  assert.equal(build.env.CODEZ_CODEX_REMOTE_ASSETS_READONLY, "1");
+  const steps = build.steps;
+  const download = steps.findIndex((step) => step.with?.name === "codex-remote-assets");
+  const nativeBuild = steps.findIndex((step) => step.run === "pnpm --filter @codez/desktop build");
+  assert.ok(download >= 0 && nativeBuild > download);
+  assert.ok(
+    steps
+      .find((step) => step.uses?.startsWith("actions/upload-artifact"))
+      .with.path.split("\n")
+      .includes("packages/desktop/dist/codex-remote-index-*.json"),
+  );
+  assert.ok(release.steps.some((step) => step.with?.name === "codex-remote-assets"));
+  const builder = await readFile(
+    new URL("../packages/desktop/electron-builder.config.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(builder, /copyFile\(\s*join\(packagedRemoteRoot, "index\.json"\)/);
+  assert.match(builder, /codex-remote-index-\$\{targetPlatform\.key\}\.json/);
+});
+
 async function loadRuntimeModule(t, source, flavor = "codex", plugins = []) {
   const directory = await mkdtemp(join(tmpdir(), "codez-identity-test-"));
   t.after(() => rm(directory, { recursive: true, force: true }));

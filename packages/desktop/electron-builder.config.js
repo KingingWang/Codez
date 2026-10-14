@@ -1,6 +1,6 @@
 /* eslint-disable max-lines -- Electron Builder config keeps related packaging hooks together so build order stays explicit. */
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { readdir, writeFile } from "node:fs/promises";
+import { copyFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { createRequire } from "node:module";
@@ -717,12 +717,23 @@ export default {
         ...codexStaging,
         directory: resolve(resolvePackagedResourcesDir(context), "codex"),
       });
+      const packagedRemoteRoot = resolve(resolvePackagedResourcesDir(context), "codex-remote");
       await verifyCodexRemoteIndex({
-        root: resolve(resolvePackagedResourcesDir(context), "codex-remote"),
+        root: packagedRemoteRoot,
         version: buildMetadata.appVersion,
         env: process.env,
         includeArchives: false,
       });
+      // 发布前核对实际入包 index，而非构建源目录：防止某个平台重生成清单，
+      // 安装包引用未上传到 Release 的组件 SHA，直到用户 SSH 连接才暴露 404。
+      await copyFile(
+        join(packagedRemoteRoot, "index.json"),
+        resolve(
+          desktopPackageRoot,
+          desktopDistDir,
+          `codex-remote-index-${targetPlatform.key}.json`,
+        ),
+      );
     }
     const actualWindowsTarget =
       context.electronPlatformName === "win32"

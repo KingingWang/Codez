@@ -20,16 +20,25 @@ import {
 } from "./codex-runtime-remote-verify.mjs";
 import { createCodexRemoteIndex } from "./codex-runtime-remote-index.mjs";
 
-export async function ensureCodexRemoteAssets({ bridgePath } = {}) {
+export async function ensureCodexRemoteAssets({
+  bridgePath,
+  root = codexRemoteRoot,
+  env = process.env,
+} = {}) {
+  if (env.CODEZ_CODEX_REMOTE_ASSETS_READONLY === "1") {
+    // Windows/macOS 重建的 server 或文件权限会改变组件 SHA；CI 消费者只能校验
+    // remote-assets 生产者的原始制品，不能覆写清单后请求 Release 中不存在的文件。
+    return verifyCodexRemoteAssets({ root, bridgePath, env });
+  }
   bridgePath = await snapshotCodexBridge({ bridgePath: bridgePath ?? (await buildCodexBridge()) });
   const serverSha256 = await sha256File(await buildCodexRemoteServer());
   try {
-    return await verifyCodexRemoteAssets({ serverSha256, bridgePath });
+    return await verifyCodexRemoteAssets({ root, serverSha256, bridgePath, env });
   } catch (error) {
     console.log(`[codex-remote-assets] preparing missing/stale bundle: ${error.message}`);
   }
-  await prepareCodexRemoteAssets({ bridgePath, serverPrepared: true });
-  return verifyCodexRemoteAssets({ serverSha256, bridgePath });
+  await prepareCodexRemoteAssets({ outputRoot: root, bridgePath, serverPrepared: true });
+  return verifyCodexRemoteAssets({ root, serverSha256, bridgePath, env });
 }
 
 export async function prepareCodexRemoteAssets({

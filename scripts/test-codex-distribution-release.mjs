@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -9,6 +9,7 @@ import {
   createCodexRemoteIndex,
   remoteComponentAssetName,
   remoteManifestAssetName,
+  verifyCodexRemoteIndex,
 } from "./codex-runtime-remote-index.mjs";
 import {
   collectReleaseAssets,
@@ -108,6 +109,12 @@ async function fixture(t) {
     );
   }
   await createCodexRemoteIndex({ root: remoteRoot, version: "3.15.1", env });
+  for (const os of Object.keys(platforms))
+    for (const arch of ["x64", "arm64"])
+      await copyFile(
+        join(remoteRoot, "index.json"),
+        join(root, `codez-${os}-${arch}-unsigned`, `codex-remote-index-${os}-${arch}.json`),
+      );
   return root;
 }
 
@@ -353,6 +360,46 @@ test("missing or damaged remote sidecar aborts before opening a public release",
   const root = await fixture(t);
   await rm(join(root, "codex-remote-assets", "index.json"));
   await assert.rejects(collectReleaseAssets(root));
+});
+
+test("every desktop target must include its packaged remote-index receipt", async (t) => {
+  for (const os of Object.keys(platforms))
+    for (const arch of ["x64", "arm64"]) {
+      const root = await fixture(t);
+      await rm(join(root, `codez-${os}-${arch}-unsigned`, `codex-remote-index-${os}-${arch}.json`));
+      const github = fakeGithub();
+      await assert.rejects(
+        publishCodexRelease({ directory: root, env, run: github.run }),
+        /codex-remote-index/,
+      );
+      assert.equal(github.state.calls.length, 0);
+    }
+});
+
+test("a valid regenerated Windows index with the same release tag blocks publication", async (t) => {
+  const root = await fixture(t);
+  const rebuiltRoot = join(root, "windows-regenerated");
+  await cp(join(root, "codex-remote-assets"), rebuiltRoot, { recursive: true });
+  const manifestPath = join(rebuiltRoot, "releases", "3.15.1", "manifest-linux-x64.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const component = manifest.components.find(({ id }) => id === "server-bundle");
+  const bytes = "different Windows-built remote server";
+  component.sha256 = digest(bytes);
+  component.artifactPath = `components/linux-x64/server-bundle/${component.sha256}.tar.gz`;
+  await writeFile(join(rebuiltRoot, component.artifactPath), bytes);
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  await createCodexRemoteIndex({ root: rebuiltRoot, version: "3.15.1", env });
+  await verifyCodexRemoteIndex({ root: rebuiltRoot, version: "3.15.1", env });
+  await copyFile(
+    join(rebuiltRoot, "index.json"),
+    join(root, "codez-win32-x64-unsigned", "codex-remote-index-win32-x64.json"),
+  );
+  const github = fakeGithub();
+  await assert.rejects(
+    publishCodexRelease({ directory: root, env, run: github.run }),
+    /packaged remote index mismatch: win32-x64/i,
+  );
+  assert.equal(github.state.calls.length, 0);
 });
 
 test("older main and dispatched feature results do not become Latest", async (t) => {

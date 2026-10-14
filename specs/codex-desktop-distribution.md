@@ -437,6 +437,47 @@ The package helper can also produce a flat standalone server archive for isolate
 smoke; it is not a second deployment protocol. `scripts/codex-runtime-remote-smoke.mjs`
 extracts verified native components and checks Node/server execution offline.
 
+### One remote asset producer per workflow run
+
+The `remote-assets` job is the only CI owner of remote component archives,
+manifests and `index.json`. All six desktop build jobs consume that exact
+artifact with `CODEZ_CODEX_REMOTE_ASSETS_READONLY=1`. They verify the native
+package pin, Bridge, manifest and archive hashes, but must not rebuild the
+remote server, repack components or rewrite the index. A local Windows/macOS
+server bundle or filesystem mode can differ from the Linux producer; that is
+not permission to replace the pinned remote assets. Missing, stale or damaged
+producer assets fail the consumer build. Local development without the flag
+retains verified preparation and refresh.
+
+After validating the actual packaged `resources/codex-remote` files,
+`afterPack` copies their index into
+`codex-remote-index-<desktop-os>-<desktop-arch>.json`. Each desktop artifact
+includes this internal receipt. Before creating or uploading a release, the
+release owner requires all six receipt hashes to match the producer's index.
+Receipts are CI evidence, not public release assets. A same-tag, same-version
+index with different component hashes is still rejected.
+
+```mermaid
+sequenceDiagram
+    participant P as "remote-assets (sole producer)"
+    participant B as "Six native desktop builds"
+    participant I as "Packaged resources"
+    participant R as "Release owner"
+    P->>B: "one verified component set and index"
+    B->>B: "read-only validation; no remote rebuild"
+    B->>I: "copy pinned index and manifests"
+    I-->>R: "six afterPack index receipts"
+    P-->>R: "original index and release archives"
+    R->>R: "require identical index hashes before publication"
+```
+
+Acceptance covers a consumer on a different OS preserving every producer byte
+without invoking remote preparation, missing/corrupt inputs failing without
+refresh, all six receipt hashes matching, and an otherwise valid regenerated
+Windows index blocking publication before any GitHub write. The native matrix
+and a real Windows installer audit confirm that every requested remote asset
+name exists in the published release.
+
 Integrated consumer boundaries:
 
 - `packages/server/src/remote/remoteAssetCache.ts`: recognize `codex-native`
@@ -469,3 +510,4 @@ Remote distribution acceptance:
 | CD-REMOTE-04 | Both sources unavailable | A valid sidecar/cache installs; without one, fail visibly. Corruption, cancel and permission failures never fall back or commit success markers. |
 | CD-REMOTE-05 | Codez or Bridge changes, native package does not | New server/Bridge deploy; native package transfer is zero, even across app-version changes and old-marker migration. |
 | CD-REMOTE-06 | Native package changes or install is interrupted | Only the selected remote architecture updates; retry completes both component identities before starting the runtime. WSL/Docker and mobile Host attachment remain unchanged. |
+| CD-REMOTE-07 | Windows/macOS consumes Linux-produced CI assets | No remote rebuild or index rewrite; all six packaged-index receipts match the producer before release. A regenerated same-tag index or missing receipt blocks publication. |

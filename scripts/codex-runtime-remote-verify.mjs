@@ -14,9 +14,10 @@ export async function verifyCodexRemoteAssets({
   root = codexRemoteRoot,
   bridgePath = resolve(codexWorkspaceRoot, "packages/codex-bridge/dist/bridge.cjs"),
   serverSha256,
+  env = process.env,
 } = {}) {
   const { version } = JSON.parse(await readFile(join(codexWorkspaceRoot, "package.json"), "utf8"));
-  const native = await loadCodexManifest();
+  const native = await loadCodexManifest(env);
   const node = await loadCodexNodeManifest();
   const bridgeSha256 = await sha256File(bridgePath);
   const files = [];
@@ -77,6 +78,6 @@ export async function verifyCodexRemoteAssets({
     }
     files.push(relative, contractPath);
   }
-  const index = await verifyCodexRemoteIndex({ root, version, env: process.env });
+  const index = await verifyCodexRemoteIndex({ root, version, env });
   return { root, files, packagedFiles: index.packagedFiles, releaseAssets: index.releaseAssets };
 }

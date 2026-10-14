@@ -147,6 +147,8 @@ jobs:
       CODEZ_CODEX_MANIFEST: ${{ github.workspace }}/.codex-manifest/codex-manifest.json
       CODEZ_TARGET_OS: ${{ matrix.os }}
       CODEZ_TARGET_ARCH: ${{ matrix.arch }}
+      # remote-assets 是唯一生产者；不同宿主重新打包会生成 Release 未发布的 SHA。
+      CODEZ_CODEX_REMOTE_ASSETS_READONLY: "1"
       CODEZ_CODEX_SIGNED: ${{ inputs.signed && matrix.os != 'linux' && '1' || '0' }}
       CODEZ_ENABLE_MAC_SIGN: ${{ inputs.signed && matrix.os == 'darwin' && '1' || '0' }}
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
@@ -224,6 +226,7 @@ jobs:
             packages/desktop/dist/*.blockmap
             packages/desktop/dist/*.yml
             packages/desktop/dist/SHA256SUMS-*.txt
+            packages/desktop/dist/codex-remote-index-*.json
 
   release:
     needs: build
