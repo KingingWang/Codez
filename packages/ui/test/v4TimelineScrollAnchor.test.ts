@@ -15,6 +15,7 @@ import {
   prependVirtualAnchorAdjustment,
   reconcileFollowingForContentAnchor,
   resolveFollowingAfterScroll,
+  resolvePrependVirtualAnchorAdjustment,
   shouldAdjustVirtualizerForItemSizeChange,
   shouldShowBackToBottom,
   shouldTriggerLoadOlder,
@@ -190,14 +191,59 @@ describe("reconcileFollowingForContentAnchor", () => {
   });
 
   it("terminal 折叠造成 scrollTop 回退但没有用户输入：保持 following 并继续贴底", () => {
+    // terminal 折叠把内容从 2480 压到 1800（收缩 680），浏览器随之把 scrollTop
+    // 从 1400 钳回 720（回退 680）：回退量能被内容收缩完全解释，不是用户上滚。
     const following = reconcileFollowingForContentAnchor({
       following: true,
       metrics: metrics(720, 600, 1800),
       lastObservedScrollTop: 1400,
+      lastObservedContentHeight: 2480,
       userScrollIntent: "none",
     });
     expect(following).toBe(true);
     expect(anchorActionAfterContentChange(following)).toBe("stickToBottom");
+  });
+
+  it("用户已上滚但 scroll 事件未入账（内容高度未变）且无意图记录：解除跟随", () => {
+    // PR#3 竞态：用户拖拽上滚已被浏览器应用、scroll 事件尚未派发，此时内容
+    // commit 不得拿着过期 following=true 贴底夺走滚动权。内容高度仍是 2000，
+    // scrollTop 回退 1400 完全不能被收缩解释，必须判为用户上滚。
+    expect(
+      reconcileFollowingForContentAnchor({
+        following: true,
+        metrics: metrics(0, 600, 2000),
+        lastObservedScrollTop: 1400,
+        lastObservedContentHeight: 2000,
+        userScrollIntent: "none",
+      }),
+    ).toBe(false);
+  });
+
+  it("scrollTop 回退超出内容收缩可解释范围：按未观察上滚解除跟随", () => {
+    // 内容收缩 2480→1800 只能解释 680 的回退；scrollTop 1400→600 回退了 800，
+    // 剩余 120 超过阈值，仍视为用户在 scroll 事件入账前上滚。
+    expect(
+      reconcileFollowingForContentAnchor({
+        following: true,
+        metrics: metrics(600, 600, 1800),
+        lastObservedScrollTop: 1400,
+        lastObservedContentHeight: 2480,
+        userScrollIntent: "none",
+      }),
+    ).toBe(false);
+  });
+
+  it("未提供内容高度基线时保持保守策略：大幅回退即解除跟随", () => {
+    // 旧调用形态（无 lastObservedContentHeight）：无法区分收缩钳回与用户上滚，
+    // 维持 PR#3 的保守判定，任何超阈值回退都解除跟随。
+    expect(
+      reconcileFollowingForContentAnchor({
+        following: true,
+        metrics: metrics(720, 600, 1800),
+        lastObservedScrollTop: 1400,
+        userScrollIntent: "none",
+      }),
+    ).toBe(false);
   });
 
   it("用户向上滚动与 terminal commit 同帧：用户意图优先于临时在底几何", () => {
@@ -342,6 +388,38 @@ describe("prependScrollAdjustment", () => {
         660,
       ),
     ).toBe(-160);
+  });
+
+  it("窗口期内用户继续滚动时用锚点位移保持阅读位置（手机惯性滑不回拽）", () => {
+    // 手机场景：触发时 anchor start=120、scrollTop=200；RPC 往返 300ms 内用户惯性
+    // 上滑到 scrollTop=40；prepend 后 anchor start=420。位移公式只补 300 高度差，
+    // 用户停在 340（相对锚点位置不变）；绝对恢复会拽回 500（触发瞬间位置）。
+    expect(
+      resolvePrependVirtualAnchorAdjustment({
+        previous: { key: "turn-21", offsetTop: -80, start: 120 },
+        next: { key: "turn-21", offsetTop: -80, start: 420 },
+        currentScrollTop: 40,
+        userScrolledSinceTrigger: true,
+      }),
+    ).toBe(300);
+    // 无用户滚动时维持绝对恢复语义（布局改写不重复计入）。
+    expect(
+      resolvePrependVirtualAnchorAdjustment({
+        previous: { key: "turn-21", offsetTop: -80, start: 120 },
+        next: { key: "turn-21", offsetTop: 0, start: 420 },
+        currentScrollTop: 660,
+        userScrolledSinceTrigger: false,
+      }),
+    ).toBe(-160);
+    // key 不匹配（锚点行已被裁掉）不修正。
+    expect(
+      resolvePrependVirtualAnchorAdjustment({
+        previous: { key: "turn-21", offsetTop: -80, start: 120 },
+        next: { key: "turn-other", offsetTop: -80, start: 420 },
+        currentScrollTop: 40,
+        userScrolledSinceTrigger: true,
+      }),
+    ).toBeNull();
   });
 
   it("真前插（首行 rowId 变小且总高度增长）→ 平移量 = 高度差", () => {
