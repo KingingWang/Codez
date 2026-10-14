@@ -29,6 +29,12 @@ export interface V4ComposerDraft {
   /** 已处理的工具变更，防止重连快照再次覆盖用户选择。 */
   lastPlanTransitionId?: string;
   lastPermissionGrantId?: string;
+  /**
+   * 上次同步到本草稿的权威会话配置指纹（跨端提交后配置同步）。
+   * 仅当权威 snapshot.config 相对该指纹发生实质推进时才更新草稿，
+   * 相同快照重放不会覆盖用户在本端尚未发送的菜单选择。
+   */
+  lastSyncedSessionConfigKey?: string;
   modelSelection?: ModelSelection;
   /** 首次分享导入等待公共新任务初始化；不能由空 Session snapshot 抢先填充。 */
   initializeFromNewTask?: true;
@@ -141,6 +147,9 @@ function readDraft(value: unknown): V4ComposerDraft | null {
       : {}),
     ...(typeof value.lastPlanTransitionId === "string"
       ? { lastPlanTransitionId: value.lastPlanTransitionId }
+      : {}),
+    ...(typeof value.lastSyncedSessionConfigKey === "string"
+      ? { lastSyncedSessionConfigKey: value.lastSyncedSessionConfigKey }
       : {}),
     ...(modelSelection ? { modelSelection } : {}),
     ...(value.initializeFromNewTask === true && !mode.success

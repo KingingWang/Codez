@@ -1154,6 +1154,54 @@ describe("useDraftConfigControl slash command hydration", () => {
         options: { reasoningLevel: "low" },
       },
     });
+
+    // 本端未发送的菜单修改不会被未变化的重复快照覆盖。
+    act(() => {
+      control!.updateComposerContent({ text: "手机未发送草稿" });
+      control!.handleDraftSwitchMode("build");
+    });
+    await act(async () =>
+      root.render(
+        createElement(Probe, {
+          sessionId: "existing-codex-thread",
+          sessionConfig: {
+            mode: "custom",
+            planEnabled: true,
+            provider: "provider",
+            model: "gpt-5.4",
+            thought: "low",
+          },
+        }),
+      ),
+    );
+    expect(control!.draftConfig.mode).toBe("build");
+    expect(control!.composerDraft.text).toBe("手机未发送草稿");
+
+    // 桌面端发送消息或更新线程配置使权威 snapshot.config 推进后，手机端同步最新模式/模型/思考级别并保留未发送正文。
+    await act(async () =>
+      root.render(
+        createElement(Probe, {
+          sessionId: "existing-codex-thread",
+          sessionConfig: {
+            mode: "yolo",
+            planEnabled: false,
+            provider: "provider",
+            model: "gpt-5.4",
+            thought: "high",
+          },
+        }),
+      ),
+    );
+    expect(control!.draftConfig).toMatchObject({
+      mode: "yolo",
+      planEnabled: false,
+      modelSelection: {
+        providerId: "provider",
+        modelId: "gpt-5.4",
+        options: { reasoningLevel: "high" },
+      },
+    });
+    expect(control!.composerDraft.text).toBe("手机未发送草稿");
     act(() => root.unmount());
   });
 });

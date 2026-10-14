@@ -80,6 +80,85 @@ export function shouldHydrateWorkspaceCatalog(params: {
   return params.slashCommands.length === 0 || !hasModePresentation;
 }
 
+function resolveSessionConfigModelSelection(params: {
+  sessionConfig: Partial<SessionConfigState> | null | undefined;
+  codex: boolean;
+  codexUsesCatalog: boolean;
+  codexCatalog?: CodexModelCatalog;
+}): ModelSelection | undefined {
+  const { sessionConfig, codex, codexUsesCatalog, codexCatalog } = params;
+  if (!sessionConfig) return undefined;
+  const raw =
+    sessionConfig.modelSelection ??
+    (codex &&
+    sessionConfig.model &&
+    (sessionConfig.provider || (codexUsesCatalog ? codexCatalog?.providerId : undefined))
+      ? {
+          providerId: (sessionConfig.provider || codexCatalog?.providerId)!,
+          modelId: sessionConfig.model,
+          ...(sessionConfig.thought ? { options: { reasoningLevel: sessionConfig.thought } } : {}),
+        }
+      : undefined);
+  if (codexUsesCatalog && codexCatalog) {
+    return resolveCodexSelection(codexCatalog, raw) ?? undefined;
+  }
+  return raw;
+}
+
+function buildCodexSessionConfigSyncKey(
+  sessionConfig: Partial<SessionConfigState> | null | undefined,
+  fallbackProviderId?: string,
+): string | undefined {
+  if (!sessionConfig) return undefined;
+  const mode = submissionModeSchema.safeParse(sessionConfig.mode);
+  const planEnabled = resolveExecutionState(sessionConfig).planEnabled;
+  const provider =
+    sessionConfig.modelSelection?.providerId ?? sessionConfig.provider ?? fallbackProviderId ?? "";
+  const model = sessionConfig.modelSelection?.modelId ?? sessionConfig.model ?? "";
+  const thought =
+    sessionConfig.modelSelection?.options?.reasoningLevel ?? sessionConfig.thought ?? "";
+  if (!mode.success && !model) return undefined;
+  return JSON.stringify([mode.success ? mode.data : "", planEnabled, provider, model, thought]);
+}
+
+function applyCodexSessionConfigSync(params: {
+  draft: V4ComposerDraft;
+  sessionId: string | null;
+  sessionConfig: Partial<SessionConfigState> | null | undefined;
+  codex: boolean;
+  codexUsesCatalog: boolean;
+  codexCatalog?: CodexModelCatalog;
+}): V4ComposerDraft {
+  const { draft, sessionId, sessionConfig, codex, codexUsesCatalog, codexCatalog } = params;
+  if (!codex || !sessionId || draft.initializeFromNewTask || !draft.mode || !sessionConfig) {
+    return draft;
+  }
+  if (codexUsesCatalog && !codexCatalog) return draft;
+  const syncKey = buildCodexSessionConfigSyncKey(sessionConfig, codexCatalog?.providerId);
+  if (!syncKey) return draft;
+  // 存量草稿首次观测到权威快照时先对齐一次基线；后续仅在权威配置发生实质推进时同步，
+  // 重复快照不会覆盖用户在本端尚未发送的菜单选择。
+  if (draft.lastSyncedSessionConfigKey === syncKey) return draft;
+  const mode = submissionModeSchema.safeParse(sessionConfig.mode);
+  const nextMode = mode.success && mode.data !== "plan" ? mode.data : draft.mode;
+  const nextPlanEnabled = resolveExecutionState(sessionConfig).planEnabled;
+  const nextSelection =
+    resolveSessionConfigModelSelection({
+      sessionConfig,
+      codex,
+      codexUsesCatalog,
+      codexCatalog,
+    }) ?? draft.modelSelection;
+  return {
+    ...draft,
+    mode: nextMode,
+    permissionModeGen: 2 as const,
+    planEnabled: nextPlanEnabled,
+    ...(nextSelection ? { modelSelection: nextSelection } : {}),
+    lastSyncedSessionConfigKey: syncKey,
+  };
+}
+
 export interface DraftConfigControl {
   modelSelectionRead: ModelSelectionRead;
   /** Renderer 下一次提交的配置；Session 只在 scope 首次初始化时提供种子。 */
@@ -186,6 +265,10 @@ export function useDraftConfigControl(params: {
         : sessionConfig != null)
   ) {
     const mode = submissionModeSchema.safeParse(sessionConfig?.mode);
+    const initialSyncKey =
+      codex && !initializeAsNewTask
+        ? buildCodexSessionConfigSyncKey(sessionConfig, codexCatalog?.providerId)
+        : undefined;
     // Recent 是初始化原意图，不先按旧 Provider 是否仍在候选中删掉；下一次输入读取
     // 由同一解析入口对应当前账号，或暂时留空。否则冷启动会绕过统一账号对应规则。
     // mode 是已初始化标记：历史恢复给出的空选择也是确定结果，后续 Snapshot 不得填满。
@@ -204,17 +287,14 @@ export function useDraftConfigControl(params: {
               resolveCodexSelection(
                 codexCatalog,
                 draft.modelSelection ??
-                  sessionConfig?.modelSelection ??
-                  (sessionConfig?.model
-                    ? {
-                        providerId: sessionConfig.provider || codexCatalog.providerId,
-                        modelId: sessionConfig.model,
-                        ...(sessionConfig.thought
-                          ? { options: { reasoningLevel: sessionConfig.thought } }
-                          : {}),
-                      }
-                    : undefined),
+                  resolveSessionConfigModelSelection({
+                    sessionConfig,
+                    codex,
+                    codexUsesCatalog,
+                    codexCatalog,
+                  }),
               ) ?? undefined,
+            ...(initialSyncKey ? { lastSyncedSessionConfigKey: initialSyncKey } : {}),
           }
         : initializeAsNewTask && modelSelectionView
           ? initializeNewTaskDraft(draft, workspacePath, workspaceIdentity, modelSelectionView, {
@@ -225,20 +305,24 @@ export function useDraftConfigControl(params: {
               mode: mode.success && mode.data !== "plan" ? mode.data : codex ? "custom" : "build",
               ...(codex ? { permissionModeGen: 2 as const } : {}),
               planEnabled: resolveExecutionState(sessionConfig ?? {}).planEnabled,
-              modelSelection:
-                sessionConfig?.modelSelection ??
-                (codex && sessionConfig?.model && sessionConfig.provider
-                  ? {
-                      providerId: sessionConfig.provider,
-                      modelId: sessionConfig.model,
-                      ...(sessionConfig.thought
-                        ? { options: { reasoningLevel: sessionConfig.thought } }
-                        : {}),
-                    }
-                  : undefined),
+              modelSelection: resolveSessionConfigModelSelection({
+                sessionConfig,
+                codex,
+                codexUsesCatalog,
+                codexCatalog,
+              }),
+              ...(initialSyncKey ? { lastSyncedSessionConfigKey: initialSyncKey } : {}),
             };
   }
   if (sessionConfig) {
+    draft = applyCodexSessionConfigSync({
+      draft,
+      sessionId,
+      sessionConfig,
+      codex,
+      codexUsesCatalog,
+      codexCatalog,
+    });
     draft = applyComposerPlanTransition(draft, sessionConfig.planTransition);
     draft = applyComposerPermissionGrant(draft, sessionConfig.permissionGrant);
   }
@@ -386,6 +470,8 @@ export function useDraftConfigControl(params: {
       updateComposerDraft((current) => ({
         ...replacement,
         lastPermissionGrantId: current.lastPermissionGrantId,
+        lastPlanTransitionId: current.lastPlanTransitionId,
+        lastSyncedSessionConfigKey: current.lastSyncedSessionConfigKey,
         updatedAt: Date.now(),
       }));
     },

@@ -39,6 +39,7 @@ Plan 保持独立勾选维度（`planEnabled` → `collaborationMode`），与�
 
 - Codex 会话新任务草稿默认档为 `custom`（不静默覆盖用户 config.toml）。
 - 手机扫码远控在 Codex Host 下没有桌面本地 `codexCatalog`，模型与档位候选经 `IModelSelectionService`（`createCodexModelSelectionService`）读取；其权限档初始化、存量 `build` 代际归一、`edit` 能力门控与提交冻结同样走 Codex 规则（新任务默认 `custom`，已有会话保留 `sessionConfig.mode` / `planEnabled` 并从 `sessionConfig` 补齐 `modelSelection`）。
+- 同一会话跨端配置同步（方案一）：对于已绑定的 Codex 会话（`sessionId !== null`），当另一端（桌面端或手机端）提交消息或更新线程配置使权威 `snapshot.config`（`mode`、`planEnabled`、`provider`、`model`、`thought`）相对于当前端上次观测到的有效线程配置发生变化时，当前端同步将该变化合并进本地会话草稿（保留未发送文本与本地编辑内容），避免桌面端与手机端交替发消息时配置脱节或因设置不一致触发 busy queue/guide 拒绝；若 `snapshot.config` 未发生变化，用户在本端未发送的菜单选择不会被重复快照覆盖。
 - 存量持久化草稿：`yolo` 保留（语义不变）；升级前写入的 `build`（草稿缺少 `permissionModeGen:2` 代际标记）在展示与提交层归一为 `custom`——旧 build 语义（保留原生权限）与新 custom 等价，直接下发 build 会被 bridge 当成显式迁移而静默改写线程权限；新版本下用户显式选择的 `build` 写入代际标记，原样保留。`edit` 在能力可用时自然获得 Approve for me 语义，不可用时按上节归一化。
 - `custom` 只属于 Codex 链路：残留草稿落到非 Codex 链路时 UI 展示/提交归一为 `build`，Codez Agent CLI admission（`resolveSubmittedExecutionState` / `switchCollaborationMode`）对 `custom` 显式拒绝（failed ACK），不允许静默降档。
 - `submissionModeSchema` 增加 `custom`；`codezSessionModeSchema` 增加 `custom`（additive，旧运行时不产生该值，`normalizeAvailableCodezMode` 对未知值仍回退 build）。
