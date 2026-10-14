@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useRef } from "react";
-import { RefreshCwIcon } from "lucide-react";
 import {
   CODEZ_AGENT_PROVIDER,
   TID_V4_COMPOSER_INPUT,
@@ -11,7 +10,6 @@ import type { CodexModelCatalogRead } from "@/hooks/useCodexModelCatalog.js";
 import { Button } from "@/components/ui/button.js";
 import { ChatContextUsage } from "@/chat-input-toolbar/contextUsage.js";
 import { ThoughtLevelCycleControl } from "@/chat-input-toolbar/ThoughtLevelCycleControl.js";
-import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { ModelConfigSelect, type ModelSelectGroup } from "@/ModelConfigSelect.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { resolveSessionTaskUsage } from "@/v4/composer/codexSessionUsage.js";
@@ -213,19 +211,6 @@ export function CodexComposerModelControls({
           restoreFocusSelector={COMPOSER_INPUT_SELECTOR}
         />
       ) : null}
-      <ControlHintTooltip title={text.refresh}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-md"
-          aria-label={text.refresh}
-          onClick={read.reload}
-          disabled={disabled}
-          className="shrink-0 text-foreground-subtle hover:text-foreground"
-        >
-          <RefreshCwIcon className="size-4" />
-        </Button>
-      </ControlHintTooltip>
     </div>
   );
 }

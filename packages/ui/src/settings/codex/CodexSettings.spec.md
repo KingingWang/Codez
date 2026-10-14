@@ -142,9 +142,11 @@ The Codex composer reuses the shared chat toolbar visuals: the context-usage
 ring reads the native sparse usage projection, the model picker is the shared
 provider/model menu (catalog groups, configured model listed first when absent
 from discovery), and reasoning uses the shared thought-level control (a fixed
-read-only pill when discovery returned no capability list). The catalog refresh
-affordance is an icon-only control; busy locking disables the same controls
-without inline banner text, matching the legacy composer surfaces.
+read-only pill when discovery returned no capability list). When the catalog is
+ready, no standalone refresh button is rendered next to the reasoning control
+(catalog refresh remains available in the loading/error fallback state); busy
+locking disables the same controls without inline banner text, matching the
+legacy composer surfaces.
 
 A discovered model whose `supportedReasoningEfforts` is empty has no reasoning
 dimension. Selection readiness must not require an effort value for it, the

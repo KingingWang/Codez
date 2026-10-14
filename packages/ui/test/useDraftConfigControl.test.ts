@@ -1085,4 +1085,75 @@ describe("useDraftConfigControl slash command hydration", () => {
     expect(control!.composerDraft.mode).toBe("edit");
     act(() => root.unmount());
   });
+
+  it("手机远控连接 Codex Host（codex=true, codexUsesCatalog=false）时新任务默认 custom，已有会话从平铺 config 恢复模型与模式", async () => {
+    const root = createRoot(installMinimalDom());
+    const workspacePath = "/mobile-codex-remote";
+    const view: ModelSelectionView = {
+      ...modelSelectionView(1, ["gpt-5.4"], "gpt-5.4"),
+      preferredSelection: {
+        providerId: "provider",
+        modelId: "gpt-5.4",
+        options: { reasoningLevel: "high" },
+      },
+    };
+    let control: ReturnType<typeof useDraftConfigControl>;
+    function Probe({
+      sessionId,
+      sessionConfig,
+    }: {
+      sessionId: string | null;
+      sessionConfig: Partial<SessionConfigState> | null;
+    }) {
+      control = useDraftConfigControl({
+        codex: true,
+        codexUsesCatalog: false,
+        workspacePath,
+        sessionId,
+        sessionConfig,
+        modelSelectionView: view,
+        agentStartupAllowed: false,
+      });
+      return null;
+    }
+
+    await act(async () =>
+      root.render(createElement(Probe, { sessionId: null, sessionConfig: null })),
+    );
+    expect(control!.draftConfig).toMatchObject({
+      mode: "custom",
+      planEnabled: false,
+      modelSelection: {
+        providerId: "provider",
+        modelId: "gpt-5.4",
+        options: { reasoningLevel: "high" },
+      },
+    });
+    expect(control!.composerDraft.permissionModeGen).toBe(2);
+
+    await act(async () =>
+      root.render(
+        createElement(Probe, {
+          sessionId: "existing-codex-thread",
+          sessionConfig: {
+            mode: "custom",
+            planEnabled: true,
+            provider: "provider",
+            model: "gpt-5.4",
+            thought: "low",
+          },
+        }),
+      ),
+    );
+    expect(control!.draftConfig).toMatchObject({
+      mode: "custom",
+      planEnabled: true,
+      modelSelection: {
+        providerId: "provider",
+        modelId: "gpt-5.4",
+        options: { reasoningLevel: "low" },
+      },
+    });
+    act(() => root.unmount());
+  });
 });

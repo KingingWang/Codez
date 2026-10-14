@@ -24,9 +24,10 @@ export interface ComposerSubmissionConfig {
 export function freezeSubmissionMode(
   mode: SubmissionMode,
   codexCatalog: CodexModelCatalog | undefined,
+  nativeCodex = Boolean(codexCatalog),
 ): SubmissionMode {
-  if (mode === "plan") return codexCatalog ? "custom" : "build";
-  if (mode === "custom" && !codexCatalog) return "build";
+  if (mode === "plan") return nativeCodex ? "custom" : "build";
+  if (mode === "custom" && !nativeCodex) return "build";
   return mode;
 }
 
@@ -38,6 +39,7 @@ export function createComposerSubmissionConfig(
     | undefined,
   view: ModelSelectionView | null,
   codexCatalog?: CodexModelCatalog,
+  nativeCodex = Boolean(codexCatalog),
 ): ComposerSubmissionConfig | null {
   // 只读子会话和未挂载 Composer 的 SessionPane 不提供草稿；这类场景没有可提交配置，
   // 不能因为渲染提交门禁而读取 undefined 并让整个会话区域崩溃。
@@ -61,7 +63,7 @@ export function createComposerSubmissionConfig(
     return null;
   // 不读取 Session 或显示别名；复制所有选择叶子，防止 await 后用户切模改变本次请求。
   return Object.freeze({
-    mode: freezeSubmissionMode(mode.data, codexCatalog),
+    mode: freezeSubmissionMode(mode.data, codexCatalog, nativeCodex),
     planEnabled: resolveExecutionState(composer).planEnabled,
     modelSelection: Object.freeze({
       providerId: selection.providerId,

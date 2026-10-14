@@ -1252,11 +1252,10 @@ function ConversationComposerImpl({
           ),
     );
   }, [activeTurnId, sessionId, workspaceKey]);
-  const nativeSettingsLocked =
-    Boolean(codexModelCatalog) && (pending || isCodexComposerBusy(snapshot));
   // 桌面 catalog 链路或远控 hello 侦测任一成立即原生 Codex 会话；
   // 排队/引导选择器与投递意图在两条链路保持一致（桌面/手机 UI 统一）。
   const nativeCodexFollowup = Boolean(codexModelCatalog) || nativeCodexSession;
+  const nativeSettingsLocked = nativeCodexFollowup && (pending || isCodexComposerBusy(snapshot));
   const modifiedEnterReversesDelivery = modifiedEnterSubmits && canStop;
   const hasText = text.trim().length > 0;
   const hasDraftToSubmit =
@@ -1581,7 +1580,7 @@ function ConversationComposerImpl({
         setHeldQueueConfirmation(null);
         if (nativeCodexFollowup) setCodexFollowupIntent("queue");
         if (
-          codexModelCatalog &&
+          nativeCodexFollowup &&
           requestedDelivery === "guide" &&
           sessionId &&
           guideSnapshotAtSend &&
@@ -2441,12 +2440,12 @@ function ConversationComposerImpl({
           activeConfigPicker={activeConfigPicker}
           onConfigPickerOpenChange={handleConfigPickerOpenChange}
           onSwitchMode={onSwitchMode}
-          codexPermissions={Boolean(codexModelCatalog)}
+          codexPermissions={nativeCodexFollowup}
           codexAutoReviewSupported={codexAutoReviewSupported}
         />
         {/* Bug 原因：附件画廊 rebase 曾整段覆盖 leadingActions，误删 staging 的 CUA 常驻入口。
             入口自身继续负责平台、远程与设置可见性，不在 composer 重复判定。 */}
-        {!codexModelCatalog && (
+        {!nativeCodexFollowup && (
           <V4ComposerCuaEntry
             workspacePath={workspacePath}
             workspaceIdentity={workspaceIdentity}
@@ -2467,7 +2466,7 @@ function ConversationComposerImpl({
       activeConfigPicker,
       canStop,
       codexAutoReviewSupported,
-      codexModelCatalog,
+      nativeCodexFollowup,
       nativeSettingsLocked,
       disabled,
       draftConfig,

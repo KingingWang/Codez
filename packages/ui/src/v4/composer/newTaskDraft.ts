@@ -13,12 +13,15 @@ export function initializeNewTaskDraft(
   workspacePath: string,
   workspaceIdentity: string | undefined,
   view: ModelSelectionView,
+  options?: { codex?: boolean },
 ): V4ComposerDraft {
   const recent = readComposerRecent(workspacePath, workspaceIdentity);
+  const defaultMode = options?.codex ? "custom" : "build";
   return {
     ...draft,
     initializeFromNewTask: undefined,
-    mode: recent?.mode === "plan" ? "build" : (recent?.mode ?? "build"),
+    mode: recent?.mode === "plan" ? defaultMode : (recent?.mode ?? defaultMode),
+    ...(options?.codex ? { permissionModeGen: 2 as const } : {}),
     planEnabled: false,
     modelSelection:
       recent?.modelSelection ??

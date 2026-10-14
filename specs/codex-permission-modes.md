@@ -8,12 +8,12 @@ Codex 会话的 composer 权限档位与 Codex 原生权限预设一一对应；
 
 Plan 保持独立勾选维度（`planEnabled` → `collaborationMode`），与权限档位正交，可组合。
 
-| 档位 id | 标签 | 下发到原生（turn/start / thread/settings/update） |
-| --- | --- | --- |
-| `build` | 请求批准 / Ask for approval | `approvalPolicy:"on-request"` + `approvalsReviewer:"user"` + `sandboxPolicy: workspaceWrite` |
-| `edit` | 帮我审批 / Approve for me | `approvalPolicy:"on-request"` + `approvalsReviewer:"auto_review"` + `sandboxPolicy: workspaceWrite` |
-| `yolo` | 完全访问 / Full access | `approvalPolicy:"never"` + `approvalsReviewer:"user"` + `sandboxPolicy: dangerFullAccess` |
-| `custom` | 自定义 / Custom | 不下发权限覆盖，跟随 config.toml；仅当线程当前处于放宽态（`dangerFullAccess` 沙箱或 `auto_review` 审批人）时，显式恢复 config.toml 生效值 |
+| 档位 id  | 标签                        | 下发到原生（turn/start / thread/settings/update）                                                                                         |
+| -------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `build`  | 请求批准 / Ask for approval | `approvalPolicy:"on-request"` + `approvalsReviewer:"user"` + `sandboxPolicy: workspaceWrite`                                              |
+| `edit`   | 帮我审批 / Approve for me   | `approvalPolicy:"on-request"` + `approvalsReviewer:"auto_review"` + `sandboxPolicy: workspaceWrite`                                       |
+| `yolo`   | 完全访问 / Full access      | `approvalPolicy:"never"` + `approvalsReviewer:"user"` + `sandboxPolicy: dangerFullAccess`                                                 |
+| `custom` | 自定义 / Custom             | 不下发权限覆盖，跟随 config.toml；仅当线程当前处于放宽态（`dangerFullAccess` 沙箱或 `auto_review` 审批人）时，显式恢复 config.toml 生效值 |
 
 非 Codex 的 Codez Agent 运行时保留旧四档（build/edit/plan/yolo）语义，不受本 spec 影响；`custom` 只属于 Codex 链路。
 
@@ -31,12 +31,14 @@ Plan 保持独立勾选维度（`planEnabled` → `collaborationMode`），与�
 ## 能力探测与降级
 
 - bridge `runtime/capabilities` 新增 `autoReviewApprovals`：探测原生 `guardian_approval` feature（`experimentalFeature/list`）与 `configRequirements/read` 的 `requirements.allowedApprovalsReviewers`（wire 为 camelCase；来源配置项即 `allowed_approvals_reviewers`，旧别名 `guardian_subagent` 与 `auto_review` 等价对待）；两者均允许才 `supported`，否则 `unsupported`。探测结果（含失败）按 bridge 进程缓存，进程重启后重新探测；UI 侧在 runtime 重启 / transport 替换后重新 hello，刷新期间按不可用处理（fail-closed）。
+- 桌面端与手机扫码远控（`web-remote-replayable`）连接 Codex Host 时均读取同一份 `hello.capabilities`：对端确认为 Codex bridge（`useCodexNativeHost`）后，composer 开启 Codex 四档权限菜单（含 `custom`），并复用同一 `autoReviewApprovals` 门控与忙碌期队列/引导配置守卫。
 - 能力非 `supported` 时，composer 隐藏 `edit` 档；已持久化的 `edit` 草稿在 Codex scope 归一化为 `custom`。
 - 旧 peer 缺省该能力字段时按 `unsupported` 解析（协议字段为 optional，UI 投影缺省即隐藏）。
 
 ## 默认值与迁移边界
 
 - Codex 会话新任务草稿默认档为 `custom`（不静默覆盖用户 config.toml）。
+- 手机扫码远控在 Codex Host 下没有桌面本地 `codexCatalog`，模型与档位候选经 `IModelSelectionService`（`createCodexModelSelectionService`）读取；其权限档初始化、存量 `build` 代际归一、`edit` 能力门控与提交冻结同样走 Codex 规则（新任务默认 `custom`，已有会话保留 `sessionConfig.mode` / `planEnabled` 并从 `sessionConfig` 补齐 `modelSelection`）。
 - 存量持久化草稿：`yolo` 保留（语义不变）；升级前写入的 `build`（草稿缺少 `permissionModeGen:2` 代际标记）在展示与提交层归一为 `custom`——旧 build 语义（保留原生权限）与新 custom 等价，直接下发 build 会被 bridge 当成显式迁移而静默改写线程权限；新版本下用户显式选择的 `build` 写入代际标记，原样保留。`edit` 在能力可用时自然获得 Approve for me 语义，不可用时按上节归一化。
 - `custom` 只属于 Codex 链路：残留草稿落到非 Codex 链路时 UI 展示/提交归一为 `build`，Codez Agent CLI admission（`resolveSubmittedExecutionState` / `switchCollaborationMode`）对 `custom` 显式拒绝（failed ACK），不允许静默降档。
 - `submissionModeSchema` 增加 `custom`；`codezSessionModeSchema` 增加 `custom`（additive，旧运行时不产生该值，`normalizeAvailableCodezMode` 对未知值仍回退 build）。

@@ -685,12 +685,6 @@ export function SessionPane({
     workspacePath,
     ...(workspaceIdentity ? { workspaceIdentity } : {}),
   });
-  // Approve for me 档（approvalsReviewer:"auto_review"）由原生 guardian approval 能力门控；
-  // fail-closed，未确认前 composer 隐藏 edit 档（specs/codex-permission-modes.md）。
-  const codexAutoReviewSupported = useCodexAutoReviewApprovals(services, isDesktop, {
-    onRuntimeRestart,
-    onRuntimeLifecycle,
-  });
   // 手机远控没有桌面 catalog；hello 能力投影是唯一权威的对端 Codex 事实，
   // 命中后为 composer 开启与桌面一致的排队/引导选择（仅 UI 意图，命令仍走同一条链路）。
   const codexNativeRemoteHost = useCodexNativeHost(
@@ -698,6 +692,13 @@ export function SessionPane({
     { workspacePath, ...(workspaceIdentity ? { workspaceIdentity } : {}) },
     !isDesktop && compactForRemoteControl,
   );
+  const nativeCodexSession = isDesktop || codexNativeRemoteHost;
+  // Approve for me 档（approvalsReviewer:"auto_review"）由原生 guardian approval 能力门控；
+  // fail-closed，未确认前 composer 隐藏 edit 档（specs/codex-permission-modes.md）。
+  const codexAutoReviewSupported = useCodexAutoReviewApprovals(services, nativeCodexSession, {
+    onRuntimeRestart,
+    onRuntimeLifecycle,
+  });
   // 子智能体详情的会话内容仍只读；文件撤销恢复的是 workspace，必须作为独立能力判断。
   // 该判定还决定 preview/apply 的通道分流（Desktop 事务服务 vs legacy v4 command），
   // 必须早于两个 handler 的定义，故从 rowContext memo 附近上移到这里。
@@ -1784,7 +1785,8 @@ export function SessionPane({
     replaceComposerDraft,
     updateComposerContent,
   } = useDraftConfigControl({
-    codex: isDesktop,
+    codex: nativeCodexSession,
+    codexUsesCatalog: isDesktop,
     codexCatalog: codexModels.catalog,
     codexAutoReviewSupported,
     workspacePath,
@@ -1849,15 +1851,20 @@ export function SessionPane({
     // 回收并按最新选择事实重建，已显式选择和正式会话仍保持冻结。
     useCodezSessionStore.getState().invalidateDraftRuntime(workspacePath, workspaceIdentity);
   }, [draftConfigRef, modelSelectionView?.revision, sessionId, workspaceIdentity, workspacePath]);
-  const recommendStartPlan = useStartPlanRecommendation(modelSelectionView, undefined, !isDesktop);
+  const recommendStartPlan = useStartPlanRecommendation(
+    modelSelectionView,
+    undefined,
+    !nativeCodexSession,
+  );
   const createSubmissionFromComposer = useCallback(
     () =>
       createComposerSubmissionConfig(
         draftConfigRef.current,
         modelSelectionView,
         isDesktop ? codexModels.catalog : undefined,
+        nativeCodexSession,
       ),
-    [draftConfigRef, modelSelectionView, isDesktop, codexModels.catalog],
+    [draftConfigRef, modelSelectionView, isDesktop, codexModels.catalog, nativeCodexSession],
   );
   const composerSubmissionReady = useMemo(
     () =>
@@ -1865,8 +1872,9 @@ export function SessionPane({
         draftConfig,
         modelSelectionView,
         isDesktop ? codexModels.catalog : undefined,
+        nativeCodexSession,
       ) !== null,
-    [draftConfig, modelSelectionView, isDesktop, codexModels.catalog],
+    [draftConfig, modelSelectionView, isDesktop, codexModels.catalog, nativeCodexSession],
   );
   const codingPlanUpgradeDialog = useOptionalCodingPlanUpgradeDialog();
   const openSettingsTab = useOptionalTabStore((state) => state.openSettingsTab);
@@ -3452,7 +3460,7 @@ export function SessionPane({
 
       // 空 /plan 与模式菜单相同，只编辑当前 Composer，不提前改写 Agent 执行状态。
       if (slashCommand?.kind === "planShortcut") {
-        if (isDesktop && isCodexComposerBusy(snapshotRef.current)) {
+        if (nativeCodexSession && isCodexComposerBusy(snapshotRef.current)) {
           toast(codexText.busySettings);
           return "blocked" as const;
         }
@@ -3525,7 +3533,7 @@ export function SessionPane({
       // 原因：native queue/guide 不接受每条输入的设置覆盖。读取目录期间可能变忙，
       // 必须按最新 snapshot 再验冻结意图；不能静默换成线程配置，也不能清掉草稿。
       if (
-        isDesktop &&
+        nativeCodexSession &&
         !codexSubmissionSettingsAllowed(submission, snapshotRef.current, options?.requestedDelivery)
       ) {
         toast(codexText.settingsMismatch);
@@ -3871,6 +3879,7 @@ export function SessionPane({
       recommendStartPlan,
       baseWorkspaceServices,
       isDesktop,
+      nativeCodexSession,
       codexModels.readCurrent,
       codexModels.reload,
       codexText,
@@ -4509,7 +4518,7 @@ export function SessionPane({
   // 在 Submission 真正开跑（Guide 为下一次 model-step）时由 CLI/Core 更新。
   const handleSelectModel = useCallback(
     (modelProvider: string, model: string, sourceModel: ModelSelectionSource | null) => {
-      if (isDesktop && isCodexComposerBusy(snapshotRef.current)) return;
+      if (nativeCodexSession && isCodexComposerBusy(snapshotRef.current)) return;
       // 加速卡在本轮已把 Selection 锁定成卡上模型，选型菜单此时不可用；仍有快捷键
       // 或竞态调用进来时明确提示，不能静默把草稿改成另一个模型。
       if (activeHighspeedCard) {
@@ -4525,15 +4534,15 @@ export function SessionPane({
       });
       handleDraftSelectModel(resolvedProvider, model);
     },
-    [activeHighspeedCard, draftConfigRef, handleDraftSelectModel, intl, isDesktop],
+    [activeHighspeedCard, draftConfigRef, handleDraftSelectModel, intl, nativeCodexSession],
   );
 
   const handleSelectThought = useCallback(
     (thought: string, _modelContext: { provider: string; model: string }) => {
-      if (isDesktop && isCodexComposerBusy(snapshotRef.current)) return;
+      if (nativeCodexSession && isCodexComposerBusy(snapshotRef.current)) return;
       handleDraftSelectThought(thought);
     },
-    [handleDraftSelectThought, isDesktop],
+    [handleDraftSelectThought, nativeCodexSession],
   );
 
   const handleRecoverCustomModelSelection = useCallback(
@@ -4633,10 +4642,10 @@ export function SessionPane({
   // 模式与模型一样属于下一次 Submission；选择时只更新 Composer。
   const handleSwitchMode = useCallback(
     (mode: string) => {
-      if (isDesktop && isCodexComposerBusy(snapshotRef.current)) return;
+      if (nativeCodexSession && isCodexComposerBusy(snapshotRef.current)) return;
       handleDraftSwitchMode(mode);
     },
-    [handleDraftSwitchMode, isDesktop],
+    [handleDraftSwitchMode, nativeCodexSession],
   );
 
   // context usage 面板的压缩入口（命令文本 = "/compact"，复用 slash 解析路径）。
@@ -5524,7 +5533,7 @@ export function SessionPane({
       modelSelectionState={modelSelectionRead.state}
       modelSelectionReload={modelSelectionRead.reload}
       codexModelCatalog={isDesktop ? codexModels : undefined}
-      nativeCodexSession={isDesktop || codexNativeRemoteHost}
+      nativeCodexSession={nativeCodexSession}
       codexAutoReviewSupported={codexAutoReviewSupported}
       attachmentSessionId={effectiveSessionId}
       attachmentPut={attachmentPut}

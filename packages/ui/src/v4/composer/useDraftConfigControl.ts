@@ -118,6 +118,11 @@ export function useDraftConfigControl(params: {
   modelSelectionService: IModelSelectionService | null;
   codex?: boolean;
   codexCatalog?: CodexModelCatalog;
+  /**
+   * 桌面端通过 codexCatalog 直接解析模型；手机远控无本地 catalog，
+   * 仍需订阅 Host 的 IModelSelectionService（createCodexModelSelectionService）。
+   */
+  codexUsesCatalog?: boolean;
   /** Approve for me 能力（autoReviewApprovals）；未确认时 codex 草稿的 edit 归一化为 custom。 */
   codexAutoReviewSupported?: boolean;
 }): DraftConfigControl {
@@ -131,6 +136,7 @@ export function useDraftConfigControl(params: {
     modelSelectionService,
     codex = false,
     codexCatalog,
+    codexUsesCatalog = codex,
     codexAutoReviewSupported = false,
   } = params;
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
@@ -155,7 +161,7 @@ export function useDraftConfigControl(params: {
   let draft = currentState.draft;
   const modelSelectionRead = useModelSelectionServiceView(
     modelSelectionService,
-    !codex,
+    !codexUsesCatalog,
     "remote-waiting",
     {
       selection: draft.modelSelection ?? null,
@@ -173,7 +179,7 @@ export function useDraftConfigControl(params: {
   const initializeAsNewTask = sessionId === null || draft.initializeFromNewTask === true;
   if (
     !draft.mode &&
-    (codex
+    (codexUsesCatalog
       ? codexCatalog !== undefined && (initializeAsNewTask || sessionConfig != null)
       : initializeAsNewTask
         ? modelSelectionView !== null
@@ -184,7 +190,7 @@ export function useDraftConfigControl(params: {
     // 由同一解析入口对应当前账号，或暂时留空。否则冷启动会绕过统一账号对应规则。
     // mode 是已初始化标记：历史恢复给出的空选择也是确定结果，后续 Snapshot 不得填满。
     draft =
-      codex && codexCatalog
+      codexUsesCatalog && codexCatalog
         ? {
             ...draft,
             // 恢复原生会话必须保留权限/plan；强制默认会让 busy guide 与线程设置不一致。
@@ -211,12 +217,25 @@ export function useDraftConfigControl(params: {
               ) ?? undefined,
           }
         : initializeAsNewTask && modelSelectionView
-          ? initializeNewTaskDraft(draft, workspacePath, workspaceIdentity, modelSelectionView)
+          ? initializeNewTaskDraft(draft, workspacePath, workspaceIdentity, modelSelectionView, {
+              codex,
+            })
           : {
               ...draft,
-              mode: mode.success && mode.data !== "plan" ? mode.data : "build",
+              mode: mode.success && mode.data !== "plan" ? mode.data : codex ? "custom" : "build",
+              ...(codex ? { permissionModeGen: 2 as const } : {}),
               planEnabled: resolveExecutionState(sessionConfig ?? {}).planEnabled,
-              modelSelection: sessionConfig?.modelSelection,
+              modelSelection:
+                sessionConfig?.modelSelection ??
+                (codex && sessionConfig?.model && sessionConfig.provider
+                  ? {
+                      providerId: sessionConfig.provider,
+                      modelId: sessionConfig.model,
+                      ...(sessionConfig.thought
+                        ? { options: { reasoningLevel: sessionConfig.thought } }
+                        : {}),
+                    }
+                  : undefined),
             };
   }
   if (sessionConfig) {
@@ -229,7 +248,7 @@ export function useDraftConfigControl(params: {
   stateRef.current = currentState;
   // 原因：按 revision 清草稿会把短暂不可用永久写成空选择。这里只派生当前结果，
   // 正文/模式自动保存继续保存 draft 中的原意图；读取未就绪时保留展示，提交由 View 门禁阻断。
-  const effectiveSelection = codex
+  const effectiveSelection = codexUsesCatalog
     ? codexCatalog
       ? (resolveCodexSelection(codexCatalog, draft.modelSelection) ?? undefined)
       : undefined

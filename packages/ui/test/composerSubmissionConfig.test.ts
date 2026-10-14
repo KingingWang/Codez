@@ -76,4 +76,20 @@ describe("createComposerSubmissionConfig", () => {
     expect(createComposerSubmissionConfig(draft, null)).toBeNull();
     expect(createComposerSubmissionConfig({ ...draft, mode: "removed" }, view)).toBeNull();
   });
+
+  it("手机远控连接 Codex Host（无本地 catalog 但 nativeCodex=true）时保留 custom 权限模式", () => {
+    const customDraft = {
+      mode: "custom",
+      planEnabled: false,
+      modelSelection: view.preferredSelection!,
+    };
+    // 手机远控通过 ModelSelectionView 校验模型，同时允许 Codex 专属 custom 模式。
+    expect(createComposerSubmissionConfig(customDraft, view, undefined, true)).toEqual({
+      mode: "custom",
+      planEnabled: false,
+      modelSelection: view.preferredSelection,
+    });
+    // 非 Codex 链路仍将残留 custom 归一为 build。
+    expect(createComposerSubmissionConfig(customDraft, view, undefined, false)?.mode).toBe("build");
+  });
 });
