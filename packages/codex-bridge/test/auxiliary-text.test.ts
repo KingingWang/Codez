@@ -544,7 +544,7 @@ test(
       title.close();
       detach();
     });
-    title.arm(mainId, { providerId: "fixture", modelId: "gpt-5.2" });
+    title.armFirstInput(mainId, { providerId: "fixture", modelId: "gpt-5.2" });
     const deadline = setTimeout(
       () => titled.reject(new Error("Native first user item never completed")),
       10_000,

@@ -1216,9 +1216,13 @@ export class CodezAgentProcessManager {
         }
         const titleDiagnostic = parseCodexBridgeTitleDiagnostic(line);
         if (titleDiagnostic) {
-          // 修复依据：标题失败不会终止进程，不能只放进 debug stderr/退出 tail。
+          // 修复依据：标题失败与跳过都不会终止进程，只放进 debug stderr/退出 tail 就等于
+          // 没有——远程 workspace 的 bridge stderr 只经这条路径进入导出日志。
+          // 跳过（skipped）是设计内的“保留预览”，但必须带原因码，否则表现为静默失效。
           warnLog(
-            "Codex automatic title failed; keeping preview",
+            titleDiagnostic.kind === "failed"
+              ? "Codex automatic title failed; keeping preview"
+              : "Codex automatic title skipped; keeping preview",
             titleDiagnostic,
           );
           return;

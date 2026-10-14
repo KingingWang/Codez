@@ -296,6 +296,86 @@ test("first-input command generates a native title through the isolated auxiliar
   });
 });
 
+test("a first input without a title model reports one bounded skip and never starts generation", async (t) => {
+  // 修复依据：此前 `if (payload.titleGenerationModel) arm(...)` 在缺少选择时什么都不做，
+  // 手机端/Bot/legacy facade 以及设置读取失败的提交都表现为“自动命名静默失效”，
+  // 导出日志里没有任何线索。现在必须留下恰好一条有界原因，且不得猜测模型。
+  const lines: string[] = [];
+  t.mock.method(process.stderr, "write", (chunk: string | Uint8Array) => {
+    lines.push(String(chunk));
+    return true;
+  });
+  const titleLines = () => lines.filter((line) => line.includes("automatic title"));
+  const h = await fixture(t);
+  h.authority.thread = {
+    ...threadFixture(),
+    id: "created",
+    name: null,
+    preview: "Please investigate the build failure",
+    turns: [],
+  };
+  h.handlers["thread/start"] = (params) => ({
+    thread: {
+      ...h.authority.thread,
+      id: params.ephemeral ? "title-aux" : "created",
+      ephemeral: !!params.ephemeral,
+    },
+    cwd,
+    model: params.model ?? "fixture-model",
+    modelProvider: params.modelProvider ?? "openai",
+    approvalPolicy: "never",
+    sandbox: { type: "readOnly", networkAccess: false },
+  });
+  h.handlers["thread/name/set"] = (params) => {
+    h.authority.thread.name = params.name as string;
+    return {};
+  };
+  const created = await h.runtime.request(V4_METHODS.command, create("no-title-create"));
+  assert.equal(commandAckSchema.parse(created.result).status, "accepted");
+  const send = async (commandId: string, text: string, issuedAt: number) => {
+    const ack = await h.runtime.request(V4_METHODS.command, {
+      type: "sendText",
+      commandId,
+      clientId: "desktop-1",
+      sessionId: "created",
+      issuedAt,
+      payload: { text },
+    });
+    assert.equal(commandAckSchema.parse(ack.result).status, "accepted");
+  };
+  await send("no-title-1", "Please investigate the build failure", 2);
+  assert.deepEqual(titleLines(), [
+    "Codex desktop bridge warn: automatic title skipped; stage=arm; reason=missing-selection\n",
+  ]);
+  // 后续轮次既不重复上报，也不能补发标题（later turns do not rename the session）。
+  h.authority.thread.turns = [
+    {
+      id: "main-turn",
+      itemsView: "full",
+      status: "completed",
+      items: [
+        {
+          type: "userMessage",
+          id: "main-user",
+          content: [{ type: "text", text: "Please investigate the build failure" }],
+        },
+      ],
+    },
+  ];
+  await send("no-title-2", "a second substantive message", 3);
+  assert.deepEqual(titleLines(), [
+    "Codex desktop bridge warn: automatic title skipped; stage=arm; reason=missing-selection\n",
+  ]);
+  assert.equal(
+    h.calls.some(
+      (call) =>
+        call.method === "thread/start" && (call.params as { ephemeral?: boolean }).ephemeral === true,
+    ),
+    false,
+  );
+  assert.equal(h.authority.thread.name, null);
+});
+
 test("runtime cancellation and close abort auxiliary work, interrupt exact turn and remove listeners", async (t) => {
   for (const action of ["cancel", "close"])
     await t.test(action, async (t) => {

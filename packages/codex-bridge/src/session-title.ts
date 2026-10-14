@@ -36,6 +36,40 @@ type Attempt = {
   operationId?: string;
 };
 
+/**
+ * 跳过原因的闭合词汇。修复依据：此前所有非抛错分支（未 arm、输入过短、模型不可用、
+ * 输出不合法、写入前闸门失败）全部静默 return，导出日志里一条线索都没有，用户只能看到
+ * “自动命名不生效”却无法定位。Host 侧 `codexBridgeTitleDiagnostic.ts` 用同一份词汇做
+ * 白名单解析——两边必须同步修改，否则新原因会被当成不可信 stderr 丢弃。
+ */
+type SkipStage = "arm" | "input" | "availability" | "generation" | "native-read";
+type SkipReason =
+  | "missing-selection"
+  | "short-input"
+  | "unavailable"
+  | "invalid-title"
+  | "renamed"
+  | "first-item-mismatch";
+
+/**
+ * 线程是否有资格获得一次自动标题。`arm` 与 `missing-selection` 上报必须共用这一份判据：
+ * 辅助对话 child、子代理、fork、系统线程与已有用户消息的线程本来就不该被命名，
+ * 若上报分支单独放宽，这些线程的每条消息都会刷出一条假的“缺少标题模型”告警。
+ */
+function isTitleEligible(thread: Record<string, unknown> | undefined): boolean {
+  return !(
+    !thread ||
+    thread.name ||
+    thread.parentThreadId ||
+    thread.forkedFromId ||
+    isSelectionSideChatThread(thread) ||
+    thread.threadSource === "system" ||
+    array(thread.turns).some((turn) =>
+      array(object(turn).items).some((item) => object(item).type === "userMessage"),
+    )
+  );
+}
+
 /** Native Codex owns the name. This coordinator only arbitrates one ephemeral suggestion. */
 export class SessionTitleCoordinator {
   private readonly attempts = new Map<string, Attempt>();
@@ -53,24 +87,37 @@ export class SessionTitleCoordinator {
     },
   ) {}
 
-  /** Arm before turn/start: native item notifications can precede the command ACK. */
-  arm(threadId: string, selection: CodexTitleModel): void {
+  /**
+   * Arm before turn/start: native item notifications can precede the command ACK.
+   * 私有：命名尝试只允许由 `armFirstInput`（首条输入提交）这一条路径写入，避免出现
+   * 第二个可以启动标题生成的入口。
+   */
+  private arm(threadId: string, selection: CodexTitleModel): void {
     if (this.closed || this.attempted.has(threadId)) return;
-    const thread = this.deps.store.get(threadId)?.thread;
-    if (
-      !thread ||
-      thread.name ||
-      thread.parentThreadId ||
-      thread.forkedFromId ||
-      isSelectionSideChatThread(thread) ||
-      thread.threadSource === "system" ||
-      array(thread.turns).some((turn) =>
-        array(object(turn).items).some((item) => object(item).type === "userMessage"),
-      )
-    )
-      return;
+    if (!isTitleEligible(this.deps.store.get(threadId)?.thread)) return;
     this.attempted.add(threadId);
     this.attempts.set(threadId, { selection });
+  }
+
+  /**
+   * 首条输入的唯一 arm 入口（createSession.firstInput 与 sendText 共用）。
+   *
+   * 修复依据：调用方此前写成 `if (payload.titleGenerationModel) title?.arm(...)`，缺少选择时
+   * 什么都不发生——手机端/Bot/legacy facade 以及任何设置读取失败的提交都表现为“静默失效”。
+   * 规格禁止猜测或回落到会话模型，所以这里只补一条有界原因；同时把线程标记为已尝试，
+   * 保证一个线程最多报一次，后续轮次既不改名也不重复上报。
+   */
+  armFirstInput(threadId: string, selection: CodexTitleModel | undefined): void {
+    if (selection) {
+      this.arm(threadId, selection);
+      return;
+    }
+    if (this.closed || this.attempted.has(threadId)) return;
+    // 不是“可命名的首条输入”就保持安静：追问、辅助对话 child、子代理、fork、系统线程
+    // 与已命名线程都属正常，不是缺陷。
+    if (!isTitleEligible(this.deps.store.get(threadId)?.thread)) return;
+    this.attempted.add(threadId);
+    this.skip("arm", "missing-selection");
   }
 
   async onNotification(event: CodexNotification): Promise<void> {
@@ -98,6 +145,7 @@ export class SessionTitleCoordinator {
       .trim();
     if (Array.from(input).length < MIN_INPUT_CHARS) {
       this.attempts.delete(threadId);
+      this.skip("input", "short-input");
       return;
     }
     attempt.itemId = string(item.id);
@@ -130,7 +178,12 @@ export class SessionTitleCoordinator {
   private async generate(threadId: string, attempt: Attempt, input: string): Promise<void> {
     let stage: "availability" | "generation" | "native-read" | "native-write" = "availability";
     try {
-      if (!(await this.available(attempt.selection))) return;
+      if (!(await this.available(attempt.selection))) {
+        // 规格禁止回落到其它模型：设置里的 provider/model 在目标工作区原生目录中不存在时
+        // 只能跳过。此前完全静默，是“换了 provider 之后自动命名悄悄失效”无从排查的根因。
+        this.skip("availability", "unavailable");
+        return;
+      }
       if (this.attempts.get(threadId) !== attempt) return;
       const operationId = randomUUID();
       attempt.operationId = operationId;
@@ -161,12 +214,20 @@ export class SessionTitleCoordinator {
         ),
       );
       const title = parseTitle(result.text);
-      if (!title || this.attempts.get(threadId) !== attempt) return;
+      if (!title) {
+        // 结构化输出被网关/模型忽略时会返回散文，严格 JSON 解析失败即跳过（不换模型、不重试）。
+        this.skip("generation", "invalid-title");
+        return;
+      }
+      if (this.attempts.get(threadId) !== attempt) return;
       stage = "native-read";
       await this.serialize(threadId, async () => {
         if (this.closed || this.attempts.get(threadId) !== attempt) return;
         const read = object(await this.deps.rpc.request("thread/read", { threadId }));
-        if (object(read.thread).name) return;
+        if (object(read.thread).name) {
+          this.skip("native-read", "renamed");
+          return;
+        }
         const history = object(
           await this.deps.rpc.request("thread/turns/list", {
             threadId,
@@ -175,15 +236,19 @@ export class SessionTitleCoordinator {
             itemsView: "full",
           }),
         );
+        // 取消（手动改名、删除、关闭）是用户主动行为，不算跳过，保持安静；只有尝试仍然
+        // 有效、但首轮用户项身份不再匹配（首条被编辑/撤回）时才上报，这是真正的作废原因。
+        if (this.attempts.get(threadId) !== attempt) return;
         const first = array(history.data)[0];
         if (
           !first ||
           !array(object(first).items).some(
             (item) => object(item).type === "userMessage" && object(item).id === attempt.itemId,
-          ) ||
-          this.attempts.get(threadId) !== attempt
-        )
+          )
+        ) {
+          this.skip("native-read", "first-item-mismatch");
           return;
+        }
         stage = "native-write";
         await this.deps.rpc.request("thread/name/set", { threadId, name: title });
       });
@@ -207,6 +272,13 @@ export class SessionTitleCoordinator {
     } finally {
       if (this.attempts.get(threadId) === attempt) this.attempts.delete(threadId);
     }
+  }
+
+  /** 只输出阶段与原因码；永不输出 prompt、模型回答、路径、MCP 名或凭据。 */
+  private skip(stage: SkipStage, reason: SkipReason): void {
+    process.stderr.write(
+      `Codex desktop bridge warn: automatic title skipped; stage=${stage}; reason=${reason}\n`,
+    );
   }
 
   private async available(selection: CodexTitleModel): Promise<boolean> {

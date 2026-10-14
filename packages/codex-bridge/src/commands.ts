@@ -187,7 +187,9 @@ export class CommandRouter {
         const input = await nativeInput(text, p.attachments, sessionId, attachments);
         // busy 默认入队：排队消息立即可见、可编辑/删除；steer 只保留给显式 guide（specs/codex-desktop-adapter.md）。
         const delivery = p.requestedDelivery ?? (running ? "queue" : "startNow");
-        if (p.titleGenerationModel) this.context.title?.arm(sessionId, p.titleGenerationModel);
+        // 首条输入的唯一 arm 入口。缺少标题模型选择时由 coordinator 记录一条有界原因，
+        // 不在此处猜测或回落到会话模型（specs/codex-desktop-session-title.md）。
+        this.context.title?.armFirstInput(sessionId, p.titleGenerationModel);
         if (delivery === "queue" || (delivery === "guide" && running))
           assertUnchangedInputSettings(p, state.thread);
         if (delivery === "queue") {

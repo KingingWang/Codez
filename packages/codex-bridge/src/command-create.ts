@@ -63,7 +63,9 @@ export async function createNativeSession(
     store.applySettings(sessionId, settings);
   }
   if (p.firstInput) {
-    if (p.titleGenerationModel) context.title?.arm(sessionId, p.titleGenerationModel);
+    // 与 sendText 共用同一入口：带 firstInput 的创建就是一次首条输入提交，
+    // 缺少标题模型选择时也要留下有界原因，而不是静默不命名。
+    context.title?.armFirstInput(sessionId, p.titleGenerationModel);
     // 首条输入即将发起模型请求；缺本机临时 Key 的供应商在此处 fail-closed。
     await context.providerKeyGate?.assertTurnAllowed(selection?.providerId ?? p.config?.provider);
     const turnParams = {

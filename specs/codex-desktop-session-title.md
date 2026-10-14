@@ -52,6 +52,21 @@ SettingService (global default + workspace override)
   bounded failure stage and native error code to a production `warn` log, never the raw RPC
   message, prompt, response, workspace path, MCP name or credential. It does not change the
   conversation model, retry the attempt or write a fallback title.
+- Skipping is observable too. Every non-throwing path that leaves the preview in place emits
+  exactly one bounded `warn` line carrying a stage plus a closed reason code, and nothing else:
+  `arm/missing-selection`, `input/short-input`, `availability/unavailable`,
+  `generation/invalid-title`, `native-read/renamed`, `native-read/first-item-mismatch`. A cancel
+  caused by an intentional user action (manual rename, deletion, first-query edit) or by bridge
+  shutdown is not a skip and stays silent. At most one diagnostic is emitted per thread attempt:
+  a first input carrying no title model is reported once and marks the thread attempted, so later
+  turns neither rename it nor repeat the report.
+- Only a client that can read `SettingService` arms an attempt, because the effective model is a
+  user preference and the bridge must not invent or substitute one. The Desktop/Web/Mobile
+  composer submits it with the first input of a new session, and that submission is the single
+  arm entry point; the bridge arms once per thread and ignores duplicates. A host-side adapter
+  that cannot read that preference (bots, the legacy task facade) submits no model and therefore
+  produces exactly one `arm/missing-selection` warning instead of a title. Automation keeps
+  opting out of titles explicitly.
 - `thread/name/set` has no native compare-and-set. Another independent Codex client may rename
   between the final read and automatic write; cross-process absolute priority is not promised
   without upgrading the pinned native executable. In-app manual titles remain authoritative.
@@ -76,3 +91,8 @@ SettingService (global default + workspace override)
    ten Unicode characters can complete the same isolated title flow without launching that MCP.
    A failed auxiliary configuration keeps the preview and emits one redacted warning. Short
    inputs such as “你好” still do not request a title.
+7. A first input reaching the bridge without a title model, a first input shorter than ten
+   Unicode characters, an unavailable selected model and a malformed model answer each keep the
+   preview and each emit exactly one bounded `warn` line naming its stage and reason; for a
+   remote workspace the same line reaches the exported desktop log. No line contains the prompt,
+   the model answer, a workspace path or a credential. An intentional manual rename emits none.
