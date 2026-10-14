@@ -2182,13 +2182,13 @@ ENVKEY 的待审 SSH 用例需要 `CODEZ_DESKTOP_RUNTIME=legacy` 和 `CODEZ_E2E_
 
 本组来自 `specs/codex-provider-runtime-env-key.md` 和 catalog `F-CODEXENV-001`–`005`。原生配置与 legacy Personal Provider Config 不共用写入口；只把 Codex 用户层 `env_key` 当作 App 管理的引用。GUI 实测先使用隔离 `CODEX_HOME` 与本机数据目录，不触碰真实用户凭据；SSH 仍需真实远端测试机及人工审阅。
 
-| ID              | 状态    | 证据计划                                                 | 关键断言                                                                           |
-| --------------- | ------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| CODEX-ENVKEY-01 | planned | 原生配置/凭据/Agent 聚焦测试 + Desktop pending E2E       | 默认 Codex GUI 选择本机临时模式、本地 HTTP 鉴权、重开不回显，配置与 UI 事件无明文  |
-| CODEX-ENVKEY-02 | planned | Window Host/Target 多连接集成 + real SSH pending E2E     | 首连、第二窗口、重连每条连接安装后 ready；远端文件无 Key，真实请求鉴权正确         |
-| CODEX-ENVKEY-03 | planned | 缺值/旧目标/版本不符/失败聚焦测试 + 远端设置 pending E2E | 缺值仍能连接并编辑设置、模型网络请求被阻止；补录安装后放行，零明文回退、跨目标隔离 |
-| CODEX-ENVKEY-04 | planned | 保存/中断时序集成 + UI 确认场景                          | 取消零写；确认中断旧 Agent 后再生效，已接受输入不自动重发                          |
-| CODEX-ENVKEY-05 | planned | 原生配置 builder/服务回归                                | 旧明文、外部 env/auth、Server remote 和 legacy 路径互不覆盖                        |
+| ID              | 状态    | 证据计划                                                 | 关键断言                                                                                                                                                                         |
+| --------------- | ------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CODEX-ENVKEY-01 | planned | 原生配置/凭据/Agent 聚焦测试 + Desktop pending E2E       | 默认 Codex GUI 选择本机临时模式、本地 HTTP 鉴权、重开不回显，配置与 UI 事件无明文                                                                                                |
+| CODEX-ENVKEY-02 | planned | Window Host/Target 多连接集成 + real SSH pending E2E     | 在 SSH 设置页首次选「本机保存」时 Key 只进入目标 SSH 环境分区，不进入 local 分区；远端仅写 `env_key`；首连、第二窗口、重连每条连接安装后 ready，真实请求鉴权正确，远端文件无 Key |
+| CODEX-ENVKEY-03 | planned | 缺值/旧目标/版本不符/失败聚焦测试 + 远端设置 pending E2E | 缺值仍能连接并编辑设置、模型网络请求被阻止；补录安装后放行，零明文回退、跨目标隔离                                                                                               |
+| CODEX-ENVKEY-04 | planned | 保存/中断时序集成 + UI 确认场景                          | 取消零写；确认中断旧 Agent 后再生效，已接受输入不自动重发                                                                                                                        |
+| CODEX-ENVKEY-05 | planned | 原生配置 builder/服务回归                                | 旧明文、外部 env/auth、Server remote 和 legacy 路径互不覆盖                                                                                                                      |
 
 ## TTL. Task Title Overflow Marquee 覆盖
 
