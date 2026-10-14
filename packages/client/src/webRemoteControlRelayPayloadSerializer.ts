@@ -4,7 +4,9 @@ import {
   type WebRemoteControlAppPayload,
   type WebRemoteControlE2eeWirePayload,
   type WebRemoteControlRelayDataMessage,
+  type WebRemoteControlTransportEnvelopePayload,
   type WebRemoteControlWireAppPayload,
+  type WebRemoteControlWireTransportEnvelopePayload,
 } from "@codez/shared";
 
 export type WebRemoteControlPayloadSendResult =
@@ -14,7 +16,9 @@ export type WebRemoteControlPayloadSendResult =
 
 export interface SerializedWebRemoteControlRelayPayload {
   readonly message: WebRemoteControlRelayDataMessage<
-    WebRemoteControlWireAppPayload | WebRemoteControlE2eeWirePayload
+    | WebRemoteControlWireAppPayload
+    | WebRemoteControlWireTransportEnvelopePayload
+    | WebRemoteControlE2eeWirePayload
   >;
   readonly json: string;
   readonly bytes: number;
@@ -32,18 +36,22 @@ export class WebRemoteControlRelayPayloadSerializer {
 
   constructor(
     private readonly options: {
-      seal?(payload: WebRemoteControlWireAppPayload): WebRemoteControlE2eeWirePayload;
+      seal?(
+        payload: WebRemoteControlWireAppPayload | WebRemoteControlWireTransportEnvelopePayload,
+      ): WebRemoteControlE2eeWirePayload;
     } = {},
   ) {}
 
   prepare(
-    payload: WebRemoteControlAppPayload,
+    payload: WebRemoteControlAppPayload | WebRemoteControlTransportEnvelopePayload,
     clientTimestamp = Date.now(),
   ): SerializedWebRemoteControlRelayPayload {
     const cached = this.cache.get(payload);
     if (cached) return cached;
     const message: WebRemoteControlRelayDataMessage<
-      WebRemoteControlWireAppPayload | WebRemoteControlE2eeWirePayload
+      | WebRemoteControlWireAppPayload
+      | WebRemoteControlWireTransportEnvelopePayload
+      | WebRemoteControlE2eeWirePayload
     > = {
       type: "data",
       payload: this.options.seal

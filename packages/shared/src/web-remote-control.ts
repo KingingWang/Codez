@@ -16,6 +16,10 @@ import type { CodezProvider } from "./codez-task-types-core.js";
 import type { SessionWorkflowActivity } from "./codez-protocol-v4/sessions-index-workflow-activity.js";
 import type { WebRemoteControlRpcTransportPayload } from "./web-remote-control-rpc-transport.js";
 import type { WebRemoteControlE2eeWirePayload } from "./web-remote-control-e2ee.js";
+import type {
+  WebRemoteControlClientCapabilities,
+  WebRemoteControlGzipEnvelope,
+} from "./web-remote-control-gzip.js";
 import type { WorkspacePurpose } from "./workspacePurpose.js";
 
 export const WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS = 120_000;
@@ -183,7 +187,9 @@ export type WebRemoteControlRelayOutgoingMessage =
   | WebRemoteControlRelayAuthResponse
   | WebRemoteControlRelayPairStatusQuery
   | WebRemoteControlRelayDataMessage<
-      WebRemoteControlWireAppPayload | WebRemoteControlE2eeWirePayload
+      | WebRemoteControlWireAppPayload
+      | WebRemoteControlWireTransportEnvelopePayload
+      | WebRemoteControlE2eeWirePayload
     >;
 
 export type WebRemoteControlRelayIncomingMessage =
@@ -753,13 +759,28 @@ type UpstreamWirePayload<T> = T extends { codez_type: infer TType }
 
 export type WebRemoteControlWireAppPayload = UpstreamWirePayload<WebRemoteControlAppPayload>;
 
+/**
+ * transport 层在序列化前注入的控制/编码信封（gzip 信封 / 能力宣告），不参与业务
+ * 路由 schema 校验；接收端在 parseWebRemoteControlAppPayload 之前按 codez_type 拦截还原。
+ * 旧版本收到未知 codez_type 会静默丢弃，协商对旧端安全。
+ */
+export type WebRemoteControlTransportEnvelopePayload =
+  | WebRemoteControlGzipEnvelope
+  | WebRemoteControlClientCapabilities;
+
+/** 信封的 wire 形态（zcode_type 改名后）。 */
+export type WebRemoteControlWireTransportEnvelopePayload =
+  UpstreamWirePayload<WebRemoteControlTransportEnvelopePayload>;
+
 /** 只转换外部 relay 字段；不改变内部路由、RPC 字节或业务状态。 */
 export function toWebRemoteControlWirePayload(
-  payload: WebRemoteControlAppPayload,
-): WebRemoteControlWireAppPayload {
+  payload: WebRemoteControlAppPayload | WebRemoteControlTransportEnvelopePayload,
+): WebRemoteControlWireAppPayload | WebRemoteControlWireTransportEnvelopePayload {
   // Bugfix：二维码打开的是上游托管页面，品牌重命名不能改变它的 wire discriminator。
   const { codez_type, ...fields } = payload;
-  return { zcode_type: codez_type, ...fields } as WebRemoteControlWireAppPayload;
+  return { zcode_type: codez_type, ...fields } as
+    | WebRemoteControlWireAppPayload
+    | WebRemoteControlWireTransportEnvelopePayload;
 }
 
 /** 输入仍是不可信数据，归一之后必须继续经过原有 schema / raw RPC 校验。 */

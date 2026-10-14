@@ -64,6 +64,13 @@ import {
 import type { WebRemoteControlRelayAuthProvider } from "./webRemoteControlRelayAuthProvider.js";
 import type { WebRemoteControlRelayAuthStorageProvider } from "./webRemoteControlRelayAuthStorageProvider.js";
 import type { WebRemoteControlFeatureGate } from "./webRemoteControlFeatureGate.js";
+import {
+  createEmptyWebRemoteControlTrafficWindow,
+  formatWebRemoteControlTrafficWindow,
+  isWebRemoteControlTrafficWindowEmpty,
+  recordWebRemoteControlTraffic,
+  type WebRemoteControlTrafficWindow,
+} from "./webRemoteControlTrafficAccounting.js";
 
 interface WebRemoteControlHostAttachmentHandle {
   entryId: string;
@@ -143,6 +150,10 @@ interface WindowControlRuntime {
   pendingOutboundPayloads: WebRemoteControlAppPayload[];
   pendingOutboundPayloadTimer?: ReturnType<typeof setTimeout>;
   mobileDisconnectGraceTimer?: ReturnType<typeof setTimeout>;
+  /** 远控链路流量记账（仅字节数聚合，不含业务内容），用于定位异常流量来源。 */
+  trafficInbound: WebRemoteControlTrafficWindow;
+  trafficOutbound: WebRemoteControlTrafficWindow;
+  trafficFlushTimer?: ReturnType<typeof setInterval>;
 }
 
 interface WebRemoteControlManagerDependencies {
@@ -624,12 +635,66 @@ export function createWebRemoteControlManager(
     runtime: WindowControlRuntime,
     payload: WebRemoteControlAppPayload,
   ): WebRemoteControlPayloadSendResult {
+    const recordSent = (result: WebRemoteControlPayloadSendResult) => {
+      if (result.kind === "sent") {
+        recordWebRemoteControlTraffic(
+          runtime.trafficOutbound,
+          payload.codez_type,
+          result.bytes,
+        );
+      }
+      return result;
+    };
     if (runtime.transport.sendPayloadResult) {
-      return runtime.transport.sendPayloadResult(payload);
+      return recordSent(runtime.transport.sendPayloadResult(payload));
     }
     return runtime.transport.sendPayload(payload)
       ? { kind: "sent", bytes: 0 }
       : { kind: "unavailable" };
+  }
+
+  /** 流量记账窗口每 60s 输出一次摘要；空窗口不落日志，避免无远控流量时刷屏。 */
+  const TRAFFIC_ACCOUNTING_FLUSH_INTERVAL_MS = 60_000;
+
+  function flushTrafficAccounting(runtime: WindowControlRuntime): void {
+    const inbound = runtime.trafficInbound;
+    const outbound = runtime.trafficOutbound;
+    runtime.trafficInbound = createEmptyWebRemoteControlTrafficWindow();
+    runtime.trafficOutbound = createEmptyWebRemoteControlTrafficWindow();
+    if (
+      isWebRemoteControlTrafficWindowEmpty(inbound) &&
+      isWebRemoteControlTrafficWindowEmpty(outbound)
+    ) {
+      return;
+    }
+    dependencies.logger.info("[web-remote-control] relay traffic", {
+      windowId: runtime.windowId,
+      session: runtime.deviceSid,
+      periodMs: TRAFFIC_ACCOUNTING_FLUSH_INTERVAL_MS,
+      inbound: formatWebRemoteControlTrafficWindow(inbound),
+      outbound: formatWebRemoteControlTrafficWindow(outbound),
+    });
+  }
+
+  function startTrafficAccounting(runtime: WindowControlRuntime): void {
+    runtime.trafficFlushTimer = setInterval(
+      () => flushTrafficAccounting(runtime),
+      TRAFFIC_ACCOUNTING_FLUSH_INTERVAL_MS,
+    );
+    // 记账定时器不能阻止进程退出。
+    (
+      runtime.trafficFlushTimer as ReturnType<typeof setInterval> & {
+        unref?: () => void;
+      }
+    ).unref?.();
+  }
+
+  function stopTrafficAccounting(runtime: WindowControlRuntime): void {
+    if (runtime.trafficFlushTimer) {
+      clearInterval(runtime.trafficFlushTimer);
+      runtime.trafficFlushTimer = undefined;
+    }
+    flushTrafficAccounting(runtime);
   }
 
   function bufferOutboundPayload(
@@ -763,6 +828,7 @@ export function createWebRemoteControlManager(
     runtimes.delete(windowId);
     pushedWorkspaceListSignaturesByWindowId.delete(windowId);
     disposeRuntimeBridgeResources(runtime);
+    stopTrafficAccounting(runtime);
     clearPendingOutboundPayloadTimer(runtime);
     clearMobileDisconnectGraceTimer(runtime);
     runtime.pendingOutboundPayloads.length = 0;
@@ -1378,6 +1444,17 @@ export function createWebRemoteControlManager(
     runtime: WindowControlRuntime,
     payload: WebRemoteControlAppPayload,
   ): void {
+    // 接收侧记账与发送侧共用同一计量口径（序列化后的 JSON 字节数）。
+    try {
+      recordWebRemoteControlTraffic(
+        runtime.trafficInbound,
+        payload.codez_type,
+        runtime.transport.measurePayloadBytes?.(payload) ??
+          JSON.stringify(payload).length,
+      );
+    } catch {
+      // 计量失败（如 e2ee 未就绪时 measure 抛错）不影响业务路由。
+    }
     switch (payload.codez_type) {
       case "bootstrap-request":
         sendAppPayload(runtime, {
@@ -1727,8 +1804,11 @@ export function createWebRemoteControlManager(
           mobileConnected: false,
           hasEverPaired: false,
           pendingOutboundPayloads: [],
+          trafficInbound: createEmptyWebRemoteControlTrafficWindow(),
+          trafficOutbound: createEmptyWebRemoteControlTrafficWindow(),
         };
         runtimes.set(windowId, runtime);
+        startTrafficAccounting(runtime);
         emitRuntimeStatus(runtime);
         transport.start();
       });
@@ -1737,6 +1817,7 @@ export function createWebRemoteControlManager(
         await readyPromise;
       } catch (error) {
         runtimes.delete(windowId);
+        stopTrafficAccounting(runtime!);
         clearPendingOutboundPayloadTimer(runtime!);
         clearMobileDisconnectGraceTimer(runtime!);
         runtime!.pendingOutboundPayloads.length = 0;

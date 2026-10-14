@@ -304,8 +304,24 @@ describe("WebRemoteControlTerminalTransport", () => {
           error: "private phone",
         }),
       ).toBe(true);
-      await waitUntil(() => peerReceived.length === 1, 3_000);
+      // 握手 ready 后第一条上行是 client-capabilities（宣告 relay-gzip 解码能力）；
+      // 业务 payload 跟在其后，按 codez_type 过滤断言。
+      await waitUntil(
+        () =>
+          peerReceived.some(
+            (payload) => (payload as { zcode_type?: string }).zcode_type === "app-error",
+          ),
+        3_000,
+      );
       expect(peerReceived[0]).toMatchObject({
+        zcode_type: "client-capabilities",
+        v: 1,
+        caps: ["relay-gzip.v1"],
+      });
+      const privatePayload = peerReceived.find(
+        (payload) => (payload as { zcode_type?: string }).zcode_type === "app-error",
+      );
+      expect(privatePayload).toMatchObject({
         zcode_type: "app-error",
         error: "private phone",
       });

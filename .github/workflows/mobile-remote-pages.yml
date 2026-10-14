@@ -38,8 +38,10 @@ jobs:
         run: >-
           pnpm exec vitest run
           packages/client/test/webRemoteControlE2ee.test.ts
+          packages/client/test/webRemoteControlGzipCodec.test.ts
           packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts
           packages/desktop/test/webRemoteControlPageUrl.test.ts
+          packages/desktop/test/webRemoteControlTransport.test.ts
           packages/web/test/webRemoteControlRoute.test.ts
           packages/web/test/webRemoteControlVersion.test.ts
           packages/web/test/webRemoteControlTransport.test.ts

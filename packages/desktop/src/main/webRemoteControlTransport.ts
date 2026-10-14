@@ -1,12 +1,16 @@
 /* eslint-disable max-lines -- 外部 relay transport 需要集中维护握手、配对、心跳和重连状态机。 */
 import { WebSocket, type RawData } from "ws";
 import { createHash, randomBytes } from "node:crypto";
+import { gunzipSync, gzipSync } from "node:zlib";
 import {
   createWebRemoteControlE2eeSession,
   WebRemoteControlRelayPayloadSerializer,
+  decodeWebRemoteControlGzipEnvelope,
+  encodeWebRemoteControlGzipEnvelope,
   type WebRemoteControlPayloadSendResult,
 } from "@codez/client";
 import {
+  WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1,
   WEB_REMOTE_CONTROL_HEARTBEAT_ACK_TIMEOUT_MS,
   WEB_REMOTE_CONTROL_E2EE_HANDSHAKE_TIMEOUT_MS,
   WEB_REMOTE_CONTROL_HEARTBEAT_INTERVAL_MS,
@@ -16,14 +20,18 @@ import {
   getWebRemoteControlReconnectJitterMs,
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   normalizeWebRemoteControlWirePayload,
+  parseWebRemoteControlClientCapabilities,
+  parseWebRemoteControlGzipEnvelope,
   parseWebRemoteControlE2eeWirePayload,
   parseWebRemoteControlAppPayload,
   type WebRemoteControlAppPayload,
   type WebRemoteControlE2eeWirePayload,
+  type WebRemoteControlGzipEnvelope,
   type WebRemoteControlRelayDeviceMeta,
   type WebRemoteControlRelayErrorCode,
   type WebRemoteControlRelayIncomingMessage,
   type WebRemoteControlRelayOutgoingMessage,
+  type WebRemoteControlTransportEnvelopePayload,
 } from "@codez/shared";
 import type { WebRemoteControlRelayAuthProvider } from "./webRemoteControlRelayAuthProvider.js";
 import {
@@ -222,6 +230,15 @@ export class WebRemoteControlDeviceTransport {
   private payloadSerializer = new WebRemoteControlRelayPayloadSerializer();
   private e2ee?: ReturnType<typeof createWebRemoteControlE2eeSession>;
   private e2eeHandshakeTimer?: ReturnType<typeof setTimeout>;
+  // 对端（手机）宣告的解码能力；仅在握手 ready 后由 client-capabilities 消息填充，
+  // 未宣告 relay-gzip.v1 前一律明文发送（版本错配回退现状）。
+  private peerRelayCaps = new Set<string>();
+  // 信封按原 payload 对象缓存：ACK 重放用同一 payload 引用重新 prepare 时必须拿到
+  // 同一信封，序列化层 WeakMap 才会命中，保证重放帧逐字节一致。
+  private readonly gzipEnvelopeCache = new WeakMap<
+    object,
+    WebRemoteControlGzipEnvelope | null
+  >();
 
   constructor(private readonly options: WebRemoteControlDeviceTransportOptions) {
     // 旧明文构造只保留给现存 transport fixture；真实 Main 必须显式注入独立的二维码密钥。
@@ -251,12 +268,12 @@ export class WebRemoteControlDeviceTransport {
     if (this.options.e2eeKey && !this.e2ee?.isReady()) {
       throw new Error("e2ee.notReady");
     }
-    return this.payloadSerializer.prepare(payload).bytes;
+    return this.payloadSerializer.prepare(this.wrapOutboundWithGzip(payload)).bytes;
   }
 
   sendPayloadResult(payload: WebRemoteControlAppPayload): WebRemoteControlPayloadSendResult {
     if (this.options.e2eeKey && !this.e2ee?.isReady()) return { kind: "unavailable" };
-    const prepared = this.payloadSerializer.prepare(payload);
+    const prepared = this.payloadSerializer.prepare(this.wrapOutboundWithGzip(payload));
     if (this.payloadSerializer.isOversize(prepared)) {
       return {
         kind: "oversize",
@@ -270,6 +287,38 @@ export class WebRemoteControlDeviceTransport {
     return this.sendSerialized(prepared.message, prepared.json)
       ? { kind: "sent", bytes: prepared.bytes }
       : { kind: "unavailable" };
+  }
+
+  /**
+   * E2EE 密文让 WS 层 permessage-deflate 失效，大 payload（快照/workspace-list/rpc-frame）
+   * 只能全量上线，手机侧表现为持续异常流量。这里在 seal 之前做应用层 gzip：
+   * 仅当对端宣告 relay-gzip.v1 且压缩确有收益时才包信封，否则原样发送。
+   */
+  private wrapOutboundWithGzip(
+    payload: WebRemoteControlAppPayload,
+  ): WebRemoteControlAppPayload | WebRemoteControlTransportEnvelopePayload {
+    if (!this.peerRelayCaps.has(WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1)) return payload;
+    const cached = this.gzipEnvelopeCache.get(payload);
+    if (cached !== undefined) return cached ?? payload;
+    let envelope: WebRemoteControlGzipEnvelope | null = null;
+    try {
+      envelope = encodeWebRemoteControlGzipEnvelope(payload, (bytes) => gzipSync(bytes));
+    } catch {
+      // 压缩失败不阻断发送，按原 payload 明文发出。
+      envelope = null;
+    }
+    this.gzipEnvelopeCache.set(payload, envelope);
+    return envelope ?? payload;
+  }
+
+  /** 握手 ready 后宣告本端解码能力；信封走普通 data 帧，对旧端（静默丢弃）安全。 */
+  private sendClientCapabilities(): void {
+    const prepared = this.payloadSerializer.prepare({
+      codez_type: "client-capabilities",
+      v: 1,
+      caps: [WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1],
+    });
+    void this.sendSerialized(prepared.message, prepared.json);
   }
 
   dispose(): void {
@@ -639,6 +688,9 @@ export class WebRemoteControlDeviceTransport {
           this.payloadSerializer = new WebRemoteControlRelayPayloadSerializer({
             seal: (wire) => session.prepare(wire),
           });
+          // 新一轮 E2EE 会话重新协商能力：对端可能刚升级/降级，不能沿用旧轮次结论。
+          this.peerRelayCaps = new Set();
+          this.sendClientCapabilities();
           this.clearE2eeHandshakeDeadline();
           this.setState("paired");
           this.startHeartbeat();
@@ -665,6 +717,26 @@ export class WebRemoteControlDeviceTransport {
     }
     // Bugfix：上游 raw RPC 也用 zcode_type，须在进入既有 ACK/CRC owner 前归一。
     payload = normalizeWebRemoteControlWirePayload(payload);
+    // transport 级控制消息在业务 schema 校验前拦截：
+    // 1) 对端能力宣告——登记后决定发送方向是否允许 gzip 信封；
+    const capabilities = parseWebRemoteControlClientCapabilities(payload);
+    if (capabilities) {
+      this.peerRelayCaps = new Set(capabilities.caps);
+      return;
+    }
+    // 2) gzip 信封——gunzip 还原出内部 app payload 后继续走原有路由；
+    //    信封畸形时静默丢帧，不能打断 socket（与旧端丢未知 codez_type 行为一致）。
+    const gzipEnvelope = parseWebRemoteControlGzipEnvelope(payload);
+    if (gzipEnvelope) {
+      const inner = decodeWebRemoteControlGzipEnvelope(gzipEnvelope, (bytes) =>
+        gunzipSync(bytes),
+      );
+      if (inner === null) {
+        this.options.logger.warn("[web-remote-control] invalid relay-gzip envelope dropped");
+        return;
+      }
+      payload = normalizeWebRemoteControlWirePayload(inner);
+    }
     if (isRawTransportCandidate(payload) && this.options.onRawTransportPayload?.(payload)) {
       return;
     }
@@ -696,6 +768,8 @@ export class WebRemoteControlDeviceTransport {
 
   private resetE2ee(): void {
     this.clearE2eeHandshakeDeadline();
+    // 密钥会话作废后，对端能力结论一并作废；下一轮 ready 重新协商。
+    this.peerRelayCaps = new Set();
     if (!this.e2ee) return;
     this.e2ee.dispose();
     this.e2ee = undefined;

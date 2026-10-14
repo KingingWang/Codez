@@ -16,3 +16,4 @@ export type {
 } from "./webRemoteControlRelayProtocol.js";
 export * from "./webRemoteControlRelayPayloadSerializer.js";
 export * from "./webRemoteControlE2ee.js";
+export * from "./webRemoteControlGzipCodec.js";

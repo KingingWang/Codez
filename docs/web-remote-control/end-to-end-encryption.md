@@ -52,10 +52,22 @@ sequenceDiagram
 - 所有手机业务包（bootstrap、workspace list、view state、diagnostic、telemetry、platform、RPC frame 与 ACK、degraded/error）使用同一加密路径；异常日志仅写安全的 reason code，不泄露 URL 或 payload。断开前可发送的错误仍需加密，无法加密时仅在本地显示状态。
 - 现有本地及 SSH/WSL/Docker workspace 使用同一 Host；bridge 仍以 `workspaceIdentity?.trim() || workspacePath` 隔离，远程路由继续绑定 `remoteSessionId`，不为手机另起 Agent/Host。
 
+## 应用层压缩（relay-gzip）
+
+E2EE 先加密后上 relay WebSocket，密文近乎随机，WebSocket permessage-deflate 即使协商成功也压不动；桌面→手机方向的大 payload（会话快照、workspace-list、rpc-frame）只能按明文体积传输，手机表现为持续数百 KB/s 甚至 MB/s 的异常流量。因此在 E2EE 之内增加应用层「先压缩后加密」：
+
+- 发送方把内部 app payload JSON gzip 后包进 `relay-gzip` 信封（`{ codez_type: "relay-gzip", v: 1, data: base64(gzip(json)) }`），信封作为普通 app payload 走既有 seal/序列化/ACK/重发管线；接收方在 strict schema 校验归一前拦截信封，gunzip 还原后继续原有路由。信封还原失败按畸形帧静默丢弃，不进入业务路由。
+- 版本协商：握手 schema 全部 `.strict()` 不能加字段，因此用 app 级 `client-capabilities` 消息（`{ codez_type: "client-capabilities", v: 1, caps: [...] }`）宣告解码能力。旧版本对未知 `codez_type` 一律静默丢弃，新消息对旧端安全。两端在 E2EE ready 后各宣告一次；发送方仅在收到对端宣告 `relay-gzip.v1` 后才发送信封。新手机+旧桌面、旧手机+新桌面都退化为不压缩的现状。手机端仅在浏览器支持 `DecompressionStream("gzip")`（Safari 16.4+）时宣告，否则桌面保持明文发送。
+- 小于 1 KiB 的 JSON 不值得压缩（gzip 头尾开销），保持原样发送。压缩只用于桌面→手机下行大 payload；手机上行都是小 payload，不压缩。
+- 密文与最终 relay JSON 仍在首次计量时固定：gzip 信封在 seal 前生成并随明文一起缓存，ACK 重发复用同一字节，不重新压缩或重新加密。
+- 接收方在解密、鉴权、重放检查完成后才识别信封；gzip 还原后的内容重新走原有的 wire 归一与 strict schema 校验，压缩不改变任何业务消息的 schema 与路由。
+- 桌面主进程按 60 秒窗口聚合上下行字节与帧数（`[web-remote-control] relay traffic` info 日志），用于观测压缩收益与异常流量回归；日志只含字节数、帧数与压缩比例，不含 payload 内容。
+
 ## 验收用例
 
 | ID      | Setup → Action                                         | 断言与证据                                                                                                                                                       |
 | ------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E2EE-00 | 双端支持 relay-gzip 的新配对会话                        | ready 后互收 `client-capabilities`；下行大 payload 以信封传输且字节显著下降（实测同 88 条消息 rpc-frame 505KB→129KB）；还原后路由与明文路径一致。transport 端到端测试 + 真实 relay 流量日志。 |
 | E2EE-01 | 新配对 → 扫码进入可信站点                              | HTTP、relay 和日志不含 `K_pair`；鉴权后双向证明成功；加密 bootstrap、首页、任务发送与回复来自现有 Host。浏览器网络和 Host/CLI 证据。                             |
 | E2EE-02 | 中间 relay 修改握手、密文、AEAD 头，或注入明文         | 两端 fail closed，零 workspace attach/CLI command；错误不含敏感数据。传输与 Host spy 测试。                                                                      |
 | E2EE-03 | 重发同一帧/ACK、重排或回放旧轮次密文                   | RPC 只由现有 adapter 去重/补 ACK；命令最多 admission 一次，旧轮次无副作用。确定性 transport/CLI 测试。                                                           |

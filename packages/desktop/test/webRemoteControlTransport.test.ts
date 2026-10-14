@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket, WebSocketServer } from "ws";
 import type { AddressInfo } from "node:net";
+import { gunzipSync, gzipSync } from "node:zlib";
 import {
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   encodeWebRemoteControlRpcTransportMessage,
@@ -8,6 +9,7 @@ import {
 } from "@codez/shared";
 import {
   createWebRemoteControlE2eeSession,
+  decodeWebRemoteControlGzipEnvelope,
   generateWebRemoteControlPairingKey,
 } from "@codez/client";
 import {
@@ -1685,6 +1687,156 @@ describe("WebRemoteControlDeviceTransport", () => {
     }
   });
 
+  it("negotiates relay-gzip capability and compresses large outbound payloads end-to-end", async () => {
+    // 端到端验证：E2EE 密文使 WS 压缩失效后，应用层 gzip 信封按能力协商生效——
+    // 未宣告前明文直发；宣告 relay-gzip.v1 后大 payload 以信封形态上线且可还原，
+    // 线上字节数显著下降；桌面端也能还原对端发来的信封。
+    const key = generateWebRemoteControlPairingKey();
+    const states: WebRemoteControlDeviceTransportState[] = [];
+    const errors: Error[] = [];
+    const phoneReceived: unknown[] = [];
+    const appReceived: WebRemoteControlAppPayload[] = [];
+    let phone: E2eeSession | undefined;
+    let deviceSocket: WebSocket | undefined;
+    const relay = await createRelayServer(({ message, socket }) => {
+      deviceSocket = socket;
+      if (message.type === "auth_init") {
+        socket.send(
+          JSON.stringify({
+            type: "auth_ack",
+            device_sid: "sid-1",
+            pair_status: "matched",
+          }),
+        );
+        phone = createWebRemoteControlE2eeSession({
+          role: "terminal",
+          deviceSid: "sid-1",
+          pairingKey: key,
+          send: (payload) => socket.send(JSON.stringify({ type: "data", payload })),
+        });
+        phone.start();
+        return;
+      }
+      if (message.type !== "data") return;
+      const wire = message.payload;
+      if (wire?.zcode_type === "e2ee-rekey") return;
+      try {
+        const result = phone?.accept(wire);
+        if (result?.kind === "payload") phoneReceived.push(result.payload);
+      } catch {
+        // 测试替身只驱动协议流。
+      }
+    });
+    const transport = createE2eeTransport(relay.url, key, states, errors, {
+      onPayload: (payload) => appReceived.push(payload),
+    });
+    const sendFromPhone = (payload: unknown) => {
+      if (!phone || !deviceSocket) throw new Error("phone not paired");
+      deviceSocket.send(JSON.stringify({ type: "data", payload: phone.prepare(payload) }));
+    };
+    try {
+      transport.start();
+      await waitUntil(() => states.includes("paired") && phone?.isReady() === true);
+
+      // 桌面端 ready 后应主动宣告 relay-gzip.v1 解码能力。
+      await waitUntil(() =>
+        phoneReceived.some(
+          (payload) =>
+            (payload as { zcode_type?: string }).zcode_type === "client-capabilities",
+        ),
+      );
+
+      const bigPayload = {
+        codez_type: "app-error",
+        reason: "unexpected-error",
+        error: "x".repeat(8192),
+      } as WebRemoteControlAppPayload;
+
+      // 对端未宣告能力前：明文直发。
+      expect(transport.sendPayloadResult(bigPayload).kind).toBe("sent");
+      await waitUntil(() =>
+        phoneReceived.some(
+          (payload) => (payload as { zcode_type?: string }).zcode_type === "app-error",
+        ),
+      );
+      const plainWireBytes = JSON.stringify(
+        relay.rawMessages[relay.rawMessages.length - 1],
+      ).length;
+
+      // 手机宣告 relay-gzip.v1 解码能力；随后跟一个同步标记消息，桌面端按序处理完
+      // 标记即证明能力已登记（避免测试与 socket 投递竞态）。
+      sendFromPhone({ zcode_type: "client-capabilities", v: 1, caps: ["relay-gzip.v1"] });
+      sendFromPhone({
+        zcode_type: "app-error",
+        reason: "unexpected-error",
+        error: "caps-sync-marker",
+      });
+      await waitUntil(() =>
+        appReceived.some(
+          (payload) => payload.codez_type === "app-error" && payload.error === "caps-sync-marker",
+        ),
+      );
+
+      // 宣告之后：大 payload 以 relay-gzip 信封形态上线，且可无损还原。
+      phoneReceived.length = 0;
+      expect(transport.sendPayloadResult(bigPayload).kind).toBe("sent");
+      await waitUntil(() =>
+        phoneReceived.some(
+          (payload) => (payload as { zcode_type?: string }).zcode_type === "relay-gzip",
+        ),
+      );
+      const envelope = phoneReceived.find(
+        (payload) => (payload as { zcode_type?: string }).zcode_type === "relay-gzip",
+      ) as { zcode_type: "relay-gzip"; v: 1; data: string };
+      const decoded = decodeWebRemoteControlGzipEnvelope(
+        { codez_type: "relay-gzip", v: envelope.v, data: envelope.data },
+        (bytes) => gunzipSync(bytes),
+      );
+      expect(decoded).toEqual({
+        codez_type: "app-error",
+        reason: "unexpected-error",
+        error: "x".repeat(8192),
+      });
+      const compressedWireBytes = JSON.stringify(
+        relay.rawMessages[relay.rawMessages.length - 1],
+      ).length;
+      expect(compressedWireBytes).toBeLessThan(plainWireBytes / 4);
+
+      // 小 payload 低于压缩阈值，仍明文直发。
+      phoneReceived.length = 0;
+      const smallPayload = {
+        codez_type: "app-error",
+        reason: "unexpected-error",
+        error: "x",
+      } as WebRemoteControlAppPayload;
+      expect(transport.sendPayloadResult(smallPayload).kind).toBe("sent");
+      await waitUntil(() =>
+        phoneReceived.some(
+          (payload) => (payload as { zcode_type?: string }).zcode_type === "app-error",
+        ),
+      );
+
+      // 下行（手机→桌面）信封：桌面端 gunzip 还原后按原类型路由。
+      const inner = {
+        codez_type: "app-error",
+        reason: "unexpected-error",
+        error: "phone-side".repeat(600),
+      };
+      const data = gzipSync(new TextEncoder().encode(JSON.stringify(inner))).toString(
+        "base64",
+      );
+      sendFromPhone({ zcode_type: "relay-gzip", v: 1, data });
+      await waitUntil(() =>
+        appReceived.some(
+          (payload) => payload.codez_type === "app-error" && payload.error === inner.error,
+        ),
+      );
+      expect(errors).toHaveLength(0);
+    } finally {
+      transport.dispose();
+    }
+  });
+
   it("restarts the e2ee handshake when a refreshed phone sends a new hello mid-handshake", async () => {
     const key = generateWebRemoteControlPairingKey();
     const states: WebRemoteControlDeviceTransportState[] = [];
@@ -1880,7 +2032,9 @@ describe("WebRemoteControlDeviceTransport", () => {
       expect(errors.filter((error) => error.message === "e2ee.authenticationFailed")).toHaveLength(
         2,
       );
-      expect(harness.currentPhone()?.isReady()).toBe(true);
+      // 桌面进入 paired 是在发送 ready 记录之后，fake phone 经 relay 收到并处理
+      // ready 是异步的；此处必须等待 phone 侧就绪，不能把发送侧状态当成接收侧证据。
+      await waitUntil(() => harness.currentPhone()?.isReady() === true);
     } finally {
       transport.dispose();
     }

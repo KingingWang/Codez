@@ -2,9 +2,11 @@
 import {
   createWebRemoteControlE2eeSession,
   WebRemoteControlRelayPayloadSerializer,
+  decodeWebRemoteControlGzipEnvelopeAsync,
   type WebRemoteControlPayloadSendResult,
 } from "@codez/client";
 import {
+  WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1,
   WEB_REMOTE_CONTROL_HEARTBEAT_ACK_TIMEOUT_MS,
   WEB_REMOTE_CONTROL_E2EE_HANDSHAKE_TIMEOUT_MS,
   WEB_REMOTE_CONTROL_HEARTBEAT_INTERVAL_MS,
@@ -14,6 +16,7 @@ import {
   getWebRemoteControlReconnectJitterMs,
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   normalizeWebRemoteControlWirePayload,
+  parseWebRemoteControlGzipEnvelope,
   parseWebRemoteControlE2eeWirePayload,
   parseWebRemoteControlAppPayload,
   type WebRemoteControlAppPayload,
@@ -174,6 +177,16 @@ function webSocketDataByteLength(data: unknown): number {
   return new TextEncoder().encode(String(data)).byteLength;
 }
 
+/** 浏览器原生 gzip 解码（Safari 16.4+）；调用方必须先做能力检测再宣告。 */
+async function gunzipWithDecompressionStream(bytes: Uint8Array): Promise<Uint8Array> {
+  // slice 规范化为独立 ArrayBuffer 视图（Blob 类型不收 SharedArrayBuffer 后背的视图）。
+  const stream = new Blob([bytes.slice()])
+    .stream()
+    .pipeThrough(new DecompressionStream("gzip"));
+  const buffer = await new Response(stream).arrayBuffer();
+  return new Uint8Array(buffer);
+}
+
 async function parseRelayMessage(
   data: unknown,
 ): Promise<WebRemoteControlRelayIncomingMessage | null> {
@@ -264,6 +277,16 @@ export class WebRemoteControlTerminalTransport {
   private payloadSerializer = new WebRemoteControlRelayPayloadSerializer();
   private e2ee?: ReturnType<typeof createWebRemoteControlE2eeSession>;
   private e2eeHandshakeTimer?: ReturnType<typeof setTimeout>;
+  private ingressChain: Promise<void> = Promise.resolve();
+
+  private async handleIngressMessage(data: unknown): Promise<void> {
+    if (this.intentionallyClosed) return;
+    try {
+      await this.handleMessage(data);
+    } catch (error) {
+      this.options.onError(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
 
   constructor(private readonly options: WebRemoteControlTerminalTransportOptions) {
     if (!options.e2eeKey && import.meta.env.MODE !== "test") {
@@ -324,7 +347,14 @@ export class WebRemoteControlTerminalTransport {
       if (socket !== this.socket) {
         return;
       }
-      void this.handleMessage(event.data);
+      // Bugfix：relay-gzip 信封用 DecompressionStream 异步解压（真实异步任务，不再走
+      // 微任务串行保证），入站处理必须按到达顺序串行，否则相邻帧乱序会打乱 e2ee
+      // 序列窗口与 RPC 帧顺序。链上每条消息捕获自身异常，保证后续消息不被阻塞。
+      const data = event.data;
+      this.ingressChain = this.ingressChain.then(
+        () => this.handleIngressMessage(data),
+        () => this.handleIngressMessage(data),
+      );
     });
 
     socket.addEventListener("error", () => {
@@ -503,7 +533,7 @@ export class WebRemoteControlTerminalTransport {
         this.applyPairStatus(message.pair_status);
         break;
       case "data":
-        this.handleDataPayload(message.payload);
+        await this.handleDataPayload(message.payload);
         break;
       case "error":
         this.handleRelayError(message.code, message.message);
@@ -615,7 +645,7 @@ export class WebRemoteControlTerminalTransport {
     this.enterTerminalFailure(createFailure("relay-unavailable", message || code));
   }
 
-  private handleDataPayload(payload: unknown): void {
+  private async handleDataPayload(payload: unknown): Promise<void> {
     if (this.options.e2eeKey) {
       try {
         const wire = parseWebRemoteControlE2eeWirePayload(payload);
@@ -645,6 +675,7 @@ export class WebRemoteControlTerminalTransport {
           this.payloadSerializer = new WebRemoteControlRelayPayloadSerializer({
             seal: (wire) => session.prepare(wire),
           });
+          this.sendClientCapabilities();
           this.clearE2eeHandshakeDeadline();
           this.setState("paired");
           this.startHeartbeat();
@@ -670,6 +701,17 @@ export class WebRemoteControlTerminalTransport {
     }
     // Bugfix：fork Web 与上游 desktop 同样复用现有 raw RPC owner，不另建兼容传输。
     payload = normalizeWebRemoteControlWirePayload(payload);
+    // relay-gzip 信封在业务 schema 校验前拦截：DecompressionStream 异步 gunzip 还原
+    // 内部 app payload 后继续原有路由；信封畸形时静默丢帧，不打断 socket。
+    const gzipEnvelope = parseWebRemoteControlGzipEnvelope(payload);
+    if (gzipEnvelope) {
+      const inner = await decodeWebRemoteControlGzipEnvelopeAsync(
+        gzipEnvelope,
+        gunzipWithDecompressionStream,
+      );
+      if (inner === null) return;
+      payload = normalizeWebRemoteControlWirePayload(inner);
+    }
     if (isRawTransportCandidate(payload) && this.options.onRawTransportPayload?.(payload)) {
       return;
     }
@@ -689,6 +731,25 @@ export class WebRemoteControlTerminalTransport {
       // Bugfix: 握手消息发送失败多为 socket 半开/抖动，走可恢复重建而不是失败页。
       this.recoverFromE2eeFailure(new Error("e2ee.handshakeSendFailed"));
     }
+  }
+
+  /**
+   * 握手 ready 后宣告本端解码能力。E2EE 密文使 WS 层压缩失效，桌面→手机的大 payload
+   * 改走应用层 gzip 信封；仅当浏览器支持 DecompressionStream（Safari 16.4+）时宣告，
+   * 老浏览器不宣告则桌面端保持明文发送（行为与现状一致）。能力消息对旧桌面端安全：
+   * 未知 codez_type 一律静默丢弃。
+   */
+  private sendClientCapabilities(): void {
+    const caps: string[] = [];
+    if (typeof DecompressionStream === "function") {
+      caps.push(WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1);
+    }
+    const prepared = this.payloadSerializer.prepare({
+      codez_type: "client-capabilities",
+      v: 1,
+      caps,
+    });
+    void this.sendSerialized(prepared.message, prepared.json);
   }
 
   private recoverFromE2eeFailure(error: Error): void {
