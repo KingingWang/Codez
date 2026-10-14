@@ -326,6 +326,13 @@ export class ConversationProjectionStore {
   private initialSubscribeAckAt: number | null = null;
   private planQueryInFlight = false;
   private planQueryPending = false;
+  /**
+   * 本 store 已锚定到会话首行（firstRowId）或已通过 rows/range（loadOlder / loadAllOlder）
+   * 分页拉回的历史行上界（开区间）。仅保留 rowId < pagedOlderBeforeRowId 的已锚定历史行，
+   * 避免 Codex 全量尾窗 snapshot 每次流式更新或尾窗向前滑动时冲掉用户正在浏览的早期轮次，
+   * 同时在未完成分页拉取的截断尾窗 resync 时不复活过期游标的旧尾窗行。
+   */
+  private pagedOlderBeforeRowId: number | null = null;
   /** accepted input 的 projection confirmation watchdog；不承载命令，也不生成本地事实。 */
   private readonly acceptedInputProjectionTimers = new Map<string, ReturnType<typeof setTimeout>>();
   // hydrated/not-enough-queries 终态缓存。过去仅以
@@ -352,9 +359,7 @@ export class ConversationProjectionStore {
     // 命中期间 UI 立即有内容可渲染，不再白屏转圈。CLI 拒绝 base 时按既有规则
     // 发全量快照整体替换，一致性仍由协议裁决。
     const handoffSnapshot = takeConversationSnapshotHandoff(this.topic);
-    this.state = handoffSnapshot
-      ? { ...INITIAL_STATE, snapshot: handoffSnapshot }
-      : INITIAL_STATE;
+    this.state = handoffSnapshot ? { ...INITIAL_STATE, snapshot: handoffSnapshot } : INITIAL_STATE;
     if (handoffSnapshot) {
       logger.lifecycle.info("v4 conversation store restored from snapshot handoff", {
         event: "v4.conversation.store.snapshot_handoff",
@@ -764,6 +769,12 @@ export class ConversationProjectionStore {
           : earliest,
       null,
     );
+    if (removedFromRowId !== null && this.pagedOlderBeforeRowId !== null) {
+      this.pagedOlderBeforeRowId =
+        removedFromRowId <= (next.rows.firstRowId ?? Number.POSITIVE_INFINITY)
+          ? null
+          : Math.min(this.pagedOlderBeforeRowId, removedFromRowId);
+    }
     this.setState({
       snapshot: next,
       // row.removed 已给出权威裁剪边界，可以同步删掉缓存目录中的旧分支计划；
@@ -802,11 +813,48 @@ export class ConversationProjectionStore {
   }
 
   private shareSnapshotRows(snapshot: ConversationSnapshot): ConversationSnapshot {
-    const window = this.rowPool.shareWindow(
-      this.topic,
-      snapshot.rows.window,
-      this.state.snapshot?.rows.window,
-    );
+    const previous = this.state.snapshot;
+    if (!previous || previous.logEpoch !== snapshot.logEpoch || snapshot.rows.firstRowId === null) {
+      this.pagedOlderBeforeRowId = null;
+    }
+    // 修复原因：Codex bridge 没有增量重放日志，每次工具调用或思考流式更新都下发截断后的
+    // 尾窗 snapshot。若本地窗口已完整锚定到会话首行（window[0].rowId === firstRowId）或已通过
+    // rows/range 补拉了更早轮次（pagedOlderBeforeRowId !== null），直接丢弃早期历史行会导致
+    // 顶部轮次消失、虚拟列表总高度骤缩，随后自动补拉又把行插回或使后续轮次顶替原视口，将
+    // scrollTop 往下推，造成用户在阅读第 1 轮历史时收到新消息画面不断往下跳（桌面端与手机端同现）。
+    // 边界：仅在同一 logEpoch、水位单调推进（snapshot.seq >= previous.seq）且新快照仍保留
+    // 合法 firstRowId 时保留已锚定的更早历史行；未经分页拉取的截断尾窗替换保持原行为。
+    const incomingFirstRowId = snapshot.rows.window[0]?.rowId;
+    const branchFirstRowId = snapshot.rows.firstRowId;
+    const retainedOlderRows =
+      previous &&
+      previous.logEpoch === snapshot.logEpoch &&
+      snapshot.seq >= previous.seq &&
+      this.pagedOlderBeforeRowId !== null &&
+      branchFirstRowId !== null &&
+      incomingFirstRowId !== undefined &&
+      incomingFirstRowId > branchFirstRowId
+        ? previous.rows.window.filter(
+            (row) => row.rowId >= branchFirstRowId && row.rowId < incomingFirstRowId,
+          )
+        : [];
+    if (retainedOlderRows.length > 0 && incomingFirstRowId !== undefined) {
+      this.pagedOlderBeforeRowId = Math.max(this.pagedOlderBeforeRowId ?? 0, incomingFirstRowId);
+    }
+    const candidateWindow =
+      retainedOlderRows.length > 0
+        ? [...retainedOlderRows, ...snapshot.rows.window]
+        : snapshot.rows.window;
+    if (branchFirstRowId !== null && candidateWindow[0]?.rowId === branchFirstRowId) {
+      const lastAnchoredRowId = candidateWindow.at(-1)?.rowId;
+      if (lastAnchoredRowId !== undefined) {
+        this.pagedOlderBeforeRowId = Math.max(
+          this.pagedOlderBeforeRowId ?? 0,
+          lastAnchoredRowId + 1,
+        );
+      }
+    }
+    const window = this.rowPool.shareWindow(this.topic, candidateWindow, previous?.rows.window);
     return window === snapshot.rows.window
       ? snapshot
       : { ...snapshot, rows: { ...snapshot.rows, window } };
@@ -1094,6 +1142,7 @@ export class ConversationProjectionStore {
       if (current.rows.window[0]?.rowId !== beforeRowId) return;
       const window = mergeOlderRows(current.rows.window, this.shareRows(result.rows));
       if (window === null) return;
+      this.pagedOlderBeforeRowId = Math.max(this.pagedOlderBeforeRowId ?? 0, beforeRowId);
       this.setState({
         snapshot: { ...current, rows: { ...current.rows, window } },
       });
@@ -1205,6 +1254,10 @@ export class ConversationProjectionStore {
         if (preserveIncompleteLeadingTurn) {
           const window = mergeOlderRows(current.rows.window, this.shareRows(olderRows));
           if (window === null) return stale(initialLogEpoch);
+          this.pagedOlderBeforeRowId = Math.max(
+            this.pagedOlderBeforeRowId ?? 0,
+            initialBeforeRowId,
+          );
           committed = true;
           this.setState({
             loadingOlder: false,
@@ -1236,6 +1289,7 @@ export class ConversationProjectionStore {
       }
       const window = mergeOlderRows(current.rows.window, this.shareRows(olderRows));
       if (window === null) return stale(initialLogEpoch);
+      this.pagedOlderBeforeRowId = Math.max(this.pagedOlderBeforeRowId ?? 0, initialBeforeRowId);
       committed = true;
       this.setState({
         loadingOlder: false,

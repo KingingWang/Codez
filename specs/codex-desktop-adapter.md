@@ -332,11 +332,17 @@ Acceptance for follow-up delivery:
   must not mint per-occurrence IDs, because paginated history reload collapses
   them again and would diverge from the live projection. The turn-anchored window
   is what keeps those head-pinned narrative rows visible despite the collapse.
-- Known limitation, unchanged: while a turn streams, a client that paged back into
-  older turns loses those rows on the next full snapshot and must page again.
-  Removing that needs a real delta log in the Codex publisher.
-  The same holds for a tool-row gap left by an exhausted byte budget: it is only
-  refilled once the turn goes idle and the client pages again.
+- When the client receives a newer snapshot in the same `logEpoch` (monotonic
+  `seq`, no branch rewind), `ConversationProjectionStore` retains any older rows
+  (`rowId < nextSnapshot.rows.window[0].rowId` and `rowId >= nextSnapshot.rows.firstRowId`)
+  already anchored to `firstRowId` (either present from the start of the conversation
+  or paged into the local window via `rows/range`), so a user reading earlier turns
+  while a turn streams does not have their viewport yanked downward on every
+  tool/reasoning update or when the wire tail window slides past an earlier turn.
+  On an epoch change (edit/retry rewind or runtime restart), the new snapshot replaces
+  the window completely so removed branch rows are never revived. A tool-row gap inside
+  the active turn left by an exhausted byte budget is still only refilled once that turn
+  scrolls past the tail window and the client pages again.
 
 ## Desktop surfaces
 

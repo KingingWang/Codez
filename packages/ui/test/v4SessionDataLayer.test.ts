@@ -2175,4 +2175,107 @@ describe("ConversationProjectionStore.loadOlder", () => {
     expect(mergeOlderRows(window, olderRows(41, 45))).toBeNull();
     expect(mergeOlderRows(window, [])).toBeNull();
   });
+
+  it("流式期间收到同 logEpoch 的尾窗 snapshot 时保留已通过 loadOlder 拉取的早期历史行，logEpoch 旋转时完全替换", async () => {
+    transport.rowsRangeImpl = () => ({
+      rows: olderRows(1, 40),
+      atSeq: 5,
+      atRevision: 5,
+      atLogEpoch: "epoch-1",
+      hasMore: false,
+    });
+    await store.loadOlder();
+    expect(store.getState().snapshot!.rows.window).toHaveLength(100);
+    expect(store.getState().snapshot!.rows.window[0]!.rowId).toBe(1);
+
+    // Codex bridge 流式输出工具调用/思考时下发同 logEpoch 的新尾窗 snapshot（仅含 61..120）。
+    store.handleFrame(
+      makeFrame(store.getState().subscriptionId!, 0, 6, {
+        kind: "snapshot",
+        snapshot: makeSnapshot({
+          seq: 6,
+          logEpoch: "epoch-1",
+          rows: {
+            window: olderRows(61, 120),
+            totalCount: 120,
+            firstRowId: 1,
+          },
+        }),
+      }),
+    );
+    const retainedWindow = store.getState().snapshot!.rows.window;
+    expect(retainedWindow).toHaveLength(120);
+    expect(retainedWindow[0]!.rowId).toBe(1);
+    expect(retainedWindow.at(-1)!.rowId).toBe(120);
+
+    // edit/retry 分支裁剪旋转 logEpoch 后，不再保留旧分支的历史行。
+    store.handleFrame(
+      makeFrame(store.getState().subscriptionId!, 0, 1, {
+        kind: "snapshot",
+        snapshot: makeSnapshot({
+          seq: 1,
+          logEpoch: "epoch-2",
+          rows: {
+            window: olderRows(61, 70),
+            totalCount: 10,
+            firstRowId: 61,
+          },
+        }),
+      }),
+    );
+    expect(store.getState().snapshot!.rows.window.map((row) => row.rowId)).toEqual(
+      olderRows(61, 70).map((row) => row.rowId),
+    );
+
+    // 即使新会话从第 1 行开始尚未触发过 loadOlder，当后续轮次流式增长导致尾窗滑出第 1 轮时，
+    // 已经锚定到 firstRowId 的早期轮次也必须保留，防止用户上滚看第 1 轮时画面往下跳。
+    const freshTransport = new FakeTransport();
+    const freshStore = new ConversationProjectionStore("conversation/s-fresh", freshTransport);
+    freshTransport.onFrame((frame) => freshStore.handleFrame(frame));
+    freshTransport.subscribeImpl = (params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-fresh" },
+      initialFrame: makeFrame(
+        subscriptionId,
+        0,
+        1,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            seq: 1,
+            logEpoch: "epoch-fresh",
+            rows: {
+              window: olderRows(1, 50),
+              totalCount: 50,
+              firstRowId: 1,
+            },
+          }),
+        },
+        params.topic,
+      ),
+    });
+    await freshStore.connect();
+    freshStore.handleFrame(
+      makeFrame(
+        freshStore.getState().subscriptionId!,
+        0,
+        2,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            seq: 2,
+            logEpoch: "epoch-fresh",
+            rows: {
+              window: olderRows(21, 80),
+              totalCount: 80,
+              firstRowId: 1,
+            },
+          }),
+        },
+        "conversation/s-fresh",
+      ),
+    );
+    expect(freshStore.getState().snapshot!.rows.window).toHaveLength(80);
+    expect(freshStore.getState().snapshot!.rows.window[0]!.rowId).toBe(1);
+    expect(freshStore.getState().snapshot!.rows.window.at(-1)!.rowId).toBe(80);
+  });
 });
