@@ -78,6 +78,31 @@ This feature exposes the Desktop-owned in-app browser to Codex as the fixed nati
 `codez-desktop-browser-cua`. It does not recreate Codex execution, tool admission, or browser
 ownership. Codex remains the execution authority; Codez only brokers the local browser capability.
 
+### Send admission and legacy ambient context
+
+Host V4 `sendText` chooses the existing runtime route before collecting browser state.
+For the default/deployed native Codex bridge, Host must not collect or automatically inject
+`browserAmbientContext`: this is a legacy provider-input field rejected by the native adapter.
+An open browser must not make a later prompt fail locally before reaching Codex.
+Legacy/custom Agent runtimes retain their bounded, optional ambient context collection.
+Runtime selection uses the existing bridge predicate, not provider or model names.
+Explicit unsupported execution fields still fail closed in the adapter; this rule does not
+strip user payloads, relax adapter guards, or retry a failed mutation.
+
+```text
+UI prompt → Host identity/lease + runtime route → inputOrigin
+  ├─ native Codex → existing bridge admission → Codex owns turn/queue
+  └─ legacy Agent → read-only ambient summary → existing Agent admission
+desktop continuous / mobile replayable → same Host route and same runtime authority
+browser MCP → existing window broker (independent of prompt ambient collection)
+```
+
+Acceptance: with a user browser tab open, first input, idle follow-up, busy queued input,
+and follow-up in a new task remain accepted by native Codex; Host never invokes the ambient
+collector on local or deployed native routes, for either delivery kind. Browser MCP remains
+callable through the window broker. Legacy V4 and `session/send` retain their context, input
+origin, workspace identity and remote session scope.
+
 This checkout's `@codez/codez-cua` package is an API-compatible placeholder. Its runtime reports
 unavailable and fails closed. Consequently the combined capability is never `supported`; it is
 `degraded` when the native Browser path is available and `unsupported` when it is not.

@@ -1,5 +1,24 @@
 # Conversation Session E2E Coverage Matrix
 
+## CBAS：原生 Codex 浏览器与发送边界
+
+| Case      | 状态                  | 验证入口                                                                                                                   | 未覆盖                                  |
+| --------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| CBAS01/02 | pending/manual-review | `packages/desktop/test/e2e/conversation-session/manual-review/pending/codex-browser-send.mjs`，复用 isolated desktop probe | 人工准入、Windows/macOS、手机真实 relay |
+| CBAS03    | focused               | `codexConversationAdmission.test.ts`、`codezAgentService.v4.test.ts`、既有 legacy ambient tests                            | 远程机器整链路                          |
+| CBAS04    | focused               | `v4SessionPaneModelSwitchRecovery.test.ts`                                                                                 | 跨端真实 ACK 故障                       |
+
+候选由真实 pinned Codex 和 Electron 执行；loopback provider 仅控制响应时序，不替代
+Host/bridge/native admission。该 `.mjs` 候选不进入 WDIO 正式 replay 或 Docker/CI suite。
+
+2026-10-14 Linux 隔离 Electron 候选通过，产物
+`packages/desktop/.e2e-artifacts/codex-browser-send-SCtheo/results.json`：
+6 条 sendText 均 accepted、6 个 provider 请求均完成、无重复/中断/page error；
+busy queue 展示和自动 drain、新任务续发、真实 stdio MCP → Main broker → guest
+`navigate/getState` 均通过。浏览器 user guest 在任务切换后仍存活，tab 栏收起不计作关闭。
+测试 probe 的 TMPDIR 也隔离，未争抢或删除真实 Desktop 的 broker socket/token。
+候选保持 pending/manual-review，Windows/macOS 和手机 relay 尚未实跑。
+
 ## 手机远控端到端加密
 
 | Case                | 状态                  | 证据入口                                                                                                 | 待验收                                                                            |

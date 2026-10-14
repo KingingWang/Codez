@@ -66,6 +66,28 @@ test("create rejects another workspace before any native mutation", async (t) =>
   assert.deepEqual(h.rpc.calls, []);
 });
 test("native input intent is never silently lost", verifyNativeInputIntent);
+test("explicit legacy browser context still fails before idle/busy native admission", async (t) => {
+  for (const busy of [false, true]) {
+    await t.test(busy ? "busy" : "idle", async (t) => {
+      const h = await setup(t, busy);
+      const command = h.command("sendText", {
+        text: "explicit legacy context",
+        browserAmbientContext: { tabCount: 1, currentUrl: "https://example.com/" },
+      });
+      const ack = await h.execute(command);
+      assert.equal(ack.status, "failed");
+      assert.equal(ack.reasonCode, "codex.commandFailed");
+      assert.match(ack.message ?? "", /does not support legacy execution context/);
+      assert.deepEqual(
+        h.rpc.calls,
+        [],
+        "Host automatic-injection fix must not relax explicit guards",
+      );
+      assert.deepEqual(await h.execute(command), ack, "same command replays the rejection");
+      assert.deepEqual(h.rpc.calls, []);
+    });
+  }
+});
 test("mobile resume starts native queue head once without a shadow auto-drain policy", async (t) => {
   const h = await setup(t);
   queueMutations(h);

@@ -3644,7 +3644,10 @@ export function SessionPane({
           null,
         );
         if (createAck.status !== "accepted") {
-          throw new Error(createAck.reasonCode ?? "createSession 被拒绝");
+          // ACK 的 message 才是可读失败原因；只显示 reasonCode 会掩盖 native adapter 的拒绝详情。
+          throw new Error(
+            createAck.message?.trim() || createAck.reasonCode || "createSession 被拒绝",
+          );
         }
         const createResult = createAck.result;
         if (!createResult || createResult.type !== "createSession") {
@@ -3714,7 +3717,7 @@ export function SessionPane({
             logger.warn(
               `[v4-draft-prewarm] 预热会话首发未 accepted（${ack.reasonCode ?? ack.status}），禁止自动重发`,
             );
-            throw new Error(ack.reasonCode ?? "预热会话首发未 accepted");
+            throw new Error(ack.message?.trim() || ack.reasonCode || "预热会话首发未 accepted");
           } catch (error) {
             if (isProviderNotReadyError(error)) throw error;
             if (readyAttachments.length > 0) throw error;
@@ -3753,7 +3756,9 @@ export function SessionPane({
           null,
         );
         if (createAck.status !== "accepted") {
-          throw new Error(createAck.reasonCode ?? "createSession 被拒绝");
+          throw new Error(
+            createAck.message?.trim() || createAck.reasonCode || "createSession 被拒绝",
+          );
         }
         const createResult = createAck.result;
         if (!createResult || createResult.type !== "createSession") {
@@ -3788,7 +3793,7 @@ export function SessionPane({
           submission,
         );
         if (sendAck.status !== "accepted") {
-          throw new Error(sendAck.reasonCode ?? "sendText 被拒绝");
+          throw new Error(sendAck.message?.trim() || sendAck.reasonCode || "sendText 被拒绝");
         }
         handleDraftSessionCreated(
           newSessionId,
@@ -3848,7 +3853,7 @@ export function SessionPane({
         return "confirmationRequired" as const;
       }
       if (ack.status !== "accepted") {
-        throw new Error(ack.reasonCode ?? "sendText 被拒绝");
+        throw new Error(ack.message?.trim() || ack.reasonCode || "sendText 被拒绝");
       }
       if (heldQueueDisposition === "clearQueueAndSend") {
         settleCurrentQueueInputs(sessionId);

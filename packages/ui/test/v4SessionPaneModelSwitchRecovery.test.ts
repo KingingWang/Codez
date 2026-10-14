@@ -1040,6 +1040,83 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
     }
   });
 
+  for (const entry of ["existing", "prewarm", "create", "fallback-send", "slash-create"] as const) {
+    it.each([
+      {
+        message: "  Native command cannot apply legacy context  ",
+        reasonCode: "codex.commandFailed",
+      },
+      { message: " \n ", reasonCode: "codex.commandFailed" },
+      { message: undefined, reasonCode: undefined },
+    ])(`exposes failed ACK details without resubmission for ${entry}: %j`, async (failure) => {
+      const snapshot = makeSnapshot();
+      const isPrewarm = entry === "prewarm";
+      projectionState.current = {
+        status: "live",
+        snapshot: entry === "existing" || isPrewarm ? snapshot : null,
+        subscriptionId: "failed-ack-details",
+        lastError: null,
+        optimisticCommands: [],
+        loadingOlder: false,
+      };
+      const discard = vi.fn();
+      prewarmHookMock.binding = isPrewarm
+        ? { workspaceKey: "/workspace", sessionId: "session-1", promote: vi.fn(), discard }
+        : null;
+      const onSessionCreated = vi.fn();
+      const failedType =
+        entry === "create" || entry === "slash-create" ? "createSession" : "sendText";
+      mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
+        ackFor(
+          envelope,
+          envelope.type === failedType
+            ? { status: "failed", ...failure }
+            : { result: { type: "createSession", sessionId: "session-1" } },
+        ),
+      );
+      const root = await renderPane({
+        sessionId: entry === "existing" ? "session-1" : null,
+        onSessionCreated,
+      });
+      try {
+        let sendError: unknown;
+        await act(async () => {
+          try {
+            await captured.composerProps?.onSendText(
+              entry === "slash-create" ? "/goal ship once" : "preserve this draft",
+            );
+          } catch (error) {
+            sendError = error;
+          }
+          await flushMicrotasks();
+        });
+        const fallback =
+          failedType === "createSession"
+            ? "createSession 被拒绝"
+            : isPrewarm
+              ? "预热会话首发未 accepted"
+              : "sendText 被拒绝";
+        expect(sendError).toMatchObject({
+          message: failure.message?.trim() || failure.reasonCode || fallback,
+        });
+        expect(
+          mocks.sendCommand.mock.calls.filter(([command]) => command.type === failedType),
+        ).toHaveLength(1);
+        expect(mocks.sendCommand).toHaveBeenCalledTimes(entry === "fallback-send" ? 2 : 1);
+        expect(discard).not.toHaveBeenCalled();
+        expect(onSessionCreated).not.toHaveBeenCalled();
+        expect(composerRecentMocks.acceptSubmission).not.toHaveBeenCalled();
+        expect(
+          (
+            window as Window & { __codezV4CommandAcksE2E?: { reasonCode?: string }[] }
+          ).__codezV4CommandAcksE2E?.at(-1)?.reasonCode,
+        ).toBe(failure.reasonCode);
+      } finally {
+        await act(async () => root.unmount());
+      }
+    });
+  }
+
   it.each([
     {
       caseName: "transport outcome is unknown",

@@ -1,5 +1,18 @@
 # Conversation Session Case Catalog
 
+## Codex 浏览器打开后的发送（CBAS，2026-10-14）
+
+| ID     | Setup                                                           | Action                                           | Assertion                                                                          | Review   |
+| ------ | --------------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------- | -------- |
+| CBAS01 | 原生 Codex 桌面，当前窗口打开一个 user browser tab              | 首发、idle 续发、busy 排队；新建任务再首发和续发 | 各命令 accepted，无 ambient 字段拒绝；busy 输入由原生队列执行且不重复              | accepted |
+| CBAS02 | 同一窗口的 Browser MCP 已注册                                   | 调用 `browser_command` 的 `navigate/getState`    | 通过真实 stdio MCP 与窗口 broker 读取页面状态，发送修复没有关闭或绕过 broker       | accepted |
+| CBAS03 | local/deployed native 和 legacy/custom Host；两种 delivery kind | 携带 workspace identity/remoteSessionId 发送     | native 不调用 ambient collector；legacy 仍注入有界摘要，路由和 inputOrigin 不变    | accepted |
+| CBAS04 | 已有任务、预热草稿、无预热草稿或草稿 slash 创建收到 failed ACK  | 正常提交一次，ACK 含详情或空白 message           | 优先非空详情，再 reasonCode，再既有文案；不自动重发/新建，草稿由现有 composer 保留 | accepted |
+
+CBAS01/02 使用隔离 Electron + 真实 pinned Codex + loopback provider 候选验证，
+保留在 manual-review/pending；CBAS03/04 由 Host/React focused tests 覆盖。
+不把本地桌面或 Host 分流测试计为 Windows、手机配对/relay 实机验收。
+
 ## 手机远控端到端加密（E2EE-01–E2EE-08）
 
 配对、密文、恶意 relay、轮次重放、手机恢复及旧链接失效的 setup/action/assertion 见

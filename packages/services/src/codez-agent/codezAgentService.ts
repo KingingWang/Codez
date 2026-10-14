@@ -6603,21 +6603,25 @@ export function createCodezAgentService(
               : ("desktop" as const),
         };
         envelope = { ...envelope, payload };
-        const browserAmbientContext = await collectBrowserAmbientContext(
-          options?.browserControlExecutor,
-          {
-            sessionId,
-            workspacePath: params.workspacePath,
-            ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
-            ...(params.remoteSessionId ? { remoteSessionId: params.remoteSessionId } : {}),
-            clientMode: commandClientMode,
-          },
-        );
-        if (browserAmbientContext) {
-          envelope = {
-            ...envelope,
-            payload: { ...payload, browserAmbientContext },
-          };
+        // 原因：native bridge 在 RPC 前拒绝 legacy ambient 字段，打开浏览器后续发必失败。
+        // 只让旧/自定义 Agent 收集摘要；原生 Browser MCP 独立运行，不依赖此注入。
+        if (!usesDefaultCodexBridge) {
+          const browserAmbientContext = await collectBrowserAmbientContext(
+            options?.browserControlExecutor,
+            {
+              sessionId,
+              workspacePath: params.workspacePath,
+              ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+              ...(params.remoteSessionId ? { remoteSessionId: params.remoteSessionId } : {}),
+              clientMode: commandClientMode,
+            },
+          );
+          if (browserAmbientContext) {
+            envelope = {
+              ...envelope,
+              payload: { ...payload, browserAmbientContext },
+            };
+          }
         }
       }
       const ack: CommandAck = await client.request(V4_METHODS.command, envelope, commandAckSchema);

@@ -12,8 +12,14 @@ import { createCodezAgentService } from "../src/codez-agent/codezAgentService.js
 import { CodezAgentProcessManager } from "../src/codez-agent/codezAgentProcessManager.js";
 import { CodezProtocolClient } from "../src/codez-agent/codezProtocolClient.js";
 
-for (const runtime of ["desktop", "deployed"] as const) {
-  test(`${runtime} Codex forwards native model and independent plan intent without legacy preparation`, async (t) => {
+const nativeRoutes = (["desktop", "deployed"] as const).flatMap((runtime) =>
+  (["desktop-continuous", "web-remote-replayable"] as const).map((clientMode) => ({
+    runtime,
+    clientMode,
+  })),
+);
+for (const { runtime, clientMode } of nativeRoutes) {
+  test(`${runtime}/${clientMode} Codex forwards native intent without legacy preparation`, async (t) => {
     const dir = await mkdtemp(join(tmpdir(), "codez-codex-admission-"));
     setDataBaseDir(dir);
     const previous = { ...process.env };
@@ -47,6 +53,8 @@ for (const runtime of ["desktop", "deployed"] as const) {
       },
     });
     t.mock.method(CodezAgentProcessManager.prototype, "getClient", async () => client);
+    let browserLists = 0;
+    let browserExecutions = 0;
     const service = createCodezAgentService({
       presentationSurface: runtime === "desktop" ? "desktop" : undefined,
       modelSelectionReadinessSource: {
@@ -56,14 +64,27 @@ for (const runtime of ["desktop", "deployed"] as const) {
       },
       browserControlExecutor: {
         async list() {
-          assert.fail("native commands must not prepare legacy browser context");
+          browserLists += 1;
+          return [{ id: "iab-test", generation: 1, type: "iab", name: "Test", capabilities: {} }];
         },
-        async execute() {
-          assert.fail("native commands must not execute legacy browser tools");
+        async execute(input) {
+          browserExecutions += 1;
+          return input.command.method === "list"
+            ? { ok: true, tabs: [], elapsedMs: 0 }
+            : {
+                ok: true,
+                userTabs: [{ id: "user-tab", url: "https://example.com/", title: "Test" }],
+                elapsedMs: 0,
+              };
         },
       },
     });
-    const target = { workspacePath: dir, workspaceIdentity: "native-workspace" };
+    const target = {
+      workspacePath: dir,
+      workspaceIdentity: "native-workspace",
+      ...(runtime === "deployed" ? { remoteSessionId: "remote-native" } : {}),
+      clientMode,
+    };
     const selection = {
       providerId: "native-only-provider",
       modelId: "native-only-model",
@@ -79,7 +100,12 @@ for (const runtime of ["desktop", "deployed"] as const) {
         payload: {
           workspaceId: target.workspaceIdentity,
           config: { mode: "build", planEnabled: true, modelSelection: selection },
-          firstInput: { text: "Plan", mode: "build", planEnabled: true, modelSelection: selection },
+          firstInput: {
+            text: "Plan",
+            mode: "build",
+            planEnabled: true,
+            modelSelection: selection,
+          },
         },
       },
       ...[false, true].map(
@@ -117,7 +143,13 @@ for (const runtime of ["desktop", "deployed"] as const) {
           method: V4_METHODS.command,
           params:
             envelope.type === "sendText"
-              ? { ...envelope, payload: { ...envelope.payload, inputOrigin: "desktop" } }
+              ? {
+                  ...envelope,
+                  payload: {
+                    ...envelope.payload,
+                    inputOrigin: clientMode === "web-remote-replayable" ? "mobile" : "desktop",
+                  },
+                }
               : envelope,
         });
       }
@@ -126,6 +158,9 @@ for (const runtime of ["desktop", "deployed"] as const) {
         commands.length,
         "commands send no legacy capability or preparation requests",
       );
+      // collector 会吞读取异常；必须用真实 tab 和计数器，不能靠 assert.fail 的抛错证明未调用。
+      assert.equal(browserLists, 0, "native admission never collects legacy ambient context");
+      assert.equal(browserExecutions, 0, "native admission never queries browser tabs");
       // Minimal registry fixture: this test exercises readiness and not model config evaluation.
       const legacyReady = createCodezAgentService({
         presentationSurface: "desktop",

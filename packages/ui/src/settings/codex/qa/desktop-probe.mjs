@@ -25,7 +25,17 @@ const parallelProbe = !packaged && (rendererPort !== 5174 || cdpPort !== 9229);
 const packagedRoot = resolve(root, "packages/desktop/dist/linux-unpacked");
 const packagedExecutable = join(packagedRoot, "codez-codex");
 const isolated = await mkdtemp(join(tmpdir(), "codex-ui-qa-"));
-for (const name of ["home", "config", "data", "cache", "codex", "workspace", "session", "userData"])
+for (const name of [
+  "home",
+  "config",
+  "data",
+  "cache",
+  "codex",
+  "workspace",
+  "session",
+  "userData",
+  "tmp",
+])
   await mkdir(join(isolated, name));
 const mock =
   process.env.CODEX_UI_QA_MOCK === "1"
@@ -73,6 +83,8 @@ const env = {
   XDG_CONFIG_HOME: join(isolated, "config"),
   XDG_DATA_HOME: join(isolated, "data"),
   XDG_CACHE_HOME: join(isolated, "cache"),
+  // native Browser broker 使用 OS 临时目录；隔离它以免 QA 与真实 Desktop 争抢固定 socket。
+  TMPDIR: join(isolated, "tmp"),
   CODEX_HOME: join(isolated, "codex"),
   CODEZ_DATA_BASE_DIR: join(isolated, "data"),
   CODEZ_DESKTOP_RUNTIME: "codex",

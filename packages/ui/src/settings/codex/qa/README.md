@@ -46,7 +46,9 @@ cannot observe its own entry-chunk failure.
 
 The probe creates temporary home/config/cache/data/userData/session/CODEX_HOME
 directories, uses an allowlisted child environment (no inherited auth variables),
-starts a private Xvfb display and uses a no-auth provider pointing to closed localhost
+and scopes `TMPDIR` to its profile so the native Browser broker cannot compete
+with an already running Desktop's fixed socket. It never closes that Desktop.
+It starts a private Xvfb display and uses a no-auth provider pointing to closed localhost
 port 9. It launches actual `node scripts/dev.mjs` from `packages/desktop`, which
 waits for main/host/preload ready markers and Vite on port 5174, then starts Electron
 with the real desktop package. No synthetic package, version override, or updater

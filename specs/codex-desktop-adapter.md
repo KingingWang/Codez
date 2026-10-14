@@ -78,6 +78,12 @@ closed, and native config/skills/plugin requests stay on the canonical execution
   truncated artifact can never be published.
 - A failed or ambiguous mutation is not automatically retried. Reconnect reads
   authority and reconstructs projections. Do not promise crash-time exactly-once.
+- Composer creation and send failures (including prewarmed and fallback sessions)
+  expose a nonempty trimmed `CommandAck.message` before `reasonCode`, then the existing
+  fallback text. The localized failure summary, draft retention, command ID and machine
+  reason-code observability remain unchanged. Blank messages must not hide the reason.
+  Acceptance covers all creation/send branches and verifies that detailed failed ACKs
+  do not cause a new command/session or duplicate first input.
 - Pending approvals are scoped to connection generation/thread/turn/request ID;
   late replies cannot approve another run. Unknown request kinds fail closed.
   Human approvals/questions have no default RPC deadline; an explicit interaction
