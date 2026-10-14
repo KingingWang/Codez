@@ -1912,7 +1912,9 @@ describe("WebRemoteControlDeviceTransport", () => {
       await waitUntil(() => states.includes("paired"));
       expect(harness.relay.getConnectionCount()).toBeGreaterThanOrEqual(2);
       expect(states).not.toContain("error");
-      expect(harness.currentPhone()?.isReady()).toBe(true);
+      // 桌面进入 paired 是在发送 ready 记录之后，fake phone 经 relay 收到并处理
+      // ready 是异步的；直接断言会把发送侧状态当成接收侧证据（CI 时序下偶发失败）。
+      await waitUntil(() => harness.currentPhone()?.isReady() === true);
     } finally {
       transport.dispose();
     }
@@ -1930,6 +1932,8 @@ describe("WebRemoteControlDeviceTransport", () => {
     try {
       transport.start();
       await waitUntil(() => states.includes("paired"));
+      // 同上竞态：desktop paired 只证明 ready 已发出，phone 侧 isReady 才允许 prepare。
+      await waitUntil(() => harness.currentPhone()?.isReady() === true);
       // 第一轮 epoch 的密文，先扣住不发。
       const staleRecord = harness.currentPhone()!.prepare({
         codez_type: "app-error",
@@ -1939,6 +1943,8 @@ describe("WebRemoteControlDeviceTransport", () => {
       // 手机刷新：同一 socket 上重新握手，进入新 epoch。
       harness.refreshPhone();
       await waitUntil(() => states.filter((state) => state === "paired").length === 2);
+      // 刷新后的新 phone 会话同样要先就绪才能 prepare 新轮次密文。
+      await waitUntil(() => harness.currentPhone()?.isReady() === true);
       // 旧轮次迟到帧必须被丢弃且不触发任何状态变化；紧跟新轮次密文验证链路仍可用。
       harness.sendRaw(staleRecord);
       harness.sendRaw(
