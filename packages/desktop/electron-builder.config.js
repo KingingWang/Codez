@@ -35,6 +35,7 @@ import {
 } from "./scripts/windows-cua-helper-assets.mjs";
 import { resolveCodexBuildSelection, verifyCodexResources } from "../../scripts/codex-runtime.mjs";
 import { verifyCodexRemoteAssets } from "../../scripts/codex-runtime-remote-verify.mjs";
+import { verifyCodexRemoteIndex } from "../../scripts/codex-runtime-remote-index.mjs";
 import {
   findDesktopNativePackageViolations,
   createDesktopNativePackagePrunePatterns,
@@ -716,9 +717,11 @@ export default {
         ...codexStaging,
         directory: resolve(resolvePackagedResourcesDir(context), "codex"),
       });
-      await verifyCodexRemoteAssets({
+      await verifyCodexRemoteIndex({
         root: resolve(resolvePackagedResourcesDir(context), "codex-remote"),
-        bridgePath: resolve(resolvePackagedResourcesDir(context), "codex/bridge.cjs"),
+        version: buildMetadata.appVersion,
+        env: process.env,
+        includeArchives: false,
       });
     }
     const actualWindowsTarget =
@@ -773,7 +776,7 @@ export default {
     : {}),
   extraResources: [
     ...(isCodexBuild
-      ? [{ from: codexRemote.root, to: "codex-remote", filter: codexRemote.files }]
+      ? [{ from: codexRemote.root, to: "codex-remote", filter: codexRemote.packagedFiles }]
       : []),
     { from: resolve(workspaceRoot, noticesFileName), to: noticesFileName },
     ...(targetPlatform.os === "darwin"

@@ -17,6 +17,45 @@ rules:
     - "evidence-only"
 
 nodes:
+  - id: capability.codex-remote-distribution
+    kind: capability
+    label: "Pinned Codex remote components delivered on SSH connection"
+    aliases: ["Codex 远程资源", "远端下载回退", "薄安装包", "remote assets"]
+    docs:
+      - "specs/codex-desktop-distribution.md"
+    codeSeeds:
+      - file: "packages/server/src/remote/deploy.ts"
+        symbol: "deployServer"
+      - file: "packages/desktop/src/main/desktopProductRuntime.ts"
+        symbol: "resolveCodexRemoteAssetDirs"
+    invariants:
+      - "A build-pinned manifest selects exactly one remote target; matching remote components require neither a GitHub request nor another upload."
+      - "Only explicit SSH remote-download may fall back to Desktop download and SSH upload on source unavailability; local upload remains the default."
+      - "WSL/Docker and mobile Host attachment do not gain an independent remote download/deployment owner."
+  - id: surface.codex-ssh-asset-install-choice
+    kind: ui-surface
+    label: "SSH connection resource installation choice"
+    codeSeeds:
+      - file: "packages/ui/src/RemoteConnectionFields.tsx"
+        symbol: "RemoteConnectionFields"
+      - file: "packages/ui/src/SSHDialog.tsx"
+        symbol: "SSHDialog"
+  - id: state.codex-remote-component-identity
+    kind: state-owner
+    label: "Remote installed component marker and verified runtime files"
+    codeSeeds:
+      - file: "packages/server/src/remote/remoteAssetLiveIdentity.ts"
+        symbol: "checkRemoteAssetComponentIdentity"
+      - file: "packages/server/src/remote/codexRuntimeDeploy.ts"
+        symbol: "deployCodexRuntime"
+  - id: service.codex-release-component-source
+    kind: service
+    label: "Pinned Codez Release assets and Desktop cache/sidecar"
+    codeSeeds:
+      - file: "scripts/codex-runtime-remote-package.mjs"
+        symbol: "publishCodexRemoteComponents"
+      - file: "packages/server/src/remote/remoteAssetInstaller.ts"
+        symbol: "LocalUploadAssetInstaller"
   - id: service.codex-auxiliary-text
     kind: service
     label: Restricted native Codex text generation for titles and Git commit messages
@@ -5250,6 +5289,21 @@ nodes:
         symbol: "BotTopicPreparationList"
 
 edges:
+  - from: capability.codex-remote-distribution
+    to: surface.codex-ssh-asset-install-choice
+    type: configures-ssh-install-strategy-at
+    rank: must-inspect
+    condition: "SSH only; the persisted local-upload default remains unchanged."
+  - from: surface.codex-ssh-asset-install-choice
+    to: service.codex-release-component-source
+    type: selects-download-and-fallback-source
+    rank: must-inspect
+    condition: "Remote-download falls back only on unavailable source, using the same pinned manifest."
+  - from: service.codex-release-component-source
+    to: state.codex-remote-component-identity
+    type: installs-then-commits-verified-identity
+    rank: must-inspect
+    condition: "The remote install owner commits each marker only after successful verification and installation."
   - from: capability.codex-session-title
     to: service.codex-auxiliary-text
     type: generates-one-restricted-suggestion-through

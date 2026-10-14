@@ -17,6 +17,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { buildCodexBridge } from "./build-codex-bridge.mjs";
 import { runCodexTar } from "./codex-runtime-archive.mjs";
+import { createDeterministicCodexTarGz } from "./codex-runtime-deterministic-archive.mjs";
 import {
   codexWorkspaceRoot,
   resolveCodexTarget,
@@ -175,15 +176,25 @@ export async function publishCodexRemoteComponents({
   for (const [group, names] of [
     ["server", ["codez-server.cjs", "THIRD-PARTY-NOTICES.md"]],
     ["node", ["node", "LICENSE.node.txt", "NODE-SOURCES.json"]],
+    ["codex-bridge", ["bridge.cjs", "distribution.json"]],
   ]) {
     await mkdir(join(grouped, group), { recursive: true });
-    for (const name of names) await copyFile(join(directory, name), join(grouped, group, name));
+    for (const name of names)
+      await copyFile(
+        join(directory, group === "codex-bridge" ? "codex" : "", name),
+        join(grouped, group, name),
+      );
   }
+  const nativeDirectory = join(grouped, "codex-native");
+  await mkdir(nativeDirectory);
+  for (const name of ["bin", "codex-package.json", "codex-path", "codex-resources"])
+    await cp(join(directory, "codex", name), join(nativeDirectory, name), { recursive: true });
   const definitions = [
     ["server-bundle", "server", join(grouped, "server")],
     ["node-runtime", `node/${key}`, join(grouped, "node")],
     ["node-pty", `node-pty/${key}`, join(directory, "prebuilds", key)],
-    ["codex-runtime", "codex", join(directory, "codex")],
+    ["codex-native", "codex", nativeDirectory],
+    ["codex-bridge", "codex-bridge", join(grouped, "codex-bridge")],
     ...descriptor.searchComponents.map(({ id }) => [
       id,
       `tools/${key}/${id}`,
@@ -202,12 +213,13 @@ export async function publishCodexRemoteComponents({
     "server-bundle": appVersion,
     "node-runtime": "24.14.0",
     "node-pty": ptyPackage.version,
-    "codex-runtime": codex.tag,
+    "codex-native": codex.tag,
+    "codex-bridge": codex.bridgeSha256,
     ...Object.fromEntries(descriptor.searchComponents.map(({ id, version }) => [id, version])),
   };
   for (const [id, mount, source] of definitions) {
     const archive = join(temporary, `${id}.tar.gz`);
-    await runCodexTar({ mode: "create", archivePath: archive, directory: source, entries: ["."] });
+    await createDeterministicCodexTarGz({ archivePath: archive, directory: source });
     const sha256 = await sha256File(archive);
     const artifactPath = `components/${key}/${id}/${sha256}.tar.gz`;
     await mkdir(dirname(join(outputRoot, artifactPath)), { recursive: true });
@@ -223,11 +235,28 @@ export async function publishCodexRemoteComponents({
   const manifest = { schemaVersion: 1, appVersion, platformArch: key, components };
   const releaseRoot = join(outputRoot, "releases", appVersion);
   await mkdir(releaseRoot, { recursive: true });
-  await writeFile(join(temporary, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  await rename(join(temporary, "manifest.json"), join(releaseRoot, `manifest-${key}.json`));
-  await writeFile(join(temporary, "contract.json"), `${JSON.stringify(descriptor, null, 2)}\n`);
-  await rename(join(temporary, "contract.json"), join(releaseRoot, `runtime-${key}.json`));
+  await replaceFileAtomically(
+    join(temporary, "manifest.json"),
+    join(releaseRoot, `manifest-${key}.json`),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+  );
+  await replaceFileAtomically(
+    join(temporary, "contract.json"),
+    join(releaseRoot, `runtime-${key}.json`),
+    `${JSON.stringify(descriptor, null, 2)}\n`,
+  );
   return manifest;
+}
+
+async function replaceFileAtomically(stagingPath, destinationPath, content) {
+  await writeFile(stagingPath, content);
+  try {
+    await rename(stagingPath, destinationPath);
+  } catch (error) {
+    if (!["EEXIST", "EPERM", "EACCES"].includes(error?.code)) throw error;
+    await rm(destinationPath, { force: true });
+    await rename(stagingPath, destinationPath);
+  }
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {

@@ -118,6 +118,7 @@ jobs:
           path: |
             packages/desktop/bundled-resources/codex-remote/components/**
             packages/desktop/bundled-resources/codex-remote/releases/**
+            packages/desktop/bundled-resources/codex-remote/index.json
       - uses: actions/upload-artifact@v4
         with:
           name: codez-manifest
@@ -249,6 +250,10 @@ jobs:
         with:
           pattern: codez-*
           path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: codex-remote-assets
+          path: artifacts/codex-remote-assets
       - name: Verify all six targets and publish release
         env:
           GH_TOKEN: ${{ github.token }}

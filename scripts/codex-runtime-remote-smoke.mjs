@@ -51,7 +51,7 @@ export async function smokeCodexRemoteBundle(root = codexRemoteRoot) {
           ? `prebuilds/${target.key}`
           : ["server-bundle", "node-runtime"].includes(component.id)
             ? "."
-            : component.id === "codex-runtime"
+            : ["codex-native", "codex-bridge"].includes(component.id)
               ? "codex"
               : `tools/${component.id}`;
       const destination = join(directory, mount);

@@ -167,12 +167,13 @@ API contract rather than this product.
 
 The release job is the only publication owner and the only job with contents-write
 permission. It accepts artifacts from its own successful workflow run, verifies
-all six installer/checksum sets, uploads them to a draft, verifies the uploaded
-names, sizes and SHA256 digests, then publishes that draft. A failed build or upload
-must not expose a partial public release. The upload set covers each target's
-installers plus its updater metadata (channel `<arch>-latest*.yml` and
-differential `*.blockmap` files), so published releases feed the Codex flavor's
-automatic updates directly.
+all six installer/checksum sets and four target remote component sets, uploads
+them to a draft, verifies the uploaded names, sizes and SHA256 digests, then
+publishes that draft. A failed build or upload must not expose a partial public
+release. The upload set covers each target's installers and updater metadata
+(channel `<arch>-latest*.yml` and differential `*.blockmap` files), plus the
+build-pinned remote component assets, so published releases feed both the Codex
+automatic updater and remote deployment directly.
 
 ```text
 push → remote assets → six native builds → verify checksums → draft upload
@@ -329,16 +330,32 @@ Consumers implement this contract through the existing deployment owner. Actual
 external SSH/WSL transport remains separate from local artifact/install validation.
 
 `scripts/codex-runtime-remote-assets.mjs` prepares all four darwin/linux x64/arm64
-targets. Each desktop installer, including Windows for Linux WSL, carries these
-archives outside ASAR in `resources/codex-remote/`. Development staging uses
-`packages/desktop/bundled-resources/codex-remote/`. No target is compiled locally.
+remote targets. These differ from the six native desktop installer targets:
+Windows Desktop connects to Linux WSL, not a Windows remote runtime. Each
+installer carries only its own complete native Codex package plus a small,
+verified remote manifest/index; it does not carry the remote component archives.
+Development staging uses `packages/desktop/bundled-resources/codex-remote/`.
+No target is compiled locally.
 
 The remote-assets job builds the existing standalone server once per target and
 assembles Node 24.14.0 (official SHASUMS pins), Codex/bridge, target PTY prebuilds,
 repository search tools, notices and per-file hashes. It never builds the legacy
 agent. The six native desktop jobs download the same complete remote assets artifact.
-Build and packaging verify every selected archive, and package only current manifest
-entries, excluding stale archives left by earlier builds.
+Build and packaging verify every selected archive, but package only the four
+current manifests and build-scoped index. The index pins the exact Codez release
+tag, app version, target manifests and their SHA256 values; app version or Latest
+alone cannot identify a build. CI tags include the workflow run and commit;
+unpublished local tags include a digest of all four manifests so rebuilding the
+same app version with changed bytes cannot reuse an earlier sidecar. The release
+job uploads flat-named component assets with all six installers to one draft,
+checks the exact asset set and digests, and publishes only after everything is
+complete. PR/unpublished builds
+retain the four-target CI sidecar artifact. A packaged unpublished build can
+use a selected-target sidecar copied to `<remoteCacheDir>/imports/<build-tag>/`;
+a development checkout with `packagedRemoteAssetsDir/components/**` may also
+consume its verified local archives directly. In both cases the index and archive
+hashes must match before use. No new importer UI or legacy
+Codez CDN fallback is introduced.
 
 The consumer contract is the existing `RemoteAssetManifest` schema:
 
@@ -351,24 +368,70 @@ codex-remote/
 
 Manifest fields: `schemaVersion: 1`, `appVersion`, `platformArch`, `components`.
 Each component has `id`, `version`, `sha256`, `artifactPath`, `mount`; artifact paths
-are relative to `codex-remote/`. Mounts are `server`, `node/<platformArch>`,
-`node-pty/<platformArch>`, `codex`, and `tools/<platformArch>/{bfs,ripgrep,ugrep}`
+are relative to the sidecar root. Release asset names are a flat deterministic
+mapping from these paths, not a CDN-style nested URL. Mounts are `server`,
+`node/<platformArch>`, `node-pty/<platformArch>`, `codex`, `codex-bridge`, and
+`tools/<platformArch>/{bfs,ripgrep,ugrep}`
 on Linux. macOS preserves the existing remote tool contract (ripgrep 13 only),
 not the different desktop-local search plan. Tool versions retain archive revisions.
-The Codex component id is `codex-runtime`; the other component ids are unchanged.
-Materialization must use a target-scoped cache, since `codex` is a fixed mount.
+The native component is `codex-native`, using the verified fork release package
+without Codez bridge bytes. The `codex-bridge` component carries only
+`bridge.cjs` and `distribution.json` and installs into the same final `codex`
+directory without replacing an unchanged native component. Other component ids
+are unchanged. Producers must make unchanged component archives reproducible
+(stable order, timestamps, ownership and modes); test identical inputs twice.
+Materialization uses target- and SHA-scoped caches, since `codex` is a fixed mount.
 Runtime descriptors record the integrated component mounting, fork-root, startup-env
 and deployed bridge resolver contracts rather than a stale `deploymentReady` flag.
 SSH/WSL transport validation remains explicitly `not-run` until exercised against
 real targets; that validation record is informational, not a feature-disable switch.
-Bundled archives require target-scoped materialization before the deployer consumes
-them; an archive root must never be passed as an already-extracted mock CDN root.
-Main passes `bundledRemoteAssetsDir` and a Codex-only cache through Host to the
-server's existing deployment owner, without upstream CDN/mock fallback. The server
-selects the detected target and verifies then materializes its manifest snapshot
-before entering the existing install path; Main does not extract or select targets.
-Home/root placeholders
-require explicit remote-home resolution, never unquoted shell interpolation.
+Main passes the packaged index/manifests and a Codex-only cache through Host to
+the server's existing deployment owner. The server selects the detected target,
+pins its manifest and compares the remote marker and required files before any
+network request. Matching components need no download or upload. At an app
+version boundary, verify actual remote native/bridge file hashes before trusting
+old markers; if verification is unavailable, repair conservatively. A legacy
+monolithic `codex-runtime` may be adopted into the new identities only after
+actual file verification. Main does not extract or select targets. Home/root
+placeholders require explicit remote-home resolution, never unquoted shell
+interpolation.
+
+SSH retains its two persisted choices. `local-download-upload` remains the
+default and uses the Desktop cache then SFTP (or the SSH backend's existing
+exec-pipe fallback). `remote-download` first attempts the pinned Codez Release
+on the remote. Missing curl/wget or checksum tools, or an unavailable source, falls
+back once per connection to the Desktop-owned network transport and the same
+pinned component, then uploads. Integrity, extraction, permissions, filesystem
+and cancellation failures never silently fall back. Both transports require
+remote `tar`; a missing tar is a deployment error. A verified local sidecar
+or cache may be used without GitHub access on either machine. When neither
+machine can fetch and the cache is empty, fail visibly. WSL/Docker retain the
+local-upload path; mobile attachments reuse the existing Host, not a new deployer.
+If every release URL fails, only transport failures qualify as unavailable;
+any downloaded-but-mismatched SHA must remain an integrity error, even when
+a later mirror is unreachable. A valid later mirror may still succeed.
+Concurrent Desktop downloads and materializations deduplicate in-flight archive
+fetches and publish verified archives atomically; one canceled caller must not
+abort a shared download while another caller is still waiting, and a canceled
+or partial copy cannot appear as a completed cache entry.
+
+```mermaid
+sequenceDiagram
+    participant H as "Window Host / pinned manifest"
+    participant R as "Remote install owner"
+    participant G as "Codez Release"
+    H->>R: "check marker, files and migration hashes"
+    alt "identity matches"
+        R-->>H: "skip without network or upload"
+    else "SSH remote-download selected"
+        R->>G: "download and verify component"
+        alt "source unavailable"
+            H->>G: "download same SHA via Host transport or verified cache"
+            H->>R: "SSH upload and install"
+        end
+        R->>R: "commit marker only after successful install"
+    end
+```
 
 The package helper can also produce a flat standalone server archive for isolated
 smoke; it is not a second deployment protocol. `scripts/codex-runtime-remote-smoke.mjs`
@@ -376,11 +439,13 @@ extracts verified native components and checks Node/server execution offline.
 
 Integrated consumer boundaries:
 
-- `packages/server/src/remote/remoteAssetCache.ts`: recognize `codex-runtime`
-  and its mount; retain archive/hash validation.
+- `packages/server/src/remote/remoteAssetCache.ts`: recognize `codex-native`
+  and `codex-bridge` and their distinct mounts; retain archive/hash validation.
 - `deployShared.ts`, `deploy.ts`, `codezAgentDeploy.ts`, `connect.ts`: isolate
   `~/.codez-codex/server`, deploy Codex instead of GLM/plugin packages, retain
   identity/lease/refresh guards, and pass explicit resolved remote paths.
+  A server app-version refresh alone must not force-upload unchanged native
+  Codex; preserve retry protection for partial two-component deployment.
 - `packages/services/src/codez-agent/codexBridgeCommand.ts`: resolve the
   deployed bridge via `CODEZ_CODEX_BRIDGE_PATH`; invoke the remote Node with
   the bridge and pass the pinned executable through `CODEZ_CODEX_COMMAND`.
@@ -393,3 +458,14 @@ Codex-only deep-link parsing and OS registrations; manual updates cannot reach
 the upstream provider; verified real bridge build; mocked remote component
 integrity and explicit failure for unsupported deployment; root typecheck/lint
 and desktop build with any cross-owner integration failures reported.
+
+Remote distribution acceptance:
+
+| Case | Setup and action | Required evidence |
+| --- | --- | --- |
+| CD-REMOTE-01 | Package six native targets | Only local native Codex and four small pinned manifests/index enter each installer; audit real installer sizes against the 500 MiB target. |
+| CD-REMOTE-02 | Publish a build and install to a fresh SSH target | The pinned release contains the exact four target asset sets; remote-download verifies its target and starts Node, server, Bridge and native tools. |
+| CD-REMOTE-03 | Remote GitHub blocked, Desktop reachable | Explicit remote-download falls back to one Desktop download/cache and SSH upload; saved choice survives reconnect with no redundant transfer. |
+| CD-REMOTE-04 | Both sources unavailable | A valid sidecar/cache installs; without one, fail visibly. Corruption, cancel and permission failures never fall back or commit success markers. |
+| CD-REMOTE-05 | Codez or Bridge changes, native package does not | New server/Bridge deploy; native package transfer is zero, even across app-version changes and old-marker migration. |
+| CD-REMOTE-06 | Native package changes or install is interrupted | Only the selected remote architecture updates; retry completes both component identities before starting the runtime. WSL/Docker and mobile Host attachment remain unchanged. |

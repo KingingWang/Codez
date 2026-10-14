@@ -63,10 +63,10 @@ export function resolveCodexRemoteAssetDirs(options: {
   resourcesPath: string;
   desktopRoot: string;
   cacheDir: string;
-}): { bundledRemoteAssetsDir: string; remoteCacheDir: string } {
-  // bundle 根不是已解包的 mock CDN；由 server 检测目标后校验并物化，禁止旧 CDN 回退。
+}): { packagedRemoteAssetsDir: string; remoteCacheDir: string } {
+  // 安装包只携带 build-pinned index 和目标清单；server 选择目标与下载方式。
   return {
-    bundledRemoteAssetsDir: options.isPackaged
+    packagedRemoteAssetsDir: options.isPackaged
       ? join(options.resourcesPath, "codex-remote")
       : join(options.desktopRoot, "bundled-resources", "codex-remote"),
     remoteCacheDir: join(options.cacheDir, "codex"),

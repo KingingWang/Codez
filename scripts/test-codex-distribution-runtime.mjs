@@ -218,7 +218,7 @@ test("Codex remote routing passes the bundle root without legacy CDN or mock fal
   };
   for (const isPackaged of [true, false]) {
     assert.deepEqual(runtime.resolveCodexRemoteAssetDirs({ ...options, isPackaged }), {
-      bundledRemoteAssetsDir: isPackaged
+      packagedRemoteAssetsDir: isPackaged
         ? join(options.resourcesPath, "codex-remote")
         : join(options.desktopRoot, "bundled-resources/codex-remote"),
       remoteCacheDir: join(options.cacheDir, "codex"),

@@ -55,6 +55,8 @@ const REMOTE_ASSET_PROGRESS_PERCENT_STEP = 5;
 const CONTENT_ADDRESSED_COMPONENT_RELEASE_DIRS: Record<string, string> = {
   "server-bundle": "server-content",
   "codex-runtime": "codex-content",
+  "codex-native": "codex-native-content",
+  "codex-bridge": "codex-bridge-content",
   glm: "glm-content",
 };
 const REMOTE_ASSET_DIRECTORY_COMMIT_RETRY_DELAYS_MS = [
@@ -92,6 +94,14 @@ const REMOTE_COMPONENT_MOUNT_RULES: Record<string, ComponentMountRule> = {
   "codex-runtime": {
     platformScoped: true,
     resolveExpectedMount: () => "codex",
+  },
+  "codex-native": {
+    platformScoped: true,
+    resolveExpectedMount: () => "codex",
+  },
+  "codex-bridge": {
+    platformScoped: true,
+    resolveExpectedMount: () => "codex-bridge",
   },
   "server-bundle": {
     platformScoped: false,

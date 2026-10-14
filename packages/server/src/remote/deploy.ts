@@ -11,11 +11,14 @@ import {
 import type { IRemoteBackend, RemoteEnvironment } from "./backend.js";
 import { deployCodezAgentRuntime } from "./codezAgentDeploy.js";
 import { createBundledRemoteAssetSource } from "./bundledRemoteAssets.js";
+import { createCodexReleaseRemoteAssetSource } from "./codexReleaseRemoteAssets.js";
+import { createCodexFallbackInstaller } from "./codexFallbackInstaller.js";
 import { REMOTE_RUNTIME } from "./remoteRuntime.js";
 import {
   assertCodexRemoteEnvironment,
   assertCodexRemoteNodeVersion,
   CODEX_REMOTE_REQUIRED_FILES,
+  deployCodexComponents,
   deployCodexRuntime,
 } from "./codexRuntimeDeploy.js";
 import {
@@ -70,6 +73,8 @@ export type DeployLockMode = "remote" | "caller-serialized";
 export interface DeployOptions {
   /** 只读 packaged codex-remote 根；指定后仅使用随包归档，不回退 mock/CDN。 */
   bundledRemoteAssetsDir?: string;
+  /** 只读的 build-pinned 远端清单根；组件从固定 Codez Release/本地 sidecar 按需获取。 */
+  packagedRemoteAssetsDir?: string;
   /** 取消当前远端连接初始化与其拥有的上传。 */
   signal?: AbortSignal;
   /** 开发态本地“伪 CDN”目录，运行时从这里读取 remote 资源 */
@@ -123,7 +128,22 @@ export async function deployServer(
           { log, logWarn },
         )
       : undefined;
-  if (bundled && !codex) throw new Error("Bundled Codex remote assets require the Codex runtime");
+  const codexRelease = options?.packagedRemoteAssetsDir
+    ? createCodexReleaseRemoteAssetSource(
+        {
+          packagedRemoteAssetsDir: options.packagedRemoteAssetsDir,
+          remoteCacheDir: options.remoteCacheDir ?? "",
+          version: CODEZ_VERSION,
+          platformArch,
+          remoteAssetNetwork: options.remoteAssetNetwork,
+          signal: options.signal,
+        },
+        { log, logWarn },
+      )
+    : undefined;
+  if ((bundled || codexRelease) && !codex)
+    throw new Error("Codex remote assets require the Codex runtime");
+  if (bundled && codexRelease) throw new Error("Ambiguous Codex remote asset sources");
   const selectedResourcePackageIds = normalizeRemoteResourcePackageSelection().filter(
     (id) => !codex || id !== "glm",
   );
@@ -152,6 +172,7 @@ export async function deployServer(
   );
   let remoteManifestPromise: Promise<RemoteManifestRef> | null = null;
   const getRemoteManifestRef = (): Promise<RemoteManifestRef> => {
+    if (codexRelease) return codexRelease.readManifest();
     remoteManifestPromise ??= fetchRemoteDownloadManifest(
       {
         version: CODEZ_VERSION,
@@ -176,6 +197,7 @@ export async function deployServer(
   const getManifestRefForComponents = async (
     componentIds?: string[],
   ): Promise<RemoteAssetManifestRef | null> => {
+    if (codexRelease) return codexRelease.readManifest();
     if (bundled) return bundled.readManifest();
     if (options?.assetInstallMode === "remote-download") {
       return getRemoteManifestRef();
@@ -207,16 +229,18 @@ export async function deployServer(
       return resolvedReleaseDirs.get(cacheKey) ?? null;
     }
     options?.signal?.throwIfAborted();
-    const releaseDir = bundled
-      ? await bundled.materialize(componentIds, forceRefresh)
-      : await resolveReleaseDir(
-          options,
-          env,
-          { log, logWarn },
-          componentIds,
-          await getManifestRefForComponents(componentIds),
-          forceRefresh,
-        );
+    const releaseDir = codexRelease
+      ? await codexRelease.materialize(componentIds, forceRefresh)
+      : bundled
+        ? await bundled.materialize(componentIds, forceRefresh)
+        : await resolveReleaseDir(
+            options,
+            env,
+            { log, logWarn },
+            componentIds,
+            await getManifestRefForComponents(componentIds),
+            forceRefresh,
+          );
     options?.signal?.throwIfAborted();
     resolvedReleaseDirs.set(cacheKey, releaseDir);
     log(
@@ -238,17 +262,18 @@ export async function deployServer(
     signal: options?.signal,
     resolveReleaseDir: getReleaseDir,
     resolveComponentSha256: getComponentSha256,
-    remoteCdnBaseUrl: bundled ? undefined : options?.remoteCdnBaseUrl,
-    remoteCdnBaseUrls: bundled ? undefined : options?.remoteCdnBaseUrls,
+    remoteCdnBaseUrl: bundled || codexRelease ? undefined : options?.remoteCdnBaseUrl,
+    remoteCdnBaseUrls: bundled || codexRelease ? undefined : options?.remoteCdnBaseUrls,
     remoteCacheDir: options?.remoteCacheDir,
     manifestRequestTimeoutMs: options?.manifestRequestTimeoutMs,
     remoteAssetNetwork: options?.remoteAssetNetwork,
+    resolveComponentArtifactUrls: codexRelease?.artifactUrls,
   };
   const getComponentVersion = createRemoteComponentVersionResolver(componentResolverOptions, env, {
     log,
     logWarn,
   });
-  const installer = createRemoteAssetInstaller(
+  const primaryInstaller = createRemoteAssetInstaller(
     backend,
     {
       ...assetDeployOptions,
@@ -259,12 +284,26 @@ export async function deployServer(
     { log, logWarn },
     !bundled && options?.assetInstallMode === "remote-download" ? getRemoteManifestRef : null,
   );
+  const installer =
+    codexRelease && options?.assetInstallMode === "remote-download"
+      ? createCodexFallbackInstaller(
+          primaryInstaller,
+          new LocalUploadAssetInstaller(
+            backend,
+            { ...assetDeployOptions, platformArch, version: CODEZ_VERSION },
+            { log, logWarn },
+          ),
+          options.signal,
+          { logWarn },
+        )
+      : primaryInstaller;
   const getExpectedComponentVersion = async (componentId: string): Promise<string | null> => {
-    if (bundled)
+    if (bundled || codexRelease)
       return (
-        selectRemoteAssetManifestComponents((await bundled.readManifest()).manifest, [
-          componentId,
-        ])[0]?.version ?? null
+        selectRemoteAssetManifestComponents(
+          (await (codexRelease ?? bundled)!.readManifest()).manifest,
+          [componentId],
+        )[0]?.version ?? null
       );
     if (installer.resolveComponentVersion) {
       const installerVersion = await installer.resolveComponentVersion(componentId);
@@ -293,16 +332,18 @@ export async function deployServer(
     serverDeployDecision: ServerDeployDecision,
     expectedServerBundleSha256: string | null,
   ): Promise<boolean> => {
-    const hasPendingAppVersionRefresh = await hasRemoteAssetComponentRefreshPending(backend, {
-      componentId: codex ? "codex-runtime" : "glm",
-      platformArch,
-    });
+    const hasPendingAppVersionRefresh =
+      !codexRelease &&
+      (await hasRemoteAssetComponentRefreshPending(backend, {
+        componentId: codex ? "codex-runtime" : "glm",
+        platformArch,
+      }));
     const shouldForceRefreshContentAddressedAssets =
       Boolean(options?.force) ||
       hasPendingAppVersionRefresh ||
       (serverDeployDecision.shouldDeploy && serverDeployDecision.appVersionChanged === true);
 
-    if (shouldForceRefreshContentAddressedAssets) {
+    if (shouldForceRefreshContentAddressedAssets && !codexRelease) {
       // server 会先于 Agent runtime 更新；若后续步骤失败，下次连接时 server 版本
       // 已经匹配。持久化强刷状态，直到对应 runtime 成功覆盖 marker。
       await markRemoteAssetComponentRefreshPending(backend, {
@@ -312,18 +353,31 @@ export async function deployServer(
       });
     }
 
-    const deployAgentRuntime = () =>
+    const deployAgentRuntime = async () =>
       codex
-        ? deployCodexRuntime(
-            backend,
-            {
-              platformArch,
-              installer,
-              signal: options?.signal,
-              force: shouldForceRefreshContentAddressedAssets,
-            },
-            { log, logWarn },
-          )
+        ? codexRelease
+          ? deployCodexComponents(
+              backend,
+              {
+                platformArch,
+                installer,
+                signal: options?.signal,
+                force: Boolean(options?.force),
+                expectedFiles: await codexRelease.expectedCodexFiles(),
+                verifyInstalledHashes: serverDeployDecision.shouldDeploy,
+              },
+              { log, logWarn },
+            )
+          : deployCodexRuntime(
+              backend,
+              {
+                platformArch,
+                installer,
+                signal: options?.signal,
+                force: shouldForceRefreshContentAddressedAssets,
+              },
+              { log, logWarn },
+            )
         : deployCodezAgentRuntime(
             backend,
             env,

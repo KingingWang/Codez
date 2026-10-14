@@ -1897,6 +1897,8 @@ const zhCN: Record<string, string> = {
   "ssh.assetInstallMode.remote-download": "远端服务器下载",
   "ssh.assetInstallModeDescription":
     "远端服务器下载可减少上传等待，但服务器需要能访问 Codez CDN，并具备下载、解压和校验工具。",
+  "ssh.assetInstallModeDescription.codex":
+    "远端下载优先从发布源获取资源；若远端无法访问，桌面端会下载并通过 SSH 上传。两种方式都需要远端具备 tar。",
   "ssh.password": "密码",
   "ssh.passwordPlaceholder": "输入 SSH 密码",
   "ssh.privateKey": "私钥",

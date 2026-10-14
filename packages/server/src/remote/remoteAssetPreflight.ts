@@ -10,6 +10,14 @@ export interface RemoteAssetTools {
   sha256: RemoteSha256Tool;
 }
 
+/** Only source/capability failures may select Desktop download + SSH upload. */
+export class RemoteAssetSourceUnavailableError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "RemoteAssetSourceUnavailableError";
+  }
+}
+
 interface RemoteAssetPreflightLoggers {
   log: (...args: unknown[]) => void;
 }
@@ -31,7 +39,7 @@ export async function detectRemoteAssetTools(
   const sha256 = parseSha256Tool(values.sha256);
 
   if (!download) {
-    throw new Error(
+    throw new RemoteAssetSourceUnavailableError(
       "远端服务器缺少 curl 或 wget，无法直接下载 Codez 远程资源。请安装 curl/wget，或切回“本地下载后上传”。",
     );
   }
@@ -41,7 +49,7 @@ export async function detectRemoteAssetTools(
     );
   }
   if (!sha256) {
-    throw new Error(
+    throw new RemoteAssetSourceUnavailableError(
       "远端服务器缺少 sha256sum、shasum 或 openssl，无法校验 Codez 远程资源。请安装其中一个校验工具，或切回“本地下载后上传”。",
     );
   }

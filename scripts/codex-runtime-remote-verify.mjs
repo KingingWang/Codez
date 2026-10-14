@@ -2,12 +2,13 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { codexWorkspaceRoot, loadCodexManifest, sha256File } from "./codex-runtime.mjs";
 import { loadCodexNodeManifest } from "./codex-runtime-node.mjs";
+import { codexRemoteTargets, verifyCodexRemoteIndex } from "./codex-runtime-remote-index.mjs";
 
 export const codexRemoteRoot = resolve(
   codexWorkspaceRoot,
   "packages/desktop/bundled-resources/codex-remote",
 );
-export const codexRemoteTargets = ["darwin-x64", "darwin-arm64", "linux-x64", "linux-arm64"];
+export { codexRemoteTargets };
 
 export async function verifyCodexRemoteAssets({
   root = codexRemoteRoot,
@@ -50,7 +51,8 @@ export async function verifyCodexRemoteAssets({
       "server-bundle": "server",
       "node-runtime": `node/${key}`,
       "node-pty": `node-pty/${key}`,
-      "codex-runtime": "codex",
+      "codex-native": "codex",
+      "codex-bridge": "codex-bridge",
       ...Object.fromEntries(toolIds.map((id) => [id, `tools/${key}/${id}`])),
     };
     if (
@@ -75,5 +77,6 @@ export async function verifyCodexRemoteAssets({
     }
     files.push(relative, contractPath);
   }
-  return { root, files };
+  const index = await verifyCodexRemoteIndex({ root, version, env: process.env });
+  return { root, files, packagedFiles: index.packagedFiles, releaseAssets: index.releaseAssets };
 }

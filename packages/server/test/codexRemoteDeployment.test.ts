@@ -14,6 +14,7 @@ const { resolveRemoteRuntimeLayout } = await import("../src/remote/remoteRuntime
 const { buildRemoteServerCommand } = await import("../src/remote/connect.js");
 const { deployCodexRuntime, assertCodexRemoteNodeVersion, assertCodexRemoteEnvironment } =
   await import("../src/remote/codexRuntimeDeploy.js");
+const { deployCodexComponents } = await import("../src/remote/codexRuntimeDeploy.js");
 const { parseRemoteAssetManifestFromResponse, usesRemoteAssetContentAddressedCacheIdentity } =
   await import("../src/remote/remoteAssetCache.js");
 const { deployServer } = await import("../src/remote/deploy.js");
@@ -193,6 +194,61 @@ test("matching Codex SHA and required files skip installation", async () => {
     loggers,
   );
   assert.equal(f.installs.length, 0);
+});
+
+test("Bridge-only update never uploads or replaces unchanged native Codex", async () => {
+  const f = fixture();
+  const uploadedFiles: string[] = [];
+  f.backend.readFile = async (path) =>
+    JSON.stringify({
+      id: path.endsWith("codex-native.json") ? "codex-native" : "codex-bridge",
+      platformArch: "linux-arm64",
+      sha256: path.endsWith("codex-native.json") ? sha : "b".repeat(64),
+    });
+  f.installer.resolveComponentSha256 = async (id) => (id === "codex-native" ? sha : sha);
+  f.installer.installFile = async (params) => uploadedFiles.push(params.sourceRelativePath);
+  await deployCodexComponents(
+    f.backend,
+    { installer: f.installer, platformArch: "linux-arm64" },
+    loggers,
+  );
+  assert.deepEqual(f.installs, []);
+  assert.deepEqual(uploadedFiles, ["codex-bridge/bridge.cjs", "codex-bridge/distribution.json"]);
+});
+
+test("old monolithic installation is adopted after actual file hashes match", async () => {
+  const f = fixture();
+  const expectedFiles = Object.fromEntries(
+    [
+      "bin/codex",
+      "bin/codex-code-mode-host",
+      "codex-package.json",
+      "codex-path/rg",
+      "bridge.cjs",
+      "distribution.json",
+    ].map((file) => [`codex/${file}`, sha]),
+  );
+  f.backend.exec = async (command) => {
+    f.commands.push(command);
+    if (command.includes("codex-deploy-hash")) {
+      const count = command.split("server/codex/").length - 1;
+      return stream(JSON.stringify(Array.from({ length: count }, () => sha)));
+    }
+    return stream();
+  };
+  f.installer.resolveComponentSha256 = async () => sha;
+  await deployCodexComponents(
+    f.backend,
+    { installer: f.installer, platformArch: "linux-arm64", expectedFiles },
+    loggers,
+  );
+  assert.deepEqual(f.installs, []);
+  assert.ok(
+    f.commands.some((command) => command.includes("codex-native") && command.includes(sha)),
+  );
+  assert.ok(
+    f.commands.some((command) => command.includes("codex-bridge") && command.includes(sha)),
+  );
 });
 
 test("missing file, changed SHA, or forced refresh replaces the whole component", async () => {

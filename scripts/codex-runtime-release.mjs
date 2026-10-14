@@ -1,10 +1,11 @@
 import { execFile } from "node:child_process";
-import { lstat, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { copyFile, lstat, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { sha256File } from "./codex-runtime.mjs";
 import { resolveCodexUpdaterAssetPlan } from "./codex-runtime-artifacts.mjs";
+import { verifyCodexRemoteIndex } from "./codex-runtime-remote-index.mjs";
 
 const exec = promisify(execFile);
 const platformNames = { darwin: "mac", linux: "linux", win32: "win" };
@@ -38,7 +39,7 @@ async function asset(path) {
   return { path, name: basename(path), size: stat.size, sha256: await sha256File(path) };
 }
 
-export async function collectReleaseAssets(directory) {
+export async function collectReleaseAssets(directory, env) {
   const folders = await readdir(directory, { withFileTypes: true });
   const result = [];
   const seen = new Set();
@@ -109,6 +110,26 @@ export async function collectReleaseAssets(directory) {
       // 校验清单只在流水线内用于完整性校验，不上传到 Release，避免冗余资产。
     }
   }
+  const { version } = JSON.parse(
+    await readFile(new URL("../package.json", import.meta.url), "utf8"),
+  );
+  const remoteAssets = await verifyCodexRemoteIndex({
+    root: join(directory, "codex-remote-assets"),
+    version,
+    env,
+  });
+  const remotePublishDir = join(directory, "remote-publish");
+  await mkdir(remotePublishDir, { recursive: true });
+  for (const remote of remoteAssets.releaseAssets) {
+    if (seen.has(remote.name)) throw new Error(`Duplicate remote release asset: ${remote.name}`);
+    seen.add(remote.name);
+    const publicPath = join(remotePublishDir, remote.name);
+    await copyFile(remote.path, publicPath);
+    const published = await asset(publicPath);
+    if (published.sha256 !== (await sha256File(remote.path)))
+      throw new Error(`Remote release asset changed while staging: ${remote.name}`);
+    result.push(published);
+  }
   return result;
 }
 
@@ -169,7 +190,7 @@ export async function publishCodexRelease({
   retryDelay = defaultRetryDelay,
 }) {
   const identity = releaseIdentity(env);
-  const assets = await collectReleaseAssets(directory);
+  const assets = await collectReleaseAssets(directory, env);
   const { repository, sha, tag, prerelease } = identity;
   let release = await findRelease(run, repository, tag);
   if (release && release.target_commitish !== sha)
@@ -182,13 +203,13 @@ export async function publishCodexRelease({
   if (!release) {
     // 发布说明里标注本次内置的 Codex 运行时版本，方便追溯；清单缺失时跳过不阻塞发布。
     let codexRuntimeNote =
-      "Installers bundle the fork's latest verified Codex release and remote components.";
+      "Installers bundle the fork's latest verified native Codex release; remote components are published separately and fetched on demand.";
     try {
       const codexManifest = JSON.parse(
         await readFile(join(directory, "codez-manifest", "codex-manifest.json"), "utf8"),
       );
       if (/^codex-\d{8}-\d{6}$/.test(codexManifest?.tag ?? ""))
-        codexRuntimeNote = `Installers bundle Codex runtime ${codexManifest.tag} (latest KingingWang/codex release at build time) and verified remote components.`;
+        codexRuntimeNote = `Installers bundle Codex runtime ${codexManifest.tag} (latest KingingWang/codex release at build time); the verified remote components are separate release assets.`;
     } catch {
       // 清单缺失或损坏不影响发布；资产完整性由 SHA256SUMS 校验兜底。
     }

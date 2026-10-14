@@ -156,6 +156,12 @@ function requiredFiles(component: RemoteAssetManifestComponent, target: string):
       return target.startsWith("darwin-") ? ["pty.node", "spawn-helper"] : ["pty.node"];
     case "codex-runtime":
       return CODEX_REMOTE_REQUIRED_FILES;
+    case "codex-native":
+      return CODEX_REMOTE_REQUIRED_FILES.filter(
+        (file) => file !== "bridge.cjs" && file !== "distribution.json",
+      );
+    case "codex-bridge":
+      return ["bridge.cjs", "distribution.json"];
     case "bfs":
       return ["bfs"];
     case "ripgrep":

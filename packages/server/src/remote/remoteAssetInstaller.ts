@@ -44,6 +44,7 @@ import {
   resolveRemoteAssetFetch,
   type RemoteAssetNetworkPort,
 } from "@codez/server/remote/remoteAssetNetwork.js";
+import { RemoteAssetSourceUnavailableError } from "@codez/server/remote/remoteAssetPreflight.js";
 
 export interface RemoteAssetInstaller {
   readonly mode: RemoteAssetInstallMode;
@@ -126,7 +127,8 @@ export function buildRemoteArtifactDownloadCommand(params: {
     });
   });
   return buildRemoteDownloadWithProgressCommand({
-    attemptCommand: attempts.map((attempt) => `(${attempt})`).join(" || "),
+    // checksum_failed 必须跨候选 URL 保留；子 shell 会让失败标记丢失，误把损坏制品当成断网。
+    attemptCommand: attempts.map((attempt) => `{ ${attempt}; }`).join(" || "),
     outputPath: params.outputPath,
     progressLabel: params.progressLabel,
     totalBytes: params.totalBytes,
@@ -160,7 +162,7 @@ function buildRemoteArtifactDownloadAttempt(params: {
     `rm -f ${quotedOutputPath}`,
     params.downloadCommand,
     `actual_sha=$(${checksumCommand})`,
-    `if [ "$actual_sha" = ${quotedExpectedSha256} ]; then true; else echo ${mismatchPrefix}"$actual_sha" >&2; false; fi`,
+    `if [ "$actual_sha" = ${quotedExpectedSha256} ]; then true; else checksum_failed=1; echo ${mismatchPrefix}"$actual_sha" >&2; false; fi`,
   ].join(" && ");
 }
 
@@ -184,7 +186,7 @@ function buildRemoteDownloadWithProgressCommand(params: {
   // 远端服务器下载以前只等 wget/curl 结束，连接窗口没有速度和进度反馈。
   // 这里不依赖 wget/curl 各自不稳定的进度条，而是在远端按目标文件大小节流输出统一格式，
   // 连接窗口可以复用现有 download progress 合并逻辑展示最新速度。
-  return `set +e; ${progressLoop}; ${params.attemptCommand}; download_status=$?; set -e; ${stopProgressLoop}; test "$download_status" -eq 0`;
+  return `set +e; ${progressLoop}; checksum_failed=0; ${params.attemptCommand}; download_status=$?; set -e; ${stopProgressLoop}; if [ "$download_status" -eq 0 ]; then true; elif [ "$checksum_failed" -eq 1 ]; then exit 74; else exit 73; fi`;
 }
 
 function normalizeTotalBytes(totalBytes: number | null | undefined): number | null {
@@ -832,11 +834,13 @@ export class RemoteDownloadAssetInstaller implements RemoteAssetInstaller {
         `[remote-assets] download required: component=${component.id} reason=remote component cache missing path=${readyPath}`,
       );
     }
-    const artifactUrls = buildComponentArtifactUrlCandidates(
-      manifestRef.releaseBaseCandidatesForComponents,
-      component.artifactPath,
-      this.options.version,
-    );
+    const artifactUrls = this.options.resolveComponentArtifactUrls
+      ? await this.options.resolveComponentArtifactUrls(component)
+      : buildComponentArtifactUrlCandidates(
+          manifestRef.releaseBaseCandidatesForComponents,
+          component.artifactPath,
+          this.options.version,
+        );
     const totalBytes = await resolveRemoteArtifactContentLength(
       artifactUrls,
       this.options.remoteAssetNetwork,
@@ -875,7 +879,9 @@ export class RemoteDownloadAssetInstaller implements RemoteAssetInstaller {
       `lock_heartbeat_pid=; (while :; do touch ${quotedLockDir} 2>/dev/null || exit 0; sleep 30; done) & lock_heartbeat_pid=$!`,
       `trap ${quotePosixShellArg(cleanupCommand)} EXIT`,
       `if [ -e ${quotePosixPathArg(readyPath)} ]; then exit 0; fi`,
-      downloadCommand,
+      // 只把来源不可达标成可回退；SHA 错误仍 fail closed，不能把损坏制品
+      // 误当成“远端没网”后换一条未经解释的安装路径。
+      `if (${downloadCommand}); then :; else download_status=$?; if [ "$download_status" -eq 74 ]; then echo ${quotePosixShellArg(checksumMismatchMessage)} >&2; exit 74; fi; echo '[remote-assets] source unavailable' >&2; exit 73; fi`,
       `actual_sha=$(${checksumCommand})`,
       `if [ "$actual_sha" != ${quotePosixShellArg(component.sha256)} ]; then echo ${quotePosixShellArg(checksumMismatchMessage)} >&2; exit 1; fi`,
       `mkdir -p ${quotePosixPathArg(extractDir)}`,
@@ -893,7 +899,20 @@ export class RemoteDownloadAssetInstaller implements RemoteAssetInstaller {
     this.loggers.log(`[remote-assets] remote downloading ${component.id}@${component.version}`);
     const stream = await this.backend.exec(command);
     forwardRemoteDownloadProgressLogs(stream, this.loggers);
-    await waitForClose(stream);
+    try {
+      await waitForClose(stream);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes("exit code 73") &&
+        !error.message.includes("sha256 mismatch")
+      )
+        throw new RemoteAssetSourceUnavailableError(
+          `Remote cannot download ${component.id} from the pinned release`,
+          { cause: error },
+        );
+      throw error;
+    }
     return { component, componentDir, fromCache: false };
   }
 }

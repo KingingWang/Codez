@@ -381,8 +381,9 @@ test("remote assembly publishes existing manifest schema, genuine Codex mounts a
     },
   });
   assert.equal(manifest.schemaVersion, 1);
-  assert.equal(manifest.components.length, 7);
-  assert.equal(manifest.components.find(({ id }) => id === "codex-runtime").mount, "codex");
+  assert.equal(manifest.components.length, 8);
+  assert.equal(manifest.components.find(({ id }) => id === "codex-native").mount, "codex");
+  assert.equal(manifest.components.find(({ id }) => id === "codex-bridge").mount, "codex-bridge");
   assert.ok(!manifest.components.some(({ id }) => id === "glm"));
   for (const component of manifest.components) {
     assert.match(component.artifactPath, /^components\/linux-x64\//);
@@ -401,6 +402,38 @@ test("remote assembly publishes existing manifest schema, genuine Codex mounts a
       ),
     ),
     manifest,
+  );
+  const secondRoot = join(options.root, "remote-again");
+  const again = await prepareCodexRemotePackage({
+    target: options.target,
+    stagingOptions: options,
+    outputRoot: secondRoot,
+    publishComponents: true,
+    prepareServerImpl: async (dir) => {
+      for (const name of ["codez-server.cjs", "THIRD-PARTY-NOTICES.md"])
+        await writeFile(join(dir, name), "fixture");
+    },
+    prepareNodeImpl: async ({ directory }) => {
+      for (const name of ["node", "LICENSE.node.txt", "NODE-SOURCES.json"])
+        await writeFile(join(directory, name), "fixture");
+      return { version: "24.14.0" };
+    },
+    preparePtyImpl: async (dir, target) => {
+      const path = join(dir, "prebuilds", target.key);
+      await mkdir(path, { recursive: true });
+      await writeFile(join(path, "pty.node"), "fixture");
+    },
+    prepareSearchImpl: async ({ outputDir }) => {
+      for (const id of ["bfs", "ripgrep", "ugrep"]) {
+        await mkdir(join(outputDir, id), { recursive: true });
+        await writeFile(join(outputDir, id, id), "fixture");
+      }
+    },
+  });
+  assert.deepEqual(
+    again.components.map(({ id, sha256 }) => [id, sha256]),
+    manifest.components.map(({ id, sha256 }) => [id, sha256]),
+    "same file bytes must keep every remote component identity stable across builds",
   );
 });
 

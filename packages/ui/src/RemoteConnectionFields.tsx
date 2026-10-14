@@ -10,6 +10,7 @@ import type {
 } from "@codez/shared";
 import { AlertTriangleIcon, CheckIcon, ChevronDownIcon, LoaderIcon, Plus } from "lucide-react";
 import {
+  CODEZ_PRODUCT_FLAVOR,
   TID_DOCKER_CONTAINER_INPUT,
   TID_DOCKER_CONTAINER_SELECT,
   TID_SSH_CONFIG_ALIAS_SELECT,
@@ -529,7 +530,12 @@ export function RemoteConnectionFields({
               })}
             </div>
             <p className="mt-1 text-ui-base text-foreground-subtle">
-              {intl.formatMessage({ id: "ssh.assetInstallModeDescription" })}
+              {intl.formatMessage({
+                id:
+                  CODEZ_PRODUCT_FLAVOR === "codex"
+                    ? "ssh.assetInstallModeDescription.codex"
+                    : "ssh.assetInstallModeDescription",
+              })}
             </p>
           </div>
         </div>
@@ -680,9 +686,7 @@ export function RemoteConnectionFields({
               )}
             >
               {intl.formatMessage({
-                id: wslUserIsInvalid
-                  ? "wsl.validation.invalidUser"
-                  : "wsl.userDescription",
+                id: wslUserIsInvalid ? "wsl.validation.invalidUser" : "wsl.userDescription",
               })}
             </p>
           </div>

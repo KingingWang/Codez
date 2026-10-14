@@ -96,6 +96,7 @@ export function getCredentialsDir() {
 export type RemoteAssetDirs = Pick<
   ConnectOptions,
   | "bundledRemoteAssetsDir"
+  | "packagedRemoteAssetsDir"
   | "mockCdnDir"
   | "remoteCdnBaseUrl"
   | "remoteCdnBaseUrls"

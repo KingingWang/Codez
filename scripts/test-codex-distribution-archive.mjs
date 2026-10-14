@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, win32 } from "node:path";
 import test from "node:test";
 import { createCodexTarInvocation, runCodexTar } from "./codex-runtime-archive.mjs";
+import { createDeterministicCodexTarGz } from "./codex-runtime-deterministic-archive.mjs";
 import { loadCodexNodeManifest, stageCodexRemoteNode } from "./codex-runtime-node.mjs";
 
 test("Windows create/extract/list never pass a drive-qualified archive to GNU tar", () => {
@@ -76,6 +77,26 @@ test("real tar round-trip handles spaces/metacharacters without platform skips",
     await readFile(join(destination, "--option-shaped.txt"), "utf8"),
     "literal filename",
   );
+});
+
+test("component archive ignores source mtimes and insertion order without losing executable bits", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "codex stable archive-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const source = join(root, "source");
+  await mkdir(join(source, "bin"), { recursive: true });
+  await writeFile(join(source, "z.txt"), "last");
+  await writeFile(join(source, "bin", "codex"), "native");
+  const first = join(root, "first.tar.gz");
+  await createDeterministicCodexTarGz({ archivePath: first, directory: source });
+  await utimes(join(source, "z.txt"), new Date("2020-01-01"), new Date("2024-01-01"));
+  await utimes(join(source, "bin", "codex"), new Date("2022-01-01"), new Date("2025-01-01"));
+  const second = join(root, "second.tar.gz");
+  await createDeterministicCodexTarGz({ archivePath: second, directory: source });
+  assert.deepEqual(await readFile(first), await readFile(second));
+  const extracted = join(root, "extracted");
+  await mkdir(extracted);
+  await runCodexTar({ mode: "extract", archivePath: second, directory: extracted });
+  assert.equal(await readFile(join(extracted, "bin", "codex"), "utf8"), "native");
 });
 
 test("verified local Node archive extracts only pinned member; tar failure preserves installed binary", async (t) => {

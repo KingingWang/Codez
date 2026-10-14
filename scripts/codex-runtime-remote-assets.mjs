@@ -1,8 +1,13 @@
 import { join, resolve } from "node:path";
-import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { buildCodexBridge } from "./build-codex-bridge.mjs";
-import { resolveCodexTarget, sha256File, snapshotCodexBridge } from "./codex-runtime.mjs";
+import {
+  codexWorkspaceRoot,
+  resolveCodexTarget,
+  sha256File,
+  snapshotCodexBridge,
+} from "./codex-runtime.mjs";
 import {
   prepareCodexRemotePackage,
   buildCodexRemoteServer,
@@ -13,6 +18,7 @@ import {
   codexRemoteTargets,
   verifyCodexRemoteAssets,
 } from "./codex-runtime-remote-verify.mjs";
+import { createCodexRemoteIndex } from "./codex-runtime-remote-index.mjs";
 
 export async function ensureCodexRemoteAssets({ bridgePath } = {}) {
   bridgePath = await snapshotCodexBridge({ bridgePath: bridgePath ?? (await buildCodexBridge()) });
@@ -58,6 +64,12 @@ export async function prepareCodexRemoteAssets({
           publishComponents: true,
         }),
       );
+    }
+    if (targets.length === codexRemoteTargets.length) {
+      const { version } = JSON.parse(
+        await readFile(join(codexWorkspaceRoot, "package.json"), "utf8"),
+      );
+      await createCodexRemoteIndex({ root: outputRoot, version });
     }
     return results;
   } finally {

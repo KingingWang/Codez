@@ -2042,6 +2042,8 @@ const enUS: Record<string, string> = {
   "ssh.assetInstallMode.remote-download": "Download on remote server",
   "ssh.assetInstallModeDescription":
     "Remote server download reduces upload waiting, but the server must reach the Codez CDN and have download, extract, and checksum tools.",
+  "ssh.assetInstallModeDescription.codex":
+    "Remote download tries the release first. If the remote cannot reach it, the desktop downloads and uploads over SSH. Both methods require tar on the remote.",
   "ssh.password": "Password",
   "ssh.passwordPlaceholder": "Enter your SSH password",
   "ssh.privateKey": "Private key",

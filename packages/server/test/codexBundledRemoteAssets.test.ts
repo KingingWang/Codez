@@ -167,7 +167,9 @@ test(
     const server = join(release, "server/codez-server.cjs");
     for (const [file, expected] of Object.entries(contract.files)) {
       const materialized = file.startsWith("codex/")
-        ? file
+        ? ["codex/bridge.cjs", "codex/distribution.json"].includes(file)
+          ? file.replace("codex/", "codex-bridge/")
+          : file
         : file.startsWith("prebuilds/")
           ? file.replace("prebuilds/", "node-pty/")
           : file.startsWith("tools/")
@@ -227,28 +229,56 @@ test(
       },
       dispose() {},
     };
-    // 未打包的 tsx 使用 0.0.0-dev；只调整测试 manifest 的 appVersion，制品 bytes/SHA 保持原样。
-    const testRoot = join(temporary, "bundled");
+    // 未打包的 tsx 使用 0.0.0-dev；侧载清单固定这次测试身份，归档 bytes/SHA 不变。
+    const testRoot = join(temporary, "packaged-index");
+    const deployCache = join(temporary, "deploy-cache");
+    const releaseTag = `codez-local-${CODEZ_VERSION}`;
+    const imported = join(deployCache, "imports", releaseTag);
     const manifest = (await consumer.readManifest()).manifest;
     for (const component of manifest.components) {
-      const archive = join(testRoot, component.artifactPath);
+      const archive = join(imported, component.artifactPath);
       await mkdir(dirname(archive), { recursive: true });
       await copyFile(join(realBundledRoot!, component.artifactPath), archive);
     }
     const testManifest = join(testRoot, "releases", CODEZ_VERSION, `manifest-${target}.json`);
     await mkdir(dirname(testManifest), { recursive: true });
-    await writeFile(testManifest, JSON.stringify({ ...manifest, appVersion: CODEZ_VERSION }));
+    const manifestBytes = JSON.stringify({ ...manifest, appVersion: CODEZ_VERSION });
+    await writeFile(testManifest, manifestBytes);
+    const index = {
+      schemaVersion: 1,
+      appVersion: CODEZ_VERSION,
+      releaseTag,
+      manifests: {
+        "darwin-x64": "a".repeat(64),
+        "darwin-arm64": "b".repeat(64),
+        "linux-x64": createHash("sha256").update(manifestBytes).digest("hex"),
+        "linux-arm64": "c".repeat(64),
+      },
+      assets: Object.fromEntries(
+        manifest.components.map((component) => [
+          component.artifactPath,
+          `codex-remote-${target}-${component.id}-${component.sha256}.tar.gz`,
+        ]),
+      ),
+      files: {
+        [target]: Object.fromEntries(
+          Object.entries(contract.files).filter(([name]) => name.startsWith("codex/")),
+        ),
+      },
+    };
+    await writeFile(join(testRoot, "index.json"), JSON.stringify(index));
+    await writeFile(join(imported, "index.json"), JSON.stringify(index));
     assert.equal(
       await deployServer(
         backend,
         { platform: "linux", arch: "x64" },
         {
-          bundledRemoteAssetsDir: testRoot,
-          remoteCacheDir: join(temporary, "deploy-cache"),
+          packagedRemoteAssetsDir: testRoot,
+          remoteCacheDir: deployCache,
           force: true,
           deployLockMode: "caller-serialized",
           assetInstallMode: "remote-download",
-          // 即使旧设置仍带 CDN，bundled 也只能读取本地归档。
+          // 已校验的 sidecar 应避免对任何 CDN/GitHub 发请求。
           remoteCdnBaseUrl: "https://must-not-fetch.invalid",
           remoteAssetNetwork: {
             fetch: async () => {

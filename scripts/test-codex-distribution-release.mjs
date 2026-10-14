@@ -6,6 +6,11 @@ import { join } from "node:path";
 import test from "node:test";
 import { resolveCodexUpdaterAssetPlan } from "./codex-runtime-artifacts.mjs";
 import {
+  createCodexRemoteIndex,
+  remoteComponentAssetName,
+  remoteManifestAssetName,
+} from "./codex-runtime-remote-index.mjs";
+import {
   collectReleaseAssets,
   publishCodexRelease,
   releaseIdentity,
@@ -35,6 +40,17 @@ const targetAssetNames = (os, arch) => {
 const allAssetNames = Object.keys(platforms).flatMap((os) =>
   ["x64", "arm64"].flatMap((arch) => targetAssetNames(os, arch)),
 );
+const remoteTargets = ["darwin-x64", "darwin-arm64", "linux-x64", "linux-arm64"];
+const remoteMounts = (target) => ({
+  "server-bundle": "server",
+  "node-runtime": `node/${target}`,
+  "node-pty": `node-pty/${target}`,
+  "codex-native": "codex",
+  "codex-bridge": "codex-bridge",
+  ...(target.startsWith("darwin-")
+    ? { ripgrep: `tools/${target}/ripgrep` }
+    : Object.fromEntries(["bfs", "ripgrep", "ugrep"].map((id) => [id, `tools/${target}/${id}`]))),
+});
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const isCreate = (args) =>
   args[0] === "api" && args[2] === "POST" && String(args[3]).endsWith("/releases");
@@ -54,6 +70,44 @@ async function fixture(t) {
       }
       await writeFile(join(dir, `SHA256SUMS-${os}-${arch}.txt`), `${lines.join("\n")}\n`);
     }
+  const remoteRoot = join(root, "codex-remote-assets");
+  await mkdir(join(remoteRoot, "releases", "3.15.1"), { recursive: true });
+  for (const target of remoteTargets) {
+    const components = [];
+    for (const [id, mount] of Object.entries(remoteMounts(target))) {
+      const bytes = `component ${target}/${id}`;
+      const checksum = digest(bytes);
+      const artifactPath = `components/${target}/${id}/${checksum}.tar.gz`;
+      await mkdir(join(remoteRoot, "components", target, id), { recursive: true });
+      await writeFile(join(remoteRoot, artifactPath), bytes);
+      components.push({ id, version: "fixture", sha256: checksum, artifactPath, mount });
+    }
+    await writeFile(
+      join(remoteRoot, "releases", "3.15.1", `manifest-${target}.json`),
+      JSON.stringify({
+        schemaVersion: 1,
+        appVersion: "3.15.1",
+        platformArch: target,
+        components,
+      }),
+    );
+    await writeFile(
+      join(remoteRoot, "releases", "3.15.1", `runtime-${target}.json`),
+      JSON.stringify({
+        files: Object.fromEntries(
+          [
+            "bin/codex",
+            "bin/codex-code-mode-host",
+            "codex-package.json",
+            "codex-path/rg",
+            "bridge.cjs",
+            "distribution.json",
+          ].map((file) => [`codex/${file}`, digest(file)]),
+        ),
+      }),
+    );
+  }
+  await createCodexRemoteIndex({ root: remoteRoot, version: "3.15.1", env });
   return root;
 }
 
@@ -160,11 +214,22 @@ test("release identity rejects PRs, foreign repositories and non-main pushes", (
   ])
     assert.throws(() => releaseIdentity({ ...env, ...override }));
 });
-test("all six targets yield their exact installer plus updater asset sets", async (t) => {
+test("all six installers and four remote targets yield one exact release asset set", async (t) => {
   const assets = await collectReleaseAssets(await fixture(t));
   // mac: dmg+zip+2 blockmap+yml(5) ×2 arch；win: exe+blockmap+yml(3) ×2；linux: AppImage+deb+yml(3) ×2（AppImage 无 blockmap）。
-  assert.equal(assets.length, 22);
-  assert.deepEqual(assets.map((asset) => asset.name).sort(), [...allAssetNames].sort());
+  assert.equal(assets.length, 54);
+  assert.deepEqual(
+    assets.map((asset) => asset.name).sort(),
+    [
+      ...allAssetNames,
+      ...remoteTargets.flatMap((target) => [
+        remoteManifestAssetName(target),
+        ...Object.keys(remoteMounts(target)).map((id) =>
+          remoteComponentAssetName(target, id, digest(`component ${target}/${id}`)),
+        ),
+      ]),
+    ].sort(),
+  );
   // per-arch channel yml 的精确命名契约（含 linux arm64 的 -linux-arm64 双后缀）。
   for (const yml of [
     "x64-latest-mac.yml",
@@ -231,7 +296,7 @@ test("publish verifies all uploads before making release public and main Latest"
   const github = fakeGithub();
   await publishCodexRelease({ directory: await fixture(t), env, run: github.run });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 22);
+  assert.equal(github.state.release.assets.length, 54);
   assert.ok(github.state.calls.find(isCreate).includes(`target_commitish=${sha}`));
   assert.ok(github.state.calls.at(-1).includes("--latest=true"));
   assert.ok(github.state.calls.some((args) => args[1].endsWith("/releases/123")));
@@ -241,7 +306,7 @@ test("created draft identity survives release-list read-after-write lag", async 
   const github = fakeGithub({ hideCreated: true });
   await publishCodexRelease({ directory: await fixture(t), env, run: github.run });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 22);
+  assert.equal(github.state.release.assets.length, 54);
   // 身份必须来自创建接口的返回体；创建后不能再依赖一次可能滞后的列表查询。
   assert.equal(github.state.calls.filter(isList).length, 1);
 });
@@ -280,8 +345,14 @@ test("transient upload resets are retried and still fully verified", async (t) =
     retryDelay: async () => {},
   });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 22);
-  assert.equal(github.state.uploadAttempts, 24);
+  assert.equal(github.state.release.assets.length, 54);
+  assert.equal(github.state.uploadAttempts, 56);
+});
+
+test("missing or damaged remote sidecar aborts before opening a public release", async (t) => {
+  const root = await fixture(t);
+  await rm(join(root, "codex-remote-assets", "index.json"));
+  await assert.rejects(collectReleaseAssets(root));
 });
 
 test("older main and dispatched feature results do not become Latest", async (t) => {
