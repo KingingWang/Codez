@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile as nodeExecFile } from "node:child_process";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { access, readFile, rm, writeFile } from "node:fs/promises";
 import test from "node:test";
 import { promisify } from "node:util";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -13,6 +13,26 @@ import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { NewTaskButtonGroup } from "./NewTaskButtonGroup.js";
 
 const execFile = promisify(nodeExecFile);
+const browserCandidates =
+  process.platform === "darwin"
+    ? [
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+      ]
+    : ["/usr/bin/google-chrome", "/opt/google/chrome/chrome", "/usr/bin/chromium"];
+
+async function resolveBrowserExecutablePath(): Promise<string> {
+  for (const candidate of browserCandidates) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      // 探测当前宿主已安装的 Chromium 内核浏览器。
+    }
+  }
+  return "/usr/bin/google-chrome";
+}
+
 const platform = { onSettingsChanged: undefined } as unknown as IPlatformService;
 const services = {} as IServiceAccessor;
 
@@ -55,7 +75,7 @@ test("R1 split button keeps the default primary action and an explicit dropdown 
   assert.match(html, /<div[^>]*role="group"/);
   assert.match(
     html,
-    /<button[^>]*type="button"[^>]*data-testid="task-new-button"[^>]*>.*新建任务.*Ctrl\+N.*<\/button>/s,
+    /<button[^>]*type="button"[^>]*data-testid="task-new-button"[^>]*>.*新建任务.*(?:Ctrl\+N|⌘\s*N).*<\/button>/s,
   );
   assert.match(
     html,
@@ -127,7 +147,7 @@ test("clicking the secondary arrow never routes through the default creation act
     `--define:process.env.NODE_ENV="production"`,
   ]);
   const { chromium } = await import("playwright-core");
-  const browser = await chromium.launch({ executablePath: "/usr/bin/google-chrome" });
+  const browser = await chromium.launch({ executablePath: await resolveBrowserExecutablePath() });
   try {
     const page = await browser.newPage();
     const errors: string[] = [];

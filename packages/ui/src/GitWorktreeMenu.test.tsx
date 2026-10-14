@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile as nodeExecFile } from "node:child_process";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { access, readFile, rm, writeFile } from "node:fs/promises";
 import test from "node:test";
 import { promisify } from "node:util";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -12,6 +12,26 @@ import {
 } from "./GitWorktreeMenu.js";
 
 const execFile = promisify(nodeExecFile);
+const browserCandidates =
+  process.platform === "darwin"
+    ? [
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+      ]
+    : ["/usr/bin/google-chrome", "/opt/google/chrome/chrome", "/usr/bin/chromium"];
+
+async function resolveBrowserExecutablePath(): Promise<string> {
+  for (const candidate of browserCandidates) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      // 探测当前宿主已安装的 Chromium 内核浏览器。
+    }
+  }
+  return "/usr/bin/google-chrome";
+}
+
 const value: GitWorktreeMenuValue = {
   workspacePath: "/project",
   workspaceIdentity: "remote-a",
@@ -115,7 +135,7 @@ test("创建先关闭分支菜单；只读展开不创建，手机仅能切回�
       "--alias:react-dom=react-dom",
       `--define:process.env.NODE_ENV="production"`,
     ]);
-    browser = await chromium.launch({ executablePath: "/usr/bin/google-chrome" });
+    browser = await chromium.launch({ executablePath: await resolveBrowserExecutablePath() });
     const page = await browser.newPage();
     const actions: string[] = [];
     const errors: string[] = [];

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import { discoverNodeUnitTests, isNodeTestFile } from "./unit-test-frameworks.mjs";
 
@@ -68,6 +68,13 @@ function createCleanGitEnv() {
   // Vitest 及单测中的临时 Git 仓库不应继承这些 local env，否则会误命中当前仓库。
   for (const name of collectGitLocalEnvNames()) {
     delete env[name];
+  }
+
+  // macOS 默认 TMPDIR (/var/folders/...) 路径较长且为 /private/var 的符号链接：
+  // 1) Unix domain socket 测试拼接长文件名会超过 SUN_LEN(104 bytes) 导致 EINVAL；
+  // 2) git worktree / child process 返回 realpath 时会与软链路径产生前缀不一致。
+  if (process.platform === "darwin" && existsSync("/tmp")) {
+    env.TMPDIR = realpathSync("/tmp");
   }
 
   return env;
