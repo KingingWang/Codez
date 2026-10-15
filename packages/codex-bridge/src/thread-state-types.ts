@@ -1,3 +1,4 @@
+import type { NativeTurnUsageAccumulator } from "./bridge-snapshot-usage.js";
 import type { JsonObject } from "./json.js";
 import type { NativeRetryState } from "./native-retry-status.js";
 import { CodexRpcError } from "./rpc-errors.js";
@@ -34,6 +35,6 @@ export interface ThreadProjectionState {
   subagents?: { revision: number; semantic: string };
   /** 辅助对话 child 的继承裁剪边界（spec: codex-selection-side-chat）；load 时按父线程求交重建。 */
   sideChat?: SelectionSideChatBoundary;
-  /** 按 turnId 记录的原生 tokenUsage.last 快照，用于投影每轮 turnUsage。 */
-  turnTokenUsage?: Record<string, unknown>;
+  /** 按 turnId 记录的单轮原生 tokenUsage 累计快照，用于投影每轮 turnUsage。 */
+  turnTokenUsage?: Record<string, NativeTurnUsageAccumulator>;
 }

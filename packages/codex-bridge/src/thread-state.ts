@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { CodexNotification, CodexRpcPort } from "./contract.js";
+import { accumulateNativeTurnUsage } from "./bridge-snapshot-usage.js";
 import { array, object, string, type JsonObject } from "./json.js";
 import { rememberThreadMode } from "./command-input.js";
 import { sameExecutionPath } from "./execution-path.js";
@@ -295,7 +296,13 @@ export class ThreadStateStore {
           : (turns.findLast((candidate) => candidate.status === "inProgress")?.id ??
             turns.at(-1)?.id);
       if (typeof targetTurnId === "string" && targetTurnId.length > 0) {
-        state.turnTokenUsage = { ...state.turnTokenUsage, [targetTurnId]: params.tokenUsage };
+        const accumulated = accumulateNativeTurnUsage(
+          state.turnTokenUsage?.[targetTurnId],
+          params.tokenUsage,
+        );
+        if (accumulated) {
+          state.turnTokenUsage = { ...state.turnTokenUsage, [targetTurnId]: accumulated };
+        }
       }
     } else if (event.method === "turn/started" || event.method === "turn/completed") {
       const turn = object(params.turn);

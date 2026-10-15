@@ -57,6 +57,122 @@ test("native token usage remains sparse and unavailable fields never become zero
   });
 });
 
+test("multi-step turn accumulates tokenUsage across requests and ignores duplicate notifications", async () => {
+  const thread = threadFixture();
+  const turnId = thread.turns[0]!.id;
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+
+  // 第一步模型请求（假设之前历史累计已有 input: 1000, output: 100, total: 1100）
+  await store.apply({
+    method: "thread/tokenUsage/updated",
+    params: {
+      threadId: thread.id,
+      turnId,
+      tokenUsage: {
+        total: {
+          inputTokens: 11_000,
+          cachedInputTokens: 8_000,
+          cacheWriteInputTokens: 2_000,
+          outputTokens: 300,
+          reasoningOutputTokens: 50,
+          totalTokens: 11_300,
+        },
+        last: {
+          inputTokens: 10_000,
+          cachedInputTokens: 8_000,
+          cacheWriteInputTokens: 2_000,
+          outputTokens: 200,
+          reasoningOutputTokens: 50,
+          totalTokens: 10_200,
+        },
+        modelContextWindow: 200_000,
+      },
+    },
+  });
+  // 重复推送完全相同的 tokenUsage 通知（幂等验证）
+  await store.apply({
+    method: "thread/tokenUsage/updated",
+    params: {
+      threadId: thread.id,
+      turnId,
+      tokenUsage: {
+        total: {
+          inputTokens: 11_000,
+          cachedInputTokens: 8_000,
+          cacheWriteInputTokens: 2_000,
+          outputTokens: 300,
+          reasoningOutputTokens: 50,
+          totalTokens: 11_300,
+        },
+        last: {
+          inputTokens: 10_000,
+          cachedInputTokens: 8_000,
+          cacheWriteInputTokens: 2_000,
+          outputTokens: 200,
+          reasoningOutputTokens: 50,
+          totalTokens: 10_200,
+        },
+        modelContextWindow: 200_000,
+      },
+    },
+  });
+  // 同一轮 turn 内的第二步模型请求（例如 tool call 返回后继续生成）
+  await store.apply({
+    method: "thread/tokenUsage/updated",
+    params: {
+      threadId: thread.id,
+      turnId,
+      tokenUsage: {
+        total: {
+          inputTokens: 23_000,
+          cachedInputTokens: 19_500,
+          cacheWriteInputTokens: 2_500,
+          outputTokens: 450,
+          reasoningOutputTokens: 80,
+          totalTokens: 23_450,
+        },
+        last: {
+          inputTokens: 12_000,
+          cachedInputTokens: 11_500,
+          cacheWriteInputTokens: 500,
+          outputTokens: 150,
+          reasoningOutputTokens: 30,
+          totalTokens: 12_150,
+        },
+        modelContextWindow: 200_000,
+      },
+    },
+  });
+
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+  );
+  const snapshot = await snapshots.conversation(thread.id);
+  const header = snapshot.rows.window.find((entry) => entry.kind === "turnHeader");
+  assert.deepEqual(header?.turnUsage, {
+    inputTokens: 22_000,
+    outputTokens: 350,
+    totalTokens: 22_350,
+    cacheReadTokens: 19_500,
+    cacheWriteTokens: 2_500,
+    reasoningTokens: 80,
+  });
+  assert.equal(header?.outputTokens, 350);
+  // contextWindow.usedTokens 仍保持最后一次请求的上下文水位（12,150），而会话累计是 23,000 / 450
+  assert.deepEqual(snapshot.usage.codexObserved, {
+    inputTokens: 23_000,
+    outputTokens: 450,
+    cacheReadTokens: 19_500,
+    cacheWriteTokens: 2_500,
+    contextWindow: { usedTokens: 12_150, maxTokens: 200_000 },
+  });
+});
+
 test("history reload clearing turns mid-encode never crashes the snapshot", async () => {
   // 回归：editUserQuery/compact 触发 reloadAfterHistoryChange 清空 state.thread.turns，
   // 与快照编码里的 attachments 投影 await 交错；行来自编码前拷贝的 presentationThread，
