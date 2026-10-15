@@ -414,6 +414,8 @@ Concurrent Desktop downloads and materializations deduplicate in-flight archive
 fetches and publish verified archives atomically; one canceled caller must not
 abort a shared download while another caller is still waiting, and a canceled
 or partial copy cannot appear as a completed cache entry.
+A caller that arrives after every waiter of a shared download has canceled must
+start a fresh download instead of joining the aborted in-flight task.
 
 ```mermaid
 sequenceDiagram

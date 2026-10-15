@@ -232,6 +232,10 @@ async function downloadAndCacheComponent(options: {
   const { cached, component } = options;
   const waiter = Symbol(component.id);
   let task = inFlightDownloads.get(cached);
+  // 修复依据：所有等待者取消后任务 controller 已中止，但清理临时文件的 fs 操作
+  // 尚未完成，条目仍留在 Map 中；此时加入只会继承注定的 AbortError
+  // （CI remote-assets 曾因此抖动失败）。已中止的共享下载不可复用，必须另起新任务。
+  if (task?.controller.signal.aborted) task = undefined;
   if (!task) {
     const controller = new AbortController();
     const waiters = new Set<symbol>();
@@ -248,6 +252,9 @@ async function downloadAndCacheComponent(options: {
         );
         if (!response.ok || !response.body)
           throw new Error(`Codex remote release download HTTP ${response.status}: ${component.id}`);
+        // 等待 fetch 期间所有等待者可能已取消并中止共享下载；直接以 AbortError
+        // 结算，避免给 pipeline 传入已中止的 signal 走异常拆解路径。
+        controller.signal.throwIfAborted();
         let bytes = 0;
         await pipeline(
           Readable.fromWeb(response.body),
