@@ -567,15 +567,26 @@ function viewToOrderInput(params: { view: CodezGroupedTaskView }): CodezGroupedT
  * 若后续收到点击脏行的反馈，再考虑给缓存条目加 TTL 或降级为占位，而不是扩大这个窗口。
  */
 const GROUPED_VIEW_CACHE_MAX_KEYS = 8;
-const groupedViewCacheBySignature = new Map<string, CodezGroupedTaskView>();
+const groupedViewCacheBySignature = new Map<
+  string,
+  { membershipVersion: number; view: CodezGroupedTaskView }
+>();
 
-function readCachedGroupedView(signature: string): CodezGroupedTaskView | undefined {
-  return groupedViewCacheBySignature.get(signature);
+function readCachedGroupedView(
+  signature: string,
+  membershipVersion: number,
+): CodezGroupedTaskView | undefined {
+  const cached = groupedViewCacheBySignature.get(signature);
+  return cached && cached.membershipVersion === membershipVersion ? cached.view : undefined;
 }
 
-function writeCachedGroupedView(signature: string, view: CodezGroupedTaskView): void {
+function writeCachedGroupedView(
+  signature: string,
+  membershipVersion: number,
+  view: CodezGroupedTaskView,
+): void {
   groupedViewCacheBySignature.delete(signature);
-  groupedViewCacheBySignature.set(signature, view);
+  groupedViewCacheBySignature.set(signature, { membershipVersion, view });
   while (groupedViewCacheBySignature.size > GROUPED_VIEW_CACHE_MAX_KEYS) {
     const oldestKey = groupedViewCacheBySignature.keys().next().value;
     if (oldestKey === undefined) break;
@@ -634,14 +645,16 @@ export function useGroupedTaskView(params: { workspaceTabs: WorkspaceTabState[] 
       })),
     [scopes],
   );
+  // pin/archive 归属版本：mutation 后 bump，grouped 视图（非 pinned 非 archived）随之权威 re-filter。
+  const membershipVersion = useTaskListMembershipVersion();
   const [view, setView] = useState<CodezGroupedTaskView>(
-    () => readCachedGroupedView(localWorkspaceScopeSignature) ?? { nodes: [] },
+    () => readCachedGroupedView(localWorkspaceScopeSignature, membershipVersion) ?? { nodes: [] },
   );
   const viewRef = useRef(view);
   viewRef.current = view;
   const [loading, setLoading] = useState(false);
   const [remoteDataInitialized, setRemoteDataInitialized] = useState(
-    () => readCachedGroupedView(localWorkspaceScopeSignature) !== undefined,
+    () => readCachedGroupedView(localWorkspaceScopeSignature, membershipVersion) !== undefined,
   );
   const [saving, setSaving] = useState(false);
   const requestIdRef = useRef(0);
@@ -670,7 +683,7 @@ export function useGroupedTaskView(params: { workspaceTabs: WorkspaceTabState[] 
   // 缓存命中即视为已初始化：重挂载后 Controller 列表会重新进入 loading，若不把闩锁一起
   // 从缓存种下，第一帧仍会关门闪一下。
   const initializedLatchRef = useRef(
-    readCachedGroupedView(localWorkspaceScopeSignature) !== undefined,
+    readCachedGroupedView(localWorkspaceScopeSignature, membershipVersion) !== undefined,
   );
   const initialized = isGroupedTaskViewInitialized({
     remoteDataInitialized,
@@ -684,8 +697,6 @@ export function useGroupedTaskView(params: { workspaceTabs: WorkspaceTabState[] 
   initializedLatchRef.current = initialized;
   const sessionsIndexItemsRef = useRef(sessionsIndexItems);
   sessionsIndexItemsRef.current = sessionsIndexItems;
-  // pin/archive 归属版本：mutation 后 bump，grouped 视图（非 pinned 非 archived）随之权威 re-filter。
-  const membershipVersion = useTaskListMembershipVersion();
   const optimisticTaskOverlayByWorkspaceKey = useWorkspaceTaskOptimisticOverlayByWorkspaceKey(
     params.workspaceTabs,
   );
@@ -782,7 +793,7 @@ export function useGroupedTaskView(params: { workspaceTabs: WorkspaceTabState[] 
         // 内容没变时复用旧视图/旧节点引用，setState 同引用直接 bail，避免整列表无效重渲染。
         // 用 viewRef 读当前视图而不是在 updater 里做副作用：StrictMode 会重复调用 updater。
         const stabilizedView = stabilizeGroupedView(viewRef.current, nextView);
-        writeCachedGroupedView(localWorkspaceScopeSignature, stabilizedView);
+        writeCachedGroupedView(localWorkspaceScopeSignature, membershipVersion, stabilizedView);
         setView(stabilizedView);
       }
     } catch (error) {
@@ -879,12 +890,18 @@ export function useGroupedTaskView(params: { workspaceTabs: WorkspaceTabState[] 
   useEffect(() => {
     const disposables = scopes.map((scope) =>
       services.codezTaskService.onDynamicWorkspaceEvent(scope)((event) => {
-        if (event.type !== "workspace_task_list_changed" || event.reason !== "task_created") {
+        if (
+          event.type !== "workspace_task_list_changed" ||
+          (event.reason !== "task_created" &&
+            event.reason !== "task_archived" &&
+            event.reason !== "task_unarchived" &&
+            event.reason !== "task_deleted")
+        ) {
           return;
         }
         // sessions-index 可见帧可能早于 SQLite grouped sort_order 写入。
-        // task_created 是首次排序已经提交的边界，必须丢弃旧 structure 缓存并重拉；
-        // 否则运行中会按缺序节点补到末尾，只有重启重建缓存后才恢复。
+        // task_created / 归档 / 恢复 / 删除都需要丢弃旧 structure/membership 缓存并重拉，
+        // 否则归档恢复或删除后切回分组视图会沿用陈旧缓存。
         invalidateRemoteData();
         void refreshRef.current();
       }),

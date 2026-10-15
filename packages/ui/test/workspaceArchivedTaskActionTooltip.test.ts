@@ -25,4 +25,13 @@ describe("WorkspaceArchivedTasksFlatSection action tooltips", () => {
     expect(englishLocaleSource).toContain('"taskList.unarchive": "Unarchive task"');
     expect(englishLocaleSource).toContain('"taskList.delete": "Delete task"');
   });
+
+  it("取消归档与单条删除均推进 membershipVersion 并刷新归档列表", () => {
+    expect(archivedSectionSource).toMatch(
+      /\.unarchiveTask\([\s\S]*?bumpTaskListMembershipVersion\(\)[\s\S]*?void refresh\(\)/,
+    );
+    expect(archivedSectionSource).toMatch(
+      /deleteArchivedTask\(deleteParams\)[\s\S]*?removeTaskFromTaskCaches\([\s\S]*?bumpTaskListMembershipVersion\(\)[\s\S]*?void refresh\(\)/,
+    );
+  });
 });

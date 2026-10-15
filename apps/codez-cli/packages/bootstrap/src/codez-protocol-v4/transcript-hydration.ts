@@ -1406,6 +1406,14 @@ interface TurnOutputCollection {
   toolCallCount: number;
   historyRoundCount: number;
   turnEndedAtMs: number;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens?: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    reasoningTokens?: number;
+  };
 }
 
 /** 收集一轮的 assistant 输出（直到下一个轮边界）；普通轮与 preface 轮共用。 */
@@ -1431,6 +1439,12 @@ function collectTurnOutput(options: {
   let toolCallCount = 0;
   let historyRoundCount = 0;
   let turnEndedAtMs = options.turnStartedAtMs;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let totalTokens = 0;
+  let cacheReadTokens = 0;
+  let cacheWriteTokens = 0;
+  let reasoningTokens = 0;
   while (index < messages.length && !isTurnBoundaryStarter(messages[index]!)) {
     const message = messages[index]!;
     if (isProviderContextOnlyAssistant(message)) {
@@ -1521,6 +1535,23 @@ function collectTurnOutput(options: {
     // 新 transcript 在最终 assistant anchor 固化精确值；旧 transcript 才按独立
     // assistant history 条目做兼容计数。
     historyRoundCount = message.info.anchor?.historyRoundCount ?? historyRoundCount + 1;
+    if (!message.info.summary && message.info.tokens) {
+      const msgInput = Math.max(0, Math.trunc(message.info.tokens.input || 0));
+      const msgOutput = Math.max(0, Math.trunc(message.info.tokens.output || 0));
+      const msgReasoning = Math.max(0, Math.trunc(message.info.tokens.reasoning || 0));
+      const msgCacheRead = Math.max(0, Math.trunc(message.info.tokens.cache?.read || 0));
+      const msgCacheWrite = Math.max(0, Math.trunc(message.info.tokens.cache?.write || 0));
+      const msgTotal =
+        typeof message.info.tokens.total === "number" && message.info.tokens.total > 0
+          ? Math.trunc(message.info.tokens.total)
+          : msgInput + msgOutput + msgReasoning;
+      inputTokens += msgInput;
+      outputTokens += msgOutput;
+      reasoningTokens += msgReasoning;
+      cacheReadTokens += msgCacheRead;
+      cacheWriteTokens += msgCacheWrite;
+      totalTokens += msgTotal;
+    }
     const messageEnd = messageEndAtMs(message);
     if (messageEnd !== undefined) {
       turnEndedAtMs = Math.max(turnEndedAtMs, messageEnd);
@@ -1582,6 +1613,14 @@ function collectTurnOutput(options: {
     toolCallCount,
     historyRoundCount,
     turnEndedAtMs,
+    usage: {
+      inputTokens,
+      outputTokens,
+      ...(totalTokens > 0 ? { totalTokens } : {}),
+      cacheReadTokens,
+      cacheWriteTokens,
+      ...(reasoningTokens > 0 ? { reasoningTokens } : {}),
+    },
   };
 }
 
@@ -1699,6 +1738,7 @@ export function synthesizeEventsFromMessages(
     historyRoundCount: number;
     turnStartedAtMs: number;
     turnEndedAtMs: number;
+    usage: TurnOutputCollection["usage"];
   }): void => {
     if (input.failure) {
       // provider 首字前失败只持久化在 assistant.info.error，旧 cold 路径
@@ -1721,12 +1761,7 @@ export function synthesizeEventsFromMessages(
         // 冷恢复曾把合成事件的窗口固定成 20 万，覆盖同一模型在
         // workspace provider registry 中的 1M 能力；这里沿用调用方解析出的当前模型真值。
         contextWindow,
-        usage: {
-          inputTokens: 0,
-          outputTokens: 0,
-          cacheReadTokens: 0,
-          cacheWriteTokens: 0,
-        },
+        usage: input.usage,
         ...(input.fileChanges ? { fileChanges: input.fileChanges } : {}),
       },
       input.turnId,
@@ -1834,6 +1869,7 @@ export function synthesizeEventsFromMessages(
         historyRoundCount: collected.historyRoundCount,
         turnStartedAtMs,
         turnEndedAtMs: collected.turnEndedAtMs,
+        usage: collected.usage,
       });
       continue;
     }
@@ -1892,6 +1928,7 @@ export function synthesizeEventsFromMessages(
           historyRoundCount: collected.historyRoundCount,
           turnStartedAtMs,
           turnEndedAtMs: collected.turnEndedAtMs,
+          usage: collected.usage,
         });
         continue;
       }
@@ -1936,6 +1973,7 @@ export function synthesizeEventsFromMessages(
         historyRoundCount: collected.historyRoundCount,
         turnStartedAtMs,
         turnEndedAtMs: collected.turnEndedAtMs,
+        usage: collected.usage,
       });
       continue;
     }
@@ -1997,6 +2035,7 @@ export function synthesizeEventsFromMessages(
       historyRoundCount: collected.historyRoundCount,
       turnStartedAtMs,
       turnEndedAtMs: collected.turnEndedAtMs,
+      usage: collected.usage,
     });
   }
 

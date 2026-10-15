@@ -261,6 +261,7 @@ export interface SessionUsageSeed {
 interface ContextWindowProjectionState {
   maxTokens: number | null;
   touchedByEvent: boolean;
+  usedTouchedByNonHydrationEvent: boolean;
   usedTokens: number;
 }
 
@@ -507,6 +508,7 @@ export class ProductProjection {
   private contextWindowState: ContextWindowProjectionState = {
     maxTokens: null,
     touchedByEvent: false,
+    usedTouchedByNonHydrationEvent: false,
     usedTokens: 0,
   };
   // modelChange marker 在「下一个 turn 开始时」生成。
@@ -679,7 +681,7 @@ export class ProductProjection {
       this.contextWindowState.usedTokens = currentContextWindow.usedTokens;
     }
     // 未知容量也有内部用量事实；迟到的恢复种子不能覆盖真实 ModelComplete/Compact 水位。
-    if (this.contextWindowState.usedTokens > 0) {
+    if (this.contextWindowState.usedTouchedByNonHydrationEvent) {
       return;
     }
     const seededContextWindow = seed.contextWindow;
@@ -703,6 +705,10 @@ export class ProductProjection {
             ? {
                 ...currentContextWindow,
                 usedTokens: seededContextWindow.usedTokens,
+                ...(seededContextWindow.cache ? { cache: seededContextWindow.cache } : {}),
+                ...(seededContextWindow.breakdown
+                  ? { breakdown: seededContextWindow.breakdown }
+                  : {}),
               }
             : null,
           cumulative,
@@ -4855,6 +4861,21 @@ export class ProductProjection {
             }
           : {};
       if (isMainTurn || "fileChanges" in fileChanges) {
+        const prevTurnUsage = headerRow.turnUsage;
+        const nextInputTokens = (prevTurnUsage?.inputTokens ?? 0) + (usage.inputTokens ?? 0);
+        const nextOutputTokens = (headerRow.outputTokens ?? 0) + (usage.outputTokens ?? 0);
+        const nextCacheReadTokens =
+          (prevTurnUsage?.cacheReadTokens ?? 0) + (usage.cacheReadTokens ?? 0);
+        const nextCacheWriteTokens =
+          (prevTurnUsage?.cacheWriteTokens ?? 0) + (usage.cacheWriteTokens ?? 0);
+        const nextReasoningTokens =
+          (prevTurnUsage?.reasoningTokens ?? 0) + (usage.reasoningTokens ?? 0);
+        const stepTotalTokens =
+          usage.totalTokens ??
+          (usage.inputTokens ?? nextCacheReadTokens + nextCacheWriteTokens) +
+            (usage.outputTokens ?? 0) +
+            (usage.reasoningTokens ?? 0);
+        const nextTotalTokens = (prevTurnUsage?.totalTokens ?? 0) + stepTotalTokens;
         deltas.push({
           op: "row.upserted",
           row: {
@@ -4863,15 +4884,31 @@ export class ProductProjection {
             // Bug 根因：Renderer 观察 running 快照的时机不可靠，continuous 可合并更新，
             // replayable 也可能首次恢复即终态。单 Turn token 必须在权威事件投影中累计。
             ...(isMainTurn
-              ? { outputTokens: (headerRow.outputTokens ?? 0) + (usage.outputTokens ?? 0) }
+              ? {
+                  outputTokens: nextOutputTokens,
+                  turnUsage: {
+                    inputTokens: nextInputTokens,
+                    outputTokens: nextOutputTokens,
+                    totalTokens: nextTotalTokens,
+                    cacheReadTokens: nextCacheReadTokens,
+                    cacheWriteTokens: nextCacheWriteTokens,
+                    ...(nextReasoningTokens > 0 ? { reasoningTokens: nextReasoningTokens } : {}),
+                  },
+                }
               : {}),
           },
         });
       }
     }
     if (!isMainTurn) return [...deltas, ...retryClearDeltas];
-    const usedTokens = getModelUsageContextTokens(usage) ?? 0;
-    this.contextWindowState.usedTokens = usedTokens;
+    const usedTokens = getModelUsageContextTokens(usage);
+    if (usedTokens !== undefined) {
+      this.contextWindowState.usedTokens = usedTokens;
+      if (event.traceId !== HYDRATION_TRACE_ID) {
+        this.contextWindowState.usedTouchedByNonHydrationEvent = true;
+      }
+    }
+    const resolvedUsedTokens = this.contextWindowState.usedTokens;
     const maxTokens = payload.contextWindow ?? this.contextWindowState.maxTokens;
     const cumulative = this.snapshot.usage.cumulative;
     deltas.push({
@@ -4884,7 +4921,7 @@ export class ProductProjection {
             maxTokens === null
               ? null
               : {
-                  usedTokens,
+                  usedTokens: resolvedUsedTokens,
                   maxTokens,
                   autoCompactThresholdTokens:
                     this.snapshot.usage.contextWindow?.autoCompactThresholdTokens ?? null,
@@ -5020,6 +5057,9 @@ export class ProductProjection {
     // compact 成功 → context 水位立即回落（usage.contextWindow 更新）。
     if (status === "success" && tokensAfter !== undefined) {
       this.contextWindowState.usedTokens = tokensAfter;
+      if (event.traceId !== HYDRATION_TRACE_ID) {
+        this.contextWindowState.usedTouchedByNonHydrationEvent = true;
+      }
       const maxTokens =
         this.snapshot.usage.contextWindow?.maxTokens ?? this.contextWindowState.maxTokens;
       deltas.push({

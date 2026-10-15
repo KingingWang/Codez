@@ -27,6 +27,18 @@ test("legacy dense usage remains available when no codex observation exists", ()
       contextWindow: { usedTokens: 10, maxTokens: 100, autoCompactThresholdTokens: null },
       cumulative: { inputTokens: 1, outputTokens: 2, cacheReadTokens: 3, cacheWriteTokens: 4 },
     }),
-    { used: 10, size: 100 },
+    {
+      used: 10,
+      size: 100,
+      cache: { hitRate: 1 },
+      cumulative: {
+        inputTokens: 1,
+        outputTokens: 2,
+        totalTokens: 3,
+        cacheReadTokens: 3,
+        cacheWriteTokens: 4,
+        hitRate: 1,
+      },
+    },
   );
 });

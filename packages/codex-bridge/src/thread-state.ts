@@ -286,9 +286,18 @@ export class ThreadStateStore {
       if (typeof settings.approvalsReviewer === "string")
         state.thread.approvalsReviewer = settings.approvalsReviewer;
       state.thread.collaborationMode = settings.collaborationMode;
-    } else if (event.method === "thread/tokenUsage/updated")
+    } else if (event.method === "thread/tokenUsage/updated") {
       state.thread.tokenUsage = params.tokenUsage;
-    else if (event.method === "turn/started" || event.method === "turn/completed") {
+      const turns = array(state.thread.turns).map(object);
+      const targetTurnId =
+        typeof params.turnId === "string"
+          ? params.turnId
+          : (turns.findLast((candidate) => candidate.status === "inProgress")?.id ??
+            turns.at(-1)?.id);
+      if (typeof targetTurnId === "string" && targetTurnId.length > 0) {
+        state.turnTokenUsage = { ...state.turnTokenUsage, [targetTurnId]: params.tokenUsage };
+      }
+    } else if (event.method === "turn/started" || event.method === "turn/completed") {
       const turn = object(params.turn);
       if (
         state.apiRetry &&

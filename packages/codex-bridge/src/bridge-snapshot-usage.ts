@@ -1,7 +1,41 @@
-import type { ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
+import type { ConversationSnapshot, TurnTokenUsage } from "@codez/shared/codez-protocol-v4";
 
 function safeUsageCount(value: unknown): number | undefined {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+}
+
+/** 原生 tokenUsage → 单轮 turnUsage 的稀疏事实投影。 */
+export function sparseNativeTurnUsage(value: unknown): TurnTokenUsage | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const usage = value as Record<string, unknown>;
+  const last =
+    typeof usage.last === "object" && usage.last !== null
+      ? (usage.last as Record<string, unknown>)
+      : usage;
+  const inputTokens = safeUsageCount(last.inputTokens);
+  const outputTokens = safeUsageCount(last.outputTokens);
+  const totalTokens = safeUsageCount(last.totalTokens);
+  const cacheReadTokens = safeUsageCount(last.cachedInputTokens ?? last.cacheReadTokens);
+  const cacheWriteTokens = safeUsageCount(last.cacheWriteInputTokens ?? last.cacheWriteTokens);
+  const reasoningTokens = safeUsageCount(last.reasoningOutputTokens ?? last.reasoningTokens);
+  if (
+    inputTokens === undefined &&
+    outputTokens === undefined &&
+    totalTokens === undefined &&
+    cacheReadTokens === undefined &&
+    cacheWriteTokens === undefined &&
+    reasoningTokens === undefined
+  ) {
+    return undefined;
+  }
+  return {
+    ...(inputTokens !== undefined ? { inputTokens } : {}),
+    ...(outputTokens !== undefined ? { outputTokens } : {}),
+    ...(totalTokens !== undefined ? { totalTokens } : {}),
+    ...(cacheReadTokens !== undefined ? { cacheReadTokens } : {}),
+    ...(cacheWriteTokens !== undefined ? { cacheWriteTokens } : {}),
+    ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
+  };
 }
 
 /** 原生 tokenUsage → V4 usage 的稀疏事实投影（Batch A/B 边界）。 */

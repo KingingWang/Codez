@@ -16,6 +16,7 @@ import type { WorkspaceTabState } from "@/store/tabStore.js";
 import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
 import { applyTaskQueryCacheMutation } from "@/store/taskQueryCacheStore.js";
 import { removeTaskFromTaskCaches } from "@/lib/taskListMetaSync.js";
+import { bumpTaskListMembershipVersion } from "@/v4/taskListMembershipVersion.js";
 import { TaskListRemoteSyncHint } from "@/TaskListRemoteSyncHint.js";
 import { TaskListLoadingHint } from "@/TaskListLoadingHint.js";
 import { buildWorkspaceServiceLookup } from "@/lib/workspaceServiceResolver.js";
@@ -108,8 +109,14 @@ export function WorkspaceArchivedTasksFlatSection({
             buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity),
           )?.services.codezTaskService,
         }))}
-        onDeleted={removeTaskFromTaskCaches}
-        onRefresh={refresh}
+        onDeleted={(target) => {
+          removeTaskFromTaskCaches(target);
+          bumpTaskListMembershipVersion();
+        }}
+        onRefresh={async () => {
+          bumpTaskListMembershipVersion();
+          await refresh();
+        }}
       />
       {items.length === 0 ? (
         loading ? (
@@ -229,12 +236,14 @@ export function WorkspaceArchivedTasksFlatSection({
                         ...(task.workspaceIdentity ? { workspaceIdentity: task.workspaceIdentity } : {}),
                       })
                       .then((meta) => {
+                        bumpTaskListMembershipVersion();
                         applyTaskQueryCacheMutation({
                           previousTask: task,
                           nextTask: meta,
                           previousState: { pinned: false, archived: true },
                           nextState: { pinned: false, archived: false },
                         });
+                        void refresh();
                       })
                       .catch((error) => {
                         logger.error(
@@ -287,13 +296,18 @@ export function WorkspaceArchivedTasksFlatSection({
 
                         setDeletingTaskKeys((current) => new Set(current).add(taskKey));
                         try {
-                          await services.codezTaskService.deleteTask({
+                          const deleteParams = {
                             taskId: task.taskId,
                             workspacePath: task.workspacePath,
                             ...(task.workspaceIdentity
                               ? { workspaceIdentity: task.workspaceIdentity }
                               : {}),
-                          });
+                          };
+                          if (typeof services.codezTaskService.deleteArchivedTask === "function") {
+                            await services.codezTaskService.deleteArchivedTask(deleteParams);
+                          } else {
+                            await services.codezTaskService.deleteTask(deleteParams);
+                          }
                           // Bugfix: 删除只发生在归档列表，不能把它当成“取消归档”写回普通列表。
                           // 这里直接从 task caches 移除目标项，避免失效整表 query cache 导致列表闪空。
                           removeTaskFromTaskCaches({
@@ -301,6 +315,8 @@ export function WorkspaceArchivedTasksFlatSection({
                             workspaceIdentity: task.workspaceIdentity,
                             taskId: task.taskId,
                           });
+                          bumpTaskListMembershipVersion();
+                          void refresh();
                         } catch (error) {
                           logger.error(
                             "[WorkspaceArchivedTasksFlatSection] 删除归档 task 失败:",

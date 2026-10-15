@@ -51,6 +51,44 @@ test("native token usage remains sparse and unavailable fields never become zero
   // must use codexObserved; missing output/cache-write are unavailable, not measured zero.
   assert.equal("outputTokens" in snapshot.usage.codexObserved!, false);
   assert.equal("cacheWriteTokens" in snapshot.usage.codexObserved!, false);
+  const header = snapshot.rows.window.find((entry) => entry.kind === "turnHeader");
+  assert.deepEqual(header?.turnUsage, {
+    totalTokens: 8,
+  });
+});
+
+test("history reload clearing turns mid-encode never crashes the snapshot", async () => {
+  // 回归：editUserQuery/compact 触发 reloadAfterHistoryChange 清空 state.thread.turns，
+  // 与快照编码里的 attachments 投影 await 交错；行来自编码前拷贝的 presentationThread，
+  // turnHeader 仍在而 turns 已空。旧实现对此 object(undefined) 抛 "Expected a JSON object"
+  // 并使整个 bridge 连接崩溃（冒烟表现为 Codex connection closed by client）。
+  const thread = threadFixture();
+  thread.turns[0]!.items[0] = {
+    type: "userMessage",
+    id: "user-1",
+    content: [image("attached")],
+  } as never;
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  const state = store.markStarted(thread);
+  const attachments = {
+    async findNativeAttachment() {
+      // 模拟 reloadAfterHistoryChange 在编码中途清空 turns。
+      state.thread.turns = [];
+      return undefined;
+    },
+  } as unknown as AttachmentStore;
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+    attachments,
+  );
+  const snapshot = await snapshots.conversation(thread.id);
+
+  assert.deepEqual(state.thread.turns, []);
+  assert.ok(snapshot.rows.window.some((row) => row.kind === "turnHeader"));
 });
 
 test("completed native file add advertises real counts and a guarded rewind row action", async () => {

@@ -25,6 +25,7 @@ import type {
 import type {
   CommandAck,
   ConversationRowTarget,
+  SessionUsageState,
   TurnHeaderRow,
   V4ConversationFileChangesResult,
   V4ConversationFileRewindPreviewResult,
@@ -45,6 +46,8 @@ export interface ConversationRowRenderContext {
   workspaceRemoteSessionId?: string;
   /** SessionPane 从目标 Host 读取的同一份模型选择 View。 */
   modelSelectionView?: ModelSelectionView | null;
+  /** 当前会话的权威 usage 快照，供每轮状态栏悬浮展示会话累计 Token 与缓存命中率。 */
+  sessionUsage?: SessionUsageState | null;
   theme: Theme;
   /** 需保持引用稳定（MessageResponse/ToolCallBlock 的 memo 依赖）。 */
   codePreviewSettings: CodePreviewSettings;

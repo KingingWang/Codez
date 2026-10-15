@@ -29,6 +29,8 @@ import type {
   AttachmentRef,
   CommandAck,
   ConversationRowTarget,
+  SessionUsageState,
+  TurnHeaderRow,
   WorkflowNotificationMeta,
 } from "@codez/shared/codez-protocol-v4";
 import { ChatLoading } from "@/components/ai-elements/chat-loading.js";
@@ -37,6 +39,7 @@ import { CodexRetryStatus } from "./CodexRetryStatus.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import { Checkbox } from "@/components/ui/checkbox.js";
+import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { MessageActions } from "@/components/ai-elements/message.js";
 import {
   Collapsible,
@@ -112,6 +115,8 @@ import type {
   ConversationTurnWorkSegment,
 } from "@/v4/conversationTurnRenderUnits.js";
 import { formatConversationWorkDuration } from "@/v4/conversationWorkDuration.js";
+import { resolveSessionCumulativeUsage } from "@/v4/composer/codexSessionUsage.js";
+import { formatCompactTokenNumber } from "@/lib/tokenNumberFormat.js";
 import { ConversationTurnRow, resolveAssistantCopyText } from "@/v4/ConversationTurnRow.js";
 import { ConversationHookDetailsAction } from "@/v4/ConversationHookDetailsAction.js";
 import { toolCallRowToLegacyNode } from "@/v4/toolCallRowAdapter.js";
@@ -649,18 +654,57 @@ function OffPeakTurnCards({
   );
 }
 
+function resolveTurnTokenUsageDisplay(header: TurnHeaderRow | undefined) {
+  if (!header) return null;
+  const turnUsage = header.turnUsage;
+  const inputTokens = turnUsage?.inputTokens;
+  const outputTokens = turnUsage?.outputTokens ?? header.outputTokens;
+  const cacheReadTokens = turnUsage?.cacheReadTokens;
+  const cacheWriteTokens = turnUsage?.cacheWriteTokens;
+  const reasoningTokens = turnUsage?.reasoningTokens;
+  const totalTokens =
+    turnUsage?.totalTokens ??
+    (inputTokens !== undefined || outputTokens !== undefined
+      ? (inputTokens ?? 0) + (outputTokens ?? 0) + (reasoningTokens ?? 0)
+      : undefined);
+  if (
+    (totalTokens === undefined || totalTokens <= 0) &&
+    (inputTokens === undefined || inputTokens <= 0) &&
+    (outputTokens === undefined || outputTokens <= 0)
+  ) {
+    return null;
+  }
+  const hitRate =
+    inputTokens !== undefined && inputTokens > 0 && cacheReadTokens !== undefined
+      ? Math.min(1, Math.max(0, cacheReadTokens / inputTokens))
+      : null;
+  return {
+    totalTokens: totalTokens ?? (inputTokens ?? 0) + (outputTokens ?? 0),
+    inputTokens,
+    outputTokens,
+    reasoningTokens,
+    cacheReadTokens,
+    cacheWriteTokens,
+    hitRate,
+  };
+}
+
 function AssistantHistoryStatus({
   segment,
   open,
   highspeed,
   highspeedMeta,
   sourceCommandIds,
+  header,
+  sessionUsage,
 }: {
   segment: ConversationTurnWorkSegment;
   open: boolean;
   highspeed: boolean;
   highspeedMeta?: HighspeedMessageMeta;
   sourceCommandIds: readonly string[];
+  header?: TurnHeaderRow;
+  sessionUsage?: SessionUsageState | null;
 }) {
   const { intl, locale } = useCodezIntl();
   const topicInterrupted = useBotTopicInterruption(sourceCommandIds);
@@ -668,6 +712,20 @@ function AssistantHistoryStatus({
     segment.workStatus?.durationMs,
     intl,
     locale,
+  );
+  const turnTokenUsage = useMemo(() => resolveTurnTokenUsageDisplay(header), [header]);
+  const sessionCumulative = useMemo(
+    () => resolveSessionCumulativeUsage(sessionUsage),
+    [sessionUsage],
+  );
+  const numberFormatter = useMemo(() => new Intl.NumberFormat(locale), [locale]);
+  const percentFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat(locale, {
+        maximumFractionDigits: 1,
+        style: "percent",
+      }),
+    [locale],
   );
   const savedDurationLabel =
     segment.workStatus?.state === "completed" &&
@@ -685,6 +743,147 @@ function AssistantHistoryStatus({
         : durationLabel
           ? intl.formatMessage({ id: "chat.history.workedFor" }, { duration: durationLabel })
           : intl.formatMessage({ id: "chat.history.worked" });
+  const turnTokenBadgeText = useMemo(() => {
+    if (!turnTokenUsage) return null;
+    const tokens = formatCompactTokenNumber(locale, turnTokenUsage.totalTokens);
+    if (turnTokenUsage.hitRate !== null && turnTokenUsage.hitRate > 0) {
+      return intl.formatMessage(
+        { id: "chat.history.turnTokenBadgeWithCache" },
+        {
+          tokens,
+          hitRate: percentFormatter.format(turnTokenUsage.hitRate),
+        },
+      );
+    }
+    return intl.formatMessage({ id: "chat.history.turnTokenBadge" }, { tokens });
+  }, [intl, locale, percentFormatter, turnTokenUsage]);
+  const turnTokenTooltipContent = useMemo(() => {
+    if (!turnTokenUsage) return null;
+    return (
+      <div className="min-w-48 space-y-2 py-0.5 text-ui-xs">
+        <div className="space-y-1">
+          <div className="font-medium text-tooltip-foreground">
+            {intl.formatMessage({ id: "chat.history.turnTokenTooltip.turnSection" })}
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-tooltip-foreground/75">
+              {intl.formatMessage({ id: "chat.history.turnTokenTooltip.total" })}
+            </span>
+            <span className="font-mono tabular-nums text-tooltip-foreground">
+              {numberFormatter.format(turnTokenUsage.totalTokens)}
+            </span>
+          </div>
+          {turnTokenUsage.inputTokens !== undefined ? (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-tooltip-foreground/75">
+                {intl.formatMessage({ id: "chat.history.turnTokenTooltip.input" })}
+              </span>
+              <span className="font-mono tabular-nums text-tooltip-foreground">
+                {numberFormatter.format(turnTokenUsage.inputTokens)}
+              </span>
+            </div>
+          ) : null}
+          {turnTokenUsage.outputTokens !== undefined ? (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-tooltip-foreground/75">
+                {intl.formatMessage({ id: "chat.history.turnTokenTooltip.output" })}
+              </span>
+              <span className="font-mono tabular-nums text-tooltip-foreground">
+                {numberFormatter.format(turnTokenUsage.outputTokens)}
+              </span>
+            </div>
+          ) : null}
+          {turnTokenUsage.reasoningTokens !== undefined && turnTokenUsage.reasoningTokens > 0 ? (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-tooltip-foreground/75">
+                {intl.formatMessage({ id: "chat.history.turnTokenTooltip.reasoning" })}
+              </span>
+              <span className="font-mono tabular-nums text-tooltip-foreground">
+                {numberFormatter.format(turnTokenUsage.reasoningTokens)}
+              </span>
+            </div>
+          ) : null}
+          {turnTokenUsage.cacheReadTokens !== undefined ? (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-tooltip-foreground/75">
+                {intl.formatMessage({ id: "chat.history.turnTokenTooltip.cacheRead" })}
+              </span>
+              <span className="font-mono tabular-nums text-tooltip-foreground">
+                {numberFormatter.format(turnTokenUsage.cacheReadTokens)}
+              </span>
+            </div>
+          ) : null}
+          {turnTokenUsage.cacheWriteTokens !== undefined && turnTokenUsage.cacheWriteTokens > 0 ? (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-tooltip-foreground/75">
+                {intl.formatMessage({ id: "chat.history.turnTokenTooltip.cacheWrite" })}
+              </span>
+              <span className="font-mono tabular-nums text-tooltip-foreground">
+                {numberFormatter.format(turnTokenUsage.cacheWriteTokens)}
+              </span>
+            </div>
+          ) : null}
+          {turnTokenUsage.hitRate !== null ? (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-tooltip-foreground/75">
+                {intl.formatMessage({ id: "chat.history.turnTokenTooltip.cacheHitRate" })}
+              </span>
+              <span className="font-mono tabular-nums text-tooltip-foreground">
+                {percentFormatter.format(turnTokenUsage.hitRate)}
+              </span>
+            </div>
+          ) : null}
+        </div>
+        {sessionCumulative ? (
+          <div className="space-y-1 border-t border-tooltip-foreground/15 pt-1.5">
+            <div className="font-medium text-tooltip-foreground">
+              {intl.formatMessage({ id: "chat.history.turnTokenTooltip.sessionSection" })}
+            </div>
+            {sessionCumulative.totalTokens !== undefined ? (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-tooltip-foreground/75">
+                  {intl.formatMessage({ id: "chat.history.turnTokenTooltip.total" })}
+                </span>
+                <span className="font-mono tabular-nums text-tooltip-foreground">
+                  {numberFormatter.format(sessionCumulative.totalTokens)}
+                </span>
+              </div>
+            ) : null}
+            {sessionCumulative.inputTokens !== undefined ? (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-tooltip-foreground/75">
+                  {intl.formatMessage({ id: "chat.history.turnTokenTooltip.input" })}
+                </span>
+                <span className="font-mono tabular-nums text-tooltip-foreground">
+                  {numberFormatter.format(sessionCumulative.inputTokens)}
+                </span>
+              </div>
+            ) : null}
+            {sessionCumulative.outputTokens !== undefined ? (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-tooltip-foreground/75">
+                  {intl.formatMessage({ id: "chat.history.turnTokenTooltip.output" })}
+                </span>
+                <span className="font-mono tabular-nums text-tooltip-foreground">
+                  {numberFormatter.format(sessionCumulative.outputTokens)}
+                </span>
+              </div>
+            ) : null}
+            {sessionCumulative.hitRate !== undefined && sessionCumulative.hitRate !== null ? (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-tooltip-foreground/75">
+                  {intl.formatMessage({ id: "chat.history.turnTokenTooltip.cacheHitRate" })}
+                </span>
+                <span className="font-mono tabular-nums text-tooltip-foreground">
+                  {percentFormatter.format(sessionCumulative.hitRate)}
+                </span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    );
+  }, [intl, numberFormatter, percentFormatter, sessionCumulative, turnTokenUsage]);
 
   return (
     <div
@@ -717,22 +916,39 @@ function AssistantHistoryStatus({
           ) : null}
         </button>
       </CollapsibleTrigger>
-      {highspeed ? (
-        <div className="ml-auto flex shrink-0 items-center gap-2 text-icon-purple">
-          {savedDurationLabel ? (
-            <span className="text-ui-sm font-medium leading-4" data-highspeed-saved-duration="true">
-              {intl.formatMessage(
-                { id: "chat.highspeed.savedDuration" },
-                { duration: savedDurationLabel },
-              )}
-            </span>
+      {turnTokenBadgeText || highspeed ? (
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {turnTokenBadgeText && turnTokenTooltipContent ? (
+            <ControlHintTooltip title={turnTokenTooltipContent} side="top" align="end">
+              <span
+                data-turn-token-usage="true"
+                className="cursor-default font-mono text-ui-xs tabular-nums text-foreground-subtlest transition-colors hover:text-foreground-subtle"
+              >
+                {turnTokenBadgeText}
+              </span>
+            </ControlHintTooltip>
           ) : null}
-          <span
-            className="rounded-full bg-hover px-2 py-0.5 text-ui-sm leading-4"
-            data-highspeed-status-tag="true"
-          >
-            {intl.formatMessage({ id: "chat.highspeed.statusTag" })}
-          </span>
+          {highspeed ? (
+            <div className="flex shrink-0 items-center gap-2 text-icon-purple">
+              {savedDurationLabel ? (
+                <span
+                  className="text-ui-sm font-medium leading-4"
+                  data-highspeed-saved-duration="true"
+                >
+                  {intl.formatMessage(
+                    { id: "chat.highspeed.savedDuration" },
+                    { duration: savedDurationLabel },
+                  )}
+                </span>
+              ) : null}
+              <span
+                className="rounded-full bg-hover px-2 py-0.5 text-ui-sm leading-4"
+                data-highspeed-status-tag="true"
+              >
+                {intl.formatMessage({ id: "chat.highspeed.statusTag" })}
+              </span>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -742,6 +958,7 @@ function AssistantHistoryStatus({
 function ConversationWorkSegmentFlow({
   segment,
   sourceCommandIds,
+  header,
   context,
   onFork,
   onRetry,
@@ -761,6 +978,7 @@ function ConversationWorkSegmentFlow({
 }: {
   segment: ConversationTurnWorkSegment;
   sourceCommandIds: readonly string[];
+  header?: TurnHeaderRow;
   context: ConversationRowRenderContext;
   onFork?: (target: ConversationRowTarget) => void;
   onRetry?: (target: ConversationRowTarget) => void;
@@ -897,6 +1115,8 @@ function ConversationWorkSegmentFlow({
                 highspeed={highspeed}
                 highspeedMeta={highspeedMeta}
                 sourceCommandIds={sourceCommandIds}
+                header={header}
+                sessionUsage={context.sessionUsage}
               />
             ) : null}
             {content}
@@ -910,6 +1130,8 @@ function ConversationWorkSegmentFlow({
           open={open}
           highspeed={highspeed}
           highspeedMeta={highspeedMeta}
+          header={header}
+          sessionUsage={context.sessionUsage}
         />
       ) : null}
     </Collapsible>
@@ -1026,10 +1248,11 @@ function ConversationTurnFlow({
   // Collapsible。accepted guide 现在由 CLI workSegments 定界，每段组件自行维护折叠状态。
   return (
     <div className="flex flex-col gap-5">
-      {workSegments.map((segment) => (
+      {workSegments.map((segment, segmentIndex) => (
         <ConversationWorkSegmentFlow
           key={segment.key}
           segment={segment}
+          header={segmentIndex === workSegments.length - 1 ? unit.header : undefined}
           sourceCommandIds={[
             ...segment.flowItems.flatMap((item) =>
               item.kind === "userInput" && item.row.sourceCommandId

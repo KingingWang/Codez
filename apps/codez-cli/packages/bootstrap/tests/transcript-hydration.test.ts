@@ -219,6 +219,36 @@ describe("transcript→event 合成", () => {
     ).toMatchObject({ contextWindow: 1_000_000 });
   });
 
+  it("冷恢复从持久化 assistant tokens 恢复每轮 turnUsage 与会话累计 usage", () => {
+    const assistant = assistantMessage("a-tokens", "u-tokens", "回答", 1001);
+    if (assistant.info.role === "assistant") {
+      assistant.info.tokens = {
+        input: 1200,
+        output: 300,
+        reasoning: 50,
+        cache: { read: 900, write: 100 },
+        total: 1550,
+      };
+    }
+    const { projection } = reduce([userMessage("u-tokens", "问题", 1000), assistant]);
+    const snapshot = projection.getSnapshot();
+    const header = snapshot.rows.window.find((row) => row.kind === "turnHeader");
+    expect(header?.turnUsage).toEqual({
+      inputTokens: 1200,
+      outputTokens: 300,
+      totalTokens: 1550,
+      cacheReadTokens: 900,
+      cacheWriteTokens: 100,
+      reasoningTokens: 50,
+    });
+    expect(snapshot.usage.cumulative).toEqual({
+      inputTokens: 1200,
+      outputTokens: 300,
+      cacheReadTokens: 900,
+      cacheWriteTokens: 100,
+    });
+  });
+
   it("assistant feedback 从 transcript metadata 恢复为权威 row 字段", () => {
     const assistant = assistantMessage("a-feedback", "u-feedback", "回复", 1001);
     assistant.info.metadata = { assistantFeedback: "like" };

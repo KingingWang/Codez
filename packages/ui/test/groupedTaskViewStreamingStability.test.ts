@@ -525,4 +525,45 @@ describe("grouped 视图流式稳定性", () => {
       cleanupHookTestGlobals();
     }
   });
+
+  it("卸载期间发生取消归档/删除（membershipVersion 变化）后重挂载不会读取过期的分组缓存", async () => {
+    const controller = createControllerHarness();
+    const services = createServices(controller.windowControllerService);
+    const listGroupedSpy = vi.mocked(services.codezTaskService.listGroupedTaskViewStructure);
+
+    function Probe() {
+      useGroupedTaskView({ workspaceTabs });
+      return null;
+    }
+
+    const root: Root = createRoot(installMinimalDom());
+    try {
+      await act(async () => {
+        root.render(createElement(ServiceProvider, { services }, createElement(Probe)));
+        await flushMicrotasks();
+      });
+      await act(async () => {
+        controller.emitSnapshot();
+        await flushMicrotasks();
+      });
+      expect(listGroupedSpy).toHaveBeenCalledTimes(1);
+
+      // 切到归档视图（卸载 Grouped）并触发取消归档（bumpTaskListMembershipVersion）。
+      await act(async () => {
+        root.render(createElement(ServiceProvider, { services }, null));
+        bumpTaskListMembershipVersion();
+        await flushMicrotasks();
+      });
+
+      // 切回分组视图（重挂载 Grouped），应当因 membershipVersion 变化重新拉取服务端结构与归属。
+      await act(async () => {
+        root.render(createElement(ServiceProvider, { services }, createElement(Probe)));
+        await flushMicrotasks();
+      });
+      expect(listGroupedSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      act(() => root.unmount());
+      cleanupHookTestGlobals();
+    }
+  });
 });

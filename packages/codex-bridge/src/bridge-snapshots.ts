@@ -18,7 +18,7 @@ import { codexThreadSchema, codexUserInputSchema } from "./codex-types.js";
 import { projectOwnedInput } from "./native-file-projection.js";
 import { projectConversationTailWindow } from "./projection-window.js";
 import { subagentsStateFromRows } from "./subagent-projection.js";
-import { sparseNativeUsage } from "./bridge-snapshot-usage.js";
+import { sparseNativeTurnUsage, sparseNativeUsage } from "./bridge-snapshot-usage.js";
 import type { AttachmentStore, AttachmentReadAuthorization } from "./attachments.js";
 
 export class BridgeSnapshots {
@@ -204,8 +204,29 @@ export class BridgeSnapshots {
         const turn = array(state.thread.turns)
           .map(object)
           .find((candidate) => candidate.id === row.turnId) as
-          | { id: string; changes?: unknown }
+          | { id: string; changes?: unknown; tokenUsage?: unknown }
           | undefined;
+        // 修复原因：快照编码的 attachments 投影会让出 await，期间 editUserQuery/compact
+        // 触发的 reloadAfterHistoryChange 会把 state.thread.turns 清空；行投影来自编码前
+        // 拷贝的 presentationThread，turnHeader 仍在而 turns 已空。此处用 object() 强断言
+        // 会抛 "Expected a JSON object" 并使整个 bridge 连接崩溃（原生冒烟因此失败）。
+        // lastTurnId 只作 tokenUsage 兜底匹配，取不到时安全降级为不可匹配。
+        const lastTurnEntry = array(state.thread.turns).at(-1);
+        const lastTurnId =
+          lastTurnEntry && typeof lastTurnEntry === "object" && !Array.isArray(lastTurnEntry)
+            ? (lastTurnEntry as { id?: unknown }).id
+            : undefined;
+        const rawTurnUsage =
+          state.turnTokenUsage?.[row.turnId] ??
+          turn?.tokenUsage ??
+          (row.turnId === lastTurnId ? state.thread.tokenUsage : undefined);
+        const turnUsage = sparseNativeTurnUsage(rawTurnUsage);
+        if (turnUsage) {
+          row.turnUsage = turnUsage;
+          if (turnUsage.outputTokens !== undefined) {
+            row.outputTokens = turnUsage.outputTokens;
+          }
+        }
         if (turn) {
           const filesResult = projectTurnFileChanges(
             turn,

@@ -43,6 +43,7 @@ import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionSt
 import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { WebRemoteControlTaskIndexRow } from "@/WebRemoteControlTaskIndexRow.js";
 import { DeleteAllArchivedTasksButton } from "@/DeleteAllArchivedTasksButton.js";
+import { bumpTaskListMembershipVersion } from "@/v4/taskListMembershipVersion.js";
 
 const WEB_REMOTE_CONTROL_TASK_INDEX_EMPTY_RETRY_DELAY_MS = 300;
 const WEB_REMOTE_CONTROL_TASK_INDEX_EMPTY_RETRY_MAX_ATTEMPTS = 3;
@@ -382,6 +383,7 @@ export function WebRemoteControlTaskIndex({
           ...(task.workspaceIdentity ? { workspaceIdentity: task.workspaceIdentity } : {}),
         })
         .then(() => {
+          bumpTaskListMembershipVersion();
           updateTaskMembership(task, { pinned: false, archived: false });
         })
         .catch((error) => {
@@ -424,13 +426,21 @@ export function WebRemoteControlTaskIndex({
         setPendingArchiveTaskKey(null);
         setMutatingTaskKey(rowKey);
         try {
-          await workspaceServices.services.codezTaskService.deleteTask({
+          const deleteParams = {
             taskId: task.taskId,
             workspacePath: task.workspacePath,
             ...(task.workspaceIdentity ? { workspaceIdentity: task.workspaceIdentity } : {}),
-          });
+          };
+          if (
+            typeof workspaceServices.services.codezTaskService.deleteArchivedTask === "function"
+          ) {
+            await workspaceServices.services.codezTaskService.deleteArchivedTask(deleteParams);
+          } else {
+            await workspaceServices.services.codezTaskService.deleteTask(deleteParams);
+          }
           // Bugfix: Web 远控归档列表删除任务后没有本地 query cache 兜底刷新，
           // 必须直接从当前 workspace-list snapshot 中移除，避免已删除归档项继续停留到下一次桌面推送。
+          bumpTaskListMembershipVersion();
           removeTaskFromIndex(task);
           removeTaskState(task.workspacePath, task.taskId, task.workspaceIdentity);
         } catch (error) {

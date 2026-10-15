@@ -58,6 +58,16 @@ export const turnWorkSegmentSchema = z.object({
 });
 export type TurnWorkSegment = z.infer<typeof turnWorkSegmentSchema>;
 
+export const turnTokenUsageSchema = z.object({
+  inputTokens: z.number().int().nonnegative().optional(),
+  outputTokens: z.number().int().nonnegative().optional(),
+  totalTokens: z.number().int().nonnegative().optional(),
+  cacheReadTokens: z.number().int().nonnegative().optional(),
+  cacheWriteTokens: z.number().int().nonnegative().optional(),
+  reasoningTokens: z.number().int().nonnegative().optional(),
+});
+export type TurnTokenUsage = z.infer<typeof turnTokenUsageSchema>;
+
 // turnHeader：product turn 边界 + 权威工时 + 每轮文件摘要。
 // guide 产生的内部折叠边界由 workSegments 表达；行归属仍由 CLI 决定，客户端零归属逻辑。
 export const turnHeaderRowSchema = z.object({
@@ -86,6 +96,8 @@ export const turnHeaderRowSchema = z.object({
   activeMs: z.number().optional(),
   // 当前 product turn 内主链路 ModelComplete 的 output usage 累计；optional 兼容旧快照。
   outputTokens: z.number().int().nonnegative().optional(),
+  // 当前 product turn 内主链路的 token 明细与缓存统计（稀疏/可选，兼容旧快照）。
+  turnUsage: turnTokenUsageSchema.optional(),
   // CLI 从运行时事件聚合的真实耗时；optional 兼容旧快照及普通 turn。
   modelDurationMs: z.number().nonnegative().optional(),
   toolDurationMs: z.number().nonnegative().optional(),
