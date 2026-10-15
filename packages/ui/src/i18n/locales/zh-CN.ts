@@ -6458,6 +6458,14 @@ const zhCN: Record<string, string> = {
   "feedback.center.backToSubmit": "返回提交反馈",
   "feedback.center.submitTab": "提交",
   "feedback.center.ticketsTab": "我的反馈",
+  "settings.feedback.diagnostics.field.app": "应用版本",
+  "settings.feedback.diagnostics.field.runtime": "运行环境",
+  "settings.feedback.diagnostics.field.error": "错误摘要",
+  "settings.feedback.diagnostics.field.notes": "问题描述",
+  "feedback.github.attachmentHint":
+    "如需补充截图或诊断日志，请在 GitHub Issue 页面手动拖拽或粘贴。",
+  "feedback.github.truncatedNotice":
+    "（预填内容因 URL 长度限制已截断，请在 GitHub 页面补充完整信息）",
   "feedback.background.title": "正在提交反馈",
   "feedback.background.open": "打开反馈提交详情",
   "feedback.background.openDetail": "点击查看详情",

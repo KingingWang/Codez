@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { join } from "node:path";
-import { DesktopCommandIds } from "@codez/shared";
+import { DesktopCommandIds, PlatformChannels } from "@codez/shared";
 
 const appMock = {
   isPackaged: false,
@@ -503,6 +503,29 @@ describe("desktopCommandHandlers resolveFeedbackUrl", () => {
       }
     },
   );
+
+  it("OpenFeedback 命令不拉取远端配置，直接通知窗口打开反馈入口", async () => {
+    const { executeDesktopCommand } = await import("../src/main/desktopCommandHandlers.js");
+    const { shell } = await import("electron");
+    vi.mocked(shell.openExternal).mockClear();
+    const fetchHelpConfig = vi.fn(async () => ({
+      feedback_url: "https://remote.example.com/feedback",
+      feedback_use_external_form: true,
+    }));
+    const targetWindow = createZoomWindow(1);
+    const commandOptions = createCommandOptions();
+
+    await executeDesktopCommand({
+      ...commandOptions,
+      command: DesktopCommandIds.OpenFeedback,
+      senderWindow: targetWindow,
+      fetchHelpConfig,
+    });
+
+    expect(fetchHelpConfig).not.toHaveBeenCalled();
+    expect(shell.openExternal).not.toHaveBeenCalled();
+    expect(targetWindow.webContents.send).toHaveBeenCalledWith(PlatformChannels.OpenFeedbackDialog);
+  });
 
   it("系统缩放命令执行后通知应用菜单刷新禁用态", async () => {
     const { executeDesktopCommand } = await import("../src/main/desktopCommandHandlers.js");

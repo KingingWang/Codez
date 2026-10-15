@@ -30,6 +30,7 @@ vi.mock("@/components/ui/toast.js", () => ({
 
 const mockPlatform = {
   captureWindowScreenshot: vi.fn(async () => null),
+  openExternal: vi.fn(),
 } as unknown as IPlatformService;
 
 function resetFeedbackStore() {
@@ -88,8 +89,11 @@ describe("ChatErrorBanner feedback draft", () => {
     await openFeedbackFromBanner();
 
     expect(mockPlatform.captureWindowScreenshot).not.toHaveBeenCalled();
-    expect(useFeedbackStore.getState().submitDraft?.includeLogs).toBe(true);
-    const description = useFeedbackStore.getState().submitDraft?.description;
+    expect(useFeedbackStore.getState().open).toBe(false);
+    expect(mockPlatform.openExternal).toHaveBeenCalledTimes(1);
+    const openedUrl = vi.mocked(mockPlatform.openExternal).mock.calls[0]?.[0] ?? "";
+    expect(openedUrl).toContain("https://github.com/KingingWang/Codez/issues/new?");
+    const description = decodeURIComponent(openedUrl).replaceAll("+", " ");
     expect(description).toContain("报错摘要：Provider authentication failed.");
     expect(description).toContain("TraceID: trace-auth-failed");
     expect(description).not.toContain("我在使用过程中遇到了报错，请帮忙排查。");

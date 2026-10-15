@@ -113,3 +113,8 @@ export { generateMobileDeviceFingerprint, setStreamClientId } from "./lib/stream
 export { GlobalDatabaseStartupLoading } from "./root/GlobalDatabaseStartupLoading.js";
 
 export { LocalTtftObserver, setLocalTtftObserver } from "@/v4/telemetry/localTtftObserver.js";
+export {
+  DEFAULT_FEEDBACK_REPOSITORY_URL,
+  buildFeedbackDiagnosticEntries,
+  buildFeedbackPrefilledUrl,
+} from "@/feedback/feedbackDiagnostics.js";

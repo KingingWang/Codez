@@ -16,8 +16,10 @@ const screenshot = {
   size: 10,
 };
 const captureWindowScreenshot = vi.fn(async () => screenshot);
+const openExternal = vi.fn();
 const platform = {
   captureWindowScreenshot,
+  openExternal,
 } as unknown as IPlatformService;
 
 function renderPanel() {
@@ -64,26 +66,19 @@ describe("SessionSubscriptionErrorPanel", () => {
     expect(screen.getByRole("button", { name: "重新连接" })).toBeTruthy();
   });
 
-  it("opens a feedback draft with the subscription error context", async () => {
+  it("opens a GitHub prefilled issue with the subscription error context", async () => {
     renderPanel();
 
     fireEvent.click(screen.getByRole("button", { name: "反馈问题" }));
 
-    await waitFor(() => expect(useFeedbackStore.getState().open).toBe(true));
-    expect(useFeedbackStore.getState().submitDraft).toMatchObject({
-      title: "EPERM: operation not permitted",
-      type: "bug",
-      module: "Agent任务执行失败",
-      severity: "P2-中",
-      includeLogs: true,
-      screenshots: [],
-    });
-    expect(useFeedbackStore.getState().submitDraft?.description).toContain(
-      "报错摘要：EPERM: operation not permitted",
-    );
-    expect(useFeedbackStore.getState().submitDraft?.description).toContain("任务 ID: session-1");
-    expect(useFeedbackStore.getState().submitDraft?.description).toContain(
-      "工作区: F:\\Codez_data",
-    );
+    await waitFor(() => expect(openExternal).toHaveBeenCalledTimes(1));
+    expect(useFeedbackStore.getState().open).toBe(false);
+    const openedUrl = openExternal.mock.calls[0]?.[0] ?? "";
+    expect(openedUrl).toContain("https://github.com/KingingWang/Codez/issues/new?");
+    const decoded = decodeURIComponent(openedUrl).replaceAll("+", " ");
+    expect(decoded).toContain("EPERM: operation not permitted");
+    expect(decoded).toContain("报错摘要：EPERM: operation not permitted");
+    expect(decoded).toContain("任务 ID: session-1");
+    expect(decoded).toContain("工作区: F:\\Codez_data");
   });
 });

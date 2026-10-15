@@ -11,7 +11,6 @@ import {
   getFeedbackUrlFromConfig,
   normalizeCodezEndpointOrigin,
   PlatformChannels,
-  resolveHelpAppConfig,
   resolveCodezEndpointOrigin,
   CODEZ_ENV,
   CODEZ_PRODUCT_FLAVOR,
@@ -269,29 +268,10 @@ export async function resolveCommunityUrl(options: {
   return getCommunityUrlFromConfigs(remoteConfig, localConfig, options.locale);
 }
 
-async function openFeedback(
-  logger: { warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void },
-  targetWindow?: BrowserWindow | null,
-  fetchRemoteConfig?: () => Promise<unknown>,
-) {
-  let remoteConfig: unknown;
-  let localConfig: unknown;
-  try {
-    remoteConfig = await fetchRemoteAppConfig(fetchRemoteConfig);
-  } catch (error) {
-    logger.warn("[feedback] failed to fetch remote config:", error);
-  }
-  try {
-    localConfig = await readLocalAppConfig();
-  } catch (error) {
-    logger.warn("[feedback] failed to read local config:", error);
-  }
-  const config = resolveHelpAppConfig(remoteConfig, localConfig);
-  if (!config.feedback_use_external_form) {
-    resolveTargetWindow(targetWindow)?.webContents.send(PlatformChannels.OpenFeedbackDialog);
-    return;
-  }
-  if (config.feedback_url) await shell.openExternal(config.feedback_url);
+function openFeedback(targetWindow?: BrowserWindow | null) {
+  // 桌面原生菜单的“问题上报”不再读取远端 feedback_url / feedback_use_external_form，
+  // 统一通知目标窗口由 Renderer 的共享 GitHub Issues 预填入口打开。
+  resolveTargetWindow(targetWindow)?.webContents.send(PlatformChannels.OpenFeedbackDialog);
 }
 
 async function openCommunity(
@@ -629,7 +609,7 @@ export async function executeDesktopCommand(options: {
       await options.onRelaunchApp();
       return;
     case DesktopCommandIds.OpenFeedback:
-      await openFeedback(options.logger, targetWindow, options.fetchHelpConfig);
+      openFeedback(targetWindow);
       return;
     case DesktopCommandIds.OpenCommunity:
       await openCommunity(

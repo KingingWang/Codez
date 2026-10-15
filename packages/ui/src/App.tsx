@@ -37,7 +37,7 @@ import {
 import { createQuickPickCommands } from "@/quickpick/quickPickCommands.js";
 import { CommandCenterDialog } from "@/command-center/CommandCenterDialog.js";
 import { FeedbackHost } from "@/feedback/FeedbackHost.js";
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
+import { useFeedbackEntryAction } from "@/feedback/useFeedbackEntryAction.js";
 import {
   resolveQuickPickConversationNavigation,
   selectQuickPickConversationTaskIds,
@@ -674,27 +674,21 @@ export function App({
   const handleOpenQuickPick = useCallback(() => {
     setIsQuickPickOpen((open) => !open);
   }, []);
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
-  const openFeedbackTickets = useFeedbackStore((state) => state.openTickets);
+  const { runFeedbackEntry } = useFeedbackEntryAction();
   const isLoggedIn = Boolean(user);
   const handleOpenFeedback = useCallback(() => {
-    void platform.openFeedback();
-  }, [platform]);
+    runFeedbackEntry({ kind: "bug" });
+  }, [runFeedbackEntry]);
 
   useEffect(() => {
-    // 内置反馈中心合并了"提交反馈 / 我的反馈"两个 Tab，
-    // 老的 OpenTicketsPanel IPC 仍然兼容（直接打开列表），未来如果还需要单独入口可以复用。
+    // 桌面原生菜单的 OpenFeedback 命令发送 OpenFeedbackDialog IPC，统一路由到 GitHub Issues 预填入口。
     const disposeFeedbackDialog = platform.onOpenFeedbackDialog?.(() => {
-      openFeedbackSubmit();
-    });
-    const disposeTicketsPanel = platform.onOpenTicketsPanel?.(() => {
-      openFeedbackTickets();
+      runFeedbackEntry({ kind: "bug" });
     });
     return () => {
       disposeFeedbackDialog?.();
-      disposeTicketsPanel?.();
     };
-  }, [openFeedbackSubmit, openFeedbackTickets, platform]);
+  }, [platform, runFeedbackEntry]);
   const handleOpenCommunity = useCallback(() => platform.openCommunity(), [platform]);
   const handleOpenProductDocs = useCallback(() => {
     platform.openExternal(CODEZ_PRODUCT_DOCS_URL);

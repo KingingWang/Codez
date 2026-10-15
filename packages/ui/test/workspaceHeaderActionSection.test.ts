@@ -34,6 +34,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
+    locale: "zh-CN",
   }),
 }));
 
@@ -69,6 +70,12 @@ vi.mock("@/components/ui/dropdown-menu.js", () => ({
 }));
 
 vi.mock("@/hooks/usePlatform.js", () => ({
+  useOptionalPlatform: () => ({
+    exportLogs: capturedHeaderHelp.exportLogs,
+    captureWindowScreenshot: capturedHeaderHelp.captureWindowScreenshot,
+    openCommunity: capturedHeaderHelp.openCommunity,
+    openExternal: capturedHeaderHelp.openExternal,
+  }),
   usePlatform: () => ({
     exportLogs: capturedHeaderHelp.exportLogs,
     captureWindowScreenshot: capturedHeaderHelp.captureWindowScreenshot,
@@ -292,23 +299,27 @@ describe("WorkspaceHeaderActionSection", () => {
     capturedHeaderHelp.menuItems[3]?.onSelect?.();
 
     expect(capturedHeaderHelp.captureWindowScreenshot).not.toHaveBeenCalled();
-    expect(capturedHeaderHelp.openSubmit).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        type: "bug",
-        includeLogs: true,
-        screenshots: [],
-      }),
-    );
-    expect(capturedHeaderHelp.openFeatureRequest).toHaveBeenCalledTimes(1);
+    expect(capturedHeaderHelp.openSubmit).not.toHaveBeenCalled();
+    expect(capturedHeaderHelp.openFeatureRequest).not.toHaveBeenCalled();
     expect(capturedHeaderHelp.openCommunity).toHaveBeenCalledTimes(1);
-    expect(capturedHeaderHelp.openExternal).toHaveBeenCalledWith("https://zcode.z.ai/docs");
+    expect(capturedHeaderHelp.openExternal).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("https://github.com/KingingWang/Codez/issues/new?"),
+    );
+    expect(capturedHeaderHelp.openExternal).toHaveBeenNthCalledWith(2, "https://zcode.z.ai/docs");
+    expect(capturedHeaderHelp.openExternal).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining(
+        "https://github.com/KingingWang/Codez/issues/new?title=Feature+request",
+      ),
+    );
     expect(capturedHeaderHelp.exportLogs).not.toHaveBeenCalled();
   });
 
   it("opens issue report without screenshots when window screenshot fails", async () => {
     capturedHeaderHelp.menuItems = [];
     capturedHeaderHelp.openSubmit.mockClear();
+    capturedHeaderHelp.openExternal.mockClear();
     capturedHeaderHelp.captureWindowScreenshot.mockReset();
     capturedHeaderHelp.captureWindowScreenshot.mockRejectedValue(new Error("capture failed"));
     const { WorkspaceHeaderActionSection } =
@@ -326,12 +337,9 @@ describe("WorkspaceHeaderActionSection", () => {
 
     await capturedHeaderHelp.menuItems[2]?.onSelect?.();
 
-    expect(capturedHeaderHelp.openSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "bug",
-        includeLogs: true,
-        screenshots: [],
-      }),
+    expect(capturedHeaderHelp.openSubmit).not.toHaveBeenCalled();
+    expect(capturedHeaderHelp.openExternal).toHaveBeenCalledWith(
+      expect.stringContaining("https://github.com/KingingWang/Codez/issues/new?"),
     );
   });
 

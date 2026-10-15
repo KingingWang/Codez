@@ -116,32 +116,26 @@ describe("帮助配置 client/configs", () => {
     await expectExternal(fixture.local.community_urls!["en-US"]!);
   });
 
-  it("HC-03: false 覆盖本地 true 并显示弹窗；新 endpoint 的 true 打开表单", async () => {
+  it("HC-03: openFeedback 始终直接打开本项目 GitHub Issues 预填页，不弹官方反馈窗", async () => {
     await command("openFeedback");
-    await $('[role="dialog"]').waitForDisplayed({ timeout: 10000 });
-    await expect($('[role="dialog"]')).toHaveText(expect.stringContaining("Submit feedback"));
-    if (process.platform === "linux") {
-      const overlayTop = await browser.execute(() => {
-        const overlay = document.querySelector<HTMLElement>('[data-slot="dialog-overlay"]');
-        if (!overlay) throw new Error("反馈弹窗遮罩不存在");
-        return overlay.getBoundingClientRect().top;
-      });
-      expect(overlayTop).toBe(0);
-    }
-    await expect(external).not.toHaveBeenCalled();
-    await browser.keys("Escape");
-    const other = await startHelpConfigFixture({
-      ...fixture.remote,
-      feedback_use_external_form: true,
-    });
-    try {
-      await seedSettings({ codezEndpointOrigin: other.origin });
-      await command("openFeedback");
-      await expectExternal(fixture.remote.feedback_url!);
-      expect(other.requests).toHaveLength(1);
-    } finally {
-      await other.close();
-    }
+    await browser.waitUntil(
+      async () => {
+        try {
+          await expect(external).toHaveBeenCalledWith(
+            expect.stringContaining("https://github.com/KingingWang/Codez/issues/new?"),
+          );
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { timeout: 10000, timeoutMsg: "未打开 GitHub Issues 预填页" },
+    );
+    expect(
+      await $('[role="dialog"]')
+        .isDisplayed()
+        .catch(() => false),
+    ).toBe(false);
   });
 
   for (const failure of ["http", "business", "json"] as const) {

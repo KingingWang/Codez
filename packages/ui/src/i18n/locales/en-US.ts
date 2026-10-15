@@ -6780,6 +6780,14 @@ const enUS: Record<string, string> = {
   "feedback.center.backToSubmit": "Back to submit feedback",
   "feedback.center.submitTab": "Submit",
   "feedback.center.ticketsTab": "My feedback",
+  "settings.feedback.diagnostics.field.app": "App version",
+  "settings.feedback.diagnostics.field.runtime": "Runtime",
+  "settings.feedback.diagnostics.field.error": "Error summary",
+  "settings.feedback.diagnostics.field.notes": "Description",
+  "feedback.github.attachmentHint":
+    "Attach screenshots or diagnostic logs manually on the GitHub Issue page if needed.",
+  "feedback.github.truncatedNotice":
+    "(Pre-filled text was truncated due to URL length limits. Please add the full details on GitHub.)",
   "feedback.background.title": "Submitting feedback",
   "feedback.background.open": "Open feedback submission details",
   "feedback.background.openDetail": "Open details",

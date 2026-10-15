@@ -161,6 +161,10 @@ vi.mock("@/feedback/feedbackStore.js", () => ({
 }));
 
 vi.mock("@/hooks/usePlatform.js", () => ({
+  useOptionalPlatform: () => ({
+    openCommunity: vi.fn(async () => {}),
+    openExternal: vi.fn(),
+  }),
   usePlatform: () => ({
     openCommunity: vi.fn(async () => {}),
     openExternal: vi.fn(),

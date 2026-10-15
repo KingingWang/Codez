@@ -134,6 +134,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
+    locale: "zh-CN",
   }),
 }));
 

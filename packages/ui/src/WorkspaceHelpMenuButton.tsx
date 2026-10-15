@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu.js";
 import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
+import { useFeedbackEntryAction } from "@/feedback/useFeedbackEntryAction.js";
 import { useDesktopUpdateMenu } from "@/hooks/useDesktopUpdateMenu.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useVulnerabilityReportUrl } from "@/hooks/useVulnerabilityReportUrl.js";
@@ -51,13 +51,12 @@ export function WorkspaceHelpMenuButton({
   const { url: vulnerabilityReportUrl, loading: vulnerabilityReportLoading } =
     useVulnerabilityReportUrl(open);
   const updateMenu = useDesktopUpdateMenu(isDesktop);
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
-  const openFeatureRequest = useFeedbackStore((state) => state.openFeatureRequest);
+  const { runFeedbackEntry } = useFeedbackEntryAction();
   const helpMenuLabel = intl.formatMessage({ id: "workspaceHeader.help.menu" });
   const helpMenuActions = createHelpMenuActionHandlers({
     platform,
     intl,
-    openSubmit: openFeedbackSubmit,
+    runFeedbackEntry,
   });
   const handleOpenCommunity = () => {
     void platform.openCommunity();
@@ -121,7 +120,7 @@ export function WorkspaceHelpMenuButton({
             {intl.formatMessage({ id: "workspaceHeader.help.reportVulnerability" })}
           </DropdownMenuItem>
         ) : null}
-        <DropdownMenuItem onSelect={openFeatureRequest}>
+        <DropdownMenuItem onSelect={helpMenuActions.openProductRequest}>
           <LightbulbIcon className="size-4" />
           {intl.formatMessage({ id: "workspaceHeader.help.productRequest" })}
         </DropdownMenuItem>

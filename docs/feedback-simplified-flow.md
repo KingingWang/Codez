@@ -6,6 +6,22 @@
 
 ## 目标
 
+- 反馈默认且唯一走本项目 GitHub Issues（`https://github.com/KingingWang/Codez/issues/new`），不提供切换回官方工单或关闭入口的设置项。
+- 用户点击“问题上报 / 反馈问题”或“给产品提需求”后，直接通过 `IPlatformService.openExternal` 打开预填了脱敏标题与诊断摘要的 GitHub 新建 Issue 页面，不在应用内弹出预览或提交表单。
+- 应用内不再渲染官方工单提交弹窗、产品需求弹窗、后台上传进度浮层或“我的反馈”列表，底层服务与协议代码暂保留但对 UI 不可达。
+- 预填内容仅包含版本、运行环境、可读错误摘要和现场/描述，统一经过 `redactFeedbackText` 脱敏，绝不包含凭据、`deviceMid`、`hostname`、完整日志或本地文件内容；截图与日志由用户在 GitHub 页面手动附加。
+
+## GitHub 预填与边界
+
+- 目标仓库固定为 `https://github.com/KingingWang/Codez`，仅放行 `http:` / `https:` 协议。
+- 标题优先级：显式 `title`（如产品需求的 `Feature request: `、任务反馈标题）→ `errorSummary` 首行 → `description` 首行，统一截断为最多 80 字符。
+- 正文由脱敏诊断条目（应用版本、运行环境、错误摘要、问题描述）组装，并对最终 URL 长度设上限，避免超长报错或连接日志导致浏览器/GitHub 拒绝打开；截断时追加提示引导用户在 GitHub 页面补充完整内容。
+- 桌面系统菜单（`OpenFeedback`）与 Web 端 `platform.openFeedback` 不再读取远端 `feedback_url` / `feedback_use_external_form`；所有反馈入口统一汇聚到 GitHub Issues 预填动作。
+
+## 历史说明（官方工单表单已下线）
+
+以下关于内置简化表单、自动日志上传与“我的反馈”列表的描述仅对应已下线的官方工单 UI 实现：
+
 - 反馈提交弹窗重构为单一简化流程，不复用旧的多字段提交弹窗方案。
 - 用户只需要填写问题描述、可选截图、可选联系方式，然后提交。
 - 日志上传默认开启，用户可在提交前取消勾选。
