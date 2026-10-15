@@ -205,8 +205,14 @@ test("catalog/writeModel upserts by slug and persists the full entry atomically"
     models: Record<string, unknown>[];
   };
   assert.deepEqual(file.models, [
-    { slug: "kimi-k3", provider: "ollama1", display_name: "Kimi K3" },
-    { slug: "gpt-6-sol", provider: "openai-my", context_window: 400000 },
+    { slug: "kimi-k3", provider: "ollama1", display_name: "Kimi K3", description: "Kimi K3" },
+    {
+      slug: "gpt-6-sol",
+      provider: "openai-my",
+      display_name: "gpt-6-sol",
+      description: "gpt-6-sol",
+      context_window: 400000,
+    },
   ]);
 });
 
@@ -246,7 +252,13 @@ test("catalog/writeModel with originalSlug renames in place without duplicating 
     models: Record<string, unknown>[];
   };
   assert.deepEqual(file.models, [
-    { slug: "new-model", provider: "ollama1", context_window: 256000 },
+    {
+      slug: "new-model",
+      provider: "ollama1",
+      display_name: "new-model",
+      description: "new-model",
+      context_window: 256000,
+    },
     { slug: "other-model", provider: "openai-my" },
   ]);
   const renamed = await readFile(f.catalogPath, "utf8");
@@ -274,7 +286,9 @@ test("catalog/writeModel creates a missing catalog file from an empty model list
   );
   assert.deepEqual(result.models, [{ slug: "first", provider: "ollama1" }]);
   const file = JSON.parse(await readFile(f.catalogPath, "utf8")) as { models: unknown[] };
-  assert.deepEqual(file.models, [{ slug: "first", provider: "ollama1" }]);
+  assert.deepEqual(file.models, [
+    { slug: "first", provider: "ollama1", display_name: "first", description: "first" },
+  ]);
 });
 
 test("catalog/writeModel requires a configured catalog path and a valid entry", async () => {

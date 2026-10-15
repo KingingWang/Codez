@@ -688,6 +688,11 @@ test("providers panel renders provider facts without ever exposing the bearer to
                     experimental_bearer_token: "sk-panel-secret",
                   },
                   "openai-my": { base_url: "http://127.0.0.1:39081/v1", wire_api: "responses" },
+                  "claude-my": {
+                    name: "Claude Custom",
+                    base_url: "https://api.anthropic.com/v1",
+                    wire_api: "anthropic",
+                  },
                 },
               },
               origins: {},
@@ -708,12 +713,13 @@ test("providers panel renders provider facts without ever exposing the bearer to
   );
   assert.match(markup, /Ollama One/);
   assert.match(markup, /openai-my/);
+  assert.match(markup, /claude-my · anthropic/);
   assert.match(markup, /http:\/\/127\.0\.0\.1:39081\/v1/);
   assert.match(markup, /Set as default/);
   assert.match(markup, /Add provider/);
   assert.match(markup, /Catalog models/);
   const deleteButtons = markup.match(/<button[^>]*>Delete<\/button>/g) ?? [];
-  assert.equal(deleteButtons.length, 2);
+  assert.equal(deleteButtons.length, 3);
   assert.ok(
     deleteButtons.every((button) => button.includes('disabled=""')),
     "While the catalog is unread, even a non-default provider cannot be safely deleted",

@@ -10,7 +10,19 @@ import {
  * 模型事实源 = model_catalog_json 目录文件（bridge catalog/* 写）。
  */
 
-export type CodexProviderWireApi = "chat" | "responses";
+export const CODEX_PROVIDER_WIRE_APIS = [
+  "chat",
+  "responses",
+  "anthropic",
+] as const;
+export type CodexProviderWireApi = (typeof CODEX_PROVIDER_WIRE_APIS)[number];
+
+export function normalizeCodexProviderWireApi(
+  value: unknown,
+): CodexProviderWireApi {
+  if (value === "responses" || value === "anthropic") return value;
+  return "chat";
+}
 
 export interface CodexProviderView {
   id: string;
@@ -66,7 +78,7 @@ export function codexProvidersView(
         id,
         name: optionalString(entry.name) ?? id,
         baseUrl: optionalString(entry.base_url),
-        wireApi: entry.wire_api === "responses" ? "responses" : "chat",
+        wireApi: normalizeCodexProviderWireApi(entry.wire_api),
         requiresOpenaiAuth: entry.requires_openai_auth === true,
         // RedactedString 序列化为 string；只取存在性。
         hasBearerToken:
@@ -396,6 +408,12 @@ export function codexModelFormFrom(
 /**
  * 表单 → catalog 条目：rawJson 提供能力字段，简单字段覆盖身份字段。
  * rawJson 非法或缺 slug/provider 时返回 null，由 UI 提示。
+ *
+ * 修复原因：Codex 原生 `ModelInfo` 反序列化要求 `display_name` 与 `description`
+ * 存在且为字符串；若删除这两个字段，添加时虽可写盘，但重启 runtime 加载
+ * `model_catalog_json` 会失败。因此：
+ * - `display_name` 未填写时回退为已填写的 `description`，若均未填则回退为 `slug`；
+ * - `description` 未填写时自动补齐为最终的 `display_name`。
  */
 export function codexModelEntryFromForm(
   form: CodexModelForm,
@@ -410,16 +428,18 @@ export function codexModelEntryFromForm(
     return null;
   }
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const rawDisplayName = form.displayName.trim();
+  const rawDescription = form.description.trim();
+  const displayName = rawDisplayName || rawDescription || slug;
+  const description = rawDescription || displayName;
   const entry: Record<string, unknown> = {
     ...(raw as Record<string, unknown>),
     slug,
     provider,
+    display_name: displayName,
+    description,
     visibility: form.hidden ? "hidden" : "list",
   };
-  if (form.displayName.trim()) entry.display_name = form.displayName.trim();
-  else delete entry.display_name;
-  if (form.description.trim()) entry.description = form.description.trim();
-  else delete entry.description;
   return entry as CodezCatalogModelEntry;
 }
 

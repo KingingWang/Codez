@@ -183,7 +183,13 @@ test(
         { rpc, cwd },
       ),
     );
-    const template = { ...currentCatalog.models[0], slug: "custom-model-2", provider: "second-provider" };
+    const template: Record<string, unknown> = {
+      ...currentCatalog.models[0],
+      slug: "custom-model-2",
+      provider: "second-provider",
+    };
+    delete template["display_name"];
+    delete template["description"];
     const writeModelResult = s.codezCatalogReadResultSchema.parse(
       await handleCatalogRequest(
         "catalog/writeModel",
@@ -195,5 +201,24 @@ test(
       { slug: DEFAULT_CODEX_MODEL_SLUG, provider: DEFAULT_CODEX_PROVIDER_ID },
       { slug: "custom-model-2", provider: "second-provider" },
     ]);
+
+    // 重启原生 codex app-server，验证省略 display_name 与 description 的新增模型在重启后仍能被原生正常加载
+    await rpc.close();
+    rpc = createCodexProcess({
+      executable: process.env.CODEX_AUXILIARY_TEST_BINARY!,
+      cwd: root,
+      env: {
+        ...process.env,
+        CODEX_HOME: codexHome,
+      },
+    });
+    await rpc.initialize();
+    const modelsAfterRestart = s.codexModelsResponseSchema.parse(
+      await rpc.request("model/list", { includeHidden: false }),
+    );
+    const addedModel = modelsAfterRestart.data.find((entry) => entry.model === "custom-model-2");
+    assert.ok(addedModel, "expected custom-model-2 to load after native restart");
+    assert.equal(addedModel.displayName, "custom-model-2");
+    assert.equal(addedModel.description, "custom-model-2");
   },
 );

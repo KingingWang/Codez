@@ -17,6 +17,7 @@ import {
   codexMemoryNumberEdit,
 } from "./codexMemorySettings.js";
 import {
+  CODEX_PROVIDER_WIRE_APIS,
   codexCatalogModelTemplate,
   codexCatalogModelWriteParams,
   codexCatalogModelView,
@@ -31,6 +32,7 @@ import {
   codexProviderSetDefaultEdits,
   codexProviderUpdateEdits,
   isCodexManagedEnvKey,
+  normalizeCodexProviderWireApi,
 } from "./codexProviderSettings.js";
 import {
   codexUserApprovalOptions,
@@ -975,6 +977,11 @@ test("providers view reads model_providers with token presence only and default-
           base_url: "http://127.0.0.1:39081/v1",
           wire_api: "responses",
         },
+        "claude-my": {
+          name: "Claude Custom",
+          base_url: "https://api.anthropic.com/v1",
+          wire_api: "anthropic",
+        },
       },
     },
     origins: {},
@@ -999,6 +1006,18 @@ test("providers view reads model_providers with token presence only and default-
       modelCount: 1,
     },
     {
+      id: "claude-my",
+      name: "Claude Custom",
+      baseUrl: "https://api.anthropic.com/v1",
+      wireApi: "anthropic",
+      requiresOpenaiAuth: false,
+      hasBearerToken: false,
+      envKey: undefined,
+      hasAuthCommand: false,
+      isDefault: false,
+      modelCount: 0,
+    },
+    {
       id: "ollama1",
       name: "Ollama One",
       baseUrl: "http://127.0.0.1:39080/v1",
@@ -1013,6 +1032,11 @@ test("providers view reads model_providers with token presence only and default-
     },
   ]);
   assert.equal(JSON.stringify(view).includes("sk-secret-value"), false);
+  assert.deepEqual(CODEX_PROVIDER_WIRE_APIS, ["chat", "responses", "anthropic"]);
+  assert.equal(normalizeCodexProviderWireApi("chat"), "chat");
+  assert.equal(normalizeCodexProviderWireApi("responses"), "responses");
+  assert.equal(normalizeCodexProviderWireApi("anthropic"), "anthropic");
+  assert.equal(normalizeCodexProviderWireApi("unknown"), "chat");
 });
 
 test("providers view projects env_key references and auth command without values", () => {
@@ -1324,14 +1348,51 @@ test("model entry builder overlays identity fields on the raw JSON and rejects b
       context_window: 123,
     }),
   });
-  // slug/provider/visibility 以简单字段为准；description 清空 = 删键；能力字段保留。
+  // slug/provider/visibility 以简单字段为准；description 未填时自动使用 display_name；能力字段保留。
   assert.deepEqual(entry, {
     slug: "new-slug",
     provider: "ollama1",
     display_name: "New",
+    description: "New",
     visibility: "hidden",
     context_window: 123,
   });
+  // displayName 未填而 description 已填时，display_name 默认使用 description。
+  assert.deepEqual(
+    codexModelEntryFromForm({
+      slug: "desc-only-slug",
+      provider: "ollama1",
+      displayName: "   ",
+      description: "Custom description",
+      hidden: false,
+      rawJson: "{}",
+    }),
+    {
+      slug: "desc-only-slug",
+      provider: "ollama1",
+      display_name: "Custom description",
+      description: "Custom description",
+      visibility: "list",
+    },
+  );
+  // displayName 和 description 均未填时，两者默认都使用 slug。
+  assert.deepEqual(
+    codexModelEntryFromForm({
+      slug: "both-empty-slug",
+      provider: "ollama1",
+      displayName: "",
+      description: "",
+      hidden: false,
+      rawJson: "{}",
+    }),
+    {
+      slug: "both-empty-slug",
+      provider: "ollama1",
+      display_name: "both-empty-slug",
+      description: "both-empty-slug",
+      visibility: "list",
+    },
+  );
   assert.equal(
     codexModelEntryFromForm({
       slug: "x",
@@ -1365,6 +1426,7 @@ test("model entry builder overlays identity fields on the raw JSON and rejects b
   assert.equal(form.originalSlug, "a");
   assert.deepEqual(codexModelEntryFromForm(form), {
     ...source,
+    description: "A",
     visibility: "list",
   });
   // 视图投影：hidden 判定与 display_name 回退。
@@ -1400,6 +1462,7 @@ test("catalog model write params preserve the original slug only for edits", () 
       slug: "new-model",
       provider: "ollama1",
       display_name: "New",
+      description: "New",
       visibility: "list",
     },
     originalSlug: "old-model",

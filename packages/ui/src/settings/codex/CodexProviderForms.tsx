@@ -14,6 +14,10 @@ import type {
   CodexProviderForm,
   CodexProviderView,
 } from "./codexProviderSettings.js";
+import {
+  CODEX_PROVIDER_WIRE_APIS,
+  normalizeCodexProviderWireApi,
+} from "./codexProviderSettings.js";
 import { useCodexMessages } from "./messages.js";
 
 function Field({
@@ -121,7 +125,7 @@ export function CodexProviderFormView({
           onValueChange={(value) =>
             onChange({
               ...form,
-              wireApi: value === "responses" ? "responses" : "chat",
+              wireApi: normalizeCodexProviderWireApi(value),
             })
           }
         >
@@ -132,8 +136,11 @@ export function CodexProviderFormView({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="chat">chat</SelectItem>
-            <SelectItem value="responses">responses</SelectItem>
+            {CODEX_PROVIDER_WIRE_APIS.map((wireApi) => (
+              <SelectItem key={wireApi} value={wireApi}>
+                {wireApi}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </Field>
@@ -328,6 +335,9 @@ export function CodexCatalogModelFormView({
           id="codex-model-display-name"
           value={form.displayName}
           disabled={disabled}
+          placeholder={
+            form.description.trim() || form.slug.trim() || "my-model-v1"
+          }
           onChange={(event) =>
             onChange({ ...form, displayName: event.target.value })
           }
@@ -338,6 +348,9 @@ export function CodexCatalogModelFormView({
           id="codex-model-description"
           value={form.description}
           disabled={disabled}
+          placeholder={
+            form.displayName.trim() || form.slug.trim() || "my-model-v1"
+          }
           onChange={(event) =>
             onChange({ ...form, description: event.target.value })
           }

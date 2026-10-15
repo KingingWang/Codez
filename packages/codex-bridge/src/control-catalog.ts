@@ -129,6 +129,22 @@ async function readCatalogModels(
   });
 }
 
+function normalizeCatalogModelEntry(model: s.CodezCatalogModelEntry): s.CodezCatalogModelEntry {
+  // 修复原因：Codex 原生 ModelInfo 要求 display_name 与 description 为字符串；
+  // 缺省时互相回退并最终回退到 slug，避免写盘后重启因缺少这两个字段而加载失败。
+  const rawDisplayName =
+    typeof model.display_name === "string" ? model.display_name.trim() : "";
+  const rawDescription =
+    typeof model.description === "string" ? model.description.trim() : "";
+  const displayName = rawDisplayName || rawDescription || model.slug;
+  const description = rawDescription || displayName;
+  return {
+    ...model,
+    display_name: displayName,
+    description,
+  };
+}
+
 /**
  * catalog/writeModel：按 slug upsert（同 slug 整条替换，否则追加），原子落盘。
  * 编辑改名传 originalSlug：单次读改写内在原位置替换，不串联新增/删除。
@@ -139,28 +155,29 @@ async function writeCatalogModel(
   model: s.CodezCatalogModelEntry,
   originalSlug?: string,
 ): Promise<s.CodezCatalogReadResult> {
+  const normalizedModel = normalizeCatalogModelEntry(model);
   const path = await resolveCatalogPath(context);
   if (!path) failure(method, "model_catalog_json is not configured");
   const existing = await readCatalogFile(method, path, true);
   const index = existing.models.findIndex((entry) =>
-    originalSlug === undefined ? entry.slug === model.slug : entry.slug === originalSlug,
+    originalSlug === undefined ? entry.slug === normalizedModel.slug : entry.slug === originalSlug,
   );
   const models = [...existing.models];
   if (index < 0 && originalSlug !== undefined) {
     // 原始条目已被外部进程删除/改名时不能伪造成功，也不能把改名写成新增。
     failure(method, `model "${originalSlug}" not found in catalog ${path}`);
   }
-  if (index < 0) models.push(model);
-  else if (originalSlug !== undefined && originalSlug !== model.slug) {
+  if (index < 0) models.push(normalizedModel);
+  else if (originalSlug !== undefined && originalSlug !== normalizedModel.slug) {
     const conflict = models.findIndex(
-      (entry, position) => position !== index && entry.slug === model.slug,
+      (entry, position) => position !== index && entry.slug === normalizedModel.slug,
     );
     if (conflict >= 0) {
       // 目标 slug 必须唯一；拒绝后保持原始文件字节，避免 GUI 变成新增重复条目。
-      failure(method, `model "${model.slug}" already exists in catalog ${path}`);
+      failure(method, `model "${normalizedModel.slug}" already exists in catalog ${path}`);
     }
-    models[index] = model;
-  } else models[index] = model;
+    models[index] = normalizedModel;
+  } else models[index] = normalizedModel;
   await writeCatalogFileAtomic(method, path, models);
   return catalogMapping(path, models);
 }

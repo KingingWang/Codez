@@ -9,7 +9,7 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
 
 - 面板分两个区块：**供应商**（`model_providers` 表）与**模型**（catalog 文件
   条目）。模型按 catalog provider 分组列出，与 composer 下拉同一归属口径。
-- 供应商字段（MVP）：id、name、base_url、wire_api（chat/responses）、
+- 供应商字段（MVP）：id、name、base_url、wire_api（chat/responses/anthropic）、
   API Key（`experimental_bearer_token`）、requires_openai_auth。id 创建后不可改
   （TOML 表键即身份；改名 = 新建 + 删除）。
 - 配置文件来源的 API Key 明文写入 config.toml（codex 原生
@@ -25,7 +25,12 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
   保留配置）。其余能力字段（context_window、reasoning levels 等约 30 个）经
   **单模型高级 JSON 编辑器**维护：编辑表单内折叠区直接编辑该条目的完整
   JSON；新增模型时从同 provider 现有首条模型复制能力模板，只允许先改
-  slug/display_name/description/provider。编辑已有模型时 slug 允许修改，用于
+  slug/display_name/description/provider。Codex 原生 `ModelInfo` schema 要求
+  `display_name` 与 `description` 为必填字符串字段（缺失会导致重启时解析
+  `model_catalog_json` 失败）：因此 `display_name` 未填时默认回退为
+  `description`（若也没填则回退为 `slug`），`description` 未填时自动补充为
+  最终的 `display_name`，bridge `catalog/writeModel` 同样兜底补齐这两个字段，
+  绝不写出缺失 `display_name` 或 `description` 的目录条目。编辑已有模型时 slug 允许修改，用于
   供应商模型版本升级后的原地替换；改名是 `catalog/writeModel` 的单次原子
   目录写入（传 `originalSlug`），不是 GUI 串联“新增 + 删除”。若旧 slug 是
   `config.model`，沿用删除默认模型的既有语义：显示警告并允许保存，新线程
