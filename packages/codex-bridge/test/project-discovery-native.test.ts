@@ -78,6 +78,7 @@ async function execPinnedCodex(options: {
   let stdout = "";
   let stderr = "";
   let exitCode: number | null;
+  let exitSignal: NodeJS.Signals | null;
   const child = spawn(
     process.env.CODEX_AUXILIARY_TEST_BINARY!,
     ["exec", "--skip-git-repo-check", "--json", options.prompt],
@@ -86,7 +87,9 @@ async function execPinnedCodex(options: {
       env: childEnv(options.codexHome),
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
-      timeout: 15_000,
+      // macOS Intel runner 上同一 exec 偶发超过 15s（正常 arm64 全测试仅 ~2s），
+      // 与仓库内其他原生测试的 30s/60s 预算对齐，避免慢 runner 抖动误判。
+      timeout: 30_000,
       signal: abort.signal,
     },
   );
@@ -97,11 +100,19 @@ async function execPinnedCodex(options: {
     child.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk;
     });
-    [exitCode] = (await once(child, "close")) as [number | null];
+    [exitCode, exitSignal] = (await once(child, "close")) as [
+      number | null,
+      NodeJS.Signals | null,
+    ];
   } finally {
     options.t.signal.removeEventListener("abort", abortTest);
   }
-  assert.equal(exitCode, 0, stderr || stdout);
+  // 超时被 SIGTERM 杀掉时 exitCode 为 null，必须把 signal 与 stdout 一并带出才能定位卡点。
+  assert.equal(
+    exitCode,
+    0,
+    `codex exec exited code=${exitCode} signal=${exitSignal ?? "none"}\nstderr: ${stderr}\nstdout: ${stdout}`,
+  );
   const started = stdout
     .split("\n")
     .filter((line) => line.trim())
@@ -130,7 +141,8 @@ async function startTurnAndWaitForCompletion(
   });
   const timeout = setTimeout(
     () => rejectCompleted(new Error("Native turn did not complete")),
-    15_000,
+    // 与 exec 超时同理，给慢 runner 上的原生模型往返留足余量。
+    30_000,
   );
   try {
     const response = await rpc.request("turn/start", {
@@ -149,7 +161,8 @@ test(
   "pinned native project discovery includes external exec and desktop threads and resumes external history",
   {
     skip: !process.env.CODEX_AUXILIARY_TEST_BINARY,
-    timeout: 60_000,
+    // 预算 = 2 次 exec(30s) + 2 次 turn(30s) + RPC 往返，取 120s 封顶。
+    timeout: 120_000,
   },
   async (t) => {
     const temporary = await mkdtemp(join(tmpdir(), "codez-discovery-native-"));

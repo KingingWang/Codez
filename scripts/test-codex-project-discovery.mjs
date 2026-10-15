@@ -7,7 +7,8 @@ import { stageCodexBinary } from "./codex-runtime.mjs";
 
 test(
   "verified native Codex discovers and resumes external project history",
-  { timeout: 90000 },
+  // 内层原生测试预算放宽到 120s 后，外层 wrapper 同步放宽到 180s。
+  { timeout: 180000 },
   async () => {
     const binary = await stageCodexBinary();
     // 普通单测可在下载前跳过原生测试；发布矩阵必须用当前平台已验证的二进制实际执行。
@@ -30,7 +31,8 @@ test(
       {
         env,
         stdio: "inherit",
-        timeout: 75000,
+        // 内层测试自身 120s 预算；外层留 150s 保证先拿到内层的失败详情而不是被腰斩。
+        timeout: 150000,
       },
     );
     const [code, signal] = await once(child, "close");
