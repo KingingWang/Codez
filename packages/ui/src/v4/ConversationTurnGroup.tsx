@@ -210,7 +210,9 @@ function HighspeedOutputFooter({
   );
 }
 
-function toRetryStatus(apiRetry: Extract<ApiRetryState, { attempt: number }>): CodezApiRetryStatus {
+function toRetryStatus(
+  apiRetry: Exclude<ApiRetryState, { source: "codex" }>,
+): CodezApiRetryStatus {
   const attempt = Math.max(1, Math.floor(apiRetry.attempt));
   // v4 maxAttempts 包含首次请求，而展示口径是重试次数；直接展示会把
   // 默认 10 次重试写成 1/11。
@@ -234,7 +236,7 @@ function TurnChatLoadingSlot({
 }) {
   const { intl, locale } = useCodezIntl();
   const retryStatus = useMemo(
-    () => (apiRetry && "attempt" in apiRetry ? toRetryStatus(apiRetry) : null),
+    () => (apiRetry && !("source" in apiRetry) ? toRetryStatus(apiRetry) : null),
     [apiRetry],
   );
   const codexRetry = apiRetry && "source" in apiRetry ? apiRetry : null;
@@ -247,7 +249,12 @@ function TurnChatLoadingSlot({
   return (
     <div data-codez-chat-loading-slot="true" className="min-h-5">
       {codexRetry ? (
-        <CodexRetryStatus httpStatusCode={codexRetry.httpStatusCode} intl={intl} />
+        <CodexRetryStatus
+          httpStatusCode={codexRetry.httpStatusCode}
+          attempt={codexRetry.attempt}
+          maxRetries={codexRetry.maxRetries}
+          intl={intl}
+        />
       ) : visibleRetryStatus ? (
         <ChatApiRetryStatus apiRetry={visibleRetryStatus} intl={intl} locale={locale} />
       ) : (

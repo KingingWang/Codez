@@ -44,8 +44,9 @@ ordering, and request/response paths still project their own turns synchronously
 
 Native app-server `error` notifications with `willRetry: true` are transient,
 turn-scoped retry observations, not terminal errors or bridge retry commands. The
-bridge retains only a validated HTTP status code for the current in-progress turn
-and projects it through V4 `control.apiRetry`; it never persists native error
+bridge retains only a validated HTTP status code and optional validated positive
+integer `(attempt, maxRetries)` counts for the current in-progress turn and
+projects them through V4 `control.apiRetry`; it never persists native error
 text, fabricates retry counts or replays mutations. Model progress, terminal
 notifications and turn completion clear the observation. Both delivery modes
 read the same current snapshot; native thread history cannot restore the status

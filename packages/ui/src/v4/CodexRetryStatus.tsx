@@ -2,13 +2,26 @@ import type { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 export function CodexRetryStatus({
   httpStatusCode,
+  attempt = null,
+  maxRetries = null,
   intl,
 }: {
   httpStatusCode: number | null;
+  attempt?: number | null;
+  maxRetries?: number | null;
   intl: ReturnType<typeof useCodezIntl>["intl"];
 }) {
   const label = intl.formatMessage({ id: "chat.codexApiRetryStatus" });
-  const retryLabel = httpStatusCode === null ? label : `${label} · HTTP ${httpStatusCode}`;
+  const hasValidCounts =
+    typeof attempt === "number" &&
+    typeof maxRetries === "number" &&
+    Number.isInteger(attempt) &&
+    Number.isInteger(maxRetries) &&
+    attempt >= 1 &&
+    maxRetries >= attempt;
+  const labelWithCount = hasValidCounts ? `${label} ${attempt}/${maxRetries}` : label;
+  const retryLabel =
+    httpStatusCode === null ? labelWithCount : `${labelWithCount} · HTTP ${httpStatusCode}`;
   return (
     <span
       role="status"

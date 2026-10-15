@@ -2595,12 +2595,16 @@ export class ProductProjection {
       current === apiRetry ||
       (current !== null &&
         apiRetry !== null &&
-        !("source" in current) &&
-        !("source" in apiRetry) &&
-        current.attempt === apiRetry.attempt &&
-        current.maxAttempts === apiRetry.maxAttempts &&
-        current.nextRetryAt === apiRetry.nextRetryAt &&
-        current.reasonCode === apiRetry.reasonCode)
+        ("source" in current && "source" in apiRetry
+          ? current.httpStatusCode === apiRetry.httpStatusCode &&
+            (current.attempt ?? null) === (apiRetry.attempt ?? null) &&
+            (current.maxRetries ?? null) === (apiRetry.maxRetries ?? null)
+          : !("source" in current) &&
+            !("source" in apiRetry) &&
+            current.attempt === apiRetry.attempt &&
+            current.maxAttempts === apiRetry.maxAttempts &&
+            current.nextRetryAt === apiRetry.nextRetryAt &&
+            current.reasonCode === apiRetry.reasonCode))
     ) {
       return [];
     }

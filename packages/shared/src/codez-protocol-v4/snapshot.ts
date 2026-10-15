@@ -127,6 +127,8 @@ const countedApiRetryStateSchema = z.object({
 const codexApiRetryStateSchema = z.object({
   source: z.literal("codex"),
   httpStatusCode: z.number().int().min(100).max(599).nullable(),
+  attempt: z.number().int().positive().nullable().optional(),
+  maxRetries: z.number().int().positive().nullable().optional(),
 });
 export const apiRetryStateSchema = z.union([countedApiRetryStateSchema, codexApiRetryStateSchema]);
 export type ApiRetryState = z.infer<typeof apiRetryStateSchema>;

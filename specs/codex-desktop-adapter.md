@@ -424,10 +424,14 @@ Acceptance:
   `control.apiRetry` presentation state. It does not retry a request or store a
   second execution history.
 - Show a localized "model request is retrying" status in the live turn from the
-  first _reported_ notification. Show `HTTP nnn` only when the native
+  first _reported_ notification. When the native `error.message` reports a
+  positive integer `attempt/maxRetries` pair (for example `Reconnecting... 1/5`
+  with `1 <= attempt <= maxRetries <= 1000`), project those validated integers
+  on `control.apiRetry` and render `attempt/maxRetries` after the localized
+  retry copy. Show `HTTP nnn` only when the native
   `codexErrorInfo.httpStatusCode` is a valid HTTP status. Do not display raw
-  `additionalDetails`, infer attempt counts or deadlines from English messages,
-  or apply the legacy model adapter's "third retry" visibility threshold.
+  `message` or `additionalDetails`, fabricate counts or deadlines when none are
+  reported, or apply the legacy model adapter's "third retry" visibility threshold.
 - Accept a retry notification only for the current in-progress turn on the
   already-owned thread. Duplicate or late events for a completed/older turn
   cannot revive the label. The first new model item/progress on that turn,

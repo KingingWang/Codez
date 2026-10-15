@@ -29,6 +29,7 @@ function retryNotification(
   threadId = "thread-1",
   turnId = "turn-1",
   httpStatusCode: unknown = 503,
+  message = "Reconnecting... 1/5",
 ) {
   return {
     method: "error",
@@ -37,7 +38,7 @@ function retryNotification(
       turnId,
       willRetry: true,
       error: {
-        message: "Reconnecting... 1/5",
+        message,
         additionalDetails: "raw provider body must not enter UI",
         codexErrorInfo: { responseStreamDisconnected: { httpStatusCode } },
       },
@@ -59,11 +60,24 @@ test("native retry notification is turn-scoped, published and schema-valid witho
     revision: state.revision,
     apiRetry: state.apiRetry?.status ?? null,
   });
-  assert.deepEqual(snapshot.control.apiRetry, { source: "codex", httpStatusCode: 503 });
+  assert.deepEqual(snapshot.control.apiRetry, {
+    source: "codex",
+    httpStatusCode: 503,
+    attempt: 1,
+    maxRetries: 5,
+  });
   assert.deepEqual(conversationSnapshotSchema.parse(snapshot), snapshot);
   assert.equal(JSON.stringify(snapshot).includes("raw provider body"), false);
   await store.apply(retryNotification());
   assert.equal(store.get("thread-1")!.seq, afterFirstSeq, "duplicate state is not re-published");
+  await store.apply(retryNotification("thread-1", "turn-1", 503, "Reconnecting... 2/5"));
+  assert.equal(store.get("thread-1")!.seq, afterFirstSeq + 1, "next attempt is published");
+  assert.deepEqual(store.get("thread-1")!.apiRetry?.status, {
+    source: "codex",
+    httpStatusCode: 503,
+    attempt: 2,
+    maxRetries: 5,
+  });
 });
 
 test("unknown status stays unknown; terminal failures and first model progress clear retry", async () => {
@@ -75,11 +89,22 @@ test("unknown status stays unknown; terminal failures and first model progress c
   assert.deepEqual(store.get("thread-1")!.apiRetry?.status, {
     source: "codex",
     httpStatusCode: null,
+    attempt: null,
+    maxRetries: null,
   });
   await store.apply(retryNotification("thread-1", "turn-1", null));
   assert.deepEqual(store.get("thread-1")!.apiRetry?.status, {
     source: "codex",
     httpStatusCode: null,
+    attempt: 1,
+    maxRetries: 5,
+  });
+  await store.apply(retryNotification("thread-1", "turn-1", 403, "Retrying 5/1"));
+  assert.deepEqual(store.get("thread-1")!.apiRetry?.status, {
+    source: "codex",
+    httpStatusCode: 403,
+    attempt: null,
+    maxRetries: null,
   });
   await store.apply({
     method: "item/started",
