@@ -58,6 +58,44 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
 
 ## 事实源与所有权
 
+### 首次启动缺失配置文件与模型目录文件的自动初始化
+
+- 新安装环境中 `$CODEX_HOME/config.toml`（缺省 `~/.codex/config.toml`）与
+  `model_catalog_json` 模型目录文件可能尚不存在。若缺少这两个文件：
+  - `config.toml` 未配置 `model_catalog_json` 时，`catalog/readModels` 返回
+    `path: null`，GUI「模型供应商」面板无法管理目录模型；
+  - 已配置 `model_catalog_json` 但指向的模型目录文件缺失或为空时，Codex
+    `app-server` 在启动期加载 `model_catalog_json` 会直接报错退出。
+- 因此，bridge 在拉起 `codex app-server` 之前执行幂等的首启默认文件补齐
+  （`ensureDefaultCodexConfigFiles`）：
+  1. 解析 `codexHome = env.CODEX_HOME?.trim() || join(homedir(), ".codex")`，
+     按需 `mkdir(codexHome, { recursive: true })`。
+  2. 若 `${codexHome}/config.toml` 不存在：
+     - 先确保 `${codexHome}/models.json` 存在（不覆盖已有文件），写入符合
+       Codex 原生 `ModelsResponse` / `ModelInfo` schema 的推荐默认模型条目
+       （含 `slug: "gpt-5.4"`、`provider: "openai-custom"`、完整能力字段与
+       `base_instructions`），供后续 GUI 新增模型时通过
+       `codexCatalogModelTemplate` 复制能力模板；
+     - 以 `flag: "wx"` 创建默认 `${codexHome}/config.toml`，配置
+       `model_provider = "openai-custom"`、`model = "gpt-5.4"`、
+       `model_catalog_json = "models.json"` 及
+       `[model_providers.openai-custom]`（注意：`openai` 为 Codex 原生保留
+       provider id，自定义表必须使用非保留 id）。
+  3. 若 `${codexHome}/config.toml` 已存在：
+     - 绝不改写现有 `config.toml`；
+     - 解析顶层 `model_catalog_json`（相对路径相对 `codexHome` 解析），若已配置
+       但目标目录文件尚不存在，则按默认推荐模型目录自动创建该文件（绑定配置中的
+       `model_provider` 与 `model`），避免 Codex 因目录文件缺失而无法启动。
+
+```text
+codex-bridge main 启动
+  ──→ ensureDefaultCodexConfigFiles(env)
+        ├─ config.toml 缺失 ──→ 补齐 models.json (wx) + 创建默认 config.toml (wx)
+        └─ config.toml 已存在 ─→ 若 model_catalog_json 指向的文件缺失，补齐该目录文件 (wx)
+  ──→ createCodexProcess (spawn codex app-server)
+  ──→ GUI CodexProvidersPanel 可直接读取 user layer 与 catalog.path，新增/编辑供应商与模型
+```
+
 目录列表的可见性开关表达「在模型下拉中显示」（`checked = !hidden`），
 不能在勾选时读作「隐藏」。可访问名称包含模型 slug，同名模型也必须有不同控件名。
 编辑表单的独立「隐藏」开关仍表示持久化 `hidden` 草稿（`checked = hidden`）。
@@ -164,6 +202,9 @@ deleteCodexCatalogModel`，载体铁律与 `readCodexCatalog` 相同（workspace
     外部进程在 GUI 读取后删去其他模型时，以 bridge 写入前的最新读取为准。
 12. 成功保存目录模型后，点击「立即重启运行时」先显示本工作区进行中任务
     将被中断和「确认重启」；取消不调用 disposeWorkspace，确认才调用。
+13. 首次启动时 `$CODEX_HOME` 下无 `config.toml` 与模型目录文件：bridge 启动时自动创建
+    默认 `config.toml` 与 `models.json`，Codex 原生进程正常解析启动，GUI「模型供应商」
+    面板可正常读取默认供应商与模型并继续添加新供应商与模型；已有文件绝不被覆盖。
 
 ```text
 GUI 已观察目录 → 展示禁用或确认 → bridge 接收 deleteModel

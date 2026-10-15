@@ -218,7 +218,9 @@ test(
 
 for (const mode of ["handshake-timeout", "handshake-error"]) {
   test(`${mode} is terminal and never retries initialize`, options, async (t) => {
-    const { process, trace } = await fixture(t, mode, 100);
+    // 并行跑大量原生单测时，Node 子进程冷启动 + 500ms EOF 优雅关闭窗口不能小于 100ms RPC 超时，
+    // 否则 fake-codex 尚未完成模块加载就被 SIGTERM 终止，无法写出 EOF trace。
+    const { process, trace } = await fixture(t, mode, 300);
     await assert.rejects(process.initialize());
     await assert.rejects(process.initialize());
     await assert.rejects(process.request("status"));

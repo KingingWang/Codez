@@ -20,12 +20,15 @@ import {
   createCodexProviderKeyGate,
   parseBlockedCodexProviderIds,
 } from "./provider-key-gate.js";
+import { ensureDefaultCodexConfigFiles } from "./default-codex-config.js";
 
 async function main(): Promise<void> {
   if (process.argv[2] === CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE) {
     await runNativeBrowserCuaMcp();
     return;
   }
+  // 首次安装打开软件时自动补齐缺失的 config.toml 与模型目录文件，确保后续 GUI 可管理供应商与模型。
+  await ensureDefaultCodexConfigFiles(process.env);
   // Windows 的 cwd 可保留 junction/短路径拼写；执行路径统一为物理目录，身份仍由 Host 指定。
   const cwd = await realpath(process.cwd());
   const workspaceId = process.env.CODEZ_WORKSPACE_IDENTITY?.trim() || cwd;
