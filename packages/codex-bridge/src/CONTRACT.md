@@ -62,3 +62,15 @@ projected from lock-free reads without resume, because resuming it rewrites the
 child rollout and bumps the `updatedAt` that `session/subagents` reports as
 `endedAt`. Any resume refusal still degrades to a read-only snapshot instead of
 failing the view. See specs/codex-desktop-subagent-drilldown.md.
+
+A running subagent must leave `snapshot.subagents.running` when its task ends;
+the parent thread's collab items are the primary fact, but native v1/v2 often
+never write a terminal fact there. The bridge therefore also tracks child-thread
+liveness: the loaded child's native `status`, `turn/started` / `turn/completed`
+/ `thread/status/changed` events for any thread (native auto-attaches a listener
+for initialized connections when a child thread is created), and a one-shot
+`thread/list` seed for children spawned before the bridge connected. A child
+observed non-active stops the status-panel timer without waiting for parent-side
+facts; a re-driven child (`turn/started`) becomes running again, matching native
+resume semantics. Child lifecycle events touch the parent session so
+re-projection is immediate. Unobserved children keep the parent-side fact.

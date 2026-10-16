@@ -5,8 +5,8 @@ import { array, object, string, type JsonObject } from "./json.js";
 import { rememberThreadMode } from "./command-input.js";
 import { sameExecutionPath } from "./execution-path.js";
 import { mergeNativeTurn } from "./merge-turn.js";
+import { applyNativeItemDelta, findNativeTurn } from "./native-item-delta.js";
 import { paginateNativeRows } from "./native-paging.js";
-import { canonicalNativeThreads } from "./projection.js";
 import { applyNativeRetry } from "./native-retry-status.js";
 import { resolveSelectionSideChatBoundary } from "./selection-side-chat.js";
 import {
@@ -15,7 +15,9 @@ import {
   parentThreadOwnedByWorkspace,
 } from "./thread-load.js";
 import { DeletedThreadError, type ThreadProjectionState } from "./thread-state-types.js";
+import { listNativeQueue, listWorkspaceThreads } from "./thread-queries.js";
 import { upsertTurnPlanUpdate } from "./turn-plan-update.js";
+import { SubagentActivityTracker } from "./subagent-activity.js";
 
 // 本文件仍是 store 词汇表的对外入口（与 projection.ts 的 facade 惯例一致）：
 // 定义移到 thread-state-types.ts 只是为了把 store 主体压回 400 行上限内。
@@ -30,6 +32,8 @@ export class ThreadStateStore {
   private readonly loaded = new Set<string>();
   private readonly deleted = new Set<string>();
   private readonly completedItems = new Set<string>();
+  /** 子线程活性与父子登记的单一所有者（见 subagent-activity.ts 头部说明）。 */
+  private readonly subagentActivity = new SubagentActivityTracker();
 
   constructor(
     private readonly rpc: CodexRpcPort,
@@ -69,6 +73,26 @@ export class ThreadStateStore {
   nativeThreadStatus(id: string): JsonObject | undefined {
     const thread = this.states.get(id)?.thread;
     return thread ? object(thread.status) : undefined;
+  }
+
+  /** 最近一次原生 turn/status 事件观测到的线程活性；无观测返回 undefined（不覆盖父侧事实）。 */
+  observedThreadActive(id: string): boolean | undefined {
+    return this.subagentActivity.observedActive(id);
+  }
+
+  /** 一次性种子写入活性观测（事件旁路的写入在 apply 内）。 */
+  noteThreadActivity(id: string, active: boolean): void {
+    this.subagentActivity.noteActivity(id, active);
+  }
+
+  /** 父会话快照构建后登记父子关系；子线程生命周期事件据此触发父会话重投影。 */
+  noteSubagentChildren(parentId: string, childIds: readonly string[]): void {
+    this.subagentActivity.noteChildren(parentId, childIds);
+  }
+
+  /** 子代理种子调度器读取跟踪器（种子模块与 store 的边界：tracker 归 store 所有）。 */
+  subagentActivityTracker(): SubagentActivityTracker {
+    return this.subagentActivity;
   }
 
   /** subagents 投影 revision 记账：空目录恒 0，非空至少 1，仅语义变化时递增（renderer CAS）。 */
@@ -196,7 +220,7 @@ export class ThreadStateStore {
   acceptTurnResponse(id: string, response: unknown): void {
     const turn = object(object(response).turn);
     const state = this.states.get(id);
-    const existing = state && this.turn(state, turn.id);
+    const existing = state && findNativeTurn(state.thread, turn.id);
     // 请求响应可能晚于终态通知；同 id 的终态不能被较旧 admission 响应覆盖。
     if (existing && existing.status !== "inProgress") return;
     void this.apply({ method: "turn/started", params: { threadId: id, turn } });
@@ -239,12 +263,7 @@ export class ThreadStateStore {
   async refreshQueue(id: string): Promise<void> {
     const state = this.states.get(id);
     if (!state) return;
-    state.queue = await paginateNativeRows(
-      this.rpc,
-      "thread/queue/list",
-      { threadId: id },
-      "queue",
-    );
+    state.queue = await listNativeQueue(this.rpc, id);
     this.touch(id);
   }
 
@@ -252,7 +271,12 @@ export class ThreadStateStore {
   async apply(event: CodexNotification): Promise<string | undefined> {
     const params = object(event.params ?? {});
     if (event.method === "thread/deleted") {
-      this.remove(string(params.threadId));
+      const deletedId = string(params.threadId);
+      // 先取父会话再失效登记（顺序不可换）：子线程删除同样终结子代理运行态，
+      // 父会话立即重投影，状态面板停止计时。
+      const subagentParents = this.subagentActivity.untrack(deletedId);
+      this.remove(deletedId);
+      for (const parentId of subagentParents) this.touch(parentId);
       return;
     }
     if (event.method === "thread/started") {
@@ -266,7 +290,16 @@ export class ThreadStateStore {
     }
     const id = typeof params.threadId === "string" ? params.threadId : undefined;
     const state = id ? this.states.get(id) : undefined;
-    if (!state || !id) return;
+    if (!state || !id) {
+      // 未加载的子线程没有投影条目，但它的 turn/status 事件仍是子代理运行态的权威事实
+      // （子线程创建时原生会为已初始化连接自动挂 listener，事件无需打开子面板即可到达）。
+      // 观测先落账再 touch 父会话；父子关系未登记时（首个父快照尚未构建）观测也已留存，
+      // 不会丢失。
+      if (id)
+        for (const parentId of this.subagentActivity.observeLifecycle(event.method, id, params))
+          this.touch(parentId);
+      return;
+    }
     if (event.method === "error") {
       const { retry, changed } = applyNativeRetry(state.thread, state.apiRetry, params);
       state.apiRetry = retry;
@@ -326,7 +359,7 @@ export class ThreadStateStore {
       else turns[index] = mergeNativeTurn(object(turns[index]), turn);
       state.thread.turns = turns;
     } else if (event.method === "item/started" || event.method === "item/completed") {
-      const turn = this.turn(state, params.turnId);
+      const turn = findNativeTurn(state.thread, params.turnId);
       if (!turn) return;
       if (state.apiRetry?.turnId === params.turnId) state.apiRetry = null;
       const items = array(turn.items);
@@ -339,58 +372,22 @@ export class ThreadStateStore {
       else items[index] = item;
       turn.items = items;
     } else if (event.method === "turn/plan/updated") {
-      const turn = this.turn(state, params.turnId);
+      const turn = findNativeTurn(state.thread, params.turnId);
       if (!turn) return;
       upsertTurnPlanUpdate(turn, params);
     } else if (event.method.endsWith("/delta") || event.method.endsWith("Delta")) {
-      if (this.completedItems.has(JSON.stringify([id, params.turnId, params.itemId]))) return;
-      const turn = this.turn(state, params.turnId);
-      const item = array(turn?.items)
-        .map(object)
-        .find((value) => value.id === params.itemId);
-      if (!item || typeof params.delta !== "string") return;
-      if (state.apiRetry?.turnId === params.turnId) state.apiRetry = null;
-      if (event.method === "item/agentMessage/delta" || event.method === "item/plan/delta") {
-        item.text = String(item.text ?? "") + params.delta;
-      } else if (event.method === "item/commandExecution/outputDelta") {
-        item.aggregatedOutput = String(item.aggregatedOutput ?? "") + params.delta;
-      } else if (event.method === "item/reasoning/summaryTextDelta") {
-        const summary = array(item.summary);
-        const index = typeof params.summaryIndex === "number" ? params.summaryIndex : 0;
-        summary[index] = String(summary[index] ?? "") + params.delta;
-        item.summary = summary;
-      } else return;
+      if (!applyNativeItemDelta(state, event.method, params, this.completedItems)) return;
     } else return;
     state.thread.updatedAt = Math.floor(Date.now() / 1000);
     this.touch(id);
+    // 已加载子线程的生命周期事件同样要让父会话重投影；否则父侧 subagents.running
+    // 要等下一次父线程事件才收敛，状态面板在子代理结束后继续计时。
+    for (const parentId of this.subagentActivity.observeLifecycle(event.method, id, params))
+      this.touch(parentId);
     return id;
   }
 
-  private turn(state: ThreadProjectionState, id: unknown): JsonObject | undefined {
-    return array(state.thread.turns)
-      .map(object)
-      .find((turn) => turn.id === id);
-  }
-
   async list(): Promise<unknown[]> {
-    const rows = await paginateNativeRows(
-      this.rpc,
-      "thread/list",
-      {
-        cwd: this.cwd,
-        // 原生默认只列当前 provider 的交互来源；项目历史应包含 CLI/exec 与桌面
-        // 创建的会话，切换 provider 也不能让旧记录消失。空数组显式取消 provider 过滤。
-        modelProviders: [],
-        sourceKinds: ["cli", "vscode", "exec", "appServer"],
-        archived: false,
-      },
-      "thread",
-    );
-    // CLI/exec 落盘的是规范化物理路径；按物理目录过滤，别名拼写才不会把列表判空。
-    const owned = await Promise.all(
-      rows.map((row) => sameExecutionPath(object(row).cwd, this.cwd)),
-    );
-    // 分页只收集原始事实；完整校验与同 ID rollout 选择由投影单一 owner 处理。
-    return canonicalNativeThreads(rows.filter((_, index) => owned[index]));
+    return listWorkspaceThreads(this.rpc, this.cwd);
   }
 }

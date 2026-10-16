@@ -29,7 +29,8 @@ Codex flavor 的子代理与原生 flavor 同形可下钻：父会话时间线�
 | `subagent` row | 每个 childThreadId 一行，锚定 spawn item 所在 turn 与位置；`entityId` = `codex:subagent:<childThreadId>`；`summaryText` = spawn prompt 首个非空行（≤200 字符）?? `agentPath` ?? `""`；不设 `backgrounded`/`workId`（Codex 无对应事实） |
 | 行 status 优先级 | ① `subAgentActivity`：`completed`→success、`interrupted`→cancelled；② 否则 `agentsStates[childId].status`：`completed`→success、`errored`→failed、`interrupted`/`shutdown`→cancelled、`pendingInit`/`running`→running、`notFound`→无信息不覆盖；③ 都没有→running |
 | 只有 activity 没有 spawn item 的历史 | 仍产出行，锚定首个 activity item，不带 `parentToolCallId`，走 UI 既有「同 turn 唯一剩余一对」legacy 配对 |
-| `snapshot.subagents` | `childSessionIds` 去重；`running` 只含 status=running（若 bridge thread store 已持有该子线程且原生 status 非 `active`，则不计入 running，避免长期滞留）；`endedTotal = max(0, childSessionIds.length - running.length)`；`revision`：空=0、非空≥1，仅在派生语义变化时 +1（renderer 用作 refresh key 与 child tab 同步 CAS） |
+| `snapshot.subagents` | `childSessionIds` 去重；`running` 只含 status=running（收敛规则见下）；`endedTotal = max(0, childSessionIds.length - running.length)`；`revision`：空=0、非空≥1，仅在派生语义变化时 +1（renderer 用作 refresh key 与 child tab 同步 CAS） |
+| running 收敛（终态到达前不能把子代理从 running 拿掉，结束后也不能一直留着） | 父线程事实是主依据；但 v1 只在 `wait`/`send_input` 碰巧观测到终态时才写 `agentsStates`（实测多数 child 永远没有父侧终态），v2 只在 `Completed` 时写 `subAgentActivity`。因此 bridge 额外维护「子线程活性观测」：① 已加载子线程的原生 `status`；② 所有线程的 `turn/started`→active、`turn/completed`→非 active、`thread/status/changed` 按类型映射（子线程创建时原生会为已初始化连接自动挂 listener，事件无需打开子面板即可到达）；③ 一次性 `thread/list { parentThreadId, sourceKinds: subAgent* }` 种子：`active`→运行中，`idle` 且没有任何 turn →还在排队不判死，`idle` 且有 turn 且无 inProgress→已结束，`systemError`/`notLoaded`→已结束。命中「非 active」即不计入 running。子线程生命周期事件同时 touch 父会话触发重投影，不等下一次父事件 |
 | `session/subagents` | `thread/list { parentThreadId, cwd, sourceKinds: subAgent*, modelProviders: [], archived: false }`；原生 status `active`→running，其余→ended；ended status 用父线程事实推导，不可判定用 `lost`；bridge 侧按 offset 分页并返回不透明 cursor，`ended.total` 为精确已结束数 |
 | 分隔线 marker | `subAgentActivity` 的 `codexEvent` marker 保留不变（additive） |
 
@@ -74,10 +75,14 @@ Codex flavor 的子代理与原生 flavor 同形可下钻：父会话时间线�
   标题走 spawn prompt 首个非空行；真实 `agentNickname`/`agentRole` 只有 `thread/list` /
   `thread/read` 的子线程元数据上有，因此只在 `session/subagents` 目录与 side pane tab 出现。
 - 子代理严格只读：Codex V2 子线程不接受客户端直接输入，因此不提供发送/停止/重试/编辑。
-- 运行中判定：`snapshot.subagents.running` 以父线程事实为准，只在 bridge 已缓存该子线程且
-  原生状态非 `active` 时把它从 running 里去掉（避免中断会话永久滞留「运行中」）。缓存状态
-  可能滞后于「父线程重新驱动该子代理」的时刻；未 attach 的只读条目在下一次 subscribe/resync
-  会被 invalidate 并重判，因此滞后窗口只存在于子面板持续打开且未 resync 期间。
+- 运行中判定：`snapshot.subagents.running` 以父线程事实为准，再按上表「running 收敛」的
+  子线程活性观测把已结束的 child 从 running 里去掉（避免中断会话永久滞留「运行中」）。
+  活性观测优先取已加载子线程的原生 `status`；未加载时取 bridge 记录的 turn/status 事件或
+  一次性 `thread/list` 种子；都没有（无观测）时保持父侧事实不变。已加载缓存状态可能滞后于
+  「父线程重新驱动该子代理」的时刻；未 attach 的只读条目在下一次 subscribe/resync 会被
+  invalidate 并重判，因此滞后窗口只存在于子面板持续打开且未 resync 期间。子代理被
+  `send_input`/`resume` 重新驱动时，子线程 `turn/started` 会把活性观测翻回 active，
+  running 随之恢复——与原生「resume 即重新计时」同一语义。
 - 分享投影：`subagent` 行按既有规则被公开载荷过滤；存在 running 子代理时按既有规则
   拒绝分享。
 

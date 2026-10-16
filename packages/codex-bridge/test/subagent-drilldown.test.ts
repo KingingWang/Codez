@@ -326,6 +326,117 @@ test("bridge 已持有子线程且原生非 active 时不再报运行中", async
   assert.equal(snapshot.subagents?.endedTotal, 1);
 });
 
+test("未加载子线程的 turn/completed 事件即收敛 running，不等父侧终态事实", async (t) => {
+  // 修复原因：v1 只在 wait/send_input 碰巧观测到终态时才写 agentsStates，v2 只在
+  // Completed 时写 subAgentActivity；多数真实会话里子代理结束后父线程没有任何终态
+  // 事实，状态面板会一直计时。子线程创建时原生已为连接挂好 listener，turn 事件可直接
+  // 作为活性事实。父会话必须先构建一次快照（登记父子关系），事件才能触发父侧重投影。
+  const h = await setup(t);
+  const parentTouches: string[] = [];
+  h.store.onChange((id) => parentTouches.push(id));
+  const first = await h.snapshots.conversation(PARENT);
+  assert.equal(first.subagents?.running.length, 1);
+  // 一次性种子自身也会 touch 父会话；先等它落定再清零，断言才只测量事件路径。
+  await h.snapshots.whenSubagentActivitySeedsSettled();
+  parentTouches.length = 0;
+  await h.store.apply({
+    method: "turn/completed",
+    params: {
+      threadId: CHILD,
+      turn: { id: "child-turn-1", status: "completed", items: [], itemsView: "summary" },
+    },
+  });
+  assert.ok(parentTouches.includes(PARENT), "子线程终态事件必须触发父会话重投影");
+  const next = await h.snapshots.conversation(PARENT);
+  assert.equal(next.subagents?.running.length, 0);
+  assert.equal(next.subagents?.endedTotal, 1);
+});
+
+test("子线程被重新驱动（turn/started）时 running 随之恢复", async (t) => {
+  const h = await setup(t);
+  await h.snapshots.conversation(PARENT);
+  await h.store.apply({
+    method: "turn/completed",
+    params: {
+      threadId: CHILD,
+      turn: { id: "child-turn-1", status: "completed", items: [], itemsView: "summary" },
+    },
+  });
+  const ended = await h.snapshots.conversation(PARENT);
+  assert.equal(ended.subagents?.running.length, 0);
+  // 与原生 resume 同一语义：子代理再次开跑即重新计时。
+  await h.store.apply({
+    method: "turn/started",
+    params: {
+      threadId: CHILD,
+      turn: { id: "child-turn-2", status: "inProgress", items: [], itemsView: "full" },
+    },
+  });
+  const resumed = await h.snapshots.conversation(PARENT);
+  assert.equal(resumed.subagents?.running.length, 1);
+  assert.equal(resumed.subagents?.endedTotal, 0);
+});
+
+test("已加载子线程的 thread/status/changed 也会立刻收敛父侧 running", async (t) => {
+  const h = await setup(t);
+  await h.store.ensure(CHILD);
+  const first = await h.snapshots.conversation(PARENT);
+  assert.equal(first.subagents?.running.length, 1);
+  await h.store.apply({
+    method: "thread/status/changed",
+    params: { threadId: CHILD, status: { type: "idle" } },
+  });
+  const next = await h.snapshots.conversation(PARENT);
+  assert.equal(next.subagents?.running.length, 0);
+});
+
+test("无观测的旧会话子线程用一次性 thread/list 种子判定活性", async (t) => {
+  // 结束态：idle 且最后一个 turn 已 completed → 不再报运行中。
+  const endedChild = childThread({
+    status: { type: "idle" },
+    turns: [
+      {
+        id: "child-turn-1",
+        status: "completed",
+        itemsView: "summary",
+        items: [],
+        startedAt: 110,
+        completedAt: 140,
+        error: null,
+      },
+    ],
+  } as Partial<CodexThread>);
+  const h = await setup(t, { children: [endedChild] });
+  const first = await h.snapshots.conversation(PARENT);
+  assert.equal(first.subagents?.running.length, 1, "种子返回前保持父侧事实");
+  await h.snapshots.whenSubagentActivitySeedsSettled();
+  const next = await h.snapshots.conversation(PARENT);
+  assert.equal(next.subagents?.running.length, 0);
+  assert.equal(next.subagents?.endedTotal, 1);
+});
+
+test("种子不判死还在排队的子代理（idle 且没有任何 turn）", async (t) => {
+  const pending = childThread({ status: { type: "idle" }, turns: [] } as Partial<CodexThread>);
+  const h = await setup(t, { children: [pending] });
+  await h.snapshots.conversation(PARENT);
+  await h.snapshots.whenSubagentActivitySeedsSettled();
+  const next = await h.snapshots.conversation(PARENT);
+  assert.equal(next.subagents?.running.length, 1, "pending 子代理仍在等待首次驱动");
+});
+
+test("子线程被删除（thread/deleted）立即收敛 running，不清掉观测让父侧事实复活", async (t) => {
+  // 修复原因：已删除的子线程不可能仍在运行；若删除时清掉活性观测，未加载子线程会
+  // 退回「无观测保持父侧事实」，running 永远滞留，状态面板继续计时。
+  const h = await setup(t);
+  const first = await h.snapshots.conversation(PARENT);
+  assert.equal(first.subagents?.running.length, 1);
+  await h.snapshots.whenSubagentActivitySeedsSettled();
+  await h.store.apply({ method: "thread/deleted", params: { threadId: CHILD } });
+  const next = await h.snapshots.conversation(PARENT);
+  assert.equal(next.subagents?.running.length, 0);
+  assert.equal(next.subagents?.endedTotal, 1);
+});
+
 test("子代理线程即使 attach 成功也保持只读，且不读队列", async (t) => {
   const h = await setup(t, { childResume: "attach" });
   const state = await h.store.ensure(CHILD);

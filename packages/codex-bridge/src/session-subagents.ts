@@ -1,11 +1,11 @@
 import * as shared from "@codez/shared";
 import type { CodexRpcPort } from "./contract.js";
 import { codexThreadSchema, type CodexThread } from "./codex-types.js";
+import { listChildThreads } from "./child-thread-list.js";
 import { sameExecutionPath } from "./execution-path.js";
-import { array, object, string, type JsonObject } from "./json.js";
+import { object, string, type JsonObject } from "./json.js";
 import {
   collectSubagentFacts,
-  SUBAGENT_THREAD_SOURCE_KINDS,
   SUBAGENT_TYPE_FALLBACK,
   subagentSummaryText,
   subagentTitle,
@@ -21,7 +21,6 @@ import type { ThreadStateStore } from "./thread-state.js";
 
 const DEFAULT_ENDED_LIMIT = 20;
 const MAX_ENDED_LIMIT = 100;
-const MAX_LIST_PAGES = 20;
 const CURSOR_PREFIX = "codex-subagents:";
 
 type EndedStatus = "success" | "failed" | "cancelled" | "lost";
@@ -72,40 +71,6 @@ function parentFacts(
   } catch {
     return new Map();
   }
-}
-
-/**
- * 交互式 sourceKinds 不含子线程，必须显式给出 subAgent* 来源；不带 cwd 过滤，
- * 否则跑在隔离 worktree 里的子代理会被原生按精确路径排除。归属由父线程校验保证。
- */
-async function listChildThreads(rpc: CodexRpcPort, parentThreadId: string): Promise<CodexThread[]> {
-  const threads: CodexThread[] = [];
-  const seenIds = new Set<string>();
-  const seenCursors = new Set<string>();
-  let cursor: string | undefined;
-  for (let page = 0; page < MAX_LIST_PAGES; page += 1) {
-    const result = object(
-      await rpc.request("thread/list", {
-        parentThreadId,
-        sourceKinds: [...SUBAGENT_THREAD_SOURCE_KINDS],
-        modelProviders: [],
-        archived: false,
-        limit: 100,
-        ...(cursor ? { cursor } : {}),
-      }),
-    );
-    for (const row of array(result.data)) {
-      const thread = codexThreadSchema.parse(row);
-      if (seenIds.has(thread.id)) continue;
-      seenIds.add(thread.id);
-      threads.push(thread);
-    }
-    const next = typeof result.nextCursor === "string" ? result.nextCursor : undefined;
-    if (!next || seenCursors.has(next)) break;
-    seenCursors.add(next);
-    cursor = next;
-  }
-  return threads;
 }
 
 export async function listSessionSubagents(

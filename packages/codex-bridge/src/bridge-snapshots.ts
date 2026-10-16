@@ -18,6 +18,7 @@ import { codexThreadSchema, codexUserInputSchema } from "./codex-types.js";
 import { projectOwnedInput } from "./native-file-projection.js";
 import { projectConversationTailWindow } from "./projection-window.js";
 import { subagentsStateFromRows } from "./subagent-projection.js";
+import { SubagentActivitySeedScheduler } from "./subagent-activity.js";
 import { sparseNativeTurnUsage, sparseNativeUsage } from "./bridge-snapshot-usage.js";
 import type { AttachmentStore, AttachmentReadAuthorization } from "./attachments.js";
 
@@ -26,6 +27,8 @@ export class BridgeSnapshots {
   private readonly configEpoch = randomUUID();
   private indexSeq = 0;
   private configSeq = 0;
+  /** 子线程活性一次性种子调度（实现见 subagent-activity.ts；tracker 归 store 所有）。 */
+  private readonly subagentActivitySeeds: SubagentActivitySeedScheduler;
   private readonly attachmentViews = new Map<
     string,
     { epoch: string; rows: ConversationSnapshot["rows"]["window"] }
@@ -38,7 +41,19 @@ export class BridgeSnapshots {
     private readonly interactions: InteractionBroker,
     readonly workspaceId: string,
     private readonly attachments?: AttachmentStore,
-  ) {}
+  ) {
+    this.subagentActivitySeeds = new SubagentActivitySeedScheduler({
+      rpc: context.rpc,
+      nativeThreadStatus: (childId) => store.nativeThreadStatus(childId),
+      tracker: store.subagentActivityTracker(),
+      touchParent: (parentId) => store.touch(parentId),
+    });
+  }
+
+  /** 测试与诊断用：等待所有进行中的子线程活性种子完成。 */
+  async whenSubagentActivitySeedsSettled(): Promise<void> {
+    await this.subagentActivitySeeds.whenSettled();
+  }
 
   /**
    * Desktop 成功事务是文件恢复的事实来源，但原生历史不可重写。
@@ -177,9 +192,15 @@ export class BridgeSnapshots {
     const subagents = subagentsStateFromRows(snapshot.rows.window, {
       isChildActive: (childThreadId) => {
         const status = this.store.nativeThreadStatus(childThreadId);
-        return status ? status.type === "active" : undefined;
+        if (status) return status.type === "active";
+        // 未加载子线程退回事件/种子观测：父线程经常永远没有终态事实（v1 只在
+        // wait/send_input 观测时写 agentsStates，v2 只在 Completed 时写 activity），
+        // 没有这条旁路，状态面板会在子代理结束后一直计时。
+        return this.store.observedThreadActive(childThreadId);
       },
     });
+    this.store.noteSubagentChildren(id, subagents.childSessionIds);
+    this.subagentActivitySeeds.schedule(id, subagents.running);
     snapshot.subagents = subagentProjectionStateSchema.parse({
       revision: this.store.rememberSubagents(
         id,
