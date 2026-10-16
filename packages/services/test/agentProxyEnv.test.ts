@@ -268,7 +268,7 @@ describe("node.ts wires the authoritative origin into resolveSpawnEnv", () => {
   });
 });
 
-describe("node.ts lazy CUA spawn helper selection", () => {
+describe("node.ts managed CUA spawn helper selection", () => {
   const source = readFileSync(resolve(__dirname, "../src/node.ts"), "utf8");
   const spawnEnvStart = source.indexOf("resolveSpawnEnv: async (");
 
@@ -276,29 +276,13 @@ describe("node.ts lazy CUA spawn helper selection", () => {
     expect(spawnEnvStart).toBeGreaterThanOrEqual(0);
   });
 
-  it("routes darwin through the lazy branch with the stable broker socket (MC-3)", () => {
+  it("acquires the managed Local Host Helper across platforms and builds credential env", () => {
     expect(spawnEnvStart).toBeGreaterThanOrEqual(0);
     const cuaBlock = source.slice(
       source.indexOf("const cuaPluginEnabled", spawnEnvStart),
       source.indexOf("const telemetryEnv", spawnEnvStart),
     );
-    const darwinIdx = cuaBlock.indexOf('process.platform === "darwin"');
-    expect(darwinIdx).toBeGreaterThanOrEqual(0);
-    expect(cuaBlock.slice(darwinIdx, darwinIdx + 60)).toContain("win32");
-    const stableSocketIdx = cuaBlock.indexOf("resolveBrokerSocketPath()");
-    expect(stableSocketIdx).toBeGreaterThan(darwinIdx);
-  });
-
-  it("keeps win32 spawn off the acquire path (MC-4)", () => {
-    expect(spawnEnvStart).toBeGreaterThanOrEqual(0);
-    // 与 MC-3 同取 cuaPluginEnabled..telemetryEnv 区间：resolveSpawnEnv 闭包前段
-    // 随新注入（临时 Key、桌面 MCP 清单等）变长，固定字符窗口会静默漏掉后面的代码。
-    const cuaBlock = source.slice(
-      source.indexOf("const cuaPluginEnabled", spawnEnvStart),
-      source.indexOf("const telemetryEnv", spawnEnvStart),
-    );
-    expect(cuaBlock).toContain("getStableCuaPipeName()");
-    expect(cuaBlock.indexOf("getOrCreateDefaultCuaProductHelper(context)")).toBe(-1);
-    expect(cuaBlock).toContain("CODEZ_CUA_WIN_HELPER_RECIPE");
+    expect(cuaBlock).toContain("getOrCreateDefaultCuaProductHelper(context)");
+    expect(cuaBlock).toContain("buildCuaProductHelperAgentEnv(");
   });
 });

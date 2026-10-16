@@ -17,7 +17,10 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { runCommand } from "../../../scripts/spawn-command.mjs";
 import { stageAgentBundle } from "./stage-agent-bundle.mjs";
-import { isSharpRequiredByComputerUse, stageSharpIntoBundledAgents } from "./sharp-package-assets.mjs";
+import {
+  isSharpRequiredByComputerUse,
+  stageSharpIntoBundledAgents,
+} from "./sharp-package-assets.mjs";
 import { stageKoffiIntoBundledAgents } from "./koffi-package-assets.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -228,10 +231,12 @@ const officialPluginPackages = [
     stagedPath: "packages/node-repl-host",
   },
   {
-    // CUA 插件只携带 SDK/skill/docs；node_repl MCP runtime 归 @codez/node-repl-host。
+    // Computer Use 本身是内容包，node_repl-host 才是 executable host。生产 staging
+    // 仍必须显式复制 SDK/docs/skill；否则开发机 cache 会掩盖干净安装缺包。
     packageName: "@codez/codez-cua-plugin",
     relativePath: "apps/codez-cli/packages/codez-cua-plugin",
     requiresRuntime: false,
+    requiredSeedPaths: ["docs/computer-use.md", "scripts/computer-use-client.mjs", "skills/computer-use/SKILL.md"],
     stagedPath: "packages/codez-cua-plugin",
   },
   // superpowers 已从内置插件下线，改走 UI 推荐区按需安装；这里不再 stage 它的资源。
@@ -412,7 +417,9 @@ function stageBundledSkillPack() {
 
 function stageSharpForNodeReplPlugin() {
   if (!isSharpRequiredByComputerUse({ desktopPackageRoot: desktopRoot })) {
-    console.log("[prepare:agent-bundle] Computer Use package does not declare sharp, skip sharp staging");
+    console.log(
+      "[prepare:agent-bundle] Computer Use package does not declare sharp, skip sharp staging",
+    );
     return;
   }
   // `sharp` 仍然外部化——它包含无法内联的 native .node，运行时从**所在包**的 node_modules

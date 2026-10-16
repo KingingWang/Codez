@@ -197,12 +197,6 @@ function createSharedDefines() {
     __CODEZ_ENV__: JSON.stringify(codezEnv),
     __CODEZ_PRODUCT_FLAVOR__: JSON.stringify(codezProductFlavor),
     ...buildTimeConfigDefines,
-    // Computer Use Helper build identity — helperInstaller 读它决定下载哪个 Helper bundle。
-    // 缺失时 installer 抛 "Packaged Codez is missing its embedded Computer Use Helper build identity"。
-    // CI 构建时通过 CODEZ_CUA_HELPER_BUILD_ID env 注入；dev 为空串走兜底（dev helper 不走下载）。
-    __CODEZ_CUA_HELPER_BUILD_ID__: JSON.stringify(
-      process.env.CODEZ_CUA_HELPER_BUILD_ID?.trim() ?? "",
-    ),
     // Bugfix: remote runtime CDN 根之前硬编码在 main bundle 里，OSS/CDN 切换必须改代码。
     // 这里改成构建期从 CI 的 CDN_DOMAIN/OSS_PATH_PREFIX 注入；没有配置时保留旧默认。
     __CODEZ_REMOTE_CDN_RELEASE_ROOTS__: JSON.stringify(resolveBuildRemoteCdnReleaseRoots(env)),
@@ -232,6 +226,12 @@ const desktopNodeRuntimeExternals = [
   "node-forge",
   // ZIP 解包器内部依赖 CommonJS require("fs")，不能内联到 ESM main/host 产物。
   "yauzl",
+  // CUA 本地输入驱动（@codez/codez-cua 被 noExternal 内联，其驱动内部动态 import nut-js）。
+  // 必须保持运行时外部依赖：不登记时 esbuild 会把动态 import 目标 chase 进 bundle，
+  // 在其原生 .node 模块上直接构建失败；desktop 链路本身不做本地驱动（services→broker→Helper），
+  // 安装器另经 electron-builder files 规则排除 node_modules/@nut-tree-fork。
+  // 见 specs/computer-use-open-replacement.md「打包接线约束」。
+  "@nut-tree-fork/nut-js",
 ];
 
 function createDevReadyMarkerHook(target: "main" | "host" | "preload"): string {

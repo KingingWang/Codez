@@ -183,6 +183,21 @@ export const officialSeaPlugins = [
     rootPath: join("packages", "codez-guide-plugin"),
     version: "0.3.0",
   },
+  {
+    marketplace: "codez-plugins-official",
+    name: "computer-use",
+    packageName: "@codez/codez-cua-plugin",
+    requiresRuntime: false,
+    // Computer Use 的 executable host 归 node-repl-host；这里必须只嵌入公开 SDK、文档和
+    // skill。过去 SEA 漏掉整包，开发机 cache 会掩盖问题，干净安装则无法 seed。
+    requiredSeedPaths: [
+      "docs/computer-use.md",
+      "scripts/computer-use-client.mjs",
+      "skills/computer-use/SKILL.md",
+    ],
+    rootPath: join("packages", "codez-cua-plugin"),
+    version: "0.1.0",
+  },
   // superpowers 已从内置插件下线，改走 UI 推荐区按需安装；这里不再打入 SEA 资源清单。
 ];
 

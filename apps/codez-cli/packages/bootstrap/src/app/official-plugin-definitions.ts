@@ -55,6 +55,7 @@ export interface OfficialPluginDefinition {
 }
 
 const ZAI_AUTHOR = { name: "Z.ai", url: "https://z.ai" } as const;
+const LEMON_AUTHOR = { name: "Lemon" } as const;
 const OFFICIAL_PLUGIN_ASSETS_BASE_URL = "https://cdn-zcode.z.ai/codez/official-plugin/assets";
 
 export const OFFICIAL_NODE_REPL_HOST_REQUIRED_SEED_PATHS = ["dist/mcp/server.js"] as const;
@@ -373,15 +374,15 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     // 「defaultEnabled 仅限内容型插件」的旧约定随之恢复完整。
     // 判定式是 enabledPlugins[id] ?? defaultEnabled：曾在设置页手动开过的用户已落盘
     // 显式 true，不受本次默认值变更影响。改回默认开启时，需同步
-    // packages/shared/src/plugin-marketplaces.ts 的名单（bootstrap 单测机械对照两者）、
-    // isCodezCuaInternalFeatureEnabled（打包层默认 true）与输入框入口 hidden 默认值的联动语义。
+    // packages/shared/src/plugin-marketplaces.ts 的名单（bootstrap 单测机械对照两者）
+    // 与输入框入口 hidden 默认值的联动语义；internal gate 只保留为开发 bypass。
     name: "computer-use",
     hostMcpServerNames: ["node_repl"],
-    // 用户露出名统一为「Computer Use / 电脑控制」。包名与 producer 仓库仍保持 codez-cua，
-    // 以兼容原生 Helper identity；EN 描述基线走 manifest
+    // 用户露出名统一为「Computer Use / 电脑控制」。公开内容包沿用 codez-cua-plugin 路径，
+    // 原生 Helper identity 则由独立 Helper 发布契约维护；EN 描述基线走 manifest
     // description，这里只放 zh-CN 覆盖；resolveLocalizedText 在 en-US 时回退到 manifest。
     listing: {
-      author: ZAI_AUTHOR,
+      author: LEMON_AUTHOR,
       category: "productivity",
       displayName: "Computer Use",
       displayName_i18n: { "zh-CN": "电脑控制" },
@@ -392,19 +393,20 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       icon: `${OFFICIAL_PLUGIN_ASSETS_BASE_URL}/codez-cua/icon.png`,
     },
     rootCandidates: [
+      // 仓库根直接运行 bootstrap（测试、开发 CLI）时，candidate base 是 repo root；
+      // 生产 staging 则以 apps/codez-cli 或 resources/glm 为 base，下面的相对候选继续覆盖。
+      "apps/codez-cli/packages/codez-cua-plugin",
       "packages/codez-cua-plugin",
       "../codez-cua-plugin",
       "../../codez-cua-plugin",
       "../../../codez-cua-plugin",
     ],
     requiredSeedPaths: OFFICIAL_CUA_REQUIRED_SEED_PATHS,
-    // Bug 根因：迁移 node_repl 时把旧 MCP launcher 与 SDK 仍需的 Sharp runtime 一并裁掉了。
-    // Dev/desktop 会把最小 Sharp 闭包 stage 到这里；官方 cache 必须继续携带 node_modules，
-    // 否则 seed 原子替换后首次截图才会报 Cannot find module 'sharp'。
-    runtimeTopLevelPaths: ["node_modules"],
-    // 这里的 version 追踪上游 codez-cua runtime 版本，使插件 UI 展示、缓存路径、
-    // marketplace 条目都对齐；具体版本由原子 producer bump 工作流维护。
-    version: "0.6.4",
+    // 这是 SDK/docs/skill 内容包；唯一可执行 MCP host 由 node-repl-host 提供，native runtime
+    // 只进入独立 Helper 资源。这里保持空数组，避免把开发机依赖或 producer 产物带入缓存。
+    runtimeTopLevelPaths: [],
+    // 公开 plugin manifest、UI 展示、缓存路径和 SEA 清单必须使用同一版本。
+    version: "0.1.0",
   },
 ];
 

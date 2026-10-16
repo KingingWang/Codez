@@ -14,7 +14,16 @@ import {
   type NodeReplRequestMeta,
   type NodeReplRunResult,
 } from "@codez/core/repl";
-import { createComputerUseRuntime, type ComputerUseRuntime } from "@codez/codez-cua";
+import {
+  createComputerUseRuntime,
+  type ComputerUseRuntime,
+  type ComputerUseRuntimeLogger,
+} from "@codez/codez-cua";
+import {
+  BROKER_CAPABILITY_ENV,
+  BROKER_GENERATION_ENV,
+  BROKER_SOCKET_ENV,
+} from "@codez/codez-cua/broker";
 import { z } from "zod";
 import { createBrowserBridgeGlobals, type ActiveNodeReplCall } from "./browser-bridge.js";
 import {
@@ -22,7 +31,7 @@ import {
   type ActiveCuaNodeReplCall,
   type NodeReplCuaBrokerConnection,
 } from "./cua-bridge.js";
-import { createNodeReplCuaBroker, type NodeReplCuaBroker } from "./cua-broker.js";
+import { createNodeReplCuaBroker } from "./cua-broker.js";
 import {
   isDirectMcpEntrypoint,
   installNodeReplProcessGuards,
@@ -40,7 +49,7 @@ const MAX_SYNC_TIMEOUT_MS = 120_000;
 const UNTRUSTED_SESSION_KEY = "__unscoped__";
 const WORKER_KIND = "codez-node-repl-call";
 export const NODE_REPL_MCP_PROCESS_TITLE = "codez-node-repl-mcp";
-const pluginRoot = process.env.CODEZ_PLUGIN_ROOT ?? process.env.CLAUDE_PLUGIN_ROOT ?? process.cwd();
+const pluginRoot = process.env.CODEZ_PLUGIN_ROOT ?? process.cwd();
 // CUA 与 Browser Use 共用 node_repl host，但文档和 native 依赖必须按领域隔离；
 // 否则 CUA skill 会因为 host root 恰好来自 Browser Use 而再次产生隐式依赖。
 const browserDocumentationRoot = resolve(pluginRoot, "docs");
@@ -369,14 +378,32 @@ if (!isMainThread && isWorkerCallData(workerData)) {
     });
 }
 
+// runtime 低频异常路径（门拒绝/驱动异常/dispose 失败/会话排空）的日志落点：
+// node-repl-host 不依赖 services logger，直接走进程 stderr（本文件既有 guards 同通道）。
+const cuaRuntimeLogger: ComputerUseRuntimeLogger = {
+  warn: (message, meta) => {
+    process.stderr.write(`[codez-cua-runtime] ${message} ${JSON.stringify(meta ?? {})}\n`);
+  },
+};
+
 export function captureComputerUseRuntimeFromEnvironment(
   env: NodeJS.ProcessEnv = process.env,
 ): ComputerUseRuntime | undefined {
-  const socketPath = env.CODEZ_CUA_PERMISSION_BROKER_SOCKET?.trim();
-  if (!socketPath) return undefined;
+  const socketPath = env[BROKER_SOCKET_ENV]?.trim();
+  // 当前 Host 恢复的 plugin authority 是本跳可信 capability。父进程可能残留旧的专用
+  // capability env；若让它优先，会覆盖本次 Host tuple 并让所有请求稳定鉴权失败。
+  // 专用 env 只保留为无 authority 调用方的兼容回退。
+  const brokerCapability =
+    env.CODEZ_CUA_PLUGIN_AUTHORITY?.trim() || env[BROKER_CAPABILITY_ENV]?.trim();
+  // socket 与 capability 必须作为一组出现；半组凭据不能回退到本地驱动。
+  if (!socketPath || !brokerCapability) return undefined;
   return createComputerUseRuntime({
     brokerSocketPath: socketPath,
+    brokerCapability,
+    brokerGeneration: Number(env[BROKER_GENERATION_ENV] ?? 0),
     refreshMarkerPath: env.CODEZ_CUA_PERMISSION_BROKER_REFRESH_MARKER?.trim(),
+    env,
+    logger: cuaRuntimeLogger,
   });
 }
 

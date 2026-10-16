@@ -4,7 +4,6 @@ import { copyFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { createRequire } from "node:module";
-import { HELPER_APP_NAME } from "@codez/codez-cua/broker/helperConstants";
 import { runCommand, runCommandAndReadStdout } from "../../scripts/spawn-command.mjs";
 import { loadBuiltinProviderConfig } from "../../scripts/builtin-provider-config.mjs";
 import { noticesFileName, stageElectronNotices } from "../../scripts/third-party-notices.mjs";
@@ -27,12 +26,13 @@ import {
   isSharpRequiredByComputerUse,
   verifyStagedSharp,
 } from "./scripts/sharp-package-assets.mjs";
-import { isRealComputerUseProducerInstalled } from "./scripts/computer-use-producer.mjs";
 import { verifyStagedKoffi } from "./scripts/koffi-package-assets.mjs";
 import {
-  finalizePackagedWindowsCuaHelper,
-  resolveElectronBuilderWindowsTarget,
-} from "./scripts/windows-cua-helper-assets.mjs";
+  resolveMacCuaNodeBuildInput,
+  stageMacCuaHelperApp,
+} from "./scripts/macos-cua-helper-app.mjs";
+import { resolveLinuxCuaNativePackageRoots } from "./scripts/linux-cua-native-package.mjs";
+import { stageCuaNodeRuntimeAssets } from "./scripts/windows-cua-runtime-assets.mjs";
 import { resolveCodexBuildSelection, verifyCodexResources } from "../../scripts/codex-runtime.mjs";
 import { verifyCodexRemoteAssets } from "../../scripts/codex-runtime-remote-verify.mjs";
 import { verifyCodexRemoteIndex } from "../../scripts/codex-runtime-remote-index.mjs";
@@ -55,6 +55,34 @@ const ELECTRON_BUILDER_ARCH = {
   1: "x64",
   3: "arm64",
 };
+function resolveElectronBuilderCuaTarget({ electronPlatformName, arch, configuredTargetPlatform }) {
+  if (!["darwin", "linux", "win32"].includes(electronPlatformName)) {
+    throw new Error(
+      `[electron-builder.config] unsupported CUA target platform: ${String(electronPlatformName)}`,
+    );
+  }
+  const actualArch = ELECTRON_BUILDER_ARCH[arch];
+  if (!actualArch) {
+    throw new Error(
+      `[electron-builder.config] unsupported electron-builder CUA architecture: ${String(arch)}`,
+    );
+  }
+  const actualTarget = {
+    os: electronPlatformName,
+    arch: actualArch,
+    key: `${electronPlatformName}-${actualArch}`,
+  };
+  if (
+    configuredTargetPlatform?.os !== actualTarget.os ||
+    configuredTargetPlatform?.arch !== actualTarget.arch ||
+    configuredTargetPlatform?.key !== actualTarget.key
+  ) {
+    throw new Error(
+      `[electron-builder.config] configured target ${String(configuredTargetPlatform?.key)} does not match electron-builder target ${actualTarget.key}`,
+    );
+  }
+  return actualTarget;
+}
 // 修复原因：Windows Chrome 导入入口已暂时隐藏，默认安装包不应继续携带、签名或校验原生 helper。
 // 代码和完整供应链保留在显式 opt-in 后，便于未来恢复而不影响当前发布流程。
 const shouldPackageWindowsBrowserImportHelper =
@@ -101,8 +129,6 @@ if (codexSigned) {
 }
 const workspaceRoot = resolve(import.meta.dirname, "../..");
 const desktopPackageRoot = import.meta.dirname;
-// Computer Use Helper（macOS .app、Windows runtime）只随真实 producer 打包；开源占位包下跳过随包资源与校验。
-const shouldPackageComputerUseHelper = isRealComputerUseProducerInstalled({ desktopPackageRoot });
 const HELPER_FILENAME = "codez-browser-import-helper.exe";
 const runtimeModuleLookupRoots = [
   desktopPackageRoot,
@@ -111,12 +137,6 @@ const runtimeModuleLookupRoots = [
   resolve(workspaceRoot, "node_modules", ".pnpm", "node_modules"),
 ];
 const desktopDistDir = process.env.CODEZ_DESKTOP_DIST_DIR || "dist";
-const bundledCuaHelperSource = resolve(
-  desktopPackageRoot,
-  "bundled-cua-helper",
-  targetPlatform.arch,
-  HELPER_APP_NAME,
-);
 const DEFAULT_ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/";
 // `pnpm exec asar` 依赖 `.bin/asar`，但 @electron/asar 仅是 electron-builder 传递依赖时，
 // Linux CI（pnpm hoisted）往往解析不到该二进制，`asar list` 未运行即 exit 1。
@@ -236,20 +256,6 @@ function resolveElectronDownloadMirror(env = process.env) {
   return DEFAULT_ELECTRON_MIRROR;
 }
 
-function assertPackagedCuaHelper(context) {
-  if (targetPlatform.os !== "darwin" || !shouldPackageComputerUseHelper) return;
-  const appPath = join(
-    context.appOutDir,
-    `${desktopProductIdentity.productName}.app`,
-    "Contents",
-    "Resources",
-    "cua-helper",
-    HELPER_APP_NAME,
-  );
-  if (!existsSync(appPath)) {
-    throw new Error(`Packaged Codez is missing bundled Computer Use Helper: ${appPath}`);
-  }
-}
 const shouldEnableWindowsVsign =
   process.platform === "win32" && process.env.CODEZ_ENABLE_WINDOWS_SIGN === "1";
 const commandStdoutMaxBuffer = 64 * 1024 * 1024;
@@ -735,19 +741,43 @@ export default {
         ),
       );
     }
-    const actualWindowsTarget =
-      context.electronPlatformName === "win32"
-        ? resolveElectronBuilderWindowsTarget({
-            electronPlatformName: context.electronPlatformName,
-            arch: context.arch,
-            configuredTargetPlatform: targetPlatform,
-          })
-        : null;
+    const actualCuaTarget = resolveElectronBuilderCuaTarget({
+      electronPlatformName: context.electronPlatformName,
+      arch: context.arch,
+      configuredTargetPlatform: targetPlatform,
+    });
+    const cuaDependencyPackageRoots = resolveLinuxCuaNativePackageRoots({
+      targetPlatform: actualCuaTarget,
+      env: process.env,
+    });
     await runTimedAsync("afterPack:injectHoistedRuntimeModulesIntoAsar", () =>
       injectHoistedRuntimeModulesIntoAsar(context),
     );
     await runTimedAsync("afterPack:stripPackagedSourcemapReferences", () =>
       stripPackagedSourcemapReferences(context),
+    );
+    await runTimedAsync("afterPack:stageCuaNodeRuntimeAssets", () =>
+      stageCuaNodeRuntimeAssets({
+        electronPlatformName: context.electronPlatformName,
+        appOutDir: context.appOutDir,
+        targetPlatform: actualCuaTarget,
+        electronVersion: desktopElectronVersion,
+        codezCuaRoot: resolve(workspaceRoot, "packages/codez-cua"),
+        dependencyPackageRoots: cuaDependencyPackageRoots,
+      }),
+    );
+    await runTimedAsync("afterPack:stageMacCuaHelperApp", () =>
+      stageMacCuaHelperApp({
+        electronPlatformName: context.electronPlatformName,
+        resourcesDir: resolvePackagedResourcesDir(context),
+        targetPlatform: actualCuaTarget,
+        codezCuaRoot: resolve(workspaceRoot, "packages/codez-cua"),
+        appVersion: buildMetadata.appVersion,
+        buildIdentity:
+          process.env.CODEZ_CUA_HELPER_BUILD_ID?.trim() ||
+          `${buildMetadata.buildCommitId}:${buildMetadata.buildTime}`,
+        ...resolveMacCuaNodeBuildInput(process.env),
+      }),
     );
     runTimedSync("afterPack:assertPackagedNativeResourcePolicy", () =>
       assertPackagedNativeResourcePolicy(context),
@@ -757,15 +787,7 @@ export default {
     );
     runTimedSync("afterPack:assertPackagedCuaSharp", () => assertPackagedCuaSharp(context));
     runTimedSync("afterPack:assertPackagedCuaKoffi", () => assertPackagedCuaKoffi(context));
-    runTimedSync("afterPack:assertPackagedCuaHelper", () => assertPackagedCuaHelper(context));
-    if (actualWindowsTarget && shouldPackageComputerUseHelper) {
-      await runTimedAsync("afterPack:finalizePackagedWindowsCuaHelper", () =>
-        finalizePackagedWindowsCuaHelper({
-          resourcesDir: resolvePackagedResourcesDir(context),
-          targetPlatform: actualWindowsTarget,
-          electronVersion: desktopElectronVersion,
-        }),
-      );
+    if (actualCuaTarget.os === "win32") {
       await runTimedAsync("afterPack:writeWindowsInstallManifest", () =>
         writeWindowsInstallManifest(context),
       );
@@ -792,14 +814,6 @@ export default {
     { from: resolve(workspaceRoot, noticesFileName), to: noticesFileName },
     ...(targetPlatform.os === "darwin"
       ? [
-          ...(shouldPackageComputerUseHelper
-            ? [
-                {
-                  from: bundledCuaHelperSource,
-                  to: `cua-helper/${HELPER_APP_NAME}`,
-                },
-              ]
-            : []),
           {
             // CUA 权限浮窗的吸附数据源（CGWindowListCopyWindowInfo，不需要任何 TCC 权限）。
             // 主进程按 process.resourcesPath 解析；缺失时 watcher fail-open，浮窗仍可用
@@ -847,22 +861,6 @@ export default {
             // 这里不复用窗口 PNG，避免通知区域在高 DPI 下退化成模糊缩放图。
             from: "build/icon.ico",
             to: "tray_icon.ico",
-          },
-        ]
-      : []),
-    ...(targetPlatform.os === "win32" && shouldPackageComputerUseHelper
-      ? [
-          {
-            // 根因：electron-builder 会跳过 from 根目录下的 node_modules；主树与依赖树必须分开映射，
-            // 否则安装包有 manifest/entry，却会在 Helper 启动时缺 express/Sharp。
-            from: `bundled-tools/${targetPlatform.key}/cua-helper`,
-            to: "tools/cua-helper",
-            filter: ["**/*", "!node_modules{,/**/*}"],
-          },
-          {
-            from: `bundled-tools/${targetPlatform.key}/cua-helper/node_modules`,
-            to: "tools/cua-helper/node_modules",
-            filter: ["**/*", "!**/*.map"],
           },
         ]
       : []),
@@ -959,7 +957,6 @@ export default {
     signIgnore: isCodexBuild
       ? []
       : [
-          "[/\\\\]Contents[/\\\\]Resources[/\\\\]cua-helper([/\\\\]|$)",
           "[/\\\\]Contents[/\\\\]Resources[/\\\\]glm([/\\\\]|$)",
           "[/\\\\]Contents[/\\\\]Resources[/\\\\]tools([/\\\\]|$)",
         ],
