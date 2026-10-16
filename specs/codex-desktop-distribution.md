@@ -152,6 +152,10 @@ installer jobs must pass before publication. The Linux regression job also
 runs the Computer Use Helper tests and platform stager tests once. Fixtures
 with a virtual Helper PID must inject the exit-confirmation seam; they must
 never depend on whether the CI host happens to have a live process with that PID.
+The bounded xa11y lock-correction regression must accept both LF and CRLF
+checkouts while enforcing the same exact six path-version changes and two
+existing dependency additions; line-ending conversion must not weaken or fail
+the content checks on Windows.
 
 Packaging keeps the native target identity explicit across platforms: Electron
 Builder's numeric architecture values are normalized to the configured x64 or

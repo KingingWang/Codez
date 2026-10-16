@@ -112,19 +112,27 @@ test("Linux addon build uses native manylinux_2_28 and the upstream locked Cargo
   }
 });
 
-test("the xa11y lock correction changes only path crate versions and existing dependency edges", async () => {
-  const patch = await readFile(new URL("./cua-xa11y-0.15.0-lock.patch", import.meta.url), "utf8");
-  const additions = patch
-    .split("\n")
-    .filter((line) => line.startsWith("+") && !line.startsWith("+++"));
-  const deletions = patch
-    .split("\n")
-    .filter((line) => line.startsWith("-") && !line.startsWith("---"));
-  assert.equal(additions.filter((line) => line === '+version = "0.15.0"').length, 6);
-  assert.equal(deletions.filter((line) => line === '-version = "0.14.0"').length, 6);
-  assert.deepEqual(
-    additions.filter((line) => line !== '+version = "0.15.0"'),
-    ['+ "memoffset",', '+ "nix",'],
-  );
-  assert.equal(deletions.length, 6);
-});
+for (const [name, eol] of [
+  ["LF", "\n"],
+  ["CRLF", "\r\n"],
+]) {
+  test(`the ${name} xa11y lock correction changes only path crate versions and existing dependency edges`, async () => {
+    // 回归依据：Windows 检出补丁时会转换为 CRLF，不能让行尾 CR 参与内容比较。
+    const patch = (
+      await readFile(new URL("./cua-xa11y-0.15.0-lock.patch", import.meta.url), "utf8")
+    ).replace(/\r?\n/gu, eol);
+    const additions = patch
+      .split(/\r?\n/u)
+      .filter((line) => line.startsWith("+") && !line.startsWith("+++"));
+    const deletions = patch
+      .split(/\r?\n/u)
+      .filter((line) => line.startsWith("-") && !line.startsWith("---"));
+    assert.equal(additions.filter((line) => line === '+version = "0.15.0"').length, 6);
+    assert.equal(deletions.filter((line) => line === '-version = "0.14.0"').length, 6);
+    assert.deepEqual(
+      additions.filter((line) => line !== '+version = "0.15.0"'),
+      ['+ "memoffset",', '+ "nix",'],
+    );
+    assert.equal(deletions.length, 6);
+  });
+}
