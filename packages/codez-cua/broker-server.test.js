@@ -750,6 +750,8 @@ test("macOS transport waits for broker health without cancelling shared startup"
     launchApplication: async () => ({ bundleId: HELPER_BUNDLE_ID, pid: 321 }),
     healthProbe: async () => health,
     callBrokerMethod: async () => ({ stopped: true }),
+    // 修复依据：321 是测试伪 PID，不能让宿主机真实进程表决定退出时序。
+    waitForProcessExit: async () => true,
   });
   const startup = host.start();
   await assert.rejects(host.waitForTransport(5), (error) => {
