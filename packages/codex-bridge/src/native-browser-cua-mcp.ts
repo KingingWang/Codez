@@ -13,38 +13,55 @@ import {
   nativeBrowserCuaMcpBrowserCommandJsonSchema,
   nativeBrowserCuaMcpBrowserCommandSchema,
   nativeBrowserCuaMcpBrowserMethodSchema,
+  nativeBrowserCuaMcpCuaCommandSchema,
+  nativeBrowserCuaMcpCuaMethodSchema,
   nativeBrowserCuaMcpResponseSchema,
   type NativeBrowserCuaMcpResponse,
 } from "@codez/shared";
+import {
+  buildLocalCuaExecutePayload,
+  CUA_DEFAULT_TIMEOUT_MS,
+  CUA_GET_APP_STATE_TIMEOUT_MS,
+  cuaCommandTool,
+  normalizeCuaCallToolResult,
+  parseNativeCuaBrokerCredentials,
+  sendNativeCuaBrokerRequest,
+  unavailableCuaStatusToolResult,
+  type NativeCuaBrokerCredentials,
+} from "./native-cua-mcp.js";
+
+export { parseNativeCuaBrokerCredentials, type NativeCuaBrokerCredentials } from "./native-cua-mcp.js";
 
 const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 
-const tools = [
-  {
-    name: "browser_command",
-    // 字段速查表必须留在描述里：部分客户端（含 Codex）会丢弃 JSON Schema 联合，
-    // 模型主要依据这里的说明组装参数；缺字段时桥接层会返回带字段路径的精确错误。
-    description:
-      "Run one validated command against the Desktop-owned in-app browser. " +
-      "Prefer getState/snapshot before acting. " +
-      "Per-method fields: navigate(url); click(ref or x,y); fill(ref,value); type(ref,text); " +
-      "press(key[,ref]); select(ref,values); check(ref[,checked]); hover(ref or x,y); " +
-      "scroll([ref or x,y]); cuaScroll(x,y,scrollX,scrollY); domCuaScroll(scrollX,scrollY[,nodeId]); " +
-      "drag(fromRef/from,toRef/to); cuaDrag(path); screenshot([ref|fullPage|clip]); " +
-      "elementInfo(x,y); waitFor(selector|text|textGone[,timeoutMs]); " +
-      "getDialog(); handleDialog(accept[,promptText]); snapshot(); getState(); " +
-      "back/forward/reload take no extra fields. tabId is always optional.",
-    inputSchema: nativeBrowserCuaMcpBrowserCommandJsonSchema,
-  },
-  {
-    name: "cua_status",
-    description:
-      "Report whether the Desktop Computer Use runtime and permission boundary are available.",
-    inputSchema: { type: "object", additionalProperties: false, properties: {} } as const,
-  },
-];
+const browserTool = {
+  name: "browser_command",
+  // 字段速查表必须留在描述里：部分客户端（含 Codex）会丢弃 JSON Schema 联合，
+  // 模型主要依据这里的说明组装参数；缺字段时桥接层会返回带字段路径的精确错误。
+  description:
+    "Run one validated command against the Desktop-owned in-app browser. " +
+    "Prefer getState/snapshot before acting. " +
+    "Per-method fields: navigate(url); click(ref or x,y); fill(ref,value); type(ref,text); " +
+    "press(key[,ref]); select(ref,values); check(ref[,checked]); hover(ref or x,y); " +
+    "scroll([ref or x,y]); cuaScroll(x,y,scrollX,scrollY); domCuaScroll(scrollX,scrollY[,nodeId]); " +
+    "drag(fromRef/from,toRef/to); cuaDrag(path); screenshot([ref|fullPage|clip]); " +
+    "elementInfo(x,y); waitFor(selector|text|textGone[,timeoutMs]); " +
+    "getDialog(); handleDialog(accept[,promptText]); snapshot(); getState(); " +
+    "back/forward/reload take no extra fields. tabId is always optional.",
+  inputSchema: nativeBrowserCuaMcpBrowserCommandJsonSchema,
+};
 
-const nativeBrowserCuaToolNameSchema = z.enum(["browser_command", "cua_status"]);
+const cuaStatusTool = {
+  name: "cua_status",
+  description:
+    "Report whether the Desktop Computer Use runtime and permission boundary are available.",
+  inputSchema: { type: "object", additionalProperties: false, properties: {} } as const,
+};
+
+const baseTools = [browserTool, cuaStatusTool];
+const allTools = [browserTool, cuaStatusTool, cuaCommandTool];
+
+const nativeBrowserCuaToolNameSchema = z.enum(["browser_command", "cua_status", "cua_command"]);
 const parseNativeBrowserCuaToolName = (
   value: unknown,
 ): z.infer<typeof nativeBrowserCuaToolNameSchema> => {
@@ -56,13 +73,15 @@ const parseNativeBrowserCuaToolName = (
 export function nativeBrowserCuaEnvironment(env: NodeJS.ProcessEnv = process.env): {
   endpoint: string;
   tokenFile: string;
+  cuaBroker?: NativeCuaBrokerCredentials;
 } {
   const endpoint = env[CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_ENV]?.trim();
   const tokenFile = env[CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE_ENV]?.trim();
   if (!endpoint || !tokenFile) {
     throw new Error("Native Browser/CUA MCP endpoint configuration is unavailable");
   }
-  return { endpoint, tokenFile };
+  const cuaBroker = parseNativeCuaBrokerCredentials(env);
+  return { endpoint, tokenFile, ...(cuaBroker ? { cuaBroker } : {}) };
 }
 
 export function parseNativeBrowserCuaFacts(env: NodeJS.ProcessEnv = process.env): {
@@ -78,6 +97,7 @@ export function parseNativeBrowserCuaFacts(env: NodeJS.ProcessEnv = process.env)
 export function createNativeBrowserCuaMcpRuntime(input: {
   endpoint: string;
   tokenFile: string;
+  cuaBroker?: NativeCuaBrokerCredentials;
   readFile?: (path: string) => Promise<string>;
   connect?: (endpoint: string) => Socket;
 }): { server: Server; dispose: () => void } {
@@ -90,23 +110,92 @@ export function createNativeBrowserCuaMcpRuntime(input: {
   server.setRequestHandler("tools/list", async () => ({
     // Desktop 关闭后 Codex 用户配置仍在；仅检查文件存在会被崩溃后残留的 token
     // 欺骗。必须同时确认 broker 正在监听，才向独立 CLI 暴露无法离线使用的工具。
-    tools: (await desktopBrokerReachable()) ? tools : [],
+    tools: (await desktopBrokerReachable()) ? (input.cuaBroker ? allTools : baseTools) : [],
   }));
   server.setRequestHandler("tools/call", async (request, extra) => {
     if (disposed) throw new Error("Native Browser/CUA MCP runtime is disposed");
     const toolName = parseNativeBrowserCuaToolName(request.params.name);
     if (toolName === "cua_status") {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({
-              available: false,
-              reason: CODEZ_NATIVE_BROWSER_CUA_UNAVAILABLE_REASON,
-            }),
-          },
-        ],
-      };
+      if (!input.cuaBroker) {
+        return unavailableCuaStatusToolResult();
+      }
+      try {
+        const status = await sendNativeCuaBrokerRequest({
+          cuaBroker: input.cuaBroker,
+          method: "permission_status",
+          params: {},
+          signal: extra.mcpReq.signal,
+          timeoutMs: CUA_DEFAULT_TIMEOUT_MS,
+          active,
+          connect: input.connect,
+        });
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({
+                available: true,
+                ...(status && typeof status === "object" ? (status as Record<string, unknown>) : {}),
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return unavailableCuaStatusToolResult(
+          error instanceof Error && error.message
+            ? error.message
+            : CODEZ_NATIVE_BROWSER_CUA_UNAVAILABLE_REASON,
+        );
+      }
+    }
+    if (toolName === "cua_command") {
+      const args = request.params.arguments ?? {};
+      if (
+        !args ||
+        typeof args !== "object" ||
+        !nativeBrowserCuaMcpCuaMethodSchema.safeParse((args as { method?: unknown }).method).success
+      ) {
+        invalidParams("cua_command requires an allowed method");
+      }
+      const parsedCuaCommand = nativeBrowserCuaMcpCuaCommandSchema.safeParse(args);
+      if (!parsedCuaCommand.success) {
+        const issue = parsedCuaCommand.error.issues[0];
+        invalidParams(
+          issue
+            ? `cua_command arguments are invalid: ${issue.path.join(".") || "command"}: ${issue.message}`
+            : "cua_command arguments are invalid",
+        );
+      }
+      if (!input.cuaBroker) {
+        return {
+          ...unavailableCuaStatusToolResult(),
+          isError: true,
+        };
+      }
+      const { method, ...cuaParams } = parsedCuaCommand.data;
+      try {
+        const result = await sendNativeCuaBrokerRequest({
+          cuaBroker: input.cuaBroker,
+          method: "execute",
+          params: buildLocalCuaExecutePayload(method, cuaParams),
+          signal: extra.mcpReq.signal,
+          timeoutMs:
+            method === "get_app_state" ? CUA_GET_APP_STATE_TIMEOUT_MS : CUA_DEFAULT_TIMEOUT_MS,
+          active,
+          connect: input.connect,
+        });
+        return normalizeCuaCallToolResult(result);
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: error instanceof Error ? error.message : String(error),
+            },
+          ],
+          isError: true,
+        };
+      }
     }
     const args = request.params.arguments ?? {};
     if (
@@ -239,6 +328,7 @@ export function createNativeBrowserCuaMcpRuntime(input: {
 export type NativeBrowserCuaMcpStdioOptions = {
   endpoint: string;
   tokenFile: string;
+  cuaBroker?: NativeCuaBrokerCredentials;
   readFile?: (path: string) => Promise<string>;
   connect?: (endpoint: string) => Socket;
   transport?: Transport;

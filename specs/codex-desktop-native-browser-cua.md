@@ -103,9 +103,13 @@ collector on local or deployed native routes, for either delivery kind. Browser 
 callable through the window broker. Legacy V4 and `session/send` retain their context, input
 origin, workspace identity and remote session scope.
 
-This checkout's `@codez/codez-cua` package is an API-compatible placeholder. Its runtime reports
-unavailable and fails closed. Consequently the combined capability is never `supported`; it is
-`degraded` when the native Browser path is available and `unsupported` when it is not.
+For local Desktop workspaces (`serviceAuthorityMode === "desktop-local"`), the same process-scoped
+`codez-desktop-browser-cua` MCP registration also exposes the open-source `@codez/codez-cua`
+Computer Use runtime (`cua_command` and live `cua_status`) whenever the Computer Use setting
+(`computer-use@codez-plugins-official`) is enabled for that workspace. Remote workspaces
+(`desktop-attached-remote`, SSH/WSL/Docker) remain strictly isolated from the local computer:
+their relay registration only forwards `browser_command`, never receives local CUA Helper sockets
+or credentials, and always sets `CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE="0"`.
 
 ## State ownership and boundaries
 
@@ -189,8 +193,32 @@ bridge capability parser derives:
 
 - `unsupported` when either native environment fact is absent or invalid;
 - `degraded` when the stable Browser path exists and CUA is unavailable;
-- `supported` only when both Browser and CUA runtimes are actually available (not reachable in this
-  checkout).
+- `supported` when both Browser and local CUA runtimes are active for the workspace.
+
+### Local CUA command routing and remote isolation
+
+When a local Desktop workspace has Computer Use enabled (`isCuaEnabledForContext(context)`), Local
+Host (`packages/services/src/node.ts`) starts or reuses its single `cuaProductHelperHost` and
+injects the Helper broker credential tuple (`CODEZ_CUA_PERMISSION_BROKER_SOCKET`,
+`CODEZ_CUA_PLUGIN_AUTHORITY`, `CODEZ_CUA_PERMISSION_BROKER_GENERATION`) into the local Codex
+process's `codez-desktop-browser-cua` MCP server environment alongside
+`CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE="1"`.
+
+- `cua_status` returns `{ available: true }` when the local CUA runtime is configured and its
+  Helper broker is reachable; otherwise it returns `{ available: false, reason }`.
+- `cua_command` exposes the 14 standard Computer Use methods (`list_apps`, `list_windows`,
+  `get_app_state`, `left_click`, `left_click_drag`, `scroll`, `type`, `set_value`, `select_text`,
+  `key`, `paste`, `perform_action`, `request_access`, `stop_computer_control`) via a flat JSON
+  Schema (`method` enum plus optional per-method fields, matching the `browser_command` flat-schema
+  design for Codex). Calls are validated before invoking `@codez/codez-cua` and forward both
+  structured accessibility output and screenshot `image` content blocks to Codex.
+- Toggling Computer Use in Settings (`pluginManagementService.setPluginEnabled`) disposes the
+  target workspace runtime so the next turn respawns the local Codex bridge with updated `-c`
+  MCP credentials.
+- Remote workspaces (`isDesktopAttachedRemote`) never start or query the local CUA Helper, never
+  receive `CODEZ_CUA_PERMISSION_BROKER_*` in their MCP registration, and always pass
+  `CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE="0"`. Any `cua_command` call in a remote session fails
+  closed before touching any socket.
 
 ## Remote workspace relay (SSH/WSL/Docker)
 

@@ -631,6 +631,7 @@ import {
   CODEZ_VERSION,
   CODEZ_ENV,
   buildRuntimeCodezApiUrl,
+  isRemoteWorkspaceIdentity,
 } from "@codez/shared";
 
 // 这些 conversation-share 实现依赖 Node 文件系统；仅通过 @codez/services/node 暴露，
@@ -1441,6 +1442,9 @@ export function createLocalServices(options: {
   ) => void;
   serviceAuthorityMode?: ServiceAuthorityMode;
   cuaProductMcpServerResolver?: CuaProductMcpServerResolver;
+  createDefaultCuaProductHelper?: (
+    options: CreateDefaultCuaProductHelperOptions,
+  ) => DefaultCuaProductHelper | undefined;
   agentTelemetry?: {
     getDeviceMid?: () => string | undefined;
     runtimeSurface?: "desktop_local_host" | "remote_workspace_host";
@@ -1935,7 +1939,7 @@ export function createLocalServices(options: {
   const createManagedDefaultCuaProductHelper = (
     context?: CuaProductMcpServerResolverContext,
   ): ManagedDefaultCuaProductHelper | undefined => {
-    const helper = createDefaultCuaProductHelper({
+    const helper = (options?.createDefaultCuaProductHelper ?? createDefaultCuaProductHelper)({
       // 转发活跃-turn 查询（前向引用，codezAgentService 建好后赋值）。
       hasActiveTurn: () => hasActiveTurnRef?.() ?? false,
     });
@@ -2333,6 +2337,58 @@ export function createLocalServices(options: {
         noProxy: agentNetwork.noProxy,
         caCertPath: settings.httpProxyCaCertPath,
       });
+      // 远端 workspace 身份或非本地 Host 绝不拉起或暴露本机 CUA Helper。
+      const isRemoteWorkspaceContext =
+        isDesktopAttachedRemote ||
+        options?.serviceAuthorityMode !== "desktop-local" ||
+        Boolean(
+          context?.workspaceIdentity?.trim() &&
+            (context.workspaceIdentity.trim() !== context.workspacePath?.trim() ||
+              isRemoteWorkspaceIdentity(context.workspaceIdentity.trim())),
+        );
+      // 与 helper 创建同一个门控（isCuaEnabledForContext：dev/internal 特性 OR 官方插件 enablement），
+      // 避免 dev mode 下 helper 建了但 resolveSpawnEnv 漏注入 broker env 的割裂。
+      const cuaPluginEnabled = !isRemoteWorkspaceContext && isCuaEnabledForContext(context);
+      // 所有平台都先取得 Local Host 的单一 owner；macOS 旧分支在没有 host 时自行铸造
+      // socket/capability，却没有对应 launcher，runtime 会永久缓存一组无人监听的凭据。
+      const peekedHelper = defaultCuaProductHelperLifecycle.peek()?.helper;
+      const helper = !cuaPluginEnabled
+        ? undefined
+        : peekedHelper && isDefaultCuaProductHelperCurrent(peekedHelper)
+          ? peekedHelper
+          : await getOrCreateDefaultCuaProductHelper(context);
+      // setting.get / 生命周期队列都可能跨过 host dispose。仅凭调用前的 enabled 会让延迟恢复的
+      // resolveSpawnEnv 在 terminal fence 后重新启动 Helper；必须在真正构造 env 前校验代际。
+      const cuaProductHelperHost =
+        helper && isDefaultCuaProductHelperCurrent(helper) ? helper.host : undefined;
+      // 等待 Helper 启动前登记。Registry 只记录尝试过 admission 的 workspace，
+      // 供后续配置/生命周期 bookkeeping 使用；recovery 只清理 marker，不回收已有 Agent。
+      cuaProductHelperWorkspaceRegistry.setEnabled(context, Boolean(cuaProductHelperHost));
+      let cuaProductHelperEnv: Record<string, string> = {};
+      if (cuaProductHelperHost && helper) {
+        const candidateEnv = await buildCuaProductHelperAgentEnv(
+          cuaProductHelperHost,
+          createServiceLogger("cua-product-helper"),
+        );
+        if (isDefaultCuaProductHelperCurrent(helper)) {
+          cuaProductHelperEnv = candidateEnv;
+        } else {
+          cuaProductHelperWorkspaceRegistry.setEnabled(context, false);
+          cuaProductHelperEnv = {
+            [BROKER_UNAVAILABLE_ENV]: "broker_unavailable: helper lifecycle is disposed",
+          };
+        }
+      } else if (cuaPluginEnabled) {
+        cuaProductHelperEnv = {
+          [BROKER_UNAVAILABLE_ENV]: defaultCuaProductHelperLifecycle.disposed
+            ? "broker_unavailable: helper lifecycle is disposed"
+            : "broker_unavailable: managed Helper host is unavailable",
+        };
+      }
+      const cuaActive = Boolean(
+        cuaProductHelperEnv[BROKER_SOCKET_ENV]?.trim() &&
+          cuaProductHelperEnv[CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]?.trim(),
+      );
       // Codex 拥有账号、配置与工具；旧 Provider/Zai/CUA/Subagent 准备不能成为其启动前置条件。
       // PATH 仍由 initializeRuntimeProcessEnv 统一准备，身份与 transport 仍由进程管理器注入。
       if (usesDefaultCodexDesktopBridge) {
@@ -2404,14 +2460,31 @@ export function createLocalServices(options: {
                 ? (liveState?.servers ?? options.desktopCodexMcpServers)
                 : undefined;
             const localFacts = liveState?.nativeBrowserCua ?? nativeBrowserCua;
+            const mergedServers = localServers?.map((server) =>
+              server.name === CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME && cuaActive
+                ? {
+                    ...server,
+                    env: {
+                      ...server.env,
+                      [BROKER_SOCKET_ENV]: cuaProductHelperEnv[BROKER_SOCKET_ENV]!,
+                      [CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]:
+                        cuaProductHelperEnv[CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]!,
+                      ...(cuaProductHelperEnv[BROKER_GENERATION_ENV]
+                        ? { [BROKER_GENERATION_ENV]: cuaProductHelperEnv[BROKER_GENERATION_ENV] }
+                        : {}),
+                    },
+                  }
+                : server,
+            );
             return {
-              [CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]: localServers?.length
-                ? JSON.stringify(localServers)
+              [CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]: mergedServers?.length
+                ? JSON.stringify(mergedServers)
                 : "",
               ...(localFacts
                 ? {
                     [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: localFacts.browserAvailable ? "1" : "0",
-                    [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: localFacts.cuaAvailable ? "1" : "0",
+                    [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]:
+                      cuaActive || localFacts.cuaAvailable ? "1" : "0",
                   }
                 : {}),
             };
@@ -2420,45 +2493,6 @@ export function createLocalServices(options: {
       }
       // 内置 Subagent 的旧覆盖必须在 CLI 独立读取之前导入，不能等待设置页操作。
       if (!isDesktopAttachedRemote) await subagentsService.prepareRuntimeState(context);
-      // 与 helper 创建同一个门控（isCuaEnabledForContext：dev/internal 特性 OR 官方插件 enablement），
-      // 避免 dev mode 下 helper 建了但 resolveSpawnEnv 漏注入 broker env 的割裂。
-      const cuaPluginEnabled = isCuaEnabledForContext(context);
-      // 所有平台都先取得 Local Host 的单一 owner；macOS 旧分支在没有 host 时自行铸造
-      // socket/capability，却没有对应 launcher，runtime 会永久缓存一组无人监听的凭据。
-      const peekedHelper = defaultCuaProductHelperLifecycle.peek()?.helper;
-      const helper = !cuaPluginEnabled
-        ? undefined
-        : peekedHelper && isDefaultCuaProductHelperCurrent(peekedHelper)
-          ? peekedHelper
-          : await getOrCreateDefaultCuaProductHelper(context);
-      // setting.get / 生命周期队列都可能跨过 host dispose。仅凭调用前的 enabled 会让延迟恢复的
-      // resolveSpawnEnv 在 terminal fence 后重新启动 Helper；必须在真正构造 env 前校验代际。
-      const cuaProductHelperHost =
-        helper && isDefaultCuaProductHelperCurrent(helper) ? helper.host : undefined;
-      // 等待 Helper 启动前登记。Registry 只记录尝试过 admission 的 workspace，
-      // 供后续配置/生命周期 bookkeeping 使用；recovery 只清理 marker，不回收已有 Agent。
-      cuaProductHelperWorkspaceRegistry.setEnabled(context, Boolean(cuaProductHelperHost));
-      let cuaProductHelperEnv: Record<string, string> = {};
-      if (cuaProductHelperHost && helper) {
-        const candidateEnv = await buildCuaProductHelperAgentEnv(
-          cuaProductHelperHost,
-          createServiceLogger("cua-product-helper"),
-        );
-        if (isDefaultCuaProductHelperCurrent(helper)) {
-          cuaProductHelperEnv = candidateEnv;
-        } else {
-          cuaProductHelperWorkspaceRegistry.setEnabled(context, false);
-          cuaProductHelperEnv = {
-            [BROKER_UNAVAILABLE_ENV]: "broker_unavailable: helper lifecycle is disposed",
-          };
-        }
-      } else if (cuaPluginEnabled) {
-        cuaProductHelperEnv = {
-          [BROKER_UNAVAILABLE_ENV]: defaultCuaProductHelperLifecycle.disposed
-            ? "broker_unavailable: helper lifecycle is disposed"
-            : "broker_unavailable: managed Helper host is unavailable",
-        };
-      }
       const telemetryEnv = getCapturedCodezAgentTelemetryEnv();
       const telemetryConfigured = Boolean(
         telemetryEnv.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || telemetryEnv.OTEL_EXPORTER_OTLP_ENDPOINT,

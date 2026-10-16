@@ -7,6 +7,7 @@ import test from "node:test";
 import { Emitter } from "@codez/rpc";
 import {
   appSettingsSchema,
+  buildRemoteWorkspaceIdentity,
   codezProtocolMethods,
   resolveWorkspaceKey,
   type CodezProtocolMessage,
@@ -282,5 +283,193 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
   } finally {
     client.dispose();
     process.env = savedEnv;
+  }
+});
+
+test("local Codex injects CUA broker credentials only when Computer Use is enabled and never for remote workspaces", async (t) => {
+  const savedEnv = { ...process.env };
+  delete process.env.CODEZ_AGENT_SERVER_COMMAND;
+  delete process.env.CODEZ_DESKTOP_RUNTIME;
+  delete process.env.CODEZ_CODEX_BRIDGE_PATH;
+  process.env.CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED = "1";
+  let spawnEnv: Record<string, string> | undefined;
+  const messages = new Emitter<CodezProtocolMessage>();
+  const closes = new Emitter<{ reason?: string }>();
+  const client = new CodezProtocolClient({
+    kind: "memory",
+    onMessage: messages.event,
+    onClose: closes.event,
+    async send(message) {
+      if (!("method" in message && "id" in message)) return;
+      messages.fire({ id: message.id, result: { native: true } });
+    },
+    dispose() {
+      messages.dispose();
+      closes.dispose();
+    },
+  });
+  t.mock.method(
+    CodezAgentProcessManager.prototype,
+    "getClient",
+    async function (
+      this: CodezAgentProcessManager,
+      workspace: { workspacePath: string; workspaceIdentity?: string },
+    ) {
+      const manager = this as unknown as Pick<CodezAgentProcessManagerOptions, "resolveSpawnEnv">;
+      spawnEnv = await manager.resolveSpawnEnv?.({
+        ...workspace,
+        workspaceKey: resolveWorkspaceKey(workspace),
+      });
+      return client;
+    },
+  );
+  const root = await mkdtemp(join(tmpdir(), "codez-codex-local-cua-"));
+  setDataBaseDir(root);
+  process.env.CODEZ_DESKTOP_HOME_DIR = root;
+  process.env.CODEZ_HOME = join(root, ".codez");
+  const cliConfigDir = join(root, ".codez", "cli");
+  await mkdir(cliConfigDir, { recursive: true });
+  await writeFile(
+    join(cliConfigDir, "config.json"),
+    JSON.stringify({
+      plugins: {
+        enabled: true,
+        enabledPlugins: {
+          "computer-use@codez-plugins-official": true,
+        },
+      },
+    }),
+  );
+  const settings: ISettingService = {
+    async get() {
+      return appSettingsSchema.parse({});
+    },
+    async update() {
+      assert.fail("fixture settings are read-only");
+    },
+    async updateDataBaseDir() {
+      assert.fail("fixture settings are read-only");
+    },
+    async ensureDefaultProject() {
+      assert.fail("fixture must not create projects");
+    },
+  };
+  let helperStarts = 0;
+  const services = createLocalServices({
+    settingService: settings,
+    runtimeProcessEnvPatch: { PATH: savedEnv.PATH ?? "" },
+    codezBuiltinProviderConfigFilePath: fileURLToPath(
+      new URL("../../../config/provider/codez-builtin.json", import.meta.url),
+    ),
+    serviceAuthorityMode: "desktop-local",
+    agentTelemetry: { runtimeSurface: "desktop_local_host" },
+    nativeBrowserCua: { browserAvailable: true, cuaAvailable: false },
+    desktopCodexMcpServers: [
+      {
+        name: "codez-desktop-browser-cua",
+        command: "/opt/codez/bridge",
+        args: ["/opt/codez/bridge.cjs", "native-browser-cua-mcp"],
+        env: { CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/window-token" },
+      },
+    ],
+    createDefaultCuaProductHelper: () => ({
+      host: {
+        running: true,
+        socketPath: "/tmp/local-cua.sock",
+        pipSocketPath: "/tmp/local-cua.pip.sock",
+        pluginAuthority: "local-cua-secret",
+        generation: 5,
+        async start() {
+          helperStarts += 1;
+          return {
+            socketPath: "/tmp/local-cua.sock",
+            pipSocketPath: "/tmp/local-cua.pip.sock",
+            launchSocketPath: "/tmp/local-cua.sock",
+            pluginAuthority: "local-cua-secret",
+            helperAppPath: "/tmp/helper",
+            bundleId: "dev.codez.cua-helper",
+            pid: 99,
+            generation: 5,
+          };
+        },
+        async stop() {},
+        async restart() {
+          return this.start();
+        },
+        async restartAfterCurrentStart() {
+          return this.start();
+        },
+        async checkHealth() {
+          return { bundleId: "dev.codez.cua-helper", pid: 99 };
+        },
+      },
+      resolver: {
+        async resolveMcpServers(servers) {
+          return servers;
+        },
+        async restart() {},
+        async restartAfterPermissionGrant() {},
+      },
+    }),
+    hostApiNetworkTransport: {
+      fetch: async () => {
+        throw new Error("unexpected host API access");
+      },
+      dispose() {},
+      async disposeAndWait() {},
+    },
+  });
+  try {
+    const agent = services.get(ICodezAgentService);
+    // 1. Local workspace with Computer Use enabled receives CUA credentials in MCP server env.
+    await agent.codexRequest({
+      workspacePath: root,
+      request: { method: "account/read" },
+    });
+    assert.equal(helperStarts, 1);
+    assert.equal(spawnEnv?.CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE, "1");
+    assert.equal(spawnEnv?.CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE, "1");
+    assert.deepEqual(JSON.parse(spawnEnv?.CODEZ_DESKTOP_MCP_SERVERS ?? "[]"), [
+      {
+        name: "codez-desktop-browser-cua",
+        command: "/opt/codez/bridge",
+        args: ["/opt/codez/bridge.cjs", "native-browser-cua-mcp"],
+        env: {
+          CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/window-token",
+          CODEZ_CUA_PERMISSION_BROKER_SOCKET: "/tmp/local-cua.sock",
+          CODEZ_CUA_PLUGIN_AUTHORITY: "local-cua-secret",
+          CODEZ_CUA_PERMISSION_BROKER_GENERATION: "5",
+        },
+      },
+    ]);
+
+    // 2. Remote workspace identity on the same Host never receives local CUA credentials.
+    await agent.codexRequest({
+      workspacePath: root,
+      workspaceIdentity: buildRemoteWorkspaceIdentity("/home/user/repo", {
+        kind: "ssh",
+        host: "remote-host",
+        port: 22,
+        username: "user",
+      }),
+      request: { method: "account/read" },
+    });
+    assert.equal(spawnEnv?.CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE, "0");
+    assert.deepEqual(JSON.parse(spawnEnv?.CODEZ_DESKTOP_MCP_SERVERS ?? "[]"), [
+      {
+        name: "codez-desktop-browser-cua",
+        command: "/opt/codez/bridge",
+        args: ["/opt/codez/bridge.cjs", "native-browser-cua-mcp"],
+        env: {
+          CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/window-token",
+        },
+      },
+    ]);
+  } finally {
+    await disposeServiceResourcesAndWait(services);
+    setDataBaseDir(null);
+    client.dispose();
+    process.env = savedEnv;
+    await rm(root, { recursive: true, force: true });
   }
 });

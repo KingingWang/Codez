@@ -8,9 +8,13 @@ import test from "node:test";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { PassThrough } from "node:stream";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
-import { NATIVE_BROWSER_CUA_MCP_BROWSER_METHODS } from "@codez/shared";
+import {
+  NATIVE_BROWSER_CUA_MCP_BROWSER_METHODS,
+  NATIVE_BROWSER_CUA_MCP_CUA_METHODS,
+} from "@codez/shared";
 import {
   createNativeBrowserCuaMcpRuntime,
+  parseNativeCuaBrokerCredentials,
   startNativeBrowserCuaMcpStdio,
 } from "../src/native-browser-cua-mcp.js";
 
@@ -371,5 +375,158 @@ test("stdio entry serves a 2025-era (Codex dialect) initialize handshake and too
     assert.match(JSON.stringify(missingUrl.error ?? missingUrl.result), /arguments are invalid/u);
   } finally {
     await server.close();
+  }
+});
+
+test("cua_command is hidden and fails closed without local CUA broker credentials", async () => {
+  const runtime = createNativeBrowserCuaMcpRuntime({
+    endpoint: "/fixture/native-browser.sock",
+    tokenFile: "/fixture/native-browser.token",
+    readFile: async () => "fixture-token",
+    connect: connectedBrokerSocket,
+  });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: "fixture", version: "0" });
+  await Promise.all([runtime.server.connect(serverTransport), client.connect(clientTransport)]);
+  try {
+    assert.deepEqual(
+      (await client.listTools()).tools.map((tool) => tool.name),
+      ["browser_command", "cua_status"],
+    );
+    const status = await client.callTool({ name: "cua_status", arguments: {} });
+    assert.equal(status.isError, undefined);
+    const statusText = (status.content as { type: string; text: string }[])[0]?.text ?? "";
+    assert.deepEqual(JSON.parse(statusText), {
+      available: false,
+      reason: "codez-cua.runtime_unavailable",
+    });
+    const commandResult = await client.callTool({
+      name: "cua_command",
+      arguments: { method: "list_apps" },
+    });
+    assert.equal(commandResult.isError, true);
+  } finally {
+    await Promise.allSettled([client.close(), runtime.server.close()]);
+    runtime.dispose();
+  }
+});
+
+test("cua_command exposes a flat schema and forwards validated commands and image blocks when local CUA broker is configured", async () => {
+  let capturedBrokerFrame: Record<string, unknown> | undefined;
+  class FakeCuaSocket extends EventEmitter {
+    constructor(private readonly endpoint: string) {
+      super();
+    }
+    destroy(): void {}
+    write(data: string): boolean {
+      if (this.endpoint === "/fixture/cua-broker.sock") {
+        const frame = JSON.parse(data.trim()) as {
+          id: string;
+          method: string;
+          capability: string;
+          generation: number;
+          params: Record<string, unknown>;
+        };
+        capturedBrokerFrame = frame;
+        const result =
+          frame.method === "permission_status"
+            ? {
+                platform: "darwin",
+                accessibility: { state: "granted" },
+                screen_recording: { state: "granted" },
+              }
+            : {
+                content: [
+                  { type: "image", data: "iVBORw0KGgoAAAANSUhEUg==", mimeType: "image/png" },
+                  {
+                    type: "text",
+                    text: JSON.stringify({ state_id: "st-1", text: "Notes window" }),
+                  },
+                ],
+                structuredContent: { state_id: "st-1", text: "Notes window" },
+              };
+        queueMicrotask(() => {
+          this.emit("data", Buffer.from(`${JSON.stringify({ id: frame.id, ok: true, result })}\n`));
+        });
+      }
+      return true;
+    }
+  }
+  const cuaBroker = parseNativeCuaBrokerCredentials({
+    CODEZ_CUA_PERMISSION_BROKER_SOCKET: "/fixture/cua-broker.sock",
+    CODEZ_CUA_PLUGIN_AUTHORITY: "local-cua-authority",
+    CODEZ_CUA_PERMISSION_BROKER_GENERATION: "3",
+  });
+  assert.deepEqual(cuaBroker, {
+    socketPath: "/fixture/cua-broker.sock",
+    capability: "local-cua-authority",
+    generation: 3,
+  });
+  const runtime = createNativeBrowserCuaMcpRuntime({
+    endpoint: "/fixture/native-browser.sock",
+    tokenFile: "/fixture/native-browser.token",
+    cuaBroker,
+    readFile: async () => "fixture-token",
+    connect: (endpoint) => {
+      const socket = new FakeCuaSocket(endpoint);
+      queueMicrotask(() => socket.emit("connect"));
+      return socket as unknown as Socket;
+    },
+  });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: "fixture", version: "0" });
+  await Promise.all([runtime.server.connect(serverTransport), client.connect(clientTransport)]);
+  try {
+    const listed = await client.listTools();
+    assert.deepEqual(
+      listed.tools.map((tool) => tool.name),
+      ["browser_command", "cua_status", "cua_command"],
+    );
+    const cuaTool = listed.tools.find((tool) => tool.name === "cua_command");
+    assert.ok(cuaTool);
+    const schema = cuaTool.inputSchema as {
+      type?: string;
+      required?: string[];
+      properties?: Record<string, { enum?: string[] }>;
+    };
+    assert.equal(schema.type, "object");
+    assert.deepEqual(schema.required, ["method"]);
+    assert.deepEqual(schema.properties?.method?.enum, [...NATIVE_BROWSER_CUA_MCP_CUA_METHODS]);
+
+    const status = await client.callTool({ name: "cua_status", arguments: {} });
+    const statusPayload = JSON.parse(
+      (status.content as { type: string; text: string }[])[0]?.text ?? "{}",
+    ) as Record<string, unknown>;
+    assert.equal(statusPayload.available, true);
+    assert.equal(statusPayload.platform, "darwin");
+
+    const stateResult = await client.callTool({
+      name: "cua_command",
+      arguments: {
+        method: "get_app_state",
+        app_ref: { name: "Notes" },
+        include_screenshot: true,
+      },
+    });
+    assert.equal(stateResult.isError, undefined);
+    assert.equal(capturedBrokerFrame?.method, "execute");
+    assert.equal(capturedBrokerFrame?.capability, "local-cua-authority");
+    assert.equal(capturedBrokerFrame?.generation, 3);
+    assert.deepEqual(capturedBrokerFrame?.params, {
+      method: "get_app_state",
+      input: { app_ref: { name: "Notes" }, include_screenshot: true },
+      context: {
+        workspaceKey: "native-browser-cua:local",
+        sessionId: "codex-native-browser-cua",
+        runtimeScope: "main",
+      },
+    });
+    const blocks = stateResult.content as Array<{ type: string; data?: string; text?: string }>;
+    assert.equal(blocks[0]?.type, "image");
+    assert.equal(blocks[0]?.data, "iVBORw0KGgoAAAANSUhEUg==");
+    assert.equal(blocks[1]?.type, "text");
+  } finally {
+    await Promise.allSettled([client.close(), runtime.server.close()]);
+    runtime.dispose();
   }
 });

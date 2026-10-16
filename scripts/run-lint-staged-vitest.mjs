@@ -70,6 +70,39 @@ function createCleanGitEnv() {
     delete env[name];
   }
 
+  // 在 Codez Desktop 内置终端或 Agent 会话中执行 pre-push / test:unit 时，宿主注入的
+  // CODEZ_* 运行时变量会污染单测对默认环境/flavor/目录的断言，这里统一剥离宿主运行态变量。
+  for (const name of [
+    "CODEZ_APP_VERSION",
+    "CODEZ_BASE_URL",
+    "CODEZ_BFS_BINARY",
+    "CODEZ_BUILD_COMMIT_ID",
+    "CODEZ_CODEX_BLOCKED_PROVIDER_IDS",
+    "CODEZ_CODEX_BRIDGE_HOME",
+    "CODEZ_CODEX_COMMAND",
+    "CODEZ_CODEX_UPDATE_PLAN_ENABLED",
+    "CODEZ_CUA_BUNDLED_HELPER_APP_PATH",
+    "CODEZ_CUA_HELPER_INSTALL_VARIANT",
+    "CODEZ_CUA_LAUNCHER_PID",
+    "CODEZ_DATA_BASE_DIR",
+    "CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED",
+    "CODEZ_DESKTOP_MCP_SERVERS",
+    "CODEZ_DESKTOP_RUNTIME",
+    "CODEZ_ENV",
+    "CODEZ_GEN_UI_OUTPUT_ROOT",
+    "CODEZ_HOME",
+    "CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE",
+    "CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE",
+    "CODEZ_PROCESS_LABEL",
+    "CODEZ_RG_BINARY",
+    "CODEZ_RUNTIME_ENV",
+    "CODEZ_TOOL_ENV_PASSTHROUGH_JSON",
+    "CODEZ_UGREP_BINARY",
+    "CODEZ_WORKSPACE_IDENTITY",
+  ]) {
+    delete env[name];
+  }
+
   // macOS 默认 TMPDIR (/var/folders/...) 路径较长且为 /private/var 的符号链接：
   // 1) Unix domain socket 测试拼接长文件名会超过 SUN_LEN(104 bytes) 导致 EINVAL；
   // 2) git worktree / child process 返回 realpath 时会与软链路径产生前缀不一致。

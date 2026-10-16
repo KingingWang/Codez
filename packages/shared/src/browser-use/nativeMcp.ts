@@ -10,6 +10,7 @@ export const CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV = "CODEZ_NATIVE_BROWSER_CUA_BR
 export const CODEZ_NATIVE_BROWSER_CUA_CUA_ENV = "CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE";
 export const CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_PREFIX = "codez-native-browser-cua";
 export const CODEZ_NATIVE_BROWSER_CUA_UNAVAILABLE_REASON = "codez-cua.runtime_unavailable";
+export * from "./nativeCuaMcp.js";
 export const NATIVE_BROWSER_CUA_MCP_BROWSER_METHODS = [
   "navigate",
   "back",
