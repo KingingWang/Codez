@@ -68,6 +68,10 @@ jobs:
           pnpm exec tsx --test "${node_tests[@]}" packages/desktop/test/codex*.test.ts packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts packages/server/test/codex*.test.ts
           # remoteServiceAccess 始终在 Vitest 侧；vitest_tests 为空时退化为只跑它。
           pnpm exec vitest run packages/client/test/remoteServiceAccess.test.ts "${vitest_tests[@]}"
+      - name: Computer Use helper and packaging regressions (Linux once)
+        run: |
+          pnpm --filter @codez/codez-cua test
+          node --test packages/desktop/scripts/linux-cua-native-package.test.mjs packages/desktop/scripts/windows-cua-runtime-assets.test.mjs packages/desktop/scripts/macos-cua-helper-app.test.mjs
       - name: Git worktree service and shared identity regressions (Linux once)
         run: pnpm exec tsx --test packages/services/test/gitWorktree.test.ts packages/services/test/gitWorktreeCreation.test.ts packages/shared/test/remoteWorkspaceScope.test.ts
       - name: Codex UI settings regressions (Linux once)
@@ -199,8 +203,39 @@ jobs:
       - name: Verify remote package on its native OS/architecture
         if: matrix.os != 'win32'
         run: node scripts/codex-runtime-remote-smoke.mjs
+      - name: Checkout pinned Computer Use addon source
+        if: matrix.os == 'linux'
+        uses: actions/checkout@v4
+        with:
+          repository: xa11y/xa11y
+          # npm @crowecawcaw/xa11y 0.15.0 的 gitHead；不能从浮动 main 编译另一版 API。
+          ref: a3badccf5761615ea3412ee55c19ac3764e27913
+          path: .cua-xa11y-source
+          persist-credentials: false
+      - name: Build Linux Computer Use addon on glibc 2.28
+        if: matrix.os == 'linux'
+        run: |
+          bash scripts/build-linux-cua-xa11y.sh \
+            "$GITHUB_WORKSPACE/.cua-xa11y-source" "$RUNNER_TEMP/cua-xa11y" "$CODEZ_TARGET_ARCH"
+          echo "CODEZ_CUA_LINUX_XA11Y_NATIVE_ROOT=$RUNNER_TEMP/cua-xa11y/package" >> "$GITHUB_ENV"
       - name: Build Codex desktop
         run: pnpm --filter @codez/desktop build
+      - name: Prepare macOS Computer Use Helper Node
+        if: matrix.os == 'darwin'
+        # 修复原因：Helper SEA 打包必须显式校验 Node 输入，不能依赖开发机环境变量。
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from "node:crypto";
+          import { appendFile, readFile, realpath } from "node:fs/promises";
+          const executable = await realpath(process.execPath);
+          const digest = createHash("sha256").update(await readFile(executable)).digest("hex");
+          await appendFile(process.env.GITHUB_ENV, [
+            `CODEZ_CUA_MAC_NODE_EXECUTABLE=${executable}`,
+            `CODEZ_CUA_MAC_NODE_VERSION=${process.versions.node}`,
+            `CODEZ_CUA_MAC_NODE_SHA256=${digest}`,
+            "",
+          ].join("\n"));
+          NODE
       - name: Package fork installers (never auto-publish)
         env:
           CSC_LINK: ${{ inputs.signed && (matrix.os == 'darwin' && secrets.MAC_CSC_LINK || secrets.WINDOWS_CSC_LINK) || '' }}

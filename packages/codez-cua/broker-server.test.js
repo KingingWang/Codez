@@ -541,6 +541,12 @@ test("macOS product host owns one launch, permission queries, and transport-pres
       assert.equal(options.generation, 7);
       return { bundleId: HELPER_BUNDLE_ID, pid: 123 };
     },
+    // 修复依据：此处 launch/health 都是虚拟 PID，退出屏障也必须注入，
+    // 否则会查询 CI 宿主的真实 PID 123，令无关进程决定重启测试结果。
+    waitForProcessExit: async (pid) => {
+      assert.equal(pid, 123);
+      return true;
+    },
     callBrokerMethod: async (request) => {
       brokerCalls.push(request);
       if (request.method === "permission_status") {

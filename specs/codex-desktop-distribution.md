@@ -111,6 +111,48 @@ main-branch push automatically publishes a public release after all six targets
 pass; side-branch and tag pushes stop at verified build artifacts, and pull
 requests never publish. Build jobs need read-only repository permissions.
 
+### Native Computer Use build inputs
+
+The native matrix owns preparation of the explicit Computer Use Helper inputs
+before Electron Builder runs. The macOS jobs use the real, regular executable
+installed by `actions/setup-node`, its exact Node version and SHA256 as
+`CODEZ_CUA_MAC_NODE_EXECUTABLE`, `CODEZ_CUA_MAC_NODE_VERSION` and
+`CODEZ_CUA_MAC_NODE_SHA256`. The existing Helper stager still verifies the hash,
+version and target Mach-O architecture before injecting the SEA payload.
+
+Each Linux architecture builds xa11y 0.15.0 from its pinned upstream source
+revision `a3badccf5761615ea3412ee55c19ac3764e27913` (the npm release's
+`gitHead`) inside the matching native `manylinux_2_28` container, using
+Rust 1.95.0 and the upstream Cargo lockfile. That revision's JS lockfile still
+records the six path crates as 0.14.0 and misses two existing dependency edges;
+apply the repository's bounded lock correction to a disposable source copy,
+then build with `--locked`. Do not upgrade registry dependencies or modify the
+checked-out source. The build
+exports the resulting native package's absolute root as
+`CODEZ_CUA_LINUX_XA11Y_NATIVE_ROOT`; the existing stager remains the owner of
+package identity/version, ELF architecture and maximum GLIBC_2.28 validation.
+Do not substitute the npm prebuilt addon, remove the required-input gates or
+make Computer Use optional to turn a broken packaging run green. Windows
+continues to consume its existing native package without either override.
+
+```text
+native matrix
+  ├─ macOS setup-node executable → version + SHA256
+  ├─ Linux pinned xa11y source → native manylinux_2_28 build → package root
+  └─ Windows existing native package
+       → afterPack validates and stages Helper → installers → six-target release gate
+```
+
+Acceptance: workflow regressions require the platform-specific preparation to
+precede installer packaging and retain all six native targets and existing
+failure gates. The macOS preparation is executed with a temporary environment
+file and checked against the actual Node bytes. Linux native builds must pass
+the existing runtime-staging identity, ELF and glibc checks; real macOS/Linux
+installer jobs must pass before publication. The Linux regression job also
+runs the Computer Use Helper tests and platform stager tests once. Fixtures
+with a virtual Helper PID must inject the exit-confirmation seam; they must
+never depend on whether the CI host happens to have a live process with that PID.
+
 Packaging keeps the native target identity explicit across platforms: Electron
 Builder's numeric architecture values are normalized to the configured x64 or
 arm64 target before `beforePack` validates the staged Codex resources. Gen UI
@@ -504,12 +546,12 @@ and desktop build with any cross-owner integration failures reported.
 
 Remote distribution acceptance:
 
-| Case | Setup and action | Required evidence |
-| --- | --- | --- |
-| CD-REMOTE-01 | Package six native targets | Only local native Codex and four small pinned manifests/index enter each installer; audit real installer sizes against the 500 MiB target. |
-| CD-REMOTE-02 | Publish a build and install to a fresh SSH target | The pinned release contains the exact four target asset sets; remote-download verifies its target and starts Node, server, Bridge and native tools. |
-| CD-REMOTE-03 | Remote GitHub blocked, Desktop reachable | Explicit remote-download falls back to one Desktop download/cache and SSH upload; saved choice survives reconnect with no redundant transfer. |
-| CD-REMOTE-04 | Both sources unavailable | A valid sidecar/cache installs; without one, fail visibly. Corruption, cancel and permission failures never fall back or commit success markers. |
-| CD-REMOTE-05 | Codez or Bridge changes, native package does not | New server/Bridge deploy; native package transfer is zero, even across app-version changes and old-marker migration. |
-| CD-REMOTE-06 | Native package changes or install is interrupted | Only the selected remote architecture updates; retry completes both component identities before starting the runtime. WSL/Docker and mobile Host attachment remain unchanged. |
-| CD-REMOTE-07 | Windows/macOS consumes Linux-produced CI assets | No remote rebuild or index rewrite; all six packaged-index receipts match the producer before release. A regenerated same-tag index or missing receipt blocks publication. |
+| Case         | Setup and action                                  | Required evidence                                                                                                                                                             |
+| ------------ | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CD-REMOTE-01 | Package six native targets                        | Only local native Codex and four small pinned manifests/index enter each installer; audit real installer sizes against the 500 MiB target.                                    |
+| CD-REMOTE-02 | Publish a build and install to a fresh SSH target | The pinned release contains the exact four target asset sets; remote-download verifies its target and starts Node, server, Bridge and native tools.                           |
+| CD-REMOTE-03 | Remote GitHub blocked, Desktop reachable          | Explicit remote-download falls back to one Desktop download/cache and SSH upload; saved choice survives reconnect with no redundant transfer.                                 |
+| CD-REMOTE-04 | Both sources unavailable                          | A valid sidecar/cache installs; without one, fail visibly. Corruption, cancel and permission failures never fall back or commit success markers.                              |
+| CD-REMOTE-05 | Codez or Bridge changes, native package does not  | New server/Bridge deploy; native package transfer is zero, even across app-version changes and old-marker migration.                                                          |
+| CD-REMOTE-06 | Native package changes or install is interrupted  | Only the selected remote architecture updates; retry completes both component identities before starting the runtime. WSL/Docker and mobile Host attachment remain unchanged. |
+| CD-REMOTE-07 | Windows/macOS consumes Linux-produced CI assets   | No remote rebuild or index rewrite; all six packaged-index receipts match the producer before release. A regenerated same-tag index or missing receipt blocks publication.    |
