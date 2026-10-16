@@ -388,9 +388,8 @@ export function isCodexSettingsSection(section: string): boolean {
 
 // 定时任务（automations）在 Codex 适配器上已支持（spec: codex-desktop-automations
 // UI surfacing），不能再归入不支持分区；闲时/工作流标签页由页面内部灰度裁决。
-// 浏览器控制在 Codex 适配器上已支持（spec: codex-desktop-native-browser-cua
-// 「Settings Browser section surfacing」）：分区内的浏览器控制入口是原生 MCP 卡片，
-// 数据导入/清理由平台命令承载，与适配器无关。
+// 浏览器控制与本地电脑控制在 Codex 适配器上已支持（spec: codex-desktop-native-browser-cua）：
+// 浏览器控制复用原生 MCP 卡片，电脑控制通过本地 `cli/config.json` 与进程级 `-c` MCP 注入承载。
 export function isCodexUnsupportedSection(section: string): boolean {
-  return ["commands", "hooks", "computerUse", "migration"].includes(section);
+  return ["commands", "hooks", "migration"].includes(section);
 }

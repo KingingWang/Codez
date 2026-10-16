@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { CODEZ_CUA_OFFICIAL_PLUGIN_ID } from "@codez/shared";
 import type { CodezPluginsSetEnabledResult } from "@codez/shared";
@@ -83,4 +86,58 @@ test("runtime cleanup failure does not roll back a persisted Computer Use toggle
   });
 
   assert.equal(await service.setPluginEnabled(TARGET), CUA_RESULT);
+});
+
+test("codexNativeCuaMode projects and persists Computer Use enablement in cli/config.json", async () => {
+  const root = await mkdtemp(join(tmpdir(), "codez-cua-plugin-mgmt-"));
+  const disposed: Array<{ workspacePath: string; workspaceIdentity?: string }> = [];
+  let agentSetEnabledCalls = 0;
+  try {
+    const service = createPluginManagementService({
+      codexNativeCuaMode: true,
+      env: { CODEZ_HOME: root },
+      codezAgentService: {
+        listPlugins: async () => ({ plugins: [], diagnostics: [] }),
+        getPluginsOverview: async () => ({
+          marketplaces: [],
+          availablePlugins: [],
+          installedPlugins: [],
+          restorableBuiltins: [],
+          diagnostics: [],
+          capability: { supported: true },
+        }),
+        setPluginEnabled: async () => {
+          agentSetEnabledCalls += 1;
+          return CUA_RESULT;
+        },
+        disposeWorkspace: async (params: { workspacePath: string; workspaceIdentity?: string }) =>
+          void disposed.push(params),
+      } as never,
+    });
+
+    const initialList = await service.listPlugins({ workspacePath: "/workspace" });
+    assert.equal(initialList.plugins.length, 1);
+    assert.equal(initialList.plugins[0]?.id, CODEZ_CUA_OFFICIAL_PLUGIN_ID);
+    assert.equal(initialList.plugins[0]?.enabled, false);
+
+    const toggled = await service.setPluginEnabled({
+      workspacePath: "/workspace",
+      pluginId: CODEZ_CUA_OFFICIAL_PLUGIN_ID,
+      enabled: true,
+    });
+    assert.equal(toggled.enabled, true);
+    assert.equal(agentSetEnabledCalls, 0);
+    assert.deepEqual(disposed, [{ workspacePath: "/workspace" }]);
+
+    const persisted = JSON.parse(await readFile(join(root, "cli", "config.json"), "utf8"));
+    assert.equal(persisted.plugins.enabledPlugins[CODEZ_CUA_OFFICIAL_PLUGIN_ID], true);
+
+    const afterList = await service.listPlugins({ workspacePath: "/workspace" });
+    assert.equal(afterList.plugins[0]?.enabled, true);
+    const afterOverview = await service.getPluginsOverview({ workspacePath: "/workspace" });
+    assert.equal(afterOverview.installedPlugins[0]?.id, CODEZ_CUA_OFFICIAL_PLUGIN_ID);
+    assert.equal(afterOverview.installedPlugins[0]?.enabled, true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

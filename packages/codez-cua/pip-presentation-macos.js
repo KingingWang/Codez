@@ -250,8 +250,16 @@ export async function createMacOsPipPresenter(options = {}) {
       try {
         await send({ type: "close" });
         child.stdin.end();
-        const exitTimeout = new Promise((resolve) => setTimeout(resolve, timeoutMs));
-        await Promise.race([exited, exitTimeout]);
+        let exitTimer;
+        const exitTimeout = new Promise((resolve) => {
+          exitTimer = setTimeout(resolve, timeoutMs);
+          exitTimer.unref?.();
+        });
+        try {
+          await Promise.race([exited, exitTimeout]);
+        } finally {
+          if (exitTimer) clearTimeout(exitTimer);
+        }
       } finally {
         if (!closed) child.kill?.();
       }

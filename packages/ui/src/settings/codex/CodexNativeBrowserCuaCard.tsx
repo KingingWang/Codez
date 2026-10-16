@@ -90,7 +90,11 @@ export function CodexNativeBrowserCuaCard({
     <div className="space-y-2 rounded-lg bg-surface p-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-ui-base">{text.nativeBrowserCuaTitle}</p>
+          <p className="text-ui-base">
+            {nativeBrowserCuaCapability === "supported"
+              ? text.nativeBrowserCuaTitleSupported
+              : text.nativeBrowserCuaTitle}
+          </p>
           <p className="text-ui-sm text-foreground-subtle">{nativeStatusMessage}</p>
           {/* 降级说明只在能力确实 degraded 时展示；unsupported 时再显示「Browser 命令可用」是误报。 */}
           {nativeBrowserCuaCapability === "degraded" ? (

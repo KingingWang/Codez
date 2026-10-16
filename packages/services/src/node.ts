@@ -565,6 +565,7 @@ import {
   ICuaPermissionService,
   ICuaPipSessionService,
   isCuaHelperError,
+  isCuaLocalDevelopmentRuntime,
   isOfficialCuaPluginEnabledForWorkspace,
   isPotentialCodezCuaAgentMcpServer,
   isScreenCaptureProbeSuccess,
@@ -1143,7 +1144,12 @@ export function createDefaultCuaProductHelper(
         bundledHelperAppPath,
         // tolerate the Helper's cold first-launch instead of the 5s default.
         healthTimeoutMs: CUA_HELPER_HEALTH_TIMEOUT_MS,
-        queryScreenRecordingPreflight: queryHelperScreenRecordingPreflightViaLaunchServices,
+        // 根因：本地 unsigned dev 模式下，ad-hoc 签名的 Helper 没有 Developer ID TeamIdentifier，
+        // 通过 LaunchServices (/usr/bin/open) 冷启的独立进程无法继承宿主进程已获得的 TCC 录屏授权，
+        // 会永远返回 denied 并把常驻 Helper 真实的 ScreenCaptureKit 截图成功状态覆盖掉。
+        queryScreenRecordingPreflight: isCuaLocalDevelopmentRuntime(env)
+          ? undefined
+          : queryHelperScreenRecordingPreflightViaLaunchServices,
         // 开放 Helper 的产品策略在本仓固定为启用 PiP、禁用后台控制；调用方不再传伪动态
         // getter，避免 services 与 Helper runtime 各保存一份策略。
       });
@@ -2092,8 +2098,9 @@ export function createLocalServices(options: {
           grantOwnerDisplayName: reportedOwnerDisplayName ?? report.grant_owner,
           accessibility: report.accessibility,
           accessibilityProbeOk:
-            report.accessibility_probe?.ok === true &&
-            report.accessibility_probe?.classification === "functional",
+            (report as { accessibility_probe_ok?: boolean }).accessibility_probe_ok === true ||
+            (report.accessibility_probe?.ok === true &&
+              report.accessibility_probe?.classification === "functional"),
           screenRecording,
           screenCaptureProbeOk,
         };
@@ -2343,8 +2350,8 @@ export function createLocalServices(options: {
         options?.serviceAuthorityMode !== "desktop-local" ||
         Boolean(
           context?.workspaceIdentity?.trim() &&
-            (context.workspaceIdentity.trim() !== context.workspacePath?.trim() ||
-              isRemoteWorkspaceIdentity(context.workspaceIdentity.trim())),
+          (context.workspaceIdentity.trim() !== context.workspacePath?.trim() ||
+            isRemoteWorkspaceIdentity(context.workspaceIdentity.trim())),
         );
       // 与 helper 创建同一个门控（isCuaEnabledForContext：dev/internal 特性 OR 官方插件 enablement），
       // 避免 dev mode 下 helper 建了但 resolveSpawnEnv 漏注入 broker env 的割裂。
@@ -2387,7 +2394,7 @@ export function createLocalServices(options: {
       }
       const cuaActive = Boolean(
         cuaProductHelperEnv[BROKER_SOCKET_ENV]?.trim() &&
-          cuaProductHelperEnv[CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]?.trim(),
+        cuaProductHelperEnv[CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]?.trim(),
       );
       // Codex 拥有账号、配置与工具；旧 Provider/Zai/CUA/Subagent 准备不能成为其启动前置条件。
       // PATH 仍由 initializeRuntimeProcessEnv 统一准备，身份与 transport 仍由进程管理器注入。
@@ -3073,7 +3080,16 @@ export function createLocalServices(options: {
     .register(IPluginSyncService, pluginSyncService)
     .register(IPluginsService, createPluginsService({ isDesktopRuntime: true }))
     // 设置页插件管理薄服务——plugins/* 旧协议词的 host 侧唯一消费点。
-    .register(IPluginManagementService, createPluginManagementService({ codezAgentService }))
+    .register(
+      IPluginManagementService,
+      createPluginManagementService({
+        codezAgentService,
+        disposeActiveWorkspaceRuntimes: (params) =>
+          codezAgentService.disposeActiveWorkspaceRuntimes(params),
+        codexNativeCuaMode:
+          usesDefaultCodexDesktopBridge && options?.serviceAuthorityMode === "desktop-local",
+      }),
+    )
     .register(ISubagentsService, subagentsService)
     .register(ICommandsService, createCommandsService({ isDesktopRuntime: true }))
     .register(

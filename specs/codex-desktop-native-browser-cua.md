@@ -215,6 +215,15 @@ process's `codez-desktop-browser-cua` MCP server environment alongside
 - Toggling Computer Use in Settings (`pluginManagementService.setPluginEnabled`) disposes the
   target workspace runtime so the next turn respawns the local Codex bridge with updated `-c`
   MCP credentials.
+- Settings → Computer Use (`computerUse`) is supported in Codex Desktop mode:
+  - `isCodexUnsupportedSection("computerUse")` returns `false` so `ComputerUseSection` renders
+    its enable toggle, composer-entry toggle, and macOS permission rows instead of the legacy
+    unsupported notice.
+  - In Codex bridge mode (`usesDefaultCodexDesktopBridge`), `pluginManagementService` projects a
+    built-in `computer-use@codez-plugins-official` entry backed by the local `cli/config.json`
+    fact source (`isOfficialCuaPluginEnabledForWorkspace`), and `setPluginEnabled` persists the
+    toggle to `cli/config.json` and disposes the target workspace runtime so the next turn (or
+    settings refresh) respawns the local Codex bridge with updated `-c` MCP credentials.
 - Remote workspaces (`isDesktopAttachedRemote`) never start or query the local CUA Helper, never
   receive `CODEZ_CUA_PERMISSION_BROKER_*` in their MCP registration, and always pass
   `CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE="0"`. Any `cua_command` call in a remote session fails

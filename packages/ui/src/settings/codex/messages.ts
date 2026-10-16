@@ -139,6 +139,7 @@ const en = {
   agentsInstructions: "Developer instructions (required)",
   agentsNicknames: "Nickname candidates (optional, comma-separated)",
   nativeBrowserCuaTitle: "Native Desktop browser · Browser-only",
+  nativeBrowserCuaTitleSupported: "Native Desktop browser · Browser & Computer Use",
   nativeBrowserControlToggle: "Allow agents to control the built-in browser",
   nativeBrowserControlDisabled:
     "Browser control is off. Agents do not see the tool; the browser panel stays available.",
@@ -326,6 +327,7 @@ const zh: Record<keyof typeof en, string> = {
   agentsInstructions: "开发者指令（必填）",
   agentsNicknames: "昵称候选（可选，逗号分隔）",
   nativeBrowserCuaTitle: "原生桌面浏览器 · 仅 Browser",
+  nativeBrowserCuaTitleSupported: "原生桌面浏览器 · Browser 与电脑控制",
   nativeBrowserControlToggle: "允许 Agent 控制内置浏览器",
   nativeBrowserControlDisabled: "浏览器控制已关闭。Agent 看不到该工具；浏览器面板仍可手动使用。",
 

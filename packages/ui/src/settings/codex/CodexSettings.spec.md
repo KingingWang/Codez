@@ -87,7 +87,8 @@ Codex list item → target-labeled UI control → existing native resource comma
 ```
 
 - Unsupported legacy agent settings show an explicit capability notice. Workflow,
-  CUA, cloud and migration parity are not implied by disabled controls.
+  cloud and migration parity are not implied by disabled controls. Local Computer
+  Use (`computerUse`) is supported via the native Browser/CUA MCP bridge.
 - Login starts/cancels through native account RPC. Credentials are ephemeral form
   input, cleared on submit, never logged or persisted in UI storage. Opening an
   authorization URL uses IPlatformService. Refresh verifies completion; an OAuth

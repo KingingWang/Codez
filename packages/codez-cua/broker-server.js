@@ -536,7 +536,7 @@ export function createCuaHelperInstaller(options = {}) {
 
     await mkdir(dirname(plan.installPath), { recursive: true, mode: 0o700 });
     const nonce = `${process.pid}-${randomBytes(8).toString("hex")}`;
-    const stagingPath = `${plan.installPath}.install-${nonce}`;
+    const stagingPath = `${plan.installPath}.install-${nonce}.app`;
     const backupPath = `${plan.installPath}.backup-${nonce}`;
     let movedExisting = false;
     let installedNew = false;
@@ -1332,7 +1332,7 @@ export function createProductCuaHelperHost(options = {}) {
           generation: handle.generation ?? generation,
           method: "permission_status",
           params: {},
-          timeoutMs: options.permissionTimeoutMs ?? 3_000,
+          timeoutMs: options.permissionTimeoutMs ?? 10_000,
         }),
       );
     },

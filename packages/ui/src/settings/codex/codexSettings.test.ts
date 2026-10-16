@@ -454,8 +454,9 @@ test("legacy settings routes resolve to Codex or explicit unsupported capability
     "memory",
   ])
     assert.equal(isCodexSettingsSection(route), true);
-  for (const route of ["computerUse", "migration"])
-    assert.equal(isCodexUnsupportedSection(route), true);
+  assert.equal(isCodexUnsupportedSection("migration"), true);
+  // 本地电脑控制在 Codex 适配器已支持（spec: codex-desktop-native-browser-cua）。
+  assert.equal(isCodexUnsupportedSection("computerUse"), false);
   // 定时任务在 Codex 适配器已支持（spec: codex-desktop-automations UI surfacing），
   // 自动化分区不能再落入“不支持”列表。
   assert.equal(isCodexUnsupportedSection("automations"), false);
