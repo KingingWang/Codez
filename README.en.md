@@ -1,50 +1,90 @@
 # Codez
 
-Codez is an AI coding workspace with a desktop app, Web interface, and terminal
-Agent. This is a community fork, not an official OpenAI desktop application.
-
-This fork defaults to the **Codex CLI / app-server** for desktop execution.
-`packages/codex-bridge` adapts the existing desktop protocol without changing Codex
-or requiring an adjacent checkout. Installers bundle the matching runtime. Use
-**Settings → Codex** for accounts, models, permissions, MCP, skills, and plugins.
-See [Codex desktop documentation](docs/codex-desktop.md) for builds, behavior
-differences, and limitations.
-
-For first-time desktop development, run these commands from the repository root:
-
-```sh
-pnpm bootstrap
-pnpm dev:desktop
-```
-
-`pnpm bootstrap` installs workspace dependencies, prepares local desktop runtime
-assets, and runs the baseline build. It skips remote runtime assets by default;
-use `pnpm bootstrap:with-remote` for SSH / WSL workspaces or remote distribution
-validation. The **Codez desktop** workflow builds Windows, macOS, and Linux x64 /
-arm64 installers. Without signing credentials, artifacts are labeled unsigned and
-upstream automatic updates are disabled.
-
-The development guide below covers the Desktop, Web, and Agent CLI entry points.
-The desktop does not use the legacy Agent runtime by default; set
-`CODEZ_DESKTOP_RUNTIME=legacy` to test it explicitly.
-
 <div align="center">
   <img src="public/logo/icons/1024x1024.png" alt="Codez" width="128" height="128" />
 </div>
 <p align="center">
-  <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=47ag983c-8fcb-4d6d-814b-5395193a712c&amp;qr_code=true">Feishu community</a> ·
+  <strong>AI Coding Workspace Powered by the Native Codex Runtime (Desktop App · Web UI · Terminal Agent)</strong>
+</p>
+<p align="center">
+  <a href="https://github.com/KingingWang/Codez/releases/latest"><strong>⬇️ Download Latest Release</strong></a> ·
+  <a href="https://github.com/KingingWang/codex"><strong>📦 Codex Runtime Repo</strong></a> ·
+  <a href="https://github.com/zai-org/ZCode/blob/main/README.en.md"><strong>📄 Upstream ZCode README</strong></a> ·
+  <a href="docs/codex-desktop.md"><strong>📖 Codex Desktop Docs</strong></a>
+</p>
+<p align="center">
+  <a href="https://github.com/KingingWang/Codez/issues/new">Report an Issue (GitHub Issues)</a> ·
+  <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=47ag983c-8fcb-4d6d-814b-5395193a712c&amp;qr_code=true">Upstream Feishu Community</a> ·
   <a href="https://discord.gg/z9aBcQXZQ3">Discord</a>
 </p>
 <p align="center">
   <a href="README.md">简体中文</a> | English
 </p>
 
-This repository contains the clients, backend services, shared UI, and Agent CLI and runtime source code.
+**Codez** ([`KingingWang/Codez`](https://github.com/KingingWang/Codez)) is an independent community fork of [`zai-org/ZCode`](https://github.com/zai-org/ZCode) that replaces the default desktop and remote execution engine with the native [`KingingWang/codex`](https://github.com/KingingWang/codex) (`codex app-server`). It is not an official OpenAI or Z.AI desktop application.
 
-## Choose an entry point
+## ⬇️ Download Latest Release
+
+Every `main` push that passes all six native platform builds and smoke checks is automatically published to [**GitHub Releases**](https://github.com/KingingWang/Codez/releases/latest). Pick the installer matching your OS and CPU architecture below:
+
+| OS          | Architecture                       | Recommended Format                          | Download (Latest Release)                                                                                                                              | Installation & Auto-Update Notes                                                                                  |
+| :---------- | :--------------------------------- | :------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
+| **macOS**   | Apple Silicon (`arm64` / M-series) | `.dmg` (installer)<br>`.zip` (auto-updater) | [**Get from Latest Release**](https://github.com/KingingWang/Codez/releases/latest)<br>File: `Codez-<version>-mac-arm64-unsigned.dmg`                  | Drag `Codez.app` into `Applications`. For unsigned builds blocked on first launch, run the `xattr` command below. |
+| **macOS**   | Intel (`x64`)                      | `.dmg` (installer)<br>`.zip` (auto-updater) | [**Get from Latest Release**](https://github.com/KingingWang/Codez/releases/latest)<br>File: `Codez-<version>-mac-x64-unsigned.dmg`                    | Same as above; receives in-app updates from the `x64-latest` channel.                                             |
+| **Windows** | `x64` (Standard PC)                | `.exe` (NSIS installer)                     | [**Get from Latest Release**](https://github.com/KingingWang/Codez/releases/latest)<br>File: `Codez-<version>-win-x64-unsigned.exe`                    | Supports custom install directories and differential (`blockmap`) updates on `x64-latest`.                        |
+| **Windows** | `arm64` (Windows on ARM)           | `.exe` (NSIS installer)                     | [**Get from Latest Release**](https://github.com/KingingWang/Codez/releases/latest)<br>File: `Codez-<version>-win-arm64-unsigned.exe`                  | Native ARM64 build with `arm64-latest` differential auto-updates.                                                 |
+| **Linux**   | `x64` (`amd64` / `x86_64`)         | `.AppImage` / `.deb`                        | [**Get from Latest Release**](https://github.com/KingingWang/Codez/releases/latest)<br>File: `Codez-<version>-linux-x64-unsigned.AppImage` or `.deb`   | Make `.AppImage` executable (`chmod +x`) to run directly with auto-update, or install `.deb` on Debian/Ubuntu.    |
+| **Linux**   | `arm64` (`aarch64`)                | `.AppImage` / `.deb`                        | [**Get from Latest Release**](https://github.com/KingingWang/Codez/releases/latest)<br>File: `Codez-<version>-linux-arm64-unsigned.AppImage` or `.deb` | Native ARM64 Linux desktop packages bundling the `aarch64` Codex runtime.                                         |
+
+> **macOS First-Launch Note**: Public builds are labeled `-unsigned` when built without Apple Developer signing credentials. If macOS Gatekeeper blocks the first launch, run:
+>
+> ```bash
+> sudo xattr -rd com.apple.quarantine /Applications/Codez.app
+> ```
+>
+> Click **Allow** when macOS prompts for permission to manage other apps (or enable your terminal under **System Settings → Privacy & Security → App Management**).
+
+## 🔗 Related Repositories & Upstream Links
+
+| Project / Document           | Link                                                                                                               | Description                                                                                                                                                                                                      |
+| :--------------------------- | :----------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **This Repository (Codez)**  | [https://github.com/KingingWang/Codez](https://github.com/KingingWang/Codez)                                       | Community AI coding workspace integrating the native Codex bridge, Desktop, Web, and CLI                                                                                                                         |
+| **Codez Releases**           | [https://github.com/KingingWang/Codez/releases/latest](https://github.com/KingingWang/Codez/releases/latest)       | Prebuilt native installers for macOS, Windows, and Linux (`x64` & `arm64`)                                                                                                                                       |
+| **Referenced Codex Project** | [https://github.com/KingingWang/codex](https://github.com/KingingWang/codex)                                       | The native Codex CLI / `app-server` runtime bundled by this project (customized from [`openai/codex`](https://github.com/openai/codex) with privacy hardening and Completions / Anthropic wire protocol support) |
+| **Upstream Project (ZCode)** | [https://github.com/zai-org/ZCode](https://github.com/zai-org/ZCode)                                               | Upstream open-source repository by Z.AI                                                                                                                                                                          |
+| **Upstream English README**  | [https://github.com/zai-org/ZCode/blob/main/README.en.md](https://github.com/zai-org/ZCode/blob/main/README.en.md) | Original upstream English documentation                                                                                                                                                                          |
+| **Upstream Chinese README**  | [https://github.com/zai-org/ZCode/blob/main/README.md](https://github.com/zai-org/ZCode/blob/main/README.md)       | Original upstream Chinese documentation                                                                                                                                                                          |
+| **Codex Desktop Guide**      | [docs/codex-desktop.md](docs/codex-desktop.md)                                                                     | Detailed technical documentation on the Codex bridge, conversation behavior, remote deployment, and limitations                                                                                                  |
+
+## 🔄 Key Differences from Upstream (`zai-org/ZCode`)
+
+While staying synced with upstream `zai-org/ZCode` (currently `v3.15.1`) for the workbench UI, Git/Worktree management, terminal, and plugin ecosystem, this project substantially re-architects the execution runtime, remote workspace pipeline, native tooling, and release system:
+
+| Area                                | This Fork (`KingingWang/Codez`)                                                                                                                                                                                                                                                                                      | Upstream (`zai-org/ZCode`)                                                                                  |
+| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------- |
+| **Default Desktop Engine**          | Runs the native [`KingingWang/codex`](https://github.com/KingingWang/codex) binary (`codex app-server --listen stdio://`) adapted via [`packages/codex-bridge`](packages/codex-bridge). No adjacent Codex checkout is needed (`CODEZ_DESKTOP_RUNTIME=legacy` opts back into the old runtime).                        | Uses the built-in Node/JS Agent runtime (`apps/zcode-cli` / GLM bundle).                                    |
+| **Accounts, Models & Config**       | Managed under **Settings → Codex**. Reads/writes native Codex configuration (`~/.codex/config.toml`, `models.json`), reuses existing `CODEX_HOME` authentication, and supports OpenAI / Responses / Completions / Anthropic `wire_api`, custom providers, MCP servers, Agent Roles, skills, and hot-reloaded memory. | Uses Z.AI accounts, Coding Plan gateways, and built-in provider catalogs.                                   |
+| **Conversation & Queue Control**    | Native per-send **Queue** (auto-dispatch on idle) vs. **Guide** (`turn/steer` into the next model step), Preempt (interrupt and start), Safe File Rewind, Selection Side Chat, native `ApplyPatch` diff cards, and **read-only degradation with one-click Fork** on multi-writer lock conflicts.                     | Uses legacy internal agent queues and rollback mechanics.                                                   |
+| **Remote Workspaces (SSH / WSL)**   | Ships SHA256-verified remote bundles (`darwin/linux` `x64/arm64`) into `~/.codez-codex/server`, automatically discovers external Codex CLI history on the remote machine, and **never copies local credentials to remote hosts**.                                                                                    | Pulls/uploads legacy GLM agent bundles from CDN / `mock-cdn` and syncs local credentials to remote targets. |
+| **Computer Use & Browser Control**  | Bundles the open-source [`packages/codez-cua`](packages/codez-cua) runtime and native Helper (`@crowecawcaw/xa11y` for real Windows UIA, macOS AX, and Linux AT-SPI accessibility trees, window-bound screenshots, and semantic actions), bridged to native Codex sessions via local MCP.                            | Ships a stub Computer Use package in the open-source repo that returns an unavailable error.                |
+| **Encrypted Mobile Remote Control** | Supports mobile Web remote control (`web-remote-replayable`) over Codex with end-to-end encryption (E2EE), relay-gzip compression, recovery backoff, and automated GitHub Pages deployment.                                                                                                                          | Basic relay forwarding tied to the legacy runtime.                                                          |
+| **Product Identity & Isolation**    | Isolated app identity, URL scheme (`codez-codex://`), and data root (`~/.codez-codex`) so it never collides with upstream installations; in-app feedback routes directly to this repository's GitHub Issues.                                                                                                         | Uses `zcode://`, `~/.zcode`, and official feedback ticket services.                                         |
+| **CI Releases & Auto-Update**       | Resolves the latest complete [`KingingWang/codex`](https://github.com/KingingWang/codex) release at build time, publishes SHA256-verified 6-target installers to GitHub Releases, and auto-updates via per-arch channels (`x64-latest` / `arm64-latest`).                                                            | Relies on internal signing pipelines and private OSS/CDN update feeds.                                      |
+
+## 🧭 Choose an Entry Point
+
+This repository contains the clients (Desktop & Web), backend services, shared UI, Codex protocol bridge (`packages/codex-bridge`), open-source Computer Use runtime (`packages/codez-cua`), and legacy Agent CLI and runtime source code (`apps/codez-cli`):
+
+| Entry Point                        | Use Case                                                                                            | Command                                         |
+| :--------------------------------- | :-------------------------------------------------------------------------------------------------- | :---------------------------------------------- |
+| **Desktop (Default Codex Engine)** | Develop or run the Electron desktop app (automatically stages pinned native Codex + `codex-bridge`) | `pnpm bootstrap && pnpm dev:desktop`            |
+| **Desktop (Legacy Engine)**        | Explicitly test the legacy built-in Agent CLI desktop runtime                                       | `CODEZ_DESKTOP_RUNTIME=legacy pnpm dev:desktop` |
+| **Web / Unified CLI Distribution** | Run the browser or terminal TUI workbench locally without Electron                                  | `pnpm dev:web` or `codez --web`                 |
+| **Agent CLI Source Development**   | Develop and debug the `apps/codez-cli` TUI and CLI directly                                         | `pnpm --filter @codez/cli dev`                  |
 
 ## Updates
 
+- 2026-10-16: Integrated open-source Computer Use (`packages/codez-cua`) and native Codex browser/desktop MCP bridge.
 - 2026-10-10: Updated to Codez v3.15.1.
 - 2026-9-23: Updated to Codez v3.14.3.
 
@@ -68,6 +108,8 @@ Additional setup and build commands:
 | `pnpm prepare:desktop-runtime` | Prepare desktop runtime assets; set `CODEZ_SKIP_REMOTE_ASSETS=1` to skip remote assets                                              |
 | `pnpm prepare:remote-assets`   | Prepare remote runtime assets separately                                                                                            |
 | `pnpm bootstrap:with-remote`   | Set up dependencies and local and remote assets, then build the relevant packages sequentially; skip the desktop application bundle |
+| `pnpm build:codex-bridge`      | Build the `@codez/codex-bridge` protocol adapter for desktop and remote hosts                                                       |
+| `pnpm prepare:codex-runtime`   | Download and verify the pinned native Codex runtime for the current platform                                                        |
 | `pnpm build`                   | Recursively run each workspace package's build script, including its asset preparation steps                                        |
 
 The default `bootstrap` skips remote asset preparation and is suitable for local desktop development. Run the corresponding preparation command when working with remote workspaces or validating remote distribution assets.
@@ -83,13 +125,18 @@ pnpm dev:desktop
 pnpm dev:desktop:test
 ```
 
-`pnpm dev:desktop` defaults to `pnpm dev:desktop:prod` and uses production service configuration. The startup script prepares local runtime assets, builds the desktop Agent, then starts Electron and source watchers.
+`pnpm dev:desktop` defaults to `pnpm dev:desktop:prod` and uses production service configuration. In default Codex mode, the startup script builds `packages/codex-bridge`, verifies and stages the pinned native Codex binary, then starts Electron and source watchers. Set `CODEZ_CODEX_COMMAND=/abs/path/to/codex` to point to a custom local Codex executable.
 
 Set `CODEZ_DATA_BASE_DIR` to use a separate development data directory. For example, on macOS / Linux:
 
 ```bash
 CODEZ_DATA_BASE_DIR="$HOME/.codez-dev-home" pnpm dev:desktop:test
 ```
+
+### Remote Workspaces (SSH / WSL)
+
+- **Default Codex Desktop Mode**: Run `pnpm prepare:remote-assets` (or `pnpm bootstrap:with-remote`) before `pnpm dev:desktop` to stage verified remote Codex archives. The deployment service installs them under `~/.codez-codex/server` on the remote host without falling back to the legacy GLM runtime or upstream CDN. See [Codex desktop documentation - Remote workspaces](docs/codex-desktop.md#remote-workspaces).
+- **Legacy Mode**: Run `pnpm bootstrap:with-remote` to prepare `mock-cdn` assets, then `CODEZ_DESKTOP_RUNTIME=legacy pnpm dev:desktop` and choose local upload when connecting.
 
 ### Web Development
 
@@ -156,12 +203,15 @@ See the [UI Plugin guide](UI_PLUGIN.en.md) for the Excalidraw workflow, supporte
 
 The root [.env.example](.env.example) provides sample service URLs and build configuration. Copy it to `.env` as needed and place local overrides in `.env.local`. Select the Desktop development environment with `dev:desktop:test` or `dev:desktop:prod`.
 
-| Setting                              | Purpose                                                                                 |
-| ------------------------------------ | --------------------------------------------------------------------------------------- |
-| `CODEZ_DATA_BASE_DIR`                | Base directory for application data, stored under its `.codez/` subdirectory            |
-| `CODEZ_SERVER_WORKSPACE`             | Workspace path for the Web backend                                                      |
-| `CODEZ_BUILTIN_PROVIDER_CONFIG_FILE` | Path to a local provider configuration file; uses the built-in configuration when unset |
-| `CODEZ_DIST_BASE_URL`                | Download base URL used by the CLI distribution installer                                |
+| Setting                              | Purpose                                                                                                                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CODEZ_DATA_BASE_DIR`                | Base directory for application data, stored under its `.codez/` subdirectory                                                                            |
+| `CODEZ_SERVER_WORKSPACE`             | Workspace path for the Web backend                                                                                                                      |
+| `CODEZ_BUILTIN_PROVIDER_CONFIG_FILE` | Path to a local provider configuration file; uses the built-in configuration when unset                                                                 |
+| `CODEZ_DIST_BASE_URL`                | Download base URL used by the CLI distribution installer                                                                                                |
+| `CODEZ_DESKTOP_RUNTIME`              | Desktop runtime selector: defaults to `codex`; set `legacy` for the old Agent runtime                                                                   |
+| `CODEZ_CODEX_COMMAND`                | Absolute path override for the native `codex` executable launched by the bridge                                                                         |
+| `CODEZ_CODEX_MANIFEST`               | Path override for the native Codex release & SHA256 manifest (defaults to [`scripts/codex-runtime-manifest.json`](scripts/codex-runtime-manifest.json)) |
 
 Runtime variables can be set explicitly in the environment of the startup command. See [config/README.md](config/README.md) for the default configuration shipped with the client.
 
@@ -242,7 +292,9 @@ Open `http://127.0.0.1:3030` to validate the complete flow, with one backend ser
 | Directory                                            | Responsibility                                                                          |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | `packages/desktop`                                   | Electron Main, Host, Renderer, and desktop packaging                                    |
-| `packages/web`                                       | Web client                                                                              |
+| `packages/codex-bridge`                              | Bidirectional adapter between native Codex `app-server` and the Codez V4 protocol       |
+| `packages/codez-cua`                                 | Open-source Computer Use runtime, capability broker, and cross-platform Helper          |
+| `packages/web`                                       | Web client and encrypted mobile remote-control frontend                                 |
 | `packages/server`                                    | HTTP / WebSocket services and remote connections                                        |
 | `packages/codez-server-cli`                          | Standalone server startup and process management                                        |
 | `packages/ui`                                        | Shared React components, hooks, and Zustand state                                       |
@@ -261,6 +313,7 @@ pnpm fmt:check
 pnpm lint
 pnpm typecheck
 pnpm architecture:check --changed
+pnpm test:codex
 ```
 
 ## Project Notice
