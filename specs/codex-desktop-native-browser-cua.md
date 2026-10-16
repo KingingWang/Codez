@@ -212,6 +212,31 @@ process's `codez-desktop-browser-cua` MCP server environment alongside
   Schema (`method` enum plus optional per-method fields, matching the `browser_command` flat-schema
   design for Codex). Calls are validated before invoking `@codez/codez-cua` and forward both
   structured accessibility output and screenshot `image` content blocks to Codex.
+- The shared CUA zod contract owns both runtime validation and the model-facing field schemas.
+  `target`, `from_target`, and `to` must advertise the same explicit union: a nonnegative integer
+  element index, a two-integer coordinate array, `{ type: "element", index }`, or
+  `{ type: "coordinate", x, y, frame_id? }`. Empty field schemas are not sufficient. Tool
+  descriptions include literal JSON examples, so callers do not quote an index or coordinate
+  array. Strings such as `"7"` and `"[40,60]"` remain invalid; neither the bridge nor the
+  broker guesses or coerces their meaning.
+- Browser and native CUA declarations stay independent throughout tool registration.
+  `cua_command` must retain every CUA field (including `include_screenshot`, `strategy`,
+  `return_state`, and drag targets), its 14-method enum, and string-valued `modifiers`; browser
+  methods and browser-style drag/modifier schemas must not overwrite them.
+  The ownership and dispatch sequence remains:
+
+  ```text
+  shared CUA contract → bridge tools/list → Codex model request → model function_call
+          └──────────── bridge validation ← MCP tools/call ← JSON argument parsing
+                                └→ existing local CUA broker
+  ```
+
+  Acceptance evidence covers the actual pinned Codex model-request boundary, not only direct
+  MCP calls: the outgoing request contains separate browser/CUA declarations with complete typed
+  target fields, and numeric/coordinate-array calls arrive at a synthetic local broker with their
+  JSON types unchanged. Invalid string targets fail before broker dispatch. This regression uses
+  isolated synthetic credentials and never executes a native desktop action.
+
 - Toggling Computer Use in Settings (`pluginManagementService.setPluginEnabled`) disposes the
   target workspace runtime so the next turn respawns the local Codex bridge with updated `-c`
   MCP credentials.

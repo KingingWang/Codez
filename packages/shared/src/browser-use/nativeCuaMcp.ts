@@ -28,10 +28,9 @@ const cuaAppRefSchema = z
     window_id: z.number().int().nonnegative().optional(),
   })
   .strict()
-  .refine(
-    (ref) => ref.name !== undefined || ref.bundle_id !== undefined || ref.pid !== undefined,
-    { message: "app_ref must identify an application by name, bundle_id, or pid" },
-  );
+  .refine((ref) => ref.name !== undefined || ref.bundle_id !== undefined || ref.pid !== undefined, {
+    message: "app_ref must identify an application by name, bundle_id, or pid",
+  });
 
 const cuaTargetSchema = z.union([
   z.number().int().nonnegative(),
@@ -180,46 +179,54 @@ export const nativeBrowserCuaMcpCuaCommandSchema = z.discriminatedUnion("method"
 ]);
 export type NativeBrowserCuaMcpCuaCommand = z.infer<typeof nativeBrowserCuaMcpCuaCommandSchema>;
 
+type CuaCommandJsonVariant = {
+  properties: Record<string, Record<string, unknown>> & { method: { const: string } };
+};
+
+// 修复依据：手写广告 schema 把 target/from_target/to 声明为 {}，模型无法获得真实
+// JSON 类型。字段直接取自运行时同一联合，保留嵌套 anyOf；仅顶层按 method 扁平化，
+// 避免再维护一份可能遗漏字段或混入 browser drag/modifiers 类型的声明。
+const cuaCommandJsonVariants = z.toJSONSchema(nativeBrowserCuaMcpCuaCommandSchema, {
+  io: "input",
+  reused: "inline",
+}).oneOf as CuaCommandJsonVariant[];
+
+const cuaCommandProperties: Record<string, Record<string, unknown>> = {
+  method: { type: "string", enum: [...NATIVE_BROWSER_CUA_MCP_CUA_METHODS] },
+};
+const cuaFieldVariants = new Map<string, Map<string, Record<string, unknown>>>();
+const generatedCuaMethods = new Set<string>();
+for (const variant of cuaCommandJsonVariants) {
+  generatedCuaMethods.add(variant.properties.method.const);
+  for (const [field, schema] of Object.entries(variant.properties)) {
+    if (field === "method") continue;
+    const alternatives = cuaFieldVariants.get(field) ?? new Map();
+    alternatives.set(JSON.stringify(schema), schema);
+    cuaFieldVariants.set(field, alternatives);
+  }
+}
+for (const [field, alternatives] of cuaFieldVariants) {
+  const schemas = [...alternatives.values()] as [
+    Record<string, unknown>,
+    ...Record<string, unknown>[],
+  ];
+  // text 在 key 中非空，在 type/paste 中允许空串；字段声明取各方法合法形状的并集，
+  // 逐方法约束仍交给运行时校验，不因扁平化丢失嵌套 target 联合。
+  cuaCommandProperties[field] = schemas.length === 1 ? schemas[0] : { anyOf: schemas };
+}
+if (
+  generatedCuaMethods.size !== NATIVE_BROWSER_CUA_MCP_CUA_METHODS.length ||
+  NATIVE_BROWSER_CUA_MCP_CUA_METHODS.some((method) => !generatedCuaMethods.has(method))
+) {
+  throw new Error("Native CUA MCP methods drifted from the runtime command schema");
+}
+
 export const nativeBrowserCuaMcpCuaCommandJsonSchema: {
   type: "object";
   [key: string]: unknown;
 } = {
   type: "object",
-  properties: {
-    method: { type: "string", enum: [...NATIVE_BROWSER_CUA_MCP_CUA_METHODS] },
-    app_ref: {
-      type: "object",
-      properties: {
-        name: { type: "string" },
-        bundle_id: { type: "string" },
-        pid: { type: "integer" },
-        window_id: { type: "integer" },
-      },
-      additionalProperties: false,
-    },
-    include_screenshot: { type: "boolean" },
-    disable_diffing: { type: "boolean" },
-    tree_shown_to_model: { type: "boolean" },
-    target: {},
-    from_target: {},
-    to: {},
-    mouse_button: { type: "string", enum: ["left", "right", "middle"] },
-    click_count: { type: "integer" },
-    modifiers: { type: "string" },
-    strategy: { type: "string", enum: ["auto", "a11y", "event"] },
-    return_state: { type: "string", enum: ["none", "compact", "full"] },
-    scroll_direction: { type: "string", enum: ["up", "down", "left", "right"] },
-    scroll_amount: { type: "number" },
-    text: { type: "string" },
-    value: { type: "string" },
-    text_range: { type: "array", items: { type: "integer" } },
-    repeat: { type: "integer" },
-    hold_seconds: { type: "number" },
-    format: { type: "string", enum: ["text", "md", "html"] },
-    action: { type: "string" },
-    capabilities: { type: "array", items: { type: "string" } },
-    reason: { type: "string" },
-  },
+  properties: cuaCommandProperties,
   required: ["method"],
   additionalProperties: false,
 };

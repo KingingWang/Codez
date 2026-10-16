@@ -40,7 +40,14 @@ export const cuaCommandTool = {
     "paste(text[,format,app_ref,return_state]); " +
     "perform_action(target,action[,app_ref,return_state]); " +
     "request_access([capabilities]); stop_computer_control([reason]). " +
-    "app_ref is {name?,bundle_id?,pid?,window_id?}; target is an element index (integer) or [x,y] coordinate.",
+    "app_ref is {name?,bundle_id?,pid?,window_id?}. " +
+    // 修复依据：明确 JSON 字面量，避免调用方把元素 index 或坐标数组编码成字符串。
+    'target/from_target/to are JSON values: an integer, [x,y], {"type":"element","index":7}, ' +
+    'or {"type":"coordinate","x":40,"y":60} (optional frame_id must come from an observed frame). ' +
+    'Examples: {"method":"left_click","target":7}; {"method":"left_click","target":[40,60]}; ' +
+    '{"method":"left_click_drag","from_target":7,"to":[40,60]}. ' +
+    "Do not quote or JSON-stringify targets. Use only the listed desktop methods; " +
+    "browser_command is a separate tool with a different schema.",
   inputSchema: nativeBrowserCuaMcpCuaCommandJsonSchema,
 };
 
@@ -74,7 +81,9 @@ export function buildLocalCuaExecutePayload(
   };
 }
 
-export function unavailableCuaStatusToolResult(reason = CODEZ_NATIVE_BROWSER_CUA_UNAVAILABLE_REASON) {
+export function unavailableCuaStatusToolResult(
+  reason = CODEZ_NATIVE_BROWSER_CUA_UNAVAILABLE_REASON,
+) {
   return {
     content: [
       {
@@ -126,8 +135,7 @@ export async function sendNativeCuaBrokerRequest(input: {
       if (error) reject(error);
       else resolve(value);
     };
-    const onAbort = () =>
-      finish(input.signal.reason ?? new DOMException("aborted", "AbortError"));
+    const onAbort = () => finish(input.signal.reason ?? new DOMException("aborted", "AbortError"));
     input.signal.addEventListener("abort", onAbort, { once: true });
     socket.once("connect", () => socket.write(wire));
     socket.on("data", (chunk: Buffer) => {
@@ -183,8 +191,7 @@ export async function sendNativeCuaBrokerRequest(input: {
 
 export function normalizeCuaCallToolResult(value: unknown): {
   content: Array<
-    | { type: "text"; text: string }
-    | { type: "image"; data: string; mimeType: string }
+    { type: "text"; text: string } | { type: "image"; data: string; mimeType: string }
   >;
   structuredContent?: Record<string, unknown>;
   isError?: boolean;
@@ -193,8 +200,7 @@ export function normalizeCuaCallToolResult(value: unknown): {
     const record = value as Record<string, unknown>;
     if (Array.isArray(record.content)) {
       const content: Array<
-        | { type: "text"; text: string }
-        | { type: "image"; data: string; mimeType: string }
+        { type: "text"; text: string } | { type: "image"; data: string; mimeType: string }
       > = [];
       for (const item of record.content) {
         if (!item || typeof item !== "object") continue;
