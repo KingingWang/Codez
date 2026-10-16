@@ -4,17 +4,19 @@
 
 ### 2026-10 bundled macOS Helper signature policy override
 
-Codez allows its bundled macOS Helper to run unsigned. Main permission onboarding and
-Local Host installation / pre-launch verification share the services installer-options
-normalizer, which sets `verifySignature:false` for a `bundledAppPath`. This skips code
-signature, TeamIdentifier and Gatekeeper checks, without enabling development mode or
-changing the TCC owner. Generic broker installers still verify signatures by default.
+Codez does not require a Developer ID signature for its bundled macOS Helper. The build
+applies ad-hoc signatures to the Helper bundle and its nested Mach-O files so arm64 macOS
+can execute them instead of killing completely unsigned code. Main permission onboarding
+and Local Host installation / pre-launch verification share the services installer-options
+normalizer, which sets `verifySignature:false` for a `bundledAppPath`. This skips Developer ID,
+TeamIdentifier and Gatekeeper verification, without enabling development mode or changing
+the TCC owner. Generic broker installers still verify signatures by default.
 
 Bundle id, executable realpath, architecture, install-root containment, version replacement,
 rollback, runtime manifest, capability/generation and exact child PID checks remain in force.
-Unsigned execution does not provide Developer ID authentication or signature-based
+Ad-hoc signing does not provide Developer ID authentication, a TeamIdentifier or signature-based
 tamper protection. The signed-only installation and provenance statements below are historical
-where they conflict with this override; unsigned identity must not be reported as signed/stable.
+where they conflict with this override; ad-hoc identity must not be reported as a verified developer.
 
 ### 2026-08 node_repl migration override
 

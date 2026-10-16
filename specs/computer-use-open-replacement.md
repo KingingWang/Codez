@@ -16,10 +16,19 @@
 
 ### macOS 随包 Helper 的签名策略（2026-10-16）
 
-- Codez 随包的 macOS Helper 允许未签名运行。Main 的权限引导与 Desktop Local Host 的安装/每次启动校验共用 services 安装器选项归一化入口；只要使用随包 `bundledAppPath`，该入口明确关闭 `codesign`、TeamIdentifier 和 Gatekeeper 校验，不依赖用户额外设置环境变量。
+- Codez 随包的 macOS Helper 不要求 Developer ID 签名；构建阶段会为 Helper app 及其嵌套 Mach-O 写入 ad-hoc 签名，避免 arm64 macOS 在执行完全无签名文件时直接 SIGKILL。Main 的权限引导与 Desktop Local Host 的安装/每次启动校验共用 services 安装器选项归一化入口；只要使用随包 `bundledAppPath`，该入口明确关闭 `codesign`、TeamIdentifier 和 Gatekeeper 校验，不依赖用户额外设置环境变量。
 - 通用 broker 安装器增加 `verifySignature?: boolean`，默认仍校验签名；只有显式 `false` 或既有本地开发模式才跳过上述三项。不携带随包来源的安装器保持原策略。
-- 关闭签名校验不改变 Helper 的来源、固定 bundle id、可执行文件 realpath、目标架构、安装目录约束、版本替换与失败回滚、runtime 清单、capability/generation、exact child PID 和 macOS TCC 授权。签名缺失不得被报告为已验证开发者身份；此模式不再提供 Developer ID 身份认证或签名级防篡改保证。
-- 验收：未签名 production 随包 Helper 可安装、重复使用及启动前复核，Main 与 Host 策略一致；错误 bundle id/架构/越界路径仍拒绝；默认通用安装器仍拒绝签名失败；未签名 bundle 的版本更新与结构校验失败回滚继续有效。真机辅助功能/录屏授权仍须在 macOS 验收，不能用 Linux 单测冒充。
+- 关闭签名校验不改变 Helper 的来源、固定 bundle id、可执行文件 realpath、目标架构、安装目录约束、版本替换与失败回滚、runtime 清单、capability/generation、exact child PID 和 macOS TCC 授权。ad-hoc 签名不提供 Developer ID 身份认证、TeamIdentifier 或签名级防篡改保证；不应被报告为已验证开发者身份。
+- 验收：ad-hoc-signed production 随包 Helper 可安装、重复使用及启动前复核，Main 与 Host 策略一致；错误 bundle id/架构/越界路径仍拒绝；默认通用安装器仍拒绝签名失败；版本更新与结构校验失败回滚继续有效。真机辅助功能/录屏授权仍须在 macOS 验收，不能用 Linux 单测冒充。
+
+构建脚本是 staging bundle 的唯一写入者；签名必须在 SEA 注入和清单写入之后、替换旧 Helper 之前完成。先逐个签清单中的 `.node` 与 PiP，再签外层 app（含主 SEA executable），不依赖 `--deep` 自动发现非标准资源目录下的代码。任一签名失败时删除本次 staging，保留旧产物：
+
+```text
+收集 runtime → 注入 SEA / 编译 PiP → 写入清单 → 逐个签 .node / PiP → 签 app → 替换旧 Helper
+                                              └─ 任一签名失败：保留旧 Helper
+```
+
+依据：[Node SEA 的 macOS 重签步骤](https://nodejs.org/api/single-executable-applications.html)与 [Apple TN2206 的 inside-out 签名规则](https://developer.apple.com/library/archive/technotes/tn2206/_index.html)。
 
 ## 产品闭环
 

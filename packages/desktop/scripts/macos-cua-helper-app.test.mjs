@@ -37,6 +37,7 @@ async function createFixture(t) {
   const nodeExecutablePath = resolve(root, "node");
   const compileCalls = [];
   const executableArchReads = [];
+  const signCalls = [];
   await mkdir(resourcesDir, { recursive: true });
   await writeFixtureFile(nodeExecutablePath, "darwin arm64 node fixture");
   await writeFixtureFile(
@@ -105,8 +106,12 @@ async function createFixture(t) {
       compileCalls.push(input);
       await writeFile(input.targetPath, `${input.targetArch} PiP presenter fixture`);
     },
+    signCodeAdHoc: async (codePath) => {
+      signCalls.push(codePath);
+    },
     compileCalls,
     executableArchReads,
+    signCalls,
   };
 }
 
@@ -147,6 +152,15 @@ test("stages an open macOS Helper.app with the target xa11y package and full man
   );
   assert.match(fixture.compileCalls[0].targetPath, presenterSuffix);
   assert.ok(fixture.executableArchReads.some((path) => presenterSuffix.test(path)));
+  const signingRoot = fixture.signCalls.at(-1);
+  assert.match(signingRoot, /\.cua-helper-stage-[^/]+\.app$/u);
+  assert.deepEqual(fixture.signCalls, [
+    ...result.manifest.signedMutablePaths
+      .filter((path) => path.endsWith(".node"))
+      .map((path) => resolve(signingRoot, path)),
+    resolve(signingRoot, "Contents/MacOS", MAC_CUA_PIP_PRESENTER_EXECUTABLE_NAME),
+    signingRoot,
+  ]);
 
   const plist = await readFile(resolve(result.appRoot, "Contents/Info.plist"), "utf8");
   assert.match(plist, /<string>dev\.codez\.cua-helper<\/string>/u);
@@ -259,6 +273,54 @@ test("failed PiP presenter compilation preserves the previously staged Helper.ap
     /compiled PiP presenter is missing/u,
   );
   assert.equal(await readFile(markerPath, "utf8"), "old helper");
+});
+
+test("failed native or bundle ad-hoc signing preserves the previously staged Helper.app", async (t) => {
+  for (const failingSuffix of [".node", ".app"]) {
+    await t.test(failingSuffix, async (t) => {
+      const fixture = await createFixture(t);
+      const installed = await stageMacCuaHelperApp(fixture);
+      const markerPath = resolve(installed.appRoot, "Contents/Resources/preserved.txt");
+      await writeFile(markerPath, "old helper");
+
+      await assert.rejects(
+        stageMacCuaHelperApp({
+          ...fixture,
+          signCodeAdHoc: async (codePath) => {
+            if (codePath.endsWith(failingSuffix)) throw new Error("ad-hoc sign failed");
+          },
+        }),
+        /ad-hoc sign failed/u,
+      );
+      assert.equal(await readFile(markerPath, "utf8"), "old helper");
+    });
+  }
+});
+
+test("ad-hoc signing sees the complete manifest before the previous Helper is replaced", async (t) => {
+  const fixture = await createFixture(t);
+  const installed = await stageMacCuaHelperApp(fixture);
+  const markerPath = resolve(installed.appRoot, "Contents/Resources/preserved.txt");
+  await writeFile(markerPath, "old helper");
+  let signed = false;
+
+  await stageMacCuaHelperApp({
+    ...fixture,
+    signCodeAdHoc: async (codePath) => {
+      assert.equal(await readFile(markerPath, "utf8"), "old helper");
+      if (!codePath.endsWith(".app")) return;
+      const manifest = JSON.parse(
+        await readFile(resolve(codePath, "Contents/Resources/runtime-manifest.json"), "utf8"),
+      );
+      for (const file of manifest.files) {
+        assert.equal(file.sha256, sha256(await readFile(resolve(codePath, file.path))));
+      }
+      signed = true;
+    },
+  });
+
+  assert.equal(signed, true);
+  await assert.rejects(readFile(markerPath), { code: "ENOENT" });
 });
 
 test("macOS Helper build version is stable, numeric, and changes with build identity", () => {

@@ -320,6 +320,24 @@ async function removeMacCodeSignature(executablePath) {
   }
 }
 
+async function signMacCodeAdHoc(codePath) {
+  try {
+    // macOS arm64 会直接终止完全无签名的 Mach-O；ad-hoc 签名只满足执行要求，
+    // 不伪造 Developer ID 身份，随后的安装器仍按产品策略跳过开发者签名校验。
+    await execFileAsync("/usr/bin/codesign", [
+      "--force",
+      "--sign",
+      "-",
+      "--timestamp=none",
+      codePath,
+    ]);
+  } catch (error) {
+    throw new Error(`[macos-cua-helper-app] failed to ad-hoc sign ${codePath}`, {
+      cause: error,
+    });
+  }
+}
+
 async function defaultPrepareSeaExecutable({ sourceNodePath, targetPath, bootstrapSource }) {
   const buildRoot = resolve(tmpdir(), `.codez-cua-mac-sea-${process.pid}-${randomUUID()}`);
   await mkdir(buildRoot, { recursive: true });
@@ -433,6 +451,7 @@ export async function stageMacCuaHelperApp({
   readExecutableArchs = defaultReadExecutableArchs,
   prepareSeaExecutable = defaultPrepareSeaExecutable,
   compilePipPresenter = defaultCompilePipPresenter,
+  signCodeAdHoc = signMacCodeAdHoc,
 }) {
   if (electronPlatformName !== "darwin") return { staged: false };
   const macTarget = requireMacTarget(targetPlatform);
@@ -522,6 +541,15 @@ export async function stageMacCuaHelperApp({
     };
     const manifestPath = resolve(stagingRoot, ...MANIFEST_RELATIVE_PATH.split("/"));
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    // 修复依据：Apple 要求 inside-out 签名；不能靠 --deep 猜测 Resources 下的 .node。
+    // 复用清单中的原生文件集合，先签嵌套代码，最后签含主 SEA executable 的 app。
+    for (const path of [
+      ...signedMutablePaths.filter((path) => path.endsWith(".node")),
+      PIP_PRESENTER_RELATIVE_PATH,
+    ]) {
+      await signCodeAdHoc(resolve(stagingRoot, ...path.split("/")));
+    }
+    await signCodeAdHoc(stagingRoot);
 
     await rm(appRoot, { recursive: true, force: true });
     await rename(stagingRoot, appRoot);

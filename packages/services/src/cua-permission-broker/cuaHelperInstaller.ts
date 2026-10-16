@@ -37,8 +37,8 @@ export function canonicalizeCuaHelperInstallerOptions(
     defaultCuaHelperVerifierDependencies.readExecutableArchs;
   return {
     ...options,
-    // 根因：发行包包含未签名 Helper，清除 quarantine 也不能通过 codesign。
-    // Main 与 Local Host 共用此入口，只对随包来源关闭签名链，不放宽身份、架构或安装目录。
+    // 根因：发行包只有 ad-hoc Helper 签名，不能提供 Developer ID/TeamIdentifier 身份。
+    // Main 与 Local Host 共用此入口，只对随包来源关闭开发者签名链，不放宽身份、架构或安装目录。
     ...(options.bundledAppPath ? { verifySignature: false } : {}),
     dependencies: {
       ...options.dependencies,
