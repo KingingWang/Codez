@@ -14,6 +14,13 @@
 
 本 spec 与 `specs/computer-use-decision-provider.md` 共同约束产品闭环。仍不在代码交付范围的只有：macOS/Linux 真机验收、发行证书/TeamIdentifier/公证凭据和用户选择的 UI-TARS 模型权重或 API 凭据；这些是外部环境或密钥，不得由仓库伪造。GitHub tag workflow 对 macOS、Windows、Linux 都只发布可供后续签名的未签名目录或安装包，使用者在仓库外自行完成平台签名/公证；本阶段只负责完整性校验、安装、启动和失败处理代码。配置为“必须签名”的产品安装路径仍 fail closed，不能把未签名产物伪装成已验证身份。
 
+### macOS 随包 Helper 的签名策略（2026-10-16）
+
+- Codez 随包的 macOS Helper 允许未签名运行。Main 的权限引导与 Desktop Local Host 的安装/每次启动校验共用 services 安装器选项归一化入口；只要使用随包 `bundledAppPath`，该入口明确关闭 `codesign`、TeamIdentifier 和 Gatekeeper 校验，不依赖用户额外设置环境变量。
+- 通用 broker 安装器增加 `verifySignature?: boolean`，默认仍校验签名；只有显式 `false` 或既有本地开发模式才跳过上述三项。不携带随包来源的安装器保持原策略。
+- 关闭签名校验不改变 Helper 的来源、固定 bundle id、可执行文件 realpath、目标架构、安装目录约束、版本替换与失败回滚、runtime 清单、capability/generation、exact child PID 和 macOS TCC 授权。签名缺失不得被报告为已验证开发者身份；此模式不再提供 Developer ID 身份认证或签名级防篡改保证。
+- 验收：未签名 production 随包 Helper 可安装、重复使用及启动前复核，Main 与 Host 策略一致；错误 bundle id/架构/越界路径仍拒绝；默认通用安装器仍拒绝签名失败；未签名 bundle 的版本更新与结构校验失败回滚继续有效。真机辅助功能/录屏授权仍须在 macOS 验收，不能用 Linux 单测冒充。
+
 ## 产品闭环
 
 ### 产品规则与动作面
@@ -51,7 +58,7 @@
 ### 状态所有者与事件顺序
 
 - **AgentRuntime** 仍是唯一决策循环、取消、工具持久化和重试所有者；UI-TARS 只在模型适配层把一个完整文本 `Action:` 转成一个既有 `node_repl` 工具调用，不引入 SDK 自带 loop/operator。
-- **Desktop Local Host** 拥有 Helper 进程 generation、socket、capability 和 workspace admission；Main 只负责安装、签名校验、系统设置引导和进程转发，不持有会话业务状态。
+- **Desktop Local Host** 拥有 Helper 进程 generation、socket、capability 和 workspace admission；Main 只负责安装、按上述签名策略复核身份、系统设置引导和进程转发，不持有会话业务状态。
 - **Helper broker** 是权限真值、控制 lease、动作串行队列、应用 snapshot 与元素 index 的唯一所有者。权限不缓存；每个读屏或副作用动作在实际执行位置重新裁决。
 - **Helper PiP coordinator** 是 PiP 生命周期、焦点 revision、turn sequence、可信截图绑定和 presenter 可见性的唯一所有者。Host 只投递产品事实，不持有窗口状态；Main 只产生当前桌面窗口的焦点事实。
 - **runtime** 不保存授权结论、AX tree 或元素表；只保存自己尚未发往 Helper 的排队项和生命周期状态。
@@ -117,7 +124,7 @@ Helper 注册 IPC listener
 - 三个平台必须从仓库内同一份 `helper-entry.js`、broker、producer 和驱动源码生成 Helper 资源，不得把私有 producer、预置的外部 Helper 二进制或仅开发机存在的绝对路径作为产品依赖。平台差异只允许位于受控的启动器、原生 xa11y/nut-js 包选择和系统权限适配层。
 - Windows 与 Linux 使用受完整性清单约束的 Node Helper runtime。清单必须覆盖入口、递归 JS 闭包、所选平台/架构的 `.node` 与运行所需旁文件；启动前逐项校验哈希、拒绝缺失、额外文件、符号链接、大小写碰撞和平台/架构不匹配。Linux 选择 `@crowecawcaw/xa11y-linux-{x64|arm64}-gnu`，并保持本项目既有 RHEL 8+/glibc 2.28 发布基线：release workflow 必须从锁定的 xa11y 源码 revision 在 manylinux*2_28 对应原生架构环境构建 N-API addon，stager 必须校验 ELF 架构与最高 `GLIBC*\*` 符号版本不高于 2.28；npm 上游预编译包或任意 override 不满足该契约时终止出包，不能生成“可安装但 Helper 必然无法加载”的产物。
 - Linux Helper 在发布 `transport_ready`/`ready` 和 Agent-facing credential tuple 前必须完成无输入副作用的能力预检：识别当前 X11 或 Wayland 会话，验证 AT-SPI `App.list()` 返回有效数组，并确认 xa11y `inputSim()` 可初始化后立即释放。Wayland 还必须由 **Helper 同一进程身份**验证 `/dev/uinput` 可写；不满足时返回稳定的 fail-closed 启动原因，不能等到首个 move/click/key/type 才失败。不得静默把用户加入 `input` group、安装扩大权限的 udev 规则或回退到绕过 broker 的输入路径；无显示环境、Wayland bridge、AT-SPI 或输入权限只拒绝本次启动，不能永久禁用 Linux 平台。
-- macOS 产品资源中的 `Codez Computer Use.app` 必须由仓库内构建脚本生成，bundle 内执行同一份开放 Helper runtime，并包含仓库内 Swift 源码构建的非激活浮动 PiP presenter；固定 bundle id 继续作为 TCC 身份。`Info.plist`、入口、Node executable、presenter、JS 闭包及 `@crowecawcaw/xa11y-darwin-{x64|arm64}` 原生文件全部进入清单。仓库与 GitHub workflow 只产出可签名的未签名 bundle/package；使用者下载后在外部对嵌套 Mach-O 与 bundle 自行签名、公证。对要求签名的安装模式，现有安装器仍复核 TeamIdentifier、架构、Gatekeeper 与签名并 fail closed。
+- macOS 产品资源中的 `Codez Computer Use.app` 必须由仓库内构建脚本生成，bundle 内执行同一份开放 Helper runtime，并包含仓库内 Swift 源码构建的非激活浮动 PiP presenter；固定 bundle id 继续作为 TCC 身份。`Info.plist`、入口、Node executable、presenter、JS 闭包及 `@crowecawcaw/xa11y-darwin-{x64|arm64}` 原生文件全部进入清单。仓库与 GitHub workflow 可产出未签名 bundle/package；Codez 随包安装遵循上述不强制签名策略，使用者仍可自行签名、公证。不携带随包来源且要求签名的安装模式仍复核 TeamIdentifier、Gatekeeper 与签名并 fail closed；所有模式均复核架构和 bundle 身份。
 - macOS 的 `CFBundleExecutable` 是 Node SEA Mach-O，不得是 shell wrapper。打包方必须显式提供 `CODEZ_CUA_MAC_NODE_EXECUTABLE`、与构建 Node 相同的 `CODEZ_CUA_MAC_NODE_VERSION` 和 `CODEZ_CUA_MAC_NODE_SHA256`；stager 在注入 SEA 前校验常规文件、SHA-256 与目标 `lipo` 架构，任一缺失或不匹配即终止出包。SEA bootstrap 只负责校验 bundle 内 Info/runtime 文件集并加载 `Contents/Resources/runtime/helper-entry.js`；Node 主 executable、PiP presenter 与 `.node` 允许由外部签名流程在打包后改写，清单将其明确标记为 `signedMutablePaths`，已签名安装模式的运行时身份复核由现有 `codesign --deep --strict`、TeamIdentifier 和 Gatekeeper 安装门承担。`CFBundleShortVersionString` 必须跟随桌面应用版本，`CFBundleVersion` 必须由 `CODEZ_CUA_HELPER_BUILD_ID`（缺省为同一份桌面 commit + build time 元数据）稳定派生为合法数字版本；不得复用独立 CUA 包版本，否则安装器可能把新发行包误判为同一 Helper 而保留旧产物。
 - `CODEZ_CUA_HELPER_BUILD_ID` 的唯一构建消费者是 macOS Helper app stager/Info.plist；共享 `node_repl` 只是 broker client，不安装 Helper，也不得再把该值 define 进自己的 bundle 或要求产物包含它。Desktop main/host bundle 同样不持有这份版本状态。
 - Helper 常驻 CLI 的规范参数固定为 `--socket`、可选 `--pip-socket`、`--parent-pid` 和 `--pip-mode`；`--capability`、`--generation` 及两个旧 `--allow-*-local-dev` 参数必须拒绝。`--parent-pid` 是新启动的唯一写出格式；孤儿回收在迁移期先识别它，并兼容读取旧进程的 `--launcher-pid`，不得因参数方言漂移漏掉当前 Helper。权限预检/提示保留无凭据的 `--permission-request` / `--permission-preflight` LaunchServices 方言，不进入常驻 bootstrap。

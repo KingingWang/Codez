@@ -418,6 +418,75 @@ test("unsigned Helper escape is limited to local development", async (t) => {
   assert.match(await installer.ensureInstalled(), /[\\/]dev[\\/]Codez Computer Use Dev\.app$/u);
 });
 
+test("explicit unsigned policy skips signing gates without relaxing identity or architecture", async (t) => {
+  const root = await createTemporaryDirectory(t);
+  let bundleId = HELPER_BUNDLE_ID;
+  let archs = ["arm64"];
+  const options = {
+    env: { NODE_ENV: "production", CODEZ_RUNTIME_ENV: "production" },
+    platform: "darwin",
+    arch: "arm64",
+    installRoot: root,
+    verifySignature: false,
+    dependencies: {
+      resolveIdentity: async (appPath) => ({
+        appPath,
+        executablePath: join(appPath, "helper"),
+        displayName: "Codez Computer Use",
+        bundleId,
+      }),
+      readExecutableArchs: async () => archs,
+      verifyCodeSignature: async () => assert.fail("codesign must be skipped"),
+      verifyTeamIdentifier: async () => assert.fail("Team ID must be skipped"),
+      verifyGatekeeper: async () => assert.fail("Gatekeeper must be skipped"),
+    },
+  };
+  const installer = createCuaHelperInstaller(options);
+  await installer.verifyInstalled(join(root, "Codez Computer Use.app"));
+  bundleId = "unexpected.helper";
+  await assert.rejects(installer.verifyInstalled(join(root, "Codez Computer Use.app")), {
+    code: "identity_mismatch",
+  });
+  bundleId = HELPER_BUNDLE_ID;
+  archs = ["x64"];
+  await assert.rejects(installer.verifyInstalled(join(root, "Codez Computer Use.app")), {
+    code: "architecture_mismatch",
+  });
+  assert.throws(
+    () =>
+      createCuaHelperInstaller({
+        ...options,
+        installPath: join(root, "..", "outside.app"),
+      }),
+    { code: "unsafe_path" },
+  );
+});
+
+test("generic production installers still reject unsigned Helpers by default", async (t) => {
+  const root = await createTemporaryDirectory(t);
+  const installer = createCuaHelperInstaller({
+    env: { NODE_ENV: "production", CODEZ_RUNTIME_ENV: "production" },
+    platform: "darwin",
+    arch: "arm64",
+    installRoot: root,
+    dependencies: {
+      resolveIdentity: async (appPath) => ({
+        appPath,
+        executablePath: join(appPath, "helper"),
+        displayName: "Codez Computer Use",
+        bundleId: HELPER_BUNDLE_ID,
+      }),
+      readExecutableArchs: async () => ["arm64"],
+      verifyCodeSignature: async () => {
+        throw new Error("code object is not signed at all");
+      },
+    },
+  });
+  await assert.rejects(installer.verifyInstalled(join(root, "Codez Computer Use.app")), {
+    message: "code object is not signed at all",
+  });
+});
+
 test("refresh markers are atomic, private, disposable, and absent for named pipes", async (t) => {
   const root = await createTemporaryDirectory(t);
   const socketPath = join(root, "broker.sock");

@@ -472,7 +472,8 @@ export function createCuaHelperInstaller(options = {}) {
       );
     }
     let teamIdentifier;
-    if (!plan.allowUnsignedLocal) {
+    // 随包 Helper 允许未签名；仅跳过签名链，前面的 bundle 身份和架构校验仍然执行。
+    if (options.verifySignature !== false && !plan.allowUnsignedLocal) {
       await dependencies.verifyCodeSignature(identity.appPath);
       teamIdentifier = await dependencies.verifyTeamIdentifier(
         identity.appPath,

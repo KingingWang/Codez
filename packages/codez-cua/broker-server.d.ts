@@ -74,6 +74,8 @@ export interface CuaHelperInstallerOptions {
   platform?: string;
   arch?: string;
   expectedTeamIdentifier?: string;
+  /** Defaults to true; false skips code signature, TeamIdentifier and Gatekeeper checks. */
+  verifySignature?: boolean;
   compiledLocalDevelopmentRuntime?: boolean;
   plan?: {
     installRoot?: string;

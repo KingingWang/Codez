@@ -2,6 +2,20 @@
 
 ## Product boundary
 
+### 2026-10 bundled macOS Helper signature policy override
+
+Codez allows its bundled macOS Helper to run unsigned. Main permission onboarding and
+Local Host installation / pre-launch verification share the services installer-options
+normalizer, which sets `verifySignature:false` for a `bundledAppPath`. This skips code
+signature, TeamIdentifier and Gatekeeper checks, without enabling development mode or
+changing the TCC owner. Generic broker installers still verify signatures by default.
+
+Bundle id, executable realpath, architecture, install-root containment, version replacement,
+rollback, runtime manifest, capability/generation and exact child PID checks remain in force.
+Unsigned execution does not provide Developer ID authentication or signature-based
+tamper protection. The signed-only installation and provenance statements below are historical
+where they conflict with this override; unsigned identity must not be reported as signed/stable.
+
 ### 2026-08 node_repl migration override
 
 CUA 不再注册或启动独立 `codez-cua` MCP。模型只看到 shared `node_repl` 的工具（成文时是三个，
