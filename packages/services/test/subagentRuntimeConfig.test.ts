@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import * as fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, parse, resolve } from "node:path";
@@ -237,7 +237,9 @@ describe("Host incremental subagent snapshots", () => {
     f.emit(path);
     await until(() => expect(vi.mocked(fs.readFile).mock.results.at(-1)?.value).toBe(gate.promise));
     const obsolete = initialWatcherFor(f.userRoot);
-    await rm(f.userRoot, { recursive: true });
+    // 根因：ext4 可能立即复用已删除目录的 inode，rm + mkdir 不能稳定制造“另一目录对象”。
+    // 保留旧对象直到 fixture 清理，确保本场景验证目录换代，而非依赖文件系统分配顺序。
+    await rename(f.userRoot, join(f.root, "obsolete-user"));
     await mkdir(f.userRoot);
     await writeFile(path, markdown("aaa", "replacement"));
     // 快速替换时可能只有原生事件；路径仍存在，也必须关闭旧目录对象的监听。
