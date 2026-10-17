@@ -147,6 +147,7 @@ export {
   createCanonicalCuaHelperInstaller,
   normalizeCuaHelperArch,
   normalizeCuaHelperArchs,
+  resolveCuaPermissionUnavailableErrorKind,
 } from "./cua-permission-broker/cuaHelperInstaller.js";
 export type {
   CuaHelperInstaller,
@@ -592,7 +593,10 @@ import {
   type CuaNodeRuntime,
   type WindowsCuaRuntime,
 } from "#src/cua-permission-broker/windowsCuaDevRuntime.js";
-import { createCanonicalCuaHelperInstaller } from "./cua-permission-broker/cuaHelperInstaller.js";
+import {
+  createCanonicalCuaHelperInstaller,
+  resolveCuaPermissionUnavailableErrorKind,
+} from "./cua-permission-broker/cuaHelperInstaller.js";
 import { WindowsCuaHelperHost } from "#src/cua-permission-broker/windowsCuaDevHelperHost.js";
 import { HELPER_APP_NAME } from "@codez/codez-cua/broker/helperConstants";
 import {
@@ -2051,15 +2055,17 @@ export function createLocalServices(options: {
       }
       // 权限页与 Agent 必须消费同一个受管 Host tuple；旧 standalone 分支会分别铸造
       // socket/capability，既无法认证也无法被生命周期 owner 回收。
-      const helper = await getOrCreateDefaultCuaProductHelper(context);
-      const host = helper?.macPermissionHost;
-      if (!helper || !host || !isDefaultCuaProductHelperCurrent(helper)) {
-        return {
-          available: false,
-          reason: "Codez Computer Use Helper is unavailable.",
-        };
-      }
       try {
+        // acquire/create 里的 Helper 启动失败（如 Gatekeeper 拒杀）也要落到 catch，
+        // 才能把 errorKind 带给 UI；过去它在 try 外抛出，被上层吞成笼统不可用。
+        const helper = await getOrCreateDefaultCuaProductHelper(context);
+        const host = helper?.macPermissionHost;
+        if (!helper || !host || !isDefaultCuaProductHelperCurrent(helper)) {
+          return {
+            available: false,
+            reason: "Codez Computer Use Helper is unavailable.",
+          };
+        }
         const report = await host.queryPermissionStatus();
         if (!helper || !isDefaultCuaProductHelperCurrent(helper)) {
           return {
@@ -2105,11 +2111,13 @@ export function createLocalServices(options: {
           screenCaptureProbeOk,
         };
       } catch (error) {
+        const errorKind = resolveCuaPermissionUnavailableErrorKind(error);
         return {
           available: false,
           reason: `Could not read Computer Use Helper permission status: ${
             error instanceof Error ? error.message : String(error)
           }`,
+          ...(errorKind ? { errorKind } : {}),
         };
       }
     },

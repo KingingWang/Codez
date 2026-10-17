@@ -14,7 +14,11 @@ import {
   isRemoteWorkspaceIdentity,
   CODEZ_CUA_OFFICIAL_PLUGIN_ID,
 } from "@codez/shared";
-import { isCuaPermissionStatusAvailable, type CuaPermissionRestartOptions } from "@codez/services";
+import {
+  isCuaPermissionStatusAvailable,
+  type CuaPermissionRestartOptions,
+  type CuaPermissionStatusResult,
+} from "@codez/services";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
 import { Switch } from "@/components/ui/switch.js";
@@ -44,6 +48,20 @@ import { waitForAccessibilityNotStale } from "@/settings/cuaPermissionRestartVer
 import { requiredCuaPermissionsForFreshStatus } from "@/settings/cuaPermissionPreparation.js";
 import { ExternalLink } from "lucide-react";
 import { resolveComputerUseAvailability } from "@/settings/computerUseAvailability.js";
+
+// Helper 被 macOS 拦截的两种结构化 kind（Gatekeeper 拒杀 / quarantine 剥离失败）。
+// 命中时权限行只会显示"未知"，走 TCC onboarding 只会空转系统弹窗；契约见
+// docs/cua-permission-broker/codez-cua-permission-broker.md。UI 的唯一动作是
+// 修复（restartHelper 重跑安装器 quarantine 自愈并重启），不再进入授权循环。
+function cuaPermissionBlockedKind(
+  status: CuaPermissionStatusResult | null | undefined,
+): "helper_launch_blocked" | "helper_quarantine_present" | undefined {
+  if (!status || isCuaPermissionStatusAvailable(status)) return undefined;
+  return status.errorKind === "helper_launch_blocked" ||
+    status.errorKind === "helper_quarantine_present"
+    ? status.errorKind
+    : undefined;
+}
 
 interface ComputerUseSectionProps {
   isDesktop?: boolean;
@@ -99,6 +117,8 @@ export function ComputerUseSection({
   // 在「验证中…」与终态之间切换、宽度随之跳变。
   const { status, settled, refresh } = useCuaPermissionStatus(path ?? null, workspaceIdentity);
   const availableStatus = status && isCuaPermissionStatusAvailable(status) ? status : null;
+  // Helper 被 Gatekeeper/quarantine 拦截时的修复态标志；见 cuaPermissionBlockedKind 注释。
+  const blockedKind = cuaPermissionBlockedKind(status);
 
   // macOS 版本门槛：低版本系统上 Helper 被 LaunchServices -10825 拒启，表象是授权反复无响应。
   // 查询一次主进程判定（GetCuaOsSupport），低于地板时渲染提示卡并隐藏授权操作区。
@@ -442,6 +462,13 @@ export function ComputerUseSection({
         ) {
           return;
         }
+        // Helper 被 Gatekeeper/quarantine 拦截时 TCC onboarding 必空转（系统弹窗死循环
+        // 的用户侧入口）：改走修复链——restartHelper 重跑安装器 quarantine 自愈并重启。
+        if (cuaPermissionBlockedKind(currentStatus)) {
+          toast(intl.formatMessage({ id: "cuaPermission.blocked.repairToast" }));
+          await onRestart(path, workspaceIdentity);
+          return;
+        }
         if (
           !isCuaPermissionStatusAvailable(currentStatus) ||
           !requiredCuaPermissionsForFreshStatus(currentStatus).includes(initialPermission)
@@ -521,7 +548,7 @@ export function ComputerUseSection({
         }
       }
     },
-    [platform, path, services, workspaceIdentity, intl, applyPendingGrant, refresh],
+    [platform, path, services, workspaceIdentity, intl, applyPendingGrant, refresh, onRestart],
   );
 
   const onManualRestart = useCallback((): void => {
@@ -756,6 +783,29 @@ export function ComputerUseSection({
       {/* CUA 未启用时隐藏下方权限配置，只留总开关，避免一堆禁用项。 */}
       {cuaEnabled && supportsLocalMacWorkspace ? (
         <>
+          {/* Helper 被 Gatekeeper/quarantine 拦截：权限行只能显示"未知"，这里给修复横幅，
+              避免用户在 TCC 弹窗/不可用 toast 之间死循环。修复动作复用 onRestart：
+              restartHelper 会重跑安装器 quarantine 自愈并重启 Helper。 */}
+          {blockedKind && !macOsBelowCuaFloor ? (
+            <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+              <p className="font-medium">
+                {intl.formatMessage({ id: "cuaPermission.blocked.title" })}
+              </p>
+              <p>{intl.formatMessage({ id: "cuaPermission.blocked.description" })}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                disabled={restarting || !path}
+                onClick={onManualRestart}
+              >
+                {restarting
+                  ? intl.formatMessage({ id: "cuaPermission.modal.restarting" })
+                  : intl.formatMessage({ id: "cuaPermission.blocked.repairButton" })}
+              </Button>
+            </div>
+          ) : null}
           {/* macOS 版本低于 CUA Helper 承诺地板时，授权在低版本系统上无法完成
               （Helper 被 LaunchServices -10825 拒启），整卡替换为升级提示。 */}
           {macOsBelowCuaFloor ? (

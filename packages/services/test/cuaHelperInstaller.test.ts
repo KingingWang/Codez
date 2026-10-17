@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   canonicalizeCuaHelperInstallerOptions,
   createCanonicalCuaHelperInstaller,
+  resolveCuaPermissionUnavailableErrorKind,
 } from "../src/cua-permission-broker/cuaHelperInstaller.js";
 
 test("bundled production Helper skips signing gates during install, reuse and pre-launch checks", async (t) => {
@@ -78,4 +79,21 @@ test("signature policy changes only for a bundled source and preserves architect
   });
   assert.equal(bundled.verifySignature, false);
   assert.deepEqual(await bundled.dependencies!.readExecutableArchs!("helper"), ["x64", "arm64"]);
+});
+
+// errorKind 契约（docs/cua-permission-broker/codez-cua-permission-broker.md）：
+// 只映射两种 Helper 被 macOS 拦截的 kind；其余失败保持 undefined，
+// UI 沿用现有"未知"展示与重试语义。
+test("resolveCuaPermissionUnavailableErrorKind only maps contracted kinds", () => {
+  assert.equal(
+    resolveCuaPermissionUnavailableErrorKind({ code: "helper_launch_blocked" }),
+    "helper_launch_blocked",
+  );
+  assert.equal(
+    resolveCuaPermissionUnavailableErrorKind({ code: "helper_quarantine_present" }),
+    "helper_quarantine_present",
+  );
+  assert.equal(resolveCuaPermissionUnavailableErrorKind(new Error("boom")), undefined);
+  assert.equal(resolveCuaPermissionUnavailableErrorKind({ code: "helper_unavailable" }), undefined);
+  assert.equal(resolveCuaPermissionUnavailableErrorKind(undefined), undefined);
 });

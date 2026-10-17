@@ -7557,6 +7557,10 @@ const enUS: Record<string, string> = {
   "cuaPermission.modal.restarting": "Restarting Helper…",
   "cuaPermission.modal.restartFailed": "Couldn't restart Helper: {error}",
   "cuaPermission.modal.relaunchAppButton": "Restart Codez",
+  "cuaPermission.blocked.title": "Computer Use Helper is blocked by macOS",
+  "cuaPermission.blocked.description": "The Helper carries a quarantine attribute or lacks notarization, so Gatekeeper refuses to launch it and permission status cannot be read. Repair lets the installer strip the quarantine flag and restart the Helper — no terminal commands needed.",
+  "cuaPermission.blocked.repairButton": "Repair and restart Helper",
+  "cuaPermission.blocked.repairToast": "Repairing Computer Use Helper…",
   "cuaPermission.modal.relaunchAppHint":
     "Still not working after restarting Helper? Restart Codez to fully reload the Helper process.",
   "cuaPermission.status.granted": "Granted",

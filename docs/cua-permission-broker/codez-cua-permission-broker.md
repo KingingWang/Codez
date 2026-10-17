@@ -109,6 +109,23 @@ queued request and any late result. After one active result establishes readines
 renderer-local sticky-ready snapshot may preserve that result while subsequent polling remains read-only.
 Remote/mobile attachment never originates this probe and never creates a Helper.
 
+## Unavailable 结果的 errorKind 契约
+
+`CuaPermissionStatusResult` 的不可用分支（`available:false`）可以携带可选
+`errorKind`，把"Helper 起不来"和"CUA 未启用/平台不支持"区分开。生产者规则：
+
+- darwin 下 Helper 在 credential bootstrap 之前以 `SIGKILL` 退出 →
+  `helper_launch_blocked`（Gatekeeper/AMFI 拒杀的典型信号）。
+- installer 剥离 `com.apple.quarantine` 失败（探针仍命中）→
+  `helper_quarantine_present`。
+- 其余启动/读取失败保持无 `errorKind`，语义不变。
+
+消费者规则：UI 见到上述两种 `errorKind` 时必须渲染可操作的修复态
+（调用既有 `restartHelper` 重跑安装自愈并重启），**不得**路由到 TCC
+onboarding/请求循环；`requestPermissionViaLaunchServices` 在已安装副本
+仍带隔离属性时直接返回该 kind，不再 `/usr/bin/open`，避免无意义的系统
+弹窗。无 `errorKind` 的不可用状态维持现有展示与重试语义。
+
 ## Shared node_repl SDK contract
 
 The bundled `@codez/codez-cua-plugin` is a skill/docs/SDK package. `scripts/computer-use-client.mjs`

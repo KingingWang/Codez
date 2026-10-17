@@ -54,3 +54,19 @@ export function createCanonicalCuaHelperInstaller(
 ): CuaHelperInstaller {
   return createInstaller(canonicalizeCuaHelperInstallerOptions(options));
 }
+
+/**
+ * 把 Helper 启动/读取失败映射为 unavailable 结果的结构化 errorKind。
+ * 只认契约约定的两种 kind（见 docs/cua-permission-broker/codez-cua-permission-broker.md）：
+ * bootstrap 前 SIGKILL = Gatekeeper/AMFI 拒杀（helper_launch_blocked）；
+ * quarantine 剥离失败 = 安装器 fail-closed（helper_quarantine_present）。
+ * 其余失败返回 undefined，UI 沿用现有"未知"展示与重试语义，不被本次改动改变。
+ */
+export function resolveCuaPermissionUnavailableErrorKind(
+  error: unknown,
+): "helper_launch_blocked" | "helper_quarantine_present" | undefined {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === "helper_launch_blocked" || code === "helper_quarantine_present"
+    ? code
+    : undefined;
+}

@@ -66,6 +66,19 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Helper 在 credential bootstrap 前退出时的失败分类。macOS 上 SIGKILL 是
+ * Gatekeeper/AMFI 拒杀带隔离/未公证 Helper 的典型信号；分类后权限流走修复态，
+ * 而不是误读成"未授权"反复发起 TCC 请求（录屏弹窗死循环根因之一）。
+ * 纯函数便于单测；平台由调用方传入。
+ */
+export function classifyCuaHelperBootstrapExit({ code, signal, platform = process.platform }) {
+  if (code === null && signal === "SIGKILL" && platform === "darwin") {
+    return "helper_launch_blocked";
+  }
+  return undefined;
+}
+
 function nonEmptyString(value, label) {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw helperError(`${label} must be a non-empty string.`, "invalid_request");
@@ -324,6 +337,34 @@ export const defaultCuaHelperVerifierDependencies = Object.freeze({
     const { stdout } = await execFileResult("/usr/bin/lipo", ["-archs", executablePath]);
     return stdout.trim().split(/\s+/u).filter(Boolean);
   },
+  // 根因：随包 Helper 只有 ad-hoc 签名，复制（copyBundle）会把下载资产遗留的
+  // com.apple.quarantine 一并带进安装路径；Gatekeeper 对"带隔离 + 未公证"的 App
+  // 在 LaunchServices/exec 拉起时直接拒杀（SIGKILL / 已不能再打开），权限流又把
+  // 启动失败误读成"未授权"反复弹 TCC。安装器因此把"落盘无 quarantine"作为不变量，
+  // 剥离与探针都走依赖注入，便于单测覆盖。
+  async removeQuarantine(appPath) {
+    if (process.platform !== "darwin") return;
+    try {
+      await execFileResult("/usr/bin/xattr", ["-dr", "com.apple.quarantine", appPath]);
+    } catch {
+      // 部分文件本就没有该属性时 xattr 返回非零；是否干净以探针为准。
+    }
+  },
+  async probeQuarantine(appPath) {
+    if (process.platform !== "darwin") return false;
+    try {
+      const result = await execFileResult("/usr/bin/xattr", [
+        "-r",
+        "-p",
+        "com.apple.quarantine",
+        appPath,
+      ]);
+      return result.stdout.trim().length > 0;
+    } catch {
+      // 探针命令非零退出 = 没有任何文件命中该属性。
+      return false;
+    }
+  },
   async verifyCodeSignature(appPath) {
     await execFileResult("/usr/bin/codesign", [
       "--verify",
@@ -496,6 +537,19 @@ export function createCuaHelperInstaller(options = {}) {
     installed.version === bundled.version &&
     installed.buildVersion === bundled.buildVersion;
 
+  // quarantine 不变量（见 docs/cua-permission-broker/cua-helper-installation.md）：
+  // 落盘 Helper 必无 com.apple.quarantine；剥离后探针仍命中即 fail-closed。
+  const ensureNoQuarantine = async (appPath) => {
+    if (!(await dependencies.probeQuarantine(appPath))) return;
+    await dependencies.removeQuarantine(appPath);
+    if (await dependencies.probeQuarantine(appPath)) {
+      throw helperError(
+        "Computer Use Helper still carries com.apple.quarantine after removal.",
+        "helper_quarantine_present",
+      );
+    }
+  };
+
   const ensureInstalled = async () => {
     const sourcePath = plan.sourcePath
       ? resolve(nonEmptyString(plan.sourcePath, "bundled Helper path"))
@@ -512,6 +566,8 @@ export function createCuaHelperInstaller(options = {}) {
           !sourceVerification ||
           isSameBundledVersion(installedVerification.identity, sourceVerification.identity)
         ) {
+          // 存量坏安装自愈：同版本快路径也原地剥离 quarantine，用户无需手动 xattr。
+          await ensureNoQuarantine(plan.installPath);
           return plan.installPath;
         }
         log(options, "info", "Bundled Computer Use Helper version changed; replacing it.", {
@@ -521,7 +577,9 @@ export function createCuaHelperInstaller(options = {}) {
             sourceVerification.identity.buildVersion ?? sourceVerification.identity.version,
         });
       } catch (error) {
-        if (!sourceVerification) throw error;
+        // quarantine fail-closed 是契约错误（helper_quarantine_present），不得被
+        // 降级成"校验失败就替换"的兜底分支；否则剥离失效会被静默吞掉。
+        if (!sourceVerification || error?.code === "helper_quarantine_present") throw error;
         log(options, "warn", "Installed Computer Use Helper failed verification; replacing it.", {
           error: stringifyError(error),
         });
@@ -543,6 +601,8 @@ export function createCuaHelperInstaller(options = {}) {
     let installedNew = false;
     try {
       await dependencies.copyBundle(sourcePath, stagingPath);
+      // 先剥离再 verify/promote：隔离属性不得进入产品路径。
+      await ensureNoQuarantine(stagingPath);
       await verifyBundle(stagingPath, {
         expectedTeamIdentifier: sourceVerification.teamIdentifier,
       });
@@ -575,6 +635,11 @@ export function createCuaHelperInstaller(options = {}) {
             error: stringifyError(rollbackError),
           });
         });
+      }
+      // 回滚完成后保留 quarantine fail-closed 的原始 kind，权限流才能走修复态；
+      // 其余失败仍归并为 install_failed。
+      if (error instanceof CuaHelperError && error.code === "helper_quarantine_present") {
+        throw error;
       }
       throw helperError(
         `Computer Use Helper installation failed: ${stringifyError(error)}`,
@@ -985,6 +1050,7 @@ async function defaultLaunchProductHelper(options) {
       fail(
         helperError(
           `Computer Use Helper exited before credential bootstrap (code=${String(code)}, signal=${String(signal)}).`,
+          classifyCuaHelperBootstrapExit({ code, signal }),
         ),
       );
     const onMessage = (message) => {
@@ -1760,6 +1826,17 @@ async function requestPermissionViaLaunchServices(kind, options = {}) {
     if (!helperAppPath) {
       throw helperError("Computer Use Helper app path is required.", "helper_bundle_missing");
     }
+    // 已安装副本仍带 quarantine 时 open 必被 Gatekeeper 拒杀：直接报结构化错误，
+    // 不再拉起系统弹窗（杜绝 TCC 请求死循环）；修复走 restartHelper 重跑安装自愈。
+    const probeQuarantine = options.probeQuarantine ?? defaultCuaHelperVerifierDependencies.probeQuarantine;
+    if (await probeQuarantine(helperAppPath)) {
+      return {
+        ok: false,
+        errorKind: "helper_quarantine_present",
+        reason:
+          "Computer Use Helper is quarantined; repair it by restarting the Helper (installer strips quarantine).",
+      };
+    }
     const socketPath =
       options.socketPath ?? mintBrokerSocketPath({ platform, dir: options.socketDirectory });
     const args = buildHelperOpenArgs(
@@ -1829,6 +1906,15 @@ export async function queryHelperScreenRecordingPreflightViaLaunchServices(optio
   try {
     const helperAppPath = options.helperAppPath ?? (await options.ensureInstalled?.());
     if (!helperAppPath) return undefined;
+    // 隔离属性仍在时 open 必被拒杀：跳过这次必败冷启，保持 fail-open
+    // （返回 undefined 让 services 沿用常驻报告，不伪造 granted/denied）。
+    if (
+      await (options.probeQuarantine ?? defaultCuaHelperVerifierDependencies.probeQuarantine)(
+        helperAppPath,
+      )
+    ) {
+      return undefined;
+    }
     const args = buildHelperOpenArgs(
       {
         appPath: helperAppPath,

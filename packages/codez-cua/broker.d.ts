@@ -276,6 +276,15 @@ export interface CuaPermissionStatusUnavailable {
   reason: string;
   idle?: boolean;
   grantOwnerDisplayName?: string | null;
+  /**
+   * 不可用原因的结构化分类。`helper_launch_blocked` = Helper 在 credential
+   * bootstrap 前被 macOS 拒杀（Gatekeeper/AMFI，典型为 SIGKILL）；
+   * `helper_quarantine_present` = 已安装 Helper 仍带 com.apple.quarantine
+   * 且安装器剥离失败。UI 见这两种 kind 必须走修复态（restartHelper），
+   * 不得进入 TCC onboarding/请求循环。见
+   * docs/cua-permission-broker/codez-cua-permission-broker.md。
+   */
+  errorKind?: "helper_launch_blocked" | "helper_quarantine_present";
 }
 
 export type CuaPermissionStatusResult = CuaPermissionStatus | CuaPermissionStatusUnavailable;

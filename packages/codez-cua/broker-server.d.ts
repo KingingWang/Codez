@@ -60,6 +60,10 @@ export interface CuaHelperVerifierDependencies {
     expectedTeamIdentifier?: string,
   ) => Promise<string | void>;
   verifyGatekeeper?: (appPath: string) => Promise<void>;
+  /** 递归剥离 com.apple.quarantine；quarantine 不变量见 cua-helper-installation.md。 */
+  removeQuarantine?: (appPath: string) => Promise<void>;
+  /** 探针：bundle 内是否仍有文件带 com.apple.quarantine。 */
+  probeQuarantine?: (appPath: string) => Promise<boolean>;
   resolveIdentity: typeof resolveHelperPermissionSubjectIdentity;
   copyBundle: (source: string, destination: string) => Promise<void>;
   [key: string]: unknown;
@@ -354,6 +358,8 @@ export declare function reapOrphanedHelpers(options: {
 export interface HelperPermissionRequestResult {
   ok: boolean;
   reason?: string;
+  /** `helper_quarantine_present` = 已安装 Helper 仍带隔离属性，未发起 open。 */
+  errorKind?: "helper_quarantine_present";
 }
 
 export interface HelperPermissionRequestOptions {
@@ -361,6 +367,7 @@ export interface HelperPermissionRequestOptions {
   env?: NodeJS.ProcessEnv;
   helperAppPath?: string;
   ensureInstalled?: () => Promise<string>;
+  probeQuarantine?: (appPath: string) => Promise<boolean>;
   socketPath?: string;
   socketDirectory?: string;
   exitLogPath?: string;
@@ -385,5 +392,11 @@ export declare function requestHelperScreenRecordingPermissionViaLaunchServices(
 export declare function queryHelperScreenRecordingPreflightViaLaunchServices(
   options?: HelperPermissionRequestOptions,
 ): Promise<"granted" | "denied" | undefined>;
+
+export declare function classifyCuaHelperBootstrapExit(exit: {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+  platform?: string;
+}): "helper_launch_blocked" | undefined;
 
 export type { CuaPermissionRestartOptions, CuaPermissionRestartResult };

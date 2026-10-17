@@ -7179,6 +7179,10 @@ const zhCN: Record<string, string> = {
   "cuaPermission.modal.restarting": "正在重启 Helper…",
   "cuaPermission.modal.restartFailed": "无法重启 Helper：{error}",
   "cuaPermission.modal.relaunchAppButton": "重启 Codez",
+  "cuaPermission.blocked.title": "Computer Use Helper 被 macOS 拦截",
+  "cuaPermission.blocked.description": "Helper 带隔离属性或未公证，被 Gatekeeper 拒绝启动，权限状态无法读取。点击修复会让安装器自动剥离隔离属性并重启 Helper，无需手动执行终端命令。",
+  "cuaPermission.blocked.repairButton": "修复并重启 Helper",
+  "cuaPermission.blocked.repairToast": "正在修复 Computer Use Helper…",
   "cuaPermission.modal.relaunchAppHint":
     "重启 Helper 后仍未生效？重启 Codez 可彻底重载 Helper 进程。",
   "cuaPermission.status.granted": "已授权",
