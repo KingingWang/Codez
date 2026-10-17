@@ -151,7 +151,9 @@ test("all six targets stage the package-relative tool host and resources", async
   for (const key of Object.keys(options.manifest.assets)) {
     const [os, arch] = key.split("-");
     const target = resolveCodexTarget({ CODEZ_TARGET_OS: os, CODEZ_TARGET_ARCH: arch });
-    const asset = await createMockCodexPackage(options.root, target);
+    const asset = await createMockCodexPackage(options.root, target, {
+      emptyResources: os === "darwin",
+    });
     options.manifest.assets[key].sha256 = asset.sha256;
     options.manifest.assets[key].size = asset.size;
     const directory = await stageCodexRuntime({

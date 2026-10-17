@@ -177,6 +177,14 @@ test("native builds consume remote producer assets read-only and upload packaged
   );
   assert.match(builder, /copyFile\(\s*join\(packagedRemoteRoot, "index\.json"\)/);
   assert.match(builder, /codex-remote-index-\$\{targetPlatform\.key\}\.json/);
+  assert.match(
+    builder,
+    /mkdir\(join\(packagedCodexRoot, "codex-resources"\), \{ recursive: true \}\)/,
+  );
+  assert.match(
+    builder,
+    /existsSync\(resolve\(codexStaging\.directory, "codex-resources\/zsh\/bin\/zsh"\)\)/,
+  );
 });
 
 async function loadRuntimeModule(t, source, flavor = "codex", plugins = []) {

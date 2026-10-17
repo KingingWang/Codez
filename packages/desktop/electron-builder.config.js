@@ -1,6 +1,6 @@
 /* eslint-disable max-lines -- Electron Builder config keeps related packaging hooks together so build order stays explicit. */
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { copyFile, readdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { createRequire } from "node:module";
@@ -719,9 +719,14 @@ export default {
   },
   afterPack: async (context) => {
     if (isCodexBuild) {
+      const packagedCodexRoot = resolve(resolvePackagedResourcesDir(context), "codex");
+      // 修复原因：上游 macOS Codex 包不再捆绑 zsh 后，codex-resources 为空目录；
+      // electron-builder 复制 extraResources 时会跳过空目录，导致 verifyCodexResources
+      // 与运行时包布局校验因缺少 codex-resources 目录报错 ENOENT。
+      await mkdir(join(packagedCodexRoot, "codex-resources"), { recursive: true });
       await verifyCodexResources({
         ...codexStaging,
-        directory: resolve(resolvePackagedResourcesDir(context), "codex"),
+        directory: packagedCodexRoot,
       });
       const packagedRemoteRoot = resolve(resolvePackagedResourcesDir(context), "codex-remote");
       await verifyCodexRemoteIndex({
@@ -921,7 +926,9 @@ export default {
             "Resources/codex/bin/codex",
             "Resources/codex/bin/codex-code-mode-host",
             "Resources/codex/codex-path/rg",
-            "Resources/codex/codex-resources/zsh/bin/zsh",
+            ...(existsSync(resolve(codexStaging.directory, "codex-resources/zsh/bin/zsh"))
+              ? ["Resources/codex/codex-resources/zsh/bin/zsh"]
+              : []),
           ],
         }
       : {}),

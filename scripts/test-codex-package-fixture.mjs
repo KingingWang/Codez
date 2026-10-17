@@ -16,7 +16,7 @@ export function packageTargetTriple(target) {
 export async function createMockCodexPackage(
   root,
   target,
-  { omitToolHost = false, linkToolHost = false } = {},
+  { omitToolHost = false, linkToolHost = false, emptyResources = false } = {},
 ) {
   const source = join(root, `package-source-${randomUUID()}`);
   const executable = target.os === "win32" ? ".exe" : "";
@@ -38,7 +38,9 @@ export async function createMockCodexPackage(
   const ripgrep = join(source, "codex-path", `rg${executable}`);
   await writeFile(ripgrep, "mock native search\n");
   await chmod(ripgrep, 0o755);
-  await writeFile(join(source, "codex-resources", "resource.txt"), "mock resource\n");
+  if (!emptyResources) {
+    await writeFile(join(source, "codex-resources", "resource.txt"), "mock resource\n");
+  }
   await writeFile(
     join(source, "codex-package.json"),
     JSON.stringify({

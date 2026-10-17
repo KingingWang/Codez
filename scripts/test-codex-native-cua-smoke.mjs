@@ -177,7 +177,7 @@ test(
         mcpEnvironment,
       )
         .map(([key, value]) => `${JSON.stringify(key)}=${JSON.stringify(value)}`)
-        .join(",")}},enabled=true}`;
+        .join(",")}},enabled=true,required=true}`;
       const env = { CODEX_HOME: codexHome };
       for (const key of [
         "PATH",

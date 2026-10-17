@@ -50,10 +50,19 @@ codex/
   bin/codex-code-mode-host[.exe]
   codex-package.json
   codex-path/rg[.exe]
-  codex-resources/...
+  codex-resources/[...]
   bridge.cjs
   distribution.json
 ```
+
+When a target package archive has an empty `codex-resources/` directory (for
+example macOS packages that no longer bundle a private `zsh` helper), Electron
+Builder's file-level `extraResources` copy omits the empty directory. `afterPack`
+recreates `codex/codex-resources` before `verifyCodexResources` runs so packaged
+resources keep the canonical four-root layout required by `inspectCodexPackage`
+and Codex daemon seeding, and `mac.binaries` only includes optional helper
+executables under `codex-resources/` when they are actually present in the staged
+package.
 
 Build scripts own verified archive download, safe relative-path extraction,
 target/layout validation, executable-mode and per-file integrity checks, and
