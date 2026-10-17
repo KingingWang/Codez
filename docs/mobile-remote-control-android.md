@@ -40,6 +40,14 @@ App 首页面向"一部手机连接多台桌面"的场景：
 断开）时恢复系统栏。刘海/挖孔区域保持默认避让，不强制内容延伸到打孔下，避免页面
 头部被摄像头遮挡。
 
+## 附件选择
+
+WebView 不会自动处理 `<input type="file">`：必须实现
+`WebChromeClient.onShowFileChooser` 并拉起系统文件选择器，否则页面点附件无反应
+（浏览器自带该处理）。实现按 `FileChooserParams.createIntent()` 构造选择器（尊重页面
+accept 类型与多选模式），结果经 `WebChromeClient.FileChooserParams.parseResult` 回传；
+用户取消时必须回调 `onReceiveValue(null)`，否则页面 input 会卡死。
+
 ## 入口
 
 - 粘贴或分享远控链接。

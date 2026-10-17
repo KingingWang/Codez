@@ -24,6 +24,7 @@
     <string name="remote_close_button">关闭</string>
     <string name="remote_retry_button">重试</string>
     <string name="remote_load_failed_title">远程控制加载失败</string>
+    <string name="remote_file_chooser_title">选择附件</string>
     <string name="remote_keep_alive_title">Codez 远程控制运行中</string>
     <string name="remote_keep_alive_text">正在保持本次手机远控会话可恢复。</string>
     <string name="remote_keep_alive_channel">远程控制</string>

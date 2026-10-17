@@ -9,12 +9,15 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,6 +68,21 @@ fun RemoteControlWebViewScreen(
     var progress by remember { mutableStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
     var pageError by remember { mutableStateOf<String?>(null) }
+    // 页面附件 <input type=file> 选择：WebView 不自带处理，必须实现
+    // WebChromeClient.onShowFileChooser 拉起系统选择器；用户取消也要回调 null，
+    // 否则页面 input 永久卡死。
+    var pendingFileCallback by remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
+    val fileChooserTitle = stringResource(R.string.remote_file_chooser_title)
+    val fileChooserLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val callback = pendingFileCallback
+        pendingFileCallback = null
+        val uris = result.data
+            ?.takeIf { result.resultCode == Activity.RESULT_OK }
+            ?.let { WebChromeClient.FileChooserParams.parseResult(result.resultCode, it) }
+        callback?.onReceiveValue(uris)
+    }
 
     DisposableEffect(Unit) {
         context.findActivity()?.let { setImmersiveMode(it, true) }
@@ -111,6 +129,20 @@ fun RemoteControlWebViewScreen(
                         onBridgeCreated = { bridge ->
                             socketBridge = bridge
                         },
+                        onShowFileChooser = { callback, params ->
+                            // 同一时刻只挂起一个选择请求；新请求到来先取消旧回调。
+                            pendingFileCallback?.onReceiveValue(null)
+                            pendingFileCallback = callback
+                            val chooserIntent = buildFileChooserIntent(params, fileChooserTitle)
+                            val launched = runCatching {
+                                fileChooserLauncher.launch(chooserIntent)
+                            }.isSuccess
+                            if (!launched) {
+                                pendingFileCallback?.onReceiveValue(null)
+                                pendingFileCallback = null
+                            }
+                            launched
+                        },
                     ).also { view ->
                         webView = view
                         view.loadUrl(remoteUrl)
@@ -148,6 +180,18 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
+}
+
+private fun buildFileChooserIntent(
+    params: WebChromeClient.FileChooserParams?,
+    title: String,
+): Intent {
+    // createIntent 按页面 accept 类型与多选模式构造；个别 ROM 解析失败时回退通用 */*。
+    val target = runCatching { params?.createIntent() }.getOrNull()
+        ?: Intent(Intent.ACTION_GET_CONTENT)
+            .addCategory(Intent.CATEGORY_OPENABLE)
+            .setType("*/*")
+    return Intent.createChooser(target, title)
 }
 
 private fun setImmersiveMode(activity: Activity, enabled: Boolean) {
@@ -203,6 +247,7 @@ private fun createRemoteControlWebView(
     onProgressChanged: (Int) -> Unit,
     onMainFrameError: (String) -> Unit,
     onBridgeCreated: (NativeSocketBridge) -> Unit,
+    onShowFileChooser: (ValueCallback<Array<Uri>>?, WebChromeClient.FileChooserParams?) -> Boolean,
 ): WebView {
     CookieManager.getInstance().setAcceptCookie(true)
 
@@ -235,6 +280,12 @@ private fun createRemoteControlWebView(
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 onProgressChanged(newProgress)
             }
+
+            override fun onShowFileChooser(
+                webView: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?,
+            ): Boolean = onShowFileChooser(filePathCallback, fileChooserParams)
         }
         webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {

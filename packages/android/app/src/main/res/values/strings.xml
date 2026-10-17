@@ -23,6 +23,7 @@
     <string name="remote_close_button">Close</string>
     <string name="remote_retry_button">Retry</string>
     <string name="remote_load_failed_title">Could not load remote control</string>
+    <string name="remote_file_chooser_title">Choose attachment</string>
     <string name="remote_keep_alive_title">Codez remote control is active</string>
     <string name="remote_keep_alive_text">Keeping the remote session ready while this phone is in use.</string>
     <string name="remote_keep_alive_channel">Remote control</string>
