@@ -21,8 +21,6 @@
     <string name="remote_scan_permission_denied">需要相机权限才能扫描二维码。</string>
     <string name="remote_scan_camera_failed">无法启动相机。</string>
     <string name="remote_devices_clear">清空</string>
-    <string name="remote_screen_title">远程控制</string>
-    <string name="remote_reload_button">重载</string>
     <string name="remote_close_button">关闭</string>
     <string name="remote_retry_button">重试</string>
     <string name="remote_load_failed_title">远程控制加载失败</string>

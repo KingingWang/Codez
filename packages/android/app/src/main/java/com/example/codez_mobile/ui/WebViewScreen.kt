@@ -1,7 +1,9 @@
 package com.example.codez_mobile.ui
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -17,22 +19,16 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -46,11 +42,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.example.codez_mobile.BuildConfig
 import com.example.codez_mobile.R
 import com.example.codez_mobile.remote.NativeSocketBridge
 import com.example.codez_mobile.remote.RemoteControlUrlPolicy
 
+/**
+ * 全屏沉浸式远控页：进入时隐藏系统状态栏/导航栏（上滑可短暂呼出），退出时恢复。
+ * 页面不显示 App 顶栏，整个屏幕交给远控 Web UI；返回手势退出到首页。
+ */
 @Composable
 fun RemoteControlWebViewScreen(
     remoteUrl: String,
@@ -62,6 +65,13 @@ fun RemoteControlWebViewScreen(
     var progress by remember { mutableStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
     var pageError by remember { mutableStateOf<String?>(null) }
+
+    DisposableEffect(Unit) {
+        context.findActivity()?.let { setImmersiveMode(it, true) }
+        onDispose {
+            context.findActivity()?.let { setImmersiveMode(it, false) }
+        }
+    }
 
     BackHandler {
         val view = webView
@@ -83,21 +93,6 @@ fun RemoteControlWebViewScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        RemoteControlTopBar(
-            remoteUrl = remoteUrl,
-            isLoading = isLoading,
-            onReload = {
-                pageError = null
-                webView?.reload()
-            },
-            onClose = onCloseRemote,
-        )
-        if (isLoading) {
-            LinearProgressIndicator(
-                progress = { (progress.coerceIn(0, 100) / 100f) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
         Box(modifier = Modifier.fillMaxSize()) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -128,6 +123,14 @@ fun RemoteControlWebViewScreen(
                     }
                 },
             )
+            if (isLoading && pageError == null) {
+                LinearProgressIndicator(
+                    progress = { (progress.coerceIn(0, 100) / 100f) },
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth(),
+                )
+            }
             if (pageError != null) {
                 RemoteControlErrorOverlay(
                     message = pageError.orEmpty(),
@@ -141,49 +144,20 @@ fun RemoteControlWebViewScreen(
     }
 }
 
-@Composable
-private fun RemoteControlTopBar(
-    remoteUrl: String,
-    isLoading: Boolean,
-    onReload: () -> Unit,
-    onClose: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .height(48.dp)
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.remote_screen_title),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Text(
-                text = remoteUrl,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                strokeWidth = 2.dp,
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-        }
-        TextButton(onClick = onReload) {
-            Text(stringResource(R.string.remote_reload_button))
-        }
-        TextButton(onClick = onClose) {
-            Text(stringResource(R.string.remote_close_button))
-        }
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
+private fun setImmersiveMode(activity: Activity, enabled: Boolean) {
+    val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+    if (enabled) {
+        controller.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller.hide(WindowInsetsCompat.Type.systemBars())
+    } else {
+        controller.show(WindowInsetsCompat.Type.systemBars())
     }
 }
 

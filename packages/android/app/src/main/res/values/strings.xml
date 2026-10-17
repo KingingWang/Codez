@@ -20,8 +20,6 @@
     <string name="remote_scan_permission_denied">Camera permission is needed to scan the QR code.</string>
     <string name="remote_scan_camera_failed">Could not start the camera.</string>
     <string name="remote_devices_clear">Clear</string>
-    <string name="remote_screen_title">Remote control</string>
-    <string name="remote_reload_button">Reload</string>
     <string name="remote_close_button">Close</string>
     <string name="remote_retry_button">Retry</string>
     <string name="remote_load_failed_title">Could not load remote control</string>
