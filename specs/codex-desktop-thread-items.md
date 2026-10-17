@@ -22,7 +22,7 @@ pinned Codex checkout (read-only reference, never a build input).
 | `collabAgentToolCall` | toolCall named after the collab tool, status mapped, input carries prompt/thread ids/model, `agentsStates` rendered as output lines; `spawnAgent` additionally anchors one `subagent` row | `spawn_agent` hits the agent family card and becomes clickable (specs/codex-desktop-subagent-drilldown.md); the four v1 analytics-only tools use `codex_collab_*` names to avoid hijacking native renderers |
 | `dynamicToolCall` | toolCall `<namespace>.<tool>` (or bare `tool`), status mapped, input = arguments, output = text content items | fallback card; media content items become `[image]`/`[audio]` placeholders |
 | `functionCallOutput` | toolCall named after the function, `success`, output text only | fallback card (hook-synthesized outputs; rare) |
-| `contextCompaction` | timelineMarker `codexEvent/contextCompaction` | divider line, assistantWork lane |
+| `contextCompaction` | timelineMarker `codexEvent/contextCompaction` (with `status: "running"` while `item/started` has not completed in an `inProgress` turn) | divider line, assistantWork lane; shows running compaction text and blocks duplicate turn spinner while running |
 | `enteredReviewMode` / `exitedReviewMode` | timelineMarker `codexEvent/reviewEnter` or `reviewExit`, `detail` = review | divider line |
 | `hookPrompt` | timelineMarker `codexEvent/hookPrompt`, `detail` = fragment text (capped) | divider line |
 | `subAgentActivity` | timelineMarker `codexEvent/subagentStarted`, `subagentInteracted`, `subagentInterrupted` or `subagentCompleted`, `detail` = agentPath; `agentThreadId` drives the `subagent` row lifecycle | divider line plus drill-down identity |

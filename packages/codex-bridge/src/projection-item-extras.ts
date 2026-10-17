@@ -49,6 +49,7 @@ export function codexEventMarker(
   base: RowBase,
   event: CodexEventName,
   detail?: string,
+  status?: "running" | "completed",
 ): ConversationRow {
   return {
     ...base,
@@ -57,6 +58,7 @@ export function codexEventMarker(
     marker: {
       type: "codexEvent",
       event,
+      ...(status ? { status } : {}),
       ...(detail && detail.trim().length > 0 ? { detail: capMarkerDetail(detail) } : {}),
     },
   };
@@ -242,6 +244,20 @@ export function subAgentActivityMarker(
   base: RowBase,
 ): ConversationRow {
   return codexEventMarker(base, SUBAGENT_ACTIVITY_EVENTS[item.kind], item.agentPath);
+}
+
+/** 原生 contextCompaction 标记：在途 turn 中未完成时标记 running。 */
+export function contextCompactionMarker(
+  item: CodexItemOf<"contextCompaction">,
+  turnStatus: string,
+  base: RowBase,
+): ConversationRow {
+  return codexEventMarker(
+    base,
+    "contextCompaction",
+    undefined,
+    item.status === "inProgress" && turnStatus === "inProgress" ? "running" : undefined,
+  );
 }
 
 /** 识别中断轮无气泡继续的隐藏 contextual user fragment。 */

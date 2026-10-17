@@ -106,7 +106,8 @@ function assertTerminalAndSafe(rows: ConversationRow[]): void {
     if (
       row.kind === "timelineMarker" &&
       ((row.marker.type === "compact" && row.marker.status === "running") ||
-        (row.marker.type === "goalVerify" && row.marker.outcome === "running"))
+        (row.marker.type === "goalVerify" && row.marker.outcome === "running") ||
+        (row.marker.type === "codexEvent" && row.marker.status === "running"))
     ) {
       throwProjectionError("invalid_conversation", "Active timeline operations cannot be shared");
     }

@@ -5,7 +5,11 @@ import { array, object, string, type JsonObject } from "./json.js";
 import { rememberThreadMode } from "./command-input.js";
 import { sameExecutionPath } from "./execution-path.js";
 import { mergeNativeTurn } from "./merge-turn.js";
-import { applyNativeItemDelta, findNativeTurn } from "./native-item-delta.js";
+import {
+  applyNativeItemDelta,
+  applyNativeItemLifecycle,
+  findNativeTurn,
+} from "./native-item-delta.js";
 import { paginateNativeRows } from "./native-paging.js";
 import { applyNativeRetry } from "./native-retry-status.js";
 import { resolveSelectionSideChatBoundary } from "./selection-side-chat.js";
@@ -361,18 +365,7 @@ export class ThreadStateStore {
       else turns[index] = mergeNativeTurn(object(turns[index]), turn);
       state.thread.turns = turns;
     } else if (event.method === "item/started" || event.method === "item/completed") {
-      const turn = findNativeTurn(state.thread, params.turnId);
-      if (!turn) return;
-      if (state.apiRetry?.turnId === params.turnId) state.apiRetry = null;
-      const items = array(turn.items);
-      const item = object(params.item);
-      const itemKey = JSON.stringify([id, params.turnId, item.id]);
-      if (event.method === "item/started" && this.completedItems.has(itemKey)) return;
-      if (event.method === "item/completed") this.completedItems.add(itemKey);
-      const index = items.findIndex((value) => object(value).id === item.id);
-      if (index < 0) items.push(item);
-      else items[index] = item;
-      turn.items = items;
+      if (!applyNativeItemLifecycle(state, id, event.method, params, this.completedItems)) return;
     } else if (event.method === "turn/plan/updated") {
       const turn = findNativeTurn(state.thread, params.turnId);
       if (!turn) return;

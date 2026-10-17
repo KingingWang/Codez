@@ -288,5 +288,23 @@ describe("ConversationRowView timeline marker contract", () => {
     );
 
     expect(html).toContain("Context compacted");
+    expect(html).not.toContain("animated-gradient-text");
+  });
+
+  it("renders running codexEvent contextCompaction with compressing label and animated text", () => {
+    const html = renderMarker({
+      rowId: 23,
+      turnId: "turn-1",
+      createdAt: 1_700_000_000_000,
+      createdAtSeq: 1,
+      kind: "timelineMarker",
+      lane: "assistantWork",
+      marker: { type: "codexEvent", event: "contextCompaction", status: "running" },
+    });
+
+    expect(html).toContain('data-status="running"');
+    expect(html).toContain("正在压缩上下文");
+    expect(html).toContain("animated-gradient-text");
+    expect(html).not.toContain("上下文已压缩");
   });
 });

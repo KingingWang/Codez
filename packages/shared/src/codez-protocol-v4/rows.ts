@@ -428,6 +428,7 @@ export const timelineMarkerPayloadSchema = z.union([
       "subagentCompleted",
       "sleep",
     ]),
+    status: z.enum(["running", "completed"]).optional(),
     detail: z.string().optional(),
   }),
 ]);

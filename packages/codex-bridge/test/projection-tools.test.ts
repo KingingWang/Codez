@@ -227,8 +227,10 @@ test("dynamicToolCall and functionCallOutput project text without media bytes", 
 
 test("lifecycle items project as codexEvent timeline markers", () => {
   const thread = threadFixture();
+  thread.turns[0]!.status = "inProgress";
   thread.turns[0]!.items.push(
     { type: "contextCompaction", id: "cc-1" },
+    { type: "contextCompaction", id: "cc-running", status: "inProgress" },
     { type: "enteredReviewMode", id: "rev-1", review: "review current changes" },
     { type: "exitedReviewMode", id: "rev-2", review: "review current changes" },
     {
@@ -249,21 +251,22 @@ test("lifecycle items project as codexEvent timeline markers", () => {
   );
   // subAgentActivity 现在除了分隔线还会产出一条 subagent 行（下钻入口，映射为 null），
   // 所以窗口多一行（specs/codex-desktop-subagent-drilldown.md）。
-  const rows = projectThread(thread, { workspacePath: "/workspace" }).rows.window.slice(-7);
+  const rows = projectThread(thread, { workspacePath: "/workspace" }).rows.window.slice(-8);
   assert.deepEqual(
     rows.map((row) =>
       row.kind === "timelineMarker" && row.marker.type === "codexEvent"
-        ? [row.marker.event, row.marker.detail ?? null, row.lane]
+        ? [row.marker.event, row.marker.status ?? null, row.marker.detail ?? null, row.lane]
         : null,
     ),
     [
-      ["contextCompaction", null, "assistantWork"],
-      ["reviewEnter", "review current changes", "assistantWork"],
-      ["reviewExit", "review current changes", "assistantWork"],
-      ["hookPrompt", "injected context", "assistantWork"],
-      ["subagentStarted", "worker[1]", "assistantWork"],
+      ["contextCompaction", null, null, "assistantWork"],
+      ["contextCompaction", "running", null, "assistantWork"],
+      ["reviewEnter", null, "review current changes", "assistantWork"],
+      ["reviewExit", null, "review current changes", "assistantWork"],
+      ["hookPrompt", null, "injected context", "assistantWork"],
+      ["subagentStarted", null, "worker[1]", "assistantWork"],
       null,
-      ["sleep", "5s", "assistantWork"],
+      ["sleep", null, "5s", "assistantWork"],
     ],
   );
 });

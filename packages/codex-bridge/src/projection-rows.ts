@@ -17,6 +17,7 @@ import { projectNativeFileChangeDisplay } from "./native-file-change-display.js"
 import {
   codexEventMarker,
   collabAgentToolCallRow,
+  contextCompactionMarker,
   dynamicToolCallRow,
   functionCallOutputRow,
   imageGenerationRow,
@@ -274,7 +275,7 @@ function itemRow(
     case "contextCompaction":
       // 原生 item 只有 id（core 的 ContextCompactedEvent 无载荷），来源 manual/auto 不可知，
       // 因此不走 compact marker（origin 必填会伪造来源），用 codexEvent 分隔线。
-      return codexEventMarker(base, "contextCompaction");
+      return contextCompactionMarker(item, turn.status, base);
     case "enteredReviewMode":
       return codexEventMarker(base, "reviewEnter", item.review);
     case "exitedReviewMode":

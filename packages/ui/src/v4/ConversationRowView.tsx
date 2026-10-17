@@ -2095,15 +2095,22 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
           ),
         };
       }
-      case "codexEvent":
+      case "codexEvent": {
         // codex 原生事件分隔线（specs/codex-desktop-thread-items.md）：
         // label 走本地化，detail（review 描述 / hook 文本 / agentPath / 时长）追加在后。
+        // contextCompaction 在 item/started ~ item/completed 之间携带 status: "running"，
+        // 需显示“正在压缩上下文”及流光动画，完成后才显示“上下文已压缩”。
+        const running =
+          marker.event === "contextCompaction" && marker.status === "running";
+        const labelId = running
+          ? "chat.contextCompaction.started"
+          : `chat.codexEvent.${marker.event}`;
         return {
-          icon: MARKER_EVENT_ICON,
-          running: false,
+          icon: marker.event === "contextCompaction" ? MARKER_ARCHIVE_ICON : MARKER_EVENT_ICON,
+          running,
           label: (
             <>
-              <span>{intl.formatMessage({ id: `chat.codexEvent.${marker.event}` })}</span>
+              <span>{intl.formatMessage({ id: labelId })}</span>
               {marker.detail ? (
                 <>
                   <span aria-hidden="true"> · </span>
@@ -2113,6 +2120,7 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
             </>
           ),
         };
+      }
       default:
         return null;
     }
@@ -2140,6 +2148,8 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
           ? marker.status
           : marker.type === "goalVerify"
             ? marker.outcome
+            : marker.type === "codexEvent" && marker.status
+              ? marker.status
             : marker.type === "forkNotice"
               ? "created"
               : "applied"

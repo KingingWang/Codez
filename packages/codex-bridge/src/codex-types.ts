@@ -172,7 +172,11 @@ const codexKnownItemSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("sleep"), id, durationMs: z.number() }),
   z.object({ type: z.literal("enteredReviewMode"), id, review: z.string() }),
   z.object({ type: z.literal("exitedReviewMode"), id, review: z.string() }),
-  z.object({ type: z.literal("contextCompaction"), id }),
+  z.object({
+    type: z.literal("contextCompaction"),
+    id,
+    status: z.enum(["inProgress", "completed"]).optional(),
+  }),
 ]);
 export type CodexKnownItem = z.infer<typeof codexKnownItemSchema>;
 const knownItemTypes = new Set(
