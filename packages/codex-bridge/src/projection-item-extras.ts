@@ -260,6 +260,37 @@ export function contextCompactionMarker(
   );
 }
 
+/**
+ * 推导 agentMessage / plan / reasoning 的流式状态：
+ * 同一 inProgress 轮次内，只有末尾尚未收到 item/completed 的块才是 streaming；
+ * 前序已完成或后面已出现新 item 的块必须收口为 complete，避免历史思考一直显示“正在思考”。
+ */
+export function projectTextOrReasoningState(
+  itemStatus: "inProgress" | "completed" | undefined,
+  turnStatus: string,
+  isLastItemInTurn: boolean,
+  allowFailed: true,
+): "streaming" | "complete" | "failed" | "interrupted";
+export function projectTextOrReasoningState(
+  itemStatus: "inProgress" | "completed" | undefined,
+  turnStatus: string,
+  isLastItemInTurn: boolean,
+  allowFailed: false,
+): "streaming" | "complete" | "interrupted";
+export function projectTextOrReasoningState(
+  itemStatus: "inProgress" | "completed" | undefined,
+  turnStatus: string,
+  isLastItemInTurn: boolean,
+  allowFailed: boolean,
+): "streaming" | "complete" | "failed" | "interrupted" {
+  if (turnStatus === "inProgress") {
+    return itemStatus === "completed" || !isLastItemInTurn ? "complete" : "streaming";
+  }
+  if (turnStatus === "completed") return "complete";
+  if (allowFailed && turnStatus === "failed") return "failed";
+  return itemStatus === "completed" || !isLastItemInTurn ? "complete" : "interrupted";
+}
+
 /** 识别中断轮无气泡继续的隐藏 contextual user fragment。 */
 export function isHiddenContinuationUserMessage(item: {
   type?: unknown;

@@ -23,6 +23,7 @@ import {
   imageGenerationRow,
   imageViewRow,
   isHiddenContinuationUserMessage,
+  projectTextOrReasoningState,
   subAgentActivityMarker,
   webSearchRow,
   type RowBase,
@@ -162,6 +163,7 @@ function itemRow(
   turn: CodexTurn,
   base: RowBase,
   interactions: readonly PendingInteraction[],
+  isLastItemInTurn: boolean,
 ): ConversationRow {
   if (isCodexPlanUpdateItem(item)) {
     // update_plan 是一次已完成的计划事实：复用 UI 现有 todo 识别（toolName 命中
@@ -239,26 +241,14 @@ function itemRow(
         ...base,
         kind: "assistantText",
         text: item.text,
-        state:
-          turn.status === "inProgress"
-            ? "streaming"
-            : turn.status === "completed"
-              ? "complete"
-              : turn.status === "failed"
-                ? "failed"
-                : "interrupted",
+        state: projectTextOrReasoningState(item.status, turn.status, isLastItemInTurn, true),
       };
     case "reasoning":
       return {
         ...base,
         kind: "reasoning",
         text: [...item.summary, ...item.content].join("\n\n"),
-        state:
-          turn.status === "inProgress"
-            ? "streaming"
-            : turn.status === "completed"
-              ? "complete"
-              : "interrupted",
+        state: projectTextOrReasoningState(item.status, turn.status, isLastItemInTurn, false),
       };
     case "imageView":
       return imageViewRow(item, base);
@@ -353,7 +343,7 @@ export function projectRows(
         }),
       ),
     );
-    for (const item of turn.items) {
+    for (const [itemIndex, item] of turn.items.entries()) {
       if (entityIds.has(item.id)) {
         // 原生协议按 turn 限定 itemId；同一 turn 内重复仍表示损坏历史，必须失败。
         throw new Error(`Duplicate Codex item ID in turn ${turn.id}: ${item.id}`);
@@ -374,6 +364,7 @@ export function projectRows(
                 entityId: itemEntityId(turn.id, item.id),
               },
               interactions,
+              itemIndex === turn.items.length - 1,
             ),
           ),
         ),

@@ -45,13 +45,20 @@ const codexKnownItemSchema = z.discriminatedUnion("type", [
     id,
     text: z.string(),
     phase: z.enum(["commentary", "final_answer"]).nullish(),
+    status: z.enum(["inProgress", "completed"]).optional(),
   }),
-  z.object({ type: z.literal("plan"), id, text: z.string() }),
+  z.object({
+    type: z.literal("plan"),
+    id,
+    text: z.string(),
+    status: z.enum(["inProgress", "completed"]).optional(),
+  }),
   z.object({
     type: z.literal("reasoning"),
     id,
     summary: z.array(z.string()),
     content: z.array(z.string()),
+    status: z.enum(["inProgress", "completed"]).optional(),
   }),
   z.object({
     type: z.literal("commandExecution"),

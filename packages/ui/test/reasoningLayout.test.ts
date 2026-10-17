@@ -215,11 +215,11 @@ describe("Reasoning layout", () => {
       isStreaming: true,
     });
 
-    expect(html).toContain("思考");
+    expect(html).toContain("正在思考");
     expect(html).not.toContain("思考过程");
     expect(html).toContain("持续了 7 秒");
     expect(html).toContain('data-state="open"');
-    expect(html).not.toContain("animated-gradient-text");
+    expect(html).toContain("animated-gradient-text");
     expect(html).not.toContain('data-reasoning-streaming-line="true"');
   });
 

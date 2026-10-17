@@ -657,6 +657,45 @@ test("reasoning and user media fallbacks retain content without inventing attach
   );
 });
 
+test("earlier reasoning and commentary items complete once later items start in an active turn", () => {
+  const thread = threadFixture();
+  thread.status = { type: "active", activeFlags: [] };
+  thread.turns[0]!.status = "inProgress";
+  thread.turns[0]!.items = [
+    {
+      type: "userMessage",
+      id: "u1",
+      clientId: null,
+      content: [{ type: "text", text: "Go" }],
+    },
+    {
+      type: "reasoning",
+      id: "r1",
+      summary: ["first thought"],
+      content: [],
+    },
+    {
+      type: "commandExecution",
+      id: "c1",
+      command: "pwd",
+      cwd: "/workspace",
+      status: "completed",
+    },
+    {
+      type: "reasoning",
+      id: "r2",
+      summary: ["second thought"],
+      content: [],
+      status: "inProgress",
+    },
+  ];
+  const rows = projectThread(thread, { workspacePath: "/workspace" }).rows.window;
+  const r1 = rows.find((row) => row.entityId === "codex:turn:turn-1:item:r1");
+  const r2 = rows.find((row) => row.entityId === "codex:turn:turn-1:item:r2");
+  assert.equal(r1?.kind === "reasoning" && r1.state, "complete");
+  assert.equal(r2?.kind === "reasoning" && r2.state, "streaming");
+});
+
 test("planUpdate items project as todo toolCall rows with structured plan input", () => {
   const thread = threadFixture();
   thread.turns[0]!.items.push({

@@ -8,9 +8,15 @@ export function findNativeTurn(thread: JsonObject, id: unknown): JsonObject | un
     .find((turn) => turn.id === id);
 }
 
+const LIFECYCLE_STATUS_ITEM_TYPES = new Set([
+  "contextCompaction",
+  "reasoning",
+]);
+
 /**
  * item/started 与 item/completed 合入 turn.items。
- * 原生 ContextCompactionItem 不带 status 字段，按生命周期补充 inProgress / completed。
+ * 原生 ContextCompaction / Reasoning 不带 status 字段，
+ * 按 item/started 与 item/completed 生命周期补充 inProgress / completed。
  */
 export function applyNativeItemLifecycle(
   state: ThreadProjectionState,
@@ -25,7 +31,7 @@ export function applyNativeItemLifecycle(
   const items = array(turn.items);
   const rawItem = object(params.item);
   const item =
-    rawItem.type === "contextCompaction"
+    typeof rawItem.type === "string" && LIFECYCLE_STATUS_ITEM_TYPES.has(rawItem.type)
       ? { ...rawItem, status: method === "item/started" ? "inProgress" : "completed" }
       : rawItem;
   const itemKey = JSON.stringify([threadId, params.turnId, item.id]);
