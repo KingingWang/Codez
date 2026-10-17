@@ -31,11 +31,14 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - name: Install SDK components
         run: |
-          sdkmanager "platforms;android-36.1" "build-tools;36.1.0" > /dev/null
+          # ubuntu-24.04  runner 预装 Android SDK（$ANDROID_HOME/cmdline-tools/latest）。
+          # android-actions/setup-android@v3 会尝试安装已被 Google 移除的 tools 包而失败，故不用它。
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null
+          "$SDKMANAGER" "platforms;android-36.1" "build-tools;36.1.0" > /dev/null
       - name: Unit tests
         working-directory: packages/android
         run: ./gradlew :app:testReleaseUnitTest --console=plain
