@@ -41,7 +41,8 @@ jobs:
           "$SDKMANAGER" "platforms;android-36.1" "build-tools;36.1.0" > /dev/null
       - name: Unit tests
         working-directory: packages/android
-        run: ./gradlew :app:testReleaseUnitTest --console=plain
+        # AGP 9 默认只生成 debug 变体的单测任务。
+        run: ./gradlew :app:testDebugUnitTest --console=plain
       - name: Assemble release APK
         working-directory: packages/android
         run: ./gradlew :app:assembleRelease --console=plain
