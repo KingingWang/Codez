@@ -327,6 +327,7 @@ export function resolveInputCommandForAdmission(
   if (envelope.type === "sendText" || envelope.type === "sendGoalCommand") {
     const payload = envelope.payload as {
       text: string;
+      interruptedContinueTarget?: { rowId: number; entityId: string };
       attachments?: AttachmentRef[];
       context_refs?: ConversationInputIntent["sharedContextRefs"];
       highspeedMeta?: ConversationInputIntent["highspeed"];
@@ -334,6 +335,9 @@ export function resolveInputCommandForAdmission(
       conversationQuotes?: import("@codez/contracts").TurnInputIntentMetadata["conversationQuotes"];
       botGroupSource?: ConversationInputIntent["botGroupSource"];
     };
+    if (envelope.type === "sendText" && payload.interruptedContinueTarget) {
+      return null;
+    }
     return {
       kind: envelope.type,
       text: payload.text,

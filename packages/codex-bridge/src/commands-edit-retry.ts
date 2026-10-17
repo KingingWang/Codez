@@ -1,17 +1,50 @@
 import {
   commandPayloadSchemas,
   type CommandEnvelope,
+  type CommandResult,
 } from "@codez/shared/codez-protocol-v4";
 import type { CodexRpcPort } from "./contract.js";
 import type {
   ThreadProjectionState,
   ThreadStateStore,
 } from "./thread-state.js";
-import { nativeInput, type ResolveAttachments } from "./command-input.js";
-import { array, object, unsupported } from "./json.js";
+import {
+  decorateNativeThread,
+  nativeInput,
+  type ResolveAttachments,
+} from "./command-input.js";
+import { array, object, string, unsupported } from "./json.js";
 import { projectThread } from "./projection.js";
 import type { SessionTitleCoordinator } from "./session-title.js";
 import type { CodexProviderKeyGate } from "./provider-key-gate.js";
+
+/** forkAssistant：在指定轮尾 fork 出新的 native thread 并返回新 sessionId。 */
+export async function executeForkAssistant(input: {
+  command: CommandEnvelope;
+  rpc: CodexRpcPort;
+  store: ThreadStateStore;
+  state: ThreadProjectionState;
+  sessionId: string;
+}): Promise<CommandResult> {
+  const { command, rpc, store, state, sessionId } = input;
+  const p = commandPayloadSchemas.forkAssistant.parse(command.payload);
+  const snapshot = projectThread(state.thread, { workspacePath: store.cwd });
+  const row = snapshot.rows.window.find(
+    (candidate) =>
+      candidate.rowId === p.target.rowId &&
+      candidate.entityId === p.target.entityId,
+  );
+  if (!row) throw new Error("Target row no longer exists");
+  const result = decorateNativeThread(
+    await rpc.request("thread/fork", {
+      threadId: sessionId,
+      lastTurnId: row.turnId,
+    }),
+  );
+  store.markStarted(result);
+  await store.reloadAfterHistoryChange(string(result.id));
+  return { type: "forkAssistant", sessionId: string(result.id) };
+}
 
 /** editUserQuery / retryTurn：revert 历史后以同一供应商重新发起 turn。 */
 export async function editUserQueryOrRetryTurn(input: {

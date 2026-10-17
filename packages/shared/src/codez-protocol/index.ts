@@ -4318,6 +4318,60 @@ export type CodezMcpProjectConfigWriteResult = z.infer<
   typeof codezMcpProjectConfigWriteResultSchema
 >;
 
+// Codex 用户层/项目层 hooks.json 配置写入（spec: specs/codex-desktop-hooks-and-commands.md）。
+// 与 mcp/projectConfigWrite、agents/write 同一载体铁律：在 workspace 所在机器上由 bridge 读写。
+export const codezHooksConfigScopeSchema = z.enum(["user", "project"]);
+export type CodezHooksConfigScope = z.infer<typeof codezHooksConfigScopeSchema>;
+
+export const codezHooksConfigWriteActionSchema = z.enum(["add", "update", "delete"]);
+export type CodezHooksConfigWriteAction = z.infer<typeof codezHooksConfigWriteActionSchema>;
+
+export const codezHookCommandEntrySchema = z
+  .object({
+    event: z.enum([
+      "PreToolUse",
+      "PermissionRequest",
+      "PostToolUse",
+      "PreCompact",
+      "PostCompact",
+      "SessionStart",
+      "SessionEnd",
+      "UserPromptSubmit",
+      "SubagentStart",
+      "SubagentStop",
+      "Stop",
+      "Interrupt",
+    ]),
+    command: nonEmptyString,
+    matcher: z.string().optional(),
+    timeoutSec: z.number().int().positive().max(3600).optional(),
+    async: z.boolean().optional(),
+    statusMessage: z.string().optional(),
+  })
+  .strict();
+export type CodezHookCommandEntry = z.infer<typeof codezHookCommandEntrySchema>;
+
+export const codezHooksConfigWriteParamsSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    scope: codezHooksConfigScopeSchema,
+    action: codezHooksConfigWriteActionSchema,
+    dotCodexFolder: z.string().optional(),
+    // update / delete 定位既有条目：优先匹配原条目字段（event + command + matcher）。
+    target: codezHookCommandEntrySchema.optional(),
+    // add / update 写入的新条目。
+    hook: codezHookCommandEntrySchema.optional(),
+  })
+  .strict();
+export type CodezHooksConfigWriteParams = z.infer<typeof codezHooksConfigWriteParamsSchema>;
+
+export const codezHooksConfigWriteResultSchema = z
+  .object({
+    hooksFilePath: nonEmptyString,
+  })
+  .strict();
+export type CodezHooksConfigWriteResult = z.infer<typeof codezHooksConfigWriteResultSchema>;
+
 export const codezProtocolMethods = {
   codexRequest: "codex/request",
   runtimeCapabilities: "runtime/capabilities",
@@ -4429,6 +4483,7 @@ export const codezProtocolMethods = {
   agentsList: "agents/list",
   agentsWrite: "agents/write",
   mcpProjectConfigWrite: "mcp/projectConfigWrite",
+  hooksConfigWrite: "hooks/configWrite",
   agentsDelete: "agents/delete",
   // Codex 模型目录（model_catalog_json）读取：bridge 本地 fs 控制面方法，
   // 非原生 RPC；多 provider 分组事实的唯一来源（specs/codex-model-provider-grouping.md）。

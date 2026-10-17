@@ -14,6 +14,7 @@ import { CodexAccountPanel } from "./CodexAccountPanel.js";
 import { CodexConfigPanel } from "./CodexConfigPanel.js";
 import { CodexTitleModelSettings } from "./CodexTitleModelSettings.js";
 import { appSettingsSchema, codexModelSchema } from "@codez/shared";
+import { CodexHooksPanel } from "./CodexHooksPanel.js";
 import { CodexMcpPanel } from "./CodexMcpPanel.js";
 import { CodexSkillsPanel, CodexPluginsPanel } from "./CodexResourcesPanel.js";
 import { CodexHistoryPanel, HistoryRunRow } from "./CodexHistoryPanel.js";
@@ -841,4 +842,63 @@ test("embedded SettingsPage mode eliminates duplicate top navigation for standal
   assert.match(embeddedCodex, /线程历史/);
   assert.doesNotMatch(embeddedCodex, /role="tab"[^>]*>记忆<\/button>/);
   assert.doesNotMatch(embeddedCodex, /role="tab"[^>]*>插件与市场<\/button>/);
+});
+
+test("CodexHooksPanel renders hook groups, trust actions, and localized labels", () => {
+  const html = render(
+    <CodexHooksPanel
+      hideSectionTitle
+      workspacePath="/fixture/workspace"
+      controller={{
+        ...controller,
+        snapshot: {
+          config: {
+            data: {
+              config: { features: { hooks: true } },
+              origins: {},
+              layers: [],
+            },
+          },
+          hooks: {
+            data: {
+              data: [
+                {
+                  cwd: "/fixture/workspace",
+                  warnings: ["sample warning"],
+                  errors: [],
+                  hooks: [
+                    {
+                      key: "proj-hook",
+                      eventName: "preToolUse",
+                      matcher: "Bash",
+                      timeoutSec: 60,
+                      statusMessage: "checking tool",
+                      sourcePath: "/fixture/workspace/.codex/hooks.json",
+                      source: "project",
+                      pluginId: null,
+                      displayOrder: 0,
+                      enabled: true,
+                      isManaged: false,
+                      currentHash: "sha256:1",
+                      trustStatus: "untrusted",
+                      handlerType: "command",
+                      command: "./scripts/check.sh",
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      }}
+    />,
+    "zh-CN",
+  );
+  assert.match(html, /启用钩子/);
+  assert.match(html, /项目钩子（\.codex\/hooks\.json）/);
+  assert.match(html, /PreToolUse/);
+  assert.match(html, /\.\/scripts\/check\.sh/);
+  assert.match(html, /待信任/);
+  assert.match(html, /信任全部待审核项（1）/);
+  assert.match(html, /sample warning/);
 });

@@ -37,4 +37,6 @@ export interface ThreadProjectionState {
   sideChat?: SelectionSideChatBoundary;
   /** 按 turnId 记录的单轮原生 tokenUsage 累计快照，用于投影每轮 turnUsage。 */
   turnTokenUsage?: Record<string, NativeTurnUsageAccumulator>;
+  /** 原生 Codex 线程目标（thread/goal/get | thread/goal/set | thread/goal/updated）。 */
+  goal?: JsonObject | null;
 }

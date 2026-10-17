@@ -308,6 +308,8 @@ export class ThreadStateStore {
     }
     if (event.method === "thread/status/changed") state.thread.status = params.status;
     else if (event.method === "thread/name/updated") state.thread.name = params.threadName;
+    else if (event.method === "thread/goal/updated") state.goal = object(params.goal);
+    else if (event.method === "thread/goal/cleared") state.goal = null;
     else if (event.method === "thread/settings/updated") {
       const settings = object(params.threadSettings);
       state.thread.model = settings.model;

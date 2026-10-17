@@ -106,8 +106,6 @@ export async function handlePluginRequest(
       ? input(s.codezPluginsListParamsSchema, params, method)
       : input(s.codezPluginsReferenceCatalogParamsSchema, params, method);
     checkWorkspace(p.workspace, context, method);
-    if ("sessionId" in p && p.sessionId)
-      unsupported(method, "Frozen session plugin catalogs are not exposed by Codex");
     if ("configScope" in p && p.configScope === "workspace")
       unsupported(method, "Workspace-only plugin configuration is not exposed by Codex");
     const catalog = await readPluginCatalog(context, true);

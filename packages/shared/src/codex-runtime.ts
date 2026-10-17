@@ -51,6 +51,7 @@ export const codexRequestMethodSchema = z.enum([
   "marketplace/add",
   "marketplace/remove",
   "marketplace/upgrade",
+  "hooks/list",
 ]);
 export const codexRequestSchema = z
   .object({
@@ -217,3 +218,100 @@ export const codexPluginsResponseSchema = z.object({
   marketplaceLoadErrors: z.array(z.object({ marketplacePath: z.string(), message: z.string() })),
   featuredPluginIds: z.array(z.string()),
 });
+
+export const codexHookEventNameSchema = z.enum([
+  "preToolUse",
+  "permissionRequest",
+  "postToolUse",
+  "preCompact",
+  "postCompact",
+  "sessionStart",
+  "sessionEnd",
+  "userPromptSubmit",
+  "subagentStart",
+  "subagentStop",
+  "stop",
+  "interrupt",
+]);
+export type CodexHookEventName = z.infer<typeof codexHookEventNameSchema>;
+
+export const codexHookConfigEventSchema = z.enum([
+  "PreToolUse",
+  "PermissionRequest",
+  "PostToolUse",
+  "PreCompact",
+  "PostCompact",
+  "SessionStart",
+  "SessionEnd",
+  "UserPromptSubmit",
+  "SubagentStart",
+  "SubagentStop",
+  "Stop",
+  "Interrupt",
+]);
+export type CodexHookConfigEvent = z.infer<typeof codexHookConfigEventSchema>;
+
+export const codexHookSourceSchema = z.enum([
+  "system",
+  "mdm",
+  "user",
+  "project",
+  "sessionFlags",
+  "plugin",
+  "legacyManagedConfigFile",
+  "legacyManagedConfigMdm",
+  "unknown",
+]);
+export type CodexHookSource = z.infer<typeof codexHookSourceSchema>;
+
+export const codexHookTrustStatusSchema = z.enum([
+  "managed",
+  "untrusted",
+  "trusted",
+  "modified",
+]);
+export type CodexHookTrustStatus = z.infer<typeof codexHookTrustStatusSchema>;
+
+export const codexHookMetadataSchema = z
+  .object({
+    key: z.string().min(1),
+    eventName: codexHookEventNameSchema,
+    matcher: z.string().nullable(),
+    timeoutSec: z.number().int().positive(),
+    statusMessage: z.string().nullable(),
+    additionalContextLimit: z.number().int().positive().nullable().optional(),
+    sourcePath: z.string(),
+    source: codexHookSourceSchema,
+    pluginId: z.string().nullable(),
+    displayOrder: z.number().int(),
+    enabled: z.boolean(),
+    isManaged: z.boolean(),
+    currentHash: z.string(),
+    trustStatus: codexHookTrustStatusSchema,
+    handlerType: z.enum(["command", "mcpTool", "prompt", "agent"]),
+    command: z.string().optional(),
+    async: z.boolean().optional(),
+    server: z.string().optional(),
+    tool: z.string().optional(),
+  })
+  .passthrough();
+export type CodexHookMetadata = z.infer<typeof codexHookMetadataSchema>;
+
+export const codexHookErrorInfoSchema = z.object({
+  message: z.string(),
+  sourcePath: z.string().nullable(),
+});
+export type CodexHookErrorInfo = z.infer<typeof codexHookErrorInfoSchema>;
+
+export const codexHooksListEntrySchema = z.object({
+  cwd: z.string(),
+  hooks: z.array(codexHookMetadataSchema),
+  warnings: z.array(z.string()),
+  errors: z.array(codexHookErrorInfoSchema),
+});
+export type CodexHooksListEntry = z.infer<typeof codexHooksListEntrySchema>;
+
+export const codexHooksResponseSchema = z.object({
+  data: z.array(codexHooksListEntrySchema),
+});
+export type CodexHooksResponse = z.infer<typeof codexHooksResponseSchema>;

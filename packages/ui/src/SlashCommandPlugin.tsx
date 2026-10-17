@@ -93,18 +93,6 @@ export function SlashCommandPlugin({
   const dismissedSignatureRef = useRef<string | null>(null);
   const activeSignatureRef = useRef<string | null>(null);
   const activeTokenRef = useRef<ActivePromptInputTokenSnapshot | null>(null);
-  const commandSuggestions = useMemo(() => {
-    const excluded = new Set((excludedCommandNames ?? []).map(normalizeSlashCommandValue));
-    const cliSuggestions = buildSlashSuggestions(commands).filter(
-      (item) => !excluded.has(item.value),
-    );
-    // App 层命令追加在 CLI catalog 之后展示；CLI 已提供同名命令时以 CLI 为准，避免遮蔽。
-    const cliValues = new Set(cliSuggestions.map((item) => item.value));
-    const appSuggestions = buildAppSlashCommandSuggestions(appCommands ?? []).filter(
-      (item) => !cliValues.has(item.value) && !excluded.has(item.value),
-    );
-    return [...cliSuggestions, ...appSuggestions];
-  }, [appCommands, commands, excludedCommandNames]);
   const subagentSuggestions = useMemo(() => buildSubagentSuggestions(agents), [agents]);
   const skillSuggestions = useMemo(
     () =>
@@ -114,6 +102,26 @@ export function SlashCommandPlugin({
       ),
     [locale, provider, skills],
   );
+  const commandSuggestions = useMemo(() => {
+    const excluded = new Set((excludedCommandNames ?? []).map(normalizeSlashCommandValue));
+    // 修复原因：Codex readControlPresentation 会将技能同步放入 slashCommands，
+    // 当技能已在「技能」分组以 $skill 呈现时，从「命令」分组剔除同名 custom 项，避免重复刷屏。
+    const skillNames = new Set(skillSuggestions.map((item) => item.value.toLowerCase()));
+    const nonSkillCommands = commands.filter(
+      (cmd) =>
+        cmd.source === "builtin" ||
+        !skillNames.has(normalizeSlashCommandValue(cmd.name).toLowerCase()),
+    );
+    const cliSuggestions = buildSlashSuggestions(nonSkillCommands).filter(
+      (item) => !excluded.has(item.value),
+    );
+    // App 层命令追加在 CLI catalog 之后展示；CLI 已提供同名命令时以 CLI 为准，避免遮蔽。
+    const cliValues = new Set(cliSuggestions.map((item) => item.value));
+    const appSuggestions = buildAppSlashCommandSuggestions(appCommands ?? []).filter(
+      (item) => !cliValues.has(item.value) && !excluded.has(item.value),
+    );
+    return [...cliSuggestions, ...appSuggestions];
+  }, [appCommands, commands, excludedCommandNames, skillSuggestions]);
   const filteredCommandSuggestions = useMemo(
     () => filterPromptInputSuggestions(commandSuggestions, activeTrigger?.query ?? null),
     [commandSuggestions, activeTrigger?.query],
@@ -245,7 +253,11 @@ export function SlashCommandPlugin({
 
   const applySuggestion = useCallback(
     (suggestion: PromptInputSuggestionItem) => {
-      const isAppCommand = isAppSlashCommandSuggestion(suggestion);
+      const matchingAppCommand = appCommands?.find(
+        (command) => normalizeSlashCommandValue(command.value) === suggestion.value,
+      );
+      const isImmediateAppCommand =
+        isAppSlashCommandSuggestion(suggestion) || Boolean(matchingAppCommand);
       editor.update(() => {
         const selectionState = getCurrentTextNodeSelection();
         if (!selectionState) {
@@ -280,7 +292,7 @@ export function SlashCommandPlugin({
           tokenEnd,
         );
 
-        if (isAppCommand) {
+        if (isImmediateAppCommand) {
           // App 层命令"选中即执行"：只移除输入中的 `/xxx` token，不插入 mention、不发送。
           selectionState.selection.removeText();
           return;
@@ -296,10 +308,8 @@ export function SlashCommandPlugin({
       activeTokenRef.current = null;
       setActiveTrigger(null);
       setSelectedIndex(0);
-      if (isAppCommand) {
-        appCommands
-          ?.find((command) => normalizeSlashCommandValue(command.value) === suggestion.value)
-          ?.run();
+      if (isImmediateAppCommand) {
+        matchingAppCommand?.run();
         return;
       }
       requestAnimationFrame(() => {

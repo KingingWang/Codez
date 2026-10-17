@@ -42,6 +42,10 @@ import type {
   CodezAgentsWriteResult,
   CodezMcpProjectConfigWriteAction,
   CodezMcpProjectConfigWriteResult,
+  CodezHooksConfigScope,
+  CodezHooksConfigWriteAction,
+  CodezHookCommandEntry,
+  CodezHooksConfigWriteResult,
   CodezPluginsOverviewResult,
   CodezPluginsMarketplaceMutationResult,
   CodezPluginsInstallResult,
@@ -669,6 +673,18 @@ export interface CodezAgentMcpProjectConfigWriteParams extends CodezAgentWorkspa
   dotCodexFolder?: string;
 }
 
+/**
+ * Codex 用户层/项目层 hooks.json 配置写入（spec: specs/codex-desktop-hooks-and-commands.md）。
+ * 载体铁律与 writeCodexProjectMcpConfig 相同：必须经真实 workspace carrier 发往目标机器 bridge。
+ */
+export interface CodezAgentHooksConfigWriteParams extends CodezAgentWorkspaceTarget {
+  scope: CodezHooksConfigScope;
+  action: CodezHooksConfigWriteAction;
+  dotCodexFolder?: string;
+  target?: CodezHookCommandEntry;
+  hook?: CodezHookCommandEntry;
+}
+
 export interface CodezAgentDeleteAgentRoleParams extends CodezAgentWorkspaceTarget {
   scope: CodezAgentRoleScope;
   name: string;
@@ -759,6 +775,10 @@ export interface ICodezAgentService {
   writeCodexProjectMcpConfig(
     params: CodezAgentMcpProjectConfigWriteParams,
   ): Promise<CodezMcpProjectConfigWriteResult>;
+  /** Codex 用户层/项目层 hooks.json 增删改（spec: specs/codex-desktop-hooks-and-commands.md）。 */
+  writeCodexHooksConfig(
+    params: CodezAgentHooksConfigWriteParams,
+  ): Promise<CodezHooksConfigWriteResult>;
   /** 删除角色 TOML；按 effective name 定位，文件必须存在于该 scope。 */
   deleteAgentRole(params: CodezAgentDeleteAgentRoleParams): Promise<void>;
   /**

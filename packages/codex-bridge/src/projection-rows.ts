@@ -21,6 +21,7 @@ import {
   functionCallOutputRow,
   imageGenerationRow,
   imageViewRow,
+  isHiddenContinuationUserMessage,
   subAgentActivityMarker,
   webSearchRow,
   type RowBase,
@@ -357,6 +358,9 @@ export function projectRows(
         throw new Error(`Duplicate Codex item ID in turn ${turn.id}: ${item.id}`);
       }
       entityIds.add(item.id);
+      if (isCodexKnownItem(item) && isHiddenContinuationUserMessage(item)) {
+        continue;
+      }
       rows.push(
         assertRowBudget(
           conversationRowSchema.parse(

@@ -1,6 +1,7 @@
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 import { enMcp, zhMcp } from "./messagesMcp.js";
+import { enHooks, zhHooks } from "./messagesHooks.js";
 import { enProviders, zhProviders } from "./messagesProviders.js";
 
 const en = {
@@ -205,6 +206,7 @@ const en = {
   memoryNumberInvalid: "Value out of range; not saved.",
   ...enProviders,
   ...enMcp,
+  ...enHooks,
 };
 const zh: Record<keyof typeof en, string> = {
   legacyPreferences:
@@ -386,6 +388,7 @@ const zh: Record<keyof typeof en, string> = {
   memoryNumberInvalid: "数值超出范围，未保存。",
   ...zhProviders,
   ...zhMcp,
+  ...zhHooks,
 };
 
 /**

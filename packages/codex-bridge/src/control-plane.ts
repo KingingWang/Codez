@@ -4,6 +4,7 @@ import type { BridgeControlContext } from "./contract.js";
 import { checkWorkspace, ControlError, input, readPages, unsupported } from "./control-common.js";
 import { readControlPresentation, readControlSkills } from "./control-presentation.js";
 import { readControlMcp, writeProjectMcpConfig } from "./control-mcp.js";
+import { writeCodexHooksConfig } from "./control-hooks.js";
 import { handlePluginRequest } from "./control-plugins.js";
 import { handleAgentRequest } from "./control-agents.js";
 import { handleCatalogRequest } from "./control-catalog.js";
@@ -34,6 +35,7 @@ const methods = new Set([
   "agents/write",
   "agents/delete",
   "mcp/projectConfigWrite",
+  "hooks/configWrite",
   "catalog/read",
   "catalog/readModels",
   "catalog/writeModel",
@@ -188,7 +190,8 @@ async function dispatch(
     case "skills/referenceCatalog": {
       const p = input(s.codezSkillsReferenceCatalogParamsSchema, params, method);
       checkWorkspace(p.workspace, context, method);
-      if (p.sessionId) unsupported(method, "Codex does not expose a frozen session skill catalog");
+      // 修复原因：已有会话或预热草稿在打开 `/` 或 `$` 面板时会携带 sessionId 查询技能目录；
+      // 原生 Codex 技能在工作区级实时发现与热刷新，无独立会话冻结快照，直接返回工作区权威目录。
       return readControlSkills(context);
     }
     case "mcp/list": {
@@ -205,6 +208,11 @@ async function dispatch(
       const p = input(s.codezMcpProjectConfigWriteParamsSchema, params, method);
       checkWorkspace(p.workspace, context, method);
       return writeProjectMcpConfig(context, p);
+    }
+    case "hooks/configWrite": {
+      const p = input(s.codezHooksConfigWriteParamsSchema, params, method);
+      checkWorkspace(p.workspace, context, method);
+      return writeCodexHooksConfig(context, p);
     }
     case "provider/updateAccountConfig": {
       const p = input(s.codezProviderUpdateAccountConfigParamsSchema, params, method);

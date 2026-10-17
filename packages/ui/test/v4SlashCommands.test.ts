@@ -32,6 +32,10 @@ describe("parseV4VisibleSlashCommand", () => {
       kind: "resumeGoal",
       displayText: "/goal resume",
     });
+    expect(parseV4VisibleSlashCommand("/goal pause", [])).toEqual({
+      kind: "pauseGoal",
+      displayText: "/goal pause",
+    });
   });
 
   it("does not consume the removed UI-only /resume-goal alias", () => {
@@ -64,6 +68,29 @@ describe("parseV4VisibleSlashCommand", () => {
       displayText: "/PLAN  帮我做 X",
     });
     expect(parseV4VisibleSlashCommand("/planner 做普通任务", [])).toBeNull();
+  });
+
+  it("parses /mode and /model into local config shortcuts", () => {
+    expect(parseV4VisibleSlashCommand("/mode", [])).toEqual({
+      kind: "modeShortcut",
+      mode: "",
+      displayText: "/mode",
+    });
+    expect(parseV4VisibleSlashCommand("/mode yolo", [])).toEqual({
+      kind: "modeShortcut",
+      mode: "yolo",
+      displayText: "/mode yolo",
+    });
+    expect(parseV4VisibleSlashCommand("/model", [])).toEqual({
+      kind: "modelShortcut",
+      modelArg: "",
+      displayText: "/model",
+    });
+    expect(parseV4VisibleSlashCommand("/model openai/gpt-5.6-codex$high", [])).toEqual({
+      kind: "modelShortcut",
+      modelArg: "openai/gpt-5.6-codex$high",
+      displayText: "/model openai/gpt-5.6-codex$high",
+    });
   });
 
   it("rejects /plan when attachments or context are present", () => {

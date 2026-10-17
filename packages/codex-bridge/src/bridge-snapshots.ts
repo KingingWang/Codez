@@ -21,6 +21,7 @@ import { subagentsStateFromRows } from "./subagent-projection.js";
 import { SubagentActivitySeedScheduler } from "./subagent-activity.js";
 import { sparseNativeTurnUsage, sparseNativeUsage } from "./bridge-snapshot-usage.js";
 import type { AttachmentStore, AttachmentReadAuthorization } from "./attachments.js";
+import { projectGoalActionAvailability, projectNativeThreadGoal } from "./thread-goal.js";
 
 export class BridgeSnapshots {
   private readonly indexEpoch = randomUUID();
@@ -159,6 +160,8 @@ export class BridgeSnapshots {
     snapshot.config.mode = projectThreadMode(state.thread);
     if (state.thread.collaborationMode)
       snapshot.config.planEnabled = object(state.thread.collaborationMode).mode === "plan";
+    const projectedGoal = projectNativeThreadGoal(state.goal);
+    if (projectedGoal) snapshot.goal = projectedGoal;
     const allowed = { allowed: true as const };
     // writer-conflict 只读：另一进程持有写锁。fork 保持 idle 门禁不变（逃生通道）；
     // 其余写操作的 availability 与命令层的 deny guard 同一 reasonCode，UI 直接禁用。
@@ -185,6 +188,7 @@ export class BridgeSnapshots {
       queueEdit: readOnlyBlocked ?? allowed,
       // busy 也可用：命令层 interrupt+start 抢占（specs/codex-desktop-adapter.md）。
       sendQueuedNow: readOnlyBlocked ?? allowed,
+      ...projectGoalActionAvailability(projectedGoal, readOnlyBlocked),
     };
     // 子代理下钻（specs/codex-desktop-subagent-drilldown.md）：running/ended 从已投影的
     // subagent 行派生，不额外请求原生；revision 交给 store 记账，语义不变则不递增。

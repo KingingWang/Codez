@@ -57,7 +57,7 @@ describe("slashCommandHelpers", () => {
         value: "goal",
         label: "/goal",
         description: "set goal",
-        keywords: ["goal", "set goal", ""],
+        keywords: ["goal", "set goal", "", "target", "目标", "持续追求"],
       },
       {
         id: "slash:compact",
@@ -65,7 +65,7 @@ describe("slashCommandHelpers", () => {
         value: "compact",
         label: "/compact",
         description: "compact context",
-        keywords: ["compact", "compact context", ""],
+        keywords: ["compact", "compact context", "", "compress", "压缩", "压缩上下文"],
       },
       {
         id: "slash:init",
@@ -73,7 +73,7 @@ describe("slashCommandHelpers", () => {
         value: "init",
         label: "/init [notes]",
         description: "create AGENTS.md",
-        keywords: ["init", "create AGENTS.md", "/init [notes]"],
+        keywords: ["init", "create AGENTS.md", "/init [notes]", "初始化", "agents.md", "指令"],
       },
       {
         id: "slash:model",
@@ -81,7 +81,7 @@ describe("slashCommandHelpers", () => {
         value: "model",
         label: "/model",
         description: "switch model",
-        keywords: ["model", "switch model", ""],
+        keywords: ["model", "switch model", "", "模型", "切换模型", "选择模型"],
       },
     ]);
   });
@@ -116,7 +116,15 @@ describe("slashCommandHelpers", () => {
         value: "compact",
         label: "/compact",
         description: "Compact context",
-        keywords: ["compact", "/compact", "Compact context", ""],
+        keywords: [
+          "compact",
+          "/compact",
+          "Compact context",
+          "",
+          "compress",
+          "压缩",
+          "压缩上下文",
+        ],
       },
     ]);
   });

@@ -220,12 +220,14 @@ export function createInputFacade(deps: CreateInputFacadeDeps): InputFacade {
           ...(prepared.input !== promptInput.text ? { displayInput: promptInput.text } : {}),
         });
         if (result.kind === "started") {
-          await recordAcceptedInputHistory(
-            promptInput.text,
-            "prompt",
-            options?.traceContext ?? deps.traceContext,
-            prepared.storedAttachments,
-          );
+          if (!options?.skipInputRecord && promptInput.text.trim().length > 0) {
+            await recordAcceptedInputHistory(
+              promptInput.text,
+              "prompt",
+              options?.traceContext ?? deps.traceContext,
+              prepared.storedAttachments,
+            );
+          }
           if (unsubscribe) void result.completion.then(unsubscribe, unsubscribe);
           return {
             completion: result.completion,

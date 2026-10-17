@@ -303,11 +303,14 @@ test("interrupted turn continues in the same thread without reverting completed 
   });
   h.store.markStarted(structuredClone(h.authority.thread));
   const current = h.store.get(sessionId)!;
+  const snap = projectThread(current.thread, { workspacePath: cwd });
+  const userRow = snap.rows.window.find((row) => row.kind === "userInput")!;
   const command = {
     ...h.command(
       "sendText",
       {
-        text: "Continue using the completed tool result; do not restart.",
+        text: "",
+        interruptedContinueTarget: { rowId: userRow.rowId, entityId: userRow.entityId! },
         modelSelection: {
           providerId: "openai",
           modelId: "new-model",
@@ -324,12 +327,71 @@ test("interrupted turn continues in the same thread without reverting completed 
   assert.deepEqual(h.rpc.methods(), ["turn/start"]);
   assert.equal(h.rpc.params("turn/start")[0]?.model, "new-model");
   assert.equal(h.rpc.params("turn/start")[0]?.effort, "high");
+  assert.deepEqual(h.rpc.params("turn/start")[0]?.input, [
+    {
+      type: "text",
+      text: '<codex_internal_context source="continue">\n\n</codex_internal_context>',
+      text_elements: [],
+    },
+  ]);
   const retained = codexThreadSchema.parse(h.store.get(sessionId)?.thread);
   assert.ok(retained.turns[0]?.items.some((item) => item.id === "completed-tool"));
   assert.equal(retained.turns[0]?.status, "interrupted");
   assert.equal(retained.turns.length, 2);
   assert.deepEqual(await h.execute(command), accepted);
   assert.equal(h.rpc.params("turn/start").length, 1);
+});
+
+test("interrupted turn without completed tools reverts unfinished step and reruns original prompt", async (t) => {
+  const h = await setup(t);
+  const interrupted = h.authority.thread.turns[0]!;
+  interrupted.status = "interrupted";
+  interrupted.items.push({
+    type: "commandExecution",
+    id: "aborted-tool",
+    command: "sleep 10",
+    cwd,
+    status: "inProgress",
+    aggregatedOutput: "",
+    exitCode: null,
+  });
+  h.rpc.handlers.set("thread/revert", (params) => {
+    assert.deepEqual(params, { threadId: sessionId, beforeTurnId: interrupted.id });
+    h.authority.thread.turns = [];
+    return {
+      thread: { ...h.authority.thread, turns: [] },
+      turnsBackwardsCursor: null,
+      itemsBackwardsCursor: null,
+    };
+  });
+  h.store.markStarted(structuredClone(h.authority.thread));
+  const current = h.store.get(sessionId)!;
+  const snap = projectThread(current.thread, { workspacePath: cwd });
+  const userRow = snap.rows.window.find((row) => row.kind === "userInput")!;
+  const command = {
+    ...h.command(
+      "sendText",
+      {
+        text: "",
+        interruptedContinueTarget: { rowId: userRow.rowId, entityId: userRow.entityId! },
+        modelSelection: {
+          providerId: "openai",
+          modelId: "new-model",
+          options: { reasoningLevel: "high" },
+        },
+      },
+      "continue-revert",
+    ),
+    baseRevision: current.revision,
+    baseLogEpoch: current.epoch,
+  };
+  const accepted = await h.execute(command);
+  assert.equal(accepted.status, "accepted");
+  assert.equal(h.rpc.methods()[0], "thread/revert");
+  assert.equal(h.rpc.methods().at(-1), "turn/start");
+  assert.equal(h.rpc.params("turn/start")[0]?.model, "new-model");
+  assert.equal(h.rpc.params("turn/start")[0]?.effort, "high");
+  assert.deepEqual(h.rpc.params("turn/start")[0]?.input, interrupted.items[0]?.type === "userMessage" ? interrupted.items[0].content : []);
 });
 
 test("CAS rejects stale revision/epoch and invalid envelopes without side effects", async (t) => {
@@ -770,4 +832,66 @@ test("failed sendText retains the rewind notice for the next attempt", async (t)
   const retryInput = (all[1] as { input: Array<{ text: string }> }).input;
   assert.ok(retryInput[0]!.text.startsWith("[User action: file changes reverted]"));
   assert.equal(h.notices.peek(sessionId), undefined);
+});
+
+test("sendText expands /init into the AGENTS.md initialization prompt", async (t) => {
+  const h = await setup(t);
+  queueMutations(h);
+  const ack = await h.execute(
+    h.command("sendText", { text: "/init Focus on packages/codex-bridge" }, "sendText-init"),
+  );
+  assert.equal(ack.status, "accepted", ack.message);
+  const starts = h.rpc.params("turn/start");
+  assert.equal(starts.length, 1);
+  const input = (starts[0] as { input: Array<{ text: string }> }).input;
+  assert.ok(input[0]!.text.includes("Generate a file named AGENTS.md"));
+  assert.ok(input[0]!.text.includes("Focus on packages/codex-bridge"));
+});
+
+test("sendGoalCommand, pauseGoal and resumeGoal map to native thread/goal/set and project goal state", async (t) => {
+  const h = await setup(t);
+  queueMutations(h);
+  let storedGoal: Record<string, unknown> | null = null;
+  h.rpc.handlers.set("thread/goal/set", (params) => {
+    storedGoal = {
+      threadId: params.threadId,
+      objective: params.objective ?? storedGoal?.objective ?? "Ship native hooks",
+      status: params.status ?? "active",
+      tokenBudget: null,
+      tokensUsed: 0,
+      timeUsedSeconds: 12,
+      createdAt: 1700000000,
+      updatedAt: 1700000012,
+    };
+    return { goal: storedGoal };
+  });
+  const sendAck = await h.execute(
+    h.command(
+      "sendGoalCommand",
+      { text: "Ship native hooks", displayText: "/goal Ship native hooks" },
+      "goal-send-1",
+    ),
+  );
+  assert.equal(sendAck.status, "accepted", sendAck.message);
+  assert.equal(h.rpc.params("thread/goal/set").length, 1);
+  assert.deepEqual(h.rpc.params("thread/goal/set")[0], {
+    threadId: sessionId,
+    origin: "user",
+    objective: "Ship native hooks",
+    status: "active",
+  });
+  assert.equal(h.rpc.params("turn/start").length, 1);
+
+  const pauseAck = await h.execute(h.command("pauseGoal", {}, "goal-pause-1"));
+  assert.equal(pauseAck.status, "accepted", pauseAck.message);
+  assert.equal(h.store.get(sessionId)?.goal?.status, "paused");
+
+  // Simulate turn finished so resumeGoal can proceed while idle.
+  const currentTurns = h.store.get(sessionId)?.thread.turns as Array<Record<string, unknown>>;
+  for (const entry of currentTurns ?? []) {
+    entry.status = "completed";
+  }
+  const resumeAck = await h.execute(h.command("resumeGoal", {}, "goal-resume-1"));
+  assert.equal(resumeAck.status, "accepted", resumeAck.message);
+  assert.equal(h.store.get(sessionId)?.goal?.status, "active");
 });

@@ -54,6 +54,16 @@ import {
   codexPanelToSection,
   codexSectionToPanel,
 } from "./codexSettingsNav.js";
+import {
+  buildCodexHooksView,
+  codexHookEnabledEdit,
+  codexHookFormToCommandEntry,
+  codexHookMetadataToForm,
+  codexHooksFeatureEdit,
+  codexHookTrustEdits,
+  createEmptyCodexHookForm,
+  isCodexHooksFeatureEnabled,
+} from "./codexHooksSettings.js";
 import { selectedCodexHistorySessionId } from "./codexHistorySelection.js";
 import { getDefaultWorkspaceState } from "@/store/codezSessionStoreTypes.js";
 import { useCodezSessionStore } from "@/store/codezSessionStore.js";
@@ -449,12 +459,15 @@ test("legacy settings routes resolve to Codex or explicit unsupported capability
     "modelProvider",
     "skill",
     "subagents",
+    "hooks",
     "mcp",
     "plugin",
     "memory",
   ])
     assert.equal(isCodexSettingsSection(route), true);
   assert.equal(isCodexUnsupportedSection("migration"), true);
+  assert.equal(isCodexUnsupportedSection("hooks"), false);
+  assert.equal(isCodexUnsupportedSection("commands"), true);
   // 本地电脑控制在 Codex 适配器已支持（spec: codex-desktop-native-browser-cua）。
   assert.equal(isCodexUnsupportedSection("computerUse"), false);
   // 定时任务在 Codex 适配器已支持（spec: codex-desktop-automations UI surfacing），
@@ -477,6 +490,7 @@ test("settings section and internal panel mappings stay inverse and complete", (
     "providers",
     "skills",
     "agents",
+    "hooks",
     "mcp",
     "plugins",
     "memory",
@@ -1480,4 +1494,94 @@ test("catalog model write params preserve the original slug only for edits", () 
     workspace,
   );
   assert.equal("originalSlug" in created, false);
+});
+
+test("codex hooks data helpers group by source, validate forms, and build config edits", () => {
+  const view = buildCodexHooksView({
+    data: [
+      {
+        cwd: "/workspace",
+        warnings: ["hook warning"],
+        errors: [{ message: "bad syntax", sourcePath: "/workspace/.codex/hooks.json" }],
+        hooks: [
+          {
+            key: "proj-hook",
+            eventName: "preToolUse",
+            matcher: "Bash",
+            timeoutSec: 30,
+            statusMessage: "checking",
+            sourcePath: "/workspace/.codex/hooks.json",
+            source: "project",
+            pluginId: null,
+            displayOrder: 0,
+            enabled: true,
+            isManaged: false,
+            currentHash: "hash-1",
+            trustStatus: "untrusted",
+            handlerType: "command",
+            command: "echo project",
+            async: false,
+          },
+          {
+            key: "user-hook",
+            eventName: "sessionStart",
+            matcher: null,
+            timeoutSec: 600,
+            statusMessage: null,
+            sourcePath: "/home/.codex/hooks.json",
+            source: "user",
+            pluginId: null,
+            displayOrder: 1,
+            enabled: false,
+            isManaged: false,
+            currentHash: "hash-2",
+            trustStatus: "trusted",
+            handlerType: "command",
+            command: "echo user",
+          },
+        ],
+      },
+    ],
+  });
+  assert.equal(view.projectHooks.length, 1);
+  assert.equal(view.userHooks.length, 1);
+  assert.equal(view.pendingTrustHooks.length, 1);
+  assert.deepEqual(view.warnings, ["hook warning"]);
+
+  const form = codexHookMetadataToForm(view.projectHooks[0]!);
+  assert.equal(form.scope, "project");
+  assert.equal(form.dotCodexFolder, "/workspace/.codex");
+  assert.deepEqual(codexHookFormToCommandEntry(form), {
+    event: "PreToolUse",
+    command: "echo project",
+    matcher: "Bash",
+    timeoutSec: 30,
+    statusMessage: "checking",
+  });
+  assert.throws(() => codexHookFormToCommandEntry(createEmptyCodexHookForm("user")));
+  assert.equal(isCodexHooksFeatureEnabled(undefined), true);
+  assert.equal(
+    isCodexHooksFeatureEnabled({
+      config: { features: { hooks: false } },
+      origins: {},
+    }),
+    false,
+  );
+  assert.deepEqual(codexHooksFeatureEdit(false), {
+    keyPath: "features.hooks",
+    value: false,
+    mergeStrategy: "replace",
+  });
+  assert.deepEqual(codexHookEnabledEdit("proj-hook", false), {
+    keyPath: "hooks.state",
+    value: { "proj-hook": { enabled: false } },
+    mergeStrategy: "upsert",
+  });
+  assert.deepEqual(codexHookTrustEdits(view.pendingTrustHooks), [
+    {
+      keyPath: "hooks.state",
+      value: { "proj-hook": { trusted_hash: "hash-1" } },
+      mergeStrategy: "upsert",
+    },
+  ]);
 });

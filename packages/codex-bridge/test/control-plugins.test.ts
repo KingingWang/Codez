@@ -485,7 +485,6 @@ test("unsupported dry-run/scope, session catalogs, unknown controls make no RPC 
       { workspace, marketplace: "market", pluginName: "example", scope: "workspace" },
     ],
     ["plugins/marketplace/add", { workspace, source: "org/fixture", dryRun: true }],
-    ["plugins/referenceCatalog", { workspace, sessionId: "old" }],
     ["plugins/update", { workspace, pluginId: "example@market" }],
     ["plugins/cancelOperation", { operationId: "unknown" }],
     ["plugins/resetConfig", { workspace, pluginId: "example@market" }],

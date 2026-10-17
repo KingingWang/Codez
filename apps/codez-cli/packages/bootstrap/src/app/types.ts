@@ -220,6 +220,11 @@ export interface SubmitPromptOptionsBase {
   traceContext?: TraceContext;
   abortSignal?: AbortSignal;
   inputId?: string;
+  inputSource?: ExecuteTurnOptions["inputSource"];
+  inputVisibility?: ExecuteTurnOptions["inputVisibility"];
+  recordedInputMessageId?: ExecuteTurnOptions["recordedInputMessageId"];
+  skipInputRecord?: ExecuteTurnOptions["skipInputRecord"];
+  skipUserPromptSubmitHooks?: ExecuteTurnOptions["skipUserPromptSubmitHooks"];
   queryId?: QueryId;
   intent?: TurnInputIntentMetadata;
   sharedContextRefs?: TurnInputIntentMetadata["sharedContextRefs"];

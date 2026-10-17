@@ -36,8 +36,9 @@ effective configuration, resource installation state, or accepted commands.
   account settings. It does not show legacy Connect/login/logout or legacy plan
   entitlements as if they represented the native account.
 - A dedicated Codex section contains native account, model/reasoning,
-  configuration/requirements, skills, MCP, and plugin/marketplace controls.
-  Legacy provider/skill/MCP/plugin deep links render the Codex surface on desktop.
+  configuration/requirements, skills, subagents, hooks, MCP, and plugin/marketplace
+  controls. Legacy provider/skill/subagents/hooks/MCP/plugin deep links render the
+  Codex surface on desktop.
 - The Models panel also exposes Codez's automatic session-title model preference, separately
   from native conversation defaults. It shows an editable global default and a current-workspace
   choice that either inherits the default or overrides it. Candidate provider/model pairs come
@@ -57,7 +58,7 @@ effective configuration, resource installation state, or accepted commands.
   Codex opens Account; switching among inner-only panels keeps the Codex
   heading and does not persist a misleading legacy section preference.
   When embedded in `SettingsPage`, sidebar sections that already have dedicated
-  entries (`memory`, `modelProvider`, `subagents`, `plugin`, `mcp`, `skill`)
+  entries (`memory`, `modelProvider`, `subagents`, `hooks`, `plugin`, `mcp`, `skill`)
   render their panel in `standalone` mode without repeating the outer section
   heading, the `Codex` banner, or a duplicate top-row tab bar. The `Codex`
   sidebar entry hosts the Codex-only panels (`account`, `models`, `config`,

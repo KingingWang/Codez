@@ -73,7 +73,11 @@ export async function scopedNativeRequest(
     mismatch();
   // 仅白名单方法还不够：cwd/cwds 不能扩大当前 attachment 的工作区读权限。
   if (request.method === "config/read") return { ...request, params: { ...params, cwd } };
-  if (request.method === "skills/list" || request.method === "plugin/list")
+  if (
+    request.method === "skills/list" ||
+    request.method === "plugin/list" ||
+    request.method === "hooks/list"
+  )
     return { ...request, params: { ...params, cwds: [cwd] } };
   if (
     ["plugin/read", "plugin/install"].includes(request.method) &&

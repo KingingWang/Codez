@@ -108,9 +108,11 @@ try {
 
   const bodyText = await page.locator("body").innerText();
   assert.match(bodyText, /QA interrupted turn: stop then continue with the same prompt/);
-  assert.match(bodyText, /Continue the interrupted task|请继续刚才中断的任务/);
+  assert.doesNotMatch(bodyText, /Continue the interrupted task|请继续刚才中断的任务/);
   assert.match(bodyText, /Isolated desktop QA response 2/);
-  checks.push("Original task and new continuation remain visible together after completion");
+  checks.push(
+    "Original task and continuation response remain visible without injecting a synthetic continue prompt",
+  );
 
   assert.deepEqual(errors, []);
   await writeFile(

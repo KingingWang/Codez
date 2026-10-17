@@ -10,6 +10,7 @@ import type { CodexSettingsPanel } from "./CodexSettingsSection.js";
 const SECTION_TO_PANEL: Partial<Record<SettingsSectionId, CodexSettingsPanel>> = {
   skill: "skills",
   subagents: "agents",
+  hooks: "hooks",
   mcp: "mcp",
   plugin: "plugins",
   modelProvider: "providers",
@@ -21,6 +22,7 @@ const PANEL_TO_SECTION: Partial<Record<CodexSettingsPanel, SettingsSectionId>> =
   providers: "modelProvider",
   skills: "skill",
   agents: "subagents",
+  hooks: "hooks",
   mcp: "mcp",
   plugins: "plugin",
   memory: "memory",

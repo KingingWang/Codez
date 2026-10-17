@@ -222,6 +222,7 @@ export type ConversationComposerSendResult =
   | "sent"
   | "blocked"
   | "confirmationRequired"
+  | { status: "openConfigPicker"; picker: V4ComposerConfigPicker }
   | { status: "sent"; commandId: string };
 function getComposerAttachmentTypeLabel(filename: string, mimeType: string): string {
   const leaf = filename.split(/[\\/]/u).at(-1) ?? filename;
@@ -1577,6 +1578,23 @@ function ConversationComposerImpl({
           sendAction.noop();
           return;
         }
+        if (
+          sendResult &&
+          typeof sendResult === "object" &&
+          sendResult.status === "openConfigPicker"
+        ) {
+          if (telemetrySeed.localTtft)
+            getLocalTtftObserver()?.exclude(telemetrySeed.localTtft, "cancelled");
+          rollbackPromptHistory();
+          if (contentRevisionRef.current === cleanupRevision) {
+            inputApiRef.current?.clear();
+            updateText("");
+          }
+          finalizeSubmittedDraft();
+          handleConfigPickerOpenChange(sendResult.picker, true);
+          sendAction.noop();
+          return;
+        }
         setHeldQueueConfirmation(null);
         if (nativeCodexFollowup) setCodexFollowupIntent("queue");
         if (
@@ -2428,6 +2446,38 @@ function ConversationComposerImpl({
 
   // 左下：模式选择 + CUA 入口 + 当前 session 后台任务入口。followupMode 由 app 设置页同步到 CLI，
   // 不在 composer 暴露局部开关；后台入口只消费同一 snapshot，不维护第二份任务状态。
+  const combinedAppSlashCommands = useMemo<readonly AppSlashCommand[] | undefined>(() => {
+    if (disabled || nativeSettingsLocked) {
+      return appSlashCommands;
+    }
+    // 仅在桌面 Codex 目录链路把 `/model`、`/mode` 挂为"选中即打开对应选择器"回调，
+    // 保持共享 Codez E2E 对 `app-slash:*` 的断言边界不变。
+    if (!codexModelCatalog) {
+      return appSlashCommands;
+    }
+    const interactiveConfigCommands: AppSlashCommand[] = [
+      {
+        value: "model",
+        description: intl.formatMessage({ id: "chat.slash.command.model.description" }),
+        keywords: ["model", "模型", "切换模型", "选择模型"],
+        run: () => handleConfigPickerOpenChange("model", true),
+      },
+      {
+        value: "mode",
+        description: intl.formatMessage({ id: "chat.slash.command.mode.description" }),
+        keywords: ["mode", "权限", "权限模式", "模式", "approval", "permission"],
+        run: () => handleConfigPickerOpenChange("mode", true),
+      },
+    ];
+    return [...(appSlashCommands ?? []), ...interactiveConfigCommands];
+  }, [
+    appSlashCommands,
+    codexModelCatalog,
+    disabled,
+    handleConfigPickerOpenChange,
+    intl,
+    nativeSettingsLocked,
+  ]);
   const leadingActionsNode = useMemo(
     () => (
       <>
@@ -2623,7 +2673,7 @@ function ConversationComposerImpl({
           // Bugfix 原因：命令目录必须完整来自 CLI workspace slash catalog；UI 只在
           // secondary pane 按产品能力隐藏 goal，不再追加任何内建命令或别名。
           excludedSlashCommandNames={suppressGoalCommands ? ["goal"] : undefined}
-          appSlashCommands={appSlashCommands}
+          appSlashCommands={combinedAppSlashCommands}
           enableMentionPanel
           leadingActions={leadingActionsNode}
           submitControl={submitControlNode}

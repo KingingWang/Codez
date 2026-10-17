@@ -94,6 +94,9 @@ export const commandPayloadSchemas = {
   sendText: z
     .object({
       text: z.string(),
+      // 中断轮点击「继续」时的目标行锚点；携带时不向上下文注入合成用户提示词，
+      // 由 owner 按中断轮已完成工具边界决定回退重发或无气泡续跑。
+      interruptedContinueTarget: conversationRowTargetSchema.optional(),
       titleGenerationModel: codexTitleModelSchema.optional(),
       attachments: z.array(attachmentRefSchema).optional(),
       // Desktop Cmd/Ctrl+Enter 只覆盖本次 busy input，不改 session followupMode。

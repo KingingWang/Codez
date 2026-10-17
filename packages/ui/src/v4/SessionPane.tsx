@@ -3211,6 +3211,10 @@ export function SessionPane({
           type = "resumeGoal";
           withBaseRevision = true;
           break;
+        case "pauseGoal":
+          type = "pauseGoal";
+          withBaseRevision = true;
+          break;
         case "emptyGoal":
           logger.warn("[v4-pane] /goal 需要目标文本");
           return true;
@@ -3449,9 +3453,11 @@ export function SessionPane({
       const readyAttachments = options?.attachments ?? [];
       const sharedContextRefs = options?.sharedContextRefs;
       const contextAttachmentCount = options?.contextAttachmentCount ?? 0;
-      let slashCommand = parseV4VisibleSlashCommand(text, readyAttachments, {
-        contextAttachmentCount,
-      });
+      let slashCommand = options?.interruptedContinueTarget
+        ? null
+        : parseV4VisibleSlashCommand(text, readyAttachments, {
+            contextAttachmentCount,
+          });
 
       // `/plan` 首版只消费纯文本。必须在 provider readiness 和任何 command admission 之前
       // 拒绝附件/context，否则原始 `/plan ...` 会退化成普通 prompt，既绕过产品边界又清空草稿。
@@ -3469,6 +3475,133 @@ export function SessionPane({
         handleDraftSwitchMode("plan");
         if (submission) submission = { ...submission, planEnabled: true };
         if (!slashCommand.task) return "sent" as const;
+      }
+
+      // `/mode` 与 `/model` 本地配置快捷命令：无参数时打开对应选择器，带参数时直接切换配置，
+      // 绝不把命令文本作为普通消息发送给模型。
+      if (slashCommand?.kind === "modeShortcut") {
+        if (nativeCodexSession && isCodexComposerBusy(snapshotRef.current)) {
+          toast(codexText.busySettings);
+          return "blocked" as const;
+        }
+        const rawMode = slashCommand.mode.trim().toLowerCase();
+        if (!rawMode) {
+          return { status: "openConfigPicker" as const, picker: "mode" as const };
+        }
+        const normalizedMode =
+          rawMode === "plan" || rawMode === "计划" || rawMode === "计划模式"
+            ? "plan"
+            : rawMode === "plan-off" || rawMode === "default" || rawMode === "默认"
+              ? "plan-off"
+              : rawMode === "build" || rawMode === "ask" || rawMode === "请求批准"
+                ? "build"
+                : rawMode === "edit" || rawMode === "auto" || rawMode === "帮我审批"
+                  ? "edit"
+                  : rawMode === "yolo" || rawMode === "full" || rawMode === "完全访问"
+                    ? "yolo"
+                    : rawMode === "custom" || rawMode === "自定义"
+                      ? "custom"
+                      : !nativeCodexSession && rawMode === "guarded"
+                        ? "guarded"
+                        : null;
+        if (!normalizedMode || (nativeCodexSession && normalizedMode === "edit" && !codexAutoReviewSupported)) {
+          toast(intl.formatMessage({ id: "chat.slash.mode.unknown" }, { mode: slashCommand.mode }));
+          return "blocked" as const;
+        }
+        handleDraftSwitchMode(normalizedMode);
+        return "sent" as const;
+      }
+
+      if (slashCommand?.kind === "modelShortcut") {
+        if (nativeCodexSession && isCodexComposerBusy(snapshotRef.current)) {
+          toast(codexText.busySettings);
+          return "blocked" as const;
+        }
+        const rawArg = slashCommand.modelArg.trim();
+        if (!rawArg) {
+          return { status: "openConfigPicker" as const, picker: "model" as const };
+        }
+        const dollarIdx = rawArg.lastIndexOf("$");
+        const modelPart = dollarIdx > 0 ? rawArg.slice(0, dollarIdx).trim() : rawArg;
+        const effortPart = dollarIdx > 0 ? rawArg.slice(dollarIdx + 1).trim() : "";
+        const slashIdx = modelPart.indexOf("/");
+        const explicitProvider = slashIdx > 0 ? modelPart.slice(0, slashIdx).trim() : "";
+        const targetModelName = slashIdx > 0 ? modelPart.slice(slashIdx + 1).trim() : modelPart;
+
+        if (isDesktop && codexModels.catalog) {
+          const catalog = codexModels.catalog;
+          const configured = catalog.configuredSelection;
+          const matchedGroup = catalog.groups.find(
+            (group) =>
+              (!explicitProvider || group.providerId.toLowerCase() === explicitProvider.toLowerCase()) &&
+              group.models.some(
+                (entry) =>
+                  entry.model.toLowerCase() === targetModelName.toLowerCase() ||
+                  entry.displayName.toLowerCase() === targetModelName.toLowerCase(),
+              ),
+          );
+          const matchedEntry = matchedGroup?.models.find(
+            (entry) =>
+              entry.model.toLowerCase() === targetModelName.toLowerCase() ||
+              entry.displayName.toLowerCase() === targetModelName.toLowerCase(),
+          );
+          if (matchedGroup && matchedEntry) {
+            handleDraftSelectModel(matchedGroup.providerId, matchedEntry.model);
+            if (effortPart) {
+              handleDraftSelectThought(effortPart);
+            }
+            return "sent" as const;
+          }
+          if (
+            configured &&
+            (!explicitProvider ||
+              configured.providerId.toLowerCase() === explicitProvider.toLowerCase()) &&
+            configured.modelId.toLowerCase() === targetModelName.toLowerCase()
+          ) {
+            handleDraftSelectModel(configured.providerId, configured.modelId);
+            if (effortPart) {
+              handleDraftSelectThought(effortPart);
+            }
+            return "sent" as const;
+          }
+          toast(intl.formatMessage({ id: "chat.slash.model.unknown" }, { model: rawArg }));
+          return "blocked" as const;
+        }
+
+        if (modelSelectionView) {
+          for (const candidateProvider of modelSelectionView.providers) {
+            if (
+              explicitProvider &&
+              candidateProvider.providerId.toLowerCase() !== explicitProvider.toLowerCase()
+            ) {
+              continue;
+            }
+            const matchedModel = candidateProvider.models.find(
+              (candidate) =>
+                candidate.modelId.toLowerCase() === targetModelName.toLowerCase(),
+            );
+            if (matchedModel) {
+              handleDraftSelectModel(candidateProvider.providerId, matchedModel.modelId);
+              if (effortPart) {
+                handleDraftSelectThought(effortPart);
+              }
+              return "sent" as const;
+            }
+          }
+          toast(intl.formatMessage({ id: "chat.slash.model.unknown" }, { model: rawArg }));
+          return "blocked" as const;
+        }
+
+        const fallbackProvider = explicitProvider || draftConfigRef.current.provider || "";
+        if (fallbackProvider && targetModelName) {
+          handleDraftSelectModel(fallbackProvider, targetModelName);
+          if (effortPart) {
+            handleDraftSelectThought(effortPart);
+          }
+          return "sent" as const;
+        }
+        toast(intl.formatMessage({ id: "chat.slash.model.unknown" }, { model: rawArg }));
+        return "blocked" as const;
       }
 
       if (!(await ensureDraftModelReadyForSend())) {
@@ -3520,6 +3653,7 @@ export function SessionPane({
         slashCommand !== null &&
         (slashCommand.kind === "sendGoalCommand" ||
           slashCommand.kind === "resumeGoal" ||
+          slashCommand.kind === "pauseGoal" ||
           slashCommand.kind === "emptyGoal" ||
           slashCommand.kind === "unsupportedGoal")
       ) {
@@ -3592,6 +3726,7 @@ export function SessionPane({
       const draftSlashCommand =
         slashCommand?.kind === "sendGoalCommand" ||
         slashCommand?.kind === "resumeGoal" ||
+        slashCommand?.kind === "pauseGoal" ||
         slashCommand?.kind === "emptyGoal" ||
         slashCommand?.kind === "unsupportedGoal"
           ? slashCommand
@@ -3839,6 +3974,7 @@ export function SessionPane({
         "sendText",
         {
           text: effectiveText,
+          ...(continueTarget ? { interruptedContinueTarget: continueTarget } : {}),
           ...submission,
           ...(options?.requestedDelivery ? { requestedDelivery: options.requestedDelivery } : {}),
           conversationQuotes: options?.conversationQuotes,
@@ -4001,6 +4137,9 @@ export function SessionPane({
     async (text: string, options: PaneSendOptions) => {
       // Composer ACK 新增 commandId；插件入口仍只消费既有状态，不另建 admission 路径。
       const result = await dispatchSendText(text, options);
+      if (result && typeof result === "object" && result.status === "openConfigPicker") {
+        return "sent";
+      }
       return typeof result === "object" ? result.status : result;
     },
     [dispatchSendText],
@@ -4175,7 +4314,7 @@ export function SessionPane({
           : {}),
       };
       pendingContinueKeyRef.current = pendingKey;
-      void handleSendText(intl.formatMessage({ id: "chat.turn.continue.prompt" }), options)
+      void handleSendText("", options)
         .then((result) => {
           if (result === "blocked" || result === "confirmationRequired") {
             pendingContinueKeyRef.current = null;

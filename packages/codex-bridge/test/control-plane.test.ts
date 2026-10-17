@@ -130,11 +130,13 @@ test("presentation parses the real strict schema, preserving remote identity", a
   assert.deepEqual(result.workspace, workspace);
   // 全局 config 投影恒为 custom 档（specs/codex-permission-modes.md）。
   assert.equal(result.mode, "custom");
-  assert.ok(result.slashCommands.some((command) => command.name === "example"));
-  assert.ok(!result.slashCommands.some((command) => command.name === "disabled"));
+  assert.deepEqual(
+    result.slashCommands.map((command) => command.name),
+    ["model", "mode", "plan", "init", "compact", "goal"],
+  );
   assert.deepEqual(
     new Set(calls.map((call) => call.method)),
-    new Set(["config/read", "model/list", "skills/list"]),
+    new Set(["config/read", "model/list"]),
   );
 });
 
@@ -327,7 +329,7 @@ test("configured custom model remains selectable without invented catalog capabi
   }
 });
 
-test("workspace skill catalog is enabled-only; frozen session authority is not fabricated", async () => {
+test("workspace skill catalog is enabled-only and returns workspace authority even when sessionId is passed", async () => {
   const { context } = fixture();
   const result = codezSkillsReferenceCatalogResultSchema.parse(
     await handleControlRequest("skills/referenceCatalog", { workspace }, context),
@@ -335,10 +337,15 @@ test("workspace skill catalog is enabled-only; frozen session authority is not f
   assert.equal(result.authority, "workspace");
   assert.equal(result.skills.length, 1);
   assert.equal(result.skills[0]?.scope, "workspace");
-  await assert.rejects(
-    handleControlRequest("skills/referenceCatalog", { workspace, sessionId: "old" }, context),
-    { code: -32601 },
+  const withSession = codezSkillsReferenceCatalogResultSchema.parse(
+    await handleControlRequest(
+      "skills/referenceCatalog",
+      { workspace, sessionId: "active-session" },
+      context,
+    ),
   );
+  assert.equal(withSession.authority, "workspace");
+  assert.equal(withSession.skills.length, 1);
 });
 
 test("account overlay acknowledges receipt without changing Codex configuration", async () => {
@@ -497,7 +504,7 @@ test("only mapped built-ins appear and duplicate skills cannot shadow them", asy
   );
   assert.deepEqual(
     result.slashCommands.map((command) => command.name),
-    ["model", "mode", "compact"],
+    ["model", "mode", "plan", "init", "compact", "goal"],
   );
   assert.ok(result.slashCommands[0]?.inputHint?.includes("fixture/test-model$medium"));
 });

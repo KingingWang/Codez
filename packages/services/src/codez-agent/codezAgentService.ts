@@ -67,6 +67,7 @@ import {
   codezCatalogReadResultSchema,
   codezAgentsWriteResultSchema,
   codezMcpProjectConfigWriteResultSchema,
+  codezHooksConfigWriteResultSchema,
   codezAgentsDeleteResultSchema,
   codezPluginsMarketplaceMutationResultSchema,
   codezPluginsOverviewResultSchema,
@@ -4830,6 +4831,22 @@ export function createCodezAgentService(
       );
     },
 
+    async writeCodexHooksConfig(params: CodezAgentHooksConfigWriteParams) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.hooksConfigWrite,
+        {
+          workspace: buildWorkspaceRef(params),
+          scope: params.scope,
+          action: params.action,
+          ...(params.dotCodexFolder ? { dotCodexFolder: params.dotCodexFolder } : {}),
+          ...(params.target ? { target: params.target } : {}),
+          ...(params.hook ? { hook: params.hook } : {}),
+        },
+        codezHooksConfigWriteResultSchema,
+      );
+    },
+
     async writeAgentRole(params: CodezAgentWriteAgentRoleParams) {
       const client = await getReadOnlyClient(params);
       return client.request(
@@ -7243,3 +7260,4 @@ export function createCodezAgentService(
     },
   };
 }
+import type { CodezAgentHooksConfigWriteParams } from "./codezAgent.js";

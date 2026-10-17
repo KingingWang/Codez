@@ -11,6 +11,10 @@ const demoSkills = [
     path: "/tmp/workspace/.agents/skills/agents-only/SKILL.md",
   },
   {
+    id: "skill-codex-native",
+    path: "/tmp/home/.codex/skills/.system/openai-docs/SKILL.md",
+  },
+  {
     id: "skill-glm-deprecated",
     path: "/tmp/workspace/.codez/cli/skills/glm-only/SKILL.md",
   },
@@ -61,6 +65,8 @@ describe("skillSourceFilter", () => {
 
   it("provider 参数只作兼容输入，过滤结果始终保留 Codez Agent 技能", () => {
     const expectedIds = [
+      "skill-agents",
+      "skill-codex-native",
       "skill-glm-by-path",
       "glm:workspace:codez-common:abc123",
       "claude:workspace:codez-common:abc123",

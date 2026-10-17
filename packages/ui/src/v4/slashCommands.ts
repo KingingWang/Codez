@@ -14,12 +14,26 @@ export type V4VisibleSlashCommand =
       displayText: string;
     }
   | {
+      kind: "modeShortcut";
+      mode: string;
+      displayText: string;
+    }
+  | {
+      kind: "modelShortcut";
+      modelArg: string;
+      displayText: string;
+    }
+  | {
       kind: "sendGoalCommand";
       objective: string;
       displayText: string;
     }
   | {
       kind: "resumeGoal";
+      displayText: string;
+    }
+  | {
+      kind: "pauseGoal";
       displayText: string;
     }
   | {
@@ -76,6 +90,13 @@ export function parseV4VisibleSlashCommand(
     return null;
   }
 
+  if (commandName === "mode") {
+    return { kind: "modeShortcut", mode: args, displayText };
+  }
+  if (commandName === "model") {
+    return { kind: "modelShortcut", modelArg: args, displayText };
+  }
+
   if (commandName === "compact" || commandName === "compress") {
     return { kind: "compact", displayText };
   }
@@ -86,7 +107,8 @@ export function parseV4VisibleSlashCommand(
 
   const action = args.split(/\s+/, 1)[0]?.toLowerCase() ?? "";
   if (action === "resume") return { kind: "resumeGoal", displayText };
-  if (action === "pause" || action === "clear" || action === "show") {
+  if (action === "pause") return { kind: "pauseGoal", displayText };
+  if (action === "clear" || action === "show") {
     return { kind: "unsupportedGoal", action, displayText };
   }
   const objective = action === "replace" ? args.replace(/^replace\s*/i, "").trim() : args;

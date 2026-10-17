@@ -190,10 +190,10 @@ export async function readControlPresentation(
   workspace: CodezWorkspaceRef,
   context: BridgeControlContext,
 ) {
-  const [settings, catalog] = await Promise.all([
-    readControlModelSettings(context),
-    readControlSkills(context),
-  ]);
+  const settings = await readControlModelSettings(context);
+  // 修复原因：`SlashCommandPlugin` 有独立的「技能」分组（通过 `skills/referenceCatalog` 拉取并展示为 `$skill`）。
+  // 之前把 `catalog.skills` 混入 `slashCommands` 会导致所有技能跑到「命令」分组底下变成 `/skill`，
+  // 既放错分组又产生错误的 `/skill` mention。因此 `slashCommands` 只返回真正的内置斜杠命令。
   const builtins = [
     {
       name: "model",
@@ -210,24 +210,32 @@ export async function readControlPresentation(
       source: "builtin" as const,
     },
     {
+      name: "plan",
+      description: "Turn on plan mode",
+      inputHint: "/plan [task]",
+      source: "builtin" as const,
+    },
+    {
+      name: "init",
+      description: "Create an AGENTS.md file with instructions for Codex",
+      inputHint: "/init [notes]",
+      source: "builtin" as const,
+    },
+    {
       name: "compact",
       description: "Compact the current Codex thread",
       source: "builtin" as const,
     },
+    {
+      name: "goal",
+      description: "Set a goal to keep pursuing",
+      inputHint: "/goal <objective>",
+      source: "builtin" as const,
+    },
   ];
-  const names = new Set(builtins.map((command) => command.name));
   return codezWorkspacePresentationSchema.parse({
     workspace,
     mode: settings.mode.current,
-    slashCommands: [
-      ...builtins,
-      ...catalog.skills
-        .filter((skill) => {
-          if (names.has(skill.name)) return false;
-          names.add(skill.name);
-          return true;
-        })
-        .map((skill) => ({ name: skill.name, description: skill.description, source: "custom" })),
-    ],
+    slashCommands: builtins,
   });
 }

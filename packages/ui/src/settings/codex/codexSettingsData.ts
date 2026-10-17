@@ -7,6 +7,7 @@ import {
   codexSkillsResponseSchema,
   codexMcpStatusResponseSchema,
   codexPluginsResponseSchema,
+  codexHooksResponseSchema,
   type CodexConfigResponse,
   type CodexMarketplace,
   type CodexModel,
@@ -24,6 +25,7 @@ export const codexReaders = {
   skills: codexSkillsResponseSchema,
   mcp: codexMcpStatusResponseSchema,
   plugins: codexPluginsResponseSchema,
+  hooks: codexHooksResponseSchema,
 };
 export type CodexResource = keyof typeof codexReaders;
 export type CodexResourceData = {
@@ -59,6 +61,8 @@ export function codexReadRequest(resource: CodexResource, cwd: string): CodexReq
       return { method: "mcpServerStatus/list", params: {} };
     case "plugins":
       return { method: "plugin/list", params: { cwds: [cwd] } };
+    case "hooks":
+      return { method: "hooks/list", params: { cwds: [cwd] } };
   }
 }
 
@@ -380,8 +384,18 @@ export function codexAuthorizationUrl(value: string): string {
 export function isCodexSettingsSection(section: string): boolean {
   // subagents 由 CodexSettingsSection 的 agents 面板承载（文件型 agent roles）；
   // memory 由 CodexSettingsSection 的 memory 面板承载（原生 [memories] 配置，
-  // spec: specs/codez-memory-settings.md「Codex 适配器路径」）。
-  return ["codex", "modelProvider", "skill", "subagents", "mcp", "plugin", "memory"].includes(
+  // spec: specs/codez-memory-settings.md「Codex 适配器路径」）；
+  // hooks 由 CodexHooksPanel 承载（spec: specs/codex-desktop-hooks-and-commands.md）。
+  return [
+    "codex",
+    "modelProvider",
+    "skill",
+    "subagents",
+    "hooks",
+    "mcp",
+    "plugin",
+    "memory",
+  ].includes(
     section,
   );
 }
@@ -391,5 +405,5 @@ export function isCodexSettingsSection(section: string): boolean {
 // 浏览器控制与本地电脑控制在 Codex 适配器上已支持（spec: codex-desktop-native-browser-cua）：
 // 浏览器控制复用原生 MCP 卡片，电脑控制通过本地 `cli/config.json` 与进程级 `-c` MCP 注入承载。
 export function isCodexUnsupportedSection(section: string): boolean {
-  return ["commands", "hooks", "migration"].includes(section);
+  return ["commands", "migration"].includes(section);
 }

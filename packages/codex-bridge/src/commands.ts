@@ -11,7 +11,6 @@ import type { ThreadStateStore } from "./thread-state.js";
 import type { InteractionBroker } from "./interactions.js";
 import type { CommandLedger } from "./command-ledger.js";
 import {
-  decorateNativeThread,
   assertUnchangedInputSettings,
   nativeInput,
   selectionOverrides,
@@ -26,7 +25,6 @@ import {
   WriterConflictError,
 } from "./control-common.js";
 import { array, object, string, unsupported } from "./json.js";
-import { projectThread } from "./projection.js";
 import { createNativeSession } from "./command-create.js";
 import { formatRewindNotice, type RewindNoticeStore } from "./rewind-notice.js";
 import { createSelectionSideSession } from "./selection-side-session-command.js";
@@ -35,7 +33,14 @@ import { resumeNativeQueue, startNativeQueuedSubmission } from "./queue-start.js
 import { applySelectionSideChatBoundary } from "./selection-side-chat.js";
 import type { SessionTitleCoordinator } from "./session-title.js";
 import type { CodexProviderKeyGate } from "./provider-key-gate.js";
-import { codexThreadProviderId, editUserQueryOrRetryTurn } from "./commands-edit-retry.js";
+import {
+  codexThreadProviderId,
+  editUserQueryOrRetryTurn,
+  executeForkAssistant,
+} from "./commands-edit-retry.js";
+import { resolveCodexInitSlashCommandPrompt } from "./builtin-init-command.js";
+import { executeThreadGoalCommand } from "./thread-goal.js";
+import { executeInterruptedTurnContinue } from "./commands-continue.js";
 
 export interface CommandContext {
   rpc: CodexRpcPort;
@@ -155,17 +160,9 @@ export class CommandRouter {
     switch (command.type) {
       case "sendText": {
         const p = commandPayloadSchemas.sendText.parse(command.payload);
-        // 原生按 catalog 的 per-model provider 路由；线程 provider 跟随本次选择。
-        // 创建期 ThreadSettings.model_provider 不代表执行归属（specs/codex-model-provider-grouping.md）。
         if (p.context_refs?.length) unsupported("shared-context execution");
-        // heldQueueDisposition 只在 legacy held(choice) 路由下有事务语义（clear/keep
-        // 队列后 startNow）；Codex 没有 held queue，投影永不报 choice，该字段无事务
-        // 可执行。replayable 路径（Bot/Automation/手机）为对齐旧 session/send 语义
-        // 无条件携带 keepQueueAndSend，与 bridge 默认 delivery（running→queue /
-        // idle→startNow，即"不动既有队列"）天然一致——接受并忽略，不能拒绝，
-        // 否则所有 Bot 回调消息都会在 admission 前失败。
-        // expectedHeldQueueItemIds 是 choice 确认框的过期守卫，bridge 无 held queue
-        // 状态可校验，合法发送端（投影从未报 choice）不会携带，继续 fail-closed 拒绝。
+        // heldQueueDisposition 在无 held queue 的 Codex 中忽略（兼容 replayable Bot/手机）；
+        // expectedHeldQueueItemIds 属 choice 确认框过期守卫，继续 fail-closed 拒绝。
         if (p.expectedHeldQueueItemIds) unsupported("held queue item guards");
         if (
           p.browserAmbientContext ||
@@ -179,16 +176,28 @@ export class CommandRouter {
         await this.context.providerKeyGate?.assertTurnAllowed(
           p.modelSelection?.providerId ?? codexThreadProviderId(state.thread),
         );
-        // 撤销通知随下一条用户文本进入 Codex 事实；peek 不消费，
-        // native 请求失败时通知保留，下一次发送重试。
+        if (p.interruptedContinueTarget) {
+          return executeInterruptedTurnContinue({
+            command,
+            payload: p,
+            rpc,
+            store,
+            state,
+            sessionId,
+            running,
+          });
+        }
         const rewindNotice = this.context.rewindNotices?.peek(sessionId);
-        const rawText = rewindNotice ? `${formatRewindNotice(rewindNotice)}\n\n${p.text}` : p.text;
+        const expandedInitText = !p.attachments?.length
+          ? resolveCodexInitSlashCommandPrompt(p.text, store.cwd)
+          : undefined;
+        const effectivePromptText = expandedInitText ?? p.text;
+        const rawText = rewindNotice
+          ? `${formatRewindNotice(rewindNotice)}\n\n${effectivePromptText}`
+          : effectivePromptText;
         const text = applySelectionSideChatBoundary(state.sideChat, state.thread, rawText);
         const input = await nativeInput(text, p.attachments, sessionId, attachments);
-        // busy 默认入队：排队消息立即可见、可编辑/删除；steer 只保留给显式 guide（specs/codex-desktop-adapter.md）。
         const delivery = p.requestedDelivery ?? (running ? "queue" : "startNow");
-        // 首条输入的唯一 arm 入口。缺少标题模型选择时由 coordinator 记录一条有界原因，
-        // 不在此处猜测或回落到会话模型（specs/codex-desktop-session-title.md）。
         this.context.title?.armFirstInput(sessionId, p.titleGenerationModel);
         if (delivery === "queue" || (delivery === "guide" && running))
           assertUnchangedInputSettings(p, state.thread);
@@ -207,8 +216,6 @@ export class CommandRouter {
             clientUserMessageId: command.commandId,
           });
         } else {
-          // busy 时 startNow = 抢占：interrupt 后的 Interrupted idle 不触发队列
-          // 自动 dispatch（specs/codex-desktop-adapter.md）。
           if (running) await preemptByInterrupt(rpc, native, string(running.id, "turnId"));
           const permissions = await turnPermissionIntent(controlContext, state.thread, p.mode);
           const turnParams = {
@@ -233,14 +240,28 @@ export class CommandRouter {
           store.acceptTurnResponse(sessionId, response);
           store.rememberMode(sessionId, p.mode);
         }
-        // 三个投递分支（queue/steer/start）都在此汇合且 native 已成功，消费通知。
-        // 恰好同批：并发 record 的新条目留给再下一条消息。
         if (rewindNotice) this.context.rewindNotices?.clear(sessionId, rewindNotice);
         return {
           type: "inputAccepted",
           delivery: delivery === "guide" && !running ? "startNow" : delivery,
           inputId: command.commandId,
         };
+      }
+      case "sendGoalCommand":
+      case "pauseGoal":
+      case "resumeGoal": {
+        const goalResult = await executeThreadGoalCommand({
+          command,
+          sessionId,
+          state,
+          running,
+          rpc,
+          store,
+          attachments,
+          providerKeyGate: this.context.providerKeyGate,
+        });
+        if (goalResult) return goalResult;
+        break;
       }
       case "stop": {
         const p = commandPayloadSchemas.stop.parse(command.payload);
@@ -350,19 +371,7 @@ export class CommandRouter {
         break;
       }
       case "forkAssistant": {
-        const p = commandPayloadSchemas.forkAssistant.parse(command.payload);
-        const snapshot = projectThread(state.thread, { workspacePath: store.cwd });
-        const row = snapshot.rows.window.find(
-          (candidate) =>
-            candidate.rowId === p.target.rowId && candidate.entityId === p.target.entityId,
-        );
-        if (!row) throw new Error("Target row no longer exists");
-        const result = decorateNativeThread(
-          await rpc.request("thread/fork", { ...native, lastTurnId: row.turnId }),
-        );
-        store.markStarted(result);
-        await store.reloadAfterHistoryChange(string(result.id));
-        return { type: "forkAssistant", sessionId: string(result.id) };
+        return executeForkAssistant({ command, rpc, store, state, sessionId });
       }
       case "createSelectionSideSession":
         return createSelectionSideSession(command, this.context);

@@ -16,6 +16,7 @@ const RESOURCES: CodexResource[] = [
   "skills",
   "mcp",
   "plugins",
+  "hooks",
 ];
 const EMPTY: CodexSnapshot = {};
 

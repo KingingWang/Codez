@@ -6,6 +6,7 @@ import { useCodexSettings } from "@/hooks/useCodexSettings.js";
 import { CodexAgentsPanel } from "./CodexAgentsPanel.js";
 import { CodexAccountPanel } from "./CodexAccountPanel.js";
 import { CodexConfigPanel } from "./CodexConfigPanel.js";
+import { CodexHooksPanel } from "./CodexHooksPanel.js";
 import { CodexMcpPanel } from "./CodexMcpPanel.js";
 import { CodexPluginsPanel, CodexSkillsPanel } from "./CodexResourcesPanel.js";
 import { CodexHistoryPanel } from "./CodexHistoryPanel.js";
@@ -24,6 +25,7 @@ export type CodexSettingsPanel =
   | "providers"
   | "skills"
   | "agents"
+  | "hooks"
   | "mcp"
   | "plugins"
   | "config"
@@ -35,6 +37,7 @@ const PANELS: CodexSettingsPanel[] = [
   "providers",
   "skills",
   "agents",
+  "hooks",
   "mcp",
   "plugins",
   "config",
@@ -198,6 +201,14 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
               workspacePath={props.workspacePath}
               workspaceIdentity={props.workspaceIdentity}
               remoteSessionId={props.remoteSessionId}
+            />
+          ) : null}
+          {panel === "hooks" ? (
+            <CodexHooksPanel
+              controller={controller}
+              workspacePath={props.workspacePath}
+              workspaceIdentity={props.workspaceIdentity}
+              hideSectionTitle={isEmbeddedStandaloneSection}
             />
           ) : null}
           {panel === "mcp" ? (

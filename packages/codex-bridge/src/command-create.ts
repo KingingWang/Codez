@@ -16,6 +16,7 @@ import {
 import { string, unsupported } from "./json.js";
 import type { SessionTitleCoordinator } from "./session-title.js";
 import type { CodexProviderKeyGate } from "./provider-key-gate.js";
+import { resolveCodexInitSlashCommandPrompt } from "./builtin-init-command.js";
 
 export async function createNativeSession(
   command: CommandEnvelope,
@@ -68,10 +69,19 @@ export async function createNativeSession(
     context.title?.armFirstInput(sessionId, p.titleGenerationModel);
     // 首条输入即将发起模型请求；缺本机临时 Key 的供应商在此处 fail-closed。
     await context.providerKeyGate?.assertTurnAllowed(selection?.providerId ?? p.config?.provider);
+    const expandedInitText =
+      !p.firstInput.attachments?.length
+        ? resolveCodexInitSlashCommandPrompt(p.firstInput.text, store.cwd)
+        : undefined;
     const turnParams = {
       threadId: sessionId,
       clientUserMessageId: command.commandId,
-      input: await nativeInput(p.firstInput.text, p.firstInput.attachments, sessionId, attachments),
+      input: await nativeInput(
+        expandedInitText ?? p.firstInput.text,
+        p.firstInput.attachments,
+        sessionId,
+        attachments,
+      ),
       ...selectionOverrides(selection),
       ...(p.config?.thought && !selection?.options?.reasoningLevel
         ? { effort: p.config.thought }

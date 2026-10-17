@@ -243,3 +243,21 @@ export function subAgentActivityMarker(
 ): ConversationRow {
   return codexEventMarker(base, SUBAGENT_ACTIVITY_EVENTS[item.kind], item.agentPath);
 }
+
+/** 识别中断轮无气泡继续的隐藏 contextual user fragment。 */
+export function isHiddenContinuationUserMessage(item: {
+  type?: unknown;
+  content?: unknown;
+}): boolean {
+  if (item.type !== "userMessage" || !Array.isArray(item.content)) return false;
+  if (item.content.length !== 1) return false;
+  const first = item.content[0];
+  if (!first || typeof first !== "object") return false;
+  const record = first as { type?: unknown; text?: unknown };
+  if (record.type !== "text" || typeof record.text !== "string") return false;
+  const trimmed = record.text.trim();
+  return (
+    trimmed.startsWith('<codex_internal_context source="continue">') &&
+    trimmed.endsWith("</codex_internal_context>")
+  );
+}

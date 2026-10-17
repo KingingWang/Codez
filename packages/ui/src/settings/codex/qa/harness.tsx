@@ -116,6 +116,72 @@ const services = {
           return { data: [], nextCursor: null };
         case "plugin/list":
           return { marketplaces: [], marketplaceLoadErrors: [], featuredPluginIds: [] };
+        case "hooks/list":
+          return {
+            data: [
+              {
+                cwd: workspacePath,
+                warnings: ["Project hook matcher 'Bash' applies only to shell tool executions."],
+                errors: [],
+                hooks: [
+                  {
+                    key: "project-pre-bash",
+                    eventName: "preToolUse",
+                    matcher: "Bash",
+                    timeoutSec: 45,
+                    statusMessage: "Running pre-bash security check…",
+                    sourcePath: `${workspacePath}/.codex/hooks.json`,
+                    source: "project",
+                    pluginId: null,
+                    displayOrder: 0,
+                    enabled: true,
+                    isManaged: false,
+                    currentHash: "sha256:proj1",
+                    trustStatus: "untrusted",
+                    handlerType: "command",
+                    command: "./scripts/verify-bash-command.sh",
+                    async: false,
+                  },
+                  {
+                    key: "user-session-start",
+                    eventName: "sessionStart",
+                    matcher: null,
+                    timeoutSec: 600,
+                    statusMessage: "Preparing workspace environment…",
+                    sourcePath: "~/.codex/hooks.json",
+                    source: "user",
+                    pluginId: null,
+                    displayOrder: 1,
+                    enabled: true,
+                    isManaged: false,
+                    currentHash: "sha256:user1",
+                    trustStatus: "trusted",
+                    handlerType: "command",
+                    command: "node ~/.codex/scripts/on-session-start.mjs",
+                    async: true,
+                  },
+                  {
+                    key: "plugin-guard",
+                    eventName: "postToolUse",
+                    matcher: "Edit|Write",
+                    timeoutSec: 30,
+                    statusMessage: null,
+                    sourcePath: "~/.codex/plugins/cache/codez-official/lint-guard/1.0.0/hooks/hooks.json",
+                    source: "plugin",
+                    pluginId: "lint-guard@codez-plugins-official",
+                    displayOrder: 2,
+                    enabled: true,
+                    isManaged: false,
+                    currentHash: "sha256:plugin1",
+                    trustStatus: "trusted",
+                    handlerType: "command",
+                    command: "${CLAUDE_PLUGIN_ROOT}/scripts/post-edit-lint.sh",
+                    async: false,
+                  },
+                ],
+              },
+            ],
+          };
         case "config/batchWrite": {
           const edits = (request.params as { edits: { keyPath: string; value: string }[] }).edits;
           for (const edit of edits)
