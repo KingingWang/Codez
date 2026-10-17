@@ -1,11 +1,8 @@
 package com.example.codez_mobile.remote
 
 import android.content.Context
-import android.net.Uri
 import org.json.JSONArray
 import org.json.JSONObject
-import java.text.DateFormat
-import java.util.Date
 
 data class RemoteControlRecentLink(
     val url: String,
@@ -41,6 +38,12 @@ object RemoteControlRecentLinksStore {
         return updated
     }
 
+    fun remove(context: Context, url: String): List<RemoteControlRecentLink> {
+        val updated = read(context).filterNot { it.url == url }
+        write(context, updated)
+        return updated
+    }
+
     fun clear(context: Context): List<RemoteControlRecentLink> {
         prefs(context).edit().remove(KEY_LINKS).apply()
         return emptyList()
@@ -60,17 +63,4 @@ object RemoteControlRecentLinksStore {
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-}
-
-fun RemoteControlRecentLink.displayTitle(): String {
-    val uri = Uri.parse(url)
-    val name = uri.getQueryParameter("name")?.takeIf { it.isNotBlank() }
-    return name ?: uri.host.orEmpty().ifBlank { "Codez Remote" }
-}
-
-fun RemoteControlRecentLink.displaySubtitle(context: Context): String {
-    val uri = Uri.parse(url)
-    val time = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
-        .format(Date(openedAt))
-    return "${uri.host.orEmpty()} · $time"
 }

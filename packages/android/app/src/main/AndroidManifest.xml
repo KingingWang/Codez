@@ -58,6 +58,17 @@
                     android:pathPrefix="/remote"
                     android:scheme="https" />
             </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="kingingwang.github.io"
+                    android:pathPrefix="/Codez/remote"
+                    android:scheme="https" />
+            </intent-filter>
         </activity>
     </application>
 

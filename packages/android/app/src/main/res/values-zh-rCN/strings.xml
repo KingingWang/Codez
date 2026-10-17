@@ -1,20 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Codez</string>
-    <string name="remote_launcher_title">Codez 远程控制</string>
-    <string name="remote_launcher_description">打开桌面二维码里的远控链接。</string>
+    <string name="remote_home_title">Codez 远程控制</string>
+    <string name="remote_home_subtitle">在手机上继续桌面端的对话与任务。</string>
+    <string name="remote_scan_card_title">扫码连接桌面</string>
+    <string name="remote_scan_card_desc">对准桌面端「远程控制」面板中的二维码。</string>
+    <string name="remote_devices_title">我的设备</string>
+    <string name="remote_devices_empty">还没有连接过的设备</string>
+    <string name="remote_devices_empty_hint">扫描桌面端二维码，即可随时开始远程控制。</string>
+    <string name="remote_device_remove">删除该设备</string>
+    <string name="remote_manual_entry_title">手动输入链接</string>
+    <string name="remote_footer_security">端到端加密 · 连接经中转服务建立</string>
     <string name="remote_url_label">远控链接</string>
     <string name="remote_url_placeholder">https://zcode.z.ai/remote?sid=...</string>
     <string name="remote_url_invalid">请输入 Codez 远控链接。</string>
-    <string name="remote_open_button">打开远程控制</string>
-    <string name="remote_scan_button">扫码打开</string>
+    <string name="remote_connect_button">连接</string>
     <string name="remote_scan_title">扫描桌面二维码</string>
     <string name="remote_scan_hint">将摄像头对准 Codez 远程控制二维码。</string>
     <string name="remote_scan_invalid">这个二维码不是 Codez 远控链接。</string>
     <string name="remote_scan_permission_denied">需要相机权限才能扫描二维码。</string>
     <string name="remote_scan_camera_failed">无法启动相机。</string>
-    <string name="remote_recent_title">最近打开</string>
-    <string name="remote_recent_clear">清空</string>
+    <string name="remote_devices_clear">清空</string>
     <string name="remote_screen_title">远程控制</string>
     <string name="remote_reload_button">重载</string>
     <string name="remote_close_button">关闭</string>

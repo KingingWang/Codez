@@ -42,6 +42,7 @@ class MainActivity : ComponentActivity() {
                     recentLinks = recentLinks,
                     onOpenUrl = ::openRemoteUrl,
                     onCloseRemote = ::closeRemote,
+                    onRemoveRecentLink = ::removeRecentLink,
                     onClearRecentLinks = ::clearRecentLinks,
                 )
             }
@@ -77,6 +78,10 @@ class MainActivity : ComponentActivity() {
 
     private fun clearRecentLinks() {
         recentLinks = RemoteControlRecentLinksStore.clear(this)
+    }
+
+    private fun removeRecentLink(url: String) {
+        recentLinks = RemoteControlRecentLinksStore.remove(this, url)
     }
 
     private fun resolveRemoteUrlFromIntent(intent: Intent?): String? {

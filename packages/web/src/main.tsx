@@ -79,6 +79,7 @@ import {
   resolveWebRemoteControlWorkspaceKey,
 } from "@codez/shared";
 import { createBrowserWebRemoteControlRelayAuthProvider } from "./webRemoteControlRelayAuthProvider.js";
+import { resolveWebRemoteControlWebSocketCtor } from "./webRemoteControlNativeSocket.js";
 import {
   WebRemoteControlTerminalTransport,
   type WebRemoteControlTerminalTransportDiagnostic,
@@ -1769,6 +1770,9 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
     e2eeKey,
     deviceMid: relayParams.deviceMid,
     appVersion: relayParams.appVersion,
+    // Android 壳内经原生桥（OkHttp，无 Origin）代发 relay WebSocket；
+    // 普通浏览器环境此函数回退到全局 WebSocket，行为不变。
+    WebSocketCtor: resolveWebRemoteControlWebSocketCtor(),
     authProvider: createBrowserWebRemoteControlRelayAuthProvider(),
     onRawTransportPayload: (payload) => activeRelayProtocol?.acceptPayload(payload) ?? false,
     onRawTransportFault: (reasonCode) => {
