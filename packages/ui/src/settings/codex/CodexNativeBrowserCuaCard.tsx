@@ -1,6 +1,7 @@
 import { nativeBrowserCuaMcpDescriptorResultSchema } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Switch } from "@/components/ui/switch.js";
+import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
 import {
   classifyCodexNativeBrowserCua,
@@ -87,66 +88,70 @@ export function CodexNativeBrowserCuaCard({
     (server) => server.name === "codez-desktop-browser-cua",
   );
   return (
-    <div className="space-y-2 rounded-lg bg-surface p-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-ui-base">
-            {nativeBrowserCuaCapability === "supported"
-              ? text.nativeBrowserCuaTitleSupported
-              : text.nativeBrowserCuaTitle}
-          </p>
-          <p className="text-ui-sm text-foreground-subtle">{nativeStatusMessage}</p>
-          {/* 降级说明只在能力确实 degraded 时展示；unsupported 时再显示「Browser 命令可用」是误报。 */}
-          {nativeBrowserCuaCapability === "degraded" ? (
-            <p className="text-ui-sm text-foreground-subtle">{text.nativeBrowserCuaDegraded}</p>
-          ) : null}
-          <p className="text-ui-sm text-foreground-subtle">
-            {text.nativeBrowserCuaStatuses} {nativeServer?.runtimeStatus ?? text.notConnected} ·{" "}
-            {nativeServer?.authStatus ?? "unknown"} · {text.tools}:{" "}
-            {nativeServer ? Object.keys(nativeServer.tools).length : 0}
-          </p>
-          {nativeServer?.toolsError ? (
-            <CodexNotice error>{nativeServer.toolsError}</CodexNotice>
-          ) : null}
-          {legacyRegistration === "customized" ? (
-            <p className="text-ui-sm text-warning">{text.nativeBrowserCuaLegacyCustomized}</p>
-          ) : null}
-          {legacyRegistration === "unknown" ? (
-            <p className="text-ui-sm text-warning">{text.nativeBrowserCuaLegacyUnknown}</p>
-          ) : null}
-          {controller.snapshot.config?.error ? (
-            <CodexNotice error>{controller.snapshot.config.error}</CodexNotice>
-          ) : null}
-        </div>
-        {onNativeBrowserControlEnabledChange ? (
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={nativeBrowserControlOn}
-              onCheckedChange={(checked) => void onNativeBrowserControlEnabledChange(checked)}
-              aria-label={text.nativeBrowserControlToggle}
-            />
-            <span className="text-ui-sm text-foreground-subtle">
-              {text.nativeBrowserControlToggle}
-            </span>
+    <SettingsGroupCard>
+      <SettingsRow
+        label={
+          nativeBrowserCuaCapability === "supported"
+            ? text.nativeBrowserCuaTitleSupported
+            : text.nativeBrowserCuaTitle
+        }
+        description={
+          <div className="space-y-1">
+            <p>{nativeStatusMessage}</p>
+            {/* 降级说明只在能力确实 degraded 时展示；unsupported 时再显示「Browser 命令可用」是误报。 */}
+            {nativeBrowserCuaCapability === "degraded" ? (
+              <p>{text.nativeBrowserCuaDegraded}</p>
+            ) : null}
+            <p className="text-ui-sm text-foreground-subtle">
+              {text.nativeBrowserCuaStatuses} {nativeServer?.runtimeStatus ?? text.notConnected} ·{" "}
+              {nativeServer?.authStatus ?? "unknown"} · {text.tools}:{" "}
+              {nativeServer ? Object.keys(nativeServer.tools).length : 0}
+            </p>
+            {nativeServer?.toolsError ? (
+              <CodexNotice error>{nativeServer.toolsError}</CodexNotice>
+            ) : null}
+            {legacyRegistration === "customized" ? (
+              <p className="text-ui-sm text-warning">{text.nativeBrowserCuaLegacyCustomized}</p>
+            ) : null}
+            {legacyRegistration === "unknown" ? (
+              <p className="text-ui-sm text-warning">{text.nativeBrowserCuaLegacyUnknown}</p>
+            ) : null}
+            {controller.snapshot.config?.error ? (
+              <CodexNotice error>{controller.snapshot.config.error}</CodexNotice>
+            ) : null}
           </div>
-        ) : null}
-        {legacyRegistration === "codez-generated" ? (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={legacyCleanupDisabled}
-            onClick={() =>
-              void controller.run(async () => {
-                if (!activeDescriptor?.runtimeInstalled)
-                  throw new Error(text.nativeBrowserCuaRuntimeMissing);
-                await cleanupCodexNativeBrowserCuaLegacyMcp(controller, activeDescriptor);
-              })
-            }
-          >
-            {text.nativeBrowserCuaLegacyCleanup}
-          </Button>
-        ) : null}
-      </div>
-    </div>
+        }
+        control={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {onNativeBrowserControlEnabledChange ? (
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={nativeBrowserControlOn}
+                  onCheckedChange={(checked) => void onNativeBrowserControlEnabledChange(checked)}
+                  aria-label={text.nativeBrowserControlToggle}
+                />
+                <span className="sr-only">{text.nativeBrowserControlToggle}</span>
+              </div>
+            ) : null}
+            {legacyRegistration === "codez-generated" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={legacyCleanupDisabled}
+                onClick={() =>
+                  void controller.run(async () => {
+                    if (!activeDescriptor?.runtimeInstalled)
+                      throw new Error(text.nativeBrowserCuaRuntimeMissing);
+                    await cleanupCodexNativeBrowserCuaLegacyMcp(controller, activeDescriptor);
+                  })
+                }
+              >
+                {text.nativeBrowserCuaLegacyCleanup}
+              </Button>
+            ) : null}
+          </div>
+        }
+      />
+    </SettingsGroupCard>
   );
 }

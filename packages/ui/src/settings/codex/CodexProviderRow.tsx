@@ -1,3 +1,4 @@
+import { Package } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { CodexConfirmButton } from "./CodexSettingsParts.js";
 import {
@@ -26,23 +27,29 @@ export function CodexProviderRow({
   return (
     <div
       data-testid={`codex-provider-row-${view.id}`}
-      className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"
+      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-hover"
     >
+      <div
+        className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-foreground-subtle"
+        aria-hidden="true"
+      >
+        <Package className="size-4" />
+      </div>
       <div className="min-w-0 flex-1">
-        <p className="text-ui-base">
-          {view.name}
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <p className="truncate text-ui-base font-medium text-foreground">{view.name}</p>
           {view.isDefault ? (
-            <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-ui-sm text-foreground-subtle">
+            <span className="inline-flex min-h-5 items-center rounded-md bg-background px-1.5 py-0.5 text-ui-xs text-foreground-subtle ring-1 ring-border">
               {text.providerDefaultBadge}
             </span>
           ) : null}
           {isCodexManagedEnvKey(view.envKey) ? (
-            <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-ui-sm text-foreground-subtle">
+            <span className="inline-flex min-h-5 items-center rounded-md bg-background px-1.5 py-0.5 text-ui-xs text-foreground-subtle ring-1 ring-border">
               {text.providerDeviceKeyBadge}
             </span>
           ) : null}
-        </p>
-        <p className="break-all font-mono text-ui-sm text-foreground-subtlest">
+        </div>
+        <p className="mt-0.5 break-all font-mono text-ui-sm text-foreground-subtlest">
           {view.id} · {view.wireApi}
           {view.baseUrl ? ` · ${view.baseUrl}` : ""} ·{" "}
           {catalogReady
@@ -50,35 +57,23 @@ export function CodexProviderRow({
             : text.providerModelCountUnknown}
         </p>
         {!view.isDefault && view.modelCount > 0 ? (
-          <p className="text-ui-sm text-foreground-subtle">
+          <p className="mt-0.5 text-ui-sm text-foreground-subtle">
             {text.providerDeleteModelsBlocked}
           </p>
         ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {!view.isDefault ? (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={disabled}
-            onClick={onSetDefault}
-          >
+          <Button variant="outline" size="sm" disabled={disabled} onClick={onSetDefault}>
             {text.providerSetDefault}
           </Button>
         ) : null}
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={disabled}
-          onClick={onEdit}
-        >
+        <Button variant="outline" size="sm" disabled={disabled} onClick={onEdit}>
           {text.providerEdit}
         </Button>
         <CodexConfirmButton
           label={text.providerDelete}
-          disabled={
-            disabled || codexProviderDeleteBlock(view, catalogReady) !== null
-          }
+          disabled={disabled || codexProviderDeleteBlock(view, catalogReady) !== null}
           onConfirm={onDelete}
         />
       </div>

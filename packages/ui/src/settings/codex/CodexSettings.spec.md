@@ -56,6 +56,15 @@ effective configuration, resource installation state, or accepted commands.
   or sidebar highlight behind. An explicit sidebar/deep-link navigation to
   Codex opens Account; switching among inner-only panels keeps the Codex
   heading and does not persist a misleading legacy section preference.
+  When embedded in `SettingsPage`, sidebar sections that already have dedicated
+  entries (`memory`, `modelProvider`, `subagents`, `plugin`, `mcp`, `skill`)
+  render their panel in `standalone` mode without repeating the outer section
+  heading, the `Codex` banner, or a duplicate top-row tab bar. The `Codex`
+  sidebar entry hosts the Codex-only panels (`account`, `models`, `config`,
+  `history`) using the shared segmented tabs (`SettingsSegmentedTabs`). All
+  Codex settings panels use the shared pre-fork Codez settings primitives
+  (`SettingsGroupCard`, `SettingsRow`, `SettingsResourceGroupHeader`,
+  `SettingsResourceList`, `SettingsSegmentedTabs`).
 - The Codex skills and plugin marketplace lists expose a unique accessible
   action name per target. Keep the short visible button label, but include the
   skill name/scope/path, or plugin name/marketplace (and native ID when needed),

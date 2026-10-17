@@ -3,6 +3,7 @@ import { codexConfigWriteResponseSchema, type CodexRequest } from "@codez/shared
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import { Textarea } from "@/components/ui/textarea.js";
+import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
 import {
   Select,
   SelectContent,
@@ -34,21 +35,24 @@ function ConfigSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="min-w-0 space-y-1 text-ui-sm">
-      <span>{label}</span>
-      <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger aria-label={label} className="w-full">
-          <SelectValue placeholder="—" />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <SettingsRow
+      controlLayout="wide"
+      label={label}
+      control={
+        <Select value={value} onValueChange={onChange} disabled={disabled}>
+          <SelectTrigger aria-label={label} className="w-full">
+            <SelectValue placeholder="—" />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      }
+    />
   );
 }
 
@@ -136,7 +140,7 @@ export function CodexConfigPanel({
     });
   }
   return (
-    <CodexSection title={advanced ? text.config : text.models}>
+    <CodexSection title={advanced ? text.config : text.models} card={advanced}>
       {[
         controller.snapshot.config?.error,
         controller.snapshot.requirements?.error,
@@ -238,8 +242,8 @@ export function CodexConfigPanel({
           {validationError ? <CodexNotice error>{validationError}</CodexNotice> : null}
         </>
       ) : (
-        <>
-          <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-3">
+          <SettingsGroupCard>
             <ConfigSelect
               label={text.model}
               value={modelName}
@@ -288,27 +292,29 @@ export function CodexConfigPanel({
               disabled={disabled}
               onChange={setSandbox}
             />
-          </div>
+          </SettingsGroupCard>
           {model ? <CodexNotice>{model.description}</CodexNotice> : null}
           {configured ? <CodexNotice>{text.configuredHelp}</CodexNotice> : null}
-          <CodexNotice>{text.defaults}</CodexNotice>
-          <Button
-            disabled={
-              disabled ||
-              (configured
-                ? !approval && !sandbox
-                : !model ||
-                  // 空能力表没有档位可校验，保存只写模型（见 codexModelEdits）。
-                  (model.supportedReasoningEfforts.length > 0 &&
-                    !model.supportedReasoningEfforts.some(
-                      (entry) => entry.reasoningEffort === effort,
-                    )))
-            }
-            onClick={saveDefaults}
-          >
-            {text.save}
-          </Button>
-        </>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CodexNotice>{text.defaults}</CodexNotice>
+            <Button
+              disabled={
+                disabled ||
+                (configured
+                  ? !approval && !sandbox
+                  : !model ||
+                    // 空能力表没有档位可校验，保存只写模型（见 codexModelEdits）。
+                    (model.supportedReasoningEfforts.length > 0 &&
+                      !model.supportedReasoningEfforts.some(
+                        (entry) => entry.reasoningEffort === effort,
+                      )))
+              }
+              onClick={saveDefaults}
+            >
+              {text.save}
+            </Button>
+          </div>
+        </div>
       )}
       {notice ? <CodexNotice>{notice}</CodexNotice> : null}
       {config ? (

@@ -1,14 +1,19 @@
 import { useMemo, useState } from "react";
+import { Cable, Plus, RefreshCcw } from "lucide-react";
 import { codexMcpOauthResponseSchema } from "@codez/shared";
 import { Badge } from "@/components/ui/badge.js";
 import { Button } from "@/components/ui/button.js";
 import { Switch } from "@/components/ui/switch.js";
+import {
+  SettingsResourceGroupHeader,
+  SettingsResourceList,
+} from "@/settings/SettingsResourceGroup.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
 import { codexAuthorizationUrl } from "./codexSettingsData.js";
 import { CodexNativeBrowserCuaCard } from "./CodexNativeBrowserCuaCard.js";
 import { CodexMcpServerForm } from "./CodexMcpServerForm.js";
-import { CodexConfirmButton, CodexNotice, CodexSection } from "./CodexSettingsParts.js";
+import { CodexConfirmButton, CodexNotice } from "./CodexSettingsParts.js";
 import {
   EMPTY_CODEX_MCP_FORM,
   codexMcpConfigToForm,
@@ -137,13 +142,16 @@ export function CodexMcpPanel({
   };
 
   const renderEntry = (entry: CodexMcpServerEntry) => (
-    <div
-      key={`${entry.scope}:${entry.dotCodexFolder ?? ""}:${entry.name}`}
-      className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"
-    >
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-hover">
+      <div
+        className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-foreground-subtle"
+        aria-hidden="true"
+      >
+        <Cable className="size-4" />
+      </div>
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-ui-base">{entry.name}</p>
+          <p className="truncate text-ui-base font-medium text-foreground">{entry.name}</p>
           {scopeBadge(entry)}
           {!entry.enabled ? <Badge variant="outline">{text.disabled}</Badge> : null}
         </div>
@@ -249,7 +257,7 @@ export function CodexMcpPanel({
   };
 
   return (
-    <CodexSection title={text.mcp}>
+    <div className="space-y-6">
       {state?.error ? <CodexNotice error>{state.error}</CodexNotice> : null}
       {configState?.error ? <CodexNotice error>{configState.error}</CodexNotice> : null}
       {!configState?.data && !configState?.error ? (
@@ -263,81 +271,95 @@ export function CodexMcpPanel({
         nativeBrowserControlEnabled={nativeBrowserControlEnabled}
         onNativeBrowserControlEnabledChange={onNativeBrowserControlEnabledChange}
       />
-      <div className="flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          disabled={disabled || !configState?.data}
-          onClick={() => {
-            setFormError(null);
-            setForm({ ...EMPTY_CODEX_MCP_FORM });
-          }}
-        >
-          {text.mcpAdd}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={disabled}
-          onClick={() =>
-            void controller.run(async () => {
-              await controller.request({ method: "config/mcpServer/reload" });
-            })
+      <section className="space-y-3">
+        <SettingsResourceGroupHeader
+          count={entries.length}
+          title={text.mcp}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={disabled}
+                onClick={() =>
+                  void controller.run(async () => {
+                    await controller.request({ method: "config/mcpServer/reload" });
+                  })
+                }
+              >
+                <RefreshCcw data-icon="inline-start" aria-hidden="true" />
+                {text.reload}
+              </Button>
+              <Button
+                size="sm"
+                disabled={disabled || !configState?.data}
+                onClick={() => {
+                  setFormError(null);
+                  setForm({ ...EMPTY_CODEX_MCP_FORM });
+                }}
+              >
+                <Plus data-icon="inline-start" aria-hidden="true" />
+                {text.mcpAdd}
+              </Button>
+            </div>
           }
-        >
-          {text.reload}
-        </Button>
-      </div>
-      {untrustedProjectLayer?.disabledReason ? (
-        <div className="space-y-2 rounded-lg border border-border bg-surface p-3">
-          <CodexNotice error>{untrustedProjectLayer.disabledReason}</CodexNotice>
-          <CodexNotice>{text.mcpProjectUntrustedHelp}</CodexNotice>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={disabled}
-            onClick={() =>
-              runUserWrite(() =>
-                trustCodexProject(
-                  controller,
-                  codexProjectRootFromDotFolder(untrustedProjectLayer.dotCodexFolder),
-                ),
-              )
-            }
-          >
-            {text.mcpTrustProject}
-          </Button>
-        </div>
-      ) : null}
-      {form ? (
-        <CodexMcpServerForm
-          form={form}
-          creating={!form.originalName}
-          disabled={disabled}
-          busy={controller.busy}
-          {...(formError ? { error: formError } : {})}
-          onChange={setForm}
-          onSubmit={submitForm}
-          onCancel={() => setForm(null)}
         />
-      ) : null}
-      {entries.map(renderEntry)}
-      {entries.length === 0 && !state?.error && !form ? (
-        <CodexNotice>{text.empty}</CodexNotice>
-      ) : null}
-      {authorization ? (
-        <div className="space-y-2">
-          <CodexNotice>
-            {authorization.name}: {text.pending}
-          </CodexNotice>
-          <Button
-            variant="outline"
+        {untrustedProjectLayer?.disabledReason ? (
+          <div className="space-y-2 rounded-lg border border-border bg-surface p-3">
+            <CodexNotice error>{untrustedProjectLayer.disabledReason}</CodexNotice>
+            <CodexNotice>{text.mcpProjectUntrustedHelp}</CodexNotice>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={disabled}
+              onClick={() =>
+                runUserWrite(() =>
+                  trustCodexProject(
+                    controller,
+                    codexProjectRootFromDotFolder(untrustedProjectLayer.dotCodexFolder),
+                  ),
+                )
+              }
+            >
+              {text.mcpTrustProject}
+            </Button>
+          </div>
+        ) : null}
+        {form ? (
+          <CodexMcpServerForm
+            form={form}
+            creating={!form.originalName}
             disabled={disabled}
-            onClick={() => platform.openExternal(authorization.url)}
-          >
-            {text.openBrowser}
-          </Button>
-        </div>
-      ) : null}
-    </CodexSection>
+            busy={controller.busy}
+            {...(formError ? { error: formError } : {})}
+            onChange={setForm}
+            onSubmit={submitForm}
+            onCancel={() => setForm(null)}
+          />
+        ) : null}
+        <SettingsResourceList
+          items={entries}
+          getKey={(entry) => `${entry.scope}:${entry.dotCodexFolder ?? ""}:${entry.name}`}
+          renderItem={renderEntry}
+        />
+        {entries.length === 0 && !state?.error && !form ? (
+          <CodexNotice>{text.empty}</CodexNotice>
+        ) : null}
+        {authorization ? (
+          <div className="space-y-2">
+            <CodexNotice>
+              {authorization.name}: {text.pending}
+            </CodexNotice>
+            <Button
+              variant="outline"
+              disabled={disabled}
+              onClick={() => platform.openExternal(authorization.url)}
+            >
+              {text.openBrowser}
+            </Button>
+          </div>
+        ) : null}
+      </section>
+    </div>
   );
 }

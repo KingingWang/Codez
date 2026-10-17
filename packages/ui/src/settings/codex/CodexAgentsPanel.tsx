@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Bot, Plus } from "lucide-react";
 import type {
   CodezAgentRoleScope,
   CodezAgentRoleSummary,
@@ -7,8 +8,13 @@ import type {
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import { Textarea } from "@/components/ui/textarea.js";
+import { SettingsGroupCard } from "@/settings/SettingsPageParts.js";
+import {
+  SettingsResourceGroupHeader,
+  SettingsResourceList,
+} from "@/settings/SettingsResourceGroup.js";
 import { useCodexAgents } from "@/hooks/useCodexAgents.js";
-import { CodexConfirmButton, CodexNotice, CodexSection } from "./CodexSettingsParts.js";
+import { CodexConfirmButton, CodexNotice } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
 
 // 与 bridge 新建派生规则一致（specs/codex-desktop-subagents.md）；最终校验仍以 bridge 为准。
@@ -102,71 +108,94 @@ export function CodexAgentsPanel(props: {
   const renderGroup = (scope: CodezAgentRoleScope, title: string, pathHint: string) => {
     const roles = controller.roles.filter((role) => role.scope === scope);
     return (
-      <div className="space-y-2 border-t border-border pt-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-ui-base font-medium">{title}</p>
-            <p className="font-mono text-ui-sm text-foreground-subtlest">{pathHint}</p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            // 两个可见“新建角色”按钮属于不同 Codex 目录；读屏名称必须携带作用域与路径。
-            aria-label={`${text.agentsCreate}: ${title} (${pathHint})`}
-            disabled={disabled}
-            onClick={() => {
-              setFormError(null);
-              setForm(formFromRole(scope));
-            }}
-          >
-            {text.agentsCreate}
-          </Button>
-        </div>
+      <section className="space-y-3">
+        <SettingsResourceGroupHeader
+          count={roles.length}
+          title={title}
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              // 两个可见“新建角色”按钮属于不同 Codex 目录；读屏名称必须携带作用域与路径。
+              aria-label={`${text.agentsCreate}: ${title} (${pathHint})`}
+              disabled={disabled}
+              onClick={() => {
+                setFormError(null);
+                setForm(formFromRole(scope));
+              }}
+            >
+              <Plus data-icon="inline-start" aria-hidden="true" />
+              {text.agentsCreate}
+            </Button>
+          }
+        />
+        <p className="font-mono text-ui-xs text-foreground-subtlest">{pathHint}</p>
         {roles.length === 0 && !controller.loading && !controller.readFailed ? (
           <CodexNotice>{text.agentsEmpty}</CodexNotice>
         ) : null}
-        {roles.map((role) => (
-          <div
-            key={`${scope}:${role.fileName}`}
-            className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"
-          >
-            <div className="min-w-0 flex-1">
-              <p className="text-ui-base">{role.name}</p>
-              {role.description ? (
-                <p className="break-words text-ui-sm text-foreground-subtle">{role.description}</p>
-              ) : null}
-              <p className="break-all font-mono text-ui-sm text-foreground-subtlest">
-                {role.fileName}
-                {role.model ? ` · ${role.model}` : ""}
-                {role.modelReasoningEffort ? ` · ${role.modelReasoningEffort}` : ""}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={disabled}
-                onClick={() => {
-                  setFormError(null);
-                  setForm(formFromRole(scope, role));
-                }}
+        <SettingsResourceList
+          items={roles}
+          getKey={(role) => `${scope}:${role.fileName}`}
+          renderItem={(role) => (
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-hover">
+              <div
+                className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-foreground-subtle"
+                aria-hidden="true"
               >
-                {text.agentsEdit}
-              </Button>
-              <CodexConfirmButton
-                label={text.agentsDelete}
-                disabled={disabled}
-                onConfirm={() => void controller.deleteRole({ scope, name: role.name })}
-              />
+                <Bot className="size-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="truncate text-ui-base font-medium text-foreground">
+                    {role.name}
+                  </span>
+                  {role.model ? (
+                    <span className="inline-flex min-h-5 items-center rounded-md bg-background px-1.5 py-0.5 font-mono text-ui-xs text-foreground-subtle ring-1 ring-border">
+                      {role.model}
+                    </span>
+                  ) : null}
+                  {role.modelReasoningEffort ? (
+                    <span className="inline-flex min-h-5 items-center rounded-md bg-background px-1.5 py-0.5 text-ui-xs text-foreground-subtle ring-1 ring-border">
+                      {role.modelReasoningEffort}
+                    </span>
+                  ) : null}
+                </div>
+                {role.description ? (
+                  <p className="mt-0.5 break-words text-ui-sm text-foreground-subtle">
+                    {role.description}
+                  </p>
+                ) : null}
+                <p className="mt-0.5 break-all font-mono text-ui-xs text-foreground-subtlest">
+                  {role.fileName}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={disabled}
+                  onClick={() => {
+                    setFormError(null);
+                    setForm(formFromRole(scope, role));
+                  }}
+                >
+                  {text.agentsEdit}
+                </Button>
+                <CodexConfirmButton
+                  label={text.agentsDelete}
+                  disabled={disabled}
+                  onConfirm={() => void controller.deleteRole({ scope, name: role.name })}
+                />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          )}
+        />
+      </section>
     );
   };
 
   return (
-    <CodexSection title={text.agents}>
+    <div className="space-y-6">
       <CodexNotice>{text.agentsHelp}</CodexNotice>
       {controller.loading ? <CodexNotice>{text.agentsLoading}</CodexNotice> : null}
       {controller.error ? (
@@ -194,96 +223,104 @@ export function CodexAgentsPanel(props: {
         </CodexNotice>
       ))}
       {form ? (
-        <div className="space-y-3 rounded-lg border border-border bg-surface p-3">
-          <div className="space-y-1">
-            <label className="text-ui-sm text-foreground-subtle" htmlFor="codex-agent-name">
-              {text.agentsName}
-            </label>
-            <Input
-              id="codex-agent-name"
-              value={form.name}
-              disabled={disabled || Boolean(form.originalName)}
-              onChange={(event) => setForm({ ...form, name: event.target.value })}
-            />
-            <p className="text-ui-sm text-foreground-subtlest">
-              {form.originalName ? text.agentsNameLocked : text.agentsNameHelp}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <label className="text-ui-sm text-foreground-subtle" htmlFor="codex-agent-description">
-              {text.agentsDescription}
-            </label>
-            <Input
-              id="codex-agent-description"
-              value={form.description}
-              disabled={disabled}
-              onChange={(event) => setForm({ ...form, description: event.target.value })}
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+        <SettingsGroupCard>
+          <div className="space-y-3 p-4">
             <div className="space-y-1">
-              <label className="text-ui-sm text-foreground-subtle" htmlFor="codex-agent-model">
-                {text.agentsModel}
+              <label className="text-ui-sm text-foreground-subtle" htmlFor="codex-agent-name">
+                {text.agentsName}
               </label>
               <Input
-                id="codex-agent-model"
-                value={form.model}
+                id="codex-agent-name"
+                value={form.name}
+                disabled={disabled || Boolean(form.originalName)}
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
+              />
+              <p className="text-ui-sm text-foreground-subtlest">
+                {form.originalName ? text.agentsNameLocked : text.agentsNameHelp}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <label
+                className="text-ui-sm text-foreground-subtle"
+                htmlFor="codex-agent-description"
+              >
+                {text.agentsDescription}
+              </label>
+              <Input
+                id="codex-agent-description"
+                value={form.description}
                 disabled={disabled}
-                onChange={(event) => setForm({ ...form, model: event.target.value })}
+                onChange={(event) => setForm({ ...form, description: event.target.value })}
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-ui-sm text-foreground-subtle" htmlFor="codex-agent-model">
+                  {text.agentsModel}
+                </label>
+                <Input
+                  id="codex-agent-model"
+                  value={form.model}
+                  disabled={disabled}
+                  onChange={(event) => setForm({ ...form, model: event.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-ui-sm text-foreground-subtle" htmlFor="codex-agent-effort">
+                  {text.agentsEffort}
+                </label>
+                <Input
+                  id="codex-agent-effort"
+                  value={form.effort}
+                  disabled={disabled}
+                  onChange={(event) => setForm({ ...form, effort: event.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label
+                className="text-ui-sm text-foreground-subtle"
+                htmlFor="codex-agent-instructions"
+              >
+                {text.agentsInstructions}
+              </label>
+              <Textarea
+                id="codex-agent-instructions"
+                value={form.instructions}
+                disabled={disabled}
+                onChange={(event) => setForm({ ...form, instructions: event.target.value })}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-ui-sm text-foreground-subtle" htmlFor="codex-agent-effort">
-                {text.agentsEffort}
+              <label className="text-ui-sm text-foreground-subtle" htmlFor="codex-agent-nicknames">
+                {text.agentsNicknames}
               </label>
               <Input
-                id="codex-agent-effort"
-                value={form.effort}
+                id="codex-agent-nicknames"
+                value={form.nicknames}
                 disabled={disabled}
-                onChange={(event) => setForm({ ...form, effort: event.target.value })}
+                onChange={(event) => setForm({ ...form, nicknames: event.target.value })}
               />
             </div>
+            {formError ? <CodexNotice error>{formError}</CodexNotice> : null}
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" disabled={disabled} onClick={submit}>
+                {text.save}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={controller.busy}
+                onClick={() => setForm(null)}
+              >
+                {text.cancelAction}
+              </Button>
+            </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-ui-sm text-foreground-subtle" htmlFor="codex-agent-instructions">
-              {text.agentsInstructions}
-            </label>
-            <Textarea
-              id="codex-agent-instructions"
-              value={form.instructions}
-              disabled={disabled}
-              onChange={(event) => setForm({ ...form, instructions: event.target.value })}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-ui-sm text-foreground-subtle" htmlFor="codex-agent-nicknames">
-              {text.agentsNicknames}
-            </label>
-            <Input
-              id="codex-agent-nicknames"
-              value={form.nicknames}
-              disabled={disabled}
-              onChange={(event) => setForm({ ...form, nicknames: event.target.value })}
-            />
-          </div>
-          {formError ? <CodexNotice error>{formError}</CodexNotice> : null}
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" disabled={disabled} onClick={submit}>
-              {text.save}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={controller.busy}
-              onClick={() => setForm(null)}
-            >
-              {text.cancelAction}
-            </Button>
-          </div>
-        </div>
+        </SettingsGroupCard>
       ) : null}
       {renderGroup("user", text.agentsUserScope, "~/.codex/agents")}
       {renderGroup("project", text.agentsProjectScope, ".codex/agents")}
-    </CodexSection>
+    </div>
   );
 }

@@ -1783,6 +1783,7 @@ export function SettingsPage({
                       <div className="space-y-8">
                         {isDesktop && isCodexSettingsSection(activeSection) ? (
                           <CodexSettingsSection
+                            embeddedInSettingsPage
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                             sessionId={selectedCodexSessionId}

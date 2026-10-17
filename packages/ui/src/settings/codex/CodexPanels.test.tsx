@@ -6,6 +6,9 @@ import type { IPlatformService } from "@codez/shared";
 import type { ICodezAgentService, IServiceAccessor } from "@codez/services";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
+import { ServiceProvider } from "@/hooks/useServices.js";
+import { TabStoreProvider } from "@/store/TabStoreProvider.js";
+import { TooltipProvider } from "@/components/ui/tooltip.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
 import { CodexAccountPanel } from "./CodexAccountPanel.js";
 import { CodexConfigPanel } from "./CodexConfigPanel.js";
@@ -14,7 +17,9 @@ import { appSettingsSchema, codexModelSchema } from "@codez/shared";
 import { CodexMcpPanel } from "./CodexMcpPanel.js";
 import { CodexSkillsPanel, CodexPluginsPanel } from "./CodexResourcesPanel.js";
 import { CodexHistoryPanel, HistoryRunRow } from "./CodexHistoryPanel.js";
+import { CodexMemoryPanel } from "./CodexMemoryPanel.js";
 import { CodexProvidersPanel } from "./CodexProvidersPanel.js";
+import { CodexSettingsSection } from "./CodexSettingsSection.js";
 import { codexVisibleConfig } from "./CodexSettingsParts.js";
 import { formatCodexTemplate, useCodexMessages } from "./messages.js";
 import { codexCapabilityGate, projectCodexCapabilities } from "@/capabilities/codexCapabilities.js";
@@ -50,11 +55,30 @@ const platform = {
   openExternal: () => {},
   executeDesktopCommand: async () => descriptor,
 } as unknown as IPlatformService;
+const mockServices = {
+  settingService: {
+    get: async () => ({}),
+    update: async () => {},
+  },
+  codezAgentService: {
+    onAgentRuntimeRestarted: () => ({ dispose() {} }),
+    readCodexCatalog: async () => ({ path: null, models: [] }),
+    readCodexCatalogModels: async () => ({ path: null, models: [] }),
+    listAgentRoles: async () => ({ roles: [], diagnostics: [] }),
+    codexRequest: async () => ({}),
+  },
+} as unknown as IServiceAccessor;
 function render(children: ReactNode, locale: "en-US" | "zh-CN" = "en-US"): string {
   return renderToStaticMarkup(
-    <CodezIntlProvider initialLocale={locale}>
-      <PlatformProvider platform={platform}>{children}</PlatformProvider>
-    </CodezIntlProvider>,
+    <ServiceProvider services={mockServices}>
+      <TabStoreProvider>
+        <CodezIntlProvider initialLocale={locale}>
+          <PlatformProvider platform={platform}>
+            <TooltipProvider>{children}</TooltipProvider>
+          </PlatformProvider>
+        </CodezIntlProvider>
+      </TabStoreProvider>
+    </ServiceProvider>,
   );
 }
 
@@ -736,4 +760,85 @@ test("providers panel renders provider facts without ever exposing the bearer to
   );
   assert.match(zh, /模型供应商/);
   assert.match(zh, /添加供应商/);
+});
+
+test("memory panel hides duplicate section heading in standalone SettingsPage mode and renders SettingsGroupCard rows", () => {
+  const config = {
+    config: {
+      features: { memories: true },
+      memories: { use_memories: true },
+    },
+    origins: {},
+    layers: [
+      {
+        name: { type: "user" as const, file: "/fixture/config.toml", profile: null },
+        version: "v1",
+        config: {},
+      },
+    ],
+  };
+  const standaloneZh = render(
+    <CodexMemoryPanel
+      hideSectionTitle
+      controller={{
+        ...controller,
+        snapshot: { config: { data: config } },
+      }}
+    />,
+    "zh-CN",
+  );
+  // 外层 SettingsPage 已展示“记忆”大标题时，内部卡片不再重复渲染 <h3>记忆</h3>。
+  assert.doesNotMatch(standaloneZh, /<h3[^>]*>记忆<\/h3>/);
+  assert.match(standaloneZh, /启用记忆/);
+  assert.match(standaloneZh, /<h3[^>]*>高级<\/h3>/);
+  assert.match(standaloneZh, /1 - 128 · 留空恢复原生默认值。（默认：2）/);
+
+  const standaloneEn = render(
+    <CodexMemoryPanel
+      hideSectionTitle
+      controller={{
+        ...controller,
+        snapshot: { config: { data: config } },
+      }}
+    />,
+    "en-US",
+  );
+  assert.doesNotMatch(standaloneEn, /<h3[^>]*>Memory<\/h3>/);
+  assert.match(standaloneEn, /Enable memory/);
+  assert.match(
+    standaloneEn,
+    /1 - 128 · Leave empty to restore the native default\. \(Default: 2\)/,
+  );
+});
+
+test("embedded SettingsPage mode eliminates duplicate top navigation for standalone sections and shows segmented tabs for Codex", () => {
+  const standaloneMemory = render(
+    <CodexSettingsSection
+      embeddedInSettingsPage
+      initialPanel="memory"
+      workspacePath="/fixture/workspace"
+    />,
+    "zh-CN",
+  );
+  // 独立分区模式不重复渲染顶部横向导航栏或 Codex 外壳标题。
+  assert.doesNotMatch(standaloneMemory, /<nav[^>]*aria-label="Codex"/);
+  assert.doesNotMatch(standaloneMemory, /role="tablist"/);
+  assert.doesNotMatch(standaloneMemory, /<h2[^>]*>Codex<\/h2>/);
+
+  const embeddedCodex = render(
+    <CodexSettingsSection
+      embeddedInSettingsPage
+      initialPanel="account"
+      workspacePath="/fixture/workspace"
+    />,
+    "zh-CN",
+  );
+  // Codex 入口仅渲染 4 个专属二级分段标签，不重复展示侧栏已有的记忆/插件/MCP/技能/子智能体。
+  assert.match(embeddedCodex, /role="tablist"/);
+  assert.match(embeddedCodex, /账户/);
+  assert.match(embeddedCodex, /模型与权限/);
+  assert.match(embeddedCodex, /配置/);
+  assert.match(embeddedCodex, /线程历史/);
+  assert.doesNotMatch(embeddedCodex, /role="tab"[^>]*>记忆<\/button>/);
+  assert.doesNotMatch(embeddedCodex, /role="tab"[^>]*>插件与市场<\/button>/);
 });

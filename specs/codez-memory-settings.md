@@ -118,7 +118,6 @@ UI Switch/Select
 6. 纯 CLI（config.json 写 `memory.use=false`）：桌面开关开也不注入记忆
    （AND 语义）。
 
-
 ## Codex 适配器路径（桌面默认运行时）
 
 上文描述的是 legacy codez-cli 运行时（`CODEZ_DESKTOP_RUNTIME=legacy`）的实现。
@@ -130,26 +129,27 @@ Host 侧第二存储，GUI 直接读写原生配置。
 ### 产品规则
 
 设置 > 记忆 在桌面直接呈现原生 Codex 记忆面板（`CodexMemoryPanel`，承载于
-`CodexSettingsSection`，与 models/skills/agents/mcp/plugins 同一模式），
+`CodexSettingsSection` 的独立分区模式，不重复展示左侧已有的横向导航标签或重复的
+「记忆」卡片大标题，开关与数值项复用 `SettingsGroupCard` + `SettingsRow` 原版样式），
 `memory` 从 `isCodexUnsupportedSection` 移除并加入 `isCodexSettingsSection`。
 
 可配置项（键名 = 原生 config.toml 键路径）：
 
-| 设置 | 键路径 | 类型 | 原生默认 |
-| ---- | ------ | ---- | -------- |
-| 记忆总开关 | `features.memories` | bool | false |
-| 在对话中使用记忆 | `memories.use_memories` | bool | true |
-| 自动生成记忆 | `memories.generate_memories` | bool | true |
-| 专用记忆工具 | `memories.dedicated_tools` | bool | false |
-| 外部上下文时禁用 | `memories.disable_on_external_context` | bool | false |
-| 提取模型 | `memories.extract_model` | string? | 供应商偏好模型 |
-| 整合模型 | `memories.consolidation_model` | string? | 供应商偏好模型 |
-| 单次启动最大处理会话数 | `memories.max_rollouts_per_startup` | int 1-128 | 2 |
-| 会话最大年龄（天） | `memories.max_rollout_age_days` | int 0-90 | 10 |
-| 会话最小空闲（小时） | `memories.min_rollout_idle_hours` | int 1-48 | 6 |
-| 整合最大原始记忆数 | `memories.max_raw_memories_for_consolidation` | int 1-4096 | 256 |
-| 记忆最长未使用（天） | `memories.max_unused_days` | int 0-365 | 30 |
-| 启动所需最低额度（%） | `memories.min_rate_limit_remaining_percent` | int 0-100 | 25 |
+| 设置                   | 键路径                                        | 类型       | 原生默认       |
+| ---------------------- | --------------------------------------------- | ---------- | -------------- |
+| 记忆总开关             | `features.memories`                           | bool       | false          |
+| 在对话中使用记忆       | `memories.use_memories`                       | bool       | true           |
+| 自动生成记忆           | `memories.generate_memories`                  | bool       | true           |
+| 专用记忆工具           | `memories.dedicated_tools`                    | bool       | false          |
+| 外部上下文时禁用       | `memories.disable_on_external_context`        | bool       | false          |
+| 提取模型               | `memories.extract_model`                      | string?    | 供应商偏好模型 |
+| 整合模型               | `memories.consolidation_model`                | string?    | 供应商偏好模型 |
+| 单次启动最大处理会话数 | `memories.max_rollouts_per_startup`           | int 1-128  | 2              |
+| 会话最大年龄（天）     | `memories.max_rollout_age_days`               | int 0-90   | 10             |
+| 会话最小空闲（小时）   | `memories.min_rollout_idle_hours`             | int 1-48   | 6              |
+| 整合最大原始记忆数     | `memories.max_raw_memories_for_consolidation` | int 1-4096 | 256            |
+| 记忆最长未使用（天）   | `memories.max_unused_days`                    | int 0-365  | 30             |
+| 启动所需最低额度（%）  | `memories.min_rate_limit_remaining_percent`   | int 0-100  | 25             |
 
 「默认/未配置」语义：读取时键缺席即显示原生默认值；用户选择「默认」或清空
 数值输入时以 `value: null, mergeStrategy: "replace"` 删除该键，恢复原生默认。

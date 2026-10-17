@@ -1,12 +1,41 @@
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button.js";
+import { SettingsGroupCard } from "@/settings/SettingsPageParts.js";
 import { useCodexMessages } from "./messages.js";
 
-export function CodexSection({ title, children }: { title: string; children: ReactNode }) {
+export function CodexSection({
+  title,
+  description,
+  actions,
+  card = true,
+  children,
+}: {
+  title?: string;
+  description?: ReactNode;
+  actions?: ReactNode;
+  card?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <section className="space-y-3 rounded-xl border border-border bg-card p-4">
-      <h3 className="text-ui-base font-medium">{title}</h3>
-      {children}
+    <section className="space-y-3">
+      {title || description || actions ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {title ? <h3 className="text-ui-base font-medium text-foreground">{title}</h3> : null}
+            {description ? (
+              <div className="mt-1 text-ui-sm text-foreground-subtle">{description}</div>
+            ) : null}
+          </div>
+          {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+        </div>
+      ) : null}
+      {card ? (
+        <SettingsGroupCard>
+          <div className="space-y-3 p-4">{children}</div>
+        </SettingsGroupCard>
+      ) : (
+        children
+      )}
     </section>
   );
 }
@@ -14,7 +43,11 @@ export function CodexNotice({ children, error = false }: { children: ReactNode; 
   return (
     <p
       role={error ? "alert" : "status"}
-      className={`break-words text-ui-sm ${error ? "text-destructive" : "text-foreground-subtle"}`}
+      className={
+        error
+          ? "break-words rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-ui-sm text-destructive"
+          : "break-words text-ui-sm text-foreground-subtle"
+      }
     >
       {children}
     </p>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { resolveCodexTitleModel, type AppSettings, type CodexTitleModel } from "@codez/shared";
+import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
 import {
   Select,
   SelectContent,
@@ -117,36 +118,38 @@ export function CodexTitleModelSettings({
   ) {
     const unavailable = value !== INHERIT && !options.has(value);
     return (
-      <div className="min-w-0 space-y-1 text-ui-sm">
-        <span>{label}</span>
-        <Select
-          value={value}
-          onValueChange={onChange}
-          disabled={!settings || !catalog || Boolean(settingsError) || busy}
-        >
-          <SelectTrigger aria-label={label} className="w-full">
-            <SelectValue placeholder="—" />
-          </SelectTrigger>
-          <SelectContent>
-            {inherit ? <SelectItem value={INHERIT}>{text.titleModelInherit}</SelectItem> : null}
-            {unavailable ? (
-              <SelectItem value={value} disabled>
-                {JSON.parse(value)[1]} · {text.titleModelUnavailable}
-              </SelectItem>
-            ) : null}
-            {modelItems()}
-          </SelectContent>
-        </Select>
-      </div>
+      <SettingsRow
+        controlLayout="wide"
+        label={label}
+        control={
+          <Select
+            value={value}
+            onValueChange={onChange}
+            disabled={!settings || !catalog || Boolean(settingsError) || busy}
+          >
+            <SelectTrigger aria-label={label} className="w-full">
+              <SelectValue placeholder="—" />
+            </SelectTrigger>
+            <SelectContent>
+              {inherit ? <SelectItem value={INHERIT}>{text.titleModelInherit}</SelectItem> : null}
+              {unavailable ? (
+                <SelectItem value={value} disabled>
+                  {JSON.parse(value)[1]} · {text.titleModelUnavailable}
+                </SelectItem>
+              ) : null}
+              {modelItems()}
+            </SelectContent>
+          </Select>
+        }
+      />
     );
   }
 
   return (
-    <CodexSection title={text.titleModelTitle}>
-      <p className="text-ui-sm text-foreground-subtle">{text.titleModelHelp}</p>
+    <CodexSection title={text.titleModelTitle} description={text.titleModelHelp} card={false}>
       {catalogError ? <CodexNotice error>{catalogError}</CodexNotice> : null}
       {settingsError ? <CodexNotice error>{text.titleModelSettingsUnavailable}</CodexNotice> : null}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <SettingsGroupCard>
         {picker(text.titleModelGlobal, global ? modelKey(global) : "", (value) => {
           const model = options.get(value);
           if (model) void save({ codexTitleDefaultModel: model });
@@ -166,7 +169,7 @@ export function CodexTitleModelSettings({
           },
           true,
         )}
-      </div>
+      </SettingsGroupCard>
       {effective ? (
         <p className="text-ui-sm text-foreground-subtle">
           {!override ? `${text.titleModelInherit} · ` : ""}

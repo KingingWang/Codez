@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import {
   codexConfigWriteResponseSchema,
   type CodezCatalogModelEntry,
@@ -6,6 +7,10 @@ import {
 } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Switch } from "@/components/ui/switch.js";
+import {
+  SettingsResourceGroupHeader,
+  SettingsResourceList,
+} from "@/settings/SettingsResourceGroup.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
 import {
   codexCatalogModelTemplate,
@@ -30,7 +35,7 @@ import {
 import { codexUserConfigTarget } from "./codexSettingsData.js";
 import { CodexCatalogModelFormView, CodexProviderFormView } from "./CodexProviderForms.js";
 import { CodexProviderRow } from "./CodexProviderRow.js";
-import { CodexConfirmButton, CodexNotice, CodexSection } from "./CodexSettingsParts.js";
+import { CodexConfirmButton, CodexNotice } from "./CodexSettingsParts.js";
 import { useCodexMessages } from "./messages.js";
 import {
   useCodexManagedKeyState,
@@ -85,8 +90,11 @@ export function CodexProvidersPanel({
     workspaceRef?.workspacePath,
   );
   // 本机临时 Key 的凭据存在性；仅控制提示展示，安全判定在 Host/bridge。
-  const { managedKeyConfigured, probeProvider, reset: resetManagedKeyState } =
-    useCodexManagedKeyState(keyService, keySourceSupported);
+  const {
+    managedKeyConfigured,
+    probeProvider,
+    reset: resetManagedKeyState,
+  } = useCodexManagedKeyState(keyService, keySourceSupported);
 
   const loadCatalog = useCallback(async () => {
     if (!workspaceRef) return;
@@ -200,8 +208,28 @@ export function CodexProvidersPanel({
     });
 
   return (
-    <div className="space-y-4">
-      <CodexSection title={text.providers}>
+    <div className="space-y-6">
+      <section className="space-y-3">
+        <SettingsResourceGroupHeader
+          count={providers.length}
+          title={text.providers}
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={Boolean(disabled)}
+              onClick={() => {
+                setFormError(null);
+                setModelForm(null);
+                setProviderForm({ form: codexProviderFormFrom(), creating: true });
+                resetManagedKeyState();
+              }}
+            >
+              <Plus data-icon="inline-start" aria-hidden="true" />
+              {text.providerAdd}
+            </Button>
+          }
+        />
         <CodexNotice>{text.providersHelp}</CodexNotice>
         {controller.snapshot.config?.error ? (
           <CodexNotice error>{controller.snapshot.config.error}</CodexNotice>
@@ -212,39 +240,27 @@ export function CodexProvidersPanel({
           <CodexNotice>{text.providerCatalogUnavailable}</CodexNotice>
         ) : null}
         {providers.length === 0 ? <CodexNotice>{text.providerEmpty}</CodexNotice> : null}
-        {providers.map((view) => (
-          <CodexProviderRow
-            key={view.id}
-            view={view}
-            disabled={Boolean(disabled)}
-            catalogReady={catalogReady}
-            onSetDefault={() =>
-              void controller.run(() => writeEdits(codexProviderSetDefaultEdits(view.id)))
-            }
-            onEdit={() => {
-              setFormError(null);
-              setModelForm(null);
-              setProviderForm({ form: codexProviderFormFrom(view), creating: false });
-              probeProvider(view);
-            }}
-            onDelete={() => deleteProvider(view)}
-          />
-        ))}
-        <div className="border-t border-border pt-3">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={Boolean(disabled)}
-            onClick={() => {
-              setFormError(null);
-              setModelForm(null);
-              setProviderForm({ form: codexProviderFormFrom(), creating: true });
-              resetManagedKeyState();
-            }}
-          >
-            {text.providerAdd}
-          </Button>
-        </div>
+        <SettingsResourceList
+          items={providers}
+          getKey={(view) => view.id}
+          renderItem={(view) => (
+            <CodexProviderRow
+              view={view}
+              disabled={Boolean(disabled)}
+              catalogReady={catalogReady}
+              onSetDefault={() =>
+                void controller.run(() => writeEdits(codexProviderSetDefaultEdits(view.id)))
+              }
+              onEdit={() => {
+                setFormError(null);
+                setModelForm(null);
+                setProviderForm({ form: codexProviderFormFrom(view), creating: false });
+                probeProvider(view);
+              }}
+              onDelete={() => deleteProvider(view)}
+            />
+          )}
+        />
         {providerForm ? (
           <CodexProviderFormView
             form={providerForm.form}
@@ -269,8 +285,36 @@ export function CodexProvidersPanel({
             }}
           />
         ) : null}
-      </CodexSection>
-      <CodexSection title={text.providerModels}>
+      </section>
+      <section className="space-y-3">
+        <SettingsResourceGroupHeader
+          count={catalog?.models.length ?? 0}
+          title={text.providerModels}
+          actions={
+            catalog?.path ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={Boolean(disabled) || providers.length === 0}
+                onClick={() => {
+                  setFormError(null);
+                  setProviderForm(null);
+                  const firstProvider = providers[0]?.id;
+                  if (!firstProvider) return;
+                  setModelForm(
+                    codexModelFormFrom(
+                      undefined,
+                      codexCatalogModelTemplate(catalog.models, firstProvider),
+                    ),
+                  );
+                }}
+              >
+                <Plus data-icon="inline-start" aria-hidden="true" />
+                {text.modelAdd}
+              </Button>
+            ) : undefined
+          }
+        />
         <CodexNotice>{text.providerModelsHelp}</CodexNotice>
         {catalogError ? <CodexNotice error>{catalogError}</CodexNotice> : null}
         {catalogReady && !catalog?.path ? <CodexNotice>{text.modelNoCatalog}</CodexNotice> : null}
@@ -278,83 +322,64 @@ export function CodexProvidersPanel({
           <CodexNotice>{text.providerModelsEmpty}</CodexNotice>
         ) : null}
         {modelGroups.map((group) => (
-          <div key={group.key || "(none)"} className="space-y-2 border-t border-border pt-3">
+          <div key={group.key || "(none)"} className="space-y-2">
             <p className="text-ui-sm font-medium text-foreground-subtle">{group.label}</p>
-            {group.entries.map((view) => (
-              <div key={view.slug} className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-ui-base">{view.displayName}</p>
-                  <p className="break-all font-mono text-ui-sm text-foreground-subtlest">
-                    {view.slug}
-                    {view.slug === defaultModel ? ` · config.model` : ""}
-                  </p>
-                  {view.slug === defaultModel ? (
-                    <p className="text-ui-sm text-foreground-subtlest">
-                      {text.modelDeleteDefaultWarning}
+            <SettingsResourceList
+              items={group.entries}
+              getKey={(view) => view.slug}
+              renderItem={(view) => (
+                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-hover">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-ui-base font-medium text-foreground">{view.displayName}</p>
+                    <p className="mt-0.5 break-all font-mono text-ui-sm text-foreground-subtlest">
+                      {view.slug}
+                      {view.slug === defaultModel ? ` · config.model` : ""}
                     </p>
-                  ) : null}
-                  {catalog?.models.length === 1 ? (
-                    <p className="text-ui-sm text-foreground-subtle">
-                      {text.modelDeleteLastBlocked}
-                    </p>
-                  ) : null}
+                    {view.slug === defaultModel ? (
+                      <p className="mt-0.5 text-ui-sm text-foreground-subtlest">
+                        {text.modelDeleteDefaultWarning}
+                      </p>
+                    ) : null}
+                    {catalog?.models.length === 1 ? (
+                      <p className="mt-0.5 text-ui-sm text-foreground-subtle">
+                        {text.modelDeleteLastBlocked}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Switch
+                      // 列表勾选态是“显示”，与编辑表单的 hidden 草稿相反；读屏名称必须跟状态一致，
+                      // 并包含 slug，避免多个同名模型的开关无法区分。
+                      aria-label={`${text.modelVisible}: ${view.slug}`}
+                      checked={!view.hidden}
+                      disabled={Boolean(disabled) || !catalog?.path}
+                      onCheckedChange={() => toggleModelHidden(view)}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={Boolean(disabled)}
+                      onClick={() => {
+                        setFormError(null);
+                        setProviderForm(null);
+                        const source = catalog?.models.find((entry) => entry.slug === view.slug);
+                        if (source) setModelForm(codexModelFormFrom(source, {}));
+                      }}
+                    >
+                      {text.providerEdit}
+                    </Button>
+                    <CodexConfirmButton
+                      label={text.providerDelete}
+                      targetLabel={view.slug}
+                      disabled={Boolean(disabled) || catalog?.models.length === 1}
+                      onConfirm={() => deleteModel(view.slug)}
+                    />
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Switch
-                    // 列表勾选态是“显示”，与编辑表单的 hidden 草稿相反；读屏名称必须跟状态一致，
-                    // 并包含 slug，避免多个同名模型的开关无法区分。
-                    aria-label={`${text.modelVisible}: ${view.slug}`}
-                    checked={!view.hidden}
-                    disabled={Boolean(disabled) || !catalog?.path}
-                    onCheckedChange={() => toggleModelHidden(view)}
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={Boolean(disabled)}
-                    onClick={() => {
-                      setFormError(null);
-                      setProviderForm(null);
-                      const source = catalog?.models.find((entry) => entry.slug === view.slug);
-                      if (source) setModelForm(codexModelFormFrom(source, {}));
-                    }}
-                  >
-                    {text.providerEdit}
-                  </Button>
-                  <CodexConfirmButton
-                    label={text.providerDelete}
-                    targetLabel={view.slug}
-                    disabled={Boolean(disabled) || catalog?.models.length === 1}
-                    onConfirm={() => deleteModel(view.slug)}
-                  />
-                </div>
-              </div>
-            ))}
+              )}
+            />
           </div>
         ))}
-        {catalog?.path ? (
-          <div className="border-t border-border pt-3">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={Boolean(disabled) || providers.length === 0}
-              onClick={() => {
-                setFormError(null);
-                setProviderForm(null);
-                const firstProvider = providers[0]?.id;
-                if (!firstProvider) return;
-                setModelForm(
-                  codexModelFormFrom(
-                    undefined,
-                    codexCatalogModelTemplate(catalog.models, firstProvider),
-                  ),
-                );
-              }}
-            >
-              {text.modelAdd}
-            </Button>
-          </div>
-        ) : null}
         {modelForm ? (
           <CodexCatalogModelFormView
             form={modelForm}
@@ -381,7 +406,7 @@ export function CodexProvidersPanel({
             />
           </div>
         ) : null}
-      </CodexSection>
+      </section>
     </div>
   );
 }

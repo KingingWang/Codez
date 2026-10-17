@@ -84,7 +84,7 @@ try {
   await page.getByText("This provider does not require OpenAI sign-in.").waitFor();
   checks.push("Actual native account/read shows isolated no-auth provider; no login mutation");
   checks.push("Sidebar legacy Connect replaced with Codex account entry opening native settings");
-  await page.getByRole("button", { name: "Models & permissions", exact: true }).click();
+  await page.getByRole("tab", { name: "Models & permissions", exact: true }).click();
   await page.getByRole("combobox", { name: "Default model", exact: true }).waitFor();
   assert.match(
     await page.getByRole("combobox", { name: "Default model", exact: true }).innerText(),
@@ -101,7 +101,8 @@ try {
   await page.getByRole("button", { name: "MCP Servers", exact: true }).click();
   assert.equal(await page.getByTestId("codex-settings").count(), 1);
   checks.push("Legacy MCP settings navigation routes to dedicated native settings");
-  await page.getByRole("button", { name: "Configuration", exact: true }).click();
+  await page.getByRole("button", { name: "Codex", exact: true }).click();
+  await page.getByRole("tab", { name: "Configuration", exact: true }).click();
   await page.getByRole("heading", { name: "Configuration", exact: true }).waitFor();
   assert.equal(
     await page.locator("main h2").first().innerText(),
@@ -118,7 +119,7 @@ try {
       .getAttribute("aria-current"),
     null,
   );
-  await page.getByRole("button", { name: "Thread history", exact: true }).click();
+  await page.getByRole("tab", { name: "Thread history", exact: true }).click();
   await page.getByRole("heading", { name: "Codex thread history", exact: true }).waitFor();
   assert.equal(await page.locator("main h2").first().innerText(), "Codex");
   await page.getByRole("button", { name: "Codex", exact: true }).click();
@@ -128,7 +129,7 @@ try {
   );
   await page.getByRole("button", { name: "Skills", exact: true }).last().click();
   await page.getByRole("button", { name: /Disable imagegen \(system:/ }).waitFor();
-  await page.getByRole("button", { name: "Plugins & marketplaces", exact: true }).click();
+  await page.getByRole("button", { name: "Plugins", exact: true }).click();
   await page.getByRole("button", { name: /Install game-studio \(openai-api-curated,/ }).waitFor();
   await page.getByRole("button", { name: "Remove openai-api-curated", exact: true }).click();
   await page.getByRole("button", { name: "Confirm removal: Remove openai-api-curated" }).waitFor();
