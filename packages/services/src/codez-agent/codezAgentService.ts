@@ -4493,13 +4493,24 @@ export function createCodezAgentService(
 
     async getAppUsageStats(params: CodezAgentAppUsageParams) {
       // usage 表位于全局 session 库；复用任意已连接的 workspace client 即可拿到全应用范围数据。
-      const active = activeClientsByWorkspaceKey.values().next().value;
-      if (!active) {
-        throw new Error("no_active_workspace");
+      // 当尚未打开任何会话或已回收时，回落到本机管理面载体，避免打开设置页统计时抛 no_active_workspace。
+      let client: CodezProtocolClient | undefined;
+      for (const active of activeClientsByWorkspaceKey.values()) {
+        if (
+          isLocalActiveWorkspaceClient(active.workspace) &&
+          isReusableActiveClientEntry(active.workspace, active)
+        ) {
+          client = active.client;
+          break;
+        }
+      }
+      if (!client) {
+        const fallbackActive = activeClientsByWorkspaceKey.values().next().value;
+        client = fallbackActive ? fallbackActive.client : await getPluginManagementClient();
       }
       // usage/stats → v4/usage/stats（additive query，事实源在 CLI usage store，
       // 载荷同形；旧词消费清零，CLI 旧 case 留到旧词删除之时）。
-      return active.client.request(
+      return client.request(
         V4_METHODS.usageStats,
         { range: params.range, timeZone: params.timeZone },
         v4UsageStatsResultSchema,

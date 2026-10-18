@@ -24,11 +24,8 @@ import { projectCodexHistoryRuns } from "./history-runs.js";
 import { join } from "node:path";
 import { AuxiliaryText } from "./auxiliary-text.js";
 import { SessionTitleCoordinator } from "./session-title.js";
-import {
-  queryBridgePlans,
-  queryBridgeRowPayload,
-  queryBridgeRowsRange,
-} from "./thread-queries.js";
+import { queryBridgePlans, queryBridgeRowPayload, queryBridgeRowsRange } from "./thread-queries.js";
+import { queryCodexAppUsageStats } from "./codex-app-usage.js";
 import { scopeWorkspaceParams, handleCodexNativeRequest } from "./request-scope.js";
 import type { BridgeFailureOrigin } from "./diagnostics.js";
 
@@ -267,6 +264,11 @@ export class BridgeRuntime {
       case V4_METHODS.conversationPlans: {
         return {
           result: await queryBridgePlans(params, (id) => this.snapshots.conversation(id)),
+        };
+      }
+      case V4_METHODS.usageStats: {
+        return {
+          result: await queryCodexAppUsageStats(params),
         };
       }
       case V4_METHODS.codexConversationHistoryRuns: {

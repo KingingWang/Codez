@@ -62,24 +62,26 @@ Malformed/incomplete records remain sparse and do not invent values. Disconnect 
 
 ## UI boundary
 
-App Usage copy must state that Codex usage is desktop-observed telemetry and is not an official billing statement. It must render the Codex observation summary separately from agent-database usage: only observed threads and observed token fields are shown; absent facts stay unavailable rather than becoming zero. It must render cache-owned conflict and disconnect-staleness flags rather than inferring them in the renderer. Coding Plan remains an independent remote source and is never read or merged by this cache.
+App Usage copy must state that Codex usage is desktop-observed telemetry and is not an official billing statement. Setting's Usage section (`UsageStatsSection`) is unified as a pure local App Usage panel (`AppUsagePanel`) without remote Coding Plan quota/reset/monitor tabs, because providers are user-configured.
 
-When Desktop is running the Codex adapter, App Usage is an observation-only
-surface. The renderer reads the existing Desktop-owned observation cache, but
-does not query or display the legacy agent-database charts, lifetime totals or
-their loading/error/empty states. A failed Codex observation read shows its
-own actionable error; no snapshot shows an explicit "no observed threads yet"
-state rather than five measured zeroes. A nonempty snapshot shows only observed
-totals and the existing owner-provided stale/conflict flags. Web/legacy usage
-keeps its current chart and error semantics.
+In the Codex desktop bridge runtime, `v4/usage/stats` aggregates local Codex persistence under `CODEX_HOME` (`~/.codex` by default: `state_*.sqlite` `threads`, `thread_history_*.sqlite` `thread_turns`, and session rollout `.jsonl` `turn_context` / `token_count` events) into the canonical `AppUsageSnapshot` contract:
+
+- All-time summary metrics (`totalTokens`, `peakDayTokens`, `longestSessionMs`, `currentStreakDays`, `longestStreakDays`)
+- 52-week token activity heatmap (`heatmap`)
+- Time-range filtered (`7d`, `30d`, `all`) daily per-model token trend (`dailyModelUsage`) and per-model usage breakdown (`models`, including `inputTokens`, `outputTokens`, and optional `cacheReadTokens`)
+
+`AppUsagePanel` renders the pre-fork four-section layout (lifetime summary strip, 52-week token activity heatmap, time range switcher `7d` / `30d` / `all`, daily model token trend chart with per-model breakdown tooltip, and model usage donut chart + breakdown list).
+
+The Host-owned `CodexUsageObservationCache` and `CodexOnlyUsagePanel` remain available for explicit observation-race QA harnesses and isolated thread telemetry checks, where read responses stay scoped to the current workspace identity and Host service generation:
 Read responses are scoped to the current workspace identity and Host service
 generation. A later refresh, Host reconnect, identity switch or unmount
 invalidates earlier pending reads, including their error/loading completions;
 an old response cannot replace a newer owner projection.
 
 ```text
-native token facts → Desktop/Host observation owner → Codex-only summary
-legacy agent DB ────────────────────────────────→ Web/legacy usage only
+local CODEX_HOME (state sqlite + rollout jsonl) ─┐
+                                                 ├─ v4/usage/stats → AppUsagePanel (summary + heatmap + daily model trend + model pie)
+legacy agent DB (codez-cli sqlite) ──────────────┘
 ```
 
 Acceptance: one observed thread + failed legacy usage source still renders the

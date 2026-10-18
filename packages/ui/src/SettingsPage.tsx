@@ -601,7 +601,8 @@ export function SettingsPage({
       : resolveSettingsUsageCodingPlanSourceId(usageActiveTab);
   const selectedUsageCodingPlanSource =
     usageCodingPlanSources.find((source) => source.id === selectedUsageCodingPlanSourceId) ?? null;
-  const showUsageCodingPlanTab = usageCodingPlanSources.length > 0;
+  // 使用统计页面已收敛为纯本地应用用量面板，不再展示特定商业套餐 Tab。
+  const showUsageCodingPlanTab = usageCodingPlanSources.length < 0;
   const checkingUsageZaiCodingPlanTab = Boolean(
     usageZaiProviderFingerprint &&
     (usageZaiEntitlement.loading || (!usageZaiEntitlement.snapshot && !usageZaiEntitlement.error)),
@@ -1767,7 +1768,7 @@ export function SettingsPage({
                                 })}
                               </span>
                             ) : null}
-                            {activeSection === "usage" ? (
+                            {activeSection === "usage" && showUsageCodingPlanTab ? (
                               <SettingsUsageProviderTabs
                                 activeTab={usageActiveTab}
                                 codingPlanSources={usageCodingPlanSources}

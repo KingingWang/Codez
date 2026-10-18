@@ -228,6 +228,10 @@ export const appUsageHeatmapSchema = z.object({
 export const appUsageDailyModelItemSchema = z.object({
   modelId: z.string().nullable(),
   totalTokens: z.number(),
+  inputTokens: z.number().optional(),
+  outputTokens: z.number().optional(),
+  cacheReadTokens: z.number().optional(),
+  cacheCreationTokens: z.number().optional(),
 });
 
 export const appUsageDailyModelUsageSchema = z.object({
@@ -240,6 +244,8 @@ export const appUsageModelUsageSchema = z.object({
   totalTokens: z.number(),
   inputTokens: z.number(),
   outputTokens: z.number(),
+  cacheReadTokens: z.number().optional(),
+  cacheCreationTokens: z.number().optional(),
   requestCount: z.number(),
   share: z.number(),
 });

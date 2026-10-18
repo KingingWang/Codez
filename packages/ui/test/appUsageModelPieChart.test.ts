@@ -49,8 +49,9 @@ function createModel(modelId: string, totalTokens: number): AppUsageSnapshot["mo
   return {
     modelId,
     totalTokens,
-    inputTokens: 0,
-    outputTokens: 0,
+    inputTokens: Math.floor(totalTokens * 0.7),
+    outputTokens: totalTokens - Math.floor(totalTokens * 0.7),
+    cacheReadTokens: Math.floor(totalTokens * 0.2),
     requestCount: 1,
     share: 0,
   };
@@ -107,6 +108,9 @@ describe("buildAppUsageModelPieChartViewModel", () => {
     expect(viewModel.chartData.at(-1)).toMatchObject({
       label: "Other models",
       totalTokens: 100,
+      inputTokens: 70,
+      outputTokens: 30,
+      cacheReadTokens: 20,
     });
     expect(viewModel.chartData.reduce((sum, slice) => sum + slice.share, 0)).toBeCloseTo(1);
     expect(viewModel.chartConfig.model5?.color).toBe("var(--color-usage-chart-6)");

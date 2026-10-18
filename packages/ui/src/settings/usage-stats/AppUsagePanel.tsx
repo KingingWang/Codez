@@ -178,19 +178,14 @@ export function AppUsagePanel({
 }) {
   const { intl, locale } = useCodezIntl();
   const [range, setRange] = useState<AppUsageRange>("7d");
-  const codexUsage = useCodexUsageObservations({ workspaceIdentity, workspacePath });
+  void workspaceIdentity;
+  void workspacePath;
   const { snapshot: lifetimeSnapshot, refresh: refreshLifetime } = useAppUsageStats("all");
   const { snapshot, loading, error, refresh } = useAppUsageStats(range);
 
   if (loading && !snapshot) {
     return (
       <div className="space-y-5">
-        <CodexUsageObservationNotice intl={intl} />
-        <CodexUsageObservationSummary
-          observations={codexUsage.snapshot}
-          intl={intl}
-          locale={locale}
-        />
         <AppUsageLifetimeSummaryStrip snapshot={lifetimeSnapshot} />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-ui-base font-medium text-foreground">
@@ -212,12 +207,6 @@ export function AppUsagePanel({
   if (!snapshot) {
     return (
       <div className="space-y-5">
-        <CodexUsageObservationNotice intl={intl} />
-        <CodexUsageObservationSummary
-          observations={codexUsage.snapshot}
-          intl={intl}
-          locale={locale}
-        />
         <AppUsageLifetimeSummaryStrip snapshot={lifetimeSnapshot} />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-ui-base font-medium text-foreground">
@@ -238,12 +227,6 @@ export function AppUsagePanel({
 
   return (
     <div className="space-y-5">
-      <CodexUsageObservationNotice intl={intl} />
-      <CodexUsageObservationSummary
-        observations={codexUsage.snapshot}
-        intl={intl}
-        locale={locale}
-      />
       <AppUsageLifetimeSummaryStrip snapshot={lifetimeSnapshot} />
       {lifetimeSnapshot?.heatmap.weeks.length ? (
         <UsageHeatmap locale={locale} intl={intl} weeks={lifetimeSnapshot.heatmap.weeks} />
@@ -282,7 +265,7 @@ export function AppUsagePanel({
           size="sm"
           className="h-8 rounded-md bg-background"
           onClick={() => {
-            void Promise.all([refresh(), refreshLifetime(), codexUsage.refresh()]);
+            void Promise.all([refresh(), refreshLifetime()]);
           }}
         >
           <RefreshCcw className="size-3.5" />
@@ -298,9 +281,7 @@ export function AppUsageLifetimeSummaryStrip({ snapshot }: { snapshot: AppUsageS
   const items = [
     {
       label: intl.formatMessage({ id: "settings.usage.lifetimeTotalTokens" }),
-      value: snapshot
-        ? formatSummaryCompactTokenUsage(locale, snapshot.summary.totalTokens)
-        : "--",
+      value: snapshot ? formatSummaryCompactTokenUsage(locale, snapshot.summary.totalTokens) : "--",
     },
     {
       label: intl.formatMessage({ id: "settings.usage.lifetimePeakTokens" }),

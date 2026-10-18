@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFile } from "node:fs/promises";
 import type { AppUsageRange, AppUsageSnapshot } from "@codez/shared";
 import type { IServiceAccessor } from "@codez/services";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
+import { UsageStatsSection } from "@/settings/UsageStatsSection.js";
 import {
   AppUsageLifetimeSummaryStrip,
   AppUsagePanel,
@@ -112,6 +113,7 @@ function createServices(): IServiceAccessor {
 }
 
 afterEach(() => {
+  cleanup();
   vi.restoreAllMocks();
 });
 
@@ -202,6 +204,49 @@ describe("AppUsageLifetimeSummaryStrip", () => {
     expect(screen.queryByText("消息数量")).toBeNull();
     expect(screen.queryByText("活跃天数")).toBeNull();
     expect(screen.queryByText("最常用模型")).toBeNull();
+  });
+
+  it("UsageStatsSection converges to AppUsagePanel even when desktopCodex is true and refreshes snapshot on range switch", async () => {
+    await Promise.all([
+      import("@/settings/usage-stats/AppUsageDailyModelTrendChart.js"),
+      import("@/settings/usage-stats/AppUsageModelUsagePieChart.js"),
+    ]);
+    const services = createServices();
+    render(
+      createElement(
+        ServiceProvider,
+        { services },
+        createElement(
+          CodezIntlProvider,
+          { initialLocale: "zh-CN" },
+          createElement(UsageStatsSection, {
+            activeTab: "app",
+            desktopCodex: true,
+            providerSourcesLoading: false,
+            workspacePath: "/workspace",
+          }),
+        ),
+      ),
+    );
+
+    await screen.findByText("累计 Token 数");
+    await waitFor(
+      () => {
+        expect(screen.queryAllByText("正在统计中")).toHaveLength(0);
+      },
+      { timeout: 5000 },
+    );
+    expect(await screen.findByText("每日 Token 趋势图")).toBeTruthy();
+    expect(screen.queryByTestId("codex-usage-observations")).toBeNull();
+
+    const thirtyDayTab = screen.getByRole("tab", { name: "近 30 日" });
+    fireEvent.mouseDown(thirtyDayTab);
+    fireEvent.click(thirtyDayTab);
+    await waitFor(() => {
+      expect(services.usageStatsService.getAppUsageSnapshot).toHaveBeenCalledWith(
+        expect.objectContaining({ range: "30d" }),
+      );
+    });
   });
 
   it("keeps chart color indicators above the charts", async () => {
