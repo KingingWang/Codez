@@ -340,6 +340,7 @@ import {
   v4ConnectionFlowResultSchema,
   v4ConversationFileChangesResultSchema,
   v4ConversationFileRewindPreviewResultSchema,
+  v4ConversationRowPayloadResultSchema,
   v4ConversationRowsRangeResultSchema,
   v4ConversationPlansResultSchema,
   v4ConversationWorkflowRunEventsResultSchema,
@@ -6832,6 +6833,18 @@ export function createCodezAgentService(
       );
     },
 
+    async conversationRowPayloadV4(params: CodezAgentConversationRowPayloadParams) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        V4_METHODS.conversationRowPayload,
+        {
+          sessionId: params.sessionId,
+          rowId: params.rowId,
+        },
+        v4ConversationRowPayloadResultSchema,
+      );
+    },
+
     // 只读计划目录沿现有 workspace attachment 透传，不建立新 runtime。
     async conversationPlansV4(params: CodezAgentConversationPlansParams) {
       const client = await getReadOnlyClient(params);
@@ -7261,3 +7274,4 @@ export function createCodezAgentService(
   };
 }
 import type { CodezAgentHooksConfigWriteParams } from "./codezAgent.js";
+import type { CodezAgentConversationRowPayloadParams } from "./codezAgent.js";

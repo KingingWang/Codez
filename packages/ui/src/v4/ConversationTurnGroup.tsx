@@ -291,6 +291,7 @@ function ConversationExploreGroupRow({
         onOpenFileLink={context.onOpenFileLink}
         onOpenBrowserUrl={context.onOpenBrowserUrl}
         onOpenAutomationsMain={context.onOpenAutomationsMain}
+        onLoadFullToolCallFields={context.onLoadFullToolCallFields}
       />
     </div>
   );
@@ -350,6 +351,7 @@ function ConversationToolGroupRow({
         onOpenFileLink={context.onOpenFileLink}
         onOpenBrowserUrl={context.onOpenBrowserUrl}
         onOpenAutomationsMain={context.onOpenAutomationsMain}
+        onLoadFullToolCallFields={context.onLoadFullToolCallFields}
         // history/background 兼容路径只传虚拟父节点时，已被分组投影消费的
         // Assistant message / reasoning 没有交给 renderer，展开后会永久丢失。
         cuaGroupEvents={visibleCuaEvents}
@@ -408,6 +410,7 @@ function ConversationCuaGroupRow({
         onOpenFileLink={context.onOpenFileLink}
         onOpenBrowserUrl={context.onOpenBrowserUrl}
         onOpenAutomationsMain={context.onOpenAutomationsMain}
+        onLoadFullToolCallFields={context.onLoadFullToolCallFields}
         cuaGroupEvents={visibleCuaEvents}
         renderCuaAssistantMessage={renderAssistantMessage}
         renderCuaReasoning={renderReasoning}

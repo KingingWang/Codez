@@ -141,10 +141,20 @@ function assertTerminalAndSafe(rows: ConversationRow[]): void {
     if (row.kind === "artifact") {
       const { ref: _localRef, ...safeFields } = row;
       visitStrings(safeFields, assertSafeString);
-    } else if (row.kind === "toolCall" && row.output?.truncated) {
+    } else if (row.kind === "toolCall" && (row.output?.truncated || row.inputTruncated)) {
       // truncated.ref 只用于本地按需读取大工具输出，公开投影本来就只保留 output.text；
       // 对不会出现在请求里的内部 ref 做安全校验会误阻断同一轮正式结果物上传。
-      visitStrings({ ...row, output: { text: row.output.text } }, assertSafeString);
+      const { inputTruncated: _inputTruncated, ...restTool } = row;
+      visitStrings(
+        {
+          ...restTool,
+          ...(row.output ? { output: { text: row.output.text } } : {}),
+        },
+        assertSafeString,
+      );
+    } else if (row.kind === "reasoning" && row.truncated) {
+      const { truncated: _truncated, ...restReasoning } = row;
+      visitStrings(restReasoning, assertSafeString);
     } else if (row.kind === "userInput") {
       const { attachments: _attachments, ...safeFields } = row;
       visitStrings(safeFields, assertSafeString);

@@ -28,6 +28,8 @@ import {
   type V4ConversationFileRewindPreviewResult,
   type V4ConversationPlansParams,
   type V4ConversationPlansResult,
+  type V4ConversationRowPayloadParams,
+  type V4ConversationRowPayloadResult,
   type V4ConversationRowsRangeParams,
   type V4ConversationRowsRangeResult,
   type V4ConversationSubscribeResult,
@@ -82,7 +84,7 @@ type ConversationV4AgentService = Pick<
   | "onDynamicLocalTtftFacts"
   | "onAgentRuntimeRestarted"
 > &
-  Partial<Pick<ICodezAgentService, "onAgentRuntimeLifecycle">>;
+  Partial<Pick<ICodezAgentService, "onAgentRuntimeLifecycle" | "conversationRowPayloadV4">>;
 
 /**
  * 一条 host 连接（= 一个 workspace）上的 v4 conversation 传输面。
@@ -380,6 +382,19 @@ export function createAgentConversationTransport(
         sessionId: params.sessionId,
         ...(params.beforeRowId !== undefined ? { beforeRowId: params.beforeRowId } : {}),
         limit: params.limit,
+      });
+    },
+    async rowPayload(
+      params: V4ConversationRowPayloadParams,
+    ): Promise<V4ConversationRowPayloadResult> {
+      await ensureHandshake();
+      if (!agentService.conversationRowPayloadV4) {
+        throw new Error("fault.conversation.rowPayloadUnsupported");
+      }
+      return agentService.conversationRowPayloadV4({
+        ...workspace,
+        sessionId: params.sessionId,
+        rowId: params.rowId,
       });
     },
     async plans(params: V4ConversationPlansParams): Promise<V4ConversationPlansResult> {

@@ -4,6 +4,7 @@ import type { AttachmentRef } from "@codez/shared/codez-protocol-v4";
 import { BridgeSnapshots } from "../src/bridge-snapshots.js";
 import { InteractionBroker } from "../src/interactions.js";
 import { ThreadStateStore } from "../src/thread-state.js";
+import { queryBridgeRowPayload } from "../src/thread-queries.js";
 import type { CodexRpcPort } from "../src/contract.js";
 import type { AttachmentStore } from "../src/attachments.js";
 import { threadFixture } from "./projection-fixtures.test.js";
@@ -346,4 +347,46 @@ test("binary refs remain chips in native history and queue without exposing priv
   assert.deepEqual(user?.attachments, [ref]);
   assert.deepEqual(snapshot.queue.items[0]?.attachments, [ref]);
   assert.equal(snapshot.queue.items[0]?.text, "");
+});
+
+test("topic snapshot compacts settled heavy tool rows while queryBridgeRowPayload returns full payload", async () => {
+  const thread = threadFixture();
+  const heavyOutput = "line-0123456789abcdef\n".repeat(120);
+  thread.turns[0]!.items.push({
+    type: "commandExecution",
+    id: "cmd-heavy-1",
+    command: "pnpm test",
+    cwd,
+    status: "completed",
+    aggregatedOutput: heavyOutput,
+    exitCode: 0,
+    durationMs: 120,
+  } as never);
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+  );
+  const topic = await snapshots.topic(`conversation/${thread.id}`);
+  const wireSnapshot = topic.snapshot as Awaited<ReturnType<BridgeSnapshots["conversation"]>>;
+  const wireTool = wireSnapshot.rows.window.find(
+    (row): row is Extract<typeof row, { kind: "toolCall" }> =>
+      row.kind === "toolCall" && row.toolCallId === "cmd-heavy-1",
+  );
+  assert.ok(wireTool);
+  assert.ok((wireTool.output?.text.length ?? 0) < heavyOutput.length);
+  assert.equal(wireTool.output?.truncated?.ref, `v4-row-payload/${wireTool.rowId}`);
+
+  const fullPayload = await queryBridgeRowPayload(
+    { sessionId: thread.id, rowId: wireTool.rowId },
+    (id) => snapshots.conversation(id),
+  );
+  assert.equal(fullPayload.row?.kind, "toolCall");
+  if (fullPayload.row?.kind === "toolCall") {
+    assert.equal(fullPayload.row.output?.text, heavyOutput);
+  }
 });

@@ -1,8 +1,6 @@
 import {
   V4_METHODS,
   commandsQueryParamsSchema,
-  v4ConversationRowsRangeParamsSchema,
-  v4ConversationPlansParamsSchema,
   codexConversationHistoryRunsParamsSchema,
   v4ConversationFileChangesParamsSchema,
   v4ConversationFileRewindProjectionOverlayParamsSchema,
@@ -26,6 +24,11 @@ import { projectCodexHistoryRuns } from "./history-runs.js";
 import { join } from "node:path";
 import { AuxiliaryText } from "./auxiliary-text.js";
 import { SessionTitleCoordinator } from "./session-title.js";
+import {
+  queryBridgePlans,
+  queryBridgeRowPayload,
+  queryBridgeRowsRange,
+} from "./thread-queries.js";
 import { scopeWorkspaceParams, handleCodexNativeRequest } from "./request-scope.js";
 import type { BridgeFailureOrigin } from "./diagnostics.js";
 
@@ -252,32 +255,18 @@ export class BridgeRuntime {
         return { result: { results } };
       }
       case V4_METHODS.conversationRowsRange: {
-        const parsed = v4ConversationRowsRangeParamsSchema.parse(params);
-        const snapshot = await this.snapshots.conversation(parsed.sessionId);
-        const all = snapshot.rows.window.filter(
-          (row) => parsed.beforeRowId === undefined || row.rowId < parsed.beforeRowId,
-        );
         return {
-          result: {
-            rows: all.slice(-parsed.limit),
-            atSeq: snapshot.seq,
-            atRevision: snapshot.revision,
-            atLogEpoch: snapshot.logEpoch,
-            hasMore: all.length > parsed.limit,
-          },
+          result: await queryBridgeRowsRange(params, (id) => this.snapshots.conversation(id)),
+        };
+      }
+      case V4_METHODS.conversationRowPayload: {
+        return {
+          result: await queryBridgeRowPayload(params, (id) => this.snapshots.conversation(id)),
         };
       }
       case V4_METHODS.conversationPlans: {
-        const parsed = v4ConversationPlansParamsSchema.parse(params);
-        const snapshot = await this.snapshots.conversation(parsed.sessionId);
         return {
-          result: {
-            plans: snapshot.rows.window.filter(
-              (row) => row.kind === "toolCall" && row.toolName === "ExitPlanMode",
-            ),
-            atSeq: snapshot.seq,
-            atLogEpoch: snapshot.logEpoch,
-          },
+          result: await queryBridgePlans(params, (id) => this.snapshots.conversation(id)),
         };
       }
       case V4_METHODS.codexConversationHistoryRuns: {

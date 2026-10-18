@@ -236,6 +236,7 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
           />
           <ToolSnapshotFieldNotice
             refs={toolCall.snapshotRefs ?? []}
+            autoLoadWhenMounted
             onLoadFullToolCallFields={
               handleLoadFullToolCallFields
                 ? () => handleLoadFullToolCallFields(toolCall.toolId)
@@ -282,6 +283,7 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
               ) : null}
               <ToolSnapshotFieldNotice
                 refs={toolCall.snapshotRefs ?? []}
+                autoLoadWhenMounted
                 onLoadFullToolCallFields={
                   handleLoadFullToolCallFields
                     ? () => handleLoadFullToolCallFields(toolCall.toolId)
@@ -330,6 +332,7 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
               />
               <ToolSnapshotFieldNotice
                 refs={toolCall.snapshotRefs ?? []}
+                autoLoadWhenMounted
                 onLoadFullToolCallFields={
                   handleLoadFullToolCallFields
                     ? () => handleLoadFullToolCallFields(toolCall.toolId)

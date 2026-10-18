@@ -16,6 +16,7 @@ import {
   type ConversationSnapshot,
   type ConversationOpenTiming,
   type ConversationTopicFrame,
+  type ReasoningRow,
   type SessionModelTransition,
   type ToolCallRow,
   type TopicFrameDeliveryKind,
@@ -377,6 +378,9 @@ export class ConversationProjectionStore {
    * 同时在未完成分页拉取的截断尾窗 resync 时不复活过期游标的旧尾窗行。
    */
   private pagedOlderBeforeRowId: number | null = null;
+  /** 当前 logEpoch 下已通过 v4/conversation/rowPayload 按需水合的完整行，防后续快照冲刷。 */
+  private readonly hydratedRowsByRowId = new Map<number, ToolCallRow | ReasoningRow>();
+  private readonly rowPayloadFlights = new Map<number, Promise<boolean>>();
   /** accepted input 的 projection confirmation watchdog；不承载命令，也不生成本地事实。 */
   private readonly acceptedInputProjectionTimers = new Map<string, ReturnType<typeof setTimeout>>();
   // hydrated/not-enough-queries 终态缓存。过去仅以
@@ -824,6 +828,13 @@ export class ConversationProjectionStore {
           ? null
           : Math.min(this.pagedOlderBeforeRowId, removedFromRowId);
     }
+    if (removedFromRowId !== null) {
+      for (const rowId of this.hydratedRowsByRowId.keys()) {
+        if (rowId >= removedFromRowId) {
+          this.hydratedRowsByRowId.delete(rowId);
+        }
+      }
+    }
     this.setState({
       snapshot: next,
       // row.removed 已给出权威裁剪边界，可以同步删掉缓存目录中的旧分支计划；
@@ -858,13 +869,26 @@ export class ConversationProjectionStore {
    */
   /** rows/range 补拉的历史行与池中仍存活的旧行共享（冷打开后往上翻时常见）。 */
   private shareRows(rows: readonly ConversationRow[]): ConversationRow[] {
-    return rows.map((row) => this.rowPool.shareRow(this.topic, row));
+    return rows.map((row) => this.rowPool.shareRow(this.topic, this.preferHydratedRow(row)));
+  }
+
+  private preferHydratedRow(row: ConversationRow): ConversationRow {
+    const hydrated = this.hydratedRowsByRowId.get(row.rowId);
+    if (!hydrated || hydrated.kind !== row.kind) return row;
+    if (row.kind === "toolCall" && hydrated.kind === "toolCall" && hydrated.status === row.status) {
+      return row.actions !== hydrated.actions ? { ...hydrated, actions: row.actions } : hydrated;
+    }
+    if (row.kind === "reasoning" && hydrated.kind === "reasoning" && hydrated.state === row.state) {
+      return row.actions !== hydrated.actions ? { ...hydrated, actions: row.actions } : hydrated;
+    }
+    return row;
   }
 
   private shareSnapshotRows(snapshot: ConversationSnapshot): ConversationSnapshot {
     const previous = this.state.snapshot;
     if (!previous || previous.logEpoch !== snapshot.logEpoch || snapshot.rows.firstRowId === null) {
       this.pagedOlderBeforeRowId = null;
+      this.hydratedRowsByRowId.clear();
     }
     // 修复原因：Codex bridge 没有增量重放日志，每次工具调用或思考流式更新都下发截断后的
     // 尾窗 snapshot。若本地窗口已完整锚定到会话首行（window[0].rowId === firstRowId）或已通过
@@ -903,7 +927,15 @@ export class ConversationProjectionStore {
         );
       }
     }
-    const window = this.rowPool.shareWindow(this.topic, candidateWindow, previous?.rows.window);
+    const hydratedCandidateWindow =
+      this.hydratedRowsByRowId.size > 0
+        ? candidateWindow.map((row) => this.preferHydratedRow(row))
+        : candidateWindow;
+    const window = this.rowPool.shareWindow(
+      this.topic,
+      hydratedCandidateWindow,
+      previous?.rows.window,
+    );
     return window === snapshot.rows.window
       ? snapshot
       : { ...snapshot, rows: { ...snapshot.rows, window } };
@@ -924,7 +956,7 @@ export class ConversationProjectionStore {
     let window: ConversationRow[] | null = null;
     snapshot.rows.window.forEach((row, index) => {
       if (shareIds.has(row.rowId)) {
-        const shared = this.rowPool.shareRow(this.topic, row);
+        const shared = this.rowPool.shareRow(this.topic, this.preferHydratedRow(row));
         if (shared !== row) {
           window ??= [...snapshot.rows.window];
           window[index] = shared;
@@ -1203,6 +1235,59 @@ export class ConversationProjectionStore {
     } finally {
       if (!this.closed) this.setState({ loadingOlder: false });
     }
+  }
+
+  /**
+   * 按 rowId 按需读取折叠 toolCall / reasoning 行的完整载荷并原地回填。
+   * 同 rowId 在途请求自动单飞合并；logEpoch 不匹配时静默丢弃。
+   */
+  async loadRowPayload(rowId: number): Promise<boolean> {
+    if (this.closed) return false;
+    if (this.hydratedRowsByRowId.has(rowId)) return true;
+    const existingFlight = this.rowPayloadFlights.get(rowId);
+    if (existingFlight) return existingFlight;
+    const snapshot = this.state.snapshot;
+    const sessionId = parseConversationTopic(this.topic);
+    if (!snapshot || !sessionId || !this.transport.rowPayload) return false;
+
+    const requestedEpoch = snapshot.logEpoch;
+    const flight = (async () => {
+      try {
+        const result = await this.transport.rowPayload!({ sessionId, rowId });
+        if (this.closed || !result.row) return false;
+        const current = this.state.snapshot;
+        if (!current || current.logEpoch !== requestedEpoch || result.atLogEpoch !== current.logEpoch) {
+          return false;
+        }
+        const sharedRow = this.rowPool.shareRow(this.topic, result.row) as
+          | ToolCallRow
+          | ReasoningRow;
+        this.hydratedRowsByRowId.set(rowId, sharedRow);
+        const index = current.rows.window.findIndex((candidate) => candidate.rowId === rowId);
+        if (index < 0) return true;
+        const existingRow = current.rows.window[index]!;
+        const mergedRow =
+          existingRow.actions !== sharedRow.actions
+            ? ({ ...sharedRow, actions: existingRow.actions } as ConversationRow)
+            : sharedRow;
+        const window = [...current.rows.window];
+        window[index] = mergedRow;
+        this.setState({
+          snapshot: { ...current, rows: { ...current.rows, window } },
+        });
+        return true;
+      } catch (error) {
+        logger.warn(
+          `[v4-store] rowPayload ${this.topic}#${rowId} 失败: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return false;
+      } finally {
+        this.rowPayloadFlights.delete(rowId);
+      }
+    })();
+
+    this.rowPayloadFlights.set(rowId, flight);
+    return flight;
   }
 
   /**

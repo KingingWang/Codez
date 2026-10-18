@@ -16,7 +16,7 @@ import {
   timestampSchema,
 } from "./core.js";
 import { conversationDeltaSchema } from "./delta.js";
-import { conversationRowSchema, toolCallRowSchema } from "./rows.js";
+import { conversationRowSchema, reasoningRowSchema, toolCallRowSchema } from "./rows.js";
 import { sessionsIndexDeltaSchema, sessionsIndexSnapshotSchema } from "./sessions-index.js";
 import { WORKFLOW_RUN_STOP_REASONS } from "./workflow-observation-display.js";
 import { conversationSnapshotSchema } from "./snapshot.js";
@@ -347,6 +347,8 @@ export const V4_METHODS = {
   conversationUnsubscribe: "v4/conversation/unsubscribe",
   // 行分页 query（rows/range）：只读、无状态、超时重发安全。
   conversationRowsRange: "v4/conversation/rowsRange",
+  // 单行完整载荷按需读取（折叠工具/思考展开时触发）：只读、无状态、超时重发安全。
+  conversationRowPayload: "v4/conversation/rowPayload",
   // 当前有效分支的终态 ExitPlanMode 目录；只读、无状态、超时重发安全。
   conversationPlans: "v4/conversation/plans",
   conversationFileChanges: "v4/conversation/fileChanges",
@@ -541,6 +543,25 @@ export const v4ConversationRowsRangeResultSchema = z.object({
   hasMore: z.boolean(),
 });
 export type V4ConversationRowsRangeResult = z.infer<typeof v4ConversationRowsRangeResultSchema>;
+
+// ── rowPayload（按 rowId 按需读取折叠行的完整载荷）──
+export const v4ConversationRowPayloadParamsSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    rowId: z.number().int().nonnegative(),
+  })
+  .strict();
+export type V4ConversationRowPayloadParams = z.infer<typeof v4ConversationRowPayloadParamsSchema>;
+
+export const v4ConversationRowPayloadResultSchema = z
+  .object({
+    row: z.union([toolCallRowSchema, reasoningRowSchema]).nullable(),
+    atSeq: z.number().int().nonnegative(),
+    atRevision: z.number().int().nonnegative(),
+    atLogEpoch: z.string().min(1),
+  })
+  .strict();
+export type V4ConversationRowPayloadResult = z.infer<typeof v4ConversationRowPayloadResultSchema>;
 
 // ── conversation plans directory ──
 // 目录来自 CLI 完整有效 projection，不能用 renderer 的有界 tail window 推导。

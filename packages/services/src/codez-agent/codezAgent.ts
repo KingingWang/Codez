@@ -133,6 +133,7 @@ import type {
   V4ConversationWorkflowRunsResult,
   CodexConversationHistoryRunsParams,
   CodexConversationHistoryRunsResult,
+  V4ConversationRowPayloadResult,
   V4ConversationRowsRangeResult,
   V4ConversationResyncResult,
   V4ConversationSubscribeResult,
@@ -437,6 +438,11 @@ export interface CodezAgentConversationRowsRangeParams extends CodezAgentSession
   beforeRowId?: number;
   /** 1..rowsRangeMaxLimit（200）。 */
   limit: number;
+}
+
+/** 按 rowId 按需读取折叠 toolCall / reasoning 行的完整载荷。 */
+export interface CodezAgentConversationRowPayloadParams extends CodezAgentSessionTarget {
+  rowId: number;
 }
 
 /** 当前有效分支里的终态 ExitPlanMode 目录。 */
@@ -1026,6 +1032,10 @@ export interface ICodezAgentService {
   conversationRowsRangeV4(
     params: CodezAgentConversationRowsRangeParams,
   ): Promise<V4ConversationRowsRangeResult>;
+  /** rowPayload 单行完整载荷按需读取。 */
+  conversationRowPayloadV4?(
+    params: CodezAgentConversationRowPayloadParams,
+  ): Promise<V4ConversationRowPayloadResult>;
   conversationPlansV4(
     params: CodezAgentConversationPlansParams,
   ): Promise<V4ConversationPlansResult>;

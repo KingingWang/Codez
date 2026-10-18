@@ -567,6 +567,8 @@ export class CodezProtocolAgentServer {
       // ── 行分页 query（独立分支，便于与帧分派改动合并）──
       case V4_METHODS.conversationRowsRange:
         return await this.requireV4Gateway().rowsRange(request.params);
+      case V4_METHODS.conversationRowPayload:
+        return await this.requireV4Gateway().rowPayload(request.params);
       case V4_METHODS.conversationPlans:
         return await this.requireV4Gateway().plans(request.params);
       case V4_METHODS.backgroundBashOutput:

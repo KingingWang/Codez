@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines -- v4 row schema union stays grouped in a single protocol module. */
 import { conversationQuotesSchema } from "../conversationSelection.js";
 import { botGroupInputSourceSchema } from "../bots.js";
 // ConversationRow：行类型自包含。
@@ -186,6 +187,12 @@ export const assistantTextRowSchema = z.object({
 });
 export type AssistantTextRow = z.infer<typeof assistantTextRowSchema>;
 
+export const rowPayloadTruncatedRefSchema = z.object({
+  totalBytes: z.number().int().nonnegative(),
+  ref: z.string(),
+});
+export type RowPayloadTruncatedRef = z.infer<typeof rowPayloadTruncatedRefSchema>;
+
 export const reasoningRowSchema = z.object({
   ...rowBaseFields,
   kind: z.literal("reasoning"),
@@ -194,6 +201,7 @@ export const reasoningRowSchema = z.object({
   text: z.string(),
   state: z.enum(["streaming", "complete", "interrupted"]),
   durationMs: z.number().optional(),
+  truncated: rowPayloadTruncatedRefSchema.optional(),
 });
 export type ReasoningRow = z.infer<typeof reasoningRowSchema>;
 
@@ -219,6 +227,7 @@ export const toolCallRowSchema = z.object({
   status: z.enum(["inputStreaming", "pendingApproval", "running", "success", "error", "cancelled"]),
   inputText: z.string(),
   input: z.unknown().optional(),
+  inputTruncated: rowPayloadTruncatedRefSchema.optional(),
   cuaApp: cuaAppIdentitySchema.optional(),
   output: toolOutputSchema.optional(),
   // display 解析失败只丢这张卡的载荷，不拒整条 row（理由见 toolDisplay.ts 的 toolOutputSchema

@@ -1737,4 +1737,67 @@ describe("会话计划目录（S13-S15）", () => {
     );
     expect(publisher.getPlans().plans.map((row) => row.toolCallId)).toEqual(["early-plan"]);
   });
+
+  it("getRowPayload 返回被紧凑化的终态行完整载荷，且 continuous 与 replayable 终态紧凑快照一致", () => {
+    const log = new EventLog();
+    const turnId = "turn-payload-1";
+    const heavyOutput = "0123456789abcdef\n".repeat(100);
+    log.push(SessionEventType.SessionCreated, { mode: "default" });
+    log.push(SessionEventType.TurnStarted, { turnNumber: 1, input: "run" }, { turnId });
+    log.push(
+      SessionEventType.ToolCallScheduled,
+      {
+        toolCallId: "tool-1",
+        toolName: "Bash",
+        input: { command: "ls -la" },
+        schedule: { parallelGroups: [["tool-1"]], executionOrder: ["tool-1"] },
+      },
+      { turnId },
+    );
+    log.push(
+      SessionEventType.ToolCallResult,
+      {
+        toolCallId: "tool-1",
+        result: { success: true, content: heavyOutput },
+        duration: 12,
+      },
+      { turnId },
+    );
+    log.push(
+      SessionEventType.TurnComplete,
+      { response: "ok", tokenCount: 10, toolCallCount: 1, duration: 20, resultType: "success" },
+      { turnId },
+    );
+
+    const publisher = new ConversationTopicPublisher("session-1", "epoch-1", {
+      now: () => 0,
+    });
+    for (const event of log.events) publisher.ingest(event);
+
+    const desktopSnap = publisher.subscribe({
+      connectionId: "desktop",
+      clientMode: "desktop-continuous",
+    }).frame;
+    const mobileSnap = publisher.subscribe({
+      connectionId: "mobile",
+      clientMode: "web-remote-replayable",
+    }).frame;
+    expect(desktopSnap?.payload.kind).toBe("snapshot");
+    expect(mobileSnap?.payload.kind).toBe("snapshot");
+    if (desktopSnap?.payload.kind === "snapshot" && mobileSnap?.payload.kind === "snapshot") {
+      expect(desktopSnap.payload.snapshot.rows.window).toEqual(
+        mobileSnap.payload.snapshot.rows.window,
+      );
+      const wireTool = desktopSnap.payload.snapshot.rows.window.find(
+        (row): row is Extract<typeof row, { kind: "toolCall" }> => row.kind === "toolCall",
+      );
+      expect(wireTool?.output?.truncated?.ref).toBe(`v4-row-payload/${wireTool?.rowId}`);
+      const payloadResult = publisher.getRowPayload(wireTool!.rowId);
+      expect(payloadResult.atLogEpoch).toBe("epoch-1");
+      expect(payloadResult.row?.kind).toBe("toolCall");
+      if (payloadResult.row?.kind === "toolCall") {
+        expect(payloadResult.row.output?.text).toBe(heavyOutput);
+      }
+    }
+  });
 });

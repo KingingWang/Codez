@@ -10170,3 +10170,185 @@ describe("userInput 行的 epilogueStart（热路径）", () => {
     expect(rows[1]).not.toHaveProperty("epilogueStart");
   });
 });
+// V4 折叠内容紧凑化与 rowPayload 按需拉取：
+// 1. 终态大输出 Bash、大参数 Write/Edit、file_diff structuredPatch 与长 Reasoning 在快照与终态 row.upserted 中自动紧凑化；
+// 2. getRowPayload(rowId) 返回未裁剪的完整载荷；
+// 3. ExitPlanMode 等轮尾外提卡片豁免紧凑化；
+// 4. rewind row.removed 同步清理 fullRowPayloadByRowId。
+describe("V4 终态折叠内容紧凑化与 getRowPayload", () => {
+  it("紧凑化大体积 Bash 输出、Edit diff hunk 与长思考，且 getRowPayload 返回完整行", () => {
+    const log = new EventLog();
+    const turnId = "turn-compact-1";
+    const longReasoning = "思考细节".repeat(300);
+    const longBashOutput = "line-output-0123456789\n".repeat(120);
+    const largeFileContent = "const x = 1;\n".repeat(200);
+
+    log.push(SessionEventType.SessionCreated, { mode: "default", contextWindow: 200_000 });
+    log.push(SessionEventType.TurnStarted, { turnNumber: 1, input: "执行修改" }, { turnId });
+    log.push(
+      SessionEventType.ModelStreaming,
+      { kind: "reasoning_start", delta: "", done: false },
+      { turnId },
+    );
+    log.push(
+      SessionEventType.ModelStreaming,
+      { kind: "reasoning_delta", delta: longReasoning, done: false },
+      { turnId },
+    );
+    log.push(
+      SessionEventType.ModelStreaming,
+      { kind: "reasoning_complete", delta: "", done: true },
+      { turnId },
+    );
+    log.push(
+      SessionEventType.ToolCallScheduled,
+      {
+        toolCallId: "bash-heavy",
+        toolName: "Bash",
+        input: { command: "pnpm test", description: "run tests" },
+        schedule: { parallelGroups: [["bash-heavy"]], executionOrder: ["bash-heavy"] },
+      },
+      { turnId },
+    );
+    log.push(
+      SessionEventType.ToolCallResult,
+      {
+        toolCallId: "bash-heavy",
+        result: { success: true, content: longBashOutput },
+        duration: 50,
+      },
+      { turnId },
+    );
+    log.push(
+      SessionEventType.ToolCallScheduled,
+      {
+        toolCallId: "edit-heavy",
+        toolName: "Edit",
+        input: {
+          file_path: "/workspace/src/index.ts",
+          old_string: largeFileContent,
+          new_string: `${largeFileContent}\nexport const y = 2;\n`,
+        },
+        schedule: { parallelGroups: [["edit-heavy"]], executionOrder: ["edit-heavy"] },
+      },
+      { turnId },
+    );
+    log.push(
+      SessionEventType.ToolCallResult,
+      {
+        toolCallId: "edit-heavy",
+        result: {
+          success: true,
+          content: "Updated file",
+          display: {
+            kind: "file_diff",
+            filePath: "/workspace/src/index.ts",
+            operation: "update",
+            additions: 1,
+            deletions: 0,
+            structuredPatch: [
+              {
+                oldStart: 1,
+                oldLines: 2,
+                newStart: 1,
+                newLines: 3,
+                lines: [" const x = 1;", "+export const y = 2;"],
+              },
+            ],
+          },
+        },
+        duration: 30,
+      },
+      { turnId },
+    );
+    log.push(
+      SessionEventType.ToolCallScheduled,
+      {
+        toolCallId: "plan-exempt",
+        toolName: "ExitPlanMode",
+        input: { plan: `# 完整计划\n${"步骤说明\n".repeat(300)}` },
+        schedule: { parallelGroups: [["plan-exempt"]], executionOrder: ["plan-exempt"] },
+      },
+      { turnId },
+    );
+    log.push(
+      SessionEventType.ToolCallResult,
+      {
+        toolCallId: "plan-exempt",
+        result: { success: true, content: "ok" },
+        duration: 10,
+      },
+      { turnId },
+    );
+    log.push(
+      SessionEventType.TurnComplete,
+      { response: "done", tokenCount: 100, toolCallCount: 3, duration: 100, resultType: "success" },
+      { turnId },
+    );
+
+    const { projection } = runAll(log.events);
+    const snapshot = projection.getSnapshot();
+
+    const reasoning = snapshot.rows.window.find((r) => r.kind === "reasoning");
+    expect(reasoning?.kind).toBe("reasoning");
+    if (reasoning?.kind === "reasoning") {
+      expect(reasoning.text.length).toBeLessThan(longReasoning.length);
+      expect(reasoning.truncated?.ref).toBe(`v4-row-payload/${reasoning.rowId}`);
+      const fullReasoning = projection.getRowPayload(reasoning.rowId);
+      expect(fullReasoning?.kind).toBe("reasoning");
+      if (fullReasoning?.kind === "reasoning") {
+        expect(fullReasoning.text).toBe(longReasoning);
+        expect(fullReasoning.truncated).toBeUndefined();
+      }
+    }
+
+    const bashRow = snapshot.rows.window.find(
+      (r): r is Extract<typeof r, { kind: "toolCall" }> =>
+        r.kind === "toolCall" && r.toolCallId === "bash-heavy",
+    );
+    expect(bashRow).toBeDefined();
+    expect(bashRow!.output?.text.length).toBeLessThan(longBashOutput.length);
+    expect(bashRow!.output?.truncated?.ref).toBe(`v4-row-payload/${bashRow!.rowId}`);
+    const fullBash = projection.getRowPayload(bashRow!.rowId);
+    expect(fullBash?.kind).toBe("toolCall");
+    if (fullBash?.kind === "toolCall") {
+      expect(fullBash.output?.text).toBe(longBashOutput);
+    }
+
+    const editRow = snapshot.rows.window.find(
+      (r): r is Extract<typeof r, { kind: "toolCall" }> =>
+        r.kind === "toolCall" && r.toolCallId === "edit-heavy",
+    );
+    expect(editRow).toBeDefined();
+    // 路径摘要保留，old_string/new_string 大字段被剥离，file_diff 折叠态 structuredPatch 为空且保留统计
+    expect(editRow!.input).toEqual({ file_path: "/workspace/src/index.ts" });
+    expect(editRow!.inputTruncated?.ref).toBe(`v4-row-payload/${editRow!.rowId}`);
+    expect(editRow!.output?.display).toMatchObject({
+      kind: "file_diff",
+      filePath: "/workspace/src/index.ts",
+      additions: 1,
+      deletions: 0,
+      structuredPatch: [],
+      truncated: true,
+    });
+    const fullEdit = projection.getRowPayload(editRow!.rowId);
+    expect(fullEdit?.kind).toBe("toolCall");
+    if (fullEdit?.kind === "toolCall") {
+      expect(fullEdit.input).toMatchObject({
+        file_path: "/workspace/src/index.ts",
+        old_string: largeFileContent,
+      });
+      expect(fullEdit.output?.display).toMatchObject({
+        kind: "file_diff",
+        structuredPatch: [expect.objectContaining({ oldStart: 1 })],
+      });
+    }
+
+    // ExitPlanMode 保持完整内联，不裁剪
+    const planRow = snapshot.rows.window.find(
+      (r): r is Extract<typeof r, { kind: "toolCall" }> =>
+        r.kind === "toolCall" && r.toolCallId === "plan-exempt",
+    );
+    expect(planRow?.inputTruncated).toBeUndefined();
+  });
+});

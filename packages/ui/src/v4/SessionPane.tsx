@@ -2270,6 +2270,28 @@ export function SessionPane({
     [fileChanges, fileChangesRequestCache, lease, sessionId],
   );
 
+  const handleLoadRowPayload = useCallback(
+    async (rowId: number): Promise<boolean> => {
+      if (!lease?.store) return false;
+      return lease.store.loadRowPayload(rowId);
+    },
+    [lease],
+  );
+
+  const handleLoadFullToolCallFields = useCallback(
+    async (toolId: string): Promise<boolean> => {
+      const store = lease?.store;
+      const current = snapshotRef.current;
+      if (!store || !current) return false;
+      const row = current.rows.window.find(
+        (candidate) => candidate.kind === "toolCall" && candidate.toolCallId === toolId,
+      );
+      if (!row) return false;
+      return store.loadRowPayload(row.rowId);
+    },
+    [lease],
+  );
+
   const handlePreviewFileRewind = useCallback(
     (target: ConversationRowTarget) => {
       const current = snapshotRef.current;
@@ -2941,6 +2963,8 @@ export function SessionPane({
       workflowFillGraphByRunId,
       workflowDraftByToolCallId,
       fetchFileChanges: handleFetchFileChanges,
+      onLoadRowPayload: handleLoadRowPayload,
+      onLoadFullToolCallFields: handleLoadFullToolCallFields,
       previewFileRewind: workspaceFileRewindEnabled ? handlePreviewFileRewind : undefined,
       applyFileRewind: workspaceFileRewindEnabled ? handleApplyFileRewind : undefined,
       readAttachment: attachmentRead,
@@ -3002,6 +3026,8 @@ export function SessionPane({
       workflowDraftByToolCallId,
       workspaceFileRewindEnabled,
       handleFetchFileChanges,
+      handleLoadRowPayload,
+      handleLoadFullToolCallFields,
       handlePreviewFileRewind,
       handleApplyFileRewind,
       attachmentRead,

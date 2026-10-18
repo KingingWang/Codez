@@ -756,6 +756,15 @@ export function createCodezAgentConnectionScope(
         withTrustedConnection(params, forwardedConnection(params)),
       );
     },
+    async conversationRowPayloadV4(params) {
+      assertReady();
+      if (!base.conversationRowPayloadV4) {
+        throw new Error("fault.conversation.rowPayloadUnsupported");
+      }
+      return base.conversationRowPayloadV4(
+        withTrustedConnection(params, forwardedConnection(params)),
+      );
+    },
     async codexHistoryRunsV4(params) {
       assertReady();
       return base.codexHistoryRunsV4(withTrustedConnection(params, forwardedConnection(params)));

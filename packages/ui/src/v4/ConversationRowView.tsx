@@ -1830,9 +1830,11 @@ const AssistantTextRowView = memo(function AssistantTextRowView({
 
 const ReasoningRowView = memo(function ReasoningRowView({
   row,
+  context,
   contentVariant,
 }: {
   row: ReasoningRow;
+  context?: ConversationRowRenderContext;
   contentVariant?: "default" | "nested";
 }) {
   const streaming = row.state === "streaming";
@@ -1842,6 +1844,14 @@ const ReasoningRowView = memo(function ReasoningRowView({
   // autoCollapseKey 仍保证状态边界不会覆盖已经发生过的用户交互。
   const durationSeconds =
     row.durationMs !== undefined ? Math.max(1, Math.ceil(row.durationMs / 1000)) : undefined;
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (open && row.truncated && context?.onLoadRowPayload) {
+        void context.onLoadRowPayload(row.rowId);
+      }
+    },
+    [context, row.rowId, row.truncated],
+  );
   if (streaming && row.text.length === 0) {
     return null;
   }
@@ -1851,6 +1861,7 @@ const ReasoningRowView = memo(function ReasoningRowView({
         className="w-full"
         isStreaming={streaming}
         autoCollapseKey={streaming ? null : row.state}
+        onOpenChange={handleOpenChange}
         {...(durationSeconds !== undefined ? { duration: durationSeconds } : {})}
       >
         {/* Bug 原因：附件重构合并时误丢了 streamingText 接线，导致摘要组件仍在但永远收到空文本。 */}
@@ -2316,6 +2327,11 @@ const ToolCallRowView = memo(function ToolCallRowView({
           onOpenFileLink={context.onOpenFileLink}
           onOpenBrowserUrl={context.onOpenBrowserUrl}
           onOpenAutomationsMain={context.onOpenAutomationsMain}
+          onLoadFullToolCallFields={
+            context.onLoadRowPayload
+              ? () => context.onLoadRowPayload?.(row.rowId)
+              : context.onLoadFullToolCallFields
+          }
           onOpenPlanDetail={
             context.onOpenPlanDetail && context.sessionId
               ? (request) =>
@@ -2461,7 +2477,7 @@ function ConversationRowViewImpl({
       // 关闭“显示思考过程”只隐藏每轮后续 reasoning；首条 reasoning
       // 是该轮最小必要思考提示，必须由 turn 全序派生的 rowId 保留下来。
       return isConversationReasoningRowVisible(row.rowId, context) ? (
-        <ReasoningRowView row={row} contentVariant={reasoningContentVariant} />
+        <ReasoningRowView row={row} context={context} contentVariant={reasoningContentVariant} />
       ) : null;
     case "turnHeader":
       return <TurnHeaderRowView row={row} />;

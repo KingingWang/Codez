@@ -15,6 +15,8 @@ import type {
   ToolCallRow,
   V4ConversationPlansParams,
   V4ConversationPlansResult,
+  V4ConversationRowPayloadParams,
+  V4ConversationRowPayloadResult,
   V4ConversationRowsRangeParams,
   V4ConversationRowsRangeResult,
   V4ConversationResyncResult,
@@ -286,6 +288,23 @@ class FakeTransport implements ConversationTransport {
   async rowsRange(params: V4ConversationRowsRangeParams): Promise<V4ConversationRowsRangeResult> {
     this.rowsRangeCalls.push(params);
     return this.rowsRangeImpl(params);
+  }
+
+  rowPayloadCalls: V4ConversationRowPayloadParams[] = [];
+  rowPayloadImpl: (
+    params: V4ConversationRowPayloadParams,
+  ) => V4ConversationRowPayloadResult | Promise<V4ConversationRowPayloadResult> = () => ({
+    row: null,
+    atSeq: 0,
+    atRevision: 0,
+    atLogEpoch: "epoch-1",
+  });
+
+  async rowPayload(
+    params: V4ConversationRowPayloadParams,
+  ): Promise<V4ConversationRowPayloadResult> {
+    this.rowPayloadCalls.push(params);
+    return this.rowPayloadImpl(params);
   }
 
   plansCalls: V4ConversationPlansParams[] = [];
@@ -2366,5 +2385,112 @@ describe("ConversationProjectionStore.loadOlder", () => {
     expect(partialWindow.at(-1)!.rowId).toBe(264);
     expect(partialStore.getState().planDirectoryRevision).toBe(planRevBefore);
     expect(partialStore.getState().turnNavigatorDirectoryRevision).toBe(navRevBefore);
+  });
+
+  it("loadRowPayload 单飞去重、回填完整行，并在同 logEpoch 下抵御后续紧凑快照冲刷", async () => {
+    const transport = new FakeTransport();
+    const store = new ConversationProjectionStore("conversation/s-payload", transport);
+    transport.onFrame((frame) => store.handleFrame(frame));
+    const compactToolRow: ToolCallRow = {
+      rowId: 3,
+      turnId: "t1",
+      createdAt: 1,
+      createdAtSeq: 3,
+      kind: "toolCall",
+      toolCallId: "bash-1",
+      toolName: "Bash",
+      status: "success",
+      inputText: '{"command":"pnpm test"}',
+      input: { command: "pnpm test" },
+      output: {
+        text: "preview\n…",
+        truncated: { totalBytes: 4096, ref: "v4-row-payload/3" },
+      },
+    };
+    const fullToolRow: ToolCallRow = {
+      ...compactToolRow,
+      output: {
+        text: "full line 1\nfull line 2\n".repeat(100),
+      },
+    };
+    transport.subscribeImpl = (params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
+      initialFrame: makeFrame(
+        subscriptionId,
+        0,
+        3,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            sessionId: "s-payload",
+            seq: 3,
+            logEpoch: "epoch-1",
+            rows: {
+              window: [turnHeaderRow(1), realUserRow(2, "t1"), compactToolRow],
+              totalCount: 3,
+              firstRowId: 1,
+            },
+          }),
+        },
+        params.topic,
+      ),
+    });
+    await store.connect();
+
+    let resolvePayload!: (value: V4ConversationRowPayloadResult) => void;
+    transport.rowPayloadImpl = () =>
+      new Promise<V4ConversationRowPayloadResult>((resolve) => {
+        resolvePayload = resolve;
+      });
+
+    const flight1 = store.loadRowPayload(3);
+    const flight2 = store.loadRowPayload(3);
+    expect(transport.rowPayloadCalls).toEqual([{ sessionId: "s-payload", rowId: 3 }]);
+
+    resolvePayload({
+      row: fullToolRow,
+      atSeq: 3,
+      atRevision: 3,
+      atLogEpoch: "epoch-1",
+    });
+    await expect(Promise.all([flight1, flight2])).resolves.toEqual([true, true]);
+
+    const hydratedRow = store
+      .getState()
+      .snapshot?.rows.window.find((r) => r.rowId === 3) as ToolCallRow | undefined;
+    expect(hydratedRow?.output?.text).toBe(fullToolRow.output?.text);
+    expect(hydratedRow?.output?.truncated).toBeUndefined();
+
+    // 后续同 logEpoch 的紧凑快照到达时，不把已水合的 rowId=3 冲回裁剪态
+    store.handleFrame(
+      makeFrame(
+        store.getState().subscriptionId!,
+        0,
+        4,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            sessionId: "s-payload",
+            seq: 4,
+            logEpoch: "epoch-1",
+            rows: {
+              window: [
+                turnHeaderRow(1),
+                realUserRow(2, "t1"),
+                compactToolRow,
+                assistantRow(4, "done"),
+              ],
+              totalCount: 4,
+              firstRowId: 1,
+            },
+          }),
+        },
+        "conversation/s-payload",
+      ),
+    );
+    const afterSnapshotRow = store
+      .getState()
+      .snapshot?.rows.window.find((r) => r.rowId === 3) as ToolCallRow | undefined;
+    expect(afterSnapshotRow?.output?.text).toBe(fullToolRow.output?.text);
   });
 });

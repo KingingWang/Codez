@@ -117,6 +117,7 @@ import {
   PROTOCOL_V4_LIMITS,
   applyConversationDeltas,
   applyConversationDeltasMutable,
+  compactConversationRowForWire,
   createMutableConversationSnapshotAccumulator,
   diffWorkflowRunsState,
   reduceWorkflowRunsState,
@@ -455,6 +456,8 @@ export class ProductProjection {
   // snapshot 是权威状态；该 Set 只是 TurnComplete 缺终态兜底的派生索引，避免每轮扫描全表。
   private openForegroundToolCallIds = new Set<string>();
   private fileToolInputPreviewByCallId = new Map<string, FileToolInputPreviewState>();
+  // 按需懒加载的完整行缓存（仅保存被 compactConversationRowForWire 裁剪过的终态 toolCall/reasoning 行）。
+  private fullRowPayloadByRowId = new Map<number, ToolCallRow | ReasoningRow>();
   private subagentRowIdByAgentId = new Map<string, number>();
   private hookRowIdByInvocationId = new Map<string, number>();
   // resume SessionStart 没有 turnId；先保留在 CLI projection，下一条真实 user-intent
@@ -532,6 +535,17 @@ export class ProductProjection {
 
   getSnapshot(): ConversationSnapshot {
     return this.snapshot;
+  }
+
+  /** 按 rowId 获取未裁剪的完整 toolCall/reasoning 行（供 v4/conversation/rowPayload 按需加载）。 */
+  getRowPayload(rowId: number): ToolCallRow | ReasoningRow | null {
+    const cached = this.fullRowPayloadByRowId.get(rowId);
+    if (cached) return cached;
+    const row = this.findRow(rowId);
+    if (row?.kind === "toolCall" || row?.kind === "reasoning") {
+      return row;
+    }
+    return null;
   }
 
   /** assistant 守恒：被拒收的正文流事件数（>0 = 投影可能缺段，需重 hydration）。 */
@@ -1082,7 +1096,9 @@ export class ProductProjection {
     const deltas = materializeActions
       ? [...reducedWithSubagents, ...this.materializeCommandRowActions(reducedWithSubagents)]
       : reducedWithSubagents;
-    const finalDeltas = this.attachRevision(clearSettledOutputPreviews(deltas));
+    const finalDeltas = this.attachRevision(
+      this.compactSettledRowPayloads(clearSettledOutputPreviews(deltas)),
+    );
     if (this.hydrationAccumulator) {
       applyConversationDeltasMutable(this.hydrationAccumulator, finalDeltas);
       this.snapshot.seq = event.sequenceNumber;
@@ -1141,6 +1157,7 @@ export class ProductProjection {
         { ...state },
       ]),
     );
+    clone.fullRowPayloadByRowId = new Map(this.fullRowPayloadByRowId);
     clone.subagentRowIdByAgentId = new Map(this.subagentRowIdByAgentId);
     clone.hookRowIdByInvocationId = new Map(this.hookRowIdByInvocationId);
     clone.pendingSessionHookInvocations = new Map(
@@ -1204,6 +1221,7 @@ export class ProductProjection {
     this.latestListAppsSnapshot = candidate.latestListAppsSnapshot;
     this.openForegroundToolCallIds = candidate.openForegroundToolCallIds;
     this.fileToolInputPreviewByCallId = candidate.fileToolInputPreviewByCallId;
+    this.fullRowPayloadByRowId = candidate.fullRowPayloadByRowId;
     this.subagentRowIdByAgentId = candidate.subagentRowIdByAgentId;
     this.hookRowIdByInvocationId = candidate.hookRowIdByInvocationId;
     this.pendingSessionHookInvocations = candidate.pendingSessionHookInvocations;
@@ -2956,6 +2974,11 @@ export class ProductProjection {
         continue;
       }
       if (delta.op !== "row.removed") continue;
+      for (const rowId of this.fullRowPayloadByRowId.keys()) {
+        if (rowId >= delta.fromRowId) {
+          this.fullRowPayloadByRowId.delete(rowId);
+        }
+      }
       for (const [toolCallId, rowId] of this.toolRowIdByCallId) {
         if (rowId < delta.fromRowId) continue;
         // Bug 原因：rewind 过去只删 rows/message 索引，旧 toolCallId 仍会阻止新分支
@@ -2973,9 +2996,31 @@ export class ProductProjection {
       if (this.findRow(rowId)?.kind === "subagent") continue;
       // Bug 原因：rewind 只重建 rowIndex，旧 agent alias 仍会被后续每次 subagent
       // materialization 枚举。仅在 row.removed 已应用后按权威 snapshot 清理一次，
-      // 避免长会话随已删除历史持续增长；普通事件不会扫描该索引。
+      // 不改变同分支 resume 复用同一 agentId 的语义。
       this.subagentRowIdByAgentId.delete(agentId);
     }
+  }
+
+  /**
+   * 对进入终态的 toolCall / reasoning 行执行确定性紧凑化，并将裁剪前的完整行存入
+   * fullRowPayloadByRowId，供客户端展开卡片时通过 v4/conversation/rowPayload 按需拉取。
+   */
+  private compactSettledRowPayloads(deltas: ConversationDelta[]): ConversationDelta[] {
+    return deltas.map((delta) => {
+      if (delta.op !== "row.appended" && delta.op !== "row.upserted") {
+        return delta;
+      }
+      const row = delta.row;
+      if (row.kind !== "toolCall" && row.kind !== "reasoning") {
+        return delta;
+      }
+      const compacted = compactConversationRowForWire(row);
+      if (compacted !== row) {
+        this.fullRowPayloadByRowId.set(row.rowId, row);
+        return { ...delta, row: compacted };
+      }
+      return delta;
+    });
   }
 
   // ── tool call 状态机 ──

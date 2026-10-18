@@ -299,4 +299,37 @@ describe("toolCallRowToLegacyNode", () => {
     const empty = toolCallRowToLegacyNode(makeRow({ input: undefined, inputText: "" }));
     expect(empty.toolCall.input).toBeUndefined();
   });
+
+  it("将 v4-row-payload 的 inputTruncated 与 output.truncated 映射为 snapshotRefs", () => {
+    const node = toolCallRowToLegacyNode(
+      makeRow({
+        rowId: 42,
+        toolName: "Edit",
+        status: "success",
+        inputText: '{"file_path":"/workspace/a.ts"}',
+        input: { file_path: "/workspace/a.ts" },
+        inputTruncated: { totalBytes: 8192, ref: "v4-row-payload/42" },
+        output: {
+          text: "Updated",
+          truncated: { totalBytes: 16384, ref: "v4-row-payload/42" },
+        },
+      }),
+    );
+    expect(node.toolCall.snapshotRefs).toEqual([
+      {
+        field: "input",
+        refId: "v4-row-payload/42",
+        hash: "v4-row-payload/42",
+        fullBytes: 8192,
+        previewBytes: '{"file_path":"/workspace/a.ts"}'.length,
+      },
+      {
+        field: "output",
+        refId: "v4-row-payload/42",
+        hash: "v4-row-payload/42",
+        fullBytes: 16384,
+        previewBytes: "Updated".length,
+      },
+    ]);
+  });
 });

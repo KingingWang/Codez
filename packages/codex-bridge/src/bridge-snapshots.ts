@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { formatModelPickerValue, getCodexPermissionModes } from "@codez/shared";
 import {
+  compactConversationRowForWire,
   subagentProjectionStateSchema,
   workspaceConfigSnapshotSchema,
   type ConversationSnapshot,
@@ -309,7 +310,9 @@ export class BridgeSnapshots {
       // firstRowId/totalCount 必须保持全序口径：客户端以 window[0].rowId === firstRowId
       // 判定是否已到顶，跟随截尾改写会让 hasOlderRows 恒为 false，rows/range 分页、
       // 问题目录补齐与「加载更早」入口全部静默失效（specs/codex-desktop-adapter.md）。
-      snapshot.rows.window = projectConversationTailWindow(snapshot.rows.window);
+      snapshot.rows.window = projectConversationTailWindow(snapshot.rows.window).map(
+        compactConversationRowForWire,
+      );
       return { snapshot, seq: snapshot.seq, logEpoch: snapshot.logEpoch };
     }
     if (topic === `sessions-index/${this.workspaceId}`) {

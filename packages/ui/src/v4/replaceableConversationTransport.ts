@@ -133,6 +133,15 @@ export class ReplaceableConversationTransport implements ConversationTransport {
     return this.current.rowsRange(params);
   }
 
+  rowPayload(
+    params: Parameters<NonNullable<ConversationTransport["rowPayload"]>>[0],
+  ): ReturnType<NonNullable<ConversationTransport["rowPayload"]>> {
+    if (!this.current.rowPayload) {
+      return Promise.reject(new Error("fault.conversation.rowPayloadUnsupported"));
+    }
+    return this.current.rowPayload(params);
+  }
+
   plans(
     params: Parameters<ConversationTransport["plans"]>[0],
   ): ReturnType<ConversationTransport["plans"]> {

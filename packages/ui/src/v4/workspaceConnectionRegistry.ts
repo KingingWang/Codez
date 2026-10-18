@@ -45,7 +45,8 @@ export type WorkspaceConnectionAgentService = Pick<
   | "onDynamicConversationFrame"
   | "onDynamicLocalTtftFacts"
   | "onAgentRuntimeRestarted"
->;
+> &
+  Partial<Pick<ICodezAgentService, "conversationRowPayloadV4">>;
 
 export interface WorkspaceConnectionScope {
   /** = pane 绑定的 primary workspace（连接路由键）。 */

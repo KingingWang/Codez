@@ -199,6 +199,9 @@ export interface ConversationRowRenderContext {
     target: ConversationRowTarget,
     options: ConversationFileChangesRequestOptions,
   ) => Promise<V4ConversationFileChangesResult>;
+  /** 按 rowId 或 toolCallId 按需拉取折叠 toolCall / reasoning 行的完整载荷。 */
+  onLoadRowPayload?: (rowId: number) => Promise<boolean>;
+  onLoadFullToolCallFields?: (toolId: string) => Promise<boolean | void> | boolean | void;
   previewFileRewind?: (
     target: ConversationRowTarget,
   ) => Promise<V4ConversationFileRewindPreviewResult>;
