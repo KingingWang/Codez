@@ -312,7 +312,8 @@ async function runScenarioWithOptions({ browserEnabled, cuaEnabled, signal, late
     await closeServer(model);
     await closeServer(browserBroker?.server);
     await closeServer(cuaBroker?.server);
-    await rm(temporary, { recursive: true, force: true });
+    // macOS arm64 偶发仍有插件 Git 进程释放文件句柄，递归删除需按 Node 的重试策略等待目录稳定。
+    await rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 }
 
