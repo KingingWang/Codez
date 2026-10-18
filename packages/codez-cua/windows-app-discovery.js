@@ -25,6 +25,7 @@ public static class CodezWindowDiscovery {
   public sealed class Window {
     public long window_id;
     public string title;
+    public bool focused;
   }
   public sealed class App {
     public int pid;
@@ -34,8 +35,9 @@ public static class CodezWindowDiscovery {
   }
   public static App[] List() {
     var apps = new Dictionary<int, App>();
+    IntPtr foregroundWindow = GetForegroundWindow();
     uint foregroundPid;
-    GetWindowThreadProcessId(GetForegroundWindow(), out foregroundPid);
+    GetWindowThreadProcessId(foregroundWindow, out foregroundPid);
     bool ok = EnumWindows(delegate(IntPtr hwnd, IntPtr data) {
       if (!IsWindowVisible(hwnd)) return true;
       uint pid;
@@ -55,7 +57,11 @@ public static class CodezWindowDiscovery {
       }
       var text = new StringBuilder(4096);
       GetWindowText(hwnd, text, text.Capacity);
-      app.windows.Add(new Window { window_id = hwnd.ToInt64(), title = text.ToString() });
+      app.windows.Add(new Window {
+        window_id = hwnd.ToInt64(),
+        title = text.ToString(),
+        focused = hwnd == foregroundWindow,
+      });
       return true;
     }, IntPtr.Zero);
     if (!ok) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
@@ -113,7 +119,8 @@ export async function discoverWindowsApps(options = {}) {
           (window) =>
             !Number.isSafeInteger(window?.window_id) ||
             window.window_id <= 0 ||
-            typeof window.title !== "string",
+            typeof window.title !== "string" ||
+            typeof window.focused !== "boolean",
         ),
     )
   ) {

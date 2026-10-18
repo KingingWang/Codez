@@ -21,13 +21,13 @@ test("Windows discovery uses fixed Win32 enumeration, not desktop UIA or user-su
             pid: 42,
             name: "CalculatorApp",
             active: true,
-            windows: [{ window_id: 7, title: "计算器" }],
+            windows: [{ window_id: 7, title: "计算器", focused: true }],
           },
           {
             pid: 43,
             name: "Notes",
             active: false,
-            windows: [{ window_id: 8, title: "Notes" }],
+            windows: [{ window_id: 8, title: "Notes", focused: false }],
           },
         ]),
       };

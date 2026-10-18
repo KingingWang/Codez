@@ -1045,14 +1045,28 @@ export function createXa11yProducer(options = {}) {
   async function listWindowHandles(app) {
     try {
       app.handle ??= await attachAppByPid(app.record.pid);
-      // 发现和目标绑定之间焦点可能变化，动作必须使用目标绑定时的新事实。
-      if (app.discoveredWindows) app.record.active = appRecord(app.handle).active;
+      if (!app.discoveredWindows) {
+        // 非 Windows 平台没有 Win32 发现记录，沿用 xa11y 的原生前台事实。
+        app.record.active = appRecord(app.handle).active;
+      }
       const windows = await app.handle.windows();
       if (!Array.isArray(windows)) throw new Error("xa11y App.windows() returned invalid data");
-      return windows.map((handle, index) => ({
-        handle,
-        record: windowRecord(handle, index),
-      }));
+      const discoveredWindows = new Map(
+        (app.discoveredWindows ?? [])
+          .filter((window) => Number.isSafeInteger(window?.window_id))
+          .map((window) => [window.window_id, window]),
+      );
+      return windows.map((handle, index) => {
+        const record = windowRecord(handle, index);
+        const discovered = discoveredWindows.get(record.window_id);
+        if (discovered !== undefined) {
+          // Bug 根因：Windows UIA 的 Window.active/isForeground 与 GetForegroundWindow
+          // 不是同一事实源，绑定后用 UIA 覆盖会把真实前台窗口误判成
+          // foreground_required；输入门必须复用同一次 Win32 HWND/PID 发现结果。
+          record.focused = discovered.focused;
+        }
+        return { handle, record };
+      });
     } catch (error) {
       throw mapXa11yError(error, "INTERNAL");
     }
@@ -1346,14 +1360,33 @@ export function createXa11yProducer(options = {}) {
     return { kind: "coordinate", nativeTarget: desktop, snapshot, resolved };
   }
 
-  function ensureForeground(resolved, appRef) {
-    if (!resolved.app.record.active) {
+  async function ensureForeground(resolved, appRef) {
+    let appActive = resolved.app.record.active;
+    let windowFocused = resolved.window.record.focused;
+    if (platform === "win32" && typeof options.discoverApps === "function") {
+      try {
+        // PID app_ref 会绕过应用发现以避免 UIA 全桌面枚举；输入前再用同一 Win32
+        // EnumWindows/GetForegroundWindow 事实做一次轻量安全复核，不能退回 UIA active 字段。
+        const apps = await options.discoverApps({ signal: lifecycle.signal });
+        const discoveredApp = apps.find((app) => app?.pid === resolved.app.record.pid);
+        appActive = discoveredApp?.active === true;
+        if (appRef?.window_id !== undefined) {
+          const discoveredWindow = discoveredApp?.windows?.find(
+            (window) => window?.window_id === resolved.window.record.window_id,
+          );
+          windowFocused = discoveredWindow?.focused === true;
+        }
+      } catch (error) {
+        throw mapXa11yError(error, "INTERNAL");
+      }
+    }
+    if (!appActive) {
       throw producerError(
         "FOREGROUND_REQUIRED",
         "event input requires the target app to be foreground",
       );
     }
-    if (appRef?.window_id !== undefined && !resolved.window.record.focused) {
+    if (appRef?.window_id !== undefined && !windowFocused) {
       throw producerError(
         "FOREGROUND_REQUIRED",
         "event input requires the target window to be focused",
@@ -1445,7 +1478,7 @@ export function createXa11yProducer(options = {}) {
         throw producerError("ACTION_UNAVAILABLE", "element has no compatible press action");
       await invokeAction(() => target.nativeTarget.press(), "ACTION_UNAVAILABLE");
     } else {
-      ensureForeground(target.resolved, params.appRef);
+      await ensureForeground(target.resolved, params.appRef);
       const sim = await inputSim();
       await invokeAction(async () => {
         await prepareCoordinatePointer(sim, target);
@@ -1468,7 +1501,7 @@ export function createXa11yProducer(options = {}) {
         retry: "reobserve",
       });
     }
-    ensureForeground(from.resolved, params.appRef);
+    await ensureForeground(from.resolved, params.appRef);
     const sim = await inputSim();
     await invokeAction(async () => {
       if (motion.profile !== "smooth" || from.kind !== "coordinate" || to.kind !== "coordinate") {
@@ -1539,7 +1572,7 @@ export function createXa11yProducer(options = {}) {
         await invokeAction(() => target.nativeTarget.performAction(action), "ACTION_UNAVAILABLE");
       }
     } else if (params.amount > 0) {
-      ensureForeground(target.resolved, params.appRef);
+      await ensureForeground(target.resolved, params.appRef);
       const [dx, dy] = scrollDelta(target, params.direction, params.amount);
       const sim = await inputSim();
       await invokeAction(async () => {
@@ -1567,7 +1600,7 @@ export function createXa11yProducer(options = {}) {
       let resolved = target?.resolved;
       if (!resolved && params.appRef) resolved = await resolveAppAndWindow(params.appRef);
       if (!resolved) throw producerError("INVALID_APP", "event typing requires app_ref or target");
-      ensureForeground(resolved, params.appRef);
+      await ensureForeground(resolved, params.appRef);
       const sim = await inputSim();
       if (target) {
         if (target.kind === "element")
@@ -1620,7 +1653,7 @@ export function createXa11yProducer(options = {}) {
       targetResolution = await snapshotFor(undefined, context);
       resolved = targetResolution.resolved;
     }
-    ensureForeground(resolved, params.appRef);
+    await ensureForeground(resolved, params.appRef);
     const sim = await inputSim();
     for (let count = 0; count < params.repeat; count += 1) {
       if (params.holdSeconds > 0) {
@@ -1666,7 +1699,7 @@ export function createXa11yProducer(options = {}) {
       targetResolution = await snapshotFor(undefined, context);
       resolved = targetResolution.resolved;
     }
-    ensureForeground(resolved, params.appRef);
+    await ensureForeground(resolved, params.appRef);
     await invokeAction(
       () => options.paste({ text: params.text, format: params.format, context: context.raw }),
       "INTERNAL",

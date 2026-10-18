@@ -112,7 +112,7 @@ test("Windows discovery lists metadata without global UIA; only the selected PID
         name: "Notes",
         bundle_id: null,
         active: true,
-        windows: [{ window_id: 7, title: "Notes" }],
+        windows: [{ window_id: 7, title: "Notes", focused: true }],
       },
     ],
   });
@@ -123,6 +123,51 @@ test("Windows discovery lists metadata without global UIA; only the selected PID
   const state = await producer.dispatch("get_app_state", { app_ref: { name: "Notes" } }, context());
   assert.equal(state.app.pid, 42);
   assert.deepEqual(attached, [42]);
+});
+
+test("Windows input foreground checks use Win32 discovery instead of stale UIA focus flags", async () => {
+  const fixture = createFixture();
+  fixture.app.isForeground = false;
+  fixture.window.active = false;
+  const producer = fixture.createProducer({
+    platform: "win32",
+    discoverApps: async () => [
+      {
+        pid: 42,
+        name: "Notes",
+        bundle_id: null,
+        active: true,
+        windows: [{ window_id: 7, title: "Notes", focused: true }],
+      },
+    ],
+  });
+
+  await producer.dispatch("get_app_state", { app_ref: appRef() }, context());
+  await producer.dispatch("key", { text: "Meta+r", app_ref: appRef() }, context());
+
+  assert.deepEqual(
+    fixture.log.find(([name]) => name === "input.chord"),
+    ["input.chord", "r", ["Meta"]],
+  );
+
+  const blockedFixture = createFixture();
+  const blockedProducer = blockedFixture.createProducer({
+    platform: "win32",
+    discoverApps: async () => [
+      {
+        pid: 42,
+        name: "Notes",
+        bundle_id: null,
+        active: false,
+        windows: [{ window_id: 7, title: "Notes", focused: false }],
+      },
+    ],
+  });
+  await blockedProducer.dispatch("get_app_state", { app_ref: appRef() }, context());
+  await assert.rejects(
+    blockedProducer.dispatch("key", { text: "Meta+r", app_ref: appRef() }, context()),
+    (error) => error?.code === "FOREGROUND_REQUIRED",
+  );
 });
 
 test("Windows explicit PID attaches directly without any desktop enumeration", async () => {
