@@ -12,10 +12,10 @@ module.exports = async function run({ github, context, core, processEnv }) {
     throw new Error("Missing ISSUE_TRIAGE_API_KEY repository secret.");
   }
   if (!processEnv.OPENAI_BASE_URL) {
-    throw new Error("Missing ISSUE_TRIAGE_BASE_URL repository variable.");
+    throw new Error("Missing ISSUE_TRIAGE_BASE_URL repository secret.");
   }
   if (!processEnv.OPENAI_MODEL) {
-    throw new Error("Missing ISSUE_TRIAGE_MODEL repository variable.");
+    throw new Error("Missing ISSUE_TRIAGE_MODEL repository secret.");
   }
 
   if (manual) {
@@ -74,7 +74,9 @@ module.exports = async function run({ github, context, core, processEnv }) {
     const maxPerWindow = Number(processEnv.AUTO_MAX_PER_HOUR || "2");
     const since = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
 
-    const recentRepoComments = await github.paginate(github.rest.issues.listComments, {
+    // 整仓查询必须用 listCommentsForRepo；listComments 需要 issue_number，
+    // 缺失时 Octokit 会把 {issue_number} 渲染为空导致 404。
+    const recentRepoComments = await github.paginate(github.rest.issues.listCommentsForRepo, {
       owner: context.repo.owner,
       repo: context.repo.repo,
       since,
