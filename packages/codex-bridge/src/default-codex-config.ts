@@ -61,7 +61,7 @@ export function createRecommendedCatalogModelEntry(options?: {
     max_context_window: 272000,
     auto_compact_token_limit: null,
     comp_hash: "3000",
-    default_reasoning_summary: "none",
+    default_reasoning_summary: "auto",
     default_reasoning_level: "high",
     supported_reasoning_levels: [
       {

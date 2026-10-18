@@ -92,6 +92,72 @@ test("stream deltas preserve native item id and final items replace provisional 
   ]);
 });
 
+test("reasoning summaryTextDelta and textDelta stream into reasoning item before completion", () => {
+  const store = new ThreadStateStore(
+    port(() => ({})),
+    "/work",
+  );
+  store.markStarted(thread());
+  store.apply({
+    method: "turn/started",
+    params: { threadId: "t1", turn: { id: "turn", items: [] } },
+  });
+  store.apply({
+    method: "item/started",
+    params: {
+      threadId: "t1",
+      turnId: "turn",
+      item: { id: "r1", type: "reasoning", summary: [], content: [""] },
+    },
+  });
+  store.apply({
+    method: "item/reasoning/textDelta",
+    params: { threadId: "t1", turnId: "turn", itemId: "r1", contentIndex: 0, delta: "先检查" },
+  });
+  store.apply({
+    method: "item/reasoning/textDelta",
+    params: { threadId: "t1", turnId: "turn", itemId: "r1", contentIndex: 0, delta: "代码" },
+  });
+  assert.deepEqual(store.get("t1")?.thread.turns, [
+    {
+      id: "turn",
+      itemsView: "full",
+      items: [
+        {
+          id: "r1",
+          type: "reasoning",
+          summary: [],
+          content: ["先检查代码"],
+          status: "inProgress",
+        },
+      ],
+    },
+  ]);
+  store.apply({
+    method: "item/completed",
+    params: {
+      threadId: "t1",
+      turnId: "turn",
+      item: { id: "r1", type: "reasoning", summary: ["先检查代码"], content: [] },
+    },
+  });
+  assert.deepEqual(store.get("t1")?.thread.turns, [
+    {
+      id: "turn",
+      itemsView: "full",
+      items: [
+        {
+          id: "r1",
+          type: "reasoning",
+          summary: ["先检查代码"],
+          content: [],
+          status: "completed",
+        },
+      ],
+    },
+  ]);
+});
+
 test("deletion revokes state and prevents an in-flight history load resurrecting it", async () => {
   const page = Promise.withResolvers<unknown>();
   const store = new ThreadStateStore(

@@ -71,6 +71,14 @@ export function applyNativeItemDelta(
     const index = typeof params.summaryIndex === "number" ? params.summaryIndex : 0;
     summary[index] = String(summary[index] ?? "") + params.delta;
     item.summary = summary;
+  } else if (method === "item/reasoning/textDelta") {
+    // Chat Completions / Anthropic 以及 Responses raw reasoning 流通过
+    // item/reasoning/textDelta 下发流式思考正文；合入 item.content[contentIndex]，
+    // 让流式期间即可实时渲染思考内容（item/completed 时会被完整 item 替换）。
+    const content = array(item.content);
+    const index = typeof params.contentIndex === "number" ? params.contentIndex : 0;
+    content[index] = String(content[index] ?? "") + params.delta;
+    item.content = content;
   } else return false;
   return true;
 }

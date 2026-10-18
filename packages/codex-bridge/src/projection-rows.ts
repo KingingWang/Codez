@@ -23,6 +23,7 @@ import {
   imageGenerationRow,
   imageViewRow,
   isHiddenContinuationUserMessage,
+  projectReasoningText,
   projectTextOrReasoningState,
   subAgentActivityMarker,
   webSearchRow,
@@ -247,7 +248,7 @@ function itemRow(
       return {
         ...base,
         kind: "reasoning",
-        text: [...item.summary, ...item.content].join("\n\n"),
+        text: projectReasoningText(item.summary, item.content),
         state: projectTextOrReasoningState(item.status, turn.status, isLastItemInTurn, false),
       };
     case "imageView":

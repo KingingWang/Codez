@@ -291,6 +291,18 @@ export function projectTextOrReasoningState(
   return itemStatus === "completed" || !isLastItemInTurn ? "complete" : "interrupted";
 }
 
+/** 合并 reasoning 的 summary 与 content，过滤空占位并避免 summary/content 同文重复拼接。 */
+export function projectReasoningText(
+  summary: readonly string[],
+  content: readonly string[],
+): string {
+  const nonEmptySummary = summary.filter((part) => part.length > 0);
+  const nonEmptyContent = content.filter(
+    (part) => part.length > 0 && !nonEmptySummary.includes(part),
+  );
+  return [...nonEmptySummary, ...nonEmptyContent].join("\n\n");
+}
+
 /** 识别中断轮无气泡继续的隐藏 contextual user fragment。 */
 export function isHiddenContinuationUserMessage(item: {
   type?: unknown;
