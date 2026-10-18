@@ -496,7 +496,7 @@ function submissionConfigFromCommand(
   const candidate =
     type === "createSession"
       ? (payload.firstInput as Record<string, unknown> | undefined)
-      : type === "sendText" || type === "sendGoalCommand"
+      : type === "sendText" || type === "sendGoalCommand" || type === "editUserQuery"
         ? payload
         : undefined;
   if (!candidate?.modelSelection || !candidate.mode) return null;
@@ -3530,7 +3530,10 @@ export function SessionPane({
                       : !nativeCodexSession && rawMode === "guarded"
                         ? "guarded"
                         : null;
-        if (!normalizedMode || (nativeCodexSession && normalizedMode === "edit" && !codexAutoReviewSupported)) {
+        if (
+          !normalizedMode ||
+          (nativeCodexSession && normalizedMode === "edit" && !codexAutoReviewSupported)
+        ) {
           toast(intl.formatMessage({ id: "chat.slash.mode.unknown" }, { mode: slashCommand.mode }));
           return "blocked" as const;
         }
@@ -3559,7 +3562,8 @@ export function SessionPane({
           const configured = catalog.configuredSelection;
           const matchedGroup = catalog.groups.find(
             (group) =>
-              (!explicitProvider || group.providerId.toLowerCase() === explicitProvider.toLowerCase()) &&
+              (!explicitProvider ||
+                group.providerId.toLowerCase() === explicitProvider.toLowerCase()) &&
               group.models.some(
                 (entry) =>
                   entry.model.toLowerCase() === targetModelName.toLowerCase() ||
@@ -3603,8 +3607,7 @@ export function SessionPane({
               continue;
             }
             const matchedModel = candidateProvider.models.find(
-              (candidate) =>
-                candidate.modelId.toLowerCase() === targetModelName.toLowerCase(),
+              (candidate) => candidate.modelId.toLowerCase() === targetModelName.toLowerCase(),
             );
             if (matchedModel) {
               handleDraftSelectModel(candidateProvider.providerId, matchedModel.modelId);
@@ -4236,9 +4239,15 @@ export function SessionPane({
         logger.warn("[v4-pane] edit 跳过：行内编辑内容为空且无附件");
         return false;
       }
+      // 修复原因：用户停止或完成上一轮后切换模型/思考等级/计划模式再点编辑重发时，
+      // 旧实现未携带当前 Composer 冻结配置，导致重发沿用原轮 pin 的旧模型与旧模式。
+      // 修复依据：在点击编辑提交时冻结当前 Composer 配置并随 editUserQuery 上送；
+      // Highspeed 加速轮仍通过 recentSubmissionOverride 保留用户原始选择。
+      const submission = createSubmissionFromComposer();
       const highspeed = await prepareHighspeedSendContext(
         sessionId,
         prepareHighspeedTurnFrom(captureHighspeedPaneOrigin()),
+        submission?.modelSelection,
       );
       const latest = snapshotRef.current;
       if (!latest || latest.sessionId !== sessionId) {
@@ -4252,6 +4261,7 @@ export function SessionPane({
           newText,
           workspaceMode: isDesktop ? "preserve" : workspaceMode,
           conversationQuotes,
+          ...(submission ? submission : {}),
           // editUserQuery 的 attachments 缺省表示保留 canonical 原附件；
           // 只有显式透传 []，CLI 才能区分“用户删除全部”与“调用方未修改附件”。
           ...(attachments ? { attachments: [...attachments] } : {}),
@@ -4262,6 +4272,9 @@ export function SessionPane({
         latest.logEpoch,
         undefined,
         highspeed.acceleratedCard,
+        undefined,
+        undefined,
+        submission,
       );
       if (ack.status !== "accepted" && ack.status !== "duplicate") {
         logger.warn(`[v4-pane] edit 被拒绝: ${ack.status} ${ack.reasonCode ?? ""}`);
@@ -4270,7 +4283,14 @@ export function SessionPane({
       // fork ACK 只做旧协议解码兼容；新 edit 永不导航 child。blocked 由行内冲突弹窗处理。
       return ack;
     },
-    [captureHighspeedPaneOrigin, dispatchCommand, prepareHighspeedTurnFrom, sessionId, isDesktop],
+    [
+      captureHighspeedPaneOrigin,
+      createSubmissionFromComposer,
+      dispatchCommand,
+      prepareHighspeedTurnFrom,
+      sessionId,
+      isDesktop,
+    ],
   );
 
   const dispatchRetryTurn = useCallback(

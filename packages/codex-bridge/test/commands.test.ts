@@ -391,7 +391,10 @@ test("interrupted turn without completed tools reverts unfinished step and rerun
   assert.equal(h.rpc.methods().at(-1), "turn/start");
   assert.equal(h.rpc.params("turn/start")[0]?.model, "new-model");
   assert.equal(h.rpc.params("turn/start")[0]?.effort, "high");
-  assert.deepEqual(h.rpc.params("turn/start")[0]?.input, interrupted.items[0]?.type === "userMessage" ? interrupted.items[0].content : []);
+  assert.deepEqual(
+    h.rpc.params("turn/start")[0]?.input,
+    interrupted.items[0]?.type === "userMessage" ? interrupted.items[0].content : [],
+  );
 });
 
 test("CAS rejects stale revision/epoch and invalid envelopes without side effects", async (t) => {
@@ -504,6 +507,53 @@ test("unsupported file rewind fails closed without destructive RPC", async (t) =
 test("history edit/retry preserve files, hydrate the correct prefix and rotate epoch", async (t) => {
   for (const type of ["editUserQuery", "retryTurn"] as const)
     await t.test(type, (t) => verifyHistoryChange(t, type));
+});
+test("editUserQuery forwards updated modelSelection, reasoningLevel and planEnabled to turn/start", async (t) => {
+  const h = await setup(t);
+  h.rpc.handlers.set("thread/revert", () => ({
+    thread: { ...h.authority.thread, turns: [] },
+    turnsBackwardsCursor: null,
+    itemsBackwardsCursor: null,
+  }));
+  const ack = await h.execute(
+    h.command(
+      "editUserQuery",
+      {
+        target: { rowId: 1, entityId: "codex:turn:turn-1:item:user-1" },
+        newText: "Edited with new model and plan mode",
+        workspaceMode: "preserve",
+        modelSelection: {
+          providerId: "secondary-provider",
+          modelId: "gpt-5.4-secondary",
+          options: { reasoningLevel: "high" },
+        },
+        mode: "custom",
+        planEnabled: true,
+      },
+      "edit-with-overrides",
+    ),
+  );
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.params("turn/start"), [
+    {
+      threadId: sessionId,
+      input: [{ type: "text", text: "Edited with new model and plan mode", text_elements: [] }],
+      clientUserMessageId: "edit-with-overrides",
+      model: "gpt-5.4-secondary",
+      effort: "high",
+      collaborationMode: {
+        mode: "plan",
+        settings: {
+          model: "gpt-5.4-secondary",
+          reasoning_effort: "high",
+          developer_instructions: null,
+        },
+      },
+    },
+  ]);
+  assert.equal(h.store.get(sessionId)?.thread.model, "gpt-5.4-secondary");
+  assert.equal(h.store.get(sessionId)?.thread.modelProvider, "secondary-provider");
+  assert.equal(h.store.get(sessionId)?.thread.reasoningEffort, "high");
 });
 test("approval accept/decline/cancel routes exact reverse request once through broker", async (t) => {
   const h = await setup(t, true);

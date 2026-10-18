@@ -36,14 +36,28 @@ export async function startCanonicalIntent(
   },
   options?: { requireQueue?: boolean },
 ): Promise<void> {
+  // 修复原因：editUserQuery 过去只从被截断的历史 editTarget.intent 读取 modelSelection/mode/planEnabled，
+  // 导致用户停止或完成上一轮后切换模型、思考等级或计划模式再点「编辑」重发时，新配置被忽略。
+  // 修复依据：当 editUserQuery 显式携带 modelSelection/mode/planEnabled 时优先采用本次提交值，
+  // 缺省时回落原轮 canonical intent 以保持向后兼容；retryTurn 继续固定沿用原轮 intent。
+  const editPayload =
+    envelope.type === "editUserQuery"
+      ? (envelope.payload as CommandPayloadMap["editUserQuery"])
+      : undefined;
+  if (editPayload?.mode === "custom") {
+    throw new Error('Submission mode "custom" is Codex-only; Codez Agent sessions must not receive it');
+  }
+  const explicitEditModelSelection =
+    editPayload?.modelSelection && !isHighspeedProviderId(editPayload.modelSelection.providerId)
+      ? editPayload.modelSelection
+      : undefined;
   const intent = inputIntentMetadataFromCanonical(
     envelope,
     {
       kind: editTarget.intent.kind,
       conversationQuotes:
-        envelope.type === "editUserQuery"
-          ? ((envelope.payload as CommandPayloadMap["editUserQuery"]).conversationQuotes ??
-            editTarget.intent.conversationQuotes)
+        editPayload
+          ? (editPayload.conversationQuotes ?? editTarget.intent.conversationQuotes)
           : editTarget.intent.conversationQuotes,
       text: editTarget.intent.text,
       sourceCommandId: editTarget.intent.sourceCommandId,
@@ -52,9 +66,14 @@ export async function startCanonicalIntent(
       requestedDelivery: editTarget.intent.requestedDelivery,
       admittedDelivery: editTarget.intent.admittedDelivery,
       fallbackReasonCode: editTarget.intent.fallbackReasonCode,
-      modelSelection: editTarget.intent.modelSelection,
-      mode: editTarget.intent.mode,
-      planEnabled: editTarget.intent.planEnabled,
+      modelSelection: explicitEditModelSelection ?? editTarget.intent.modelSelection,
+      mode: editPayload?.mode ?? editTarget.intent.mode,
+      planEnabled:
+        editPayload?.planEnabled !== undefined
+          ? editPayload.planEnabled
+          : editPayload?.mode !== undefined
+            ? editPayload.mode === "plan"
+            : editTarget.intent.planEnabled,
       attachmentRefs,
       provenance: editTarget.intent.provenance,
     },

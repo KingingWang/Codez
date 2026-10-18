@@ -328,6 +328,28 @@ describe("codez-protocol-v4 command", () => {
     });
     expect(valid.ok).toBe(true);
 
+    const validWithSubmissionOverrides = parseCommandEnvelope({
+      commandId: "cmd-edit-with-overrides",
+      clientId: "client-1",
+      sessionId: "s-1",
+      baseRevision: 7,
+      baseLogEpoch: "epoch-7",
+      type: "editUserQuery",
+      payload: {
+        target: { rowId: 12, entityId: "message-user-12" },
+        newText: "edited",
+        modelSelection: {
+          providerId: "custom-provider",
+          modelId: "gpt-5.4",
+          options: { reasoningLevel: "high" },
+        },
+        mode: "build",
+        planEnabled: false,
+      },
+      issuedAt: 1000,
+    });
+    expect(validWithSubmissionOverrides.ok).toBe(true);
+
     for (const invalid of [
       {
         commandId: "cmd-edit-old-row",

@@ -180,6 +180,8 @@ export const commandPayloadSchemas = {
       // 编辑重发按新的主动发送处理：只接受本次重新 prepare 得到的卡与执行材料，
       // 不从被 rewind 的历史消息复用旧凭据。
       modelSelection: modelSelectionSchema.optional(),
+      mode: submissionModeSchema.optional(),
+      planEnabled: z.boolean().optional(),
       modelExecution: modelExecutionSchema.optional(),
       highspeedMeta: highspeedMessageMetaSchema.optional(),
       // 缺省 preserve：仅切 conversation branch；rewind 会先安全恢复该轮文件。
