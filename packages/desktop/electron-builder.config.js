@@ -32,6 +32,7 @@ import {
   stageMacCuaHelperApp,
 } from "./scripts/macos-cua-helper-app.mjs";
 import { resolveLinuxCuaNativePackageRoots } from "./scripts/linux-cua-native-package.mjs";
+import { resolveWindowsCuaNativePackageRoots } from "./scripts/windows-cua-native-package.mjs";
 import { stageCuaNodeRuntimeAssets } from "./scripts/windows-cua-runtime-assets.mjs";
 import { resolveCodexBuildSelection, verifyCodexResources } from "../../scripts/codex-runtime.mjs";
 import { verifyCodexRemoteAssets } from "../../scripts/codex-runtime-remote-verify.mjs";
@@ -751,10 +752,15 @@ export default {
       arch: context.arch,
       configuredTargetPlatform: targetPlatform,
     });
-    const cuaDependencyPackageRoots = resolveLinuxCuaNativePackageRoots({
-      targetPlatform: actualCuaTarget,
-      env: process.env,
-    });
+    const cuaDependencyPackageRoots =
+      resolveWindowsCuaNativePackageRoots({
+        targetPlatform: actualCuaTarget,
+        env: process.env,
+      }) ??
+      resolveLinuxCuaNativePackageRoots({
+        targetPlatform: actualCuaTarget,
+        env: process.env,
+      });
     await runTimedAsync("afterPack:injectHoistedRuntimeModulesIntoAsar", () =>
       injectHoistedRuntimeModulesIntoAsar(context),
     );

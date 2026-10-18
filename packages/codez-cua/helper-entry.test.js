@@ -543,6 +543,29 @@ test("Windows application enumeration timeout is not a denied permission", async
   assert.deepEqual(status.screen_capture_probe, { ok: true });
 });
 
+test("Windows .NET application enumeration timeout preserves the raw error envelope", async () => {
+  const message = "Platform error (-2146233083): The operation has timed out. (0x80131505)";
+  const status = await readHelperPermissionStatus(
+    {
+      App: {
+        async foreground() {
+          throw new Error(message);
+        },
+      },
+      async screenshot() {
+        return { width: 1, height: 1, toPng: () => Buffer.from("fixture-png") };
+      },
+    },
+    { platform: "win32" },
+  );
+  assert.equal(status.available, true);
+  assert.equal(status.accessibility, "unknown");
+  assert.equal(status.accessibility_probe_ok, false);
+  assert.deepEqual(status.accessibility_probe, { ok: false, reason: message });
+  assert.equal(status.screen_recording, "granted");
+  assert.deepEqual(status.screen_capture_probe, { ok: true });
+});
+
 test("Windows permission status reads the foreground app without global enumeration", async () => {
   const status = await readHelperPermissionStatus(
     {

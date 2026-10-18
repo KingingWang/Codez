@@ -63,7 +63,9 @@ test("macOS preparation exports the real Node executable, version and byte hash"
 });
 
 test("Linux builds a pinned native xa11y package before installer packaging", () => {
-  const checkoutIndex = steps.findIndex((step) => step.with?.repository === "xa11y/xa11y");
+  const checkoutIndex = steps.findIndex(
+    (step) => step.with?.repository === "xa11y/xa11y" && step.if === "matrix.os == 'linux'",
+  );
   assert.ok(checkoutIndex >= 0);
   const checkout = steps[checkoutIndex];
   assert.equal(checkout.if, "matrix.os == 'linux'");
@@ -79,6 +81,55 @@ test("Linux builds a pinned native xa11y package before installer packaging", ()
   assert.ok(steps[index].run.includes(checkout.with.path));
   assert.match(steps[index].run, /CODEZ_CUA_LINUX_XA11Y_NATIVE_ROOT=/u);
   assert.match(steps[index].run, /GITHUB_ENV/u);
+});
+
+test("Windows rebuilds the HWND-scoped addon and tests it before installer packaging", async () => {
+  const checkoutIndex = steps.findIndex(
+    (step) => step.with?.repository === "xa11y/xa11y" && step.if === "matrix.os == 'win32'",
+  );
+  assert.ok(checkoutIndex >= 0, "Missing pinned Windows addon source");
+  const checkout = steps[checkoutIndex];
+  assert.equal(checkout.with.ref, "a3badccf5761615ea3412ee55c19ac3764e27913");
+  assert.equal(checkout.with["persist-credentials"], false);
+  const index = steps.findIndex((step) => step.name === "Build patched Windows Computer Use addon");
+  assert.ok(index > checkoutIndex && index < packagingIndex);
+  assert.equal(steps[index].if, "matrix.os == 'win32'");
+  assert.match(steps[index].run, /scripts\/build-windows-cua-xa11y\.sh/u);
+  assert.ok(steps[index].run.includes(checkout.with.path));
+  assert.match(steps[index].run, /CODEZ_CUA_WINDOWS_XA11Y_NATIVE_ROOT=/u);
+  assert.match(steps[index].run, /GITHUB_ENV/u);
+
+  const script = await readFile(new URL("./build-windows-cua-xa11y.sh", import.meta.url), "utf8");
+  assert.match(script, /x86_64-pc-windows-msvc/u);
+  assert.match(script, /aarch64-pc-windows-msvc/u);
+  assert.match(script, /rustup toolchain install 1\.95\.0/u);
+  assert.match(script, /git .*apply --check/u);
+  assert.match(script, /git .*archive --format=tar HEAD \| tar -x/u);
+  assert.match(script, /cua-xa11y-0\.15\.0-windows\.patch/u);
+  assert.match(script, /cua-xa11y-0\.15\.0-lock\.patch/u);
+  assert.match(script, /cargo \+1\.95\.0 test --locked[\s\S]*-p xa11y-windows --lib codez_/u);
+  assert.match(script, /cargo \+1\.95\.0 build --release --locked/u);
+  assert.match(script, /xa11y_js\.dll/u);
+  assert.match(script, /source\/xa11y-js\/Cargo\.toml/u);
+  for (const name of ["cua-xa11y-0.15.0-windows.patch", "cua-xa11y-0.15.0-lock.patch"]) {
+    assert.ok((await readFile(new URL(`./${name}`, import.meta.url), "utf8")).length > 0);
+  }
+  const patch = await readFile(
+    new URL("./cua-xa11y-0.15.0-windows.patch", import.meta.url),
+    "utf8",
+  );
+  assert.equal((patch.match(/^\+\s+fn codez_/gmu) ?? []).length, 3);
+  assert.match(patch, /^\+.*EnumWindows/gmu);
+  assert.match(patch, /^-.*root\.FindFirstBuildCache/gmu);
+  assert.match(patch, /^-.*root\.FindAllBuildCache/gmu);
+
+  const builder = await readFile(
+    new URL("../packages/desktop/electron-builder.config.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(builder, /resolveWindowsCuaNativePackageRoots\(\{[\s\S]*?actualCuaTarget/u);
+  const checks = workflow.jobs["remote-assets"].steps.map((step) => step.run ?? "").join("\n");
+  assert.ok(checks.includes("packages/desktop/scripts/windows-cua-native-package.test.mjs"));
 });
 
 test("Linux addon build uses native manylinux_2_28 and the upstream locked Cargo closure", async () => {

@@ -8,6 +8,10 @@ import {
   stageCuaNodeRuntimeAssets,
   stageWindowsCuaRuntimeAssets,
 } from "./windows-cua-runtime-assets.mjs";
+import {
+  WINDOWS_CUA_XA11Y_NATIVE_ROOT_ENV,
+  resolveWindowsCuaNativePackageRoots,
+} from "./windows-cua-native-package.mjs";
 
 const X64_NATIVE_PACKAGE = "@crowecawcaw/xa11y-win32-x64-msvc";
 const ARM64_NATIVE_PACKAGE = "@crowecawcaw/xa11y-win32-arm64-msvc";
@@ -130,6 +134,42 @@ async function createFixture() {
 
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+for (const arch of ["x64", "arm64"]) {
+  test(`Windows ${arch} release staging copies and hashes the patched addon instead of the npm binary`, async (t) => {
+    const fixture = await createFixture();
+    t.after(() => rm(dirname(fixture.appOutDir), { recursive: true, force: true }));
+    const patchedRoot = resolve(dirname(fixture.appOutDir), "patched-release-addon");
+    const nativePackage = arch === "x64" ? X64_NATIVE_PACKAGE : ARM64_NATIVE_PACKAGE;
+    const binaryName = `xa11y.win32-${arch}-msvc.node`;
+    const patchedBytes = Buffer.from("HWND-scoped native addon fixture");
+    await writeFixtureFile(
+      resolve(patchedRoot, "package.json"),
+      await readFile(resolve(fixture.dependencyPackageRoots[nativePackage], "package.json")),
+    );
+    await writeFixtureFile(resolve(patchedRoot, binaryName), patchedBytes);
+    const targetPlatform = { os: "win32", arch, key: `win32-${arch}` };
+    const result = await stageCuaNodeRuntimeAssets({
+      ...fixture,
+      electronPlatformName: "win32",
+      electronVersion: "41.0.3",
+      targetPlatform,
+      dependencyPackageRoots: {
+        ...fixture.dependencyPackageRoots,
+        ...resolveWindowsCuaNativePackageRoots({
+          targetPlatform,
+          env: { [WINDOWS_CUA_XA11Y_NATIVE_ROOT_ENV]: patchedRoot },
+        }),
+      },
+    });
+    const binaryPath = `node_modules/${nativePackage}/${binaryName}`;
+    assert.deepEqual(await readFile(resolve(result.runtimeRoot, binaryPath)), patchedBytes);
+    assert.equal(
+      result.manifest.files.find((file) => file.path === binaryPath)?.sha256,
+      sha256(patchedBytes),
+    );
+  });
 }
 
 test("repository Helper stages Windows discovery and native error classification in its closure", async (t) => {

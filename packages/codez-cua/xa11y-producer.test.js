@@ -194,11 +194,42 @@ test("Windows native enumeration timeout is retryable without pretending an acti
   });
 });
 
+test("Windows .NET native enumeration timeout is retryable", async () => {
+  const fixture = createFixture();
+  fixture.module.App.list = async () => {
+    throw new Error("Platform error (-2146233083): The operation has timed out. (0x80131505)");
+  };
+  const producer = fixture.createProducer();
+  await assert.rejects(producer.dispatch("list_apps", {}, context()), (error) => {
+    assert.equal(error.code, "TIMEOUT");
+    assert.equal(error.actionSent, false);
+    assert.equal(error.retry, "retry");
+    return true;
+  });
+});
+
 test("native timeout after an input action requires reobservation instead of automatic replay", async () => {
   const fixture = createFixture();
   const producer = fixture.createProducer();
   fixture.input.keyDown = async () => {
     throw new Error("Platform error (-2147023436): operation timed out (0x800705B4)");
+  };
+  await assert.rejects(
+    producer.dispatch("key", { text: "ctrl+a", hold_seconds: 0.1, app_ref: appRef() }, context()),
+    (error) => {
+      assert.equal(error.code, "TIMEOUT");
+      assert.equal(error.actionSent, true);
+      assert.equal(error.retry, "reobserve");
+      return true;
+    },
+  );
+});
+
+test(".NET native timeout after an input action requires reobservation instead of automatic replay", async () => {
+  const fixture = createFixture();
+  const producer = fixture.createProducer();
+  fixture.input.keyDown = async () => {
+    throw new Error("Platform error (-2146233083): The operation has timed out. (0x80131505)");
   };
   await assert.rejects(
     producer.dispatch("key", { text: "ctrl+a", hold_seconds: 0.1, app_ref: appRef() }, context()),

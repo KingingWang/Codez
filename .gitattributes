@@ -17,4 +17,6 @@ third-party/native-search/licenses/** -text -whitespace
 third-party/runtime/*.txt -text -whitespace
 docs/knip/docs/LICENSE -text -whitespace
 docs/knip/docs/licenses/** -text -whitespace
+# Unified diff fixtures need a single leading space on blank context lines.
+scripts/cua-xa11y-0.15.0-windows.patch -whitespace
 third-party/inventory.json linguist-generated=true

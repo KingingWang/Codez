@@ -71,7 +71,7 @@ jobs:
       - name: Computer Use helper and packaging regressions (Linux once)
         run: |
           pnpm --filter @codez/codez-cua test
-          node --test packages/desktop/scripts/linux-cua-native-package.test.mjs packages/desktop/scripts/windows-cua-runtime-assets.test.mjs packages/desktop/scripts/macos-cua-helper-app.test.mjs
+          node --test packages/desktop/scripts/linux-cua-native-package.test.mjs packages/desktop/scripts/windows-cua-native-package.test.mjs packages/desktop/scripts/windows-cua-runtime-assets.test.mjs packages/desktop/scripts/macos-cua-helper-app.test.mjs
       - name: Git worktree service and shared identity regressions (Linux once)
         run: pnpm exec tsx --test packages/services/test/gitWorktree.test.ts packages/services/test/gitWorktreeCreation.test.ts packages/shared/test/remoteWorkspaceScope.test.ts
       - name: Codex UI settings regressions (Linux once)
@@ -218,6 +218,20 @@ jobs:
           bash scripts/build-linux-cua-xa11y.sh \
             "$GITHUB_WORKSPACE/.cua-xa11y-source" "$RUNNER_TEMP/cua-xa11y" "$CODEZ_TARGET_ARCH"
           echo "CODEZ_CUA_LINUX_XA11Y_NATIVE_ROOT=$RUNNER_TEMP/cua-xa11y/package" >> "$GITHUB_ENV"
+      - name: Checkout pinned Windows Computer Use addon source
+        if: matrix.os == 'win32'
+        uses: actions/checkout@v4
+        with:
+          repository: xa11y/xa11y
+          ref: a3badccf5761615ea3412ee55c19ac3764e27913
+          path: .cua-xa11y-source
+          persist-credentials: false
+      - name: Build patched Windows Computer Use addon
+        if: matrix.os == 'win32'
+        run: |
+          bash scripts/build-windows-cua-xa11y.sh \
+            "$GITHUB_WORKSPACE/.cua-xa11y-source" "$RUNNER_TEMP/cua-xa11y" "$CODEZ_TARGET_ARCH"
+          echo "CODEZ_CUA_WINDOWS_XA11Y_NATIVE_ROOT=$RUNNER_TEMP/cua-xa11y/package" >> "$GITHUB_ENV"
       - name: Build Codex desktop
         run: pnpm --filter @codez/desktop build
       - name: Prepare macOS Computer Use Helper Node
