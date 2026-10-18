@@ -20,7 +20,11 @@
     <string name="remote_scan_permission_denied">Camera permission is needed to scan the QR code.</string>
     <string name="remote_scan_camera_failed">Could not start the camera.</string>
     <string name="remote_devices_clear">Clear</string>
+    <string name="remote_devices_clear_confirm_title">Clear all devices?</string>
+    <string name="remote_devices_clear_confirm_message">This removes all saved remote control desktop links from this phone.</string>
+    <string name="remote_cancel_button">Cancel</string>
     <string name="remote_close_button">Close</string>
+    <string name="remote_back_home_button">Back to devices</string>
     <string name="remote_retry_button">Retry</string>
     <string name="remote_load_failed_title">Could not load remote control</string>
     <string name="remote_file_chooser_title">Choose attachment</string>
@@ -28,4 +32,22 @@
     <string name="remote_keep_alive_text">Keeping the remote session ready while this phone is in use.</string>
     <string name="remote_keep_alive_channel">Remote control</string>
     <string name="remote_keep_alive_channel_description">Connection status for Codez remote control sessions.</string>
+    <string name="remote_paste_button">Paste</string>
+    <string name="remote_clipboard_empty">Clipboard does not contain a text link.</string>
+    <string name="remote_open_app_settings">App settings</string>
+    <string name="remote_scan_torch_on">Torch on</string>
+    <string name="remote_scan_torch_off">Torch</string>
+    <string name="remote_scan_pick_image">Album</string>
+    <string name="remote_scan_no_qr_in_image">No QR code found in the selected image.</string>
+    <string name="remote_settings_title">Settings</string>
+    <string name="remote_settings_immersive_title">Immersive full screen</string>
+    <string name="remote_settings_immersive_desc">Hide system status and navigation bars while controlling a desktop.</string>
+    <string name="remote_settings_keep_screen_on_title">Keep screen on</string>
+    <string name="remote_settings_keep_screen_on_desc">Prevent the phone from sleeping while the remote session is open.</string>
+    <string name="remote_settings_keep_alive_title">Background keep-alive service</string>
+    <string name="remote_settings_keep_alive_desc">Show a persistent notification to reduce background disconnection.</string>
+    <string name="remote_settings_auto_reconnect_title">Auto-reconnect on launch</string>
+    <string name="remote_settings_auto_reconnect_desc">Automatically open the most recent device when starting the app.</string>
+    <string name="remote_settings_clear_cache_button">Clear WebView cache</string>
+    <string name="remote_settings_cache_cleared">WebView cache cleared.</string>
 </resources>

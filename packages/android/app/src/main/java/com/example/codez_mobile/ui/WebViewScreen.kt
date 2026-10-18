@@ -22,14 +22,19 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,12 +59,14 @@ import com.example.codez_mobile.remote.NativeSocketBridge
 import com.example.codez_mobile.remote.RemoteControlUrlPolicy
 
 /**
- * 全屏沉浸式远控页：进入时隐藏系统状态栏/导航栏（上滑可短暂呼出），退出时恢复。
+ * 全屏远控页：默认进入沉浸模式（隐藏系统状态栏/导航栏，上滑可短暂呼出），也可在设置中关闭沉浸模式保留系统栏。
+ * 无论是否开启沉浸模式，容器均消费 imePadding()，确保软键盘弹起时底部输入框不被遮挡。
  * 页面不显示 App 顶栏，整个屏幕交给远控 Web UI；返回手势退出到首页。
  */
 @Composable
 fun RemoteControlWebViewScreen(
     remoteUrl: String,
+    immersiveMode: Boolean = true,
     onCloseRemote: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -84,8 +91,8 @@ fun RemoteControlWebViewScreen(
         callback?.onReceiveValue(uris)
     }
 
-    DisposableEffect(Unit) {
-        context.findActivity()?.let { setImmersiveMode(it, true) }
+    DisposableEffect(immersiveMode) {
+        context.findActivity()?.let { setImmersiveMode(it, immersiveMode) }
         onDispose {
             context.findActivity()?.let { setImmersiveMode(it, false) }
         }
@@ -110,7 +117,18 @@ fun RemoteControlWebViewScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    val containerModifier = if (immersiveMode) {
+        Modifier
+            .fillMaxSize()
+            .imePadding()
+    } else {
+        Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+            .imePadding()
+    }
+
+    Column(modifier = containerModifier) {
         Box(modifier = Modifier.fillMaxSize()) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -170,6 +188,7 @@ fun RemoteControlWebViewScreen(
                         pageError = null
                         webView?.reload()
                     },
+                    onBackHome = onCloseRemote,
                 )
             }
         }
@@ -209,6 +228,7 @@ private fun setImmersiveMode(activity: Activity, enabled: Boolean) {
 private fun RemoteControlErrorOverlay(
     message: String,
     onRetry: () -> Unit,
+    onBackHome: () -> Unit,
 ) {
     Surface(
         modifier = Modifier
@@ -233,8 +253,13 @@ private fun RemoteControlErrorOverlay(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onRetry) {
-                Text(stringResource(R.string.remote_retry_button))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(onClick = onRetry) {
+                    Text(stringResource(R.string.remote_retry_button))
+                }
+                OutlinedButton(onClick = onBackHome) {
+                    Text(stringResource(R.string.remote_back_home_button))
+                }
             }
         }
     }

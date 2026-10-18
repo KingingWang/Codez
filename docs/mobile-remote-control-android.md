@@ -28,17 +28,34 @@ E2EE 握手、配对鉴权、RPC 帧、重连与恢复状态机全部留在 Web 
 
 App 首页面向"一部手机连接多台桌面"的场景：
 
+- 顶栏右侧提供设置入口（BottomSheet / 弹窗），支持配置沉浸模式、屏幕常亮、后台保活服务、
+  启动自动重连最近设备，以及一键清理 WebView 缓存。
 - 主操作是扫码连接（CameraX + ML Kit）；手动粘贴链接作为兜底入口。
 - 最近连接以设备卡片列表展示：设备名（QR `name` 参数）、页面 host、相对时间，
-  点按即重连；支持单条删除与全部清空。
+  点按即重连；支持单条删除与带二次确认的全部清空。App 回到前台（`ON_RESUME`）时自动刷新相对时间。
+- 手动输入链接提供剪贴板一键粘贴、软键盘 `ImeAction.Go` 直接提交与 `imePadding` 键盘避让。
 - 卡片只展示元信息；完整链接（含配对凭据）保存在 App 私有 `SharedPreferences`。
+
+## 应用设置与状态所有者
+
+Android 壳本地偏好由 `RemoteControlSettingsStore` 单一所有者管理（保存在 App 私有
+`SharedPreferences` `codez_remote_control_settings`），纯数据与序列化逻辑收敛在
+`RemoteControlSettings`：
+
+- `immersiveMode`（默认 `true`）：远控 WebView 是否隐藏系统状态栏与导航栏。
+- `keepScreenOn`（默认 `true`）：远控页打开期间是否设置 `FLAG_KEEP_SCREEN_ON`。
+- `backgroundKeepAlive`（默认 `true`）：远控页打开期间是否启动 `RemoteControlKeepAliveService` 前台保活服务。
+- `autoReconnectLastDevice`（默认 `false`）：冷启动且无外部 DeepLink / Intent URL 时，若存在最近连接记录则自动打开最近一台设备；用户在本次会话主动退回首页后不会重复自动重连。
+- 清除 WebView 缓存：清理 `WebView` 磁盘缓存与 `WebStorage` 缓存，不影响 `SharedPreferences` 中的最近设备与设置项。
 
 ## 全屏远控页
 
-远控页打开后进入沉浸式全屏：隐藏系统状态栏与导航栏（沉浸模式，上滑可短暂呼出），
-不显示 App 自身的顶栏，整个屏幕交给远控 Web 页面。退出远控页（返回手势或页面自身
-断开）时恢复系统栏。刘海/挖孔区域保持默认避让，不强制内容延伸到打孔下，避免页面
-头部被摄像头遮挡。
+远控页默认进入沉浸式全屏（可在设置中关闭）：开启沉浸模式时隐藏系统状态栏与导航栏
+（上滑可短暂呼出），关闭时保留系统栏并应用 `systemBarsPadding()`。无论是否开启沉浸模式，
+Activity 均启用 `adjustResize` 且容器应用 `imePadding()`，保证软键盘弹起时 WebView 底部
+输入框不被遮挡。
+
+当主框架加载失败弹出错误遮罩时，同时提供「重试」与「返回首页」两个动作，避免失效链接阻断返回路径。
 
 ## 附件选择
 
@@ -63,6 +80,12 @@ accept 类型与多选模式），结果经 `WebChromeClient.FileChooserParams.p
 
 扫码使用 CameraX 预览和 ML Kit Barcode Scanning。扫描器只识别 QR Code，扫到内容后仍交给
 `RemoteControlUrlPolicy` 校验，非法链接不会进入 WebView。
+
+扫码页底部支持：
+
+- 手电筒开关（当设备摄像头具备闪光灯单元时可用）。
+- 从系统相册选择图片识别二维码（通过 `PickVisualMedia` / `GetContent` 读取图片并由 ML Kit 解析）。
+- 扫码命中有效二维码时触发触觉反馈（Haptic Feedback）；若相机权限被拒绝，首页错误提示栏提供跳转系统应用设置页的快捷操作。
 
 ## 后台稳定性
 

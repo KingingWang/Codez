@@ -21,7 +21,11 @@
     <string name="remote_scan_permission_denied">需要相机权限才能扫描二维码。</string>
     <string name="remote_scan_camera_failed">无法启动相机。</string>
     <string name="remote_devices_clear">清空</string>
+    <string name="remote_devices_clear_confirm_title">清空全部设备？</string>
+    <string name="remote_devices_clear_confirm_message">将从本机移除所有已保存的桌面远控连接记录。</string>
+    <string name="remote_cancel_button">取消</string>
     <string name="remote_close_button">关闭</string>
+    <string name="remote_back_home_button">返回设备列表</string>
     <string name="remote_retry_button">重试</string>
     <string name="remote_load_failed_title">远程控制加载失败</string>
     <string name="remote_file_chooser_title">选择附件</string>
@@ -29,4 +33,22 @@
     <string name="remote_keep_alive_text">正在保持本次手机远控会话可恢复。</string>
     <string name="remote_keep_alive_channel">远程控制</string>
     <string name="remote_keep_alive_channel_description">Codez 手机远控会话的连接状态。</string>
+    <string name="remote_paste_button">粘贴</string>
+    <string name="remote_clipboard_empty">剪贴板中没有可用的链接文本。</string>
+    <string name="remote_open_app_settings">去设置开启</string>
+    <string name="remote_scan_torch_on">已开灯</string>
+    <string name="remote_scan_torch_off">手电筒</string>
+    <string name="remote_scan_pick_image">相册</string>
+    <string name="remote_scan_no_qr_in_image">所选图片中未识别到二维码。</string>
+    <string name="remote_settings_title">设置</string>
+    <string name="remote_settings_immersive_title">全屏沉浸模式</string>
+    <string name="remote_settings_immersive_desc">进入远控时隐藏系统状态栏和导航栏，最大化可视区域。</string>
+    <string name="remote_settings_keep_screen_on_title">远控时保持屏幕常亮</string>
+    <string name="remote_settings_keep_screen_on_desc">远控会话打开期间防止手机自动熄屏锁屏。</string>
+    <string name="remote_settings_keep_alive_title">后台连接保活服务</string>
+    <string name="remote_settings_keep_alive_desc">显示常驻通知以降低切换到后台时连接被系统回收的概率。</string>
+    <string name="remote_settings_auto_reconnect_title">启动时自动重连上次设备</string>
+    <string name="remote_settings_auto_reconnect_desc">打开应用时若存在最近连接过的设备，自动进入远控页。</string>
+    <string name="remote_settings_clear_cache_button">清除 WebView 缓存</string>
+    <string name="remote_settings_cache_cleared">已清除 WebView 缓存。</string>
 </resources>
