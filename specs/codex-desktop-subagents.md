@@ -165,3 +165,53 @@ supported" notice):
   No mutation is retried automatically. A new successful write refreshes roles.
 - The Codex native request path (`codex/request`) is unchanged and carries no
   `agents/*` methods.
+
+## Composer role mentions
+
+The Codex composer's `/` subagent group reads the same authorized `agents/list`
+file-role projection as Settings. Selecting a role inserts `@<exact role name>`;
+it does not attach developer instructions or start a child agent automatically.
+The `@` context menu itself keeps its existing file/session/plugin semantics.
+
+```text
+ConversationComposer native runtime fact
+  -> ChatPromptEditor -> LexicalChatInput -> SlashCommandPlugin
+  -> open "/" -> useCodexAgents -> workspace-scoped listAgentRoles
+  -> Host reads user/project TOML files -> current-scope candidate projection
+  -> choose role -> canonical @name -> existing sendText path
+```
+
+- The Host owns role files; hooks hold only scoped read projections. Renderer
+  code must not read files or use the legacy Markdown subagents service for Codex.
+- User and project roles are searchable without a two/three-item preview cap.
+  For an identical name, project scope wins. Preserve spelling and distinct
+  case-sensitive role names. Omit roles with missing/blank developer instructions
+  or an explicitly blank description, which native Codex ignores.
+- Do not synthesize legacy `general-purpose` / `Explore` entries. Existing legacy
+  Agent composers keep their Markdown catalog and enabled-state behavior.
+- Opening the menu refreshes the file projection so Settings edits become
+  discoverable without remounting the composer. This is not a promise to hot-reload
+  roles into an already-created native thread.
+- Requests use `workspaceIdentity?.trim() || workspacePath` and the resolved
+  local/remote service attachment. While disconnected, issue no RPC and show no
+  stale candidates. Scope changes and late reads must not expose another
+  workspace's roles, even for one render. Read failures surface without falling
+  back to legacy agents.
+- No protocol, queue, snapshot, stream, or replay/resume semantics change.
+  Desktop continuous and mobile replayable clients use the same composer runtime
+  fact and authorized role reader.
+
+### Regression scenarios
+
+- CSM01: native composer lists more than two user/project roles, searches a
+  project role, selects it and submits exactly `@name` without role instructions.
+- CSM02: project overrides a same-name user role; differently cased names remain
+  distinct; invalid file roles are not offered.
+- CSM03: opening after a Settings edit reloads candidates; workspace/identity,
+  remote attachment and disabled/disconnected transitions discard stale results.
+- CSM04: failed native role reads never call the legacy service; a legacy
+  composer still uses the legacy catalog.
+
+CSM01 has an isolated browser/Electron candidate under
+`packages/desktop/test/e2e/conversation-session/manual-review/pending/codex-subagent-mentions.mjs`;
+it is not promoted to the formal replay suite without human review.

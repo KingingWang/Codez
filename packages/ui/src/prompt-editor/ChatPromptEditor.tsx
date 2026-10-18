@@ -91,8 +91,10 @@ export function ChatPromptEditor({
   excludedSlashCommandNames,
   appSlashCommands,
   enableMentionPanel,
+  nativeCodex = false,
 }: {
   workspacePath: string;
+  nativeCodex?: boolean;
   workspaceIdentity?: string;
   taskId: string | null;
   /** 仅供 Composer Skill catalog；可为草稿的 prewarm Session。 */
@@ -341,13 +343,14 @@ export function ChatPromptEditor({
 
   const editorNode = (
     <LexicalChatInput
+      nativeCodex={nativeCodex}
       placeholder={placeholder}
       disabled={disabled}
       submitDisabled={submitDisabled}
       allowSubmitWhenEmpty={allowSubmitWhenEmpty}
-          enterSubmits={enterSubmits}
-          onSubmit={handleEditorSubmit}
-          onModifiedSubmit={onModifiedSubmit}
+      enterSubmits={enterSubmits}
+      onSubmit={handleEditorSubmit}
+      onModifiedSubmit={onModifiedSubmit}
       onChange={handleTextChange}
       onFocus={onFocus}
       triggerPanelContainer={resolvedTriggerPanelContainer}

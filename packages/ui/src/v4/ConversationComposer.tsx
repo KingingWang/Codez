@@ -2638,6 +2638,7 @@ function ConversationComposerImpl({
           </div>
         ))}
         <ChatPromptEditor
+          nativeCodex={nativeCodexFollowup}
           workspacePath={workspacePath}
           workspaceIdentity={workspaceIdentity}
           taskId={sessionId}

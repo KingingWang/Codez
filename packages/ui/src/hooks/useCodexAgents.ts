@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   CodezAgentRoleDiagnostic,
   CodezAgentRoleScope,
@@ -25,6 +25,16 @@ export interface CodexAgentsController {
   deleteRole: (input: { scope: CodezAgentRoleScope; name: string }) => Promise<boolean>;
 }
 
+type CodexAgentsState = {
+  scope: object;
+  roles: CodezAgentRoleSummary[];
+  diagnostics: CodezAgentRoleDiagnostic[];
+  loading: boolean;
+  busy: boolean;
+  error?: string;
+  errorKind?: "read" | "mutation";
+};
+
 /**
  * Codex 子智能体（agent roles）文件列表与变更。
  * 与 useCodexSettings 分离：agents/* 是 Codez bridge 控制面方法族（文件型角色），
@@ -34,10 +44,12 @@ export function useCodexAgents({
   workspacePath,
   workspaceIdentity,
   remoteSessionId,
+  enabled: requestedEnabled = true,
 }: {
   workspacePath?: string | null;
   workspaceIdentity?: string;
   remoteSessionId?: string;
+  enabled?: boolean;
 }): CodexAgentsController {
   const resolution = useWorkspaceServicesResolution(
     workspacePath,
@@ -45,16 +57,26 @@ export function useCodexAgents({
     workspaceIdentity,
   );
   const { services, rpcReady } = resolution;
-  const enabled = Boolean(workspacePath && rpcReady);
+  const enabled = Boolean(requestedEnabled && workspacePath && rpcReady);
   const workspaceKey = workspaceIdentity?.trim() || workspacePath || "";
-  const [state, setState] = useState<{
-    roles: CodezAgentRoleSummary[];
-    diagnostics: CodezAgentRoleDiagnostic[];
-    loading: boolean;
-    busy: boolean;
-    error?: string;
-    errorKind?: "read" | "mutation";
-  }>({ roles: [], diagnostics: [], loading: true, busy: false });
+  // 菜单常驻时会切换 workspace/attachment；scope 不匹配的缓存连一帧也不能作为新候选返回。
+  const scope = useMemo(
+    () => ({}),
+    [enabled, workspacePath, workspaceIdentity, services, resolution.remoteSessionId],
+  );
+  const currentScope = useRef(scope);
+  currentScope.current = scope;
+  const [storedState, setState] = useState<CodexAgentsState>({
+    scope,
+    roles: [],
+    diagnostics: [],
+    loading: enabled,
+    busy: false,
+  });
+  const state: CodexAgentsState =
+    storedState.scope === scope
+      ? storedState
+      : { scope, roles: [], diagnostics: [], loading: enabled, busy: false };
   const readSequence = useRef(0);
   const mounted = useRef(false);
   useEffect(() => {
@@ -63,13 +85,17 @@ export function useCodexAgents({
       mounted.current = false;
       readSequence.current += 1;
     };
-  }, [workspaceKey, services, rpcReady]);
+  }, [scope]);
 
   const refresh = useCallback(async () => {
     if (!enabled || !workspacePath) return;
     const seq = ++readSequence.current;
     setState((previous) => ({
       ...previous,
+      scope,
+      roles: previous.scope === scope ? previous.roles : [],
+      diagnostics: previous.scope === scope ? previous.diagnostics : [],
+      busy: previous.scope === scope && previous.busy,
       loading: true,
       error: undefined,
       errorKind: undefined,
@@ -82,6 +108,7 @@ export function useCodexAgents({
       if (!mounted.current || readSequence.current !== seq) return;
       setState((previous) => ({
         ...previous,
+        scope,
         roles: result.roles,
         diagnostics: result.diagnostics,
         loading: false,
@@ -91,6 +118,7 @@ export function useCodexAgents({
       if (!mounted.current || readSequence.current !== seq) return;
       setState((previous) => ({
         ...previous,
+        scope,
         roles: [],
         diagnostics: [],
         loading: false,
@@ -98,7 +126,7 @@ export function useCodexAgents({
         errorKind: "read",
       }));
     }
-  }, [enabled, services, workspacePath, workspaceIdentity]);
+  }, [enabled, services, workspacePath, workspaceIdentity, scope]);
 
   useEffect(() => {
     void refresh();
@@ -122,7 +150,7 @@ export function useCodexAgents({
           workspaceKey,
           errorMessage: error instanceof Error ? error.message : String(error),
         });
-        if (mounted.current) {
+        if (mounted.current && currentScope.current === scope) {
           setState((previous) => ({
             ...previous,
             busy: false,
@@ -132,12 +160,12 @@ export function useCodexAgents({
         }
         return false;
       }
-      if (!mounted.current) return false;
+      if (!mounted.current || currentScope.current !== scope) return false;
       setState((previous) => ({ ...previous, busy: false }));
       await refresh();
       return true;
     },
-    [enabled, state.busy, state.loading, state.errorKind, refresh, workspaceKey],
+    [enabled, state.busy, state.loading, state.errorKind, refresh, workspaceKey, scope],
   );
 
   const saveRole = useCallback(

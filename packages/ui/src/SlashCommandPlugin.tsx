@@ -22,7 +22,7 @@ import {
   KEY_ESCAPE_COMMAND,
   KEY_TAB_COMMAND,
 } from "lexical";
-import { useSubagents } from "@/hooks/useSubagents.js";
+import { usePromptSubagents } from "@/hooks/usePromptSubagents.js";
 import { useSkills } from "@/hooks/useSkills.js";
 import { buildSlashApplyMentionPayload } from "@/lib/slashApplyMentionPayload.js";
 import { filterSkillsForProvider } from "@/lib/skillSourceFilter.js";
@@ -42,7 +42,6 @@ import { MentionPanel } from "./mentions/components/MentionPanel.js";
 import {
   buildAppSlashCommandSuggestions,
   buildSkillSuggestions,
-  buildSubagentSuggestions,
   buildSlashSuggestions,
   getTextAroundCursor,
   isAppSlashCommandSuggestion,
@@ -65,6 +64,7 @@ export function SlashCommandPlugin({
   provider,
   container,
   disabled = false,
+  nativeCodex = false,
   excludedCommandNames,
   appCommands,
 }: SlashCommandPluginProps & { provider: CodezProvider }) {
@@ -75,10 +75,16 @@ export function SlashCommandPlugin({
   // 这里只按 workspacePath 读取会落到 path 桶，表现为 Codez Agent 已收到 available_commands_update 但 / 面板为空。
   const commands = useSlashCommands(workspacePath, workspaceIdentity);
   const {
-    agents,
+    suggestions: subagentSuggestions,
     loading: subagentsLoading,
     error: subagentsError,
-  } = useSubagents(workspacePath, provider, workspaceIdentity);
+  } = usePromptSubagents({
+    workspacePath,
+    workspaceIdentity,
+    provider,
+    nativeCodex,
+    enabled: !disabled && activeTrigger?.trigger === "/",
+  });
   const {
     skills,
     loading: skillsLoading,
@@ -93,7 +99,6 @@ export function SlashCommandPlugin({
   const dismissedSignatureRef = useRef<string | null>(null);
   const activeSignatureRef = useRef<string | null>(null);
   const activeTokenRef = useRef<ActivePromptInputTokenSnapshot | null>(null);
-  const subagentSuggestions = useMemo(() => buildSubagentSuggestions(agents), [agents]);
   const skillSuggestions = useMemo(
     () =>
       buildSkillSuggestions(

@@ -1157,6 +1157,7 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
     return (
       <RowShell rowId={row.rowId} className="flex flex-col items-end">
         <ChatPromptEditor
+          nativeCodex={Boolean(context.nativeCodex)}
           workspacePath={context.workspacePath}
           taskId={context.sessionId ?? null}
           initialValue={parsedPrompt.visibleContent}
@@ -2111,8 +2112,7 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
         // label 走本地化，detail（review 描述 / hook 文本 / agentPath / 时长）追加在后。
         // contextCompaction 在 item/started ~ item/completed 之间携带 status: "running"，
         // 需显示“正在压缩上下文”及流光动画，完成后才显示“上下文已压缩”。
-        const running =
-          marker.event === "contextCompaction" && marker.status === "running";
+        const running = marker.event === "contextCompaction" && marker.status === "running";
         const labelId = running
           ? "chat.contextCompaction.started"
           : `chat.codexEvent.${marker.event}`;
@@ -2161,9 +2161,9 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
             ? marker.outcome
             : marker.type === "codexEvent" && marker.status
               ? marker.status
-            : marker.type === "forkNotice"
-              ? "created"
-              : "applied"
+              : marker.type === "forkNotice"
+                ? "created"
+                : "applied"
       }
       markerOrigin={marker.type === "compact" ? marker.origin : undefined}
       markerSourceCommandId={row.sourceCommandId}

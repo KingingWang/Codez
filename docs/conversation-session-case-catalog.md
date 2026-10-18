@@ -2801,7 +2801,7 @@ old generation resolves late ─────────────────
 | SSH-P0-CONN-05 | 损坏的本地 allowlist 凭据和失效默认偏好                                | 首次连接失败后恢复凭据并重试                                                                | 真同步失败拒绝连接并保留安全错误码；默认偏好不作为连接硬前置条件                                                                                                                          | source-read-failed 出现在错误/日志；凭据不泄漏；成功打开 workspace；默认原值保留                                                                                    | ✅     |
 | SSH-P0-CONN-03 | 同一 SSH target 通过首连接阻塞、后续连接透传的测试代理可达             | 首次连接仍处于 pending 时确认停止，随后对同一 host/port/username 使用正确 password 立即重试 | 仅 SSH 最后一个 pending waiter 取消会退休旧 connecting entry、abort 旧 backend；新请求不得复用旧 readiness/凭据；WSL/Docker/Server 取消语义不扩张                                         | 旧连接关闭且不产生 logical session/远端写入；新请求进入目录选择并成功打开 workspace；窗口 Host PID 不变；tab/store/log 不含 secret                                  | ✅     |
 | SSH-P0-CONN-04 | 同一 target 可达；设置页配置显式 HTTP 代理；fake CDN host 仅代理可达   | 选择本地下载后上传并连接 SSH workspace                                                      | Window Host 的 fresh manifest 与本地组件归档请求必须复用设置权威的 request-scoped transport；代理失败不得回退裸 `globalThis.fetch`                                                        | proxy 捕获 fresh manifest；部署、握手和 workspace 打开成功；Host PID 不变；组件归档 cache miss 与 fail-closed 由集成测试覆盖                                        | ✅     |
-| SSH-P0-CONN-06 | Codex 薄安装包与同构建 sidecar；远端 SSH 无法访问 Codez GitHub Release，本机可达 | 显式选“远端服务器下载”连接新目录，关闭并重连同一目标 | 远端制品 URL 固定到安装包内 build tag 与目标 SHA；仅远端来源不可用时桌面端用现有 Host 网络出口下载，经 SSH 上传；历史选择保留，匹配组件不重复下载或上传 | 首连接完成目录/身份/会话绑定，连接日志证明一次远端失败及本地回退；远端原生 Codex、Bridge、Node SHA 正确；重连原生包上传字节为零，Window Host PID 不变；校验/取消失败没有成功 marker | ✅     |
+| SSH-P0-CONN-06 | Codex 薄安装包与同构建 sidecar；远端 SSH 无法访问 Codez GitHub Release，本机可达 | 显式选“远端服务器下载”连接新目录，关闭并重连同一目标 | 远端制品 URL 固定到安装包内 build tag 与目标 SHA；仅远端来源不可用时桌面端用现有 Host 网络出口下载，经 SSH 上传；历史选择保留，匹配组件不重复下载或上传                                   | 首连接完成目录/身份/会话绑定，连接日志证明一次远端失败及本地回退；远端原生 Codex、Bridge、Node SHA 正确；重连原生包上传字节为零，Window Host PID 不变；校验/取消失败没有成功 marker | ✅     |
 | SSH-P0-DEV-01  | case-local `/tmp/codez-e2e-ssh-p0-*` 远端目录含 marker 文件            | 通过 workspace file tree 浏览/打开文件，并观察新增文件                                      | file/list/read/watch 必须使用远端 `workspacePath`，不能回落本地                                                                                                                           | marker 预览和新增文件来自远端；本地同路径不参与                                                                                                                     | ✅     |
 | SSH-P0-DEV-02  | case-local 远端 workspace 已连接                                       | 打开 Terminal，执行 cwd/system marker 与文件写入命令                                        | terminal/process/cwd 的权威源是远端 Ubuntu                                                                                                                                                | `pwd` 等于 remote path；输出与写入来自远端；切 workspace 不串 cwd                                                                                                   | ✅     |
 | SSH-P0-DEV-03  | case-local 远端 Git repo 已有 baseline commit 与未提交变化             | 打开 Git pane/status                                                                        | Git repo 与 status 的权威源是远端；不创建测试 commit                                                                                                                                      | Git pane 显示 tracked/untracked 变化；控制连接复核修改 marker；不调用本地 Git                                                                                       | ✅     |
@@ -3344,6 +3344,15 @@ W99-E03 的原意图明确来自绑定 Session，而非另存的 Bot 配置；�
 MPS09（accepted）：Markdown 文件引用显示文件名，发送与历史保留 path/text；无路径文本和普通对话 text-only 兼容。复用 markdown-preview-selection 正式 E2E 与引用序列化单测。
 
 MPS09 发送证据加强：E2E 从真实 provider 请求的 user 文本提取 userselect JSON，精确断言唯一引用等于 `{path: filePath, text: marker}`，拒绝缺失、错误路径、选段变化和额外内部字段；不以整份证据中出现文件名作为通过依据。
+
+## Codex 子智能体候选（CSM）
+
+CSM01～CSM04 的产品合同见 [Codex subagents spec](../specs/codex-desktop-subagents.md#composer-role-mentions)。
+接受范围：原生 composer 的用户/项目文件角色发现、同名覆盖、完整候选、搜索选择与 canonical
+`@name` 发送；scope/远程断连/异步结果隔离；legacy catalog 保持。CSM01 使用独立
+`manual-review/pending/codex-subagent-mentions.mjs` 验证真实编辑器交互，其他组合由聚焦 hooks/
+mapper 测试补充。不修改 `@` context 面板，不声称 role 在线程中热加载，也不新增模型调用或
+continuous/replayable 协议覆盖。
 
 ## Mention 编辑器选区回归（MSEL）
 
