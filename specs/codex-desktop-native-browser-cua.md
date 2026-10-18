@@ -314,6 +314,11 @@ while the relay socket is up but the Desktop broker is momentarily unreachable, 
 
 ## Global enable toggle
 
+The independence rules and tool matrix in
+[computer-and-browser-control-isolation.md](computer-and-browser-control-isolation.md)
+supersede the historical coupling below: disabling the browser must not remove local CUA
+registration or tools. A live transport is not the same fact as browser enablement.
+
 The setting `nativeBrowserControlEnabled` (boolean, default `true`) is the single user-facing
 switch for the **agent-facing** browser tool. It lives in app settings, is authored by the
 Desktop, and governs local and remote registrations uniformly. It does not disable the in-app

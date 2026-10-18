@@ -128,7 +128,17 @@ test("native browser MCP state holder updates, notifies and derives the broker t
   assert.deepEqual(seen, [2, 0]);
   assert.equal(holder.brokerTarget(), undefined);
 
+  // 独立 CUA 会让 server 载体继续存在；远端 relay 只能依赖 browser 授权事实。
+  holder.set({ servers, nativeBrowserCua: { browserAvailable: false, cuaAvailable: true } });
+  assert.equal(holder.brokerTarget(), undefined);
+
+  holder.set({ servers, nativeBrowserCua: { browserAvailable: true, cuaAvailable: false } });
+  assert.deepEqual(holder.brokerTarget(), {
+    endpoint: "/tmp/broker.sock",
+    tokenFile: "/tmp/broker.token",
+  });
+
   unsubscribe();
-  holder.set({ servers });
-  assert.deepEqual(seen, [2, 0]);
+  holder.set({ servers, nativeBrowserCua: { browserAvailable: true, cuaAvailable: false } });
+  assert.deepEqual(seen, [2, 0, 2, 2]);
 });

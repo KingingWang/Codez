@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 
-export function createNativeCuaModelServer(onRequest, namespace) {
-  const targets = [7, [40, 60]];
+export function createNativeCuaModelServer(onRequest, namespace, calls = []) {
+  const callQueue = [...calls];
   let requestCount = 0;
   return createServer((request, response) => {
     let body = "";
@@ -11,9 +11,9 @@ export function createNativeCuaModelServer(onRequest, namespace) {
     request.once("end", () => {
       requestCount += 1;
       onRequest(JSON.parse(body));
-      const target = targets.shift();
+      const call = callQueue.shift();
       const output =
-        target === undefined
+        call === undefined
           ? {
               id: "final",
               type: "message",
@@ -27,11 +27,11 @@ export function createNativeCuaModelServer(onRequest, namespace) {
               id: `item_${requestCount}`,
               type: "function_call",
               status: "completed",
-              call_id: Array.isArray(target) ? "array" : "numeric",
-              name: "cua_command",
+              call_id: `call_${requestCount}`,
+              name: call.name,
               namespace,
-              // 只对整个 arguments 对象编码；target 的数字/数组类型不能被单独字符串化。
-              arguments: JSON.stringify({ method: "left_click", target }),
+              // 只对整个 arguments 对象编码，避免调用方或客户端改写字段 JSON 类型。
+              arguments: JSON.stringify(call.arguments),
             };
       const completed = {
         id: `response_${requestCount}`,

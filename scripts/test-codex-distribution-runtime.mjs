@@ -79,7 +79,7 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   );
   assert.equal(
     build.steps[nativeSmoke + 1].run,
-    "node --test scripts/test-codex-bridge-smoke.mjs scripts/test-codex-project-discovery.mjs scripts/test-codex-native-cua-smoke.mjs",
+    "node --test scripts/test-codex-bridge-smoke.mjs scripts/test-codex-project-discovery.mjs scripts/test-codex-native-cua-smoke.mjs scripts/test-codex-native-control-isolation.mjs",
   );
   assert.equal(release.needs, "build");
   assert.match(release.if, /github.event_name == 'push'/);

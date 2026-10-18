@@ -16,10 +16,7 @@ import {
 } from "@codez/shared";
 import { parseNativeBrowserCuaFacts, runNativeBrowserCuaMcp } from "./native-browser-cua-mcp.js";
 import { describeBridgeFailure, type BridgeFailureOrigin } from "./diagnostics.js";
-import {
-  createCodexProviderKeyGate,
-  parseBlockedCodexProviderIds,
-} from "./provider-key-gate.js";
+import { createCodexProviderKeyGate, parseBlockedCodexProviderIds } from "./provider-key-gate.js";
 import { ensureDefaultCodexConfigFiles } from "./default-codex-config.js";
 
 async function main(): Promise<void> {

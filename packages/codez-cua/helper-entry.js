@@ -31,6 +31,8 @@ import { createMacOsPipPresenter } from "./pip-presentation-macos.js";
 import { createPipSessionCoordinator } from "./pip-session-coordinator.js";
 import { createPipSessionServer } from "./pip-session-server.js";
 import { createXa11yProducer, Xa11yProducerError } from "./xa11y-producer.js";
+import { isXa11yPermissionDenied } from "./xa11y-errors.js";
+import { discoverWindowsApps } from "./windows-app-discovery.js";
 
 const PARENT_CHECK_INTERVAL_MS = 2000;
 const STANDALONE_IDLE_TIMEOUT_MS = 300_000;
@@ -405,7 +407,7 @@ function producerError(error) {
   });
 }
 
-async function probePermission(xa11y, capability) {
+async function probePermission(xa11y, capability, platform = process.platform) {
   try {
     if (capability === "screen_recording") {
       const screenshot = await xa11y.screenshot();
@@ -424,6 +426,12 @@ async function probePermission(xa11y, capability) {
       ) {
         throw new Error("screen recording probe returned an invalid screenshot");
       }
+    } else if (platform === "win32") {
+      // 全桌面 App.list 超时不等于权限拒绝；前台绑定走 HWND，不访问无关 UIA provider。
+      const app = await xa11y.App.foreground({ timeout: 0 });
+      if (!Number.isSafeInteger(app?.pid) || app.pid <= 0) {
+        throw new Error("accessibility probe has no foreground application");
+      }
     } else {
       const apps = await xa11y.App.list();
       if (!Array.isArray(apps)) {
@@ -433,24 +441,30 @@ async function probePermission(xa11y, capability) {
     return { state: "granted" };
   } catch (error) {
     return {
-      state: "denied",
+      // 枚举超时、原生结果损坏都不是权限裁决，不能引导用户反复授权。
+      state: isXa11yPermissionDenied(error) ? "denied" : "unknown",
       error: error instanceof Error ? error.message : "permission probe failed",
     };
   }
 }
 
-export async function readHelperPermissionStatus(xa11y) {
+export async function readHelperPermissionStatus(xa11y, options = {}) {
+  const platform = options.platform ?? process.platform;
   const [accessibility, screenRecording] = await Promise.all([
-    probePermission(xa11y, "accessibility"),
-    probePermission(xa11y, "screen_recording"),
+    probePermission(xa11y, "accessibility", platform),
+    probePermission(xa11y, "screen_recording", platform),
   ]);
   return {
     available: true,
-    platform: process.platform,
+    platform,
     grant_owner: HELPER_BUNDLE_ID,
     owner: { bundle_id: HELPER_BUNDLE_ID, display_name: HELPER_DISPLAY_NAME },
     accessibility: accessibility.state,
     accessibility_probe_ok: accessibility.state === "granted",
+    accessibility_probe: {
+      ok: accessibility.state === "granted",
+      ...(accessibility.error ? { reason: accessibility.error } : {}),
+    },
     screen_recording: screenRecording.state,
     screen_capture_probe: {
       ok: screenRecording.state === "granted",
@@ -906,6 +920,9 @@ export async function runHelperProcess(options = {}) {
     createXa11yProducer({
       loadXa11y: async () => xa11y,
       platform: options.platform,
+      ...((options.platform ?? process.platform) === "win32"
+        ? { discoverApps: discoverWindowsApps }
+        : {}),
       requestAccess: createPermissionAdapter(xa11y),
       paste: createPasteAdapter(xa11y),
       launcher:

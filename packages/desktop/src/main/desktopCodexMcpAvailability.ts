@@ -1,4 +1,5 @@
 import {
+  CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV,
   CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
   type DesktopCodexMcpServer,
 } from "@codez/shared";
@@ -12,6 +13,11 @@ export function localBrowserMcpAvailability(
     ...availability,
     browserAvailable:
       availability.browserAvailable &&
-      servers.some((server) => server.name === CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME),
+      // CUA-only 也保留载体；不能再把“清单非空”误作本窗口 browser 授权。
+      servers.some(
+        (server) =>
+          server.name === CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME &&
+          server.env[CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV] !== "0",
+      ),
   };
 }

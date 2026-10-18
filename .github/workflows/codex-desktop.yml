@@ -195,7 +195,7 @@ jobs:
       - name: Verified native Codex experimental API and isolated handshake
         run: node scripts/codex-runtime-smoke.mjs
       - name: Bundled bridge against verified native runtime (isolated fake model)
-        run: node --test scripts/test-codex-bridge-smoke.mjs scripts/test-codex-project-discovery.mjs scripts/test-codex-native-cua-smoke.mjs
+        run: node --test scripts/test-codex-bridge-smoke.mjs scripts/test-codex-project-discovery.mjs scripts/test-codex-native-cua-smoke.mjs scripts/test-codex-native-control-isolation.mjs
       - uses: actions/download-artifact@v4
         with:
           name: codex-remote-assets
@@ -247,9 +247,32 @@ jobs:
         run: pnpm --filter @codez/desktop exec electron-builder --config electron-builder.config.js --${{ matrix.builder }} --${{ matrix.arch }} --publish never
       - name: Installer SHA256 manifests
         run: node scripts/codex-runtime-artifacts.mjs
-      - uses: actions/upload-artifact@v4
+      # 根因：GitHub CreateArtifact 连续超时会让已成功打包的目标阻塞发布。
+      # 只允许同 run/target 再上传一次；第二次失败仍须阻断 release，不能吞掉上传错误。
+      - name: Upload installers
+        id: upload_installers
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: codez-${{ matrix.os }}-${{ matrix.arch }}-${{ inputs.signed && matrix.os != 'linux' && 'signed' || 'unsigned' }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            packages/desktop/dist/*.dmg
+            packages/desktop/dist/*.zip
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.AppImage
+            packages/desktop/dist/*.deb
+            packages/desktop/dist/*.blockmap
+            packages/desktop/dist/*.yml
+            packages/desktop/dist/SHA256SUMS-*.txt
+            packages/desktop/dist/codex-remote-index-*.json
+      - name: Retry installer upload after transport failure
+        if: ${{ steps.upload_installers.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: codez-${{ matrix.os }}-${{ matrix.arch }}-${{ inputs.signed && matrix.os != 'linux' && 'signed' || 'unsigned' }}
+          overwrite: true
           if-no-files-found: error
           retention-days: 14
           path: |

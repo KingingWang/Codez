@@ -51,6 +51,7 @@ export function createNativeBrowserCuaMcpStateHolder(
       return () => listeners.delete(listener);
     },
     brokerTarget() {
+      if (!current.nativeBrowserCua?.browserAvailable) return undefined;
       const server = current.servers.find(
         (entry) => entry.name === CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
       );

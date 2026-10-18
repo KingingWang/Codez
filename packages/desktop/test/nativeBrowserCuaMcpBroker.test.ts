@@ -526,9 +526,9 @@ test("native broker toggle disables dispatch immediately and re-enables cleanly"
   };
   try {
     broker.setEnabled(false);
-    // 关闭即拒止：不进 manager，能力描述符同步不可用。
+    // 浏览器关闭只停止 browser dispatch；endpoint/窗口凭据仍承载独立 CUA。
     assert.equal(broker.availability.browserAvailable, false);
-    assert.equal(descriptor().serviceRunning, false);
+    assert.equal(descriptor().serviceRunning, true);
     const rejected = await send();
     assert.match(rejected, /backend_unavailable/u);
     assert.match(rejected, /disabled/u);

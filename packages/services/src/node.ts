@@ -600,6 +600,13 @@ import {
 import { WindowsCuaHelperHost } from "#src/cua-permission-broker/windowsCuaDevHelperHost.js";
 import { HELPER_APP_NAME } from "@codez/codez-cua/broker/helperConstants";
 import {
+  CUA_CREDENTIAL_GRANT_FILE_ENV,
+  attachCuaCredentialGrantPublisher,
+  createCuaCredentialGrantPublisher,
+  resolveCuaCredentialGrantRootDirectory,
+  type CuaCredentialGrantPublisher,
+} from "./codez-agent/cuaCredentialGrantPublisher.js";
+import {
   DEFAULT_CODEZ_MODEL_CONTEXT_BUDGET_STRATEGY,
   CODEZ_JWT_INVALID_BROADCAST_CHANNEL,
   formatLogPrefix,
@@ -625,6 +632,7 @@ import {
   CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
   CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV,
   CODEZ_NATIVE_BROWSER_CUA_CUA_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED_ENV,
   CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_ENV,
   CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE_ENV,
   CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
@@ -667,11 +675,13 @@ type DefaultCuaProductHelper = {
   host: ManagedCuaProductHelperHost;
   macPermissionHost?: CuaHelperHost;
   resolver: CuaProductMcpServerResolver;
+  credentialGrantPublisher?: CuaCredentialGrantPublisher;
 };
 
 type ManagedDefaultCuaProductHelper = {
   helper: DefaultCuaProductHelper;
   seedContext?: CuaProductMcpServerResolverContext;
+  credentialGrantPublisher: CuaCredentialGrantPublisher;
 };
 
 const cuaProductHelperAgentEnvRetryAt = new WeakMap<Pick<CuaHelperHost, "start">, number>();
@@ -1944,24 +1954,38 @@ export function createLocalServices(options: {
     });
   const defaultCuaProductHelperLifecycle =
     new CuaHelperLifecycleManager<ManagedDefaultCuaProductHelper>(async (managed) => {
+      const publisher = managed.credentialGrantPublisher;
+      if (publisher) {
+        // 先置 dispose fence，阻止晚到的 cold-start 在 Helper stop 后写入授权。
+        await publisher.dispose();
+      }
       await managed.helper.host.stop();
     });
   const createManagedDefaultCuaProductHelper = (
     context?: CuaProductMcpServerResolverContext,
-  ): ManagedDefaultCuaProductHelper | undefined => {
+  ): Promise<ManagedDefaultCuaProductHelper | undefined> => {
     const helper = (options?.createDefaultCuaProductHelper ?? createDefaultCuaProductHelper)({
       // 转发活跃-turn 查询（前向引用，codezAgentService 建好后赋值）。
       hasActiveTurn: () => hasActiveTurnRef?.() ?? false,
     });
-    if (!helper) return undefined;
+    if (!helper) return Promise.resolve(undefined);
+    const logger = createServiceLogger("cua-product-helper");
+    return createCuaCredentialGrantPublisher({
+      grantRootDirectory: resolveCuaCredentialGrantRootDirectory(resolveAppConfigDir()),
+      logger,
+    }).then((credentialGrantPublisher) => {
+      attachCuaCredentialGrantPublisher(helper.host, credentialGrantPublisher);
+      helper.credentialGrantPublisher = credentialGrantPublisher;
 
-    // 历史默认装配启动 10 秒周期 watchdog；空闲期一次 broker_info 超时就会在后台
-    // 调用 resolver.restart()。Helper 不是 Agent runtime owner，且无需在没有 CUA 需求时自愈；
-    // 健康检查保留在 spawn env / resolver request boundary，避免后台 timer 干扰其他模块。
-    return {
-      helper,
-      ...(context ? { seedContext: context } : {}),
-    };
+      // 历史默认装配启动 10 秒周期 watchdog；空闲期一次 broker_info 超时就会在后台
+      // 调用 resolver.restart()。Helper 不是 Agent runtime owner，且无需在没有 CUA 需求时自愈；
+      // 健康检查保留在 spawn env / resolver request boundary，避免后台 timer 干扰其他模块。
+      return {
+        helper,
+        credentialGrantPublisher,
+        ...(context ? { seedContext: context } : {}),
+      };
+    });
   };
   const getOrCreateDefaultCuaProductHelper = async (
     context?: CuaProductMcpServerResolverContext,
@@ -2451,6 +2475,7 @@ export function createLocalServices(options: {
                   [CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]: "",
                   [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: "0",
                   [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: "0",
+                  [CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED_ENV]: "0",
                 };
               }
               return {
@@ -2462,11 +2487,15 @@ export function createLocalServices(options: {
                     env: {
                       [CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_ENV]: relayDescriptor.endpoint,
                       [CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE_ENV]: relayDescriptor.tokenFile,
+                      [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: "1",
+                      [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: "0",
+                      [CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED_ENV]: "0",
                     },
                   },
                 ]),
                 [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: "1",
                 [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: "0",
+                [CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED_ENV]: "0",
               };
             }
             const liveState = options?.desktopBrowserMcpStateSource?.();
@@ -2476,16 +2505,39 @@ export function createLocalServices(options: {
                 : undefined;
             const localFacts = liveState?.nativeBrowserCua ?? nativeBrowserCua;
             const mergedServers = localServers?.map((server) =>
-              server.name === CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME && cuaActive
+              server.name === CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME
                 ? {
                     ...server,
                     env: {
-                      ...server.env,
-                      [BROKER_SOCKET_ENV]: cuaProductHelperEnv[BROKER_SOCKET_ENV]!,
-                      [CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]:
-                        cuaProductHelperEnv[CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]!,
-                      ...(cuaProductHelperEnv[BROKER_GENERATION_ENV]
-                        ? { [BROKER_GENERATION_ENV]: cuaProductHelperEnv[BROKER_GENERATION_ENV] }
+                      // Main 只拥有 browser 授权；CUA 环境由当前 Local Host 独占写入。
+                      ...Object.fromEntries(
+                        Object.entries(server.env).filter(([key]) => !key.startsWith("CODEZ_CUA_")),
+                      ),
+                      [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: localFacts?.browserAvailable
+                        ? "1"
+                        : "0",
+                      [CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED_ENV]: cuaPluginEnabled ? "1" : "0",
+                      [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: cuaActive ? "1" : "0",
+                      // 授权文件只落在 MCP server env；bridge 每次调用现读完整 tuple，
+                      // 原始凭据不进入完整 Agent 环境变量。
+                      ...(helper?.credentialGrantPublisher
+                        ? {
+                            [CUA_CREDENTIAL_GRANT_FILE_ENV]:
+                              helper.credentialGrantPublisher.grantFilePath,
+                          }
+                        : {}),
+                      ...(cuaActive
+                        ? {
+                            [BROKER_SOCKET_ENV]: cuaProductHelperEnv[BROKER_SOCKET_ENV]!,
+                            [CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]:
+                              cuaProductHelperEnv[CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]!,
+                            ...(cuaProductHelperEnv[BROKER_GENERATION_ENV]
+                              ? {
+                                  [BROKER_GENERATION_ENV]:
+                                    cuaProductHelperEnv[BROKER_GENERATION_ENV],
+                                }
+                              : {}),
+                          }
                         : {}),
                     },
                   }
@@ -2498,6 +2550,7 @@ export function createLocalServices(options: {
               ...(localFacts
                 ? {
                     [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: localFacts.browserAvailable ? "1" : "0",
+                    [CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED_ENV]: cuaPluginEnabled ? "1" : "0",
                     [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]:
                       cuaActive || localFacts.cuaAvailable ? "1" : "0",
                   }

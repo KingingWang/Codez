@@ -120,6 +120,23 @@ main-branch push automatically publishes a public release after all six targets
 pass; side-branch and tag pushes stop at verified build artifacts, and pull
 requests never publish. Build jobs need read-only repository permissions.
 
+Installer artifact transport allows at most two complete upload-action attempts
+per native target, in addition to the action's own request retries. A failed
+first attempt admits exactly one retry using the same platform artifact name,
+file selection and retention. Only that retry may replace a partial artifact
+owned by this run/target; it cannot replace another target or another run.
+First-attempt success skips retry, and final upload failure still fails the
+native job and blocks release. Cancellation does not admit retry. This recovers
+transient GitHub `CreateArtifact` timeouts without rebuilding successful installers
+or treating unavailable artifacts as a successful publication.
+
+```text
+native installer/checksum owner → upload → success → build accepted
+                                   └ failure → one same-target replacement upload
+                                                  ├ success → build accepted
+                                                  └ failure → job fails → release blocked
+```
+
 ### Native Computer Use build inputs
 
 The native matrix owns preparation of the explicit Computer Use Helper inputs

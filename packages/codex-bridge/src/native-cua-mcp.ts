@@ -1,5 +1,8 @@
 import { createConnection, type Socket } from "node:net";
 import { randomUUID } from "node:crypto";
+import { open } from "node:fs/promises";
+import { setTimeout as sleep } from "node:timers/promises";
+import { z } from "zod";
 import {
   CODEZ_CUA_BROKER_SOCKET_ENV_KEY,
   CODEZ_NATIVE_BROWSER_CUA_UNAVAILABLE_REASON,
@@ -16,6 +19,15 @@ const CUA_PLUGIN_AUTHORITY_ENV_KEY = "CODEZ_CUA_PLUGIN_AUTHORITY";
 const CUA_BROKER_GENERATION_ENV_KEY = "CODEZ_CUA_PERMISSION_BROKER_GENERATION";
 export const CUA_DEFAULT_TIMEOUT_MS = 10_000;
 export const CUA_GET_APP_STATE_TIMEOUT_MS = 30_000;
+const MAX_CUA_GRANT_FILE_BYTES = 16 * 1024;
+const CUA_GRANT_WAIT_TIMEOUT_MS = 1_000;
+const nativeCuaGrantFileSchema = z
+  .object({
+    socketPath: z.string().trim().min(1).max(4_096),
+    capability: z.string().trim().min(1).max(4_096),
+    generation: z.number().int().safe().nonnegative(),
+  })
+  .strict();
 
 export interface NativeCuaBrokerCredentials {
   socketPath: string;
@@ -83,6 +95,7 @@ export function buildLocalCuaExecutePayload(
 
 export function unavailableCuaStatusToolResult(
   reason = CODEZ_NATIVE_BROWSER_CUA_UNAVAILABLE_REASON,
+  retryable = false,
 ) {
   return {
     content: [
@@ -91,10 +104,146 @@ export function unavailableCuaStatusToolResult(
         text: JSON.stringify({
           available: false,
           reason,
+          retryable,
         }),
       },
     ],
   };
+}
+
+export async function resolveNativeCuaBrokerGrant(input: {
+  grantFile: string;
+  readFile?: (path: string) => Promise<string>;
+  signal: AbortSignal;
+  shouldContinue?: () => boolean;
+}): Promise<NativeCuaBrokerCredentials> {
+  const deadline = Date.now() + CUA_GRANT_WAIT_TIMEOUT_MS;
+  while (!input.signal.aborted && (input.shouldContinue?.() ?? true) && Date.now() < deadline) {
+    let raw: string;
+    try {
+      raw = input.readFile
+        ? await input.readFile(input.grantFile)
+        : await readBoundedGrantFile(input.grantFile);
+      if (input.signal.aborted || !(input.shouldContinue?.() ?? true)) {
+        throw new Error("CUA grant wait was aborted");
+      }
+      if (Buffer.byteLength(raw, "utf8") > MAX_CUA_GRANT_FILE_BYTES) {
+        throw new Error("CUA grant file exceeds the 16 KiB limit");
+      }
+      return nativeCuaGrantFileSchema.parse(JSON.parse(raw));
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("CUA grant file")) throw error;
+      if ((error as NodeJS.ErrnoException | undefined)?.code !== "ENOENT") throw error;
+      await sleep(100, undefined, { signal: input.signal });
+    }
+  }
+  throw new Error("CUA grant file is unavailable");
+}
+
+async function readBoundedGrantFile(path: string): Promise<string> {
+  const handle = await open(path, "r");
+  try {
+    const buffer = Buffer.alloc(MAX_CUA_GRANT_FILE_BYTES + 1);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    return buffer.subarray(0, bytesRead).toString("utf8");
+  } finally {
+    await handle.close();
+  }
+}
+
+export function isNativeCuaGrantWarming(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("CUA grant file is unavailable");
+}
+
+export function nativeCuaToolErrorResult(error: unknown) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text" as const,
+        // 尚未读取到授权不等于动作失败：明确未发送，允许调用方稍后重试，不自动重放输入。
+        text: isNativeCuaGrantWarming(error)
+          ? JSON.stringify({
+              code: "codez-cua.runtime_warming",
+              retryable: true,
+              action_sent: false,
+              dispatch_status: "not_sent",
+            })
+          : error instanceof Error
+            ? error.message
+            : String(error),
+      },
+    ],
+  };
+}
+
+export async function callNativeCuaBroker(input: {
+  cuaBroker?: NativeCuaBrokerCredentials;
+  grantFile?: string;
+  readFile?: (path: string) => Promise<string>;
+  signal: AbortSignal;
+  shouldContinue?: () => boolean;
+  method: "permission_status" | "execute";
+  params: Record<string, unknown>;
+  timeoutMs: number;
+  active: Set<Socket>;
+  connect?: (endpoint: string) => Socket;
+}): Promise<unknown> {
+  const cuaBroker = input.grantFile
+    ? await resolveNativeCuaBrokerGrant({
+        grantFile: input.grantFile,
+        readFile: input.readFile,
+        signal: input.signal,
+        shouldContinue: input.shouldContinue,
+      })
+    : input.cuaBroker;
+  if (!cuaBroker) throw new Error("codez-cua.runtime_unavailable");
+  // 原因：读取 grant 期间进程可能被 dispose；继续发送会让已关闭 runtime 执行 CUA 动作。
+  if (input.signal.aborted || !(input.shouldContinue?.() ?? true)) {
+    throw new Error("CUA broker call was aborted");
+  }
+  return await sendNativeCuaBrokerRequest({
+    cuaBroker,
+    method: input.method,
+    params: input.params,
+    signal: input.signal,
+    timeoutMs: input.timeoutMs,
+    active: input.active,
+    connect: input.connect,
+  });
+}
+
+export async function callNativeCuaStatus(
+  input: Omit<Parameters<typeof callNativeCuaBroker>[0], "method" | "params">,
+) {
+  try {
+    const status = await callNativeCuaBroker({
+      ...input,
+      method: "permission_status",
+      params: {},
+    });
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify({
+            available: true,
+            ...(status && typeof status === "object" ? (status as Record<string, unknown>) : {}),
+          }),
+        },
+      ],
+    };
+  } catch (error) {
+    const warming = isNativeCuaGrantWarming(error);
+    return unavailableCuaStatusToolResult(
+      warming
+        ? "codez-cua.runtime_warming"
+        : error instanceof Error && error.message
+          ? error.message
+          : CODEZ_NATIVE_BROWSER_CUA_UNAVAILABLE_REASON,
+      warming,
+    );
+  }
 }
 
 export async function sendNativeCuaBrokerRequest(input: {

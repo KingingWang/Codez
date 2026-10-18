@@ -7,7 +7,10 @@ import {
   createXa11yProducer,
 } from "./xa11y-producer.js";
 
-const context = (sessionId = "session-a") => ({ workspaceKey: "workspace", sessionId });
+const context = (sessionId = "session-a") => ({
+  workspaceKey: "workspace",
+  sessionId,
+});
 const appRef = (extra = {}) => ({ pid: 42, window_id: 7, ...extra });
 
 class MockElement {
@@ -91,6 +94,123 @@ function namedError(name, message) {
   return error;
 }
 
+test("Windows discovery lists metadata without global UIA; only the selected PID is attached", async () => {
+  const fixture = createFixture();
+  const attached = [];
+  fixture.module.App.list = async () => {
+    throw new Error("global UIA must not run");
+  };
+  fixture.module.App.byPid = async (pid) => {
+    attached.push(pid);
+    return fixture.app;
+  };
+  const producer = fixture.createProducer({
+    platform: "win32",
+    discoverApps: async () => [
+      {
+        pid: 42,
+        name: "Notes",
+        bundle_id: null,
+        active: true,
+        windows: [{ window_id: 7, title: "Notes" }],
+      },
+    ],
+  });
+  const apps = await producer.dispatch("list_apps", {}, context());
+  assert.equal(apps[0].pid, 42);
+  assert.equal(apps[0].active, true);
+  assert.deepEqual(attached, []);
+  const state = await producer.dispatch("get_app_state", { app_ref: { name: "Notes" } }, context());
+  assert.equal(state.app.pid, 42);
+  assert.deepEqual(attached, [42]);
+});
+
+test("Windows explicit PID attaches directly without any desktop enumeration", async () => {
+  const fixture = createFixture();
+  fixture.module.App.list = async () => {
+    throw new Error("global UIA must not run");
+  };
+  fixture.module.App.byPid = async (pid, options) => {
+    assert.equal(pid, 42);
+    assert.equal(options.timeout, 0);
+    return fixture.app;
+  };
+  const producer = fixture.createProducer({
+    platform: "win32",
+    discoverApps: async () => {
+      throw new Error("discovery must not run");
+    },
+  });
+  const state = await producer.dispatch("get_app_state", { app_ref: appRef() }, context());
+  assert.equal(state.app.pid, 42);
+  await assert.rejects(
+    producer.dispatch("get_app_state", { app_ref: { pid: 42, name: "Other" } }, context()),
+    (error) => error.code === "APP_NOT_FOUND",
+  );
+});
+
+test("Windows localized discovery binds only its matching window PID and does not launch on timeout", async () => {
+  const fixture = createFixture();
+  const attached = [];
+  let launches = 0;
+  fixture.module.App.list = async () => {
+    throw new Error("global UIA must not run");
+  };
+  fixture.module.App.byPid = async (pid) => {
+    attached.push(pid);
+    throw new Error("Platform error (-2147023436)");
+  };
+  const producer = fixture.createProducer({
+    platform: "win32",
+    discoverApps: async () => [
+      { pid: 41, name: "Unresponsive", active: false, windows: [{ title: "Other" }] },
+      { pid: 42, name: "CalculatorApp", active: true, windows: [{ title: "计算器" }] },
+    ],
+    launcher: {
+      async launch() {
+        launches += 1;
+      },
+    },
+  });
+  await expectCode(
+    producer.dispatch("get_app_state", { app_ref: { name: "计算器" } }, context()),
+    "TIMEOUT",
+  );
+  assert.deepEqual(attached, [42]);
+  assert.equal(launches, 0);
+});
+
+test("Windows native enumeration timeout is retryable without pretending an action was sent", async () => {
+  const fixture = createFixture();
+  fixture.module.App.list = async () => {
+    throw new Error("Platform error (-2147023436): 由于超时时间已过，该操作返回。 (0x800705B4)");
+  };
+  const producer = fixture.createProducer();
+  await assert.rejects(producer.dispatch("list_apps", {}, context()), (error) => {
+    assert.equal(error.code, "TIMEOUT");
+    assert.equal(error.actionSent, false);
+    assert.equal(error.retry, "retry");
+    return true;
+  });
+});
+
+test("native timeout after an input action requires reobservation instead of automatic replay", async () => {
+  const fixture = createFixture();
+  const producer = fixture.createProducer();
+  fixture.input.keyDown = async () => {
+    throw new Error("Platform error (-2147023436): operation timed out (0x800705B4)");
+  };
+  await assert.rejects(
+    producer.dispatch("key", { text: "ctrl+a", hold_seconds: 0.1, app_ref: appRef() }, context()),
+    (error) => {
+      assert.equal(error.code, "TIMEOUT");
+      assert.equal(error.actionSent, true);
+      assert.equal(error.retry, "reobserve");
+      return true;
+    },
+  );
+});
+
 function createFixture() {
   const log = [];
   const label = new MockElement(
@@ -153,7 +273,13 @@ function createFixture() {
     },
     log,
   );
-  const app = new MockApp({ name: "Notes", pid: 42, isForeground: true, root, windows: [window] });
+  const app = new MockApp({
+    name: "Notes",
+    pid: 42,
+    isForeground: true,
+    root,
+    windows: [window],
+  });
   const input = {
     async click(target, options) {
       log.push(["input.click", target, options]);
@@ -211,6 +337,11 @@ function createFixture() {
       async list() {
         return fixture.apps;
       },
+      async byPid(pid) {
+        const app = fixture.apps.find((candidate) => candidate.pid === pid);
+        if (!app) throw namedError("SelectorNotMatchedError", "app not found");
+        return app;
+      },
     },
     inputSim() {
       return input;
@@ -243,7 +374,11 @@ function createFixture() {
       },
       async requestAccess(inputValue) {
         fixture.accessCalls.push(inputValue);
-        return { ready: true, accessibility: "granted", screenRecording: "granted" };
+        return {
+          ready: true,
+          accessibility: "granted",
+          screenRecording: "granted",
+        };
       },
       async paste(inputValue) {
         fixture.pasteCalls.push(inputValue);
@@ -439,7 +574,10 @@ test("launch readiness treats Linux desktop ids with or without the suffix as eq
 
   const state = await producer.dispatch(
     "get_app_state",
-    { app_ref: { bundle_id: "org.example.App.desktop" }, disable_diffing: true },
+    {
+      app_ref: { bundle_id: "org.example.App.desktop" },
+      disable_diffing: true,
+    },
     context(),
   );
   assert.equal(state.app.bundle_id, "org.example.App");
@@ -747,10 +885,16 @@ test("lists real window fields and returns deterministic state plus mapped PNG f
       subrole: "standard_window",
     },
   ]);
-  const state = await observe(producer, "session-a", { include_screenshot: true });
+  const state = await observe(producer, "session-a", {
+    include_screenshot: true,
+  });
   assert.equal(state.mode, "full");
   assert.deepEqual(
-    state.elements.map(({ index, role, parent_index }) => ({ index, role, parent_index })),
+    state.elements.map(({ index, role, parent_index }) => ({
+      index,
+      role,
+      parent_index,
+    })),
     [
       { index: 0, role: "window", parent_index: null },
       { index: 1, role: "button", parent_index: 0 },
@@ -782,7 +926,9 @@ test("screenshot failure preserves the accessibility tree and clears coordinate 
   const producer = fixture.createProducer();
   await observe(producer, "session-a", { include_screenshot: true });
   fixture.screenshotFails = true;
-  const state = await observe(producer, "session-a", { include_screenshot: true });
+  const state = await observe(producer, "session-a", {
+    include_screenshot: true,
+  });
   assert.equal(state.elements.length, 5);
   assert.equal(state.screenshot, undefined);
   assert.match(state.non_actionable_reason, /^screenshot_unavailable:/u);
@@ -803,7 +949,9 @@ test("keeps an actionable screenshot when a custom surface cannot expose its chi
     throw new Error("custom renderer has no UIA child projection");
   };
 
-  const degraded = await observe(producer, "session-a", { include_screenshot: true });
+  const degraded = await observe(producer, "session-a", {
+    include_screenshot: true,
+  });
   assert.equal(degraded.elements.length, 1);
   assert.equal(degraded.tree_unavailable_reason, "accessibility_tree_unavailable");
   assert.equal(degraded.screenshot.mime_type, "image/png");
@@ -912,7 +1060,12 @@ test("dispatches semantic element actions without replaying them as input events
   await producer.dispatch("left_click", { target: 1, app_ref: appRef() }, context());
   await producer.dispatch(
     "scroll",
-    { target: 4, scroll_direction: "down", scroll_amount: 2, app_ref: appRef() },
+    {
+      target: 4,
+      scroll_direction: "down",
+      scroll_amount: 2,
+      app_ref: appRef(),
+    },
     context(),
   );
   await producer.dispatch("type", { target: 3, text: "!", app_ref: appRef() }, context());
@@ -1040,7 +1193,12 @@ test("smooth coordinate drag releases mouse and modifiers when motion fails", as
   await assert.rejects(
     producer.dispatch(
       "left_click_drag",
-      { from_target: [0, 0], to: [190, 80], modifiers: "ctrl", app_ref: appRef() },
+      {
+        from_target: [0, 0],
+        to: [190, 80],
+        modifiers: "ctrl",
+        app_ref: appRef(),
+      },
       context(),
     ),
     (error) => error?.code === "INTERNAL",
@@ -1149,7 +1307,9 @@ test("keeps snapshots session-scoped and fails closed for stale windows and elem
 test("only model-visible observations become incremental baselines", async () => {
   const fixture = createFixture();
   const producer = fixture.createProducer();
-  const hidden = await observe(producer, "session-a", { tree_shown_to_model: false });
+  const hidden = await observe(producer, "session-a", {
+    tree_shown_to_model: false,
+  });
   fixture.field.value = "first change";
   const firstVisible = await producer.dispatch(
     "get_app_state",

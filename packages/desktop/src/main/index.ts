@@ -89,6 +89,7 @@ import {
   type UpdateStatePayload,
   type TelemetryEventPayload,
   HostMessageTypes,
+  CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV,
   CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE,
   CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
   type DesktopCodexMcpServer,
@@ -512,7 +513,14 @@ async function buildNativeBrowserCuaMcpServersForWindow(
 ): Promise<DesktopCodexMcpServer[]> {
   const bridgePath = resolveDesktopCodexBridgePath();
   if (!bridgePath || win.isDestroyed()) return [];
-  await nativeBrowserCuaMcpBroker.registerWindow(win.id);
+  // 浏览器 broker 绑定/窗口注册失败不能拖垮独立 CUA 载体：记录并继续，
+  // runtime 输入按本窗口事实降级 browser=0，CUA 仍由本地 Host grant 授权。
+  await nativeBrowserCuaMcpBroker.registerWindow(win.id).catch((error: unknown) => {
+    logger.warn("[native-browser-cua] browser registration failed; retaining CUA MCP carrier", {
+      windowId: win.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
   if (win.isDestroyed()) {
     await nativeBrowserCuaMcpBroker.revokeWindow(win.id);
     return [];
@@ -522,7 +530,6 @@ async function buildNativeBrowserCuaMcpServersForWindow(
     bridgePath,
     windowId: win.id,
   });
-  if (!descriptor.serviceRunning) return [];
   return [
     {
       name: CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
@@ -532,6 +539,7 @@ async function buildNativeBrowserCuaMcpServersForWindow(
         ELECTRON_RUN_AS_NODE: "1",
         CODEZ_NATIVE_BROWSER_CUA_ENDPOINT: descriptor.endpoint,
         CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: descriptor.tokenFile,
+        [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: descriptor.browserAvailable ? "1" : "0",
       },
     },
   ];

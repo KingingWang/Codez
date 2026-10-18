@@ -63,8 +63,10 @@ export function bridgeCodexFeatureCapabilities(
   autoReviewApprovals?: "supported" | "unsupported",
 ): s.CodexFeatureCapabilities {
   let nativeBrowserCuaMcp: s.CodexFeatureCapabilities["nativeBrowserCuaMcp"] = "unsupported";
-  if (nativeBrowserCua?.browserAvailable === true) {
-    nativeBrowserCuaMcp = nativeBrowserCua.cuaAvailable === true ? "supported" : "degraded";
+  // 仅 CUA 可用也不是完全不支持；聚合展示不能再次耦合两种独立控制能力。
+  if (nativeBrowserCua?.browserAvailable || nativeBrowserCua?.cuaAvailable) {
+    nativeBrowserCuaMcp =
+      nativeBrowserCua.browserAvailable && nativeBrowserCua.cuaAvailable ? "supported" : "degraded";
   }
   return {
     auxiliaryTextGeneration: auxiliary.supports("workspace/generateText")

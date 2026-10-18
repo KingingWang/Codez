@@ -7,6 +7,15 @@ allows fake transports in tests. Unknown mutations fail closed, and mutations
 with an unknown outcome are never blindly retried. No real user credentials are
 used by tests. See specs/codex-desktop-adapter.md for recovery and delivery rules.
 
+The local native-control MCP carrier has independent Browser and Computer Use
+enablement gates. Browser broker readiness never authorizes or hides CUA tools.
+The Local Host owns the authenticated Helper grant; the MCP reads its private,
+atomic projection at each CUA call, with bounded cancellable waiting only while
+the grant is absent. It never restarts an Agent or replays a desktop action to
+recover readiness. Remote browser relays receive no local CUA grant. See
+specs/computer-and-browser-control-isolation.md for the settings matrix and
+the remaining runtime-restart / Windows live-verification boundaries.
+
 The Host-authorized `desktopContextPromptEnabled` process option adds a native
 developer section at the transport's create/resume/fork admission boundary.
 `desktop-context.ts` owns its text and composition. Effective user developer

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
@@ -131,6 +131,26 @@ async function createFixture() {
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
+
+test("repository Helper stages Windows discovery and native error classification in its closure", async (t) => {
+  const fixture = await createFixture();
+  t.after(() => rm(dirname(fixture.appOutDir), { recursive: true, force: true }));
+  const result = await stageWindowsCuaRuntimeAssets({
+    ...fixture,
+    electronPlatformName: "win32",
+    codezCuaRoot: resolve(import.meta.dirname, "../../codez-cua"),
+    electronVersion: "41.0.3",
+    targetPlatform: { os: "win32", arch: "x64", key: "win32-x64" },
+  });
+  for (const file of ["windows-app-discovery.js", "xa11y-errors.js", "xa11y-producer.js"]) {
+    assert.ok(result.runtimeModules.includes(file), `${file} must be shipped with Helper`);
+    await assert.doesNotReject(readFile(resolve(result.runtimeRoot, file)));
+  }
+  assert.equal(
+    result.runtimeModules.some((file) => file.endsWith(".test.js")),
+    false,
+  );
+});
 
 test("stages the Windows helper closure and target xa11y binary", async () => {
   const fixture = await createFixture();

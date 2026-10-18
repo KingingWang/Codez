@@ -5,6 +5,7 @@ import {
   normalizeInstalledAppName,
 } from "./installed-app-launcher.js";
 import { executeMotionPath } from "./motion-profile.js";
+import { isXa11yPermissionDenied, isXa11yTimeout } from "./xa11y-errors.js";
 
 export const XA11Y_PRODUCER_METHODS = Object.freeze([
   "list_apps",
@@ -630,8 +631,11 @@ function mapXa11yError(error, fallbackCode, actionSent = false) {
   if (error instanceof Xa11yProducerError) return error;
   const name = error instanceof Error ? error.name : "";
   const message = error instanceof Error ? error.message : String(error);
-  if (name === "PermissionDeniedError" || name === "AccessibilityNotEnabledError") {
-    return producerError("PERMISSION_DENIED", message, { actionSent: false, retry: "never" });
+  if (isXa11yPermissionDenied(error)) {
+    return producerError("PERMISSION_DENIED", message, {
+      actionSent: false,
+      retry: "never",
+    });
   }
   if (name === "SelectorNotMatchedError") {
     return producerError("ELEMENT_UNAVAILABLE", message, {
@@ -640,10 +644,17 @@ function mapXa11yError(error, fallbackCode, actionSent = false) {
     });
   }
   if (name === "ActionNotSupportedError" || name === "InvalidActionDataError") {
-    return producerError("ACTION_UNAVAILABLE", message, { actionSent: false, retry: "reobserve" });
+    return producerError("ACTION_UNAVAILABLE", message, {
+      actionSent: false,
+      retry: "reobserve",
+    });
   }
-  if (name === "TimeoutError") {
-    return producerError("TIMEOUT", message, { actionSent, retry: "retry" });
+  if (isXa11yTimeout(error)) {
+    // 已发送的按键/点击不能因超时自动重放；只读观察才允许安全重试。
+    return producerError("TIMEOUT", message, {
+      actionSent,
+      retry: actionSent ? "reobserve" : "retry",
+    });
   }
   return producerError(fallbackCode, message || "xa11y operation failed", {
     actionSent,
@@ -871,6 +882,13 @@ export function createXa11yProducer(options = {}) {
 
   async function listAppHandles() {
     try {
+      if (options.discoverApps) {
+        const apps = await options.discoverApps({ signal: lifecycle.signal });
+        return apps.map(({ windows, ...record }) => ({
+          record,
+          discoveredWindows: windows,
+        }));
+      }
       const apps = await (await xa11y()).App.list();
       if (!Array.isArray(apps)) throw new Error("xa11y App.list() returned invalid data");
       return apps.map((handle) => ({ handle, record: appRecord(handle) }));
@@ -979,6 +997,12 @@ export function createXa11yProducer(options = {}) {
   }
 
   async function resolveApp(ref, allowLaunch = false) {
+    if (platform === "win32" && ref.pid !== undefined) {
+      // 已有 PID 时不再先做全桌面 App.list；否则一个无关窗口超时也会阻断已知目标。
+      const handle = await attachAppByPid(ref.pid);
+      const app = { handle, record: appRecord(handle) };
+      return resolveUniqueApp(matchesAppRef(app.record, ref) ? [app] : []);
+    }
     const apps = await listAppHandles();
     const matches = apps.filter(({ record }) => matchesAppRef(record, ref));
     if (matches.length > 0 || !allowLaunch) return resolveUniqueApp(matches);
@@ -1020,9 +1044,31 @@ export function createXa11yProducer(options = {}) {
 
   async function listWindowHandles(app) {
     try {
+      app.handle ??= await attachAppByPid(app.record.pid);
+      // 发现和目标绑定之间焦点可能变化，动作必须使用目标绑定时的新事实。
+      if (app.discoveredWindows) app.record.active = appRecord(app.handle).active;
       const windows = await app.handle.windows();
       if (!Array.isArray(windows)) throw new Error("xa11y App.windows() returned invalid data");
-      return windows.map((handle, index) => ({ handle, record: windowRecord(handle, index) }));
+      return windows.map((handle, index) => ({
+        handle,
+        record: windowRecord(handle, index),
+      }));
+    } catch (error) {
+      throw mapXa11yError(error, "INTERNAL");
+    }
+  }
+
+  async function attachAppByPid(pid) {
+    try {
+      const module = await xa11y();
+      if (typeof module.App.byPid !== "function") {
+        throw producerError("HELPER_UNAVAILABLE", "xa11y App.byPid API is unavailable");
+      }
+      const handle = await module.App.byPid(pid, { timeout: 0 });
+      if (appRecord(handle).pid !== pid) {
+        throw producerError("INVALID_APP", "target app process identity changed");
+      }
+      return handle;
     } catch (error) {
       throw mapXa11yError(error, "INTERNAL");
     }
@@ -1032,6 +1078,10 @@ export function createXa11yProducer(options = {}) {
     if (ref.name === undefined) return [];
     const matches = [];
     for (const app of apps) {
+      if (app.discoveredWindows) {
+        if (app.discoveredWindows.some((window) => window.title === ref.name)) matches.push(app);
+        continue;
+      }
       try {
         const windows = await listWindowHandles(app);
         if (windows.some(({ record }) => record.title === ref.name)) matches.push(app);

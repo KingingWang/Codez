@@ -268,7 +268,7 @@ test("bridge capability authority is runtime-dispatch-derived and exposes every 
         cuaAvailable: true,
       },
     ).nativeBrowserCuaMcp,
-    "unsupported",
+    "degraded",
   );
 });
 

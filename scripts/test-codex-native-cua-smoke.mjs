@@ -134,7 +134,14 @@ test(
     await mkdir(codexHome);
     await mkdir(workspace);
     const modelRequests = [];
-    const model = createNativeCuaModelServer((request) => modelRequests.push(request), MCP_WRAPPER);
+    const model = createNativeCuaModelServer(
+      (request) => modelRequests.push(request),
+      MCP_WRAPPER,
+      [
+        { name: "cua_command", arguments: { method: "left_click", target: 7 } },
+        { name: "cua_command", arguments: { method: "left_click", target: [40, 60] } },
+      ],
+    );
     let browserBrokerServer;
     let cuaBroker;
     let child;

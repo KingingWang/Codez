@@ -21,7 +21,11 @@ import {
 } from "./helper-entry.js";
 import { HELPER_CONTROL_PROTOCOL } from "./broker-helper-constants.js";
 
-const context = { workspaceKey: "workspace", sessionId: "session", runtimeScope: "main" };
+const context = {
+  workspaceKey: "workspace",
+  sessionId: "session",
+  runtimeScope: "main",
+};
 
 function mockProducer(overrides = {}) {
   const calls = [];
@@ -256,7 +260,9 @@ test("helper arguments keep credentials off argv and require managed PiP", () =>
       pipMode: "enabled",
     },
   );
-  assert.deepEqual(parseHelperArguments(["--socket", "pipe"]), { socketPath: "pipe" });
+  assert.deepEqual(parseHelperArguments(["--socket", "pipe"]), {
+    socketPath: "pipe",
+  });
   assert.throws(
     () => parseHelperArguments(["--socket", "pipe", "--capability", "secret"]),
     /invalid/u,
@@ -331,7 +337,11 @@ test("helper credential bootstrap challenges its exact parent IPC channel once",
   };
 
   assert.deepEqual(
-    await waitForHelperCredentialBootstrap({ channel, pid: 42, nonce: "challenge" }),
+    await waitForHelperCredentialBootstrap({
+      channel,
+      pid: 42,
+      nonce: "challenge",
+    }),
     { capability: "secret", generation: 7 },
   );
   assert.deepEqual(sent, [
@@ -362,7 +372,11 @@ test("helper credential bootstrap fails closed on mismatch and timeout", async (
     return true;
   };
   await assert.rejects(
-    waitForHelperCredentialBootstrap({ channel: mismatched, pid: 42, nonce: "challenge" }),
+    waitForHelperCredentialBootstrap({
+      channel: mismatched,
+      pid: 42,
+      nonce: "challenge",
+    }),
     (error) => error?.code === "invalid_request",
   );
 
@@ -372,7 +386,11 @@ test("helper credential bootstrap fails closed on mismatch and timeout", async (
   const keepAlive = setInterval(() => {}, 10);
   try {
     await assert.rejects(
-      waitForHelperCredentialBootstrap({ channel: silent, pid: 42, timeoutMs: 5 }),
+      waitForHelperCredentialBootstrap({
+        channel: silent,
+        pid: 42,
+        timeoutMs: 5,
+      }),
       (error) => error?.code === "broker_unavailable",
     );
   } finally {
@@ -484,7 +502,10 @@ test("permission status reports independent accessibility and screen probes", as
   assert.equal(status.grant_owner, "dev.codez.cua-helper");
   assert.equal(status.accessibility, "granted");
   assert.equal(status.screen_recording, "denied");
-  assert.deepEqual(status.screen_capture_probe, { ok: false, reason: "screen denied" });
+  assert.deepEqual(status.screen_capture_probe, {
+    ok: false,
+    reason: "screen denied",
+  });
 });
 
 test("permission probes reject malformed native results instead of reporting granted", async () => {
@@ -494,9 +515,54 @@ test("permission probes reject malformed native results instead of reporting gra
       return { width: 1, height: 1, toPng: () => Buffer.alloc(0) };
     },
   });
-  assert.equal(status.accessibility, "denied");
-  assert.equal(status.screen_recording, "denied");
+  assert.equal(status.accessibility, "unknown");
+  assert.equal(status.screen_recording, "unknown");
   assert.match(status.screen_capture_probe.reason, /invalid screenshot/u);
+});
+
+test("Windows application enumeration timeout is not a denied permission", async () => {
+  const message = "Platform error (-2147023436): 由于超时时间已过，该操作返回。 (0x800705B4)";
+  const status = await readHelperPermissionStatus(
+    {
+      App: {
+        async foreground() {
+          throw new Error(message);
+        },
+      },
+      async screenshot() {
+        return { width: 1, height: 1, toPng: () => Buffer.from("fixture-png") };
+      },
+    },
+    { platform: "win32" },
+  );
+  assert.equal(status.available, true);
+  assert.equal(status.accessibility, "unknown");
+  assert.equal(status.accessibility_probe_ok, false);
+  assert.deepEqual(status.accessibility_probe, { ok: false, reason: message });
+  assert.equal(status.screen_recording, "granted");
+  assert.deepEqual(status.screen_capture_probe, { ok: true });
+});
+
+test("Windows permission status reads the foreground app without global enumeration", async () => {
+  const status = await readHelperPermissionStatus(
+    {
+      App: {
+        async list() {
+          throw new Error("desktop UIA must not run");
+        },
+        async foreground(options) {
+          assert.equal(options.timeout, 0);
+          return { pid: 42 };
+        },
+      },
+      async screenshot() {
+        return { width: 1, height: 1, toPng: () => Buffer.from("fixture-png") };
+      },
+    },
+    { platform: "win32" },
+  );
+  assert.equal(status.accessibility, "granted");
+  assert.equal(status.platform, "win32");
 });
 
 test("only an authorized mutation refreshes Helper activity", async () => {
@@ -554,11 +620,19 @@ test("helper broker authenticates mutations while keeping read-only status compa
       return [{ pid: 42, name: "Editor", bundle_id: null, active: true }];
     },
   });
-  const backend = createHelperBackend({ capability: "secret", generation: 3, producer });
+  const backend = createHelperBackend({
+    capability: "secret",
+    generation: 3,
+    producer,
+  });
   const socketPath = mintBrokerSocketPath();
   const server = await createHelperBrokerServer({ socketPath, backend });
   try {
-    const status = await callBrokerMethod({ socketPath, method: "permission_status", params: {} });
+    const status = await callBrokerMethod({
+      socketPath,
+      method: "permission_status",
+      params: {},
+    });
     assert.equal(status.available, true);
 
     await assert.rejects(
@@ -604,7 +678,11 @@ test("helper backend serializes producer work and closes one session without glo
       return { action_sent: true };
     },
   });
-  const backend = createHelperBackend({ capability: "secret", generation: 0, producer });
+  const backend = createHelperBackend({
+    capability: "secret",
+    generation: 0,
+    producer,
+  });
   const request = (id) => backend.execute({ method: "key", input: { id }, context });
   const one = request(1);
   const two = request(2);

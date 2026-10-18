@@ -140,6 +140,9 @@ test("remote host injects the relay registration only after the desktop grants c
     const relayEnv = registration[0]!.env;
     assert.ok(relayEnv.CODEZ_NATIVE_BROWSER_CUA_ENDPOINT?.includes("relay"));
     assert.ok(relayEnv.CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE?.includes("relay"));
+    assert.equal(relayEnv.CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE, "1");
+    assert.equal(relayEnv.CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE, "0");
+    assert.equal(relayEnv.CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED, "0");
     assert.equal(
       JSON.stringify(registration).includes("window-token"),
       false,

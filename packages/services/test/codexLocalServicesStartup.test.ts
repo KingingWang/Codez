@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -242,12 +242,18 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
                   CODEZ_AGENT_CA_CERT: join(root, "example-ca.pem"),
                   CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE: "1",
                   CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE: "0",
+                  CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED: "0",
                   CODEZ_DESKTOP_MCP_SERVERS: JSON.stringify([
                     {
                       name: "codez-desktop-browser-cua",
                       command: "/opt/codez/bridge",
                       args: ["/opt/codez/bridge.cjs", "native-browser-cua-mcp"],
-                      env: { CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/window-token" },
+                      env: {
+                        CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/window-token",
+                        CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE: "1",
+                        CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED: "0",
+                        CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE: "0",
+                      },
                     },
                   ]),
                 }
@@ -264,6 +270,7 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
                   CODEZ_AGENT_CA_CERT: join(root, "example-ca.pem"),
                   CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE: "0",
                   CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE: "0",
+                  CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED: "0",
                   CODEZ_DESKTOP_MCP_SERVERS: "",
                 },
           );
@@ -369,7 +376,13 @@ test("local Codex injects CUA broker credentials only when Computer Use is enabl
         name: "codez-desktop-browser-cua",
         command: "/opt/codez/bridge",
         args: ["/opt/codez/bridge.cjs", "native-browser-cua-mcp"],
-        env: { CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/window-token" },
+        env: {
+          CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/window-token",
+          CODEZ_CUA_PERMISSION_BROKER_SOCKET: "/stale/never-connect",
+          CODEZ_CUA_PERMISSION_BROKER_CAPABILITY: "stale-capability",
+          CODEZ_CUA_PLUGIN_AUTHORITY: "stale-authority",
+          CODEZ_CUA_BROKER_GRANT_FILE: "/stale/never-read",
+        },
       },
     ],
     createDefaultCuaProductHelper: () => ({
@@ -429,6 +442,23 @@ test("local Codex injects CUA broker credentials only when Computer Use is enabl
     assert.equal(helperStarts, 1);
     assert.equal(spawnEnv?.CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE, "1");
     assert.equal(spawnEnv?.CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE, "1");
+    assert.equal(spawnEnv?.CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED, "1");
+    const localRegistration = JSON.parse(spawnEnv?.CODEZ_DESKTOP_MCP_SERVERS ?? "[]")[0] as {
+      env: Record<string, string>;
+    };
+    const grantPath = localRegistration.env.CODEZ_CUA_BROKER_GRANT_FILE;
+    assert.ok(grantPath?.includes(join(root, ".codez", "v2", "computer-use", "grants")));
+    assert.equal(spawnEnv?.CODEZ_CUA_PERMISSION_BROKER_SOCKET, undefined);
+    assert.equal(spawnEnv?.CODEZ_CUA_PLUGIN_AUTHORITY, undefined);
+    assert.equal(spawnEnv?.CODEZ_CUA_PERMISSION_BROKER_GENERATION, undefined);
+    assert.deepEqual(JSON.parse(await readFile(grantPath, "utf8")), {
+      socketPath: "/tmp/local-cua.sock",
+      capability: "local-cua-secret",
+      generation: 5,
+    });
+    if (process.platform !== "win32") {
+      assert.equal((await stat(grantPath)).mode & 0o777, 0o600);
+    }
     assert.deepEqual(JSON.parse(spawnEnv?.CODEZ_DESKTOP_MCP_SERVERS ?? "[]"), [
       {
         name: "codez-desktop-browser-cua",
@@ -436,6 +466,10 @@ test("local Codex injects CUA broker credentials only when Computer Use is enabl
         args: ["/opt/codez/bridge.cjs", "native-browser-cua-mcp"],
         env: {
           CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/window-token",
+          CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE: "1",
+          CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE: "1",
+          CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED: "1",
+          CODEZ_CUA_BROKER_GRANT_FILE: grantPath,
           CODEZ_CUA_PERMISSION_BROKER_SOCKET: "/tmp/local-cua.sock",
           CODEZ_CUA_PLUGIN_AUTHORITY: "local-cua-secret",
           CODEZ_CUA_PERMISSION_BROKER_GENERATION: "5",
@@ -455,6 +489,11 @@ test("local Codex injects CUA broker credentials only when Computer Use is enabl
       request: { method: "account/read" },
     });
     assert.equal(spawnEnv?.CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE, "0");
+    assert.equal(spawnEnv?.CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED, "0");
+    const remoteRegistration = JSON.parse(spawnEnv?.CODEZ_DESKTOP_MCP_SERVERS ?? "[]")[0] as {
+      env: Record<string, string>;
+    };
+    assert.equal(remoteRegistration.env.CODEZ_CUA_BROKER_GRANT_FILE, undefined);
     assert.deepEqual(JSON.parse(spawnEnv?.CODEZ_DESKTOP_MCP_SERVERS ?? "[]"), [
       {
         name: "codez-desktop-browser-cua",
@@ -462,6 +501,9 @@ test("local Codex injects CUA broker credentials only when Computer Use is enabl
         args: ["/opt/codez/bridge.cjs", "native-browser-cua-mcp"],
         env: {
           CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/window-token",
+          CODEZ_NATIVE_BROWSER_CUA_BROWSER_AVAILABLE: "1",
+          CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE: "0",
+          CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED: "0",
         },
       },
     ]);

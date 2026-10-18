@@ -222,16 +222,21 @@ export function createNativeBrowserCuaMcpBroker(input: {
       }
     },
     descriptor: ({ executable, bridgePath, windowId }) => {
-      const availability = currentAvailability();
+      // 窗口注册失败时全局 endpoint 可能仍因其它窗口可用；本窗口 env 必须保持 browser=0。
+      const browserAvailable =
+        currentAvailability().browserAvailable && windowCapabilities.has(windowId);
       const tokenFile = windowTokenFile(windowId);
       return {
         runtimeInstalled: true,
-        serviceRunning: availability.browserAvailable && windowCapabilities.has(windowId),
+        // 浏览器与 CUA 已拆分为独立授权：endpoint+窗口凭据只表示 MCP 载体存活。
+        // 浏览器关闭时不能拆除载体，否则已启用的 CUA 工具随之消失。
+        serviceRunning: !closed && endpointReady && windowCapabilities.has(windowId),
         executable,
         bridgePath,
         endpoint,
         tokenFile,
-        ...availability,
+        browserAvailable,
+        cuaAvailable: false,
         cuaReason: CODEZ_NATIVE_BROWSER_CUA_UNAVAILABLE_REASON,
       };
     },
