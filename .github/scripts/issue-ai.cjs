@@ -1,7 +1,22 @@
 module.exports = async function run({ github, context, core, processEnv }) {
   const manual = processEnv.MODE === "manual";
-  const issueNumber = context.issue.number;
+  // `issues` 事件不注入 context.issue，只有 payload.issue；issue_comment 才有 context.issue。
+  const issueNumber = context.issue?.number ?? context.payload.issue?.number;
   const markerPrefix = "<!-- ai-issue-triage:v1";
+
+  if (!issueNumber) {
+    throw new Error("Unable to resolve issue number from event payload.");
+  }
+
+  if (!processEnv.OPENAI_API_KEY) {
+    throw new Error("Missing ISSUE_TRIAGE_API_KEY repository secret.");
+  }
+  if (!processEnv.OPENAI_BASE_URL) {
+    throw new Error("Missing ISSUE_TRIAGE_BASE_URL repository variable.");
+  }
+  if (!processEnv.OPENAI_MODEL) {
+    throw new Error("Missing ISSUE_TRIAGE_MODEL repository variable.");
+  }
 
   if (manual) {
     const comment = String(context.payload.comment?.body || "");

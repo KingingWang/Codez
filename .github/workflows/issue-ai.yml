@@ -30,8 +30,8 @@ jobs:
       MAX_TITLE_CHARS: "300"
       MAX_BODY_CHARS: "6000"
       OPENAI_API_KEY: ${{ secrets.ISSUE_TRIAGE_API_KEY }}
-      OPENAI_BASE_URL: ${{ vars.ISSUE_TRIAGE_BASE_URL }}
-      OPENAI_MODEL: ${{ vars.ISSUE_TRIAGE_MODEL }}
+      OPENAI_BASE_URL: ${{ secrets.ISSUE_TRIAGE_BASE_URL }}
+      OPENAI_MODEL: ${{ secrets.ISSUE_TRIAGE_MODEL }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,8 +63,8 @@ jobs:
       MAX_TITLE_CHARS: "300"
       MAX_BODY_CHARS: "20000"
       OPENAI_API_KEY: ${{ secrets.ISSUE_TRIAGE_API_KEY }}
-      OPENAI_BASE_URL: ${{ vars.ISSUE_TRIAGE_BASE_URL }}
-      OPENAI_MODEL: ${{ vars.ISSUE_TRIAGE_MODEL }}
+      OPENAI_BASE_URL: ${{ secrets.ISSUE_TRIAGE_BASE_URL }}
+      OPENAI_MODEL: ${{ secrets.ISSUE_TRIAGE_MODEL }}
     steps:
       - uses: actions/checkout@v4
         with:
