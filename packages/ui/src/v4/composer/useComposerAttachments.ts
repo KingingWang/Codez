@@ -115,7 +115,9 @@ export interface UseComposerAttachmentsOptions {
   scopeId: string;
   attachmentSessionId?: string | null;
   attachmentPut: AttachmentPutFn;
-  onRuntimeRestart?: (listener: () => void) => () => void;
+  onRuntimeRestart?: (
+    listener: (reason?: "runtimeRestart" | "transportReplaced") => void,
+  ) => () => void;
   /**
    * 承载 transport 暴露 runtime 存活态时优先用它，替代 onRuntimeRestart。
    * unavailable 在 workspace-dispose 当场到达，把作废与唤醒拆到两个真实时点。
@@ -533,26 +535,72 @@ export function useComposerAttachments(
   pumpQueueRef.current = pumpQueue;
 
   useEffect(() => {
-    if (!nativeCodex) return;
-    // 原因：预热被替换并不迁移 native 附件归属；保留文件供显式重试，不携带旧 ref 新建线程。
+    // 原因：预热会话因 runtime 换代、技能/模型失效或远端 proxy 重连被替换后，旧 sessionId
+    // 下的附件引用不能跨会话混用。但 composer 仍持有原始 File / localPath 时，应像換代恢复
+    // 一样自动降回 waitingSession / queued 重传到新会话，而不是直接判为永久失败打断用户。
     for (const item of attachments) {
+      if (item.referenceOwnership === "session" || item.localZeroCopy || !item.committedSessionId) {
+        continue;
+      }
       if (item.uploadStatus !== "ready" || item.committedSessionId === attachmentSessionId)
         continue;
+      const key = `${scopeKey}\u0000${item.id}`;
+      const completeTimer = completeTimersRef.current.get(key);
+      if (completeTimer !== undefined) {
+        window.clearTimeout(completeTimer);
+        completeTimersRef.current.delete(key);
+      }
+      const target = targetsRef.current.get(scopeKey);
+      if (item.staged) void target?.transferService.cleanup(item.operationId).catch(() => {});
+      const canReupload = Boolean(item.file || item.localPath);
+      if (canReupload && item.runtimeRebuildRetryCount < COMPOSER_ATTACHMENT_REBUILD_RETRY_LIMIT) {
+        const remoteTargetReady =
+          !isRemoteAttachmentTarget({ remoteSessionId, workspaceIdentity }) ||
+          Boolean(remoteSessionId);
+        const shouldQueueNow = Boolean(attachmentSessionId && remoteTargetReady);
+        updateItem(scopeKey, item.id, (current) => ({
+          ...current,
+          committedSessionId: undefined,
+          uploadStatus: shouldQueueNow ? "queued" : "waitingSession",
+          uploadProgress: 0,
+          uploadError: undefined,
+          uploadErrorKind: undefined,
+          attachmentRef: undefined,
+          staged: false,
+          adopted: false,
+          showComplete: false,
+          runtimeRebuildRetryCount: current.runtimeRebuildRetryCount + 1,
+        }));
+        if (shouldQueueNow) {
+          enqueueUpload(scopeKey, item.id);
+        }
+        continue;
+      }
       updateItem(scopeKey, item.id, (current) => ({
         ...current,
+        committedSessionId: undefined,
         uploadStatus: "failed",
-        uploadError: codexText.attachmentSessionLost,
-        uploadErrorKind: "permanent",
+        uploadProgress: 0,
+        uploadError: canReupload
+          ? intl.formatMessage({ id: "chat.attachments.upload.runtimeRestarted" })
+          : codexText.attachmentSessionLost,
+        uploadErrorKind: canReupload ? "runtimeRestarted" : "permanent",
         attachmentRef: undefined,
+        staged: false,
+        adopted: false,
+        showComplete: false,
       }));
     }
   }, [
-    nativeCodex,
     attachmentSessionId,
     attachments,
+    codexText.attachmentSessionLost,
+    enqueueUpload,
+    intl,
+    remoteSessionId,
     scopeKey,
     updateItem,
-    codexText.attachmentSessionLost,
+    workspaceIdentity,
   ]);
 
   useEffect(() => {
@@ -596,7 +644,8 @@ export function useComposerAttachments(
           if (
             item.referenceOwnership === "session" ||
             item.localZeroCopy ||
-            item.uploadStatus === "failed"
+            item.uploadStatus === "failed" ||
+            item.uploadStatus === "waitingSession"
           ) {
             continue;
           }
@@ -608,6 +657,7 @@ export function useComposerAttachments(
             // 重传配额用尽是真失败，无论静默与否都必须让用户看见。
             updateItem(targetScopeKey, item.id, (current) => ({
               ...current,
+              committedSessionId: undefined,
               uploadStatus: "failed",
               uploadProgress: 0,
               uploadError: intl.formatMessage({
@@ -626,6 +676,7 @@ export function useComposerAttachments(
           // 由 restartEpoch / 新 attachmentSessionId 驱动的唤醒 effect 在会话可用后统一入队。
           updateItem(targetScopeKey, item.id, (current) => ({
             ...current,
+            committedSessionId: undefined,
             uploadStatus: "waitingSession",
             uploadProgress: 0,
             ...(silent
@@ -649,9 +700,8 @@ export function useComposerAttachments(
   );
 
   useEffect(() => {
-    // 二选一订阅：两条通道都订会让同一次换代作废两次，白烧一次重传配额。
     if (onRuntimeLifecycle) {
-      return onRuntimeLifecycle((state) => {
+      const offLifecycle = onRuntimeLifecycle((state) => {
         if (state === "unavailable") {
           // 作废与唤醒到此才真正解耦：此刻旧 CLI 已死、新的还没起来，递增 restartEpoch 会让
           // 唤醒 effect 立即入队并直撞死进程（正式会话态 sessionId 原地不变时尤其明显）。
@@ -661,6 +711,18 @@ export function useComposerAttachments(
         // 草稿态实际由重建后的新 attachmentSessionId 唤醒；这一路是正式会话态的兜底。
         setRestartEpoch((current) => current + 1);
       });
+      // 原因：远程 workspace 的 proxy 换代（ReplaceableConversationTransport.replace）只发
+      // onRuntimeRestart("transportReplaced")，不发 lifecycle 事件；仅在 transportReplaced 时
+      // 作废并唤醒，避免与底层进程换代的 lifecycle 事件重复计数。
+      const offRestart = onRuntimeRestart?.((reason) => {
+        if (reason !== "transportReplaced") return;
+        invalidateAttachmentsForRuntimeChange({ silent: true });
+        setRestartEpoch((current) => current + 1);
+      });
+      return () => {
+        offLifecycle();
+        offRestart?.();
+      };
     }
     if (!onRuntimeRestart) return;
     return onRuntimeRestart(() => {
@@ -1017,10 +1079,14 @@ export function useComposerAttachments(
       );
       if (!current || current.uploadStatus !== "failed") return;
       const target = targetsRef.current.get(scopeKey);
+      const remoteTargetReady =
+        !target || !isRemoteAttachmentTarget(target) || Boolean(target.remoteSessionId);
+      const shouldQueueNow = Boolean(target?.sessionId && remoteTargetReady);
       void target?.transferService.cleanup(current.operationId).catch(() => {});
       updateItem(scopeKey, id, (item) => ({
         ...item,
-        uploadStatus: target?.sessionId ? "queued" : "waitingSession",
+        committedSessionId: undefined,
+        uploadStatus: shouldQueueNow ? "queued" : "waitingSession",
         uploadProgress: 0,
         uploadError: undefined,
         uploadErrorKind: undefined,
@@ -1031,7 +1097,7 @@ export function useComposerAttachments(
         adopted: false,
         showComplete: false,
       }));
-      if (target?.sessionId) enqueueUpload(scopeKey, id);
+      if (shouldQueueNow) enqueueUpload(scopeKey, id);
     },
     [enqueueUpload, scopeKey, updateItem],
   );

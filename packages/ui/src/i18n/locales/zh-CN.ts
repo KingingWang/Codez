@@ -6098,7 +6098,7 @@ const zhCN: Record<string, string> = {
   "chat.attachments.upload.committing": "正在完成上传",
   "chat.attachments.upload.ready": "上传完成",
   "chat.attachments.upload.failed": "上传失败：{message}",
-  "chat.attachments.upload.runtimeRestarted": "运行时已重启，附件引用失效",
+  "chat.attachments.upload.runtimeRestarted": "会话已更新，附件需重新上传（点击重试）",
   "chat.composer.draftRuntimeRebuilding": "会话正在重建，请稍候",
   "chat.attachments.upload.remoteMaterializationRequired":
     "远端附件未完成物化，已阻止发送本地路径。",
@@ -7200,7 +7200,8 @@ const zhCN: Record<string, string> = {
   "cuaPermission.modal.restartFailed": "无法重启 Helper：{error}",
   "cuaPermission.modal.relaunchAppButton": "重启 Codez",
   "cuaPermission.blocked.title": "Computer Use Helper 被 macOS 拦截",
-  "cuaPermission.blocked.description": "Helper 带隔离属性或未公证，被 Gatekeeper 拒绝启动，权限状态无法读取。点击修复会让安装器自动剥离隔离属性并重启 Helper，无需手动执行终端命令。",
+  "cuaPermission.blocked.description":
+    "Helper 带隔离属性或未公证，被 Gatekeeper 拒绝启动，权限状态无法读取。点击修复会让安装器自动剥离隔离属性并重启 Helper，无需手动执行终端命令。",
   "cuaPermission.blocked.repairButton": "修复并重启 Helper",
   "cuaPermission.blocked.repairToast": "正在修复 Computer Use Helper…",
   "cuaPermission.modal.relaunchAppHint":

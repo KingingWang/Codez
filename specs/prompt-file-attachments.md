@@ -98,6 +98,18 @@ submission; an accepted command owns its refs. A stale upload result must not
 attach to a different session; begin/chunk/commit and command IDs retain their
 existing idempotency and recovery rules.
 
+When a draft prewarm session or runtime is rebuilt before submission (including
+`onRuntimeLifecycle("unavailable")` or remote proxy `transportReplaced`), any
+composer-owned attachment whose committed session no longer matches the active
+`attachmentSessionId` must not be sent with its old session-scoped ref. If the
+composer still holds a re-uploadable source (`file` or `localPath`) and has
+remaining runtime-rebuild retry quota, it clears the stale ref, transitions
+through `waitingSession` / `queued`, and automatically re-uploads to the new
+session. If automatic re-upload is unavailable or its rebuild retry quota is
+exhausted, the chip transitions to `failed` while retaining `file` /
+`localPath` for manual in-place retry, with copy that distinguishes a stale
+session reference from a transport/content upload failure.
+
 ## Acceptance cases
 
 1. An HTML, plain-text, source, or JSON file of at most 64 Ki characters that

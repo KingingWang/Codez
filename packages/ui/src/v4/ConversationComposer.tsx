@@ -454,7 +454,9 @@ export interface ConversationComposerProps {
   /** 草稿态使用预热 session 作附件 transaction 载体。 */
   attachmentSessionId?: string | null;
   attachmentPut: AttachmentPutFn;
-  onRuntimeRestart?: (listener: () => void) => () => void;
+  onRuntimeRestart?: (
+    listener: (reason?: "runtimeRestart" | "transportReplaced") => void,
+  ) => () => void;
   /** 承载 transport 暴露 runtime 存活态时优先用它，替代 onRuntimeRestart。 */
   onRuntimeLifecycle?: (listener: (state: "available" | "unavailable") => void) => () => void;
   provider?: CodezProvider;
@@ -1984,10 +1986,12 @@ function ConversationComposerImpl({
                       { progress: String(attachment.uploadProgress) },
                     )
                   : attachment.uploadStatus === "failed"
-                    ? intl.formatMessage(
-                        { id: "chat.attachments.upload.failed" },
-                        { message: attachment.uploadError ?? "unknown" },
-                      )
+                    ? attachment.uploadErrorKind === "runtimeRestarted" && attachment.uploadError
+                      ? attachment.uploadError
+                      : intl.formatMessage(
+                          { id: "chat.attachments.upload.failed" },
+                          { message: attachment.uploadError ?? "unknown" },
+                        )
                     : intl.formatMessage({
                         id: `chat.attachments.upload.${attachment.uploadStatus}`,
                       });

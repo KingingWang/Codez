@@ -91,7 +91,9 @@ const mountedRoots: Root[] = [];
 interface ProbeOptions {
   enabled: boolean;
   prewarmSessionId: string | null;
-  onRuntimeRestart?: (listener: () => void) => () => void;
+  onRuntimeRestart?: (
+    listener: (reason?: "runtimeRestart" | "transportReplaced") => void,
+  ) => () => void;
   onRuntimeLifecycle?: (listener: (state: "available" | "unavailable") => void) => () => void;
 }
 
@@ -121,14 +123,14 @@ function renderProbe(options: ProbeOptions) {
 
 /** 捕获 hook 注册的 restart 监听器，供测试主动触发。 */
 function createRestartHook() {
-  const listeners = new Set<() => void>();
+  const listeners = new Set<(reason?: "runtimeRestart" | "transportReplaced") => void>();
   return {
-    fire() {
+    fire(reason?: "runtimeRestart" | "transportReplaced") {
       act(() => {
-        for (const listener of [...listeners]) listener();
+        for (const listener of [...listeners]) listener(reason);
       });
     },
-    subscribe: (listener: () => void) => {
+    subscribe: (listener: (reason?: "runtimeRestart" | "transportReplaced") => void) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
@@ -243,7 +245,11 @@ describe("reduceDraftRuntimeRebuildGate", () => {
 describe("useDraftRuntimeRebuildGate", () => {
   it("草稿态换代 → 触发 invalidateDraftRuntime 并禁用发送", () => {
     const restart = createRestartHook();
-    renderProbe({ enabled: true, onRuntimeRestart: restart.subscribe, prewarmSessionId: "draft-1" });
+    renderProbe({
+      enabled: true,
+      onRuntimeRestart: restart.subscribe,
+      prewarmSessionId: "draft-1",
+    });
 
     expect(latest?.rebuilding).toBe(false);
     restart.fire();
@@ -283,7 +289,11 @@ describe("useDraftRuntimeRebuildGate", () => {
   it("超时未重建 → 解除禁用回落无预热发送", () => {
     vi.useFakeTimers();
     const restart = createRestartHook();
-    renderProbe({ enabled: true, onRuntimeRestart: restart.subscribe, prewarmSessionId: "draft-1" });
+    renderProbe({
+      enabled: true,
+      onRuntimeRestart: restart.subscribe,
+      prewarmSessionId: "draft-1",
+    });
     restart.fire();
     expect(latest?.rebuilding).toBe(true);
 
@@ -297,7 +307,11 @@ describe("useDraftRuntimeRebuildGate", () => {
   it("重建中再次换代 → 计时器重置，不提前解除", () => {
     vi.useFakeTimers();
     const restart = createRestartHook();
-    renderProbe({ enabled: true, onRuntimeRestart: restart.subscribe, prewarmSessionId: "draft-1" });
+    renderProbe({
+      enabled: true,
+      onRuntimeRestart: restart.subscribe,
+      prewarmSessionId: "draft-1",
+    });
     restart.fire();
 
     act(() => {
@@ -358,8 +372,25 @@ describe("useDraftRuntimeRebuildGate", () => {
     lifecycle.fire("unavailable");
     // 真实时序里 restarted 紧跟新进程 spawn 到达；它必须被忽略。
     restart.fire();
+    restart.fire("runtimeRestart");
 
     expect(mocks.invalidateDraftRuntime).toHaveBeenCalledTimes(1);
+  });
+
+  it("lifecycle 模式下收到 transportReplaced（远端连接替换）也会触发重建", () => {
+    const lifecycle = createLifecycleHook();
+    const restart = createRestartHook();
+    renderProbe({
+      enabled: true,
+      onRuntimeLifecycle: lifecycle.subscribe,
+      onRuntimeRestart: restart.subscribe,
+      prewarmSessionId: "draft-1",
+    });
+
+    restart.fire("transportReplaced");
+
+    expect(mocks.invalidateDraftRuntime).toHaveBeenCalledTimes(1);
+    expect(latest?.rebuilding).toBe(true);
   });
 
   it("非草稿态收到 unavailable → 不触发 invalidate", () => {
