@@ -8,6 +8,7 @@ import { dirname, join } from "node:path";
 import { isOfficialCuaPluginEnabledForWorkspace } from "@codez/codez-cua/broker/server";
 import {
   CODEZ_CUA_OFFICIAL_PLUGIN_ID,
+  CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
   CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
   isRemoteWorkspaceIdentity,
   type CodezInstalledPluginSummary,
@@ -17,6 +18,11 @@ import { createServiceLogger } from "../logger/serviceLogger.js";
 import { getCodezDataRootDir } from "../paths.js";
 import type { ICodezAgentService } from "../codez-agent/codezAgent.js";
 import type { IPluginManagementService } from "./pluginManagement.js";
+import {
+  CODEX_NATIVE_CUA_SKILL_DESCRIPTION,
+  CODEX_NATIVE_CUA_SKILL_NAME,
+  syncCodexNativeCuaSkill,
+} from "./codexNativeCuaSkill.js";
 
 const logger = createServiceLogger("plugin-management");
 const LEGACY_CUA_PLUGIN_ID = `codez-cua@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`;
@@ -89,7 +95,22 @@ function buildSyntheticCuaPluginInfo(enabled: boolean): CodezPluginInfo {
     skillCount: 1,
     skillRootCount: 1,
     commandRootCount: 0,
-    mcpServerNames: [],
+    components: [
+      {
+        kind: "skill",
+        items: [
+          {
+            name: CODEX_NATIVE_CUA_SKILL_NAME,
+            description: CODEX_NATIVE_CUA_SKILL_DESCRIPTION,
+          },
+        ],
+      },
+      {
+        kind: "mcp",
+        items: [{ name: CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME }],
+      },
+    ],
+    mcpServerNames: [CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME],
     rootPath: "",
     enabledSource: "user",
   };
@@ -163,6 +184,16 @@ export function createPluginManagementService(
       userConfigPath: resolveCliUserConfigPath(env),
       workingDirectory: workspacePath,
     });
+  const syncLocalCuaSkillBestEffort = async (enabled: boolean): Promise<void> => {
+    try {
+      await syncCodexNativeCuaSkill(enabled, env);
+    } catch (error) {
+      logger.warn(undefined, "Failed to synchronize Codex Computer Use skill file", {
+        enabled,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
   return {
     listPlugins: async (params) => {
       const result = await agent.listPlugins(params);
@@ -173,12 +204,11 @@ export function createPluginManagementService(
       ) {
         return result;
       }
+      const enabled = readLocalCuaEnabled(params.workspacePath);
+      await syncLocalCuaSkillBestEffort(enabled);
       return {
         ...result,
-        plugins: [
-          ...result.plugins,
-          buildSyntheticCuaPluginInfo(readLocalCuaEnabled(params.workspacePath)),
-        ],
+        plugins: [...result.plugins, buildSyntheticCuaPluginInfo(enabled)],
       };
     },
     getPluginReferenceCatalog: (params) => agent.getPluginReferenceCatalog(params),
@@ -194,12 +224,11 @@ export function createPluginManagementService(
       ) {
         return result;
       }
+      const enabled = readLocalCuaEnabled(params.workspacePath);
+      await syncLocalCuaSkillBestEffort(enabled);
       return {
         ...result,
-        installedPlugins: [
-          ...result.installedPlugins,
-          buildSyntheticCuaInstalledSummary(readLocalCuaEnabled(params.workspacePath)),
-        ],
+        installedPlugins: [...result.installedPlugins, buildSyntheticCuaInstalledSummary(enabled)],
       };
     },
     addPluginMarketplace: (params) => agent.addPluginMarketplace(params),
@@ -220,6 +249,7 @@ export function createPluginManagementService(
         codexNativeCuaMode && isCuaPlugin && !isRemoteTarget(params)
           ? await (async () => {
               await persistOfficialCuaPluginEnabled(params.enabled, env);
+              await syncLocalCuaSkillBestEffort(params.enabled);
               return {
                 plugin: buildSyntheticCuaPluginInfo(params.enabled),
                 enabled: params.enabled,

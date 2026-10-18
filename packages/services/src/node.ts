@@ -496,6 +496,7 @@ import type { PluginSandboxHandle, PluginSandboxRegisterInput } from "@codez/sha
 import { createPluginSyncService } from "./plugin-sync/pluginSyncService.js";
 import { createPluginsService } from "./plugins/pluginsService.js";
 import { createPluginManagementService } from "./plugins/pluginManagementService.js";
+import { syncCodexNativeCuaSkill } from "./plugins/codexNativeCuaSkill.js";
 import { createSubagentsService } from "./subagents/subagentsService.js";
 import { createCommandsService } from "./commands/commandsService.js";
 import { createHooksService } from "./hooks/hooksService.js";
@@ -2431,6 +2432,9 @@ export function createLocalServices(options: {
       // Codex 拥有账号、配置与工具；旧 Provider/Zai/CUA/Subagent 准备不能成为其启动前置条件。
       // PATH 仍由 initializeRuntimeProcessEnv 统一准备，身份与 transport 仍由进程管理器注入。
       if (usesDefaultCodexDesktopBridge) {
+        if (!isRemoteWorkspaceContext && options?.serviceAuthorityMode === "desktop-local") {
+          await syncCodexNativeCuaSkill(cuaPluginEnabled, process.env).catch(() => undefined);
+        }
         // 本机临时 Key 在 spawn 边界现读（本地读 Credential Store；远端读本进程内
         // 逐连接安装的内存事实）。缺值注入 undefined 显式屏蔽继承变量，并把供应商
         // 列入 bridge 的 fail-closed 名单；名单只含 provider id，不含任何 Key 材料。

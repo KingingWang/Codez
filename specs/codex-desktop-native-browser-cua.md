@@ -249,6 +249,18 @@ process's `codez-desktop-browser-cua` MCP server environment alongside
     fact source (`isOfficialCuaPluginEnabledForWorkspace`), and `setPluginEnabled` persists the
     toggle to `cli/config.json` and disposes the target workspace runtime so the next turn (or
     settings refresh) respawns the local Codex bridge with updated `-c` MCP credentials.
+  - Codex-native Computer Use skill (`codez-computer-use`):
+    - The legacy `apps/codez-cli/packages/codez-cua-plugin/skills/computer-use/SKILL.md` remains
+      untouched for `codez-cli` (`mcp__node_repl__js`).
+    - A Codex-dedicated skill named `codez-computer-use` (avoiding name collision with OpenAI's
+      bundled `computer-use` skill) is kept at
+      `apps/codez-cli/packages/codez-cua-plugin/skills-codex/codez-computer-use/SKILL.md` and
+      materialized by `pluginManagementService` (`codexNativeCuaMode`) to
+      `<HOME>/.agents/skills/codez-computer-use/SKILL.md` whenever local Computer Use is enabled.
+    - Disabling local Computer Use removes `<HOME>/.agents/skills/codez-computer-use` only when the
+      `SKILL.md` carries the Codez-managed marker comment, preserving any user-authored skill file.
+    - `buildSyntheticCuaPluginInfo` projects `codez-computer-use` under `components` (`kind: "skill"`)
+      and `codez-desktop-browser-cua` under `components` (`kind: "mcp"`).
 - Remote workspaces (`isDesktopAttachedRemote`) never start or query the local CUA Helper, never
   receive `CODEZ_CUA_PERMISSION_BROKER_*` in their MCP registration, and always pass
   `CODEZ_NATIVE_BROWSER_CUA_CUA_AVAILABLE="0"`. Any `cua_command` call in a remote session fails
