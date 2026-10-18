@@ -1,7 +1,10 @@
+/* eslint-disable max-lines -- 编辑器打开链路需集中维护本地路径、SSH/WSL 远程 URI 与跨平台 CLI 回退逻辑。 */
 import { execFile } from "node:child_process";
-import { statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
+import { join, win32 as pathWin32 } from "node:path";
 import { shell } from "electron";
 import type { OpenInEditorOptions, OpenInEditorRemoteTarget } from "@codez/shared";
+import { listSSHConfigAliasesFromLocalConfig } from "@codez/services/node";
 import { listWSLDistros } from "@codez/server/remote/wsl-detect.js";
 import { getEditorDefsForCurrentPlatform, resolveEditorDefAppPath } from "./editors.js";
 import { logger } from "./logger.js";
@@ -23,6 +26,64 @@ const execFileAsync = (file: string, args: string[]): Promise<void> =>
   new Promise((resolve, reject) => {
     execFile(file, args, (error) => (error ? reject(error) : resolve()));
   });
+
+const execFileWithEnvAsync = (
+  file: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+): Promise<void> =>
+  new Promise((resolve, reject) => {
+    execFile(file, args, { env }, (error) => (error ? reject(error) : resolve()));
+  });
+
+function resolveBundledVSCodeCliPath(appPath: string, command: string | null): string | null {
+  if (!command || !appPath) {
+    return null;
+  }
+
+  if (process.platform === "darwin") {
+    // 修复原因：macOS GUI 进程的 PATH 通常不含 /usr/local/bin，且用户未必执行过
+    // “Install 'code' command in PATH”；若回退到 `open -a Visual Studio Code.app --args --folder-uri ...`，
+    // 当 VS Code 已在运行时 LaunchServices 会忽略 `--args`，表现为只唤起 VS Code 窗口却打不开远程项目。
+    // 直接优先定位 .app 包内置的 CLI 脚本即可稳定通过 VS Code IPC 打开远端窗口。
+    const candidate = join(appPath, "Contents", "Resources", "app", "bin", command);
+    return existsSync(candidate) ? candidate : null;
+  }
+
+  if (process.platform === "win32") {
+    // 修复原因：Windows 下 `execFile("code", ...)` 无法直接执行 `.cmd` 包装脚本，
+    // 优先检查 Code.exe 同级 bin 目录下的可执行入口。
+    const appDir = pathWin32.dirname(appPath);
+    const candidates = [
+      pathWin32.join(appDir, "bin", `${command}.exe`),
+      join(appDir, "bin", `${command}.exe`),
+    ];
+    for (const candidate of candidates) {
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
+function resolveWindowsVSCodeCliJsPath(appPath: string): string | null {
+  if (process.platform !== "win32" || !appPath) {
+    return null;
+  }
+
+  // 修复原因：Windows 标准安装包中 `bin\code.cmd` 实际通过
+  // `ELECTRON_RUN_AS_NODE=1 Code.exe resources\app\out\cli.js` 把 `--folder-uri` 交给 VS Code CLI；
+  // Node `execFile("code", ...)` 无法直接执行 `.cmd` 脚本，而裸调 `Code.exe --folder-uri` 在部分版本下
+  // 缺少 CLI 入口对远程 URI 的规范化与 IPC 转发，优先走官方 CLI 脚本入口。
+  const appDir = pathWin32.dirname(appPath);
+  const candidates = [
+    pathWin32.join(appDir, "resources", "app", "out", "cli.js"),
+    join(appDir, "resources", "app", "out", "cli.js"),
+  ];
+  return candidates.find((candidate) => existsSync(candidate)) ?? null;
+}
 
 async function openPathViaShell(path: string): Promise<OpenInEditorResult> {
   const error = await shell.openPath(path);
@@ -90,12 +151,53 @@ function buildWslUncPathCandidates(path: string, distroName: string): string[] {
   return [`\\\\wsl.localhost\\${distroName}${pathSuffix}`, `\\\\wsl$\\${distroName}${pathSuffix}`];
 }
 
-function resolveVSCodeSshRemoteAuthority(
+async function resolveMatchingSshConfigAlias(
   target: Extract<OpenInEditorRemoteTarget, { kind: "ssh" }>,
-): string {
+): Promise<string | null> {
+  const host = target.host.trim().toLowerCase();
+  if (!host) {
+    return null;
+  }
+  const targetPort = target.port ?? 22;
+  const targetUser = target.username.trim();
+
+  try {
+    const aliases = await listSSHConfigAliasesFromLocalConfig();
+    const matched = aliases.find((option) => {
+      const optionHost = option.host?.trim().toLowerCase();
+      if (!optionHost || optionHost !== host) {
+        return false;
+      }
+      const optionPort = option.port ?? 22;
+      if (optionPort !== targetPort) {
+        return false;
+      }
+      const optionUser = option.username?.trim() || "";
+      return !targetUser || !optionUser || optionUser === targetUser;
+    });
+    return matched?.alias?.trim() || null;
+  } catch (error) {
+    logger.warn("[editors] 解析本地 SSH config alias 失败", {
+      error: stringifyError(error),
+    });
+    return null;
+  }
+}
+
+async function resolveVSCodeSshRemoteAuthority(
+  target: Extract<OpenInEditorRemoteTarget, { kind: "ssh" }>,
+): Promise<string> {
   const sshConfigAlias = target.sshConfigAlias?.trim();
   if (sshConfigAlias) {
     return sshConfigAlias;
+  }
+
+  // 修复原因：用户手填 IP/端口或旧会话未保存 sshConfigAlias 时，若直接拼 user@host:port，
+  // VS Code Remote-SSH 一旦在 ~/.ssh/config 命中同名/通配 HostName 会丢弃 URI 中的非默认端口和 IdentityFile。
+  // 先反查本机 ~/.ssh/config 中 (host, port, username) 一致的 alias，让 VS Code 复用完整 SSH 配置。
+  const matchedAlias = await resolveMatchingSshConfigAlias(target);
+  if (matchedAlias) {
+    return matchedAlias;
   }
 
   const username = target.username.trim();
@@ -104,13 +206,13 @@ function resolveVSCodeSshRemoteAuthority(
   return target.port && target.port !== 22 ? `${userHost}:${target.port}` : userHost;
 }
 
-function buildVSCodeSshFolderUri(
+async function buildVSCodeSshFolderUri(
   path: string,
   target: Extract<OpenInEditorRemoteTarget, { kind: "ssh" }>,
 ) {
   // 手填 SSH 目标没有 alias 时，authority 里可能包含 `@` 和 `:`。
   // 直接拼进 URI 会被解析成 userinfo/host/port，必须按 Remote-SSH authority 组件整体编码。
-  const encodedAuthority = encodeURIComponent(resolveVSCodeSshRemoteAuthority(target));
+  const encodedAuthority = encodeURIComponent(await resolveVSCodeSshRemoteAuthority(target));
   return `vscode-remote://ssh-remote+${encodedAuthority}${encodeRemotePath(path)}`;
 }
 
@@ -128,24 +230,22 @@ async function buildVSCodeWslFolderUri(
   };
 }
 
-async function openVSCodeRemoteSshFolder(
+async function openVSCodeRemoteUri(
   editorId: string,
   appPath: string,
   command: string | null,
   path: string,
-  remoteTarget: Extract<OpenInEditorRemoteTarget, { kind: "ssh" }>,
+  uri: string,
   pathKind: OpenInEditorOptions["pathKind"],
+  failureLogMessage: string,
 ): Promise<OpenInEditorResult> {
   // 远程文件和目录以前共用 folder URI，导致文件路径被 VS Code 当成目录；
   // pathKind 只决定 CLI URI 参数，远端路径与 workspace identity 保持原样。
-  const args = [
-    pathKind === "file" ? "--file-uri" : "--folder-uri",
-    buildVSCodeSshFolderUri(path, remoteTarget),
-  ];
-
-  if (command) {
+  const args = [pathKind === "file" ? "--file-uri" : "--folder-uri", uri];
+  const cliCommand = resolveBundledVSCodeCliPath(appPath, command) ?? command;
+  if (cliCommand) {
     try {
-      await execFileAsync(command, args);
+      await execFileAsync(cliCommand, args);
       return { success: true };
     } catch (error) {
       if (process.platform === "win32") {
@@ -156,7 +256,7 @@ async function openVSCodeRemoteSshFolder(
         await execFileAsync("open", ["-a", appPath, "--args", ...args]);
         return { success: true };
       } catch (fallbackError) {
-        logger.warn("[editors] 打开 VS Code 远程工作区失败", {
+        logger.warn(failureLogMessage, {
           editorId,
           path,
           args,
@@ -176,7 +276,7 @@ async function openVSCodeRemoteSshFolder(
     }
     return { success: true };
   } catch (error) {
-    logger.warn("[editors] 打开 VS Code 远程工作区失败", {
+    logger.warn(failureLogMessage, {
       editorId,
       path,
       args,
@@ -184,6 +284,25 @@ async function openVSCodeRemoteSshFolder(
     });
     return { success: false, error: stringifyError(error) };
   }
+}
+
+async function openVSCodeRemoteSshFolder(
+  editorId: string,
+  appPath: string,
+  command: string | null,
+  path: string,
+  remoteTarget: Extract<OpenInEditorRemoteTarget, { kind: "ssh" }>,
+  pathKind: OpenInEditorOptions["pathKind"],
+): Promise<OpenInEditorResult> {
+  return openVSCodeRemoteUri(
+    editorId,
+    appPath,
+    command,
+    path,
+    await buildVSCodeSshFolderUri(path, remoteTarget),
+    pathKind,
+    "[editors] 打开 VS Code 远程工作区失败",
+  );
 }
 
 async function openVSCodeRemoteWslFolder(
@@ -199,49 +318,15 @@ async function openVSCodeRemoteWslFolder(
     return { success: false, error: folderUri.error ?? "invalid WSL folder URI" };
   }
 
-  const args = [pathKind === "file" ? "--file-uri" : "--folder-uri", folderUri.uri];
-
-  if (command) {
-    try {
-      await execFileAsync(command, args);
-      return { success: true };
-    } catch (error) {
-      if (process.platform === "win32") {
-        return openWindowsEditor(editorId, appPath, args, error);
-      }
-
-      try {
-        await execFileAsync("open", ["-a", appPath, "--args", ...args]);
-        return { success: true };
-      } catch (fallbackError) {
-        logger.warn("[editors] 打开 VS Code WSL 工作区失败", {
-          editorId,
-          path,
-          args,
-          error: stringifyError(error),
-          fallbackError: stringifyError(fallbackError),
-        });
-        return { success: false, error: stringifyError(fallbackError) };
-      }
-    }
-  }
-
-  try {
-    if (process.platform === "win32") {
-      await execFileAsync(appPath, args);
-    } else {
-      await execFileAsync("open", ["-a", appPath, "--args", ...args]);
-    }
-    return { success: true };
-  } catch (error) {
-    logger.warn("[editors] 打开 VS Code WSL 工作区失败", {
-      editorId,
-      path,
-      args,
-      error: stringifyError(error),
-    });
-    return { success: false, error: stringifyError(error) };
-  }
+  return openVSCodeRemoteUri(
+    editorId,
+    appPath,
+    command,
+    path,
+    folderUri.uri,
+    pathKind,
+    "[editors] 打开 VS Code WSL 工作区失败",
+  );
 }
 
 async function openWslPathInExplorer(
@@ -287,6 +372,22 @@ async function openWindowsEditor(
   args: string[],
   cliError?: unknown,
 ): Promise<OpenInEditorResult> {
+  const cliJsPath = isVSCodeEditor(editorId) ? resolveWindowsVSCodeCliJsPath(appPath) : null;
+  if (cliJsPath) {
+    try {
+      const env: NodeJS.ProcessEnv = {
+        ...process.env,
+        ELECTRON_RUN_AS_NODE: "1",
+      };
+      delete env.NODE_OPTIONS;
+      delete env.NODE_REPL_EXTERNAL_MODULE;
+      await execFileWithEnvAsync(appPath, [cliJsPath, ...args], env);
+      return { success: true };
+    } catch {
+      // cli.js 失败时继续回退到直接调用 appPath
+    }
+  }
+
   try {
     await execFileAsync(appPath, args);
     return { success: true };

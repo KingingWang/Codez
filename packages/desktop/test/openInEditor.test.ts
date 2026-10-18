@@ -1,23 +1,29 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 const {
   accessMock,
   execFileMock,
+  listSSHConfigAliasesMock,
   listWSLDistrosMock,
   openPathMock,
   showItemInFolderMock,
   loggerWarnMock,
+  vscodeAppPathRef,
 } =
   vi.hoisted(() => ({
     accessMock: vi.fn(),
     execFileMock: vi.fn(),
+    listSSHConfigAliasesMock: vi.fn(),
     listWSLDistrosMock: vi.fn(),
     openPathMock: vi.fn(),
     showItemInFolderMock: vi.fn(),
     loggerWarnMock: vi.fn(),
+    vscodeAppPathRef: {
+      current: "C:/Users/demo/AppData/Local/Programs/Microsoft VS Code/Code.exe",
+    },
   }));
 
 vi.mock("node:child_process", () => ({
@@ -39,6 +45,10 @@ vi.mock("@codez/server/remote/wsl-detect.js", () => ({
   listWSLDistros: listWSLDistrosMock,
 }));
 
+vi.mock("@codez/services/node", () => ({
+  listSSHConfigAliasesFromLocalConfig: listSSHConfigAliasesMock,
+}));
+
 vi.mock("../src/main/editors.js", () => ({
   getEditorDefsForCurrentPlatform: () => [
     {
@@ -50,7 +60,7 @@ vi.mock("../src/main/editors.js", () => ({
     {
       id: "vscode",
       name: "VS Code",
-      appPath: "C:/Users/demo/AppData/Local/Programs/Microsoft VS Code/Code.exe",
+      appPath: vscodeAppPathRef.current,
       command: "code",
     },
     {
@@ -88,9 +98,12 @@ describe("openInEditor", () => {
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "codez-open-in-editor-"));
+    vscodeAppPathRef.current = "C:/Users/demo/AppData/Local/Programs/Microsoft VS Code/Code.exe";
     accessMock.mockReset();
     accessMock.mockResolvedValue(undefined);
     execFileMock.mockReset();
+    listSSHConfigAliasesMock.mockReset();
+    listSSHConfigAliasesMock.mockResolvedValue([]);
     listWSLDistrosMock.mockReset();
     openPathMock.mockReset();
     showItemInFolderMock.mockReset();
@@ -228,6 +241,132 @@ describe("openInEditor", () => {
         "--folder-uri",
         "vscode-remote://ssh-remote+asset01%40root%40192.168.100.166%3A2222/root/demo-project",
       ],
+      expect.any(Function),
+    );
+  });
+
+  it("SSH 远程工作区没有显式 alias 但匹配本机 ~/.ssh/config 时应优先使用对应 alias", async () => {
+    listSSHConfigAliasesMock.mockResolvedValue([
+      {
+        alias: "moga22",
+        host: "30.72.114.100",
+        port: 22223,
+        username: "root",
+      },
+    ]);
+    execFileMock.mockImplementation(
+      (_file: string, _args: string[], callback: (error: Error | null) => void) => {
+        callback(null);
+      },
+    );
+
+    const result = await openInEditor("vscode", "/root/workspace/ai/codex_workspace", {
+      remoteTarget: {
+        kind: "ssh",
+        host: "30.72.114.100",
+        port: 22223,
+        username: "root",
+      },
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(execFileMock).toHaveBeenCalledWith(
+      "code",
+      [
+        "--folder-uri",
+        "vscode-remote://ssh-remote+moga22/root/workspace/ai/codex_workspace",
+      ],
+      expect.any(Function),
+    );
+  });
+
+  it("macOS 打开 SSH 远程工作区时应优先调用 VS Code .app 内置 CLI，避免缺少 PATH 回退到 open --args", async () => {
+    setProcessPlatform("darwin");
+    const fakeAppBundle = join(tempDir, "Visual Studio Code.app");
+    const bundledCli = join(fakeAppBundle, "Contents", "Resources", "app", "bin", "code");
+    mkdirSync(join(fakeAppBundle, "Contents", "Resources", "app", "bin"), { recursive: true });
+    writeFileSync(bundledCli, "#!/usr/bin/env bash\n");
+    vscodeAppPathRef.current = fakeAppBundle;
+
+    execFileMock.mockImplementation(
+      (_file: string, _args: string[], callback: (error: Error | null) => void) => {
+        callback(null);
+      },
+    );
+
+    const result = await openInEditor("vscode", "/root/demo-project", {
+      remoteTarget: {
+        kind: "ssh",
+        host: "30.72.114.100",
+        port: 22223,
+        username: "root",
+        sshConfigAlias: "moga22",
+      },
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(execFileMock).toHaveBeenCalledExactlyOnceWith(
+      bundledCli,
+      ["--folder-uri", "vscode-remote://ssh-remote+moga22/root/demo-project"],
+      expect.any(Function),
+    );
+  });
+
+  it("Windows 打开 SSH 远程工作区且 code CLI 不可直接 execFile 时应通过 ELECTRON_RUN_AS_NODE 调用 cli.js", async () => {
+    setProcessPlatform("win32");
+    const fakeWinAppDir = join(tempDir, "Microsoft VS Code");
+    const fakeCodeExe = join(fakeWinAppDir, "Code.exe");
+    const fakeCliJs = join(fakeWinAppDir, "resources", "app", "out", "cli.js");
+    mkdirSync(join(fakeWinAppDir, "resources", "app", "out"), { recursive: true });
+    writeFileSync(fakeCodeExe, "");
+    writeFileSync(fakeCliJs, "");
+    vscodeAppPathRef.current = fakeCodeExe;
+
+    execFileMock.mockImplementation(
+      (
+        file: string,
+        _args: string[],
+        optionsOrCallback: unknown,
+        maybeCallback?: (error: Error | null) => void,
+      ) => {
+        const callback =
+          typeof optionsOrCallback === "function"
+            ? (optionsOrCallback as (error: Error | null) => void)
+            : maybeCallback!;
+        callback(file === "code" ? new Error("spawn code ENOENT") : null);
+      },
+    );
+
+    const result = await openInEditor("vscode", "/root/demo-project", {
+      remoteTarget: {
+        kind: "ssh",
+        host: "30.72.114.100",
+        port: 22223,
+        username: "root",
+        sshConfigAlias: "moga22",
+      },
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(execFileMock).toHaveBeenNthCalledWith(
+      1,
+      "code",
+      ["--folder-uri", "vscode-remote://ssh-remote+moga22/root/demo-project"],
+      expect.any(Function),
+    );
+    expect(execFileMock).toHaveBeenNthCalledWith(
+      2,
+      fakeCodeExe,
+      [
+        expect.stringContaining("cli.js"),
+        "--folder-uri",
+        "vscode-remote://ssh-remote+moga22/root/demo-project",
+      ],
+      expect.objectContaining({
+        env: expect.objectContaining({
+          ELECTRON_RUN_AS_NODE: "1",
+        }),
+      }),
       expect.any(Function),
     );
   });

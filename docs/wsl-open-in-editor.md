@@ -9,6 +9,8 @@ WSL 远程工作区的 `workspacePath` 表示 WSL 内部 Linux 路径，例如 `
 ## 设计
 
 - WSL 远程工作区打开 VS Code / VS Code Insiders 时，main 进程构造 VS Code Remote-WSL URI：目录使用 `--folder-uri`，文件使用 `--file-uri`。
+- SSH 远程工作区打开 VS Code / VS Code Insiders 时，main 进程构造 VS Code Remote-SSH URI：优先使用显式 `sshConfigAlias`；当连接未携带 `sshConfigAlias` 时，自动从本机 `~/.ssh/config` 匹配同 `(host, port, username)` 的唯一或首个 alias，避免 VS Code Remote-SSH 因未命中 alias 丢失非默认端口或私钥配置；无匹配 alias 时回退编码 `user@host[:port]` authority。
+- 桌面端打开 VS Code 远程 URI（`--folder-uri` / `--file-uri`）时，优先解析并执行 VS Code 应用包内置 CLI（macOS 为 `<App>/Contents/Resources/app/bin/<command>`，Windows 为 `<AppDir>\bin\<command>.cmd` 或 `Code.exe`），避免 macOS GUI 进程缺少 `PATH` 回退到 `open -a ... --args` 导致已运行实例忽略 `--args` 参数、或 Windows `execFile` 无法直接执行无扩展名命令的问题。
 - WSL 远程工作区打开 Windows 资源管理器时，main 进程只在平台边界临时把 Linux 路径转换为 UNC 候选路径：优先 `\\wsl.localhost\<distro>\...`，失败再回退 `\\wsl$\<distro>\...`；文件使用 `/select,` 定位，目录直接打开。
 - 不支持把 WSL Linux 路径直接传给其它本机编辑器。UI 只展示 VS Code / VS Code Insiders / 资源管理器，避免 Cursor、JetBrains、Terminal 等本机应用误用 Linux 路径。
 - 如果 WSL target 缺少 distro，main 进程通过 `wsl.exe -l -v --all` 解析默认发行版；解析失败时才返回明确错误，不再 fallback 到裸传 Linux 路径。
