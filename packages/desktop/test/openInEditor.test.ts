@@ -12,6 +12,7 @@ const {
   showItemInFolderMock,
   loggerWarnMock,
   vscodeAppPathRef,
+  zedAppPathRef,
 } =
   vi.hoisted(() => ({
     accessMock: vi.fn(),
@@ -23,6 +24,9 @@ const {
     loggerWarnMock: vi.fn(),
     vscodeAppPathRef: {
       current: "C:/Users/demo/AppData/Local/Programs/Microsoft VS Code/Code.exe",
+    },
+    zedAppPathRef: {
+      current: "/Applications/Zed.app",
     },
   }));
 
@@ -64,6 +68,12 @@ vi.mock("../src/main/editors.js", () => ({
       command: "code",
     },
     {
+      id: "zed",
+      name: "Zed",
+      appPath: zedAppPathRef.current,
+      command: "zed",
+    },
+    {
       id: "qspace",
       name: "QSpace",
       appPath: "/Applications/QSpace.app",
@@ -99,6 +109,7 @@ describe("openInEditor", () => {
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "codez-open-in-editor-"));
     vscodeAppPathRef.current = "C:/Users/demo/AppData/Local/Programs/Microsoft VS Code/Code.exe";
+    zedAppPathRef.current = "/Applications/Zed.app";
     accessMock.mockReset();
     accessMock.mockResolvedValue(undefined);
     execFileMock.mockReset();
@@ -706,6 +717,89 @@ describe("openInEditor", () => {
     expect(execFileMock).toHaveBeenCalledWith(
       "open",
       ["-a", "/Applications/QSpace Pro.app", tempDir],
+      expect.any(Function),
+    );
+  });
+
+  it("SSH 远程工作区用 Zed 打开时应优先调用 Zed.app 内置 CLI 并传入 ssh:// URI", async () => {
+    setProcessPlatform("darwin");
+    const fakeZedBundle = join(tempDir, "Zed.app");
+    const bundledCli = join(fakeZedBundle, "Contents", "MacOS", "cli");
+    mkdirSync(join(fakeZedBundle, "Contents", "MacOS"), { recursive: true });
+    writeFileSync(bundledCli, "#!/usr/bin/env bash\n");
+    zedAppPathRef.current = fakeZedBundle;
+
+    execFileMock.mockImplementation(
+      (_file: string, _args: string[], callback: (error: Error | null) => void) => {
+        callback(null);
+      },
+    );
+
+    const result = await openInEditor("zed", "/root/demo-project", {
+      remoteTarget: {
+        kind: "ssh",
+        host: "jumpserver.example.com",
+        port: 2222,
+        username: "root",
+        sshConfigAlias: "codez",
+      },
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(execFileMock).toHaveBeenCalledExactlyOnceWith(
+      bundledCli,
+      ["ssh://codez/root/demo-project"],
+      expect.any(Function),
+    );
+  });
+
+  it("SSH 远程工作区没有 alias 时用 Zed 打开应保留标准 ssh:// user@host:port 并编码特殊用户名", async () => {
+    setProcessPlatform("win32");
+    zedAppPathRef.current = "C:/Users/demo/AppData/Local/Programs/Zed/Zed.exe";
+    execFileMock.mockImplementation(
+      (_file: string, _args: string[], callback: (error: Error | null) => void) => {
+        callback(null);
+      },
+    );
+
+    const result = await openInEditor("zed", "/root/demo-project/src/index.ts", {
+      pathKind: "file",
+      remoteTarget: {
+        kind: "ssh",
+        host: "192.168.100.166",
+        port: 2222,
+        username: "asset01@root",
+      },
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(execFileMock).toHaveBeenCalledExactlyOnceWith(
+      "zed",
+      ["ssh://asset01%40root@192.168.100.166:2222/root/demo-project/src/index.ts"],
+      expect.any(Function),
+    );
+  });
+
+  it("WSL 远程工作区用 Zed 打开时应传入 wsl.localhost UNC 路径", async () => {
+    setProcessPlatform("win32");
+    zedAppPathRef.current = "C:/Users/demo/AppData/Local/Programs/Zed/Zed.exe";
+    execFileMock.mockImplementation(
+      (_file: string, _args: string[], callback: (error: Error | null) => void) => {
+        callback(null);
+      },
+    );
+
+    const result = await openInEditor("zed", "/home/demo/My Repo", {
+      remoteTarget: {
+        kind: "wsl",
+        distro: "Ubuntu",
+      },
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(execFileMock).toHaveBeenCalledExactlyOnceWith(
+      "zed",
+      ["\\\\wsl.localhost\\Ubuntu\\home\\demo\\My Repo"],
       expect.any(Function),
     );
   });

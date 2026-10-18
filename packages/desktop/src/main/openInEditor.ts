@@ -68,6 +68,34 @@ function resolveBundledVSCodeCliPath(appPath: string, command: string | null): s
   return null;
 }
 
+function resolveBundledZedCliPath(appPath: string, command: string | null): string | null {
+  if (!command || !appPath) {
+    return null;
+  }
+
+  if (process.platform === "darwin") {
+    // 修复原因：macOS GUI 进程未必继承含 `zed` 的 PATH，且用户可能未执行
+    // “Install CLI”；直接优先定位 Zed.app 内置的 `Contents/MacOS/cli` 可稳定打开 `ssh://` 远程路径。
+    const candidate = join(appPath, "Contents", "MacOS", "cli");
+    return existsSync(candidate) ? candidate : null;
+  }
+
+  if (process.platform === "win32") {
+    const appDir = pathWin32.dirname(appPath);
+    const candidates = [
+      pathWin32.join(appDir, "bin", `${command}.exe`),
+      join(appDir, "bin", `${command}.exe`),
+    ];
+    for (const candidate of candidates) {
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
 function resolveWindowsVSCodeCliJsPath(appPath: string): string | null {
   if (process.platform !== "win32" || !appPath) {
     return null;
@@ -216,6 +244,30 @@ async function buildVSCodeSshFolderUri(
   return `vscode-remote://ssh-remote+${encodedAuthority}${encodeRemotePath(path)}`;
 }
 
+async function buildZedSshUri(
+  path: string,
+  target: Extract<OpenInEditorRemoteTarget, { kind: "ssh" }>,
+): Promise<string> {
+  const sshConfigAlias = target.sshConfigAlias?.trim();
+  if (sshConfigAlias) {
+    return `ssh://${encodeURIComponent(sshConfigAlias)}${encodeRemotePath(path)}`;
+  }
+
+  const matchedAlias = await resolveMatchingSshConfigAlias(target);
+  if (matchedAlias) {
+    return `ssh://${encodeURIComponent(matchedAlias)}${encodeRemotePath(path)}`;
+  }
+
+  // Zed 直接按标准 URL 解析 `ssh://[user@]host[:port]/path`，
+  // 不能像 VS Code Remote-SSH 那样把 `@` 和 `:port` 整体编码，否则会导致主机名与端口解析失败；
+  // 但跳板机等包含 `@`/`:` 的特殊 username 仍需单独对 userinfo 组件编码。
+  const username = target.username.trim();
+  const host = target.host.trim();
+  const userHost = username ? `${encodeURIComponent(username)}@${host}` : host;
+  const authority = target.port && target.port !== 22 ? `${userHost}:${target.port}` : userHost;
+  return `ssh://${authority}${encodeRemotePath(path)}`;
+}
+
 async function buildVSCodeWslFolderUri(
   path: string,
   target: Extract<OpenInEditorRemoteTarget, { kind: "wsl" }>,
@@ -329,6 +381,98 @@ async function openVSCodeRemoteWslFolder(
   );
 }
 
+async function openZedTarget(
+  appPath: string,
+  command: string | null,
+  path: string,
+  targetArg: string,
+  failureLogMessage: string,
+): Promise<OpenInEditorResult> {
+  const args = [targetArg];
+  const cliCommand = resolveBundledZedCliPath(appPath, command) ?? command;
+  if (cliCommand) {
+    try {
+      await execFileAsync(cliCommand, args);
+      return { success: true };
+    } catch (error) {
+      if (process.platform === "win32") {
+        return openWindowsEditor("zed", appPath, args, error);
+      }
+
+      try {
+        await execFileAsync("open", ["-a", appPath, ...args]);
+        return { success: true };
+      } catch (fallbackError) {
+        logger.warn(failureLogMessage, {
+          editorId: "zed",
+          path,
+          args,
+          error: stringifyError(error),
+          fallbackError: stringifyError(fallbackError),
+        });
+        return { success: false, error: stringifyError(fallbackError) };
+      }
+    }
+  }
+
+  try {
+    if (process.platform === "win32") {
+      await execFileAsync(appPath, args);
+    } else {
+      await execFileAsync("open", ["-a", appPath, ...args]);
+    }
+    return { success: true };
+  } catch (error) {
+    logger.warn(failureLogMessage, {
+      editorId: "zed",
+      path,
+      args,
+      error: stringifyError(error),
+    });
+    return { success: false, error: stringifyError(error) };
+  }
+}
+
+async function openZedRemoteSshPath(
+  appPath: string,
+  command: string | null,
+  path: string,
+  remoteTarget: Extract<OpenInEditorRemoteTarget, { kind: "ssh" }>,
+): Promise<OpenInEditorResult> {
+  return openZedTarget(
+    appPath,
+    command,
+    path,
+    await buildZedSshUri(path, remoteTarget),
+    "[editors] 打开 Zed 远程工作区失败",
+  );
+}
+
+async function openZedRemoteWslPath(
+  appPath: string,
+  command: string | null,
+  path: string,
+  remoteTarget: Extract<OpenInEditorRemoteTarget, { kind: "wsl" }>,
+): Promise<OpenInEditorResult> {
+  const distroName = await resolveWslDistroName(remoteTarget);
+  if (!distroName) {
+    return { success: false, error: "missing WSL distro for Zed" };
+  }
+
+  const [uncPath] = buildWslUncPathCandidates(path, distroName);
+  if (!uncPath) {
+    return { success: false, error: "invalid WSL UNC path for Zed" };
+  }
+
+  return openZedTarget(
+    appPath,
+    command,
+    path,
+    uncPath,
+    "[editors] 打开 Zed WSL 工作区失败",
+  );
+}
+
 async function openWslPathInExplorer(
   appPath: string,
   path: string,
@@ -430,6 +574,10 @@ export async function openInEditor(
     );
   }
 
+  if (options?.remoteTarget?.kind === "ssh" && editorId === "zed") {
+    return openZedRemoteSshPath(appPath, def.command, path, options.remoteTarget);
+  }
+
   if (options?.remoteTarget?.kind === "wsl" && isVSCodeEditor(editorId)) {
     // WSL 工作区的 workspacePath 是 Linux 路径，不能直接传给 Windows 侧 `code`。
     // VS Code Remote-WSL 需要 folder URI，才能在指定 distro 内打开同一个 Linux 目录。
@@ -441,6 +589,10 @@ export async function openInEditor(
       options.remoteTarget,
       options.pathKind,
     );
+  }
+
+  if (options?.remoteTarget?.kind === "wsl" && editorId === "zed") {
+    return openZedRemoteWslPath(appPath, def.command, path, options.remoteTarget);
   }
 
   if (options?.remoteTarget?.kind === "wsl" && editorId === "explorer") {
