@@ -2,81 +2,140 @@ name: Issue AI
 
 on:
   issues:
-    types: [opened, reopened]
+    types: [opened]
   issue_comment:
+    types: [created]
+  pull_request_review_comment:
     types: [created]
 
 permissions:
-  contents: read
+  contents: write
   issues: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
-  auto:
+  auto-triage:
     if: >
       github.event_name == 'issues' &&
       github.event.sender.type != 'Bot' &&
       github.event.issue.pull_request == null
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 15
     concurrency:
       group: issue-ai-auto
       cancel-in-progress: false
-    env:
-      MODE: auto
-      AUTO_MAX_PER_HOUR: "2"
-      AUTO_WINDOW_HOURS: "1"
-      AUTO_MAX_AGE_MINUTES: "15"
-      MAX_TITLE_CHARS: "300"
-      MAX_BODY_CHARS: "6000"
-      OPENAI_API_KEY: ${{ secrets.ISSUE_TRIAGE_API_KEY }}
-      OPENAI_BASE_URL: ${{ secrets.ISSUE_TRIAGE_BASE_URL }}
-      OPENAI_MODEL: ${{ secrets.ISSUE_TRIAGE_MODEL }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24.14.0
-
-      - name: Analyze issue
+      - name: Rate limit check
+        id: rate
         uses: actions/github-script@v7
         with:
           script: |
-            const run = require('./.github/scripts/issue-ai.cjs');
-            await run({ github, context, core, processEnv: process.env });
+            const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+            const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "issue-ai.yml",
+              event: "issues",
+              created: since,
+              per_page: 100,
+            });
+            const recent = runs.length;
+            core.setOutput("allow", recent >= 2 ? "false" : "true");
+            core.notice(`Auto triage runs in the last hour: ${recent} (limit 2)`);
+
+      - name: Write opencode provider config
+        if: steps.rate.outputs.allow == 'true'
+        env:
+          ISSUE_TRIAGE_API_KEY: ${{ secrets.ISSUE_TRIAGE_API_KEY }}
+          ISSUE_TRIAGE_BASE_URL: ${{ secrets.ISSUE_TRIAGE_BASE_URL }}
+          ISSUE_TRIAGE_MODEL: ${{ secrets.ISSUE_TRIAGE_MODEL }}
+        run: |
+          mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
+          jq -n \
+            --arg base "$ISSUE_TRIAGE_BASE_URL" \
+            --arg key "$ISSUE_TRIAGE_API_KEY" \
+            --arg model "$ISSUE_TRIAGE_MODEL" \
+            '{
+              "$schema": "https://opencode.ai/config.json",
+              "provider": {
+                "gateway": {
+                  "npm": "@ai-sdk/openai-compatible",
+                  "name": "Gateway",
+                  "options": { "baseURL": $base, "apiKey": $key },
+                  "models": { ($model): { "name": $model } }
+                }
+              }
+            }' > "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.json"
+
+      - name: Run opencode triage
+        if: steps.rate.outputs.allow == 'true'
+        uses: anomalyco/opencode/github@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: gateway/${{ secrets.ISSUE_TRIAGE_MODEL }}
+          use_github_token: "true"
+          share: "false"
+          prompt: |
+            请分析这个 issue：一句话概括、分类（bug/feature/question/docs/refactor/other）、
+            可能原因、缺少的关键信息、复现或排查建议、给维护者的下一步建议。
+            这是一次自动分诊，只做分析和回复：不要修改任何文件，不要创建分支，不要创建 PR。
+            使用简体中文回复。
 
   manual:
     if: >
-      github.event_name == 'issue_comment' &&
-      github.event.sender.type != 'Bot'
+      (github.event_name == 'issue_comment' ||
+       github.event_name == 'pull_request_review_comment') &&
+      github.event.sender.type != 'Bot' &&
+      (
+        github.event.comment.author_association == 'OWNER' ||
+        github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'COLLABORATOR'
+      ) &&
+      (contains(github.event.comment.body, '/oc') ||
+       contains(github.event.comment.body, '/opencode'))
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 15
     concurrency:
       group: issue-ai-manual-${{ github.event.issue.number }}
       cancel-in-progress: true
-    env:
-      MODE: manual
-      ALLOWED_ASSOCIATIONS: "OWNER,MEMBER,COLLABORATOR"
-      MAX_TITLE_CHARS: "300"
-      MAX_BODY_CHARS: "20000"
-      OPENAI_API_KEY: ${{ secrets.ISSUE_TRIAGE_API_KEY }}
-      OPENAI_BASE_URL: ${{ secrets.ISSUE_TRIAGE_BASE_URL }}
-      OPENAI_MODEL: ${{ secrets.ISSUE_TRIAGE_MODEL }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24.14.0
+      - name: Write opencode provider config
+        env:
+          ISSUE_TRIAGE_API_KEY: ${{ secrets.ISSUE_TRIAGE_API_KEY }}
+          ISSUE_TRIAGE_BASE_URL: ${{ secrets.ISSUE_TRIAGE_BASE_URL }}
+          ISSUE_TRIAGE_MODEL: ${{ secrets.ISSUE_TRIAGE_MODEL }}
+        run: |
+          mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
+          jq -n \
+            --arg base "$ISSUE_TRIAGE_BASE_URL" \
+            --arg key "$ISSUE_TRIAGE_API_KEY" \
+            --arg model "$ISSUE_TRIAGE_MODEL" \
+            '{
+              "$schema": "https://opencode.ai/config.json",
+              "provider": {
+                "gateway": {
+                  "npm": "@ai-sdk/openai-compatible",
+                  "name": "Gateway",
+                  "options": { "baseURL": $base, "apiKey": $key },
+                  "models": { ($model): { "name": $model } }
+                }
+              }
+            }' > "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.json"
 
-      - name: Analyze
-        uses: actions/github-script@v7
+      - name: Run opencode
+        uses: anomalyco/opencode/github@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          script: |
-            const run = require('./.github/scripts/issue-ai.cjs');
-            await run({ github, context, core, processEnv: process.env });
+          model: gateway/${{ secrets.ISSUE_TRIAGE_MODEL }}
+          use_github_token: "true"
+          share: "false"
