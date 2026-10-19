@@ -3808,6 +3808,18 @@ Todo139 补充 accepted 用例：SHARE30 在 Root／Recent／公共默认三种�
 
 权威语义：`docs/superpowers/specs/2026-09-09-virtual-project-design.md`；覆盖剪枝及完整 VP01–VP10 在实施记录。下列候选未转正，不计 formal gate。
 
+Codex 目录视图增量（accepted，尚未转正）：
+
+| ID | Setup → action | UI 断言 | 非 UI 证据 |
+| --- | --- | --- | --- |
+| VP-CODEX-01 | 已有 Codex CLI/桌面 `cwd=A` 历史与另一目录 B 的历史、Host 存量 NULL 行 → 新建单 root A 项目并激活、重启 | A 项目立即显示全部 A 历史，不显示 B；重启不丢；全局最近按 ID 一次；归档/置顶/未读语义不变 | `thread/list` 物理 cwd 过滤、Host task 索引与项目树，`project_id`/cwd/正文前后不变 |
+| VP-CODEX-02 | A 单 root + A+B 多 root，另有外部 A/B 会话 → 在 A+B 创建一条 `cwd=A` 会话 | 多 root 只显示自己的会话；单 root A 同时显示该会话及外部 A 历史，单 root B 只显示 B 历史；任务区仍按 NULL | Codex `thread/start` 的 A、[A,B] 与持久来源；Host 唯一归属；CLI `resume` 仍按 A cwd |
+| VP-CODEX-03 | 两个共享 A 的多 root 项目、既有 CLI A 会话 → 分别创建、从单 root A 打开、冷重启 | 多 root 不互收会话、不会从 A/B roots 并集导入 CLI；A 视图可进入两条且不缩掉 B 的能力 | Host 项目 ID 与任务 ID 精确对应；native start/resume roots、A-only 配置、B 文件访问；无新任务副本 |
+| VP-CODEX-04 | A+B 项目已有会话，运行期间把 B 改成 C → 热重订阅与冷启动恢复 | 原 taskId/cwd 保持，热实例仍用旧目录，冷恢复使用 C；远端单 root 不变 | 同一读快照的 Host roots、native resume 参数与 Codex 请求/文件能力；desktop continuous/mobile replayable 同一线程 |
+| VP-CODEX-05 | 外部 Codex A 会话自身已持久化 A+B roots，Host 未归类 → 从新建单 root A 项目打开 | 会话可见且原有 B 能力不丢失；不被改归属 | native resume 省略 roots、持久 thread roots 前后相同；Host `project_id=NULL` |
+
+剪枝：只新增本地目录视图，不改远端固定单 root 的读取、CLI `resume` 的 cwd 筛选、迁移 SQL、Group 成员与正文事实。共享 cwd 不作为多 root 归属证据；主题/模型/操作系统的全排列由 scoped 单测和一个原生 Desktop 代表场景承担。E2E 候选沿用 virtual-project manual-review fixture；未运行的原生/移动端验证保留 pending，不用单测冒充真实客户端。
+
 | Case | 状态                                            | Setup → Action → Assertion                                                           | 入口                                                                 |
 | ---- | ----------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
 | VP01 | partial：首窗两库 ledger E2E 通过（仍 pending） | 首个窗口可用 → 只读隔离 HOME 两库 ledger → app v3 与 CLI 0020 均已完成；无须创建会话 | `manual-review/pending/conversation-session-virtual-project.test.ts` |

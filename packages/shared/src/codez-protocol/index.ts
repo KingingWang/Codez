@@ -1957,6 +1957,8 @@ export const codezDynamicWorkflowModeSchema = z.enum(DYNAMIC_WORKFLOW_MODES);
 export const codezSessionCreateParamsSchema = z
   .object({
     additionalDirectories: z.array(nonEmptyString).max(256).optional(),
+    /** Host 对原生 Codex bridge 的首次归属提示；旧 Agent 不消费。 */
+    codexProjectId: nonEmptyString.max(128).nullable().optional(),
     sessionId: nonEmptyString.optional(),
     workspace: codezWorkspaceRefSchema,
     parentSessionId: nonEmptyString.optional(),

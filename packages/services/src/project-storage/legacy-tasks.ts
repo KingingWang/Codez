@@ -128,14 +128,33 @@ export function admitTaskIdentity(
   db: DatabaseSync,
   task: { workspacePath: string; workspaceIdentity?: string; taskId: string },
   ownerHostId?: string,
+  originProjectId?: string | null,
 ): void {
   const key = resolveWorkspaceKey(task);
   const hostId = ensureHost(db, key, ownerHostId);
+  if (
+    originProjectId !== undefined &&
+    db
+      .prepare("SELECT host_id FROM tasks WHERE workspace_key=? AND task_id=?")
+      .get(key, task.taskId)?.host_id != null
+  )
+    return;
+  // 原因：多目录项目共享 cwd，唯一目录匹配不能表达创建时的项目选择；原生
+  // threadSource 只在首次插入决定组织归属，已决定的行（含用户移动）由 WHERE 保护。
+  if (originProjectId) {
+    const owner = db
+      .prepare("SELECT host_id FROM projects WHERE project_id=?")
+      .get(originProjectId);
+    if (!owner) throw new Error("project.not-found");
+    if (owner.host_id !== hostId) throw new Error("project.host-mismatch");
+  }
   db.prepare(
     "UPDATE tasks SET host_id=?,root_path=workspace_path,project_id=?,handoff_pending=handoff_pending | ? WHERE workspace_key=? AND task_id=? AND host_id IS NULL",
   ).run(
     hostId,
-    uniqueRootProject(db, hostId, task.workspacePath),
+    originProjectId === undefined
+      ? uniqueRootProject(db, hostId, task.workspacePath)
+      : originProjectId,
     OWNERSHIP_DECIDED,
     key,
     task.taskId,

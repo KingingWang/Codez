@@ -487,6 +487,22 @@ test("fork resolves stable row+entity to native turn and rejects stale target id
   assert.equal(ack.status, "accepted");
   assert.deepEqual(h.rpc.params("thread/fork"), [{ threadId: sessionId, lastTurnId: "turn-1" }]);
   assert.equal(h.store.get("forked")?.thread.id, "forked");
+  const assigned = await h.execute(
+    h.command(
+      "forkAssistant",
+      {
+        target: { rowId: 3, entityId: "codex:turn:turn-1:item:answer-1" },
+        codexProjectId: "current-project",
+      },
+      "assigned-fork",
+    ),
+  );
+  assert.equal(assigned.status, "accepted");
+  assert.deepEqual(h.rpc.params("thread/fork").at(-1), {
+    threadId: sessionId,
+    lastTurnId: "turn-1",
+    threadSource: "codez_project:current-project",
+  });
 });
 
 test("unsupported file rewind fails closed without destructive RPC", async (t) => {

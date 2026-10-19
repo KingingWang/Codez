@@ -184,6 +184,62 @@ test("auxiliary dispatch precedes legacy unsupported control route and waits for
   assert.equal(h.listeners(), 2, "only runtime notification/request listeners remain");
 });
 
+test("native project creation uses the primary cwd, full roots and durable origin", async (t) => {
+  const h = await fixture(t);
+  const response = await h.runtime.request(V4_METHODS.command, {
+    ...create("multi-project"),
+    payload: {
+      workspaceId,
+      codexProjectId: "project-ab",
+      additionalDirectories: ["/other"],
+    },
+  });
+  assert.equal((response.result as { status: string }).status, "accepted");
+  const start = h.calls.find((call) => call.method === "thread/start");
+  assert.deepEqual(start?.params, {
+    cwd,
+    historyMode: "paginated",
+    runtimeWorkspaceRoots: [cwd, "/other"],
+    threadSource: "codez_project:project-ab",
+    model: undefined,
+    modelProvider: undefined,
+  });
+});
+
+test("cold subscribe overrides assigned roots but preserves external persisted native roots", async (t) => {
+  const h = await fixture(t);
+  await h.runtime.request(V4_METHODS.conversationSubscribe, {
+    ...subscribe("conversation/thread-1"),
+    additionalDirectories: ["/other"],
+  });
+  assert.deepEqual(h.calls.find((call) => call.method === "thread/resume")?.params, {
+    threadId: "thread-1",
+    runtimeWorkspaceRoots: [cwd, "/other"],
+  });
+  await h.runtime.request(V4_METHODS.conversationSubscribe, {
+    ...subscribe("conversation/thread-1"),
+    additionalDirectories: ["/changed"],
+  });
+  assert.equal(h.calls.filter((call) => call.method === "thread/resume").length, 1);
+  const external = await fixture(t);
+  await external.runtime.request(
+    V4_METHODS.conversationSubscribe,
+    subscribe("conversation/thread-1"),
+  );
+  assert.deepEqual(external.calls.find((call) => call.method === "thread/resume")?.params, {
+    threadId: "thread-1",
+  });
+  const explicit = await fixture(t);
+  await explicit.runtime.request("session/resume", {
+    sessionId: "thread-1",
+    additionalDirectories: ["/other"],
+  });
+  assert.deepEqual(explicit.calls.find((call) => call.method === "thread/resume")?.params, {
+    threadId: "thread-1",
+    runtimeWorkspaceRoots: [cwd, "/other"],
+  });
+});
+
 test("first-input command generates a native title through the isolated auxiliary path", async (t) => {
   const h = await fixture(t);
   h.authority.thread = {
@@ -369,7 +425,8 @@ test("a first input without a title model reports one bounded skip and never sta
   assert.equal(
     h.calls.some(
       (call) =>
-        call.method === "thread/start" && (call.params as { ephemeral?: boolean }).ephemeral === true,
+        call.method === "thread/start" &&
+        (call.params as { ephemeral?: boolean }).ephemeral === true,
     ),
     false,
   );

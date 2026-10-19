@@ -3,6 +3,7 @@ import { decorateNativeThread } from "./command-input.js";
 import { sameExecutionPath } from "./execution-path.js";
 import { object, type JsonObject } from "./json.js";
 import { isWriterConflictError, type ThreadProjectionState } from "./thread-state-types.js";
+import { isAbsolute } from "node:path";
 
 /** 原生子线程身份只来自 parentThreadId；空串按无父线程处理，不能凭 thread id 猜测放权。 */
 export function parentThreadIdOf(metadata: JsonObject): string | undefined {
@@ -54,9 +55,10 @@ export async function attachThreadForLoad(input: {
   id: string;
   read: JsonObject;
   parentThreadId: string | undefined;
+  additionalDirectories?: string[];
   assertAvailable: () => void;
 }): Promise<ThreadLoadAccess> {
-  const { rpc, id, read, parentThreadId, assertAvailable } = input;
+  const { rpc, id, read, parentThreadId, additionalDirectories, assertAvailable } = input;
   // 子线程只在原生已把它加载进本进程时才 resume：resume 已加载线程是「回放历史 + 原子订阅」
   // （codex-rs app-server/src/thread_state.rs），不改盘；resume 未加载线程会把 rollout 从磁盘
   // 重新加载，实测（codex-cli 0.160.1）这一步会改写子线程 rollout 并把 thread.updatedAt 顶到
@@ -73,7 +75,20 @@ export async function attachThreadForLoad(input: {
   let readOnly: ThreadProjectionState["readOnly"];
   let thread: Record<string, unknown>;
   try {
-    const resumed = object(await rpc.request("thread/resume", { threadId: id }));
+    // 原因：单目录视图打开未归类的外部多目录线程时，Host 的 [] 不是缩权命令；
+    // 只为明确归属的线程发送覆盖数组。已加载线程由上层 ensure 直接返回，不刷新实例。
+    const runtimeWorkspaceRoots =
+      additionalDirectories !== undefined && !parentThreadId
+        ? [...new Set([String(object(read.thread).cwd), ...additionalDirectories])]
+        : undefined;
+    if (runtimeWorkspaceRoots?.some((path) => !isAbsolute(path)))
+      throw new Error("Native workspace roots must be absolute");
+    const resumed = object(
+      await rpc.request("thread/resume", {
+        threadId: id,
+        ...(runtimeWorkspaceRoots ? { runtimeWorkspaceRoots } : {}),
+      }),
+    );
     assertAvailable();
     thread = decorateNativeThread(resumed);
     attached = true;
