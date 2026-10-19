@@ -3264,6 +3264,7 @@ export function createLocalServices(options: {
     taskIndexSyncer: codezTaskIndexSyncer,
     settingService,
     cuaProductMcpServerResolver,
+    agentRuntimeMode: usesDefaultCodexDesktopBridge ? "codex" : "legacy",
   });
   appControlService = createAppControlService({
     sourceServerId: options?.projectStorageHostId ?? "local",

@@ -7,6 +7,7 @@ import {
 import { SUPPORTED_LOCALES, type AppSettings } from "./protocol.js";
 import { resolvePersistedUiLocale, resolvePersistedUiLocalePreference } from "./locale.js";
 import { REMOTE_ASSET_INSTALL_MODES } from "./remoteAssetInstallMode.js";
+import { SSH_AUTH_MODES } from "./remoteTarget.js";
 import { isKnownRemoteResourcePackageId } from "./remoteResourcePackages.js";
 import { wslUserSchema } from "./wslUserValidation.js";
 import { CODEZ_ENABLED_AGENT_PROVIDERS } from "./codez-agent-policy.js";
@@ -101,6 +102,7 @@ const remoteWorkspaceTargetSchema = z.discriminatedUnion("kind", [
     port: z.number().int().positive().max(65535).optional(),
     username: nonEmptyStringSchema,
     sshConfigAlias: nonEmptyStringSchema.optional(),
+    authMode: z.enum(SSH_AUTH_MODES).optional(),
     privateKeyPath: z.string().optional(),
     assetInstallMode: z.enum(REMOTE_ASSET_INSTALL_MODES).optional(),
     resourcePackages: z
