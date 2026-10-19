@@ -152,6 +152,38 @@ describe("Source Server release resolver", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("resolves a fork GitHub Release root without trying a versioned descriptor path", async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (
+        url ===
+        "https://github.com/KingingWang/Codez/releases/download/codez-build-1-0123456789ab/source-server-release.json"
+      ) {
+        return new Response(JSON.stringify(descriptor("github-source-server")), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(null, { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const release = await resolveSourceServerReleaseAsset(
+      probe,
+      {
+        remoteCdnBaseUrls: [
+          "https://github.com/KingingWang/Codez/releases/download/codez-build-1-0123456789ab",
+        ],
+      },
+      { ...target, assetInstallMode: "remote-download" },
+    );
+
+    expect(release.urls).toEqual([
+      "https://github.com/KingingWang/Codez/releases/download/codez-build-1-0123456789ab/codez-server-linux-x64.tar.gz",
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("downloads and verifies the descriptor archive into the Desktop cache", async () => {
     const root = await mkdtemp(join(tmpdir(), "codez-source-release-cache-"));
     const contents = "cached-source-server";
@@ -231,10 +263,73 @@ describe("Source Server release resolver", () => {
         { fetch: remoteAssetFetch },
       ),
     ).rejects.toMatchObject({
-      message: "Unable to resolve Source Server release descriptor",
+      message: expect.stringMatching(
+        /^Unable to resolve Source Server release descriptor \(attempts: .+proxy unavailable/u,
+      ),
       cause: expect.objectContaining({ message: "proxy unavailable" }),
     });
     expect(remoteAssetFetch).toHaveBeenCalled();
     expect(directFetch).not.toHaveBeenCalled();
+  });
+
+  it("derives the GitHub release root from the packaged Codex index when no CDN base exists", async () => {
+    const root = await mkdtemp(join(tmpdir(), "codez-source-release-codex-index-"));
+    const packagedDir = join(root, "codex-remote");
+    await mkdir(packagedDir, { recursive: true });
+    await writeFile(
+      join(packagedDir, "index.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        appVersion: CODEZ_VERSION,
+        releaseTag: "codez-build-39268981423-7f6c50c65635",
+        manifests: {},
+        assets: {},
+        files: {},
+      }),
+    );
+    const expectedRoot =
+      "https://github.com/KingingWang/Codez/releases/download/codez-build-39268981423-7f6c50c65635";
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === `${expectedRoot}/source-server-release.json`) {
+        return new Response(JSON.stringify(descriptor("codex-packaged-source-server")), {
+          status: 200,
+        });
+      }
+      return new Response(null, { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // codex flavor 的 remoteAssets 只有 packagedRemoteAssetsDir/remoteCacheDir，没有 CDN 基址。
+    const release = await resolveSourceServerReleaseAsset(
+      probe,
+      { packagedRemoteAssetsDir: packagedDir },
+      { ...target, assetInstallMode: "remote-download" },
+    );
+
+    expect(release.urls).toEqual([`${expectedRoot}/${fileName}`]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed with candidate detail when neither CDN bases nor a valid packaged index exist", async () => {
+    const root = await mkdtemp(join(tmpdir(), "codez-source-release-codex-empty-"));
+    const packagedDir = join(root, "codex-remote");
+    await mkdir(packagedDir, { recursive: true });
+    // releaseTag 进 URL 路径前必须过白名单；非法 tag 不得产生任何请求。
+    await writeFile(
+      join(packagedDir, "index.json"),
+      JSON.stringify({ schemaVersion: 1, releaseTag: "../../evil" }),
+    );
+    const fetchMock = vi.fn(async () => new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      resolveSourceServerReleaseAsset(
+        probe,
+        { packagedRemoteAssetsDir: packagedDir },
+        { ...target, assetInstallMode: "remote-download" },
+      ),
+    ).rejects.toThrow(/Unable to resolve Source Server release descriptor \(no release base candidates/u);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

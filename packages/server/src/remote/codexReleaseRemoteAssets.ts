@@ -18,6 +18,19 @@ import type { DeployLoggers } from "./deployShared.js";
 const digest = (data: Buffer) => createHash("sha256").update(data).digest("hex");
 const shaPattern = /^[a-f0-9]{64}$/;
 const tagPattern = /^codez-(?:build-[1-9][0-9]*-[a-f0-9]{12}|local-[a-zA-Z0-9._+-]+)$/;
+
+export function isCodexReleaseTag(value: unknown): value is string {
+  return typeof value === "string" && tagPattern.test(value);
+}
+
+export function buildCodexGitHubReleaseDownloadRoot(releaseTag: string): string {
+  // releaseTag 会进入 URL 路径，必须先过白名单校验，防止打包 index 被篡改后路径穿越。
+  if (!isCodexReleaseTag(releaseTag)) {
+    throw new Error(`Invalid Codex release tag: ${releaseTag}`);
+  }
+  return `https://github.com/KingingWang/Codez/releases/download/${releaseTag}`;
+}
+
 const targets = ["darwin-x64", "darwin-arm64", "linux-x64", "linux-arm64"];
 const inFlightDownloads = new Map<
   string,
@@ -79,7 +92,7 @@ export function createCodexReleaseRemoteAssetSource(
       if (
         index.schemaVersion !== 1 ||
         index.appVersion !== options.version ||
-        !tagPattern.test(index.releaseTag) ||
+        !isCodexReleaseTag(index.releaseTag) ||
         !index.manifests ||
         Object.keys(index.manifests).sort().join(",") !== [...targets].sort().join(",") ||
         !index.assets ||
@@ -124,7 +137,7 @@ export function createCodexReleaseRemoteAssetSource(
         manifest: {
           manifest,
           releaseBaseCandidatesForComponents: [
-            `https://github.com/KingingWang/Codez/releases/download/${index.releaseTag}`,
+            buildCodexGitHubReleaseDownloadRoot(index.releaseTag),
           ],
         },
       };
@@ -134,7 +147,7 @@ export function createCodexReleaseRemoteAssetSource(
     const { index } = await snapshot();
     const name = index.assets[component.artifactPath];
     if (!name) throw new Error(`Missing pinned Codex release asset: ${component.id}`);
-    return `https://github.com/KingingWang/Codez/releases/download/${index.releaseTag}/${name}`;
+    return `${buildCodexGitHubReleaseDownloadRoot(index.releaseTag)}/${name}`;
   };
 
   const archivePath = async (component: RemoteAssetManifestComponent): Promise<string> => {
