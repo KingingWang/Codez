@@ -114,9 +114,15 @@ export function useCodexProjectDiscovery({
     const onFocus = () => {
       void discover();
     };
+    // 原因：新建项目可能复用当前已激活的 A tab；仅监听 workspacePath 变化
+    // 不会再扫描 A 的外部 CLI 历史。项目变更是显式发现边界，不缓存结果。
+    const changes = scope.services.broadcastService.onMessage((message) => {
+      if (message.channel === "state:projects") void discover();
+    });
     window.addEventListener("focus", onFocus);
     return () => {
       window.removeEventListener("focus", onFocus);
+      changes.dispose();
     };
   }, [discover, scope]);
 

@@ -13,6 +13,7 @@ import {
   type SessionActionAvailability,
 } from "@codez/shared/codez-protocol-v4";
 import { codexThreadSchema, isCodexKnownItem, type CodexThread } from "./codex-types.js";
+import { projectOriginFromSource } from "./project-origin.js";
 import { projectRows } from "./projection-rows.js";
 import { isSelectionSideChatThread } from "./selection-side-chat.js";
 import { projectQueue, type QueueAdmissionFacts } from "./projection-queue.js";
@@ -219,10 +220,12 @@ export function projectSessionSummary(thread: unknown, workspacePath: string): S
     .filter(isCodexKnownItem)
     .findLast((item) => item.type === "agentMessage");
   const parentSessionId = source.forkedFromId ?? source.parentThreadId;
+  const originProjectId = projectOriginFromSource(source.threadSource);
   return sessionSummarySchema.parse({
     sessionId: source.id,
     workspaceId: nonempty.parse(workspacePath),
     ...(parentSessionId ? { parentSessionId } : {}),
+    ...(originProjectId !== undefined ? { originProjectId } : {}),
     title: source.name ?? source.preview,
     phase: state.phase,
     sessionEnded: state.sessionEnded,

@@ -97,7 +97,14 @@ export function createTaskFacts(options: {
         ...(summary.parentSessionId ? { forkedFromTaskId: summary.parentSessionId } : {}),
         ...(lastOutcome ? { status: lastOutcome === "error" ? "error" : "completed" } : {}),
       };
-      return store.applyCliFacts({ meta, titleSource: summary.titleSource, lastOutcome });
+      return store.applyCliFacts({
+        meta,
+        ...(summary.originProjectId !== undefined
+          ? { originProjectId: summary.originProjectId }
+          : {}),
+        titleSource: summary.titleSource,
+        lastOutcome,
+      });
     },
     async removed(target) {
       refreshes.delete(key(target));
