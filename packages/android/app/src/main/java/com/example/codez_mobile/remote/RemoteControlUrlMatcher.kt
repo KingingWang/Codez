@@ -14,9 +14,59 @@ object RemoteControlUrlMatcher {
     const val REMOTE_PATH_PREFIX = "/remote"
     const val CODEZ_REMOTE_SCHEME = "codez"
     const val CODEZ_REMOTE_HOST = "remote"
+    private val OAUTH_ALLOWED_HOSTS = setOf(
+        "bigmodel.cn",
+        "open.bigmodel.cn",
+        "chat.z.ai",
+    )
 
     fun isCodezDeepLink(scheme: String?, host: String?): Boolean =
         scheme == CODEZ_REMOTE_SCHEME && host == CODEZ_REMOTE_HOST
+
+    /**
+     * 判断是否为手机远控登录期间允许在 WebView 内部打开的智谱 OAuth 授权页。
+     * 放行后登录全程留在 App WebView 内完成，避免跳出到系统默认浏览器丢失 sessionStorage 与 #e2ee 密钥。
+     */
+    fun isAllowedOAuthNavigationTarget(
+        scheme: String?,
+        host: String?,
+    ): Boolean {
+        val normalizedScheme = scheme?.lowercase().orEmpty()
+        val normalizedHost = host?.lowercase().orEmpty()
+        if (normalizedScheme != "https") {
+            return false
+        }
+        return OAUTH_ALLOWED_HOSTS.any { allowed ->
+            normalizedHost == allowed || normalizedHost.endsWith(".$allowed")
+        }
+    }
+
+    /**
+     * 判断是否为智谱 OAuth 授权完成后回跳到官方域名的回调链接（/remote/v4?code|authCode|error=...&state=...）。
+     * 命中时由 WebView 重写回可信加密页面（kingingwang.github.io/Codez/remote/v4/）完成 Token 兑换。
+     */
+    fun isOfficialOAuthCallback(
+        scheme: String?,
+        host: String?,
+        path: String?,
+        queryParameterNames: Set<String>,
+    ): Boolean {
+        val normalizedScheme = scheme?.lowercase().orEmpty()
+        val normalizedHost = host?.lowercase().orEmpty()
+        val normalizedPath = path?.trimEnd('/').orEmpty()
+        if (normalizedScheme != "https" || normalizedHost != OFFICIAL_REMOTE_HOST) {
+            return false
+        }
+        if (normalizedPath != "/remote/v4") {
+            return false
+        }
+        if (!queryParameterNames.contains("state")) {
+            return false
+        }
+        return queryParameterNames.contains("code") ||
+            queryParameterNames.contains("authCode") ||
+            queryParameterNames.contains("error")
+    }
 
     fun isAllowedRemoteTarget(
         scheme: String?,

@@ -8,10 +8,10 @@
 
 2026-10-11 导出的日志显示 desktop device 已进入 `paired`，随后带 bootstrap
 requestId 的业务载荷被判为 invalid 并丢弃，手机最终提示 desktop bootstrap timeout。
-当前 fork 将上游的 `zcode_type` 改成了 `codez_type`，但二维码仍指向上游托管页面。
+当前 fork 将上游的 `zcode_type` 改成了 `codez_type`。
 配对成功不意味着业务协议兼容；协议字段不能随产品品牌重命名。
 
-扫码访问现有上游手机页面，应能读取桌面窗口的工作区与任务，建立 workspace bridge，
+通过 Codez Android App 扫码访问可信加密手机页面（或兼容上游协议），在完成智谱 OAuth 登录与 E2EE 双向握手后，应能读取桌面窗口的工作区与任务，建立 workspace bridge，
 使用同一个 Host/runtime 读取会话和发送输入，并在断线后恢复。Codez 品牌、数据目录、
 Codex 后端和桌面本地 IPC 名称保持不变。
 

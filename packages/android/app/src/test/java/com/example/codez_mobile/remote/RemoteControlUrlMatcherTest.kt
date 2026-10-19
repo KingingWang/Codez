@@ -96,4 +96,48 @@ class RemoteControlUrlMatcherTest {
         assertFalse(RemoteControlUrlMatcher.isCodezDeepLink("https", "remote"))
         assertFalse(RemoteControlUrlMatcher.isCodezDeepLink("codez", "other"))
     }
+
+    @Test
+    fun `放行智谱 OAuth 授权页并识别官方 OAuth 回调`() {
+        assertTrue(
+            RemoteControlUrlMatcher.isAllowedOAuthNavigationTarget("https", "bigmodel.cn"),
+        )
+        assertTrue(
+            RemoteControlUrlMatcher.isAllowedOAuthNavigationTarget("https", "open.bigmodel.cn"),
+        )
+        assertTrue(
+            RemoteControlUrlMatcher.isAllowedOAuthNavigationTarget("https", "chat.z.ai"),
+        )
+        assertFalse(
+            RemoteControlUrlMatcher.isAllowedOAuthNavigationTarget("http", "bigmodel.cn"),
+        )
+        assertFalse(
+            RemoteControlUrlMatcher.isAllowedOAuthNavigationTarget("https", "example.com"),
+        )
+
+        assertTrue(
+            RemoteControlUrlMatcher.isOfficialOAuthCallback(
+                scheme = "https",
+                host = "zcode.z.ai",
+                path = "/remote/v4",
+                queryParameterNames = setOf("authCode", "state", "sid"),
+            ),
+        )
+        assertTrue(
+            RemoteControlUrlMatcher.isOfficialOAuthCallback(
+                scheme = "https",
+                host = "zcode.z.ai",
+                path = "/remote/v4/",
+                queryParameterNames = setOf("code", "state"),
+            ),
+        )
+        assertFalse(
+            RemoteControlUrlMatcher.isOfficialOAuthCallback(
+                scheme = "https",
+                host = "zcode.z.ai",
+                path = "/remote/v4",
+                queryParameterNames = setOf("sid", "mid"),
+            ),
+        )
+    }
 }

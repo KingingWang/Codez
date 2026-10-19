@@ -10,27 +10,24 @@ import {
   createFailure,
   isRawTransportCandidate,
   summarizeRelayMessageForTrace,
+  buildClientCapabilitiesPayload,
+  resolveTerminalReconnectJitterMs,
+  TerminalE2eeController,
 } from "#src/web-remote-control/adapters/relayMessage.js";
-import {
-  WebRemoteControlRelayPayloadSerializer,
-  type WebRemoteControlPayloadSendResult,
-} from "@codez/client";
+import type { WebRemoteControlPayloadSendResult } from "@codez/client";
 import {
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   parseWebRemoteControlAppPayload,
   type WebRemoteControlAppPayload,
+  type WebRemoteControlE2eeWirePayload,
   type WebRemoteControlFailure,
 } from "@codez/shared";
 import {
   WEB_REMOTE_CONTROL_V2_HEARTBEAT_ACK_TIMEOUT_MS,
-  WEB_REMOTE_CONTROL_V2_HEARTBEAT_INTERVAL_MS,
   WebRemoteControlV2ConnectionError,
   WebRemoteControlV2Heartbeat,
   WebRemoteControlV2RetryPolicy,
   webRemoteControlV2PairState,
-  WEB_REMOTE_CONTROL_RECONNECT_JITTER_MS,
-  getWebRemoteControlHeartbeatJitterMs,
-  getWebRemoteControlReconnectJitterMs,
   type WebRemoteControlRelayV2OutgoingMessage,
 } from "@codez/shared/web-remote-relay";
 
@@ -62,17 +59,25 @@ export class WebRemoteControlTerminalTransport {
     timer: ReturnType<typeof setTimeout>;
   }>();
   private waitingTimer?: ReturnType<typeof setTimeout>;
-  private staleWaitingRecoveryTimer?: ReturnType<typeof setTimeout>;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private desktopOfflineFailureTimer?: ReturnType<typeof setTimeout>;
   private readonly traceRelayMessages = import.meta.env.DEV;
-  private readonly payloadSerializer = new WebRemoteControlRelayPayloadSerializer();
+  private readonly e2ee: TerminalE2eeController;
+  private ingressChain: Promise<void> = Promise.resolve();
 
   constructor(private readonly options: WebRemoteControlTerminalTransportOptions) {
     this.WebSocketCtor = options.WebSocketCtor ?? globalThis.WebSocket;
+    this.e2ee = new TerminalE2eeController({
+      deviceSid: options.deviceSid,
+      e2eeKey: options.e2eeKey,
+      handshakeTimeoutMs: options.e2eeHandshakeTimeoutMs,
+      sendControl: (payload) => this.sendE2eeControl(payload),
+      onFailure: (error) => this.recoverFromE2eeFailure(error),
+      onReset: () => options.onE2eeReset?.(),
+    });
     this.heartbeat = new WebRemoteControlV2Heartbeat(
       () => this.sendPairStatusQuery(),
-      () => this.reconnectAfterStaleWaiting(this.getReconnectJitterMs()),
+      () => this.reconnectAfterStaleWaiting(resolveTerminalReconnectJitterMs(this.options)),
       {
         intervalMs: options.heartbeatIntervalMs,
         jitterMs: options.heartbeatJitterMs,
@@ -91,6 +96,15 @@ export class WebRemoteControlTerminalTransport {
     this.lastPairStatusAckAt = Date.now();
     this.setState("connecting");
     this.connect();
+  }
+
+  private async handleIngressMessage(data: unknown, socket: WebSocket): Promise<void> {
+    if (this.intentionallyClosed) return;
+    try {
+      await this.handleMessage(data, socket);
+    } catch (error) {
+      this.options.onError(error instanceof Error ? error : new Error(String(error)));
+    }
   }
 
   private async connect(): Promise<void> {
@@ -117,9 +131,7 @@ export class WebRemoteControlTerminalTransport {
       );
 
       socket.addEventListener("open", () => {
-        if (socket !== this.socket) {
-          return;
-        }
+        if (socket !== this.socket) return;
         const negotiatedExtensions = typeof socket.extensions === "string" ? socket.extensions : "";
         // Bugfix: 手机端运行在浏览器 WebSocket API 下，无法主动传 perMessageDeflate 配置。
         // 只能通过标准 extensions 字段确认 relay 是否真的完成压缩协商，避免误以为业务代码可强制开启。
@@ -143,25 +155,22 @@ export class WebRemoteControlTerminalTransport {
       });
 
       socket.addEventListener("message", (event) => {
-        if (socket !== this.socket) {
-          return;
-        }
-        void this.handleMessage(event.data, socket);
+        if (socket !== this.socket) return;
+        const data = event.data;
+        this.ingressChain = this.ingressChain.then(
+          () => this.handleIngressMessage(data, socket),
+          () => this.handleIngressMessage(data, socket),
+        );
       });
 
       socket.addEventListener("error", () => {
-        if (socket !== this.socket) {
-          return;
-        }
-        const error = new Error("External relay terminal socket error");
+        if (socket !== this.socket) return;
         this.emitDiagnostic({ type: "socket-error", state: this.state });
-        this.options.onError(error);
+        this.options.onError(new Error("External relay terminal socket error"));
       });
 
       socket.addEventListener("close", (event) => {
-        if (socket !== this.socket) {
-          return;
-        }
+        if (socket !== this.socket) return;
         this.emitDiagnostic({
           type: "socket-close",
           code: event.code,
@@ -171,21 +180,12 @@ export class WebRemoteControlTerminalTransport {
           state: this.state,
         });
         this.stopHeartbeat();
+        this.e2ee.reset();
         this.clearWaitingTimer();
-        this.clearStaleWaitingRecoveryTimer();
-        if (this.intentionallyClosed) {
-          return;
-        }
-        if (this.state === "suspended") {
-          return;
-        }
-        if (this.hadPairedSession) {
-          // Bugfix: 手机浏览器后台恢复、网络切换或 relay 短抖会关闭已配对 socket。
-          // 旧逻辑直接刷新整页，导致用户丢失当前 workspace/task 视图；这里改为原地重连，
-          // 让上层在重新 paired 后按 mobile view state 恢复。
-          this.scheduleReconnect();
-          return;
-        }
+        if (this.intentionallyClosed || this.state === "suspended") return;
+        // Bugfix: 手机浏览器后台恢复、网络切换或 relay 短抖会关闭已配对 socket。
+        // 旧逻辑直接刷新整页，导致用户丢失当前 workspace/task 视图；这里改为原地重连，
+        // 让上层在重新 paired 后按 mobile view state 恢复。
         this.scheduleReconnect();
       });
     } catch (error) {
@@ -201,12 +201,18 @@ export class WebRemoteControlTerminalTransport {
   }
 
   measurePayloadBytes(payload: WebRemoteControlAppPayload): number {
-    return this.payloadSerializer.prepare(payload, Math.floor(Date.now() / 1000)).bytes;
+    if (!this.e2ee.isReady()) {
+      throw new Error("e2ee.notReady");
+    }
+    return this.e2ee.serializer.prepare(payload, Math.floor(Date.now() / 1000)).bytes;
   }
 
   sendPayloadResult(payload: WebRemoteControlAppPayload): WebRemoteControlPayloadSendResult {
-    const prepared = this.payloadSerializer.prepare(payload, Math.floor(Date.now() / 1000));
-    if (this.payloadSerializer.isOversize(prepared)) {
+    if (!this.e2ee.isReady()) {
+      return { kind: "unavailable" };
+    }
+    const prepared = this.e2ee.serializer.prepare(payload, Math.floor(Date.now() / 1000));
+    if (this.e2ee.serializer.isOversize(prepared)) {
       return {
         kind: "oversize",
         bytes: prepared.bytes,
@@ -224,6 +230,7 @@ export class WebRemoteControlTerminalTransport {
   suspend(): void {
     if (
       this.state !== "paired" &&
+      this.state !== "securing" &&
       this.state !== "connecting" &&
       this.state !== "reconnecting" &&
       this.state !== "authenticating" &&
@@ -239,7 +246,6 @@ export class WebRemoteControlTerminalTransport {
     this.clearReconnectTimer();
     this.stopHeartbeat();
     this.clearWaitingTimer();
-    this.clearStaleWaitingRecoveryTimer();
     this.setState("suspended");
   }
 
@@ -247,7 +253,6 @@ export class WebRemoteControlTerminalTransport {
     if (this.intentionallyClosed) throw new Error("Web remote control transport stopped.");
     this.emitDiagnostic({ type: "recover-start", state: this.state });
     this.clearReconnectTimer();
-    this.clearStaleWaitingRecoveryTimer();
     this.stopHeartbeat();
     this.clearWaitingTimer();
     this.staleWaitingCount = 0;
@@ -281,7 +286,6 @@ export class WebRemoteControlTerminalTransport {
     // 这里继续原地重连，不把当前页面切成错误页，保证用户正在输入的草稿不被卸载。
     this.clearReconnectTimer();
     this.clearWaitingTimer();
-    this.clearStaleWaitingRecoveryTimer();
     this.clearDesktopOfflineFailureTimer();
     this.stopHeartbeat();
     this.staleWaitingCount = 0;
@@ -290,9 +294,9 @@ export class WebRemoteControlTerminalTransport {
 
   dispose(): void {
     this.intentionallyClosed = true;
+    this.e2ee.reset();
     this.stopHeartbeat();
     this.clearWaitingTimer();
-    this.clearStaleWaitingRecoveryTimer();
     this.clearDesktopOfflineFailureTimer();
     this.clearReconnectTimer();
     this.rejectPairedWaiters(new Error("Web remote control transport disposed."));
@@ -327,8 +331,8 @@ export class WebRemoteControlTerminalTransport {
         this.applyPairStatus(message.pair_status);
         break;
       case "data":
-        if (!this.authenticated || this.state !== "paired") return;
-        this.handleDataPayload(message.payload);
+        if (!this.authenticated || (this.state !== "paired" && this.state !== "securing")) return;
+        await this.handleDataPayload(message.payload);
         break;
       case "error":
         this.handleRelayError(message.code, message.message);
@@ -340,12 +344,12 @@ export class WebRemoteControlTerminalTransport {
     this.lastPairStatusAckAt = Date.now();
     this.emitDiagnostic({ type: "pair-status", pairStatus: status, state: this.state });
     if (webRemoteControlV2PairState(status) === "waiting_terminal") {
+      this.e2ee.reset();
       if (this.wasPaired) {
         // Bugfix: codez-remote-hub 的 waiting 是合法配对状态，表示当前 device 不在 hub 里，
         // 不是 terminal WS 损坏信号。已配对后降级为 waiting 时保持同一条手机端 WS，
         // 继续轻量查询，避免把桌面端短暂重连放大成手机端反复踢旧连接。
         this.staleWaitingCount = 0;
-        this.clearStaleWaitingRecoveryTimer();
         this.clearReconnectTimer();
         this.clearWaitingTimer();
         this.clearDesktopOfflineFailureTimer();
@@ -368,10 +372,25 @@ export class WebRemoteControlTerminalTransport {
             : "reconnected-socket";
       this.staleWaitingCount = 0;
       this.retry.acknowledged();
-      this.clearStaleWaitingRecoveryTimer();
       this.clearDesktopOfflineFailureTimer();
       this.clearReconnectTimer();
       this.clearWaitingTimer();
+      if (this.e2ee.hasKey) {
+        if (!this.e2ee.isActive) {
+          this.setState("securing");
+          this.e2ee.startSession();
+        } else if (this.e2ee.isReady()) {
+          this.setState("paired");
+        }
+        this.wasPaired = true;
+        this.hadPairedSession = true;
+        this.lastPairedSocketGeneration = this.socketGeneration;
+        this.startHeartbeat();
+        if (this.e2ee.isReady() && sendReadyKind) {
+          this.options.onSendReady?.({ kind: sendReadyKind });
+        }
+        return;
+      }
       this.setState("paired");
       this.wasPaired = true;
       this.hadPairedSession = true;
@@ -418,32 +437,65 @@ export class WebRemoteControlTerminalTransport {
     this.enterTerminalFailure(createFailure("relay-unavailable", message || code));
   }
 
-  private handleDataPayload(payload: unknown): void {
+  private async handleDataPayload(payload: unknown): Promise<void> {
+    let unwrapped: Awaited<ReturnType<TerminalE2eeController["unwrapInbound"]>>;
+    try {
+      unwrapped = await this.e2ee.unwrapInbound(payload, {
+        onRekey: () => {
+          this.setState("securing");
+          this.e2ee.startSession();
+        },
+        onReady: () => {
+          this.sendClientCapabilities();
+          this.setState("paired");
+          this.startHeartbeat();
+          this.options.onSendReady?.({ kind: "reconnected-socket" });
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message === "e2ee.staleEpoch" || error.message === "e2ee.staleRecord")
+      ) {
+        return;
+      }
+      this.recoverFromE2eeFailure(
+        error instanceof Error ? error : new Error("e2ee.authenticationFailed"),
+      );
+      return;
+    }
+    if (unwrapped.kind === "handled") return;
+    payload = unwrapped.payload;
     if (isRawTransportCandidate(payload) && this.options.onRawTransportPayload?.(payload)) {
       return;
     }
     const parsed = parseWebRemoteControlAppPayload(payload);
-    if (!parsed) {
-      return;
-    }
+    if (!parsed) return;
     this.options.onPayload(parsed);
+  }
+
+  private sendE2eeControl(payload: WebRemoteControlE2eeWirePayload): void {
+    const prepared = this.e2ee.serializer.prepareControl(payload);
+    if (
+      this.e2ee.serializer.isOversize(prepared) ||
+      !this.sendSerialized(prepared.message, prepared.json)
+    ) {
+      this.recoverFromE2eeFailure(new Error("e2ee.handshakeSendFailed"));
+    }
+  }
+
+  private sendClientCapabilities(): void {
+    const prepared = this.e2ee.serializer.prepare(buildClientCapabilitiesPayload());
+    void this.sendSerialized(prepared.message, prepared.json);
+  }
+
+  private recoverFromE2eeFailure(error: Error): void {
+    this.e2ee.reset();
+    this.recoverFromRelayInternal(error.message);
   }
 
   private startHeartbeat(): void {
     this.heartbeat.acknowledged();
-  }
-
-  private getReconnectJitterMs(): number {
-    const baseIntervalMs =
-      this.options.heartbeatIntervalMs ?? WEB_REMOTE_CONTROL_V2_HEARTBEAT_INTERVAL_MS;
-    const heartbeatJitterMs = getWebRemoteControlHeartbeatJitterMs(
-      baseIntervalMs,
-      this.options.heartbeatJitterMs,
-    );
-    return getWebRemoteControlReconnectJitterMs(
-      this.options.reconnectJitterMs ??
-        Math.min(heartbeatJitterMs, WEB_REMOTE_CONTROL_RECONNECT_JITTER_MS),
-    );
   }
 
   private sendPairStatusQuery(): boolean {
@@ -460,9 +512,7 @@ export class WebRemoteControlTerminalTransport {
   private startWaitingTimer(): void {
     if (this.waitingTimer) return;
     this.waitingTimer = setTimeout(() => {
-      if (this.state !== "waiting") {
-        return;
-      }
+      if (this.state !== "waiting") return;
       this.enterTerminalFailure(
         createFailure(
           "desktop-disconnected",
@@ -473,41 +523,11 @@ export class WebRemoteControlTerminalTransport {
   }
 
   private clearWaitingTimer(): void {
-    if (!this.waitingTimer) {
-      return;
-    }
-    clearTimeout(this.waitingTimer);
+    if (this.waitingTimer) clearTimeout(this.waitingTimer);
     this.waitingTimer = undefined;
   }
 
-  private scheduleStaleWaitingRecovery(): void {
-    if (this.staleWaitingRecoveryTimer) {
-      return;
-    }
-    this.staleWaitingRecoveryTimer = setTimeout(() => {
-      this.staleWaitingRecoveryTimer = undefined;
-      if (
-        (this.state === "paired" ||
-          this.state === "reconnecting" ||
-          this.state === "connecting" ||
-          this.state === "authenticating") &&
-        this.staleWaitingCount > 0
-      ) {
-        this.reconnectAfterStaleWaiting();
-      }
-    }, this.options.staleWaitingRecoveryMs ?? 1_500);
-  }
-
-  private clearStaleWaitingRecoveryTimer(): void {
-    if (!this.staleWaitingRecoveryTimer) {
-      return;
-    }
-    clearTimeout(this.staleWaitingRecoveryTimer);
-    this.staleWaitingRecoveryTimer = undefined;
-  }
-
   private reconnectAfterStaleWaiting(reconnectDelayMs = 0): void {
-    this.clearStaleWaitingRecoveryTimer();
     this.stopHeartbeat();
     this.clearWaitingTimer();
     this.clearReconnectTimer();
@@ -563,7 +583,6 @@ export class WebRemoteControlTerminalTransport {
     this.options.onError(new Error(message));
     this.stopHeartbeat();
     this.clearWaitingTimer();
-    this.clearStaleWaitingRecoveryTimer();
     this.staleWaitingCount = 0;
     this.wasPaired = false;
     this.closeSocket();
@@ -574,7 +593,6 @@ export class WebRemoteControlTerminalTransport {
     this.options.onError(new Error(message));
     this.stopHeartbeat();
     this.clearWaitingTimer();
-    this.clearStaleWaitingRecoveryTimer();
     this.staleWaitingCount = 0;
     this.wasPaired = false;
     if (!this.desktopOfflineFailureTimer) {
@@ -593,7 +611,6 @@ export class WebRemoteControlTerminalTransport {
     // 避免把“桌面端暂时不在”放大成手机端反复重连。
     this.options.onError(new Error(message));
     this.clearWaitingTimer();
-    this.clearStaleWaitingRecoveryTimer();
     this.clearDesktopOfflineFailureTimer();
     this.clearReconnectTimer();
     this.staleWaitingCount = 0;
@@ -602,18 +619,12 @@ export class WebRemoteControlTerminalTransport {
   }
 
   private clearDesktopOfflineFailureTimer(): void {
-    if (!this.desktopOfflineFailureTimer) {
-      return;
-    }
-    clearTimeout(this.desktopOfflineFailureTimer);
+    if (this.desktopOfflineFailureTimer) clearTimeout(this.desktopOfflineFailureTimer);
     this.desktopOfflineFailureTimer = undefined;
   }
 
   private clearReconnectTimer(): void {
-    if (!this.reconnectTimer) {
-      return;
-    }
-    clearTimeout(this.reconnectTimer);
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = undefined;
   }
 
@@ -655,7 +666,6 @@ export class WebRemoteControlTerminalTransport {
     this.intentionallyClosed = true;
     this.stopHeartbeat();
     this.clearWaitingTimer();
-    this.clearStaleWaitingRecoveryTimer();
     this.clearDesktopOfflineFailureTimer();
     this.clearReconnectTimer();
     this.setState(failure.reason === "session-conflict" ? "kicked" : "error");
@@ -671,6 +681,7 @@ export class WebRemoteControlTerminalTransport {
     this.tokenController?.abort();
     this.tokenController = undefined;
     this.authenticated = false;
+    this.e2ee.reset();
     clearTimeout(this.handshakeTimer);
     this.stopHeartbeat();
     const socket = this.socket;

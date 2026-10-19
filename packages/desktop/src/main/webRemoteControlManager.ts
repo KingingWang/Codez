@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { MessagePortProtocol, type MessagePortLike, type MessagePortPayload } from "@codez/rpc";
 import {
   createAcknowledgedWebRemoteControlRelayProtocol,
+  generateWebRemoteControlPairingKey,
   type AcknowledgedWebRemoteControlRelayProtocolAdapter,
   type WebRemoteControlPayloadSendResult,
 } from "@codez/client";
@@ -14,7 +15,9 @@ import {
   buildWebRemoteControlPairResultTelemetry,
   classifyRemoteUsageError,
   parseRemoteWorkspaceIdentity,
+  parseWebRemoteControlE2eeQrFragment,
   WEB_REMOTE_CONTROL_OUTBOUND_PAYLOAD_BUFFER_TIMEOUT_MS,
+  WEB_REMOTE_CONTROL_E2EE_RPC_PHYSICAL_BUDGET,
   type CodezEndpointUrls,
   type HostPreparedProjectWorkspace,
   type HostProjectWorkspaceNavigationInput,
@@ -1062,6 +1065,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         bridgeSessionId: bridgeRuntime.bridgeSessionId,
         bridgeGeneration: bridgeRuntime.bridgeGeneration,
         recoveryId: bridgeRuntime.recoveryId,
+        maxPhysicalFrameBytes: WEB_REMOTE_CONTROL_E2EE_RPC_PHYSICAL_BUDGET,
         measureFrameBytes: (frame) =>
           runtime.transport.measurePayloadBytes?.(frame) ??
           measureWebRemoteControlRpcRelayEnvelopeBytes(frame),
@@ -1369,16 +1373,21 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
     if (state !== "paired") {
       runtime.hasObservedSendReadyForPairing = false;
     }
-    if (state === "waiting_terminal" || state === "paired") {
+    if (state === "waiting_terminal" || state === "securing" || state === "paired") {
       runtime.error = undefined;
       runtime.failure = undefined;
     }
-    if (state === "connecting" || state === "authenticating") {
+    if (state === "connecting" || state === "authenticating" || state === "securing") {
       if (runtime.mobileConnected) {
         // Bugfix: 已配对会话的 relay 短抖会先经历 connecting/authenticating。
         // 旧逻辑把 dialog 立刻切成“启动中”，用户会误以为远控重新启动；这里在宽限期内保持 active。
         runtime.status = "active";
         scheduleMobileDisconnectGrace(runtime);
+        emitRuntimeStatus(runtime);
+        return;
+      }
+      if (state === "securing") {
+        runtime.status = "running";
         emitRuntimeStatus(runtime);
         return;
       }
@@ -1463,13 +1472,18 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
     }
   }
 
-  function createQrUrl(deviceSid: string, mobileRemoteControlUrl: string): string {
+  function createQrUrl(
+    deviceSid: string,
+    mobileRemoteControlUrl: string,
+    e2eeKey?: string,
+  ): string {
     return buildWebRemoteControlExternalQrUrl({
       baseUrl: mobileRemoteControlUrl,
       deviceSid,
       deviceMid: dependencies.deviceMid,
       deviceName: dependencies.deviceName,
       appVersion: dependencies.appVersion,
+      ...(e2eeKey ? { e2eeKey } : {}),
     });
   }
 
@@ -1510,8 +1524,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         };
         const { endpointUrls, login } = await readAuthContext();
         const relayWsUrl = endpointUrls?.relayWsUrl ?? dependencies.relayWsUrl;
-        const mobileRemoteControlUrl =
-          endpointUrls?.remoteUrl ?? dependencies.mobileRemoteControlUrl;
+        const mobileRemoteControlUrl = dependencies.mobileRemoteControlUrl;
         const endpointOrigin = new URL(endpointUrls?.origin ?? mobileRemoteControlUrl).origin;
         assertActive();
         if (!login?.jwt || !login.userId) {
@@ -1522,6 +1535,18 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         authRequiredWindows.delete(windowId);
         await dependencies.deviceStorage.clearLegacy();
         assertActive();
+        let e2eeKey: string | undefined;
+        if (dependencies.deviceStorage.loadE2eeKey && dependencies.deviceStorage.saveE2eeKey) {
+          const storedKey = await dependencies.deviceStorage.loadE2eeKey();
+          assertActive();
+          if (storedKey && parseWebRemoteControlE2eeQrFragment(`#e2ee=v1&k=${storedKey}`)) {
+            e2eeKey = storedKey;
+          } else {
+            e2eeKey = generateWebRemoteControlPairingKey();
+            await dependencies.deviceStorage.saveE2eeKey(e2eeKey);
+            assertActive();
+          }
+        }
         const http = createWebRemoteControlV2Http(endpointOrigin);
         const currentLogin = async () => {
           const current = await dependencies.getLogin();
@@ -1616,6 +1641,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
           const transport = createTransport({
             relayWsUrl,
             deviceMid: dependencies.deviceMid,
+            ...(e2eeKey ? { e2eeKey } : {}),
             meta: {
               platform: process.platform,
               version: dependencies.appVersion,
@@ -1642,11 +1668,15 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
             logger: dependencies.logger,
             onStateChange: (state) => {
               if (runtimes.get(windowId) !== runtime) return;
-              if (state === "waiting_terminal" || state === "paired") {
-                runtime.qrUrl = runtime.connectUrl = createQrUrl(deviceSid, mobileRemoteControlUrl);
+              if (state === "waiting_terminal" || state === "securing" || state === "paired") {
+                runtime.qrUrl = runtime.connectUrl = createQrUrl(
+                  deviceSid,
+                  mobileRemoteControlUrl,
+                  e2eeKey,
+                );
               }
               mapTransportState(runtime, state);
-              if (state === "waiting_terminal" || state === "paired") {
+              if (state === "waiting_terminal" || state === "securing" || state === "paired") {
                 // 首个调用超时不撤销后台恢复；首次真正 ready 时仍须保存启用意图。
                 persistEnabled ??= dependencies.startupRestoreStorageProvider.save({
                   workspacePath: context.workspacePath,
@@ -1682,6 +1712,11 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
               // 同 bridge 未 ACK 批次仍由 adapter 独占；重连后重放，不刷新 queued age。
               if (relayProtocol && !relayProtocol.isDegraded())
                 relayProtocol.replayUnacknowledged();
+            },
+            onE2eeReset: () => {
+              disposeRuntimeBridgeResources(runtime);
+              runtime.pendingOutboundPayloads.length = 0;
+              clearPendingOutboundPayloadTimer(runtime);
             },
             onError: (error) => {
               if (runtimes.get(windowId) !== runtime) return;

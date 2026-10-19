@@ -491,7 +491,7 @@ describe("WebAuthService BigModel provider", () => {
     const url = new URL(assigned[0]!);
     expect(url.pathname).toBe("/login");
     expect(url.searchParams.get("redirect")).toBe("https://zcode.z.ai/cn/share/callback");
-    expect(url.searchParams.get("appId")).toBe("codez");
+    expect(url.searchParams.get("appId")).toBe("zcode");
     // ZAI 专用参数不能出现，否则 BigModel 侧会忽略 redirect 直接回默认地址
     expect(url.searchParams.get("redirect_uri")).toBeNull();
     expect(url.searchParams.get("client_id")).toBeNull();
@@ -500,6 +500,41 @@ describe("WebAuthService BigModel provider", () => {
     expect(JSON.parse(localStorage.getItem(PENDING_LOGINS_KEY)!)).toMatchObject([
       { provider: "bigmodel" },
     ]);
+  });
+
+  it("preserves #e2ee=v1&k=... fragment across OAuth login redirect and callback", async () => {
+    const e2eeFragment = `#e2ee=v1&k=${"A".repeat(43)}`;
+    const h = createService({
+      currentHref: `https://kingingwang.github.io/Codez/remote/v4/?sid=device-1&mid=mid-1${e2eeFragment}`,
+      currentOrigin: "https://kingingwang.github.io",
+    });
+    h.service.startLogin({ provider: "bigmodel" });
+    const authorizeUrl = new URL(h.assigned[0]!);
+    const state = authorizeUrl.searchParams.get("state")!;
+    expect(authorizeUrl.searchParams.get("appId")).toBe("zcode");
+    expect(JSON.parse(h.localStorage.getItem(PENDING_LOGINS_KEY)!)).toMatchObject([
+      { hash: e2eeFragment },
+    ]);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          code: 0,
+          data: {
+            token: "jwt-token",
+            bigmodel: { access_token: "bm-token" },
+            user: { user_id: "u1", name: "Ada" },
+          },
+        }),
+      })),
+    );
+    const result = await h.service.handleCallback(
+      `https://kingingwang.github.io/Codez/remote/v4/?authCode=code-1&state=${encodeURIComponent(state)}`,
+    );
+    expect(result?.appReturnTo).toBe(`/Codez/remote/v4/?sid=device-1&mid=mid-1${e2eeFragment}`);
+    expect(h.localStorage.getItem(PENDING_LOGINS_KEY)).toBeNull();
   });
 
   it("换 token 时带 provider，并从 data.bigmodel.access_token 取值", async () => {

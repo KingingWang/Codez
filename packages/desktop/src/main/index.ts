@@ -142,7 +142,11 @@ import {
   resolveExplicitStartupWorkspaceBootstrap,
 } from "./startupWorkspaceDeepLinkGate.js";
 import { createWebRemoteControlManager } from "./webRemoteControlManager.js";
-import { createWebRemoteControlDeviceStorage } from "#src/main/web-remote-relay/index.js";
+import {
+  createWebRemoteControlDeviceStorage,
+  resolveWebRemoteControlPageUrl,
+  WEB_REMOTE_CONTROL_E2EE_PAIRING_CREDENTIAL_KEY,
+} from "#src/main/web-remote-relay/index.js";
 import { createWebRemoteControlFeatureGate } from "./webRemoteControlFeatureGate.js";
 import { reconnectWebRemoteControlWorkspaceInRenderer } from "./webRemoteControlRendererReconnect.js";
 import { sendWebRemoteControlStatusChangedToWindow } from "./webRemoteControlStatusEvents.js";
@@ -1008,6 +1012,7 @@ const webRemoteControlAppVersion = CODEZ_VERSION || app.getVersion();
 const webRemoteControlRelayWsEnvOverride =
   process.env["CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL"]?.trim();
 const webRemoteControlUrlEnvOverride = process.env["CODEZ_WEB_REMOTE_CONTROL_URL"]?.trim();
+const webRemoteControlE2eeUrl = process.env["CODEZ_WEB_REMOTE_CONTROL_E2EE_URL"]?.trim();
 
 function extractOpenWorkspacePathFromDeepLinkUrl(url: string): string | null {
   try {
@@ -1042,16 +1047,19 @@ const webRemoteControlManager = createWebRemoteControlManager({
         endpointOrigin: derived.origin,
         overrideUrl: webRemoteControlRelayWsEnvOverride,
       }),
-      remoteUrl: webRemoteControlUrlEnvOverride || derived.remoteUrl,
+      remoteUrl: derived.remoteUrl,
     };
   },
   relayWsUrl: resolveWebRemoteControlRelayWsUrl({
     endpointOrigin: DEFAULT_CODEZ_ENDPOINT_ORIGIN,
     overrideUrl: webRemoteControlRelayWsEnvOverride,
   }),
-  mobileRemoteControlUrl:
-    webRemoteControlUrlEnvOverride ||
-    buildCodezEndpointUrls(DEFAULT_CODEZ_ENDPOINT_ORIGIN).remoteUrl,
+  // 页面发布源独立于 relay；旧覆盖仅供非打包的本地开发使用。
+  mobileRemoteControlUrl: resolveWebRemoteControlPageUrl({
+    isPackaged: app.isPackaged,
+    e2eeUrl: webRemoteControlE2eeUrl,
+    legacyUrl: webRemoteControlUrlEnvOverride,
+  }),
   deviceMid,
   deviceName: hostname(),
   appVersion: webRemoteControlAppVersion,
@@ -1063,6 +1071,10 @@ const webRemoteControlManager = createWebRemoteControlManager({
   deviceStorage: createWebRemoteControlDeviceStorage({
     deleteLegacyCredential: () =>
       webRemoteControlCredentialService.delete("web-remote-control:external-relay:pass_hash"),
+    loadE2eeKey: () =>
+      webRemoteControlCredentialService.load(WEB_REMOTE_CONTROL_E2EE_PAIRING_CREDENTIAL_KEY),
+    saveE2eeKey: (key) =>
+      webRemoteControlCredentialService.save(WEB_REMOTE_CONTROL_E2EE_PAIRING_CREDENTIAL_KEY, key),
     loadSettings: () => mainSettingService.get(),
     patchSettings: (patch) => mainSettingService.update(patch),
   }),

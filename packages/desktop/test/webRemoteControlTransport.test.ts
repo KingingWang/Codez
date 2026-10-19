@@ -3,6 +3,11 @@ import { EventEmitter, once } from "node:events";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeRelayV2 } from "@codez/shared/testing/fake-relay-v2";
 import {
+  createWebRemoteControlE2eeSession,
+  generateWebRemoteControlPairingKey,
+  WebRemoteControlRelayPayloadSerializer,
+} from "@codez/client";
+import {
   createWebRemoteControlV2Http,
   WebRemoteControlDeviceTransport,
 } from "#src/main/web-remote-relay/index.js";
@@ -224,7 +229,7 @@ describe("desktop relay V2 transport", () => {
       expect(received).toContainEqual(
         expect.objectContaining({
           type: "data",
-          payload: { codez_type: "bootstrap-request", requestId: "paired" },
+          payload: { zcode_type: "bootstrap-request", requestId: "paired" },
         }),
       ),
     );
@@ -273,5 +278,118 @@ describe("desktop relay V2 transport", () => {
     await vi.advanceTimersByTimeAsync(1200);
     await settle();
     expect(f.relay.httpCalls.filter((call) => call.path.endsWith("/token"))).toHaveLength(2);
+  });
+
+  it("配置 e2eeKey 时在 V2 matched 后先进入 securing 双向证明握手，再传输加密 payload 与 rpc-frame", async () => {
+    const relay = await createFakeRelayV2({ users: { jwt: "user" } });
+    cleanups.push(() => relay.close());
+    const e2eeKey = generateWebRemoteControlPairingKey();
+    const response = await fetch(`${relay.httpUrl}/api/v1/remote/device`, {
+      method: "POST",
+      headers: { Authorization: "Bearer jwt", "Content-Type": "application/json" },
+      body: JSON.stringify({ device_mid: "mid-e2ee" }),
+    });
+    const { data: device } = await response.json();
+    const states: string[] = [];
+    const payloads: unknown[] = [];
+    const rawPayloads: unknown[] = [];
+    const transport = new WebRemoteControlDeviceTransport({
+      relayWsUrl: relay.wsUrl,
+      deviceMid: "mid-e2ee",
+      e2eeKey,
+      getToken: (signal) => createWebRemoteControlV2Http(relay.httpUrl).token("jwt", signal),
+      resolveDeviceSid: async () => device.device_sid,
+      meta: { name: "Encrypted desktop", platform: "darwin", version: "3.16.1" },
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      onStateChange: (state) => states.push(state),
+      onError: vi.fn(),
+      onPayload: (payload) => payloads.push(payload),
+      onRawTransportPayload: (payload) => {
+        rawPayloads.push(payload);
+        return true;
+      },
+    });
+    cleanups.push(() => transport.dispose());
+    transport.start();
+    await vi.waitFor(() => expect(states.at(-1)).toBe("waiting_terminal"));
+
+    const tokenRes = await fetch(`${relay.httpUrl}/api/v1/remote/token`, {
+      method: "POST",
+      headers: { Authorization: "Bearer jwt", "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "terminal" }),
+    });
+    const { data: tokenData } = await tokenRes.json();
+    const terminal = new WebSocket(`${relay.wsUrl}?token=${tokenData.token}&mid=mid-e2ee`);
+    cleanups.push(() => terminal.close());
+    const decryptedByPhone: unknown[] = [];
+    const phoneSession = createWebRemoteControlE2eeSession({
+      role: "terminal",
+      deviceSid: device.device_sid,
+      pairingKey: e2eeKey,
+      send: (wire) => {
+        terminal.send(JSON.stringify({ type: "data", payload: wire, client_ts: 1 }));
+      },
+    });
+    terminal.on("message", (raw) => {
+      const message = JSON.parse(raw.toString()) as { type: string; payload?: unknown; pair_status?: string };
+      if (message.type === "auth_ack" && message.pair_status === "matched") {
+        phoneSession.start();
+      } else if (message.type === "data" && message.payload) {
+        const wire = message.payload as { zcode_type?: string };
+        if (wire.zcode_type === "e2ee-rekey") return;
+        const accepted = phoneSession.accept(message.payload);
+        if (accepted.kind === "payload") decryptedByPhone.push(accepted.payload);
+      }
+    });
+    await new Promise<void>((resolve) => terminal.once("open", resolve));
+    terminal.send(JSON.stringify({ type: "auth_init", device_sid: device.device_sid }));
+    await vi.waitFor(() => expect(states).toContain("securing"));
+    await vi.waitFor(() => expect(states.at(-1)).toBe("paired"));
+    await vi.waitFor(() => expect(phoneSession.isReady()).toBe(true));
+
+    const phoneSerializer = new WebRemoteControlRelayPayloadSerializer({
+      seal: (wire) => phoneSession.prepare(wire),
+    });
+    terminal.send(
+      phoneSerializer.prepare({ codez_type: "bootstrap-request", requestId: "e2ee-req" }).json,
+    );
+    await vi.waitFor(() =>
+      expect(payloads).toContainEqual({
+        codez_type: "bootstrap-request",
+        requestId: "e2ee-req",
+      }),
+    );
+
+    terminal.send(
+      phoneSerializer.prepare({
+        codez_type: "rpc-frame-ack",
+        bridgeSessionId: "b1",
+        ackMessageSeq: 1,
+      }).json,
+    );
+    await vi.waitFor(() =>
+      expect(rawPayloads).toContainEqual({
+        codez_type: "rpc-frame-ack",
+        bridgeSessionId: "b1",
+        ackMessageSeq: 1,
+      }),
+    );
+
+    expect(
+      transport.sendPayload({
+        codez_type: "bootstrap-response",
+        requestId: "e2ee-req",
+        success: true,
+        result: { windowControlSessionId: device.device_sid, workspaces: [] },
+      }),
+    ).toBe(true);
+    await vi.waitFor(() =>
+      expect(decryptedByPhone).toContainEqual(
+        expect.objectContaining({
+          zcode_type: "bootstrap-response",
+          requestId: "e2ee-req",
+        }),
+      ),
+    );
   });
 });

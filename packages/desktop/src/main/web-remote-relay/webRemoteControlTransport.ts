@@ -1,19 +1,32 @@
+import { randomBytes } from "node:crypto";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { WebSocket, type RawData } from "ws";
 import {
+  createWebRemoteControlE2eeSession,
+  decodeWebRemoteControlGzipEnvelope,
+  encodeWebRemoteControlGzipEnvelope,
   WebRemoteControlRelayPayloadSerializer,
   type WebRemoteControlPayloadSendResult,
 } from "@codez/client";
 import {
+  WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1,
+  WEB_REMOTE_CONTROL_E2EE_HANDSHAKE_TIMEOUT_MS,
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
+  normalizeWebRemoteControlWirePayload,
+  parseWebRemoteControlClientCapabilities,
+  parseWebRemoteControlE2eeWirePayload,
+  parseWebRemoteControlGzipEnvelope,
   parseWebRemoteControlAppPayload,
   type WebRemoteControlAppPayload,
+  type WebRemoteControlE2eeWirePayload,
+  type WebRemoteControlGzipEnvelope,
+  type WebRemoteControlTransportEnvelopePayload,
 } from "@codez/shared";
 import {
   WEB_REMOTE_CONTROL_V2_HEARTBEAT_ACK_TIMEOUT_MS,
   WebRemoteControlV2ConnectionError,
   WebRemoteControlV2Heartbeat,
   WebRemoteControlV2RetryPolicy,
-  webRemoteControlV2PairState,
   parseWebRemoteControlRelayV2IncomingMessage,
   type WebRemoteControlRelayV2IncomingMessage,
   type WebRemoteControlRelayV2OutgoingMessage,
@@ -34,6 +47,12 @@ function rawBytes(raw: RawData): Buffer {
     : Buffer.from(raw instanceof ArrayBuffer ? new Uint8Array(raw) : raw);
 }
 
+function isRawTransportCandidate(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+  const type = (payload as { codez_type?: unknown }).codez_type;
+  return type === "rpc-frame" || type === "rpc-frame-ack";
+}
+
 export class WebRemoteControlDeviceTransport {
   private socket?: WebSocket;
   private state: WebRemoteControlDeviceTransportState = "idle";
@@ -48,12 +67,16 @@ export class WebRemoteControlDeviceTransport {
   private registrationPending = false;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private handshakeTimer?: ReturnType<typeof setTimeout>;
+  private e2ee?: ReturnType<typeof createWebRemoteControlE2eeSession>;
+  private e2eeHandshakeTimer?: ReturnType<typeof setTimeout>;
+  private peerRelayCaps = new Set<string>();
+  private readonly gzipEnvelopeCache = new WeakMap<object, WebRemoteControlGzipEnvelope | null>();
   private readonly retry = new WebRemoteControlV2RetryPolicy();
   private readonly heartbeat = new WebRemoteControlV2Heartbeat(
     () => this.send({ type: "pair_status_query", client_ts: Math.floor(Date.now() / 1000) }),
     () => this.scheduleReconnect(),
   );
-  private readonly serializer = new WebRemoteControlRelayPayloadSerializer();
+  private serializer = new WebRemoteControlRelayPayloadSerializer();
 
   constructor(private readonly options: WebRemoteControlDeviceTransportOptions) {}
 
@@ -73,7 +96,13 @@ export class WebRemoteControlDeviceTransport {
   }
 
   measurePayloadBytes(payload: WebRemoteControlAppPayload): number {
-    return this.serializer.prepare(payload, Math.floor(Date.now() / 1000)).bytes;
+    if (this.options.e2eeKey && !this.e2ee?.isReady()) {
+      throw new Error("e2ee.notReady");
+    }
+    return this.serializer.prepare(
+      this.wrapOutboundWithGzip(payload),
+      Math.floor(Date.now() / 1000),
+    ).bytes;
   }
 
   sendPayload(payload: WebRemoteControlAppPayload): boolean {
@@ -81,7 +110,13 @@ export class WebRemoteControlDeviceTransport {
   }
 
   sendPayloadResult(payload: WebRemoteControlAppPayload): WebRemoteControlPayloadSendResult {
-    const prepared = this.serializer.prepare(payload, Math.floor(Date.now() / 1000));
+    if (this.options.e2eeKey && !this.e2ee?.isReady()) {
+      return { kind: "unavailable" };
+    }
+    const prepared = this.serializer.prepare(
+      this.wrapOutboundWithGzip(payload),
+      Math.floor(Date.now() / 1000),
+    );
     if (this.serializer.isOversize(prepared)) {
       return {
         kind: "oversize",
@@ -93,6 +128,83 @@ export class WebRemoteControlDeviceTransport {
       return { kind: "unavailable" };
     this.socket.send(prepared.json);
     return { kind: "sent", bytes: prepared.bytes };
+  }
+
+  private wrapOutboundWithGzip(
+    payload: WebRemoteControlAppPayload,
+  ): WebRemoteControlAppPayload | WebRemoteControlTransportEnvelopePayload {
+    if (!this.peerRelayCaps.has(WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1)) return payload;
+    const cached = this.gzipEnvelopeCache.get(payload);
+    if (cached !== undefined) return cached ?? payload;
+    let envelope: WebRemoteControlGzipEnvelope | null = null;
+    try {
+      envelope = encodeWebRemoteControlGzipEnvelope(payload, (bytes) => gzipSync(bytes));
+    } catch {
+      envelope = null;
+    }
+    this.gzipEnvelopeCache.set(payload, envelope);
+    return envelope ?? payload;
+  }
+
+  private sendClientCapabilities(): void {
+    if (this.socket?.readyState !== WebSocket.OPEN) return;
+    const prepared = this.serializer.prepare({
+      codez_type: "client-capabilities",
+      v: 1,
+      caps: [WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1],
+    });
+    if (!this.serializer.isOversize(prepared)) {
+      this.socket.send(prepared.json);
+    }
+  }
+
+  private createE2eeRekeyNonce(): string {
+    return randomBytes(16)
+      .toString("base64")
+      .replace(/\+/gu, "-")
+      .replace(/\//gu, "_")
+      .replace(/=+$/u, "");
+  }
+
+  private sendE2eeControl(payload: WebRemoteControlE2eeWirePayload): void {
+    const prepared = this.serializer.prepareControl(payload);
+    if (this.serializer.isOversize(prepared) || this.socket?.readyState !== WebSocket.OPEN) {
+      this.recoverFromE2eeFailure();
+      return;
+    }
+    this.socket.send(prepared.json);
+  }
+
+  private armE2eeHandshakeDeadline(): void {
+    clearTimeout(this.e2eeHandshakeTimer);
+    this.e2eeHandshakeTimer = setTimeout(() => {
+      this.e2eeHandshakeTimer = undefined;
+      if (this.state === "securing" && !this.e2ee?.isReady()) {
+        this.recoverFromE2eeFailure();
+      }
+    }, this.options.e2eeHandshakeTimeoutMs ?? WEB_REMOTE_CONTROL_E2EE_HANDSHAKE_TIMEOUT_MS);
+  }
+
+  private clearE2eeHandshakeDeadline(): void {
+    clearTimeout(this.e2eeHandshakeTimer);
+    this.e2eeHandshakeTimer = undefined;
+  }
+
+  private resetE2ee(): void {
+    this.clearE2eeHandshakeDeadline();
+    const hadSession = Boolean(this.e2ee);
+    this.e2ee?.dispose();
+    this.e2ee = undefined;
+    this.peerRelayCaps.clear();
+    this.serializer = new WebRemoteControlRelayPayloadSerializer();
+    if (hadSession) {
+      this.options.onE2eeReset?.();
+    }
+  }
+
+  private recoverFromE2eeFailure(): void {
+    this.resetE2ee();
+    this.scheduleReconnect(0);
   }
 
   private async connect(): Promise<void> {
@@ -206,24 +318,116 @@ export class WebRemoteControlDeviceTransport {
     if (message.type === "auth_ack" || message.type === "pair_status_ack") {
       const previousGeneration = this.pairedGeneration;
       this.heartbeat.acknowledged();
-      this.setState(webRemoteControlV2PairState(message.pair_status));
+      if (message.pair_status === "waiting") {
+        this.resetE2ee();
+        this.setState("waiting_terminal");
+        return;
+      }
       if (message.pair_status === "matched") {
+        if (this.options.e2eeKey) {
+          if (!this.e2ee) {
+            this.e2ee = createWebRemoteControlE2eeSession({
+              role: "device",
+              deviceSid: this.deviceSid!,
+              pairingKey: this.options.e2eeKey,
+              send: (payload) => this.sendE2eeControl(payload),
+            });
+            this.e2ee.start();
+            this.setState("securing");
+            this.armE2eeHandshakeDeadline();
+            this.sendE2eeControl({
+              zcode_type: "e2ee-rekey",
+              v: 1,
+              sid: this.deviceSid!,
+              nonce: this.createE2eeRekeyNonce(),
+            });
+          } else if (this.e2ee.isReady()) {
+            this.setState("paired");
+          }
+          this.pairedGeneration = this.generation;
+          if (this.e2ee.isReady() && previousGeneration) {
+            this.options.onSendReady?.({
+              kind: previousGeneration === this.generation ? "same-socket" : "reconnected-socket",
+            });
+          }
+          return;
+        }
+        this.setState("paired");
         this.pairedGeneration = this.generation;
         if (previousGeneration)
           this.options.onSendReady?.({
             kind: previousGeneration === this.generation ? "same-socket" : "reconnected-socket",
           });
       }
-    } else if (message.type === "data" && this.state === "paired") {
-      const value = message.payload;
-      if (
-        value &&
-        typeof value === "object" &&
-        "codez_type" in value &&
-        (value.codez_type === "rpc-frame" || value.codez_type === "rpc-frame-ack") &&
-        this.options.onRawTransportPayload?.(value)
-      )
+    } else if (
+      message.type === "data" &&
+      (this.state === "paired" || this.state === "securing")
+    ) {
+      let value: unknown = message.payload;
+      if (this.options.e2eeKey) {
+        try {
+          const wire = parseWebRemoteControlE2eeWirePayload(value);
+          if (wire?.zcode_type === "e2ee-hello" && wire.sid === this.deviceSid) {
+            this.resetE2ee();
+            this.e2ee = createWebRemoteControlE2eeSession({
+              role: "device",
+              deviceSid: this.deviceSid!,
+              pairingKey: this.options.e2eeKey,
+              send: (packet) => this.sendE2eeControl(packet),
+            });
+            this.e2ee.start();
+            this.setState("securing");
+            this.armE2eeHandshakeDeadline();
+          }
+          const result = this.e2ee?.accept(value);
+          if (!result) throw new Error("e2ee.unexpectedPayload");
+          if (result.kind === "ready") {
+            const session = this.e2ee!;
+            this.serializer = new WebRemoteControlRelayPayloadSerializer({
+              seal: (wirePayload) => session.prepare(wirePayload),
+            });
+            this.peerRelayCaps = new Set();
+            this.sendClientCapabilities();
+            this.clearE2eeHandshakeDeadline();
+            this.setState("paired");
+            this.pairedGeneration = this.generation;
+            this.options.onSendReady?.({ kind: "reconnected-socket" });
+            return;
+          }
+          if (result.kind !== "payload" && result.kind !== "duplicate-rpc") return;
+          value = result.payload;
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            (error.message === "e2ee.staleEpoch" || error.message === "e2ee.staleRecord")
+          ) {
+            return;
+          }
+          this.recoverFromE2eeFailure();
+          return;
+        }
+      }
+      // Bugfix：上游与 fork 手机端 raw RPC 帧在 wire 上使用 zcode_type，必须在分流前归一。
+      value = normalizeWebRemoteControlWirePayload(value);
+      const capabilities = parseWebRemoteControlClientCapabilities(value);
+      if (capabilities) {
+        this.peerRelayCaps = new Set(capabilities.caps);
         return;
+      }
+      const gzipEnvelope = parseWebRemoteControlGzipEnvelope(value);
+      if (gzipEnvelope) {
+        const inner = decodeWebRemoteControlGzipEnvelope(gzipEnvelope, (bytes) =>
+          gunzipSync(bytes),
+        );
+        if (inner === null) {
+          this.options.logger.warn("[web-remote-control] invalid relay-gzip envelope dropped");
+          return;
+        }
+        value = normalizeWebRemoteControlWirePayload(inner);
+      }
+      if (isRawTransportCandidate(value) && this.options.onRawTransportPayload?.(value)) {
+        return;
+      }
       const payload = parseWebRemoteControlAppPayload(value);
       if (payload) this.options.onPayload(payload);
     }
@@ -233,6 +437,7 @@ export class WebRemoteControlDeviceTransport {
     // 先撤销当前代，再关闭；旧 close/ACK 及异步 token 结果均不能推进下一代。
     this.generation += 1;
     this.authenticated = false;
+    this.resetE2ee();
     this.heartbeat.stop();
     clearTimeout(this.handshakeTimer);
     const socket = this.socket;

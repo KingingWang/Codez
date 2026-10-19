@@ -18,6 +18,7 @@ interface CodezAndroidSocketBridge {
   sendText(id: number, text: string): boolean;
   sendBinary(id: number, base64: string): boolean;
   close(id: number, code: number, reason: string): void;
+  fetch?(id: number, url: string, method: string, headersJson: string, body: string): void;
 }
 
 type NativeSocketEvent =
@@ -26,10 +27,15 @@ type NativeSocketEvent =
   | { type: "error" }
   | { type: "close"; code: number; reason: string; wasClean: boolean };
 
+type NativeHttpEvent =
+  | { type: "response"; status: number; body: string }
+  | { type: "error"; message?: string };
+
 declare global {
   interface Window {
     CodezAndroidSocket?: CodezAndroidSocketBridge;
     __codezAndroidSocketEvent?: (id: number, eventJson: string) => void;
+    __codezAndroidHttpEvent?: (id: number, eventJson: string) => void;
   }
 }
 
@@ -249,4 +255,117 @@ export function resolveWebRemoteControlWebSocketCtor(): typeof globalThis.WebSoc
     return CodezAndroidWebSocket as unknown as typeof globalThis.WebSocket;
   }
   return globalThis.WebSocket;
+}
+
+/** 判断当前页面是否运行在 Codez Android App 原生壳内。 */
+export function isCodezAndroidApp(): boolean {
+  return typeof window !== "undefined" && Boolean(window.CodezAndroidSocket);
+}
+
+const httpRegistry = new Map<
+  number,
+  {
+    resolve(response: Response): void;
+    reject(error: Error): void;
+    cleanup(): void;
+  }
+>();
+let httpIdSeed = 0;
+
+function ensureHttpEventSinkInstalled(): void {
+  if (typeof window === "undefined" || window.__codezAndroidHttpEvent) {
+    return;
+  }
+  window.__codezAndroidHttpEvent = (id, eventJson) => {
+    const pending = httpRegistry.get(id);
+    if (!pending) return;
+    httpRegistry.delete(id);
+    pending.cleanup();
+    let event: NativeHttpEvent;
+    try {
+      event = JSON.parse(eventJson) as NativeHttpEvent;
+    } catch {
+      pending.reject(new Error("Invalid native HTTP event"));
+      return;
+    }
+    if (event.type === "error") {
+      pending.reject(new Error(event.message || "Native HTTP request failed"));
+      return;
+    }
+    pending.resolve(
+      new Response(event.body, {
+        status: event.status,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+}
+
+function serializeHeaders(headers?: HeadersInit): Record<string, string> {
+  if (!headers) return {};
+  if (headers instanceof Headers) {
+    const record: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      record[key] = value;
+    });
+    return record;
+  }
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+  return { ...headers };
+}
+
+/**
+ * Android 壳内通过原生 OkHttp（不带浏览器 Origin 头）代发 Relay V2 与 OAuth 请求，
+ * 避免可信静态站点（kingingwang.github.io）跨域请求 zcode.z.ai 时被 WAF 403 拦截。
+ */
+export function resolveWebRemoteControlFetcher(): typeof fetch {
+  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const bridge = typeof window !== "undefined" ? window.CodezAndroidSocket : undefined;
+    if (!bridge || typeof bridge.fetch !== "function") {
+      return globalThis.fetch(input, init);
+    }
+    const signal = init?.signal;
+    if (signal?.aborted) {
+      throw new DOMException("The operation was aborted.", "AbortError");
+    }
+    const rawUrl =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+    const resolvedUrl = new URL(
+      rawUrl,
+      typeof window !== "undefined" && window.location?.href
+        ? window.location.href
+        : "https://zcode.z.ai",
+    ).toString();
+    const method = (init?.method ?? "GET").toUpperCase();
+    const headersJson = JSON.stringify(serializeHeaders(init?.headers));
+    const body = typeof init?.body === "string" ? init.body : "";
+    const id = ++httpIdSeed;
+    ensureHttpEventSinkInstalled();
+
+    return new Promise<Response>((resolve, reject) => {
+      const onAbort = () => {
+        if (!httpRegistry.delete(id)) return;
+        reject(new DOMException("The operation was aborted.", "AbortError"));
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+      httpRegistry.set(id, {
+        resolve,
+        reject,
+        cleanup: () => signal?.removeEventListener("abort", onAbort),
+      });
+      try {
+        bridge.fetch!(id, resolvedUrl, method, headersJson, body);
+      } catch (error) {
+        httpRegistry.delete(id);
+        signal?.removeEventListener("abort", onAbort);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+  };
 }

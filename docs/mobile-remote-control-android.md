@@ -5,19 +5,18 @@ RPC 协议，而是用原生入口承载现有 `/remote` 手机 Web 远控页面
 
 ## 原生 WebSocket 桥（Origin 放行）
 
-远控 relay（`wss://zcode.z.ai/ws`）按 WebSocket 握手里的 `Origin` 头做来源白名单。
+远控 relay（`wss://zcode.z.ai/api/v1/remote/ws2`）及 `/api/v1/remote/*`、`/api/v1/oauth/token` 接口按请求里的 `Origin` 头做来源白名单。
 浏览器与 WebView 的 `Origin` 由渲染进程按页面 origin 自动附加，页面脚本无法改写：
-fork 发布页 `https://kingingwang.github.io/Codez/remote/v4/` 不在白名单内，握手会被
+fork 发布页 `https://kingingwang.github.io/Codez/remote/v4/` 不在白名单内，直连会被
 403 拒绝；官方页（`https://zcode.z.ai`）和桌面端（Node `ws`，不带 `Origin`）放行。
 
-因此 App 内的远控页面不直接使用 WebView 自带 WebSocket，而是由原生网络栈代发：
+因此远控页面强制要求在 Codez Android App 内运行，并由原生网络栈代发 WebSocket 与 Relay/OAuth HTTP 请求：
 
-- 原生侧 `NativeSocketBridge`（OkHttp WebSocket，不附加 `Origin` 头）通过
-  `window.CodezAndroidSocket` JavascriptInterface 暴露 `open/sendText/sendBinary/close`。
-- Web bundle 内 `resolveWebRemoteControlWebSocketCtor()`
-  （`packages/web/src/webRemoteControlNativeSocket.ts`）检测到该桥时返回一个实现浏览器
-  WebSocket 子集的适配类，`WebRemoteControlTerminalTransport` 经既有 `WebSocketCtor`
-  注入点使用；无桥环境（普通浏览器）仍回退到原生 `WebSocket`。
+- 原生侧 `NativeSocketBridge`（OkHttp，不附加 `Origin` 头）通过
+  `window.CodezAndroidSocket` JavascriptInterface 暴露 `open/sendText/sendBinary/close` 以及受控的 `fetch(id, url, method, headersJson, body)`（仅限 `https://zcode.z.ai/api/v1/`）。
+- Web bundle 内 `resolveWebRemoteControlWebSocketCtor()` 与 `resolveWebRemoteControlFetcher()`
+  （`packages/web/src/webRemoteControlNativeSocket.ts`）检测到该桥时走原生通道；非 App 浏览器环境访问远控入口时直接显示「请使用 Codez Android App 扫码连接」门禁页。
+- WebView 内部放行智谱 OAuth 授权页（`bigmodel.cn`、`chat.z.ai`），不再跳出到系统默认浏览器；当授权完成回调至 `https://zcode.z.ai/remote/v4?code|authCode=...&state=...` 时，WebView 自动重写回可信加密页面 `https://kingingwang.github.io/Codez/remote/v4/` 完成 Token 兑换并恢复 `#e2ee=v1&k=<K_pair>` 密钥。
 - 原生事件经 `window.__codezAndroidSocketEvent(id, json)` 回派：文本帧原样传递，二进制帧
   （relay-gzip 信封）以 base64 传递、JS 侧还原为 `ArrayBuffer`。
 

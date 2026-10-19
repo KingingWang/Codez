@@ -32,6 +32,7 @@ class AcknowledgedRelayProtocol implements AcknowledgedWebRemoteControlRelayProt
   private readonly measureFrameBytes: NonNullable<
     AcknowledgedWebRemoteControlRelayProtocolOptions["measureFrameBytes"]
   >;
+  private readonly maxPhysicalFrameBytes: number | undefined;
   private readonly highWaterMarkBytes: number;
   private readonly lowWaterMarkBytes: number;
   private readonly replayBufferMaxBytes: number;
@@ -77,6 +78,7 @@ class AcknowledgedRelayProtocol implements AcknowledgedWebRemoteControlRelayProt
     this.sendFrame = options.sendFrame;
     this.measureFrameBytes =
       options.measureFrameBytes ?? measureWebRemoteControlRpcRelayEnvelopeBytes;
+    this.maxPhysicalFrameBytes = options.maxPhysicalFrameBytes;
     const limits = resolveAcknowledgedRelayLimits(options);
     this.highWaterMarkBytes = limits.highWaterMarkBytes;
     this.lowWaterMarkBytes = limits.lowWaterMarkBytes;
@@ -129,6 +131,7 @@ class AcknowledgedRelayProtocol implements AcknowledgedWebRemoteControlRelayProt
         ...this.identity,
         firstPhysicalSeq: this.nextPhysicalSeq,
         messageSeq: this.nextMessageSeq,
+        maxPhysicalFrameBytes: this.maxPhysicalFrameBytes,
       });
     } catch (error) {
       this.enterDegraded({

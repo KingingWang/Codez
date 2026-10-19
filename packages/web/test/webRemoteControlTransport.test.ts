@@ -1235,7 +1235,9 @@ it.each([
       relay.messages
         .filter(
           (message) =>
-            message.type === "data" && message.payload?.codez_type === "mobile-task-view-update",
+            message.type === "data" &&
+            (message.payload?.zcode_type === "mobile-task-view-update" ||
+              message.payload?.codez_type === "mobile-task-view-update"),
         )
         .map((message) => message.payload);
     const report = () =>
@@ -1344,7 +1346,11 @@ it.each(["online", "resume"])(
     });
     const reports = () =>
       relay.messages
-        .filter((message) => message.payload?.codez_type === "mobile-task-view-update")
+        .filter(
+          (message) =>
+            message.payload?.zcode_type === "mobile-task-view-update" ||
+            message.payload?.codez_type === "mobile-task-view-update",
+        )
         .map((message) => message.payload);
     try {
       transport.start();
@@ -1406,7 +1412,10 @@ it("MRO03：真实 socket 换代清旧 epoch，漏掉重申请求时仍从 boots
         socket.terminate();
       } else socket.send(JSON.stringify({ type: "pair_status_ack", pair_status: "matched" }));
     }
-    if (message.payload?.codez_type === "bootstrap-request")
+    if (
+      message.payload?.zcode_type === "bootstrap-request" ||
+      message.payload?.codez_type === "bootstrap-request"
+    )
       socket.send(
         JSON.stringify({
           type: "data",
@@ -1452,7 +1461,11 @@ it("MRO03：真实 socket 换代清旧 epoch，漏掉重申请求时仍从 boots
   });
   const reports = () =>
     relay.messages
-      .filter((message) => message.payload?.codez_type === "mobile-task-view-update")
+      .filter(
+        (message) =>
+          message.payload?.zcode_type === "mobile-task-view-update" ||
+          message.payload?.codez_type === "mobile-task-view-update",
+      )
       .map((message) => message.payload);
   try {
     transport.start();

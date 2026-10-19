@@ -473,7 +473,7 @@ describe("createWebRemoteControlManager external relay", () => {
     expect(JSON.stringify(readyPayload)).not.toContain("wsUrl");
   });
 
-  it("uses the current endpoint resolver for relay and QR URL on each start", async () => {
+  it("uses the endpoint resolver for relay but pins the QR page independently", async () => {
     const { getLatestTransportOptions, manager } = createManagerHarness({
       getEndpointUrls: () => buildCodezEndpointUrls("http://localhost:3030"),
     });
@@ -482,7 +482,7 @@ describe("createWebRemoteControlManager external relay", () => {
     const status = manager.getStatus(1);
 
     expect(getLatestTransportOptions()?.relayWsUrl).toBe("ws://localhost:3030/api/v1/remote/ws2");
-    expect(status.qrUrl).toContain("http://localhost:3030/remote/v3?");
+    expect(status.qrUrl).toContain("https://zcode.z.ai/remote/v3?");
   });
 
   it("does not append theme params to the mobile QR URL", async () => {

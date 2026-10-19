@@ -348,7 +348,7 @@ describe("V2 manager public API with real relay", () => {
       expect(current.messages).toContainEqual(
         expect.objectContaining({
           type: "data",
-          payload: expect.objectContaining({ codez_type: "bootstrap-response" }),
+          payload: expect.objectContaining({ zcode_type: "bootstrap-response" }),
         }),
       ),
     );

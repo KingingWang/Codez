@@ -19,6 +19,7 @@ export interface AcknowledgedWebRemoteControlRelayProtocolOptions
   extends WebRemoteControlRpcTransportIdentity {
   sendFrame(payload: WebRemoteControlRpcTransportPayload): boolean | void;
   measureFrameBytes?(payload: WebRemoteControlRpcTransportFramePayload): number;
+  maxPhysicalFrameBytes?: number;
   saturationHighWaterMarkBytes?: number;
   saturationLowWaterMarkBytes?: number;
   replayBufferMaxBytes?: number;
