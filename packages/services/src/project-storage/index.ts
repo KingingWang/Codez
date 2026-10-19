@@ -6,6 +6,7 @@ import type { ProjectDataRepositoryContract } from "#src/project-storage/purge/c
 import {
   reconcileLegacy,
   admitTaskIdentity,
+  ensureHost,
   repairRemoteTaskOwnership,
   REMOTE_TASK_OWNERSHIP_MIGRATION,
 } from "#src/project-storage/legacy-tasks.js";
@@ -108,6 +109,11 @@ export const projectStorage: ProjectStorageContract = {
       },
     );
     reconcileLegacy(db, context.hostId);
+    // Bug 原因：hosts 行此前只在 0005_projects 迁移 apply 或旧数据对账时写入。
+    // 远端 tasks-index 若已被本地身份的入口迁移过，Source Server 再以 server hostId
+    // 启动时迁移被跳过，hosts 缺该 host 行，首个 saveProject 必现
+    // FOREIGN KEY constraint failed。INSERT OR IGNORE 幂等，每次迁移屏障兜底自愈。
+    ensureHost(db, "local", context.hostId);
     return result;
   },
   admitTaskIdentity,
