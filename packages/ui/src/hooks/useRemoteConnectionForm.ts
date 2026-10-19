@@ -3,6 +3,7 @@ import type {
   DockerContainerInfo,
   RemoteAssetInstallMode,
   RemoteTarget,
+  SSHAuthMode,
   SSHConfigAliasOption,
   WSLDistro,
 } from "@codez/shared";
@@ -14,7 +15,8 @@ import {
 } from "@/lib/remoteConnectionDockerOptions.js";
 
 type RemoteKind = RemoteTarget["kind"];
-export type SSHAuthMethod = "password" | "privateKey";
+// SSHAuthMethod 与共享契约 SSHAuthMode 对齐；auto 依次尝试 SSH 配置私钥、ssh-agent 与默认密钥。
+export type SSHAuthMethod = SSHAuthMode;
 
 export function buildAvailableKinds(options: {
   isWindowsDesktop: boolean;
@@ -375,7 +377,9 @@ export function useRemoteConnectionForm({
       setPassword("");
       setPrivateKeyPathState(nextPrivateKeyPath);
       setPrivateKeyPassphrase("");
-      setSshAuthMethod(nextPrivateKeyPath ? "privateKey" : "password");
+      // alias 未配置 IdentityFile 时默认走自动认证（issue #14）：
+      // 已免密的主机可直接连接，不再被强制要求填写私钥路径或密码。
+      setSshAuthMethod(nextPrivateKeyPath ? "privateKey" : "auto");
     } finally {
       applyingSshAliasRef.current = false;
     }

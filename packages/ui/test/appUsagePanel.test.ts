@@ -2,11 +2,13 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { readFile } from "node:fs/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AppUsageRange, AppUsageSnapshot } from "@codez/shared";
 import type { IServiceAccessor } from "@codez/services";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
+import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { UsageStatsSection } from "@/settings/UsageStatsSection.js";
 import {
   AppUsageLifetimeSummaryStrip,
@@ -202,17 +204,21 @@ describe("AppUsageLifetimeSummaryStrip", () => {
     const services = createServices();
     render(
       createElement(
-        ServiceProvider,
-        { services },
+        TabStoreProvider,
+        null,
         createElement(
-          CodezIntlProvider,
-          { initialLocale: "zh-CN" },
-          createElement(UsageStatsSection, {
-            activeTab: "app",
-            desktopCodex: true,
-            providerSourcesLoading: false,
-            workspacePath: "/workspace",
-          }),
+          ServiceProvider,
+          { services },
+          createElement(
+            CodezIntlProvider,
+            { initialLocale: "zh-CN" },
+            createElement(UsageStatsSection, {
+              activeTab: "app",
+              desktopCodex: true,
+              providerSourcesLoading: false,
+              workspacePath: "/workspace",
+            }),
+          ),
         ),
       ),
     );

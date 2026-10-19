@@ -1,11 +1,22 @@
 import type { RemoteAssetInstallMode } from "./remoteAssetInstallMode.js";
 import type { RemoteResourcePackageSelection } from "./remoteResourcePackages.js";
 
+/**
+ * SSH 认证方式。
+ * - auto：依次尝试 SSH config 中的 IdentityFile、ssh-agent 与受支持的默认密钥，不要求预先输入凭据；
+ * - password/privateKey：显式凭据模式，保持原有语义。
+ * 未持久化 authMode 的旧 Profile 按原有推导处理（有 privateKeyPath 视为 privateKey，否则 password）。
+ */
+export const SSH_AUTH_MODES = ["auto", "password", "privateKey"] as const;
+export type SSHAuthMode = (typeof SSH_AUTH_MODES)[number];
+
 export interface SSHConnectOptions {
   kind: "ssh";
   host: string;
   port?: number;
   username: string;
+  /** 显式认证策略；缺省表示旧记录，按 password/privateKeyPath 推导。 */
+  authMode?: SSHAuthMode;
   sshConfigAlias?: string;
   password?: string;
   privateKeyPath?: string;

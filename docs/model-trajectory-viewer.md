@@ -35,6 +35,23 @@
 - 读取链路同样必须有界且异步：Host 从文件尾部按块读取，最多扫描 32 MiB，并只保留最近 `limit`
   条记录；不得使用 `readFileSync + split` 同步加载整个 JSONL。若扫描起点落在一条记录中间，丢弃该残行；
   文件不可读时降级为空结果。开发日志记录扫描字节数与耗时，便于定位异常大文件，同时避免高频诊断信息进入生产日志。
+- Codex 原生运行时没有 model-io。Host 按 agent runtime mode 路由：Codex 模式优先读取
+  `${CODEX_HOME:-~/.codex}` 中最新 `state_*.sqlite` 的 `threads.rollout_path`；索引缺失时，
+  在 `sessions/<year>/<month>/<day>` 的有界目录扫描中按文件名末尾 session id 查找
+  `rollout-*.jsonl`。文件内 `session_meta.payload.id` 必须与 taskId 匹配（先读文件头校验，
+  轨迹内容仍只读有界尾部）。
+- Codex rollout 是事件日志，不保存原始 API request。服务层将其投影为「每个 turn / 用户输入近似一条记录」：
+  `request.messages` 只收集该段的用户 `response_item.message`；同一 `turn_context` 后出现的
+  `metadata.client_authored=true` 用户消息开启下一条 projected record；`response.text` 聚合
+  assistant message；`response.reasoningText` 聚合 reasoning summary；function/custom/local-shell
+  call 映射为 tool call，并按 `call_id` 关联后续 output；`event_msg.token_count`
+  优先累计 `last_token_usage`，缺失时用累计 `total_token_usage` 差值；`turn_context.payload.model`
+  提供模型；错误/中止事件映射为 `record.error`。未知事件必须忽略，不能导致整个读取失败。
+- Codex 记录带 `provider: "codex"`，并使用 sidecar 语义的
+  `callSource={kind:"sidecar",querySource:"codex_rollout"}`，避免 UI 把 per-turn 投影误当成
+  Codez Agent 的完整上下文请求再做主会话 delta。Codez Agent 记录保持无 `provider` 或
+  `provider:"codez-agent"` 的向后兼容形状。rollout 缺失、为空或只含未知事件时返回
+  `available:true, records:[], sourceFiles:[]`，与既有空态一致。
 
 ## 分层与关键文件
 
@@ -44,6 +61,8 @@
   `ICodezTaskService.getModelTrajectory({ taskId, limit })`。
 - `packages/services/src/codez-agent/modelTrajectory.ts`：异步、有界地读取 session 单文件尾部，还原 delta messages、
   归一化 messages / parts / toolCalls / usage，按 `startedAt` 排序，超出 `limit`（默认 200）保留最近 N 条。
+- `packages/services/src/codez-agent/model-trajectory/codexModelTrajectory.ts`：解析
+  Codex rollout JSONL 的 per-turn 投影，复用有界尾部读取，不引入跨包私有依赖。
 - `packages/services/src/codez-agent/codezTaskServiceAdapter.ts`：实现 `getModelTrajectory`。
 
 UI 层：

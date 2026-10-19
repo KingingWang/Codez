@@ -1,5 +1,6 @@
 import { RefreshCcw } from "lucide-react";
-import { Fragment, lazy, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, lazy, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import type { IUsageStatsService } from "@codez/services";
 import { APP_USAGE_RANGES } from "@codez/shared";
 import type { AppUsageRange, AppUsageSnapshot } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
@@ -44,8 +45,10 @@ export const CODEX_APP_USAGE_OBSERVATION_COPY_ID = "settings.usage.appUsage.obse
 export function useCodexUsageObservations(workspace: {
   workspaceIdentity?: string;
   workspacePath?: string;
+  usageStatsService?: IUsageStatsService;
 }) {
-  const { usageStatsService } = useServices();
+  const contextUsageStatsService = useServices().usageStatsService;
+  const usageStatsService = workspace.usageStatsService ?? contextUsageStatsService;
   const [snapshot, setSnapshot] = useState<CodexUsageObservationsSnapshot | null>(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -172,20 +175,27 @@ export function CodexUsageObservationSummary({
 export function AppUsagePanel({
   workspaceIdentity,
   workspacePath,
+  usageStatsService,
+  children,
 }: {
   workspaceIdentity?: string;
   workspacePath?: string;
+  usageStatsService?: IUsageStatsService;
+  children?: ReactNode;
 }) {
   const { intl, locale } = useCodezIntl();
   const [range, setRange] = useState<AppUsageRange>("7d");
   void workspaceIdentity;
   void workspacePath;
-  const { snapshot: lifetimeSnapshot, refresh: refreshLifetime } = useAppUsageStats("all");
-  const { snapshot, loading, error, refresh } = useAppUsageStats(range);
+  const { snapshot: lifetimeSnapshot, refresh: refreshLifetime } = useAppUsageStats("all", {
+    usageStatsService,
+  });
+  const { snapshot, loading, error, refresh } = useAppUsageStats(range, { usageStatsService });
 
   if (loading && !snapshot) {
     return (
       <div className="space-y-5">
+        <div className="flex min-w-0 justify-end">{children}</div>
         <AppUsageLifetimeSummaryStrip snapshot={lifetimeSnapshot} />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-ui-base font-medium text-foreground">
@@ -207,6 +217,7 @@ export function AppUsagePanel({
   if (!snapshot) {
     return (
       <div className="space-y-5">
+        <div className="flex min-w-0 justify-end">{children}</div>
         <AppUsageLifetimeSummaryStrip snapshot={lifetimeSnapshot} />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-ui-base font-medium text-foreground">
@@ -227,6 +238,7 @@ export function AppUsagePanel({
 
   return (
     <div className="space-y-5">
+      <div className="flex min-w-0 justify-end">{children}</div>
       <AppUsageLifetimeSummaryStrip snapshot={lifetimeSnapshot} />
       {lifetimeSnapshot?.heatmap.weeks.length ? (
         <UsageHeatmap locale={locale} intl={intl} weeks={lifetimeSnapshot.heatmap.weeks} />
