@@ -31,6 +31,8 @@ export const sessionSummarySchema = z.object({
   workspaceId: z.string(),
   // fork 树。
   parentSessionId: z.string().optional(),
+  /** Codex threadSource 的首次归属提示；已有 Host 组织态不得由后续摘要重写。 */
+  originProjectId: z.string().min(1).max(128).nullable().optional(),
   title: z.string(),
   // custom = 用户显式重命名；default/generated 都不是产品语义上的手动标题。
   // optional 是为了兼容旧 sessions-index frame / 旧持久化摘要。

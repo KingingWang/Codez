@@ -103,6 +103,21 @@ test("summary/index use milliseconds, bounded previews and independent workspace
   assert.equal(index.logEpoch, "host-index-epoch");
 });
 
+test("native origin is only an initial Host membership hint, not a thread project rewrite", () => {
+  const thread = { ...threadFixture(), threadSource: "codez_project:project-ab" };
+  assert.equal(projectSessionSummary(thread, "/workspace").originProjectId, "project-ab");
+  assert.equal(
+    projectSessionSummary({ ...thread, threadSource: "codez_unclassified" }, "/workspace")
+      .originProjectId,
+    null,
+  );
+  assert.equal(
+    projectSessionSummary({ ...thread, threadSource: "codex_desktop_project" }, "/workspace")
+      .originProjectId,
+    undefined,
+  );
+});
+
 test("malformed/partial histories and duplicate IDs fail before projecting misleading rows", () => {
   const thread = threadFixture();
   thread.turns[0]!.itemsView = "summary";

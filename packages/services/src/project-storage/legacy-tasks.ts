@@ -238,6 +238,7 @@ export function admitTaskIdentity(
     forkedFromTaskId?: string;
   },
   ownerHostId?: string,
+  originProjectId?: string | null,
 ): void {
   const key = resolveWorkspaceKey(task);
   const hostId = ensureHost(db, key, ownerHostId);
@@ -246,91 +247,48 @@ export function admitTaskIdentity(
     .prepare(
       "SELECT host_id,project_id,handoff_pending,forked_from_task_id FROM tasks WHERE workspace_key=? AND task_id=?",
     )
-    .get(key, task.taskId) as
-    | {
-        host_id: string | null;
-        project_id: string | null;
-        handoff_pending: number;
-        forked_from_task_id: string | null;
-      }
-    | undefined;
-  if (!existing) return;
-  if (existing.host_id != null) {
-    // 已判定的 NULL 是用户组织态；只补齐同一远端 owner 尚未完成判定的历史交接。
-    if (
-      existing.host_id !== hostId ||
-      hostId === "local" ||
-      existing.project_id != null ||
-      (existing.handoff_pending & OWNERSHIP_DECIDED) !== 0
-    )
-      return;
-    const projectId = discoveredProject(db, {
-      workspace_key: key,
-      task_id: task.taskId,
-      root_path: task.workspacePath,
-      host_id: hostId,
-      forked_from_task_id: existing.forked_from_task_id,
-    });
-    if (projectId)
-      db.prepare(`UPDATE tasks SET project_id=?,handoff_pending=handoff_pending | ?
-      WHERE workspace_key=? AND task_id=? AND host_id=? AND project_id IS NULL AND (handoff_pending & ?)=0`).run(
-        projectId,
-        OWNERSHIP_DECIDED,
-        key,
-        task.taskId,
-        hostId,
-        OWNERSHIP_DECIDED,
-      );
+    .get(key, task.taskId);
+  if (
+    !row ||
+    (row.host_id != null &&
+      (row.host_id !== hostId ||
+        hostId === "local" ||
+        row.project_id != null ||
+        originProjectId !== undefined))
+  )
     return;
+  // 原因：多目录项目共享 cwd，唯一目录匹配不能表达创建时的项目选择；原生
+  // threadSource 只在首次插入决定组织归属，已决定的行（含用户移动）由上方守卫保护。
+  // 3.17.2 的远端缺失归属修复仍走确切父事实/唯一目录，不重新应用原生创建提示。
+  if (originProjectId) {
+    const owner = db
+      .prepare("SELECT host_id FROM projects WHERE project_id=?")
+      .get(originProjectId);
+    if (!owner) throw new Error("project.not-found");
+    if (owner.host_id !== hostId) throw new Error("project.host-mismatch");
   }
-
-  let projectId: string | null;
-  // 同目录 fork 的子会话与父会话共用 cwd；父任务在受管 worktree 中时，cwd 不等于 workspace_path。
-  let worktreePlacement: InheritedWorktreePlacement | null = null;
-  if (task.forkedFromTaskId) {
-    // Bug 原因：共享 cwd 的项目不唯一，按 root 推断会丢失 fork 归属；父行是唯一事实源。
-    // 与子行 INSERT 共用事务，限制同 Host/workspace；父归属不可用时回滚，不能固化为 NULL。
-    const parent = db
-      .prepare(`SELECT t.project_id,p.project_id AS resolved_project_id
-      FROM tasks t LEFT JOIN projects p ON p.project_id=t.project_id AND p.host_id=t.host_id
-      WHERE t.workspace_key=? AND t.task_id=? AND t.host_id=? AND (t.handoff_pending & ?)<>0`)
-      .get(key, task.forkedFromTaskId, hostId, OWNERSHIP_DECIDED) as
-      | { project_id: string | null; resolved_project_id: string | null }
-      | undefined;
-    if (!parent || (parent.project_id !== null && parent.resolved_project_id === null))
-      throw new Error(`Fork parent ownership is unavailable: ${task.forkedFromTaskId}`);
-    projectId = parent.project_id;
-    // Bug 原因：子行曾一律写 root_path=workspace_path，worktree 任务"在当前 worktree 中分叉"
-    // 的子任务 cwd 被记成项目主目录，Git 面板、终端、文件树都作用到主目录，删除 worktree 时也
-    // 看不到它。CLI 中子会话的 directory 继承父会话，Host 的 cwd 同样从父行继承（worktree.md §3.6）。
-    worktreePlacement = readInheritedWorktreePlacement(db, {
-      workspaceKey: key,
-      hostId,
-      taskId: task.forkedFromTaskId,
-    });
-  } else {
-    projectId = uniqueRootProject(db, hostId, task.workspacePath);
-  }
-  if (worktreePlacement) {
-    db.prepare(
-      "UPDATE tasks SET host_id=?,root_path=?,worktree_root=?,execution_directories=?,project_id=?,handoff_pending=handoff_pending | ? WHERE workspace_key=? AND task_id=? AND host_id IS NULL",
-    ).run(
-      hostId,
-      worktreePlacement.rootPath,
-      worktreePlacement.worktreeRoot,
-      worktreePlacement.executionDirectories,
-      projectId,
-      OWNERSHIP_DECIDED,
-      key,
-      task.taskId,
-    );
-    return;
-  }
-  db.prepare(
-    "UPDATE tasks SET host_id=?,root_path=workspace_path,project_id=?,handoff_pending=handoff_pending | ? WHERE workspace_key=? AND task_id=? AND host_id IS NULL",
-  ).run(hostId, projectId, OWNERSHIP_DECIDED, key, task.taskId);
-  if (task.forkedFromTaskId) {
-    // 首次事实与 ACK 任一先到，都继承父任务已经固化的执行目录。
+  const projectId =
+    originProjectId === undefined
+      ? discoveredProject(db, {
+          workspace_key: key,
+          task_id: task.taskId,
+          root_path: task.workspacePath,
+          host_id: hostId,
+          forked_from_task_id:
+            typeof row.forked_from_task_id === "string" ? row.forked_from_task_id : null,
+        })
+      : originProjectId;
+  db.prepare(`UPDATE tasks SET host_id=?,root_path=workspace_path,project_id=?,handoff_pending=handoff_pending | ?
+    WHERE workspace_key=? AND task_id=? AND (host_id IS NULL OR (host_id=? AND project_id IS NULL))`).run(
+    hostId,
+    projectId,
+    OWNERSHIP_DECIDED,
+    key,
+    task.taskId,
+    hostId,
+  );
+  if (row.host_id == null && row.forked_from_task_id) {
+    // 首条 fork 事实先到时也继承固化目录，不能因 ACK/通知顺序改变恢复后的执行范围。
     db.prepare(`UPDATE tasks SET execution_directories=(SELECT execution_directories FROM tasks
       WHERE workspace_key=? AND task_id=? AND host_id=? AND root_path=?)
       WHERE workspace_key=? AND task_id=? AND execution_directories IS NULL`).run(

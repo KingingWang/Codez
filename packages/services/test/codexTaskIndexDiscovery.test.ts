@@ -279,6 +279,52 @@ test("initial discovery commits missing rows then emits one scoped invalidation"
   }
 });
 
+test("discovered native origin assigns only its own multi-folder project once", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "codez-codex-project-origin-"));
+  const repo = new TaskIndexRepo(undefined, undefined, join(dir, "tasks.sqlite"));
+  const workspace = { workspacePath: "/a" };
+  const projects = await repo.getProjectRepository();
+  const first = projects.saveProject({ roots: ["/a", "/b"] });
+  const second = projects.saveProject({ roots: ["/a", "/c"] });
+  const harness = await createHarness({
+    taskIndexRepo: repo,
+    workspace,
+    summaries: [
+      { ...summary("first", "completedSuccess"), originProjectId: first.id },
+      { ...summary("second", "completedSuccess"), originProjectId: second.id },
+      { ...summary("external-cli", "completedSuccess") },
+      { ...summary("unclassified", "completedSuccess"), originProjectId: null },
+    ],
+  });
+  try {
+    await harness.sendInitialSnapshot();
+    await waitForListEvent(harness, 1);
+    const assignments = new Map(
+      (await repo.getProjectRepository())
+        .readTree()
+        .tasks.map((task) => [task.taskId, task.projectId]),
+    );
+    assert.equal(assignments.get("first"), first.id);
+    assert.equal(assignments.get("second"), second.id);
+    assert.equal(assignments.get("external-cli"), null);
+    assert.equal(assignments.get("unclassified"), null);
+    projects.moveTask({ task: { ...workspace, taskId: "first" }, projectId: second.id });
+    await harness.sendFrame(
+      "online",
+      snapshot([{ ...summary("first", "running"), originProjectId: first.id }]),
+      2,
+    );
+    assert.equal(
+      projects.resolveSessionDirectories({ ...workspace, taskId: "first" }).projectId,
+      second.id,
+    );
+  } finally {
+    harness.syncer.disposeAll();
+    repo.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("late discovered terminal summary seeds a row without loading native history", async () => {
   const dir = await mkdtemp(join(tmpdir(), "codez-codex-index-warm-"));
   const repo = new TaskIndexRepo(undefined, undefined, join(dir, "tasks.sqlite"));

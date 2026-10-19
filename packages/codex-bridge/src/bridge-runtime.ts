@@ -97,7 +97,8 @@ export class BridgeRuntime {
     );
     this.subscriptions = new BridgeSubscriptions({
       workspaceId,
-      snapshot: (topic) => this.snapshots.topic(topic),
+      snapshot: (topic, additionalDirectories) =>
+        this.snapshots.topic(topic, additionalDirectories),
       notify,
     });
     this.unsubscribe.push(

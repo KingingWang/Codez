@@ -1,4 +1,5 @@
 import type { ProjectTask, ProjectTree, VirtualProject } from "@/project-sidebar/contract.js";
+import { taskVisibleInProject } from "@/project-sidebar/view.js";
 
 export type ArchiveSort = "updated" | "created";
 export interface ArchiveGroup {
@@ -17,16 +18,19 @@ export function buildArchiveGroups(
 ): ArchiveGroup[] {
   const query = filter.query?.trim().toLocaleLowerCase() ?? "";
   const projects = new Map(tree.projects.map((p) => [groupKey(p.hostId, p.id), p]));
+  const selected =
+    filter.project && filter.project !== "all" ? projects.get(filter.project) : undefined;
   const groups = new Map<string, ArchiveGroup>();
   for (const task of tree.tasks) {
     if (!task.archived || !task.title.toLocaleLowerCase().includes(query)) continue;
-    const key = groupKey(task.hostId, task.projectId);
+    if (selected && !taskVisibleInProject(task, selected)) continue;
+    const key = selected ? filter.project! : groupKey(task.hostId, task.projectId);
     if (filter.project && filter.project !== "all" && key !== filter.project) continue;
     // cwd 可属于多个虚拟项目，不能再用目录叶名和路径合并归档。
     const group = groups.get(key) ?? {
       key,
       hostId: task.hostId,
-      projectId: task.projectId,
+      projectId: selected ? selected.id : task.projectId,
       project: projects.get(key),
       tasks: [],
     };

@@ -28,5 +28,6 @@ export interface ProjectStorageContract {
     db: DatabaseSync,
     task: ProjectTaskRef & { forkedFromTaskId?: string },
     hostId?: string,
+    originProjectId?: string | null,
   ): void;
 }

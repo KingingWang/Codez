@@ -18,3 +18,13 @@ export function exampleForkOwnership(port: ProjectStorageContract, db: DatabaseS
     parentTaskId: "parent",
   });
 }
+
+/** 调用方已在同一写事务插入原生线程任务行；仅首次写入 Host 组织归属。 */
+export function exampleAdmitNativeProjectOrigin(
+  port: ProjectStorageContract,
+  db: DatabaseSync,
+  taskId: string,
+  projectId: string | null,
+): void {
+  port.admitTaskIdentity(db, { workspacePath: "/project", taskId }, "local", projectId);
+}

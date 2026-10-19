@@ -21,7 +21,10 @@ import {
 export interface BridgeSubscriptionsOptions {
   workspaceId: string;
   /** Must authorize conversation ownership in this workspace before returning its snapshot. */
-  snapshot(topic: string): Promise<{ snapshot: unknown; seq: number; logEpoch: string }>;
+  snapshot(
+    topic: string,
+    additionalDirectories?: string[],
+  ): Promise<{ snapshot: unknown; seq: number; logEpoch: string }>;
   /** Resolves after the notification is written; rejects on transport failure. */
   notify(method: string, params: unknown): Promise<void>;
 }
@@ -36,6 +39,7 @@ interface Route {
   id: string;
   key: string;
   topic: string;
+  additionalDirectories?: string[];
   connectionId: string;
   clientMode: Mode;
   version: number;
@@ -116,6 +120,7 @@ export class BridgeSubscriptions {
       id: randomUUID(),
       key,
       topic: p.topic,
+      additionalDirectories: p.additionalDirectories,
       connectionId: p.connectionId,
       clientMode: p.clientMode,
       version: 0,
@@ -270,7 +275,7 @@ export class BridgeSubscriptions {
     deliveryKind: "initial" | "recovery",
     version: number,
   ): Promise<Batch | undefined> {
-    const raw = await this.options.snapshot(route.topic);
+    const raw = await this.options.snapshot(route.topic, route.additionalDirectories);
     if (!this.active(route, version)) return;
     const value = snapshotSchema.safeParse(raw);
     if (!value.success) fail(-32000, "Invalid snapshot resolver result");

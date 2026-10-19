@@ -20,6 +20,13 @@ App 控制创建与普通创建共用 `reserveCreatedTask` 的创建回执：会
 
 项目树任务沿用原列表/Controller 的执行后端过滤：仅 `provider=CODEZ_AGENT_PROVIDER`（当前 glm）。旧后端行即使已补齐 cli\_\* 也不进入项目、置顶、未归类、时间线、归档和未读投影；新导入的当前 CLI 会话保留，不按 migration_source、模型供应商或目录存在性过滤。只读，不改旧数据或 migration，已升级数据库无需再次转换；本地与远端持库 Host 使用同一规则。
 
+Codex 原生新会话的 `threadSource` 可带 Host 校验过的初始项目 ID 或显式 NULL，
+`admitTaskIdentity` 只在 `host_id IS NULL` 的第一次插入时使用它；项目缺失/跨 Host
+拒绝，不按同 cwd 猜多目录归属。已有行或用户移动后的 `project_id` 永不被重新写入。
+本地单 root 的全目录历史只是项目树消费端的只读视图，不建第二条 task 行，
+不改变一次性 F3 判定与远端单 root 的显式归属。见
+`specs/codex-desktop-adapter.md`。
+
 新建项目在原写事务内分配同 Host 的最小 position 减一（空集合为 0），排在已有项目之前；编辑/恢复不改 position。position 保留为首次显示的初始化依据；控制端拖拽使用侧栏偏好，不向远端调用 reorderProjects。既有行不重排，不增加迁移。
 
 自动归档以 cli_updated_at 为筛选依据，排除置顶和已有非终态订阅，不按 project_id 或默认目录过滤。新归档与绑定定时任务的暂停使用同一 SQLite 事务；按完整 workspace_key / target_task_id 匹配，只暂停 active 且 enabled 的任务。历史归档不追溯处理，取消归档不恢复调度，已认领轮次沿用现有执行规则。

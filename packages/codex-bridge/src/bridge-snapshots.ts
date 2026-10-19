@@ -79,8 +79,8 @@ export class BridgeSnapshots {
     return () => this.store.touch(sessionId);
   }
 
-  async conversation(id: string): Promise<ConversationSnapshot> {
-    const state = await this.store.ensure(id);
+  async conversation(id: string, additionalDirectories?: string[]): Promise<ConversationSnapshot> {
+    const state = await this.store.ensure(id, additionalDirectories);
     const attachmentStore = this.attachments;
     const userProjections = new Map<string, Awaited<ReturnType<typeof projectOwnedInput>>>();
     const queueProjections = new Map<string, Awaited<ReturnType<typeof projectOwnedInput>>>();
@@ -303,9 +303,15 @@ export class BridgeSnapshots {
     );
   }
 
-  async topic(topic: string): Promise<{ snapshot: unknown; seq: number; logEpoch: string }> {
+  async topic(
+    topic: string,
+    additionalDirectories?: string[],
+  ): Promise<{ snapshot: unknown; seq: number; logEpoch: string }> {
     if (topic.startsWith("conversation/")) {
-      const snapshot = await this.conversation(topic.slice("conversation/".length));
+      const snapshot = await this.conversation(
+        topic.slice("conversation/".length),
+        additionalDirectories,
+      );
       // 历史分页和实时尾窗分离，避免一个大型历史会话超出物理传输预算。
       // firstRowId/totalCount 必须保持全序口径：客户端以 window[0].rowId === firstRowId
       // 判定是否已到顶，跟随截尾改写会让 hasOlderRows 恒为 false，rows/range 分页、

@@ -93,6 +93,8 @@ export const commandPayloadSchemas = {
     // Host 预留归属使用稳定 ID；CLI 仍负责拒绝覆盖既有会话。
     sessionId: z.string().min(1).optional(),
     additionalDirectories: z.array(z.string().min(1)).max(256).optional(),
+    /** 只由 Host 为 Codex bridge 注入；旧 CLI 忽略，不以 cwd 推断多目录项目。 */
+    codexProjectId: z.string().min(1).max(128).nullable().optional(),
     workspaceId: z.string(),
     // 会话 cwd 与 workspace 不同（受管 worktree，docs/git/worktree.md §1.1）。只允许本地
     // workspace；只有 Host 的 worktree 服务能设置，renderer 发出的 createSession 带此字段时
@@ -235,6 +237,8 @@ export const commandPayloadSchemas = {
     // 所以 Host 必须先确认 runtime/capabilities.worktreeCwd 再发送。
     // 附加目录不在这里下发：由 Host 在子会话 create/resume/subscribe 时统一下发（I16）。
     targetCwd: forkTargetCwdSchema.optional(),
+    /** Host 当前归属，只由 native bridge 用于新 child 的首次归属来源。 */
+    codexProjectId: z.string().min(1).max(128).nullable().optional(),
   }),
   applyFileRewind: z.object({ target: conversationRowTargetSchema }),
   editUserQuery: z

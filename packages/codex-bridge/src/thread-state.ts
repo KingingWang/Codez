@@ -144,18 +144,18 @@ export class ThreadStateStore {
     for (const listener of this.listeners) listener(id);
   }
 
-  async ensure(id: string): Promise<ThreadProjectionState> {
+  async ensure(id: string, additionalDirectories?: string[]): Promise<ThreadProjectionState> {
     this.assertAvailable(id);
     const existing = this.states.get(id);
     if (existing && this.loaded.has(id)) return existing;
     const loading = this.loads.get(id);
     if (loading) return loading;
-    const pending = this.load(id).finally(() => this.loads.delete(id));
+    const pending = this.load(id, additionalDirectories).finally(() => this.loads.delete(id));
     this.loads.set(id, pending);
     return pending;
   }
 
-  private async load(id: string): Promise<ThreadProjectionState> {
+  private async load(id: string, additionalDirectories?: string[]): Promise<ThreadProjectionState> {
     const read = object(await this.rpc.request("thread/read", { threadId: id }));
     this.assertAvailable(id);
     const metadata = object(read.thread);
@@ -184,6 +184,7 @@ export class ThreadStateStore {
       id,
       read,
       parentThreadId,
+      additionalDirectories,
       assertAvailable: () => this.assertAvailable(id),
     });
     const turns = await paginateNativeRows(

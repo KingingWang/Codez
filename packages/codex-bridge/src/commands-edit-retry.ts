@@ -17,6 +17,7 @@ import { array, object, string, unsupported } from "./json.js";
 import { projectThread } from "./projection.js";
 import type { SessionTitleCoordinator } from "./session-title.js";
 import type { CodexProviderKeyGate } from "./provider-key-gate.js";
+import { nativeProjectSource } from "./project-origin.js";
 
 /** forkAssistant：在指定轮尾 fork 出新的 native thread 并返回新 sessionId。 */
 export async function executeForkAssistant(input: {
@@ -37,6 +38,9 @@ export async function executeForkAssistant(input: {
     await rpc.request("thread/fork", {
       threadId: sessionId,
       lastTurnId: row.turnId,
+      ...(p.codexProjectId !== undefined
+        ? { threadSource: nativeProjectSource(p.codexProjectId) }
+        : {}),
     }),
   );
   store.markStarted(result);

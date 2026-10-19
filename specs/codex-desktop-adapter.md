@@ -63,6 +63,72 @@ before normalizing internal cwd inputs. Never normalize or equate explicit works
 identities based on filesystem equality. Missing paths and foreign identities fail
 closed, and native config/skills/plugin requests stay on the canonical execution cwd.
 
+### Local project folders and native history
+
+Project organization remains Host-owned (`tasks-index.sqlite`); Codex owns each
+thread's immutable execution cwd, history and runtime workspace roots. A local
+single-folder project with root A is a read-only directory view: its task rows
+include every indexed, non-deleted native thread on the same Host whose physical
+cwd is A, including pre-existing CLI/Desktop threads, unclassified threads and
+threads explicitly assigned to an A+B project. Creating the project never rewrites
+the threads' `project_id`, cwd or history. Archived threads remain archived; pin,
+unread, deletion and global recent-list deduplication still operate on the one
+underlying task row. The unclassified section continues to represent actual
+`project_id IS NULL`, not the complement of directory views.
+
+A project with two or more local roots has no directory-union view: only threads
+with that project's explicit Host `project_id` appear under it. New project
+threads use its primary root as cwd and native `runtimeWorkspaceRoots` containing
+the cwd and the other current roots. For native creation, the Host verifies the
+selected project/cwd and resolves the roots before the bridge's `thread/start`.
+The bridge writes a namespaced, durable native `threadSource` origin marker;
+only this marker may seed the Host's **initial** project assignment when the
+first Codex summary creates its task row. An explicit unclassified creation has
+a distinct marker, so unique-root migration heuristics cannot claim it. Existing
+task rows, including rows moved by the user, never have their assignment
+overwritten by later native summaries. An unknown/missing project fails closed,
+not as an unclassified task. The legacy Codez CLI never receives or interprets
+this project identity. Native `thread/start.projectId` is *not* the Codez project
+ID: Codex requires that ID to exist in its own project registry.
+
+On cold native resume, the Host resolves the task's explicit project from the
+same SQLite snapshot as its roots and passes an explicit array (including `[]`)
+for an assigned project. The bridge supplies `[thread.cwd, ...additionalRoots]`
+to `thread/resume.runtimeWorkspaceRoots` only when loading an unloaded thread;
+an already loaded runtime is not refreshed by navigation or re-subscription.
+The V4 subscribe and explicit legacy resume/read routes use the same Host
+resolution; a native fork records the parent's **current Host assignment**
+(which may differ from its creation marker after a move), while its live
+runtime roots inherit the parent until the next cold resume.
+An unclassified/external thread leaves the native parameter absent so its
+Codex-persisted roots are preserved, including when it is opened from the A
+single-folder view. Project deletion keeps historical roots resolvable; changing
+roots affects the next cold load, never the stored cwd. The primary cwd alone
+governs AGENTS/config discovery; the other roots are file-access roots, not
+additional configuration roots. The native API requires absolute paths, and
+resolution/validation failure must reject before starting a turn.
+
+```text
+create: project draft → Host validate A+B → native start(cwd=A, roots=[A,B], origin)
+       → native summary → Host first-insert(project_id=origin) → project tree
+open:  task ID → Host project_id+roots snapshot → bridge cold resume(roots=[cwd,...])
+       → desktop continuous / mobile replayable share that runtime
+view:  Host task rows + projects → single-root cwd projection / multi-root ID match
+       → sidebar and project filters; no second task fact or native thread
+```
+
+Acceptance: create a fresh single-root A project after CLI A history already
+exists and observe all A tasks without copying or reassigning them (including
+when the active tab already uses A: the project-change event re-triggers scoped
+native discovery); add an A+B
+project and confirm its own A task appears in both project views while external
+A/B tasks appear only in single-root A/B views; create two A+B projects sharing
+A and prove neither captures the other's tasks. Check native start/cold resume
+parameters, B access and A-only config, edited roots after process restart,
+external native A+B roots when opened from A, and desktop/mobile projection
+equivalence. Remote projects remain fixed single-root Host memberships; do not
+project arbitrary remote cwd or change remote attachment identity.
+
 ## Runtime contract
 
 - Launch the selected native executable with `app-server --listen stdio://`;
