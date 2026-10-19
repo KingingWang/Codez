@@ -29,6 +29,7 @@ modules:
     requires: [shared]
     publicEntrypoints:
       - packages/services/src/session/contract.ts
+      - packages/services/src/session/codezTaskService.ts
       - packages/services/src/session/taskIndexRepo.ts
       - packages/services/src/session/automationRepo.ts
       - packages/services/src/session/offPeakTaskRepo.ts
@@ -40,7 +41,7 @@ modules:
     managed: true
     requires: [shared, rpc, services]
     publicEntrypoints: [packages/services/src/storage/contract.ts]
-    layers: {domain: domain, app: app, adapters: adapters}
+    layers: { domain: domain, app: app, adapters: adapters }
     layerOrder: [domain, app, adapters]
     owner: desktop-settings
   - id: client
@@ -285,14 +286,19 @@ modules:
     managed: true
     requires: []
     publicEntrypoints: [packages/shared/src/gen-ui/index.ts, packages/shared/src/gen-ui/contract.ts]
-    layers: {domain: "."}
+    layers: { domain: "." }
     owner: conversation
   - id: gen-ui-service
     roots: [packages/services/src/gen-ui]
     managed: true
     requires: [services, shared, rpc, gen-ui-protocol, mcp-apps-protocol]
-    publicEntrypoints: [packages/services/src/gen-ui/index.ts, packages/services/src/gen-ui/contract.ts, packages/services/src/gen-ui/node.ts]
-    layers: {domain: domain, app: app, adapters: adapters}
+    publicEntrypoints:
+      [
+        packages/services/src/gen-ui/index.ts,
+        packages/services/src/gen-ui/contract.ts,
+        packages/services/src/gen-ui/node.ts,
+      ]
+    layers: { domain: domain, app: app, adapters: adapters }
     layerOrder: [domain, app, adapters]
     owner: conversation
 
@@ -300,8 +306,13 @@ modules:
     roots: [packages/ui/src/gen-ui]
     managed: true
     requires: [ui, services, gen-ui-service, gen-ui-protocol, mcp-apps-protocol, plugin-ui]
-    publicEntrypoints: [packages/ui/src/gen-ui/index.ts, packages/ui/src/gen-ui/contract.ts, packages/ui/src/gen-ui/host.ts]
-    layers: {domain: domain, app: app, adapters: adapters, ui: components}
+    publicEntrypoints:
+      [
+        packages/ui/src/gen-ui/index.ts,
+        packages/ui/src/gen-ui/contract.ts,
+        packages/ui/src/gen-ui/host.ts,
+      ]
+    layers: { domain: domain, app: app, adapters: adapters, ui: components }
     layerOrder: [domain, app, adapters, ui]
     owner: conversation
 
@@ -310,7 +321,12 @@ modules:
     roots: [packages/shared/src/mcp-apps]
     managed: true
     requires: []
-    publicEntrypoints: [packages/shared/src/mcp-apps/index.ts, packages/shared/src/mcp-apps/contract.ts, packages/shared/src/mcp-apps/hostContract.ts]
+    publicEntrypoints:
+      [
+        packages/shared/src/mcp-apps/index.ts,
+        packages/shared/src/mcp-apps/contract.ts,
+        packages/shared/src/mcp-apps/hostContract.ts,
+      ]
     layers:
       domain: "."
     owner: plugin
@@ -318,7 +334,11 @@ modules:
     roots: [apps/codez-cli/packages/bootstrap/src/codez-protocol/mcp-ui]
     managed: true
     requires: [codez-cli, shared, mcp-apps-protocol]
-    publicEntrypoints: [apps/codez-cli/packages/bootstrap/src/codez-protocol/mcp-ui/index.ts, apps/codez-cli/packages/bootstrap/src/codez-protocol/mcp-ui/contract.ts]
+    publicEntrypoints:
+      [
+        apps/codez-cli/packages/bootstrap/src/codez-protocol/mcp-ui/index.ts,
+        apps/codez-cli/packages/bootstrap/src/codez-protocol/mcp-ui/contract.ts,
+      ]
     layers:
       app: "."
     owner: plugin
@@ -326,7 +346,13 @@ modules:
     roots: [packages/services/src/plugin-ui-bridge]
     managed: true
     requires: [services, shared, mcp-apps-protocol]
-    publicEntrypoints: [packages/services/src/plugin-ui-bridge/index.ts, packages/services/src/plugin-ui-bridge/contract.ts, packages/services/src/plugin-ui-bridge/appToolsContract.ts, packages/services/src/plugin-ui-bridge/samplingContract.ts]
+    publicEntrypoints:
+      [
+        packages/services/src/plugin-ui-bridge/index.ts,
+        packages/services/src/plugin-ui-bridge/contract.ts,
+        packages/services/src/plugin-ui-bridge/appToolsContract.ts,
+        packages/services/src/plugin-ui-bridge/samplingContract.ts,
+      ]
     layers:
       app: "."
     owner: plugin
@@ -338,8 +364,7 @@ modules:
       - packages/desktop/src/renderer/src/plugin-sandbox
     managed: true
     requires: [desktop, shared, mcp-apps-protocol, gen-ui-protocol]
-    publicEntrypoints:
-      [
+    publicEntrypoints: [
         packages/desktop/src/host/pluginSandbox/index.ts,
         packages/desktop/src/host/pluginSandbox/contract.ts,
         packages/desktop/src/preload/pluginSandbox/hostBridge.ts,
@@ -347,7 +372,7 @@ modules:
         packages/desktop/src/main/pluginSandbox/contract.ts,
         # 页面兼容接口由宿主及其契约测试维护。
         packages/desktop/src/renderer/src/plugin-sandbox/aliasRuntime.ts,
-        packages/desktop/src/renderer/src/plugin-sandbox/aliasApi.ts
+        packages/desktop/src/renderer/src/plugin-sandbox/aliasApi.ts,
       ]
     layers:
       adapters: "."
@@ -356,7 +381,12 @@ modules:
     roots: [packages/ui/src/plugin-ui]
     managed: true
     requires: [ui, shared, services, mcp-apps-protocol, plugin-ui-bridge, plugin-sandbox]
-    publicEntrypoints: [packages/ui/src/plugin-ui/index.ts, packages/ui/src/plugin-ui/contract.ts, packages/ui/src/plugin-ui/hostPrimitives.ts]
+    publicEntrypoints:
+      [
+        packages/ui/src/plugin-ui/index.ts,
+        packages/ui/src/plugin-ui/contract.ts,
+        packages/ui/src/plugin-ui/hostPrimitives.ts,
+      ]
     layers:
       domain: domain
       app: app
@@ -580,7 +610,7 @@ modules:
     publicEntrypoints:
       - apps/codez-cli/packages/cli/src/arguments.ts
       - apps/codez-cli/packages/cli/src/argument-parsing/contract.ts
-    layers: {adapters: .}
+    layers: { adapters: . }
     owner: agent
   - id: workflow-tool-entrypoints
     roots:
@@ -596,7 +626,7 @@ modules:
       - apps/codez-cli/packages/core/src/tool/handlers/list-models.ts
       - apps/codez-cli/packages/core/src/tool/handlers/fill-workflow-hole.ts
       - apps/codez-cli/packages/core/src/tool/workflow-entrypoints/contract.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: agent
 
   - id: tool-result-settlement
@@ -609,7 +639,7 @@ modules:
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/runtime/methods/tool-result-settlement.ts
       - apps/codez-cli/packages/core/src/runtime/tool-result-settlement/contract.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: agent
 
   # remote-input-prediction：手机远控输入预测（v4 线格式、Host 侧开关、CLI 只读查询）。
@@ -748,7 +778,7 @@ modules:
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/tool/handlers/reply-to-channel.ts
       - apps/codez-cli/packages/core/src/tool/channel-reply/contract.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: agent
 
   # composer-toolbar-layout：登记既有 DOM 布局入口，不改调用路径。
@@ -762,7 +792,7 @@ modules:
     publicEntrypoints:
       - packages/ui/src/prompt-editor/useComposerToolbarFit.ts
       - packages/ui/src/composer-toolbar-layout/contract.ts
-    layers: {ui: .}
+    layers: { ui: . }
     owner: conversation
 
   # task-groups：由 architecture:adopt 登记
@@ -1239,6 +1269,19 @@ modules:
       - packages/ui/src/v4/featureSuggestedPrompts.ts
       - packages/ui/src/v4/officeSuggestedPrompts.ts
     layers: {domain: .}
+    owner: conversation
+
+  # codex-model-trajectory：由 architecture:adopt 登记
+  - id: codex-model-trajectory
+    roots:
+      - packages/services/src/codez-agent/model-trajectory
+    managed: true
+    requires: [services, session]
+    publicEntrypoints:
+      - packages/services/src/codez-agent/model-trajectory/index.ts
+      - packages/services/src/codez-agent/model-trajectory/contract.ts
+    layers:
+      adapters: .
     owner: conversation
 
 global:

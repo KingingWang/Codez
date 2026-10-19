@@ -9,6 +9,7 @@ import type { AppToolSearchMode } from "./app-runtime-preferences.js";
 import type { ModelSelection } from "./model-selection.js";
 import type { CodexTitleModel } from "./codex-runtime.js";
 import type { CodezProvider } from "./codez-task-types-core.js";
+import type { SSHAuthMode } from "./remoteTarget.js";
 
 // ── Domain types ──
 
@@ -134,6 +135,8 @@ export interface SSHRemoteTargetSnapshot {
   host: string;
   port?: number;
   username: string;
+  /** 建立连接时的显式认证策略；旧快照缺省时按 privateKeyPath/passwordCredentialKey 推导。 */
+  authMode?: SSHAuthMode;
   /** 用户建立连接时选择的 SSH config Host alias，仅用于 UI 展示。 */
   sshConfigAlias?: string;
   privateKeyPath?: string;
