@@ -1240,6 +1240,7 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
 
       if (
         pendingRemoteTarget.kind === "ssh" &&
+        pendingRemoteTarget.authMode !== "auto" &&
         !pendingRemoteTarget.password &&
         !pendingRemoteTarget.privateKeyPath
       ) {
@@ -1452,7 +1453,8 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
       setPassword(target.password ?? "");
       setPrivateKeyPath(target.privateKeyPath ?? "");
       setPrivateKeyPassphrase(target.privateKeyPassphrase ?? "");
-      setSshAuthMethod(target.privateKeyPath ? "privateKey" : "password");
+      // 已保存/恢复的连接优先沿用显式 authMode；旧记录（无 authMode）按私钥路径推导。
+      setSshAuthMethod(target.authMode ?? (target.privateKeyPath ? "privateKey" : "password"));
       setAssetInstallMode(target.assetInstallMode ?? DEFAULT_REMOTE_ASSET_INSTALL_MODE);
     } else if (target.kind === "wsl") {
       setWslDistro(target.distro ?? "");
@@ -1568,7 +1570,9 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
             setPort(String(target.port ?? 22));
             setUsername(target.username);
             setPrivateKeyPath(target.privateKeyPath ?? "");
-            setSshAuthMethod(target.privateKeyPath ? "privateKey" : "password");
+            setSshAuthMethod(
+              target.authMode ?? (target.privateKeyPath ? "privateKey" : "password"),
+            );
             setAssetInstallMode(target.assetInstallMode ?? DEFAULT_REMOTE_ASSET_INSTALL_MODE);
             setErrorCode("credentials-required");
             setError(intl.formatMessage({ id: "remote.error.credentialsRequired" }));
@@ -1593,7 +1597,10 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
           setPort(String(targetWithCredentials.port ?? 22));
           setUsername(targetWithCredentials.username);
           setPrivateKeyPath(targetWithCredentials.privateKeyPath ?? "");
-          setSshAuthMethod(targetWithCredentials.privateKeyPath ? "privateKey" : "password");
+          setSshAuthMethod(
+            targetWithCredentials.authMode ??
+              (targetWithCredentials.privateKeyPath ? "privateKey" : "password"),
+          );
           setPassword(targetWithCredentials.password ?? "");
           setPrivateKeyPassphrase(targetWithCredentials.privateKeyPassphrase ?? "");
           setAssetInstallMode(
@@ -1691,7 +1698,7 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
       setPort(String(target.port ?? 22));
       setUsername(target.username);
       setPrivateKeyPath(target.privateKeyPath ?? "");
-      setSshAuthMethod(target.privateKeyPath ? "privateKey" : "password");
+      setSshAuthMethod(target.authMode ?? (target.privateKeyPath ? "privateKey" : "password"));
       // 已有线路必须沿用保存的下载侧，不能被新建表单的默认值覆盖。
       setAssetInstallMode(target.assetInstallMode ?? DEFAULT_REMOTE_ASSET_INSTALL_MODE);
     } else if (target.kind === "wsl") {

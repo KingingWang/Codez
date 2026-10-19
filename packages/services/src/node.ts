@@ -3047,6 +3047,7 @@ export function createLocalServices(options: {
     taskIndexSyncer: codezTaskIndexSyncer,
     settingService,
     cuaProductMcpServerResolver,
+    agentRuntimeMode: usesDefaultCodexDesktopBridge ? "codex" : "legacy",
   });
   const botsRepo = new BotsRepo();
   const botLog = createServiceLogger("bots");

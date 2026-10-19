@@ -27,6 +27,7 @@ import {
   TID_DOCKER_CONTAINER_SELECT,
   TID_SSH_CONFIG_ALIAS_CHIP,
   TID_SSH_CONFIG_ALIAS_SELECT,
+  TID_SSH_AUTH_AUTO,
   TID_SSH_AUTH_PASSWORD,
   TID_SSH_AUTH_PRIVATE_KEY,
   TID_SSH_HOST_INPUT,
@@ -519,11 +520,13 @@ export function RemoteConnectionFields({
       ? TID_SSH_HOST_INPUT
       : !username.trim()
         ? TID_SSH_USERNAME_INPUT
-        : sshAuthMethod === "password"
-          ? TID_SSH_PASSWORD_INPUT
-          : !privateKeyPath.trim()
-            ? TID_SSH_PRIVATE_KEY_INPUT
-            : null;
+        : sshAuthMethod === "auto"
+          ? null
+          : sshAuthMethod === "password"
+            ? TID_SSH_PASSWORD_INPUT
+            : !privateKeyPath.trim()
+              ? TID_SSH_PRIVATE_KEY_INPUT
+              : null;
     const target = firstEmptyTestId
       ? root.querySelector<HTMLElement>(`[data-testid="${firstEmptyTestId}"]`)
       : root.closest("form")?.querySelector<HTMLElement>('button[type="submit"]');
@@ -715,6 +718,11 @@ export function RemoteConnectionFields({
                 onChange={setSshAuthMethod}
                 options={[
                   {
+                    value: "auto",
+                    label: intl.formatMessage({ id: "ssh.auth.auto" }),
+                    testId: TID_SSH_AUTH_AUTO,
+                  },
+                  {
                     value: "password",
                     label: intl.formatMessage({ id: "ssh.auth.password" }),
                     testId: TID_SSH_AUTH_PASSWORD,
@@ -727,7 +735,13 @@ export function RemoteConnectionFields({
                 ]}
               />
             </div>
-            {sshAuthMethod === "password" ? (
+            {sshAuthMethod === "auto" ? (
+              // 自动认证（issue #14）：不在表单收集凭据，连接时按 config 私钥、
+              // ssh-agent、默认密钥顺序尝试；失败错误会引导用户改用手动凭据。
+              <p className="text-ui-sm text-remote-foreground-muted">
+                {intl.formatMessage({ id: "ssh.auth.autoHint" })}
+              </p>
+            ) : sshAuthMethod === "password" ? (
               <div>
                 <RemotePasswordInput
                   size="lg"

@@ -13,6 +13,7 @@ import { logger } from "@/logger.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useStableAccountAccess } from "@/hooks/useStableAccountAccess.js";
 import { USAGE_ENTITLEMENT_ACCESS_REFRESH_MS } from "@/lib/usageEntitlementRefreshPolicy.js";
+import type { IUsageStatsService } from "@codez/services";
 
 interface UsageStatsState {
   snapshot: UsageStatsSnapshot | null;
@@ -188,8 +189,12 @@ export function useUsageStats(
   };
 }
 
-export function useAppUsageStats(range: AppUsageRange) {
-  const { usageStatsService } = useServices();
+export function useAppUsageStats(
+  range: AppUsageRange,
+  options: { usageStatsService?: IUsageStatsService } = {},
+) {
+  const contextUsageStatsService = useServices().usageStatsService;
+  const usageStatsService = options.usageStatsService ?? contextUsageStatsService;
   const [state, setState] = useState<AppUsageStatsState>({
     snapshot: null,
     loading: false,
@@ -197,12 +202,16 @@ export function useAppUsageStats(range: AppUsageRange) {
   });
   const requestVersionRef = useRef(0);
   const lastRangeRef = useRef(range);
+  const lastServiceRef = useRef(usageStatsService);
 
   const refresh = useCallback(async () => {
     const requestVersion = requestVersionRef.current + 1;
     requestVersionRef.current = requestVersion;
-    const keepPreviousSnapshot = lastRangeRef.current === range;
+    // 机器来源替换时，同一 range 的旧快照也属于另一台服务器，必须清空后重新读取。
+    const keepPreviousSnapshot =
+      lastRangeRef.current === range && lastServiceRef.current === usageStatsService;
     lastRangeRef.current = range;
+    lastServiceRef.current = usageStatsService;
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setState((current) => ({
       // 修复原因：切换时间范围（如 7d -> 30d）时若保留上一范围的 snapshot，
