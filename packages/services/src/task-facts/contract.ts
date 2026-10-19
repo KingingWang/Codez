@@ -11,6 +11,8 @@ export interface TaskFactTarget extends TaskWorkspace {
 export type TaskFactMutation = { type: "rename"; title: string } | { type: "delete" };
 export interface CliTaskFacts {
   meta: CodezTaskMeta;
+  /** 仅 Codex 原生创建来源；只参与首次 Host 行身份写入。 */
+  originProjectId?: string | null;
   titleSource?: string;
   lastOutcome?: "completed" | "interrupted" | "error";
   deleted?: boolean;

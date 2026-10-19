@@ -1220,6 +1220,8 @@ interface CreateCodezAgentServiceBaseOptions extends Omit<
   prepareProjectExecution?: (
     projectId: string,
   ) => Promise<import("@codez/shared").ProjectExecutionSnapshot>;
+  /** 可信持库 Host 身份；原生创建的显式空归属只允许本地 Host。 */
+  nativeProjectHostId?: string;
   prepareSessionCreation?: (
     target: Omit<CodezAgentSessionTarget, "sessionId"> & {
       sessionId?: string;
@@ -1232,7 +1234,9 @@ interface CreateCodezAgentServiceBaseOptions extends Omit<
   prepareForkCreation?: (
     target: CodezAgentSessionTarget & { parentSessionId: string },
   ) => Promise<void>;
-  resolveSessionDirectories?: (target: CodezAgentSessionTarget) => Promise<string[]>;
+  /** Codex 未归类线程省略覆盖，保留其原生持久 roots；旧 Agent 继续返回明确数组。 */
+  resolveSessionDirectories?: (target: CodezAgentSessionTarget) => Promise<string[] | undefined>;
+  resolveSessionProjectId?: (target: CodezAgentSessionTarget) => Promise<string | null>;
   /**
    * 会话操作闸门（受管 worktree 删除租约，docs/git/worktree.md §8.3）：会话命令与冷订阅经它执行，
    * 会话 cwd 位于删除中的 worktree 时被拒绝。由受管 worktree 服务提供。
@@ -4881,6 +4885,23 @@ export function createCodezAgentService(
       : { dynamicWorkflowEnabled: false };
   }
 
+  /** Native 自行分配 thread ID；两条创建入口共用 Host 可信项目校验，不预留假 ID。 */
+  async function resolveNativeProjectCreation(
+    workspacePath: string,
+    projectId: string | null | undefined,
+  ): Promise<{ codexProjectId?: string | null; additionalDirectories?: string[] }> {
+    if (!projectId) {
+      if (options?.nativeProjectHostId && options.nativeProjectHostId !== "local")
+        throw new Error("project.remote-project-required");
+      return projectId === null ? { codexProjectId: null, additionalDirectories: [] } : {};
+    }
+    if (!options?.prepareProjectExecution) throw new Error("project.creation-unavailable");
+    const project = await options.prepareProjectExecution(projectId);
+    if (project.workspacePath !== workspacePath || project.projectId !== projectId)
+      throw new Error("project.creation-workspace-mismatch");
+    return { codexProjectId: projectId, additionalDirectories: project.additionalDirectories };
+  }
+
   async function buildConversationCommandEnvelope(
     params: CodezAgentConversationCommandParams,
   ): Promise<CommandEnvelope> {
@@ -4919,6 +4940,31 @@ export function createCodezAgentService(
         };
       }
       return envelope;
+    }
+    // 原因：native thread/start 自行分配 ID，不能沿用旧 CLI 的预留 ID。
+    // Host 先验证项目与 cwd 并解析 roots，bridge 才能在原生会话创建时同时写入
+    // roots 和首次归属来源；绝不从 cwd 猜是哪一个共享目录项目。
+    if (usesDefaultCodexBridge && envelope.type === "createSession") {
+      const payload = commandPayloadSchemas.createSession.parse(envelope.payload);
+      if (payload.codexProjectId !== undefined)
+        throw new Error("project.creation-origin-host-only");
+      const creation = await resolveNativeProjectCreation(params.workspacePath, params.projectId);
+      return {
+        ...envelope,
+        payload: { ...payload, ...creation },
+      };
+    }
+    if (usesDefaultCodexBridge && envelope.type === "forkAssistant") {
+      const payload = commandPayloadSchemas.forkAssistant.parse(envelope.payload);
+      if (payload.codexProjectId !== undefined)
+        throw new Error("project.creation-origin-host-only");
+      if (!envelope.sessionId || !options?.resolveSessionProjectId)
+        throw new Error("project.creation-unavailable");
+      const projectId = await options.resolveSessionProjectId({
+        ...params,
+        sessionId: envelope.sessionId,
+      });
+      return { ...envelope, payload: { ...payload, codexProjectId: projectId } };
     }
     // 旧 CLI 路径保留 legacy session 工具面策略；Codex 直接消费原生 selection/plan 意图。
     if (usesDefaultCodexBridge) return envelope;
@@ -5170,7 +5216,16 @@ export function createCodezAgentService(
     },
 
     async createSession(params: CodezAgentCreateSessionParams) {
-      if (options?.prepareSessionCreation) {
+      let codexProjectId: string | null | undefined;
+      if (usesDefaultCodexBridge) {
+        const creation = await resolveNativeProjectCreation(params.workspacePath, params.projectId);
+        codexProjectId = creation.codexProjectId;
+        params = {
+          ...params,
+          additionalDirectories: creation.additionalDirectories ?? params.additionalDirectories,
+        };
+      } else if (options?.prepareSessionCreation) {
+        // 旧 CLI 保留上游 Host 的幂等预留结果；不能退回 service 自造 ID 或丢弃返回的 ID。
         const prepared = await options.prepareSessionCreation({
           ...params,
           projectId: params.projectId ?? null,
@@ -5208,7 +5263,10 @@ export function createCodezAgentService(
       try {
         const snapshot = await client.request(
           codezProtocolMethods.sessionCreate,
-          buildSessionCreateParams({ ...params, offPeakToolEnabled, ...dynamicWorkflowFlags }),
+          {
+            ...buildSessionCreateParams({ ...params, offPeakToolEnabled, ...dynamicWorkflowFlags }),
+            ...(codexProjectId !== undefined ? { codexProjectId } : {}),
+          },
           codezSessionStateSnapshotSchema,
           sessionTraceId ? { trace: { traceId: sessionTraceId } } : undefined,
         );
@@ -5248,10 +5306,13 @@ export function createCodezAgentService(
         // 可选字段降级重试，避免 thoughtLevel/persistence 版本差阻塞首发创建。
         const snapshot = await client.request(
           codezProtocolMethods.sessionCreate,
-          buildSessionCreateParams(
-            { ...params, offPeakToolEnabled, ...dynamicWorkflowFlags },
-            new Set(compatFields),
-          ),
+          {
+            ...buildSessionCreateParams(
+              { ...params, offPeakToolEnabled, ...dynamicWorkflowFlags },
+              new Set(compatFields),
+            ),
+            ...(codexProjectId !== undefined ? { codexProjectId } : {}),
+          },
           codezSessionStateSnapshotSchema,
           sessionTraceId ? { trace: { traceId: sessionTraceId } } : undefined,
         );
@@ -5517,6 +5578,11 @@ export function createCodezAgentService(
         codezProtocolMethods.sessionRead,
         {
           sessionId: params.sessionId,
+          ...(usesDefaultCodexBridge && params.runtimePolicy !== "existing-only"
+            ? {
+                additionalDirectories: await options?.resolveSessionDirectories?.(params),
+              }
+            : {}),
           deliveryKind: params.deliveryKind,
           messageLimit: params.messageLimit,
           afterSeq: params.afterSeq,
