@@ -152,6 +152,38 @@ describe("Source Server release resolver", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("resolves a fork GitHub Release root without trying a versioned descriptor path", async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (
+        url ===
+        "https://github.com/KingingWang/Codez/releases/download/codez-build-1-0123456789ab/source-server-release.json"
+      ) {
+        return new Response(JSON.stringify(descriptor("github-source-server")), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(null, { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const release = await resolveSourceServerReleaseAsset(
+      probe,
+      {
+        remoteCdnBaseUrls: [
+          "https://github.com/KingingWang/Codez/releases/download/codez-build-1-0123456789ab",
+        ],
+      },
+      { ...target, assetInstallMode: "remote-download" },
+    );
+
+    expect(release.urls).toEqual([
+      "https://github.com/KingingWang/Codez/releases/download/codez-build-1-0123456789ab/codez-server-linux-x64.tar.gz",
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("downloads and verifies the descriptor archive into the Desktop cache", async () => {
     const root = await mkdtemp(join(tmpdir(), "codez-source-release-cache-"));
     const contents = "cached-source-server";
