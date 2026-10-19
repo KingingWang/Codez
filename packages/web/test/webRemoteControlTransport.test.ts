@@ -61,6 +61,9 @@ async function createRelayServer(
   options?: { perMessageDeflate?: boolean },
 ) {
   const server = new WebSocketServer({
+    // 原因：测试客户端固定连接 127.0.0.1；默认监听 :: 分配的端口不保证属于 IPv4
+    // 回环，偶发连到同端口的别的服务，表现为有效 data payload 永远不到达。
+    host: "127.0.0.1",
     port: 0,
     perMessageDeflate: options?.perMessageDeflate ?? false,
   });
@@ -1030,11 +1033,13 @@ describe("WebRemoteControlTerminalTransport", () => {
       reloadPage: () => {},
     });
 
-    transport.start();
-    await waitUntil(() => payloads.length === 1);
-
-    expect(payloads[0]).toMatchObject({ codez_type: "rpc-frame", seq: 1 });
-    transport.dispose();
+    try {
+      transport.start();
+      await waitUntil(() => payloads.length === 1);
+      expect(payloads[0]).toMatchObject({ codez_type: "rpc-frame", seq: 1 });
+    } finally {
+      transport.dispose();
+    }
   });
 
   it("rejects matching pending requests on app errors only", async () => {
