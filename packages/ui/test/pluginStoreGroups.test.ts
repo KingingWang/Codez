@@ -32,7 +32,7 @@ describe.each(["zh-CN", "en-US"])("plugin groups in %s", (locale) => {
     "expands UI plugins inline in %s and preserves the group during search",
     async (segment) => {
       state.locale = locale;
-      const marketplace = segment === "personal" ? "custom" : ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID;
+      const marketplace = segment === "personal" ? "custom" : CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID;
       const items: StorePluginItem[] = Array.from({ length: 9 }, (_, index) => {
         const name = index < 8 ? `panel-${index}` : "panel-regular";
         return {
@@ -100,9 +100,9 @@ describe.each(["zh-CN", "en-US"])("plugin groups in %s", (locale) => {
     "limits %s search to its publisher/source segment",
     async (segment) => {
       const items: StorePluginItem[] = ["public", "community", "personal"].map((source) => ({
-        id: `${source}@${source === "personal" ? "custom" : ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID}`,
+        id: `${source}@${source === "personal" ? "custom" : CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`,
         name: source,
-        marketplace: source === "personal" ? "custom" : ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+        marketplace: source === "personal" ? "custom" : CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
         installed: false,
         restorable: false,
         orphaned: false,

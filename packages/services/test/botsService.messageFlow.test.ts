@@ -5341,7 +5341,8 @@ describe("botsService messageFlow", () => {
           "weixin-1": {
             botId: "weixin-1",
             workspacePath: "/tmp/workspace",
-            workspaceId: "/tmp/workspace",
+            workspaceIdentity: "remote:server:test-owner:/tmp/workspace",
+            workspaceId: "remote:server:test-owner:/tmp/workspace",
             mode: "draft",
             activeTaskId: null,
             draftOptions: { provider: "glm", mode: "yolo", modelSelection: original },
@@ -5373,7 +5374,7 @@ describe("botsService messageFlow", () => {
           selection: original,
           workspace: {
             workspacePath: "/tmp/workspace",
-            workspaceIdentity: "ssh://host/tmp/workspace",
+            workspaceIdentity: "remote:server:test-owner:/tmp/workspace",
           },
         });
         expect((await repo.readState()).bots["weixin-1"]?.draftOptions?.modelSelection).toEqual(

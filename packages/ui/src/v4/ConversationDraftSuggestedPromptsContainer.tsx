@@ -10,7 +10,15 @@ import {
   unregisterRecommendedPromptPane,
 } from "@/v4/featureSuggestedPromptRotation.js";
 /* oxlint-disable eslint(max-lines) -- 推荐 Prompt 同时收口 latest-wins、取消、可信解析、操作反馈和 Composer 收尾，拆分会打散这条状态机。 */
-import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@codez/shared";
 import { cn } from "@/components/lib/utils.js";
 import { toast } from "@/components/ui/toast.js";
@@ -420,6 +428,11 @@ export function ConversationDraftSuggestedPromptsContainer({
           let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
           const installRequest = resolution.services.pluginManagementService.installPlugin({
             ...targetParams(),
+            // Bug 原因：推荐项漏传来源，服务端将安装统计归为 unknown，无法区分商店动作。
+            telemetry: {
+              entry: "recommended_prompt",
+              client_kind: isWebRemoteControl ? "mobile" : "desktop",
+            },
             pluginName: flow.result!.pluginName!,
             marketplace: flow.result!.marketplace!,
             scope: "user",
@@ -463,6 +476,10 @@ export function ConversationDraftSuggestedPromptsContainer({
             operation,
             resolution.services.pluginManagementService.setPluginEnabled({
               ...targetParams(),
+              telemetry: {
+                entry: "recommended_prompt",
+                client_kind: isWebRemoteControl ? "mobile" : "desktop",
+              },
               pluginId: flow.plugin.stableId,
               enabled: true,
               operationId: flow.operationId,

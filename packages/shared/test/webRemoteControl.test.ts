@@ -63,13 +63,13 @@ describe("external relay QR helpers", () => {
       buildWebRemoteControlExternalQrUrl({
         baseUrl: "https://trusted.example/remote/v4",
         deviceSid: "sid-1",
-        passHash: "relay-known",
-        timestamp: 1,
         e2eeKey,
       }),
     );
     expect(url.searchParams.has("k")).toBe(false);
-    expect(url.searchParams.get("hash")).toBe("relay-known");
+    expect(url.searchParams.has("hash")).toBe(false);
+    expect(url.searchParams.has("t")).toBe(false);
+    expect(url.searchParams.get("sid")).toBe("sid-1");
     expect(parseWebRemoteControlE2eeQrFragment(url.hash)).toBe(e2eeKey);
     expect(parseWebRemoteControlE2eeQrFragment("#e2ee=v1&k=short")).toBeNull();
     expect(parseWebRemoteControlE2eeQrFragment(`#e2ee=v1&k=${"A".repeat(42)}B`)).toBeNull();

@@ -37,6 +37,9 @@
   `unavailable`/`conflict`，禁止使用旧快照一键安装，保留纯 prompt。
 - `codez-plugins-official` 刷新最多等待 10000 ms；达到超时后主动中止刷新并按 `marketplace_refresh_failed` fail closed，禁止继续读取旧快照候选，只保留纯 prompt。
 - 一键安装只允许 `codez-plugins-official`，固定使用 `scope: "user"`，安装到当前权威 Agent Host 的当前用户；远程 workspace 写入远程 Host。
+- 推荐项确认安装或启用时，沿现有插件管理接口传递 `telemetry.entry = "recommended_prompt"`；
+  `client_kind` 按桌面 / 手机远控入口分别为 `desktop` / `mobile`。只标注触发来源，
+  不改变插件安装、权限、取消或恢复的所有权。
 - 首次本地检查发现目标 Plugin 不存在、即将刷新官方 Marketplace 时，Agent 必须先按 `operationId` 发出 `refreshing` 进度；UI 收到后立即让
   当前推荐项的 Plugin action Popover 进入 loading。首次可信解析直接返回 `disabled` 时，UI 在写入纯 prompt 前让同一个 Popover 进入 loading。
   `ready`、`conflict`、`unavailable` 和解析失败不得仅因首次检查而新建第二个 Popover。
@@ -235,14 +238,14 @@ Desktop 中每次点击推荐 Prompt 模板（包括普通 Prompt 预填、Autom
 `reportAppTelemetryEvent()` 上报一次产品埋点。Web 和手机远控本轮只保留既有 UI 行为，不调用该埋点；
 两端真实上报链路后续单独补齐。事件固定为：
 
-| 字段 | 值 / 口径 |
-| --- | --- |
-| `elementName` | `prompt_template_ck` |
-| `eventRegion` | `app.session` |
-| `eventType` | `ck` |
-| `eventText` | 当前界面语言下用户实际看到的模板名称 |
-| `eventExtraDetail.template_id` | Client Scenes prompt item 的 `item.id`，作为跨语言和改名稳定的统计维度 |
-| `eventExtraDetail.template_prompt` | 当前界面语言解析后的完整 Prompt；不包含用户后续编辑内容 |
+| 字段                               | 值 / 口径                                                              |
+| ---------------------------------- | ---------------------------------------------------------------------- |
+| `elementName`                      | `prompt_template_ck`                                                   |
+| `eventRegion`                      | `app.session`                                                          |
+| `eventType`                        | `ck`                                                                   |
+| `eventText`                        | 当前界面语言下用户实际看到的模板名称                                   |
+| `eventExtraDetail.template_id`     | Client Scenes prompt item 的 `item.id`，作为跨语言和改名稳定的统计维度 |
+| `eventExtraDetail.template_prompt` | 当前界面语言解析后的完整 Prompt；不包含用户后续编辑内容                |
 
 `eventExtraDetail` 严格只包含 `template_id` 和 `template_prompt`，不上传 `template_name`、
 `template_action`、`talkId` 或 `messageId`。点击埋点在点击处理开始时触发，并与异步 Plugin 操作、导航

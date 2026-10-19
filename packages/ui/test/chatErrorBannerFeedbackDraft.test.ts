@@ -178,5 +178,9 @@ it("远程发送竞态提供重连，反馈归属连接失败而非模型调用"
   (button!.onClick as () => void)();
   expect(reconnect).toHaveBeenCalledOnce();
   await openFeedbackFromBanner();
-  expect(useFeedbackStore.getState().submitDraft?.module).toBe("SSH连接失败");
+  const openedUrl = vi.mocked(mockPlatform.openExternal).mock.calls[0]?.[0] ?? "";
+  expect(decodeURIComponent(openedUrl).replaceAll("+", " ")).toContain(
+    zhCN["remote.conversation.sendUnavailable"],
+  );
+  expect(useFeedbackStore.getState().submitDraft).toBeNull();
 });
