@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { sha256File } from "./codex-runtime.mjs";
 import { resolveCodexUpdaterAssetPlan } from "./codex-runtime-artifacts.mjs";
 import { verifyCodexRemoteIndex } from "./codex-runtime-remote-index.mjs";
+import { SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME } from "./source-server-release-name.mjs";
 
 const exec = promisify(execFile);
 const platformNames = { darwin: "mac", linux: "linux", win32: "win" };
@@ -136,6 +137,48 @@ export async function collectReleaseAssets(directory, env) {
       throw new Error(`Remote release asset changed while staging: ${remote.name}`);
     result.push(published);
   }
+  const sourceServerReleaseDir = join(directory, "source-server-release");
+  const descriptorPath = join(sourceServerReleaseDir, SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME);
+  const descriptor = JSON.parse(await readFile(descriptorPath, "utf8"));
+  if (
+    descriptor?.schemaVersion !== 1 ||
+    descriptor.version !== version ||
+    !Array.isArray(descriptor.archives) ||
+    descriptor.archives.length !== 4
+  ) {
+    throw new Error("Invalid Source Server release descriptor");
+  }
+  const sourceServerTargets = new Set();
+  for (const archive of descriptor.archives) {
+    if (
+      !/^(linux|darwin)-(x64|arm64)$/u.test(archive?.target ?? "") ||
+      sourceServerTargets.has(archive.target) ||
+      archive.version !== version ||
+      archive.fileName !== `codez-server-${archive.target}.tar.gz` ||
+      !/^[a-f0-9]{64}$/u.test(archive.sha256 ?? "") ||
+      !Number.isSafeInteger(archive.sizeBytes) ||
+      archive.sizeBytes <= 0 ||
+      !Array.isArray(archive.urls) ||
+      archive.urls.length !== 1 ||
+      archive.urls[0] !== archive.fileName
+    ) {
+      throw new Error(`Invalid Source Server release archive: ${archive?.target ?? "<missing>"}`);
+    }
+    sourceServerTargets.add(archive.target);
+    const published = await asset(join(sourceServerReleaseDir, archive.fileName));
+    if (published.sha256 !== archive.sha256 || published.size !== archive.sizeBytes) {
+      throw new Error(`Source Server release integrity mismatch: ${archive.fileName}`);
+    }
+    if (seen.has(published.name)) throw new Error(`Duplicate public asset: ${published.name}`);
+    seen.add(published.name);
+    result.push(published);
+  }
+  const publishedDescriptor = await asset(descriptorPath);
+  if (seen.has(publishedDescriptor.name)) {
+    throw new Error(`Duplicate public asset: ${publishedDescriptor.name}`);
+  }
+  seen.add(publishedDescriptor.name);
+  result.push(publishedDescriptor);
   return result;
 }
 

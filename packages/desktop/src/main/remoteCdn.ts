@@ -63,10 +63,12 @@ export function resolveRemoteCdnBaseUrls(options: ResolveRemoteCdnOptions = {}):
       ? []
       : __CODEZ_REMOTE_CDN_RELEASE_ROOTS__;
   if (configuredReleaseRoots.length > 0) {
-    // Bugfix：remote runtime 的 manifest/components 下载根不能继续写死旧 CDN。
-    // 构建期按 CI 的 CDN_DOMAIN/OSS_PATH_PREFIX 注入有序列表，切换时只改 CI 变量。
-    return configuredReleaseRoots.map(
-      (releaseRoot) => `${normalizeBaseUrl(releaseRoot)}/${version}`,
+    // Fork CI 注入的是 GitHub Release 的精确下载根；再追加 version 会错过资产。
+    // OSS 构建仍可传发布根，由这里统一固定到当前版本目录。
+    return configuredReleaseRoots.map((releaseRoot) =>
+      /^https:\/\/github\.com\/KingingWang\/Codez\/releases\/download\/.+$/u.test(releaseRoot)
+        ? normalizeBaseUrl(releaseRoot)
+        : `${normalizeBaseUrl(releaseRoot)}/${version}`,
     );
   }
 

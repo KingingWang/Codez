@@ -57,6 +57,10 @@ function loadEnvFiles(): Record<string, string> {
   }
   if (process.env.CDN_DOMAIN) vars.CDN_DOMAIN = process.env.CDN_DOMAIN;
   if (process.env.OSS_PATH_PREFIX) vars.OSS_PATH_PREFIX = process.env.OSS_PATH_PREFIX;
+  if (process.env.CODEZ_SOURCE_SERVER_GITHUB_RELEASE_ROOT) {
+    vars.CODEZ_SOURCE_SERVER_GITHUB_RELEASE_ROOT =
+      process.env.CODEZ_SOURCE_SERVER_GITHUB_RELEASE_ROOT;
+  }
   if (process.env.VITE_ZAI_OAUTH_CLIENT_ID) {
     vars.VITE_ZAI_OAUTH_CLIENT_ID = process.env.VITE_ZAI_OAUTH_CLIENT_ID;
   }
@@ -80,6 +84,8 @@ function parseCsvEnv(value: string | undefined): string[] {
 }
 
 export function resolveBuildRemoteCdnReleaseRoots(runtimeEnv: Record<string, string | undefined>) {
+  const githubReleaseRoot = runtimeEnv.CODEZ_SOURCE_SERVER_GITHUB_RELEASE_ROOT?.trim();
+  if (githubReleaseRoot) return [githubReleaseRoot.replace(/\/+$/, "")];
   const domains = parseCsvEnv(runtimeEnv.CDN_DOMAIN);
   const pathPrefixes = parseCsvEnv(runtimeEnv.OSS_PATH_PREFIX || "codez/electron/releases");
   if (domains.length === 0) {

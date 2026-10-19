@@ -105,6 +105,15 @@ jobs:
           packages/ui/src/hooks/useWorktreeCreation.test.ts
       - name: Assemble four remote targets without compiling Codex
         run: node scripts/codex-runtime-remote-assets.mjs
+      - name: Assemble Source Server release
+        run: pnpm prepare:remote-assets
+      - name: Stage Source Server release artifact
+        run: |
+          set -euo pipefail
+          stage="$RUNNER_TEMP/source-server-release"
+          mkdir -p "$stage"
+          cp packages/desktop/mock-cdn/releases/*/source-server-release.json "$stage/"
+          cp packages/desktop/mock-cdn/releases/*/codez-server-*.tar.gz "$stage/"
       - name: Native standalone remote package smoke
         run: node scripts/codex-runtime-remote-smoke.mjs
       - name: Real bundled remote deployment and shipped executables (Linux once)
@@ -119,6 +128,11 @@ jobs:
             packages/desktop/bundled-resources/codex-remote/components/**
             packages/desktop/bundled-resources/codex-remote/releases/**
             packages/desktop/bundled-resources/codex-remote/index.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-server-release
+          if-no-files-found: error
+          path: ${{ runner.temp }}/source-server-release/*
       - uses: actions/upload-artifact@v4
         with:
           name: codez-manifest
@@ -228,6 +242,14 @@ jobs:
           bash scripts/build-windows-cua-xa11y.sh \
             "$GITHUB_WORKSPACE/.cua-xa11y-source" "$RUNNER_TEMP/cua-xa11y" "$CODEZ_TARGET_ARCH"
           echo "CODEZ_CUA_WINDOWS_XA11Y_NATIVE_ROOT=$RUNNER_TEMP/cua-xa11y/package" >> "$GITHUB_ENV"
+      - name: Resolve Source Server release download root
+        if: >-
+          github.repository == 'KingingWang/Codez' &&
+          ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'workflow_dispatch' && inputs.publish))
+        run: |
+          set -euo pipefail
+          echo "CODEZ_SOURCE_SERVER_GITHUB_RELEASE_ROOT=https://github.com/${GITHUB_REPOSITORY}/releases/download/codez-build-${GITHUB_RUN_ID}-${GITHUB_SHA::12}" >> "$GITHUB_ENV"
       - name: Build Codex desktop
         run: pnpm --filter @codez/desktop build
       - name: Prepare macOS Computer Use Helper Node
@@ -325,6 +347,10 @@ jobs:
         with:
           name: codex-remote-assets
           path: artifacts/codex-remote-assets
+      - uses: actions/download-artifact@v4
+        with:
+          name: source-server-release
+          path: artifacts/source-server-release
       - name: Verify all six targets and publish release
         env:
           GH_TOKEN: ${{ github.token }}
