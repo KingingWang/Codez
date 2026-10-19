@@ -93,7 +93,7 @@ describe("skills mention provider", () => {
     );
   });
 
-  it("localizes the managed Codex Computer Use skill (codez-computer-use)", () => {
+  it("preserves a user skill description when the managed marker is not in its metadata", () => {
     const skill = {
       id: "/Users/dev/.agents/skills/codez-computer-use/SKILL.md",
       name: "codez-computer-use",
@@ -102,11 +102,12 @@ describe("skills mention provider", () => {
       scope: "user" as const,
     };
 
-    expect(mapSkillsToMentionItemsForTest([skill], "en-US")[0]?.description).toContain(
-      "User · Read or operate native desktop app UIs",
+    // 同一路径可由用户自己创建；只凭 name/path 不能冒充 Codez-managed marker。
+    expect(mapSkillsToMentionItemsForTest([skill], "en-US")[0]?.description).toBe(
+      "User · frontmatter fallback",
     );
-    expect(mapSkillsToMentionItemsForTest([skill], "zh-CN")[0]?.description).toContain(
-      "用户 · 通过 Codez 桌面原生电脑控制工具",
+    expect(mapSkillsToMentionItemsForTest([skill], "zh-CN")[0]?.description).toBe(
+      "用户 · frontmatter fallback",
     );
   });
 });

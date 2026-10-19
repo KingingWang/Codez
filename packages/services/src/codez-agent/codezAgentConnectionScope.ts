@@ -223,9 +223,8 @@ function createHello(context: CodezAgentV4ConnectionContext): HelloMessage {
       workspaceHookReview: true,
       independentPlanState: true,
       genUiContext: true,
-      // 本 Host 会转发 `workflowRun.*` 键级增量；客户端见到它才能在 clientHello 里回声明
-      // （那个 capabilities 是 .strict() 的，反过来会让老 Host 握不上手）。
-      workflowRunDeltas: true,
+      // Bug 原因：attachment 不是能力所有者；Codex/base 缺失键级增量时不能预先宣告 true。
+      // helloConversationV4 只在底层显式支持后补上该能力，避免客户端错误协商。
       historyFirst: true,
       // 手机远控输入预测：受 Host 开关控制；缺席/false 时手机不得发起 inputPrediction。
       inputPrediction: isRemoteInputPredictionEnabled(),
