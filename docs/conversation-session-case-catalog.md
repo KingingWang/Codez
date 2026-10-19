@@ -3812,7 +3812,7 @@ Codex 目录视图增量（accepted，尚未转正）：
 
 | ID | Setup → action | UI 断言 | 非 UI 证据 |
 | --- | --- | --- | --- |
-| VP-CODEX-01 | 已有 Codex CLI/桌面 `cwd=A` 历史与另一目录 B 的历史、Host 存量 NULL 行 → 新建单 root A 项目并激活、重启 | A 项目立即显示全部 A 历史，不显示 B；重启不丢；全局最近按 ID 一次；归档/置顶/未读语义不变 | `thread/list` 物理 cwd 过滤、Host task 索引与项目树，`project_id`/cwd/正文前后不变 |
+| VP-CODEX-01 | 已有 Codex CLI/桌面 `cwd=A` 历史与另一目录 B 的历史、Host 存量 NULL 行 → 新建单 root A 项目并激活、重启 | A 项目立即显示全部 A 历史，不显示 B；重启不丢；全局最近按 ID 一次；归档/置顶/未读语义不变 | `thread/list` 物理 cwd 过滤、Host task 索引与项目树，`project_id`/cwd/正文前后不变；CLI 先于项目的 GUI 子场景见 `manual-review/pending/conversation-session-codex-project-history.test.ts` |
 | VP-CODEX-02 | A 单 root + A+B 多 root，另有外部 A/B 会话 → 在 A+B 创建一条 `cwd=A` 会话 | 多 root 只显示自己的会话；单 root A 同时显示该会话及外部 A 历史，单 root B 只显示 B 历史；任务区仍按 NULL | Codex `thread/start` 的 A、[A,B] 与持久来源；Host 唯一归属；CLI `resume` 仍按 A cwd |
 | VP-CODEX-03 | 两个共享 A 的多 root 项目、既有 CLI A 会话 → 分别创建、从单 root A 打开、冷重启 | 多 root 不互收会话、不会从 A/B roots 并集导入 CLI；A 视图可进入两条且不缩掉 B 的能力 | Host 项目 ID 与任务 ID 精确对应；native start/resume roots、A-only 配置、B 文件访问；无新任务副本 |
 | VP-CODEX-04 | A+B 项目已有会话，运行期间把 B 改成 C → 热重订阅与冷启动恢复 | 原 taskId/cwd 保持，热实例仍用旧目录，冷恢复使用 C；远端单 root 不变 | 同一读快照的 Host roots、native resume 参数与 Codex 请求/文件能力；desktop continuous/mobile replayable 同一线程 |
