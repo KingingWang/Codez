@@ -370,6 +370,32 @@ user's auto-download preference drives any background download, and no
 unconditional background install happens. Preview/production flavors retain
 their existing manifest-provider behavior.
 
+### Fork Source Server releases
+
+Codex-fork CI builds Source Server artifacts with the canonical
+`prepare:remote-assets` producer and publishes the exact five-file set to the same
+GitHub Release as the installers: `source-server-release.json` plus one
+`codez-server-<linux|darwin>-<x64|arm64>.tar.gz` per target. The release job
+re-reads the descriptor, verifies every referenced archive's size and SHA-256,
+and rejects an incomplete, duplicate, or unexpected asset set before publication.
+
+The Desktop build injects the current GitHub run's immutable
+`releases/download/<codez-build-…>` URL as its Source Server release root. GitHub
+release roots are already exact release roots, so runtime URL construction must
+not append the app version a second time. Descriptor-relative archive URLs and
+the existing Host network policy remain unchanged.
+
+The Codex desktop flavor ships no `remoteCdnBaseUrls` at runtime: its remote
+asset dirs carry only the packaged `codex-remote/` directory and the cache root,
+so the injected CDN root list never reaches the Source Server resolver. The
+resolver must instead derive its release base from the build-pinned
+`codex-remote/index.json` `releaseTag` (`codez-build-…`), which names the same
+GitHub Release that carries the descriptor and archives. A missing or malformed
+packaged index yields no release base candidates and resolution fails closed,
+naming the attempted bases in the error; it never falls back to the upstream CDN
+roots. The tag is validated against the codex release-tag pattern before it
+enters a URL path.
+
 The desktop workspace Help menu exposes the existing manual update command for
 both production and Codex product identities. Preview keeps that entry hidden,
 and Web never renders it. The Help menu subscribes to Main's update state;
