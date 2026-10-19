@@ -61,6 +61,7 @@ export interface PendingOAuthLogin {
   provider: WebOAuthProviderId;
   redirectUri: string;
   expectedSession: string;
+  hash?: string;
 }
 
 function isPendingOAuthLogin(value: unknown): value is PendingOAuthLogin {
@@ -74,6 +75,7 @@ function isPendingOAuthLogin(value: unknown): value is PendingOAuthLogin {
     hasText(login.redirectUri) &&
     typeof login.expectedSession === "string" &&
     hasText(login.expectedSession)
+    (login.hash === undefined || typeof login.hash === "string")
   );
 }
 

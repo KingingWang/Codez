@@ -1,5 +1,10 @@
 import { createBrowserNonce } from "#src/auth/oauthStateCodec.js";
-import { BIGMODEL_PROVIDER_ID, ZAI_PROVIDER_ID, type UserInfo } from "@codez/shared";
+import {
+  BIGMODEL_PROVIDER_ID,
+  parseWebRemoteControlE2eeQrFragment,
+  ZAI_PROVIDER_ID,
+  type UserInfo,
+} from "@codez/shared";
 import {
   initializeRegionalOAuth,
   pollRegionalOAuth,
@@ -35,6 +40,7 @@ interface WebAuthServiceDependencies {
   provider?: ZaiWebOAuthProvider;
   repo?: BrowserOAuthCredentialRepo;
   runtime?: WebAuthServiceRuntime;
+  fetcher?: typeof fetch;
 }
 
 interface WebAuthLoginOptions {
@@ -86,7 +92,13 @@ export class WebAuthService {
 
   constructor(dependencies: WebAuthServiceDependencies = {}) {
     this.config = dependencies.config ?? WEB_ZAI_OAUTH_CONFIG;
-    this.provider = dependencies.provider ?? new ZaiWebOAuthProvider(this.config);
+    this.provider =
+      dependencies.provider ??
+      new ZaiWebOAuthProvider(
+        this.config,
+        Date.now,
+        dependencies.fetcher ?? ((...args) => globalThis.fetch(...args)),
+      );
     this.repo = dependencies.repo ?? new BrowserOAuthCredentialRepo();
     this.runtime = dependencies.runtime ?? createDefaultRuntime();
   }
@@ -160,6 +172,7 @@ export class WebAuthService {
     const nonce = this.runtime.createNonce();
     const provider = options.provider ?? ZAI_PROVIDER_ID;
     const appReturnTo = options.appReturnTo ?? this.runtime.getCurrentHref();
+    const sourceUrl = parseOptionalUrl(appReturnTo);
     const returnToOptions = { currentOrigin: this.runtime.getCurrentOrigin() };
     const redirectUri = buildWebRemoteOAuthRedirectUri(
       options.redirectUri ?? this.config.redirectUri,
@@ -167,7 +180,17 @@ export class WebAuthService {
       returnToOptions,
     );
     const expectedSession = await this.repo.beginLoginAttempt(nonce);
-    this.repo.savePendingLogin({ nonce, provider, redirectUri, expectedSession });
+    const e2eeHash =
+      sourceUrl?.hash && parseWebRemoteControlE2eeQrFragment(sourceUrl.hash)
+        ? sourceUrl.hash.trim()
+        : "";
+    this.repo.savePendingLogin({
+      nonce,
+      provider,
+      redirectUri,
+      expectedSession,
+      ...(e2eeHash ? { hash: e2eeHash } : {}),
+    });
 
     const state = buildOAuthState({
       nonce,
@@ -228,7 +251,7 @@ export class WebAuthService {
     if (!pendingLogin) {
       throw new Error("OAuth CSRF 检测失败");
     }
-    const { provider, redirectUri, expectedSession } = pendingLogin;
+    const { provider, redirectUri, expectedSession, hash: pendingHash } = pendingLogin;
     // 起点快照来自发起时；迟到callback不能重新领取当前会话的写入资格。
     if (!this.repo.ownsLoginAttempt(pendingLogin.nonce, expectedSession))
       throw new Error("OAuth session was superseded");
@@ -257,12 +280,21 @@ export class WebAuthService {
       ))
     )
       throw new Error("OAuth session was superseded");
+    const resolvedAppReturnTo = resolveSafeAppReturnTo(statePayload.app_return_to, {
+      currentOrigin: this.runtime.getCurrentOrigin(),
+    });
+    const normalizedHash = pendingHash
+      ? pendingHash.startsWith("#")
+        ? pendingHash
+        : `#${pendingHash}`
+      : "";
 
     return {
       userInfo: exchange.userInfo,
-      appReturnTo: resolveSafeAppReturnTo(statePayload.app_return_to, {
-        currentOrigin: this.runtime.getCurrentOrigin(),
-      }),
+      appReturnTo:
+        resolvedAppReturnTo && normalizedHash
+          ? `${resolvedAppReturnTo}${normalizedHash}`
+          : resolvedAppReturnTo,
     };
   }
 
@@ -308,6 +340,6 @@ export class WebAuthService {
   }
 }
 
-export function createWebAuthService(): WebAuthService {
-  return new WebAuthService();
+export function createWebAuthService(dependencies?: WebAuthServiceDependencies): WebAuthService {
+  return new WebAuthService(dependencies);
 }
