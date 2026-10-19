@@ -2647,6 +2647,7 @@ export function createLocalServices(options: {
         parentTaskId: target.parentSessionId,
       });
     },
+    nativeProjectHostId: options?.projectStorageHostId ?? "local",
     prepareSessionCreation: async (target) => {
       const prepared = (await taskIndexRepo.getProjectRepository()).reserveCreatedTask({
         task: { ...target, taskId: target.sessionId },
@@ -2656,9 +2657,20 @@ export function createLocalServices(options: {
       });
       return { sessionId: prepared.taskId, additionalDirectories: prepared.additionalDirectories };
     },
-    resolveSessionDirectories: async (target) =>
+    resolveSessionDirectories: async (target) => {
+      const directories = await projectService.resolveSessionDirectories({
+        ...target,
+        taskId: target.sessionId,
+      });
+      // 原因：从单目录视图打开外部 Codex A+B 会话时，NULL 归属的 [] 不代表
+      // 用户要求缩权；省略原生 resume 覆盖才能恢复 Codex 自己持久化的 roots。
+      return usesDefaultCodexDesktopBridge && directories.projectId === null
+        ? undefined
+        : directories.additionalDirectories;
+    },
+    resolveSessionProjectId: async (target) =>
       (await projectService.resolveSessionDirectories({ ...target, taskId: target.sessionId }))
-        .additionalDirectories,
+        .projectId,
     safeDesktopFileRewindOwner: usesDefaultCodexDesktopBridge && !isDesktopAttachedRemote,
     ...(agentAccountProviderConfigSource
       ? { accountProviderConfigSource: agentAccountProviderConfigSource }
