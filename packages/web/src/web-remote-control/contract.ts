@@ -38,7 +38,7 @@ export type WebRemoteControlEntryView =
   | { kind: "failure"; failure: WebRemoteControlFailure };
 
 export interface WebRemoteControlEntryConnection {
-  params: WebRemoteControlV2QrParams & { deviceSid: string };
+  params: WebRemoteControlV2QrParams & { deviceSid: string; e2eeKey?: string };
   signal: AbortSignal;
   getToken(signal: AbortSignal): Promise<string>;
   onPaired(): void;

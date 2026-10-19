@@ -5,6 +5,7 @@ export type WebRemoteControlTerminalTransportState =
   | "connecting"
   | "authenticating"
   | "waiting"
+  | "securing"
   | "paired"
   | "reconnecting"
   | "suspended"
@@ -77,6 +78,8 @@ export type WebRemoteControlTerminalTransportDiagnosticInput = {
 export interface WebRemoteControlTerminalTransportOptions {
   relayWsUrl: string;
   deviceSid: string;
+  e2eeKey?: string;
+  e2eeHandshakeTimeoutMs?: number;
   getToken(signal: AbortSignal): Promise<string>;
   deviceMid?: string;
   appVersion?: string;
@@ -97,5 +100,6 @@ export interface WebRemoteControlTerminalTransportOptions {
   onError(error: Error): void;
   onDiagnostic?(diagnostic: WebRemoteControlTerminalTransportDiagnostic): void;
   onSendReady?(event: { kind: "same-socket" | "reconnected-socket" }): void;
+  onE2eeReset?(): void;
   reloadPage(): void;
 }

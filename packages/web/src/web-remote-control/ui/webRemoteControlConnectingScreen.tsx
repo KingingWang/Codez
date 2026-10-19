@@ -19,6 +19,7 @@ const copyByLocale = {
       connecting: "正在连接中转服务…",
       authenticating: "正在认证设备…",
       waiting: "等待桌面端确认配对…",
+      securing: "正在建立端到端加密…",
       paired: "已配对，正在加载工作区…",
       reconnecting: "连接中断，正在重连…",
       suspended: "页面在后台，等待恢复…",
@@ -40,6 +41,7 @@ const copyByLocale = {
       connecting: "Connecting relay service…",
       authenticating: "Authenticating device…",
       waiting: "Waiting for desktop pairing…",
+      securing: "Establishing end-to-end encryption…",
       paired: "Paired. Loading workspace…",
       reconnecting: "Connection interrupted, reconnecting…",
       suspended: "Page is in background, waiting to recover…",
@@ -56,6 +58,7 @@ const STEP_INDEX: Partial<Record<WebRemoteControlTerminalTransportState, number>
   connecting: 0,
   authenticating: 1,
   waiting: 2,
+  securing: 2,
   paired: 3,
 };
 
@@ -67,6 +70,7 @@ function resolveStage(
     case "connecting":
     case "authenticating":
     case "waiting":
+    case "securing":
     case "paired":
       return { label: copy.stages[state] };
     case "reconnecting":
