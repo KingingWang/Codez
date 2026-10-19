@@ -189,6 +189,17 @@ test("two connections publish the same verified release without exposing partial
   let releaseFetch!: () => void;
   const allowFetchFinish = new Promise<void>((resolve) => (releaseFetch = resolve));
   const firstController = new AbortController();
+  const secondController = new AbortController();
+  const secondWaiterRegistered = Promise.withResolvers<void>();
+  const addSecondListener = secondController.signal.addEventListener.bind(secondController.signal);
+  t.mock.method(
+    secondController.signal,
+    "addEventListener",
+    (...args: Parameters<AbortSignal["addEventListener"]>) => {
+      addSecondListener(...args);
+      if (args[0] === "abort") secondWaiterRegistered.resolve();
+    },
+  );
   let markFetchStarted!: () => void;
   const fetchStarted = new Promise<void>((resolve) => (markFetchStarted = resolve));
   const options = {
@@ -209,11 +220,15 @@ test("two connections publish the same verified release without exposing partial
     { ...options, signal: firstController.signal },
     loggers,
   );
-  const second = createCodexReleaseRemoteAssetSource(options, loggers);
+  const second = createCodexReleaseRemoteAssetSource(
+    { ...options, signal: secondController.signal },
+    loggers,
+  );
   const firstPromise = first.materialize(["codex-native"]);
   await fetchStarted;
   const secondPromise = second.materialize(["codex-native"]);
-  await new Promise<void>((resolve) => setTimeout(resolve, 10));
+  // 修复依据：CI 上 10ms 不足以完成第二条连接的异步文件校验；监听器注册才证明已加入共享等待。
+  await secondWaiterRegistered.promise;
   // 第一个连接取消时，第二个连接仍在等待，共享下载不能被中止，且全程只发起一次请求。
   firstController.abort();
   await assert.rejects(firstPromise, /abort/i);

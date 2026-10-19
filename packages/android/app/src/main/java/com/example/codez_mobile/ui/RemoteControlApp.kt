@@ -69,6 +69,8 @@ fun RemoteControlApp(
         }
     }
 
+    // 导航状态收敛为唯一 destination 后由 AnimatedContent 渲染；旧分支残片不能
+    // 留在函数闭括号之后，否则会被 Kotlin 当作顶层声明并导致状态引用全部失效。
     val destination: RemoteControlDestination = when {
         scannerOpen -> RemoteControlDestination.Scanner
         remoteUrl == null -> RemoteControlDestination.Home
@@ -159,49 +161,6 @@ fun RemoteControlApp(
                     )
                 }
             }
-        }
-    }
-}
-                        scannerOpen = false
-                        launcherError = null
-                    } else {
-                        launcherError = context.getString(R.string.remote_scan_invalid)
-                    }
-                    opened
-                },
-            )
-        } else if (remoteUrl == null) {
-            RemoteControlHomeScreen(
-                recentLinks = recentLinks,
-                errorMessage = launcherError,
-                onOpenUrl = { raw ->
-                    val opened = onOpenUrl(raw)
-                    if (opened) {
-                        launcherError = null
-                    }
-                    opened
-                },
-                onScanQrCode = {
-                    if (
-                        ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.CAMERA,
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        launcherError = null
-                        scannerOpen = true
-                    } else {
-                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                    }
-                },
-                onRemoveRecentLink = onRemoveRecentLink,
-                onClearRecentLinks = onClearRecentLinks,
-            )
-        } else {
-            RemoteControlWebViewScreen(
-                remoteUrl = remoteUrl,
-                onCloseRemote = onCloseRemote,
-            )
         }
     }
 }
