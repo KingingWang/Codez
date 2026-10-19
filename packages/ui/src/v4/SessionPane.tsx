@@ -5761,7 +5761,30 @@ export function SessionPane({
     />
   );
   const pendingGuideProjection = snapshot ? projectPendingGuideQueue(snapshot.queue) : null;
-  const conversationBottomDockContent = composerSuppressed ? null : shareActive && sessionId ? (
+  // Bugfix (#11)：顶部渲染 writer-conflict banner 时，右侧「重试连接」按钮会被右上角
+  // absolute top-0 z-20 的状态胶囊（Git 工具等）遮挡并拦截点击；同时 writer-conflict 只读
+  // 抑制了 composer，将提示放在底部输入区原位既避免与顶部状态胶囊冲突，也更贴合只读禁输语义。
+  const writerConflictBannerNode = writerConflictReadOnly ? (
+    <div
+      role="status"
+      data-testid="v4-writer-conflict-banner"
+      className="flex w-full shrink-0 flex-wrap items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-ui-base text-foreground backdrop-blur-md"
+    >
+      <span className="min-w-0 flex-1">
+        {intl.formatMessage({ id: "chat.writerConflict.banner" })}
+      </span>
+      <button
+        type="button"
+        className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-primary-foreground hover:bg-primary/80"
+        onClick={handleRetrySubscribe}
+      >
+        {intl.formatMessage({ id: "chat.writerConflict.retry" })}
+      </button>
+    </div>
+  ) : null;
+  const conversationBottomDockContent = readOnly ? null : writerConflictReadOnly ? (
+    writerConflictBannerNode
+  ) : shareActive && sessionId ? (
     shareInSelectionStage ? (
       <ConversationShareSelectionDock
         selectedCount={selectedShareRowIds.size}
@@ -6089,25 +6112,6 @@ export function SessionPane({
                   : undefined
               }
             />
-          ) : null}
-
-          {writerConflictReadOnly ? (
-            <div
-              role="status"
-              data-testid="v4-writer-conflict-banner"
-              className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-border bg-surface-hover px-3 py-2 text-ui-base text-foreground"
-            >
-              <span className="min-w-0 flex-1">
-                {intl.formatMessage({ id: "chat.writerConflict.banner" })}
-              </span>
-              <button
-                type="button"
-                className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-primary-foreground hover:bg-primary/80"
-                onClick={handleRetrySubscribe}
-              >
-                {intl.formatMessage({ id: "chat.writerConflict.retry" })}
-              </button>
-            </div>
           ) : null}
 
           {readOnly && controlLastError ? (

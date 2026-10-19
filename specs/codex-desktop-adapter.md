@@ -895,8 +895,10 @@ load and keeps the existing error surface.
   `switchModelConfig`, `queueEdit` and `sendQueuedNow` with
   `guard.codex.writerConflict`, and suppresses userInput edit/retry row actions.
 - The UI derives the mode from the snapshot field only: the timeline renders
-  normally with a top banner (zh/en), the composer, bottom dock, drop target,
-  Esc-stop and row edit/retry are disabled, and row fork actions stay enabled.
+  normally with a bottom-dock read-only banner (zh/en, with retry action) in place
+  of the composer so it does not collide with the top-right status capsule; the
+  composer, editable bottom-dock surfaces, drop target, Esc-stop and row
+  edit/retry are disabled, and row fork actions stay enabled.
   The existing subagent-observer `readOnly` pane prop is not reused because it
   also disables fork.
 - Recovery is explicit: conversation subscribe and resync invalidate a

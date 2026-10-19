@@ -2,6 +2,7 @@
 import { createElement, type ReactNode } from "react";
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
@@ -28,12 +29,62 @@ const timelineState = vi.hoisted(() => ({
   backgroundScrollLocked: false,
   selectionActionsEnabled: null as boolean | null,
   scrollToQueryActionRef: null as { current: unknown } | null,
+  onFork: undefined as unknown,
+  onRetry: undefined as unknown,
+  onEdit: undefined as unknown,
 }));
 
 // SSR 渲染不执行 effect，因此 zustand 的 getServerSnapshot（= 初始 state）看不到真实 store
 // 的写入。这里直接替换 store，让测试能声明式地摆出任意 share draft。
 const shareStoreState = vi.hoisted(() => ({
   draft: undefined as unknown,
+}));
+
+const leaseStoreMocks = vi.hoisted(() => ({
+  retry: vi.fn(async () => {}),
+  refreshPlans: vi.fn(async () => {}),
+  onOnlineModelTransition: vi.fn(() => () => {}),
+  release: vi.fn(),
+  lease: {
+    release: () => leaseStoreMocks.release(),
+    store: {
+      retry: () => leaseStoreMocks.retry(),
+      refreshPlans: () => leaseStoreMocks.refreshPlans(),
+      onOnlineModelTransition: (handler: unknown) =>
+        (leaseStoreMocks.onOnlineModelTransition as (h: unknown) => () => void)(handler),
+    },
+  },
+  layer: {
+    acquire: vi.fn(() => leaseStoreMocks.lease),
+  },
+}));
+
+const workflowRunsQueryMock = vi.hoisted(() =>
+  vi.fn(() => new Promise<{ runs: unknown[] }>(() => {})),
+);
+
+const servicesMock = vi.hoisted(() => ({
+  highspeedCardService: {
+    getSnapshot: vi.fn(() => new Promise(() => {})),
+    prepareTurn: vi.fn(async () => ({
+      kind: "fallback" as const,
+      reason: "draw-miss" as const,
+      nextDrawAt: null,
+    })),
+    healthy: vi.fn(),
+    share: vi.fn(),
+  },
+  codezSessionService: {
+    updateProviderRegistry: vi.fn(),
+  },
+  codezTaskService: {
+    restartWorkspaceProcess: vi.fn(),
+  },
+}));
+
+vi.mock("@/v4/BotGroupDeliveryAction.js", () => ({
+  BotGroupDeliveryProvider: ({ children }: { children: unknown }) => children,
+  ConnectedBotGroupDeliveryAction: () => null,
 }));
 
 vi.mock("@/store/conversationShareSelectionStore.js", async (importOriginal) => {
@@ -71,8 +122,9 @@ vi.mock("@/v4/useConversationProjection.js", () => ({
 vi.mock("@/v4/V4ConversationContext.js", () => ({
   useV4Conversation: () => ({
     attachmentPut: vi.fn(),
-    layer: { acquire: vi.fn() },
+    layer: leaseStoreMocks.layer,
     sendCommand: vi.fn(),
+    workflowRuns: workflowRunsQueryMock,
   }),
 }));
 
@@ -96,14 +148,7 @@ vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
 }));
 vi.mock("@/hooks/useServices.js", () => ({
   useOptionalServices: () => null,
-  useServices: () => ({
-    codezSessionService: {
-      updateProviderRegistry: vi.fn(),
-    },
-    codezTaskService: {
-      restartWorkspaceProcess: vi.fn(),
-    },
-  }),
+  useServices: () => servicesMock,
 }));
 
 vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
@@ -142,6 +187,9 @@ vi.mock("@/v4/ConversationTimeline.js", async () => {
       rowContext,
       selectionActions,
       scrollToQueryActionRef,
+      onFork,
+      onRetry,
+      onEdit,
     }: {
       apiRetry?: ConversationSnapshot["control"]["apiRetry"];
       backgroundScrollLocked?: boolean;
@@ -149,12 +197,18 @@ vi.mock("@/v4/ConversationTimeline.js", async () => {
       rowContext?: ConversationRowRenderContext;
       selectionActions?: { enabled: boolean };
       scrollToQueryActionRef?: { current: unknown };
+      onFork?: unknown;
+      onRetry?: unknown;
+      onEdit?: unknown;
     }) => {
       timelineState.apiRetry = apiRetry ?? null;
       timelineState.rowContext = rowContext ?? null;
       timelineState.backgroundScrollLocked = backgroundScrollLocked ?? false;
       timelineState.selectionActionsEnabled = selectionActions?.enabled ?? null;
       timelineState.scrollToQueryActionRef = scrollToQueryActionRef ?? null;
+      timelineState.onFork = onFork;
+      timelineState.onRetry = onRetry;
+      timelineState.onEdit = onEdit;
       return React.createElement("div", { "data-testid": "mock-timeline" }, bottomDock);
     },
   };
@@ -252,6 +306,7 @@ function renderReadOnlyPane({
   apiRetry = null,
   lastError = null,
   readOnly = true,
+  writerConflict,
   workflowRuns,
   sharedContextImport,
 }: {
@@ -259,11 +314,13 @@ function renderReadOnlyPane({
   apiRetry?: ConversationSnapshot["control"]["apiRetry"];
   lastError?: ConversationSnapshot["control"]["lastError"];
   readOnly?: boolean;
+  writerConflict?: ConversationSnapshot["writerConflict"];
   workflowRuns?: ConversationSnapshot["workflowRuns"];
   sharedContextImport?: ConversationSnapshot["sharedContextImport"];
 } = {}): string {
   const snapshot = makeSnapshot(lastError);
   snapshot.control.apiRetry = apiRetry;
+  if (writerConflict) snapshot.writerConflict = writerConflict;
   if (workflowRuns) snapshot.workflowRuns = workflowRuns;
   snapshot.sharedContextImport = sharedContextImport;
   projectionState.current = {
@@ -293,8 +350,13 @@ function renderReadOnlyPane({
 
 describe("SessionPane read-only mode", () => {
   afterEach(() => {
+    cleanup();
     timelineState.apiRetry = null;
     timelineState.rowContext = null;
+    timelineState.onFork = undefined;
+    timelineState.onRetry = undefined;
+    timelineState.onEdit = undefined;
+    leaseStoreMocks.retry.mockClear();
   });
 
   it("renders subagent child panes without composer or queue input affordances", () => {
@@ -390,6 +452,62 @@ describe("SessionPane read-only mode", () => {
 
     expect(html).not.toContain('data-testid="conversation-share-import-notice"');
     expect(html).not.toContain("shared_context");
+  });
+
+  it("renders writer-conflict read-only banner inside timeline bottomDock instead of top area", () => {
+    const html = renderReadOnlyPane({
+      readOnly: false,
+      writerConflict: { readOnly: true },
+    });
+
+    const statusIndex = html.indexOf('data-testid="mock-status"');
+    const timelineIndex = html.indexOf('data-testid="mock-timeline"');
+    const dockIndex = html.indexOf('data-testid="conversation-bottom-dock-transition"');
+    const bannerIndex = html.indexOf('data-testid="v4-writer-conflict-banner"');
+
+    expect(statusIndex).toBeGreaterThanOrEqual(0);
+    expect(timelineIndex).toBeGreaterThan(statusIndex);
+    expect(dockIndex).toBeGreaterThan(timelineIndex);
+    expect(bannerIndex).toBeGreaterThan(dockIndex);
+    expect(html).toContain("此会话正被另一个窗口或进程占用，当前为只读。可 Fork 后继续。");
+    expect(html).toContain("重试连接");
+    expect(html).not.toContain('data-testid="mock-composer"');
+    expect(html).not.toContain('data-testid="mock-queue"');
+    expect(html).not.toContain('data-testid="mock-interactions"');
+    expect(timelineState.onFork).toEqual(expect.any(Function));
+    expect(timelineState.onRetry).toBeUndefined();
+    expect(timelineState.onEdit).toBeUndefined();
+  });
+
+  it("retries the session subscription when clicking retry on the writer-conflict bottom-dock banner", () => {
+    const snapshot = makeSnapshot(null);
+    snapshot.writerConflict = { readOnly: true };
+    projectionState.current = {
+      lastError: null,
+      loadingOlder: false,
+      optimisticCommands: [],
+      snapshot,
+      status: "live",
+      subscriptionId: "sub-1",
+    };
+
+    render(
+      createElement(
+        CodezIntlProvider,
+        { initialLocale: "zh-CN" },
+        createElement(SessionPane, {
+          paneId: "pane-1",
+          readOnly: false,
+          sessionId: "child-session",
+          workspacePath: "/workspace",
+        }),
+      ),
+    );
+
+    const banner = screen.getByTestId("v4-writer-conflict-banner");
+    expect(banner.closest('[data-testid="mock-timeline"]')).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "重试连接" }));
+    expect(leaseStoreMocks.retry).toHaveBeenCalledTimes(1);
   });
 });
 
