@@ -11,6 +11,7 @@ import {
 } from "@codez/shared";
 
 export interface WindowRemoteAssetDirs {
+  packagedRemoteAssetsDir?: string;
   mockCdnDir?: string;
   remoteCdnBaseUrl?: string;
   remoteCdnBaseUrls?: string[];

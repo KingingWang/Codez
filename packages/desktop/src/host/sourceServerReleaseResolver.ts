@@ -19,6 +19,10 @@ import {
   buildReleaseBaseCandidates,
 } from "@codez/server/remote/remoteAssetCdn.js";
 import {
+  buildCodexGitHubReleaseDownloadRoot,
+  isCodexReleaseTag,
+} from "@codez/server/remote/codexReleaseRemoteAssets.js";
+import {
   resolveRemoteAssetFetch,
   type RemoteAssetNetworkPort,
 } from "@codez/server/remote/remoteAssetNetwork.js";
@@ -121,9 +125,13 @@ async function resolveRemoteDescriptor(
   remoteAssetNetwork?: RemoteAssetNetworkPort,
   signal?: AbortSignal,
 ): Promise<ResolvedDescriptor> {
-  const releaseBases = buildReleaseBaseCandidates(
+  const configuredBases =
     remoteAssets.remoteCdnBaseUrls ??
-      (remoteAssets.remoteCdnBaseUrl ? [remoteAssets.remoteCdnBaseUrl] : []),
+    (remoteAssets.remoteCdnBaseUrl ? [remoteAssets.remoteCdnBaseUrl] : []);
+  const releaseBases = buildReleaseBaseCandidates(
+    configuredBases.length > 0
+      ? configuredBases
+      : await resolveCodexPackagedReleaseBases(remoteAssets),
     CODEZ_VERSION,
   );
   const descriptorUrls = buildReleaseAssetUrlCandidates(releaseBases, [
@@ -134,6 +142,7 @@ async function resolveRemoteDescriptor(
     : null;
   let lastError: unknown;
   const fetchImpl = resolveRemoteAssetFetch(remoteAssetNetwork);
+  const attempts: string[] = [];
   for (const url of descriptorUrls) {
     try {
       const response = await fetchImpl(url, { signal });
@@ -146,6 +155,7 @@ async function resolveRemoteDescriptor(
       // 取消不是候选地址失败：不再尝试下一个地址，也不回退到缓存的 descriptor。
       signal?.throwIfAborted();
       lastError = error;
+      attempts.push(`${url} → ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   if (cachedDescriptorPath && (await pathExists(cachedDescriptorPath))) {
@@ -154,7 +164,37 @@ async function resolveRemoteDescriptor(
       releaseBases,
     };
   }
-  throw new Error("Unable to resolve Source Server release descriptor", { cause: lastError });
+  // 失败必须带上实际尝试的 URL 列表；此前 codex flavor 因候选为空且不记录细节，
+  // 日志里只剩这一句，无法区分"没发请求"和"请求被拒"。
+  const detail =
+    attempts.length > 0
+      ? `attempts: ${attempts.join("; ")}`
+      : "no release base candidates (neither remoteCdnBaseUrls nor a valid packaged Codex release index is available)";
+  throw new Error(`Unable to resolve Source Server release descriptor (${detail})`, {
+    cause: lastError,
+  });
+}
+
+// Bug 原因：codex flavor 的 resolveRemoteAssetDirs 只返回 packagedRemoteAssetsDir
+// 与 remoteCacheDir，不带 remoteCdnBaseUrls；resolver 因此得到空候选列表，不发起
+// 任何请求就抛 "Unable to resolve Source Server release descriptor"。codex 构建的
+// Source Server 资产与安装包内 codex-remote/index.json 的 releaseTag 发布在同一个
+// GitHub Release，所以从 build-pinned index 推导下载根即可保证版本一致。
+async function resolveCodexPackagedReleaseBases(
+  remoteAssets: WindowRemoteAssetDirs,
+): Promise<string[]> {
+  const packagedDir = remoteAssets.packagedRemoteAssetsDir?.trim();
+  if (!packagedDir) return [];
+  try {
+    const index: unknown = JSON.parse(
+      await readFile(join(packagedDir, "index.json"), "utf8"),
+    );
+    const releaseTag = (index as { releaseTag?: unknown } | null)?.releaseTag;
+    if (!isCodexReleaseTag(releaseTag)) return [];
+    return [buildCodexGitHubReleaseDownloadRoot(releaseTag)];
+  } catch {
+    return [];
+  }
 }
 
 /** 本机下载进度：消息格式与上传进度一致，最多每 500 毫秒写一次，下载结束补 100%。 */

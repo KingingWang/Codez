@@ -71,6 +71,33 @@ test("workflow gates six native targets, four bundled remote targets and isolate
         step.uses?.startsWith("actions/download-artifact") && step.with?.name === "codez-manifest",
     ),
   );
+  assert.ok(
+    workflow.jobs["remote-assets"].steps.some((step) => step.run === "pnpm prepare:remote-assets"),
+  );
+  assert.ok(
+    workflow.jobs["remote-assets"].steps.some(
+      (step) =>
+        step.uses?.startsWith("actions/upload-artifact") &&
+        step.with?.name === "source-server-release",
+    ),
+  );
+  const sourceServerRoot = build.steps.findIndex(
+    (step) => step.name === "Resolve Source Server release download root",
+  );
+  assert.ok(sourceServerRoot >= 0);
+  assert.match(build.steps[sourceServerRoot].run, /GITHUB_SHA::12/);
+  assert.doesNotMatch(build.steps[sourceServerRoot].run, /github\.sha/u);
+  assert.ok(
+    build.steps.findIndex((step) => step.run === "pnpm --filter @codez/desktop build") >
+      sourceServerRoot,
+  );
+  assert.ok(
+    release.steps.some(
+      (step) =>
+        step.uses?.startsWith("actions/download-artifact") &&
+        step.with?.name === "source-server-release",
+    ),
+  );
   const nativeSmoke = build.steps.findIndex(
     (step) => step.run === "node scripts/codex-runtime-smoke.mjs",
   );
