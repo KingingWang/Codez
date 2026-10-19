@@ -3195,6 +3195,12 @@ Todo139：SHARE30/31/32 的共享初始化 Hook／草稿单测与 `packages/ui/t
 
 权威语义：`docs/superpowers/specs/2026-09-09-virtual-project-design.md`；覆盖剪枝及完整 VP01–VP10 在实施记录。下列候选未转正，不计 formal gate。
 
+| ID | 状态 | Setup → action → assertion | 非 UI 证据与 GUI 缺口 |
+| --- | --- | --- | --- |
+| VP-CODEX-01/02 | planned | 先有 CLI A 历史，后建 A；A+B 新会话 `cwd=A`，另有外部 A/B 会话 → A 视图收录全部 A，A+B 只收自己的 ID；全局去重，归属不改 | Host/project-sidebar 单测 + native `thread/list` 与创建来源证据；manual-review/pending virtual-project GUI 待补 |
+| VP-CODEX-03/04 | planned | A+B 与 A+C 共用 A → 新建、移动、改 roots、冷启动 → 不串项目；热实例不刷新，冷恢复更新；A 配置只取 A | Host 归属/原生 start-resume 参数及受限目录访问单测 + Desktop 手工 GUI 待补；真实手机待补 |
+| VP-CODEX-05 | planned | 原生 Codex A+B 历史，无 Host 归属 → 建 A 并打开 → 保留原 B root | Codex thread/read + resume 请求省略 roots、Host NULL 不变；原生 E2E 待补 |
+
 | Case | 状态                                            | Setup → Action → Assertion                                                           | 入口                                                                 |
 | ---- | ----------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
 | VP01 | partial：首窗两库 ledger E2E 通过（仍 pending） | 首个窗口可用 → 只读隔离 HOME 两库 ledger → app v3 与 CLI 0020 均已完成；无须创建会话 | `manual-review/pending/conversation-session-virtual-project.test.ts` |

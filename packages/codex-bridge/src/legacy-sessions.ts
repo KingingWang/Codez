@@ -11,6 +11,9 @@ import {
   readControlModelSettings,
   type ControlModelThreadOverride,
 } from "./control-presentation.js";
+import { nativeProjectSource } from "./project-origin.js";
+import { isAbsolute } from "node:path";
+import { z } from "zod";
 
 /**
  * 线程已生效的模型选择 → 控制面视图 override。线程还没有模型事实（新线程水合前）
@@ -65,18 +68,30 @@ export async function handleLegacySession(
   let sessionId: string;
   if (method === "session/create") {
     const parsed = shared.codezSessionCreateParamsSchema.parse(p);
+    if (parsed.additionalDirectories?.some((path) => !isAbsolute(path)) || !isAbsolute(store.cwd))
+      throw new Error("Native workspace roots must be absolute");
     const thread = decorateNativeThread(
       await rpc.request("thread/start", {
         cwd: store.cwd,
         historyMode: "paginated",
         model: parsed.model?.modelId,
         modelProvider: parsed.model?.providerId,
+        ...(parsed.additionalDirectories
+          ? { runtimeWorkspaceRoots: [...new Set([store.cwd, ...parsed.additionalDirectories])] }
+          : {}),
+        ...(parsed.codexProjectId !== undefined
+          ? { threadSource: nativeProjectSource(parsed.codexProjectId) }
+          : {}),
       }),
     );
     store.markStarted(thread);
     sessionId = string(thread.id);
   } else sessionId = string(p.sessionId, "sessionId");
-  const state = await store.ensure(sessionId);
+  const additionalDirectories =
+    method === "session/resume" || method === "session/read"
+      ? z.array(z.string().min(1)).max(256).optional().parse(p.additionalDirectories)
+      : undefined;
+  const state = await store.ensure(sessionId, additionalDirectories);
   const native = { threadId: sessionId };
   const controlContext = { rpc, cwd: store.cwd, auxiliary: { supports: () => false } };
   switch (method) {

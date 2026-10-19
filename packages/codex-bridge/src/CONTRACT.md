@@ -39,6 +39,17 @@ key, because shell task-index persistence consumes the identity field. Discovery
 does not resume threads; explicit conversation opening retains the native resume
 path. Native history is never copied, moved or deleted to repair shell visibility.
 
+For local multi-folder Codez projects, Host-validated creation supplies the
+primary cwd and additional directories to native `thread/start.runtimeWorkspaceRoots`.
+A namespaced native `threadSource` carries only the *initial* Host project-origin
+hint; it is not Codex's own `projectId`. Native summaries pass that hint to Host
+for first insertion, never subsequent reassignment. An assigned task's cold
+resume supplies current `[thread.cwd, ...additionalDirectories]`, while a
+task with no explicit Host project omits the override to preserve native
+persisted roots. A loaded runtime does not refresh on re-subscribe. Single-root
+directory membership is a read-only Host task-list projection, not a Codex
+thread mutation. See specs/codex-desktop-adapter.md.
+
 Native workspace membership is decided by physical directory, never by path
 spelling. Codex can return two different cwd representations for one thread — the
 raw rollout value from `thread/list` and the canonicalized store value from

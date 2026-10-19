@@ -10,6 +10,7 @@ import { createCodexProcess } from "../src/codex-process.js";
 import type { CodexProcess } from "../src/contract.js";
 import { sameExecutionPath } from "../src/execution-path.js";
 import { ThreadStateStore } from "../src/thread-state.js";
+import { projectSessionSummary } from "../src/projection.js";
 
 interface NativeThread {
   id: string;
@@ -100,10 +101,7 @@ async function execPinnedCodex(options: {
     child.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk;
     });
-    [exitCode, exitSignal] = (await once(child, "close")) as [
-      number | null,
-      NodeJS.Signals | null,
-    ];
+    [exitCode, exitSignal] = (await once(child, "close")) as [number | null, NodeJS.Signals | null];
   } finally {
     options.t.signal.removeEventListener("abort", abortTest);
   }
@@ -171,10 +169,12 @@ test(
     // 让每个平台都复现“Host 传别名、原生落盘物理路径”的真实生产场景。
     const cwd = join(temporary, "workspace-alias");
     const foreignCwd = join(temporary, "foreign-workspace");
+    const changedRoot = join(temporary, "changed-root");
     const codexHome = join(temporary, "codex-home");
     let rpc: CodexProcess | undefined;
     await mkdir(physicalCwd);
     await mkdir(foreignCwd);
+    await mkdir(changedRoot);
     await mkdir(codexHome);
     await symlink(physicalCwd, cwd, process.platform === "win32" ? "junction" : "dir");
     t.after(async () => {
@@ -259,12 +259,18 @@ test(
     await rpc.initialize();
     const store = new ThreadStateStore(rpc, cwd);
 
-    const desktopStarted = await rpc.request<{ thread: { id: string } }>("thread/start", {
+    const desktopStarted = await rpc.request<{
+      thread: { id: string };
+      runtimeWorkspaceRoots: string[];
+    }>("thread/start", {
       cwd,
       historyMode: "paginated",
       model: "cross-provider-model",
       modelProvider: "cross-provider",
+      runtimeWorkspaceRoots: [cwd, foreignCwd],
+      threadSource: "codez_project:fixture-ab",
     });
+    assert.deepEqual(desktopStarted.runtimeWorkspaceRoots, [cwd, foreignCwd]);
     const desktopTurn = await startTurnAndWaitForCompletion(rpc, desktopStarted.thread.id, [
       { text: "Reply with desktop." },
     ]);
@@ -282,6 +288,7 @@ test(
     assert.equal(external.modelProvider, "fixture");
     assert.ok(desktop);
     assert.equal(desktop.modelProvider, "cross-provider");
+    assert.equal(projectSessionSummary(desktop, cwd).originProjectId, "fixture-ab");
 
     const resumed = await store.ensure(externalThreadId);
     // 原生回传物理路径；归属按物理目录判断，不要求与别名拼写字符串相等。
@@ -295,5 +302,25 @@ test(
     assert.equal(modelRequests, 4, "external, foreign, desktop, and resumed turns");
     const reloaded = await store.reloadAfterHistoryChange(externalThreadId);
     assert.equal((reloaded.thread.turns as unknown[]).length, 2);
+
+    // 完整关闭 app-server 再以当前项目 A+C 恢复；原生返回当前 roots，而 cwd 仍是 A。
+    await rpc.close();
+    rpc = createCodexProcess({
+      executable: process.env.CODEX_AUXILIARY_TEST_BINARY!,
+      cwd,
+      env: childEnv(codexHome),
+      requestTimeoutMs: 20_000,
+    });
+    await rpc.initialize();
+    const cold = await rpc.request<{
+      thread: { id: string; cwd: string };
+      runtimeWorkspaceRoots: string[];
+    }>("thread/resume", {
+      threadId: desktopStarted.thread.id,
+      runtimeWorkspaceRoots: [cwd, changedRoot],
+    });
+    assert.equal(cold.thread.id, desktopStarted.thread.id);
+    assert.equal(await sameExecutionPath(cold.thread.cwd, physicalCwd), true);
+    assert.deepEqual(cold.runtimeWorkspaceRoots, [cwd, changedRoot]);
   },
 );

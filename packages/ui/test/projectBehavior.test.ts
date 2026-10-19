@@ -197,15 +197,18 @@ it("SBV05: timeline rendering preserves pure ordering and 20/+20 pagination afte
 });
 
 it("aggregates unread including pinned members but never archived or another Host", () => {
-  const tree = { projects: [project], tasks: [task("pin", { pinned: true, unreadAt: 5 })] };
+  const tree = {
+    projects: [project],
+    tasks: [task("pin", { workspacePath: "/one", pinned: true, unreadAt: 5 })],
+  };
   expect(projectHasUnread(tree, project)).toBe(true);
   expect(
     projectHasUnread(
       {
         ...tree,
         tasks: [
-          task("archived", { archived: true, unreadAt: 5 }),
-          task("remote", { hostId: "remote:server:s", unreadAt: 5 }),
+          task("archived", { workspacePath: "/one", archived: true, unreadAt: 5 }),
+          task("remote", { workspacePath: "/one", hostId: "remote:server:s", unreadAt: 5 }),
         ],
       },
       project,

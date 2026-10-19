@@ -753,7 +753,10 @@ export class TaskIndexRepo {
     return row ?? null;
   }
 
-  private writeRecord(record: TaskIndexWriteRecord): CodezTaskMeta {
+  private writeRecord(
+    record: TaskIndexWriteRecord,
+    originProjectId?: string | null,
+  ): CodezTaskMeta {
     const database = this.getDatabase();
     const ownTransaction = !database.isTransaction;
     if (ownTransaction) database.exec("BEGIN IMMEDIATE");
@@ -867,7 +870,7 @@ export class TaskIndexRepo {
           searchable_text: searchableText,
           meta_json: serializeMetaJson(record.meta),
         });
-      projectStorage.admitTaskIdentity(database, record.meta, this.storageHostId);
+      projectStorage.admitTaskIdentity(database, record.meta, this.storageHostId, originProjectId);
       if (record.titleOverridden)
         database
           .prepare(
@@ -955,6 +958,7 @@ export class TaskIndexRepo {
   /** 仅 syncer 调用：CLI 事实是唯一来源，组织态写者不得合成这些值。 */
   async applyCliFacts(params: {
     meta: CodezTaskMeta;
+    originProjectId?: string | null;
     titleSource?: string;
     lastOutcome?: "completed" | "interrupted" | "error";
     deleted?: boolean;
@@ -967,16 +971,19 @@ export class TaskIndexRepo {
         const existing = this.getTaskRow(params.meta);
         // 预留行尚无 CLI 事实。首条事实补齐 provider/展示基线，保留预留后发生的组织操作。
         if (!existing || (existing.cli_created_at == null && existing.created_at === 0))
-          this.writeRecord({
-            meta: {
-              ...params.meta,
-              ...(existing?.title_overridden === 1 ? { title: existing.title } : {}),
+          this.writeRecord(
+            {
+              meta: {
+                ...params.meta,
+                ...(existing?.title_overridden === 1 ? { title: existing.title } : {}),
+              },
+              pinned: existing?.pinned === 1,
+              archived: existing?.archived === 1,
+              deleted: existing?.deleted === 1,
+              titleOverridden: existing?.title_overridden === 1,
             },
-            pinned: existing?.pinned === 1,
-            archived: existing?.archived === 1,
-            deleted: existing?.deleted === 1,
-            titleOverridden: existing?.title_overridden === 1,
-          });
+            params.originProjectId,
+          );
         const source = params.titleSource ?? "default";
         db.prepare(`UPDATE tasks SET
           cli_title=CASE WHEN cli_title_source='custom' AND ?<>'custom' THEN cli_title ELSE ? END,

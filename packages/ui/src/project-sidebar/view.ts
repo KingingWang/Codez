@@ -81,18 +81,40 @@ export function compareProjectTaskRows(
     )
   );
 }
-/** 只从 Host 已提交的行派生显示；相同 cwd 不代表相同项目。 */
+
+/** 单目录本地项目是目录视图；多目录及远端项目仍只认 Host 的明确归属。 */
+export function taskVisibleInProject(
+  task: ProjectTask,
+  project: Pick<VirtualProject, "id" | "hostId" | "roots">,
+): boolean {
+  if (task.hostId !== project.hostId) return false;
+  if (project.hostId === "local" && project.roots.length === 1)
+    return task.workspacePath === project.roots[0]!.rootPath;
+  return task.projectId === project.id;
+}
+
+/** 只从 Host 已提交的行和项目 roots 派生显示，不写回单值 project_id。 */
 export function selectProjectRows(
   tree: ProjectTree,
   selection: ProjectRowSelection,
 ): ProjectTask[] {
+  const project =
+    selection.kind === "project" && selection.projectId !== null
+      ? tree.projects.find(
+          (candidate) =>
+            candidate.id === selection.projectId &&
+            (!selection.hostId || candidate.hostId === selection.hostId),
+        )
+      : undefined;
   return tree.tasks
     .filter((task) => {
       if (selection.kind === "pinned") return task.pinned && !task.archived;
       if (selection.kind === "timeline") return !task.archived;
       return (
-        task.projectId === selection.projectId &&
-        (!selection.hostId || task.hostId === selection.hostId) &&
+        (project
+          ? taskVisibleInProject(task, project)
+          : task.projectId === selection.projectId &&
+            (!selection.hostId || task.hostId === selection.hostId)) &&
         !task.archived &&
         !task.pinned
       );
@@ -102,15 +124,12 @@ export function selectProjectRows(
 
 export function projectHasUnread(
   tree: ProjectTree,
-  project: Pick<VirtualProject, "id" | "hostId">,
+  project: Pick<VirtualProject, "id" | "hostId" | "roots">,
 ): boolean {
-  // 置顶只改变显示位置，不改变项目归属；不能只从截断/排除置顶的可见行汇总。
+  // 原因：单目录视图可展示 NULL/其他项目的任务；蓝点必须与项目实际可见行一致，
+  // 但置顶只改变显示位置，不能遗漏被移到全局置顶区的未读任务。
   return tree.tasks.some(
-    (task) =>
-      task.projectId === project.id &&
-      task.hostId === project.hostId &&
-      !task.archived &&
-      Boolean(task.unreadAt),
+    (task) => taskVisibleInProject(task, project) && !task.archived && Boolean(task.unreadAt),
   );
 }
 
@@ -128,6 +147,13 @@ export function countProjectTreeUnreadTasks(tree: ProjectTree): number {
       .filter((project) => !project.deleted)
       .map((project) => `${project.hostId}::${project.id}`),
   );
+  const localSingleRoots = new Set(
+    tree.projects
+      .filter(
+        (project) => !project.deleted && project.hostId === "local" && project.roots.length === 1,
+      )
+      .map((project) => project.roots[0]!.rootPath),
+  );
   const seen = new Set<string>();
   for (const task of tree.tasks) {
     if (task.archived || !task.unreadAt) {
@@ -139,7 +165,8 @@ export function countProjectTreeUnreadTasks(tree: ProjectTree): number {
     const visible =
       task.pinned ||
       (task.projectId == null && task.hostId === "local") ||
-      renderedProjectKeys.has(`${task.hostId}::${task.projectId}`);
+      renderedProjectKeys.has(`${task.hostId}::${task.projectId}`) ||
+      (task.hostId === "local" && localSingleRoots.has(task.workspacePath));
     if (!visible) {
       continue;
     }
