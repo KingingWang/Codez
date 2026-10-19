@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   isUtcPlusEightTimeZone,
   resolveRemoteCdnBaseUrls,
@@ -66,9 +66,7 @@ describe("remoteCdn", () => {
         timeZone: "Asia/Shanghai",
         version: "0.0.0-test",
       }),
-    ).toEqual([
-      "http://intranet.example.invalid:12345/ssh-remote-assets/0.0.0-test",
-    ]);
+    ).toEqual(["http://intranet.example.invalid:12345/ssh-remote-assets/0.0.0-test"]);
   });
 
   it("显式覆盖 CDN 基址时不再按产品环境选择默认值", () => {
@@ -79,5 +77,15 @@ describe("remoteCdn", () => {
         version: "0.0.0-test",
       }),
     ).toEqual(["https://cdn.example.com/releases"]);
+  });
+
+  it("构建期注入的 fork GitHub Release 根不应重复追加版本", () => {
+    vi.stubGlobal("__CODEZ_REMOTE_CDN_RELEASE_ROOTS__", [
+      "https://github.com/KingingWang/Codez/releases/download/codez-build-1-0123456789ab",
+    ]);
+    expect(resolveRemoteCdnBaseUrls({ env: "production", version: "3.16.1" })).toEqual([
+      "https://github.com/KingingWang/Codez/releases/download/codez-build-1-0123456789ab",
+    ]);
+    vi.unstubAllGlobals();
   });
 });

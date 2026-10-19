@@ -21,9 +21,27 @@ export function buildReleaseBaseCandidates(remoteCdnBaseUrls: string[], version:
     if (normalizedBase.endsWith(`/${version}`)) {
       return [normalizedBase];
     }
+    // Fork 构建注入的是 GitHub Release 的精确下载根。descriptor 和 archive 都在
+    // tag 根下；继续先拼版本只会制造一次必然 404 的候选，延迟真实资产解析。
+    if (isForkGitHubReleaseDownloadRoot(normalizedBase)) {
+      return [normalizedBase];
+    }
     return [`${normalizedBase}/${version}`, normalizedBase];
   });
   return Array.from(new Set(candidates));
+}
+
+function isForkGitHubReleaseDownloadRoot(baseUrl: string): boolean {
+  try {
+    const url = new URL(baseUrl);
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "github.com" &&
+      url.pathname.startsWith("/KingingWang/Codez/releases/download/")
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function buildReleaseAssetUrlCandidates(
