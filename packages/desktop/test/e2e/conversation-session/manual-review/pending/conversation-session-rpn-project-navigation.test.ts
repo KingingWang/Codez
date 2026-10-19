@@ -1,17 +1,17 @@
 import { DatabaseSync } from "node:sqlite";
-import { createRemoteProjectService } from "@zcode/services/node";
+import { createRemoteProjectService } from "@codez/services/node";
 import { requestRemoteProjectConnection } from "#e2e/helpers/remote-project-actions";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { appSettingsSchema } from "@zcode/shared";
+import { appSettingsSchema } from "@codez/shared";
 import {
   TID_PROJECT_SECTION,
   TID_CONVERSATION_SECTION,
   TID_SSH_DIALOG,
   TID_SSH_PASSWORD_INPUT,
   TID_SSH_ERROR,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   getE2EAppDataPaths,
@@ -27,7 +27,7 @@ const CASE_MARKER = "E2E_RPN_PROJECT_NAVIGATION";
 const SOURCE_A = "25db8db2-d27b-40de-a23e-697b3c127234";
 const SOURCE_B = "f6a0d063-3c52-4ce2-abf1-cb456d87f542";
 const PROJECT_PATH = "/srv/project";
-const CHAT_PATH = "/home/e2e/.zcode/workspace/default";
+const CHAT_PATH = "/home/e2e/.codez/workspace/default";
 const IDENTITY_A = `remote:server:${SOURCE_A}:${PROJECT_PATH}`;
 const IDENTITY_B = `remote:server:${SOURCE_B}:${PROJECT_PATH}`;
 const CHAT_IDENTITY = `remote:server:${SOURCE_A}:${CHAT_PATH}`;
@@ -81,7 +81,7 @@ async function completeInitialOnboarding() {
 describe(`${CASE_MARKER}: 项目平铺与远程无项目入口停用`, () => {
   afterEach(async () => {
     const artifactDir = resolve(
-      process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/rpn-project-navigation",
+      process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/rpn-project-navigation",
     );
     await mkdir(artifactDir, { recursive: true });
     await browser.saveScreenshot(resolve(artifactDir, "rpn-final.png"));
@@ -243,7 +243,7 @@ describe(`${CASE_MARKER}: 项目平铺与远程无项目入口停用`, () => {
       (await readSettings()).remoteConversationWorkspaceBySourceServerId?.[SOURCE_A]?.workspacePath,
     ).toBe(CHAT_PATH);
     const artifactDir = resolve(
-      process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/rpn-project-navigation",
+      process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/rpn-project-navigation",
     );
     await mkdir(artifactDir, { recursive: true });
     await browser.saveScreenshot(resolve(artifactDir, "rpn-project-sidebar.png"));

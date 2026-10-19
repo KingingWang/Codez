@@ -3,13 +3,13 @@ import { createRoot } from "react-dom/client";
 import { act, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { GlobalDatabaseStartupLoading } from "@/root/GlobalDatabaseStartupLoading.js";
 
 it("explains FULL, provides manual recovery, and never claims all changes rolled back", () => {
   const html = renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(GlobalDatabaseStartupLoading, {
         state: {
@@ -38,12 +38,12 @@ it("explains FULL, provides manual recovery, and never claims all changes rolled
 });
 
 function renderStartup(
-  state: import("@zcode/shared").DatabaseStartupState | null,
+  state: import("@codez/shared").DatabaseStartupState | null,
   locale: "zh-CN" | "en-US" = "zh-CN",
 ) {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(GlobalDatabaseStartupLoading, {
         state,
@@ -54,7 +54,7 @@ function renderStartup(
     ),
   );
 }
-const baseState: import("@zcode/shared").DatabaseStartupState = {
+const baseState: import("@codez/shared").DatabaseStartupState = {
   schemaVersion: 1,
   startupId: "silent",
   attemptId: "silent",
@@ -140,11 +140,11 @@ it("SILENTDB-01: silent UI mounts no timer and migration-to-failure clears the p
   const interval = vi.spyOn(globalThis, "setInterval");
   const container = document.createElement("div");
   const root = createRoot(container);
-  const show = async (state: import("@zcode/shared").DatabaseStartupState) => {
+  const show = async (state: import("@codez/shared").DatabaseStartupState) => {
     await act(async () =>
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(GlobalDatabaseStartupLoading, {
             state,

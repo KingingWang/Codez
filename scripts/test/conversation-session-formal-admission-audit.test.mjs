@@ -105,7 +105,7 @@ test("projects pending fixture metadata rejection into audit errors", async () =
 });
 
 test("actual audit CLI reports overridden formal rejection in JSON and text", async () => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-formal-cli-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-formal-cli-"));
   const specPath = join(
     root,
     "packages/desktop/test/e2e/conversation-session/cli-rejected.test.ts",
@@ -114,7 +114,7 @@ test("actual audit CLI reports overridden formal rejection in JSON and text", as
   await writeFile(specPath, "it('has no fixture contract', async () => {});\n", "utf8");
   const env = {
     ...process.env,
-    ZCODE_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT: root,
+    CODEZ_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT: root,
   };
 
   try {
@@ -135,18 +135,18 @@ test("actual audit CLI reports overridden formal rejection in JSON and text", as
 });
 
 test("ordinary audit CLI rejects the formal root override as test-only", async () => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-formal-cli-untrusted-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-formal-cli-untrusted-"));
   const env = {
     ...process.env,
     NODE_ENV: "test",
-    ZCODE_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT: root,
+    CODEZ_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT: root,
   };
   delete env.NODE_TEST_CONTEXT;
 
   try {
     const run = await runAudit(["--check"], env);
     assert.notEqual(run.exitCode, 0);
-    assert.match(run.stderr, /ZCODE_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT is test-only/);
+    assert.match(run.stderr, /CODEZ_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT is test-only/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

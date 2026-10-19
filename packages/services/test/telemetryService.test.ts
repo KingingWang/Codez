@@ -9,7 +9,7 @@ const originalCrypto = globalThis.crypto;
 const tempHomes: string[] = [];
 
 function makeTempHome(): string {
-  const home = mkdtempSync(join(tmpdir(), "zcode-telemetry-home-"));
+  const home = mkdtempSync(join(tmpdir(), "codez-telemetry-home-"));
   tempHomes.push(home);
   // Bugfix: paths.ts 会在模块加载时固定默认 dataBaseDir，测试隔离必须显式覆盖。
   setDataBaseDir(home);
@@ -663,8 +663,8 @@ describe("telemetryCore", () => {
     const home = makeTempHome();
     process.env.HOME = home;
 
-    const lockFile = join(home, ".zcode", "v2", "telemetry-state.lock");
-    mkdirSync(join(home, ".zcode", "v2"), { recursive: true });
+    const lockFile = join(home, ".codez", "v2", "telemetry-state.lock");
+    mkdirSync(join(home, ".codez", "v2"), { recursive: true });
     writeFileSync(lockFile, "", "utf-8");
     const staleAt = new Date(Date.UTC(2026, 3, 1, 0, 0, 0));
     utimesSync(lockFile, staleAt, staleAt);
@@ -696,8 +696,8 @@ describe("telemetryCore", () => {
     const home = makeTempHome();
     process.env.HOME = home;
 
-    const lockFile = join(home, ".zcode", "v2", "telemetry-state.lock");
-    mkdirSync(join(home, ".zcode", "v2"), { recursive: true });
+    const lockFile = join(home, ".codez", "v2", "telemetry-state.lock");
+    mkdirSync(join(home, ".codez", "v2"), { recursive: true });
     writeFileSync(
       lockFile,
       JSON.stringify({
@@ -734,7 +734,7 @@ describe("telemetryCore", () => {
     const home = makeTempHome();
     process.env.HOME = home;
 
-    const stateDir = join(home, ".zcode", "v2");
+    const stateDir = join(home, ".codez", "v2");
     mkdirSync(stateDir, { recursive: true });
     writeFileSync(
       join(stateDir, "telemetry-state.json"),
@@ -830,7 +830,7 @@ describe("telemetryCore", () => {
     expect(secondBody.event_id).toBe("second-1");
     expect(secondBody.device_mid).toBe("first-2");
 
-    const telemetryStateFile = join(home, ".zcode", "v2", "telemetry-state.json");
+    const telemetryStateFile = join(home, ".codez", "v2", "telemetry-state.json");
     const telemetryState = JSON.parse(readFileSync(telemetryStateFile, "utf-8")) as {
       deviceMid: string;
     };
@@ -842,7 +842,7 @@ describe("telemetryCore", () => {
     process.env.HOME = home;
 
     // 老版本把首条事件的 eventId 当作 device_mid 落盘；新逻辑必须原样复用，不得突变
-    const stateDir = join(home, ".zcode", "v2");
+    const stateDir = join(home, ".codez", "v2");
     mkdirSync(stateDir, { recursive: true });
     writeFileSync(
       join(stateDir, "telemetry-state.json"),

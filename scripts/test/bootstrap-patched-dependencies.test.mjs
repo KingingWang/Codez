@@ -18,7 +18,7 @@ test("解析 scoped 与普通 patched dependency key", () => {
 });
 
 test("bootstrap install 前只清理 hoisted patched dependency 目标", async () => {
-  const rootDir = await mkdtemp(join(tmpdir(), "zcode-bootstrap-patch-"));
+  const rootDir = await mkdtemp(join(tmpdir(), "codez-bootstrap-patch-"));
   try {
     const packageJsonPath = join(rootDir, "package.json");
     await writeFile(

@@ -2,10 +2,10 @@ import type { FileManagerTarget } from "@/lib/workspaceSidePane.js";
 import type { ComposerDraftHandoff } from "@/v4/composer/composerDraftWorkspaceTransfer.js";
 import type { RefObject } from "react";
 import type {
-  ZCodeProvider,
+  CodezProvider,
   SessionCreateSource,
-  ZCodeTaskRuntimeStatus,
-  ZCodeTaskMeta,
+  CodezTaskRuntimeStatus,
+  CodezTaskMeta,
   GitChangeSourceId,
   DesktopWindowChromeState,
   IPlatformService,
@@ -14,8 +14,8 @@ import type {
   RemoteWorkspaceSessionEntry,
   UpdateStatePayload,
   UserInfo,
-} from "@zcode/shared";
-import type { IFeedbackService, IServiceAccessor } from "@zcode/services";
+} from "@codez/shared";
+import type { IFeedbackService, IServiceAccessor } from "@codez/services";
 import type { SavedWorkflowsOpenTarget } from "@/settings/saved-workflows/SavedWorkflowsSection.js";
 import type { SavedWorkflowHubTarget } from "@/v4/savedWorkflowHubContext.js";
 import type { WebRemoteControlWorkspaceSwitcherApi } from "@/root/types.js";
@@ -35,7 +35,7 @@ import type {
   OpenScopedWorkflowWorkspaceSideTabRequest,
   WorkspaceSidePaneState,
 } from "@/lib/workspaceSidePane.js";
-import type { WorkspaceZCodeUIState } from "@/store/zcodeSessionStore.js";
+import type { WorkspaceCodezUIState } from "@/store/codezSessionStore.js";
 import type { RemoteConnectionLogEntry } from "@/hooks/useRemoteConnectionLogs.js";
 import type { Theme } from "@/useTheme.js";
 import type {
@@ -43,19 +43,19 @@ import type {
   ChatViewSummaryPanelVariant,
   ConversationFindMatchState,
 } from "@/v4/legacyChatViewTypes.js";
-import type { ComposerMentionPrefill } from "@/store/zcodeSessionStoreTypes.js";
+import type { ComposerMentionPrefill } from "@/store/codezSessionStoreTypes.js";
 import type { TaskFindDialogProps } from "@/quickpick/TaskFindDialog.js";
 import type { AutomationsNavigationTab, OpenAutomationsMain } from "@/lib/taskNavigationHistory.js";
 
-export interface WorkspaceShellZCodeState {
-  activeTaskId: WorkspaceZCodeUIState["activeTaskId"];
-  draftFocusVersion: WorkspaceZCodeUIState["draftFocusVersion"];
-  modelSwitchPending: WorkspaceZCodeUIState["modelSwitchPending"];
-  modelSwitchStage: WorkspaceZCodeUIState["modelSwitchStage"];
-  selectedProvider: WorkspaceZCodeUIState["selectedProvider"];
-  optimisticTaskListByTaskId: WorkspaceZCodeUIState["optimisticTaskListByTaskId"];
-  workspaceInit: WorkspaceZCodeUIState["workspaceInit"];
-  taskStatus: ZCodeTaskRuntimeStatus;
+export interface WorkspaceShellCodezState {
+  activeTaskId: WorkspaceCodezUIState["activeTaskId"];
+  draftFocusVersion: WorkspaceCodezUIState["draftFocusVersion"];
+  modelSwitchPending: WorkspaceCodezUIState["modelSwitchPending"];
+  modelSwitchStage: WorkspaceCodezUIState["modelSwitchStage"];
+  selectedProvider: WorkspaceCodezUIState["selectedProvider"];
+  optimisticTaskListByTaskId: WorkspaceCodezUIState["optimisticTaskListByTaskId"];
+  workspaceInit: WorkspaceCodezUIState["workspaceInit"];
+  taskStatus: CodezTaskRuntimeStatus;
   taskError: string | null;
 }
 
@@ -68,7 +68,7 @@ export interface CreateTaskOptions {
   onError?: (error: unknown) => void;
   /** 异步预填只能提交到解析 Skill 时的同一新任务目标。 */
   expectedWorkspaceKey?: string;
-  provider?: ZCodeProvider;
+  provider?: CodezProvider;
   projectId?: string | null;
   /** 未归类任务目录准备的幂等身份，不作为 session 身份。 */
   draftId?: string;
@@ -91,7 +91,7 @@ export interface CreateTaskOptions {
   };
 }
 
-export type CreateTaskRequest = ZCodeProvider | CreateTaskOptions;
+export type CreateTaskRequest = CodezProvider | CreateTaskOptions;
 
 export interface RemoteWorkspaceRecoveryStatus {
   mode: "automatic" | "manual";
@@ -184,7 +184,7 @@ export interface AppProps {
   allowOpenWorkspace?: boolean;
   webRemoteControlWorkspaceSwitcher?: WebRemoteControlWorkspaceSwitcherApi;
   initialSidebarFileTreeOpen?: boolean;
-  initialWebRemoteControlMobileNavigationIntent?: import("@zcode/shared").WebRemoteControlMobileNavigationIntent;
+  initialWebRemoteControlMobileNavigationIntent?: import("@codez/shared").WebRemoteControlMobileNavigationIntent;
   webRemoteControlTerminalTransportState?: WebRemoteControlTerminalTransportState;
   allowRemoteWorkspace?: boolean;
   remoteWorkspaceSessions?: RemoteWorkspaceSessionEntry[];
@@ -223,7 +223,7 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   onOpenAutomationConsumed: () => void;
   handleOpenAutomations: OpenAutomationsMain;
   handleOpenPluginStore: () => void;
-  workspaceShellZCodeState: WorkspaceShellZCodeState;
+  workspaceShellCodezState: WorkspaceShellCodezState;
   theme: Theme;
   isMacFullscreen: boolean;
   desktopWindowChromeState: DesktopWindowChromeState | null;
@@ -257,9 +257,9 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
     workspacePath: string;
     label: string;
     remoteSessionId?: string;
-    remoteTarget?: import("@zcode/shared").RemoteTarget;
+    remoteTarget?: import("@codez/shared").RemoteTarget;
     workspaceIdentity?: string;
-    workspacePurpose?: import("@zcode/shared").WorkspacePurpose;
+    workspacePurpose?: import("@codez/shared").WorkspacePurpose;
     localWorkspacePath?: string;
     availability?: import("@/store/tabStore.js").WorkspaceAvailability;
   }>;
@@ -268,8 +268,8 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   sidePaneOwnerId: string | null;
   activeTraceId: string | null;
   activeSessionId: string | null;
-  activeTaskProvider: ZCodeProvider | null;
-  resolvedActiveTaskMeta?: ZCodeTaskMeta | null;
+  activeTaskProvider: CodezProvider | null;
+  resolvedActiveTaskMeta?: CodezTaskMeta | null;
   activeTaskTitle: string;
   activeTaskChangeSummary: ReturnType<
     typeof import("@/lib/taskChangeSummary.js").getTaskChangeSummary
@@ -305,7 +305,7 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   reloadSessionPending: boolean;
   handleReloadSession: (options?: {
     resumeTaskId?: string | null;
-    provider?: ZCodeProvider | null;
+    provider?: CodezProvider | null;
   }) => Promise<void>;
   handleSelectTask: (
     targetWorkspacePath: string,
@@ -318,7 +318,7 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   handleStartDraftInWorkspace: (
     targetWorkspacePath: string,
     targetWorkspaceIdentity?: string,
-    targetWorkspacePurpose?: import("@zcode/shared").WorkspacePurpose,
+    targetWorkspacePurpose?: import("@codez/shared").WorkspacePurpose,
     createSource?: SessionCreateSource,
   ) => void;
   handleOpenCommandCenter: () => void;

@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { WorkspaceDragOverlay } from "@/project-sidebar/WorkspaceDragOverlay.js";
 
 vi.mock("@/hooks/useSourceServerDisplayNames.js", () => ({
@@ -11,7 +11,7 @@ it("拖拽预览使用设备显示名且保留项目名，本地项目不显示�
   const render = (remote: boolean) =>
     renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(WorkspaceDragOverlay, {
           width: 264,
@@ -33,7 +33,7 @@ it("拖拽预览使用设备显示名且保留项目名，本地项目不显示�
 it("legacy 项目拖拽沿用普通项目行投影出的设备新名称", () => {
   const html = renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(WorkspaceDragOverlay, {
         width: 264,

@@ -3,7 +3,7 @@
 状态：**已实现**（v3.12.1）。2026-09-14 设计定稿，2026-09-15 完成契约收口。
 验收执行状态见「验收 Case」与「收口验证记录」；平台限定和真实远端验证单独列出，不等同于全部验收通过。
 本文是 CPU / 内存资源遥测的当前规范；[性能监控](./performance-monitoring.md)、
-[CLI 资源上报](./zcode-cli-resource-telemetry.md)与[MCP 生命周期](./mcp-process-arms-telemetry.md)
+[CLI 资源上报](./codez-cli-resource-telemetry.md)与[MCP 生命周期](./mcp-process-arms-telemetry.md)
 中的旧资源内容均已替换为本文入口。旧事件的停发版本见[事件字典](./performance-telemetry-catalog.md)。
 
 ### 复审修复契约（2026-09-15）
@@ -80,7 +80,7 @@ CLI 真实读数时间 ──> 分组新读数 ──> 有界窗口；交付不�
 
 ## Problem Statement
 
-产品与开发团队现在无法用一句话回答"ZCode 的哪个进程、在哪个版本、在哪类机器上占了多少 CPU 与内存，
+产品与开发团队现在无法用一句话回答"Codez 的哪个进程、在哪个版本、在哪类机器上占了多少 CPU 与内存，
 有没有变差"。现有 ARMS 资源埋点分散在三个事件（`perf_resource_window`、`perf_resource_agent`、
 `perf_mcp_memory`）里，三种 schema、三条链路，且存在以下缺陷：
 
@@ -117,7 +117,7 @@ main 进程零外部进程，全链路禁止 PowerShell。
 3. 作为性能负责人，我希望多进程角色同时带总量与最大单进程，以便区分"用户开了很多 workspace"和"某个进程泄漏"。
 4. 作为性能负责人，我希望事件带进程运行时长，以便在平台上按运行时长分桶发现内存随时间增长，而不需要客户端做泄漏判断。
 5. 作为性能负责人，我希望 Node 进程带 JS 堆用量，以便区分 JS 堆泄漏与 native / ArrayBuffer / 子进程侧的增长。
-6. 作为性能负责人，我希望有设备级的整机 CPU、剩余内存与应用总量事件，以便判断问题是 ZCode 造成的还是用户机器本身压力大。
+6. 作为性能负责人，我希望有设备级的整机 CPU、剩余内存与应用总量事件，以便判断问题是 Codez 造成的还是用户机器本身压力大。
 7. 作为性能负责人，我希望旧事件停发、新事件一次性替换，以便看板口径不混杂、过渡期不双倍上报。
 8. 作为值班工程师，我希望 spec 给出可直接落地的告警规则清单，含指标、分组、阈值与含义，以便在自建平台上配置而不依赖 ARMS 告警能力。
 9. 作为值班工程师，我希望告警规则按群体占比和版本对比定义，以便不被单台设备的正常波动打扰。
@@ -156,10 +156,10 @@ Electron App（单实例）
 │   │    └─ <webview> guest renderer       ×N/内置浏览器 tab
 │   ├─ 辅助 renderer                       按需短命：update-status / 资源管理器 / about / DevTools 等
 │   ├─ Host（utilityProcess）              ×1/主窗口
-│   │    ├─ zcode-cli chat lane            ×1/workspaceKey
+│   │    ├─ codez-cli chat lane            ×1/workspaceKey
 │   │    │    ├─ MCP stdio 子进程          ×1/已连接 MCP
 │   │    │    └─ Bash 工具子进程            ×N，短命
-│   │    ├─ zcode-cli plugin / mcp-status lane
+│   │    ├─ codez-cli plugin / mcp-status lane
 │   │    ├─ node-pty shell、git 等短命子进程
 │   │    ├─ Windows CUA Helper             Windows，×1/Host
 │   │    └─ wsl.exe / docker exec          ×1/远端连接
@@ -167,7 +167,7 @@ Electron App（单实例）
 └─ macOS CUA Helper.app                    由 launchd 拉起，故意不是子进程
 ```
 
-remote 模式桌面端不新增进程，远端 zcode-server 及其 CLI / MCP / pty 全部在远端机器。手机远控桌面端
+remote 模式桌面端不新增进程，远端 codez-server 及其 CLI / MCP / pty 全部在远端机器。手机远控桌面端
 不新增进程，也不参与本 spec。
 
 ### 角色定义（第一期 10 个）
@@ -181,8 +181,8 @@ remote 模式桌面端不新增进程，远端 zcode-server 及其 CLI / MCP / p
 | `chromium_other` | network 等 utility、辅助窗口 renderer、DevTools，及其余未归类 Chromium 进程 | 同上                                                                                                  | 无                                                          | 聚合                    |
 | `host`           | 窗口 Host                                                                   | 同上                                                                                                  | 自采，60 秒，parentPort 送 main                             | 聚合：总量 + 最大单进程 |
 | `scheduler`      | cron scheduler                                                              | 同上                                                                                                  | 自采，60 秒，parentPort 送 main                             | 单进程                  |
-| `cli_chat`       | 每 workspace 一个 zcode-cli                                                 | CLI 自采 60 秒，经 Host 转 main                                                                       | 同一次采样                                                  | 聚合：总量 + 最大单进程 |
-| `cli_aux`        | plugin、mcp-status 两个 lane 的 zcode-cli                                   | 同上                                                                                                  | 同一次采样                                                  | 聚合                    |
+| `cli_chat`       | 每 workspace 一个 codez-cli                                                 | CLI 自采 60 秒，经 Host 转 main                                                                       | 同一次采样                                                  | 聚合：总量 + 最大单进程 |
+| `cli_aux`        | plugin、mcp-status 两个 lane 的 codez-cli                                   | 同上                                                                                                  | 同一次采样                                                  | 聚合                    |
 | `mcp`            | 每个 MCP 服务的进程树                                                       | CLI 每 5 分钟采一次；macOS `ps` 读取进程表后筛选根与后代，Linux 读 `/proc`，Windows `tasklist` 仅内存 | 无                                                          | 每 mcp_id 一条          |
 
 角色归属规则：main 用 `collectChromiumProcessRolePids` 同源的 pid 集合归类。主窗口 webContents 的
@@ -286,9 +286,9 @@ chromium_other 18 个。
 | 状态 | `background_ratio`、`app_uptime_minutes`         | `background_ratio` 与角色事件同源；uptime 取 main 进程运行时长     |
 | 整机 | `system_cpu_percent_p95`                         | `os.cpus()` 差分                                                   |
 | 整机 | `system_free_memory_kb_min`                      | 窗口内 `os.freemem()` 最小值                                       |
-| 应用 | `app_cpu_percent_p95`                            | 全部本机 ZCode 进程合计                                            |
+| 应用 | `app_cpu_percent_p95`                            | 全部本机 Codez 进程合计                                            |
 | 应用 | `app_rss_kb_total_mean`、`app_rss_kb_total_peak` | Chromium 体系每 10 秒精确合计，加 CLI 与 MCP 最近一次已知样本      |
-| 应用 | `process_count_total_peak`                       | 全部本机 ZCode 进程数峰值                                          |
+| 应用 | `process_count_total_peak`                       | 全部本机 Codez 进程数峰值                                          |
 | 质量 | `sample_count`                                   | 首个 tick 无 CPU 基线不产生样本，5 分钟窗口预期 29                 |
 | 质量 | `telemetry_self_ms`                              | 窗口内 main 侧采样与聚合代码累计墙钟毫秒数，`performance.now()` 计 |
 
@@ -360,7 +360,7 @@ adapter spawn → 每命令 owner → 15s / 30s / …（最多 20 次）
 CLI 进程退出时在途样本直接丢弃。崩溃、强杀、断电允许丢失未上报窗口。
 
 E2E 跑的是打包构建（`app.isPackaged === true`），因此 1 分钟窗口的判据是「开发构建」或
-「`ZCODE_ENV=test` 且带 `ZCODE_E2E_RUN_ID`」；生产客户端始终 5 分钟。
+「`CODEZ_ENV=test` 且带 `CODEZ_E2E_RUN_ID`」；生产客户端始终 5 分钟。
 
 量级估算：每 5 分钟约 14 条（10 个角色若全部存活，约 3 个 mcp_id，1 条系统事件），每天在线 8 小时
 约 1350 条趋势事件每设备，Bash 事件按慢命令条数另计。现状约 480 到 576 条。计费按条数，效果优先。
@@ -381,7 +381,7 @@ E2E 跑的是打包构建（`app.isPackaged === true`），因此 1 分钟窗口
 | A2 闲置 CPU 回归 | `background_ratio ≥ 0.9` 的窗口中 `cpu_percent_p95` 的 p95 | process_role × app_version | 大于基线 1.5 倍，或绝对值大于 5% | 后台仍在烧 CPU，通常是定时器或轮询泄漏 |
 | A3 前台 CPU 回归 | `background_ratio ≤ 0.1` 的窗口中 `cpu_percent_p95` 的 p95 | process_role × app_version | 大于基线 1.3 倍                  | 交互时更卡                             |
 | A4 进程数回归    | `process_count_peak` 均值                                  | process_role × app_version | 大于基线 1.5 倍                  | 进程回收失效                           |
-| A5 应用总量回归  | `perf_system_window.app_rss_kb_total_mean` 的 p95          | app_version                | 大于基线 1.2 倍                  | 用户直观感受到的 ZCode 占内存          |
+| A5 应用总量回归  | `perf_system_window.app_rss_kb_total_mean` 的 p95          | app_version                | 大于基线 1.2 倍                  | 用户直观感受到的 Codez 占内存          |
 
 **B 类：绝对水位**（滚动 1 小时，P2）。统计"近 1 小时内出现过超阈值窗口的设备占全部活跃设备的比例"，
 触发条件统一为"占比大于基线 2 倍且大于 3%"。
@@ -427,7 +427,7 @@ E2E 跑的是打包构建（`app.isPackaged === true`），因此 1 分钟窗口
 | D2 前台持续高 CPU | `background_ratio ≤ 0.1` 且 `cpu_percent_p95 > 50%` 的设备占比 | renderer_main | 大于 5%  | UI 卡顿风险          |
 | D3 GPU 进程高 CPU | `cpu_percent_p95 > 30%` 的设备占比                             | gpu           | 大于 3%  | 渲染层问题           |
 | D4 MCP 闲置耗 CPU | 同 D1                                                          | mcp × mcp_id  | 大于 5%  | 某插件后台轮询       |
-| D5 整机 CPU 饱和  | `system_cpu_percent_p95 > 90%` 且 app 占比超一半的设备占比     | app_version   | 大于 3%  | ZCode 是整机卡顿主因 |
+| D5 整机 CPU 饱和  | `system_cpu_percent_p95 > 90%` 且 app 占比超一半的设备占比     | app_version   | 大于 3%  | Codez 是整机卡顿主因 |
 
 cli_chat 不设 CPU 告警，Agent 工作时 CPU 高是正常的。
 
@@ -494,9 +494,9 @@ HAVING COUNT(DISTINCT device_mid) >= 100
 `Telemetry` / `process-probe` / `process-resource` / `processResource` 的文件或目录**，门禁只扫这批文件。
 
 - **受保护范围**：`packages/desktop/src/**`、`packages/services/src/**`、`packages/shared/src/**`、
-  `apps/zcode-cli/**/src/**` 中，**相对路径**含 `telemetry`、`Telemetry`、`process-probe`、`process-resource` 或 `processResource` 的源码
+  `apps/codez-cli/**/src/**` 中，**相对路径**含 `telemetry`、`Telemetry`、`process-probe`、`process-resource` 或 `processResource` 的源码
   文件（`.ts` / `.tsx` / `.js` / `.mjs` 等）。判定看整条路径而不只是文件名——只看文件名会让
-  `apps/zcode-cli/packages/telemetry/src/`（`agent-metrics.ts`、`otlp-exporter.ts` 等）与
+  `apps/codez-cli/packages/telemetry/src/`（`agent-metrics.ts`、`otlp-exporter.ts` 等）与
   `*/src/telemetry/` 这类整目录的遥测代码集体逃逸。受保护文件数从实际 Git 跟踪集动态统计，以门禁输出为准；来源注册表中的模块也由交叉回归保证进入扫描集。
 - **禁用关键字**：`powershell`、`Get-CimInstance`、`wmic`、`Get-Process`（大小写不敏感）。
 - **注释不算违规**：扫描前先剥离行注释与块注释，保证 spec 注释和 bugfix 注释能正常写清「为什么禁止
@@ -518,7 +518,7 @@ HAVING COUNT(DISTINCT device_mid) >= 100
 | 文件                                                                 | 状态 | 豁免关键字                      | 原因                                                                                                                                                                                                                                                                                                                        |
 | -------------------------------------------------------------------- | ---- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/services/src/process/processResourceSampler.ts`            | 生效 | `powershell`、`Get-CimInstance` | 资源管理器 Host 侧进程表采样器：只在资源管理器窗口打开并主动请求时读一次整机进程表，属于**按需 UI 采样而非常驻遥测**；Windows 上需要同时拿到 RSS 与 CPU 时间，只能走 CIM。运行在 Host utility 进程，不在 main，也不参与 `perf_process_window` 上报。该文件因 processResource 命名进入扫描集，仅按此明确理由豁免两个关键字。 |
-| `apps/zcode-cli/packages/contracts/src/telemetry/agent-execution.ts` | 生效 | `powershell`                    | 纯类型文件：`powershell` 只是 `CommandShellKind` 枚举里「用户命令用的是哪种 shell」的上报标签，不启动任何进程。                                                                                                                                                                                                             |
+| `apps/codez-cli/packages/contracts/src/telemetry/agent-execution.ts` | 生效 | `powershell`                    | 纯类型文件：`powershell` 只是 `CommandShellKind` 枚举里「用户命令用的是哪种 shell」的上报标签，不启动任何进程。                                                                                                                                                                                                             |
 
 各采集点成本核算见下表，作为红线的依据。
 
@@ -573,11 +573,11 @@ HAVING COUNT(DISTINCT device_mid) >= 100
   collection 也接线资源遥测订阅，runtime_surface=remote。
   落地位置（05）：`wireClient` 新增 lane 形参，四个调用点分别传 `chat`（workspace 级 Agent
   两条路径）、`plugin`、`mcp-status`；`onDynamicProcessResourceSample` 的载荷类型
-  从 `ZCodeProcessResourceSample` 变为 `AgentLaneResourceSample`（多一个可选 `lane`）。
+  从 `CodezProcessResourceSample` 变为 `AgentLaneResourceSample`（多一个可选 `lane`）。
   lane 只能在这里补：进程管理器是唯一知道「这个 client 属于哪条 lane」的地方。
-  落地位置（06）：远端订阅走的是既有的 `zcodeAgentConnectionScope` 边界，不新增 services 层代码——
-  远端 zcode-server 对桌面 Host 的连接是 `trusted-host-relay`（`packages/server` 的 stdio 与
-  `zcode-server-cli` 的 `/ws/host`），只有该角色能订阅 `onDynamicProcessResourceSample` /
+  落地位置（06）：远端订阅走的是既有的 `codezAgentConnectionScope` 边界，不新增 services 层代码——
+  远端 codez-server 对桌面 Host 的连接是 `trusted-host-relay`（`packages/server` 的 stdio 与
+  `codez-server-cli` 的 `/ws/host`），只有该角色能订阅 `onDynamicProcessResourceSample` /
   `onDynamicMcpTelemetry` / `onDynamicMcpResourceSamples`；renderer 与手机远控 attachment 是 `terminal-client`，拿到 `RpcEvent.None`。
 - **Host**：资源遥测注册模块统一转发 CLI 样本、MCP 样本、Bash 事件；Host 自身样本复用内存诊断日志的
   60 秒定时器，增加 CPU 差分，一次读数同时写本地日志与发 parentPort 消息。
@@ -598,7 +598,7 @@ HAVING COUNT(DISTINCT device_mid) >= 100
   `createNodeSelfResourceSampler` 是 host 与 scheduler 共用的一份差分逻辑（构造即建立 CPU 基线，
   基线不可用时返回 null）；它不持有定时器、不负责发送，因此"定时器只有一个"的约束留在调用方。
 - **renderer**：内存诊断采样器在写本地日志的同一次采样中，经 preload 桥向 main 发送 heap 样本；
-  Web 端无桥 no-op。UI 层不得直接调用 `window.zcode.log` 或 ipc。
+  Web 端无桥 no-op。UI 层不得直接调用 `window.codez.log` 或 ipc。
   落地位置（04）：
   - `packages/ui/src/lib/memoryDiagnostics.ts` 的 `startMemoryDiagnosticsLogger` 新增
     `reportHeapSample` 注入点，在写盘门控之前调用；桥抛错只丢这条遥测样本，本地日志照旧写出
@@ -684,7 +684,7 @@ HAVING COUNT(DISTINCT device_mid) >= 100
    `hostAgentResourceTelemetry.test.ts`、`hostMemoryDiagnosticsLog.test.ts`。
    collection 级接线（06）用同一个缝再高一层：往真实 `ServiceCollection` 里注册一个只实现两个
    `onDynamic*` 的 Agent service 桩，断言订阅数、转发消息的 `runtimeSurface` 与 dispose 后不再转发；
-   手机远控用真实 `windowHostAttachmentRegistry` + 真实 `createZCodeAgentConnectionScope` 建 attachment，
+   手机远控用真实 `windowHostAttachmentRegistry` + 真实 `createCodezAgentConnectionScope` 建 attachment，
    断言 attachment 侧拿不到样本、底层订阅数不变。先例：`hostServiceResourceTelemetry.test.ts`。
 4. **renderer 缝**：伪造 `performance.memory` 与 preload 桥。先例：UI 的 memoryDiagnostics 与 logger 单测。
 5. **E2E 缝**：开发态 1 分钟窗口，用现有 `ReadFinalArmsCustomEventsE2E` 通道读取 main 侧最终
@@ -726,7 +726,7 @@ HAVING COUNT(DISTINCT device_mid) >= 100
 | PRT-024 | Windows，PERF-RES-01 场景                                                                                            | 跨过一个采样周期                 | 原断言保留；runtime log 不含 powershell                                                                                                 | e2e（Windows） | [ ] macOS 按条件跳过，待 Windows；[windows][prt-windows]   |
 | PRT-025 | 旧格式 CLI 样本（无新字段）                                                                                          | services 解析                    | 通过校验并分发                                                                                                                          | unit           | [x] 通过；[compat][prt-compat]                             |
 | PRT-026 | 三个事件的属性 key                                                                                                   | 白名单校验                       | 无隐私 key；spec / 事件字典属性表与代码白名单逐项一致                                                                                   | unit           | [x] 通过；[contract][prt-contract]                         |
-| PRT-027 | 远端 workspace 的 service collection（Agent service 为远端 zcode-server 的 RPC 代理）                                | Host 建立远端连接                | 注册了资源遥测订阅，CLI 样本与 MCP 事件都以 `runtimeSurface=remote` 送 main                                                             | unit           | [x] 通过；[remote][prt-remote]                             |
+| PRT-027 | 远端 workspace 的 service collection（Agent service 为远端 codez-server 的 RPC 代理）                                | Host 建立远端连接                | 注册了资源遥测订阅，CLI 样本与 MCP 事件都以 `runtimeSurface=remote` 送 main                                                             | unit           | [x] 通过；[remote][prt-remote]                             |
 | PRT-028 | 同一份远端 collection 上再建立 `web-remote-replayable` attachment                                                    | attach 手机远控                  | attachment 侧订阅资源样本得到空事件，底层订阅数不变，转发给 main 的仍只有 Host 那一条                                                   | unit           | [x] 通过；[remote][prt-remote]                             |
 | PRT-029 | 已订阅的远端连接                                                                                                     | 释放 connection handle           | 两条订阅随之释放（重复 dispose 幂等），后续样本不再转发；缺 Agent service 或单条订阅抛错时不订阅、不抛错                                | unit           | [x] 通过；[remote][prt-remote]                             |
 | PRT-030 | 真实远端 workspace（SSH / WSL / Docker / Server）+ 开发态 1 分钟窗口                                                 | 连接后停留 90 秒                 | E2E 通道读到 `runtime_surface=remote` 的 `cli_chat` 事件，`platform` / `arch` 为远端机器的值；手机远控接入时不出现重复事件              | 手工           | [ ] 真实远端手工待补；仅订阅 UT 通过；[remote][prt-remote] |
@@ -734,16 +734,16 @@ HAVING COUNT(DISTINCT device_mid) >= 100
 [prt-desktop]: ../../packages/desktop/test/desktopResourceTelemetry.test.ts
 [prt-system]: ../../packages/desktop/test/desktopResourceSystemWindow.test.ts
 [prt-cli]: ../../packages/desktop/test/processResourceCliSource.test.ts
-[prt-bash]: ../../apps/zcode-cli/packages/adapters/tests/bash-resource-telemetry.test.ts
-[prt-probe]: ../../apps/zcode-cli/packages/adapters/tests/process-probe.test.ts
-[prt-mcp]: ../../apps/zcode-cli/packages/adapters/tests/mcp-resource-telemetry.test.ts
+[prt-bash]: ../../apps/codez-cli/packages/adapters/tests/bash-resource-telemetry.test.ts
+[prt-probe]: ../../apps/codez-cli/packages/adapters/tests/process-probe.test.ts
+[prt-mcp]: ../../apps/codez-cli/packages/adapters/tests/mcp-resource-telemetry.test.ts
 [prt-legacy]: ../../packages/desktop/test/desktopMcpTelemetry.test.ts
 [prt-host]: ../../packages/desktop/test/hostSelfResourceTelemetry.test.ts
 [prt-renderer]: ../../packages/ui/test/memoryDiagnostics.test.ts
 [prt-scheduler]: ../../packages/desktop/test/schedulerResourceTelemetry.test.ts
 [prt-e2e]: ../../packages/desktop/test/e2e/process-resource-telemetry-roles.test.ts
 [prt-windows]: ../../packages/desktop/test/e2e/windows-agent-metric-probe-absence.test.ts
-[prt-compat]: ../../packages/services/test/zcodeAgentService.resourceTelemetry.test.ts
+[prt-compat]: ../../packages/services/test/codezAgentService.resourceTelemetry.test.ts
 [prt-contract]: ../../packages/shared/test/processResourceTelemetry.test.ts
 [prt-remote]: ../../packages/desktop/test/hostServiceResourceTelemetry.test.ts
 [prt-guard]: ../../scripts/ci/ci-telemetry-keyword-guard.test.mjs
@@ -755,7 +755,7 @@ HAVING COUNT(DISTINCT device_mid) >= 100
   6 文件、51 case（含 macOS 真实 Node 子进程和 16.5 秒 Bash 资源烟测）；架构门禁 12 case。
   按本票用户要求未执行全量 UT。两个新增回归均已验证先失败后通过：PRT-026 文档缺属性表，
   以及全仓门禁漏枚举 CONTRACT.md。
-- `pnpm typecheck`、`pnpm --filter @zcode/desktop typecheck:e2e` 通过；`pnpm lint` 为
+- `pnpm typecheck`、`pnpm --filter @codez/desktop typecheck:e2e` 通过；`pnpm lint` 为
   0 error / 42 条存量 warning；修改文件格式检查通过。
 - `pnpm architecture:check` 与 `pnpm architecture:check --changed` 通过，baseline / new 均为 0。
   门禁原本将磁盘上已存在的 `packages/services/src/storage/CONTRACT.md` 误报为缺失：文件枚举只收
@@ -767,7 +767,7 @@ HAVING COUNT(DISTINCT device_mid) >= 100
   停发的负向断言。遥测关键字门禁通过（56 个受保护文件、2 个已登记豁免）。
 - E2E：按用户最新要求仅运行受影响的 PRT-023 / PRT-024，命令退出码 0：PRT-023
   **1 passed（59.7s）**，PRT-024 **1 skipped**（macOS 平台条件，需 Windows 补验）。
-  使用 `ZCODE_E2E_SPEC` 指定 `process-resource-telemetry-roles.test.ts` 与
+  使用 `CODEZ_E2E_SPEC` 指定 `process-resource-telemetry-roles.test.ts` 与
   `windows-agent-metric-probe-absence.test.ts`；运行 ID：
   `desktop-e2e-20260915090553275-p30388-8c6c049d47706164`。先前全量尝试已按用户要求中止，
   套餐、后台会话等失败保留在对应产物中，不作为本票受影响验收结果，不继续扩大范围。
@@ -780,7 +780,7 @@ HAVING COUNT(DISTINCT device_mid) >= 100
 
 1. 用 `pnpm dev:desktop` 起开发构建（开发态窗口是 1 分钟，不是 5 分钟）。
 2. 连接一个真实远端 workspace（SSH / WSL / Docker / Server 任一），进入该 workspace 发一次对话，
-   确认远端 zcode-cli 已拉起。
+   确认远端 codez-cli 已拉起。
 3. 停留 90 秒以上，让远端 CLI 至少自采一次（60 秒）并跨过一个上报窗口。
 4. 读事件：E2E 环境用 `ReadFinalArmsCustomEventsE2E` 通道取 main 最终发出的自定义事件；
    手工联调直接看 main 的 ARMS 出口日志。筛 `perf_process_window` 且 `runtime_surface=remote`。
@@ -807,10 +807,10 @@ SSH/WSL/Docker 保留原订阅路径。旧 Server 的通用 RPC 未知事件行�
 
 ## Out of Scope
 
-- **`cua_helper` 角色**。Windows Helper 由 Host fork，运行的是 workspace 包 `packages/zcode-cua`
+- **`cua_helper` 角色**。Windows Helper 由 Host fork，运行的是 workspace 包 `packages/codez-cua`
   构建出的 Helper runtime，自采需要改该包的 Helper 入口；macOS Helper.app 由 launchd 拉起，不在进程树里，
   Host 只能靠 `ps` 采。二期方案：Helper runtime 在已有 health 心跳中自报 CPU 与 RSS，零外部进程。
-- 在 zcode-server 侧另起独立的 MCP / Bash 探针。远端 CLI 自己产生的资源事实沿既有 trusted Host relay 转发，已由 08 / 09 接线。
+- 在 codez-server 侧另起独立的 MCP / Bash 探针。远端 CLI 自己产生的资源事实沿既有 trusted Host relay 转发，已由 08 / 09 接线。
 - Windows 上的 MCP CPU 与 Bash 进程树。方向是一个零外部进程的原生扩展（GetProcessMemoryInfo /
   GetProcessTimes），独立工程量。
 - C、D、E、F 四类告警规则的配置（规则已在本文定义，等数据积累后配）。
@@ -832,7 +832,7 @@ SSH/WSL/Docker 保留原订阅路径。旧 Server 的通用 RPC 未知事件行�
 - Bash 15 秒门槛是采样策略而非异常判定：短命令没有采样机会也没有信息量。
 - 与 [memory-diagnostics-log.md](./memory-diagnostics-log.md) 的关系：本地日志继续存在，但 host 与
   renderer 的采样源与本 spec 共用，CLI 已是共用形态，main 的 heap 读取并入同一 tick。
-- 与 [zcode-data-size-arms-telemetry.md](./zcode-data-size-arms-telemetry.md) 的关系：数据目录体积事件
+- 与 [codez-data-size-arms-telemetry.md](./codez-data-size-arms-telemetry.md) 的关系：数据目录体积事件
   沿用 `resolveResourceUsageScene` 判断后台，本 spec 保留该函数语义。
 
 ## 架构治理决策记录

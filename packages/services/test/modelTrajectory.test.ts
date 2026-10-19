@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { setDataBaseDir } from "../src/paths.js";
-import { readModelTrajectory } from "../src/zcode-agent/modelTrajectory.js";
+import { readModelTrajectory } from "../src/codez-agent/modelTrajectory.js";
 
 const tempDirs: string[] = [];
 
@@ -26,8 +26,8 @@ afterEach(() => {
 
 describe("readModelTrajectory", () => {
   it("保留字符串 TOOL 消息顶层的 toolCallId 和 toolName", async () => {
-    const dataBaseDir = makeTempDir("zcode-model-trajectory-tool-result-");
-    const debugDir = join(dataBaseDir, ".zcode", "cli", "debug");
+    const dataBaseDir = makeTempDir("codez-model-trajectory-tool-result-");
+    const debugDir = join(dataBaseDir, ".codez", "cli", "debug");
     mkdirSync(debugDir, { recursive: true });
     setDataBaseDir(dataBaseDir);
 
@@ -66,8 +66,8 @@ describe("readModelTrajectory", () => {
   });
 
   it("保留字符串 TOOL 消息顶层的错误状态", async () => {
-    const dataBaseDir = makeTempDir("zcode-model-trajectory-tool-error-");
-    const debugDir = join(dataBaseDir, ".zcode", "cli", "debug");
+    const dataBaseDir = makeTempDir("codez-model-trajectory-tool-error-");
+    const debugDir = join(dataBaseDir, ".codez", "cli", "debug");
     mkdirSync(debugDir, { recursive: true });
     setDataBaseDir(dataBaseDir);
 
@@ -110,8 +110,8 @@ describe("readModelTrajectory", () => {
   });
 
   it("还原同一 session 文件里的 model-io delta 请求消息", async () => {
-    const dataBaseDir = makeTempDir("zcode-model-trajectory-");
-    const debugDir = join(dataBaseDir, ".zcode", "cli", "debug");
+    const dataBaseDir = makeTempDir("codez-model-trajectory-");
+    const debugDir = join(dataBaseDir, ".codez", "cli", "debug");
     mkdirSync(debugDir, { recursive: true });
     setDataBaseDir(dataBaseDir);
 
@@ -168,8 +168,8 @@ describe("readModelTrajectory", () => {
   });
 
   it("从 tail baseline 继续还原后续 model-io delta 请求消息", async () => {
-    const dataBaseDir = makeTempDir("zcode-model-trajectory-tail-");
-    const debugDir = join(dataBaseDir, ".zcode", "cli", "rollout");
+    const dataBaseDir = makeTempDir("codez-model-trajectory-tail-");
+    const debugDir = join(dataBaseDir, ".codez", "cli", "rollout");
     mkdirSync(debugDir, { recursive: true });
     setDataBaseDir(dataBaseDir);
 
@@ -229,8 +229,8 @@ describe("readModelTrajectory", () => {
   });
 
   it("异步读取超过旧体积阈值的长 session model-io 文件", async () => {
-    const dataBaseDir = makeTempDir("zcode-model-trajectory-large-");
-    const debugDir = join(dataBaseDir, ".zcode", "cli", "debug");
+    const dataBaseDir = makeTempDir("codez-model-trajectory-large-");
+    const debugDir = join(dataBaseDir, ".codez", "cli", "debug");
     mkdirSync(debugDir, { recursive: true });
     setDataBaseDir(dataBaseDir);
 
@@ -254,7 +254,7 @@ describe("readModelTrajectory", () => {
     const readPromise = readModelTrajectory("sess_large");
     expect(readPromise).toBeInstanceOf(Promise);
     const implementation = await readFile(
-      join(import.meta.dirname, "../src/zcode-agent/modelTrajectory.ts"),
+      join(import.meta.dirname, "../src/codez-agent/modelTrajectory.ts"),
       "utf8",
     );
     expect(implementation).not.toContain("readFileSync");
@@ -268,8 +268,8 @@ describe("readModelTrajectory", () => {
   });
 
   it("只扫描超大文件尾部并丢弃起点处的残行", async () => {
-    const dataBaseDir = makeTempDir("zcode-model-trajectory-bounded-tail-");
-    const debugDir = join(dataBaseDir, ".zcode", "cli", "debug");
+    const dataBaseDir = makeTempDir("codez-model-trajectory-bounded-tail-");
+    const debugDir = join(dataBaseDir, ".codez", "cli", "debug");
     mkdirSync(debugDir, { recursive: true });
     setDataBaseDir(dataBaseDir);
 
@@ -296,8 +296,8 @@ describe("readModelTrajectory", () => {
   });
 
   it("从 querySource 和旧标题 prompt 标记调用来源", async () => {
-    const dataBaseDir = makeTempDir("zcode-model-trajectory-source-");
-    const debugDir = join(dataBaseDir, ".zcode", "cli", "debug");
+    const dataBaseDir = makeTempDir("codez-model-trajectory-source-");
+    const debugDir = join(dataBaseDir, ".codez", "cli", "debug");
     mkdirSync(debugDir, { recursive: true });
     setDataBaseDir(dataBaseDir);
 

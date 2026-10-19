@@ -1,7 +1,7 @@
 # MCP servers 设置页：刷新按钮不刷新 MCP 连接状态
 
 > 类型：Bug（连接池 + UI）
-> 影响面：`packages/ui` 设置页 → 插件 → MCP servers；`apps/zcode-cli` MCP 连接池
+> 影响面：`packages/ui` 设置页 → 插件 → MCP servers；`apps/codez-cli` MCP 连接池
 > 状态：已修复（见「修复」一节）
 
 ## 现象
@@ -17,9 +17,9 @@
 
 链路（改动前）：
 
-1. `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-entrypoint.ts:115` —— 设置页用的
+1. `apps/codez-cli/packages/bootstrap/src/codez-protocol-entrypoint.ts:115` —— 设置页用的
    `mcpPort` 是**进程级**的单个 lease：`acquireLease({ leaseId: "protocol-settings" })`。
-2. `apps/zcode-cli/packages/adapters/src/mcp/pool.ts` 的 `connectionKey` =
+2. `apps/codez-cli/packages/adapters/src/mcp/pool.ts` 的 `connectionKey` =
    `serverName + leaseId（默认 session 隔离）+ stableStringify(config)`。
    同一个 lease + 配置未变 ⇒ **key 恒等**。
 3. `acquire` 命中已有 entry 时只做「清 closeTimer、加 ref」，然后
@@ -40,7 +40,7 @@
 
 ### 实测证据
 
-日志 `~/.zcode/cli/log/zcode-<日期>.jsonl`，`sess=-` 即设置页的 `protocol-settings` lease：
+日志 `~/.codez/cli/log/codez-<日期>.jsonl`，`sess=-` 即设置页的 `protocol-settings` lease：
 
 ```text
 08:40:04.732  mcp.server.connect.started   sess=-   plugin:official-tools:server
@@ -81,7 +81,7 @@ mcps tab 渲染的是 `McpSettingsSection`，它有自己的 header actions 并�
   - `connecting`（含 OAuth 待授权）/ `disabled` / `untrusted` → 原样返回，不打扰进行中的握手，
     否则会作废浏览器里已打开的授权 URL 和 PKCE/state。
   - 并发刷新共享同一次校验（`entry.revalidating`），不会重复 ping / 重复重连。
-- `bootstrap/src/zcode-protocol/mcp.ts`：默认/connect 模式传 `revalidate: true`；
+- `bootstrap/src/codez-protocol/mcp.ts`：默认/connect 模式传 `revalidate: true`；
   `mode: "status"`（OAuth 1s 轮询）保持只读、不付 ping 成本。
 
 ### ② 手动刷新不再静默失败（P1）
@@ -101,12 +101,12 @@ mcps tab 渲染的是 `McpSettingsSection`，它有自己的 header actions 并�
 
 ### 回归测试
 
-- `apps/zcode-cli/packages/adapters/tests/mcp-connection-pool.test.ts`：ping 判活不重连 /
+- `apps/codez-cli/packages/adapters/tests/mcp-connection-pool.test.ts`：ping 判活不重连 /
   判死原地重连 / 已 disconnected 直接重连且不 ping / OAuth 握手不打扰 / 无 ping 能力视为活 /
   未要求 revalidate 时不 ping / 并发刷新共享一次校验。
-- `apps/zcode-cli/packages/adapters/tests/mcp.test.ts`：ping 成功保持 connected；
+- `apps/codez-cli/packages/adapters/tests/mcp.test.ts`：ping 成功保持 connected；
   transport 失败翻 disconnected 并告警；JSON-RPC 错误判活；未知 server 判死。
-- `apps/zcode-cli/packages/bootstrap/tests/mcp-protocol.test.ts`：connect 模式带 `revalidate`，
+- `apps/codez-cli/packages/bootstrap/tests/mcp-protocol.test.ts`：connect 模式带 `revalidate`，
   status 模式不触发 `connectConfiguredServers`。
 - `packages/ui/test/mcpSettingsSectionStatusList.test.ts`：manual 不受空 key 拦截，
   workspace 一致性 guard 对 manual 仍然生效。

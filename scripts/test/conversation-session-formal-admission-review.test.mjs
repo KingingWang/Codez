@@ -13,7 +13,7 @@ after(async () => {
 });
 
 async function makeRoot() {
-  const root = await mkdtemp(join(tmpdir(), "zcode-formal-review-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-formal-review-"));
   temporaryRoots.push(root);
   return root;
 }

@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
 import { describe, expect, it, vi } from "vitest";
-import { HostMessageTypes, HostResponseTypes } from "@zcode/shared";
+import { HostMessageTypes, HostResponseTypes } from "@codez/shared";
 import { TaskRealtimeBus } from "../src/main/taskRealtimeBus.js";
 
 class FakeHostProcess extends EventEmitter {

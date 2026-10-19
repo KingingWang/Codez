@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConversationShareConfirmationDock } from "@/v4/ConversationShareConfirmationDock.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, string | number>) =>
         values ? `${id}:${JSON.stringify(values)}` : id,

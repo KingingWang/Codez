@@ -157,7 +157,7 @@ describe("codeViewer helpers", () => {
         kind: "read",
         title: "读取 engine.ts",
         input: {
-          file_path: "/Users/dev/ZCodeProject/323/Auto%20Snake/src/game/engine.ts",
+          file_path: "/Users/dev/CodezProject/323/Auto%20Snake/src/game/engine.ts",
         },
         status: "completed",
       },
@@ -167,7 +167,7 @@ describe("codeViewer helpers", () => {
     expect(preview).toEqual({
       type: "file",
       title: "读取 engine.ts",
-      path: "/Users/dev/ZCodeProject/323/Auto Snake/src/game/engine.ts",
+      path: "/Users/dev/CodezProject/323/Auto Snake/src/game/engine.ts",
     });
   });
 

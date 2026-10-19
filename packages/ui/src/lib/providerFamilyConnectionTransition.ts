@@ -1,9 +1,9 @@
-import type { ISettingService } from "@zcode/services";
+import type { ISettingService } from "@codez/services";
 import type {
   AppSettings,
   ProviderFamilyDomain,
   ProviderFamilyConnectionSelection,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 /** 设置页与 Composer 共用：先提交身份，再由既有 Provider 同步发布可执行目录。 */
 export async function persistProviderFamilyConnection<T>({

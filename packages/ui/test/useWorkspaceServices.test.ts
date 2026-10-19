@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
-import type { RemoteTarget } from "@zcode/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { RemoteTarget } from "@codez/shared";
 import {
   resolveBaseWorkspaceServices,
   resolveWorkspaceServiceIsRemoteTarget,
@@ -157,7 +157,7 @@ describe("useRemoteWorkspaceSessionStore", () => {
 
       expect(dispose).toHaveBeenCalledTimes(1);
       expect(dispose).toHaveBeenCalledWith(
-        expect.objectContaining({ code: "ZCODE_REMOTE_WORKSPACE_DISCONNECTED" }),
+        expect.objectContaining({ code: "CODEZ_REMOTE_WORKSPACE_DISCONNECTED" }),
       );
     });
 
@@ -780,7 +780,7 @@ describe("useWorkspaceServices 核心路由逻辑覆盖", () => {
           workspacePath: "/root",
           workspaceIdentity: "remote:ssh:198.44.179.20:2222:root:/root",
         }),
-      ).rejects.toThrow("ZCODE_REMOTE_WORKSPACE_DISCONNECTED");
+      ).rejects.toThrow("CODEZ_REMOTE_WORKSPACE_DISCONNECTED");
     });
 
     it("resolvedRemoteSessionId 有值时，忽略 baseServices，返回远端 services", () => {
@@ -820,7 +820,7 @@ describe("useWorkspaceServices 核心路由逻辑覆盖", () => {
           workspacePath: "/root",
           workspaceIdentity: "remote:ssh:198.44.179.20:2222:root:/root",
         }),
-      ).rejects.toThrow("ZCODE_REMOTE_WORKSPACE_DISCONNECTED");
+      ).rejects.toThrow("CODEZ_REMOTE_WORKSPACE_DISCONNECTED");
     });
 
     it("远程 workspace session 丢失时事件订阅返回 no-op disposable", () => {
@@ -855,7 +855,7 @@ describe("useWorkspaceServices 核心路由逻辑覆盖", () => {
       const base = makeMockServices("base");
       const state = useRemoteWorkspaceSessionStore.getState();
       const result = resolveWorkspaceServices(context, null, base, state.sessionsById, true);
-      const transport = createAgentSessionsIndexTransport(result.zcodeAgentService, {
+      const transport = createAgentSessionsIndexTransport(result.codezAgentService, {
         workspacePath: "/root",
         workspaceIdentity: "remote:ssh:198.44.179.20:2222:root:/root",
       });

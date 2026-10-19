@@ -3,7 +3,7 @@ import {
   ProviderConfig,
   ProviderConfigMap,
   parsePersonalProviderConfigMap,
-  parseZCodeBuiltinProviderConfigRules,
+  parseCodezBuiltinProviderConfigRules,
   resolveProviderTemplateName,
 } from "../src/index.js";
 
@@ -26,7 +26,7 @@ describe("Todo104 Provider 规则身份与内容分离", () => {
         },
       ],
     };
-    const parsed = parseZCodeBuiltinProviderConfigRules(source);
+    const parsed = parseCodezBuiltinProviderConfigRules(source);
     expect(parsed.providers.toJSON()).toEqual(source.providerRules);
     expect(parsed.providerTemplates.toJSON()).toEqual(source.templateRules);
     expect(parsed.providers.get("account:test")?.toJSON()).toEqual({ group: "zai-family" });

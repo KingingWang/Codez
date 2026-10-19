@@ -1,10 +1,10 @@
-import { Emitter } from "@zcode/rpc";
+import { Emitter } from "@codez/rpc";
 import type {
   SourceServerManagementSnapshot,
   SourceServerManagementStateDelta,
   RemoteTarget,
-} from "@zcode/shared";
-import type { ISourceServerManagementService } from "@zcode/services";
+} from "@codez/shared";
+import type { ISourceServerManagementService } from "@codez/services";
 import { describe, expect, it, vi } from "vitest";
 import { createSourceServerUpdateNotificationController } from "@/root/sourceServerUpdateNotifications.js";
 import { createSourceServerUpdatePreferences } from "@/lib/sourceServerUpdatePreferences.js";

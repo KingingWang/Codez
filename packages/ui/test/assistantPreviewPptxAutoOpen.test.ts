@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 import {
   advanceAssistantPreviewPptxAutoOpenGate,
   createAssistantPreviewPptxAutoOpenGateState,

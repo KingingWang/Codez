@@ -9,15 +9,15 @@ import type {
   SourceServerWorkspaceHistoryEntry,
   SSHConfigAliasOption,
   WSLDistro,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type {
   IMcpSyncService,
   IPluginSyncService,
   IServiceAccessor,
   ISkillSyncService,
-  IZCodeAgentService,
-} from "@zcode/services";
-import { TID_SSH_CONFIG_IMPORT } from "@zcode/shared/test-ids";
+  ICodezAgentService,
+} from "@codez/services";
+import { TID_SSH_CONFIG_IMPORT } from "@codez/shared/test-ids";
 import {
   AlertTriangleIcon,
   ArrowLeftIcon,
@@ -39,7 +39,7 @@ import { REMOTE_KIND_PRESENTATION } from "@/remote-connection/RemoteConnectionTa
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useOptionalBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { useConfirmDialogStore } from "@/store/confirmDialogStore.js";
@@ -59,7 +59,7 @@ export function useRemoteBoundaryAcknowledgement() {
   const settingService = useOptionalBaseWorkspaceServices()?.settingService;
   const syncAppSettings = useOptionalPlatform()?.syncAppSettings;
   const confirm = useConfirmDialog();
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   return useCallback(
     async (isCurrent: () => boolean, onBlocked?: () => void): Promise<boolean> => {
       if (!settingService) return isCurrent();
@@ -113,7 +113,7 @@ export function getRecentRemoteWorkspaceHistory(
   remoteConversationWorkspaceBySourceServerId?: AppSettingsConversationWorkspaceMap,
 ): SourceServerWorkspaceHistoryEntry[] {
   // Bug 原因：Directory 记录按追加顺序保存，直接 slice(0, 3) 会把最旧目录当成最近目录；
-  // 且未过滤隐藏目录，`.zcode` 之类内部路径会挤占「最近目录」位（原型 L996-999 只展示常规工作区）。
+  // 且未过滤隐藏目录，`.codez` 之类内部路径会挤占「最近目录」位（原型 L996-999 只展示常规工作区）。
   return [...history]
     .filter(
       (entry) =>
@@ -250,7 +250,7 @@ export function RemoteConnectionSettingsStep({
   onClearSelectedSshConfigAlias: () => void;
   onConnect: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const formRef = useRef<HTMLFormElement | null>(null);
   // 设置入口提供类型切换与「从 SSH config 导入」；项目/聊天入口由上一屏选好类型（RDUX-27）。
   const addingDevice = Boolean(availableKinds && onKindChange);
@@ -455,8 +455,8 @@ export function RemoteConnectionDirectoryStep({
   remoteMcpSyncService,
   localPluginSyncService,
   remotePluginSyncService,
-  localZCodeAgentService,
-  remoteZCodeAgentService,
+  localCodezAgentService,
+  remoteCodezAgentService,
   localWorkspacePath,
   selecting = false,
   onSelect,
@@ -483,8 +483,8 @@ export function RemoteConnectionDirectoryStep({
   remoteMcpSyncService?: IMcpSyncService | null;
   localPluginSyncService?: IPluginSyncService;
   remotePluginSyncService?: IPluginSyncService | null;
-  localZCodeAgentService?: IZCodeAgentService;
-  remoteZCodeAgentService?: IZCodeAgentService | null;
+  localCodezAgentService?: ICodezAgentService;
+  remoteCodezAgentService?: ICodezAgentService | null;
   localWorkspacePath?: string;
   selecting?: boolean;
   onSelect: (path: string) => void;
@@ -503,7 +503,7 @@ export function RemoteConnectionDirectoryStep({
   quickOpenPaths?: Array<string | { path: string; label?: string }>;
   quickOpenEntries?: Array<{ path: string; label?: string }>;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [navigationRevision, setNavigationRevision] = useState(0);
   const [directoryReady, setDirectoryReady] = useState(false);
   const [localPath, setLocalPath] = useState("");
@@ -766,8 +766,8 @@ export function RemoteConnectionDirectoryStep({
         remoteMcpSyncService={remoteMcpSyncService}
         localPluginSyncService={localPluginSyncService}
         remotePluginSyncService={remotePluginSyncService}
-        localZCodeAgentService={localZCodeAgentService}
-        remoteZCodeAgentService={remoteZCodeAgentService}
+        localCodezAgentService={localCodezAgentService}
+        remoteCodezAgentService={remoteCodezAgentService}
         remoteTarget={remoteTarget}
         skillWorkspacePath=""
         mcpWorkspacePath={selectedPath.trim()}

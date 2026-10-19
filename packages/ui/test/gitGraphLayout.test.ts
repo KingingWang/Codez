@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { GitGraphPane } from "../src/git-graph/GitGraphPane.js";
 import type { GitGraphCommit } from "../src/git-graph/layout.js";
 import { layoutGitGraph } from "../src/git-graph/layout.js";
@@ -12,7 +12,7 @@ function commit(hash: string, parents: string[] = []): GitGraphCommit {
     parents,
     refs: [],
     subject: `Commit ${hash}`,
-    authorName: "ZCode",
+    authorName: "Codez",
     authoredAtMs: 1_766_955_000_000,
   };
 }
@@ -157,7 +157,7 @@ describe("GitGraphPane", () => {
 
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(GitGraphPane, {
           commits,
@@ -180,7 +180,7 @@ describe("GitGraphPane", () => {
   it("keeps the graph column wide enough for the Graph header", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(GitGraphPane, {
           commits: [commit("head")],

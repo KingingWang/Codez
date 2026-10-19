@@ -10,7 +10,7 @@ vi.mock("@/ControlHintTooltip.js", async (importOriginal) => ({
 }));
 vi.mock("@/UpdateStatusButton.js", () => ({ UpdateStatusButton: () => null }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 afterEach(cleanup);
 

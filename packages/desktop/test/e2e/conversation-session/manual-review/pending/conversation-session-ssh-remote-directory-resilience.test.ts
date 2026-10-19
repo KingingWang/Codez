@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
-import { TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
+import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   disconnectRemoteSource,
@@ -28,7 +28,7 @@ import {
 const MARKER = "E2E_SSH_DIRECTORY_RESILIENCE";
 const failure = process.env.R3_DIRECTORY_FAILURE_CASE ?? "missing";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-directory-resilience",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-directory-resilience",
 );
 
 describe(`${MARKER}: 单个目录失效不影响设备与其他项目`, () => {
@@ -99,7 +99,7 @@ describe(`${MARKER}: 单个目录失效不影响设备与其他项目`, () => {
       facts.directoryAccessAfterMutation = (
         await runSSHCommand(
           config,
-          `id -u; test -r '${pathA}' && test -x '${pathA}' && printf ACCESSIBLE || printf INACCESSIBLE; printf '\\n'; ls '${pathA}' >/dev/null 2>&1 && printf READ_OK || printf READ_DENIED; printf '\\n'; p=$(sed -nE 's/.*"pid": *([0-9]+).*/\\1/p' "$HOME/.zcode/server/run/status.json" | head -1); test -z "$p" || awk '/^Uid:/ {print "core " $0}' /proc/$p/status`,
+          `id -u; test -r '${pathA}' && test -x '${pathA}' && printf ACCESSIBLE || printf INACCESSIBLE; printf '\\n'; ls '${pathA}' >/dev/null 2>&1 && printf READ_OK || printf READ_DENIED; printf '\\n'; p=$(sed -nE 's/.*"pid": *([0-9]+).*/\\1/p' "$HOME/.codez/server/run/status.json" | head -1); test -z "$p" || awk '/^Uid:/ {print "core " $0}' /proc/$p/status`,
         )
       ).stdout;
       if (failure === "denied") {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMarketingTouchController } from "@/components/marketing-touch/marketingTouchController.js";
-import type { MarketingDelivery } from "@zcode/shared";
+import type { MarketingDelivery } from "@codez/shared";
 
 const text = { format: "plaintext" as const, content: "News" };
 const popup = {
@@ -19,7 +19,7 @@ const banner: MarketingDelivery = {
     },
     buttons: [
       { text, action: { type: "close" } },
-      { text, action: { type: "claim_zcode_plan", args: { plan_id: "plan" } } },
+      { text, action: { type: "claim_codez_plan", args: { plan_id: "plan" } } },
     ],
     success_popup: popup,
   },
@@ -69,7 +69,7 @@ describe("marketing touch controller", () => {
     expect(controller.store.getState()).toMatchObject({
       pending: false,
       error: "Server message",
-      errorAction: "claim_zcode_plan",
+      errorAction: "claim_codez_plan",
       dialog: null,
     });
     controller.clearError();

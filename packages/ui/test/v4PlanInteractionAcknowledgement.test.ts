@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   CommandEnvelope,
   ConversationSnapshot,
-} from "@zcode/shared/zcode-protocol-v4";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+} from "@codez/shared/codez-protocol-v4";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import type { ElicitationDialog } from "@/ElicitationDialog.js";
 import { V4InteractionDialogs } from "@/v4/V4InteractionDialogs.js";
 
@@ -111,7 +111,7 @@ describe("V4 mobile plan interaction acknowledgement", () => {
 
     renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(V4InteractionDialogs, {
           sessionId: "session-plan",
@@ -146,7 +146,7 @@ describe("V4 mobile plan interaction acknowledgement", () => {
 
       renderToStaticMarkup(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(V4InteractionDialogs, {
             sessionId: "session-plan",
@@ -178,7 +178,7 @@ describe("V4 mobile plan interaction acknowledgement", () => {
 
     renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(V4InteractionDialogs, {
           sessionId: "session-plan",
@@ -208,7 +208,7 @@ describe("V4 mobile plan interaction acknowledgement", () => {
 
     renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(V4InteractionDialogs, {
           sessionId: "session-plan",

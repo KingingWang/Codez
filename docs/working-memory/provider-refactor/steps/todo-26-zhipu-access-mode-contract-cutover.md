@@ -86,9 +86,9 @@ Environment 的 Account/Credential Service 解析。
 ### 2.2 不为单一产品行为制造通用 Config 字段
 
 - 官方版本访问安全校验只属于 `zhipu-account/start-plan`；
-- ZCode V4 静态准入只属于 `zhipu-account/api-key`、`individual-coding-plan` 和 `team-coding-plan`；
+- Codez V4 静态准入只属于 `zhipu-account/api-key`、`individual-coding-plan` 和 `team-coding-plan`；
 - Off-Peak 排队、Ticket 过期和重试只属于 `zhipu-account/off-peak`；
-- 普通 `api-key` 永远不因 Endpoint、Provider ID 或 Model ID 自动进入 ZCode V4；
+- 普通 `api-key` 永远不因 Endpoint、Provider ID 或 Model ID 自动进入 Codez V4；
 - 新增真实访问产品时新增 `mode` 枚举、严格 Schema 分支行为和穷举测试，不向所有 Access 塞可选字段。
 
 ### 2.3 Config 封装调用，不裁决授权
@@ -101,7 +101,7 @@ Provider Config 决定客户端如何取得请求材料、封装模型 API 调�
 对固定 Built-in 智谱 Provider：
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
 ├─ access.type
 ├─ access.family
 └─ access.mode
@@ -126,7 +126,7 @@ Team scope 和凭据状态。Personal 继续是最后一层 Overlay，但不因�
 
 ### 3.1 普通 API Provider
 
-以下 Provider 是普通设置入口，不使用 ZCode V4：
+以下 Provider 是普通设置入口，不使用 Codez V4：
 
 | Provider ID    | Access                | V4  |
 | -------------- | --------------------- | --- |
@@ -171,7 +171,7 @@ ModelSelection 和任务持久化，不用于猜测 Mode。
 
 | Source          | 可以写入的 Access 事实                                                                       |
 | --------------- | -------------------------------------------------------------------------------------------- |
-| ZCode Built-in  | 完整 `type`；智谱 Provider 的完整 `family + mode`；普通 API Provider 的 Key 管理入口         |
+| Codez Built-in  | 完整 `type`；智谱 Provider 的完整 `family + mode`；普通 API Provider 的 Key 管理入口         |
 | Account Overlay | 不允许写入或替换 `access`                                                                    |
 | Personal        | 只允许普通/Personal `api-key` Provider 的 API Key Access；固定 `account:*` 不允许写 `access` |
 
@@ -220,7 +220,7 @@ Active Model 冻结 type/family/mode
 ```text
 type=api-key
 └─ 使用 Config 中的静态 API Key
-   └─ 普通 Transport，不进入 ZCode V4
+   └─ 普通 Transport，不进入 Codez V4
 ```
 
 ### 5.2 Family API Key
@@ -229,7 +229,7 @@ type=api-key
 type=zhipu-account, mode=api-key
 ├─ 从当前 Family Account/Credential Service 解析账号提供的 API Key
 ├─ 不读取 Personal Provider API Key
-└─ 具备 ZCode V4 静态准入
+└─ 具备 Codez V4 静态准入
 ```
 
 ### 5.3 Start、Individual 与 Team
@@ -260,7 +260,7 @@ type=zhipu-account, mode=off-peak
 
 Off-Peak 必须从同一次连接选择解析 Team scope 和凭据，并在账号/选择变化时重读或失败，不能拼接两代材料。
 
-### 5.5 ZCode V4
+### 5.5 Codez V4
 
 V4 静态准入只由以下模式集合决定：
 
@@ -276,7 +276,7 @@ zhipu-account/team-coding-plan
 
 | 状态或事实                            | 权威 Owner                       | 进入 Provider Config？ |
 | ------------------------------------- | -------------------------------- | ---------------------- |
-| Built-in `type/family/mode`           | ZCode Built-in Provider Config   | 是                     |
+| Built-in `type/family/mode`           | Codez Built-in Provider Config   | 是                     |
 | 当前账号、登录状态与当前 Family       | 当前 Environment Account Service | 否                     |
 | 当前套餐连接                          | Account Connection Selection     | 否                     |
 | Team product/org/project              | Account Connection Selection     | 否                     |
@@ -301,7 +301,7 @@ Start 模型集合；新状态未解析成功时等待或 fail-closed。
   `execution-provided`、`planKind`静态字段、`challenge`、`requestSigning` 和 `executionProtocol`。
 - Account Overlay 只投影 `enabled` 与 Start 账号模型集合；固定 `account:*` Provider 的 Personal Source
   严格拒绝 `access`。
-- 动态 `ZCodeAccountAccess.planKind` 仍表达当前账号连接解析结果，不是 Provider Config 的静态字段。
+- 动态 `CodezAccountAccess.planKind` 仍表达当前账号连接解析结果，不是 Provider Config 的静态字段。
 - Off-Peak 保留固定 Provider ID、Group 和运行时 Ticket/重试语义；特殊行为由
   `access.type=zhipu-account + mode=off-peak` 驱动。
 - 已通过 Provider、Provider Node、Services、Adapter 与 Bootstrap 定向回归；Adapter 全量仅剩两个与本轮
@@ -468,7 +468,7 @@ ZhipuAccountAccessConfig.apiKeyManagementUrl      = 0
 
 必须保持：
 
-1. Provider Overlay 顺序仍是 ZCode Built-in -> Account -> Personal；
+1. Provider Overlay 顺序仍是 Codez Built-in -> Account -> Personal；
 2. Account Overlay 只约束 Built-in 智谱 Provider，不处理 Personal-only Provider；
 3. Personal 是允许字段的最后覆盖层，但不能突破 Source Schema 改写 Built-in 专属身份；
 4. Provider Config 不管理动态账号凭据，不承担服务端最终授权；

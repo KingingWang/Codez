@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { SourceServerManagementSnapshot } from "@zcode/shared";
+import type { SourceServerManagementSnapshot } from "@codez/shared";
 import { buildRemoteWorkspaceProjection } from "@/remote/remoteWorkspaceProjection.js";
 
 function createSnapshot(): SourceServerManagementSnapshot {

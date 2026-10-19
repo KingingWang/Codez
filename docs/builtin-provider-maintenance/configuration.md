@@ -33,8 +33,8 @@ flowchart TD
 
 | 文件                                                                          | 职责                                              |
 | ----------------------------------------------------------------------------- | ------------------------------------------------- |
-| [正式 JSON](../../config/provider/zcode-builtin.json)                         | 唯一手工编辑源，包含模板、固定 Provider、模型规则 |
-| [测试 JSON](../../config/provider/zcode-builtin.test.json)                    | 从正式配置生成的完整 Release，不独立编辑模型      |
+| [正式 JSON](../../config/provider/codez-builtin.json)                         | 唯一手工编辑源，包含模板、固定 Provider、模型规则 |
+| [测试 JSON](../../config/provider/codez-builtin.test.json)                    | 从正式配置生成的完整 Release，不独立编辑模型      |
 | [生成脚本](../../scripts/sync-test-builtin-provider-config.mjs)               | 测试端点映射和相应 Site 规则派生                  |
 | [规则 Schema](../../packages/provider/src/config/rule-data-schema.ts)         | 每层字段、匹配格式和来源写权限                    |
 | [Provider Schema](../../packages/provider/src/config/provider-data-schema.ts) | API、Access、模板元数据                           |
@@ -123,7 +123,7 @@ Adapter 编码基础请求
   → 最终 HTTP Body
 ```
 
-Map 使用受限 CEL，输入是对应选项值，输出是 JSON Merge Patch；无 IO、环境读取或动态代码。`{}` 不修改请求，Patch 中的 `null` 删除字段。`values` 按低到高排列，`none/disabled` 等原始值不全局改名。每个合法值都要验证最终请求，不能只测表达式能编译；Map 也不能替代 Adapter 对媒体、流式工具调用和响应的支持。实现见 [Option Maps](../../packages/model-option-map/src/option-maps.ts)和[请求应用点](../../apps/zcode-cli/packages/adapters/src/model/model-option-map-fetch.ts)。
+Map 使用受限 CEL，输入是对应选项值，输出是 JSON Merge Patch；无 IO、环境读取或动态代码。`{}` 不修改请求，Patch 中的 `null` 删除字段。`values` 按低到高排列，`none/disabled` 等原始值不全局改名。每个合法值都要验证最终请求，不能只测表达式能编译；Map 也不能替代 Adapter 对媒体、流式工具调用和响应的支持。实现见 [Option Maps](../../packages/model-option-map/src/option-maps.ts)和[请求应用点](../../apps/codez-cli/packages/adapters/src/model/model-option-map-fetch.ts)。
 
 ## 正式与测试配置
 
@@ -159,26 +159,26 @@ pnpm provider:config:check-test
 
 ### 构建选源与最终资源
 
-共同[构建入口](../../scripts/builtin-provider-config.mjs)拥有环境选源职责：显式非空 `ZCODE_ENV` 优先；否则先读取 `.env`，再按 `NODE_ENV=production` 读取 `.env.production`，其他情况依次读取 `.env.development`、`.env.development.local`。后读文件中的值覆盖前值，缺失文件跳过。最终值去空白、转小写，空值默认 `test`，非法非空值报错。
+共同[构建入口](../../scripts/builtin-provider-config.mjs)拥有环境选源职责：显式非空 `CODEZ_ENV` 优先；否则先读取 `.env`，再按 `NODE_ENV=production` 读取 `.env.production`，其他情况依次读取 `.env.development`、`.env.development.local`。后读文件中的值覆盖前值，缺失文件跳过。最终值去空白、转小写，空值默认 `test`，非法非空值报错。
 
-`production` 选 `config/provider/zcode-builtin.json`，`test` 选 `config/provider/zcode-builtin.test.json`。`NODE_ENV` 只决定上述环境文件组，不直接决定产品环境；分支名也不参与选择。
+`production` 选 `config/provider/codez-builtin.json`，`test` 选 `config/provider/codez-builtin.test.json`。`NODE_ENV` 只决定上述环境文件组，不直接决定产品环境；分支名也不参与选择。
 
 ```text
-ZCODE_ENV与环境文件 → 选择完整JSON → 复用Release Decoder校验
+CODEZ_ENV与环境文件 → 选择完整JSON → 复用Release Decoder校验
                                      ↓
                    包资源或嵌入常量 → Builtin Source → Registry
 ```
 
 | 消费形态                   | 配置落点与核验要求                                       |
 | -------------------------- | -------------------------------------------------------- |
-| Desktop 安装包             | `resources/config/provider/zcode-builtin.json`           |
-| 普通 CLI                   | `dist/provider/zcode-builtin.json`，构建刷新相邻资源     |
-| SEA 单可执行文件           | 资源 key 为 `zcode-provider/zcode-builtin.json`          |
+| Desktop 安装包             | `resources/config/provider/codez-builtin.json`           |
+| 普通 CLI                   | `dist/provider/codez-builtin.json`，构建刷新相邻资源     |
+| SEA 单可执行文件           | 资源 key 为 `codez-provider/codez-builtin.json`          |
 | HTTP / Remote / Server CLI | 完整 JSON 编译为常量，检查最终 JS/打包产物               |
 | Desktop 开发态             | 按同一编译环境定位仓库源文件；显式配置路径注入优先级不变 |
 
 读取、JSON 解析或 Schema 校验失败直接终止构建，不跨环境回退。构建只读选定本地文件，不下载在线配置、不隐式执行同步、不覆写源文件。Windows 加载解码器时先把文件路径转为 `file:` URL，避免盘符被当作协议。
 
-构建缓存必须覆盖 `ZCODE_ENV`、环境文件、两份配置和公共构建工具。当前 CLI 的 Turbo 输入及 Desktop E2E 指纹包含这些相关输入，Server 嵌入内容参与产物 hash；bootstrap 重新构建 Agent JS 并刷新相邻配置资源。不同环境并行构建使用独立 worktree/输出目录，不能并发写同一个 dist。
+构建缓存必须覆盖 `CODEZ_ENV`、环境文件、两份配置和公共构建工具。当前 CLI 的 Turbo 输入及 Desktop E2E 指纹包含这些相关输入，Server 嵌入内容参与产物 hash；bootstrap 重新构建 Agent JS 并刷新相邻配置资源。不同环境并行构建使用独立 worktree/输出目录，不能并发写同一个 dist。
 
 构建只决定包内初始配置；客户端是否采用它还受有效缓存与 revision 影响，见[交付与恢复](./delivery.md)。环境变更的回归必须用内容不同的 Release 检查实际选源、坏文件失败、缓存失效和最终嵌入内容，不能因两份文件偶然相同就宣称通过。

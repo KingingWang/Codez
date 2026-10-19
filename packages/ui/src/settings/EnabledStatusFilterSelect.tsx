@@ -5,7 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 export type EnabledStatusFilter = "all" | "enabled" | "disabled";
 
@@ -29,7 +29,7 @@ export function EnabledStatusFilterSelect({
   onValueChange: (value: EnabledStatusFilter) => void;
   ariaLabel?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   return (
     <Select value={value} onValueChange={(next) => onValueChange(next as EnabledStatusFilter)}>
       <SelectTrigger

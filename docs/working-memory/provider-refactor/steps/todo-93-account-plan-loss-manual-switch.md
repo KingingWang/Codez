@@ -130,13 +130,13 @@ E2E 交接：实施前按 e2e-case-lifecycle 复核既有账号 fixture/人工�
 
 验证：6 个定向文件 57 条通过，Toast 两文件 11 条通过；根 typecheck 通过，lint 0 errors / 40 个既有 warnings。
 
-Pro 隔离目录：/Users/dev/zcode-todo93-e2e.88xgST。SPMC 第二轮 4/4 通过，run desktop-e2e-20260908-100921-925。SPMC-08 实测失效不写、点击保存失败、恢复目录权限后手动重试成功及读盘；日常账号目录未动。
+Pro 隔离目录：/Users/dev/codez-todo93-e2e.88xgST。SPMC 第二轮 4/4 通过，run desktop-e2e-20260908-100921-925。SPMC-08 实测失效不写、点击保存失败、恢复目录权限后手动重试成功及读盘；日常账号目录未动。
 
 第一轮 desktop-e2e-20260908-100502-105 为 3/4：93 的 SPMC-08 通过，旧 SPMC-02 发布余额后找不到刷新按钮。日志确认后台已取得新余额、按钮正常消失；改为先验证卡片刷新请求，再发布余额并用稳定的全局刷新验证收敛。只调整 fixture 顺序，不改产品、不吞失败；第二轮完整领取/导航/动态模型编辑/选择变化覆盖保留。
 
 未覆盖：真实账号权益失效、实际手机远控、Windows UI；假账号/billing fixture 不消耗用户额度。C93-12 完整中英深浅/手机视觉仍需人工审阅，不以桌面通过冒充全端通过。
 
-最终复验（包含 Toast 长名称换行改动）：Pro run desktop-e2e-20260908-101239-586，4/4 通过。执行命令：ZCODE_E2E_MANUAL_REVIEW=1 ZCODE_E2E_SKIP_AGENT_BUILD=1 pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec ./test/e2e/start-plan-manual-claim-experience.test.ts。两次完整通过均保留真实点击与文件断言；不使用旧自动切换结果作为新规则证据。
+最终复验（包含 Toast 长名称换行改动）：Pro run desktop-e2e-20260908-101239-586，4/4 通过。执行命令：CODEZ_E2E_MANUAL_REVIEW=1 CODEZ_E2E_SKIP_AGENT_BUILD=1 pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec ./test/e2e/start-plan-manual-claim-experience.test.ts。两次完整通过均保留真实点击与文件断言；不使用旧自动切换结果作为新规则证据。
 
 ### 推送前补充审阅（2026-09-08）
 

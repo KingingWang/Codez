@@ -40,7 +40,7 @@ async function fixture() {
   const root = await mkdtemp(join(tmpdir(), "sa97-"));
   dirs.push(root);
   const user = join(root, "user", "agents");
-  const project = join(root, "project", ".zcode", "agents");
+  const project = join(root, "project", ".codez", "agents");
   await mkdir(user, { recursive: true });
   await mkdir(project, { recursive: true });
   return { root, user, project };

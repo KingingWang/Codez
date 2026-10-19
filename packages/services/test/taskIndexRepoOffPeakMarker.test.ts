@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import { setDataBaseDir } from "#src/paths.js";
 import { TaskGroupRepository } from "#src/task-groups/index.js";
 import { TaskIndexRepo } from "#src/session/taskIndexRepo.js";
@@ -16,7 +16,7 @@ let repo: TaskIndexRepo;
 let tempDir: string;
 
 beforeEach(() => {
-  tempDir = mkdtempSync(join(tmpdir(), "zcode-task-index-off-peak-marker-"));
+  tempDir = mkdtempSync(join(tmpdir(), "codez-task-index-off-peak-marker-"));
   setDataBaseDir(tempDir);
   repo = new TaskIndexRepo();
 });
@@ -29,7 +29,7 @@ afterEach(async () => {
   rmSync(tempDir, { recursive: true, force: true });
 });
 
-function task(params: { taskId: string; offPeakTaskId?: string }): ZCodeTaskMeta {
+function task(params: { taskId: string; offPeakTaskId?: string }): CodezTaskMeta {
   return {
     taskId: params.taskId,
     traceId: `trace-${params.taskId}`,

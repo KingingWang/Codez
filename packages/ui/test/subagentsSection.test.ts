@@ -8,10 +8,10 @@ import {
   TID_SUBAGENT_BUILT_IN_MODEL_TRIGGER,
   TID_SUBAGENT_ROW,
   testId,
-} from "@zcode/shared/test-ids";
-import type { IServiceAccessor } from "@zcode/services";
+} from "@codez/shared/test-ids";
+import type { IServiceAccessor } from "@codez/services";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
-import { encodeCustomModelValue } from "../src/lib/zcodeCustomModelValue.js";
+import { encodeCustomModelValue } from "../src/lib/codezCustomModelValue.js";
 
 const capturedButtons: Array<Record<string, unknown>> = [];
 const capturedModelConfigSelects: Array<Record<string, unknown>> = [];
@@ -357,7 +357,7 @@ vi.mock("@/hooks/useModelSelectionView.js", () => {
   };
 });
 
-vi.mock("@/hooks/useZCodeConfig.js", () => ({
+vi.mock("@/hooks/useCodezConfig.js", () => ({
   useToolbarConfigOptions: () => ({
     configOptions: mockToolbarConfigState.configOptions,
     loading: mockToolbarConfigState.status === "loading",
@@ -376,7 +376,7 @@ vi.mock("@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js", 
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, string | number>) => {
         const messages: Record<string, string> = {
@@ -729,14 +729,14 @@ describe("SubagentsSection", () => {
         scope: "workspace",
         source: "plugin",
         enabled: true,
-        pluginId: "zcode-cua@custom-marketplace",
-        pluginName: "zcode-cua",
+        pluginId: "codez-cua@custom-marketplace",
+        pluginName: "codez-cua",
       },
     ]);
 
     expect(groups.map(([key, items]) => [key, items[0]?.id])).toEqual([
       ["computer-use@zcode-plugins-official", "official-agent"],
-      ["zcode-cua@custom-marketplace", "custom-agent"],
+      ["codez-cua@custom-marketplace", "custom-agent"],
     ]);
   });
 

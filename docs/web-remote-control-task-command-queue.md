@@ -24,7 +24,7 @@ Mobile replayable command ──┘                                      |
 - Desktop（包含 SSH/WSL/Docker 窗口）由 host 可信标记为 `desktop-continuous`。
 - Mobile `/remote` / Web remote 可信标记为 `web-remote-replayable`。
 - `clientMode` 由 attachment 注入，不能由 UI command 伪造。
-- 手机 V4 绕过 `IZCodeTaskService.enqueueTaskCommand` 的 host runtime command queue。
+- 手机 V4 绕过 `ICodezTaskService.enqueueTaskCommand` 的 host runtime command queue。
 - remote workspace、bot/proxy 或跨 host fallback 仍通过 owner/lease/stale-run 把 command 路由到正确 CLI。
 - 远程链路贯穿 `workspaceIdentity` 与 `remoteSessionId`；身份 key 不能只用 `workspacePath`。
 - 每个桌面窗口只有一个 Window Host 和一个 realtime `hostId`；local/remote command 在 Host 内按

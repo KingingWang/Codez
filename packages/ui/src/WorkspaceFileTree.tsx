@@ -6,7 +6,7 @@ import { PreviewPane } from "@/PreviewPane.js";
 import { WorkspaceFileTree } from "@/workspace-file-tree/WorkspaceFileTree.js";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import type { FileManagerTarget } from "@/lib/workspaceSidePane.js";
 
@@ -36,7 +36,7 @@ export function FileManagerPane({
   onNavigate,
   ...previewProps
 }: FileManagerPaneProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [headerContainer, setHeaderContainer] = useState<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isNarrow, setIsNarrow] = useState(mobileOverlay);

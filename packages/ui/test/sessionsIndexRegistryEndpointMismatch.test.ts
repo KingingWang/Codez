@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { IServiceAccessor } from "@zcode/services";
+import { Emitter } from "@codez/rpc";
+import type { IServiceAccessor } from "@codez/services";
 
 const { lifecycleWarn } = vi.hoisted(() => ({ lifecycleWarn: vi.fn() }));
 vi.mock("@/logger.js", () => ({
@@ -76,7 +76,7 @@ describe("sessionsIndexRegistry scope endpoint mismatch 观测", () => {
     remoteService = mockAgentService();
     registerRemoteWorkspaceSession({
       sessionId: remoteSessionId,
-      services: { zcodeAgentService: remoteService } as unknown as IServiceAccessor,
+      services: { codezAgentService: remoteService } as unknown as IServiceAccessor,
     });
   });
 

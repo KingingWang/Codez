@@ -97,7 +97,7 @@ Anthropic Claude Marketplace，并按目录中的固定 SHA 安装 `aikido`。Ma
 
 - 用例：`packages/ui/test/browser/manual-review/pending/plugin-installed-strip.test.mjs`，真实 `PluginStoreListView` + 测试动作回调。
 - Chrome/macOS 浏览器 8/8 通过：390/1200px × 中英文 × 明暗主题，验证首末项角标和焦点空间、hover 后命中区域、滚动末尾更新点击、无误开详情及页面横向溢出。原样式复现 top=false / hit=false。
-- 截图：系统临时目录 `zcode-plugin-strip-clipping/`。根 typecheck、desktop typecheck:e2e、lint、architecture 检查通过，已有更新入口单测 5/5。
+- 截图：系统临时目录 `codez-plugin-strip-clipping/`。根 typecheck、desktop typecheck:e2e、lint、architecture 检查通过，已有更新入口单测 5/5。
 - Pending，未晋升；浏览器渲染与点击验证不代表完整 Electron 插件更新、手机真机或 Windows/Linux 验证。
 
 ## Plugin Creator 与本地化
@@ -173,7 +173,7 @@ PLM-LC-018/019/020：`plugins/manual-review/pending/plugin-localization-creator.
 
 - `side-pane-plugin-menu.test.mjs` 不再替换静态名单模块，改为请求配置响应并通过真实公开配置解析器。
 - 1200px / 英文 / Zai Light 和 390px / 中文 / Zai Dark 两组通过：推荐交集、重复项去重、未收录开发插件与未知面板排除、启动页/菜单、键盘打开，以及空配置/请求失败回归。
-- 可选 `ZCODE_UI_RECOMMENDATIONS_LIVE_CONFIG_URL` 接入真实测试环境配置；本次接口返回 5 条推荐并完成展示和打开参数断言。工作区面板仍由 fixture 提供，不代表真实安装或沙箱运行验收。
+- 可选 `CODEZ_UI_RECOMMENDATIONS_LIVE_CONFIG_URL` 接入真实测试环境配置；本次接口返回 5 条推荐并完成展示和打开参数断言。工作区面板仍由 fixture 提供，不代表真实安装或沙箱运行验收。
 - 真实 Host 配置服务连接测试接口：并行读取仅发一次请求，后续读取命中缓存，5 条插件/面板身份与已校验发布包一致。
 - Nacos 测试配置保留原有 16 项，只追加 `uiPluginRecommendations`；使用原 MD5 发布、精确回读，并核对公共接口返回。生产配置未修改。
 - 未重跑各插件的真实安装与沙箱运行，也未做 Windows/Linux 或真实手机远控实机验证。用例保留 pending，不晋级。
@@ -205,7 +205,7 @@ PLM-LC-018/019/020：`plugins/manual-review/pending/plugin-localization-creator.
 | PLM-UI-BACKGROUND           | 无锚点/隐藏 tab 冷启动、最小化后首次创建与执行、session 空闲时仍执行且不销毁、删除释放                                              | `mcp-apps-host-e2e.mjs --background-only`                                            | 真实 Electron、生产 owner/Agent/沙箱；受控页面，未晋升 CI                                        |
 | PLM-UI-BACKGROUND-ADMISSION | 无卡片挂载和 conversation 订阅的真实工具结果首次创建、后台运行、返回复用；双窗口不同会话的同插件实例保留与释放                      | `mcp-apps-host-e2e.mjs --background-only`                                            | macOS Electron 通过；同窗口并发准入和不同会话键隔离另以单测覆盖，未晋升 CI                       |
 | PLM-UI-VISIBILITY           | 保活侧栏收起、切标签、离开聊天/工作区时不可见且不拦点击；后台工作、编辑状态及实例保留，恢复交互                                     | `mcp-apps-host-e2e.mjs --managed-only`                                               | macOS Electron 深浅主题通过；生产组件集成，宿主页面投影另以桌面/手机壳 UT 覆盖，未晋升 CI        |
-| PLM-UI-BACKGROUND-CRAFT     | 最小化窗口且无卡片时，真实工具结果触发 WASM 首次初始化；后台图层操作、编辑状态保留与恢复展示截图；切主页面后隐藏 UI、后台编辑并返回 | `mcp-apps-host-e2e.mjs --photocraft-background-only`，设置 `ZCODE_PHOTOCRAFT_SERVER` | macOS Electron 通过；未修改的 PhotoCraft 0.2.2，恢复截图包含后台新增图层，不替代商店安装路径验证 |
+| PLM-UI-BACKGROUND-CRAFT     | 最小化窗口且无卡片时，真实工具结果触发 WASM 首次初始化；后台图层操作、编辑状态保留与恢复展示截图；切主页面后隐藏 UI、后台编辑并返回 | `mcp-apps-host-e2e.mjs --photocraft-background-only`，设置 `CODEZ_PHOTOCRAFT_SERVER` | macOS Electron 通过；未修改的 PhotoCraft 0.2.2，恢复截图包含后台新增图层，不替代商店安装路径验证 |
 
 Web/remote 不支持回退、runtime 失效、内联滚动与页面保留沿用 `--managed-only`。
 Windows/Linux、真实手机和其它第三方插件需独立验证。
@@ -213,12 +213,12 @@ Windows/Linux、真实手机和其它第三方插件需独立验证。
 `PLM-UI-CONNECTION-READY`：`--managed-only` 控制真实 MCP initialize 完成顺序，验证生产
 React 面板等待连接后自动运行、无错误闪现和重复实例。2026-10-16 macOS Electron 专项通过；未晋升 CI。
 独立 worktree 使用标准命令整组回归，`managed` 27 项、`managed-empty` 1 项、`interaction` 1 项全部通过，
-证据批次 `zcode-mcp-host-e2e-f1vN0y`。此前整组运行出现过 guest 崩溃重建超时和锚点切换后
+证据批次 `codez-mcp-host-e2e-f1vN0y`。此前整组运行出现过 guest 崩溃重建超时和锚点切换后
 点击断言失败，独立复跑均通过；保留原失败证据，不据此认定稳定性问题已解决。
 
 ## PLM-CONCURRENT-INSTALL：并发安装忙碌态
 
-- 浏览器候选：`packages/ui/test/browser/manual-review/pending/plugin-concurrent-install.test.mjs`。真实 store 和安装按钮，390/1200px × 中英文 × 深浅主题共 8 组通过；旧实现 8 组均在第二次安装清掉第一次忙碌态处失败。日志和截图写入系统临时目录的 `zcode-plugin-concurrent-install/`。
+- 浏览器候选：`packages/ui/test/browser/manual-review/pending/plugin-concurrent-install.test.mjs`。真实 store 和安装按钮，390/1200px × 中英文 × 深浅主题共 8 组通过；旧实现 8 组均在第二次安装清掉第一次忙碌态处失败。日志和截图写入系统临时目录的 `codez-plugin-concurrent-install/`。
 - 桌面候选：`plugins/manual-review/pending/plugin-concurrent-install.test.ts`。macOS Electron + 真实 CLI，个人来源本地 HTTP 下载响应门验证两项同时安装中、第一项失败不清理第二项、两项失败后均可重试；运行 `desktop-e2e-20261015143344848-p62610-27dafbf8f737df99` 通过。截图位于 `.e2e-artifacts/plugin-management/plm-concurrent-install/both-pending.png`。
-- 离线执行：`ZCODE_E2E_MANUAL_REVIEW=1 E2E_PROVIDER_HTTP_MODE=replay E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/plugins/manual-review/pending/plugin-concurrent-install.test.ts'`。
+- 离线执行：`CODEZ_E2E_MANUAL_REVIEW=1 E2E_PROVIDER_HTTP_MODE=replay E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/plugins/manual-review/pending/plugin-concurrent-install.test.ts'`。
 - store 回归覆盖成功乱序、失败、同名操作及上下文切换隔离、来源校验与安装交叠。浏览器成功路径使用受控服务，不等于真实下载成功验证。手机真机/远控、Windows/Linux 未执行；用例 pending，未人工晋升及 CI 准入。

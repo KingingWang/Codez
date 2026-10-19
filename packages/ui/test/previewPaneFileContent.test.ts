@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
 import { PreviewPaneContent } from "@/previewPaneContent.js";
 
@@ -37,7 +37,7 @@ vi.mock("@pierre/diffs/react", () => ({
 function renderFileContent(overrides: Record<string, unknown> = {}): string {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(PreviewPaneContent, {
         source: {

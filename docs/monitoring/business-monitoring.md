@@ -3,7 +3,7 @@
 > **2026-09-11 当前补充（Todo129）**：V4 ConversationTelemetrySupervisor 已消费真实请求 fact 并上报 step/completion。Provider 重构后的官方身份仅在事件字段构造处恢复旧统计 ID；个人/Team 共用旧 Coding Plan 桶，Start 独立，闲时两家共用旧闲时桶。UUID 与未知身份不推断，模型名编码、usage、归因、去重及历史数据不变。详细映射与验收见 [Todo129](../working-memory/provider-refactor/steps/todo-129-impact-and-cases.md)。下方关于“V4 尚未接回”的描述只代表历史状态。
 
 > **状态**：指标设计/历史口径。V4 `SessionPane` + projection 主链路尚未接回本文所述的
-> `message_completion` / `agent_step` 聚合；旧 `useZCodeChat`、`taskStreamEventHandlers` 入口已删除。
+> `message_completion` / `agent_step` 聚合；旧 `useCodezChat`、`taskStreamEventHandlers` 入口已删除。
 > 在 V4 telemetry 接线和验证完成前，不得把下述字段当作当前稳定采集数据。
 
 ## 范围（待补充）
@@ -122,7 +122,7 @@ Agent 单步执行事件。它的颗粒度比 `message_completion` 更细：一�
 - `agent_thought_chunk` 开始 `reasoning` step。
 - 遇到 `tool_call` / 普通 `agent_message_chunk` / `task_complete` / `task_error` 时收口当前 `reasoning`。
 - `tool_call` 开始 `tool_call` step；`tool_call_update` 到 `completed` / `failed` / `denied` 时收口。
-- 不带 `zcodeTimeline` 且不带 `parentToolUseId` 的主 agent `agent_message_chunk` 开始 `generation` step；遇到后续 `tool_call` / `agent_thought_chunk` / `task_complete` / `task_error` 时收口。
+- 不带 `codezTimeline` 且不带 `parentToolUseId` 的主 agent `agent_message_chunk` 开始 `generation` step；遇到后续 `tool_call` / `agent_thought_chunk` / `task_complete` / `task_error` 时收口。
 - `generation_tail_finalize_ms` 只回答桌面 continuous 主链路正文尾包到任务终态之间的 finalize 尾延迟；若正文后继续调用工具、进入新 reasoning，来自手机 replayable 恢复重放，或 chunk 带 `parentToolUseId` 属于工具子输出，则字段为空字符串，避免把下一阶段耗时、恢复重放处理时间或子 agent 输出混入尾延迟。
 - `agent_message_chunk` 若为系统 timeline（如 context compaction），不计入 `generation`。
 - 模型字段在 step 创建时从当前真实 `model_request_started` 冻结，不能从 prompt 最后一次请求覆盖历史
@@ -161,12 +161,12 @@ Agent 单步执行事件。它的颗粒度比 `message_completion` 更细：一�
 
 - 业务埋点上报：`packages/services/src/telemetry/telemetryCore.ts`（`https://zcode.z.ai/api/v1/event/report`）
 - UI 侧封装：`packages/ui/src/lib/appTelemetry.ts`、`packages/ui/src/lib/messageTelemetry.ts`
-- Agent 用量落盘：`apps/zcode-cli/docs/design/v2/usage-observability.md`（CLI 设计 spec，非本目录文档）
+- Agent 用量落盘：`apps/codez-cli/docs/design/v2/usage-observability.md`（CLI 设计 spec，非本目录文档）
 - App Usage 聚合：`docs/superpowers/specs/2026-06-02-app-usage-db-migration-design.md`（功能 spec，非本目录文档）
 
 ## 追记（2026-09-14）：工作流子代理进入 `agent_step` / `agent_composition`
 
-spec：`apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md`「Token telemetry for subagents」。字段口径的增量：
+spec：`apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md`「Token telemetry for subagents」。字段口径的增量：
 
 | 字段 | 变化 |
 | --- | --- |

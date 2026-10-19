@@ -1,4 +1,4 @@
-import type { AppSettings } from "@zcode/shared";
+import type { AppSettings } from "@codez/shared";
 
 /**
  * Host 启动静默重连批次的唯一门禁编排（合同 §8.2）：

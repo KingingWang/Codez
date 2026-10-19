@@ -12,7 +12,7 @@ vi.mock("@/hooks/useServices.js", () => ({
   useOptionalServices: () => ({ codingPlanSubscriptionService: mocks }),
 }));
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStoreWithDefault: (selector: (state: typeof mocks.auth) => unknown) =>
+  useCodezStoreWithDefault: (selector: (state: typeof mocks.auth) => unknown) =>
     selector(mocks.auth),
 }));
 function Harness({

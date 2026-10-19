@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { AssistantTextRow } from "@zcode/shared/zcode-protocol-v4";
+import type { AssistantTextRow } from "@codez/shared/codez-protocol-v4";
 import { useAssistantPreviewCardsForAssistantTextRow } from "@/v4/useAssistantPreviewCardsForRow.js";
 
 const { extractAssistantFileReferencesSpy } = vi.hoisted(() => ({

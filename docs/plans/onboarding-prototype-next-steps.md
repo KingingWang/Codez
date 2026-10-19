@@ -13,7 +13,7 @@
 
 `OccupationOnboarding` 完成后渲染旧 `OnboardingDialog`。旧迁移选择顺序为：会话 → Skills → MCP 服务器 → 命令 → AGENTS.md → 迁移执行／结果；插件及代理设置步骤暂时隐藏。
 
-会话来源是 Claude Code 原生历史；其他导入类别沿用外部 Agent 资源导入能力。AGENTS.md 步骤将 Claude 用户级 CLAUDE.md 复制到 ZCode 用户级 AGENTS.md，覆盖前需要明确确认。
+会话来源是 Claude Code 原生历史；其他导入类别沿用外部 Agent 资源导入能力。AGENTS.md 步骤将 Claude 用户级 CLAUDE.md 复制到 Codez 用户级 AGENTS.md，覆盖前需要明确确认。
 
 ## 建议交互（待确认）
 

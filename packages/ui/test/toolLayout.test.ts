@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ToolLayout } from "../src/ToolCallBlocks/ToolLayout.js";
 import { handleToolSummaryActionKeyDown } from "../src/ToolCallBlocks/ToolSummaryRow.js";
 
@@ -9,7 +9,7 @@ describe("ToolLayout", () => {
   it("renders force-open details inside collapsible content", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolLayout, {
           toolId: "tool-layout-spacing",
@@ -29,7 +29,7 @@ describe("ToolLayout", () => {
   it("renders force-open content without a collapsible wrapper", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolLayout, {
           toolId: "tool-layout-force-open-spacing",
@@ -50,7 +50,7 @@ describe("ToolLayout", () => {
   it("keeps running tool icons static while animating kind labels", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolLayout, {
           toolId: "tool-layout-running-label",
@@ -73,7 +73,7 @@ describe("ToolLayout", () => {
   it("does not reserve a summary content gap when an expanded tool has no summary", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolLayout, {
           toolId: "tool-layout-empty-expanded-summary",
@@ -95,7 +95,7 @@ describe("ToolLayout", () => {
   it("prioritizes edit file content when the conversation container narrows", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolLayout, {
           toolId: "tool-layout-edit-file-priority",
@@ -117,7 +117,7 @@ describe("ToolLayout", () => {
   it("renders a summary action without collapsible semantics or inline detail", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolLayout, {
           toolId: "tool-layout-summary-action",

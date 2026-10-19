@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "zcode: tsup watch (debug)",
+      "label": "codez: tsup watch (debug)",
       "type": "process",
       "command": "node",
       "args": [
@@ -15,7 +15,7 @@
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
-        "group": "zcode-debug"
+        "group": "codez-debug"
       },
       "problemMatcher": {
         "owner": "custom",
@@ -31,7 +31,7 @@
       }
     },
     {
-      "label": "zcode: vite dev",
+      "label": "codez: vite dev",
       "type": "process",
       "command": "node",
       "args": [
@@ -44,7 +44,7 @@
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
-        "group": "zcode-debug"
+        "group": "codez-debug"
       },
       "problemMatcher": {
         "owner": "custom",
@@ -60,15 +60,15 @@
       }
     },
     {
-      "label": "zcode: prepare desktop debug",
+      "label": "codez: prepare desktop debug",
       "dependsOn": [
-        "zcode: tsup watch (debug)",
-        "zcode: vite dev"
+        "codez: tsup watch (debug)",
+        "codez: vite dev"
       ],
       "dependsOrder": "parallel"
     },
     {
-      "label": "zcode: start electron (debug)",
+      "label": "codez: start electron (debug)",
       "type": "process",
       "command": "node",
       "args": [
@@ -79,12 +79,12 @@
       },
       "isBackground": true,
       "dependsOn": [
-        "zcode: prepare desktop debug"
+        "codez: prepare desktop debug"
       ],
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
-        "group": "zcode-debug"
+        "group": "codez-debug"
       },
       "problemMatcher": {
         "owner": "custom",
@@ -100,7 +100,7 @@
       }
     },
     {
-      "label": "zcode: start electron (debug with host inspect)",
+      "label": "codez: start electron (debug with host inspect)",
       "type": "process",
       "command": "node",
       "args": [
@@ -112,12 +112,12 @@
       },
       "isBackground": true,
       "dependsOn": [
-        "zcode: prepare desktop debug"
+        "codez: prepare desktop debug"
       ],
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
-        "group": "zcode-debug"
+        "group": "codez-debug"
       },
       "problemMatcher": {
         "owner": "custom",

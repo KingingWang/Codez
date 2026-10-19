@@ -4,7 +4,7 @@ import { uploadComposerAttachment } from "@/v4/composer/attachmentUpload.js";
 it.each([true, false])(
   "preserves deferred text material metadata across local/remote upload (local=%s)",
   async (local) => {
-    const put = vi.fn(async () => ({ ref: "zcode-artifact://history" }));
+    const put = vi.fn(async () => ({ ref: "codez-artifact://history" }));
     const ref = await uploadComposerAttachment(put, "task", {
       kind: "file",
       filename: "history.txt",

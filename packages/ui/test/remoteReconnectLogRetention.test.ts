@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import { useReconnectingRemoteWorkspaceLogs } from "@/root/useReconnectingRemoteWorkspaceLogs.js";
 it("重连失败结束后日志留到用户查看，关闭项目才释放", () => {
   let emit!: Parameters<IPlatformService["onRemoteConnectionLog"]>[0];

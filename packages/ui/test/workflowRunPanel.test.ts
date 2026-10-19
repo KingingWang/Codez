@@ -6,7 +6,7 @@ import type {
   WorkflowRunNode,
   WorkflowRunState,
   WorkflowRunActor,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import {
   isWorkflowRunCancellable,
   isWorkflowRunResumable,
@@ -86,7 +86,7 @@ describe("workflowRunResultView", () => {
   });
 });
 
-// 待答问题的等待时长（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md）。`now` 由调用方注入而不是读时钟：
+// 待答问题的等待时长（apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md）。`now` 由调用方注入而不是读时钟：
 // 等待中的 run 恰恰不发事件，组件因此自己按固定间隔喂新的时刻，而规则留在这里可穷举。
 describe("workflowRunQuestionWaitedLabel", () => {
   const NOW = 1_756_000_000_000;
@@ -225,7 +225,7 @@ describe("workflowRunEventLines", () => {
   });
 
   /**
-   * 升级问答（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md）。两条都不能落进 unknown 兜底：它们是这个
+   * 升级问答（apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md）。两条都不能落进 unknown 兜底：它们是这个
    * 特性在审计面上仅有的两条痕迹，显示成「未知事件 escalation-raised」等于没实现。
    */
   it("升级两行自成一类：qid 打头（唯一的关联键），actor 名缺席时退回站点实例", () => {
@@ -568,7 +568,7 @@ describe("workflowActorStartState", () => {
   });
 });
 
-// Resume 可用性（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md；docs/dynamic-workflow/presentation.md
+// Resume 可用性（apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md；docs/dynamic-workflow/presentation.md
 // 2026-09-09「冷回放」）：一个信源——投影 run 的 `resumable` 状态位，由 CLI 按 resume 门的同一个
 // 谓词算好并经 run-settled 载荷落进状态；UI 绝不自行按 status + failureCode 推导。
 describe("isWorkflowRunResumable", () => {

@@ -6,7 +6,7 @@
 > `TaskRealtimeBus` 继续承担 owner lease、stale-run 与跨 host 命令路由；它不保存第二份
 > conversation queue、projection 或 replayable 业务状态。
 
-本文描述 ZCode task/session 的实时订阅、snapshot/resync、跨端输入和断线恢复边界。
+本文描述 Codez task/session 的实时订阅、snapshot/resync、跨端输入和断线恢复边界。
 
 ## 核心不变量
 
@@ -148,7 +148,7 @@ mobile send ──┘                  |
                                   └─ explicit rejected/failed/discarded
 ```
 
-手机 V4 绕过 `IZCodeTaskService.enqueueTaskCommand` 的 host runtime command queue；桌面 accepted busy
+手机 V4 绕过 `ICodezTaskService.enqueueTaskCommand` 的 host runtime command queue；桌面 accepted busy
 input 也不再留在 renderer-local queue。owner route 只负责把 command 送到正确 CLI，不改变 CLI admission
 顺序。每个 `ConversationInputIntent` 自包含保存 `sourceCommandId`、`queueItemId`、`clientId`、kind、原文、
 attachments、delivery、顺序和 steer/dispatch 状态。
@@ -212,9 +212,9 @@ work 或 continuation inbox，不 rewind 共享 workspace；父 session 原样�
 - `packages/desktop/src/host/windowRemoteConnectionRegistry.ts`：窗口内远端 connection/logical session 权威。
 - `packages/desktop/src/host/windowHostAttachmentRegistry.ts`：可信 clientMode 与 scoped attachment 生命周期。
 - `packages/desktop/src/main/taskRealtimeBus.ts`：owner lease、stale-run 和跨 host 路由。
-- `packages/shared/src/zcode-protocol-v4/`：V4 wire、topic、command 与 runtime schema。
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/`：gateway、publisher、projection 与 CommandInbox。
-- `packages/services/src/zcode-agent/`：connection-scoped V4 service facade。
+- `packages/shared/src/codez-protocol-v4/`：V4 wire、topic、command 与 runtime schema。
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/`：gateway、publisher、projection 与 CommandInbox。
+- `packages/services/src/codez-agent/`：connection-scoped V4 service facade。
 - `packages/ui/src/v4/`：owned subscription client apply、pending-command 对账与 projection store。
 
 relay/main 不得新增 session/task stream、queue、snapshot 或 fork 业务状态；这些状态必须能从 CLI

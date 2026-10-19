@@ -4,11 +4,11 @@ import { act, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
-import type { ModelSelectionView } from "@zcode/services";
-import type { TimelineMarkerRow } from "@zcode/shared/zcode-protocol-v4";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
+import type { ModelSelectionView } from "@codez/services";
+import type { TimelineMarkerRow } from "@codez/shared/codez-protocol-v4";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ConversationRowView } from "@/v4/ConversationRowView.js";
 import type { ConversationRowRenderContext } from "@/v4/conversationRowContext.js";
 
@@ -28,7 +28,7 @@ function currentContext(): ConversationRowRenderContext {
 function renderMarker(row: TimelineMarkerRow, locale: "en-US" | "zh-CN" = "zh-CN"): string {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(ConversationRowView, { context: currentContext(), row }),
     ),
@@ -225,7 +225,7 @@ describe("ConversationRowView timeline marker contract", () => {
     };
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationRowView, { context: currentContext(), row }),
       ),
@@ -241,7 +241,7 @@ describe("ConversationRowView timeline marker contract", () => {
       ]);
       view.rerender(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationRowView, { context: currentContext(), row: { ...row } }),
         ),

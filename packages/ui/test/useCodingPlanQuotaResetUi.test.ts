@@ -3,9 +3,9 @@
 import { act, cleanup, render, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { IBroadcastService, IUsageStatsService } from "@zcode/services";
-import type { CodingPlanResetStatusSnapshot, ZCodeAccountAccess } from "@zcode/shared";
-import { StoreProvider, useZCodeStore } from "@/store/StoreProvider.js";
+import type { IBroadcastService, IUsageStatsService } from "@codez/services";
+import type { CodingPlanResetStatusSnapshot, CodezAccountAccess } from "@codez/shared";
+import { StoreProvider, useCodezStore } from "@/store/StoreProvider.js";
 
 const mocks = vi.hoisted(() => ({
   services: null as { usageStatsService: IUsageStatsService } | null,
@@ -17,7 +17,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: ({ id }: { id: string }) => id },
     locale: "zh-CN",
   }),
@@ -34,12 +34,12 @@ const broadcastService = {
   onMessage: () => ({ dispose: () => {} }),
 } as unknown as IBroadcastService;
 
-const TEST_ACCOUNT_ACCESS: ZCodeAccountAccess = {
+const TEST_ACCOUNT_ACCESS: CodezAccountAccess = {
   type: "zhipu-account",
   family: "bigmodel",
   planKind: "individual-coding-plan",
 };
-const TEST_TEAM_ACCOUNT_ACCESS: ZCodeAccountAccess = {
+const TEST_TEAM_ACCOUNT_ACCESS: CodezAccountAccess = {
   type: "zhipu-account",
   family: "bigmodel",
   planKind: "team-coding-plan",
@@ -1169,7 +1169,7 @@ describe("useCodingPlanQuotaResetUi", () => {
       return null;
     }
     function AuthControl() {
-      const setUser = useZCodeStore((state) => state.setUser);
+      const setUser = useCodezStore((state) => state.setUser);
       startAuthenticatedSession = () =>
         setUser({ id: "user-1", username: "tester", displayName: "Tester" });
       return null;

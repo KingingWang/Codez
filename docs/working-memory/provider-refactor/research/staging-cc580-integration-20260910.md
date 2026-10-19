@@ -11,7 +11,7 @@
 | 上游来源 | 行为与处理 |
 | --- | --- |
 | `758fc8568c`、`da708b7d4a`、`8108d4e4db` | 保留 Account 不可用原因分类、shared 严格 schema、两家个人套餐缺 Key 重试。原因属于运行态，Host 为 owner；UI 使用公共结果，不重新查询权益，不把缺 Key 当作 OAuth 失效。 |
-| `2e26360bc9` | 保留 BigModel 内嵌官网的既有 zcode JWT 注入补齐，不改登录/鉴权体系。 |
+| `2e26360bc9` | 保留 BigModel 内嵌官网的既有 codez JWT 注入补齐，不改登录/鉴权体系。 |
 | `0fedd3c4a2` | 保留 Adapter 的同服务 Coding Plan 历史身份回放兼容；只影响请求局部的 thinking 投影，不映射当前选择、不改历史身份。 |
 | `0aa4cc61ae` | 保留 Runtime 的 PDF 端口透传；不恢复旧模型连接接口。 |
 | `f5a802f929` | 保留分享组件默认值及回调引用稳定化，Session 归属不变。 |

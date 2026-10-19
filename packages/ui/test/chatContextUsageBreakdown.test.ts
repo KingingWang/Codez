@@ -4,7 +4,7 @@ import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import {
   ChatCodingPlanUsageRemainingPanel,
   hasChatCodingPlanUsageRemaining,
@@ -103,7 +103,7 @@ describe("context usage access refresh", () => {
 });
 
 vi.mock("../src/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "en-US",
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
@@ -307,9 +307,9 @@ describe("ChatCodingPlanUsageRemainingPanel MCP 额度", () => {
     );
     expect(html).toContain('data-context-mcp-usage="inline"');
     expect(html).toContain('data-primary-quota-count="3"');
-    expect(html).toContain("sidebar.usage.plan.zcodeMcp");
+    expect(html).toContain("sidebar.usage.plan.codezMcp");
     expect(html).toContain('data-context-mcp-info="true"');
-    expect(html).toContain('aria-label="sidebar.usage.plan.zcodeMcpDescription"');
+    expect(html).toContain('aria-label="sidebar.usage.plan.codezMcpDescription"');
     // percentage 是已使用占比，展示时反转成剩余。
     expect(html).toContain("75%");
     expect(html).toMatch(/>75%<\/span><span[^>]*> · Aug 21<\/span>/);
@@ -1367,8 +1367,8 @@ describe("Start Plan context balance panel", () => {
               identityMasked: null,
               details: [
                 {
-                  productId: "zcode-v3-start-plan",
-                  productName: "ZCode Start Plan",
+                  productId: "codez-v3-start-plan",
+                  productName: "Codez Start Plan",
                   purchaseTime: null,
                   beginTime: null,
                   renewTime: new Date(2026, 5, 13, 10, 0).toISOString(),
@@ -1442,8 +1442,8 @@ describe("Start Plan context balance panel", () => {
                 identityMasked: null,
                 details: [
                   {
-                    productId: "zcode-v3-start-plan",
-                    productName: "ZCode Start Plan",
+                    productId: "codez-v3-start-plan",
+                    productName: "Codez Start Plan",
                     purchaseTime: null,
                     beginTime: null,
                     renewTime: null,

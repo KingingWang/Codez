@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 /** 观察现有 Host 日志，不查询/改写生产缓存，也不为模型额外制造父 turn。 */
 export async function subagentUpdateCursor() {
-  const root = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR!);
+  const root = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR!);
   const read = async () =>
     (
       await Promise.all(

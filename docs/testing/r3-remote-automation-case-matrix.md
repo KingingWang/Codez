@@ -94,7 +94,7 @@ Provisioning GUI 用例的 PRV-12 验收必须实际撤销隔离 Source 配置�
 
 DEV-06 当前回归入口：远端项目激活时选择普通 User，
 新建后本机 `agents/<name>.md` 存在、远端 user/project 同名文件不存在；按完整
-workspace identity 选择远端项目后，新建只落各自 `.zcode/agents`。
+workspace identity 选择远端项目后，新建只落各自 `.codez/agents`。
 DEV-07 的显式 Source User 必须独立验收，不得用菜单中最后一个 `default` workspace
 冒充远端 User；该入口缺失时记录未覆盖，不改变 DEV-06 的本机 User 断言。
 | R3A-DEV-08 | P1 | MCP/Skill/Plugin/Hook代表各有运行marker | 远端调用工具/执行一回合后切Source | 实际能力来自目标scope，输出/文件/执行日志正确；非Provider配置不被自动同步覆盖 | E/UPRNF |
@@ -204,7 +204,7 @@ R3-REMOTE-01～15（含子 case）的稳定编号与 setup/action/assertion 由 
 | BLD/CON     | SSH-P0-CONN-01/02/03/04/05、CLI verify-remote-ssh、release manager tests | R3本地archive/进程证据；旧CONN-04仍测legacy manifest的内容须重写，不能照搬     |
 | ID/TASK/PRV | SSH-P0-TASK-01/02、project-conversation-scope                            | 逐字段/实际请求证明；多Source同path；不以provisioning records数量替代正确性    |
 | DEV         | SSH-P0-DEV-01/02/03、Source settings focused tests                       | 先装Git到专属环境；八设置写入断言；附件/媒体/能力实际执行                      |
-| REC         | LIFE-01/02、offline-icons、cancel-retry pending                          | 替换旧zcode-server.cjs PID归属；冷重启真实到达恢复断言；blocking各交叉独立验证 |
+| REC         | LIFE-01/02、offline-icons、cancel-retry pending                          | 替换旧codez-server.cjs PID归属；冷重启真实到达恢复断言；blocking各交叉独立验证 |
 | UPG         | R2 CLI tests、identity migration SQLite tests                            | 旧程序自然造数与真实GUI升级/回退，不能用空runtime archive当旧版                |
 | MOB/TRN     | shared-host/allowlist/stream合同、Docker/WSL verifier                    | 新增浏览器真实配对与relay编排；区分SSH容器/原生Docker transport/WSL            |
 | LIVE/SOAK   | reporter/recorder、provider真实请求入口                                  | 实际请求与usage记录，资源/日志趋势，success代表录像与远端证据                  |

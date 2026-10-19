@@ -1,15 +1,15 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { ModelConfig, ModelConfigRules } from "@zcode/provider";
-import { NodeZCodeBuiltinProviderConfigSource } from "../src/index.js";
+import { ModelConfig, ModelConfigRules } from "@codez/provider";
+import { NodeCodezBuiltinProviderConfigSource } from "../src/index.js";
 
 describe("Todo126 发布配置的 Flash PDF 和模板 Turbo 默认", () => {
   it.each(["zai-standard-api", "bigmodel-standard-api"])(
     "普通 API %s 的两个 Turbo 默认关闭，个人可开启",
     async (templateId) => {
-      const source = new NodeZCodeBuiltinProviderConfigSource({
+      const source = new NodeCodezBuiltinProviderConfigSource({
         bundledFilePath: fileURLToPath(
-          new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
+          new URL("../../../config/provider/codez-builtin.json", import.meta.url),
         ),
         watch: false,
       });
@@ -52,9 +52,9 @@ describe("Todo126 发布配置的 Flash PDF 和模板 Turbo 默认", () => {
     },
   );
   it("Flash 的全部格式/站点/别名支持 PDF，其他型号和个人覆盖不变", async () => {
-    const source = new NodeZCodeBuiltinProviderConfigSource({
+    const source = new NodeCodezBuiltinProviderConfigSource({
       bundledFilePath: fileURLToPath(
-        new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
+        new URL("../../../config/provider/codez-builtin.json", import.meta.url),
       ),
       watch: false,
     });
@@ -123,9 +123,9 @@ describe("Todo126 发布配置的 Flash PDF 和模板 Turbo 默认", () => {
   });
 
   it("仅两个套餐 Key 模板的 Turbo 默认关闭，个人仍可开启", async () => {
-    const source = new NodeZCodeBuiltinProviderConfigSource({
+    const source = new NodeCodezBuiltinProviderConfigSource({
       bundledFilePath: fileURLToPath(
-        new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
+        new URL("../../../config/provider/codez-builtin.json", import.meta.url),
       ),
       watch: false,
     });

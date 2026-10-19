@@ -6,7 +6,7 @@ import {
   WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS,
   encodeWebRemoteControlRpcTransportMessage,
   type WebRemoteControlAppPayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   WebRemoteControlTerminalTransport,
   createWebRemoteControlAppPayloadRequester,
@@ -41,7 +41,7 @@ function createRelayDataJsonWithExactBytes(targetBytes: number): string {
     JSON.stringify({
       type: "data",
       payload: {
-        zcode_type: "app-error",
+        codez_type: "app-error",
         reason: "unexpected-error",
         error,
       },
@@ -254,7 +254,7 @@ describe("WebRemoteControlTerminalTransport", () => {
       await waitUntil(() => payloads.length === 1 && rawFaults.length === 1, 5_000);
 
       expect(payloads[0]).toMatchObject({
-        zcode_type: "app-error",
+        codez_type: "app-error",
         reason: "unexpected-error",
       });
       expect(rawFaults).toEqual(["remote.rpcFrame.envelopeTooLarge"]);
@@ -278,14 +278,14 @@ describe("WebRemoteControlTerminalTransport", () => {
 
     expect(
       transport.sendPayloadResult({
-        zcode_type: "app-error",
+        codez_type: "app-error",
         reason: "unexpected-error",
         error: "bounded",
       }),
     ).toEqual({ kind: "unavailable" });
     expect(
       transport.sendPayloadResult({
-        zcode_type: "app-error",
+        codez_type: "app-error",
         reason: "unexpected-error",
         error: "x".repeat(WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes),
       }),
@@ -338,7 +338,7 @@ describe("WebRemoteControlTerminalTransport", () => {
     await waitUntil(() => states.includes("paired"), 2_000, "compressed relay paired state");
 
     transport.sendPayload({
-      zcode_type: "workspace-list-request",
+      codez_type: "workspace-list-request",
       requestId: "req-compressed",
       padding: "x".repeat(4096),
     } as WebRemoteControlAppPayload);
@@ -734,7 +734,7 @@ describe("WebRemoteControlTerminalTransport", () => {
 
     transport.start();
     await waitUntil(() => states.includes("paired"));
-    const sent = transport.sendPayload({ zcode_type: "bootstrap-request", requestId: "req-1" });
+    const sent = transport.sendPayload({ codez_type: "bootstrap-request", requestId: "req-1" });
 
     await waitUntil(() => states.includes("waiting"));
     await new Promise((resolve) => setTimeout(resolve, 80));
@@ -1033,7 +1033,7 @@ describe("WebRemoteControlTerminalTransport", () => {
     transport.start();
     await waitUntil(() => payloads.length === 1);
 
-    expect(payloads[0]).toMatchObject({ zcode_type: "rpc-frame", seq: 1 });
+    expect(payloads[0]).toMatchObject({ codez_type: "rpc-frame", seq: 1 });
     transport.dispose();
   });
 
@@ -1047,26 +1047,26 @@ describe("WebRemoteControlTerminalTransport", () => {
       timeoutMs: 100,
     });
     const promise = requester.requestAppPayload(
-      { zcode_type: "bootstrap-request", requestId: "req-1" },
-      (payload): payload is WebRemoteControlAppPayload & { zcode_type: "bootstrap-response" } =>
-        payload.zcode_type === "bootstrap-response" && payload.requestId === "req-1",
+      { codez_type: "bootstrap-request", requestId: "req-1" },
+      (payload): payload is WebRemoteControlAppPayload & { codez_type: "bootstrap-response" } =>
+        payload.codez_type === "bootstrap-response" && payload.requestId === "req-1",
     );
 
     requester.acceptPayload({
-      zcode_type: "app-error",
+      codez_type: "app-error",
       requestId: "other",
       reason: "unexpected-error",
       error: "unrelated",
     });
     requester.acceptPayload({
-      zcode_type: "app-error",
+      codez_type: "app-error",
       requestId: "req-1",
       reason: "desktop-disconnected",
       error: "closed",
     });
 
     await expect(promise).rejects.toMatchObject({ reason: "desktop-disconnected" });
-    expect(sent).toEqual([{ zcode_type: "bootstrap-request", requestId: "req-1" }]);
+    expect(sent).toEqual([{ codez_type: "bootstrap-request", requestId: "req-1" }]);
   });
 
   it("does not consume unmatched workspace bridge errors", () => {
@@ -1077,7 +1077,7 @@ describe("WebRemoteControlTerminalTransport", () => {
 
     expect(
       requester.acceptPayload({
-        zcode_type: "workspace-bridge-error",
+        codez_type: "workspace-bridge-error",
         requestId: "remote-session-closed:remote-1",
         bridgeSessionId: "bridge-1",
         reason: "desktop-disconnected",
@@ -1093,9 +1093,9 @@ describe("WebRemoteControlTerminalTransport", () => {
     });
 
     const promise = requester.requestAppPayload(
-      { zcode_type: "bootstrap-request", requestId: "req-unsent" },
-      (payload): payload is WebRemoteControlAppPayload & { zcode_type: "bootstrap-response" } =>
-        payload.zcode_type === "bootstrap-response" && payload.requestId === "req-unsent",
+      { codez_type: "bootstrap-request", requestId: "req-unsent" },
+      (payload): payload is WebRemoteControlAppPayload & { codez_type: "bootstrap-response" } =>
+        payload.codez_type === "bootstrap-response" && payload.requestId === "req-unsent",
     );
 
     await expect(promise).rejects.toMatchObject({
@@ -1147,7 +1147,7 @@ describe("WebRemoteControlTerminalTransport", () => {
     });
     const promise = requester.requestAppPayload(
       {
-        zcode_type: "workspace-reconnect-request",
+        codez_type: "workspace-reconnect-request",
         requestId: "reconnect-1",
         workspaceKey: "remote:docker:demo:/root",
       },
@@ -1155,9 +1155,9 @@ describe("WebRemoteControlTerminalTransport", () => {
         payload,
       ): payload is Extract<
         WebRemoteControlAppPayload,
-        { zcode_type: "workspace-reconnect-response" }
+        { codez_type: "workspace-reconnect-response" }
       > =>
-        payload.zcode_type === "workspace-reconnect-response" &&
+        payload.codez_type === "workspace-reconnect-response" &&
         payload.requestId === "reconnect-1" &&
         payload.workspaceKey === "remote:docker:demo:/root",
       { timeoutMs: WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS },
@@ -1165,7 +1165,7 @@ describe("WebRemoteControlTerminalTransport", () => {
 
     await vi.advanceTimersByTimeAsync(11);
     requester.acceptPayload({
-      zcode_type: "workspace-reconnect-response",
+      codez_type: "workspace-reconnect-response",
       requestId: "reconnect-1",
       workspaceKey: "remote:docker:demo:/root",
       success: true,
@@ -1235,7 +1235,7 @@ it.each([
       relay.messages
         .filter(
           (message) =>
-            message.type === "data" && message.payload?.zcode_type === "mobile-task-view-update",
+            message.type === "data" && message.payload?.codez_type === "mobile-task-view-update",
         )
         .map((message) => message.payload);
     const report = () =>
@@ -1344,7 +1344,7 @@ it.each(["online", "resume"])(
     });
     const reports = () =>
       relay.messages
-        .filter((message) => message.payload?.zcode_type === "mobile-task-view-update")
+        .filter((message) => message.payload?.codez_type === "mobile-task-view-update")
         .map((message) => message.payload);
     try {
       transport.start();
@@ -1368,7 +1368,7 @@ it.each(["online", "resume"])(
       expect(state).toBe("paired");
       // 有序 socket 上的额外请求/响应确认恢复后的发送已被观察，无需用等待猜没有任务报告。
       transport.sendPayload({
-        zcode_type: "bootstrap-request",
+        codez_type: "bootstrap-request",
         requestId: "after-hidden-recovery",
       });
       await waitUntil(
@@ -1406,12 +1406,12 @@ it("MRO03：真实 socket 换代清旧 epoch，漏掉重申请求时仍从 boots
         socket.terminate();
       } else socket.send(JSON.stringify({ type: "pair_status_ack", pair_status: "matched" }));
     }
-    if (message.payload?.zcode_type === "bootstrap-request")
+    if (message.payload?.codez_type === "bootstrap-request")
       socket.send(
         JSON.stringify({
           type: "data",
           payload: {
-            zcode_type: "bootstrap-response",
+            codez_type: "bootstrap-response",
             requestId: message.payload.requestId,
             success: true,
             result: {
@@ -1438,7 +1438,7 @@ it("MRO03：真实 socket 换代清旧 epoch，漏掉重申请求时仍从 boots
     healthCheckTimeoutMs: 50,
     getToken: async () => "token",
     onPayload: (payload) => {
-      if (payload.zcode_type === "bootstrap-response")
+      if (payload.codez_type === "bootstrap-response")
         publisher.seed(payload.result.mobileTaskViewEpoch);
     },
     onFailure: () => {},
@@ -1452,7 +1452,7 @@ it("MRO03：真实 socket 换代清旧 epoch，漏掉重申请求时仍从 boots
   });
   const reports = () =>
     relay.messages
-      .filter((message) => message.payload?.zcode_type === "mobile-task-view-update")
+      .filter((message) => message.payload?.codez_type === "mobile-task-view-update")
       .map((message) => message.payload);
   try {
     transport.start();
@@ -1465,7 +1465,7 @@ it("MRO03：真实 socket 换代清旧 epoch，漏掉重申请求时仍从 boots
     };
     publisher.setBridge(bridge);
     publisher.update(bridge, { workspacePath: "/repo", taskId: "task" });
-    transport.sendPayload({ zcode_type: "bootstrap-request", requestId: "initial" });
+    transport.sendPayload({ codez_type: "bootstrap-request", requestId: "initial" });
     await waitUntil(() => reports().at(-1)?.epoch === "epoch-1", 2_000);
     publisher.suspend();
     transport.suspend();
@@ -1474,7 +1474,7 @@ it("MRO03：真实 socket 换代清旧 epoch，漏掉重申请求时仍从 boots
     publisher.update(bridge, { workspacePath: "/repo", taskId: "task" });
     await recovery;
     expect(relay.getConnectionCount()).toBeGreaterThan(1);
-    transport.sendPayload({ zcode_type: "bootstrap-request", requestId: "new-epoch" });
+    transport.sendPayload({ codez_type: "bootstrap-request", requestId: "new-epoch" });
     await waitUntil(
       () => reports().at(-1)?.epoch === `epoch-${authCount}`,
       2_000,

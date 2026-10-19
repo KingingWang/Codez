@@ -15,7 +15,7 @@ import { TooltipProvider } from "@/components/ui/tooltip.js";
 import type { ReactNode } from "react";
 const render = (node: ReactNode) => renderWithContext(node, { wrapper: TooltipProvider });
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/hooks/usePlatform.js", () => ({ useOptionalPlatform: () => null }));
 vi.mock("@/hooks/useConfirmDialog.js", () => ({ useConfirmDialog: () => async () => true }));

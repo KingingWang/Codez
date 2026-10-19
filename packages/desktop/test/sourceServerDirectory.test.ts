@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { appSettingsSchema, type AppSettings } from "@zcode/shared";
-import type { ICredentialService, ISettingService } from "@zcode/services";
+import { appSettingsSchema, type AppSettings } from "@codez/shared";
+import type { ICredentialService, ISettingService } from "@codez/services";
 import { SourceServerDirectory } from "../src/host/sourceServerDirectory.js";
 
 const profileId = "17ef20b3-622d-4a53-98c1-0cdff29f3e6d";
@@ -87,7 +87,7 @@ describe("SourceServerDirectory", () => {
   });
 
   it("stores a Source-scoped conversation backing path outside strict project history", async () => {
-    const conversationPath = "/home/dev/.zcode/workspace/default";
+    const conversationPath = "/home/dev/.codez/workspace/default";
     const realProject = {
       profileId,
       sourceServerId,
@@ -541,7 +541,7 @@ describe("SourceServerDirectory", () => {
           sourceServerId,
           transport: "docker",
           displayName: "dev container",
-          target: { kind: "docker", container: "zcode-dev" },
+          target: { kind: "docker", container: "codez-dev" },
           createdAt: 1,
           lifecycleState: "active",
         },
@@ -561,7 +561,7 @@ describe("SourceServerDirectory", () => {
     ).rejects.toThrow("Docker container is required");
     expect(settings.read().connectionProfiles?.[0]).toMatchObject({
       profileId,
-      target: { kind: "docker", container: "zcode-dev" },
+      target: { kind: "docker", container: "codez-dev" },
     });
   });
 
@@ -778,14 +778,14 @@ describe("SourceServerDirectory", () => {
         {
           profileId,
           transport: "docker",
-          target: { kind: "docker", container: "zcode-dev" },
+          target: { kind: "docker", container: "codez-dev" },
           createdAt: 1,
         },
       ],
       sourceServerWorkspaceHistory: [
         {
           workspacePath: "/workspace",
-          legacyWorkspaceIdentity: "remote:docker:zcode-dev:/workspace",
+          legacyWorkspaceIdentity: "remote:docker:codez-dev:/workspace",
           profileId,
           lastOpenedAt: 1,
         },
@@ -833,7 +833,7 @@ describe("SourceServerDirectory", () => {
     expect(settings.read().sourceServerWorkspaceHistory?.[0]).toMatchObject({
       sourceServerId,
       workspaceIdentity: `remote:server:${sourceServerId}:/workspace`,
-      legacyWorkspaceIdentity: "remote:docker:zcode-dev:/workspace",
+      legacyWorkspaceIdentity: "remote:docker:codez-dev:/workspace",
     });
   });
 
@@ -887,7 +887,7 @@ describe("SourceServerDirectory", () => {
         {
           profileId,
           transport: "docker",
-          target: { kind: "docker", container: "zcode-dev" },
+          target: { kind: "docker", container: "codez-dev" },
           createdAt: 1,
         },
       ],
@@ -1611,7 +1611,7 @@ describe("SourceServerDirectory", () => {
         {
           profileId,
           transport: "docker",
-          target: { kind: "docker", container: "zcode-dev" },
+          target: { kind: "docker", container: "codez-dev" },
           createdAt: 1,
         },
       ],
@@ -1720,7 +1720,7 @@ describe("SourceServerDirectory", () => {
           profileId,
           sourceServerId,
           transport: "docker",
-          target: { kind: "docker", container: "zcode-dev" },
+          target: { kind: "docker", container: "codez-dev" },
           createdAt: 1,
         },
       ],
@@ -1763,7 +1763,7 @@ describe("SourceServerDirectory", () => {
           profileId,
           sourceServerId,
           transport: "docker",
-          target: { kind: "docker", container: "zcode-dev" },
+          target: { kind: "docker", container: "codez-dev" },
           createdAt: 1,
         },
       ],
@@ -1809,7 +1809,7 @@ describe("SourceServerDirectory", () => {
           profileId,
           sourceServerId,
           transport: "docker",
-          target: { kind: "docker", container: "zcode-dev" },
+          target: { kind: "docker", container: "codez-dev" },
           createdAt: 1,
         },
         {
@@ -1917,7 +1917,7 @@ describe("SourceServerDirectory", () => {
           profileId,
           sourceServerId,
           transport: "docker",
-          target: { kind: "docker", container: "zcode-dev" },
+          target: { kind: "docker", container: "codez-dev" },
           createdAt: 1,
         },
       ],

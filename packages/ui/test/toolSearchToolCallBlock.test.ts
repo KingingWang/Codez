@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import type { TaskChatToolCallTreeNode } from "@/lib/toolCallTree.js";
 import { resolveToolCallIdentity } from "@/lib/toolIdentity.js";
 import { ToolCallBlock } from "@/ToolCallBlocks.js";
@@ -15,7 +15,7 @@ function renderTool(
 ) {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(ToolCallBlock, {
         toolCallNode: {

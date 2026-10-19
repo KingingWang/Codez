@@ -3,7 +3,7 @@ import {
   ModelConfigRules,
   parseModelConfig,
   parsePersonalModelConfigRules,
-  parseZCodeBuiltinModelConfigRules,
+  parseCodezBuiltinModelConfigRules,
 } from "../src/index.js";
 import { manualModelConfigSchema } from "../src/config/rule-data-schema.js";
 
@@ -49,7 +49,7 @@ describe("Todo130 手动可编辑字段边界", () => {
   });
 
   it("手动叶子固定，系统字段由当前 API 规则更新；未知接口仍不能执行", () => {
-    const builtin = parseZCodeBuiltinModelConfigRules({
+    const builtin = parseCodezBuiltinModelConfigRules({
       modelRules: [
         {
           modelMatch: ".*",

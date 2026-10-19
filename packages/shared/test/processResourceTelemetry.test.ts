@@ -8,7 +8,7 @@ import {
   PROCESS_RESOURCE_FORBIDDEN_PROPERTY_KEY_PATTERN,
   checkProcessResourceEventProperties,
   resolveCliProcessResourceRole,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 describe("processResourceTelemetry 事件契约", () => {
   it("三个事件名固定，不复用旧事件名", () => {

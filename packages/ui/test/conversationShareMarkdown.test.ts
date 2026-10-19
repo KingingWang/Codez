@@ -4,7 +4,7 @@ import { normalizeConversationShareMarkdown } from "@/v4/conversationShareMarkdo
 describe("normalizeConversationShareMarkdown", () => {
   it("removes local citation paths while retaining a uniquely matched public artifact name", () => {
     const markdown =
-      '结论见 ::zcode-file-citation{path="/Users/demo/report.pdf" purpose="output"}。';
+      '结论见 ::codez-file-citation{path="/Users/demo/report.pdf" purpose="output"}。';
     const result = normalizeConversationShareMarkdown(
       markdown,
       new Map([["share-artifact-1", "report.pdf"]]),
@@ -14,7 +14,7 @@ describe("normalizeConversationShareMarkdown", () => {
   });
 
   it("does not rewrite citation-looking text inside a fenced code block", () => {
-    const markdown = ["```md", '::zcode-file-citation{path="example.pdf"}', "```"].join("\n");
+    const markdown = ["```md", '::codez-file-citation{path="example.pdf"}', "```"].join("\n");
 
     expect(normalizeConversationShareMarkdown(markdown)).toBe(markdown);
   });
@@ -66,7 +66,7 @@ describe("normalizeConversationShareMarkdown", () => {
 
     it("与 citation 剥离同时生效", () => {
       const result = normalizeConversationShareMarkdown(
-        '![图](https://evil.example/x.png) 见 ::zcode-file-citation{path="/Users/demo/report.pdf"}。',
+        '![图](https://evil.example/x.png) 见 ::codez-file-citation{path="/Users/demo/report.pdf"}。',
         new Map([["share-artifact-1", "report.pdf"]]),
       );
       expect(result).toBe("[图](https://evil.example/x.png) 见 report.pdf。");

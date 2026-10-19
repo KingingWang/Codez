@@ -15,7 +15,7 @@ import {
   MessageCirclePlus,
 } from "lucide-react";
 import { ProjectFolderIcon } from "@/project-sidebar/ProjectFolderIcon.js";
-import { sourceServerConnectionStateSchema } from "@zcode/shared";
+import { sourceServerConnectionStateSchema } from "@codez/shared";
 import type {
   ProjectTask,
   VirtualProject,
@@ -41,7 +41,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu.js";
 import { ProjectTaskRows } from "@/project-sidebar/ProjectTaskRows.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { resolveRemoteConnectionPresentation } from "@/lib/remoteConnectionPresentation.js";
 import { RemoteConnectionStateIcon } from "@/remote-connection/RemoteConnectionStateIcon.js";
 
@@ -106,7 +106,7 @@ export const ProjectNodeContent = memo(function ProjectNodeContent({
     canOpen: boolean;
     isOpen: boolean;
   }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const msg = (id: string) => intl.formatMessage({ id: `project.${id}` });
   // 修复原因：新项目行曾无条件显示本地文件夹；远程图标只读 Host 现有投影，复用统一五态。
   const remotePresentation = remoteHost

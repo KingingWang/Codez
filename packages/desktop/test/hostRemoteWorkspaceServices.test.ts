@@ -1,4 +1,4 @@
-import { Emitter, ChannelClient, ChannelServer, createQueuePair, ProxyChannel } from "@zcode/rpc";
+import { Emitter, ChannelClient, ChannelServer, createQueuePair, ProxyChannel } from "@codez/rpc";
 import { describe, expect, it, vi } from "vitest";
 import {
   IClientConfigService,
@@ -24,7 +24,7 @@ import {
   type BroadcastMessage,
   type IServiceAccessor,
   ServiceCollection,
-} from "@zcode/services";
+} from "@codez/services";
 import { REMOTE_WORKSPACE_RPC_CHANNELS } from "../src/host/remoteWorkspaceRpcContract.js";
 import {
   REMOTE_WORKSPACE_RPC_REGISTRATIONS,

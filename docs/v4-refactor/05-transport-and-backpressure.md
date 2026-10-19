@@ -258,7 +258,7 @@ message 在进入外部 relay 前必须先编码为以下 transport-only payload
 ```ts
 type WebRemoteControlRpcTransportPayload =
   | {
-      zcode_type: "rpc-frame";
+      codez_type: "rpc-frame";
       bridgeSessionId: string;
       bridgeGeneration?: number;
       recoveryId?: string;
@@ -271,7 +271,7 @@ type WebRemoteControlRpcTransportPayload =
       dataBase64: string;
     }
   | {
-      zcode_type: "rpc-frame-ack";
+      codez_type: "rpc-frame-ack";
       bridgeSessionId: string;
       bridgeGeneration?: number;
       recoveryId?: string;
@@ -364,7 +364,7 @@ interface ConnectionFlowControl {
 raw adapter SAT/DRN
   -> desktop main owning MessagePortProtocol.sendFlowState
   -> host attachment MessagePort sideband（只消费 control object）
-  -> ZCodeAgentConnectionScope per-scope serial chain
+  -> CodezAgentConnectionScope per-scope serial chain
   -> trusted v4/connection/flow {connectionId,state}
   -> CLI pausedConnections
   -> 只 pause/resume 该 connection 的 conversation/index/config subscriptions

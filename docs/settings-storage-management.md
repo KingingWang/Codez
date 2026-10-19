@@ -7,9 +7,9 @@
 
 ### 1.1 用户诉求
 
-打开分区后立即开始计算 ZCode 的磁盘占用，展示：
+打开分区后立即开始计算 Codez 的磁盘占用，展示：
 
-- 每块磁盘（卷）上 `.zcode` 占了多少空间；
+- 每块磁盘（卷）上 `.codez` 占了多少空间；
 - 每块磁盘里的数据按类别拆分（数据库、日志、轨迹……），每类可下钻看明细；
 - 可清理的类别（如模型调用轨迹）提供清理动作。
 
@@ -19,24 +19,24 @@ App 允许设置「数据存储路径」（`setting.json.dataBaseDir`），但**
 
 | 写入方                                         | 根目录解析                                                                                       | 是否跟随「数据存储路径」 | 代码                                                                             |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------ | -------------------------------------------------------------------------------- |
-| app services（host 进程）                      | `{dataBaseDir}/.zcode`，默认 `~/.zcode`                                                          | 是                       | `packages/services/src/paths.ts` `getZCodeDataRootDir()`                         |
-| 「数据存储路径」切换时的迁移                   | 只复制 `.zcode/v2`，且是复制不是移动                                                             | —                        | `packages/services/src/paths.ts` `copyDataDirectory()`                           |
-| zcode-cli（agent 进程）                        | `~/.zcode/cli/config.json` 的 `storage.dir`，默认 `~/.zcode`；app **不下发** `ZCODE_STORAGE_DIR` | 否                       | `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts:184`                    |
-| 模型调用轨迹 model-io                          | 直接 `homedir()/.zcode/cli/{debug,rollout}`                                                      | 否（硬编码）             | `apps/zcode-cli/packages/adapters/src/model/runner-debug.ts` `getModelIOBaseDir` |
-| hooks 信任库 / subagents / skills / commands   | 读 `~/.zcode/cli/config.json` 的 `storage.dir`                                                   | 否                       | `packages/services/src/hooks/hooksService.ts:153-173` 等                         |
-| Computer Use Helper、日志导出对 cli 目录的引用 | `homedir()/.zcode/...`                                                                           | 否（硬编码）             | `packages/desktop/src/main/exportLogs.ts:34-48`                                  |
+| app services（host 进程）                      | `{dataBaseDir}/.codez`，默认 `~/.codez`                                                          | 是                       | `packages/services/src/paths.ts` `getCodezDataRootDir()`                         |
+| 「数据存储路径」切换时的迁移                   | 只复制 `.codez/v2`，且是复制不是移动                                                             | —                        | `packages/services/src/paths.ts` `copyDataDirectory()`                           |
+| codez-cli（agent 进程）                        | `~/.codez/cli/config.json` 的 `storage.dir`，默认 `~/.codez`；app **不下发** `CODEZ_STORAGE_DIR` | 否                       | `apps/codez-cli/packages/bootstrap/src/app/create-app.ts:184`                    |
+| 模型调用轨迹 model-io                          | 直接 `homedir()/.codez/cli/{debug,rollout}`                                                      | 否（硬编码）             | `apps/codez-cli/packages/adapters/src/model/runner-debug.ts` `getModelIOBaseDir` |
+| hooks 信任库 / subagents / skills / commands   | 读 `~/.codez/cli/config.json` 的 `storage.dir`                                                   | 否                       | `packages/services/src/hooks/hooksService.ts:153-173` 等                         |
+| Computer Use Helper、日志导出对 cli 目录的引用 | `homedir()/.codez/...`                                                                           | 否（硬编码）             | `packages/desktop/src/main/exportLogs.ts:34-48`                                  |
 | `v2/setting.json` 本身                         | 永远写在真实 HOME（bootstrap 文件）                                                              | 刻意不跟随               | `packages/services/src/setting/settingService.ts:36-46`                          |
-| GLM provider 的 workspace 配置目录             | `getDataBaseDir()/.zcode/cli/...`，与上面 CLI 读 `~/.zcode/cli` 两套口径并存                     | 是                       | `packages/services/src/paths.ts:295-299, 355-362`                                |
-| 轨迹查看器读 model-io                          | 同时扫 `homedir()` 与 `dataBaseDir` 两处                                                         | 两处都读                 | `packages/services/src/zcode-agent/modelTrajectoryFileTail.ts:16-22`             |
+| GLM provider 的 workspace 配置目录             | `getDataBaseDir()/.codez/cli/...`，与上面 CLI 读 `~/.codez/cli` 两套口径并存                     | 是                       | `packages/services/src/paths.ts:295-299, 355-362`                                |
+| 轨迹查看器读 model-io                          | 同时扫 `homedir()` 与 `dataBaseDir` 两处                                                         | 两处都读                 | `packages/services/src/codez-agent/modelTrajectoryFileTail.ts:16-22`             |
 
 结论：存储管理必须同时扫描两个根：
 
 ```text
-R1 = ~/.zcode                       （永远存在：cli/、agents/、computer-use/、旧 v2 副本……）
-R2 = {dataBaseDir}/.zcode           （仅在设置了数据存储路径且 ≠ HOME 时存在：v2/、workspace/、export-log/、feedback/……）
+R1 = ~/.codez                       （永远存在：cli/、agents/、computer-use/、旧 v2 副本……）
+R2 = {dataBaseDir}/.codez           （仅在设置了数据存储路径且 ≠ HOME 时存在：v2/、workspace/、export-log/、feedback/……）
 ```
 
-本期只**如实展示**两个根，不修复分裂本身；是否让 CLI 跟随 `dataBaseDir` 是独立设计决策（见 §8）。注意现有 E2E `conversation-session-configurable-data-directory.test.ts` 明确断言「切换后 `{custom}/.zcode/cli` 不存在、`~/.zcode/cli/db/db.sqlite` 仍在」，即这是当前有意保留的产品边界。
+本期只**如实展示**两个根，不修复分裂本身；是否让 CLI 跟随 `dataBaseDir` 是独立设计决策（见 §8）。注意现有 E2E `conversation-session-configurable-data-directory.test.ts` 明确断言「切换后 `{custom}/.codez/cli` 不存在、`~/.codez/cli/db/db.sqlite` 仍在」，即这是当前有意保留的产品边界。
 
 ### 1.3 真实机器目录普查（2026-09-10，开发机，总计 25 GB）
 
@@ -45,7 +45,7 @@ R2 = {dataBaseDir}/.zcode           （仅在设置了数据存储路径且 ≠ 
 | `cli/db/backup`, `cli/db/backups`, `cli/db/*.bak`, `cli/db/*.backup-*`                                                                                                  | ≈6 GB    | CLI 库迁移前备份                                                | 备份                                      |
 | `cli/db/db.sqlite(+wal/shm)`                                                                                                                                            | 0.77 GB  | CLI 会话/任务库（在用）                                         | 会话记录与数据库                          |
 | `backup/*`（session-projects、before-\*-restore…）                                                                                                                      | 7.2 GB   | 脚本/迁移备份，含 cli-db 与 v2 全量副本                         | 备份                                      |
-| `v2/dev/stdio-traffic`                                                                                                                                                  | 2.4 GB   | 开发态 stdio 协议抓包（`zcodeStdioTapDevConfig.ts`）            | 开发诊断抓包                              |
+| `v2/dev/stdio-traffic`                                                                                                                                                  | 2.4 GB   | 开发态 stdio 协议抓包（`codezStdioTapDevConfig.ts`）            | 开发诊断抓包                              |
 | `v2/migrations`, `v2/backup`, `v2/*.bak`, `v2/setting.json.corrupt-*`, `v2/config.json.pre-*`                                                                           | ≈0.8 GB  | 迁移前快照 / 损坏文件留档                                       | 备份                                      |
 | `v2/acp-config`, `v2/acp-traffic-proxy`, `v2/acp-auth`                                                                                                                  | ≈0.8 GB  | 已退役的 ACP runtime 目录（exportLogs 已按退役目录跳过）        | 开发诊断抓包 / 配置                       |
 | `cli/debug`（开发态）、`cli/rollout`（生产态）                                                                                                                          | 1.35 GB  | 模型调用轨迹 model-io JSONL                                     | 模型调用轨迹                              |
@@ -66,8 +66,8 @@ R2 = {dataBaseDir}/.zcode           （仅在设置了数据存储路径且 ≠ 
 
 | 目录                               | 写入方                                                                                | 内容                                                                                                                                                                       | 是否被回读                                                                                                                               |
 | ---------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `cli/artifacts/<sess>/`            | `apps/zcode-cli/packages/adapters/src/storage/index.ts` `createNodeToolArtifactStore` | **不是用户附件**。是工具结果留档：超长 Bash 输出（`.txt`）、Edit/Write 的修改前后快照与 structuredPatch（`.json`）、截图（`.png`），以 `zcode-artifact://<sess>/<id>` 引用 | 是：文件变更 checkpoint 汇总/回滚（`cold-file-change-summaries.ts`）、后续轮次引用历史媒体附件（`prompt-input.ts`）、UI 查看完整工具输出 |
-| `cli/agents/<sess>/<agent>/`       | `apps/zcode-cli/packages/core/src/subagent/runner.ts`                                 | subagent 运行产物：`metadata.json`、`output.txt`、`task.output`、`transcript.jsonl`（单文件可达 64 MB）                                                                    | 仅 resume 进行中的 subagent 时按 `task.outputFile` 回读；已结束会话不再读                                                                |
+| `cli/artifacts/<sess>/`            | `apps/codez-cli/packages/adapters/src/storage/index.ts` `createNodeToolArtifactStore` | **不是用户附件**。是工具结果留档：超长 Bash 输出（`.txt`）、Edit/Write 的修改前后快照与 structuredPatch（`.json`）、截图（`.png`），以 `codez-artifact://<sess>/<id>` 引用 | 是：文件变更 checkpoint 汇总/回滚（`cold-file-change-summaries.ts`）、后续轮次引用历史媒体附件（`prompt-input.ts`）、UI 查看完整工具输出 |
+| `cli/agents/<sess>/<agent>/`       | `apps/codez-cli/packages/core/src/subagent/runner.ts`                                 | subagent 运行产物：`metadata.json`、`output.txt`、`task.output`、`transcript.jsonl`（单文件可达 64 MB）                                                                    | 仅 resume 进行中的 subagent 时按 `task.outputFile` 回读；已结束会话不再读                                                                |
 | `cli/sessions/<sess>/workflows/`   | `script-workflow-tool-port.ts`                                                        | 会话内生成的 workflow 脚本                                                                                                                                                 | 会话内                                                                                                                                   |
 | `v2/sessions/<hash>/<taskId>.json` | `packages/services/src/paths.ts` `getLegacyTaskSessionSnapshotPath`                   | 旧格式任务快照；**仍在用**：`readLegacyTaskSnapshot` 兜底读取，Claude 原生会话导入（`persistImportedClaudeTask.ts`）仍写入这里                                             | 是                                                                                                                                       |
 | `agent/sessions/`、`agent/logs/`   | 当前代码无写入方（2026-04/05 的 ACP 时代残留）                                        | 旧版会话 JSON/JSONL                                                                                                                                                        | 否                                                                                                                                       |
@@ -85,7 +85,7 @@ R2 = {dataBaseDir}/.zcode           （仅在设置了数据存储路径且 ≠ 
 
 - 不改变任何模块的写入路径，不修复「CLI 不跟随数据存储路径」（§8 单独立项）。
 - 不做自动定时清理、不做配额告警（可后续基于同一 catalog 扩展）。
-- 不清理 `.zcode` 之外的任何路径（例如 `~/.claude`、系统 TMPDIR）。
+- 不清理 `.codez` 之外的任何路径（例如 `~/.claude`、系统 TMPDIR）。
 - 手机 `/remote` 与 Web 端首期不显示该分区（§6.3）。
 
 ## 3. 分类目录（catalog）
@@ -98,18 +98,18 @@ R2 = {dataBaseDir}/.zcode           （仅在设置了数据存储路径且 ≠ 
 | `subagentTranscripts` | 子代理产物         | `cli/agents/<sess>/<agent>/transcript.jsonl`                                                                                                                                                                                                                                                                                                                                           | 是                                          | 只清理**最近 24 小时未更新**的会话目录（避免删掉进行中 subagent 的记录）；按会话目录聚合 |
 | `toolOutputs`         | 工具输出与临时缓存 | `cli/artifacts`, `cli/agents`（除 transcript.jsonl）, `cli/sessions`, `cli/exec`, `cli/image-cache`, `cli/pdf-cache`, `clipboard`, `git-checkpoint-index`, `editor-icon`, `tmp`, `cache`, `v2/coding-plan-cache.json`, `v2/bots-model-cache*.json`, `v2/checkpoints/**/{pending,tmp}`                                                                                                  | 否（2026-09-10 裁决：暂不可删，待逐项确认） | —                                                                                        |
 | `modelTrajectory`     | 模型调用轨迹       | `cli/debug`, `cli/rollout`                                                                                                                                                                                                                                                                                                                                                             | 是                                          | 删除全部 `model-io-*.jsonl`；正在写入的文件删除失败时计入 `failures`，不阻塞             |
-| `devTraces`           | 开发诊断抓包       | `v2/dev`, `v2/acp-traffic-proxy`, `v2/acp-stream-diagnostics`                                                                                                                                                                                                                                                                                                                          | 是                                          | 删除目录内容；保留 `v2/dev/zcode-stdio-tap.json`（开关状态）                             |
+| `devTraces`           | 开发诊断抓包       | `v2/dev`, `v2/acp-traffic-proxy`, `v2/acp-stream-diagnostics`                                                                                                                                                                                                                                                                                                                          | 是                                          | 删除目录内容；保留 `v2/dev/codez-stdio-tap.json`（开关状态）                             |
 | `logs`                | 日志与崩溃报告     | `v2/logs`, `cli/log`, `logs`, `agent/logs`, `v2/crash`, `v2/perf`, `feedback/logs`, `computer-use/run/*.log`                                                                                                                                                                                                                                                                           | 是                                          | 删除**非当天**日志文件；`v2/crash/live`、`computer-use/run/.tokens` 不删                 |
 | `backups`             | 备份               | `backup`, `v2/backup`, `v2/migrations`, `cli/db/backup`, `cli/db/backups`, `cli/db/*.bak*`, `cli/db/*.backup-*`, `v2/*.bak`, `v2/*.backup.json`, `v2/setting.json.corrupt-*`, `v2/config.json.pre-*`, `cli/config.json.bak-*`                                                                                                                                                          | 是（需二次确认）                            | 全部删除                                                                                 |
 | `exports`             | 导出与反馈包       | `export-log`, `export-log-stage`, `feedback`                                                                                                                                                                                                                                                                                                                                           | 是                                          | 全部删除                                                                                 |
 | `runtimes`            | Agent 运行时与插件 | `agents/<runtime>/`, `bundled-agents`, `lite`, `computer-use`, `cli/plugins`（含 cache，2026-09-10 裁决不可删）                                                                                                                                                                                                                                                                        | 否                                          | 由安装 / 更新流程管理                                                                    |
 | `config`              | 配置、凭据与工作区 | `v2/*.json`, `v2/agent-config`, `v2/bots-runtime-locks`, `v2/certs`, `v2/acp-auth`, `v2/acp-config`, `v2/provider`, `cli/config.json`, `cli/models`, `cli/memories`, `cli/workflows`, `security`, `commands`, `skills`, `agents/*.md`, `workspace`, `mailbox`, `server`, `controller`, `launcher`, `dev-signing`, `cua-helper-dev-identity`, `perf-task-manifests`, `plugin-workspace` | 否                                          | —                                                                                        |
-| `other`               | 其他               | 未命中的路径；启用自定义数据路径后 `~/.zcode/v2` 整个旧副本；`agent/`（旧版残留）                                                                                                                                                                                                                                                                                                      | 否                                          | 下钻可见具体路径，便于后续补规则                                                         |
+| `other`               | 其他               | 未命中的路径；启用自定义数据路径后 `~/.codez/v2` 整个旧副本；`agent/`（旧版残留）                                                                                                                                                                                                                                                                                                      | 否                                          | 下钻可见具体路径，便于后续补规则                                                         |
 
 约束：
 
 - `cleanable` 的规则只允许删除**规则自身匹配到的路径**，删除前再次用 `path.relative(root, target)` 校验不越界，且拒绝符号链接目标。
-- 受保护文件白名单（`setting.json*`, `credentials.json`, `*.sqlite`, `*.sqlite-wal`, `*.sqlite-shm`, `v2/dev/zcode-stdio-tap.json`）在任何类别里都不删除。
+- 受保护文件白名单（`setting.json*`, `credentials.json`, `*.sqlite`, `*.sqlite-wal`, `*.sqlite-shm`, `v2/dev/codez-stdio-tap.json`）在任何类别里都不删除。
 - catalog 与 `exportLogs.ts` 里已有的跳过列表（`RETIRED_ACP_RUNTIME_ARCHIVE_PATHS`、`HIGH_VOLUME_RUNTIME_ARCHIVE_PATHS`、`NON_LOG_STATE_ARCHIVE_PATHS`）语义一致；后续可让 exportLogs 引用同一 catalog，本期不改 exportLogs。
 
 ## 4. 数据模型
@@ -188,7 +188,7 @@ export const IStorageService = createServiceDescriptor<IStorageService>("storage
 
 大小口径：`lstat().size` 求和，不跟随符号链接，硬链接/APFS clone 可能重复计数，UI 文案注明「估算值」。
 
-复用：desktop 已有一个只用于遥测的递归大小扫描器（`packages/desktop/src/main/zcodeDataSizeScanner.ts`，Worker 内跑、不跟随符号链接，由 `desktopZCodeDataSizeTelemetry.ts` 调用）。本功能把它下沉到 services 层并扩展为「按 catalog 分类累加 + 进度回调 + 取消」，遥测改为调用同一实现，避免两份目录遍历逻辑。
+复用：desktop 已有一个只用于遥测的递归大小扫描器（`packages/desktop/src/main/codezDataSizeScanner.ts`，Worker 内跑、不跟随符号链接，由 `desktopCodezDataSizeTelemetry.ts` 调用）。本功能把它下沉到 services 层并扩展为「按 catalog 分类累加 + 进度回调 + 取消」，遥测改为调用同一实现，避免两份目录遍历逻辑。
 
 RPC 接线沿用 `ISettingService` 的既有模式：`packages/shared/src/channels.ts` 增加 `ServiceChannels.Storage` → services 定义描述符与实现 → host collection（`packages/desktop/src/host/remoteConnectionServiceCollection.ts`）`.register` → `packages/client/src/remoteServiceAccess.ts` 增加代理并加进 `IServiceAccessor` → UI 通过 `useServices().storageService` 调用。
 
@@ -198,8 +198,8 @@ RPC 接线沿用 `ISettingService` 的既有模式：`packages/shared/src/channe
 Renderer <StorageSection>                 Host StorageService                       FS
   │ 进入分区                                      │                                      │
   ├─ startScan() ───────────────────────────────▶│ 新建 job(jobId, AbortController)      │
-  │                                              │ 解析根：R1=~/.zcode                    │
-  │                                              │        R2={dataBaseDir}/.zcode (可选)  │
+  │                                              │ 解析根：R1=~/.codez                    │
+  │                                              │        R2={dataBaseDir}/.codez (可选)  │
   │                                              │ 每根：stat dev → 向上找挂载点 → statfs ─▶│
   │                                              │ readdir(withFileTypes) 有界并发(8) ────▶│
   │◀─ onScanProgress(snapshot 节流 300ms) ────────┤ 逐条 lstat → catalog.classify → 累加   │
@@ -222,7 +222,7 @@ Renderer <StorageSection>                 Host StorageService                   
 性能约束（裁决 Q7：实时刷新、性能优先）：
 
 - 生命周期与分区绑定：进入「存储管理」才 `startScan`，切到其他分区 / 关闭设置页 / 窗口失焦超过 60s 立即 `cancelScan`；回来重新开始。不做后台常驻扫描。
-- 遍历跑在 Worker 线程（复用 `zcodeDataSizeScanner.ts` 的 Worker 形态），host 主事件循环只收节流后的进度；Worker 内全部 `fs/promises`，`readdir({ withFileTypes: true })` 减少 stat 次数，目录级有界并发（默认 4，可配），每处理 N 个条目 `setImmediate` 让出一次。
+- 遍历跑在 Worker 线程（复用 `codezDataSizeScanner.ts` 的 Worker 形态），host 主事件循环只收节流后的进度；Worker 内全部 `fs/promises`，`readdir({ withFileTypes: true })` 减少 stat 次数，目录级有界并发（默认 4，可配），每处理 N 个条目 `setImmediate` 让出一次。
 - 取消用 `AbortSignal`，每进入一个目录检查一次；取消后 Worker 立即停止而不是跑完再丢弃。
 - 进入分区时若内存里有上一次 `complete` 快照，先展示旧值再在后台重扫（stale-while-revalidate），避免每次进入都从 0 开始跳数字。
 - 进度事件 ≥300ms 一次且只在数字变化时发；快照体积受控：`entries` 只聚合到规则命中的一级路径，不携带逐文件列表。
@@ -237,12 +237,12 @@ Renderer <StorageSection>                 Host StorageService                   
 │ 总占用 25.0 GB · 上次计算 12:03  [重新计算]                              │
 │ ┌ 磁盘 Macintosh HD ───────────┐  ┌ 类别（当前选中磁盘）────────────────┐ │
 │ │ ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇░░░░░░░ │  │ ▤ 备份             12.9 GB  [清理] › │ │
-│ │ ZCode 占用 25.0 GB / 剩余 6.9 GB│  │ ▤ 开发诊断抓包      3.2 GB  [清理] › │ │
+│ │ Codez 占用 25.0 GB / 剩余 6.9 GB│  │ ▤ 开发诊断抓包      3.2 GB  [清理] › │ │
 │ │ ● 备份             12.9 GB      │  │ ▤ 模型调用轨迹      1.4 GB  [清理] › │ │
 │ │ ● 开发诊断抓包      3.2 GB      │  │ ▤ Agent 运行时与插件 2.2 GB         › │ │
 │ │ ● 模型调用轨迹      1.4 GB      │  │ ▤ 会话与任务数据    1.8 GB         › │ │
 │ │ ● …                            │  │ ▤ 日志与崩溃报告    0.15 GB [清理] › │ │
-│ │ 根目录：~/.zcode (25.0 GB)      │  │ ▤ 数据库            0.8 GB         › │ │
+│ │ 根目录：~/.codez (25.0 GB)      │  │ ▤ 数据库            0.8 GB         › │ │
 │ └────────────────────────────────┘  │ ▤ 其他              …               › │ │
 │ ┌ 磁盘 /Volumes/Data ───────────┐  └──────────────────────────────────────┘ │
 │ │ …（仅当 R2 在另一块盘时出现）    │                                          │
@@ -279,7 +279,7 @@ E2E（`packages/desktop/test/e2e/settings/settings-storage-management.test.ts`�
 | Case                     | Setup                                                                                                  | Action                            | Assertion                                                           |
 | ------------------------ | ------------------------------------------------------------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------- |
 | SM-01 scan               | 等启动迁移完成，清空隔离 HOME 的 `backup/`，再 seed 4 KiB `cli/debug`、6 KiB `backup/` 与昨日/今日日志 | 打开资源管理器 › 存储             | 扫描完成后轨迹为 4.0 KB、备份为 6.0 KB；总量包含应用正常运行数据    |
-| SM-02 drill-down         | 同上                                                                                                   | 点「模型调用轨迹」                | 明细列出 2 个文件与根目录 `~/.zcode`；面包屑可返回                  |
+| SM-02 drill-down         | 同上                                                                                                   | 点「模型调用轨迹」                | 明细列出 2 个文件与根目录 `~/.codez`；面包屑可返回                  |
 | SM-03 clean safe         | 同上                                                                                                   | 点轨迹行「清理」                  | 无确认框；toast 释放大小；文件已删；行大小变 0                      |
 | SM-04 clean confirm      | 同上                                                                                                   | 点「备份」行「清理」→ 取消 / 确认 | 取消不删；确认后删除                                                |
 | SM-08 stop on leave      | seed 大量小文件                                                                                        | 扫描中切到其他分区再切回          | 切走后 host 收到 cancel（无进度事件）；切回重新开始且先显示上次结果 |
@@ -295,7 +295,7 @@ E2E（`packages/desktop/test/e2e/settings/settings-storage-management.test.ts`�
 | 1   | 分类粒度                                       | 「数据库」与旧「会话与任务数据」合并为 **会话记录与数据库**（不可清理）；`cli/artifacts`、`cli/agents`、`cli/sessions` 独立为 **工具输出与子代理产物**（需确认可清理，24h 保护）。核实结果见 §1.3.1：artifacts 不是用户附件，是工具结果留档 |
 | 2   | 命令输出与临时缓存是否可清理                   | 可清理，`confirm` 并说明后果                                                                                                                                                                                                                |
 | 3   | 备份与迁移残留                                 | 可清理（`confirm`），类别改名为 **备份**                                                                                                                                                                                                    |
-| 4   | 启用自定义路径后的 `~/.zcode/v2` 旧副本        | 归入 **其他**，不提供清理                                                                                                                                                                                                                   |
+| 4   | 启用自定义路径后的 `~/.codez/v2` 旧副本        | 归入 **其他**，不提供清理                                                                                                                                                                                                                   |
 | 5   | 端范围                                         | 只做桌面端                                                                                                                                                                                                                                  |
 | 6   | CLI 不跟随数据存储路径的根因                   | 本次不修，只做管理（修了也仍有残留问题）                                                                                                                                                                                                    |
 | 7   | 进度                                           | 实时刷新；切走即停、进来再算；异步 IO、性能优先（见 §5 性能约束）                                                                                                                                                                           |
@@ -335,9 +335,9 @@ contracts/spec/tests: 本文 §3/§4/§5；storage/contract.ts + contract.test.t
 拒绝的形态（对照 ai-guidance 反模式）：
 
 - Renderer 直接 `fs` 扫盘或自建队列 ❌ —— 只走 `IStorageService`。
-- 第二套目录遍历器 ❌ —— desktop main 的 `zcodeDataSizeScanner.ts` 遍历逻辑迁入本模块 adapters，遥测 Worker 改为 import 同一实现。
+- 第二套目录遍历器 ❌ —— desktop main 的 `codezDataSizeScanner.ts` 遍历逻辑迁入本模块 adapters，遥测 Worker 改为 import 同一实现。
 - domain 里出现 `fs` / `path.resolve(homedir)` / 定时器 ❌ —— 分类、折叠、清理计划全是纯函数。
-- 深层 import `@zcode/services/src/storage/app/...` ❌ —— 只允许 `contract.ts`。
+- 深层 import `@codez/services/src/storage/app/...` ❌ —— 只允许 `contract.ts`。
 
 ### 10.2 模块布局与分层
 
@@ -371,7 +371,7 @@ packages/services/src/storage/
 │  ├─ scanJob.ts             单 job 生命周期：jobId、AbortController、300ms 节流、状态机
 │  └─ storageService.ts      createStorageService(deps: ports) → IStorageService；Emitter<snapshot>
 └─ adapters/                 IO 实现
-   ├─ fsWalker.ts            opendir/lstat 遍历（自 desktop main zcodeDataSizeScanner 迁入），有界并发、AbortSignal、setImmediate 让出、产出 (relativePath, bytes, mtimeMs)
+   ├─ fsWalker.ts            opendir/lstat 遍历（自 desktop main codezDataSizeScanner 迁入），有界并发、AbortSignal、setImmediate 让出、产出 (relativePath, bytes, mtimeMs)
    ├─ volumeProbe.ts         stat().dev + 向上找挂载点 + statfs → StorageVolume
    ├─ fsCleaner.ts           按 cleanPlan 结果异步有界并发 rm，收集 failures
    └─ scanWorkerProtocol.ts  Worker 消息类型与 isSnapshot 守卫（Worker 入口本身在 desktop 包）
@@ -385,7 +385,7 @@ desktop/src/host/storageScanWorker.ts   (tsup 新增 entry "host/storageScanWork
       import { classify, fold } from services/storage/domain/*     ← 纯函数可在 Worker 内跑
       每 300ms postMessage(部分 snapshot)；收到 abort 消息即停
 desktop/src/host/storageScanWorkerClient.ts  实现 ScanRunnerPort：new Worker(new URL(...)) + terminate on abort
-desktop/src/main/zcodeDataSizeWorker.ts      改为 import services 的 fsWalker（删除 main 里的重复遍历实现）
+desktop/src/main/codezDataSizeWorker.ts      改为 import services 的 fsWalker（删除 main 里的重复遍历实现）
 ```
 
 理由：分类与折叠在 Worker 内完成，主线程只收聚合后的快照，不为每个文件跨线程传消息；进程内测试用 `createInProcessScanRunner()` 直接调用同一 walker + domain，保证 Worker 版与测试版走同一条路径。
@@ -413,7 +413,7 @@ desktop/src/main/zcodeDataSizeWorker.ts      改为 import services 的 fsWalker
 | `packages/desktop/src/host/remoteConnectionServiceCollection.ts`                                  | `.register(IStorageService, ...)`（连接级，机器作用域；不注册到 workspace 级 collection）                                                                                                   |
 | `packages/desktop/src/host/storageScanWorker.ts` + `storageScanWorkerClient.ts`                   | Worker 入口与 ScanRunnerPort 实现                                                                                                                                                           |
 | `packages/desktop/tsup.config.ts`                                                                 | host 增加 `"host/storageScanWorker"` entry                                                                                                                                                  |
-| `packages/desktop/src/main/zcodeDataSizeWorker.ts` / `zcodeDataSizeScanner.ts`                    | 遍历实现迁入 services，main 侧只保留 Worker 入口                                                                                                                                            |
+| `packages/desktop/src/main/codezDataSizeWorker.ts` / `codezDataSizeScanner.ts`                    | 遍历实现迁入 services，main 侧只保留 Worker 入口                                                                                                                                            |
 | `packages/ui/src/hooks/useStorageUsage.ts`                                                        | 订阅 `onScanProgress`，mount 时 `startScan`、unmount/失焦 60s 时 `cancelScan`，按 jobId 过滤                                                                                                |
 | `packages/ui/src/settings/storage/`                                                               | `StorageSection.tsx`、`StorageDiskCard.tsx`、`StorageCategoryList.tsx`、`StorageCategoryDetail.tsx`、`StorageCleanConfirmDialog.tsx`、`storageCategoryPresentation.ts`（图标/文案 id/颜色） |
 | `packages/ui/src/settings/settingsPageConfig.ts`、`lib/settingsNavigation.ts`、`SettingsPage.tsx` | 注册 `storage` 分区（`isDesktop` 门控）                                                                                                                                                     |
@@ -448,4 +448,4 @@ desktop/src/main/zcodeDataSizeWorker.ts      改为 import services 的 fsWalker
 - 「在文件管理器中显示」走 `StorageRevealPath`，main 用 `isPathInsideStorageRoots` 校验后调用 `shell.showItemInFolder`。
 - 契约类型与 `groupStorageRootsByVolume` 放在 `packages/shared/src/storage.ts`（renderer 桥、main、services 共用，且避免 contract ↔ domain 循环依赖）。
 - 数据大小的 SM-08（切走即停）与 SM-09（24h 保护）由单测覆盖（`useStorageUsage.test.ts`、`storageCleanPlan.test.ts`），E2E 不再重复。
-- desktop main 的遥测扫描器 `zcodeDataSizeScanner.ts` 尚未切到 services 的 `walkStorageRoot`，留作后续小 MR（行为等价替换，需保留 file/time limit partial 语义）。
+- desktop main 的遥测扫描器 `codezDataSizeScanner.ts` 尚未切到 services 的 `walkStorageRoot`，留作后续小 MR（行为等价替换，需保留 file/time limit partial 语义）。

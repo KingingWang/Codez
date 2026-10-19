@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OpenSplitButton, type OpenSplitButtonTarget } from "@/OpenSplitButton.js";
 import { toast } from "@/components/ui/toast.js";
-import type { OpenInEditorRemoteTarget } from "@zcode/shared";
+import type { OpenInEditorRemoteTarget } from "@codez/shared";
 
 const state = vi.hoisted(() => ({
   native: true,
@@ -34,7 +34,7 @@ vi.mock("@/hooks/useWorkspaceOpenInEditorTarget.js", () => ({
   }),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/components/ui/toast.js", () => ({ toast: vi.fn() }));
 const file: OpenSplitButtonTarget = {

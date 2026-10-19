@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 移除 `ZCODE_E2E_REPORT_UPLOAD_REQUIRED` 强制门禁，让报告平台上传失败只告警，同时保留 E2E 和 summary 校验失败语义。
+**Goal:** 移除 `CODEZ_E2E_REPORT_UPLOAD_REQUIRED` 强制门禁，让报告平台上传失败只告警，同时保留 E2E 和 summary 校验失败语义。
 
 **Architecture:** macOS Bash 与 Windows PowerShell job 继续在主 `script` 中先保存测试状态并尝试上传，确保失败场景仍有诊断材料。最终退出码只读取 E2E/summary 校验结果，不再读取报告平台上传状态；用 CI 配置静态测试锁定两个平台的一致行为。
 
@@ -25,15 +25,15 @@
 
 **Interfaces:**
 - Consumes: `.gitlab/ci/20-test.yml` 中两个 conversation-session E2E job 的文本。
-- Produces: 保留上传位置与失败视频配置、禁止 `ZCODE_E2E_REPORT_UPLOAD_REQUIRED` 的静态契约。
+- Produces: 保留上传位置与失败视频配置、禁止 `CODEZ_E2E_REPORT_UPLOAD_REQUIRED` 的静态契约。
 
 - [x] **Step 1: Write the failing test**
 
 将 case 名称改为 `collects failure videos without making report upload a CI gate`，并对两个 job 添加：
 
 ```ts
-expect(macE2EJob).not.toContain("ZCODE_E2E_REPORT_UPLOAD_REQUIRED");
-expect(windowsE2EJob).not.toContain("ZCODE_E2E_REPORT_UPLOAD_REQUIRED");
+expect(macE2EJob).not.toContain("CODEZ_E2E_REPORT_UPLOAD_REQUIRED");
+expect(windowsE2EJob).not.toContain("CODEZ_E2E_REPORT_UPLOAD_REQUIRED");
 ```
 
 保留 uploader 位于 E2E exit 之前、没有 `after_script`、失败视频开关存在的断言。
@@ -42,7 +42,7 @@ expect(windowsE2EJob).not.toContain("ZCODE_E2E_REPORT_UPLOAD_REQUIRED");
 
 Run: `pnpm exec vitest run packages/desktop/test/gitlabCiBuildGraph.test.ts -t "collects failure videos"`
 
-Expected: FAIL，指出两个 job 仍包含 `ZCODE_E2E_REPORT_UPLOAD_REQUIRED`。
+Expected: FAIL，指出两个 job 仍包含 `CODEZ_E2E_REPORT_UPLOAD_REQUIRED`。
 
 ### Task 2: 移除两个平台的强制上传门禁
 
@@ -59,13 +59,13 @@ Expected: FAIL，指出两个 job 仍包含 `ZCODE_E2E_REPORT_UPLOAD_REQUIRED`�
 删除两个 job variables 中的：
 
 ```yaml
-ZCODE_E2E_REPORT_UPLOAD_REQUIRED: "1"
+CODEZ_E2E_REPORT_UPLOAD_REQUIRED: "1"
 ```
 
 并删除 macOS：
 
 ```bash
-if [[ "${ZCODE_E2E_REPORT_UPLOAD_REQUIRED:-}" == "1" && "$report_upload_status" -ne 0 ]]; then
+if [[ "${CODEZ_E2E_REPORT_UPLOAD_REQUIRED:-}" == "1" && "$report_upload_status" -ne 0 ]]; then
   exit "$report_upload_status"
 fi
 ```
@@ -73,7 +73,7 @@ fi
 删除 Windows：
 
 ```powershell
-if ($env:ZCODE_E2E_REPORT_UPLOAD_REQUIRED -eq "1" -and $reportUploadStatus -ne 0) {
+if ($env:CODEZ_E2E_REPORT_UPLOAD_REQUIRED -eq "1" -and $reportUploadStatus -ne 0) {
   exit $reportUploadStatus
 }
 ```
@@ -90,7 +90,7 @@ Expected: PASS。
 
 - [ ] **Step 3: Verify repository gates**
 
-Run: `pnpm --filter @zcode/desktop typecheck:e2e`
+Run: `pnpm --filter @codez/desktop typecheck:e2e`
 
 Run: `pnpm typecheck`
 

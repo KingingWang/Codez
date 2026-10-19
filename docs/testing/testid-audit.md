@@ -57,7 +57,7 @@
 | `NewTaskButtonGroup.tsx` | 部分：主按钮有 testid，下拉 trigger 没有 |
 | `ChatView.tsx` | 完整：容器、消息列表、空状态、输入框、附件按钮、发送/停止、loading |
 | `ChatMessage.tsx` | 部分：仅工具调用里的"查看代码"按钮，消息气泡本身没有 testid |
-| `App.tsx` | 完整：header、sidebar、tabs、workspace header、ZCode 状态徽章 |
+| `App.tsx` | 完整：header、sidebar、tabs、workspace header、Codez 状态徽章 |
 | `WorkspaceSidebar.tsx` | 部分：主容器、工作区列表/item/close、打开按钮，但空状态缺 testid |
 | `SettingsPage.tsx` | 部分：页面容器有，返回按钮缺 |
 
@@ -92,7 +92,7 @@
 
 2. 在组件根元素加 `data-testid`：
    ```tsx
-   import { TID_PERMISSION_DIALOG } from "@zcode/shared/test-ids";
+   import { TID_PERMISSION_DIALOG } from "@codez/shared/test-ids";
    
    <Confirmation data-testid={TID_PERMISSION_DIALOG} ...>
    ```

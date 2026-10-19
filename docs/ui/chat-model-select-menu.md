@@ -40,7 +40,7 @@
 - picker 互斥只属于单个 composer 实例，不进入全局 store，也不跨 pane、window 或
   desktop continuous / web-remote replayable 边界同步。
 - 手机 Web 端继续避免关闭菜单后强制恢复输入框焦点，防止触控设备拉起系统键盘遮挡菜单；模型 trigger 不保留手机专用的固定宽度、文字截断或 provider 裁剪逻辑，统一依赖 composer 的可用空间裁决。
-- ZCode Agent 的 provider 模型菜单按 runtime endpoint format 过滤，当前目录可以包含
+- Codez Agent 的 provider 模型菜单按 runtime endpoint format 过滤，当前目录可以包含
   Anthropic-compatible、OpenAI-compatible Chat Completions 和 OpenAI Responses 模型；Bot `/model`
   入口复用同一 provider 能力边界。
 - 已有 session 的选择通过 V4 `switchModelConfig` 写 CLI；草稿选择由 `useDraftConfigControl` 写

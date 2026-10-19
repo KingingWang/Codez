@@ -8,7 +8,7 @@ import {
   parseRemoteWorkspaceIdentity,
   sourceServerReleaseDescriptorSchema,
   type SourceServerReleaseArchive,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   selectSourceServerReleaseArchive,
   withSourceServerReleaseFileFault,
@@ -35,7 +35,7 @@ import {
 const CASE_MARKER = "E2E_R3_INSTALL_FAULTS";
 const DESKTOP_ROOT = resolve(import.meta.dirname, "../../../../..");
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-install-faults",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-install-faults",
 );
 
 interface FaultRecord {
@@ -52,9 +52,9 @@ interface FaultRecord {
 
 /** WDIO 每次 run 会把 mock-cdn release 硬链接到 runId 隔离目录；这里只改隔离目录里的文件，先解链再写。 */
 async function stagedReleaseDir(): Promise<string> {
-  const runId = process.env.ZCODE_E2E_RUN_ID?.trim();
-  if (!runId) throw new Error(`${CASE_MARKER}: ZCODE_E2E_RUN_ID 缺失`);
-  // WDIO worker 的 ZCODE_VERSION 是 dev 值，staged 目录使用仓库版本；文件读取保持异步。
+  const runId = process.env.CODEZ_E2E_RUN_ID?.trim();
+  if (!runId) throw new Error(`${CASE_MARKER}: CODEZ_E2E_RUN_ID 缺失`);
+  // WDIO worker 的 CODEZ_VERSION 是 dev 值，staged 目录使用仓库版本；文件读取保持异步。
   const { version } = JSON.parse(
     await readFile(resolve(DESKTOP_ROOT, "../../package.json"), "utf8"),
   );
@@ -64,7 +64,7 @@ async function stagedReleaseDir(): Promise<string> {
 async function remoteInstalledState(config: SSHConnectionConfig): Promise<string> {
   const result = await runSSHCommand(
     config,
-    'if [ -f "$HOME/.zcode/server/current.json" ]; then grep -o \'"archiveSha256": *"[0-9a-f]*"\' "$HOME/.zcode/server/current.json"; else echo none; fi',
+    'if [ -f "$HOME/.codez/server/current.json" ]; then grep -o \'"archiveSha256": *"[0-9a-f]*"\' "$HOME/.codez/server/current.json"; else echo none; fi',
   );
   return result.stdout.trim() || `exit=${result.code}`;
 }

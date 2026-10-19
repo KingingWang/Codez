@@ -3,21 +3,21 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { IServiceAccessor } from "@zcode/services";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import { Emitter } from "@codez/rpc";
+import type { IServiceAccessor } from "@codez/services";
+import type { CodezTaskMeta } from "@codez/shared";
 import type {
   SessionsIndexTopicFrame,
   SessionsIndexTopicWireFrame,
   SessionSummary,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { useGlobalTaskList } from "@/hooks/useGlobalTaskList.js";
 import { useSessionsMentionProvider } from "@/mentions/providers/sessionsMentionProvider.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 import {
   buildWorkspaceSessionsIndexSourceKey,
@@ -42,7 +42,7 @@ function createSession(overrides: Partial<SessionSummary> = {}): SessionSummary 
   };
 }
 
-function createTaskMeta(taskId: string, overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
+function createTaskMeta(taskId: string, overrides: Partial<CodezTaskMeta> = {}): CodezTaskMeta {
   return {
     taskId,
     traceId: `trace-${taskId}`,
@@ -52,7 +52,7 @@ function createTaskMeta(taskId: string, overrides: Partial<ZCodeTaskMeta> = {}):
     updatedAt: 2,
     mode: "default",
     ...overrides,
-  } as ZCodeTaskMeta;
+  } as CodezTaskMeta;
 }
 
 function createMinimalElement(ownerDocument: Document, tagName = "div") {
@@ -170,8 +170,8 @@ interface EndpointMockOptions {
   sessionsByWorkspaceKey?: Record<string, SessionSummary[]>;
   pinnedTaskIds?: string[];
   /** listTasks 返回的 tasks-index 持久行。 */
-  activeTaskMetas?: ZCodeTaskMeta[];
-  pinnedTaskMetas?: ZCodeTaskMeta[];
+  activeTaskMetas?: CodezTaskMeta[];
+  pinnedTaskMetas?: CodezTaskMeta[];
   /** 用于覆盖 ACK 延迟期间 scope 集合变化的竞态。 */
   subscribeGate?: Promise<void>;
   subscribeGatesByWorkspaceKey?: Record<string, Promise<void>>;
@@ -250,7 +250,7 @@ function createEndpointServices(options: EndpointMockOptions) {
   const defaultTaskMetasForScope = (params: {
     workspacePath: string;
     workspaceIdentity?: string;
-  }): ZCodeTaskMeta[] => {
+  }): CodezTaskMeta[] => {
     const workspaceKey = params.workspaceIdentity?.trim() || params.workspacePath;
     const sessions = options.sessionsByWorkspaceKey?.[workspaceKey] ?? options.sessions;
     return sessions.map((session) =>
@@ -307,10 +307,10 @@ function createEndpointServices(options: EndpointMockOptions) {
       unsubscribeControllerV4: vi.fn(async () => {}),
       onDynamicControllerFrame: () => controllerFrames.event,
     },
-    zcodeTaskService: {
+    codezTaskService: {
       listTaskList,
       listPinnedTaskIds: vi.fn(async (): Promise<string[]> => options.pinnedTaskIds ?? []),
-      listArchivedTasks: vi.fn(async (): Promise<ZCodeTaskMeta[]> => []),
+      listArchivedTasks: vi.fn(async (): Promise<CodezTaskMeta[]> => []),
       listTasks: vi.fn(
         async (params: { workspacePath: string; workspaceIdentity?: string }) =>
           options.activeTaskMetas ??
@@ -323,7 +323,7 @@ function createEndpointServices(options: EndpointMockOptions) {
       ),
       onDynamicWorkspaceEvent: () => () => ({ dispose() {} }),
     },
-    zcodeAgentService: {
+    codezAgentService: {
       ...v4Handshake(`connection-${options.workspaceId}`),
       subscribeSessionsIndexV4,
       unsubscribeSessionsIndexV4,
@@ -441,20 +441,20 @@ describe("useGlobalTaskList remote shard tasks-index 行 + sessions-index detail
       sessionIdByWorkspaceIdentity: {},
       sessionIdByWorkspacePath: {},
     });
-    useZCodeSessionStore.setState({ workspaces: {} });
+    useCodezSessionStore.setState({ workspaces: {} });
     delete (globalThis as { document?: unknown }).document;
     delete (globalThis as { window?: unknown }).window;
     delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: unknown }).IS_REACT_ACT_ENVIRONMENT;
   });
 
   it("remote A 已就绪后分步追加并移除 ACK 延迟的 remote B，不重启 A", async () => {
-    const zcodeAck = createDeferred();
+    const codezAck = createDeferred();
     const base = createEndpointServices({
       workspaceId: "ws-base",
       sessions: [],
     });
     const macIdentity = "remote:ssh:mac:/Users/dev";
-    const macProjectIdentity = "remote:ssh:mac:/Users/dev/ZCodeProject";
+    const macProjectIdentity = "remote:ssh:mac:/Users/dev/CodezProject";
     const mac = createEndpointServices({
       workspaceId: "ws-mac",
       sessions: [],
@@ -475,52 +475,52 @@ describe("useGlobalTaskList remote shard tasks-index 行 + sessions-index detail
         ],
       },
     });
-    const zcodeIdentity = "remote:ssh:zcode:/root";
-    const zcodeProjectIdentity = "remote:ssh:zcode:/root/demo-project";
-    const zcode = createEndpointServices({
-      workspaceId: "ws-zcode",
+    const codezIdentity = "remote:ssh:codez:/root";
+    const codezProjectIdentity = "remote:ssh:codez:/root/demo-project";
+    const codez = createEndpointServices({
+      workspaceId: "ws-codez",
       sessions: [],
       sessionsByWorkspaceKey: {
-        [zcodeIdentity]: [
+        [codezIdentity]: [
           createSession({
-            sessionId: "s-zcode",
-            workspaceId: zcodeIdentity,
+            sessionId: "s-codez",
+            workspaceId: codezIdentity,
             lastActivityAt: 30,
           }),
         ],
-        [zcodeProjectIdentity]: [
+        [codezProjectIdentity]: [
           createSession({
-            sessionId: "s-zcode-project",
-            workspaceId: zcodeProjectIdentity,
+            sessionId: "s-codez-project",
+            workspaceId: codezProjectIdentity,
             lastActivityAt: 40,
           }),
         ],
       },
-      subscribeGate: zcodeAck.promise,
+      subscribeGate: codezAck.promise,
     });
     const macScope: WorkspaceSessionsIndexScope = {
       endpointKey: "remote-mac",
       workspacePath: "/Users/dev",
       workspaceIdentity: macIdentity,
-      agentService: mac.services.zcodeAgentService,
+      agentService: mac.services.codezAgentService,
     };
     const macProjectScope: WorkspaceSessionsIndexScope = {
       endpointKey: "remote-mac",
-      workspacePath: "/Users/dev/ZCodeProject",
+      workspacePath: "/Users/dev/CodezProject",
       workspaceIdentity: macProjectIdentity,
-      agentService: mac.services.zcodeAgentService,
+      agentService: mac.services.codezAgentService,
     };
-    const zcodeScope: WorkspaceSessionsIndexScope = {
-      endpointKey: "remote-zcode",
+    const codezScope: WorkspaceSessionsIndexScope = {
+      endpointKey: "remote-codez",
       workspacePath: "/root",
-      workspaceIdentity: zcodeIdentity,
-      agentService: zcode.services.zcodeAgentService,
+      workspaceIdentity: codezIdentity,
+      agentService: codez.services.codezAgentService,
     };
-    const zcodeProjectScope: WorkspaceSessionsIndexScope = {
-      endpointKey: "remote-zcode",
+    const codezProjectScope: WorkspaceSessionsIndexScope = {
+      endpointKey: "remote-codez",
       workspacePath: "/root/demo-project",
-      workspaceIdentity: zcodeProjectIdentity,
-      agentService: zcode.services.zcodeAgentService,
+      workspaceIdentity: codezProjectIdentity,
+      agentService: codez.services.codezAgentService,
     };
     let scopes: WorkspaceSessionsIndexScope[] = [macScope, macProjectScope];
     let latest: ReturnType<typeof useWorkspaceSessionsIndexItems> | null = null;
@@ -571,7 +571,7 @@ describe("useGlobalTaskList remote shard tasks-index 行 + sessions-index detail
     expect(latest?.sourceRevisionByScopeKey[macSourceKey]).not.toBe(macRevisionBefore);
     expect(latest?.sourceRevisionByScopeKey[macProjectSourceKey]).toBe(macProjectRevisionBefore);
 
-    scopes = [macScope, macProjectScope, zcodeScope];
+    scopes = [macScope, macProjectScope, codezScope];
     await act(async () => {
       root.render(
         createElement(ServiceProvider, { services: base.services }, createElement(Probe)),
@@ -581,11 +581,11 @@ describe("useGlobalTaskList remote shard tasks-index 行 + sessions-index detail
 
     expect(mac.subscribeSessionsIndexV4).toHaveBeenCalledTimes(2);
     expect(mac.unsubscribeSessionsIndexV4).not.toHaveBeenCalled();
-    expect(zcode.subscribeSessionsIndexV4).toHaveBeenCalledTimes(1);
-    expect(latest?.hydratingEndpointKeys).toEqual(["remote-zcode"]);
+    expect(codez.subscribeSessionsIndexV4).toHaveBeenCalledTimes(1);
+    expect(latest?.hydratingEndpointKeys).toEqual(["remote-codez"]);
     expect((latest?.items ?? []).map((item) => item.taskId)).toEqual(["s-mac-project", "s-mac"]);
 
-    scopes = [macScope, macProjectScope, zcodeScope, zcodeProjectScope];
+    scopes = [macScope, macProjectScope, codezScope, codezProjectScope];
     await act(async () => {
       root.render(
         createElement(ServiceProvider, { services: base.services }, createElement(Probe)),
@@ -594,15 +594,15 @@ describe("useGlobalTaskList remote shard tasks-index 行 + sessions-index detail
     });
     expect(mac.subscribeSessionsIndexV4).toHaveBeenCalledTimes(2);
     expect(mac.unsubscribeSessionsIndexV4).not.toHaveBeenCalled();
-    expect(zcode.subscribeSessionsIndexV4).toHaveBeenCalledTimes(2);
+    expect(codez.subscribeSessionsIndexV4).toHaveBeenCalledTimes(2);
 
     await act(async () => {
-      zcodeAck.resolve();
+      codezAck.resolve();
       await flushMicrotasks();
     });
     expect((latest?.items ?? []).map((item) => item.taskId)).toEqual([
-      "s-zcode-project",
-      "s-zcode",
+      "s-codez-project",
+      "s-codez",
       "s-mac-project",
       "s-mac",
     ]);
@@ -614,7 +614,7 @@ describe("useGlobalTaskList remote shard tasks-index 行 + sessions-index detail
       );
       await flushMicrotasks();
     });
-    expect(zcode.unsubscribeSessionsIndexV4).toHaveBeenCalledTimes(2);
+    expect(codez.unsubscribeSessionsIndexV4).toHaveBeenCalledTimes(2);
     expect(mac.unsubscribeSessionsIndexV4).not.toHaveBeenCalled();
     expect((latest?.items ?? []).map((item) => item.taskId)).toEqual(["s-mac-project", "s-mac"]);
 
@@ -648,13 +648,13 @@ describe("useGlobalTaskList remote shard tasks-index 行 + sessions-index detail
     });
     const localScope: WorkspaceSessionsIndexScope = {
       workspacePath: "/workspace",
-      agentService: local.services.zcodeAgentService,
+      agentService: local.services.codezAgentService,
     };
     const remoteScope: WorkspaceSessionsIndexScope = {
       endpointKey: "remote-added",
       workspacePath: "/remote-added",
       workspaceIdentity: "remote:ssh:added:/remote-added",
-      agentService: remote.services.zcodeAgentService,
+      agentService: remote.services.codezAgentService,
     };
     let scopes: WorkspaceSessionsIndexScope[] = [localScope];
     let latest: ReturnType<typeof useWorkspaceSessionsIndexItems> | null = null;
@@ -832,7 +832,7 @@ describe("useGlobalTaskList remote shard tasks-index 行 + sessions-index detail
     });
     const localScope: WorkspaceSessionsIndexScope = {
       workspacePath: "/workspace-generation",
-      agentService: local.services.zcodeAgentService,
+      agentService: local.services.codezAgentService,
     };
     const remoteScopeBase = {
       endpointKey: "remote-generation",
@@ -843,7 +843,7 @@ describe("useGlobalTaskList remote shard tasks-index 行 + sessions-index detail
       localScope,
       {
         ...remoteScopeBase,
-        agentService: remoteOld.services.zcodeAgentService,
+        agentService: remoteOld.services.codezAgentService,
       },
     ];
     let latest: ReturnType<typeof useWorkspaceSessionsIndexItems> | null = null;
@@ -865,7 +865,7 @@ describe("useGlobalTaskList remote shard tasks-index 行 + sessions-index detail
       localScope,
       {
         ...remoteScopeBase,
-        agentService: remoteNew.services.zcodeAgentService,
+        agentService: remoteNew.services.codezAgentService,
       },
     ];
     await act(async () => {

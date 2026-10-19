@@ -5,7 +5,7 @@ import {
   TID_SIDE_PANE_TOGGLE,
   TID_WORKSPACE_HEADER,
   TID_WORKSPACE_TITLE,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData } from "../helpers/desktop-app.js";
 import { prepareV4ConversationE2E } from "../helpers/v4-conversation.js";
 
@@ -420,7 +420,7 @@ describe("Side Pane Tab responsive interactions", () => {
       expect(terminalTabStyle.gap).toBe("4px");
       await browser.saveScreenshot(
         join(
-          process.env.ZCODE_E2E_ARTIFACT_DIR || process.cwd(),
+          process.env.CODEZ_E2E_ARTIFACT_DIR || process.cwd(),
           `independent-panels-${theme}.png`,
         ),
       );
@@ -852,7 +852,7 @@ describe("Side Pane Tab responsive interactions", () => {
     // 不真正关闭测试窗口；再次发出同一可取消事件，必须允许 Root 执行关窗 fallback。
     expect(
       await browser.execute(() =>
-        window.dispatchEvent(new Event("zcode:close-active-context-request", { cancelable: true })),
+        window.dispatchEvent(new Event("codez:close-active-context-request", { cancelable: true })),
       ),
     ).toBe(true);
     await ensureSidePaneExpanded();

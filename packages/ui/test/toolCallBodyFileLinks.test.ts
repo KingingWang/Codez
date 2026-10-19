@@ -1,7 +1,7 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ToolCallBody } from "@/ToolCallBlocks/ToolCallBody.js";
 import { ToolPresentationCapabilitiesProvider } from "@/ToolCallBlocks/presentationCapabilities.js";
 import { buildToolDisplayModel } from "@/lib/toolDisplay.js";
@@ -44,7 +44,7 @@ describe("ToolCallBody markdown file links", () => {
 
     renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBody, {
           childToolList: null,
@@ -79,7 +79,7 @@ it.each(["zh-CN", "en-US"] as const)("无宿主图片能力时 %s 展示静态�
   expect(displayModel.inlinePreview.type).toBe("image");
   const html = renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(
         ToolPresentationCapabilitiesProvider,
@@ -106,7 +106,7 @@ it("公开图片资源命中时直接渲染图片", () => {
   };
   const html = renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(
         ToolPresentationCapabilitiesProvider,

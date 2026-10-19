@@ -3,7 +3,7 @@ import type {
   OffPeakControlParams,
   OffPeakControlResult,
   OffPeakLifecycleNotification,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { OffPeakResidentExecutions } from "../src/session/offPeakResidentExecutions.js";
 
 function fixture() {

@@ -10,8 +10,8 @@
  * 本次实现后为 6 files / 77 tests 全绿，且未修改 offPeakRuntimeModel.ts 的任何导出。
  */
 import { describe, expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS, type ZCodeAccountAccess } from "@zcode/shared";
-import type { ModelSelectionView } from "@zcode/provider";
+import { BUILTIN_MODEL_PROVIDER_IDS, type CodezAccountAccess } from "@codez/shared";
+import type { ModelSelectionView } from "@codez/provider";
 
 // 凭证解析日志的级别断言（OMCP-LOG-*）：mock 掉 serviceLogger 才能观察到模块级
 // `const log` 的调用；该文件其余用例不断言日志，mock 对它们是透明的。
@@ -34,7 +34,7 @@ import {
   type OfficialMcpCredentialResolverDeps,
 } from "../src/official-mcp/officialMcpCredentials.js";
 
-const JWT = "zcode-jwt-value";
+const JWT = "codez-jwt-value";
 /** MaaS 登录 JWT：Coding Plan 凭证自 2026-08 起走这条通道（X-Bigmodel-Authorization）。 */
 const MAAS_JWT = "bigmodel-maas-jwt";
 const ZAI_MAAS_JWT = "zai-maas-jwt";
@@ -93,8 +93,8 @@ interface DepsOverrides {
   registrySequence?: ModelSelectionView[];
   settings?: Record<string, unknown>;
   settingsSequence?: Array<Record<string, unknown>>;
-  accountAccess?: ZCodeAccountAccess | null;
-  accountAccessSequence?: Array<ZCodeAccountAccess | null>;
+  accountAccess?: CodezAccountAccess | null;
+  accountAccessSequence?: Array<CodezAccountAccess | null>;
 }
 
 function createDeps(overrides: DepsOverrides = {}): OfficialMcpCredentialResolverDeps {
@@ -137,7 +137,7 @@ function createDeps(overrides: DepsOverrides = {}): OfficialMcpCredentialResolve
           }
           return overrides.activeProvider === undefined ? "bigmodel" : overrides.activeProvider;
         }
-        if (key === "zcodejwttoken") {
+        if (key === "codezjwttoken") {
           if (overrides.jwtSequence) {
             const value =
               overrides.jwtSequence[Math.min(jwtCalls, overrides.jwtSequence.length - 1)];
@@ -293,7 +293,7 @@ describe("official mcp credential resolver", () => {
     expect(headers["Bigmodel-Project"]).toBeUndefined();
   });
 
-  it("OMCP-023: sends only the ZCode JWT for a Start Plan connection", async () => {
+  it("OMCP-023: sends only the Codez JWT for a Start Plan connection", async () => {
     const outcome = await resolveOfficialMcpCredentials(
       createDeps({
         registry: createRegistry([
@@ -347,7 +347,7 @@ describe("official mcp credential resolver", () => {
     ).resolves.toEqual({ ok: false, reason: "official_auth_unavailable" });
   });
 
-  it("sends only the ZCode JWT when the selected coding plan connection is absent", async () => {
+  it("sends only the Codez JWT when the selected coding plan connection is absent", async () => {
     const outcome = await resolveOfficialMcpCredentials(
       createDeps({ registry: createRegistry([]) }),
     );
@@ -419,7 +419,7 @@ describe("official mcp credential resolver", () => {
   });
 
   it("动态 Team scope 在解析前后变化时不拼接两代身份", async () => {
-    const teamAccess = (projectId: string): ZCodeAccountAccess => ({
+    const teamAccess = (projectId: string): CodezAccountAccess => ({
       type: "zhipu-account",
       family: "bigmodel",
       planKind: "team-coding-plan",
@@ -455,7 +455,7 @@ describe("official mcp credential resolver", () => {
 
   it("discards the round when the MaaS JWT rotates during the registry read", async () => {
     // 与上一条同理：MaaS JWT 现在是真正的 Coding Plan 凭证，必须一起纳入前后一致性检查，
-    // 否则会拼出"旧 zcode JWT + 新 MaaS JWT"的混代快照。
+    // 否则会拼出"旧 codez JWT + 新 MaaS JWT"的混代快照。
     const outcome = await resolveOfficialMcpCredentials(
       createDeps({
         maasJwtSequence: ["maas-gen-1", "maas-gen-2", "maas-gen-3", "maas-gen-4"],
@@ -485,9 +485,9 @@ describe("official mcp credential resolver", () => {
   });
 
   it("OMCP-024: has no mock credential branch at all", async () => {
-    // Off-Peak 的 ZCODE_OFFPEAK_MOCK 占位凭证分支不得在官方 MCP 路径复现。
-    const previous = process.env["ZCODE_OFFPEAK_MOCK"];
-    process.env["ZCODE_OFFPEAK_MOCK"] = "1";
+    // Off-Peak 的 CODEZ_OFFPEAK_MOCK 占位凭证分支不得在官方 MCP 路径复现。
+    const previous = process.env["CODEZ_OFFPEAK_MOCK"];
+    process.env["CODEZ_OFFPEAK_MOCK"] = "1";
     try {
       const outcome = await resolveOfficialMcpCredentials(createDeps({ jwt: "" }));
       expect(outcome).toEqual({ ok: false, reason: "official_auth_unavailable" });
@@ -497,8 +497,8 @@ describe("official mcp credential resolver", () => {
       expect(ok.snapshot.jwt).toBe(JWT);
       expect(ok.snapshot.codingPlanAuthorization).toBe(MAAS_JWT);
     } finally {
-      if (previous === undefined) delete process.env["ZCODE_OFFPEAK_MOCK"];
-      else process.env["ZCODE_OFFPEAK_MOCK"] = previous;
+      if (previous === undefined) delete process.env["CODEZ_OFFPEAK_MOCK"];
+      else process.env["CODEZ_OFFPEAK_MOCK"] = previous;
     }
   });
 

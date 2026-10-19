@@ -8,7 +8,7 @@ import {
   TID_MODEL_PROVIDER_TEMPLATE_ITEM,
   TID_MODEL_PROVIDER_TEMPLATE_PICKER,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { ProviderTemplatePicker } from "@/settings/model-provider-section/ProviderTemplatePicker.js";
 import { ProviderDetailFeedbackBoundary } from "@/settings/model-provider-section/ProviderDetailFeedback.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
@@ -20,7 +20,7 @@ vi.mock("@/logger.js", () => ({ logger: loggerMock }));
 afterEach(cleanup);
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "zh-CN",
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, string>) => {

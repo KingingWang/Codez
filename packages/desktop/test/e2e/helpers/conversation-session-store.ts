@@ -75,7 +75,7 @@ export function getV4ComposerDraftScopeSnapshot(
       const scopeId = taskIdArg ?? "__draft__";
       const workspaceKey = workspaceIdentityArg?.trim() || workspacePathArg;
       const intentRaw = window.localStorage.getItem(
-        `zcode-composer-workspace-scope:v1:${JSON.stringify(["desktop", workspaceKey])}`,
+        `codez-composer-workspace-scope:v1:${JSON.stringify(["desktop", workspaceKey])}`,
       );
       const intent = intentRaw
         ? (JSON.parse(intentRaw) as {
@@ -86,8 +86,8 @@ export function getV4ComposerDraftScopeSnapshot(
         : null;
       const storageKey =
         taskIdArg === null && intent
-          ? `zcode-v4-composer-project-drafts:v1:${JSON.stringify([intent.clientNamespace, intent.hostId, intent.projectId])}`
-          : `zcode-v4-composer-drafts:v1:${encodeURIComponent(workspaceKey)}`;
+          ? `codez-v4-composer-project-drafts:v1:${JSON.stringify([intent.clientNamespace, intent.hostId, intent.projectId])}`
+          : `codez-v4-composer-drafts:v1:${encodeURIComponent(workspaceKey)}`;
       let draft: Record<string, unknown> | null = null;
       try {
         const raw = window.localStorage.getItem(storageKey);

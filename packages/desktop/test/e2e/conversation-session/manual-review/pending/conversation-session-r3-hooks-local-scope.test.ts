@@ -5,7 +5,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -25,7 +25,7 @@ import { prepareV4ConversationE2E, startNewV4Draft } from "../../../helpers/v4-c
 
 const CASE_MARKER = "E2E_R3_HOOKS_LOCAL_SCOPE";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-hooks-local-scope",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-hooks-local-scope",
 );
 const LOCAL_MARKER = "E2E_R3_HOOKS_LOCAL_SCOPE_LOCAL";
 const REMOTE_MARKER = "E2E_R3_HOOKS_LOCAL_SCOPE_REMOTE";
@@ -168,10 +168,10 @@ describe(`${CASE_MARKER}: 远端项目激活时钩子按选中的 scope 落盘`,
     this.timeout(20 * 60_000);
     const config = readSSHRuntimeConfig(CASE_MARKER);
     const [workspaceA] = config.workspacePaths;
-    const localConfigPath = join(DEFAULT_WORKSPACE, ".zcode", "config.json");
+    const localConfigPath = join(DEFAULT_WORKSPACE, ".codez", "config.json");
     await prepareSSHConnectionPage(CASE_MARKER);
     await prepareV4ConversationE2E({ skipProvider: true });
-    await runSSHCommand(config, `rm -f "${workspaceA}/.zcode/config.json"`);
+    await runSSHCommand(config, `rm -f "${workspaceA}/.codez/config.json"`);
 
     // 活动工作区切到远端项目 A。
     await startNewV4Draft();
@@ -201,7 +201,7 @@ describe(`${CASE_MARKER}: 远端项目激活时钩子按选中的 scope 落盘`,
     expect(localConfig).toContain(LOCAL_MARKER);
     const remoteAfterLocal = await runSSHCommand(
       config,
-      `grep -rl "${LOCAL_MARKER}" "$HOME/.zcode" "${workspaceA}" 2>/dev/null; echo END`,
+      `grep -rl "${LOCAL_MARKER}" "$HOME/.codez" "${workspaceA}" 2>/dev/null; echo END`,
     );
     facts.remoteAfterLocal = remoteAfterLocal.stdout.trim();
     expect(remoteAfterLocal.stdout.trim()).toBe("END");
@@ -215,7 +215,7 @@ describe(`${CASE_MARKER}: 远端项目激活时钩子按选中的 scope 落盘`,
     await browser.waitUntil(
       async () => {
         remoteConfig = (
-          await runSSHCommand(config, `cat "${workspaceA}/.zcode/config.json" 2>/dev/null`)
+          await runSSHCommand(config, `cat "${workspaceA}/.codez/config.json" 2>/dev/null`)
         ).stdout;
         return remoteConfig.includes(REMOTE_MARKER);
       },

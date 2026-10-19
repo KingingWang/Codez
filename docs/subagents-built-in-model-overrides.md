@@ -229,7 +229,7 @@ Settings CRUD 使用独立的无 provider-request E2E 验证保存产物，不�
 | Builtin `general-purpose` | 产品不支持，剪枝 | 覆盖             | `agents-state.json` 中 model / effort 原子组合                                        |
 | Builtin `Explore`         | 产品不支持，剪枝 | 覆盖             | `agents-state.json` 中 model / effort 原子组合                                        |
 | Custom user               | 覆盖             | 覆盖（含重命名） | `<user-data>/agents/<name>.md` 的完整 frontmatter、正文与旧路径删除                   |
-| Custom workspace          | 覆盖             | 覆盖（含重命名） | `<workspace>/.zcode/agents/<name>.md` 的完整 frontmatter、正文与旧路径删除            |
+| Custom workspace          | 覆盖             | 覆盖（含重命名） | `<workspace>/.codez/agents/<name>.md` 的完整 frontmatter、正文与旧路径删除            |
 | Plugin                    | 产品不支持，剪枝 | 覆盖             | `agents-state.json` 中 `pluginAgent*Overrides` 按 agent id 的 model / effort 原子组合 |
 
 该 E2E 只消费现有 model/capability 投影来驱动控件，不发送 prompt、不重启验证 child、不修改 CLI 或 model resolver。Custom user 与 workspace 共用表单和 service serializer，但分别验证两个实际落盘目录。

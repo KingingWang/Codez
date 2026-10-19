@@ -3,7 +3,7 @@
 import { createElement, type ReactNode } from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { OAuthProviderId } from "@zcode/shared";
+import type { OAuthProviderId } from "@codez/shared";
 import { WebRemoteControlDialog } from "@/web-remote-control/index.js";
 import { LoginPanel } from "@/WelcomeScreen.js";
 
@@ -39,10 +39,10 @@ const intl = vi.hoisted(() => ({ intl: { formatMessage: ({ id }: { id: string })
 
 vi.mock("@/hooks/useOAuth.js", () => ({ useOAuth: () => oauth }));
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (selector: (value: typeof state) => unknown) => selector(state),
+  useCodezStore: (selector: (value: typeof state) => unknown) => selector(state),
 }));
 vi.mock("@/hooks/usePlatform.js", () => ({ usePlatform: () => platform }));
-vi.mock("@/i18n/IntlProvider.js", () => ({ useZCodeIntl: () => intl }));
+vi.mock("@/i18n/IntlProvider.js", () => ({ useCodezIntl: () => intl }));
 vi.mock("@/logger.js", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock("@/components/ui/button.js", () => ({
   Button: ({ children, ...props }: { children?: ReactNode; [key: string]: unknown }) =>
@@ -61,7 +61,7 @@ vi.mock("@/components/ui/dialog.js", () => {
 vi.mock("@/components/ui/toast.js", () => ({ toast }));
 vi.mock("@/BotsDialog.js", () => ({ BotsDialog: () => null }));
 vi.mock("@/BotsDialog/shared.js", () => ({ ProviderIcon: () => null }));
-vi.mock("@/components/ui/ZCodeAboutLogo.js", () => ({ ZCodeAboutLogo: () => null }));
+vi.mock("@/components/ui/CodezAboutLogo.js", () => ({ CodezAboutLogo: () => null }));
 vi.mock("@/login/LoginApiKeyForm.js", () => ({ LoginApiKeyForm: () => null }));
 vi.mock("@/openWorkspacePageThemeHero.js", () => ({ ThemeHeroVisual: () => null }));
 vi.mock("@/lib/oauthProviderIcon.js", () => ({ renderOAuthProviderIcon: () => null }));

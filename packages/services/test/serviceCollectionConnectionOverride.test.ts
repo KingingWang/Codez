@@ -1,4 +1,4 @@
-import type { IServerChannel } from "@zcode/rpc";
+import type { IServerChannel } from "@codez/rpc";
 import { describe, expect, it, vi } from "vitest";
 import { ServiceCollection } from "../src/collection.js";
 import { createServiceDescriptor } from "../src/descriptors.js";

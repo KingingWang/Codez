@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ZCODE_COMPATIBILITY_MANIFEST,
+  CODEZ_COMPATIBILITY_MANIFEST,
   sourceServerUpdateTargetSchema,
   getSourceServerUpdateTarget,
   isSameSourceServerUpdateTarget,
@@ -14,7 +14,7 @@ import {
   sourceServerManagementSnapshotSchema,
   sourceServerManagementSnapshotRequestSchema,
   SOURCE_SERVER_UPDATE_RUNNING_TASKS_ERROR_CODE,
-  isPublicZCodeErrorCode,
+  isPublicCodezErrorCode,
   sourceServerConnectionStateSnapshotSchema,
   sourceServerOperationLogSchema,
   sourceServerInstallProgressSchema,
@@ -44,7 +44,7 @@ describe("R3 Source Server contracts", () => {
     const base = { profileId, state: "needs-install", updatedAt: 1 };
     const installPreview = {
       version: "3.12.2",
-      installPath: "/home/dev/.zcode/server",
+      installPath: "/home/dev/.codez/server",
       sizeBytes: 4194304,
     };
     const runningTasks = [
@@ -124,9 +124,9 @@ describe("R3 Source Server contracts", () => {
         "remote-bind-canceled",
         "remote-workspace-bind-session-missing",
         "remote-workspace-directory-unavailable",
-      ].every(isPublicZCodeErrorCode),
+      ].every(isPublicCodezErrorCode),
     ).toBe(true);
-    expect(isPublicZCodeErrorCode("internal-stack-trace")).toBe(false);
+    expect(isPublicCodezErrorCode("internal-stack-trace")).toBe(false);
   });
 
   it("rejects unregistered error codes in Source management state", () => {
@@ -191,7 +191,7 @@ describe("R3 Source Server contracts", () => {
     },
     {
       transport: "docker",
-      target: { kind: "docker", container: "zcode-dev" },
+      target: { kind: "docker", container: "codez-dev" },
     },
   ] as const)("accepts a strict $transport Connection Profile", ({ transport, target }) => {
     expect(
@@ -273,7 +273,7 @@ describe("R3 Source Server contracts", () => {
       connectionProfileSchema.safeParse({
         profileId,
         transport: "docker",
-        target: { kind: "docker", container: "zcode-dev" },
+        target: { kind: "docker", container: "codez-dev" },
         createdAt: 1,
         unexpected: true,
       }).success,
@@ -300,12 +300,12 @@ describe("R3 Source Server contracts", () => {
   });
 
   it("validates the embedded compatibility manifest", () => {
-    expect(compatibilityManifestSchema.parse(ZCODE_COMPATIBILITY_MANIFEST)).toEqual(
-      ZCODE_COMPATIBILITY_MANIFEST,
+    expect(compatibilityManifestSchema.parse(CODEZ_COMPATIBILITY_MANIFEST)).toEqual(
+      CODEZ_COMPATIBILITY_MANIFEST,
     );
     expect(
       compatibilityManifestSchema.safeParse({
-        ...ZCODE_COMPATIBILITY_MANIFEST,
+        ...CODEZ_COMPATIBILITY_MANIFEST,
         unknown: true,
       }).success,
     ).toBe(false);
@@ -319,10 +319,10 @@ describe("R3 Source Server contracts", () => {
         {
           target: "linux-x64",
           version: "3.8.1",
-          fileName: "zcode-server-linux-x64.tar.gz",
+          fileName: "codez-server-linux-x64.tar.gz",
           sha256: "a".repeat(64),
           sizeBytes: 1024,
-          urls: ["zcode-server-linux-x64.tar.gz"],
+          urls: ["codez-server-linux-x64.tar.gz"],
         },
       ],
     });

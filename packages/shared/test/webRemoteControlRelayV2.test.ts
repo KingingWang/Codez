@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseWebRemoteControlRelayV2OutgoingMessage,
   parseWebRemoteControlRelayV2IncomingMessage,
-} from "@zcode/shared/web-remote-relay";
+} from "@codez/shared/web-remote-relay";
 
 describe("Relay V2 wire contract", () => {
   it("accepts auth_init without a role and rejects V1 identity fields", () => {

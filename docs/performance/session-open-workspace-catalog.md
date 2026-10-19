@@ -39,7 +39,7 @@ CUA：start + 原 startup tracker
 
 - 纯 staging 已测：a6（Agent 已启动）657/669/986/1857/796ms，中位数 796ms；
   6951（点击后启动 Agent）2919/2211/2704/2452/2705ms，中位数 2704ms。
-- 隔离生产包、manifest、WDIO 首个可见 row 截图、日志与阶段数据：`/tmp/zcode-session-staging-ab.KWbOnL`。
+- 隔离生产包、manifest、WDIO 首个可见 row 截图、日志与阶段数据：`/tmp/codez-session-staging-ab.KWbOnL`。
 - 首轮隔离包缺少新 Provider 配置路径导致 startup error；补齐构建/显式配置路径后重跑。
   启动失败的 smoke/control1 不计入基线，control2 为预热预检，round1–5 为正式样本。
 - 优化后：a6 为 721/766/862/628/819ms；6951 为 1483/1390/2361/1272/1476ms。

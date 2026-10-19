@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGroupAdminAttention } from "../src/bots/groupAdminAttention.js";
-import type { BotActor } from "@zcode/shared";
+import type { BotActor } from "@codez/shared";
 const actor: BotActor = {
   botId: "bot",
   provider: "feishu",

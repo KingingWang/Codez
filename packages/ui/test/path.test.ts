@@ -4,11 +4,11 @@ import { getModelTrajectorySourceDirectory } from "@/ModelTrajectoryPane.js";
 
 describe("path helpers", () => {
   it("解析 POSIX 和 Windows 文件的所在目录", () => {
-    expect(getContainingDirectoryPath("/Users/dev/.zcode/cli/debug/model-io.jsonl")).toBe(
-      "/Users/dev/.zcode/cli/debug",
+    expect(getContainingDirectoryPath("/Users/dev/.codez/cli/debug/model-io.jsonl")).toBe(
+      "/Users/dev/.codez/cli/debug",
     );
-    expect(getContainingDirectoryPath("C:\\Users\\dev\\.zcode\\cli\\debug\\model-io.jsonl")).toBe(
-      "C:\\Users\\dev\\.zcode\\cli\\debug",
+    expect(getContainingDirectoryPath("C:\\Users\\dev\\.codez\\cli\\debug\\model-io.jsonl")).toBe(
+      "C:\\Users\\dev\\.codez\\cli\\debug",
     );
     expect(getContainingDirectoryPath("C:\\model-io.jsonl")).toBe("C:\\");
     expect(getContainingDirectoryPath("/model-io.jsonl")).toBe("/");
@@ -16,8 +16,8 @@ describe("path helpers", () => {
 
   it("调用轨迹源文件目录会跳过空路径并回退到首个有效源文件", () => {
     expect(
-      getModelTrajectorySourceDirectory([" ", "/Users/dev/.zcode/cli/rollout/model-io.jsonl"]),
-    ).toBe("/Users/dev/.zcode/cli/rollout");
+      getModelTrajectorySourceDirectory([" ", "/Users/dev/.codez/cli/rollout/model-io.jsonl"]),
+    ).toBe("/Users/dev/.codez/cli/rollout");
     expect(getModelTrajectorySourceDirectory(["model-io.jsonl"])).toBeNull();
     expect(getModelTrajectorySourceDirectory(undefined)).toBeNull();
   });

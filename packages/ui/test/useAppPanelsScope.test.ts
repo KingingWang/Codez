@@ -7,7 +7,7 @@ import { getVisibleSidePaneTabs } from "@/lib/workspaceSidePane.js";
 
 vi.mock("@/hooks/useInterfaceMode.js", () => ({ useIsOfficeMode: () => false }));
 vi.mock("@/hooks/useServices.js", () => ({
-  useServices: () => ({ zcodeSessionService: { closeSession: vi.fn(async () => {}) } }),
+  useServices: () => ({ codezSessionService: { closeSession: vi.fn(async () => {}) } }),
 }));
 vi.mock("@/logger.js", () => ({ logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
 

@@ -9,7 +9,7 @@ import {
   ProviderConfigMap,
   ProviderConfigResolver,
   type ProviderConfigLayerSnapshot,
-} from "@zcode/provider";
+} from "@codez/provider";
 import { describe, expect, it } from "vitest";
 import type {
   ModelProviderConfig,
@@ -40,9 +40,9 @@ function completeModelConfig(contextWindow = 200_000): ModelConfig {
   });
 }
 
-function zcodeBuiltinSnapshot(): ProviderConfigLayerSnapshot {
+function codezBuiltinSnapshot(): ProviderConfigLayerSnapshot {
   return {
-    revision: "zcodeBuiltin-1",
+    revision: "codezBuiltin-1",
     providers: new ProviderConfigMap([
       [
         "deepseek",
@@ -344,9 +344,9 @@ describe("Legacy Personal Provider Config Importer", () => {
     ]);
 
     const resolution = new ProviderConfigResolver().resolve({
-      zcodeBuiltinProviders: ProviderConfigMap.empty(),
+      codezBuiltinProviders: ProviderConfigMap.empty(),
       personalProviders: document.providers,
-      zcodeBuiltinModelRules: genericRules,
+      codezBuiltinModelRules: genericRules,
       personalModels: document.models,
       accountProviders: ProviderConfigMap.empty(),
     });
@@ -360,7 +360,7 @@ describe("Legacy Personal Provider Config Importer", () => {
     });
   });
 
-  it("没有 ZCodeBuiltin Account 定义的旧系统 Provider 不会误迁为 API Provider", () => {
+  it("没有 CodezBuiltin Account 定义的旧系统 Provider 不会误迁为 API Provider", () => {
     const document = importLegacyPersonalProviderConfig({
       legacyProviders: [
         legacyProvider("account:zai-start-plan", {
@@ -398,9 +398,9 @@ describe("Legacy Personal Provider Config Importer", () => {
     expect(document.models.getExact("zai-api", "user-model")).toBeUndefined();
 
     const resolution = new ProviderConfigResolver().resolve({
-      zcodeBuiltinProviders: zcodeBuiltinSnapshot().providers,
+      codezBuiltinProviders: codezBuiltinSnapshot().providers,
       personalProviders: document.providers,
-      zcodeBuiltinModelRules: zcodeBuiltinSnapshot().models,
+      codezBuiltinModelRules: codezBuiltinSnapshot().models,
       personalModels: document.models,
       accountProviders: ProviderConfigMap.empty(),
     });

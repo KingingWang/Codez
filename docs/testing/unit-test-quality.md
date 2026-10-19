@@ -88,7 +88,7 @@ Android instrumentation 属于设备验收，不纳入本次单测删减；空�
 | `packages/desktop/test/cuaHelperOperationsDocs.test.ts`             | 锁定文档旧名称、命令示例和 feature graph 原文，不验证 Helper 操作或签名。                      |
 | `packages/desktop/test/hostMediaPreviewLogging.test.ts`             | 只断言限额字面值及日志文本，未运行限流或授权路径。                                             |
 | `packages/desktop/test/rendererMessageHandler.test.ts`              | 四个 case 只断言源码命名、调用与属性文本；顶部 mock 未被实际业务调用消费。                     |
-| `packages/provider-node/test/zcode-builtin-map-formatting.test.ts`  | 主要锁 CEL 表达式排版和缩进；实际编译和解析仍由 builtin integrity 与 option-map 行为测试保护。 |
+| `packages/provider-node/test/codez-builtin-map-formatting.test.ts`  | 主要锁 CEL 表达式排版和缩进；实际编译和解析仍由 builtin integrity 与 option-map 行为测试保护。 |
 | `packages/services/test/cuaProducerSurfaceSimplification.test.ts`   | 只对旧 facade 与别名做源码禁词扫描；不验证 consumer 行为。                                     |
 | `packages/ui/test/appQuickPickCommandStability.test.ts`             | 只锁定 useMemo、依赖名称和 props 装配，未执行重渲染或验证引用稳定性                            |
 | `packages/ui/test/appearanceSettingsLayout.test.ts`                 | 复制布局 class、locale key 与文案常量，未验证设置或语言切换行为                                |
@@ -147,8 +147,8 @@ Android instrumentation 属于设备验收，不纳入本次单测删减；空�
 | `packages/ui/test/workspaceShellResizeAutoCollapse.test.ts`         | 只断言 timeout/ref 变量及 setTimeout 写法；不执行 resize/折叠。                                |
 | `packages/ui/test/workspaceShellSidebarResizePerformance.test.ts`   | 只检查 useCallback 体中 DOM/状态调用名字；没有性能或 render 验证；还含已下线 skip 用例。       |
 | `packages/web/test/homeOnlyMediaPreviewService.test.ts`             | 只验证服务字段及泛型装配写法，没有执行 unsupported service。                                   |
-| `packages/zcode-cua/test/maas-tool-result-completeness.test.ts`     | 只扫描 smoke 脚本的重试常量、字段名及日志原文，未执行 probe。                                  |
-| `packages/zcode-cua/test/native/pip-window-chrome.test.ts`          | 只锁定 Objective-C++ 圆角数值、layer 属性与曲率常量，没有渲染原生面板。                        |
+| `packages/codez-cua/test/maas-tool-result-completeness.test.ts`     | 只扫描 smoke 脚本的重试常量、字段名及日志原文，未执行 probe。                                  |
+| `packages/codez-cua/test/native/pip-window-chrome.test.ts`          | 只锁定 Objective-C++ 圆角数值、layer 属性与曲率常量，没有渲染原生面板。                        |
 
 #### 混合文件精简
 
@@ -233,11 +233,11 @@ CLI Vitest 70/70、Office profile 1/1、TUI 原生 33/33、文档站固定图 1/
 | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/dev-docs/test/capabilityMapCurrentFeatures.test.ts`                      | 逐项复制文档站能力地图的节点说明、图边和关键词，没有与生产实现对照；不能证明所写当前功能事实真实。保留图计算、几何与YAML解析测试。                                                            |
 | `apps/dev-docs/test/capabilityMapOfficeComputerUse.test.ts`                    | 复制能力地图手工维护的数据分组、1200行估计、节点/边及说明原文；并未验证Office或CUA功能。                                                                                                      |
-| `apps/zcode-cli/packages/adapters/tests/runner-debug-storage-rollback.test.ts` | 只锁旧目录拼接源码写法，不执行debug storage路径解析。                                                                                                                                         |
-| `apps/zcode-cli/packages/bootstrap/tests/official-plugin-categories.test.ts`   | 从定义表取固定插件后复制category/defaultEnabled常量，无独立装配行为。                                                                                                                         |
-| `apps/zcode-cli/packages/contracts/tests/model-options.test.ts`                | 仅给本地类型对象赋值再断言原对象，无运行时被测实现；类型同源由model-schema-contract保留。                                                                                                     |
-| `apps/zcode-cli/packages/debug/tests/gantt-style.test.ts`                      | 直接复制最小宽度常量及其CSS字符串；没有实际时间轴尺寸验证。                                                                                                                                   |
-| `apps/zcode-cli/tests/core.unit.test.ts`                                       | 旧根目录src/core已移除，测试仍指向不存在的旧模块且不属于当前Turbo包测试入口；清理退役测试遗留。                                                                                               |
+| `apps/codez-cli/packages/adapters/tests/runner-debug-storage-rollback.test.ts` | 只锁旧目录拼接源码写法，不执行debug storage路径解析。                                                                                                                                         |
+| `apps/codez-cli/packages/bootstrap/tests/official-plugin-categories.test.ts`   | 从定义表取固定插件后复制category/defaultEnabled常量，无独立装配行为。                                                                                                                         |
+| `apps/codez-cli/packages/contracts/tests/model-options.test.ts`                | 仅给本地类型对象赋值再断言原对象，无运行时被测实现；类型同源由model-schema-contract保留。                                                                                                     |
+| `apps/codez-cli/packages/debug/tests/gantt-style.test.ts`                      | 直接复制最小宽度常量及其CSS字符串；没有实际时间轴尺寸验证。                                                                                                                                   |
+| `apps/codez-cli/tests/core.unit.test.ts`                                       | 旧根目录src/core已移除，测试仍指向不存在的旧模块且不属于当前Turbo包测试入口；清理退役测试遗留。                                                                                               |
 | `packages/client/test/conversationShareRemoteServiceAccess.test.ts`            | 构造accessor后只检查请求过某descriptor和getter truthy；未调用代理方法，也未验证实际频道收发。                                                                                                 |
 | `packages/desktop/test/app-launch-telemetry.test.ts`                           | 仅让 createRendererContext mock 返回预设 DTO，再断言另一个 mock 收到相同字段；生产函数只有一行 bridge.syncTelemetryContext(createRendererContext())。真实启动时序与 renderer 隔离测试仍保留。 |
 | `packages/desktop/test/armsRumShared.test.ts`                                  | development运行态与production产品环境得到local的同一输入输出，已由 armsBrowserInit 装配测试实际验证传给SDK的env，保留后者。                                                                   |
@@ -251,7 +251,7 @@ CLI Vitest 70/70、Office profile 1/1、TUI 原生 33/33、文档站固定图 1/
 | `packages/shared/test/modelProviderTypes.test.ts`                              | 仅断言一个退役字符串不在常量枚举及直接枚举比较helper；不执行Provider解析或合法性准入。                                                                                                        |
 | `packages/shared/test/offPeakTaskIdentity.test.ts`                             | 3个用例逐项复述单行 Boolean(task.offPeakTaskId) getter；没有任务创建、恢复、持久化或UI身份行为。                                                                                              |
 | `packages/shared/test/pluginMarketplaces.test.ts`                              | 复制默认市场静态对象及单元素数组includes的分类结果；没有市场加载、安装、异常或交互验证。                                                                                                      |
-| `packages/shared/test/zcodeAgentRuntime.test.ts`                               | 直接复制静态spawnArgs常量与Windows二进制后缀映射；没有解析运行时资源或启动Agent。                                                                                                             |
+| `packages/shared/test/codezAgentRuntime.test.ts`                               | 直接复制静态spawnArgs常量与Windows二进制后缀映射；没有解析运行时资源或启动Agent。                                                                                                             |
 | `packages/ui/test/automationAddScheduleIcon.test.ts`                           | 真实渲染后只复制 Plus 图标 viewBox、class 和 stroke 常量；没有图标选择、事件或布局结果。                                                                                                      |
 | `packages/ui/test/automationDesignPrimitives.test.tsx`                         | 三个用例仅复制第三方 Lucide SVG 的默认尺寸、描边和容器 class；不验证业务行为。                                                                                                                |
 | `packages/ui/test/automationTemplateSkeletonGrid.test.ts`                      | 只锁四个静态 skeleton、传入 label 原样显示和 class；没有异步加载状态或布局测量。                                                                                                              |
@@ -287,19 +287,19 @@ CLI Vitest 70/70、Office profile 1/1、TUI 原生 33/33、文档站固定图 1/
 | `packages/ui/test/toolCallPresentationVocabulary.test.ts`                      | 把 29 个静态翻译 key 的中英文文本完整复制一份；不解析工具、判断状态或执行渲染。                                                                                                               |
 | `packages/ui/test/v4ConversationDraftEmptyStateLogo.test.ts`                   | 只检查深浅 Logo 的固定素材和 CSS class；不切换主题或验证主题订阅。                                                                                                                            |
 | `packages/ui/test/workspaceSidebarTerminologyI18n.test.ts`                     | 逐字复制同一中英文 locale 字典值；不验证界面按 locale 取值。                                                                                                                                  |
-| `packages/ui/test/zcodeProviders.test.ts`                                      | 源函数忽略 provider 永远返回 true，另一函数仅取反；十条期望只是常量重复，真实 fork task 状态与目标 guard 未触及。                                                                             |
+| `packages/ui/test/codezProviders.test.ts`                                      | 源函数忽略 provider 永远返回 true，另一函数仅取反；十条期望只是常量重复，真实 fork task 状态与目标 guard 未触及。                                                                             |
 | `packages/web/test/webRemoteControlFailures.test.ts`                           | 只照抄固定reason加message的DTO构造；实际连接恢复耗尽后使用connection-recovery-timeout的回归仍由 externalRelayFrameGapRecovery 真实恢复调度测试验证。                                          |
-| `packages/zcode-cua/test/broker/host-surface-simplification.test.ts`           | 只扫描已退役type/alias名称与固定装配文本；实际ghost/PiP不可变launch policy已有真实host启动+broker+launcher spec测试，保留该测试及全部签名/权限/生命周期保护。                                 |
+| `packages/codez-cua/test/broker/host-surface-simplification.test.ts`           | 只扫描已退役type/alias名称与固定装配文本；实际ghost/PiP不可变launch policy已有真实host启动+broker+launcher spec测试，保留该测试及全部签名/权限/生命周期保护。                                 |
 
 | 精简文件                                                                 | 删除范围与保留边界                                                                                                                                                                         |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `apps/dev-docs/test/capabilityMapComplexity.test.ts`                     | 删除固定文档图度数快照；保留统计规则，改用固定小图验证跨群、同群、缺失节点及分组的独立期望。                                                                                               |
-| `apps/zcode-cli/packages/adapters/tests/mcp.test.ts`                     | 同一describe和相同hooks下有三组完全相同标题及callback；各删后一个，保留第一份完整OAuth行为测试。                                                                                           |
-| `apps/zcode-cli/packages/adapters/tests/model-transform.test.ts`         | 与保留的无签名推理块协议投影用例逐 token 相同，保留后一条完整回归。                                                                                                                        |
-| `apps/zcode-cli/packages/i18n/tests/i18n.test.ts`                        | 删除固定中文文案复制；保留locale推导、无效值、目录形状兼容规则。                                                                                                                           |
-| `apps/zcode-cli/packages/office-runtime/ui/profile.test.ts`              | 只复制各profile文案和例子；保留真正的资源寻址和文件种类隔离用例。                                                                                                                          |
-| `apps/zcode-cli/packages/tui/tests/tui-theme.test.ts`                    | 删除对四个颜色字段的直接复制；保留主题优先级、终端背景推断和真实组件随主题改变的验证。                                                                                                     |
-| `apps/zcode-cli/packages/tui/tests/tui.unit.test.ts`                     | 只检查固定标签、flex样式和颜色字面值；保留实际内容显隐、渲染、交互和恢复测试。                                                                                                             |
+| `apps/codez-cli/packages/adapters/tests/mcp.test.ts`                     | 同一describe和相同hooks下有三组完全相同标题及callback；各删后一个，保留第一份完整OAuth行为测试。                                                                                           |
+| `apps/codez-cli/packages/adapters/tests/model-transform.test.ts`         | 与保留的无签名推理块协议投影用例逐 token 相同，保留后一条完整回归。                                                                                                                        |
+| `apps/codez-cli/packages/i18n/tests/i18n.test.ts`                        | 删除固定中文文案复制；保留locale推导、无效值、目录形状兼容规则。                                                                                                                           |
+| `apps/codez-cli/packages/office-runtime/ui/profile.test.ts`              | 只复制各profile文案和例子；保留真正的资源寻址和文件种类隔离用例。                                                                                                                          |
+| `apps/codez-cli/packages/tui/tests/tui-theme.test.ts`                    | 删除对四个颜色字段的直接复制；保留主题优先级、终端背景推断和真实组件随主题改变的验证。                                                                                                     |
+| `apps/codez-cli/packages/tui/tests/tui.unit.test.ts`                     | 只检查固定标签、flex样式和颜色字面值；保留实际内容显隐、渲染、交互和恢复测试。                                                                                                             |
 | `packages/client/test/remoteServiceAccess.test.ts`                       | 只测构造时getChannel名称与getter存在；同文件配置实际RPC调用/可选频道隔离/窗口目录选择仍保留。                                                                                              |
 | `packages/rpc/test/buffer.test.ts`                                       | 仅重测new Uint8Array的长度和零初始化；保留零拷贝wrap、UTF8、拼接、offset与BE字节运算测试。                                                                                                 |
 | `packages/rpc/test/foundation.test.ts`                                   | 普通dispose/单收件者/relay首次投递场景分别被幂等dispose、多listener+Event.map、切换source后旧源隔离的更强测试覆盖。保留清理和取消生命周期边界。                                            |
@@ -310,7 +310,7 @@ CLI Vitest 70/70、Office profile 1/1、TUI 原生 33/33、文档站固定图 1/
 | `packages/services/test/highspeedCardService.test.ts`                    | 仅检查源码是否含createServiceLogger字符串，不验证浏览器导入、日志初始化或运行行为。                                                                                                        |
 | `packages/services/test/pluginManagementService.test.ts`                 | 三个代理方法都是直接委托；测试只复述参数并断言自造mock结果，不能验证信任、目标隔离或取消执行。保留生命周期遥测变换、取消分类、并发耗时等真实规则测试。                                     |
 | `packages/services/test/subagentSelectionAuthority.test.ts`              | 重复shared/subagentMarkdownSelection中同一helper的编码/解码往返；保留本文件实际Markdown解析、中间字段忽略的集成验证。                                                                      |
-| `packages/services/test/zcodeAgentPresentationSurface.test.ts`           | 显式true只是!=false的重复正常路径；相同remote authority的缺省开启及显式false关闭、非Desktop拒绝仍保留。                                                                                    |
+| `packages/services/test/codezAgentPresentationSurface.test.ts`           | 显式true只是!=false的重复正常路径；相同remote authority的缺省开启及显式false关闭、非Desktop拒绝仍保留。                                                                                    |
 | `packages/shared/test/dynamicWorkflowFeature.test.ts`                    | 直接比较mode!=disabled结果，已被同文件三个远端合法mode生成配置的enabled断言完整覆盖；保留灰度fail-closed/用户覆盖/旧Host兼容测试。                                                         |
 | `packages/shared/test/launchMarks.test.ts`                               | 仅复写LAUNCH_MARKS_QUERY_KEY字符串；保留序列化往返、非法JSON、字段类型边界。                                                                                                               |
 | `packages/shared/test/remoteResourcePackages.test.ts`                    | normalize实现完全忽略输入并返回active列表；两个历史值场景重复已有ignores historical selections和缺省列表用例。保留平台工具集合、schema合法与拒绝未知包。                                   |
@@ -350,13 +350,13 @@ CLI Vitest 70/70、Office profile 1/1、TUI 原生 33/33、文档站固定图 1/
 | `packages/ui/test/workspaceHeader.test.ts`                               | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
 | `packages/ui/test/workspacePurposeSection.test.ts`                       | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
 | `packages/ui/test/workspaceSidebarFooterWebRemoteControlTooltip.test.ts` | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/zcode-cua/test/annotations.test.ts`                            | request_access/stop的单独断言重复前面的完整工具集合检查及真实TOOL_REGISTRY sweep；保留applyToolAnnotations实际批量写入行为、完整安全tier与未知工具拒绝路径。                               |
-| `packages/zcode-cua/test/argv-shape.test.ts`                             | 所谓任意顺序case与canonical输入完全一致；round-trip只重建相同socket参数重复调用确定性解析器。保留canonical、等号、terminator、兼容标签、所有fail-closed路径。                              |
-| `packages/zcode-cua/test/manifest.test.ts`                               | 删除精确14项名单已包含的长度、唯一性、join文本、退役项与tier长度重复断言；删除三个在测试内自造Set差集算法的case。保留精确工具名单、真实registry/schema/map、tiers一致性和association契约。 |
-| `packages/zcode-cua/test/server-security.parity.test.ts`                 | 标题声称token-only，但回调实际调用buildServer({})，与首条no credentials case完全相同；保留首条无凭据fail-closed和全部不同socket输入/占位符拒绝/真实tool注册检查。                          |
-| `packages/zcode-cua/test/tier-table.test.ts`                             | 4+1+9的合计case重复同文件前面逐组精确名单与数量；保留全部安全tier、冻结及未知名称保守分类。                                                                                                |
-| `packages/zcode-cua/test/tool-manifest-json-drift.test.ts`               | 第二条14长度检查被manifest精确名单与第一条mirror顺序相等完整覆盖；保留跨src与eval真实产物一致性。                                                                                          |
-| `packages/zcode-cua/test/tool-surface-14.test.ts`                        | 退役项由manifest精确名单和真实MAP成员全量检查覆盖；30-17+1算术case及单独key存在检查不提供新输入或边界。保留MAP精确大小和全部真实click/key折叠schema能力。                                  |
+| `packages/codez-cua/test/annotations.test.ts`                            | request_access/stop的单独断言重复前面的完整工具集合检查及真实TOOL_REGISTRY sweep；保留applyToolAnnotations实际批量写入行为、完整安全tier与未知工具拒绝路径。                               |
+| `packages/codez-cua/test/argv-shape.test.ts`                             | 所谓任意顺序case与canonical输入完全一致；round-trip只重建相同socket参数重复调用确定性解析器。保留canonical、等号、terminator、兼容标签、所有fail-closed路径。                              |
+| `packages/codez-cua/test/manifest.test.ts`                               | 删除精确14项名单已包含的长度、唯一性、join文本、退役项与tier长度重复断言；删除三个在测试内自造Set差集算法的case。保留精确工具名单、真实registry/schema/map、tiers一致性和association契约。 |
+| `packages/codez-cua/test/server-security.parity.test.ts`                 | 标题声称token-only，但回调实际调用buildServer({})，与首条no credentials case完全相同；保留首条无凭据fail-closed和全部不同socket输入/占位符拒绝/真实tool注册检查。                          |
+| `packages/codez-cua/test/tier-table.test.ts`                             | 4+1+9的合计case重复同文件前面逐组精确名单与数量；保留全部安全tier、冻结及未知名称保守分类。                                                                                                |
+| `packages/codez-cua/test/tool-manifest-json-drift.test.ts`               | 第二条14长度检查被manifest精确名单与第一条mirror顺序相等完整覆盖；保留跨src与eval真实产物一致性。                                                                                          |
+| `packages/codez-cua/test/tool-surface-14.test.ts`                        | 退役项由manifest精确名单和真实MAP成员全量检查覆盖；30-17+1算术case及单独key存在检查不提供新输入或边界。保留MAP精确大小和全部真实click/key折叠schema能力。                                  |
 
 ### 第三轮：全库存语义审读
 
@@ -431,7 +431,7 @@ Android 只删除模板算术测试，因环境无 Java Runtime，Gradle 收集�
 新工作树缺少 Electron 安装产物导致的四个文件加载失败，在补齐产物后复跑通过；
 未运行全量单测、桌面 E2E 或开源导出验收。
 
-后续合并 staging `840d040f57` 时，保留 `@zcode/shared/test-ids` 入口迁移、
+后续合并 staging `840d040f57` 时，保留 `@codez/shared/test-ids` 入口迁移、
 插件并发安装、MCP 连接就绪、会话 lease 释放和桌面/手机 Esc 授权的新回归。
 冲突中的旧 class、字典常量和重复装配断言继续删除；
 `pluginStoreManageEntry.test.ts` 仅更新空操作夹具，仍沿用整文件删除。

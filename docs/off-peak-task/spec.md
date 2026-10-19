@@ -13,8 +13,8 @@
 > 配套：`glossary.md`（术语/领域模型）、`decisions.md`（D1–D40 历史决策记录）。
 > 与 PRD 的差异见文末「明确不做」——**该清单需拿去与产品对齐确认**。
 >
-> **服务端契约真源**：内部仓库 `zcode/zcode-server` 的 `docs/off_peak_design.md`
-> （`glab api "projects/zcode%2Fzcode-server/repository/files/docs%2Foff_peak_design.md/raw?ref=main"` 拉取）。
+> **服务端契约真源**：内部仓库 `codez/codez-server` 的 `docs/off_peak_design.md`
+> （`glab api "projects/codez%2Fcodez-server/repository/files/docs%2Foff_peak_design.md/raw?ref=main"` 拉取）。
 > 契约冲突时以该文档为准。关键约束摘录见 §4.1。
 
 ## 1. 一句话定义
@@ -72,7 +72,7 @@ trigger 图标随当前值切换（与会话 composer 一致），菜单固定 `
 领域类型位于 `packages/shared/src/off-peak-types.ts`（勿混入 automation-types）：
 
 ```ts
-type ZCodeOffPeakTaskStatus =
+type CodezOffPeakTaskStatus =
   | "queued" // 排队等服务端授权
   | "paused" // 用户 Pause，停止派发（D30-10）
   | "running" // 执行中
@@ -80,20 +80,20 @@ type ZCodeOffPeakTaskStatus =
   | "failed"
   | "cancelled"; // 终态
 
-interface ZCodeOffPeakTask {
+interface CodezOffPeakTask {
   offPeakTaskId: string; // 本地主键，同时用作服务端 task_id（D26）
   serverTicketId?: string; // 服务端 Snowflake ticket_id；重新取号时更新（D26）
   title: string; // 表单 Task title（D28）
   conversationId?: string; // 宿主对话 taskId；D30-8 创建不预建对话，首次派发后回填（兼作"已派发过"信号）
   sessionId?: string; // 首跑后回填；续跑/中断恢复 resume 用（"存在 = 已有真实会话"的语义各处依赖，禁止预填）
   prompt: string; // 表单 Instructions
-  permissionMode: ZCodeTaskMode; // 权限四档全开放（D29-4）；现产品词表 build/edit/plan/yolo，默认 "build"（Ask before changes）
+  permissionMode: CodezTaskMode; // 权限四档全开放（D29-4）；现产品词表 build/edit/plan/yolo，默认 "build"（Ask before changes）
   model?: string;
   thoughtLevel?: string; // 推理强度（D34，与 automation 对齐）；缺省走 workspace 默认
   workspaceKey: string; // workspaceIdentity?.trim() || workspacePath
   workspacePath: string;
   workspaceIdentity?: string;
-  status: ZCodeOffPeakTaskStatus;
+  status: CodezOffPeakTaskStatus;
   queuedAt: number;
   startedAt?: number;
   endedAt?: number;
@@ -159,7 +159,7 @@ queued ──服务端 ready 且被派发──▶ running ───────
 
 ### 4.1 Coding Plan 支持矩阵与凭证真源（D40）
 
-服务端静态契约已按 `zcode-server/main@ec2b18daa01b8e1b801f0691ac22153c2e56c6db` 复核
+服务端静态契约已按 `codez-server/main@ec2b18daa01b8e1b801f0691ac22153c2e56c6db` 复核
 （2026-07-22）。`X-Coding-Plan-Api-Key` 在服务端是 opaque key：Coding Plan verifier 会按
 JWT 登录 provider 分别走 ZAI / BigModel 校验，并校验套餐有效期及 key 所属用户；不会按客户端
 provider id 分流，也不会把该 key 透传给闲时模型上游。
@@ -174,7 +174,7 @@ provider id 分流，也不会把该 key 透传给闲时模型上游。
 | ZAI + `coding-plan:builtin:zai-coding-plan`                                                                 | 选中 ZAI Coding Plan provider 的原始业务 API Key                                  | 支持                                      |
 | BigModel + `coding-plan:builtin:bigmodel-coding-plan`                                                       | 选中 BigModel 个人 Coding Plan provider 的原始 API Key                            | 支持                                      |
 | BigModel + 完整 `team-plan:builtin:bigmodel-coding-plan:<product>:<organization>:<project>`                 | 复用 Team Plan runtime-key resolver，按选中组织/项目取得 `${apiKey}.${secretKey}` | **客户端已支持；test 后端 verifier 阻塞** |
-| ZAI / BigModel Start Plan                                                                                   | Start Plan 只有 zcode JWT，不是 Coding Plan API Key                               | **拒绝**                                  |
+| ZAI / BigModel Start Plan                                                                                   | Start Plan 只有 codez JWT，不是 Coding Plan API Key                               | **拒绝**                                  |
 | API Key 模式、family/连接未选中、登录 provider 与所选 family 不一致、连接缺失/disabled/stale、畸形 Team key | 无与当前选择一致的 Coding Plan runtime credential                                 | **拒绝**                                  |
 
 `providerFamilyDomain`、family mode 与 `modelProviderFamilySelectedKeys` 是执行选择真源。禁止扫描所有
@@ -197,7 +197,7 @@ settingService
                     |
 credentialService --+--> OffPeakCredentialSnapshot
   active OAuth provider    { family, connection key/kind, jwt, codingPlanApiKey,
-  zcode JWT                  organizationId?, projectId? }
+  codez JWT                  organizationId?, projectId? }
                               |                 |                    |
                               |                 |                    `-> host dispatch
                               |                 |                        modelExecution.requestAuth
@@ -243,7 +243,7 @@ selected BigModel Team org/project
 
 ```http
 # 0. 鉴权：Bearer JWT + 原始 Coding Plan API Key（服务端两级校验：登录 + coding plan 资格）
-Authorization: Bearer <zcode-jwt>
+Authorization: Bearer <codez-jwt>
 X-Coding-Plan-Api-Key: <coding-plan-api-key>
 # BigModel Team 额外携带当前选中连接的身份（五个端点一致；必须成对）
 bigmodel-organization: <organizationId>
@@ -428,8 +428,8 @@ New task 页闲时模板横幅的图标遵循 Figma `4810:1407`：喇叭与关�
 ### 5.1 侧栏一等行收敛契约（D48-A，取代虚拟 id 折叠与 renderer 排序机制）
 
 闲时侧栏分组自 D48 起收敛为 tasks-index 真实系统分组，完全复用 grouped 视图管线。
-2026-07-28 早间落地的虚拟分组 id（`zcode-off-peak-sidebar-group`）、
-`zcode-off-peak-sidebar-order` localStorage 排序、组内独立 DndContext 与
+2026-07-28 早间落地的虚拟分组 id（`codez-off-peak-sidebar-group`）、
+`codez-off-peak-sidebar-order` localStorage 排序、组内独立 DndContext 与
 off-peak session 投影去重（`off-peak-session-projection`）随之整体退役；本地折叠/
 排序偏好接受重置、不做迁移（该机制未随正式版发布）。
 
@@ -488,7 +488,7 @@ off-peak session 投影去重（`off-peak-session-projection`）随之整体退�
 用户在任意会话里用自然语言创建闲时任务，与定时任务 `CronCreate` 范式对齐；底层与表单创建
 走同一 `OffPeakTaskService.createTask`（创建即取号、fail-closed，服务端 3103 为最终权威）。
 
-**工具面**（agent tools，经 zcode-protocol `offPeak/create` / `offPeak/list` 桥到 host）：
+**工具面**（agent tools，经 codez-protocol `offPeak/create` / `offPeak/list` 桥到 host）：
 
 | 工具            | 参数                                                                | 说明                                                                                                                                                                                                                                                                                                                 |
 | --------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -558,7 +558,7 @@ CLI/TUI 的输入默认值命名为 `cliDefaultSelection`，复用 `provider_con
 | scheduler utility process + 事务认领模式      | `packages/desktop/src/scheduler/`                              |
 | tasks-index.sqlite + Repo 模式                | `packages/services/src/session/automationRepo.ts` 仿写         |
 | dispatch→main→host→createTask/sendPrompt 管道 | `desktopCronScheduler.ts` / host 域                            |
-| 权限模式                                      | `ZCodeTaskMode` 现有 `bypassPermissions` / `default`，无新模式 |
+| 权限模式                                      | `CodezTaskMode` 现有 `bypassPermissions` / `default`，无新模式 |
 | 敏感操作确认                                  | 现有 permission_request / elicitation 链路                     |
 | 通知                                          | `desktopNotifications.ts`                                      |
 | 内置不可见 provider                           | Start plan 机制（provider 注入路径核对后复用）                 |

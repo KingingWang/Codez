@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { VirtualItem } from "@tanstack/react-virtual";
-import type { IGitService } from "@zcode/services";
+import type { IGitService } from "@codez/services";
 import { WORKSPACE_FILE_TREE_VIRTUAL_ROW_HEIGHT_PX } from "@/workspace-file-tree/constants.js";
 import { loadWorkspaceFileTreeGitStatus } from "@/workspace-file-tree/gitStatus.js";
 import { sortInstalledEditorsForFileTree } from "@/workspace-file-tree/helpers.js";

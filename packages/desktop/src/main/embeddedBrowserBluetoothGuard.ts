@@ -1,5 +1,5 @@
 import type { WebContents } from "electron";
-import type { EmbeddedBrowserPermissionDeviceOption } from "@zcode/shared";
+import type { EmbeddedBrowserPermissionDeviceOption } from "@codez/shared";
 import {
   EMBEDDED_BROWSER_PERMISSION_LOG_TAG as LOG_TAG,
   originFromUrl,

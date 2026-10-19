@@ -9,7 +9,7 @@ import {
   createDynamicWorkflowClientConfig,
   TID_SETTINGS_DYNAMIC_WORKFLOW_MODE_TRIGGER,
   type DynamicWorkflowMode,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   buildDynamicWorkflowModePatch,
   DynamicWorkflowModeSetting,
@@ -34,7 +34,7 @@ vi.mock("@/logger.js", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/components/ui/select.js", () => ({
   Select: ({

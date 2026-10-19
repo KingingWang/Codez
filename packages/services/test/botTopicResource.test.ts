@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { BotContextState, BotsStateFile } from "@zcode/shared";
+import type { BotContextState, BotsStateFile } from "@codez/shared";
 import { readAuthorizedTopicResource } from "../src/bots/topicResource.js";
 import {
   feishuConfig,
@@ -128,7 +128,7 @@ describe("task-scoped topic resource retrieval", () => {
     const service = createBotsService({
       repo: createMemoryRepo(config, state),
       credentialService: createCredentialService({ "feishu-secret": "secret" }),
-      zcodeTaskService: createLegacyTaskService(),
+      codezTaskService: createLegacyTaskService(),
       runStartupBackgroundTasks: false,
     });
     try {

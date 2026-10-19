@@ -78,7 +78,7 @@ manager 回归覆盖 fallback 安装后直接替换、destroyed 回调及再次 
 
 ### 普通前台自然 viewport 截图（2026-09-08 macOS 复现）
 
-在 `4b9c4d51a0` 的真实 ZCode dev / macOS 上，退出自由尺寸并将应用缩小两档（zoom≈0.826446），通过产品 Node REPL 的 `tab.screenshot()` 复现：截图前 viewport 为 508×855，prepare 期间变成 614×1034，release 后恢复 508×855。页面 media query 因此把按钮中心从 (100,200) 移到 (200,200)；截图后的 trusted click (200,200) 未命中，而 (100,200) 命中。
+在 `4b9c4d51a0` 的真实 Codez dev / macOS 上，退出自由尺寸并将应用缩小两档（zoom≈0.826446），通过产品 Node REPL 的 `tab.screenshot()` 复现：截图前 viewport 为 508×855，prepare 期间变成 614×1034，release 后恢复 508×855。页面 media query 因此把按钮中心从 (100,200) 移到 (200,200)；截图后的 trusted click (200,200) 未命中，而 (100,200) 命中。
 
 根因：自然 viewport 没有 CDP metrics 固定逻辑尺寸，却复用了仿真 viewport 的 `1 / desktopZoom` guest 布局扩张。ready 再除以 layout scale 后看似匹配，页面实际已经发生 reflow。
 
@@ -168,18 +168,18 @@ Windows 11 x64（10.0.26200）/ Electron 41.0.3 / Chromium 146.0.7680.80。以�
 在仓库根目录的 PowerShell 中设置 case-local replay；仅模型决策回放，Electron / guest / compositor / CDP / trusted input 均为真实执行：
 
 ```powershell
-$env:ZCODE_E2E_MANUAL_REVIEW = '1'
+$env:CODEZ_E2E_MANUAL_REVIEW = '1'
 $env:E2E_PROVIDER_HTTP_MODE = 'replay'
 $fixtures = Join-Path (Get-Location).Path 'packages/desktop/test/e2e/fixtures/deepseek'
 $env:E2E_PROVIDER_REPLAY_FIXTURE_PATH = "$fixtures/common.json,$fixtures/conversation-session/conversation-session-browser-zoom-coordinates.json"
-pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/conversation-session-browser-zoom-coordinates.test.ts'
+pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/conversation-session-browser-zoom-coordinates.test.ts'
 ```
 
-DPI 扩展运行在同一 Windows 原生 Electron 上使用 `--force-device-scale-factor=1/1.5/2`，不代表三台不同物理 DPI 的机器。可在 `packages/desktop/.e2e-artifacts/browser-zoom-dpi.wdio.ts` 放置以下临时配置，再用 `pnpm --filter @zcode/desktop exec wdio run ./.e2e-artifacts/browser-zoom-dpi.wdio.ts --spec <上述 spec>` 执行：
+DPI 扩展运行在同一 Windows 原生 Electron 上使用 `--force-device-scale-factor=1/1.5/2`，不代表三台不同物理 DPI 的机器。可在 `packages/desktop/.e2e-artifacts/browser-zoom-dpi.wdio.ts` 放置以下临时配置，再用 `pnpm --filter @codez/desktop exec wdio run ./.e2e-artifacts/browser-zoom-dpi.wdio.ts --spec <上述 spec>` 执行：
 
 ```typescript
 import { config } from "../wdio.conf.js";
-const scale = Number(process.env.ZCODE_ZOOM_TEST_DPR);
+const scale = Number(process.env.CODEZ_ZOOM_TEST_DPR);
 if (![1, 1.25, 1.5, 2].includes(scale)) throw new Error("Expected DPI scale 1/1.25/1.5/2");
 for (const capability of config.capabilities as Array<Record<string, any>>) {
   capability["wdio:electronServiceOptions"].appArgs.push(`--force-device-scale-factor=${scale}`);
@@ -187,4 +187,4 @@ for (const capability of config.capabilities as Array<Record<string, any>>) {
 export { config };
 ```
 
-已有本分支构建时可设置 `ZCODE_E2E_SKIP_BUILD=1`、`ZCODE_E2E_SKIP_AGENT_BUILD=1`；renderer 必须使用 `VITE_ZCODE_E2E_STORE_BRIDGE=1` 构建。`pnpm typecheck` 的 host 输出与 tsup bundle 共用 `out/host`，必须与原生 E2E 串行；typecheck 后若再跑 E2E，应重建 tsup，不能复用被 tsc 覆盖的 host bundle。
+已有本分支构建时可设置 `CODEZ_E2E_SKIP_BUILD=1`、`CODEZ_E2E_SKIP_AGENT_BUILD=1`；renderer 必须使用 `VITE_CODEZ_E2E_STORE_BRIDGE=1` 构建。`pnpm typecheck` 的 host 输出与 tsup bundle 共用 `out/host`，必须与原生 E2E 串行；typecheck 后若再跑 E2E，应重建 tsup，不能复用被 tsc 覆盖的 host bundle。

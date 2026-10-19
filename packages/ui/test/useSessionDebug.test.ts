@@ -2,8 +2,8 @@
 import { createElement } from "react";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
-import type { SessionDebugSnapshot } from "@zcode/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { SessionDebugSnapshot } from "@codez/shared";
 import { ServiceProvider } from "../src/hooks/useServices.js";
 import { useSessionDebug } from "../src/hooks/useSessionDebug.js";
 
@@ -18,7 +18,7 @@ const snapshot = (sessionId: string): SessionDebugSnapshot => ({
   cache: { hitRateRequestCount: 1, totalInputTokens: 100, totalCacheReadTokens: 80, hitRate: 0.8 },
 });
 function setup(readSessionDebug: ReturnType<typeof vi.fn>) {
-  const services = { zcodeAgentService: { readSessionDebug } } as unknown as IServiceAccessor;
+  const services = { codezAgentService: { readSessionDebug } } as unknown as IServiceAccessor;
   return ({ children }: { children: React.ReactNode }) =>
     createElement(ServiceProvider, { services, children });
 }

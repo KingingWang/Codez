@@ -4,7 +4,7 @@ import { SortableProjects } from "@/project-sidebar/SortableProjects.js";
 export { ArchiveManagement } from "@/project-sidebar/ArchiveManagement.js";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { ScrollFadeViewport } from "@/components/ui/scroll-fade-viewport.js";
-import { TID_SIDEBAR } from "@zcode/shared/test-ids";
+import { TID_SIDEBAR } from "@codez/shared/test-ids";
 import { remoteHostIdFromWorkspaceIdentity } from "@/project-sidebar/contract.js";
 import type {
   ProjectSidebarProps,
@@ -50,10 +50,10 @@ import { ProjectSidebarNavigation } from "@/project-sidebar/ProjectSidebarNaviga
 import { HomeOnlyWorkspaceRows } from "@/project-sidebar/HomeOnlyWorkspaceRows.js";
 import { WorkspaceSidebarFooter } from "@/WorkspaceSidebarFooter.js";
 import { SidebarBottomActivity } from "@/sidebar-activity/SidebarBottomActivity.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useTabStoreApi } from "@/store/TabStoreProvider.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
-import { useZCodeStore } from "@/store/StoreProvider.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
+import { useCodezStore } from "@/store/StoreProvider.js";
 import { useCodingPlanUpgradeDialog } from "@/settings/CodingPlanUpgradeDialogProvider.js";
 export { attachRemoteProjectWorkspace } from "@/project-sidebar/remote-navigation.js";
 export type {
@@ -80,9 +80,9 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
   const remoteSync = useProjectRemoteSync(props, directory);
   const diagnostics = useProjectConnectionDiagnostics(directory, props);
   const onSelectTask = useProjectTaskNavigation(props, tree, remoteService);
-  const { intl, localePreference, setLocalePreference } = useZCodeIntl();
+  const { intl, localePreference, setLocalePreference } = useCodezIntl();
   const tabStore = useTabStoreApi();
-  const setTheme = useZCodeStore((state) => state.setTheme);
+  const setTheme = useCodezStore((state) => state.setTheme);
   const { openCodingPlanUpgrade } = useCodingPlanUpgradeDialog();
   const { view, setView } = preferences;
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -92,7 +92,7 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
   const [creating, setCreating] = useState(false);
   // 当前任务只影响远端“创建项目”的默认设备；分组继承在点击时读，
   // 避免本地会话/草稿切换让全部项目的菜单与 Tooltip 重渲染。
-  const hasActiveRemoteTask = useZCodeSessionStore((state) =>
+  const hasActiveRemoteTask = useCodezSessionStore((state) =>
     Boolean(
       props.workspaceIdentity &&
       state.workspaces[props.workspaceIdentity.trim() || props.workspacePath]?.activeTaskId,
@@ -128,7 +128,7 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
   );
   const msg = (id: string) => intl.formatMessage({ id: `project.${id}` });
   const start = async (projectId?: string, hostId?: string, taskGroupId?: string | null) => {
-    const activeTaskId = useZCodeSessionStore
+    const activeTaskId = useCodezSessionStore
       .getState()
       .getWorkspaceState(props.workspacePath, props.workspaceIdentity).activeTaskId;
     const inheritedGroup =
@@ -141,7 +141,7 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
             }),
           ) ?? null)
         : view === "grouped" && !projectId
-          ? (useZCodeSessionStore
+          ? (useCodezSessionStore
               .getState()
               .getWorkspaceState(props.workspacePath, props.workspaceIdentity).draftTaskGroupId ??
             null)

@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_SETTINGS_BACK_BUTTON } from "@zcode/shared/test-ids";
+import { TID_SETTINGS_BACK_BUTTON } from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -66,7 +66,7 @@ describe("PLM-LC-004/005 插件持久化、跨本地 workspace 与来源孤立 E
     ).toBe(false);
     expect((await readPluginConfigOptions()).display_label).toBe(PLUGIN_LIFECYCLE_CONFIG_VALUE);
 
-    const workspaceB = join(getE2EAppDataPaths().homeDir, "ZCodeProjectB");
+    const workspaceB = join(getE2EAppDataPaths().homeDir, "CodezProjectB");
     await mkdir(workspaceB, { recursive: true });
     expect(
       (await getPluginOverview(workspaceB)).installedPlugins.some(

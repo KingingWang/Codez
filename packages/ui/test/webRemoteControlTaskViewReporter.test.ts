@@ -4,11 +4,11 @@ import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { WebRemoteControlWorkspaceSwitcherApi } from "@/root/types.js";
 import { WebRemoteControlTaskViewReporter } from "@/web-remote-control/WebRemoteControlTaskViewReporter.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { WebRemoteControlMobileShell } from "@/WebRemoteControlMobileShell.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/WebRemoteControlThemeMenu.js", () => ({ WebRemoteControlThemeMenu: () => null }));
 
@@ -18,7 +18,7 @@ let visibility: DocumentVisibilityState = "visible";
 beforeEach(() => {
   visibility = "visible";
   vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visibility);
-  useZCodeSessionStore.setState({ workspaces: {}, taskNavHistory: { entries: [], cursor: -1 } });
+  useCodezSessionStore.setState({ workspaces: {}, taskNavHistory: { entries: [], cursor: -1 } });
   window.history.replaceState({}, "");
 });
 afterEach(() => {
@@ -28,7 +28,7 @@ afterEach(() => {
 
 function fixture(activeTaskId: string | null = "task") {
   if (activeTaskId)
-    useZCodeSessionStore.getState().setActiveTaskId(workspacePath, activeTaskId, workspaceIdentity);
+    useCodezSessionStore.getState().setActiveTaskId(workspacePath, activeTaskId, workspaceIdentity);
   const updateMobileTaskView = vi.fn<
     NonNullable<WebRemoteControlWorkspaceSwitcherApi["updateMobileTaskView"]>
   >(async () => {});
@@ -50,7 +50,7 @@ it("reports draft promotion once from the committed full address and updates nav
   const f = fixture(null);
   expect(f.updateMobileTaskView).toHaveBeenLastCalledWith(null);
   act(() =>
-    useZCodeSessionStore.getState().setActiveTaskId(workspacePath, "task", workspaceIdentity),
+    useCodezSessionStore.getState().setActiveTaskId(workspacePath, "task", workspaceIdentity),
   );
   f.rerender(createElement(WebRemoteControlTaskViewReporter, { ...f.props, activeTaskId: "task" }));
   expect(f.updateMobileTaskView).toHaveBeenLastCalledWith({
@@ -108,7 +108,7 @@ it("does not infer viewing from a cached task before its complete navigation is 
   const f = fixture("cached");
   f.rerender(createElement(WebRemoteControlTaskViewReporter, { ...f.props, enabled: false }));
   act(() =>
-    useZCodeSessionStore.getState().setActiveTaskId(workspacePath, "target", workspaceIdentity),
+    useCodezSessionStore.getState().setActiveTaskId(workspacePath, "target", workspaceIdentity),
   );
   // 切换屏障结束前缓存 task 仍可能作为旧 props 存在，不能上报它已被查看。
   f.rerender(createElement(WebRemoteControlTaskViewReporter, { ...f.props, enabled: true }));
@@ -144,7 +144,7 @@ it("does not turn a callback reference change into a new viewing event", () => {
 });
 
 it("uses the mobile shell's real Home, Root visibility and inert overlay gates", () => {
-  useZCodeSessionStore.getState().setActiveTaskId(workspacePath, "task", workspaceIdentity);
+  useCodezSessionStore.getState().setActiveTaskId(workspacePath, "task", workspaceIdentity);
   const updateMobileTaskView = vi.fn<
     NonNullable<WebRemoteControlWorkspaceSwitcherApi["updateMobileTaskView"]>
   >(async () => {});
@@ -218,7 +218,7 @@ it("MRO03：freeze 撤销查看，resume 只重读当前真正可见目标", () 
 });
 
 it("MRO03：连续聊天跨宽窄布局不撤销查看，真正返回 Home 才撤销", () => {
-  useZCodeSessionStore.getState().setActiveTaskId(workspacePath, "task", workspaceIdentity);
+  useCodezSessionStore.getState().setActiveTaskId(workspacePath, "task", workspaceIdentity);
   const updateMobileTaskView = vi.fn(async () => {});
   const props = {
     activeTaskId: "task",

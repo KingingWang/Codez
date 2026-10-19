@@ -2,7 +2,7 @@
 
 ## Scope
 
-Windows tray support is a desktop-only entry point for the Electron main process. It does not change web, mobile remote control, ZCode Agent, task stream, protocol, relay, or shared-host attachment behavior.
+Windows tray support is a desktop-only entry point for the Electron main process. It does not change web, mobile remote control, Codez Agent, task stream, protocol, relay, or shared-host attachment behavior.
 
 Windows close-to-tray behavior is enabled by default. Users can disable `closeToTrayOnWindows` from Settings when they want the close button to exit through the existing close flow.
 
@@ -11,7 +11,7 @@ Windows close-to-tray behavior is enabled by default. Users can disable `closeTo
 - On Windows, the tray is created after `app.whenReady()`. Linux creation follows the capability checks in [Linux close-to-tray](desktop/linux-close-to-tray.md).
 - The tray instance is held by `packages/desktop/src/main/desktopTray.ts` module state so Electron does not garbage collect it.
 - Left-click and double-click call `primaryWindowCoordinator.ensurePrimaryWindow("tray-show-current-window")`, reusing the current window restore/create logic.
-- The context menu exposes Open ZCode, New Task, Open Workspace, Check for Updates (production only), About, Export Logs, and Quit. Export Logs replaces Clear All Data in the same position; the tray no longer exposes data deletion.
+- The context menu exposes Open Codez, New Task, Open Workspace, Check for Updates (production only), About, Export Logs, and Quit. Export Logs replaces Clear All Data in the same position; the tray no longer exposes data deletion.
 - Task and workspace commands reuse `executeDesktopCommandForApp` and existing `DesktopCommandIds`; no new IPC protocol is introduced.
 - Quit calls the existing `app.quit()` path, so `before-quit` confirmation and host process cleanup stay centralized.
 - Export Logs reuses `DesktopCommandIds.ExportLogs`, matching the desktop application menu's archive creation and system file reveal. The existing tray command flow restores the primary window before exporting. Labels follow the current application locale through the existing desktop menu translations.
@@ -47,7 +47,7 @@ When enabled:
 - Clicking the Windows close button hides the current window instead of closing it.
 - The close-window command and shortcut follow the same `BrowserWindow.close()` path, so they also hide the window.
 - The handler does not check whether this is the last window because the current desktop product is single-window.
-- Tray left-click, tray double-click, and Open ZCode call `primaryWindowCoordinator.ensurePrimaryWindow("tray-show-current-window")`, which restores hidden or minimized windows before focusing them.
+- Tray left-click, tray double-click, and Open Codez call `primaryWindowCoordinator.ensurePrimaryWindow("tray-show-current-window")`, which restores hidden or minimized windows before focusing them.
 - Launching a second Windows instance also calls `show()` for an existing hidden window before focusing it.
 - Explicit quit paths still exit the app. Tray Quit marks an explicit quit request before `app.quit()`, so the close handler does not convert that quit into a hide.
 - Auto-update install and relaunch paths keep using the existing force-quit preparation flow and are not affected by the hide setting.
@@ -65,7 +65,7 @@ The shared settings schema is the source of truth for the default and migration 
 The pending case needs no model request. Run it separately with the shared replay fixture to avoid capture-mode credentials:
 
 ```bash
-E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/manual-review/pending/windows-tray-export-logs.test.ts
+E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json pnpm --filter @codez/desktop test:e2e -- --spec ./test/e2e/manual-review/pending/windows-tray-export-logs.test.ts
 ```
 
 2026-10-09 validation: 53 related unit tests passed, including Windows/Linux menu dispatch; typecheck, E2E typecheck, lint (68 existing warnings), architecture and formatting checks passed. A fresh desktop build passed all 4 macOS Preview help-menu E2E cases and generated real ZIP archives. The Windows tray callback and Windows/Linux native notification-area interaction remain unverified on devices. Export replay evidence: `packages/desktop/.e2e-artifacts/desktop-e2e-20261009044422815-p40172-3ffb6e230eb79c0a/summary.json`.

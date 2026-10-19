@@ -14,7 +14,7 @@ afterEach(async () => {
   }
 });
 export async function fixture(savedWorkspaces: readonly string[] = []) {
-  const directory = await mkdtemp(join(tmpdir(), "zcode-project-migration-"));
+  const directory = await mkdtemp(join(tmpdir(), "codez-project-migration-"));
   const db = new DatabaseSync(":memory:");
   resources.push({ db, directory });
   db.exec(`CREATE TABLE tasks (

@@ -5,7 +5,7 @@ import {
   TID_GIT_PANE,
   TID_TASK_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import type { ChainablePromiseElement } from "webdriverio";
 import {
   DEFAULT_WORKSPACE,
@@ -57,7 +57,7 @@ describe("SP13：status panel Git Changes 打开变更审阅", () => {
     await selectV4TaskById(PROVIDER_READINESS_HISTORY_SESSION_ID);
     await waitForExpandedStatusPanel();
     // 通过真实文件 watcher 刷新；无需打开 Git pane，也不创建会话或调用模型。
-    const caseRoot = join(DEFAULT_WORKSPACE, ".zcode-e2e/conversation-session-git-review-entry");
+    const caseRoot = join(DEFAULT_WORKSPACE, ".codez-e2e/conversation-session-git-review-entry");
     const largeText = "large-untracked.txt";
     await browser.electron.execute((electron) => {
       const state = globalThis as typeof globalThis & {
@@ -66,7 +66,7 @@ describe("SP13：status panel Git Changes 打开变更审阅", () => {
       const readHostKb = () =>
         electron.app
           .getAppMetrics()
-          .filter((metric) => metric.name?.startsWith("zcode-host"))
+          .filter((metric) => metric.name?.startsWith("codez-host"))
           .reduce((total, metric) => total + metric.memory.workingSetSize, 0);
       const baseline = readHostKb();
       if (!baseline) throw new Error("没有找到待采样的真实 Host 进程");

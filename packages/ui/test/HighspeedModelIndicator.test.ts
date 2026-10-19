@@ -5,14 +5,14 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { HighspeedModelIndicator } from "@/highspeed/HighspeedModelIndicator.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 afterEach(cleanup);
 
 function renderIndicator(sweepActive = false, animateEntrance = true) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(
         TooltipProvider,

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCODE_DYNAMIC_WORKFLOW_MODE_ENV, type ApiClient } from "@zcode/shared";
+import { CODEZ_DYNAMIC_WORKFLOW_MODE_ENV, type ApiClient } from "@codez/shared";
 import { BigModelCodingPlanSubscriptionProvider } from "../src/coding-plan-subscription/bigmodelCodingPlanSubscriptionProvider.js";
 import { createCodingPlanSubscriptionService } from "../src/coding-plan-subscription/codingPlanSubscriptionService.js";
 
@@ -32,7 +32,7 @@ describe("getDynamicWorkflowClientConfig", () => {
   });
 
   it("本地覆盖命中时直接返回，不打远端（无 TTL、无首次 Host 竞态）", async () => {
-    vi.stubEnv(ZCODE_DYNAMIC_WORKFLOW_MODE_ENV, "alwaysOn");
+    vi.stubEnv(CODEZ_DYNAMIC_WORKFLOW_MODE_ENV, "alwaysOn");
     const apiClient: ApiClient = {
       request: vi.fn(async () => {
         throw new Error("override must not request remote client config");
@@ -53,7 +53,7 @@ describe("getDynamicWorkflowClientConfig", () => {
   });
 
   it("覆盖值非法时忽略覆盖，仍读远端", async () => {
-    vi.stubEnv(ZCODE_DYNAMIC_WORKFLOW_MODE_ENV, "on");
+    vi.stubEnv(CODEZ_DYNAMIC_WORKFLOW_MODE_ENV, "on");
     const apiClient: ApiClient = {
       request: vi.fn(async () => createConfigsResponse({ mode: "onDemand" })),
     };
@@ -132,7 +132,7 @@ describe("getDynamicWorkflowClientConfig", () => {
   });
 
   it("请求失败但本地有覆盖时仍返回覆盖（覆盖先于任何网络动作）", async () => {
-    vi.stubEnv(ZCODE_DYNAMIC_WORKFLOW_MODE_ENV, "disabled");
+    vi.stubEnv(CODEZ_DYNAMIC_WORKFLOW_MODE_ENV, "disabled");
     const apiClient: ApiClient = {
       request: vi.fn(async () => {
         throw new Error("network down");

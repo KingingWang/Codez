@@ -1,6 +1,6 @@
 # 03 — 桌面端以 V2 注册设备、申请 token 并配对
 
-**What to build:** 已登录的桌面用户打开远控弹窗后，桌面 main 用 zcode JWT 懒注册设备并持久化身份，每次建连前申请一次性 `role=device` token，连接 `/api/v1/remote/ws2` 完成 `auth_init`/`auth_ack`，弹窗展示新的二维码 `/remote/v4?app_version&sid&mid&name`。5 秒心跳、15 秒 ACK watchdog、`KICKED` 有界重试、token 失败退避全部生效；"刷新二维码"入口移除。桌面端此后只有 V2 实现。在测试环境可演示：桌面拿到二维码并进入等待手机状态；配对成功可用假 relay 验证。
+**What to build:** 已登录的桌面用户打开远控弹窗后，桌面 main 用 codez JWT 懒注册设备并持久化身份，每次建连前申请一次性 `role=device` token，连接 `/api/v1/remote/ws2` 完成 `auth_init`/`auth_ack`，弹窗展示新的二维码 `/remote/v4?app_version&sid&mid&name`。5 秒心跳、15 秒 ACK watchdog、`KICKED` 有界重试、token 失败退避全部生效；"刷新二维码"入口移除。桌面端此后只有 V2 实现。在测试环境可演示：桌面拿到二维码并进入等待手机状态；配对成功可用假 relay 验证。
 
 **Blocked by:** 02
 
@@ -17,7 +17,7 @@
 - [x] 首次进入 V2 时删除 V1 遗留的 `deviceSid` 设置与 `passHash` credential；桌面 V1 transport、HMAC proof 计算与 passHash 存储 provider 一并删除，对应旧测试删除或改写。
 - [x] 本票内无 JWT 时 `startAuthorized` 返回明确失败、不注册不连接（弹窗的"需要登录"状态与登录联动在 03 完成后由 04 承接）。
 - [x] token 接口 401 → 新 failure reason `auth-required`，runtime 进入 `error`、停止自动重连、不触发全局登出、不清除已启用记录。5xx 与网络错误按 1 秒起、上限 30 秒、带 jitter 的指数退避，`auth_ack` 后清零；其他 4xx → `relay-unavailable`。
-- [x] 桌面 main 直接用 Node fetch 携带 `Authorization: Bearer <jwt>` 调用设备与 token 接口，不经 services 进程。relay 地址推导改为 `/api/v1/remote/ws2`，test endpoint 映射保留，`ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL` 覆盖语义改为 V2 地址。
+- [x] 桌面 main 直接用 Node fetch 携带 `Authorization: Bearer <jwt>` 调用设备与 token 接口，不经 services 进程。relay 地址推导改为 `/api/v1/remote/ws2`，test endpoint 映射保留，`CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL` 覆盖语义改为 V2 地址。
 - [x] 二维码与"复制链接"URL 为 `/remote/v4?app_version=<ver>&sid=<device_sid>&mid=<mid>&name=<hostname>`，不含 `hash`/`t`。弹窗删除"刷新二维码"按钮、确认弹窗与 `resetPairingAuthorized` IPC；renderer 可达的 manager 依赖面只剩 `authorizeStart`、`startAuthorized`、`stop`、`getStatus`。一次性内部启动票据边界不变。
 - [x] 视觉核对：实现后提供弹窗截图（深浅主题 × zh-CN/en-US），确认"刷新二维码"入口已移除、二维码与复制链接区域布局无回归。
 - [x] 测试（接缝：manager 公开接口 + 真实 transport + 假 relay）：懒注册与持久化、用户/endpoint 变化重注册并尽力删除、`AUTH_FAILED` 重注册、token 401 → `auth-required` 且已启用记录保留、二维码 URL 形态、`KICKED` 有界重试的对外 status。
@@ -34,8 +34,8 @@
 - 最后补充回归：workspace关闭通知不能将token401终止的 `error/auth-required` 改写为running，已通过回归与Spec复核。
 - 双轴评审：Standards 无发现；Spec 发现后台恢复持久化与连接成功遥测两项问题，均修复并复核通过。
 - 全量 `pnpm test:unit`：1916文件通过、1失败、2跳过；17937用例通过、1失败、12跳过。失败为未改动的 `packages/desktop/test/e2e/feedback/manual-review/pending/feedback-upload-privacy.test.ts:105` 使用 `/private/tmp`，触发 `e2eRuntimePaths.test.ts`；单独重跑同样失败，与本票代码无关。
-- 桌面标准 `pnpm dev:desktop:test`：首次缺失 CUA 原生 addon，已在安装依赖内补建；随后 CLI `node-repl-host` 编译因缺少 `@zcode/core/browser-client`、`@zcode/contracts/tools/node-repl` 等声明而失败，未修改 CLI。
-- `ZCODE_ENV=test pnpm --filter @zcode/desktop dev:runtime` 可构建并启动当前 main/renderer，但现有存储准备报 `transport_closed`；直接经真实 preload/main 启动远控返回 `auth-required`，当前无可用 JWT，因此没有注册/token/auth_ack waiting 的线上联调证据。
+- 桌面标准 `pnpm dev:desktop:test`：首次缺失 CUA 原生 addon，已在安装依赖内补建；随后 CLI `node-repl-host` 编译因缺少 `@codez/core/browser-client`、`@codez/contracts/tools/node-repl` 等声明而失败，未修改 CLI。
+- `CODEZ_ENV=test pnpm --filter @codez/desktop dev:runtime` 可构建并启动当前 main/renderer，但现有存储准备报 `transport_closed`；直接经真实 preload/main 启动远控返回 `auth-required`，当前无可用 JWT，因此没有注册/token/auth_ack waiting 的线上联调证据。
 - 视觉：实际 Electron renderer + 生产弹窗组件，注入明确标记的 waiting 测试状态，桌面1440×1040与窄屏390×844、zh-CN/en-US、Zai Light/Zai Dark共8张。二维码可见、无刷新按钮、复制链接行无横向溢出；窄屏沿用弹窗内部滚动。这些截图不替代已登录真实 relay 联调，也不声称手机V2业务链路已实现。
 - 截图及机器检查结果：本机会话产物 `~/.codex/visualizations/2026/09/19/01a0b79b-ac3d-76d3-99d7-6cc72352d1e6/relay03/`，包含 `desktop-<locale>-<theme>.png`、`mobile-<locale>-<theme>.png` 和 `evidence.json`。临时renderer夹具已移出源码目录，测试启动的dev进程已停止。
 - 原有02票工作区改动保留；本票不将它们混入提交。全量检查仍有失败且真实联调未完成，按根规则暂不自动commit。

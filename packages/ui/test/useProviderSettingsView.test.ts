@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { IProviderSettingsService, ProviderSettingsView } from "@zcode/services";
+import type { IProviderSettingsService, ProviderSettingsView } from "@codez/services";
 import { describe, expect, it, vi } from "vitest";
 import { useProviderSettingsServiceView } from "@/hooks/useProviderSettingsView.js";
 

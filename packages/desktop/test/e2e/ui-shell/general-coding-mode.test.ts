@@ -9,7 +9,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_TERMINAL_TOGGLE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom } from "../helpers/desktop-app.js";
 import { prepareV4ConversationE2E } from "../helpers/v4-conversation.js";
 
@@ -169,7 +169,7 @@ async function clickText(selector: string, text: string) {
 
 async function waitForMode(mode: string) {
   await browser.waitUntil(async () =>
-    browser.execute((expected) => localStorage.getItem("zcode-interface-mode") === expected, mode),
+    browser.execute((expected) => localStorage.getItem("codez-interface-mode") === expected, mode),
   );
 }
 

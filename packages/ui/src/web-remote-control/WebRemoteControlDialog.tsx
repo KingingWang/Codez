@@ -10,7 +10,7 @@ import {
 } from "@/web-remote-control/domain/presentation.js";
 import { memo, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-import type { BotProvider, WebRemoteControlStatus } from "@zcode/shared";
+import type { BotProvider, WebRemoteControlStatus } from "@codez/shared";
 import {
   Bot as BotIcon,
   CopyIcon,
@@ -31,10 +31,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.js";
 import { toast } from "@/components/ui/toast.js";
-import { useZCodeStore } from "@/store/StoreProvider.js";
+import { useCodezStore } from "@/store/StoreProvider.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useOAuth } from "@/hooks/useOAuth.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { getBotProviderRegionTagLabelId } from "@/botsUi.js";
 
@@ -50,9 +50,9 @@ const REMOTE_CONTROL_BOT_ENTRIES: Array<{
 ];
 
 function WebRemoteControlLoginButton({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
-  const { intl } = useZCodeIntl();
-  const hasUser = useZCodeStore((state) => Boolean(state.user));
-  const requestLoginEntry = useZCodeStore((state) => state.requestLoginEntry);
+  const { intl } = useCodezIntl();
+  const hasUser = useCodezStore((state) => Boolean(state.user));
+  const requestLoginEntry = useCodezStore((state) => state.requestLoginEntry);
   const { activeProvider, loadingProviders, refreshProviders } = useOAuth();
 
   return (
@@ -93,7 +93,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
   initialTaskId?: string;
 }) {
   const platform = usePlatform();
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [status, setStatus] = useState<WebRemoteControlStatus>({
     status: "idle",
   });

@@ -11,10 +11,10 @@ describe("revise / create prompts", () => {
     expect(
       buildSavedWorkflowRevisePrompt({
         name: "x",
-        path: "/repo/.zcode/workflows/x.dwf.ts",
+        path: "/repo/.codez/workflows/x.dwf.ts",
         locale: "zh-CN",
       }),
-    ).toBe("请修订已保存的工作流「x」（/repo/.zcode/workflows/x.dwf.ts）：");
+    ).toBe("请修订已保存的工作流「x」（/repo/.codez/workflows/x.dwf.ts）：");
     expect(buildSavedWorkflowRevisePrompt({ name: "x", path: "/p", locale: "en-US" })).toBe(
       'Please revise the saved workflow "x" (/p): ',
     );
@@ -61,11 +61,11 @@ describe("revise / create prompts", () => {
 
 // 「提升为全局」（docs/dynamic-workflow/launch.md「Promote to global」）：自动发送的完整指令。
 describe("promote prompt", () => {
-  const input = { name: "release-check", path: "/repo/.zcode/workflows/release-check.dwf.ts" };
+  const input = { name: "release-check", path: "/repo/.codez/workflows/release-check.dwf.ts" };
 
   it("中文：带名字与路径、要求 scope global、允许改名、不动原文件、可拒绝", () => {
     const zh = buildSavedWorkflowPromotePrompt({ ...input, locale: "zh-CN" });
-    expect(zh).toContain("「release-check」（/repo/.zcode/workflows/release-check.dwf.ts）");
+    expect(zh).toContain("「release-check」（/repo/.codez/workflows/release-check.dwf.ts）");
     expect(zh).toContain('scope: "global"');
     expect(zh).toContain("`args`");
     expect(zh).toContain("名字可以沿用，也可以取一个更贴切的名字");
@@ -77,7 +77,7 @@ describe("promote prompt", () => {
 
   it("英文：同一清单", () => {
     const en = buildSavedWorkflowPromotePrompt({ ...input, locale: "en-US" });
-    expect(en).toContain('"release-check" (/repo/.zcode/workflows/release-check.dwf.ts)');
+    expect(en).toContain('"release-check" (/repo/.codez/workflows/release-check.dwf.ts)');
     expect(en).toContain('scope: "global"');
     expect(en).toContain("Keep the name or pick a better one");
     expect(en).toContain("Do not modify the original project workflow file");

@@ -11,7 +11,7 @@ vi.mock("react", async (original) => ({
 }));
 vi.mock("@/hooks/useAlertDialog.js", () => ({ useAlertDialog: () => vi.fn() }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: () => "登录失败" } }),
+  useCodezIntl: () => ({ intl: { formatMessage: () => "登录失败" } }),
 }));
 vi.mock("@/root/useAccountConnectionLossNotification.js", () => ({
   useAccountConnectionLossNotification: vi.fn(),
@@ -54,7 +54,7 @@ describe("失效 OAuth 回调", () => {
     });
     // 只挂载回调订阅；启动恢复和轮询在各自测试中验证。
     effects.at(-1)!();
-    await callback("zcode://oauth/callback?state=cancelled");
+    await callback("codez://oauth/callback?state=cancelled");
     expect(errorLog).not.toHaveBeenCalled();
     expect(setUser).not.toHaveBeenCalled();
     expect(setOAuthError).not.toHaveBeenCalled();
@@ -68,13 +68,13 @@ describe("OAuth 成功后的真实设置 CAS", () => {
     const { mkdtemp, rm } = await import("node:fs/promises");
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
-    const { createSettingService } = await import("@zcode/services/node");
+    const { createSettingService } = await import("@codez/services/node");
     const root = await mkdtemp(join(tmpdir(), "oauth-cas-"));
-    const previousHome = process.env.ZCODE_DESKTOP_HOME_DIR;
-    process.env.ZCODE_DESKTOP_HOME_DIR = root;
+    const previousHome = process.env.CODEZ_DESKTOP_HOME_DIR;
+    process.env.CODEZ_DESKTOP_HOME_DIR = root;
     const setting = createSettingService();
-    if (previousHome === undefined) delete process.env.ZCODE_DESKTOP_HOME_DIR;
-    else process.env.ZCODE_DESKTOP_HOME_DIR = previousHome;
+    if (previousHome === undefined) delete process.env.CODEZ_DESKTOP_HOME_DIR;
+    else process.env.CODEZ_DESKTOP_HOME_DIR = previousHome;
     effects.length = 0;
     let poll!: () => void;
     let callback!: (url: string) => Promise<void>;
@@ -180,7 +180,7 @@ describe("OAuth 成功后的真实设置 CAS", () => {
         poll();
       } else {
         effects.at(-1)!();
-        await callback("zcode://oauth/callback?state=test");
+        await callback("codez://oauth/callback?state=test");
       }
       await vi.waitFor(() => expect(markOAuthSuccess).toHaveBeenCalledWith("bigmodel"));
       expect(setUser).toHaveBeenCalledWith(result.userInfo);

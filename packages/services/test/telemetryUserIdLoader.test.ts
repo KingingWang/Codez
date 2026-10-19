@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { CREDENTIAL_DECRYPT_ERROR_CODE } from "@zcode/shared";
+import { CREDENTIAL_DECRYPT_ERROR_CODE } from "@codez/shared";
 import { createTelemetryUserIdLoader } from "../src/node.js";
 import type { ICredentialService } from "../src/credential/credential.js";
 

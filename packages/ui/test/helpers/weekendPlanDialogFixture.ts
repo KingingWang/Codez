@@ -39,7 +39,7 @@ export function createWeekendPlanResultDialogMock(
     dialog: {
       hero: {
         type: "interactive_bundle",
-        runtime: "zcode-hero-sandbox-v1",
+        runtime: "codez-hero-sandbox-v1",
         resolvedUrl: weekendPlanHeroUrl,
         viewport: { aspectRatio: "4:3" },
         data: {

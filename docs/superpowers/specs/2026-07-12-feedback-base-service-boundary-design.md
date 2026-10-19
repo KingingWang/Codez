@@ -4,7 +4,7 @@
 
 反馈中心是桌面应用级能力。创建工单、读取设备信息、上传截图和打包诊断日志都由桌面本机 host process 提供的 `feedbackService` 完成，不依赖当前 workspace 的文件系统、Agent runtime 或 SSH 连接。
 
-当前 `FeedbackHost` 从 workspace-scoped `services` 读取 `feedbackService`。SSH workspace 正常连接时，renderer 会把 base services 与 remote services 合并，`feedbackService` 恰好仍来自本机 base services；但在远程 session 尚未绑定或已经断开时，workspace service resolver 会返回断连代理。提交反馈的首个 `getDeviceSnapshot()` 调用因此在 renderer 内直接抛出 `ZCODE_REMOTE_WORKSPACE_DISCONNECTED`，请求尚未到达反馈 API。
+当前 `FeedbackHost` 从 workspace-scoped `services` 读取 `feedbackService`。SSH workspace 正常连接时，renderer 会把 base services 与 remote services 合并，`feedbackService` 恰好仍来自本机 base services；但在远程 session 尚未绑定或已经断开时，workspace service resolver 会返回断连代理。提交反馈的首个 `getDeviceSnapshot()` 调用因此在 renderer 内直接抛出 `CODEZ_REMOTE_WORKSPACE_DISCONNECTED`，请求尚未到达反馈 API。
 
 ## 目标
 
@@ -17,7 +17,7 @@
 
 ## 非目标
 
-- 不修改 `ZCODE_REMOTE_WORKSPACE_DISCONNECTED` 断连代理的保护规则。
+- 不修改 `CODEZ_REMOTE_WORKSPACE_DISCONNECTED` 断连代理的保护规则。
 - 不让 workspace-scoped 服务在断连后普遍回退到本机 services。
 - 不调整反馈表单、截图、日志归档、附件上传或反馈 API 协议。
 - 不处理 SSH 自动重连或远程 session 生命周期问题。
@@ -45,7 +45,7 @@
 
 - SSH 断连不再成为反馈提交错误来源。
 - 反馈 API、附件上传或本机日志归档的真实错误继续按现有流程展示，不新增吞错或重试。
-- 远程 workspace 的其他 service 调用仍由断连代理返回 `ZCODE_REMOTE_WORKSPACE_DISCONNECTED`，防止远程路径误路由到本机。
+- 远程 workspace 的其他 service 调用仍由断连代理返回 `CODEZ_REMOTE_WORKSPACE_DISCONNECTED`，防止远程路径误路由到本机。
 
 ## 兼容性
 

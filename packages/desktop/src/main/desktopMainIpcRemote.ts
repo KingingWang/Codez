@@ -1,4 +1,4 @@
-import { normalizeRemoteConnectionError } from "@zcode/shared";
+import { normalizeRemoteConnectionError } from "@codez/shared";
 /* eslint-disable max-lines -- 远程连接、OAuth 回调、遥测和通知 IPC 共用窗口级上下文，集中注册避免跨文件状态漂移。 */
 import { app, BrowserWindow, ipcMain, shell, type WebContents } from "electron";
 import armsRum from "@arms/rum-electron";
@@ -10,7 +10,7 @@ import {
   hostRemoteWorkspaceConnectFailedResponseSchema,
   normalizeUnknownError,
   InternalChannels,
-  isPublicZCodeErrorCode,
+  isPublicCodezErrorCode,
   isTrustedCodingPlanWebviewOrigin,
   PlatformChannels,
   remoteTargetSchema,
@@ -21,7 +21,7 @@ import {
   type WindowHostRemoteWorkspaceDescriptor,
   type BindRemoteWorkspaceSessionContextResult,
   type TelemetryEventPayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { dispatchTaskNotification } from "./desktopNotifications.js";
 import {
   clearOAuthRoutesForWindow,
@@ -47,7 +47,7 @@ import { openFileUrlInDefaultApp, openPathInDefaultApp } from "./desktopMainIpcH
 function isPublicRemoteReasonCode(code: string | undefined): code is string {
   // Bug 原因：前缀 OR 形成第二份公开码真源，任何内部 source-server-* 字符串都会穿透
   // Main 暴露给 Renderer。公开边界只消费 shared 登记表，新增码必须先进入统一合同。
-  return isPublicZCodeErrorCode(code);
+  return isPublicCodezErrorCode(code);
 }
 
 function readRetryable(error: unknown): boolean | undefined {
@@ -125,7 +125,7 @@ function isCodingPlanWebviewUrl(src: string | undefined): boolean {
     if (url.protocol !== "http:" && url.protocol !== "https:") return false;
     if (
       !isTrustedCodingPlanWebviewOrigin(url.origin, {
-        e2eStoreBridgeEnabled: process.env.VITE_ZCODE_E2E_STORE_BRIDGE === "1",
+        e2eStoreBridgeEnabled: process.env.VITE_CODEZ_E2E_STORE_BRIDGE === "1",
       })
     ) {
       return false;
@@ -144,7 +144,7 @@ function isCodingPlanPaymentCallbackUrl(src: string | undefined): boolean {
     if (url.protocol !== "http:" && url.protocol !== "https:") return false;
     if (
       !isTrustedCodingPlanWebviewOrigin(url.origin, {
-        e2eStoreBridgeEnabled: process.env.VITE_ZCODE_E2E_STORE_BRIDGE === "1",
+        e2eStoreBridgeEnabled: process.env.VITE_CODEZ_E2E_STORE_BRIDGE === "1",
       })
     ) {
       return false;
@@ -197,7 +197,7 @@ export function registerRemoteIpcHandlers(options: {
     appVersion: string;
     armsEnv: ArmsRumEnv;
   };
-  /** 仅由 VITE_ZCODE_E2E_STORE_BRIDGE + test runner 双门禁打开。 */
+  /** 仅由 VITE_CODEZ_E2E_STORE_BRIDGE + test runner 双门禁打开。 */
   finalArmsCustomEventE2EEnabled?: boolean;
   webRemoteControlManager: WebRemoteControlIpcManager;
   createRemoteWorkspaceSession: (
@@ -230,7 +230,7 @@ export function registerRemoteIpcHandlers(options: {
     context: {
       workspacePath: string;
       workspaceIdentity?: string;
-      workspacePurpose?: import("@zcode/shared").WorkspacePurpose;
+      workspacePurpose?: import("@codez/shared").WorkspacePurpose;
     },
     expectedWebContentsId?: number,
   ) => Promise<BindRemoteWorkspaceSessionContextResult>;

@@ -10,7 +10,7 @@ import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/typ
 import { buildWorkflowTimeline } from "@/components/workflow-timeline/timeline-model.js";
 import { arcTerminalOffsets, lampX } from "@/components/workflow-timeline/timeline-geometry.js";
 import { WorkflowTimeline } from "@/components/workflow-timeline/WorkflowTimeline.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 interface GraphSpec {
   names: readonly string[];
@@ -250,7 +250,7 @@ describe("WorkflowTimeline arc terminals", () => {
     const model = modelOf(spec);
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(WorkflowTimeline, { model }),
       ),

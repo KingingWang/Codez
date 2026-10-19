@@ -140,7 +140,7 @@ describe("highspeed client share", () => {
         copied = blob;
       },
       {
-        benefit: "ZCode 与 Coding Plan 专属权益",
+        benefit: "Codez 与 Coding Plan 专属权益",
         standardSpeed: "标准生成速度",
         speedSummary: "HighSpeed · 20 分钟",
         lessWaiting: "减少等待 80%",

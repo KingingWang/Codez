@@ -1,17 +1,17 @@
-import { TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
-import type { ProjectTask as ZCodeTaskMeta } from "@/project-sidebar/contract.js";
+import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
+import type { ProjectTask as CodezTaskMeta } from "@/project-sidebar/contract.js";
 import { memo, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { UniqueIdentifier } from "@dnd-kit/core";
-import { isCronTask, isOffPeakTask } from "@zcode/shared";
+import { isCronTask, isOffPeakTask } from "@codez/shared";
 import { ArrowUpToLine, Clock, Cloud, Folder, ListTree, LoaderIcon, Moon, X } from "lucide-react";
 import { cn } from "@/components/lib/utils.js";
 import { Badge } from "@/components/ui/badge.js";
 import { toast } from "@/components/ui/toast.js";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   deriveTaskLeadingIndicator,
   formatTaskRelativeTime,
@@ -60,7 +60,7 @@ function GroupedTaskRowComponent({
   dragOverlay,
   tooltipsDisabled,
 }: {
-  task: ZCodeTaskMeta;
+  task: CodezTaskMeta;
   currentGroupId?: string;
   groups: TaskGroupMenuItem[];
   remoteSessionId?: string;
@@ -70,19 +70,19 @@ function GroupedTaskRowComponent({
   mobileActiveTaskKey?: string | null;
   workspaceLabel: string;
   onSelectTask: (workspacePath: string, taskId: string, workspaceIdentity?: string) => void;
-  onCloseTask: (task: ZCodeTaskMeta) => void;
-  onOpenFileTree?: (task: ZCodeTaskMeta) => void;
-  onMoveTaskToGroup: (task: ZCodeTaskMeta, groupId: string | null) => void;
-  onMoveTaskToTop: (task: ZCodeTaskMeta) => void;
-  onStartRenameTask: (task: ZCodeTaskMeta) => void;
-  onArchiveTask: (task: ZCodeTaskMeta) => void;
-  onMarkTaskAsUnread: (task: ZCodeTaskMeta) => void;
+  onCloseTask: (task: CodezTaskMeta) => void;
+  onOpenFileTree?: (task: CodezTaskMeta) => void;
+  onMoveTaskToGroup: (task: CodezTaskMeta, groupId: string | null) => void;
+  onMoveTaskToTop: (task: CodezTaskMeta) => void;
+  onStartRenameTask: (task: CodezTaskMeta) => void;
+  onArchiveTask: (task: CodezTaskMeta) => void;
+  onMarkTaskAsUnread: (task: CodezTaskMeta) => void;
   dragId?: UniqueIdentifier;
   dragging?: boolean;
   dragOverlay?: boolean;
   tooltipsDisabled?: boolean;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const workspaceActionsDisabled = useOptionalTabStore((state) =>
     isWorkspaceReadOnly(state, task.workspacePath, task.workspaceIdentity),
   );

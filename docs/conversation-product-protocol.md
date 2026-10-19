@@ -3,9 +3,9 @@
 更新日期：2026-07-15
 
 本文是 V4 conversation 的当前产品协议。schema 以
-`packages/shared/src/zcode-protocol-v4/` 为准，CLI 裁决与投影以
-`apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/` 为准，UI 消费以
-`packages/ui/src/v4/` 为准。旧 `@zcode/protocol`、legacy task stream 和 renderer conversation
+`packages/shared/src/codez-protocol-v4/` 为准，CLI 裁决与投影以
+`apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/` 为准，UI 消费以
+`packages/ui/src/v4/` 为准。旧 `@codez/protocol`、legacy task stream 和 renderer conversation
 reducer 只存在于历史文档或兼容层，不得覆盖本文语义。
 
 目标：把 conversation session 的产品行为定义成稳定协议，让产品、开发、QA 和 E2E 用同一套语言讨论状态、动作、裁决、副作用和证据。本文只定义协议层，不展开完整 rule table，也不声明自动化覆盖完成。
@@ -22,9 +22,9 @@ reducer 只存在于历史文档或兼容层，不得覆盖本文语义。
 | [testing/conversation-session-e2e-coverage-matrix.md](./testing/conversation-session-e2e-coverage-matrix.md) | 自动化覆盖矩阵，只说明证据状态，不作为产品语义第一来源 |
 | [testing/conversation-session-compact-decision-worksheet.md](./testing/conversation-session-compact-decision-worksheet.md) | compact 故障和 pendingAction 的决策工作单 |
 | [testing/conversation-session-fork-cross-product-matrix.md](./testing/conversation-session-fork-cross-product-matrix.md) | fork 专项矩阵，收敛能否 fork、历史边界和未来状态继承 |
-| `packages/shared/src/validationAppSettings.ts` | app setting `zcodeInteractionBehavior = queue | guide` 的校验与默认值 |
-| `packages/shared/src/zcode-protocol-v4/` | command、snapshot、delta、topic 和 ACK 的当前 schema |
-| `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/` | command inbox、guard、projection、topic 发布和恢复的当前事实源 |
+| `packages/shared/src/validationAppSettings.ts` | app setting `codezInteractionBehavior = queue | guide` 的校验与默认值 |
+| `packages/shared/src/codez-protocol-v4/` | command、snapshot、delta、topic 和 ACK 的当前 schema |
+| `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/` | command inbox、guard、projection、topic 发布和恢复的当前事实源 |
 | `packages/ui/src/v4/ConversationComposer.tsx`、`conversationStatusPanelModel.ts`、`SessionPane.tsx` | composer 控制、停止/状态面板、命令派发和 projection 消费逻辑 |
 | `packages/formal-proof/src/model.ts` | 当前形式化枚举器原型，作为协议可执行化参考 |
 
@@ -76,7 +76,7 @@ CLI / agent runtime
     |-- input routing
     `-- session control
           |
-          | @zcode/shared/zcode-protocol-v4 semantics
+          | @codez/shared/codez-protocol-v4 semantics
           v
 Host / service
 |-- trusted connection context
@@ -86,7 +86,7 @@ Host / service
 |-- latest projection cache (soft state)
 `-- no new conversation semantics
           |
-          | @zcode/rpc transport
+          | @codez/rpc transport
           v
 Renderer / Web UI
 |-- render projection
@@ -95,9 +95,9 @@ Renderer / Web UI
 `-- local-only UI state
 ```
 
-当前 conversation schema 位于 `@zcode/shared` 的 `zcode-protocol-v4` 模块。旧
-`packages/shared/src/zcode-protocol/index.ts` 仍服务非 V4 兼容面，但不是 V4 conversation 产品语义的
-新增入口。`@zcode/rpc` 只负责 channel、call/listen、request/response、连接、日志和遥测，不拥有
+当前 conversation schema 位于 `@codez/shared` 的 `codez-protocol-v4` 模块。旧
+`packages/shared/src/codez-protocol/index.ts` 仍服务非 V4 兼容面，但不是 V4 conversation 产品语义的
+新增入口。`@codez/rpc` 只负责 channel、call/listen、request/response、连接、日志和遥测，不拥有
 conversation 产品语义。`productTurnId`、phase、actions、inputRouting、revision、seq 和 command ACK
 属于 V4 protocol/projection，不属于 RPC。
 
@@ -172,7 +172,7 @@ cold message/part/session/goal facts -/
 - 用户 stop 导致的模型请求取消属于 `completed(interrupted)`，不是 `TurnError`。即使底层
   assistant message 为保留 provider 调试信息而持久化了 `error`，其中的 typed cancellation
   code/result 也必须在 cold hydration 时归一成 `TurnComplete(cancelled)`；历史数据中由
-  ZCode 自身生成的标准取消错误需要兼容恢复。禁止仅因存在 `assistant.info.error` 就把取消
+  Codez 自身生成的标准取消错误需要兼容恢复。禁止仅因存在 `assistant.info.error` 就把取消
   重建为 `phase=error` 或填充 `control.lastError`。
 - desktop `continuous` 与 mobile `replayable` 可以有不同中间帧；两端收敛后的 canonical
   facts 和终态 projection 逐字段相同。该交付差异不扩展成每条产品 case 的重复终态排列。
@@ -184,7 +184,7 @@ Renderer/Web 发起的会话动作应表达为 command intent，而不是直接�
 ```text
 UI local intent
   -> command(commandId, clientId, baseRevision, type, payload)
-  -> transport by @zcode/rpc
+  -> transport by @codez/rpc
   -> host attachment injects {connectionId, trusted clientMode}
   -> guard / dedupe / enqueue / execute in CLI CommandInbox
   <- ACK accepted | rejected | stale | duplicate | failed
@@ -724,7 +724,7 @@ fork 目标只定义在 assistant message/turn 上。edit 目标只定义在 use
 | `restartDiscardRespectsDeliveryLifetime` | CLI restart 后未完成 admitted input 明确 discarded；旧 runtime 的 `queue/guide` 与无权威结论的 `unknown` 静默结算且不显示 UI 错误，只有未进入 transcript 的 `startNow` 提示确认重发，禁止自动重放 | accepted |
 | `stopButtonStableAcrossActiveWork` | assistant、compact、goal verifier、goal continuation、foreground subagent 等 active work 交接时，只要 session 仍可 stop，UI 停止按钮必须保持稳定，不因内部阶段切换而闪烁 | accepted |
 | `stopPausesActiveGoalTarget` | goal target 为 active 时，用户 stop 不管作用于 assistant、compact、goal verifier 还是 goal continuation，都必须把 target 置为非 active 的暂停态 | accepted |
-| `cancelledTurnColdHydrationParity` | 用户 stop 产生的 typed/legacy ZCode cancellation 在 live 与 cold hydration 后都必须归约为 `TurnComplete(cancelled)`；不得产生 `TurnError`、`phase=error` 或 `control.lastError` | accepted |
+| `cancelledTurnColdHydrationParity` | 用户 stop 产生的 typed/legacy Codez cancellation 在 live 与 cold hydration 后都必须归约为 `TurnComplete(cancelled)`；不得产生 `TurnError`、`phase=error` 或 `control.lastError` | accepted |
 | `followupInputModeExplicit` | running 中后续普通输入必须按 `queue` 或 `guide` 模式裁决；默认是 `queue` | accepted |
 | `runningPromptQueues` | `running` 且 follow-up mode 为 `queue` 时，普通文本进入 queue，不打断当前 in-flight 请求 | accepted |
 | `unfinishedSessionPromptQueues` | `sessionEnded=false` 且未命中 guide allow 时，普通文本进入 queue，不启动第二条 active turn | accepted |

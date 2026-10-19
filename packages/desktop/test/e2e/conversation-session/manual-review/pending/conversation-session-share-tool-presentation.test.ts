@@ -62,7 +62,7 @@ describe("FETCH01 / SHARE-TOOLS01: shared readonly tool presentation", () => {
       electron.app.emit(
         "open-url",
         { preventDefault() {} } as never,
-        `zcode://share/import?code=${encodeURIComponent(shareCode)}`,
+        `codez://share/import?code=${encodeURIComponent(shareCode)}`,
       );
     }, code);
     const imported = await $("[data-conversation-share-import-notice]");

@@ -55,7 +55,7 @@
           "id": "toolu_v4_refresh_perm_bash",
           "name": "Bash",
           "input": {
-            "command": "printf 'E2E_V4_REFRESH_PERM_RESULT\\n' > .zcode-e2e/conversation-session-v4-refresh-permission/write-output.txt"
+            "command": "printf 'E2E_V4_REFRESH_PERM_RESULT\\n' > .codez-e2e/conversation-session-v4-refresh-permission/write-output.txt"
           }
         }
       }
@@ -110,7 +110,7 @@
           "id": "toolu_v4_refresh_perm_repeat_bash",
           "name": "Bash",
           "input": {
-            "command": "printf 'E2E_V4_REFRESH_PERM_RESULT\\n' > .zcode-e2e/conversation-session-v4-refresh-permission/write-output.txt"
+            "command": "printf 'E2E_V4_REFRESH_PERM_RESULT\\n' > .codez-e2e/conversation-session-v4-refresh-permission/write-output.txt"
           }
         }
       }

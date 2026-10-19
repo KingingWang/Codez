@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ProjectTree } from "@zcode/services";
-import type { ZCodeProvider, ZCodeTaskMeta } from "@zcode/shared";
+import type { ProjectTree } from "@codez/services";
+import type { CodezProvider, CodezTaskMeta } from "@codez/shared";
 import { buildSessionMentionMarkdown } from "@/mentions/mentionMarkdown.js";
 import { filterMentionItemsWithOptions } from "@/mentions/mentionSearch.js";
 import type { MentionCategoryResult, MentionItem } from "@/mentions/mentionTypes.js";
@@ -14,8 +14,8 @@ interface SessionMentionItem extends MentionItem {
 }
 
 function compareSessionTasks(
-  left: ZCodeTaskMeta,
-  right: ZCodeTaskMeta,
+  left: CodezTaskMeta,
+  right: CodezTaskMeta,
   currentWorkspaceKey?: string,
 ) {
   if (currentWorkspaceKey) {
@@ -30,17 +30,17 @@ function compareSessionTasks(
   return left.title.localeCompare(right.title);
 }
 
-function getSessionLabel(task: ZCodeTaskMeta): string {
+function getSessionLabel(task: CodezTaskMeta): string {
   const title = task.title.replace(/^#sess_[a-zA-Z0-9._-]+\s*/, "").trim();
   return title || "Untitled session";
 }
 
-function getWorkspaceLabel(task: ZCodeTaskMeta): string {
+function getWorkspaceLabel(task: CodezTaskMeta): string {
   const raw = task.workspacePath.trim() || task.workspaceIdentity?.trim() || "";
   return raw.split(/[\\/]/).filter(Boolean).at(-1) ?? raw;
 }
 
-function mapTaskToMentionItem(task: ZCodeTaskMeta, provider: ZCodeProvider): SessionMentionItem {
+function mapTaskToMentionItem(task: CodezTaskMeta, provider: CodezProvider): SessionMentionItem {
   const sessionId = task.taskId;
   const itemProvider = task.provider ?? provider;
   return {
@@ -63,8 +63,8 @@ function mapTaskToMentionItem(task: ZCodeTaskMeta, provider: ZCodeProvider): Ses
 }
 
 export function collectSessionMentionItems(
-  tasks: ZCodeTaskMeta[],
-  provider: ZCodeProvider,
+  tasks: CodezTaskMeta[],
+  provider: CodezProvider,
   options: {
     workspacePath?: string;
     workspaceIdentity?: string;
@@ -73,7 +73,7 @@ export function collectSessionMentionItems(
   const currentWorkspaceKey = options.workspacePath
     ? buildTaskWorkspaceKey(options.workspacePath, options.workspaceIdentity)
     : undefined;
-  const taskBySessionId = new Map<string, ZCodeTaskMeta>();
+  const taskBySessionId = new Map<string, CodezTaskMeta>();
   for (const task of tasks) {
     if (task.migrationSource) {
       continue;
@@ -91,7 +91,7 @@ export function collectSessionMentionItems(
 }
 
 export function useSessionsMentionProvider(
-  provider: ZCodeProvider,
+  provider: CodezProvider,
   workspacePath: string,
   workspaceIdentity: string | undefined,
   query: string,
@@ -152,7 +152,7 @@ export function useSessionsMentionProvider(
         workspaceScope !== "current-workspace" ||
         buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity) === currentKey,
     );
-    const buckets = new Map<string, { id: string; title: string; tasks: ZCodeTaskMeta[] }>();
+    const buckets = new Map<string, { id: string; title: string; tasks: CodezTaskMeta[] }>();
     for (const task of visibleTasks) {
       const id =
         workspaceScope === "current-workspace"

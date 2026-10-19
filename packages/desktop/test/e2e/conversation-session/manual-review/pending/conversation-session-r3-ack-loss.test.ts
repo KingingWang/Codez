@@ -36,7 +36,7 @@ import {
 } from "../../../helpers/v4-conversation.js";
 
 const CASE_MARKER = "E2E_R3_ACK_LOSS";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-ack-loss");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-ack-loss");
 
 interface Pair {
   client: Socket;
@@ -263,7 +263,7 @@ describe(`${CASE_MARKER}: command 已 admitted 但 ACK 经代理丢失后的唯�
     expect(replayRecords).toBe(1);
     const remoteStatus = await runSSHCommand(
       direct,
-      'tr -d "\\n " < "$HOME/.zcode/server/run/status.json" | cut -c1-120',
+      'tr -d "\\n " < "$HOME/.codez/server/run/status.json" | cut -c1-120',
     );
     facts.remoteStatus = remoteStatus.stdout.trim();
   });

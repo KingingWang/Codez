@@ -2,7 +2,7 @@
 // 事故回归（2026-08-26）：同步 PermissionRequest command hook 阻塞等待外部应答时，
 // 旧时序把 broker 应答通道的注册串行排在 hook 链之后，确认窗虽可见但用户批准被
 // resolveInteraction 幂等语义静默丢弃 → turn 永久挂起。修复后 hook 链与 broker
-// 并发竞速，先到者胜。spec：apps/zcode-cli/docs/design/v2/permission-responder-race.md。
+// 并发竞速，先到者胜。spec：apps/codez-cli/docs/design/v2/permission-responder-race.md。
 import { readFile, mkdir, rm } from "node:fs/promises";
 import { clearAppData } from "../helpers/desktop-app.js";
 import {

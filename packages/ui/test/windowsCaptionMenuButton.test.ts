@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -19,7 +19,7 @@ const capturedDropdownContentProps = vi.hoisted(() => ({
 const capturedWindowsCaptionMenu = vi.hoisted(() => {
   const screenshot = {
     dataBase64: "base64-image",
-    filename: "zcode-error-2026-06-17.png",
+    filename: "codez-error-2026-06-17.png",
     contentType: "image/png",
     size: 12,
   };

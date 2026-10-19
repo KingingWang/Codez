@@ -9,7 +9,7 @@ WHERE p.host_id=? AND p.deleted=0 AND p.name_overridden=0
   AND p.updated_at=p.created_at
   AND p.created_at<=(SELECT applied_at FROM schema_migration WHERE id='0005_projects')
   AND (SELECT count(*) FROM project_roots other WHERE other.project_id=p.project_id)=1
-  AND replace(r.root_path, char(92), '/') GLOB '*/.zcode/workspace/default'
+  AND replace(r.root_path, char(92), '/') GLOB '*/.codez/workspace/default'
 `;
 
 export function migrateDefaultWorkspaceTasks(db: DatabaseSync, context: ProjectMigrationContext) {

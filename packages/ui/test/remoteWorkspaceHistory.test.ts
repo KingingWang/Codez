@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RemoteTarget, RemoteWorkspaceSessionEntry } from "@zcode/shared";
+import type { RemoteTarget, RemoteWorkspaceSessionEntry } from "@codez/shared";
 import {
   buildRemoteWorkspaceIdentity,
   buildRemoteWorkspaceSessionMutation,
@@ -41,7 +41,7 @@ describe("remoteWorkspaceHistory helpers", () => {
   });
 
   it("restores a rollback conversation identity from its bound Source profile", () => {
-    const workspacePath = "/home/dev/.zcode/workspace/default";
+    const workspacePath = "/home/dev/.codez/workspace/default";
     const legacyIdentity = `remote:ssh:localhost:2222:dev:${workspacePath}`;
     const stableIdentity = `remote:server:source-1:${workspacePath}`;
 
@@ -91,7 +91,7 @@ describe("remoteWorkspaceHistory helpers", () => {
   });
 
   it("keeps an ambiguous rollback conversation identity fail-closed", () => {
-    const workspacePath = "/home/dev/.zcode/workspace/default";
+    const workspacePath = "/home/dev/.codez/workspace/default";
     const legacyIdentity = `remote:ssh:localhost:2222:dev:${workspacePath}`;
     const target = {
       kind: "ssh" as const,
@@ -450,7 +450,7 @@ describe("remoteWorkspaceHistory helpers", () => {
     const workspaceKey = "remote:server:studio-server-01:/srv/project";
     const target: RemoteTarget = {
       kind: "server",
-      url: "https://studio.example.com/zcode/",
+      url: "https://studio.example.com/codez/",
       name: "Studio Server",
       serverId: "Studio Server 01",
       workspacePath: "/srv/project",
@@ -461,7 +461,7 @@ describe("remoteWorkspaceHistory helpers", () => {
     expect(buildRemoteWorkspaceIdentity("\\srv\\project\\", target)).toBe(workspaceKey);
     expect(snapshot).toEqual({
       kind: "server",
-      url: "https://studio.example.com/zcode/",
+      url: "https://studio.example.com/codez/",
       name: "Studio Server",
       serverId: "Studio Server 01",
       workspacePath: "/srv/project",

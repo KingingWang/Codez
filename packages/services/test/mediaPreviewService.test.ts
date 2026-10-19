@@ -32,7 +32,7 @@ describe("media preview service", () => {
     const service = createMediaPreviewService({
       fileService,
       authorizeLocalMediaPreviewPath: authorize,
-      createLocalMediaPreviewUrl: (path) => `zcode-media://local/preview?path=${path}`,
+      createLocalMediaPreviewUrl: (path) => `codez-media://local/preview?path=${path}`,
     });
 
     await expect(
@@ -42,7 +42,7 @@ describe("media preview service", () => {
       mediaType: "audio/mpeg",
       path: "/canonical/song.mp3",
       size: 3,
-      url: "zcode-media://local/preview?path=/canonical/song.mp3",
+      url: "codez-media://local/preview?path=/canonical/song.mp3",
     });
     expect(authorize).toHaveBeenCalledWith("/workspace/song.mp3");
     expect(fileService.readMediaPreview).not.toHaveBeenCalled();

@@ -3,7 +3,7 @@
 import { createElement, type ReactNode } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { GitRepositorySummary } from "@zcode/shared";
+import type { GitRepositorySummary } from "@codez/shared";
 
 vi.mock("@/ControlHintTooltip.js", () => ({
   ControlHintTooltip: ({ children }: { children: ReactNode }) => children,
@@ -37,7 +37,7 @@ vi.mock("@/components/ui/collapsible.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },

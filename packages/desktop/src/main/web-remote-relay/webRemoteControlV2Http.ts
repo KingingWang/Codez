@@ -5,7 +5,7 @@ import {
   type WebRemoteControlRelayV2HttpOperation,
   type WebRemoteControlRelayV2HttpRequest,
   type WebRemoteControlRelayV2HttpResponse,
-} from "@zcode/shared/web-remote-relay";
+} from "@codez/shared/web-remote-relay";
 
 /** Main 直接 Node fetch；不使用会触发全局登出的 services HTTP 客户端。 */
 export function createWebRemoteControlV2Http(endpointOrigin: string, fetcher = fetch) {

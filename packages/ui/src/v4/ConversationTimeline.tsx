@@ -20,7 +20,7 @@ import {
 import { flushSync } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowDownIcon } from "lucide-react";
-import { TID_V4_TIMELINE, TID_V4_TIMELINE_BOTTOM } from "@zcode/shared/test-ids";
+import { TID_V4_TIMELINE, TID_V4_TIMELINE_BOTTOM } from "@codez/shared/test-ids";
 import type {
   ApiRetryState,
   AttachmentRef,
@@ -29,11 +29,11 @@ import type {
   ConversationRowTarget,
   QueueItem,
   SessionPhase,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { cn } from "@/components/lib/utils.js";
 import { runUserAction } from "@/lib/userActionTelemetry.js";
 import { Button } from "@/components/ui/button.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { ConversationTurnGroup } from "@/v4/ConversationTurnGroup.js";
 import {
@@ -397,7 +397,7 @@ function ConversationTimelineImpl({
   selectionActions,
   hideTurnNavigator = false,
 }: ConversationTimelineProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerSlotRef = useRef<HTMLDivElement>(null);
   // headerSlot 高度参与虚拟窗口换算（scrollMargin），必须随内容与宽度变化实时跟进，

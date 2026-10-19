@@ -2,15 +2,15 @@
 
 > 状态（2026-07-15）：已实施，本文保留为历史实施计划。当前埋点契约以
 > `docs/monitoring/performance-monitoring.md`、`docs/monitoring/performance-telemetry-catalog.md`
-> 和 `packages/ui/src/lib/uiPerfArmsTelemetry.ts` 为准；下文 `useZCodeChat` 等接入路径是实施时轨迹。
+> 和 `packages/ui/src/lib/uiPerfArmsTelemetry.ts` 为准；下文 `useCodezChat` 等接入路径是实施时轨迹。
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 为 Electron renderer(UI)侧新增四个性能埋点(首屏、首token、消息耗时、流式停顿),经现有 ARMS `sendCustom` 链路上报到 `group=ui_perf`。
 
-**Architecture:** 新建模块级单例封装 `uiPerfArmsTelemetry.ts`(仿既有模块级 ARMS 业务埋点 helper),reporter 在 `Root.tsx` 注入。首token/耗时复用 `useZCodeChat` 已算好的 `completionTelemetry` 镜像双发,不动 `/report`;首屏在 `main.tsx` 监听 `zcode-react-startup-ready`;流式停顿的 per-task 计时状态封装在 telemetry 模块内,handler 仅一行调用。全采,失败吞错。
+**Architecture:** 新建模块级单例封装 `uiPerfArmsTelemetry.ts`(仿既有模块级 ARMS 业务埋点 helper),reporter 在 `Root.tsx` 注入。首token/耗时复用 `useCodezChat` 已算好的 `completionTelemetry` 镜像双发,不动 `/report`;首屏在 `main.tsx` 监听 `codez-react-startup-ready`;流式停顿的 per-task 计时状态封装在 telemetry 模块内,handler 仅一行调用。全采,失败吞错。
 
-**Tech Stack:** TypeScript, React, Vitest, `@zcode/shared` 的 `IPlatformService.reportArmsCustomEvent`。
+**Tech Stack:** TypeScript, React, Vitest, `@codez/shared` 的 `IPlatformService.reportArmsCustomEvent`。
 
 ---
 
@@ -21,9 +21,9 @@
 ## 关键事实(已核实)
 
 - 上报 API:`platform.reportArmsCustomEvent({ name, group, value, properties })`,公共维度由 main handler(`desktopMainIpcRemote.ts:119`)自动补齐。
-- `ArmsCustomEventPayload`(`@zcode/shared`):`{ name: string; group: string; value?: number; properties?: Record<string, string | number | boolean | undefined> }`。
-- 镜像点:`packages/ui/src/hooks/useZCodeChat.ts:567-603` 的 `reportPromptCompletionTelemetry`,`completionTelemetry.eventExtraDetail` 已含 `time_to_first_token`、`duration_ms`、`status`、`model_name`;`completionTelemetry.taskId`、`completionTelemetry.messageId` 可用。
-- 首屏终点事件:`window` 上的 `"zcode-react-startup-ready"`(`main.tsx:221` 派发)。
+- `ArmsCustomEventPayload`(`@codez/shared`):`{ name: string; group: string; value?: number; properties?: Record<string, string | number | boolean | undefined> }`。
+- 镜像点:`packages/ui/src/hooks/useCodezChat.ts:567-603` 的 `reportPromptCompletionTelemetry`,`completionTelemetry.eventExtraDetail` 已含 `time_to_first_token`、`duration_ms`、`status`、`model_name`;`completionTelemetry.taskId`、`completionTelemetry.messageId` 可用。
+- 首屏终点事件:`window` 上的 `"codez-react-startup-ready"`(`main.tsx:221` 派发)。
 - chunk 到达点:`taskStreamEventHandlers.ts` 的 `agent_message_chunk`(行 ~821)与 `agent_thought_chunk`(行 ~927)case,均有局部变量 `taskId`。
 - 终态清理点:`taskStreamEventTerminalHandlers.ts` 的 `handleTaskCompleteEvent`(110)、`handleTaskErrorEvent`(340)。
 - 测试框架:Vitest(参考 `packages/ui/src/lib/*.test.ts`)。
@@ -36,7 +36,7 @@
 | `packages/ui/src/lib/uiPerfArmsTelemetry.test.ts` | **新建**:单测 |
 | `packages/ui/src/Root.tsx` | 注入/清理 reporter |
 | `packages/desktop/src/renderer/src/main.tsx` | 首屏起点+终点上报 |
-| `packages/ui/src/hooks/useZCodeChat.ts` | 镜像首token/耗时到 ARMS |
+| `packages/ui/src/hooks/useCodezChat.ts` | 镜像首token/耗时到 ARMS |
 | `packages/ui/src/hooks/taskStreamEventHandlers.ts` | chunk 到达调用停顿追踪 |
 | `packages/ui/src/hooks/taskStreamEventTerminalHandlers.ts` | 终态清理停顿状态 |
 | `docs/monitoring/performance-monitoring.md` | 新增 ui_perf 一节 |
@@ -55,7 +55,7 @@
 
 ```typescript
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ArmsCustomEventPayload } from "@zcode/shared";
+import type { ArmsCustomEventPayload } from "@codez/shared";
 import {
   UI_PERF_ARMS_GROUP,
   clearUiPerfArmsReporterForTest,
@@ -135,7 +135,7 @@ describe("uiPerfArmsTelemetry", () => {
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `pnpm --filter @zcode/ui exec vitest run src/lib/uiPerfArmsTelemetry.test.ts`
+Run: `pnpm --filter @codez/ui exec vitest run src/lib/uiPerfArmsTelemetry.test.ts`
 Expected: FAIL — 模块不存在 / 导出未定义。
 
 - [ ] **Step 3: 写实现**
@@ -143,7 +143,7 @@ Expected: FAIL — 模块不存在 / 导出未定义。
 创建 `packages/ui/src/lib/uiPerfArmsTelemetry.ts`:
 
 ```typescript
-import type { ArmsCustomEventPayload, IPlatformService } from "@zcode/shared";
+import type { ArmsCustomEventPayload, IPlatformService } from "@codez/shared";
 import { logger } from "@/logger.js";
 
 export const UI_PERF_ARMS_GROUP = "ui_perf";
@@ -254,7 +254,7 @@ export function clearStreamStallTracking(taskId: string): void {
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run: `pnpm --filter @zcode/ui exec vitest run src/lib/uiPerfArmsTelemetry.test.ts`
+Run: `pnpm --filter @codez/ui exec vitest run src/lib/uiPerfArmsTelemetry.test.ts`
 Expected: PASS(5 个用例)。
 
 - [ ] **Step 5: 提交**
@@ -324,7 +324,7 @@ describe("stream stall", () => {
 
 - [ ] **Step 2: 运行测试**
 
-Run: `pnpm --filter @zcode/ui exec vitest run src/lib/uiPerfArmsTelemetry.test.ts`
+Run: `pnpm --filter @codez/ui exec vitest run src/lib/uiPerfArmsTelemetry.test.ts`
 Expected: PASS(全部用例,含新增 4 个)。实现已在 Task 1 完成,本任务确认行为。
 
 - [ ] **Step 3: 提交**
@@ -367,7 +367,7 @@ import { setUiPerfArmsReporter } from "@/lib/uiPerfArmsTelemetry.js";
 
 - [ ] **Step 3: 类型检查**
 
-Run: `pnpm --filter @zcode/ui exec tsc --noEmit`
+Run: `pnpm --filter @codez/ui exec tsc --noEmit`
 Expected: 无新增错误。
 
 - [ ] **Step 4: 提交**
@@ -382,11 +382,11 @@ git commit -m "feat(ui-perf): Root 注入 UI 性能 ARMS reporter"
 ## Task 4: 镜像首token/消息耗时到 ARMS
 
 **Files:**
-- Modify: `packages/ui/src/hooks/useZCodeChat.ts:16`(import 区)、`:589-600`(reportAppTelemetryEvent 之后)
+- Modify: `packages/ui/src/hooks/useCodezChat.ts:16`(import 区)、`:589-600`(reportAppTelemetryEvent 之后)
 
 - [ ] **Step 1: 加 import**
 
-在 `useZCodeChat.ts` 的 `import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";`(行 16)下方新增:
+在 `useCodezChat.ts` 的 `import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";`(行 16)下方新增:
 
 ```typescript
 import { reportUiFirstToken, reportUiMessageComplete } from "@/lib/uiPerfArmsTelemetry.js";
@@ -394,7 +394,7 @@ import { reportUiFirstToken, reportUiMessageComplete } from "@/lib/uiPerfArmsTel
 
 - [ ] **Step 2: 在镜像点追加 ARMS 上报**
 
-在 `useZCodeChat.ts` 的 `reportPromptCompletionTelemetry` 内,现有 `await reportAppTelemetryEvent(...)`(行 589-600)调用**之后**、回调结束前,追加:
+在 `useCodezChat.ts` 的 `reportPromptCompletionTelemetry` 内,现有 `await reportAppTelemetryEvent(...)`(行 589-600)调用**之后**、回调结束前,追加:
 
 ```typescript
       // 镜像到 ARMS(group=ui_perf):不改动上面的 /report 链路,只额外双发。
@@ -423,18 +423,18 @@ import { reportUiFirstToken, reportUiMessageComplete } from "@/lib/uiPerfArmsTel
 
 - [ ] **Step 3: 类型检查**
 
-Run: `pnpm --filter @zcode/ui exec tsc --noEmit`
+Run: `pnpm --filter @codez/ui exec tsc --noEmit`
 Expected: 无新增错误。
 
 - [ ] **Step 4: 回归测试**
 
-Run: `pnpm --filter @zcode/ui exec vitest run src/lib`
+Run: `pnpm --filter @codez/ui exec vitest run src/lib`
 Expected: PASS(现有 messageTelemetry 等测试不受影响)。
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add packages/ui/src/hooks/useZCodeChat.ts
+git add packages/ui/src/hooks/useCodezChat.ts
 git commit -m "feat(ui-perf): 镜像首token/消息耗时到 ARMS"
 ```
 
@@ -473,7 +473,7 @@ import { recordStreamChunkArrival } from "@/lib/uiPerfArmsTelemetry.js";
 
 - [ ] **Step 4: 类型检查**
 
-Run: `pnpm --filter @zcode/ui exec tsc --noEmit`
+Run: `pnpm --filter @codez/ui exec tsc --noEmit`
 Expected: 无新增错误。
 
 - [ ] **Step 5: 提交**
@@ -518,7 +518,7 @@ import { clearStreamStallTracking } from "@/lib/uiPerfArmsTelemetry.js";
 
 - [ ] **Step 4: 类型检查 + 回归**
 
-Run: `pnpm --filter @zcode/ui exec tsc --noEmit && pnpm --filter @zcode/ui exec vitest run src/lib src/hooks`
+Run: `pnpm --filter @codez/ui exec tsc --noEmit && pnpm --filter @codez/ui exec vitest run src/lib src/hooks`
 Expected: 无新增类型错误;测试 PASS。
 
 - [ ] **Step 5: 提交**
@@ -540,14 +540,14 @@ git commit -m "feat(ui-perf): 消息终态清理流式停顿追踪"
 在 `main.tsx` import 区之后、模块顶层(任何同步初始化之前)新增:
 
 ```typescript
-import { reportUiFirstScreen } from "@zcode/ui";
+import { reportUiFirstScreen } from "@codez/ui";
 
-// 首屏起点:renderer 模块加载早期。终点为 React commit 后派发的 "zcode-react-startup-ready"。
+// 首屏起点:renderer 模块加载早期。终点为 React commit 后派发的 "codez-react-startup-ready"。
 const uiFirstScreenStartedAt =
   typeof performance?.now === "function" ? performance.now() : Date.now();
 ```
 
-> 确认 `reportUiFirstScreen` 已从 `@zcode/ui` 包导出。若未导出,在 `packages/ui/src/index.ts`(或对应 barrel)补 `export { reportUiFirstScreen } from "./lib/uiPerfArmsTelemetry.js";`。实现时先 grep `packages/ui/src/index.ts` 确认导出方式。
+> 确认 `reportUiFirstScreen` 已从 `@codez/ui` 包导出。若未导出,在 `packages/ui/src/index.ts`(或对应 barrel)补 `export { reportUiFirstScreen } from "./lib/uiPerfArmsTelemetry.js";`。实现时先 grep `packages/ui/src/index.ts` 确认导出方式。
 
 - [ ] **Step 2: 监听终点事件并上报**
 
@@ -556,7 +556,7 @@ const uiFirstScreenStartedAt =
 ```typescript
 // 首屏终点:React commit 后由 StartupReadyNotifier 派发。一次性监听,reporter 此时已在 Root mount 注入。
 window.addEventListener(
-  "zcode-react-startup-ready",
+  "codez-react-startup-ready",
   () => {
     const now = typeof performance?.now === "function" ? performance.now() : Date.now();
     reportUiFirstScreen(now - uiFirstScreenStartedAt);
@@ -569,7 +569,7 @@ window.addEventListener(
 
 Run: `grep -n "uiPerfArmsTelemetry\|reportUiFirstScreen" packages/ui/src/index.ts`
 若无输出,按 Step 1 注记补 barrel 导出。
-Run: `pnpm --filter @zcode/desktop exec tsc --noEmit`
+Run: `pnpm --filter @codez/desktop exec tsc --noEmit`
 Expected: 无新增错误。
 
 - [ ] **Step 4: 提交**
@@ -599,14 +599,14 @@ renderer(UI)侧埋点,经 `reportArmsCustomEvent` → IPC → `armsRum.sendCusto
 
 | 事件 | `value` | 来源 | 关键 properties |
 |------|---------|------|-----------------|
-| `perf_ui_first_screen` | 首屏耗时 ms | renderer 模块加载 → `zcode-react-startup-ready`(React commit) | `phase`(可选) |
+| `perf_ui_first_screen` | 首屏耗时 ms | renderer 模块加载 → `codez-react-startup-ready`(React commit) | `phase`(可选) |
 | `perf_ui_first_token` | 首 token 延迟 ms | 镜像 `message_completion` 的 `time_to_first_token` | `model` / `talk_id` / `message_id` |
 | `perf_ui_message_complete` | 消息端到端耗时 ms | 镜像 `message_completion` 的 `duration_ms` | `result` / `talk_id` / `message_id` |
 | `perf_ui_stream_stall` | 真实停顿时长 ms | 流式相邻正文 chunk 间隔 > 3000ms | `stall_ms` / `waiting_tool` / `talk_id` |
 
 ### 说明与边界
 
-- **首 token / 消息耗时**:不新增计时,复用 `messageTelemetry.finalizePromptTelemetry()` 已算好的值,在 `useZCodeChat.reportPromptCompletionTelemetry` 镜像双发到 ARMS;`/report` 的 `message_completion` 链路与看板不受影响。
+- **首 token / 消息耗时**:不新增计时,复用 `messageTelemetry.finalizePromptTelemetry()` 已算好的值,在 `useCodezChat.reportPromptCompletionTelemetry` 镜像双发到 ARMS;`/report` 的 `message_completion` 链路与看板不受影响。
 - **流式停顿**:`value` 为真实 chunk 间隔(非阈值),阈值 `STREAM_STALL_REPORT_THRESHOLD_MS=3000` 仅作上报闸门。chunk 间隔 >3s 的根因可能在上游(模型推理/网络),不一定是客户端渲染卡顿;但用户视角"界面长时间不动"可感知,故上报。后续据线上分布收紧阈值。
 - **渲染卡顿(longTask)**:由 ARMS Browser SDK 自动采集(`browserCollectors.longTask`),不在此手动埋点。
 
@@ -634,7 +634,7 @@ git commit -m "docs: 监控文档新增端侧 UI 性能指标"
 
 - [ ] **Step 1: 全包类型检查 + 测试**
 
-Run: `pnpm --filter @zcode/ui exec tsc --noEmit && pnpm --filter @zcode/desktop exec tsc --noEmit && pnpm --filter @zcode/ui exec vitest run`
+Run: `pnpm --filter @codez/ui exec tsc --noEmit && pnpm --filter @codez/desktop exec tsc --noEmit && pnpm --filter @codez/ui exec vitest run`
 Expected: 无类型错误;全部测试 PASS。
 
 - [ ] **Step 2: 本地构建验证(开发包,`arms_env=local`)**
@@ -645,7 +645,7 @@ Expected: 无类型错误;全部测试 PASS。
 - 用慢模型或断点制造 >3s chunk 间隔 → 出现 `custom:perf_ui_stream_stall`,value 为真实间隔。
 - 回归:`/report` 的 `message_completion` 仍正常上报。
 
-> 启动方式见用户记忆 `zcode-desktop-dev-startup.md`(pnpm 10.33.2 + ELECTRON_MIRROR 国内镜像)。
+> 启动方式见用户记忆 `codez-desktop-dev-startup.md`(pnpm 10.33.2 + ELECTRON_MIRROR 国内镜像)。
 
 - [ ] **Step 3: 最终提交(若验证中有微调)**
 

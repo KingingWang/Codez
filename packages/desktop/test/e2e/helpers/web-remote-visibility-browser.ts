@@ -32,7 +32,7 @@ async function useNativeVisibility(page: Page) {
 /** 使用成熟导航与清理流程，仅撤销测试框架强制前台；浏览器仍是真实headed Chrome。 */
 export async function createWebRemoteVisibilityBrowser(artifactDir: string) {
   const executablePath =
-    process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME;
+    process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME;
   const chrome = await chromium.launch({
     ...(executablePath ? { executablePath } : { channel: "chrome" }),
     headless: false,

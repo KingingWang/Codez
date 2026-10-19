@@ -2,14 +2,14 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
-import { buildRemoteHostWorkspaceIdentity } from "@zcode/shared";
+import { buildRemoteHostWorkspaceIdentity } from "@codez/shared";
 import { TaskIndexRepo } from "#src/session/taskIndexRepo.js";
 import { bindRemoteProjectIdentities, createProjectService } from "#src/project/index.js";
 import { createProjectWorkspaceNavigation } from "#src/project-workspace-navigation/index.js";
 import type { ProjectNavigationPort } from "#src/project-workspace-navigation/contract.js";
 
 it("MRO01：真实远端目录解析补齐身份后可打开已有任务，不创建替代目录", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "zcode-project-navigation-"));
+  const directory = await mkdtemp(join(tmpdir(), "codez-project-navigation-"));
   const hostId = "remote:server:source";
   const workspacePath = directory;
   const workspaceIdentity = buildRemoteHostWorkspaceIdentity(hostId, workspacePath);

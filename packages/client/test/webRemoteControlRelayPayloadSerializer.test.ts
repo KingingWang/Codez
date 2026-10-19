@@ -3,8 +3,8 @@ import {
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   encodeWebRemoteControlRpcTransportMessage,
   type WebRemoteControlAppPayload,
-} from "@zcode/shared";
-import { parseWebRemoteControlRelayV2OutgoingMessage } from "@zcode/shared/web-remote-relay";
+} from "@codez/shared";
+import { parseWebRemoteControlRelayV2OutgoingMessage } from "@codez/shared/web-remote-relay";
 import { WebRemoteControlRelayPayloadSerializer } from "../src/webRemoteControlRelayPayloadSerializer.js";
 
 describe("WebRemoteControlRelayPayloadSerializer", () => {
@@ -29,7 +29,7 @@ describe("WebRemoteControlRelayPayloadSerializer", () => {
     const now = vi.spyOn(Date, "now").mockReturnValue(1_800_000_000_123);
     try {
       const prepared = new WebRemoteControlRelayPayloadSerializer().prepare({
-        zcode_type: "bootstrap-request",
+        codez_type: "bootstrap-request",
         requestId: "request-1",
       });
       expect(prepared.message.client_ts).toBe(1_800_000_000);
@@ -42,12 +42,12 @@ describe("WebRemoteControlRelayPayloadSerializer", () => {
   it("distinguishes a permanent oversize envelope from a bounded payload", () => {
     const serializer = new WebRemoteControlRelayPayloadSerializer();
     const bounded: WebRemoteControlAppPayload = {
-      zcode_type: "app-error",
+      codez_type: "app-error",
       reason: "unexpected-error",
       error: "中文🙂bounded",
     };
     const oversize: WebRemoteControlAppPayload = {
-      zcode_type: "app-error",
+      codez_type: "app-error",
       reason: "unexpected-error",
       error: "x".repeat(WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes),
     };

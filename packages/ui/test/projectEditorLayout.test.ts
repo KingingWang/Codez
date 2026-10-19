@@ -8,7 +8,7 @@ import zhCN from "@/i18n/locales/zh-CN.js";
 
 Element.prototype.scrollIntoView = vi.fn();
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, string>) =>
         Object.entries(values ?? {}).reduce(
@@ -129,5 +129,5 @@ it("uses the choose-folder empty state for an online device", () => {
   editor("remote:online");
   const browse = screen.getByTestId("virtual-project-browse");
   expect(browse.getAttribute("aria-label")).toBe("选择文件夹");
-  expect(browse.textContent).toContain("ZCode 可读取和编辑这些文件夹");
+  expect(browse.textContent).toContain("Codez 可读取和编辑这些文件夹");
 });

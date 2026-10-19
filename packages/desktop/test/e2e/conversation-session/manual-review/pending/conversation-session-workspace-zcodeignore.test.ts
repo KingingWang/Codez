@@ -11,11 +11,11 @@ import {
 // gitignore 解析按行识别，行尾风格不影响规则；统一写 \n 避免 e2e 源码里出现跨行字面量。
 const LINE_SEP = "\n";
 
-// E2E case for .zcodeignore 单一真相源（spec 2026-08-07 2026-09-15 增补，ZCT-2096811705629528064）。
+// E2E case for .codezignore 单一真相源（spec 2026-08-07 2026-09-15 增补，ZCT-2096811705629528064）。
 // 验证真实 Electron Desktop 上的完整交互链路：
-//   1. workspace 存在 .gitignore(含 obj/) 时，@ 扫描仅在内存中加载规则，不创建 .zcodeignore，
+//   1. workspace 存在 .gitignore(含 obj/) 时，@ 扫描仅在内存中加载规则，不创建 .codezignore，
 //      obj/ 整棵剪枝，obj 下文件不可搜；
-//   2. 手动创建 .zcodeignore 放开排除规则（设置入口当前隐藏，文件编辑是真实用户路径），
+//   2. 手动创建 .codezignore 放开排除规则（设置入口当前隐藏，文件编辑是真实用户路径），
 //      关闭重开 @ 面板重扫后，obj 下文件恢复可搜。
 // 过滤 authority 在 services 层 fileService.listWorkspaceFiles；本 spec 只取证用户可见矩阵。
 const TEST_TIMEOUT_MS = 180000;
@@ -37,12 +37,12 @@ interface PanelSnapshot {
   trigger: string | null;
 }
 
-// seed 产生的待清理状态：新目录 + 手动创建的 .zcodeignore + .gitignore 的原内容恢复。
+// seed 产生的待清理状态：新目录 + 手动创建的 .codezignore + .gitignore 的原内容恢复。
 let seededDirs: string[] = [];
 let createdZcodeIgnore = false;
 let originalGitignore: string | null = null;
 
-describe("会话区 .zcodeignore 工作区搜索忽略规则 E2E", () => {
+describe("会话区 .codezignore 工作区搜索忽略规则 E2E", () => {
   before(async function () {
     this.timeout(TEST_TIMEOUT_MS);
     // 新隔离 profile 会先显示职业引导，完成后才能进入文件搜索场景。
@@ -59,7 +59,7 @@ describe("会话区 .zcodeignore 工作区搜索忽略规则 E2E", () => {
     await Promise.all(seededDirs.map((dir) => rm(dir, { recursive: true, force: true })));
     seededDirs = [];
     if (createdZcodeIgnore) {
-      await rm(join(DEFAULT_WORKSPACE, ".zcodeignore"), { force: true });
+      await rm(join(DEFAULT_WORKSPACE, ".codezignore"), { force: true });
       createdZcodeIgnore = false;
     }
     const gitignorePath = join(DEFAULT_WORKSPACE, ".gitignore");
@@ -72,7 +72,7 @@ describe("会话区 .zcodeignore 工作区搜索忽略规则 E2E", () => {
     await browser.electron.restoreAllMocks();
   });
 
-  it("@ 按内存规则剪枝且不创建 .zcodeignore；手动规则文件仍生效", async function () {
+  it("@ 按内存规则剪枝且不创建 .codezignore；手动规则文件仍生效", async function () {
     this.timeout(TEST_TIMEOUT_MS);
 
     const runId = Date.now();
@@ -103,13 +103,13 @@ describe("会话区 .zcodeignore 工作区搜索忽略规则 E2E", () => {
     await waitForPanelNoOptionContaining("obj/Debug", "obj/ 下被忽略文件不应进入候选");
 
     // 管理入口隐藏期间，搜索不应自动在工作区创建配置文件。
-    const zcodeIgnorePath = join(DEFAULT_WORKSPACE, ".zcodeignore");
-    await expect(stat(zcodeIgnorePath)).rejects.toMatchObject({ code: "ENOENT" });
+    const codezIgnorePath = join(DEFAULT_WORKSPACE, ".codezignore");
+    await expect(stat(codezIgnorePath)).rejects.toMatchObject({ code: "ENOENT" });
 
     // 2) 手动创建规则文件放开 obj/：设置入口当前隐藏（HIDDEN_SETTINGS_SECTIONS），
-    // 真实用户路径是直接编辑 .zcodeignore；写入空规则等价于"删除全部排除规则"。
+    // 真实用户路径是直接编辑 .codezignore；写入空规则等价于"删除全部排除规则"。
     // 用数组 join 写出字面 "\n" 结尾内容，避免字符串字面量跨行。
-    await writeFile(zcodeIgnorePath, ["# emptied by e2e", ""].join(LINE_SEP), "utf-8");
+    await writeFile(codezIgnorePath, ["# emptied by e2e", ""].join(LINE_SEP), "utf-8");
     createdZcodeIgnore = true;
 
     // 3) 规则放开生效：先输入普通文本关闭 @ 面板（本地 30s TTL 缓存已移除——面板

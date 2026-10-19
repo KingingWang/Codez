@@ -20,7 +20,7 @@ afterEach(async () => {
 async function fixture(
   entries: Record<string, string> = { "index.html": "<h1>Hello</h1>", "assets/main.js": "void 0" },
 ) {
-  const root = await mkdtemp(join(tmpdir(), "zcode-bundle-test-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-bundle-test-"));
   directories.push(root);
   const zip = new yazl.ZipFile();
   for (const [path, text] of Object.entries(entries)) zip.addBuffer(Buffer.from(text), path);

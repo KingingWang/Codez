@@ -11,9 +11,9 @@ describe("Local ToolSearch CLI 请求与恢复", () => {
     const fixture = await createToolSearchCliFixture("conversation-session-toolsearch-local");
     let terminal: ReturnType<typeof startToolSearchTerminal> | undefined;
     try {
-      await mkdir(join(fixture.root, ".zcode", "v2"), { recursive: true });
+      await mkdir(join(fixture.root, ".codez", "v2"), { recursive: true });
       await writeFile(
-        join(fixture.root, ".zcode", "v2", "credentials.json"),
+        join(fixture.root, ".codez", "v2", "credentials.json"),
         JSON.stringify({
           "account-provider:account:zai-individual-coding-plan:identity": "toolsearch-e2e",
           "account-provider:coding-plan:account:zai-individual-coding-plan:account:toolsearch-e2e:api-key":

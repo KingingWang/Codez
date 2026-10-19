@@ -11,13 +11,13 @@
 - [给自己的插件接入 UI](#给自己的插件接入-ui)
 - [其他示例](#其他示例插件)
 
-本篇面向主仓库的宿主联调；插件开发与构建在独立的 `zcode-plugins` 仓库完成。
+本篇面向主仓库的宿主联调；插件开发与构建在独立的 `codez-plugins` 仓库完成。
 
 ## UI Plugin 能做什么
 
 UI Plugin 给普通插件增加可交互页面。Agent 可以调用工具创建或修改内容，用户可以直接操作画布、表单、文件列表，再把选区或操作结果交回对话。页面通过 MCP Apps 与宿主通信，业务数据由插件的 MCP 服务管理。
 
-注册、安装、启用和更新沿用普通插件流程。页面使用官方 `@modelcontextprotocol/ext-apps`，不需要单独的 ZCode Plugin SDK，也不要求安装开发指引插件。当前插件仓库锁定页面 SDK `2.0.0`、MCP 服务 SDK `1.29.0`；阅读上游示例时注意 SDK 主版本，实际安装以仓库锁文件为准。
+注册、安装、启用和更新沿用普通插件流程。页面使用官方 `@modelcontextprotocol/ext-apps`，不需要单独的 Codez Plugin SDK，也不要求安装开发指引插件。当前插件仓库锁定页面 SDK `2.0.0`、MCP 服务 SDK `1.29.0`；阅读上游示例时注意 SDK 主版本，实际安装以仓库锁文件为准。
 
 | 能力               | 用户看到的效果                               | 开发入口                                         |
 | ------------------ | -------------------------------------------- | ------------------------------------------------ |
@@ -29,7 +29,7 @@ UI Plugin 给普通插件增加可交互页面。Agent 可以调用工具创建�
 | 模型调用页面工具   | 操作只有活页面才拥有的编辑器状态             | `registerTool()` 或 `onlisttools` + `oncalltool` |
 | 页面状态与资源更新 | 切换位置保留页面，重建恢复视图，订阅服务变化 | 活页面保留、widgetState、资源订阅                |
 
-交互页面目前用于 **ZCode Desktop 的本地工作区**。Web、手机和远程工作区保留普通 MCP 工具记录，不把这些路径视为已经支持交互面板。插件页面与 Gen UI 的加载和通信协议不同，不能混用两者的 API。
+交互页面目前用于 **Codez Desktop 的本地工作区**。Web、手机和远程工作区保留普通 MCP 工具记录，不把这些路径视为已经支持交互面板。插件页面与 Gen UI 的加载和通信协议不同，不能混用两者的 API。
 
 ## 重点示例：Excalidraw
 
@@ -125,7 +125,7 @@ Gen UI（生成式界面）让 Agent 针对当前问题生成 HTML / JavaScript 
 | <a href="docs/images/gen-ui/state.png"><img src="docs/images/gen-ui/state.png" alt="偏好、参数和恢复开关，以及待保存的 modelContent 和 privateContent 快照" width="420" /></a> | <a href="docs/images/gen-ui/design.png"><img src="docs/images/gen-ui/design.png" alt="轮播展示的音乐播放器设计稿，当前为三个方案中的极简方案" width="420" /></a> |
 | 将偏好和参数组织成 `modelContent` / `privateContent` 快照。画面展示待保存状态；页面可保存参数，再通过按钮发起追问。                                                            | `viz-carousel` 展示多种播放器设计，配合 Tweak 调整样式；这是界面原型。                                                                                           |
 
-在支持 Gen UI 的 ZCode Desktop 会话中，可以直接提出下面这样的请求。具体控件和交互由 Agent 根据任务生成：
+在支持 Gen UI 的 Codez Desktop 会话中，可以直接提出下面这样的请求。具体控件和交互由 Agent 根据任务生成：
 
 | 场景         | 示例提示词                                                                                    | 可以如何交互                                  |
 | ------------ | --------------------------------------------------------------------------------------------- | --------------------------------------------- |
@@ -155,10 +155,10 @@ flowchart LR
 
 | 接口                                                            | 用途                                                                                  |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `window.zcode.widgetState`                                      | 读取已保存的页面状态，初始值可能为 `null`                                             |
-| `window.zcode.setWidgetState({ modelContent, privateContent })` | 替换整个 JSON 状态快照，合计不超过 16 KiB；只有 `modelContent` 会进入下一轮模型上下文 |
-| `window.zcode.sendFollowUpMessage({ prompt, title })`           | 发送后续问题，`title` 可选；没有有效用户操作时需要确认，失效或只读会话不能发送        |
-| `zcode:set_globals`                                             | 监听状态或主题更新，从事件的 `detail.globals` 读取新值                                |
+| `window.codez.widgetState`                                      | 读取已保存的页面状态，初始值可能为 `null`                                             |
+| `window.codez.setWidgetState({ modelContent, privateContent })` | 替换整个 JSON 状态快照，合计不超过 16 KiB；只有 `modelContent` 会进入下一轮模型上下文 |
+| `window.codez.sendFollowUpMessage({ prompt, title })`           | 发送后续问题，`title` 可选；没有有效用户操作时需要确认，失效或只读会话不能发送        |
+| `codez:set_globals`                                             | 监听状态或主题更新，从事件的 `detail.globals` 读取新值                                |
 
 桌面端会向 Agent 提供当前会话的专用输出目录。生成的 HTML 保存在该目录，由宿主加载，不写入项目工作区；页面状态按工作区和会话隔离。页面桥接由宿主注入，作者不用再创建 MCP Apps 连接。Gen UI 页面不提供 `callTool`、MCP 资源读取、Node 或任意文件访问；需要插件服务执行操作时使用 UI Plugin。
 
@@ -171,9 +171,9 @@ flowchart LR
 | 页面能力 | Gen UI 状态、追问与 Tweak 接口                   | MCP Apps API、插件 MCP 工具与资源，遵循宿主支持范围 |
 | 数据归属 | 宿主管理生成文件和会话页面状态                   | 插件服务管理业务文件或数据库，页面管理视图          |
 
-上面的 Excalidraw 截图展示的是 **UI Plugin**。如果需要按当前问题生成一个可调参数的小页面，使用 **Gen UI**；如果要分发一个长期使用、带服务和文档管理的工具，开发 UI Plugin。两者虽都可能出现 `window.zcode`，可用方法和状态结构不同，不能混用。UI Plugin 的开发与 API 见[开发与调试](#开发与调试)和[页面 API 速查](#页面-api-速查)。
+上面的 Excalidraw 截图展示的是 **UI Plugin**。如果需要按当前问题生成一个可调参数的小页面，使用 **Gen UI**；如果要分发一个长期使用、带服务和文档管理的工具，开发 UI Plugin。两者虽都可能出现 `window.codez`，可用方法和状态结构不同，不能混用。UI Plugin 的开发与 API 见[开发与调试](#开发与调试)和[页面 API 速查](#页面-api-速查)。
 
-实现与页面示例：[Gen UI 契约](packages/ui/src/gen-ui/CONTRACT.md)、[页面 API 示例](apps/zcode-cli/packages/visualize-plugin/skills/visualize/references/api.md)、[Tweak 指南](apps/zcode-cli/packages/visualize-plugin/skills/visualize/tweak.md)。桌面集成验证入口为 `node packages/desktop/scripts/gen-ui-e2e.mjs`。
+实现与页面示例：[Gen UI 契约](packages/ui/src/gen-ui/CONTRACT.md)、[页面 API 示例](apps/codez-cli/packages/visualize-plugin/skills/visualize/references/api.md)、[Tweak 指南](apps/codez-cli/packages/visualize-plugin/skills/visualize/tweak.md)。桌面集成验证入口为 `node packages/desktop/scripts/gen-ui-e2e.mjs`。
 
 ## 其他示例插件
 
@@ -191,24 +191,24 @@ flowchart LR
 
 | 仓库地址                                                          | 分支             | 修改范围                                       | 运行位置                                                |
 | ----------------------------------------------------------------- | ---------------- | ---------------------------------------------- | ------------------------------------------------------- |
-| [zai-org/ZCode](https://github.com/zai-org/ZCode)                 | `feat/ui-plugin` | 宿主协议、侧栏和内联展示、沙箱、审批与生命周期 | `pnpm dev:desktop`                                      |
-| [zai-org/zcode-plugins](https://github.com/zai-org/zcode-plugins) | `feat/ui-plugin` | 插件清单、MCP 服务、页面、业务数据与资源打包   | `ui-plugins/<name>` 为源码；`plugins/<name>` 为安装产物 |
+| [zai-org/Codez](https://github.com/zai-org/Codez)                 | `feat/ui-plugin` | 宿主协议、侧栏和内联展示、沙箱、审批与生命周期 | `pnpm dev:desktop`                                      |
+| [zai-org/codez-plugins](https://github.com/zai-org/codez-plugins) | `feat/ui-plugin` | 插件清单、MCP 服务、页面、业务数据与资源打包   | `ui-plugins/<name>` 为源码；`plugins/<name>` 为安装产物 |
 
-本文的开发与调试步骤对应两个仓库各自的 `feat/ui-plugin` 分支。**ZCode 公开仓库的该分支目前尚未建好**，待分支准备就绪后再从上述仓库检出并联调。
+本文的开发与调试步骤对应两个仓库各自的 `feat/ui-plugin` 分支。**Codez 公开仓库的该分支目前尚未建好**，待分支准备就绪后再从上述仓库检出并联调。
 
 以下 shell 示例适用于 macOS / Linux，先把两个路径改为自己的检出目录。Node.js 使用 `24.14.0`，pnpm 使用 `10.33.2`。Windows 可在 PowerShell 中设置相同环境变量，再执行各仓库的 `pnpm` / `node` 命令。
 
 ### 首次联调：只安装要测的插件
 
 ```sh
-ZCODE_REPO=/path/to/z-code
-PLUGINS_REPO=/path/to/zcode-plugins
+CODEZ_REPO=/path/to/z-code
+PLUGINS_REPO=/path/to/codez-plugins
 
 # 可选隔离开发配置；后续 CLI 和桌面启动保持同一个值。
-export ZCODE_DATA_BASE_DIR="$HOME/.zcode-ui-plugin-dev"
+export CODEZ_DATA_BASE_DIR="$HOME/.codez-ui-plugin-dev"
 
 # 主仓库首次初始化；已完成时跳过。
-cd "$ZCODE_REPO"
+cd "$CODEZ_REPO"
 pnpm bootstrap
 
 # 插件仓库：编译并生成本地目录，不会自动注册或安装插件。
@@ -217,26 +217,26 @@ pnpm install --frozen-lockfile
 pnpm build
 
 # 主仓库：使用刚构建的 CLI，将插件装进同一个开发配置。
-cd "$ZCODE_REPO"
-node apps/zcode-cli/packages/cli/dist/zcode.cjs plugins marketplace add "$PLUGINS_REPO/dist/local-marketplace" --scope user
-node apps/zcode-cli/packages/cli/dist/zcode.cjs plugins install excalidraw@zcode-plugins-local --scope user
-node apps/zcode-cli/packages/cli/dist/zcode.cjs plugins enable excalidraw@zcode-plugins-local --scope user
-node apps/zcode-cli/packages/cli/dist/zcode.cjs plugins list --json
+cd "$CODEZ_REPO"
+node apps/codez-cli/packages/cli/dist/codez.cjs plugins marketplace add "$PLUGINS_REPO/dist/local-marketplace" --scope user
+node apps/codez-cli/packages/cli/dist/codez.cjs plugins install excalidraw@codez-plugins-local --scope user
+node apps/codez-cli/packages/cli/dist/codez.cjs plugins enable excalidraw@codez-plugins-local --scope user
+node apps/codez-cli/packages/cli/dist/codez.cjs plugins list --json
 pnpm dev:desktop
 ```
 
-也可以在同一桌面实例的 **插件市场 → 新增** 中添加 `dist/local-marketplace` 的绝对路径，再选插件安装和启用。默认本地来源名是 `zcode-plugins-local`；根清单的官方名称是保留名称，不能直接添加仓库根目录。`pnpm dev:desktop` 只启动宿主，不自动注册插件。
+也可以在同一桌面实例的 **插件市场 → 新增** 中添加 `dist/local-marketplace` 的绝对路径，再选插件安装和启用。默认本地来源名是 `codez-plugins-local`；根清单的官方名称是保留名称，不能直接添加仓库根目录。`pnpm dev:desktop` 只启动宿主，不自动注册插件。
 
-如只用现成桌面客户端，在插件仓库构建后走上述 UI 安装即可；客户端本身需要支持本文功能。使用已安装的 `zcode` CLI 时，确认它和桌面使用同一个数据配置。首次使用隔离配置时，也需在该配置中完成登录或模型设置。
+如只用现成桌面客户端，在插件仓库构建后走上述 UI 安装即可；客户端本身需要支持本文功能。使用已安装的 `codez` CLI 时，确认它和桌面使用同一个数据配置。首次使用隔离配置时，也需在该配置中完成登录或模型设置。
 
 ### 修改后的更新循环
 
 ```sh
 cd "$PLUGINS_REPO"
 pnpm build
-cd "$ZCODE_REPO"
-node apps/zcode-cli/packages/cli/dist/zcode.cjs plugins marketplace update zcode-plugins-local
-node apps/zcode-cli/packages/cli/dist/zcode.cjs plugins install excalidraw@zcode-plugins-local --scope user
+cd "$CODEZ_REPO"
+node apps/codez-cli/packages/cli/dist/codez.cjs plugins marketplace update codez-plugins-local
+node apps/codez-cli/packages/cli/dist/codez.cjs plugins install excalidraw@codez-plugins-local --scope user
 ```
 
 随后重启对应桌面实例，打开新会话验证。源码监听不会把插件仓库的修改自动复制到已安装插件；刷新来源只刷新目录，重新安装才更新代码副本。开发时同版本重装会重新复制；正式分发内容变化仍需升级插件清单、marketplace 和源码包版本。
@@ -251,15 +251,15 @@ node apps/zcode-cli/packages/cli/dist/zcode.cjs plugins install excalidraw@zcode
 | 通信与业务单测              | 插件仓库   | `pnpm test`                                                  | 连接顺序、版本冲突、取消等自动化回归                                  |
 | 独立安装产物                | 插件仓库   | `pnpm test:artifacts`                                        | 从仓库外启动构建产物、读取页面/资源，检查运行依赖                     |
 | 官方 App/AppBridge 页面通信 | 插件仓库   | `pnpm test:pages`                                            | Blender、Excalidraw、OpenPencil 的真实 SDK 握手、初始结果、主题和取消 |
-| Excalidraw 冒烟             | 插件仓库   | `pnpm --filter @zcode/plugin-excalidraw smoke`               | 实际 stdio 服务与资源接口                                             |
-| Excalidraw 浏览器交互       | 插件仓库   | `pnpm --filter @zcode/plugin-excalidraw test:e2e`            | 真实画布交互、保存、撤销/重做和冷启动；测试宿主桥不等于 Electron 沙箱 |
+| Excalidraw 冒烟             | 插件仓库   | `pnpm --filter @codez/plugin-excalidraw smoke`               | 实际 stdio 服务与资源接口                                             |
+| Excalidraw 浏览器交互       | 插件仓库   | `pnpm --filter @codez/plugin-excalidraw test:e2e`            | 真实画布交互、保存、撤销/重做和冷启动；测试宿主桥不等于 Electron 沙箱 |
 | Showcase 桌面联调           | 主仓库     | 下方 `--showcase-only` 命令                                  | 当前源码的 Agent、沙箱、真实页面与会话通信                            |
 
 测试页面前先 `pnpm build`；浏览器测试需要 Chrome，或通过 `CHROME_PATH` 指定 Chromium。Excalidraw 浏览器截图默认在系统临时目录的 `excalidraw-e2e`，可用 `EXCALIDRAW_E2E_ARTIFACTS` 指定输出路径。
 
 ```sh
-cd "$ZCODE_REPO"
-ZCODE_SHOWCASE_SERVER="$PLUGINS_REPO/plugins/showcase/dist/server.mjs" \
+cd "$CODEZ_REPO"
+CODEZ_SHOWCASE_SERVER="$PLUGINS_REPO/plugins/showcase/dist/server.mjs" \
   node packages/desktop/scripts/mcp-apps-host-e2e.mjs --showcase-only
 ```
 
@@ -273,7 +273,7 @@ ZCODE_SHOWCASE_SERVER="$PLUGINS_REPO/plugins/showcase/dist/server.mjs" \
 | 已登记来源，侧栏仍没有面板  | `plugins list --json` 的安装/启用状态；当前是否是桌面本地工作区；清单的 `ui.surfaces` 是否引用正确 `mcpServers` 键和 `ui://` URI |
 | 修改代码后还是旧页面        | 是否执行根 `pnpm build`、刷新同一来源并重装目标插件；是否仍运行旧实例或旧会话                                                    |
 | 面板打开但资源失败          | 安装目录是否有 `dist`、离线字体/脚本/WASM；用 `test:artifacts` 排除工作区依赖；检查 CSP 与资源读取上限                           |
-| 握手两次或初始画布为空      | 是否创建了两个 App，或官方 App 与 `window.zcode` 混用；是否在连接前安装事件处理器并保留初始结果                                  |
+| 握手两次或初始画布为空      | 是否创建了两个 App，或官方 App 与 `window.codez` 混用；是否在连接前安装事件处理器并保留初始结果                                  |
 | 点击“引用”没有立刻发消息    | `updateModelContext` 是给下一轮添加上下文，发消息用 `sendMessage`；检查输入区的插件上下文                                        |
 | sampling 不可用或参数被拒绝 | 检查宿主是否声明 `sampling`，当前任务是否可操作，以及参数是否属于本文支持子集                                                    |
 | 改名后出现两份安装          | 插件 ID 已改变，旧名称和新名称是独立安装；按需处理旧安装，先保留数据，不直接删除插件数据目录                                     |
@@ -283,7 +283,7 @@ stdio MCP 服务的 stdout 只输出协议消息，调试日志写 stderr。定�
 
 ### 提交 PR 时声明插件类型
 
-**向 `zcode-plugins` 提交 PR 时，必须在 PR 模板中明确声明插件类型，并填写涉及插件的清单 `name`，再发起评审。** 选择且只选择一项：
+**向 `codez-plugins` 提交 PR 时，必须在 PR 模板中明确声明插件类型，并填写涉及插件的清单 `name`，再发起评审。** 选择且只选择一项：
 
 | 选项                  | 判断标准                                                                                    |
 | --------------------- | ------------------------------------------------------------------------------------------- |
@@ -295,7 +295,7 @@ stdio MCP 服务的 stdout 只输出协议消息，调试日志写 stderr。定�
 
 ## 给自己的插件接入 UI
 
-沿用普通插件的安装目录与市场条目；需要编译的源码包声明自己的 `build`，额外资源使用可选 `stage`。下面是安装清单 `.zcode-plugin/plugin.json` 的最小页面示例：
+沿用普通插件的安装目录与市场条目；需要编译的源码包声明自己的 `build`，额外资源使用可选 `stage`。下面是安装清单 `.codez-plugin/plugin.json` 的最小页面示例：
 
 ```json
 {
@@ -306,11 +306,11 @@ stdio MCP 服务的 stdout 只输出协议消息，调试日志写 stderr。定�
     "app": {
       "type": "stdio",
       "command": "node",
-      "args": ["${ZCODE_PLUGIN_ROOT}/dist/server.mjs"],
-      "cwd": "${ZCODE_PROJECT_DIR}",
+      "args": ["${CODEZ_PLUGIN_ROOT}/dist/server.mjs"],
+      "cwd": "${CODEZ_PROJECT_DIR}",
       "env": {
-        "ZCODE_WORKSPACE_ROOT": "${ZCODE_PROJECT_DIR}",
-        "ZCODE_PLUGIN_DATA": "${ZCODE_PLUGIN_DATA}"
+        "CODEZ_WORKSPACE_ROOT": "${CODEZ_PROJECT_DIR}",
+        "CODEZ_PLUGIN_DATA": "${CODEZ_PLUGIN_DATA}"
       }
     }
   },
@@ -330,7 +330,7 @@ stdio MCP 服务的 stdout 只输出协议消息，调试日志写 stderr。定�
 
 服务端需要实际注册 `ui://my-panel/editor.html` 资源并返回 `text/html;profile=mcp-app`。让工具结果使用该面板时，在工具定义中设置 `_meta.ui.resourceUri` 和 `_meta.ui.surface: "editor"`；`_meta.ui.visibility: ["model", "app"]` 允许模型与页面调用，仅页面工具使用 `["app"]`。`ui.surfaces` 可省略，此时仍可通过工具元数据提供内联页面。
 
-插件文件使用 `${ZCODE_PLUGIN_ROOT}` 定位，工作区文件操作使用 `${ZCODE_PROJECT_DIR}`，持久数据使用 `${ZCODE_PLUGIN_DATA}`。用户配置通过清单 `userConfig` 定义，并在服务配置里用 `${user_config.<key>}` 引用。页面通过服务执行文件操作，不直接访问主应用源码或 Node API。
+插件文件使用 `${CODEZ_PLUGIN_ROOT}` 定位，工作区文件操作使用 `${CODEZ_PROJECT_DIR}`，持久数据使用 `${CODEZ_PLUGIN_DATA}`。用户配置通过清单 `userConfig` 定义，并在服务配置里用 `${user_config.<key>}` 引用。页面通过服务执行文件操作，不直接访问主应用源码或 Node API。
 
 ## 页面 API 速查
 
@@ -338,9 +338,9 @@ stdio MCP 服务的 stdout 只输出协议消息，调试日志写 stderr。定�
 
 ### 官方 MCP Apps API
 
-| API / 事件                                                      | 用途                                 | ZCode 行为与注意事项                                                                          |
+| API / 事件                                                      | 用途                                 | Codez 行为与注意事项                                                                          |
 | --------------------------------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `new App(info, capabilities, options)`、`connect()`             | 创建页面连接并完成握手               | 每个活页面只建一个 App；不要同时访问会触发另一连接的 `window.zcode`                           |
+| `new App(info, capabilities, options)`、`connect()`             | 创建页面连接并完成握手               | 每个活页面只建一个 App；不要同时访问会触发另一连接的 `window.codez`                           |
 | `getHostVersion()`、`getHostCapabilities()`、`getHostContext()` | 读取宿主、能力、主题、语言和展示模式 | 在连接完成后使用；不要只按宿主版本号猜能力                                                    |
 | `ontoolinput`、`ontoolresult`、`ontoolcancelled`                | 接收完整输入、结果和取消             | 大 UI 延迟加载时，保留初始结果再交给 UI，避免丢通知                                           |
 | `onhostcontextchanged`                                          | 响应主题、语言、尺寸或模式变化       | 更新显示；不要因此重复执行业务操作                                                            |
@@ -358,24 +358,24 @@ stdio MCP 服务的 stdout 只输出协议消息，调试日志写 stderr。定�
 | `downloadFile({ contents })`                                    | 调用原生保存对话框                   | 需要 `downloadFile` 能力；支持嵌入资源或当前服务的资源链接；取消/写入失败返回 `isError: true` |
 | `sendLog({ level, data })`                                      | 发送可观察的页面诊断                 | 不向 stdio 服务的 stdout 写调试日志；不要记录密钥或用户内容                                   |
 | `onteardown`                                                    | 释放页面监听器等资源                 | 宿主做有时限的 teardown，不应把唯一保存操作留到此时                                           |
-| `requestTeardown()`                                             | 请求宿主释放页面                     | 当前 ZCode 只记录请求；实际生命周期跟随卡片/面板，不能把它当关闭按钮                          |
+| `requestTeardown()`                                             | 请求宿主释放页面                     | 当前 Codez 只记录请求；实际生命周期跟随卡片/面板，不能把它当关闭按钮                          |
 
 Sampling 使用接纳请求时的任务模型，不读取主聊天历史；只有 App 明确传入的历史进入请求。当前不接受 `temperature`、`tools`、原生 audio 等未实现参数，`includeContext` 只支持 `none`。回答和取消不应被自动追加为主对话回合。
 
-### ZCode 扩展与低层 MCP 请求
+### Codez 扩展与低层 MCP 请求
 
 下面的 `app.request()` 是官方 App 的低层接口。请求结果应使用 `@modelcontextprotocol/core` 的对应 schema 校验。
 
 | 接口 / 字段  | 调用或声明方式                                                                            | 适用范围                                                                                                              |
 | ------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| 会话视图状态 | `ui/set-widget-state`，参数 `{ widgetState }`，结果 `EmptyResultSchema`                   | 先检查 `experimental["zcode/widgetState"]`；初值来自 hostContext 同名键；仅宿主内存，会话内重建可恢复，应用重启不保证 |
+| 会话视图状态 | `ui/set-widget-state`，参数 `{ widgetState }`，结果 `EmptyResultSchema`                   | 先检查 `experimental["codez/widgetState"]`；初值来自 hostContext 同名键；仅宿主内存，会话内重建可恢复，应用重启不保证 |
 | 资源模板列表 | `resources/templates/list`，结果 `ListResourceTemplatesResultSchema`                      | 当前服务的 MCP 模板目录；不要假定 App 存在 `listServerResourceTemplates()` 便捷方法                                   |
-| 资源订阅     | `resources/subscribe` / `resources/unsubscribe`，参数 `{ uri }`，结果 `EmptyResultSchema` | 先检查 `experimental["zcode/resourceSubscribe"]`；服务端也须支持订阅                                                  |
+| 资源订阅     | `resources/subscribe` / `resources/unsubscribe`，参数 `{ uri }`，结果 `EmptyResultSchema` | 先检查 `experimental["codez/resourceSubscribe"]`；服务端也须支持订阅                                                  |
 | 资源变更通知 | `notifications/resources/updated` / `notifications/resources/list_changed`                | 先用 `setNotificationHandler()` 注册处理器；收到 URI 后自行重新读取资源                                               |
-| 当前侧栏面板 | `app.getHostCapabilities()?.experimental?.["zcode/surface"]` 返回 `{ id }`                | 清单 `ui.surfaces[].id` 与工具 `_meta.ui.surface` 保持一致                                                            |
-| CSP 放宽     | 资源 `_meta["zcode/csp"]` 中 `unsafeEval`、`wasmUnsafeEval`                               | 检查 `experimental["zcode/csp"]` 返回的支持标记；不等于获得文件或网络权限                                             |
+| 当前侧栏面板 | `app.getHostCapabilities()?.experimental?.["codez/surface"]` 返回 `{ id }`                | 清单 `ui.surfaces[].id` 与工具 `_meta.ui.surface` 保持一致                                                            |
+| CSP 放宽     | 资源 `_meta["codez/csp"]` 中 `unsafeEval`、`wasmUnsafeEval`                               | 检查 `experimental["codez/csp"]` 返回的支持标记；不等于获得文件或网络权限                                             |
 
-### 现有 `window.zcode` 页面
+### 现有 `window.codez` 页面
 
 已有兼容页面可以继续使用以下别名。新页面优先使用官方 App；这两种连接方式选一种即可。
 
@@ -417,7 +417,7 @@ await app.connect();
 applyTheme();
 
 async function saveViewState(state: unknown) {
-  if (!app.getHostCapabilities()?.experimental?.["zcode/widgetState"]) return;
+  if (!app.getHostCapabilities()?.experimental?.["codez/widgetState"]) return;
   await app.request(
     { method: "ui/set-widget-state", params: { widgetState: state } },
     EmptyResultSchema,
@@ -458,4 +458,4 @@ async function saveViewState(state: unknown) {
 | API 限额、sampling 参数与别名类型 | [MCP Apps 契约](packages/shared/src/mcp-apps/contract.ts)、[sampling.ts](packages/shared/src/mcp-apps/sampling.ts)、[aliasApi.ts](packages/desktop/src/renderer/src/plugin-sandbox/aliasApi.ts) |
 | 实际桌面集成测试                  | [mcp-apps-host-e2e.mjs](packages/desktop/scripts/mcp-apps-host-e2e.mjs)                                                                                                                         |
 
-五个插件的业务源码位于独立 `zcode-plugins` 仓库，其根目录也提供 `UI_PLUGIN.md`。本仓库负责宿主，不复制插件成品；宿主 API 变化时同步维护两边文档中英文版的能力与 API 表。
+五个插件的业务源码位于独立 `codez-plugins` 仓库，其根目录也提供 `UI_PLUGIN.md`。本仓库负责宿主，不复制插件成品；宿主 API 变化时同步维护两边文档中英文版的能力与 API 表。

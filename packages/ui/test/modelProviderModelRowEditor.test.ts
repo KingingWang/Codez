@@ -13,7 +13,7 @@ import {
   TID_MODEL_PROVIDER_NAME_EDIT_BUTTON,
   TID_MODEL_PROVIDER_NAME_INPUT,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   InlineEditableProviderCard,
@@ -38,7 +38,7 @@ import {
 } from "@/settings/model-provider-section/SortableProviderModelList.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "zh-CN",
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, string>) => {

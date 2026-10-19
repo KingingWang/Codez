@@ -10,7 +10,7 @@ import {
   collectHighspeedCardShareBlockers,
   listHighspeedCardsAwaitingAutoShare,
 } from "@/highspeed/highspeedShareDiagnostics.js";
-import type { HighspeedCardSnapshot } from "@zcode/shared";
+import type { HighspeedCardSnapshot } from "@codez/shared";
 
 function makeCard(cardId: string, expiresAt: number): HighspeedCardSnapshot {
   return {

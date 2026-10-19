@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/continue-markdown/cross-seam.svg",
+      "path": ".codez-e2e/continue-markdown/cross-seam.svg",
       "source": "created-by-spec",
       "description": "OTC09 写入固定 SVG，验证在 Markdown token 中间跨 Continue 的 workspace-relative 图片最终仍由 fileService 加载。"
     }

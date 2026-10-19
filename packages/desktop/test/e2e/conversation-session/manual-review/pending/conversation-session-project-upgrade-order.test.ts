@@ -11,7 +11,7 @@ describe("虚拟项目升级顺序", () => {
   it("VP28：仅迁移旧设置保留的项目，历史任务不建项目，刷新保留", async function () {
     this.timeout(90_000);
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45_000);
-    const expected = ["ZCodeProject", ...SAVED_PROJECT_NAMES];
+    const expected = ["CodezProject", ...SAVED_PROJECT_NAMES];
     const readNames = () =>
       browser.execute(() =>
         [...document.querySelectorAll('[data-testid="project-section"] [data-project-name]')].map(
@@ -25,9 +25,9 @@ describe("虚拟项目升级顺序", () => {
     await expect($(`[data-testid="task-item-${CURRENT_IMPORTED_TASK_ID}"]`)).toHaveText(
       expect.stringContaining("E2E_CURRENT_IMPORTED"),
     );
-    const home = process.env.ZCODE_E2E_HOME_DIR;
+    const home = process.env.CODEZ_E2E_HOME_DIR;
     if (!home) throw new Error("isolated E2E HOME required");
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+    const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"), { readOnly: true });
     try {
       expect(db.prepare("SELECT id FROM schema_migration").all()).toEqual([
         { id: "0005_projects" },
@@ -41,7 +41,7 @@ describe("虚拟项目升级顺序", () => {
           .get(),
       ).toEqual({
         project_id: null,
-        workspace_path: join(home, ".zcode/workspace/default"),
+        workspace_path: join(home, ".codez/workspace/default"),
         archived: 0,
       });
       expect(
@@ -62,7 +62,7 @@ describe("虚拟项目升级顺序", () => {
             .get(`e2e-order-${name}`),
         ).toEqual({
           project_id: null,
-          workspace_path: join(home, "ZCodeProject", ".zcode-e2e", "project-upgrade-order", name),
+          workspace_path: join(home, "CodezProject", ".codez-e2e", "project-upgrade-order", name),
           title: `E2E_ORDER_${name}`,
           archived,
           deleted,
@@ -103,14 +103,14 @@ describe("虚拟项目升级顺序", () => {
       db.close();
     }
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "project-upgrade-order.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "project-upgrade-order.png"),
     );
     await browser.refresh();
     try {
       await $('[data-project-name="empty-saved"]').waitForExist({ timeout: 45_000 });
     } catch (error) {
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "project-upgrade-refresh-failed.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "project-upgrade-refresh-failed.png"),
       );
       process.stderr.write(
         `VP28 refresh state: ${JSON.stringify(await browser.execute(() => ({ text: document.body.innerText.slice(0, 2000), url: location.href })))}\n`,
@@ -123,7 +123,7 @@ describe("虚拟项目升级顺序", () => {
       $('[data-testid="conversation-section"] [data-testid="task-item-e2e-order-a-history"]'),
     ).toHaveText(expect.stringContaining("E2E_ORDER_a-history"));
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "project-upgrade-refreshed.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "project-upgrade-refreshed.png"),
     );
   });
 
@@ -143,7 +143,7 @@ describe("虚拟项目升级顺序", () => {
     await unpinned.$('button[data-testid^="task-archive-"]').click();
     await unpinned.waitForExist({ reverse: true });
     const db = new DatabaseSync(
-      join(process.env.ZCODE_E2E_HOME_DIR!, ".zcode/v2/tasks-index.sqlite"),
+      join(process.env.CODEZ_E2E_HOME_DIR!, ".codez/v2/tasks-index.sqlite"),
       { readOnly: true },
     );
     try {

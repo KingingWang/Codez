@@ -2,8 +2,8 @@ import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
-import { materializeZCodeBuiltinProviderConfig } from "../src/index.js";
-import * as persistence from "@zcode/shared/node";
+import { materializeCodezBuiltinProviderConfig } from "../src/index.js";
+import * as persistence from "@codez/shared/node";
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -35,20 +35,20 @@ function release(revision: number) {
 it("同内容并发启动复用固定资源且不改写文件", async () => {
   const environmentConfigRoot = await environmentRoot();
   const options = { environmentConfigRoot, content: release(1) };
-  const file = await materializeZCodeBuiltinProviderConfig(options);
+  const file = await materializeCodezBuiltinProviderConfig(options);
   const before = await stat(file, { bigint: true });
   expect(
     await Promise.all(
-      Array.from({ length: 8 }, () => materializeZCodeBuiltinProviderConfig(options)),
+      Array.from({ length: 8 }, () => materializeCodezBuiltinProviderConfig(options)),
     ),
   ).toEqual(Array(8).fill(file));
   expect((await stat(file, { bigint: true })).mtimeNs).toBe(before.mtimeNs);
-  expect(await readdir(dirname(file))).toEqual(["zcode-builtin.json"]);
+  expect(await readdir(dirname(file))).toEqual(["codez-builtin.json"]);
 });
 
 it("替换期间并发读取只见完整旧版或新版，不产生 hash 历史文件", async () => {
   const environmentConfigRoot = await environmentRoot();
-  const file = await materializeZCodeBuiltinProviderConfig({
+  const file = await materializeCodezBuiltinProviderConfig({
     environmentConfigRoot,
     content: release(1),
   });
@@ -56,7 +56,7 @@ it("替换期间并发读取只见完整旧版或新版，不产生 hash 历史�
   const writer = (async () => {
     try {
       for (let index = 0; index < 30; index++) {
-        await materializeZCodeBuiltinProviderConfig({
+        await materializeCodezBuiltinProviderConfig({
           environmentConfigRoot,
           content: release((index % 2) + 1),
         });
@@ -73,25 +73,25 @@ it("替换期间并发读取只见完整旧版或新版，不产生 hash 历史�
     } while (!finished);
   })();
   await Promise.all([writer, reader]);
-  expect(await readdir(dirname(file))).toEqual(["zcode-builtin.json"]);
+  expect(await readdir(dirname(file))).toEqual(["codez-builtin.json"]);
 });
 
 it("资源校验或原子写入失败时保留旧内容，错误向调用方报告", async () => {
   const environmentConfigRoot = await environmentRoot();
-  const file = await materializeZCodeBuiltinProviderConfig({
+  const file = await materializeCodezBuiltinProviderConfig({
     environmentConfigRoot,
     content: release(1),
   });
   const before = await readFile(file, "utf8");
   await expect(
-    materializeZCodeBuiltinProviderConfig({ environmentConfigRoot, content: "{}" }),
+    materializeCodezBuiltinProviderConfig({ environmentConfigRoot, content: "{}" }),
   ).rejects.toThrow();
   vi.spyOn(persistence, "atomicWritePrivateTextFile").mockRejectedValueOnce(
     new Error("fixture write failure"),
   );
   await expect(
-    materializeZCodeBuiltinProviderConfig({ environmentConfigRoot, content: release(2) }),
+    materializeCodezBuiltinProviderConfig({ environmentConfigRoot, content: release(2) }),
   ).rejects.toThrow("fixture write failure");
   expect(await readFile(file, "utf8")).toBe(before);
-  expect(await readdir(dirname(file))).toEqual(["zcode-builtin.json"]);
+  expect(await readdir(dirname(file))).toEqual(["codez-builtin.json"]);
 });

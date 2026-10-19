@@ -11,7 +11,7 @@
 
 新建浏览器 tab 后立即显示空置态，底层 `<webview>` 只挂载、不显示。地址栏内容在回车前属于未提交草稿：输入、粘贴或清空草稿均不得关闭空置态或提前显示 `<webview>`；只有确认提交合法 URL、恢复既有 URL 或接收外部导航请求后，才进入已导航状态并显示 `<webview>`。
 
-`<webview>` 节点自身固定使用 `#FFF` 背景，不区分加载状态或 ZCode 明暗主题。空置态继续提前挂载 guest，但节点从创建时就同时使用内联 `visibility:hidden` 与 `display:none`，阻止 Electron guest surface 在 CSS 类生效前合成白色首帧；确认导航后解除隐藏。不得增加额外覆盖层或向 guest 网页注入 CSS，网页声明的背景正常绘制在该白色底之上。
+`<webview>` 节点自身固定使用 `#FFF` 背景，不区分加载状态或 Codez 明暗主题。空置态继续提前挂载 guest，但节点从创建时就同时使用内联 `visibility:hidden` 与 `display:none`，阻止 Electron guest surface 在 CSS 类生效前合成白色首帧；确认导航后解除隐藏。不得增加额外覆盖层或向 guest 网页注入 CSS，网页声明的背景正常绘制在该白色底之上。
 
 地址栏操作的完整优先级固定为：
 
@@ -52,7 +52,7 @@
       -> Web fallback: window.open
 ```
 
-- 不新增 UI 直接访问 `window.zcode`。
+- 不新增 UI 直接访问 `window.codez`。
 - 不新增 Desktop main / host process 业务状态，也不新增同步 IO。
 - Desktop `desktop-continuous` 与手机 `web-remote-replayable` 的 stream、snapshot、queue、owner/lease 语义均不变化。
 - Web 当前不暴露 embedded-browser capability；共享组件仍保持平台注入兼容。

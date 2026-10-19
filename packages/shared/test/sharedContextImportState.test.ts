@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { sharedContextImportStateSchema } from "../src/zcode-protocol-v4/snapshot.js";
+import { sharedContextImportStateSchema } from "../src/codez-protocol-v4/snapshot.js";
 
 describe("shared context import state", () => {
   it("accepts the persisted handover lifecycle", () => {

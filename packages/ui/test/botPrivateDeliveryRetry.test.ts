@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PrivateDeliveryRetry } from "@/BotsDialog/PrivateDeliveryRetry.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 const mocks = vi.hoisted(() => ({ retryPrivateDelivery: vi.fn() }));
 vi.mock("@/hooks/useServices.js", () => ({ useServices: () => ({ botsService: mocks }) }));
 afterEach(() => {
@@ -13,7 +13,7 @@ afterEach(() => {
 const show = () =>
   render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(PrivateDeliveryRetry, { botId: "bot", deliveryId: "failed-1" }),
     ),

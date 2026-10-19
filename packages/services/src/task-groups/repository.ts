@@ -4,7 +4,7 @@ import {
   CRON_DEFAULT_GROUP_ID,
   OFF_PEAK_DEFAULT_GROUP_ID,
   resolveWorkspaceKey,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type {
   GroupNode,
   GroupTaskFact,

@@ -14,9 +14,9 @@
 | `SS` | `packages/services/test/subagentsService.test.ts`                                                                                      |
 | `SU` | `packages/ui/test/subagentsSection.test.ts`                                                                                            |
 | `TC` | `packages/ui/test/thoughtLevelCycleControlSelectionValue.test.ts`                                                                      |
-| `SC` | `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`、`apps/zcode-cli/packages/core/tests/subagent-profile.test.ts`           |
-| `BT` | `apps/zcode-cli/packages/bootstrap/tests/subagents.test.ts`、`apps/zcode-cli/packages/bootstrap/tests/runtime-config.test.ts`          |
-| `RM` | `apps/zcode-cli/packages/bootstrap/tests/runtime-model-metadata.test.ts`                                                               |
+| `SC` | `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`、`apps/codez-cli/packages/core/tests/subagent-profile.test.ts`           |
+| `BT` | `apps/codez-cli/packages/bootstrap/tests/subagents.test.ts`、`apps/codez-cli/packages/bootstrap/tests/runtime-config.test.ts`          |
+| `RM` | `apps/codez-cli/packages/bootstrap/tests/runtime-model-metadata.test.ts`                                                               |
 
 ## 覆盖清单
 

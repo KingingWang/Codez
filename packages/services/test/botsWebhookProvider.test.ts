@@ -47,7 +47,7 @@ describe("webhook bot provider", () => {
 
     expect(
       provider.parseCallback({
-        type: "zcode.bot.elicitation_response",
+        type: "codez.bot.elicitation_response",
         botId: "webhook-1",
         userId: "user-1",
         requestId: "elicit-1",
@@ -79,7 +79,7 @@ describe("webhook bot provider", () => {
         name: "Webhook",
         provider: "webhook",
         enabled: true,
-        webhookUrl: "https://example.test/zcode",
+        webhookUrl: "https://example.test/codez",
         webhookSecretRef: "secret-ref",
         allowedWorkspaces: ["*"],
         allowedCommands: {
@@ -104,7 +104,7 @@ describe("webhook bot provider", () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://example.test/zcode",
+      "https://example.test/codez",
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
@@ -114,7 +114,7 @@ describe("webhook bot provider", () => {
       }),
     );
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { type?: string; text?: string };
-    expect(body).toMatchObject({ type: "zcode.bot.message", text: "hello" });
+    expect(body).toMatchObject({ type: "codez.bot.message", text: "hello" });
   });
 
   it("posts structured elicitation requests to webhook URLs", async () => {
@@ -130,7 +130,7 @@ describe("webhook bot provider", () => {
         name: "Webhook",
         provider: "webhook",
         enabled: true,
-        webhookUrl: "https://example.test/zcode",
+        webhookUrl: "https://example.test/codez",
         webhookSecretRef: "secret-ref",
         allowedWorkspaces: ["*"],
         allowedCommands: {
@@ -171,7 +171,7 @@ describe("webhook bot provider", () => {
       type?: string;
       elicitation?: unknown;
     };
-    expect(body.type).toBe("zcode.bot.elicitation_request");
+    expect(body.type).toBe("codez.bot.elicitation_request");
     expect(body.elicitation).toMatchObject({ requestId: "elicit-1" });
   });
 });

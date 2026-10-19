@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import {
   conversationSharePreviewDataSchema,
   createConversationShareSuccessEnvelopeSchema,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -51,7 +51,7 @@ async function readPublishState() {
 
 describe(`${CASE_MARKER}: Desktop SSH 产物分享`, () => {
   const config = readSSHRuntimeConfig(CASE_MARKER);
-  const workspacePath = `${config.workspacePaths[0]}/zcode-share-${Date.now()}`;
+  const workspacePath = `${config.workspacePaths[0]}/codez-share-${Date.now()}`;
   let tunnel: ReplayTunnel | null = null;
   const facts: Record<string, unknown> = {};
 
@@ -61,7 +61,7 @@ describe(`${CASE_MARKER}: Desktop SSH 产物分享`, () => {
   });
 
   after(async () => {
-    const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+    const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR!;
     await mkdir(artifactDir, { recursive: true });
     await writeFile(resolve(artifactDir, "share-ssh.json"), JSON.stringify(facts, null, 2));
     await runSSHCommand(config, `rm -rf -- '${workspacePath}'`).catch(() => undefined);
@@ -74,7 +74,7 @@ describe(`${CASE_MARKER}: Desktop SSH 产物分享`, () => {
     // 根因：API Key 登录没有 OAuth user；假 JWT 又会触发真实控制面的 401。
     // 沿用 live-team 的显式凭据导入，WDIO 为这个独立用例固定匹配的生产控制面。
     const imported = await importLiveBigModelCredentials(CASE_MARKER);
-    const defaultWorkspace = resolve(getE2EAppDataPaths().homeDir, "ZCodeProject");
+    const defaultWorkspace = resolve(getE2EAppDataPaths().homeDir, "CodezProject");
     await mkdir(defaultWorkspace, { recursive: true });
     await seedSettings({
       providerFamilyDomain: "bigmodel",

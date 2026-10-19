@@ -1,12 +1,12 @@
-import { Emitter } from "@zcode/rpc";
-import type { IRemoteBackend } from "@zcode/server/remote";
+import { Emitter } from "@codez/rpc";
+import type { IRemoteBackend } from "@codez/server/remote";
 import type {
   IPromptAttachmentTransferService,
   PromptAttachmentStageParams,
   PromptAttachmentStageResult,
   PromptAttachmentTransferProgress,
-} from "@zcode/services";
-import type { ZCodePromptAttachment } from "@zcode/shared";
+} from "@codez/services";
+import type { CodezPromptAttachment } from "@codez/shared";
 import {
   cleanupRemotePromptAttachment,
   cleanupStaleRemotePromptAttachments,
@@ -103,13 +103,13 @@ export function createRemotePromptAttachmentTransferService(
       try {
         if (previous) await cleanupRecord(params.operationId, previous);
         if (!isCurrent()) throw canceled();
-        const attachment: ZCodePromptAttachment = {
+        const attachment: CodezPromptAttachment = {
           kind: params.mime.startsWith("image/") ? "image" : "file",
           filename: params.fileName,
           localPath: params.localPath,
           mimeType: params.mime,
           sizeBytes: params.sizeBytes ?? 0,
-        } as ZCodePromptAttachment;
+        } as CodezPromptAttachment;
         const workspaceKey = params.workspaceIdentity?.trim() || params.workspacePath;
         const materialized = await materializeRemotePromptAttachments(
           {

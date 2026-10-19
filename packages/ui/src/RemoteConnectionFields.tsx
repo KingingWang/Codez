@@ -8,7 +8,7 @@ import type {
   RemoteWorkspaceSessionEntry,
   SSHConfigAliasOption,
   WSLDistro,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertCircleIcon,
@@ -21,7 +21,7 @@ import {
   FileKey,
   XIcon,
 } from "lucide-react";
-import { isValidWslUser } from "@zcode/shared";
+import { isValidWslUser } from "@codez/shared";
 import {
   TID_DOCKER_CONTAINER_INPUT,
   TID_DOCKER_CONTAINER_SELECT,
@@ -40,7 +40,7 @@ import {
   TID_SERVER_WORKSPACE_PATH_INPUT,
   TID_WSL_DISTRO_SELECT,
   TID_WSL_USER_INPUT,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import type { SSHAuthMethod } from "@/hooks/useRemoteConnectionForm.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { cn } from "@/components/lib/utils.js";
@@ -61,7 +61,7 @@ import {
   CommandList,
 } from "@/components/ui/command.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   parseSshPasteTarget,
   type RemoteFormField,
@@ -169,7 +169,7 @@ export function SshConfigAliasPicker({
   onClear?: () => void;
   children: ReactNode;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [open, setOpen] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const handleListWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
@@ -446,7 +446,7 @@ export function RemoteConnectionFields({
   setServerToken: (value: string) => void;
   setServerWorkspacePath: (value: string) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const fieldId = useId();
   const [dockerInputMode, setDockerInputMode] = useState<"select" | "manual">(
     manualDockerContainer || !dockerContainer ? "manual" : "select",

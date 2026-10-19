@@ -7,7 +7,7 @@ import { projectKey } from "@/project-sidebar/view.js";
 
 const spies = vi.hoisted(() => ({ tooltip: vi.fn(), tasks: vi.fn() }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/ControlHintTooltip.js", () => ({
   ControlHintTooltip: ({ children }: { children: ReactElement }) => {

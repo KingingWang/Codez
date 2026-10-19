@@ -4,15 +4,15 @@ import { join, basename, resolve } from "node:path";
 import {
   IProjectService,
   IProviderProvisioningTargetService,
-  IZCodeAgentService,
+  ICodezAgentService,
   ISourceServerWorkspaceService,
-} from "@zcode/services";
-import { createServerHostServices, disposeServiceResourcesAndWait } from "@zcode/services/node";
+} from "@codez/services";
+import { createServerHostServices, disposeServiceResourcesAndWait } from "@codez/services/node";
 import {
   buildServerRemoteWorkspaceIdentity,
   remoteHostIdFromWorkspaceIdentity,
-} from "@zcode/shared";
-import { createCoreHttpServer } from "../../../../../zcode-server-cli/src/server-core/http.js";
+} from "@codez/shared";
+import { createCoreHttpServer } from "../../../../../codez-server-cli/src/server-core/http.js";
 
 const testHome = process.env.HOME;
 if (!testHome || basename(testHome) !== "url-server")
@@ -25,7 +25,7 @@ const { services, workspaceIdentityMapper, migrationFailedPathCount } =
   await createServerHostServices({
     sourceServerId: serverId,
     providerProvisioningTargetEnabled: true,
-    zcodeBuiltinProviderConfigFilePath: resolve("../../config/provider/zcode-builtin.json"),
+    codezBuiltinProviderConfigFilePath: resolve("../../config/provider/codez-builtin.json"),
   });
 // 仅观测真实服务入参，继续调用原实现，避免将模型回复成功误当作项目绑定成功。
 const provisioning = services.get(IProviderProvisioningTargetService);
@@ -36,7 +36,7 @@ provisioning.apply = async (envelope) => {
     process.stderr.write(`E2E_VP_PROVIDER_FAILURE ${result.errorMessage}\n`);
   return result;
 };
-const agentService = services.get(IZCodeAgentService);
+const agentService = services.get(ICodezAgentService);
 const sendCommand = agentService.sendConversationCommandV4.bind(agentService);
 agentService.sendConversationCommandV4 = async (params) => {
   if (params.envelope.type === "createSession")

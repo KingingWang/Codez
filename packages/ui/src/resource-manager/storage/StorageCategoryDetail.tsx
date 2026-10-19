@@ -3,16 +3,16 @@ import {
   type StorageCategoryId,
   type StorageRootUsage,
   STORAGE_MORE_ENTRIES_PATH,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   TID_RESOURCE_MANAGER_STORAGE_CATEGORY_CLEAN,
   TID_RESOURCE_MANAGER_STORAGE_DETAIL,
   TID_RESOURCE_MANAGER_STORAGE_DETAIL_BACK,
   TID_RESOURCE_MANAGER_STORAGE_DETAIL_ENTRY,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { formatBytes } from "@/resource-manager/resourceUsageView.js";
 import {
   STORAGE_CATEGORY_ICONS,
@@ -38,7 +38,7 @@ export function StorageCategoryDetail({
   onClean: () => void;
   onReveal: (absolutePath: string) => Promise<void>;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const Icon = STORAGE_CATEGORY_ICONS[categoryId];
   const perRoot = roots
     .map((root) => ({ root, category: root.categories.find((item) => item.id === categoryId) }))

@@ -1,7 +1,7 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ZCodeInstalledPluginSummary } from "@zcode/shared";
+import type { CodezInstalledPluginSummary } from "@codez/shared";
 import type { StorePluginItem } from "../src/settings/pluginStoreListing.js";
 import type { PluginStoreActions } from "../src/settings/PluginStoreCard.js";
 
@@ -23,7 +23,7 @@ vi.mock("@/ControlHintTooltip.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "en-US",
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
@@ -32,8 +32,8 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
 }));
 
 function installedMeta(
-  overrides: Partial<ZCodeInstalledPluginSummary> = {},
-): ZCodeInstalledPluginSummary {
+  overrides: Partial<CodezInstalledPluginSummary> = {},
+): CodezInstalledPluginSummary {
   return {
     id: "demo@personal",
     name: "demo",

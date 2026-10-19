@@ -1,7 +1,7 @@
 import type {
   BindRemoteWorkspaceSessionContextIpcResult,
   BindRemoteWorkspaceSessionContextResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export function unwrapRemoteWorkspaceBindResult(
   result: BindRemoteWorkspaceSessionContextIpcResult,

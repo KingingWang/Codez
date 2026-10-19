@@ -4,9 +4,9 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BUILTIN_MODEL_PROVIDER_IDS,
-  DEFAULT_ZCODE_ENDPOINT_ORIGIN,
+  DEFAULT_CODEZ_ENDPOINT_ORIGIN,
   isTrustedCodingPlanWebviewOrigin,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   buildCodingPlanEmbeddedWebviewUrl,
   buildCodingPlanEmbeddedReportContext,
@@ -37,7 +37,7 @@ vi.mock("@/hooks/usePlatform.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -46,7 +46,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStoreWithDefault: (
+  useCodezStoreWithDefault: (
     selector: (state: { theme: string; user: { id: string } | null }) => unknown,
   ) =>
     selector({
@@ -137,7 +137,7 @@ describe("coding plan embedded webview bridge", () => {
 
   it("preserves entry ownership in window, storage and ready events on reinjection", () => {
     const ready = vi.fn();
-    window.addEventListener("zcode-coding-plan-auth-ready", ready);
+    window.addEventListener("codez-coding-plan-auth-ready", ready);
     try {
       const reportContext = {
         purchase_funnel_id: "funnel-app",
@@ -151,9 +151,9 @@ describe("coding plan embedded webview bridge", () => {
       window.eval(script);
       window.eval(script);
       expect(
-        (window as unknown as { __zcodeReportContext__: unknown }).__zcodeReportContext__,
+        (window as unknown as { __codezReportContext__: unknown }).__codezReportContext__,
       ).toEqual(reportContext);
-      expect(JSON.parse(localStorage.getItem("zcode:coding-plan:report-context") || "{}")).toEqual(
+      expect(JSON.parse(localStorage.getItem("codez:coding-plan:report-context") || "{}")).toEqual(
         reportContext,
       );
       expect(ready).toHaveBeenCalledTimes(2);
@@ -161,7 +161,7 @@ describe("coding plan embedded webview bridge", () => {
         expect((event as CustomEvent).detail.reportContext).toEqual(reportContext);
       }
     } finally {
-      window.removeEventListener("zcode-coding-plan-auth-ready", ready);
+      window.removeEventListener("codez-coding-plan-auth-ready", ready);
       window.eval(createCodingPlanCredentialClearScript());
     }
   });
@@ -171,28 +171,28 @@ describe("coding plan embedded webview bridge", () => {
       resolveCodingPlanEmbeddedOrigin({
         dev: true,
         endpointOrigin: "https://zcode.z.ai",
-        zcodeEnv: "test",
+        codezEnv: "test",
       }),
     ).toBe("http://localhost:3000");
     expect(
       resolveCodingPlanEmbeddedOrigin({
         dev: true,
         endpointOrigin: "https://zcode.z.ai",
-        zcodeEnv: "production",
+        codezEnv: "production",
       }),
     ).toBe("https://zcode.z.ai");
     expect(
       resolveCodingPlanEmbeddedOrigin({
         dev: false,
         endpointOrigin: "https://zcode.z.ai",
-        zcodeEnv: "production",
+        codezEnv: "production",
       }),
     ).toBe("https://zcode.z.ai");
     expect(
       resolveCodingPlanEmbeddedOrigin({
         dev: true,
         endpointOrigin: "https://zcode.z.ai",
-        zcodeEnv: "test",
+        codezEnv: "test",
         overrideOrigin: "https://example.test/path",
       }),
     ).toBe("http://localhost:3000");
@@ -239,7 +239,7 @@ describe("coding plan embedded webview bridge", () => {
         endpointOrigin: "https://untrusted.example",
         overrideOrigin: "https://evil.example/path",
       }),
-    ).toBe(DEFAULT_ZCODE_ENDPOINT_ORIGIN);
+    ).toBe(DEFAULT_CODEZ_ENDPOINT_ORIGIN);
     expect(
       resolveCodingPlanEmbeddedOrigin({
         dev: false,
@@ -267,7 +267,7 @@ describe("coding plan embedded webview bridge", () => {
       locale: "en-US",
       credentials: {
         zaiAccessToken: "zai-business-token",
-        zcodeJwtToken: "zcode-jwt",
+        codezJwtToken: "codez-jwt",
       },
       reportContext: {
         purchase_funnel_id: "funnel-app",
@@ -278,44 +278,44 @@ describe("coding plan embedded webview bridge", () => {
     });
 
     expect(script).toContain('localStorage.setItem("oauth:zai:access_token"');
-    expect(script).toContain('localStorage.setItem("zcodejwttoken"');
-    expect(script).toContain("zcode-coding-plan-auth-ready");
+    expect(script).toContain('localStorage.setItem("codezjwttoken"');
+    expect(script).toContain("codez-coding-plan-auth-ready");
     expect(script).toContain('"provider":"zai"');
-    expect(script).toContain("window.__zcodeReportContext__");
-    expect(script).toContain("zcode:coding-plan:report-context");
+    expect(script).toContain("window.__codezReportContext__");
+    expect(script).toContain("codez:coding-plan:report-context");
     expect(script).toContain('"purchase_funnel_id":"funnel-app"');
     expect(script).toContain('"device_mid":"device-mid-test"');
     expect(script).toContain('"user_id":"user-1"');
     expect(script).toContain('"app_version":"9.8.7"');
-    expect(script).toContain("reportContext: zcodeReportContext");
+    expect(script).toContain("reportContext: codezReportContext");
     expect(script).toContain('document.documentElement.classList.toggle("dark"');
-    expect(script).toContain('localStorage.setItem("zcode-theme", zcodeTheme)');
+    expect(script).toContain('localStorage.setItem("codez-theme", codezTheme)');
     expect(script).toContain('localStorage.removeItem("oauth:bigmodel:access_token")');
   });
 
-  it("injects the zcode JWT for the bigmodel provider so the website can query Start Plan balance", () => {
-    // 修复原因：BigModel 分支此前显式清空 zcodejwttoken，官网内嵌页查不到
-    // billing/balance（该接口只认 zcode JWT），Start Plan 卡被误判为「已过期」。
+  it("injects the codez JWT for the bigmodel provider so the website can query Start Plan balance", () => {
+    // 修复原因：BigModel 分支此前显式清空 codezjwttoken，官网内嵌页查不到
+    // billing/balance（该接口只认 codez JWT），Start Plan 卡被误判为「已过期」。
     const script = createCodingPlanAuthInjectionScript({
       provider: "bigmodel",
       theme: "zai-light",
       locale: "zh-CN",
       credentials: {
         bigmodelAccessToken: "bigmodel-business-token",
-        zcodeJwtToken: "zcode-jwt",
+        codezJwtToken: "codez-jwt",
       },
     });
 
     expect(script).toContain('localStorage.setItem("oauth:bigmodel:access_token"');
-    expect(script).toContain('localStorage.setItem("zcodejwttoken"');
+    expect(script).toContain('localStorage.setItem("codezjwttoken"');
     expect(script).toContain('localStorage.removeItem("oauth:zai:access_token")');
   });
 
-  it("loads the zcode JWT credential key for both website providers", () => {
-    expect(getCodingPlanCredentialKeys("zai")).toEqual(["oauth:zai:access_token", "zcodejwttoken"]);
+  it("loads the codez JWT credential key for both website providers", () => {
+    expect(getCodingPlanCredentialKeys("zai")).toEqual(["oauth:zai:access_token", "codezjwttoken"]);
     expect(getCodingPlanCredentialKeys("bigmodel")).toEqual([
       "oauth:bigmodel:access_token",
-      "zcodejwttoken",
+      "codezjwttoken",
     ]);
   });
 
@@ -323,11 +323,11 @@ describe("coding plan embedded webview bridge", () => {
     const script = createCodingPlanCredentialClearScript();
 
     expect(script).toContain("oauth:zai:access_token");
-    expect(script).toContain("zcodejwttoken");
+    expect(script).toContain("codezjwttoken");
     expect(script).toContain("oauth:bigmodel:access_token");
     expect(script).toContain("localStorage.removeItem(key)");
-    expect(script).toContain("zcode:coding-plan:report-context");
-    expect(script).toContain("delete window.__zcodeReportContext__");
+    expect(script).toContain("codez:coding-plan:report-context");
+    expect(script).toContain("delete window.__codezReportContext__");
   });
 
   it("only injects credentials on the current trusted embedded coding plan page", () => {

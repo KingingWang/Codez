@@ -6,7 +6,7 @@ MCP stdio servers are external processes owned by the CLI adapter. Many configur
 
 ## Requirements
 
-- `apps/zcode-cli/packages/adapters/src/mcp` owns stdio MCP process cleanup.
+- `apps/codez-cli/packages/adapters/src/mcp` owns stdio MCP process cleanup.
 - Every stdio MCP close path must explicitly terminate the process tree for the SDK transport pid before or alongside `client.close()` / `transport.close()`.
 - The cleanup path must be idempotent. Reconnect, disconnect, adapter close, connect timeout, and connect failure can all race with an already closed transport.
 - Windows cleanup must use `taskkill /PID <pid> /T /F` so wrappers and descendants are removed together.

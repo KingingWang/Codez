@@ -12,7 +12,7 @@ import type {
 } from "@/project-sidebar/contract.js";
 const fixture = vi.hoisted(() => ({ hosts: [] as unknown[] }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/project-sidebar/ProjectDirectoryProvider.js", () => ({
   useProjectDirectory: () => ({

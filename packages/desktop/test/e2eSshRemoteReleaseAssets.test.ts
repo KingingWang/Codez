@@ -8,10 +8,10 @@ const RELEASE_DIR = "/repo/packages/desktop/mock-cdn/releases/3.12.0";
 // 的实际产物一致：descriptor 最后原子写入，四个 archive 按 target 命名。
 const RELEASE_FILES = [
   "source-server-release.json",
-  "zcode-server-linux-x64.tar.gz",
-  "zcode-server-linux-arm64.tar.gz",
-  "zcode-server-darwin-x64.tar.gz",
-  "zcode-server-darwin-arm64.tar.gz",
+  "codez-server-linux-x64.tar.gz",
+  "codez-server-linux-arm64.tar.gz",
+  "codez-server-darwin-x64.tar.gz",
+  "codez-server-darwin-arm64.tar.gz",
 ];
 
 function createFakeExists(existing: Set<string>) {
@@ -102,7 +102,7 @@ describe("ensureSshRemoteReleaseAssets", () => {
     const prepareReleaseAssets = vi.fn();
     const existing = new Set([
       `${RELEASE_DIR}/source-server-release.json`,
-      `${RELEASE_DIR}/zcode-server-linux-x64.tar.gz`,
+      `${RELEASE_DIR}/codez-server-linux-x64.tar.gz`,
     ]);
 
     expect(() =>
@@ -112,7 +112,7 @@ describe("ensureSshRemoteReleaseAssets", () => {
         releaseDir: RELEASE_DIR,
       }),
     ).toThrow(
-      /prepare:remote-assets.*\/releases\/3\.12\.0.*zcode-server-linux-arm64\.tar\.gz, zcode-server-darwin-x64\.tar\.gz, zcode-server-darwin-arm64\.tar\.gz/u,
+      /prepare:remote-assets.*\/releases\/3\.12\.0.*codez-server-linux-arm64\.tar\.gz, codez-server-darwin-x64\.tar\.gz, codez-server-darwin-arm64\.tar\.gz/u,
     );
     expect(prepareReleaseAssets).toHaveBeenCalledOnce();
   });
@@ -131,12 +131,12 @@ describe("wdio.conf.ts SSH remote assets wiring", () => {
     expect(stageDesktopE2EAppOutput).toContain("ensureSshRemoteReleaseAssets(");
     expect(stageDesktopE2EAppOutput).not.toContain("SSH remote assets missing");
     // Bug 根因：packages/desktop 的 prepare:remote-assets 脚本已随 legacy asset pipeline 删除，
-    // `pnpm --filter @zcode/desktop prepare:remote-assets` 会以 ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT
+    // `pnpm --filter @codez/desktop prepare:remote-assets` 会以 ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT
     // 失败并让 onPrepare fatal；唯一有效入口是根 package.json 的 prepare:remote-assets。
     expect(stageDesktopE2EAppOutput).toMatch(
       /runPnpmWorkspaceCommand\(\["prepare:remote-assets"\]/u,
     );
-    expect(stageDesktopE2EAppOutput).not.toMatch(/@zcode\/desktop",\s*"prepare:remote-assets/u);
+    expect(stageDesktopE2EAppOutput).not.toMatch(/@codez\/desktop",\s*"prepare:remote-assets/u);
     // prepare 调用点必须带 timeoutMs：CI 上下载/构建挂死时让 onPrepare 可失败退出，
     // 而不是占住专用 runner 直到 job 全局超时。（本片段内仅 prepare 一处 pnpm 调用。）
     expect(stageDesktopE2EAppOutput).toContain("timeoutMs: ");

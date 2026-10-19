@@ -1,4 +1,4 @@
-# ZCode Protocol v4：字段级规范
+# Codez Protocol v4：字段级规范
 
 新增只读查询 `v4/conversation/backgroundBashOutput`：sessionId/workId 定位当前 runtime
 的后台 Bash，只返回 kind/workId/status/output/truncated/outputPath，其中 output 是固定最多
@@ -308,7 +308,7 @@ topic fragment 当作 raw RPC 分片，也不能依靠 WebSocket compression 绕
 ```ts
 type RpcTransportPayload =
   | {
-      zcode_type: "rpc-frame";
+      codez_type: "rpc-frame";
       bridgeSessionId: string;
       bridgeGeneration?: number;
       recoveryId?: string;
@@ -321,7 +321,7 @@ type RpcTransportPayload =
       dataBase64: string;
     }
   | {
-      zcode_type: "rpc-frame-ack";
+      codez_type: "rpc-frame-ack";
       bridgeSessionId: string;
       bridgeGeneration?: number;
       recoveryId?: string;
@@ -391,7 +391,7 @@ interface TopicDeclaration<S, D> {
   keyPattern: string; // "conversation/*"
   snapshotSchema: ZodSchema<S>;
   deltaSchema: ZodSchema<D>;
-  coalesce: (deltas: D[]) => D[]; // 纯函数，@zcode/protocol 内，黄金测试复用
+  coalesce: (deltas: D[]) => D[]; // 纯函数，@codez/protocol 内，黄金测试复用
   resync: "snapshot"; // 溢出/断号时的重对齐动作（当前所有 topic 均为 snapshot）
 }
 ```
@@ -1028,7 +1028,7 @@ interface ToolProgress {
 代价是两侧 schema 偏斜变**静默**（卡片安静地退化成文本）。补偿手段是构造侧与镜像侧的 parity
 测试，不是让线上订阅去发现它。必填字段偏斜没有卡可丢，仍会拒帧——那条路的后备见
 04-sync-and-recovery 封闭规则 11。回归见
-`packages/shared/test/zcodeProtocolV4DisplayTolerance.test.ts`。
+`packages/shared/test/codezProtocolV4DisplayTolerance.test.ts`。
 
 #### 4.4.6 subagent
 
@@ -1230,7 +1230,7 @@ interface StatePatch {
 - 未声明 `workflowRunDeltas`（§2）的订阅者收不到这两个 op：publisher 为它把整批 `workflowRun.*` 降级
   成一条整键 `state.updated{workflowRuns}`，并按旧界钳位（[05 §1.1](./05-transport-and-backpressure.md)）。
 
-coalesce 规则（`@zcode/protocol` 纯函数）：
+coalesce 规则（`@codez/protocol` 纯函数）：
 
 1. 相邻同 `(rowId, path)` 的 `row.delta` → append 拼接；
 2. 相邻 `state.updated` → patch 键浅合并（键内整体替换，安全）；

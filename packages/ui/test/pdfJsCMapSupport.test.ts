@@ -14,10 +14,10 @@ describe("PDF.js CMap support", () => {
       cMapUrl: "file:///app/out/renderer/pdfjs/cmaps/",
     });
     expect(
-      createPdfJsDocumentOptions("/remote/v4/", "https://zcode.example/remote/v4/index.html"),
+      createPdfJsDocumentOptions("/remote/v4/", "https://codez.example/remote/v4/index.html"),
     ).toEqual({
       cMapPacked: true,
-      cMapUrl: "https://zcode.example/remote/v4/pdfjs/cmaps/",
+      cMapUrl: "https://codez.example/remote/v4/pdfjs/cmaps/",
     });
   });
 

@@ -1,13 +1,13 @@
 import { openWorkspaceDraftFromSidebar } from "#e2e/helpers/workspace-agent-warmup";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_SETTINGS_BACK_BUTTON,
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, readSettings } from "#e2e/helpers/desktop-app";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 import {
@@ -36,7 +36,7 @@ import {
 const MARKER = "E2E_SSH_VERSION_POLICY";
 const scenario = process.env.R3_VERSION_POLICY_CASE ?? "manual-required";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-version-policy",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-version-policy",
 );
 
 describe(`${MARKER}: 版本兼容策略`, () => {
@@ -48,7 +48,7 @@ describe(`${MARKER}: 版本兼容策略`, () => {
   after(async () => {
     await restoreSnapshotFault();
     if (runtimeConfig) {
-      const current = await runSSHCommand(runtimeConfig, 'cat "$HOME/.zcode/server/current.json"');
+      const current = await runSSHCommand(runtimeConfig, 'cat "$HOME/.codez/server/current.json"');
       if (current.code === 0) facts.finalInstalledVersion = JSON.parse(current.stdout).version;
     }
     await mkdir(artifactDir, { recursive: true });
@@ -84,7 +84,7 @@ describe(`${MARKER}: 版本兼容策略`, () => {
     const sourceId = parseRemoteWorkspaceIdentity(a.workspaceIdentity!)?.sourceServerId;
     if (!sourceId) throw new Error("缺少设备身份");
     const before = JSON.parse(
-      (await runSSHCommand(config, 'cat "$HOME/.zcode/server/current.json"')).stdout,
+      (await runSSHCommand(config, 'cat "$HOME/.codez/server/current.json"')).stdout,
     );
     facts.originalInstalledVersion = before.version;
     await disconnectRemoteSource(sourceId, MARKER);
@@ -97,13 +97,13 @@ describe(`${MARKER}: 版本兼容策略`, () => {
       version,
       minimum,
     });
-    const fixtureRoot = `${config.workspacePaths[0]}/.zcode-e2e/version-policy`;
+    const fixtureRoot = `${config.workspacePaths[0]}/.codez-e2e/version-policy`;
     const remoteArchive = `${fixtureRoot}/version.tar.gz`;
     expect((await runSSHCommand(config, `mkdir -p '${fixtureRoot}'`)).code).toBe(0);
     await uploadSSHFixtureFile(config, archive, remoteArchive);
     const installed = await runSSHCommand(
       config,
-      `"$HOME/.zcode/server/bin/zcode" update --from-archive '${remoteArchive}' --force --json`,
+      `"$HOME/.codez/server/bin/codez" update --from-archive '${remoteArchive}' --force --json`,
       { timeoutMs: 120_000 },
     );
     facts.syntheticInstallResult = {
@@ -115,7 +115,7 @@ describe(`${MARKER}: 版本兼容策略`, () => {
     // Server 生命周期日志可能先于结果写到 stdout；沿用真实 SSH CLI 验证脚本的末行 JSON 合同。
     expect(JSON.parse(installed.stdout.trim().split("\n").at(-1)!).applied).toBe(true);
     const synthetic = JSON.parse(
-      (await runSSHCommand(config, 'cat "$HOME/.zcode/server/current.json"')).stdout,
+      (await runSSHCommand(config, 'cat "$HOME/.codez/server/current.json"')).stdout,
     );
     expect(synthetic.version).toBe(version);
     facts.syntheticVersion = { version, minimum, archiveSha256: synthetic.archiveSha256 };
@@ -130,7 +130,7 @@ describe(`${MARKER}: 版本兼容策略`, () => {
       );
       expect(await $('[data-testid="ssh-dialog"]').isExisting()).toBe(false);
       expect(
-        JSON.parse((await runSSHCommand(config, 'cat "$HOME/.zcode/server/current.json"')).stdout)
+        JSON.parse((await runSSHCommand(config, 'cat "$HOME/.codez/server/current.json"')).stdout)
           .version,
       ).toBe(version);
       await clickTestIdByDom(TID_TASK_SETTINGS_BUTTON);
@@ -205,7 +205,7 @@ describe(`${MARKER}: 版本兼容策略`, () => {
         { timeout: 30_000, timeoutMsg: `${MARKER}: 详细信息没有说明需要升级桌面端` },
       );
       expect(
-        JSON.parse((await runSSHCommand(config, 'cat "$HOME/.zcode/server/current.json"')).stdout)
+        JSON.parse((await runSSHCommand(config, 'cat "$HOME/.codez/server/current.json"')).stdout)
           .archiveSha256,
       ).toBe(synthetic.archiveSha256);
       facts.remoteNotDowngraded = true;
@@ -236,13 +236,13 @@ describe(`${MARKER}: 版本兼容策略`, () => {
         expect(facts.snapshotRetryUpdateCalls).toBe(1);
       }
       const current = JSON.parse(
-        (await runSSHCommand(config, 'cat "$HOME/.zcode/server/current.json"')).stdout,
+        (await runSSHCommand(config, 'cat "$HOME/.codez/server/current.json"')).stdout,
       );
       // 当前构建已是 3.15.1；升级目标应回到本轮真实首装版本，不能硬编码历史补丁号。
       expect(current.version).toBe(scenario === "optional" ? version : before.version);
       if (scenario === "optional") {
         expect(await $('[data-testid="ssh-dialog"]').isExisting()).toBe(false);
-        expect(await $("#zcode-toast-host").getText()).not.toMatch(/更新|update/iu);
+        expect(await $("#codez-toast-host").getText()).not.toMatch(/更新|update/iu);
         await clickTestIdByDom(TID_TASK_SETTINGS_BUTTON);
         await clickTestIdByDom(testId(TID_SETTINGS_SECTION_NAV, "remoteDevices"));
         // 设置页挂载后异步读取兼容状态；卡片出现不代表更新投影已到达。

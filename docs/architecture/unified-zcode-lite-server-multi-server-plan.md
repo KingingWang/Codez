@@ -1,4 +1,4 @@
-# ZCode Lite / Server 统一多端架构实施计划
+# Codez Lite / Server 统一多端架构实施计划
 
 ## 状态
 
@@ -6,7 +6,7 @@
 - 状态：产品边界已确认，等待分阶段实施
 - 范围：Desktop、Browser Web、手机 Remote Controller、本机、SSH、WSL、Docker、Direct URL
 - 当前事实依据：
-  - `docs/architecture/zcode-code-architecture-overview.md`
+  - `docs/architecture/codez-code-architecture-overview.md`
   - `docs/architecture/message-flow.md`
   - `docs/architecture/rpc.md`
   - `docs/web-remote-control/web-remote-control-architecture.md`
@@ -22,36 +22,36 @@
 
 ### 当前临时产品边界
 
-本文后续的 `Browser Web -> Lite Controller Runtime` 是目标架构，不是当前实现。当前普通 Web（包括开发环境 Web 入口和 `zcode-lite serve`）仍由浏览器直接连接 `@zcode/server` 的 `/ws`，没有 Desktop Window Host Controller。因此，在 Lite / Browser Controller Runtime 落地并完成多端回归前，普通 Web 暂不支持依赖 Window Host Controller 的左侧全局任务列表和多 source 聚合，也不在 renderer 中维护第二套 Controller fallback。
+本文后续的 `Browser Web -> Lite Controller Runtime` 是目标架构，不是当前实现。当前普通 Web（包括开发环境 Web 入口和 `codez-lite serve`）仍由浏览器直接连接 `@codez/server` 的 `/ws`，没有 Desktop Window Host Controller。因此，在 Lite / Browser Controller Runtime 落地并完成多端回归前，普通 Web 暂不支持依赖 Window Host Controller 的左侧全局任务列表和多 source 聚合，也不在 renderer 中维护第二套 Controller fallback。
 
 ```text
-当前：Browser Web -> @zcode/server /ws -> createLocalServices()
+当前：Browser Web -> @codez/server /ws -> createLocalServices()
                                       -X-> Window Host Controller
 
 目标：Browser Web -> Lite Controller Runtime -> Local / Remote Server sources
 ```
 
-该临时边界不影响 Desktop 本地、Desktop 的 SSH/WSL/Docker/Server workspace，以及附着既有 Desktop Host 的手机 `/remote`。当前事实和具体范围以 `docs/zcode-lite-static-distribution.md` 的“当前普通 Web 支持边界”为准。
+该临时边界不影响 Desktop 本地、Desktop 的 SSH/WSL/Docker/Server workspace，以及附着既有 Desktop Host 的手机 `/remote`。当前事实和具体范围以 `docs/codez-lite-static-distribution.md` 的“当前普通 Web 支持边界”为准。
 
 ## 一、目标
 
-同一套 ZCode Server 能力支持以下入口：
+同一套 Codez Server 能力支持以下入口：
 
 1. Desktop UI 管理本机和多个远端 Server。
-2. Browser Web 通过一台 ZCode Lite 管理该机和多个远端 Server。
-3. 一台 ZCode Lite 可以连接另一台 ZCode Lite。
+2. Browser Web 通过一台 Codez Lite 管理该机和多个远端 Server。
+3. 一台 Codez Lite 可以连接另一台 Codez Lite。
 4. 手机 Remote Controller 附着到已有 Desktop 或 Lite 控制端，复用它的多 Server 视图。
 5. SSH、WSL、Docker、Direct URL 只影响连接建立方式，不改变上层 RPC、资源、Session 和任务语义。
-6. 每台机器的同一 OS 用户、同一数据根目录最多运行一个逻辑 ZCode Server。
+6. 每台机器的同一 OS 用户、同一数据根目录最多运行一个逻辑 Codez Server。
 7. 每个 Workspace 最多运行一个 Agent CLI；一个 Server 可以同时管理多个 Workspace Agent。
 
 ## 二、明确不做
 
-- 不引入中心化的 `ZCode Hub` 服务。
+- 不引入中心化的 `Codez Hub` 服务。
 - 不让一个 Session 跨越多个 Server。
 - 不自动同步不同控制端保存的 Server 连接列表。
 - 不让手机独立建立 SSH/WSL/Docker 连接或启动 Agent。
-- 不做多用户、角色或细粒度授权；完成鉴权的客户端拥有该 OS 用户范围内的完整 ZCode 权限。
+- 不做多用户、角色或细粒度授权；完成鉴权的客户端拥有该 OS 用户范围内的完整 Codez 权限。
 - 不追踪 Workspace 路径移动或重命名；路径变化按新 Workspace 处理。
 - 首期不处理 OS 重启后的自动启动与错过任务补跑；Server 启动后持续运行，直到用户手动关闭。
 - 不同步 Provider 展示顺序、OAuth 登录态、当前连接选择或 UI 最近模型。
@@ -59,12 +59,12 @@
 
 ## 三、统一概念
 
-### 3.1 ZCode Lite
+### 3.1 Codez Lite
 
-ZCode Lite 是可安装产品，不等同于某一个 UI。它包含：
+Codez Lite 是可安装产品，不等同于某一个 UI。它包含：
 
 ```text
-ZCode Lite
+Codez Lite
 ├─ Stable Launcher
 │  ├─ 监听、鉴权和稳定 Bootstrap Protocol
 │  ├─ 版本协商、运行时缓存、安装和进程锁
@@ -85,9 +85,9 @@ ZCode Lite
 
 TUI 只是 Lite 的本机 UI 能力。它直接附着本机 Server，不承担跨远端 UI 或传输职责。
 
-### 3.2 ZCode Server
+### 3.2 Codez Server
 
-ZCode Server 是 `Launcher + 当前 Server Core + 数据目录` 组成的逻辑实例。
+Codez Server 是 `Launcher + 当前 Server Core + 数据目录` 组成的逻辑实例。
 
 - 多个 Server runtime 版本可以同时安装在磁盘。
 - 同一用户、同一数据目录同一时间只能有一个 Server Core 运行。
@@ -312,7 +312,7 @@ Direct URL
   -> 同一设备 Token 语义
 ```
 
-鉴权后的客户端拥有该 OS 用户下 ZCode Server 的完整权限。首期不增加 RBAC。
+鉴权后的客户端拥有该 OS 用户下 Codez Server 的完整权限。首期不增加 RBAC。
 
 ## 八、状态权威
 
@@ -416,7 +416,7 @@ interface SessionWorkspaceBinding {
 
 | 领域          | 当前实现                                                                              | 目标                                                               |
 | ------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| SSH 生命周期  | Desktop 启动并持有远端 stdio `zcode-server`                                           | 用户级持久 Launcher + 一个 Server                                  |
+| SSH 生命周期  | Desktop 启动并持有远端 stdio `codez-server`                                           | 用户级持久 Launcher + 一个 Server                                  |
 | Server 入口   | `entry-stdio.ts` 与 `entry-http.ts` 分离                                              | 共用 Server Core，入口只是 transport adapter                       |
 | Desktop 本机  | 每窗口 Local Host                                                                     | 本机统一 Server，窗口只是客户端                                    |
 | SSH Host      | 窗口级共享 Remote Host                                                                | Controller 连接到目标用户级 Server                                 |
@@ -467,7 +467,7 @@ interface SessionWorkspaceBinding {
 
 ### Phase 3：合并 Server Core 入口
 
-1. 从 `entry-stdio.ts`、`entry-http.ts` 抽出同一个 `createZCodeServerCore()`。
+1. 从 `entry-stdio.ts`、`entry-http.ts` 抽出同一个 `createCodezServerCore()`。
 2. stdio、WS、MessagePort 只负责提供 `IMessagePassingProtocol`。
 3. Server Core 持有 service collection、scheduler、workspace registry、task index 和 Agent supervisor。
 4. UI 断开只释放 attachment，不退出 Server。

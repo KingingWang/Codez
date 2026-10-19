@@ -2,7 +2,7 @@
 // 命令见 docs/dynamic-workflow/launch.md「Changing a run's settings from the GUI」）：哪些 run 能配、
 // 表单起点、Apply 发什么、被拒说哪句话、转写行与来龙去脉的措辞、借图规则与侧栏 tab 的原地替换。
 import { describe, expect, it } from "vitest";
-import type { WorkflowRunState, WorkflowSettingsAmendMeta } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState, WorkflowSettingsAmendMeta } from "@codez/shared/codez-protocol-v4";
 import {
   clampWorkflowRunSettingsBound,
   describeWorkflowRunSettingsRejection,
@@ -42,7 +42,7 @@ function run(overrides: Partial<WorkflowRunState> = {}): WorkflowRunState {
   };
 }
 
-/** 与 ZCodeIntlProvider 同一个替换规则（`{name}` 直接替换）。 */
+/** 与 CodezIntlProvider 同一个替换规则（`{name}` 直接替换）。 */
 function formatterFor(messages: Record<string, string>) {
   return (descriptor: { id: string }, values?: Record<string, string | number>) => {
     let text = messages[descriptor.id] ?? descriptor.id;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError, type ApiClient } from "@zcode/shared";
+import { ApiError, type ApiClient } from "@codez/shared";
 import { readApiJson } from "../src/providers/api/apiJson.js";
 
 function createMockClient(responseFactory: ReturnType<typeof vi.fn>): ApiClient {

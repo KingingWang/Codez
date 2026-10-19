@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import type {
   V4ConversationWorkflowRunSummary,
   WorkflowRunState,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import {
   WORKFLOW_RUN_DIRECTORY_LIMIT,
   buildWorkflowRunDirectory,

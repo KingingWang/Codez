@@ -4,7 +4,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { ProjectEditor } from "@/project-sidebar/ProjectEditor.js";
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/hooks/usePlatform.js", () => ({ useOptionalPlatform: () => null }));
 vi.mock("@/hooks/useConfirmDialog.js", () => ({ useConfirmDialog: () => vi.fn() }));

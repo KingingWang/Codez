@@ -15,7 +15,7 @@ import type {
   SSHConfigAliasOption,
   DockerContainerInfo,
   WSLDistro,
-} from "@zcode/shared";
+} from "@codez/shared";
 import zhCN from "@/i18n/locales/zh-CN.js";
 import enUS from "@/i18n/locales/en-US.js";
 import { createCanonicalWslTargetResolver } from "@desktop/main/desktopWslTargetResolver.js";
@@ -53,7 +53,7 @@ const ports = vi.hoisted(() => ({
   confirm: vi.fn(async () => true),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: ports.locale,
     intl: {
       formatMessage: ({ id }: { id: string }, values: Record<string, string> = {}) => {
@@ -162,7 +162,7 @@ const wslProfileId = "17ef20b3-622d-4a53-98c1-0cdff29f3e6d";
 const wslInstallPreview = {
   version: "3.15.1",
   sizeBytes: 1048576,
-  installPath: "/home/dev/.zcode/server",
+  installPath: "/home/dev/.codez/server",
 };
 const wslInstallFailure = {
   code: "source-server-install-required",

@@ -1,7 +1,7 @@
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { AccountProviderService, ProviderConfigMap } from "@zcode/provider";
+import { AccountProviderService, ProviderConfigMap } from "@codez/provider";
 import { describe, expect, it, vi } from "vitest";
 import { createProviderConfigRuntime } from "../src/model-provider/providerConfigRuntime.js";
 import { createProviderRuntimeFromConfigRuntime } from "../src/model-provider/providerRuntime.js";
@@ -28,10 +28,10 @@ describe("App Built-in / Account 失败恢复", () => {
     await writeFile(builtin, JSON.stringify(release));
     const download = vi.fn(async () => null);
     const configRuntime = createProviderConfigRuntime({
-      zcodeBuiltinFilePath: builtin,
+      codezBuiltinFilePath: builtin,
       personalFilePath: join(root, "personal.json"),
       personalPollingIntervalMs: false,
-      zcodeBuiltinRemote: {
+      codezBuiltinRemote: {
         controlFilePath: join(root, "control.json"),
         resolveEndpointKey: () => "https://control.example",
         fetchRelease: download,
@@ -55,24 +55,24 @@ describe("App Built-in / Account 失败恢复", () => {
     });
     try {
       await runtime.start();
-      await configRuntime.refreshZCodeBuiltin();
+      await configRuntime.refreshCodezBuiltin();
       const old = runtime.registryService.getSnapshot()!;
       fail = true;
       await writeFile(builtin, JSON.stringify({ ...release, revision: 2 }));
       await vi.waitFor(() => expect(errors).toHaveBeenCalled());
-      expect(runtime.registryService.getSnapshot()!.config.zcodeBuiltinRevision).toBe(
-        old.config.zcodeBuiltinRevision,
+      expect(runtime.registryService.getSnapshot()!.config.codezBuiltinRevision).toBe(
+        old.config.codezBuiltinRevision,
       );
       fail = false;
       const beforeRecovery = resolve.mock.calls.length;
       await vi.advanceTimersByTimeAsync(60_000);
       await vi.waitFor(() =>
-        expect(runtime.registryService.getSnapshot()!.config.zcodeBuiltinRevision).toMatch(
-          "zcode-builtin:2:",
+        expect(runtime.registryService.getSnapshot()!.config.codezBuiltinRevision).toMatch(
+          "codez-builtin:2:",
         ),
       );
       const next = runtime.registryService.getSnapshot()!;
-      expect(next.account.basedOnZCodeBuiltinRevision).toBe(next.config.zcodeBuiltinRevision);
+      expect(next.account.basedOnCodezBuiltinRevision).toBe(next.config.codezBuiltinRevision);
       expect(resolve.mock.calls.length).toBe(beforeRecovery + 1);
       expect(download).toHaveBeenCalledTimes(1);
     } finally {

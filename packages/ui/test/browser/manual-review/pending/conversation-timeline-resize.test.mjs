@@ -82,11 +82,11 @@ for (const mobile of [false, true])
           );
         });
         await page.goto(
-          `${origin}fixture?mobile=${mobile}&theme=${theme}&heavy=${process.env.ZCODE_RESIZE_HEAVY_TOOLS === "1"}`,
+          `${origin}fixture?mobile=${mobile}&theme=${theme}&heavy=${process.env.CODEZ_RESIZE_HEAVY_TOOLS === "1"}`,
         );
         const timeline = page.getByTestId("v4-timeline");
         await timeline.waitFor();
-        if (process.env.ZCODE_RESIZE_HEAVY_TOOLS === "1") {
+        if (process.env.CODEZ_RESIZE_HEAVY_TOOLS === "1") {
           await page.getByRole("button", { name: "Tools", exact: true }).click();
           await page.waitForFunction(
             () =>

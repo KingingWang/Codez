@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import type { ElectronMock } from "@wdio/electron-types";
-import { TID_CHAT_ATTACHMENT_BUTTON, TID_CHAT_ATTACHMENT_MENU_ITEM } from "@zcode/shared/test-ids";
+import { TID_CHAT_ATTACHMENT_BUTTON, TID_CHAT_ATTACHMENT_MENU_ITEM } from "@codez/shared/test-ids";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import { prepareConversationE2E, startNewTask } from "../../../helpers/conversation-session.js";
 
@@ -10,7 +10,7 @@ const NATIVE_FILE_PICKER_TIMEOUT_MS = 180000;
 const ATTACHMENT_LIMIT = 8;
 
 describe("会话区 native 文件选择器附件数量边界 E2E", () => {
-  const fixtureRoot = join(tmpdir(), `zcode-e2e-native-file-picker-attachments-${Date.now()}`);
+  const fixtureRoot = join(tmpdir(), `codez-e2e-native-file-picker-attachments-${Date.now()}`);
   let showOpenDialogMock: ElectronMock | null = null;
 
   before(async function () {
@@ -267,7 +267,7 @@ async function getAttachmentDomSnapshot() {
 async function getAttachmentLimitWarningSnapshot() {
   return browser.execute(() => {
     const candidates = Array.from(
-      document.querySelectorAll<HTMLElement>("#zcode-toast-host .rounded-2xl"),
+      document.querySelectorAll<HTMLElement>("#codez-toast-host .rounded-2xl"),
     );
     const warning = candidates.find((element) => {
       const text = element.innerText.replace(/\u00a0/g, " ");

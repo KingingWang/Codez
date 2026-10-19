@@ -41,7 +41,7 @@ describe("SharedContextFormatterV1", () => {
           mimeType: "application/pdf",
           sizeBytes: 3,
           sha256: "a".repeat(64),
-          ref: "zcode-artifact://share/artifact-1",
+          ref: "codez-artifact://share/artifact-1",
           state: "current" as const,
         },
       ],
@@ -58,7 +58,7 @@ describe("SharedContextFormatterV1", () => {
     const first = formatSharedContextV1(input);
     expect(formatSharedContextV1(input)).toEqual(first);
     expect(first.markdown).toContain("shared-artifacts/report.pdf");
-    expect(first.markdown).not.toContain("zcode-artifact://");
+    expect(first.markdown).not.toContain("codez-artifact://");
   });
 
   it("把 userInput 附件写入导入后的模型上下文", () => {
@@ -76,7 +76,7 @@ describe("SharedContextFormatterV1", () => {
           text: "请分析粘贴内容",
           attachments: [
             {
-              ref: "zcode-artifact://share/text-1",
+              ref: "codez-artifact://share/text-1",
               fileName: "pasted-text.txt",
               mime: "text/plain",
               bytes: 4,

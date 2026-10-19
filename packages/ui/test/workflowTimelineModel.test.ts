@@ -2,7 +2,7 @@
 // display 与 workflowRuns 投影折成站 / 轨道段 / 弧。聊天卡、确认窗与侧栏清单都从这里出发，
 // 所以派生规则钉在这里而不是各自的渲染测试里。
 import { describe, expect, it } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/types.js";
 import {
   arcLaneCount,

@@ -14,7 +14,7 @@ export {
   REQUEST_VERIFICATION_REJECTED_MESSAGE,
 } from "@/request-security-edition/errors.js";
 /**
- * zcode-plan / Coding Plan 业务错误码与前端处理约定。
+ * codez-plan / Coding Plan 业务错误码与前端处理约定。
  *
  * | 场景           | code | HTTP | 前端处理 |
  * |----------------|------|------|----------|
@@ -28,7 +28,7 @@ export {
  * | 闲时票据不可用 | 3102 | 400  | 单段运行时间到顶，提示新建闲时任务续跑 |
  * | 上游 HTTP 异常 | 2007 | 500  | 可重试；刷新配额，勿本地扣额度 |
  */
-import { isOffPeakTicketExpiredError } from "@zcode/shared";
+import { isOffPeakTicketExpiredError } from "@codez/shared";
 
 export const PROVIDER_BUSINESS_ERROR_CODES = [
   "1006",
@@ -56,18 +56,18 @@ export type ProviderBusinessErrorUiAction =
   | "upgrade";
 
 export const PROVIDER_BUSINESS_ERROR_MESSAGE_IDS: Record<ProviderBusinessErrorCode, string> = {
-  "1006": "zcode.error.providerBusiness.1006",
-  "1005": "zcode.error.providerBusiness.1005",
-  "3006": "zcode.error.providerBusiness.3006",
-  "3002": "zcode.error.providerBusiness.3002",
-  "3001": "zcode.error.providerBusiness.3001",
-  "3007": "zcode.error.providerBusiness.3007",
-  "3008": "zcode.error.providerBusiness.3008",
-  "3009": "zcode.error.providerBusiness.3009",
-  "3010": "zcode.error.providerBusiness.3010",
-  "3102": "zcode.error.providerBusiness.3102",
-  "2007": "zcode.error.providerBusiness.2007",
-  "429": "zcode.error.providerBusiness.429",
+  "1006": "codez.error.providerBusiness.1006",
+  "1005": "codez.error.providerBusiness.1005",
+  "3006": "codez.error.providerBusiness.3006",
+  "3002": "codez.error.providerBusiness.3002",
+  "3001": "codez.error.providerBusiness.3001",
+  "3007": "codez.error.providerBusiness.3007",
+  "3008": "codez.error.providerBusiness.3008",
+  "3009": "codez.error.providerBusiness.3009",
+  "3010": "codez.error.providerBusiness.3010",
+  "3102": "codez.error.providerBusiness.3102",
+  "2007": "codez.error.providerBusiness.2007",
+  "429": "codez.error.providerBusiness.429",
 };
 
 export const PROVIDER_BUSINESS_ERROR_ACTION_MESSAGE_IDS: Record<

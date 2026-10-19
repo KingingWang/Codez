@@ -4,7 +4,7 @@ import {
 } from "#e2e/helpers/remote-project-actions";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { clearAppData, DEFAULT_WORKSPACE } from "../../../helpers/desktop-app.js";
 import {
   getUpstreamRequestRecordCount,
@@ -36,7 +36,7 @@ import { openWorkspaceDraftFromSidebar } from "../../../helpers/workspace-agent-
 
 const CASE_MARKER = "E2E_R3_SOAK_RECONNECT";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-soak-reconnect",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-soak-reconnect",
 );
 const ROUNDS = Number(process.env.R3_SOAK_ROUNDS?.trim() || "50");
 

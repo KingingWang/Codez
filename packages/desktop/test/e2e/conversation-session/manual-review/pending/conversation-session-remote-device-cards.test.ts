@@ -7,7 +7,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_SETTINGS_SECTION_NAV,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -137,7 +137,7 @@ describe(`${CASE_MARKER}: 设置设备卡与未完成连接`, () => {
     await $("[data-unfinished-connections] summary").click();
     expect(await unfinished.getText()).toContain(String(address.port));
     const artifact = resolve(
-      process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-device-cards",
+      process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-device-cards",
     );
     await mkdir(artifact, { recursive: true });
     for (const theme of ["light", "dark"]) {

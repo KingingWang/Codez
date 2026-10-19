@@ -1,4 +1,4 @@
-import { ZAI_PROVIDER_ID, type UserInfo } from "@zcode/shared";
+import { ZAI_PROVIDER_ID, type UserInfo } from "@codez/shared";
 import {
   BrowserOAuthCredentialRepo,
   type WebOAuthProviderId,
@@ -196,8 +196,8 @@ export class WebAuthService {
     return this.repo.loadCachedSessionState();
   }
 
-  getZCodeJwtToken(): string | null {
-    return this.repo.loadZCodeJwtToken();
+  getCodezJwtToken(): string | null {
+    return this.repo.loadCodezJwtToken();
   }
 
   /** 设备页账号行的展示资料；只读，不参与登录判断。 */

@@ -3,9 +3,9 @@ import {
   migrateLegacyModelProviderId,
   migrateLegacyOfficialGlmModelId,
   modelSelectionSchema,
-  ZCODE_AGENT_PROVIDER,
+  CODEZ_AGENT_PROVIDER,
   type ModelSelection,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { normalizeBotCurrentOptions, normalizeBotDraftOptions } from "./config.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -78,7 +78,7 @@ export function importLegacyBotState(value: unknown): unknown {
       {
         ...state,
         draftOptions: normalizeBotDraftOptions({
-          provider: ZCODE_AGENT_PROVIDER,
+          provider: CODEZ_AGENT_PROVIDER,
           modelSelection: migrateSelection(options),
           ...(typeof options.mode === "string" ? { mode: options.mode } : {}),
         }),

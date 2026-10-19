@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ServiceProvider } from "@/hooks/useServices.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { WorkspaceFileSearchSection } from "@/settings/WorkspaceFileSearchSection.js";
 
 // 组件顶层 hook 链（useWorkspaceServicesResolution → useServices）要求 context 存在；
@@ -17,7 +17,7 @@ function renderSection(props: { workspacePath?: string | null }): string {
       ServiceProvider,
       { services: emptyAccessor },
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(WorkspaceFileSearchSection, props),
       ),
@@ -48,6 +48,6 @@ describe("WorkspaceFileSearch settings section", () => {
     expect(source).toContain("applyWorkspaceFileSearchIgnoreTransform({");
     expect(source).toContain("transform,");
     expect(source).not.toContain("readTextFile");
-    expect(source).not.toContain("window.zcode");
+    expect(source).not.toContain("window.codez");
   });
 });

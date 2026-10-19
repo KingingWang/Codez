@@ -1,6 +1,6 @@
 import { runTasksDatabaseMigrations } from "#src/session/tasksDatabase/migrations.js";
 import { cancelConflictingOffPeakBindings } from "#src/session/offPeakWorkspaceIdentityMigration.js";
-import { runSessionDatabaseIdentityMigration } from "@zcode/shared/sqlite-migrations";
+import { runSessionDatabaseIdentityMigration } from "@codez/shared/sqlite-migrations";
 /* eslint-disable max-lines -- R3 canonical alias、双库备份、ledger 与幂等合并属于同一迁移事务边界。 */
 import { createHash, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
@@ -15,7 +15,7 @@ import {
   WORKSPACE_TASK_IDENTITY_CONFLICT_ERROR_CODE,
   type SourceServerMigrationReport,
   type SourceServerMigrationReportRow,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { getDataBaseDir, getTasksIndexDatabasePath, getWorkspaceHash } from "#src/paths.js";
 
 type Database = InstanceType<typeof DatabaseSync>;
@@ -299,9 +299,9 @@ export class SourceServerWorkspaceAliasRepo {
   public constructor(options: SourceServerWorkspaceAliasRepoOptions = {}) {
     this.taskDbPath = options.taskDbPath ?? getTasksIndexDatabasePath();
     this.sessionDbPath =
-      options.sessionDbPath ?? join(getDataBaseDir(), ".zcode", "cli", "db", "db.sqlite");
+      options.sessionDbPath ?? join(getDataBaseDir(), ".codez", "cli", "db", "db.sqlite");
     this.backupRoot =
-      options.backupRoot ?? join(getDataBaseDir(), ".zcode", "server", "migration-backups");
+      options.backupRoot ?? join(getDataBaseDir(), ".codez", "server", "migration-backups");
     this.now = options.now ?? Date.now;
     this.createMigrationId = options.migrationId ?? randomUUID;
     this.afterPhaseCommitted = options.afterPhaseCommitted;
@@ -924,9 +924,9 @@ export class SourceServerWorkspaceAliasRepo {
   }
 
   private readSessionDatabaseGeneration(db: Database): string | null {
-    if (!hasTable(db, "zcode_database_identity")) return null;
+    if (!hasTable(db, "codez_database_identity")) return null;
     const row = db
-      .prepare("SELECT identity FROM zcode_database_identity WHERE scope = 'session' LIMIT 1")
+      .prepare("SELECT identity FROM codez_database_identity WHERE scope = 'session' LIMIT 1")
       .get() as { identity: string } | undefined;
     return row?.identity?.trim() || null;
   }
@@ -1010,7 +1010,7 @@ export class SourceServerWorkspaceAliasRepo {
     runSessionDatabaseIdentityMigration(db);
     const existing = this.readSessionDatabaseGeneration(db);
     if (existing) return existing;
-    db.prepare("INSERT INTO zcode_database_identity (scope, identity) VALUES ('session', ?)").run(
+    db.prepare("INSERT INTO codez_database_identity (scope, identity) VALUES ('session', ?)").run(
       identity,
     );
     return identity;

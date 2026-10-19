@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { BotState } from "@zcode/shared";
+import type { BotState } from "@codez/shared";
 import { projectBoundGroups } from "@/hooks/useBotBoundGroups.js";
 
 const state = (chatId: string, threadId?: string, extra: Partial<BotState> = {}): BotState => ({

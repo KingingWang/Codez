@@ -17,7 +17,7 @@
 
 ## 协议
 
-`@zcode/protocol` 增加 `model.streaming` session event。当前只对 app 暴露以下
+`@codez/protocol` 增加 `model.streaming` session event。当前只对 app 暴露以下
 模型 streaming kind：
 
 - `text_delta`
@@ -42,7 +42,7 @@ model tool_input_*
        row.delta(inputText)           [Write/Edit 最多每秒一次，首包与收尾除外]
        row.upserted(input,inputText)  [continuous/replayable 都可恢复]
   -> UI v4 adapter
-       buildZCodeStreamingToolInputPreview(inputText)
+       buildCodezStreamingToolInputPreview(inputText)
   -> ToolCallBlocks
        Write/Edit 路径、内容、行数按同一采样点刷新
 ```
@@ -96,7 +96,7 @@ UI 需要更新已有工具卡片，而不是追加重复卡片。
 
 v4 renderer 侧继续复用同一套工具卡片。`ToolCallRow.input` 是最终结构化输入；
 当它缺席且 `inputText` 仍是半截 JSON 时，adapter 使用
-`buildZCodeStreamingToolInputPreview` 尽力提取 `file_path`、`content`、
+`buildCodezStreamingToolInputPreview` 尽力提取 `file_path`、`content`、
 `new_string`、`old_string`、`command` 等字段。空预览不展示为 Parameters；
 raw metadata 只保留输入长度和是否完整，不复制完整 streaming raw input。
 

@@ -42,7 +42,7 @@ describe("parseV4VisibleSlashCommand", () => {
   it("does not consume commands with attachments", () => {
     expect(
       parseV4VisibleSlashCommand("/goal 修复登录", [
-        { ref: "zcode-artifact://a", fileName: "a.txt", mime: "text/plain", bytes: 1 },
+        { ref: "codez-artifact://a", fileName: "a.txt", mime: "text/plain", bytes: 1 },
       ]),
     ).toBeNull();
   });
@@ -51,7 +51,7 @@ describe("parseV4VisibleSlashCommand", () => {
     "does not interpret %s as a send-time command",
     (text) => {
       expect(parseV4VisibleSlashCommand(text)).toBeNull();
-      expect(parseV4VisibleSlashCommand(text, [{ ref: "zcode-artifact://a" }])).toBeNull();
+      expect(parseV4VisibleSlashCommand(text, [{ ref: "codez-artifact://a" }])).toBeNull();
       expect(parseV4VisibleSlashCommand(text, [], { contextAttachmentCount: 1 })).toBeNull();
     },
   );
@@ -103,7 +103,7 @@ describe("parseSelectionSideSlashCommand", () => {
 
   it("存在附件或结构化上下文时不消费 App 命令", () => {
     expect(
-      parseSelectionSideSlashCommand("/side 你好", [{ ref: "zcode-artifact://a" }], {
+      parseSelectionSideSlashCommand("/side 你好", [{ ref: "codez-artifact://a" }], {
         enabledCommandNames,
       }),
     ).toBeNull();

@@ -141,7 +141,7 @@ describe("ChannelServer + ChannelClient", () => {
     });
 
     const reason = Object.assign(new Error("remote connection closed"), {
-      code: "ZCODE_REMOTE_WORKSPACE_DISCONNECTED",
+      code: "CODEZ_REMOTE_WORKSPACE_DISCONNECTED",
     });
     client.dispose(reason);
 

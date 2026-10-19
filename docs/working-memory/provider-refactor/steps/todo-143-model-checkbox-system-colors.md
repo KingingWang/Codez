@@ -21,6 +21,6 @@
 
 - TDD：新增颜色断言在旧实现下两例均失败；修复后颜色／交互两例与 Todo141 编辑器四例合批 **6/6 通过**，相关单测 **51/51 通过**。
 - `pnpm typecheck`（含桌面 E2E 类型）、`pnpm lint` 通过；lint 为既有 42 warnings、0 errors。架构检查 0 violations，`git diff --check` 通过。
-- 已查看 `/tmp/zcode-provider-settings-batch/selected-{390,1200}-0.png`：深浅色框体／勾号符合系统组件。Linux 当前中文字库不完整，中文截图部分文字缺字，不声明字体视觉验收通过；不影响已执行的颜色、尺寸及交互断言。
+- 已查看 `/tmp/codez-provider-settings-batch/selected-{390,1200}-0.png`：深浅色框体／勾号符合系统组件。Linux 当前中文字库不完整，中文截图部分文字缺字，不声明字体视觉验收通过；不影响已执行的颜色、尺寸及交互断言。
 - 复审：生产代码仅一个共享指示框的 class 分支变化；两个调用类别均覆盖，无新增状态、事件、IO、协议、持久化或模型能力变更。外层个人覆盖、文本锁定、按钮键盘语义和勾号图形未改，未嵌套可交互控件。
 - 未重跑 Mac Electron／真实手机 shared-host；此项是共享 UI 颜色修复，不改变桌面 continuous／手机 replayable 链路。

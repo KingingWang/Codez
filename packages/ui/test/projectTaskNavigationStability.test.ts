@@ -4,8 +4,8 @@ import { beforeEach, expect, it, vi } from "vitest";
 import type { ProjectSidebarProps } from "@/project-sidebar/contract.js";
 import { useProjectTaskNavigation } from "@/project-sidebar/useProjectTaskNavigation.js";
 const focus = vi.hoisted(() => ({ activeTaskId: "original", draftFocusVersion: 0 }));
-vi.mock("@/store/zcodeSessionStore.js", () => ({
-  useZCodeSessionStore: { getState: () => ({ getWorkspaceState: () => ({ ...focus }) }) },
+vi.mock("@/store/codezSessionStore.js", () => ({
+  useCodezSessionStore: { getState: () => ({ getWorkspaceState: () => ({ ...focus }) }) },
 }));
 beforeEach(() => {
   focus.activeTaskId = "original";

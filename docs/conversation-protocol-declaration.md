@@ -101,7 +101,7 @@ user action
 | `duplicate` | 同一 `commandId` 已处理                                    | 返回既有结果，不能重复执行                            |
 | `failed`    | command accepted 后执行失败                                | fault catalog、恢复入口、是否保留 queue/command state |
 
-`@zcode/rpc` 只承载 call/listen、连接、超时、日志和遥测；`commandId`、`baseRevision`、`projectionRevision`、
+`@codez/rpc` 只承载 call/listen、连接、超时、日志和遥测；`commandId`、`baseRevision`、`projectionRevision`、
 `eventSeq`、`deliveryKind`、`accepted/rejected/stale/duplicate` 都是 conversation protocol 语义。
 
 桌面窗口（包含 SSH/WSL/Docker）由 host 可信标记为 `desktop-continuous`，手机 `/remote` 和 Web remote
@@ -555,11 +555,11 @@ noop marker，但 UI/CLI 不能静默移除。queued manual compact 失败或被
 
 模型和思考深度是 session 级存储：
 
-- renderer/configOptions 中需要把 `ZCodeModelRef` 暂时表示为字符串时，统一使用
+- renderer/configOptions 中需要把 `CodezModelRef` 暂时表示为字符串时，统一使用
   `providerId/modelId$variant`；`$` 是该展示态编码的 variant 保留分隔符。`:` 始终属于
   provider 原始 `modelId`，不得被 renderer 解释为 variant，例如 OpenRouter
   `nvidia/nemotron-3-ultra-550b-a55b:free` 必须端到端保持完整。V4 命令、Agent snapshot
-  与持久化仍使用独立的 `provider` / `model` / `thought` 或结构化 `ZCodeModelRef`，
+  与持久化仍使用独立的 `provider` / `model` / `thought` 或结构化 `CodezModelRef`，
   不得把该展示态字符串当作新的跨进程协议。
 - 切换历史 session 时，顶部/输入区配置显示该 session 自己的模型和思考深度。
 - 新建 session 时，使用用户上一次显式选择并由 runtime 确认生效的

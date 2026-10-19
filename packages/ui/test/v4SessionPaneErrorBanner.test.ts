@@ -1,9 +1,9 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { ConversationSnapshot } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
 import { SessionPane } from "@/v4/SessionPane.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const projectionState = vi.hoisted(() => ({
   current: null as {
@@ -36,12 +36,12 @@ vi.mock("@/v4/V4ConversationContext.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
+  useCodezStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
 }));
 
 vi.mock("@/hooks/useSettingService.js", () => ({
   useSettings: () => ({
-    settings: { zcodeInteractionBehavior: "queue" },
+    settings: { codezInteractionBehavior: "queue" },
     loading: false,
     error: null,
     update: vi.fn(async () => {}),
@@ -53,8 +53,8 @@ vi.mock("@/hooks/useServices.js", () => ({
   useComposerClientNamespace: () => "desktop",
   useOptionalServices: () => null,
   useServices: () => ({
-    zcodeSessionService: {},
-    zcodeTaskService: {
+    codezSessionService: {},
+    codezTaskService: {
       restartWorkspaceProcess: vi.fn(),
     },
   }),
@@ -232,7 +232,7 @@ function makeSnapshot(overrides: Partial<ConversationSnapshot> = {}): Conversati
 function renderPane(workspaceIdentity?: string): string {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(SessionPane, {
         paneId: "workspace-main",

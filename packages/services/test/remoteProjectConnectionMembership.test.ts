@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ConnectionProfile } from "@zcode/shared";
+import type { ConnectionProfile } from "@codez/shared";
 import type { IRemoteProjectService, RemoteProjectHost } from "#src/remote-projects/contract.js";
 import {
   createRemoteProjectConnectionAdmission,

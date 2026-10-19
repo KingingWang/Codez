@@ -3,10 +3,10 @@ import {
   TID_V4_PANE_WORKSPACE_BADGE,
   TID_V4_SESSION_TITLE,
   TID_V4_SPLIT_CLOSE,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { runUserAction } from "@/lib/userActionTelemetry.js";
 
 /** 跨 workspace pane 的归属徽标（未来跨 workspace session 的多路径徽标在此扩展）。 */
@@ -41,7 +41,7 @@ function ConversationHeaderImpl({
   onClosePane,
   workspaceBadge,
 }: ConversationHeaderProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const hasFloatingActions = Boolean(workspaceBadge) || Boolean(onClosePane);
 
   return (

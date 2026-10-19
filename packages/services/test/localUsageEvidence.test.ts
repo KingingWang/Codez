@@ -159,7 +159,7 @@ describe("hasAnyAgentSessionRow", () => {
 describe("resolveAgentSessionDbPath（评审三轮 CR-01：不复制解析规则，无法确定按未知跳过）", () => {
   function freshHome(): { HOME: string; USER_CONFIG: string } {
     const HOME = join(makeTempDir(), "home");
-    return { HOME, USER_CONFIG: join(HOME, ".zcode", "cli", "config.json") };
+    return { HOME, USER_CONFIG: join(HOME, ".codez", "cli", "config.json") };
   }
 
   it("env 单别名：绝对路径原样可用", async () => {
@@ -167,7 +167,7 @@ describe("resolveAgentSessionDbPath（评审三轮 CR-01：不复制解析规则
     const { HOME, USER_CONFIG } = freshHome();
     await expect(
       resolveAgentSessionDbPath({
-        env: { ZCODE_SESSION_DB_PATH: customDb },
+        env: { CODEZ_SESSION_DB_PATH: customDb },
         homedirPath: HOME,
         userConfigPath: USER_CONFIG,
       }),
@@ -178,7 +178,7 @@ describe("resolveAgentSessionDbPath（评审三轮 CR-01：不复制解析规则
     const { HOME, USER_CONFIG } = freshHome();
     await expect(
       resolveAgentSessionDbPath({
-        env: { ZCODE_SESSION_DB: "~/session-alt.sqlite" },
+        env: { CODEZ_SESSION_DB: "~/session-alt.sqlite" },
         homedirPath: HOME,
         userConfigPath: USER_CONFIG,
       }),
@@ -192,7 +192,7 @@ describe("resolveAgentSessionDbPath（评审三轮 CR-01：不复制解析规则
     // PATH 别名后出现 → PATH 胜出
     await expect(
       resolveAgentSessionDbPath({
-        env: { ZCODE_SESSION_DB: dbA, ZCODE_SESSION_DB_PATH: dbB },
+        env: { CODEZ_SESSION_DB: dbA, CODEZ_SESSION_DB_PATH: dbB },
         homedirPath: HOME,
         userConfigPath: USER_CONFIG,
       }),
@@ -200,7 +200,7 @@ describe("resolveAgentSessionDbPath（评审三轮 CR-01：不复制解析规则
     // 交换插入顺序 → DB 别名胜出（固定优先级会在这里产生偏差，评审实证）
     await expect(
       resolveAgentSessionDbPath({
-        env: { ZCODE_SESSION_DB_PATH: dbB, ZCODE_SESSION_DB: dbA },
+        env: { CODEZ_SESSION_DB_PATH: dbB, CODEZ_SESSION_DB: dbA },
         homedirPath: HOME,
         userConfigPath: USER_CONFIG,
       }),
@@ -211,7 +211,7 @@ describe("resolveAgentSessionDbPath（评审三轮 CR-01：不复制解析规则
     const { HOME, USER_CONFIG } = freshHome();
     await expect(
       resolveAgentSessionDbPath({
-        env: { ZCODE_SESSION_DB_PATH: "history/session.sqlite" },
+        env: { CODEZ_SESSION_DB_PATH: "history/session.sqlite" },
         homedirPath: HOME,
         userConfigPath: USER_CONFIG,
       }),
@@ -220,7 +220,7 @@ describe("resolveAgentSessionDbPath（评审三轮 CR-01：不复制解析规则
 
   it("user config（home 默认位置）storage.sessionDbPath 覆盖，~/ 展开", async () => {
     const { HOME, USER_CONFIG } = freshHome();
-    mkdirSync(join(HOME, ".zcode", "cli"), { recursive: true });
+    mkdirSync(join(HOME, ".codez", "cli"), { recursive: true });
     writeFileSync(USER_CONFIG, JSON.stringify({ storage: { sessionDbPath: "~/data/s.sqlite" } }));
     await expect(
       resolveAgentSessionDbPath({ env: {}, homedirPath: HOME, userConfigPath: USER_CONFIG }),
@@ -229,21 +229,21 @@ describe("resolveAgentSessionDbPath（评审三轮 CR-01：不复制解析规则
 
   it("user config 相对路径 → null（不按 host cwd 猜测）", async () => {
     const { HOME, USER_CONFIG } = freshHome();
-    mkdirSync(join(HOME, ".zcode", "cli"), { recursive: true });
+    mkdirSync(join(HOME, ".codez", "cli"), { recursive: true });
     writeFileSync(USER_CONFIG, JSON.stringify({ storage: { sessionDbPath: "db/rel.sqlite" } }));
     await expect(
       resolveAgentSessionDbPath({ env: {}, homedirPath: HOME, userConfigPath: USER_CONFIG }),
     ).resolves.toBeNull();
   });
 
-  it("user config 不存在 → 默认 ~/.zcode/cli/db/db.sqlite（homedir 展开）", async () => {
+  it("user config 不存在 → 默认 ~/.codez/cli/db/db.sqlite（homedir 展开）", async () => {
     const { HOME, USER_CONFIG } = freshHome();
     await expect(
       resolveAgentSessionDbPath({ env: {}, homedirPath: HOME, userConfigPath: USER_CONFIG }),
-    ).resolves.toBe(join(HOME, ".zcode", "cli", "db", "db.sqlite"));
+    ).resolves.toBe(join(HOME, ".codez", "cli", "db", "db.sqlite"));
   });
 
-  it("默认 userConfigPath 钉住为 {home}/.zcode/cli/config.json（评审 SG-01）", async () => {
+  it("默认 userConfigPath 钉住为 {home}/.codez/cli/config.json（评审 SG-01）", async () => {
     // host 侧默认字面量与 CLI file-config.adapter 的 DEFAULT_BASE_DIR 是两处独立
     // 硬编码，漂移时镜像策略失效；此处显式锁定 host 侧拼装结果。
     const { HOME } = freshHome();
@@ -256,7 +256,7 @@ describe("resolveAgentSessionDbPath（评审三轮 CR-01：不复制解析规则
         return "{}";
       },
     });
-    expect(readPaths).toEqual([join(HOME, ".zcode", "cli", "config.json")]);
+    expect(readPaths).toEqual([join(HOME, ".codez", "cli", "config.json")]);
   });
 
   it("user config 非 ENOENT 读取失败 → 上抛", async () => {
@@ -276,7 +276,7 @@ describe("resolveAgentSessionDbPath（评审三轮 CR-01：不复制解析规则
 
   it("user config 非法 JSON → 上抛", async () => {
     const { HOME, USER_CONFIG } = freshHome();
-    mkdirSync(join(HOME, ".zcode", "cli"), { recursive: true });
+    mkdirSync(join(HOME, ".codez", "cli"), { recursive: true });
     writeFileSync(USER_CONFIG, "{broken json");
     await expect(
       resolveAgentSessionDbPath({ env: {}, homedirPath: HOME, userConfigPath: USER_CONFIG }),

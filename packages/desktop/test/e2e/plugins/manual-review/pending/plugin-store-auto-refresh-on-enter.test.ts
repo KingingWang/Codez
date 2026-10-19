@@ -18,9 +18,9 @@ import {
 
 // 真打公网 CDN：与 PLM-LC-007b 一致，刷新等待 180s。
 // 运行方式（2026-09-08 本机验证通过）：
-//   ZCODE_E2E_MANUAL_REVIEW=1 ZCODE_E2E_MANUAL_REVIEW_HOLD_MS=180000 \
+//   CODEZ_E2E_MANUAL_REVIEW=1 CODEZ_E2E_MANUAL_REVIEW_HOLD_MS=180000 \
 //   E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json \
-//   pnpm --filter @zcode/desktop test:e2e:serial -- --spec <本文件>
+//   pnpm --filter @codez/desktop test:e2e:serial -- --spec <本文件>
 // - manual-review 默认 capture 模式会给 agent 挂 MITM 抓包代理，agent 的市场 fetch 不认其 CA，
 //   官方市场刷新会以 "unable to get local issuer certificate" 失败；显式 replay fixture 让 worker
 //   恢复直连即可。

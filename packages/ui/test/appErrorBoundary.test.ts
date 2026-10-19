@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppErrorBoundary, ScopedErrorBoundary } from "@/ErrorBoundary.js";
-import type { ArmsCustomEventPayload } from "@zcode/shared";
+import type { ArmsCustomEventPayload } from "@codez/shared";
 import {
   clearReactErrorArmsReporterForTest,
   setReactErrorArmsReporter,

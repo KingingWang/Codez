@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { join } from "node:path";
-import { PlatformChannels } from "@zcode/shared";
+import { PlatformChannels } from "@codez/shared";
 
 const electronMocks = vi.hoisted(() => {
   const browserWindowConstructor = vi.fn();
@@ -364,8 +364,8 @@ describe("desktopWindowChrome", () => {
   });
 
   it("allows loopback Coding Plan preload only for the E2E bridge", async () => {
-    const previous = process.env.VITE_ZCODE_E2E_STORE_BRIDGE;
-    process.env.VITE_ZCODE_E2E_STORE_BRIDGE = "1";
+    const previous = process.env.VITE_CODEZ_E2E_STORE_BRIDGE;
+    process.env.VITE_CODEZ_E2E_STORE_BRIDGE = "1";
     try {
       const { createBrowserWindow } = await import("../src/main/desktopWindowChrome.js");
 
@@ -386,9 +386,9 @@ describe("desktopWindowChrome", () => {
       );
     } finally {
       if (previous === undefined) {
-        delete process.env.VITE_ZCODE_E2E_STORE_BRIDGE;
+        delete process.env.VITE_CODEZ_E2E_STORE_BRIDGE;
       } else {
-        process.env.VITE_ZCODE_E2E_STORE_BRIDGE = previous;
+        process.env.VITE_CODEZ_E2E_STORE_BRIDGE = previous;
       }
     }
   });

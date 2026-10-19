@@ -2,7 +2,7 @@ import { getDatabaseStartupPortPayload } from "./databaseStartupRelay.js";
 import { randomUUID } from "node:crypto";
 import { app, BrowserWindow, Menu, MessageChannelMain, nativeImage } from "electron";
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
-import { HostMessageTypes, InternalChannels, PlatformChannels, type Locale } from "@zcode/shared";
+import { HostMessageTypes, InternalChannels, PlatformChannels, type Locale } from "@codez/shared";
 import { scheduleArmsBrowserPerfLoadNudge } from "./armsBrowserPerfLoadNudge.js";
 import { createBrowserWindow } from "./desktopWindowChrome.js";
 import type { HostInitMessage, WindowBootstrapOptions } from "./desktopHostProcess.js";
@@ -36,9 +36,9 @@ export function createWindow(options: {
   spawnHostProcess: (
     win: BrowserWindow,
     label: string,
-    // Main 在包装层统一注入 zcodeBuiltinProviderConfigFilePath（Electron 安装布局只有 Main 知道），
+    // Main 在包装层统一注入 codezBuiltinProviderConfigFilePath（Electron 安装布局只有 Main 知道），
     // 窗口生命周期只负责组装其余 InitLocal 字段。
-    initMessage: Omit<HostInitMessage, "zcodeBuiltinProviderConfigFilePath">,
+    initMessage: Omit<HostInitMessage, "codezBuiltinProviderConfigFilePath">,
   ) => ElectronUtilityProcess;
   disposeHostProcess: (
     child: ElectronUtilityProcess,

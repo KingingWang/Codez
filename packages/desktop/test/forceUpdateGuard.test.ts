@@ -132,7 +132,7 @@ vi.mock("electron", () => {
   return {
     BrowserWindow,
     app: {
-      getAppPath: vi.fn(() => "/Applications/ZCode.app/Contents/Resources/app.asar"),
+      getAppPath: vi.fn(() => "/Applications/Codez.app/Contents/Resources/app.asar"),
       quit: electronMocks.appQuitMock,
     },
     nativeTheme: {

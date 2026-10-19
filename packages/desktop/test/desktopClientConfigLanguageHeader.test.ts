@@ -41,7 +41,7 @@ describe("Desktop main client/configs 的 X-Client-Language", () => {
     const fetchConfig = createElectronDesktopContextPromptConfigFetcher({
       appVersion: "3.0.0",
       deviceMid: "device-mid-1",
-      resolveEndpointOrigin: async () => "https://zcode.example.com",
+      resolveEndpointOrigin: async () => "https://codez.example.com",
       getClientLanguage: () => locale,
     });
 
@@ -59,7 +59,7 @@ describe("Desktop main client/configs 的 X-Client-Language", () => {
     const read = createDesktopHelpConfigReader({
       appVersion: "3.0.0",
       deviceMid: "device-mid-1",
-      resolveEndpointOrigin: async () => "https://zcode.example.com",
+      resolveEndpointOrigin: async () => "https://codez.example.com",
       getClientLanguage: () => "zh-CN",
     });
 

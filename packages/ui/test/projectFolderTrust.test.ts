@@ -6,7 +6,7 @@ import { ProjectEditor } from "@/project-sidebar/ProjectEditor.js";
 import type { VirtualProject } from "@/project-sidebar/contract.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/project-sidebar/useProjectDirectoryServices.js", () => ({
   useProjectDirectoryServices: () => ({ services: {} }),

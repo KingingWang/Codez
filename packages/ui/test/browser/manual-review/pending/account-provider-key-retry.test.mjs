@@ -57,7 +57,7 @@ after(async () => {
   await server?.close();
 });
 
-const artifacts = join(tmpdir(), "zcode-todo105-browser");
+const artifacts = join(tmpdir(), "codez-todo105-browser");
 for (const family of ["zai", "bigmodel"]) {
   for (const [width, locale, theme] of [
     [390, "zh-CN", "light"],

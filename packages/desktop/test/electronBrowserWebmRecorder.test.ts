@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * 真实 recorderHtml() 的协议应答，因此断言落在 main 侧可观察行为上，而不是 mock 自身。
  */
 
-const RECORDER_PORT_CHANNEL = "zcode-browser-video-recorder:port";
+const RECORDER_PORT_CHANNEL = "codez-browser-video-recorder:port";
 const DEFAULT_MIME = "video/webm;codecs=vp8";
 
 type PortMessageListener = (event: { data: unknown }) => void;
@@ -219,7 +219,7 @@ const { createElectronBrowserWebmRecorder } = await import(
 const tempRoots: string[] = [];
 
 async function createTempRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), "zcode-webm-recorder-test-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-webm-recorder-test-"));
   tempRoots.push(root);
   return root;
 }

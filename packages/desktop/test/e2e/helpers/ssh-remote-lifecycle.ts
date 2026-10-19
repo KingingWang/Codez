@@ -6,7 +6,7 @@ import {
   waitForTaskRowInProject,
 } from "./project-sidebar.js";
 import { removeRemoteProjectEntryForRow } from "./remote-project-handoff-probe.js";
-import { TID_TASK_SETTINGS_BUTTON } from "@zcode/shared/test-ids";
+import { TID_TASK_SETTINGS_BUTTON } from "@codez/shared/test-ids";
 import {
   waitForWorkspaceApp,
   switchToWorkspaceRendererWindow,
@@ -406,12 +406,12 @@ export async function reconnectRemoteProjectHost(
   });
 }
 
-export async function listRemoteZCodeServerPids(config: SSHConnectionConfig): Promise<number[]> {
+export async function listRemoteCodezServerPids(config: SSHConnectionConfig): Promise<number[]> {
   const result = await runSSHCommand(config, "ps -eo pid=,args=");
   if (result.code !== 0) {
-    throw new Error(`读取远端 zcode-server PID 失败: ${result.stderr}`);
+    throw new Error(`读取远端 codez-server PID 失败: ${result.stderr}`);
   }
-  // 缺陷原因：这里原先匹配 `zcode-server.cjs`，而 3.12 的 release 布局早已把 daemon 换成
+  // 缺陷原因：这里原先匹配 `codez-server.cjs`，而 3.12 的 release 布局早已把 daemon 换成
   // <release>/runtime/server-cli.js serve --supervisor（工作进程是 server-core.js）。旧名字
   // 在远端根本不存在，匹配结果恒为空数组，SSH-P0-LIFE-02 只会报 before=/current= 全空，
   // 看不出是探测失效而不是产品没起 server（2026-09-15 服务器全量实测）。
@@ -434,7 +434,7 @@ async function listRemoteServerCorePids(
 ): Promise<number[]> {
   const result = await runSSHCommand(config, "ps -eo pid=,ppid=,args=");
   if (result.code !== 0) {
-    throw new Error(`读取远端 zcode server core PID 失败: ${result.stderr}`);
+    throw new Error(`读取远端 codez server core PID 失败: ${result.stderr}`);
   }
   return result.stdout
     .split("\n")
@@ -454,11 +454,11 @@ export async function stopOwnedSSHServer(
   beforePids: readonly number[],
   caseMarker: string,
 ): Promise<number> {
-  const currentPids = await listRemoteZCodeServerPids(config);
+  const currentPids = await listRemoteCodezServerPids(config);
   const owned = currentPids.filter((pid) => !beforePids.includes(pid));
   if (owned.length !== 1) {
     throw new Error(
-      `${caseMarker}: 只允许终止本 case 新建的一个 zcode-server，before=${beforePids.join(",")}, current=${currentPids.join(",")}`,
+      `${caseMarker}: 只允许终止本 case 新建的一个 codez-server，before=${beforePids.join(",")}, current=${currentPids.join(",")}`,
     );
   }
   const pid = owned[0]!;
@@ -469,7 +469,7 @@ export async function stopOwnedSSHServer(
   const corePids = await listRemoteServerCorePids(config, pid);
   const result = await runSSHCommand(config, `kill -TERM -- ${pid}`);
   if (result.code !== 0) {
-    throw new Error(`${caseMarker}: 终止远端 zcode-server ${pid} 失败: ${result.stderr}`);
+    throw new Error(`${caseMarker}: 终止远端 codez-server ${pid} 失败: ${result.stderr}`);
   }
   if (corePids.length > 0) {
     await runSSHCommand(config, `kill -TERM -- ${corePids.join(" ")}`).catch(() => undefined);
@@ -477,14 +477,14 @@ export async function stopOwnedSSHServer(
   await browser.waitUntil(
     async () => {
       const [daemons, cores] = await Promise.all([
-        listRemoteZCodeServerPids(config),
+        listRemoteCodezServerPids(config),
         listRemoteServerCorePids(config),
       ]);
       return !daemons.includes(pid) && corePids.every((corePid) => !cores.includes(corePid));
     },
     {
       timeout: SSH_WORKSPACE_READY_TIMEOUT_MS,
-      timeoutMsg: `${caseMarker}: 远端 zcode-server ${pid}（core=${corePids.join(",") || "none"}）没有退出`,
+      timeoutMsg: `${caseMarker}: 远端 codez-server ${pid}（core=${corePids.join(",") || "none"}）没有退出`,
     },
   );
   return pid;
@@ -544,7 +544,7 @@ export async function readRemoteCoreIdentity(
   state: string;
   generation: number;
 }> {
-  const statusResult = await runSSHCommand(config, 'cat "$HOME/.zcode/server/run/status.json"');
+  const statusResult = await runSSHCommand(config, 'cat "$HOME/.codez/server/run/status.json"');
   if (statusResult.code !== 0) {
     throw new Error(`${caseMarker}: 读取远端 Core status 失败: ${statusResult.stderr}`);
   }
@@ -580,10 +580,10 @@ export async function listRemoteAgentProcesses(
   config: SSHConnectionConfig,
 ): Promise<Array<RemoteProcessIdentity & { cwd: string }>> {
   // 进程口径按 spawnArgs 定位:workspace agent 恒以 `app-server --stdio` 拉起,
-  // 与实现形态无关 —— 旧 dev 态是 `node zcode.cjs app-server`,3.12+ release 下
+  // 与实现形态无关 —— 旧 dev 态是 `node codez.cjs app-server`,3.12+ release 下
   // 优先用 glm 原生二进制(bundledResourceDir "glm", resolveEntrySegments
-  // ["zcode-agent"]),只有缺二进制时才回落 node+zcode.cjs(server-cli.js 的
-  // ZCODE_AGENT_RUNTIME)。server daemon 跑 `serve --supervisor`(3.12 实测口径,早期写作
+  // ["codez-agent"]),只有缺二进制时才回落 node+codez.cjs(server-cli.js 的
+  // CODEZ_AGENT_RUNTIME)。server daemon 跑 `serve --supervisor`(3.12 实测口径,早期写作
   // `serve --daemon`),都不含 `app-server --stdio`,不会被误匹配。
   const result = await runSSHCommand(
     config,

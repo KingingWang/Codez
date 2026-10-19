@@ -128,7 +128,7 @@ Repo Wiki 迁入 `workspace/generateText` 后，统一 Model 已经能够产生�
 
 这项策略继续属于 Repo Wiki。Model 只返回真实调用结果并校验请求，不感知 Wiki 的预算升级，也不恢复 Wiki 旧有的 Provider、Endpoint 或协议客户端。
 
-`finishReason` 在 workspace wire schema 中保持可选，使其他不依赖结束原因的调用仍能读取旧 app-server 响应。Repo Wiki 无法安全兼容缺少该字段的结果：半截 Markdown 在结构上仍然合法，Services 无法从正文恢复完整性事实。因此 Wiki 遇到旧响应时明确失败并提示更新或重启 ZCode，不进行工具降级或普通重试，也不保存本次 Catalog/Page。
+`finishReason` 在 workspace wire schema 中保持可选，使其他不依赖结束原因的调用仍能读取旧 app-server 响应。Repo Wiki 无法安全兼容缺少该字段的结果：半截 Markdown 在结构上仍然合法，Services 无法从正文恢复完整性事实。因此 Wiki 遇到旧响应时明确失败并提示更新或重启 Codez，不进行工具降级或普通重试，也不保存本次 Catalog/Page。
 
 ## 实施后复核结论
 
@@ -157,12 +157,12 @@ Repo Wiki 迁入 `workspace/generateText` 后，统一 Model 已经能够产生�
 已通过：
 
 - 根工作区 `pnpm typecheck`。
-- ZCode CLI 的 Contracts、Adapters、Core、Bootstrap、CLI 等 23 个包 typecheck。
+- Codez CLI 的 Contracts、Adapters、Core、Bootstrap、CLI 等 23 个包 typecheck。
 - 根工作区 `pnpm lint`（0 error；现有 warning 保持不变）。
 - 合并最终 staging 前的根工作区全量单元测试：1148 个文件、9831 项通过，8 项跳过。
 - Adapter 全量测试：75 个文件、1159 个通过、3 个跳过。
 - M1 Core 重点测试：Model 生命周期、Compact、Memory、WebFetch、WebSearch、ReadSessionContext 等。
-- Services 重点测试：Git Commit Message、Repo Wiki、ZCode Protocol Client。
+- Services 重点测试：Git Commit Message、Repo Wiki、Codez Protocol Client。
 - Bootstrap workspace model generation 与取消协议测试。
 - 本轮缺口修复后的 Contracts 全量测试及新增流式调用上下文回归：28 个文件、202 项通过。
 - 本轮缺口修复后的 Adapter 全量测试：77 个文件、1191 项通过、3 项跳过。
@@ -173,7 +173,7 @@ Repo Wiki 迁入 `workspace/generateText` 后，统一 Model 已经能够产生�
 
 完成审计后的最终根工作区全量单元测试为 1170 个文件通过、4 个文件失败、1 个文件跳过；9989 项通过、5 项失败、8 项跳过。四项 Settings 源码文本断言和一项 Web Remote 重连时序测试均位于未修改文件，其中 Settings 失败可在 staging 代码上直接确认，Web Remote 为本次全量运行中的独立时序失败。Bootstrap 全量测试的 steering、resume title、marketplace、v4 boundary 与 telemetry mock 失败也已在 staging 或未修改文件上复核，不属于 Provider 迁移回归。
 
-ZCode CLI 的 Core 全量测试中的若干既有失败已在未修改的 staging 工作区复现，包括旧 steering 测试与本地 cc-run 路径依赖；这些失败不由本次迁移引入。CLI 全量 lint 仍会命中仓库已有的 max-lines 基线，改动文件单独 lint 为 0 error。
+Codez CLI 的 Core 全量测试中的若干既有失败已在未修改的 staging 工作区复现，包括旧 steering 测试与本地 cc-run 路径依赖；这些失败不由本次迁移引入。CLI 全量 lint 仍会命中仓库已有的 max-lines 基线，改动文件单独 lint 为 0 error。
 
 ## 进度
 

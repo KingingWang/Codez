@@ -1,7 +1,7 @@
 import { documentViewerInstance } from "@/plugin-ui/contract.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { toast } from "@/components/ui/toast.js";
-import { isRemoteWorkspaceIdentity } from "@zcode/shared";
+import { isRemoteWorkspaceIdentity } from "@codez/shared";
 import { useRecommendedUiPlugins } from "@/plugin-ui/adapters/useRecommendedUiPlugins.js";
 import { resolveItemDisplayName, resolveItemDescription } from "@/settings/pluginStoreListing.js";
 import { useEffect, type ReactNode } from "react";
@@ -11,7 +11,7 @@ import { buttonVariants } from "@/components/ui/button.js";
 import { Spinner } from "@/components/ui/spinner.js";
 import { cn } from "@/components/lib/utils.js";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { OpenPluginUiSideTabRequest } from "@/plugin-ui/contract.js";
 import { resolvePluginUiSurfaceTitle } from "@/plugin-ui/adapters/usePluginUiSurfaces.js";
 
@@ -35,7 +35,7 @@ export function buildPluginUiLauncherItemId(pluginId: string, surfaceId: string)
  * 旧分组容器会占据一个网格单元，导致插件全部挤在同一列；使用 Fragment 让按钮直接参与父级布局。
  */
 export function PluginUiLauncherItems(props: PluginUiLauncherItemsProps) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const platform = useOptionalPlatform();
   const { entries, loading, prepare, resolveSurface, busy, busyPluginId, error } =
     useRecommendedUiPlugins(props);
@@ -219,7 +219,7 @@ export function SidePaneLauncherRow({
   disabled?: boolean;
   onOpen: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   return (
     <button
       type="button"

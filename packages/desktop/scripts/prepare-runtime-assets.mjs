@@ -19,7 +19,7 @@ const nativeSearchReleasePlan = resolveNativeSearchReleasePlan({
 // Windows Chrome 导入入口未启用，默认构建继续编译 helper 会增加 CI 时间和发布签名面。
 // 保留显式开关，后续恢复入口时仍可复用既有原生实现和供应链校验。
 const shouldPrepareWindowsBrowserImportHelper =
-  target.os === "win32" && process.env.ZCODE_ENABLE_WINDOWS_BROWSER_IMPORT === "1";
+  target.os === "win32" && process.env.CODEZ_ENABLE_WINDOWS_BROWSER_IMPORT === "1";
 // Windows Computer Use Helper 由真实 producer 提供；开源占位包没有 Helper runtime，跳过准备。
 const shouldPrepareWindowsCuaHelper =
   target.os === "win32" && isRealComputerUseProducerInstalled({ desktopPackageRoot: desktopRoot });

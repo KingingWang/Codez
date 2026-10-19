@@ -13,7 +13,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { ChevronRightIcon, EyeIcon } from "lucide-react";
-import { type HighspeedMessageMeta, type ZCodeApiRetryStatus } from "@zcode/shared";
+import { type HighspeedMessageMeta, type CodezApiRetryStatus } from "@codez/shared";
 import {
   TID_CHAT_ASSISTANT_HISTORY_CONTENT,
   TID_CHAT_ASSISTANT_HISTORY_TRIGGER,
@@ -21,13 +21,13 @@ import {
   TID_CHAT_LOADING,
   TID_V4_ROW,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import type {
   ApiRetryState,
   AttachmentRef,
   CommandAck,
   ConversationRowTarget,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { ChatLoading } from "@/components/ai-elements/chat-loading.js";
 import { ChatApiRetryStatus } from "@/chat-input-toolbar/display.js";
 import { cn } from "@/components/lib/utils.js";
@@ -51,7 +51,7 @@ import {
   readOffPeakCreateTaskSummary,
   type OffPeakCreateTaskSummary,
 } from "@/ToolCallBlocks/renderers/offpeak-create.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { HighspeedShareDialog } from "@/highspeed/HighspeedShareNoticeCard.js";
 import { isHighspeedShareEligible } from "@/highspeed/highspeedShare.js";
 import {
@@ -193,7 +193,7 @@ function HighspeedOutputFooter({
   );
 }
 
-function toRetryStatus(apiRetry: ApiRetryState): ZCodeApiRetryStatus {
+function toRetryStatus(apiRetry: ApiRetryState): CodezApiRetryStatus {
   const attempt = Math.max(1, Math.floor(apiRetry.attempt));
   // v4 maxAttempts 包含首次请求，而展示口径是重试次数；直接展示会把
   // 默认 10 次重试写成 1/11。
@@ -215,7 +215,7 @@ function TurnChatLoadingSlot({
   apiRetry: ApiRetryState | null;
   eligible: boolean;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const retryStatus = useMemo(() => (apiRetry ? toRetryStatus(apiRetry) : null), [apiRetry]);
   // 前两次短暂恢复对用户等价于普通加载；保留 apiRetry 运行态，但只在
   // 第三次重试开始后显示计数。必须在 retry/loading 分支前收敛，否则会留下空 slot，
@@ -224,7 +224,7 @@ function TurnChatLoadingSlot({
     retryStatus && retryStatus.attempt >= MIN_VISIBLE_API_RETRY_ATTEMPT ? retryStatus : null;
   if (!visibleRetryStatus && !eligible) return null;
   return (
-    <div data-zcode-chat-loading-slot="true" className="min-h-5">
+    <div data-codez-chat-loading-slot="true" className="min-h-5">
       {visibleRetryStatus ? (
         <ChatApiRetryStatus apiRetry={visibleRetryStatus} intl={intl} locale={locale} />
       ) : (
@@ -644,7 +644,7 @@ function AssistantHistoryStatus({
   highspeedMeta?: HighspeedMessageMeta;
   sourceCommandIds: readonly string[];
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const topicInterrupted = useBotTopicInterruption(sourceCommandIds);
   const durationLabel = formatConversationWorkDuration(
     segment.workStatus?.durationMs,
@@ -1245,7 +1245,7 @@ function ConversationTurnGroupImpl({
   onEdit,
 }: ConversationTurnGroupProps) {
   const isOfficeMode = useIsOfficeMode();
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const visibleUserRows = useMemo(() => unit.visibleUserInputs, [unit.visibleUserInputs]);
   useSyncExternalStore(subscribeHighspeedTurns, getHighspeedTurnVersion, getHighspeedTurnVersion);
   const sourceCommandId = unit.header?.sourceCommandId ?? visibleUserRows[0]?.sourceCommandId;
@@ -1349,7 +1349,7 @@ function ConversationTurnGroupImpl({
     () =>
       codeCommentCardsEnabled &&
       assistantRawCopyText !== undefined &&
-      // 卡片与 zcode-file-citation 的预览卡片保持一致：流式期间只投影正文，
+      // 卡片与 codez-file-citation 的预览卡片保持一致：流式期间只投影正文，
       // 只有终态 row 才生成卡片，避免运行中卡片先出现又因模型续写而回滚。
       (latestAssistantTextRow?.state === "complete" ||
         latestAssistantTextRow?.state === "interrupted")

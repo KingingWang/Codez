@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   V4ConversationWorkflowRunNodeResultResult,
   V4ConversationWorkflowRunWorkspaceResult,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 
 vi.mock("@/logger.js", () => ({
   logger: { debug: vi.fn(), warn: vi.fn() },

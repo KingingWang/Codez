@@ -1,16 +1,16 @@
-import { isStartPlanModelProviderId } from "@zcode/shared";
-import type { IUsageStatsService } from "@zcode/services";
+import { isStartPlanModelProviderId } from "@codez/shared";
+import type { IUsageStatsService } from "@codez/services";
 import type {
   UsageEntitlementSnapshot,
-  ZCodeAccountAccess,
-  ZCodeProviderAccountAccess,
-} from "@zcode/shared";
+  CodezAccountAccess,
+  CodezProviderAccountAccess,
+} from "@codez/shared";
 
 export interface UsageEntitlementRequestOptions {
   invalidateBalanceCache?: boolean;
   includeSubscription: boolean;
   preferredProviderId?: string;
-  accountAccess?: ZCodeProviderAccountAccess | ZCodeAccountAccess;
+  accountAccess?: CodezProviderAccountAccess | CodezAccountAccess;
   allowDisabledPreferredProvider: boolean;
   requirePreferredProvider: boolean;
   allowEnvApiKey?: boolean;

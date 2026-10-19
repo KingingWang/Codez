@@ -24,7 +24,7 @@ afterEach(async () => {
 });
 
 async function start() {
-  const directory = await mkdtemp(join(tmpdir(), "zcode-mobile-fixture-"));
+  const directory = await mkdtemp(join(tmpdir(), "codez-mobile-fixture-"));
   directories.push(directory);
   const server = await startUpstreamReplayServer({
     artifactPath: join(directory, "requests.json"),

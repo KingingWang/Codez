@@ -48,7 +48,7 @@ pre-push 直接使用当前 `PATH` 中的 pnpm / Node，不强制依赖 mise。�
 
 Push 要求已暂存、未暂存、未跟踪改动均为空（忽略 Git 已忽略的文件）。不干净时非零退出，不自动 stash 或创建 checkout，保证执行内容就是推送版本。hook 非删除 ref 必须指向当前 HEAD；多个 ref 通过各自基线调用官方选择，再合并精确测试规格。删除 ref 无需测试。手动 push 模式没有 hook 输入时使用 upstream；没有有效 upstream 时使用 origin/staging 的 merge-base。不存在可用基线、需要使用的 remote SHA 无效、目标不是 HEAD 均非零退出。显式基线优先于 hook remote SHA；未提供显式基线时，新分支基线只使用 origin/staging，不猜测其他分支。
 
-所有模式的基线优先级均为 `--base` → `ZCODE_AFFECTED_TEST_BASE` → `ZCODE_PRE_PUSH_BASE` → 场景默认基线。`ZCODE_AFFECTED_TEST_BASE=<ref> git push` 使用指定分支、tag 或 commit 的已解析 SHA 交给 Vitest changed；不把 staging 等分支名写死。即使指定基线，Push 仍须工作区干净且非删除目标是 HEAD。显式基线无效时报错，不回退到 remote SHA。
+所有模式的基线优先级均为 `--base` → `CODEZ_AFFECTED_TEST_BASE` → `CODEZ_PRE_PUSH_BASE` → 场景默认基线。`CODEZ_AFFECTED_TEST_BASE=<ref> git push` 使用指定分支、tag 或 commit 的已解析 SHA 交给 Vitest changed；不把 staging 等分支名写死。即使指定基线，Push 仍须工作区干净且非删除目标是 HEAD。显式基线无效时报错，不回退到 remote SHA。
 
 默认工作区没有显式基线时不读取 upstream。--files / --files-manifest 使用官方 related，不与 --base 或 push 混用。
 
@@ -66,7 +66,7 @@ Push 要求已暂存、未暂存、未跟踪改动均为空（忽略 Git 已忽�
 - 官方 forceRerunTriggers 保留默认配置，补充配置文件模式 `**/{vitest,vite}.config.*`（当前默认 glob 尾部 `/**` 未匹配部分配置文件），再加入公共 vitest.setup.ts。原因：官方模块依赖分析不会额外纳入 setupFiles；公共 setup 改动必须作为全量影响，由入口说明并跳过 UT，成功退出。
 - 全量指选中完整套件（按 project/pool/path 识别规格），不是任意数量阈值。大量真实关联测试若未覆盖完整套件，照常运行。即使是 dry-run / JSON，选中整个非空套件说明后成功退出，不因此阻止 Push。
 - 无选中测试说明后 exit 0；这不代表所有改动已验证。官方依赖识别的限制照常适用，不增加字面量文件读取、类型依赖、删除文件基线等自建补偿。
-- 选择精度靠准确的模块图，不靠选择规则：官方选择是文件级传递闭包，经由 barrel 的 `export *` 会把一个模块的改动传给所有导入 barrel 的测试。高扇入的纯常量模块因此只走子路径，不进根 barrel。`packages/shared/src/test-ids.ts` 的常量只从 `@zcode/shared/test-ids` 导入，根入口不再 re-export，从根入口导入这些常量会被 typecheck 拒绝；工作流一族 `test-ids-workflow.ts` 仍由根入口导出，不在本规则内。原因：根入口由 100 多条 `export *` 汇总，改 test-ids 曾选中 1379/2638 个测试，其中直接引用 test-ids 的约 50 个。
+- 选择精度靠准确的模块图，不靠选择规则：官方选择是文件级传递闭包，经由 barrel 的 `export *` 会把一个模块的改动传给所有导入 barrel 的测试。高扇入的纯常量模块因此只走子路径，不进根 barrel。`packages/shared/src/test-ids.ts` 的常量只从 `@codez/shared/test-ids` 导入，根入口不再 re-export，从根入口导入这些常量会被 typecheck 拒绝；工作流一族 `test-ids-workflow.ts` 仍由根入口导出，不在本规则内。原因：根入口由 100 多条 `export *` 汇总，改 test-ids 曾选中 1379/2638 个测试，其中直接引用 test-ids 的约 50 个。
 - 测试失败 exit 1；Git、参数、基线、Vitest 错误以及脏工作区 exit 2；全量跳过 exit 0，不代表测试通过。绝不自动回退全量、追加全量重试或静默吞掉选择器异常。pnpm test / pnpm test:unit 保持显式全量入口。
 - 输出选中数量与基线；跳过全量时说明官方选中整个套件，列出官方 related 改动文件。dry-run 列精确规格，JSON 包含 runner/project/pool/path，不伪造逐文件关联原因。
 - Git/文件操作异步；保留 hook local env 清理和 lint-staged JSON manifest，Windows 不经 shell 展开文件名。不修改工作区和 index。
@@ -93,6 +93,6 @@ Push 要求已暂存、未暂存、未跟踪改动均为空（忽略 Git 已忽�
 
 ### CLI 原生测试环境
 
-affected 只选择根 Vitest UT，工具 Node 测试另行执行，不代替 CLI 的原生 `pnpm --filter zcode-cli test`。CLI 的 CUA 同步测试使用明确传入的 `ZCODE_CUA_REPO` 定位 producer checkout，Turbo 的 test task 将其计入缓存键并传入测试；不记录本机绝对路径，不更改 producer pin。`VITEST_MAX_WORKERS` 同样传入并参与缓存键，资源受限的全量验证可显式限制单套件并发，不能靠扩大超时掩盖断言失败。
+affected 只选择根 Vitest UT，工具 Node 测试另行执行，不代替 CLI 的原生 `pnpm --filter codez-cli test`。CLI 的 CUA 同步测试使用明确传入的 `CODEZ_CUA_REPO` 定位 producer checkout，Turbo 的 test task 将其计入缓存键并传入测试；不记录本机绝对路径，不更改 producer pin。`VITEST_MAX_WORKERS` 同样传入并参与缓存键，资源受限的全量验证可显式限制单套件并发，不能靠扩大超时掩盖断言失败。
 
-CLI 全量入口通过 pretest 构建根 workspace 的 `@zcode/model-option-map`，确保 SEA 测试从干净 checkout 也能读取运行时资源；不能依赖先前手动构建的 dist。
+CLI 全量入口通过 pretest 构建根 workspace 的 `@codez/model-option-map`，确保 SEA 测试从干净 checkout 也能读取运行时资源；不能依赖先前手动构建的 dist。

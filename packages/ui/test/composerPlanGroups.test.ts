@@ -1,7 +1,7 @@
-import type { ProviderSettingsView } from "@zcode/services";
+import type { ProviderSettingsView } from "@codez/services";
 import { describe, expect, it } from "vitest";
 import { buildComposerPlanGroups, composerConnectionKey } from "@/lib/composerPlanGroups.js";
-import { BUILTIN_MODEL_PROVIDER_IDS as IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS as IDS } from "@codez/shared";
 const personal = {
   key: `registry-provider:${IDS.bigmodelIndividualCodingPlan}`,
   label: "BigModel",

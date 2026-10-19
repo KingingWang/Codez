@@ -11,16 +11,16 @@
 决策：
 
 - 四个插件统一升到 0.2.0，在原有生产技能之外新增一个查看技能（`docx-viewer`、`pdf-viewer`、`pptx-viewer`、`xlsx-viewer`）、一个 stdio MCP server 和一个 `availability: "session"` 的 UI surface。
-- 面板实现放在共享包 `@zcode/office-runtime`（`apps/zcode-cli/packages/office-runtime`）。每个插件在 package.json 的 `office` 字段声明面板标题与格式，`build` 脚本调用 `../office-runtime/scripts/build.mjs`，只打包该格式的解析器与查看器。
+- 面板实现放在共享包 `@codez/office-runtime`（`apps/codez-cli/packages/office-runtime`）。每个插件在 package.json 的 `office` 字段声明面板标题与格式，`build` 脚本调用 `../office-runtime/scripts/build.mjs`，只打包该格式的解析器与查看器。
 - 生产技能、视觉评审 Agent 与许可证（Apache-2.0）保持不变；面板与 server 代码随 office-runtime 的 MIT 许可写入 `dist/LICENSE`。
 
 ## 2. 构建与产物
 
 ```text
-apps/zcode-cli/packages/<name>-plugin/package.json  ── office.title / office.kinds
-                │ pnpm --filter @zcode/<name>-plugin build
+apps/codez-cli/packages/<name>-plugin/package.json  ── office.title / office.kinds
+                │ pnpm --filter @codez/<name>-plugin build
                 ▼
-office-runtime/scripts/build.mjs（插件名取自 .zcode-plugin/plugin.json）
+office-runtime/scripts/build.mjs（插件名取自 .codez-plugin/plugin.json）
                 ▼
 <name>-plugin/dist/
   server.mjs                 MCP server，esbuild 全量打包，运行时不读 node_modules
@@ -30,7 +30,7 @@ office-runtime/scripts/build.mjs（插件名取自 .zcode-plugin/plugin.json）
 ```
 
 - 插件名必须取自 manifest：它是 MCP 服务名、surface id 与 `ui://<name>/` 前缀，而内置包目录名带 `-plugin` 后缀。
-- `dist/` 不入 git（`apps/zcode-cli/.gitignore`）。turbo 的插件 `build` 依赖 office-runtime 的 `build`（仅类型检查），office-runtime 源码变化会使四个插件的构建缓存失效。
+- `dist/` 不入 git（`apps/codez-cli/.gitignore`）。turbo 的插件 `build` 依赖 office-runtime 的 `build`（仅类型检查），office-runtime 源码变化会使四个插件的构建缓存失效。
 - 查看器依赖（pdfjs-dist、docx-preview、pptx-renderer、react-xlsx、exceljs 等）声明为 office-runtime 的 devDependencies：它们只在构建期被打包，不作为运行时 npm 依赖分发；被打包部分的许可随产物写入 `dist/THIRD_PARTY_NOTICES.txt`。exceljs 的流式读写依赖（archiver、unzipper、tmp、fast-csv）在构建时以桩模块替换，不进入产物。
 
 ## 3. 必需资产与版本事实源
@@ -43,9 +43,9 @@ office-runtime/scripts/build.mjs（插件名取自 .zcode-plugin/plugin.json）
 | `cli/scripts/sea-official-plugin-assets.mjs`          | 版本 0.2.0（pdf 0.2.1）；`requiresRuntime: true`，`requiredRuntimePaths` 为面板产物                                      |
 | `desktop/scripts/prepare-agent-node-bundle.mjs`       | `requiresRuntime: true`，`runtimeBuildScript` 指向 office-runtime 构建脚本                                               |
 | `scripts/build-desktop-agent-cli.mjs`                 | dev 链路构建四个插件并校验 `dist/server.mjs`                                                                             |
-| `server/src/remote/zcodeAgentOfficialPluginAssets.ts` | 远端必需资产加入 viewer skill 与面板产物                                                                                 |
+| `server/src/remote/codezAgentOfficialPluginAssets.ts` | 远端必需资产加入 viewer skill 与面板产物                                                                                 |
 | `docker/plugin-eval/Dockerfile`                       | 评测镜像在 stage 前构建四个插件                                                                                          |
-| 各插件 `package.json` / `.zcode-plugin/plugin.json`   | 版本 0.2.0（pdf 0.2.1）                                                                                                  |
+| 各插件 `package.json` / `.codez-plugin/plugin.json`   | 版本 0.2.0（pdf 0.2.1）                                                                                                  |
 
 `requiredSeedPaths` 缺项时 seed 只拒绝该插件并回退到可用旧缓存，不影响其他插件；因此未构建的开发环境会看到这四个插件停留在旧缓存或缺失，而不是全部插件失败。
 
@@ -56,12 +56,12 @@ office-runtime/scripts/build.mjs（插件名取自 .zcode-plugin/plugin.json）
 - office-runtime：`typecheck`、`lint`、单测（解析器、锚点、文本、i18n、对齐、契约）。
 - 四个插件：`build` 后 `smoke`（真实 stdio MCP：打开、读取、搜索、定位、越界路径拒绝）与 `test:e2e`（Chrome 中按 MCP Apps 沙箱 CSP 加载面板，覆盖选区引用、Agent 定位、查找、抽屉、截图、深色中文内联卡片）。
 - 版本与资产一致性：bootstrap `plugins.test.ts`、`build-sea.test.mjs`、desktop `runtime-asset-scripts.test.ts`、server `remoteDeploy.test.ts`。
-- 待补：在 ZCode 桌面端（含远程工作区）实际打开四种面板；e2e 不覆盖 Electron 沙箱本身。
+- 待补：在 Codez 桌面端（含远程工作区）实际打开四种面板；e2e 不覆盖 Electron 沙箱本身。
 
 ## 5. 本地文件与窗口恢复（2026-10-16）
 
 - 空状态为标题、描述、打开文件按钮与格式说明。按钮调用系统文件选择器，支持工作区外文件；取消不改变页面。
-- 文件按 4 MiB 分块导入 `.zcode/document-imports/<uuid>/<filename>`，沿用 100 MiB 上限。预览与 Agent 引用副本，不修改原文件，不开放任意路径读取。同名文件独立保存。
+- 文件按 4 MiB 分块导入 `.codez/document-imports/<uuid>/<filename>`，沿用 100 MiB 上限。预览与 Agent 引用副本，不修改原文件，不开放任意路径读取。同名文件独立保存。
 - 手动新建文档窗口生成 instanceId，随标签页持久化。普通插件与工具驱动 surface 保持原路由。
 - 完整 workspace/session/plugin/server/resource/surface instance 的 SHA-256 构成不透明 stateKey，面板 localStorage 保存该窗口最后成功加载的路径，不从服务器全局最后文档恢复。存储不可用时仍能预览，但不能保证恢复。
 
@@ -102,18 +102,18 @@ PDF 字体（未嵌入）── 名称（含 GBK / Big5 / Shift-JIS / EUC-KR 解
         ▼
 文种 sc | tc | jp | kr（默认 sc）× 字形 serif | sans | kai | fang（名称未识别时取 Serif 标志）
         ▼
-canvas font = <pdf.js 原字体链（去掉末尾通用族）>, "zcode-cjk-<文种>-<字形>",
-              ["zcode-cjk-<文种>-serif"（kai / fang 时）], ["zcode-cjk-fallback"], <通用族>
+canvas font = <pdf.js 原字体链（去掉末尾通用族）>, "codez-cjk-<文种>-<字形>",
+              ["codez-cjk-<文种>-serif"（kai / fang 时）], ["codez-cjk-fallback"], <通用族>
 ```
 
-- `zcode-cjk-*` 是面板注册的 `FontFace`：来源为三端常见同类字体的 `local()` 列表（macOS 宋体-简 / 苹方 / 楷体-简…，Windows SimSun / Microsoft YaHei / KaiTi…，Linux Noto / Source Han / 文泉驿…），`unicode-range` 只覆盖 CJK 字符与全角标点，因此不改变拉丁文字的回退。
-- 面板在文档打开前加载全部 `zcode-cjk-*`（`local()` 查找，无下载）。pdf.js 的原字体链放在最前：系统真的装有同名字体（如 Windows 的 SimSun）时仍用它。
+- `codez-cjk-*` 是面板注册的 `FontFace`：来源为三端常见同类字体的 `local()` 列表（macOS 宋体-简 / 苹方 / 楷体-简…，Windows SimSun / Microsoft YaHei / KaiTi…，Linux Noto / Source Han / 文泉驿…），`unicode-range` 只覆盖 CJK 字符与全角标点，因此不改变拉丁文字的回退。
+- 面板在文档打开前加载全部 `codez-cjk-*`（`local()` 查找，无下载）。pdf.js 的原字体链放在最前：系统真的装有同名字体（如 Windows 的 SimSun）时仍用它。
 - 只作用于 pdf.js 标记为缺字体文件的字体（`missingFile`），Type 3 与嵌入字体不变。
 - 实现方式：构建时 esbuild 插件改写 pdf.js 画布 `setFont` 中计算字体链的一行（找不到原文即构建失败），调用 `ui/cjkFonts.ts` 的 `pdfTypeface`。
 
 ### 6.2 内置兜底字体
 
-系统没有任何 CJK 字体（全部 `zcode-cjk-*` 都加载失败，常见于精简 Linux）时，面板在打开第一个 PDF 前加载随插件分发的 Noto Sans SC 400（Fontsource 5.3.1，OFL-1.1，按 unicode-range 切成 97 片、约 2.4 MiB、覆盖 GB2312 99.5%），注册为 `zcode-cjk-fallback`，排在字体链的通用族之前。画布绘制不等待字体，所以兜底字体必须在首次绘制前就绪，而不是绘制后补加载再重画。面板生命周期内只加载一次；有任一系统 CJK 字体的机器不会加载。字体文件以 `ui://pdf/assets/fonts/*.woff2` 资源读取，清单为 `ui://pdf/assets/cjk-fallback.json`；只有 pdf 插件的构建产出它们。
+系统没有任何 CJK 字体（全部 `codez-cjk-*` 都加载失败，常见于精简 Linux）时，面板在打开第一个 PDF 前加载随插件分发的 Noto Sans SC 400（Fontsource 5.3.1，OFL-1.1，按 unicode-range 切成 97 片、约 2.4 MiB、覆盖 GB2312 99.5%），注册为 `codez-cjk-fallback`，排在字体链的通用族之前。画布绘制不等待字体，所以兜底字体必须在首次绘制前就绪，而不是绘制后补加载再重画。面板生命周期内只加载一次；有任一系统 CJK 字体的机器不会加载。字体文件以 `ui://pdf/assets/fonts/*.woff2` 资源读取，清单为 `ui://pdf/assets/cjk-fallback.json`；只有 pdf 插件的构建产出它们。
 
 ### 6.3 文字提取归一
 
@@ -126,7 +126,7 @@ Chrome / Skia 打印出的 PDF 常把部分汉字的 ToUnicode 写成部首兼�
 ### 6.5 验收
 
 - 单测：字体分类与字体链（`ui/cjkFonts.test.ts`）、部首归一（`src/domain/cjk.test.ts`）、`fixtures/cjk.pdf` 的提取与搜索（`parse.test.ts`）、资源白名单（`src/adapters/assets.test.ts`）。
-- pdf 插件 `test:e2e`：打开 `docs/cjk.pdf`，断言 `zcode-cjk-*` 字体在绘制前已加载、按归一后的引文定位与查找命中；另开一页让所有 `local()` 查找失败，断言只注册了 `zcode-cjk-fallback` 并截图留档；`smoke` 读取 wasm 与兜底字体资源。
+- pdf 插件 `test:e2e`：打开 `docs/cjk.pdf`，断言 `codez-cjk-*` 字体在绘制前已加载、按归一后的引文定位与查找命中；另开一页让所有 `local()` 查找失败，断言只注册了 `codez-cjk-fallback` 并截图留档；`smoke` 读取 wasm 与兜底字体资源。
 - 待补：Windows / Linux 真机与无 CJK 字体环境的人工验证。
 
 ## 7. Review 收口：隐私、视图与导入生命周期

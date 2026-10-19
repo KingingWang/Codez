@@ -7,7 +7,7 @@
 - `code` / `authCode` + `state`（或 OAuth `error` + `state`）优先渲染现有 `WebCallbackPage`，由 `WebAuthService` 校验 nonce、交换 token、写入同源 localStorage，再 replace 安全 app_return_to。
 - OAuth 回调地址以构建 endpoint origin 的 `/remote/v4` 为基址，保留登录前同源远控 URL 的 `app_version/sid/mid/name` 参数（含空值与编码后的设备名）。不复制未知参数、旧凭据、历史 code/authCode/state/error 或 fragment；分享登录保持独立回调地址。Z.AI 使用 `redirect_uri`，BigModel 使用 `redirect`，授权 origin 随构建环境变化。
 - `WebAuthService` 在发起授权时通过 `BrowserOAuthCredentialRepo` 将本次完整回调地址与 nonce/provider 一起保存在 sessionStorage；地址记录绑定本次 nonce，防止旧页面发起新登录时误用遗留地址。跨页后校验 nonce，再用匹配的地址交换 token 并清理 pending 地址。不得从含授权参数的回调 URL 拼出 token 请求地址。升级前没有匹配 pending 地址的登录继续使用原固定回调配置。
-- 无 JWT 时展示与桌面一致的 Z.AI / BigModel 两个 OAuth 入口（Z.AI 在前，使用桌面同款图标、连接文案与全球/中国标签），提示使用与电脑相同的平台和账号。登录卡片页头左侧为桌面端标题栏同款应用 logo 图标（40px，装饰性图片），右侧为“ZCode”品牌文字与标题；不再使用强调色方块里的字母占位。设备列表页与扫码占位页页头使用同一 logo 的 20px 版本加“ZCode”文字，见 [设备列表规格](./relay-v2-pairing.md#列表排布与文本线框)。选择后同时禁用两个按钮，所选 provider 经入口编排传入现有 WebAuthService；回调按 pending provider 交换并保存凭据。不增加 API Key 入口，因为远控需要账号身份；二维码不携带凭据或推断登录平台。
+- 无 JWT 时展示与桌面一致的 Z.AI / BigModel 两个 OAuth 入口（Z.AI 在前，使用桌面同款图标、连接文案与全球/中国标签），提示使用与电脑相同的平台和账号。登录卡片页头左侧为桌面端标题栏同款应用 logo 图标（40px，装饰性图片），右侧为“Codez”品牌文字与标题；不再使用强调色方块里的字母占位。设备列表页与扫码占位页页头使用同一 logo 的 20px 版本加“Codez”文字，见 [设备列表规格](./relay-v2-pairing.md#列表排布与文本线框)。选择后同时禁用两个按钮，所选 provider 经入口编排传入现有 WebAuthService；回调按 pending provider 交换并保存凭据。不增加 API Key 入口，因为远控需要账号身份；二维码不携带凭据或推断登录平台。
 - 无 JWT 时渲染登录页；appReturnTo 为当前完整 URL。安全回跳只保留同源 `/remote/v4`、`/remote/__test__`（均含尾斜杠）和既有分享路径，query 白名单为 app_version/sid/mid/name。
 - 有 JWT、有 SID 直接申请 terminal token 并连接 V2；无 SID 时按当前账号读取设备，最近 SID 在线则直连；最近 SID 不在线但同一台电脑（最近 MID）恰好只有一个在线连接时直连该连接；否则显示设备列表（规则见[落点](./relay-v2-pairing.md#落点状态归属与刷新)）。离线设备不可点击；选中在线设备回写 sid/mid/name/app_version 后连接，支持手动和回前台刷新。设备页标题下显示当前登录账号与平台，“切换”打开下文的切换账号确认弹窗。
 - token 401 清本地会话并回登录门禁，无需确认；用户手动“切换账号”需先确认，再清会话并保留当前 URL。AUTH_FAILED 不当作网络错误无限重试。
@@ -16,7 +16,7 @@
 
 设备列表页与 `device-not-owned` 失败页的“切换账号”共用居中确认弹窗。标题为“切换账号？”，说明为“将退出当前手机网页端账号，返回登录页。电脑端仍保持登录。”，操作为左侧“取消”、右侧“退出并切换”。英文分别为 “Switch account?”、“You will sign out of this mobile web session and return to the sign-in page. Your computer will stay signed in.”、“Cancel” / “Sign out & switch”。按钮使用中性主次样式，不用危险红色。
 
-弹窗开关仅由共享确认组件的 Dialog 持有，不复制认证状态；UI 通过 `@zcode/ui/dialog` 子路径公开现有 Dialog 原语，Web 层组合本功能文案与触发按钮，确认按钮复用 `WebRemoteControlEntry.switchAccount()`。默认焦点在取消，焦点限制在弹窗内；点击取消、遮罩或按 Esc 关闭，焦点回到入口按钮。确认前不清凭据、不切换入口视图、不取消列表请求；确认后沿用原退出与 URL 保留逻辑。401、JWT 缺失等自动失效路径不经过此弹窗。桌面 continuous / 手机 replayable 恢复边界不变。
+弹窗开关仅由共享确认组件的 Dialog 持有，不复制认证状态；UI 通过 `@codez/ui/dialog` 子路径公开现有 Dialog 原语，Web 层组合本功能文案与触发按钮，确认按钮复用 `WebRemoteControlEntry.switchAccount()`。默认焦点在取消，焦点限制在弹窗内；点击取消、遮罩或按 Esc 关闭，焦点回到入口按钮。确认前不清凭据、不切换入口视图、不取消列表请求；确认后沿用原退出与 URL 保留逻辑。401、JWT 缺失等自动失效路径不经过此弹窗。桌面 continuous / 手机 replayable 恢复边界不变。
 
 ```text
 手动入口 → Dialog 打开（仍登录）
@@ -31,7 +31,7 @@
 
 ## 存储与边界
 
-`BrowserOAuthCredentialRepo` 是认证 storage 唯一边界，继续使用 zcodejwttoken、oauth:zai:access_token、oauth:zai:user_info、oauth:active_provider 以及已有 BigModel 独立键。残缺或已过期会话清理后视为未登录。前置编排通过 WebAuthService 读取 JWT，不复制认证缓存；token 不持久化，不进入 QR、日志或业务 payload。
+`BrowserOAuthCredentialRepo` 是认证 storage 唯一边界，继续使用 codezjwttoken、oauth:zai:access_token、oauth:zai:user_info、oauth:active_provider 以及已有 BigModel 独立键。残缺或已过期会话清理后视为未登录。前置编排通过 WebAuthService 读取 JWT，不复制认证缓存；token 不持久化，不进入 QR、日志或业务 payload。
 
 ## 开发回调转发
 
@@ -39,7 +39,7 @@
 
 完整时序、错误映射、文案表和验收矩阵见 [Relay V2 手机首次进入与恢复](./relay-v2-pairing.md#手机首次进入与恢复05)。
 
-本地 `pnpm dev:web-remote-control` 保留 Vite root base，桌面默认二维码地址同步为 `http://localhost:5173/remote/v4`；手机调试时用 `ZCODE_WEB_REMOTE_CONTROL_URL` 指向可访问的同一路径，并配置对应 `VITE_DEV_ORIGIN`。避免使用不在 OAuth 回跳白名单中的 `/remote` 别名丢失 SID。
+本地 `pnpm dev:web-remote-control` 保留 Vite root base，桌面默认二维码地址同步为 `http://localhost:5173/remote/v4`；手机调试时用 `CODEZ_WEB_REMOTE_CONTROL_URL` 指向可访问的同一路径，并配置对应 `VITE_DEV_ORIGIN`。避免使用不在 OAuth 回跳白名单中的 `/remote` 别名丢失 SID。
 
 ### 独立测试入口的登录回跳
 

@@ -7,12 +7,12 @@
 import { createElement } from "react";
 import { cleanup, render, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/types.js";
 import { buildWorkflowTimeline } from "@/components/workflow-timeline/timeline-model.js";
 import { spineLayout } from "@/app-shell/workflowRunSpine.js";
 import { WorkflowRunPhaseList } from "@/app-shell/WorkflowRunPhaseList.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 /** 一站一个 ask 成员的骨架图：`near[i]` 是第 i 站的 `alongside`，边按下标给。 */
 function bandGraph(
@@ -84,7 +84,7 @@ function renderSpine(graph: WorkflowCausalityGraphData, state?: WorkflowRunState
   const model = buildWorkflowTimeline(graph, state);
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(WorkflowRunPhaseList, { graph, model, pendingQuestions: [], run: state }),
     ),

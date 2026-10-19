@@ -3,7 +3,7 @@ import {
   appSettingsSchema,
   type RemoteWorkspaceSessionEntry,
   type SSHProfileTarget,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { reconnectRemoteWorkspaceHistoryEntry } from "@/root/reconnectRemoteWorkspaceHistoryEntry.js";
 
 vi.mock("@/store/remotePinnedTaskStore.js", () => ({

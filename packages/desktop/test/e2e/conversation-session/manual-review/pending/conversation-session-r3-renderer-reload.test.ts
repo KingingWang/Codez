@@ -2,7 +2,7 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { countRendererReloadAcks } from "#e2e/helpers/remote-renderer-ready-evidence";
 import { waitForV4Pane } from "#e2e/helpers/v4-conversation";
-import { TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   connectSSHWorkspaceAndSendFirstTurn,
@@ -22,11 +22,11 @@ import {
 
 const CASE_MARKER = "E2E_R3_RENDERER_RELOAD";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-renderer-reload",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-renderer-reload",
 );
 
 async function readReadyCounts() {
-  const directory = process.env.ZCODE_E2E_RUNTIME_LOG_DIR;
+  const directory = process.env.CODEZ_E2E_RUNTIME_LOG_DIR;
   if (!directory) throw new Error("缺少本 worker 的 Desktop 日志目录");
   const files = (await readdir(directory)).filter((name) => name.endsWith(".log"));
   const counts = new Map<string, number>();

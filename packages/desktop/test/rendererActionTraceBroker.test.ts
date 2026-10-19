@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ReadableSpan, SpanExporter } from "@opentelemetry/sdk-trace-base";
-import type { RendererActionTraceBatchV1 } from "@zcode/shared";
+import type { RendererActionTraceBatchV1 } from "@codez/shared";
 import { createRendererActionTraceBroker } from "../src/main/rendererActionTraceBroker.js";
 
 function createBatch(): RendererActionTraceBatchV1 {
@@ -10,7 +10,7 @@ function createBatch(): RendererActionTraceBatchV1 {
     sequence: 1,
     droppedSinceLastFlush: 0,
     resource: {
-      serviceName: "zcode-desktop-renderer",
+      serviceName: "codez-desktop-renderer",
       serviceVersion: "1.0.0",
       deploymentEnvironment: "test",
       rendererInstanceId: "renderer-test",

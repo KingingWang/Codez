@@ -57,7 +57,7 @@ describe("global database migration startup gate", () => {
       await expect(loading).toHaveAttribute("data-database-phase", "waiting_for_lock");
       await expect($('[contenteditable="true"]')).not.toBeDisplayed();
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd(), "database-waiting.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd(), "database-waiting.png"),
       );
       await browser.refresh();
       await $('[data-testid="database-startup-status"]').waitForDisplayed({ timeout: 30_000 });
@@ -204,7 +204,7 @@ describe("global database migration startup gate", () => {
       const pid = await browser.electron.execute((electron) => {
         const hosts = electron.app
           .getAppMetrics()
-          .filter((metric) => metric.name?.startsWith("zcode-host"));
+          .filter((metric) => metric.name?.startsWith("codez-host"));
         if (hosts.length !== 1) throw new Error("此隔离用例必须只有一个窗口 Host");
         const pid = hosts[0]!.pid;
         process.kill(pid, "SIGKILL");
@@ -241,7 +241,7 @@ describe("global database migration startup gate", () => {
     await prepareConversationE2E();
     await quitElectronAppGracefully();
     const paths = getE2EAppDataPaths();
-    const caseRoot = join(paths.workspace, ".zcode-e2e", "database-startup-invalid-project");
+    const caseRoot = join(paths.workspace, ".codez-e2e", "database-startup-invalid-project");
     const parent = join(caseRoot, "former-parent");
     const project = join(parent, "old-project");
     const settingsPath = join(paths.appDataDir, "setting.json");

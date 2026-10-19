@@ -1,4 +1,4 @@
-import { BUILTIN_MODEL_PROVIDER_IDS, type UsageEntitlementSnapshot } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, type UsageEntitlementSnapshot } from "@codez/shared";
 import { describe, expect, it } from "vitest";
 import {
   buildSessionQuotaBannerDismissKey,
@@ -8,7 +8,7 @@ import {
   shouldOfferQuotaBannerUpgrade,
 } from "@/v4/sessionQuotaBannerState.js";
 import { resolveMcpUnavailableNotice } from "@/v4/mcpUnavailableBannerNotice.js";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 
 function entitlement(params: {
   dailyRemaining: number;
@@ -96,12 +96,12 @@ describe("V4 session quota banner state", () => {
       mcpUnavailableNotice: {
         code: "quota_exceeded",
         rowId: 12,
-        serverName: "zcode-official",
+        serverName: "codez-official",
         toolName: "search_image",
       },
     });
     expect(quotaState.kind).toBe("mcp-quota-exhausted");
-    expect(quotaState.mcpServerName).toBe("zcode-official");
+    expect(quotaState.mcpServerName).toBe("codez-official");
     expect(quotaState.dismissible).toBe(true);
     expect(quotaState.blocksSubmit).toBe(false);
 
@@ -112,7 +112,7 @@ describe("V4 session quota banner state", () => {
       mcpUnavailableNotice: {
         code: "coding_plan_required",
         rowId: 12,
-        serverName: "zcode-official",
+        serverName: "codez-official",
         toolName: "search_image",
       },
     });
@@ -139,7 +139,7 @@ describe("V4 session quota banner state", () => {
       mcpUnavailableNotice: {
         code: "quota_exceeded",
         rowId: 12,
-        serverName: "zcode-official",
+        serverName: "codez-official",
         toolName: "search_image",
       },
     });
@@ -163,9 +163,9 @@ describe("V4 session quota banner state", () => {
         }),
       );
     // 关闭一次后同一次调用不再弹；新的失败调用或另一个 server 会重新弹。
-    expect(build(12, "zcode-official")).toBe(build(12, "zcode-official"));
-    expect(build(12, "zcode-official")).not.toBe(build(13, "zcode-official"));
-    expect(build(12, "zcode-official")).not.toBe(build(12, "zcode-video-edit"));
+    expect(build(12, "codez-official")).toBe(build(12, "codez-official"));
+    expect(build(12, "codez-official")).not.toBe(build(13, "codez-official"));
+    expect(build(12, "codez-official")).not.toBe(build(12, "codez-video-edit"));
   });
 
   it("从 rows 里取最新一条带标识的官方 MCP 调用", () => {
@@ -175,12 +175,12 @@ describe("V4 session quota banner state", () => {
         turnId: "t1",
         kind: "toolCall",
         toolCallId: `call-${rowId}`,
-        toolName: "mcp__zcode-official__search_image",
+        toolName: "mcp__codez-official__search_image",
         status: "success",
         inputText: "{}",
         display: {
           kind: "mcp_tool",
-          serverName: "zcode-official",
+          serverName: "codez-official",
           toolName: "search_image",
           ...(unavailable ? { unavailable } : {}),
         },
@@ -197,7 +197,7 @@ describe("V4 session quota banner state", () => {
     ).toEqual({
       code: "quota_exceeded",
       rowId: 3,
-      serverName: "zcode-official",
+      serverName: "codez-official",
       toolName: "search_image",
     });
   });

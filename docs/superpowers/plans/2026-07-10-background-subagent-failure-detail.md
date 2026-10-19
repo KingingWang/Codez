@@ -23,7 +23,7 @@
 
 **Files:**
 
-- Modify: `apps/zcode-cli/docs/design/v2/tool/07-subagent.md`
+- Modify: `apps/codez-cli/docs/design/v2/tool/07-subagent.md`
 - Modify: `docs/conversation-session-case-catalog.md`
 - Modify: `docs/testing/conversation-session-background-e2e-coverage-matrix.md`
 - Modify: `docs/testing/conversation-session-e2e-coverage-matrix.md`
@@ -59,10 +59,10 @@
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/core/tests/subagent-background.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/subagent-background.test.ts`
 - Modify: `packages/shared/test/backgroundTaskNotifications.test.ts`
-- Modify: `packages/ui/test/zcodeSessionProjection.test.ts`
-- Modify: `packages/services/test/zcodeLegacyTaskCompatTaskIndex.test.ts`
+- Modify: `packages/ui/test/codezSessionProjection.test.ts`
+- Modify: `packages/services/test/codezLegacyTaskCompatTaskIndex.test.ts`
 
 **Interfaces:**
 
@@ -78,11 +78,11 @@
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/core/src/subagent/runner.ts`
-- Modify: `apps/zcode-cli/packages/core/src/subagent/completion-notification.ts`
+- Modify: `apps/codez-cli/packages/core/src/subagent/runner.ts`
+- Modify: `apps/codez-cli/packages/core/src/subagent/completion-notification.ts`
 - Modify: `packages/shared/src/background-task-notifications.ts`
-- Modify: `packages/ui/src/lib/zcodeSessionProjection.ts`
-- Modify: `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts`
+- Modify: `packages/ui/src/lib/codezSessionProjection.ts`
+- Modify: `packages/services/src/codez-agent/codezTaskServiceAdapter.ts`
 
 **Interfaces:**
 
@@ -107,7 +107,7 @@
 - Produces: replay artifacts and verification output.
 
 - [x] Re-run explicit-fixture WDIO and default replay for `conversation-session-background-subagent-rate-limit.test.ts`.
-- [x] Run `pnpm --filter @zcode/desktop typecheck:e2e`.
+- [x] Run `pnpm --filter @codez/desktop typecheck:e2e`.
 - [x] Run the conversation coverage audit.
 - [x] Run `pnpm typecheck`, `pnpm lint`, and `git diff --check`.
 

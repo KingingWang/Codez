@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import type {
   V4ConversationWorkflowRunEventsResult,
   V4ConversationWorkflowRunsResult,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { ReplaceableConversationTransport } from "../src/v4/replaceableConversationTransport.js";
 import type { ConversationTransport } from "../src/v4/transport.js";
 

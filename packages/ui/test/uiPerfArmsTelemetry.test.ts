@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ArmsCustomEventPayload } from "@zcode/shared";
+import type { ArmsCustomEventPayload } from "@codez/shared";
 import {
   INPUT_LAG_REPORT_THRESHOLD_MS,
   INPUT_LAG_SANITY_MAX_MS,

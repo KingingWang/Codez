@@ -1,5 +1,5 @@
-import { isPublicZCodeErrorCode } from "@zcode/shared";
-export const REMOTE_WORKSPACE_DISCONNECTED_ERROR_CODE = "ZCODE_REMOTE_WORKSPACE_DISCONNECTED";
+import { isPublicCodezErrorCode } from "@codez/shared";
+export const REMOTE_WORKSPACE_DISCONNECTED_ERROR_CODE = "CODEZ_REMOTE_WORKSPACE_DISCONNECTED";
 
 export function createRemoteWorkspaceDisconnectedError(): Error & {
   code: typeof REMOTE_WORKSPACE_DISCONNECTED_ERROR_CODE;
@@ -34,5 +34,5 @@ export function getRemoteConnectionFailureCode(error: unknown): string | undefin
   if (isRemoteWorkspaceDisconnectedError(error)) return REMOTE_WORKSPACE_DISCONNECTED_ERROR_CODE;
   if (!error || typeof error !== "object" || !("code" in error) || typeof error.code !== "string")
     return undefined;
-  return isPublicZCodeErrorCode(error.code) ? error.code : undefined;
+  return isPublicCodezErrorCode(error.code) ? error.code : undefined;
 }

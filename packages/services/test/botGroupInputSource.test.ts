@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   commandPayloadSchemas,
   conversationInputIntentSchema,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 
 describe("group source wire contract", () => {
   it("preserves sender separately from destination in command and canonical input", () => {

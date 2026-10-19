@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { ConversationSharePreview } from "@zcode/shared";
+import type { ConversationSharePreview } from "@codez/shared";
 import {
   ConversationShareLandingPage,
   ConversationShareLandingStatus,
@@ -82,16 +82,16 @@ describe("ConversationShareLandingPage", () => {
     expect(html).toContain('data-share-header-ready="false"');
     expect(html).toContain('data-share-continue-visible="true"');
     expect(html).toContain("请生成一个文件");
-    expect(html).toContain("去 ZCode 继续");
+    expect(html).toContain("去 Codez 继续");
     expect(html).toContain('data-share-theme-toggle="true"');
     expect(html).toContain("切换到深色主题");
-    expect(html.match(/href="zcode:\/\/share\/import\?code=share-1"/g)?.length).toBe(2);
+    expect(html.match(/href="codez:\/\/share\/import\?code=share-1"/g)?.length).toBe(2);
     expect(html).not.toContain("Sign out");
   });
 
   it("counts only artifact rows and excludes user input attachment manifests", () => {
-    const inputRef = "zcode-artifact://share/input-1";
-    const resultRef = "zcode-artifact://share/result-1";
+    const inputRef = "codez-artifact://share/input-1";
+    const resultRef = "codez-artifact://share/result-1";
     const mixedPreview: ConversationSharePreview = {
       ...preview,
       rows: [
@@ -184,7 +184,7 @@ describe("ConversationShareLandingPage", () => {
           kind: "userInput" as const,
           attachments: [
             {
-              ref: "zcode-artifact://share/input-only",
+              ref: "codez-artifact://share/input-only",
               fileName: "input.txt",
               mime: "text/plain",
               bytes: 5,
@@ -200,7 +200,7 @@ describe("ConversationShareLandingPage", () => {
           producer_product_turn_id: "share-product-turn-1",
           artifact_version: 1 as const,
           state: "current" as const,
-          ref: "zcode-artifact://share/input-only",
+          ref: "codez-artifact://share/input-only",
           artifact_type: "text" as const,
           display_name: "input.txt",
           extension: "txt",
@@ -230,9 +230,9 @@ describe("ConversationShareLandingPage", () => {
         locale: "en-US",
       }),
     );
-    expect(html).not.toContain("zcode://share/import");
-    expect(html).not.toContain("Open in ZCode");
-    expect(html).not.toContain("去 ZCode 继续");
+    expect(html).not.toContain("codez://share/import");
+    expect(html).not.toContain("Open in Codez");
+    expect(html).not.toContain("去 Codez 继续");
     expect(html).toContain('data-share-theme-toggle="true"');
     expect(html).not.toContain('data-share-continue-footer="true"');
     expect(html).toContain('data-share-continue-visible="false"');

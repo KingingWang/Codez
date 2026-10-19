@@ -1,4 +1,4 @@
-import { TID_CHAT_WORKFLOW_RUN_DIGEST } from "@zcode/shared";
+import { TID_CHAT_WORKFLOW_RUN_DIGEST } from "@codez/shared";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   prepareV4ConversationE2E,
@@ -16,7 +16,7 @@ import { waitForToolCallBlockByToolName } from "../../../helpers/conversation-se
 // 本文件写好即入 manual-review/pending，**没有在本机运行过**（会启动 Electron，接管用户桌面）。
 // 选择器全是被测组件上的 data-testid，与 packages/ui/test 的静态渲染断言同一套抓手。
 const RUN_DIGEST = `[data-testid^="${TID_CHAT_WORKFLOW_RUN_DIGEST}"]`;
-// 留白 id 是名字的键（apps/zcode-cli/packages/dynamic-workflow/docs/analysis.md「Sites」）：「决定分组」→ 这个 id。
+// 留白 id 是名字的键（apps/codez-cli/packages/dynamic-workflow/docs/analysis.md「Sites」）：「决定分组」→ 这个 id。
 const DECIDE_HOLE_ID = "hole#21b40fca";
 
 describe("动态工作流 · 留白", () => {

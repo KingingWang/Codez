@@ -118,8 +118,8 @@ describe("PLM-LC-017 已安装列表行内菜单布局 E2E", () => {
 
 async function seedWorkspacePluginOverride(): Promise<void> {
   const { workspace } = getE2EAppDataPaths();
-  const configPath = join(workspace, ".zcode", "config.json");
-  await mkdir(join(workspace, ".zcode"), { recursive: true });
+  const configPath = join(workspace, ".codez", "config.json");
+  await mkdir(join(workspace, ".codez"), { recursive: true });
   const existing = existsSync(configPath)
     ? (JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>)
     : {};

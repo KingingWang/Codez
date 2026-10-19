@@ -7,7 +7,7 @@ import {
    sqlite schema、状态机守卫写入与调度认领，稳定后再按读写职责拆分。 */
 /* off-peak 任务仓库：off_peak_tasks 的 sqlite schema、状态机守卫写入与调度认领。
    与 automation 共用 tasks-index.sqlite 与 Repo 模式，但表/状态机/常量全部独立，
-   禁止往 automations 表或 ZCodeAutomation 类型上加字段。 */
+   禁止往 automations 表或 CodezAutomation 类型上加字段。 */
 import { mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
@@ -16,11 +16,11 @@ import {
   OFF_PEAK_TERMINAL_STATUSES,
   modelSelectionSchema,
   resolveWorkspaceKey,
-  type ZCodeOffPeakTask,
-  type ZCodeOffPeakTaskCreateParams,
-  type ZCodeOffPeakTaskStatus,
-  type ZCodeTaskMode,
-} from "@zcode/shared";
+  type CodezOffPeakTask,
+  type CodezOffPeakTaskCreateParams,
+  type CodezOffPeakTaskStatus,
+  type CodezTaskMode,
+} from "@codez/shared";
 import { getTasksIndexDatabasePath } from "#src/paths.js";
 import { runTasksDatabaseMigrations } from "#src/session/tasksDatabase/migrations.js";
 
@@ -74,7 +74,7 @@ interface OffPeakTaskRow {
   updated_at: number;
 }
 
-function rowToTask(row: OffPeakTaskRow): ZCodeOffPeakTask {
+function rowToTask(row: OffPeakTaskRow): CodezOffPeakTask {
   const modelSelection = readOffPeakModelSelection(row);
   return {
     offPeakTaskId: row.off_peak_task_id,
@@ -84,7 +84,7 @@ function rowToTask(row: OffPeakTaskRow): ZCodeOffPeakTask {
     sessionId: row.session_id ?? undefined,
     ...(row.session_title ? { sessionTitle: row.session_title } : {}),
     prompt: row.prompt,
-    permissionMode: row.permission_mode as ZCodeTaskMode,
+    permissionMode: row.permission_mode as CodezTaskMode,
     ...(modelSelection ? { modelSelection } : {}),
     ...(!modelSelection
       ? {
@@ -106,7 +106,7 @@ function rowToTask(row: OffPeakTaskRow): ZCodeOffPeakTask {
             .max(256)
             .parse(JSON.parse(row.additional_directories)),
         }),
-    status: row.status as ZCodeOffPeakTaskStatus,
+    status: row.status as CodezOffPeakTaskStatus,
     queuedAt: row.queued_at,
     startedAt: row.started_at ?? undefined,
     endedAt: row.ended_at ?? undefined,
@@ -123,7 +123,7 @@ function rowToTask(row: OffPeakTaskRow): ZCodeOffPeakTask {
   };
 }
 
-function readOffPeakModelSelection(row: OffPeakTaskRow): ZCodeOffPeakTask["modelSelection"] | null {
+function readOffPeakModelSelection(row: OffPeakTaskRow): CodezOffPeakTask["modelSelection"] | null {
   if (row.model_selection) {
     try {
       const parsed = modelSelectionSchema.safeParse(JSON.parse(row.model_selection));
@@ -137,7 +137,7 @@ function readOffPeakModelSelection(row: OffPeakTaskRow): ZCodeOffPeakTask["model
 }
 
 function serializeOffPeakModelSelection(
-  selection: NonNullable<ZCodeOffPeakTask["modelSelection"]>,
+  selection: NonNullable<CodezOffPeakTask["modelSelection"]>,
 ): string {
   const options = selection.options;
   return JSON.stringify(
@@ -267,7 +267,7 @@ export class OffPeakTaskRepo {
    * 取号结果经 options 一并写入；mock 先行阶段允许不带服务端字段。
    */
   async create(
-    params: ZCodeOffPeakTaskCreateParams,
+    params: CodezOffPeakTaskCreateParams,
     options?: {
       /** 测试注入用；缺省 Date.now()。 */
       now?: number;
@@ -279,7 +279,7 @@ export class OffPeakTaskRepo {
       /** 取号即 ready（低峰空闲时服务端可直接晋级）时随建随派。 */
       schedulable?: boolean;
     },
-  ): Promise<ZCodeOffPeakTask> {
+  ): Promise<CodezOffPeakTask> {
     await this.ensureReady();
     const now = options?.now ?? Date.now();
     const offPeakTaskId = options?.offPeakTaskId ?? `offpeak-${randomUUID()}`;
@@ -337,7 +337,7 @@ export class OffPeakTaskRepo {
   async list(scope?: {
     workspacePath?: string;
     workspaceIdentity?: string;
-  }): Promise<ZCodeOffPeakTask[]> {
+  }): Promise<CodezOffPeakTask[]> {
     await this.ensureReady();
     const workspaceKey = scope?.workspacePath
       ? resolveWorkspaceKey({
@@ -362,7 +362,7 @@ export class OffPeakTaskRepo {
     return rows.map(rowToTask);
   }
 
-  async get(offPeakTaskId: string): Promise<ZCodeOffPeakTask | null> {
+  async get(offPeakTaskId: string): Promise<CodezOffPeakTask | null> {
     await this.ensureReady();
     const row = this.getRow(offPeakTaskId);
     return row ? rowToTask(row) : null;
@@ -374,9 +374,9 @@ export class OffPeakTaskRepo {
    */
   async invalidateModelSelection(
     offPeakTaskId: string,
-    modelSelection: NonNullable<ZCodeOffPeakTask["modelSelection"]>,
+    modelSelection: NonNullable<CodezOffPeakTask["modelSelection"]>,
     options?: { now?: number },
-  ): Promise<ZCodeOffPeakTask | null> {
+  ): Promise<CodezOffPeakTask | null> {
     await this.ensureReady();
     const db = this.getDatabase();
     db.exec("BEGIN IMMEDIATE");
@@ -432,7 +432,7 @@ export class OffPeakTaskRepo {
   async markHistoryDeleted(
     offPeakTaskId: string,
     options?: { now?: number },
-  ): Promise<ZCodeOffPeakTask | null> {
+  ): Promise<CodezOffPeakTask | null> {
     await this.ensureReady();
     const row = this.getRow(offPeakTaskId);
     if (!row || row.started_at === null) return row ? rowToTask(row) : null;
@@ -492,10 +492,10 @@ export class OffPeakTaskRepo {
       title?: string;
       prompt?: string;
       permissionMode?: string;
-      modelSelection?: ZCodeOffPeakTask["modelSelection"] | null;
+      modelSelection?: CodezOffPeakTask["modelSelection"] | null;
     },
     options?: { now?: number },
-  ): Promise<ZCodeOffPeakTask | null> {
+  ): Promise<CodezOffPeakTask | null> {
     await this.ensureReady();
     const row = this.getRow(offPeakTaskId);
     if (!row) return null;
@@ -572,7 +572,7 @@ export class OffPeakTaskRepo {
    * 原子 claim_running 0→1。FIFO 序按 queued_at（权威序由服务端取号顺序保证）。
    * 同时回收认领超时（claimed_at 过期）的僵尸认领。
    */
-  async claimDue(now: number): Promise<ZCodeOffPeakTask[]> {
+  async claimDue(now: number): Promise<CodezOffPeakTask[]> {
     await this.ensureReady();
     const db = this.getDatabase();
     db.exec("BEGIN IMMEDIATE");
@@ -589,7 +589,7 @@ export class OffPeakTaskRepo {
           ORDER BY queued_at ASC, created_at ASC`,
         )
         .all() as unknown as OffPeakTaskRow[];
-      const claimed: ZCodeOffPeakTask[] = [];
+      const claimed: CodezOffPeakTask[] = [];
       const claim = db.prepare(
         `UPDATE off_peak_tasks
         SET claim_running = 1, claimed_at = @now, updated_at = @now
@@ -625,7 +625,7 @@ export class OffPeakTaskRepo {
       sessionId?: string;
       serverTicketId?: string;
     },
-  ): Promise<ZCodeOffPeakTask | null> {
+  ): Promise<CodezOffPeakTask | null> {
     await this.ensureReady();
     const res = this.getDatabase()
       .prepare(
@@ -665,7 +665,7 @@ export class OffPeakTaskRepo {
       /** scheduler 派发阶段的确定性错误；存在时原子累计一次派发尝试并留 last_error。 */
       dispatchError?: string;
     },
-  ): Promise<ZCodeOffPeakTask | null> {
+  ): Promise<CodezOffPeakTask | null> {
     await this.ensureReady();
     const res = this.getDatabase()
       .prepare(
@@ -703,7 +703,7 @@ export class OffPeakTaskRepo {
     offPeakTaskId: string,
     paused: boolean,
     options?: { now?: number },
-  ): Promise<ZCodeOffPeakTask | null> {
+  ): Promise<CodezOffPeakTask | null> {
     await this.ensureReady();
     const res = this.getDatabase()
       .prepare(
@@ -786,7 +786,7 @@ export class OffPeakTaskRepo {
   async requeueForContinuation(
     offPeakTaskId: string,
     options?: { now?: number },
-  ): Promise<ZCodeOffPeakTask | null> {
+  ): Promise<CodezOffPeakTask | null> {
     await this.ensureReady();
     const res = this.getDatabase()
       .prepare(
@@ -801,7 +801,7 @@ export class OffPeakTaskRepo {
   }
 
   /** 全部非终态任务（offPeakTaskSync 轮询输入：有非终态才轮）。 */
-  async listNonTerminal(): Promise<ZCodeOffPeakTask[]> {
+  async listNonTerminal(): Promise<CodezOffPeakTask[]> {
     await this.ensureReady();
     const rows = this.getDatabase()
       .prepare(
@@ -828,7 +828,7 @@ export class OffPeakTaskRepo {
   }
 
   /** 未核销的终态任务：poll 周期捎带补报 + host 启动扫描（不新增计时器）。 */
-  async listUnsettledTerminal(): Promise<ZCodeOffPeakTask[]> {
+  async listUnsettledTerminal(): Promise<CodezOffPeakTask[]> {
     await this.ensureReady();
     const rows = this.getDatabase()
       .prepare(

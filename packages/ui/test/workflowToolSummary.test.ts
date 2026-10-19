@@ -2,7 +2,7 @@
 import { createElement } from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { WorkflowToolSummary } from "@/v4/WorkflowToolSummary.js";
 
 const summary = {
@@ -19,7 +19,7 @@ describe("WorkflowToolSummary", () => {
     const onOpen = vi.fn();
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: locale },
         createElement(WorkflowToolSummary, { toolCallId: "tool-1", summary, onOpen }),
       ),
@@ -40,7 +40,7 @@ describe("WorkflowToolSummary", () => {
   ] as const)("修订行的种类词是「工作流已调整」：%s", (locale, word) => {
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: locale },
         createElement(WorkflowToolSummary, { toolCallId: "tool-1", summary, amend: true }),
       ),
@@ -51,7 +51,7 @@ describe("WorkflowToolSummary", () => {
   it("宿主缺少打开能力时只展示文字", () => {
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(WorkflowToolSummary, { toolCallId: "tool-1", summary }),
       ),
@@ -63,7 +63,7 @@ describe("WorkflowToolSummary", () => {
     const { agents: _dropped, ...bare } = summary;
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(WorkflowToolSummary, { toolCallId: "tool-1", summary: bare }),
       ),

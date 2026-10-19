@@ -5,7 +5,7 @@ import {
 } from "@/ControlHintTooltip.js";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { GroupedDraftTaskRow } from "@/project-sidebar/grouped/draft-task-row.js";
 import { GroupedTaskRow } from "@/project-sidebar/grouped/task-row.js";
@@ -108,9 +108,9 @@ function Fixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale="en-US">
+  <CodezIntlProvider initialLocale="en-US">
     <TooltipProvider>
       <Fixture />
     </TooltipProvider>
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

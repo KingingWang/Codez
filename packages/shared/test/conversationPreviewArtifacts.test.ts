@@ -64,7 +64,7 @@ describe("conversation preview artifact candidates", () => {
     const candidates = buildConversationPreviewArtifactCandidates({
       productTurnId: "turn-1",
       assistantText:
-        '~/Code/vibe/shows/deliver/晨报.pdf ::zcode-file-citation{path="/workspace/晨报.pdf"} out/a.mp4 out/b.mp4 out/c.mp4',
+        '~/Code/vibe/shows/deliver/晨报.pdf ::codez-file-citation{path="/workspace/晨报.pdf"} out/a.mp4 out/b.mp4 out/c.mp4',
       workspacePath,
     });
 

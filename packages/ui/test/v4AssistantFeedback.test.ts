@@ -1,9 +1,9 @@
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ConversationAssistantTextActions } from "@/v4/ConversationRowView.js";
 
 const actionCapture = vi.hoisted(() => ({
@@ -39,7 +39,7 @@ function renderActions(params: {
 }) {
   renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(
         PlatformProvider,
@@ -118,7 +118,7 @@ describe("V4 assistant feedback", () => {
   it("旧 row 缺少 entityId 时不展示反馈按钮，禁止用 rowId 代替 messageId", () => {
     renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           PlatformProvider,

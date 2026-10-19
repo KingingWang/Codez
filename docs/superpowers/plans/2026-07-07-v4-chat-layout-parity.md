@@ -37,9 +37,9 @@ import { describe, expect, it, vi } from "vitest";
 import type {
   ConversationSnapshot,
   UserInputRow,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { SessionPane } from "@/v4/SessionPane.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const projectionState = vi.hoisted(() => ({
   current: null as {
@@ -65,7 +65,7 @@ vi.mock("@/v4/V4ConversationContext.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
+  useCodezStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
 }));
 
 vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
@@ -215,7 +215,7 @@ function renderPane(): string {
 
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(SessionPane, {
         paneId: "workspace-main",

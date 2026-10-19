@@ -14,10 +14,10 @@ it("Host 探针只读 Main 指标，不打开资源管理器或切换业务窗�
         {
           pid: 22,
           type: "Utility",
-          name: "zcode-host-local-1",
+          name: "codez-host-local-1",
           serviceName: "node.mojom.NodeService",
         },
-        { pid: 33, type: "Utility", name: "zcode-cron-scheduler" },
+        { pid: 33, type: "Utility", name: "codez-cron-scheduler" },
       ],
     },
   };
@@ -30,5 +30,5 @@ it("Host 探针只读 Main 指标，不打开资源管理器或切换业务窗�
       expect(await fn()).toBe(true);
     },
   });
-  expect(await readHostProcesses()).toEqual([{ pid: 22, name: "zcode-host-local-1" }]);
+  expect(await readHostProcesses()).toEqual([{ pid: 22, name: "codez-host-local-1" }]);
 });

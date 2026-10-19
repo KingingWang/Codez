@@ -23,8 +23,8 @@ export async function prepareAccessToken401Fixture(options: {
   let rejected = false;
   let rejectionStatus = 401;
   let emptyRejection = false;
-  const preserveSession = process.env.ZCODE_E2E_AUTH_VALIDATION_HEADER === "1";
-  const ordinaryStatus = process.env.ZCODE_E2E_AUTH_EXPIRY_HTTP_STATUS === "200" ? 200 : 403;
+  const preserveSession = process.env.CODEZ_E2E_AUTH_VALIDATION_HEADER === "1";
+  const ordinaryStatus = process.env.CODEZ_E2E_AUTH_EXPIRY_HTTP_STATUS === "200" ? 200 : 403;
   let ordinaryBusinessRequestCount = 0;
   let rawIdentityRequestCount = 0;
   let rejectedIdentityHeaderCount = 0;
@@ -33,7 +33,7 @@ export async function prepareAccessToken401Fixture(options: {
   let loginCompletions = 0;
   let locationUnavailable = false;
   const provider =
-    sharedJwt || preserveSession || process.env.ZCODE_E2E_AUTH_EXPIRY_PROVIDER === "zai"
+    sharedJwt || preserveSession || process.env.CODEZ_E2E_AUTH_EXPIRY_PROVIDER === "zai"
       ? "zai"
       : "bigmodel";
   const rejectResponse = (response: ServerResponse) => {
@@ -91,7 +91,7 @@ export async function prepareAccessToken401Fixture(options: {
         loginCompletions++;
         data = {
           status: "ready",
-          token: "e2e-distinct-zcode-jwt",
+          token: "e2e-distinct-codez-jwt",
           user: { user_id: "e2e-user", name: "Fixture User" },
           bigmodel: { access_token: "e2e-business-access-token" },
         };
@@ -111,7 +111,7 @@ export async function prepareAccessToken401Fixture(options: {
             },
           ],
         };
-      } else if (path.endsWith("/api_keys")) data = [{ apiKey: "key-e2e", name: "zcode-api-key" }];
+      } else if (path.endsWith("/api_keys")) data = [{ apiKey: "key-e2e", name: "codez-api-key" }];
       else if (path.endsWith("/access_tokens")) {
         tokenRequests++;
         data = {
@@ -182,7 +182,7 @@ export async function prepareAccessToken401Fixture(options: {
       // 只记录是否匹配合成登录凭据，避免 token 原文进入测试产物。
       if (
         request.headers.authorization?.replace(/^Bearer\s+/i, "") ===
-        (sharedJwt ? "e2e-distinct-zcode-jwt" : "e2e-business-access-token")
+        (sharedJwt ? "e2e-distinct-codez-jwt" : "e2e-business-access-token")
       )
         businessRequestCount++;
       if (rejected) {
@@ -213,7 +213,7 @@ export async function prepareAccessToken401Fixture(options: {
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("OAuth fixture 缺少监听端口");
   const baseUrl = `http://127.0.0.1:${address.port}`;
-  // 用独立 origin 模拟业务域与 ZCode API，避免来源头和端点改写影响业务核验回归。
+  // 用独立 origin 模拟业务域与 Codez API，避免来源头和端点改写影响业务核验回归。
   const controlServer = preserveSession
     ? createServer((_request, response) => {
         response.setHeader("content-type", "application/json");
@@ -235,14 +235,14 @@ export async function prepareAccessToken401Fixture(options: {
     controlBaseUrl = `http://127.0.0.1:${controlAddress.port}`;
   }
   const envPatch = {
-    ZCODE_E2E_ACCESS_TOKEN_401_URL: baseUrl,
+    CODEZ_E2E_ACCESS_TOKEN_401_URL: baseUrl,
     BIGMODEL_API_BASE_URL: baseUrl,
     BIGMODEL_OAUTH_USERINFO_URL: `${baseUrl}/api/biz/customer/getCustomerInfo`,
     ZAI_BUSINESS_BASE_URL: baseUrl,
     ZAI_OAUTH_USERINFO_URL: `${baseUrl}${preserveSession ? "/api/oauth/userinfo" : "/api/biz/customer/getCustomerInfo"}`,
-    ZCODE_BASE_URL: controlBaseUrl,
-    ZCODE_TEST_BASE_URL: controlBaseUrl,
-    ZCODE_ENDPOINT_ORIGIN: controlBaseUrl,
+    CODEZ_BASE_URL: controlBaseUrl,
+    CODEZ_TEST_BASE_URL: controlBaseUrl,
+    CODEZ_ENDPOINT_ORIGIN: controlBaseUrl,
   };
   const previous = Object.fromEntries(Object.keys(envPatch).map((key) => [key, process.env[key]]));
   Object.assign(process.env, envPatch);
@@ -259,10 +259,10 @@ export async function prepareAccessToken401Fixture(options: {
               id: "e2e-user",
               username: "Fixture User",
               displayName: "Fixture User",
-              ...(projectRecovery ? { rawProfile: { zcodeProfileSchemaVersion: 2 } } : {}),
+              ...(projectRecovery ? { rawProfile: { codezProfileSchemaVersion: 2 } } : {}),
             },
       ),
-      zcodejwttoken: "e2e-distinct-zcode-jwt",
+      codezjwttoken: "e2e-distinct-codez-jwt",
       "bot:e2e:credential": "e2e-independent-bot-token",
       ...(projectRecovery
         ? {

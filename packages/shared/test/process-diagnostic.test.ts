@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  parseZCodeProcessDiagnostic,
-  ZCODE_PROCESS_DIAGNOSTIC_PREFIX,
-  ZCODE_PROCESS_DIAGNOSTIC_MAX_LINE_CHARS,
-} from "@zcode/shared/process-diagnostic";
-import { hostResponseMessageSchema } from "@zcode/shared";
+  parseCodezProcessDiagnostic,
+  CODEZ_PROCESS_DIAGNOSTIC_PREFIX,
+  CODEZ_PROCESS_DIAGNOSTIC_MAX_LINE_CHARS,
+} from "@codez/shared/process-diagnostic";
+import { hostResponseMessageSchema } from "@codez/shared";
 
 const diagnostic = {
   version: 1,
@@ -19,8 +19,8 @@ const diagnostic = {
 
 describe("CLI process diagnostic contract", () => {
   it("preserves multiline stack in one stderr frame and validates Host IPC", () => {
-    const line = ZCODE_PROCESS_DIAGNOSTIC_PREFIX + JSON.stringify(diagnostic);
-    expect(parseZCodeProcessDiagnostic(line)).toEqual(diagnostic);
+    const line = CODEZ_PROCESS_DIAGNOSTIC_PREFIX + JSON.stringify(diagnostic);
+    expect(parseCodezProcessDiagnostic(line)).toEqual(diagnostic);
     expect(
       hostResponseMessageSchema.parse({
         type: "agent-process-exception",
@@ -42,15 +42,15 @@ describe("CLI process diagnostic contract", () => {
       { ...diagnostic, message: "x".repeat(4001) },
     ]) {
       expect(
-        parseZCodeProcessDiagnostic(ZCODE_PROCESS_DIAGNOSTIC_PREFIX + JSON.stringify(value)),
+        parseCodezProcessDiagnostic(CODEZ_PROCESS_DIAGNOSTIC_PREFIX + JSON.stringify(value)),
       ).toBeUndefined();
     }
     for (const line of [
       "Error: ordinary stderr",
-      ZCODE_PROCESS_DIAGNOSTIC_PREFIX + "{",
-      ZCODE_PROCESS_DIAGNOSTIC_PREFIX + "x".repeat(ZCODE_PROCESS_DIAGNOSTIC_MAX_LINE_CHARS),
+      CODEZ_PROCESS_DIAGNOSTIC_PREFIX + "{",
+      CODEZ_PROCESS_DIAGNOSTIC_PREFIX + "x".repeat(CODEZ_PROCESS_DIAGNOSTIC_MAX_LINE_CHARS),
     ]) {
-      expect(parseZCodeProcessDiagnostic(line)).toBeUndefined();
+      expect(parseCodezProcessDiagnostic(line)).toBeUndefined();
     }
   });
 });

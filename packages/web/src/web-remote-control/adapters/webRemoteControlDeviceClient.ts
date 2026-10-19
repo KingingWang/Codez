@@ -3,7 +3,7 @@ import {
   WebRemoteControlV2ConnectionError,
   parseWebRemoteControlRelayV2HttpResponse,
   type WebRemoteControlRelayV2Device,
-} from "@zcode/shared/web-remote-relay";
+} from "@codez/shared/web-remote-relay";
 
 /** 列表只是当前账号的在线快照；不缓存 JWT、设备元数据或失败响应正文。 */
 export function createWebRemoteControlDeviceClient(origin: string, fetcher = fetch) {

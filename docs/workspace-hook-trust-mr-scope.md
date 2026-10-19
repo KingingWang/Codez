@@ -11,12 +11,12 @@ hooks 从可执行配置中剥离（一律忽略）；本 MR 在此之上建立�
 
 - 项目 hook 声明规范化为 immutable `HookBundleSnapshot`，逐条计算 `hookDeclarationDigest`；
 - 持久 Trust 以 `workspaceIdentity + hookDeclarationDigest` 为 key 存用户侧 trust store
-  （`~/.zcode/security/workspace-hook-trust-v1.json`，workspace 文件不能自授信任）；
+  （`~/.codez/security/workspace-hook-trust-v1.json`，workspace 文件不能自授信任）；
 - **软门禁**：未信任 hook 不阻塞 turn——本轮跳过并上报 `HookRunBlocked`，聊天底部出现
   pending banner，用户在 `设置 → 钩子` 逐条点"信任"；信任只作用于未来自然事件，已跳过的
   SessionStart 不补跑；声明语义变化 → digest 变化 → 旧 Trust 失效；
 - managed policy deny 优先；无 capable host、store 损坏、snapshot mismatch 全部 fail-closed；
-- headless/CLI 通过 `zcode hooks trust status|grant|revoke` 操作。
+- headless/CLI 通过 `codez hooks trust status|grant|revoke` 操作。
 
 语义权威 spec：`docs/specs/workspace-hook-trust-persistent-only.md`（v2 只保留"对单条精确
 声明的逐条持久 Trust"一种授权，删除 v1 的 allow_once/trust_all/keep_blocked 多态授权）。
@@ -31,7 +31,7 @@ hooks 从可执行配置中剥离（一律忽略）；本 MR 在此之上建立�
 ├─ Shared ─────────────────────────────────────────────────────────┤
 │ v4 协议投影 workspaceHookAdmission/review · discovery · store     │  30 files
 │ 文件 schema（单源权威，contracts re-export）                      │
-├─ Bootstrap（apps/zcode-cli）─────────────────────────────────────┤
+├─ Bootstrap（apps/codez-cli）─────────────────────────────────────┤
 │ app 装配 · review controller/supervisor · pretrust RPC ·         │  46 files
 │ CLI status/grant/revoke · v4 commands handlers                   │
 ├─ Core ───────────────────────────────────────────────────────────┤
@@ -39,7 +39,7 @@ hooks 从可执行配置中剥离（一律忽略）；本 MR 在此之上建立�
 │ admission（软门禁+HookRunBlocked）· review flow · policy/telemetry│
 ├─ Contracts / Adapters / CLI ─────────────────────────────────────┤
 │ trust store 文件/记录/decision schema · 原子持久化（rename 重试） │  26 files
-│ · zcode hooks trust 命令                                         │
+│ · codez hooks trust 命令                                         │
 ├─ Desktop E2E ────────────────────────────────────────────────────┤
 │ HK05–HK07 manual-review pending spec + fixture + wdio 冷启动接线  │   3 files
 ├─ Docs / Scripts ─────────────────────────────────────────────────┤
@@ -52,25 +52,25 @@ hooks 从可执行配置中剥离（一律忽略）；本 MR 在此之上建立�
 
 | 模块 | 规模 | 核心内容 |
 | --- | --- | --- |
-| **bootstrap** | 46 files +6,879−337 | review flow 唯一生产入口 `requestReview`（controller L607：flow 复用/supervisor/串行队列/deadline 收口）；workspace 级 Settings pretrust RPC（v2 新增，无 session 场景，managed policy 校验后落盘）；`zcode hooks trust` CLI 域逻辑（status 对 corrupt 显式 `workspace_hooks_trust_store_corrupt`）；v4 protocol commands 接线 |
+| **bootstrap** | 46 files +6,879−337 | review flow 唯一生产入口 `requestReview`（controller L607：flow 复用/supervisor/串行队列/deadline 收口）；workspace 级 Settings pretrust RPC（v2 新增，无 session 场景，managed policy 校验后落盘）；`codez hooks trust` CLI 域逻辑（status 对 corrupt 显式 `workspace_hooks_trust_store_corrupt`）；v4 protocol commands 接线 |
 | **core** | 31 files +3,480−358 | 信任域三件套（types/domain/records）；`evaluateWorkspaceHookEntry`（`effectiveRunnable = admitted && configuredEnabled && policy != deny`）；per-workspace coordinator（security revision、policy 订阅）；runtime admission（pending 上报 `{pendingCount,bundleDigest,workspaceIdentity}`）；runner 软门禁发 `HookRunBlocked`（reasonCode `workspace_hooks_pending_trust`，不阻塞 turn） |
-| **shared** | 30 files +2,625−55 | v4 协议：`zcode-protocol-v4/workspace-hook-review`（decision/target/payload）、snapshot/delta 增量字段 `workspaceHookAdmission`（additive, default null）；discovery 对齐；**store 文件 schema 单源** `workspace-hook-trust-store-file.ts`（CR-01 修复的落点） |
+| **shared** | 30 files +2,625−55 | v4 协议：`codez-protocol-v4/workspace-hook-review`（decision/target/payload）、snapshot/delta 增量字段 `workspaceHookAdmission`（additive, default null）；discovery 对齐；**store 文件 schema 单源** `workspace-hook-trust-store-file.ts`（CR-01 修复的落点） |
 | **ui** | 27 files +2,524−103 | `HooksSection`/`HooksList` 行内信任交互（未信任行：[信任]按钮 + 锁定关闭 Switch，无状态徽章/无批量动作）；`useWorkspaceHookInlineTrust`（RPC 必须路由到 target workspace 的 host，防越界）；`WorkspaceHookPendingBanner`（[去审核]/[忽略]，忽略为 renderer 本地 dismiss）；review store；reasonCode→i18n 映射 |
 | **services** | 18 files +1,575−240 | `hooksService` 读 workspace 配置 + trust store（v2 终态：完整 strict schema，与 runtime/adapters 同判；异步 ENOENT 区分）；workspace hook 设置模型（discovery→UI 行）；trust store corrupt 上报 `trustStoreCorrupt` |
 | **adapters** | 11 files +1,432−83 | 文件 trust store：原子写（temp+fsync+rename，Windows EPERM/EBUSY 有界重试）、文件锁+stale 清理、corrupt 改名恢复（`*.corrupt-<ts>`）、revoke 空数组拒绝、compact |
 | **contracts** | 6 files +724−2 | digest schema v1、review timeout、`WorkspaceHookTrustState`/admission class/reasonCode 枚举、effective state schema、bundle snapshot schema、review flow state、store 文件 schema（现为 shared re-export）、policy schema |
-| **cli** | 9 files +610−20 | `zcode hooks trust status|review|grant|revoke` 命令（--workspace/--hook-digest/--all-current/--bundle-digest/--json）；human 输出含 pending 的 grant 指引与 corrupt 的恢复指引 |
+| **cli** | 9 files +610−20 | `codez hooks trust status|review|grant|revoke` 命令（--workspace/--hook-digest/--all-current/--bundle-digest/--json）；human 输出含 pending 的 grant 指引与 corrupt 的恢复指引 |
 | **desktop** | 5 files | HK05–HK07 正式 e2e + fixture helper + wdio.conf 冷启动接线 + case-local provider fixture/manifest |
 | **docs** | 13 files +5,005−27 | 主 spec `workspace-hook-trust.md`、语义权威 `workspace-hook-trust-persistent-only.md`、软门禁设计 `workspace-hook-trust-soft-gate.md`、用户指南（含 corrupt 恢复）、人工验收手册、conversation-session case catalog（HK05–07）+ coverage matrix、改动范围文档（本文件） |
 | **scripts** | 1 file +258 | `create-workspace-hook-trust-uat-fixture.mjs`：生成无害 UAT workspace（3 条声明 + executions.jsonl recorder），`--verify` 现场防漂移 |
-| **根/其他** | 2 files +137 | `pnpm-lock.yaml`（contracts 新增 `@zcode/shared` workspace 依赖）；`.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml`（特性图登记） |
+| **根/其他** | 2 files +137 | `pnpm-lock.yaml`（contracts 新增 `@codez/shared` workspace 依赖）；`.agents/skills/feature-boundary-planner/references/codez-feature-graph.yaml`（特性图登记） |
 
 ## 3. 关键设计决策
 
 1. **v2 = persistent-only**（`141ebf7bda`）：删除 v1 多态授权状态机（allow_once/trust_all/
    keep_blocked/timeout 自动决策/SessionStart 补跑/独立审核面板），只保留逐条精确持久
    Trust。决策契约收敛为 `{ action: "trust_selected"; reviewItemIds }`。
-2. **trust store schema 单源**（CR-01）：schema 下沉 `@zcode/shared`（zod4），contracts
+2. **trust store schema 单源**（CR-01）：schema 下沉 `@codez/shared`（zod4），contracts
    re-export（zod3 侧不组合引用），services/runtime/CLI 对同一文件同判——JSON 语法错误
    与结构非法（缺 schemaVersion/必需字段、非法 decision/时间戳、未知字段）一律 corrupt
    fail-closed，corrupt 下不展示任何 trusted_persistent。
@@ -112,7 +112,7 @@ MR 中存在一处与 hook trust 非同域但有逻辑耦合的 v4 改动，在�
 ## 5. 兼容性说明
 
 - 协议增量均为 additive（v4 snapshot/delta 新字段 default null），旧客户端可忽略。
-- 已有 zcode.json/.zcode/config.json 的用户升级后：项目 hook 从"被安全策略忽略"变为
+- 已有 codez.json/.codez/config.json 的用户升级后：项目 hook 从"被安全策略忽略"变为
   "待信任软门禁"，首次会在设置页看到逐条信任入口——行为变化符合预期且有 banner 引导。
 - 桌面 continuous 与手机 replayable 链路：trust 判定在共享 runtime/services 层完成，
   未改动 stream/snapshot/队列/owner 语义；手机端走同一 review RPC 与同一 trust store。

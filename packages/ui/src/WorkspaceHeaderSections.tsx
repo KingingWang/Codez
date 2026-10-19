@@ -14,13 +14,13 @@ import {
   parseRemoteWorkspaceIdentity,
   remoteHostIdFromWorkspaceIdentity,
   type RemoteTarget,
-  type ZCodeTaskMeta,
-} from "@zcode/shared";
+  type CodezTaskMeta,
+} from "@codez/shared";
 import {
   TID_WORKSPACE_MORE_BUTTON,
   TID_WORKSPACE_PATH,
   TID_WORKSPACE_TITLE,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { useMemo, useRef, useState } from "react";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { cn } from "@/components/lib/utils.js";
@@ -38,7 +38,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   formatRemoteWorkspaceDisplayLabel,
   formatRemoteWorkspaceHeaderHostLabel,
@@ -54,14 +54,14 @@ import type {
   WorkspaceHeaderTitleSectionProps,
 } from "@/WorkspaceHeaderSections/shared.js";
 import { applyTaskQueryCacheMutation } from "@/store/taskQueryCacheStore.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { TaskRenameDialog } from "@/TaskRenameDialog.js";
 import {
   RemoteSyncDialogs,
   RemoteSyncMenuItems,
   shouldShowRemoteSyncActions,
 } from "@/settings/RemoteSyncActions.js";
-import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/zcodeDraftSkillInvalidation.js";
+import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/codezDraftSkillInvalidation.js";
 import { refreshSharedSkillStoreForWorkspace } from "@/lib/skillStoreRefresh.js";
 import { refreshWorkspacePluginCapabilitiesAfterRemoteSync } from "@/lib/remotePluginSyncRefresh.js";
 import { useMcpStore } from "@/store/mcpStore.js";
@@ -120,19 +120,19 @@ export function WorkspaceHeaderTitleSection({
   simplifyForNarrowRemote = false,
   compact = false,
 }: WorkspaceHeaderTitleSectionProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
   const confirmDialog = useConfirmDialog();
   const services = useWorkspaceServices(workspaceAbsPath, remoteSessionId, workspaceIdentity);
   const baseServices = useBaseWorkspaceServices();
-  const removeTaskState = useZCodeSessionStore((state) => state.removeTaskState);
-  const upsertOptimisticTaskListItem = useZCodeSessionStore(
+  const removeTaskState = useCodezSessionStore((state) => state.removeTaskState);
+  const upsertOptimisticTaskListItem = useCodezSessionStore(
     (state) => state.upsertOptimisticTaskListItem,
   );
-  const removeOptimisticTaskListItem = useZCodeSessionStore(
+  const removeOptimisticTaskListItem = useCodezSessionStore(
     (state) => state.removeOptimisticTaskListItem,
   );
-  const setTaskUnreadIndicator = useZCodeSessionStore((state) => state.setTaskUnreadIndicator);
+  const setTaskUnreadIndicator = useCodezSessionStore((state) => state.setTaskUnreadIndicator);
   const [taskMenuOpen, setTaskMenuOpen] = useState(false);
   const [workspaceContextOpen, setWorkspaceContextOpen] = useState(false);
   const [renamingTaskId, setRenamingTaskId] = useState<string | null>(null);
@@ -314,9 +314,9 @@ export function WorkspaceHeaderTitleSection({
   };
 
   const buildHeaderTaskSnapshot = (
-    fallbackTask: ZCodeTaskMeta,
-    overrides?: Partial<ZCodeTaskMeta>,
-  ): ZCodeTaskMeta => {
+    fallbackTask: CodezTaskMeta,
+    overrides?: Partial<CodezTaskMeta>,
+  ): CodezTaskMeta => {
     if (activeTaskMeta) {
       return {
         ...activeTaskMeta,
@@ -344,7 +344,7 @@ export function WorkspaceHeaderTitleSection({
     }
 
     try {
-      const renamedTask = await services.zcodeTaskService.renameTask({
+      const renamedTask = await services.codezTaskService.renameTask({
         taskId: renamingTaskId,
         workspacePath: workspaceAbsPath,
         title: normalizedTitle,
@@ -391,14 +391,14 @@ export function WorkspaceHeaderTitleSection({
     }
 
     handleCancelRenameTask();
-    void services.zcodeTaskService
+    void services.codezTaskService
       .archiveTask({
         taskId: resolvedTaskActionTaskId,
         workspacePath: workspaceAbsPath,
         ...(workspaceIdentity ? { workspaceIdentity } : {}),
       })
       .then((meta) => {
-        // Header 更多菜单不能只依赖 zcodeTaskMetaMerge：归档后只有旧列表状态被更新。
+        // Header 更多菜单不能只依赖 codezTaskMetaMerge：归档后只有旧列表状态被更新。
         // 这里改成和 Sidebar 一样同步清理运行态与 sqlite cache，避免 Header 操作后列表不刷新。
         removeTaskState(workspaceAbsPath, resolvedTaskActionTaskId, workspaceIdentity);
         applyTaskQueryCacheMutation({
@@ -619,7 +619,7 @@ export function WorkspaceHeaderTitleSection({
                       nextState: { pinned: !isPinned, archived: false },
                     });
                   }
-                  void services.zcodeTaskService
+                  void services.codezTaskService
                     .setTaskPinned({
                       taskId: resolvedTaskActionTaskId,
                       workspacePath: workspaceAbsPath,
@@ -659,7 +659,7 @@ export function WorkspaceHeaderTitleSection({
                   if (!resolvedTaskActionTaskId) {
                     return;
                   }
-                  void services.zcodeTaskService
+                  void services.codezTaskService
                     .setTaskUnread({
                       taskId: resolvedTaskActionTaskId,
                       workspacePath: workspaceAbsPath,
@@ -746,8 +746,8 @@ export function WorkspaceHeaderTitleSection({
           remoteMcpSyncService={services.mcpSyncService}
           localPluginSyncService={baseServices.pluginSyncService}
           remotePluginSyncService={services.pluginSyncService}
-          localZCodeAgentService={baseServices.zcodeAgentService}
-          remoteZCodeAgentService={services.zcodeAgentService}
+          localCodezAgentService={baseServices.codezAgentService}
+          remoteCodezAgentService={services.codezAgentService}
           remoteTarget={remoteTarget}
           skillWorkspacePath={workspaceAbsPath}
           mcpWorkspacePath={workspaceAbsPath}
@@ -784,7 +784,7 @@ export function WorkspaceHeaderTitleSection({
               skillsService: services.skillsService,
               workspaceIdentity,
               workspacePath: workspaceAbsPath,
-              zcodeAgentService: services.zcodeAgentService,
+              codezAgentService: services.codezAgentService,
             });
           }}
         />

@@ -1,5 +1,5 @@
 import { disconnectRemoteSource } from "#e2e/helpers/remote-project-actions";
-import { TID_SSH_PASSWORD_INPUT } from "@zcode/shared/test-ids";
+import { TID_SSH_PASSWORD_INPUT } from "@codez/shared/test-ids";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 import {
   clearAppData,

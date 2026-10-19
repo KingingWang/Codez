@@ -16,9 +16,9 @@ MR 说明至少列出模板与型号增删、默认启停、能力/Map/URL 的�
 | 验证       | 实际命令及结果，Key/地区/套餐/协议矩阵，未验证项；bugfix 对应回归用例，有交互变化时附证据              |
 | 风险与回滚 | 旧实例、个人覆盖、目标客户端版本、上线方式和恢复方案                                                   |
 
-提交标题采用 `<type>(<scope>): <subject>`，例如文档整理使用 `docs(provider)`；内容变更与纯文档区分。文件规模来自 `git diff --shortstat origin/staging...HEAD`，描述契约以仓库 `zcode-mr` skill 为准，不能编造根因、反馈关联或验证结果。
+提交标题采用 `<type>(<scope>): <subject>`，例如文档整理使用 `docs(provider)`；内容变更与纯文档区分。文件规模来自 `git diff --shortstat origin/staging...HEAD`，描述契约以仓库 `codez-mr` skill 为准，不能编造根因、反馈关联或验证结果。
 
-创建/更新 MR 使用仓库 `zcode-mr` 工具：在干净的特性分支先运行 `python3 .agents/skills/zcode-mr/scripts/zcode_git_workflow.py setup` 检查认证，将五章描述写入临时 UTF-8 文件，再运行 `python3 .agents/skills/zcode-mr/scripts/zcode_git_workflow.py mr --description-file <描述文件> staging`。工具会保留 push hook、查找同源/目标 MR 并只在缺少时创建。检查返回的真实 MR URL；仅生成预填链接不算创建成功。已有 MR 的正文变化还需通过 glab 更新并核对。认证失败保留本地成果，不把凭据写入描述或命令。
+创建/更新 MR 使用仓库 `codez-mr` 工具：在干净的特性分支先运行 `python3 .agents/skills/codez-mr/scripts/codez_git_workflow.py setup` 检查认证，将五章描述写入临时 UTF-8 文件，再运行 `python3 .agents/skills/codez-mr/scripts/codez_git_workflow.py mr --description-file <描述文件> staging`。工具会保留 push hook、查找同源/目标 MR 并只在缺少时创建。检查返回的真实 MR URL；仅生成预填链接不算创建成功。已有 MR 的正文变化还需通过 glab 更新并核对。认证失败保留本地成果，不把凭据写入描述或命令。
 
 普通目录改动走配置 MR；新协议、Access、Adapter、Logo 资源或 UI 行为需要对应代码和测试，不能以“只是模型更新”省略检查。缺 Key 的变更在 MR 中清楚保留待验证，是否接受例外由负责角色明确决定。
 
@@ -36,7 +36,7 @@ MR 说明至少列出模板与型号增删、默认启停、能力/Map/URL 的�
 ## 随版本交付
 
 1. 合并后的正式源和派生测试源分别通过检查。
-2. 按真实 `ZCODE_ENV` 构建，检查实际包内/嵌入内容的 revision、hash 和目标模板，不只看源码。环境选源、Desktop/CLI/SEA/Server 资源位置及缓存要求见本目录[配置规范](./configuration.md#构建选源与最终资源)。
+2. 按真实 `CODEZ_ENV` 构建，检查实际包内/嵌入内容的 revision、hash 和目标模板，不只看源码。环境选源、Desktop/CLI/SEA/Server 资源位置及缓存要求见本目录[配置规范](./configuration.md#构建选源与最终资源)。
 3. 记录包含该提交的产品版本与测试/生产产物，确认安装后目标 Host 采用的配置；已有更高 revision 的有效缓存可能继续优先，不能仅因包升级就推断生效。
 4. 按本次变更检查新增实例与已有继承实例、个人覆盖和模型实际请求。记录未覆盖的平台/远程模式。
 
@@ -67,7 +67,7 @@ sequenceDiagram
 4. 验证实际客户端的下载结果、Active revision、完整 Registry 和后续创建 Model 的请求。成功下载不是成功采用，页面列表变化也不代表所有调用方已更新。
 5. 观察受影响入口的鉴权、参数拒绝、工具流和用户反馈；按下述边界恢复。记录采用证据，更新工作项交付状态。
 
-下载器限制 HTTPS、无 URL userinfo、无重定向，不携带账号 Token/Key；两次请求总预算 20 秒，正文按实际字节限制为 10,000,000。以[下载实现](../../packages/provider-node/src/zcode-builtin-download.ts)为准，不复制一套发布客户端。
+下载器限制 HTTPS、无 URL userinfo、无重定向，不携带账号 Token/Key；两次请求总预算 20 秒，正文按实际字节限制为 10,000,000。以[下载实现](../../packages/provider-node/src/codez-builtin-download.ts)为准，不复制一套发布客户端。
 
 ## 生效与恢复边界
 
@@ -79,4 +79,4 @@ sequenceDiagram
 - Personal 意图不被覆盖，已有执行 Model 不原地变更；不要承诺当前请求或所有存量运行立即切换。
 - 回退发布**更高 revision 的已验证旧行为/纠正内容**。仅把 URL 指回低 revision 不能让已经升级的客户端回退；客户端代码不兼容则需要修正版客户端或经过验证的投放限制。
 
-实现核验：[Release Source](../../packages/provider-node/src/zcode-builtin-provider-config-source.ts)、[刷新协调](../../packages/provider-node/src/zcode-builtin-remote-synchronizer.ts)、[Registry 版本配对](../../packages/provider/src/registry-service.ts)。本轮没有查询当前线上指针；任何历史线上 revision 都不能代替今天的生产状态。
+实现核验：[Release Source](../../packages/provider-node/src/codez-builtin-provider-config-source.ts)、[刷新协调](../../packages/provider-node/src/codez-builtin-remote-synchronizer.ts)、[Registry 版本配对](../../packages/provider/src/registry-service.ts)。本轮没有查询当前线上指针；任何历史线上 revision 都不能代替今天的生产状态。

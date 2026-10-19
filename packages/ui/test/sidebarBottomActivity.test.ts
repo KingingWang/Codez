@@ -10,7 +10,7 @@ import {
 } from "@/global-notice/globalNoticeStore.js";
 import { isMarketingBannerRenderable } from "@/components/marketing-touch/marketingTouchController.js";
 import type { MarketingTouchController } from "@/components/marketing-touch/marketingTouchController.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 // 领 token banner 的真实渲染树依赖 iframe/cloud-hero/intl，已由 marketingBanner.test.ts 覆盖；
 // 这里只验仲裁选择，故把 MarketingBanner 换成轻量桩，保留真实的 useMarketingBannerVisible 与 Context。
@@ -84,7 +84,7 @@ const renderableBanner = {
 function renderActivity(controller: MarketingTouchController, noticeStore: GlobalNoticeStore) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(
         MarketingTouchContext.Provider,

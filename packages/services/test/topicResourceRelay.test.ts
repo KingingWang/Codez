@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createTopicResourceRelay } from "../src/zcode-agent/topicResourceRelay.js";
+import { createTopicResourceRelay } from "../src/codez-agent/topicResourceRelay.js";
 
 const request = {
   requestId: "read-a",

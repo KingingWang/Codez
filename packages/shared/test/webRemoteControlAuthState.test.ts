@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { webRemoteControlAuthStateChangeSchema } from "@zcode/shared";
+import { webRemoteControlAuthStateChangeSchema } from "@codez/shared";
 
 describe("renderer 远控登录通知契约", () => {
   it.each(["signed-in", "signed-out"])("接受 %s 事件", (state) => {

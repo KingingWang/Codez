@@ -40,7 +40,7 @@ import {
 } from "../../../helpers/v4-conversation.js";
 
 const CASE_MARKER = "E2E_R3_MODEL_SWITCH";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-model-switch");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-model-switch");
 const PROVIDER_B_ID = "e2e-r3-model-switch-b";
 const PROVIDER_B_NAME = "R3 Model Switch B";
 const MODEL_B_ID = "e2e-r3-model-b";
@@ -83,7 +83,7 @@ describe(`${CASE_MARKER}: 慢回合中切换模型、fork/edit 与远端历史`,
     });
     const remoteConfig = await runSSHCommand(
       prepared.config,
-      'cat "$HOME/.zcode/v2/provider_config.json"',
+      'cat "$HOME/.codez/v2/provider_config.json"',
     );
     expect(remoteConfig.stdout).toContain(PROVIDER_B_NAME);
 

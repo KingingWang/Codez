@@ -18,7 +18,7 @@ CLI 命令解析 ── JSONL control contract ──> Supervisor
 - Supervisor 测试使用可控 fake Core process，并补真实 `fork()` spawn error 进程测试，验证 ready、heartbeat、shutdown-ack、异常退出、重启退避、回滚和 crash-loop 熔断；并发生命周期写操作只能有一个 owner，SIGKILL 后无终态进入 `stop-failed` 且不得释放锁或启动替代 Core，旧 child/generation 的消息不得污染当前状态。
 - Core HTTP/WS 合同测试验证回环动态端口、`/api/server-info`、Web replayable `/ws`、capability-gated desktop continuous `/ws/host`，并检查 `clientMode` 不串线。
 - 平台测试不调用真实系统服务管理器：检查 macOS launchd、Linux systemd user、Windows Task Scheduler descriptor 的稳定字段和命令参数。
-- update/uninstall 测试只允许删除带有效 `install.json` ownership 的 server root 内 ZCode allowlist，明确保留 root 内未知文件、workspace、git repo 和其他用户文件；无 ownership 时必须拒绝。
+- update/uninstall 测试只允许删除带有效 `install.json` ownership 的 server root 内 Codez allowlist，明确保留 root 内未知文件、workspace、git repo 和其他用户文件；无 ownership 时必须拒绝。
 
 ## 用例映射
 
@@ -43,7 +43,7 @@ CLI 命令解析 ── JSONL control contract ──> Supervisor
 
 ## SSH 远端部署验证（第 2 层，R3 SSH Transport 预演）
 
-`packages/zcode-server-cli/scripts/verify-remote-ssh.mjs` 把 staged 发行包部署到带 sshd 的
+`packages/codez-server-cli/scripts/verify-remote-ssh.mjs` 把 staged 发行包部署到带 sshd 的
 Ubuntu 22.04 容器，从本机经 `ssh -L` 隧道验证完整链路。R3 收尾后该脚本与真实
 `proxy-stdio` 容器验证保留为发布前人工 Transport 门禁，不进入默认 GitLab CI。默认路径使用 systemd
 user service 验证注册、自启动与状态；本地环境无法运行 privileged systemd 容器时可显式传
@@ -51,19 +51,19 @@ user service 验证注册、自启动与状态；本地环境无法运行 privil
 
 此外，已使用 `linux-amd64-dev`（SSH 用户 `dev`）完成 Linux x64 实机验证：解压约 74 MB
 发行包后，`serve --daemon`、status/stop、在线全量更新及 Supervisor/Core/Agent release 收敛、带 archive SHA 与内容 hash 校验的
-组件增量更新、坏 release 回滚、`node-pty`、`@zcode/tui`/`playwright-core`/`koffi` 动态加载，
+组件增量更新、坏 release 回滚、`node-pty`、`@codez/tui`/`playwright-core`/`koffi` 动态加载，
 以及 bfs/rg/ugrep 和七个随包官方插件均已通过。
 
 ```bash
-pnpm --filter @zcode/server-cli stage --target linux-arm64
-node packages/zcode-server-cli/scripts/verify-remote-ssh.mjs --target linux-arm64   # --keep 保留现场
+pnpm --filter @codez/server-cli stage --target linux-arm64
+node packages/codez-server-cli/scripts/verify-remote-ssh.mjs --target linux-arm64   # --keep 保留现场
 ```
 
 ```text
 本机                                     容器 (ubuntu 22.04 + sshd)
 ────                                     ─────────────────────────
-stage 产物 tar.gz ──scp──────────────>   解压 /root/zcode-server
-ssh "bin/zcode serve --daemon --json" >  Supervisor+Core ready（仅回环+动态端口）
+stage 产物 tar.gz ──scp──────────────>   解压 /root/codez-server
+ssh "bin/codez serve --daemon --json" >  Supervisor+Core ready（仅回环+动态端口）
 ssh -L <local>:127.0.0.1:<port> ─────>   隧道（Core 只监听回环，隧道是唯一到达路径）
 fetch /api/server-info               ✓
 WS /ws replayable 升级               ✓
@@ -91,7 +91,7 @@ ssh status → stop → stopped          ✓
 - update 进入 ready timeout 时必须先停止仍存活的新 Core，再恢复旧 current pointer 并启动旧 Core；SIGKILL 后仍未观察到 exit/close 则进入 `stop-failed` 并保留锁，禁止双 Core 并存。
 - update 的候选 Core ready 只完成第一阶段验证；旧 Supervisor 退出、目标 release daemon ready 且 control runtime identity 全部一致后才能返回成功。identity 不一致必须停止候选 daemon、恢复 previous pointer 并重启旧 release。
 - `serve --daemon` 只允许一个 OS service owner；服务 entry 不得重复注册或并行启动第二个 Supervisor，注册失败必须返回错误，显式 fallback 必须报告 `serviceRegistered=false`。
-- service descriptor 必须使用 `<serverRoot>/bin/zcode` 稳定入口并显式携带 `--server-root`；service identity 与 descriptor 文件名按 canonical root 隔离，自定义 root 的真实 daemon 测试必须确认默认 root 没有副作用。
+- service descriptor 必须使用 `<serverRoot>/bin/codez` 稳定入口并显式携带 `--server-root`；service identity 与 descriptor 文件名按 canonical root 隔离，自定义 root 的真实 daemon 测试必须确认默认 root 没有副作用。
 - Core-local activity tracker 必须从 Agent turn lifecycle facts 同时统计 desktop continuous 与 Web replayable；测试不得只伪造 Task facade 的 `activePromptInputIds`。
 - launchd 正常 stop 不得因无条件 KeepAlive 被自动拉起；异常退出仍保留服务管理器的重启能力。
 - 组件增量更新必须删除新 manifest 已移除组件的旧文件。

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { IChannel, IChannelClient } from "@zcode/rpc";
-import { ISourceServerManagementService } from "@zcode/services";
+import type { IChannel, IChannelClient } from "@codez/rpc";
+import { ISourceServerManagementService } from "@codez/services";
 import { RemoteServiceAccess } from "../src/remoteServiceAccess.js";
 
 const channel: IChannel = {

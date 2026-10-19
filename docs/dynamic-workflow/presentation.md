@@ -3,8 +3,8 @@
 Status: implemented. This document describes how a workflow is drawn, before and during a
 run: the display payload the tool hands the GUI, the timeline built from it, the live-run
 overlay, and the surfaces that show them. The analyzer that produces the graphs is
-`apps/zcode-cli/packages/dynamic-workflow/docs/analysis.md`; the engine that produces the run
-events is `apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md`; the launch
+`apps/codez-cli/packages/dynamic-workflow/docs/analysis.md`; the engine that produces the run
+events is `apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md`; the launch
 flow around the confirmation window is `docs/dynamic-workflow/launch.md`; the completion
 card, notifications and the script transcript are
 `docs/dynamic-workflow/transcript-and-notifications.md`.
@@ -40,13 +40,13 @@ Status is never colour alone. Every lamp sits next to a word or an icon with an
 
 The GUI never sees the analyzer's graphs. A bounding layer in `packages/core`,
 `boundCausalityGraph(causality, flow, handoff)`
-(`apps/zcode-cli/packages/core/src/tool/handlers/create-workflow-graph-bounds.ts`), folds the
+(`apps/codez-cli/packages/core/src/tool/handlers/create-workflow-graph-bounds.ts`), folds the
 causality graph, the control-flow graph and the hand-off graph into one display payload,
 `causalityGraph` (the field keeps its historical name). The same payload rides the
 confirmation request's `display` and the tool output that is persisted on the tool row, so
 the confirmation window, the tool row and the run pane read one contract. Three schemas
-mirror it field for field: `apps/zcode-cli/packages/contracts/src/tools/create-workflow.ts`
-(the authority), `packages/shared/src/zcode-protocol-v4/create-workflow-display.ts`, and the
+mirror it field for field: `apps/codez-cli/packages/contracts/src/tools/create-workflow.ts`
+(the authority), `packages/shared/src/codez-protocol-v4/create-workflow-display.ts`, and the
 v3 protocol; all are `.strict()`.
 
 ```ts
@@ -176,7 +176,7 @@ since 2026-09-21 the v4 envelope carries every display payload as
 still delivered (`docs/v4-refactor/10-protocol-spec.md` §4.4.5). Before that, a strict display
 failure rejected the entire frame and took the subscription down with it — twice, for one added
 key each time. Two exceptions are handled, both by the same pre-parse
-scrub in `apps/zcode-cli/packages/contracts/src/tools/tool-result-metadata.ts` that the two
+scrub in `apps/codez-cli/packages/contracts/src/tools/tool-result-metadata.ts` that the two
 parse entry points share. Displays persisted while the withdrawn name-refinement feature
 existed carry `refinedName` on lanes and phases and `refinedLabel` on steps, and those three
 keys are stripped. Persisted `get_workflow_run` displays carry `providerStop` on their
@@ -1144,7 +1144,7 @@ flagged lines are tinted warning, and below it the feedback card
 | Header | "Compiler feedback" / 「编译反馈」, and on the right "{n} notes" / 「{n} 条」 ("1 note") |
 | Sentence | "Typecheck did not pass, so nothing ran. The feedback went back to the model to revise and resubmit." / 「类型检查未通过，脚本未运行；反馈已交回模型，由它修改后重新提交。」 For a saved source the sentence names the file instead: "The saved workflow file did not pass typecheck, so nothing ran. The feedback went back to the model to fix the file or save a corrected version." / 「保存的工作流文件未通过类型检查，脚本未运行；反馈已交回模型，由它修改该文件或保存修正后的版本。」 |
 | One line per diagnostic | the `L{line}:C{col}` chip in subtle grey, the message in foreground, the code label in subtlest grey |
-| Code label | `TS{code}` for TypeScript; "rule {code}" / 「规则 {code}」 for the analyzer's own codes 9001–9099 (`apps/zcode-cli/packages/dynamic-workflow/docs/analysis.md`, "Diagnostics"), which are not TypeScript codes |
+| Code label | `TS{code}` for TypeScript; "rule {code}" / 「规则 {code}」 for the analyzer's own codes 9001–9099 (`apps/codez-cli/packages/dynamic-workflow/docs/analysis.md`, "Diagnostics"), which are not TypeScript codes |
 | Truncation | "Some diagnostics were omitted." when the payload is truncated, as before |
 
 ### The draft and the pen
@@ -1633,7 +1633,7 @@ transcript instead (`docs/dynamic-workflow/transcript-and-notifications.md`).
 Every engine event becomes a session event, `dynamic_workflow_run_progress`, appended to the
 **parent** session outside any turn, with payload `{runId, toolCallId?, sequence, eventType,
 payload, truncated?, actorSessionId?, resumable?}`. The v4 projection reduces it with
-`reduceWorkflowRunsState` (`packages/shared/src/zcode-protocol-v4/workflow-runs-reducer.ts`)
+`reduceWorkflowRunsState` (`packages/shared/src/codez-protocol-v4/workflow-runs-reducer.ts`)
 into the snapshot key `workflowRuns`, which every snapshot carries whole. On the wire an
 event sends only what it changed: one `workflowRun.updated` op naming the run, carrying the
 header fields that changed, the header keys that became absent, the actors and nodes the
@@ -1645,7 +1645,7 @@ schema knows — the clamp keeps the participants that are still going, since th
 rows the surfaces exist to show. The key carries its own
 `revision` and does not bump the conversation revision (a run in flight would otherwise fail
 every optimistic command). The journal that the events also go to is described in
-`apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md`.
+`apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md`.
 
 ```ts
 interface WorkflowRunsState { revision: number; runs: WorkflowRunState[] }   // ≤ 8 runs
@@ -1712,7 +1712,7 @@ nothing (byte-equal state) returns `null`, so a replayed event does not bump the
 | `node-progress` | updates `turn`, `toolCalls` and `lastTool` on the node that already exists, and nothing else — no phase, no step count, no actor status (a turn resolving is not a lifecycle transition). A field the payload does not carry readably keeps its known value; an instance the table does not hold (evicted at the bound, or progress before its `queued`) is ignored, like any other node event for an unknown instance. Last writer wins rather than a monotone max, so a re-queued ask may count down |
 | `report` | upsert by `(siteId, ordinal)` into `reports` with a serialized preview; touches no node, actor or count |
 | `artifact-published` | upsert by artifact id (a new version replaces its card), carrying `primary` when the record has it; `artifact-failed` is a no-op |
-| `usage-updated` | `usage.spentTokens` = the event's absolute total. The reset on `run-started` is momentary for a run that already cost something: the engine emits this event with the restored (resume) or inherited (amend) total right after `run-started`, before any live turn (`apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md`, "Usage accounting") |
+| `usage-updated` | `usage.spentTokens` = the event's absolute total. The reset on `run-started` is momentary for a run that already cost something: the engine emits this event with the restored (resume) or inherited (amend) total right after `run-started`, before any live turn (`apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md`, "Usage accounting") |
 | `escalation-raised` / `-resolved` | upsert or remove by `qid`; the key disappears when empty |
 | `concurrency-changed` | the `concurrency` block (`docs/dynamic-workflow/concurrency.md`) |
 | `run-caps-changed` | the run's own bound inside the same `concurrency` block, by the rule `run-started` uses: `limit` when the new `caps.maxConcurrency` differs from the payload's `concurrencyCeiling` (the default parallelism), cleared when it equals it, and `concurrency` dropped when the shared side has nothing to say either; `concurrencyCeiling` updated when readable; the shared cap, key and cooldown untouched (`docs/dynamic-workflow/concurrency.md`, "Retuning a live run") |
@@ -1945,7 +1945,7 @@ are skipped) and by `runId` (needed because `toolCallId` keeps pointing at the o
 `nodesSettled`, `nodesTotal`, `agents`, the whole run state, and `resumable`. Step counts
 are `settled / observed`: a workflow has no static total, so the denominator is the number
 of scheduled instances and never poses as a percentage. The pair comes from one helper in
-`packages/shared/src/zcode-protocol-v4/`, `workflowRunStepCounts(run)` — `nodes.length +
+`packages/shared/src/codez-protocol-v4/`, `workflowRunStepCounts(run)` — `nodes.length +
 usage.nodesUnlisted` observed, the settled entries plus `usage.nodesUnlistedSettled`
 settled — which the card join, the timeline summary and the TUI mirror all read, so a run
 past the node bound cannot show one total on the card and another in the pane. Opening a run

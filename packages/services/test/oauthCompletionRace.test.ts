@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BIGMODEL_PROVIDER_ID, type OAuthTokenSet } from "@zcode/shared";
+import { BIGMODEL_PROVIDER_ID, type OAuthTokenSet } from "@codez/shared";
 import { OAuthService } from "#src/oauth/oauthService.js";
 import { parseOAuthLoginAttribution } from "#src/oauth/callbackAttribution.js";
 
@@ -65,7 +65,7 @@ async function setup() {
         {
           providerId: BIGMODEL_PROVIDER_ID,
           meta: { id: BIGMODEL_PROVIDER_ID, displayName: "BigModel", enabled: true, order: 1 },
-          redirectUri: "zcode://oauth/callback",
+          redirectUri: "codez://oauth/callback",
           buildAuthorizeUrl: () => "",
           parseCallbackParams: parse,
           exchangeToken,
@@ -79,7 +79,7 @@ async function setup() {
   const started = await service.startOAuthWithPolling(BIGMODEL_PROVIDER_ID);
   expect(new URL(started.authorizeUrl).searchParams.get("channel_id")).toBe("launch");
   const callback =
-    "zcode://oauth/callback?state=race-state&code=code&channel_id=desktop&utm_source=site&utm_campaign=launch";
+    "codez://oauth/callback?state=race-state&code=code&channel_id=desktop&utm_source=site&utm_campaign=launch";
   const ready = () =>
     pollResponse.resolve(
       Response.json({
@@ -134,7 +134,7 @@ describe("OAuth completion arbitration", () => {
       expect(first === "callback" ? f.normalizePolledTokenSet : f.parse).not.toHaveBeenCalled();
       (first === "callback" ? f.exchange : f.normalize).resolve({
         accessToken: "winner",
-        zcodeJwtToken: "winner-jwt",
+        codezJwtToken: "winner-jwt",
       });
       expect(await firstCall).toMatchObject({ kind: "session" });
       const secondResult = await secondCall;
@@ -163,7 +163,7 @@ describe("OAuth completion arbitration", () => {
       (first === "callback" ? f.exchange : f.normalize).reject(new Error("first route failed"));
       (first === "callback" ? f.normalize : f.exchange).resolve({
         accessToken: "fallback",
-        zcodeJwtToken: "fallback-jwt",
+        codezJwtToken: "fallback-jwt",
       });
       const results = await Promise.all([firstCall, secondCall]);
       expect(results.filter((r) => r?.kind === "session")).toHaveLength(1);
@@ -175,7 +175,7 @@ describe("OAuth completion arbitration", () => {
   it("preserves attribution from a late callback without parsing its code", async () => {
     const f = await setup();
     f.ready();
-    f.normalize.resolve({ accessToken: "poll", zcodeJwtToken: "jwt" });
+    f.normalize.resolve({ accessToken: "poll", codezJwtToken: "jwt" });
     await f.service.pollPendingOAuth();
     expect(await f.service.handleCallback(f.callback)).toMatchObject({ kind: "duplicate" });
     expect(f.parse).not.toHaveBeenCalled();

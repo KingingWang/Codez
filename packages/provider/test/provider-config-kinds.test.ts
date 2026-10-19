@@ -34,7 +34,7 @@ describe("ProviderConfig access / api boundaries", () => {
   });
 
   it("递归 Overlay Provider、Access 与 API 字段", () => {
-    const zcodeBuiltin = new ProviderConfig({
+    const codezBuiltin = new ProviderConfig({
       group: "standard-personal",
       logo: { type: "builtin", key: "deepseek" },
       access: new ApiKeyAccessConfig({
@@ -51,12 +51,12 @@ describe("ProviderConfig access / api boundaries", () => {
       api: new ProviderApiConfig({ headers: { "X-Team": "agent" } }),
     });
 
-    const effective = zcodeBuiltin.overlay(personal);
+    const effective = codezBuiltin.overlay(personal);
 
     // 名称由规则外层 overlay 测试覆盖；此处只验证执行配置。
     expect(effective.logo).toEqual({ type: "builtin", key: "deepseek" });
 
-    expect(zcodeBuiltin.overlay(new ProviderConfig({ logo: null })).logo).toBeNull();
+    expect(codezBuiltin.overlay(new ProviderConfig({ logo: null })).logo).toBeNull();
     expect(effective.access).toMatchObject({
       type: "api-key",
       apiKey: "sk-personal",
@@ -91,7 +91,7 @@ describe("ProviderConfig access / api boundaries", () => {
           api: {
             type: "anthropic-messages",
             baseUrl: "https://plan.example.com/anthropic",
-            headers: { "X-Static": "zcodeBuiltin" },
+            headers: { "X-Static": "codezBuiltin" },
           },
           builtinModelIds: ["glm-5"],
         },
@@ -184,7 +184,7 @@ describe("ProviderConfig access / api boundaries", () => {
   });
 
   it("Account 层可以在最后补入账号约束和模型成员", () => {
-    const zcodeBuiltin = new ProviderConfig({
+    const codezBuiltin = new ProviderConfig({
       group: "zai-family",
       access: new ZhipuAccountAccessConfig({
         accountType: "zai",
@@ -202,12 +202,12 @@ describe("ProviderConfig access / api boundaries", () => {
       builtinModelIds: ["glm-5"],
     });
 
-    expect(zcodeBuiltin.validateComplete(["providers", "plan"])).toContainEqual({
+    expect(codezBuiltin.validateComplete(["providers", "plan"])).toContainEqual({
       code: "required-field-missing",
       path: ["providers", "plan", "access", "entitled"],
       message: "缺少必填配置 providers.plan.access.entitled",
     });
-    expect(zcodeBuiltin.overlay(account).validateComplete()).toEqual([]);
+    expect(codezBuiltin.overlay(account).validateComplete()).toEqual([]);
   });
 
   it("API Key Access 必须在最终 Overlay 后取得 API Key", () => {
@@ -252,7 +252,7 @@ describe("ProviderConfig access / api boundaries", () => {
   });
 
   it("后层显式切换 Access 类型时整体采用新的访问方式", () => {
-    const zcodeBuiltin = new ProviderConfigMap([
+    const codezBuiltin = new ProviderConfigMap([
       [
         "provider",
         new ProviderConfig({
@@ -273,7 +273,7 @@ describe("ProviderConfig access / api boundaries", () => {
       ],
     ]);
 
-    expect(zcodeBuiltin.overlay(account).get("provider")?.access).toMatchObject({
+    expect(codezBuiltin.overlay(account).get("provider")?.access).toMatchObject({
       type: "zhipu-account",
     });
   });
@@ -310,7 +310,7 @@ describe("ProviderConfig access / api boundaries", () => {
     }
     expect(() =>
       parseProviderConfig({
-        access: { type: "api-key", apiKey: "secret", requestSigning: "zcode-v4" },
+        access: { type: "api-key", apiKey: "secret", requestSigning: "codez-v4" },
       }),
     ).toThrow();
   });

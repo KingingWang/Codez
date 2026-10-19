@@ -3,8 +3,8 @@
 import { createElement, type ReactNode } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { HookInvocationRow } from "@zcode/shared/zcode-protocol-v4";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import type { HookInvocationRow } from "@codez/shared/codez-protocol-v4";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ConversationHookDetailsAction } from "@/v4/ConversationHookDetailsAction.js";
 
 const tooltipCapture = vi.hoisted(() => ({ opens: [] as Array<boolean | undefined> }));
@@ -80,7 +80,7 @@ function renderAction(rows: readonly HookInvocationRow[], locale: "zh-CN" | "en-
 
 function actionElement(rows: readonly HookInvocationRow[], locale: "zh-CN" | "en-US" = "zh-CN") {
   return createElement(
-    ZCodeIntlProvider,
+    CodezIntlProvider,
     { initialLocale: locale },
     createElement(ConversationHookDetailsAction, {
       rows,

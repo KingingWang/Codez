@@ -140,7 +140,7 @@ ReadSessionContext(topic, attachment reference)
   -> bounded tool result (name/type/size/reference/path)
 ```
 
-App/Agent 方法及双向参数使用 `packages/shared/src/zcode-protocol/index.ts` 的运行时
+App/Agent 方法及双向参数使用 `packages/shared/src/codez-protocol/index.ts` 的运行时
 schema；旧 Host/standalone CLI 能力缺失须明确失败，不回退到任意 URL 下载。Host 连接边界
 注入 workspaceIdentity 与 remoteSessionId，不接受模型覆盖；远程 runtime 的请求必须经现有
 连接回到拥有机器人凭据的 Host，不能另建运行时或在远端读取本地凭据。
@@ -163,7 +163,7 @@ artifact 落地、真实模型按文件内部值回答及原话题投递。Host 
 13:57 实测调用已选中正确历史附件，但 Host 立即关闭协议并终止 CLI。新增附件 port 将
 Core TraceContext 原样放入严格的协议 trace，携带 sessionId、turnId、attributes 等非协议字段。
 跨端反向读取和取消必须复用 protocolTraceFromTraceContext 映射，只传 traceId、spanId 和 parentId；
-任务／输入身份继续放在严格请求参数中。测试必须用实际 zcodeProtocolMessageSchema 校验完整
+任务／输入身份继续放在严格请求参数中。测试必须用实际 codezProtocolMessageSchema 校验完整
 读／取消帧，不能仅断言 requestClient 被调用。
 
 取消与断连同时发生时，requestClient 可能在返回 Promise 前同步抛错。取消通知属于尽力通知，

@@ -7,9 +7,9 @@ describe("oauth callback bridge", () => {
     const callback = vi.fn(async (_url: string) => {});
     const handler = createOAuthCallbackHandler(callback, notifyHandled);
 
-    await handler({}, "zcode://oauth/callback?code=123");
+    await handler({}, "codez://oauth/callback?code=123");
 
-    expect(callback).toHaveBeenCalledWith("zcode://oauth/callback?code=123");
+    expect(callback).toHaveBeenCalledWith("codez://oauth/callback?code=123");
     expect(notifyHandled).toHaveBeenCalledTimes(1);
   });
 
@@ -21,7 +21,7 @@ describe("oauth callback bridge", () => {
     });
     const handler = createOAuthCallbackHandler(callback, notifyHandled);
 
-    await expect(handler({}, "zcode://oauth/callback?code=123")).resolves.toBeUndefined();
+    await expect(handler({}, "codez://oauth/callback?code=123")).resolves.toBeUndefined();
     expect(notifyHandled).toHaveBeenCalledTimes(1);
   });
 });

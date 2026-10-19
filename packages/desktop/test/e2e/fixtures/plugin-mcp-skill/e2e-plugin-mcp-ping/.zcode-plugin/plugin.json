@@ -16,13 +16,13 @@
       "default": "E2E_USER_PLUGIN_SECRET"
     }
   },
-  "author": { "name": "ZCode E2E" },
+  "author": { "name": "Codez E2E" },
   "license": "MIT",
   "mcpServers": {
     "ping": {
       "type": "stdio",
       "command": "node",
-      "args": ["${ZCODE_PLUGIN_ROOT}/server.mjs"],
+      "args": ["${CODEZ_PLUGIN_ROOT}/server.mjs"],
       "env": {
         "E2E_PLUGIN_RUNTIME_SECRET": "${user_config.secret}"
       }

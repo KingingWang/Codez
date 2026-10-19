@@ -26,7 +26,7 @@ try {
     // 仅回收此协议生成的临时文件，用户传入的其他 JSON 清单保持原样。
     if (
       [resolve(tmpdir()), process.cwd()].includes(dirname(resolve(path))) &&
-      /^\.(?:zcode-)?lint-staged-vitest-\d+-[\da-f-]+\.json$/u.test(basename(path))
+      /^\.(?:codez-)?lint-staged-vitest-\d+-[\da-f-]+\.json$/u.test(basename(path))
     )
       ownedManifest = path;
     forwarded = parsed.files.length ? ["--files-manifest", path] : [];

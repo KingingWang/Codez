@@ -26,7 +26,7 @@
 
 | 概念                         | 唯一职责                                         | owner / 存储                                                                                                       |
 | ---------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Configured Default           | 新 CLI 会话的用户选型初始化偏好                  | Personal Provider 配置的 `config.defaultModelSelection`；默认 `~/.zcode/v2/provider_config.json`，允许现有路径覆盖 |
+| Configured Default           | 新 CLI 会话的用户选型初始化偏好                  | Personal Provider 配置的 `config.defaultModelSelection`；默认 `~/.codez/v2/provider_config.json`，允许现有路径覆盖 |
 | `cliDefaultSelection`        | 当前 CLI/TUI 会话中，未显式选型的用户输入默认值  | bootstrap 会话层内存；复用每会话普通用户选择记录恢复                                                               |
 | App Composer Selection       | 下一条 App 用户消息的选择                        | 现有 renderer 草稿与 localStorage；不新增 CLI 状态副本                                                             |
 | `sessionModelSelection`      | 会话后续执行、后台唤起及 Goal 自动续轮使用的选择 | CLI Runtime；闲时选择只在本次运行生命周期内生效                                                                    |
@@ -156,7 +156,7 @@ App/Agent 新增或修改的契约需要严格类型及运行时 schema。沿现
 | [执行选型设计](../working-memory/provider-refactor/design/execution/execution.md)                                             | Session 续跑选择、子 agent 当前轮、加速卡专属回退、独立辅助调用          |
 | [后台覆盖矩阵](../testing/conversation-session-background-e2e-coverage-matrix.md)                                             | 加入闲时代表场景并链接手机专项验证；保留原桌面矩阵范围                   |
 | [会话用例目录](../conversation-session-case-catalog.md)、[总覆盖矩阵](../testing/conversation-session-e2e-coverage-matrix.md) | 注册新场景；更新 OP10 的后台拒绝断言；计划用例不得标为已覆盖             |
-| [能力图](../../.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml)                                   | 标注待实现设计；落地时替换“闲时不写 Runtime Session、拒绝后台”的旧不变量 |
+| [能力图](../../.agents/skills/feature-boundary-planner/references/codez-feature-graph.yaml)                                   | 标注待实现设计；落地时替换“闲时不写 Runtime Session、拒绝后台”的旧不变量 |
 
 本次影响分析依据源码调用链和现有规格；当前无可用 codegraph，未将文本扫描冒充图查询。尚未确定的接口签名、事件名称、测试文件拆分属于实现细化，不改变已确认产品边界。
 
@@ -222,9 +222,9 @@ Host 只持有票据请求关联，完成条件始终由 CLI 决定。跨 App/CL
 - 续票交接按 `executionId + renewalId + ticketId` 确认，最近一次安装允许重复确认；终态的迟到派发只释放票，不重发 prompt。
 - 工作流的限制覆盖现有动态入口 `CreateWorkflow`、`AmendWorkflow`、`ResumeWorkflowRun`、`EvalWorkflowSnippet`，这些运行器尚未接入闲时票据；查询与保存定义仍沿用既有权限。
 
-OP10 运行夹具增加 `ZCODE_E2E_OFFPEAK_EXPIRE_WAKE=1` 变体：第一次后台唤起请求返回 3102，安装新票后重试相同模型请求；断言初始指令及 Bash 均仅执行一次，并消费保存的 Bash 结果。
+OP10 运行夹具增加 `CODEZ_E2E_OFFPEAK_EXPIRE_WAKE=1` 变体：第一次后台唤起请求返回 3102，安装新票后重试相同模型请求；断言初始指令及 Bash 均仅执行一次，并消费保存的 Bash 结果。
 
-OP10 的 `ZCODE_E2E_OFFPEAK_TAKEOVER=1` 变体在后台屏障放行前发送用户消息，验证既有子轮仍由闲时请求完成，而主 agent 后续后台唤起使用用户模型；默认变体只切工具栏未发送，仍用闲时模型。两种变体分别执行，不组合。
+OP10 的 `CODEZ_E2E_OFFPEAK_TAKEOVER=1` 变体在后台屏障放行前发送用户消息，验证既有子轮仍由闲时请求完成，而主 agent 后续后台唤起使用用户模型；默认变体只切工具栏未发送，仍用闲时模型。两种变体分别执行，不组合。
 
 ### 最终验证记录（2026-10-08）
 

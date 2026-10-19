@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-guarded",
+      "path": ".codez-e2e/conversation-session-guarded",
       "source": "created-by-spec",
       "description": "隔离目标、Bash 执行哨兵和一次批准测试；after 清理。"
     }

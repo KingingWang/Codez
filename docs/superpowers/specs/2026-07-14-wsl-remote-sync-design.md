@@ -7,7 +7,7 @@
 ## 目标
 
 - SSH 和 WSL workspace 都显示同一套远端同步入口。
-- 同步目标仍是当前远端 runtime 的用户目录：`~/.zcode/skills`、`~/.zcode/cli/config.json`、`~/.zcode/plugins`。
+- 同步目标仍是当前远端 runtime 的用户目录：`~/.codez/skills`、`~/.codez/cli/config.json`、`~/.codez/plugins`。
 - 本地 workspace 不显示远端同步入口。
 - Docker 本轮不扩展入口，避免把插件安装和 MCP 环境兼容风险扩大到容器场景。
 
@@ -26,11 +26,11 @@
 
 同步开始前由远端 sync service 执行写入预检：
 
-- Skills：检查 `~/.zcode/skills`
-- MCP：检查 `~/.zcode/cli`
-- Plugins：检查 `~/.zcode/plugins` 和 `~/.zcode/cli`
+- Skills：检查 `~/.codez/skills`
+- MCP：检查 `~/.codez/cli`
+- Plugins：检查 `~/.codez/plugins` 和 `~/.codez/cli`
 
-预检只做 `mkdir -p` 等价目录创建、写入一个 `.zcode-sync-preflight-*` 临时文件并立即删除。它不做 `chmod` / `chown`，避免改变 WSL/SSH 用户已有权限模型。若目录被其他用户占用、目标路径是文件或当前远端用户不可写，UI 在导出本地资源前显示错误并停止同步。
+预检只做 `mkdir -p` 等价目录创建、写入一个 `.codez-sync-preflight-*` 临时文件并立即删除。它不做 `chmod` / `chown`，避免改变 WSL/SSH 用户已有权限模型。若目录被其他用户占用、目标路径是文件或当前远端用户不可写，UI 在导出本地资源前显示错误并停止同步。
 
 预检属于同步生命周期的一部分。点击开始后必须在第一个远端 RPC await 前进入 `preflighting` 活动状态，并用 ref 级 in-flight guard 防止 React state 尚未提交时的快速重复点击。`preflighting` 和 `syncing` 都禁止关闭弹窗；预检失败后恢复 `selection`，不再继续导出、导入或启动插件安装。
 

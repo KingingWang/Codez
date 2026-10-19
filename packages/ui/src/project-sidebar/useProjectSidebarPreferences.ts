@@ -8,7 +8,7 @@ import { reconcileProjectOrder, moveProjectOrder } from "@/project-sidebar/proje
 
 import { readProjectSidebarView } from "@/project-sidebar/view-preference.js";
 
-const KEY = "zcode-project-sidebar-preferences";
+const KEY = "codez-project-sidebar-preferences";
 interface Preferences {
   order: string[];
   view: ProjectSidebarView;

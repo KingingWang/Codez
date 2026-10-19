@@ -22,8 +22,8 @@ vi.mock("@arms/rum-electron", () => ({
   },
 }));
 
-vi.mock("@zcode/shared", () => ({
-  mapZCodeEnvToArmsRumEnv: vi.fn(() => "local"),
+vi.mock("@codez/shared", () => ({
+  mapCodezEnvToArmsRumEnv: vi.fn(() => "local"),
 }));
 
 vi.mock("../src/main/desktopCrashCapture.js", () => ({
@@ -296,7 +296,7 @@ describe("desktopStabilityTelemetry", () => {
       type: "Utility",
       reason: "abnormal-exit",
       exitCode: 1,
-      serviceName: "zcode-host-local-1",
+      serviceName: "codez-host-local-1",
       name: "Node Utility Process",
     });
 
@@ -306,7 +306,7 @@ describe("desktopStabilityTelemetry", () => {
       properties: expect.objectContaining({
         crash_scope: "host",
         process_role: "host",
-        process_name: "zcode-host-local-1",
+        process_name: "codez-host-local-1",
       }),
     });
   });
@@ -342,7 +342,7 @@ describe("desktopStabilityTelemetry", () => {
       type: "Utility",
       reason,
       exitCode: 137,
-      serviceName: "zcode-host-local-1",
+      serviceName: "codez-host-local-1",
       name: "Node Utility Process",
     });
 
@@ -389,17 +389,17 @@ describe("desktopStabilityTelemetry", () => {
       ).toBe(false);
     });
 
-    it("reports zcode host child process exits as crash", async () => {
+    it("reports codez host child process exits as crash", async () => {
       const { mapChildProcessGoneToProcessRole, shouldReportChildProcessGoneAsCrash } =
         await import("../src/main/desktopStabilityTelemetry.js");
 
-      expect(mapChildProcessGoneToProcessRole("Utility", "zcode-host-local-1")).toBe("host");
+      expect(mapChildProcessGoneToProcessRole("Utility", "codez-host-local-1")).toBe("host");
       expect(
         shouldReportChildProcessGoneAsCrash({
           type: "Utility",
           reason: "abnormal-exit",
           exitCode: 256,
-          name: "zcode-host-local-1",
+          name: "codez-host-local-1",
         }),
       ).toBe(true);
     });
@@ -413,7 +413,7 @@ describe("desktopStabilityTelemetry", () => {
           type: "Utility",
           reason: "clean-exit",
           exitCode: 0,
-          name: "zcode-host-local-1",
+          name: "codez-host-local-1",
         }),
       ).toBe(false);
     });
@@ -539,8 +539,8 @@ describe("desktopStabilityTelemetry", () => {
           `Error: write EPIPE token=super-secret at ${workspacePath}`,
           "request URL contains sk-1234567890abcdefghijklmnopqrstuv",
           `    at Socket._write (${workspacePath}/child.js:10:20)`,
-          "    at open (/Users/bob/.zcode/state.db:30:40)",
-          "    at load (/opt/zcode-private/tool.js:50:60)",
+          "    at open (/Users/bob/.codez/state.db:30:40)",
+          "    at load (/opt/codez-private/tool.js:50:60)",
           "  code: 'EPIPE',",
           "x".repeat(1_000),
           "x".repeat(1_000),
@@ -578,8 +578,8 @@ describe("desktopStabilityTelemetry", () => {
       expect(properties.error_stack).toContain("<workspace>");
       expect(properties.error_stack).not.toContain(workspacePath);
       expect(properties.error_stack).not.toContain("/Users/bob");
-      expect(properties.error_stack).not.toContain("/opt/zcode-private");
-      expect(properties.error_stack).toContain("<home>/.zcode/state.db");
+      expect(properties.error_stack).not.toContain("/opt/codez-private");
+      expect(properties.error_stack).toContain("<home>/.codez/state.db");
       expect(properties.error_stack).toContain("<path>");
       expect(properties.error_stack).not.toContain("super-secret");
       expect(properties.error_stack).not.toContain("sk-1234567890abcdefghijklmnopqrstuv");
@@ -611,7 +611,7 @@ describe("desktopStabilityTelemetry", () => {
         name: "SQLite",
         runtimeReady: true,
         stderrTail: [
-          "Error: SQLite migration initialization failed for C:\\Users\\alice\\.zcode\\cli\\db\\db.sqlite",
+          "Error: SQLite migration initialization failed for C:\\Users\\alice\\.codez\\cli\\db\\db.sqlite",
         ],
         expected: {
           crash_phase: "runtime",
@@ -619,7 +619,7 @@ describe("desktopStabilityTelemetry", () => {
           error_name: "Error",
           error_code: "",
           error_message:
-            "SQLite migration initialization failed for <home>/.zcode/cli/db/db.sqlite",
+            "SQLite migration initialization failed for <home>/.codez/cli/db/db.sqlite",
         },
       },
       {
@@ -648,7 +648,7 @@ describe("desktopStabilityTelemetry", () => {
           "----- Native stack trace -----",
           "1: 0x00007ff6deadbeef",
           "(node:1234) ExperimentalWarning: SQLite is an experimental feature and might change at any time",
-          "(Use `ZCode --trace-warnings ...` to show where the warning was created)",
+          "(Use `Codez --trace-warnings ...` to show where the warning was created)",
           "},",
         ],
         expected: {
@@ -1001,7 +1001,7 @@ describe("desktopStabilityTelemetry", () => {
           stderrTail: [
             "[Object]",
             "node:events:486",
-            "EPERM: process.cwd failed at /Users/alice/.zcode/state.db:10:20",
+            "EPERM: process.cwd failed at /Users/alice/.codez/state.db:10:20",
           ],
         },
         logger,
@@ -1013,7 +1013,7 @@ describe("desktopStabilityTelemetry", () => {
           stderrTail: [
             "[Object]",
             "node:events:999",
-            "EPERM: process.cwd failed at /home/bob/.zcode/state.db:30:40",
+            "EPERM: process.cwd failed at /home/bob/.codez/state.db:30:40",
           ],
         },
         logger,
@@ -1023,8 +1023,8 @@ describe("desktopStabilityTelemetry", () => {
         .filter((call) => call[0]?.name === "perf_agent_crash")
         .map((call) => call[0].properties as Record<string, string>);
       expect(reports.map((report) => report.error_message)).toEqual([
-        "EPERM: process.cwd failed at <home>/.zcode/state.db:10:20",
-        "EPERM: process.cwd failed at <home>/.zcode/state.db:30:40",
+        "EPERM: process.cwd failed at <home>/.codez/state.db:10:20",
+        "EPERM: process.cwd failed at <home>/.codez/state.db:30:40",
       ]);
       expect(reports.map((report) => report.error_code)).toEqual(["EPERM", "EPERM"]);
       expect(reports[0]?.error_fingerprint).toBe(reports[1]?.error_fingerprint);
@@ -1101,7 +1101,7 @@ describe("desktopStabilityTelemetry", () => {
           pid: 12345,
           provider: "glm",
           workspacePath: "/repo/demo",
-          command: "/tmp/zcode-agent",
+          command: "/tmp/codez-agent",
           args: ["app-server", "--stdio"],
           startedAt: 100,
           runtimeGeneration: 4,

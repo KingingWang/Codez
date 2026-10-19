@@ -20,7 +20,7 @@
 - 旧实现：macOS/Linux 退出放行单测失败；Electron smoke 观察到 `before-quit` 被阻止并重复调用安装准备。
 - 修复后：更新器状态、Linux 四种安装包下载、强制更新、应用菜单和 renderer 消息入口共 93 条定向单测通过；Electron smoke 记录准备、安装入口、原生 staging、原生安装、退出的顺序，安装调用为一次，退出码为 0。
 - `pnpm typecheck`、`pnpm lint`、架构检查、改动文件格式与竞品词检查通过。Lint 有 68 条已有警告。
-- 首次 `ZCODE_PRE_PUSH_BASE=v3.15.2 pnpm verify:pre-push` 的相关测试扩展为 2077 个文件：19808 条通过、3 条失败、13 条跳过。失败属于 provider 构建与 runtime update 集成，缺少 CUA 的 `broker/helperConstants` / `broker/server` 模块；本机 desktop/services 的依赖链接指向未提供这些入口的旧工作区目录。相关失败文件相对 tag 没有改动，provider 构建用例独立重跑也复现相同缺模块错误。
+- 首次 `CODEZ_PRE_PUSH_BASE=v3.15.2 pnpm verify:pre-push` 的相关测试扩展为 2077 个文件：19808 条通过、3 条失败、13 条跳过。失败属于 provider 构建与 runtime update 集成，缺少 CUA 的 `broker/helperConstants` / `broker/server` 模块；本机 desktop/services 的依赖链接指向未提供这些入口的旧工作区目录。相关失败文件相对 tag 没有改动，provider 构建用例独立重跑也复现相同缺模块错误。
 - MR 准备时核对已安装 CUA 包的 manifest 与固定 producer commit 一致，仅恢复错误的本机依赖链接；producer pin 与仓库依赖声明没有变化。上述 3 条失败用例独立重跑全部通过，完整门禁在推送时正常重跑。
 - Electron smoke 替换了原生安装器，因此签名发布包的 ShipIt 文件替换和重启仍待发布前验证；手机端及 Windows 的完整产品流程未重跑。本改动没有改变其通信或退出准备实现。
 

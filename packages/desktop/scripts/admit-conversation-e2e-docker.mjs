@@ -91,7 +91,7 @@ function parseArgs(args) {
 
 function printUsage() {
   console.log(`Usage:
-  pnpm --filter @zcode/desktop e2e:docker:admit -- --spec ./test/e2e/conversation-session/<case>.test.ts --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply
+  pnpm --filter @codez/desktop e2e:docker:admit -- --spec ./test/e2e/conversation-session/<case>.test.ts --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply
 
 Options:
   --apply      Write changes. Without this flag the tool only prints a dry run.
@@ -322,9 +322,9 @@ function printResult(result) {
   console.log("\nNext:");
   if (!result.alreadyInSuite) {
     console.log(`- E2E_SPEC=${specArg} pnpm run test:e2e:container`);
-    console.log(`- pnpm --filter @zcode/desktop e2e:docker:admit -- --spec ${specArg} --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply`);
+    console.log(`- pnpm --filter @codez/desktop e2e:docker:admit -- --spec ${specArg} --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply`);
   } else if (!result.alreadyInPlan) {
-    console.log(`- pnpm --filter @zcode/desktop e2e:docker:admit -- --spec ${specArg} --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply`);
+    console.log(`- pnpm --filter @codez/desktop e2e:docker:admit -- --spec ${specArg} --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply`);
   }
   console.log("- pnpm run test:e2e:container:conversation");
 }

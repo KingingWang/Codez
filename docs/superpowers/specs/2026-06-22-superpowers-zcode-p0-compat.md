@@ -1,17 +1,17 @@
-# Superpowers ZCode P0 兼容规范
+# Superpowers Codez P0 兼容规范
 
 ## 背景
 
-ZCode 已支持内置插件、Claude/Codex manifest 发现、插件 hooks、Skill 工具和 Agent subagent 工具，但 Superpowers 仍存在两类 P0 兼容缺口：
+Codez 已支持内置插件、Claude/Codex manifest 发现、插件 hooks、Skill 工具和 Agent subagent 工具，但 Superpowers 仍存在两类 P0 兼容缺口：
 
-- Superpowers 文档和测试按 `superpowers:<skill>` 调用技能，ZCode agent runtime 只按裸 `skill.name` 精确匹配，导致 `superpowers:test-driven-development` 等名称不可加载。
-- Superpowers 的 `SessionStart` bootstrap 会注入 `using-superpowers`，但其 skill 文档来自 Claude Code 生态，会直接引用 `Task` 等 Claude Code 工具名；ZCode 不能只靠给 Superpowers hook 追加文本来翻译工具名，必须在工具注册和 hook matcher 层提供结构化兼容。
+- Superpowers 文档和测试按 `superpowers:<skill>` 调用技能，Codez agent runtime 只按裸 `skill.name` 精确匹配，导致 `superpowers:test-driven-development` 等名称不可加载。
+- Superpowers 的 `SessionStart` bootstrap 会注入 `using-superpowers`，但其 skill 文档来自 Claude Code 生态，会直接引用 `Task` 等 Claude Code 工具名；Codez 不能只靠给 Superpowers hook 追加文本来翻译工具名，必须在工具注册和 hook matcher 层提供结构化兼容。
 
-目标是在不修改用户外部 Claude 插件缓存的前提下，让内置 Superpowers 和 `.claude-plugin` 形态的满血 Superpowers 至少达到：启用后 skills 可按 `superpowers:*` 加载，bootstrap 生效，Claude Code 插件文档中提到的 `Task` subagent 调度能在 ZCode 工具面直接执行。
+目标是在不修改用户外部 Claude 插件缓存的前提下，让内置 Superpowers 和 `.claude-plugin` 形态的满血 Superpowers 至少达到：启用后 skills 可按 `superpowers:*` 加载，bootstrap 生效，Claude Code 插件文档中提到的 `Task` subagent 调度能在 Codez 工具面直接执行。
 
 ## Skill Alias 规则
 
-当 skill root 来自 `source: "plugin"` 时，ZCode agent runtime 必须从插件 root 的 manifest 反推出插件名，并为每个技能生成可选的 fully qualified alias：
+当 skill root 来自 `source: "plugin"` 时，Codez agent runtime 必须从插件 root 的 manifest 反推出插件名，并为每个技能生成可选的 fully qualified alias：
 
 ```text
 <plugin manifest name>:<skill frontmatter name>
@@ -24,7 +24,7 @@ ZCode 已支持内置插件、Claude/Codex manifest 发现、插件 hooks、Skil
 
 Manifest 搜索顺序与插件发现保持兼容：
 
-1. `.zcode-plugin/plugin.json`
+1. `.codez-plugin/plugin.json`
 2. `.claude-plugin/plugin.json`
 3. `.codex-plugin/plugin.json`
 4. `.cursor-plugin/plugin.json`
@@ -39,14 +39,14 @@ Skill 加载必须同时接受裸名与 qualified name。Skill 上下文列表�
 
 ## Claude Code Tool Compatibility
 
-ZCode 不应要求用户改写外部 Claude 插件里的 skill 文档或 `hooks/session-start`。兼容层放在工具注册和 hook matcher 两处：
+Codez 不应要求用户改写外部 Claude 插件里的 skill 文档或 `hooks/session-start`。兼容层放在工具注册和 hook matcher 两处：
 
-- `Task` 作为 Claude Code 兼容工具名注册，底层委托 ZCode 现有 `Agent` subagent handler。`Task` 与 `Agent` 使用同一输入/输出 schema、权限能力、结果预算和后台任务恢复语义。
+- `Task` 作为 Claude Code 兼容工具名注册，底层委托 Codez 现有 `Agent` subagent handler。`Task` 与 `Agent` 使用同一输入/输出 schema、权限能力、结果预算和后台任务恢复语义。
 - 当 runtime 未配置 subagent port 时，`Agent` 与 `Task` 都不得暴露；当子 agent runtime 禁止递归 subagent 时，`Agent` 与 `Task` 都必须被过滤。
 - tool hook stdin 仍写入实际发生的工具名，避免轨迹里出现虚假的工具名；hook matcher 额外接受兼容 aliases。`Agent` 调用应能命中 matcher `Task`，`Task` 调用也应能命中 matcher `Agent`。
 - `ApplyPatch` 若重新启用，hook matcher 可兼容 Claude Code 风格的 `Write` / `Edit` matcher，但不得改变实际 toolName。
 
-因此 Superpowers `SessionStart` hook 输出只负责注入它自身的 `using-superpowers` 上下文；ZCode 不再为 Superpowers 专门追加工具映射文本。其它 `.claude-plugin` 也能复用同一个兼容层。
+因此 Superpowers `SessionStart` hook 输出只负责注入它自身的 `using-superpowers` 上下文；Codez 不再为 Superpowers 专门追加工具映射文本。其它 `.claude-plugin` 也能复用同一个兼容层。
 
 Subagent 兼容的完整边界见 `docs/subagent-compatibility.md`。
 
@@ -54,7 +54,7 @@ Subagent 兼容的完整边界见 `docs/subagent-compatibility.md`。
 
 启用 Superpowers 后，`SessionStart` hook 在 `startup|clear|compact` 匹配时应：
 
-- 通过 `CLAUDE_PLUGIN_ROOT` / `ZCODE_PLUGIN_ROOT` 执行插件 hook。
+- 通过 `CLAUDE_PLUGIN_ROOT` / `CODEZ_PLUGIN_ROOT` 执行插件 hook。
 - 解析 `hookSpecificOutput.additionalContext`、top-level `additionalContext` 或 Cursor 风格 `additional_context`。
 - 将 `using-superpowers` 注入当前 turn 的 `hook_context` system reminder。
 
@@ -66,8 +66,8 @@ Subagent 兼容的完整边界见 `docs/subagent-compatibility.md`。
 - `Skill(skill="superpowers:test-driven-development")` 能加载对应技能。
 - Skills 上下文展示 `superpowers:*`。
 - subagent skill 白名单可识别 qualified alias。
-- `Task` 工具可作为 Claude Code 兼容 alias 调度 ZCode subagent。
+- `Task` 工具可作为 Claude Code 兼容 alias 调度 Codez subagent。
 - `Task` 与 `Agent` 的 hook matcher aliases 互通，但 hook input 仍保留实际 toolName。
-- Superpowers `SessionStart` additional context 不再追加 Superpowers 专用 ZCode tool mapping。
+- Superpowers `SessionStart` additional context 不再追加 Superpowers 专用 Codez tool mapping。
 - `pnpm typecheck`
 - `pnpm lint`

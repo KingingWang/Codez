@@ -23,17 +23,17 @@ import {
   SearchIcon,
   X,
 } from "lucide-react";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useRemoteConnectionEntryVisibility } from "@/hooks/useRemoteConnectionEntryVisibility.js";
 import { cn } from "@/components/lib/utils.js";
 import { logger } from "@/logger.js";
-import { buildServerRemoteWorkspaceIdentity } from "@zcode/shared";
+import { buildServerRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_COMPOSER_PROJECT_DETACH,
   TID_COMPOSER_REMOTE_CONNECTION,
   TID_COMPOSER_WORK_OUTSIDE_PROJECT,
   TID_COMPOSER_WORKSPACE_TRIGGER,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { runUserAction, runUserActionAsync } from "@/lib/userActionTelemetry.js";
 
 import type { ProjectSidebarProps, RemoteProjectHost } from "@/project-sidebar/contract.js";
@@ -44,7 +44,7 @@ import { ProjectCreation } from "@/project-sidebar/ProjectCreation.js";
 import { ProjectFolderIcon } from "@/project-sidebar/ProjectFolderIcon.js";
 import { projectKey, projectSourceServerId } from "@/project-sidebar/view.js";
 import { useProjectDirectory } from "@/project-sidebar/ProjectDirectoryProvider.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 
 export function ProjectComposerMenu({
   workspacePath,
@@ -85,7 +85,7 @@ export function ProjectComposerMenu({
   /** 分支等控件位于项目选择器与编辑按钮之间。 */
   children?: ReactNode;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [workspaceSearchQuery, setWorkspaceSearchQuery] = useState("");
   const showRemoteConnectionEntry = useRemoteConnectionEntryVisibility();
   // Bugfix: Web 普通模式没有完整远程 workspace 会话链路，不能只依赖全局 feature visibility。
@@ -104,8 +104,8 @@ export function ProjectComposerMenu({
     refresh,
   } = useProjectDirectory();
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
-  const projectId = useZCodeSessionStore((state) => state.workspaces[workspaceKey]?.draftProjectId);
-  const activeTaskId = useZCodeSessionStore(
+  const projectId = useCodezSessionStore((state) => state.workspaces[workspaceKey]?.draftProjectId);
+  const activeTaskId = useCodezSessionStore(
     (state) => state.workspaces[workspaceKey]?.activeTaskId,
   );
   const createProjectTask: ProjectSidebarProps["onCreateTask"] = (request) =>
@@ -115,13 +115,13 @@ export function ProjectComposerMenu({
             ...request,
             // 远程目录确认曾遗漏草稿分组；两个项目入口必须从同一草稿 owner 读取组织意图。
             taskGroupId: !activeTaskId
-              ? useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+              ? useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
                   .draftTaskGroupId
               : null,
           }
         : request,
     );
-  const draftVersion = useZCodeSessionStore(
+  const draftVersion = useCodezSessionStore(
     (state) => state.workspaces[workspaceKey]?.draftFocusVersion,
   );
   // 草稿重建和聊天切换都会使旧返回意图失效，即使后来又回到同一路径也不能复活旧操作。
@@ -184,7 +184,7 @@ export function ProjectComposerMenu({
     setPending(true);
     setSubmissionPending?.(true);
     const isCurrent = () => {
-      const draft = useZCodeSessionStore.getState().workspaces[workspaceKey];
+      const draft = useCodezSessionStore.getState().workspaces[workspaceKey];
       // Store 先提交、React 后渲染；迟到结果不能利用这一间隙复活旧草稿意图。
       return (
         mounted.current &&

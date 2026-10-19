@@ -28,7 +28,7 @@ afterEach(() => {
   process.env.HOME = originalHome;
   // Bugfix: 并发单测时若恢复到文件加载时捕获的 originalDataBaseDir，
   // 可能把别的用例临时注入的值带回去，最终污染真实数据目录。
-  delete process.env.ZCODE_DATA_BASE_DIR;
+  delete process.env.CODEZ_DATA_BASE_DIR;
   vi.doUnmock("node:os");
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
@@ -39,11 +39,11 @@ afterEach(() => {
 });
 
 describe("ClaudeNativeSessionImportRepo", () => {
-  it("会从真实 HOME 扫描原生 Claude session，并复制到 zcode Claude 目录", async () => {
-    const home = makeTempDir("zcode-claude-native-home-");
-    const dataBaseDir = makeTempDir("zcode-claude-native-db-");
+  it("会从真实 HOME 扫描原生 Claude session，并复制到 codez Claude 目录", async () => {
+    const home = makeTempDir("codez-claude-native-home-");
+    const dataBaseDir = makeTempDir("codez-claude-native-db-");
     process.env.HOME = home;
-    process.env.ZCODE_DATA_BASE_DIR = dataBaseDir;
+    process.env.CODEZ_DATA_BASE_DIR = dataBaseDir;
 
     vi.resetModules();
     vi.doMock("node:os", async () => {
@@ -134,7 +134,7 @@ describe("ClaudeNativeSessionImportRepo", () => {
     const workspaceHash = getWorkspaceHash(workspacePath, workspaceIdentity);
     const expectedOutputPath = join(
       dataBaseDir,
-      ".zcode",
+      ".codez",
       "v2",
       "agent-config",
       "claude",
@@ -154,7 +154,7 @@ describe("ClaudeNativeSessionImportRepo", () => {
   });
 
   it("不传 workspacePath 时会返回多个 workspace 的候选 session", async () => {
-    const home = makeTempDir("zcode-claude-native-home-all-");
+    const home = makeTempDir("codez-claude-native-home-all-");
     process.env.HOME = home;
 
     vi.resetModules();
@@ -233,7 +233,7 @@ describe("ClaudeNativeSessionImportRepo", () => {
   });
 
   it("扫描和查找导入候选时会过滤 Claude 临时 worktree workspace", async () => {
-    const home = makeTempDir("zcode-claude-native-home-worktree-");
+    const home = makeTempDir("codez-claude-native-home-worktree-");
     process.env.HOME = home;
 
     vi.resetModules();
@@ -293,7 +293,7 @@ describe("ClaudeNativeSessionImportRepo", () => {
   });
 
   it("扫描和查找 Claude 原生历史时会跳过 subagents sidechain transcript", async () => {
-    const home = makeTempDir("zcode-claude-import-home-");
+    const home = makeTempDir("codez-claude-import-home-");
     process.env.HOME = home;
     vi.resetModules();
     vi.doMock("node:os", async () => {

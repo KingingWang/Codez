@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import type { RemoteWorkspaceSessionEntry } from "@zcode/shared";
+import type { RemoteWorkspaceSessionEntry } from "@codez/shared";
 import {
   reconnectRemoteWorkspaceHistoryEntry,
   type ReconnectRemoteWorkspaceOptions,

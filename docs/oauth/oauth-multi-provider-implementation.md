@@ -43,29 +43,29 @@
 不再通过全局 `LEGACY_PROVIDER_ID` 推断或迁移某个 provider。
 
 BigModel `oauth:bigmodel:user_info` 当前保存归一化 profile，并通过
-`rawProfile.zcodeProfileSchemaVersion = 2` 标记已按 `customerName -> nickName -> "user"`
+`rawProfile.codezProfileSchemaVersion = 2` 标记已按 `customerName -> nickName -> "user"`
 展示名优先级生成。启动 `restoreCachedSession()` 时，如果检测到 BigModel 旧缓存缺少
 该版本标记或版本低于 2，会先立即返回本地缓存展示态，再在后台尝试用 BigModel
 provider 命名空间下的 access token 做一次 best-effort userinfo 刷新；已高于 2 的缓存
 视为未来版本数据，不请求、不改写、不降级。成功后写回 schema version 2 与新展示名。
 401/403、缺少 token，或命中 `unknown/User` 哨兵 profile 时，继续保留旧缓存展示字段并
 写入 schema version 2，避免之后每次启动重复触发确定失败的迁移。超时、离线或 5xx
-这类暂时性失败只写入 `rawProfile.zcodeProfileMigrationRetryAfter` 退避时间，不写
+这类暂时性失败只写入 `rawProfile.codezProfileMigrationRetryAfter` 退避时间，不写
 schema version 2；退避窗口过后仍可再次尝试迁移。后台迁移写入必须固定到
 `oauth:bigmodel:user_info`，且保存前确认当前 active provider 与 BigModel 缓存仍是启动时
 捕获的旧状态；用户已 logout、切到 ZAI 或重新登录 BigModel 时，旧迁移结果必须失效。
 
 ### 2.5 BigModel fallback secret 移除
 
-BigModel 不再内置历史 fallback secret；未显式配置 `BIGMODEL_OAUTH_APP_SECRET` 时运行时配置保持 `undefined`。当前 BigModel callback 只通过 zcode OAuth token 路由消费一次性 code。
+BigModel 不再内置历史 fallback secret；未显式配置 `BIGMODEL_OAUTH_APP_SECRET` 时运行时配置保持 `undefined`。当前 BigModel callback 只通过 codez OAuth token 路由消费一次性 code。
 
 ### 2.6 OAuth callback 收敛
 
-Desktop OAuth 统一使用 `zcode://oauth/callback`：
+Desktop OAuth 统一使用 `codez://oauth/callback`：
 
-- ZAI 默认 `redirectUri` 从 `zcode://zai-auth/callback` 收敛为 `zcode://oauth/callback`
-- BigModel 保持 `zcode://oauth/callback`
-- Desktop main 进程不再识别 `zcode://zai-auth/callback` / `zcode://bigmodel-auth/callback`
+- ZAI 默认 `redirectUri` 从 `codez://zai-auth/callback` 收敛为 `codez://oauth/callback`
+- BigModel 保持 `codez://oauth/callback`
+- Desktop main 进程不再识别 `codez://zai-auth/callback` / `codez://bigmodel-auth/callback`
 - `ZAI_OAUTH_REDIRECT_URI` / `BIGMODEL_OAUTH_REDIRECT_URI` 及 legacy redirect URI override 已移除
 
 Provider 归属不依赖 callback host，而是由发起登录时注册的 `state` 绑定关系决定。
@@ -91,16 +91,16 @@ ZAI 环境变量：
 - `ZAI_BUSINESS_BASE_URL`：派生 `POST /api/auth/z/login`，用于把 ZAI OAuth access token 换成业务 token；测试环境为 `https://api.z.ai`
 - `ZAI_BUSINESS_LOGIN_URL`：完整业务 token 交换 URL override，优先级高于 `ZAI_BUSINESS_BASE_URL`
 
-ZAI 默认登录链路已切换为后端 JWT token 交换，授权入口和业务 token 交换入口按 `ZCODE_ENV=test|production` 选择：
+ZAI 默认登录链路已切换为后端 JWT token 交换，授权入口和业务 token 交换入口按 `CODEZ_ENV=test|production` 选择：
 
 - 授权页：由 `ZAI_<ENV>_OAUTH_ORIGIN` 派生 `/api/oauth/authorize`，生产默认为 `https://chat.z.ai/api/oauth/authorize`
-- token 交换：由 `ZCODE_<ENV>_BASE_URL` 派生 `/api/v1/oauth/token`
+- token 交换：由 `CODEZ_<ENV>_BASE_URL` 派生 `/api/v1/oauth/token`
 - 桌面端请求体：`{ code, redirect_uri, state }`
 - 本地保存的 `oauth:zai:access_token` 是后端返回的 `data.token`
 
 ## 4. ZAI 后端 JWT 登录链路（增量）
 
-ZAI OAuth 登录不再由桌面端直接请求三方 ZAI token 接口。桌面端只负责打开授权页、接收 `zcode://oauth/callback` deep link，并把 `code`、`redirect_uri`、`state` 传给后端 `https://zcode.z.ai/api/v1/oauth/token`。
+ZAI OAuth 登录不再由桌面端直接请求三方 ZAI token 接口。桌面端只负责打开授权页、接收 `codez://oauth/callback` deep link，并把 `code`、`redirect_uri`、`state` 传给后端 `https://zcode.z.ai/api/v1/oauth/token`。
 
 后端完成 z.ai token 交换、userinfo 拉取、用户创建与 JWT 签发。客户端把响应中的 `data.token` 保存为 `oauth:zai:access_token`，把 `data.user` 映射为 `oauth:zai:user_info`，并把 `oauth:active_provider` 设置为 `zai`。
 
@@ -124,13 +124,13 @@ ZAI OAuth 登录不再由桌面端直接请求三方 ZAI token 接口。桌面�
 
 行为说明：
 
-1. `credentialService.save` 自动加密后写入 `~/.zcode/v2/credentials.json`
+1. `credentialService.save` 自动加密后写入 `~/.codez/v2/credentials.json`
 2. `credentialService.load` 自动解密并返回明文给上层业务
 3. 历史明文值（无 `enc:v1:` 前缀）保持兼容读取，避免升级后登录态失效
 
 密钥说明：
 
-- 优先使用环境变量 `ZCODE_CREDENTIAL_SECRET`
+- 优先使用环境变量 `CODEZ_CREDENTIAL_SECRET`
 - 未配置时使用本机上下文生成 fallback key（用于本地/远程模式下的最小可用加密）
 
 测试：
@@ -172,7 +172,7 @@ BigModel 兼容迁移：
 
 1. 使用 `oauth:zai:access_token` 调 `POST https://api.z.ai/api/auth/z/login` 交换 ZAI 业务 token
 2. 使用业务 token 调 `GET /api/biz/customer/getCustomerInfo` 选择默认机构/项目
-3. 调 `GET /api_keys` 查找 `zcode-api-key`，不存在则 `POST /api_keys` 创建
+3. 调 `GET /api_keys` 查找 `codez-api-key`，不存在则 `POST /api_keys` 创建
 4. 调 `GET /api_keys/copy/{apiKey}` 获取 `secretKey`
 5. 写入预置 provider 的 `apiKey` 为 `apiKey.secretKey`
 

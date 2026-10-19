@@ -7,23 +7,23 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { PassThrough } from "node:stream";
-import type { IDisposable, Event } from "@zcode/rpc";
+import type { IDisposable, Event } from "@codez/rpc";
 import type {
   IRemoteBackend,
   RemoteUploadOptions,
   StdioStream,
-} from "@zcode/server/remote/backend.js";
-import { ZCODE_VERSION } from "@zcode/shared";
+} from "@codez/server/remote/backend.js";
+import { CODEZ_VERSION } from "@codez/shared";
 import { describe, expect, it, vi } from "vitest";
 import {
   LocalUploadAssetInstaller,
   RemoteDownloadAssetInstaller,
   buildRemoteArtifactDownloadCommand,
   buildRemoteChecksumCommand,
-} from "@zcode/server/remote/remoteAssetInstaller.js";
-import type { RemoteSha256Tool } from "@zcode/server/remote/remoteAssetPreflight.js";
-import { createTarGzArchive, extractTarGzArchive } from "@zcode/server/remote/localTarGz.js";
-import { quotePosixShellArg } from "@zcode/server/remote/posixShell.js";
+} from "@codez/server/remote/remoteAssetInstaller.js";
+import type { RemoteSha256Tool } from "@codez/server/remote/remoteAssetPreflight.js";
+import { createTarGzArchive, extractTarGzArchive } from "@codez/server/remote/localTarGz.js";
+import { quotePosixShellArg } from "@codez/server/remote/posixShell.js";
 
 const execFileAsync = promisify(execFile);
 const localShellCommand = resolveLocalShellCommand();
@@ -192,7 +192,7 @@ function stubManifestAndHeadFetch(manifest: unknown, contentLength: number): voi
 
 const validManifest = {
   schemaVersion: 1,
-  appVersion: ZCODE_VERSION,
+  appVersion: CODEZ_VERSION,
   platformArch: "linux-x64",
   components: [
     {
@@ -254,20 +254,20 @@ describe("remote asset installer command builders", () => {
     const command = buildRemoteArtifactDownloadCommand({
       tool: "curl",
       urls: ["https://cdn.example.test/a b/component.tar.gz"],
-      outputPath: "~/.zcode/server/asset-cache/staging/a b/component.tar.gz",
+      outputPath: "~/.codez/server/asset-cache/staging/a b/component.tar.gz",
       progressLabel: "server-bundle@1.0.0-server-bundle",
     });
 
     expect(command).toContain("curl");
     expect(command).toContain("'https://cdn.example.test/a b/component.tar.gz'");
-    expect(command).toContain("\"$HOME\"'/.zcode/server/asset-cache/staging/a b/component.tar.gz'");
+    expect(command).toContain("\"$HOME\"'/.codez/server/asset-cache/staging/a b/component.tar.gz'");
   });
 
   it("emits remote download progress lines while downloading artifacts", () => {
     const command = buildRemoteArtifactDownloadCommand({
       tool: "wget",
       urls: ["https://cdn.example.test/component.tar.gz"],
-      outputPath: "~/.zcode/server/asset-cache/staging/component.tar.gz",
+      outputPath: "~/.codez/server/asset-cache/staging/component.tar.gz",
       progressLabel: "server-bundle@1.0.0-server-bundle",
     });
 
@@ -282,7 +282,7 @@ describe("remote asset installer command builders", () => {
     const command = buildRemoteArtifactDownloadCommand({
       tool: "wget",
       urls: ["https://cdn.example.test/component.tar.gz"],
-      outputPath: "~/.zcode/server/asset-cache/staging/component.tar.gz",
+      outputPath: "~/.codez/server/asset-cache/staging/component.tar.gz",
       progressLabel: "server-bundle@1.0.0-server-bundle",
       totalBytes: 2 * 1024 * 1024,
     });
@@ -297,7 +297,7 @@ describe("remote asset installer command builders", () => {
     const command = buildRemoteArtifactDownloadCommand({
       tool: "curl",
       urls: ["https://cdn.example.test/component.tar.gz"],
-      outputPath: "~/.zcode/server/component.tar.gz",
+      outputPath: "~/.codez/server/component.tar.gz",
       progressLabel: "source-server-linux-x64",
       supportsProgress: false,
     });
@@ -313,7 +313,7 @@ describe("remote asset installer command builders", () => {
     "tries the next artifact URL when a downloaded candidate fails sha256 validation",
     async () => {
       const shellCommand = localShellCommand ?? "sh";
-      const dir = await mkdtemp(join(tmpdir(), "zcode-installer-download-"));
+      const dir = await mkdtemp(join(tmpdir(), "codez-installer-download-"));
       const badArchive = join(dir, "bad.tar.gz");
       const goodArchive = join(dir, "good.tar.gz");
       const outputPath = join(dir, "component.tar.gz");
@@ -341,7 +341,7 @@ describe("remote asset installer command builders", () => {
   it("builds sha256 commands for openssl", () => {
     const command = buildRemoteChecksumCommand({
       tool: "openssl",
-      filePath: "~/.zcode/server/component.tar.gz",
+      filePath: "~/.codez/server/component.tar.gz",
     });
     expect(command).toContain("openssl dgst -sha256");
     expect(command).not.toContain("awk");
@@ -350,9 +350,9 @@ describe("remote asset installer command builders", () => {
 
 describe("LocalUploadAssetInstaller", () => {
   it("已取消连接不得开始写入远端 staging", async () => {
-    const releaseDir = await mkdtemp(join(tmpdir(), "zcode-installer-pre-cancel-test-"));
+    const releaseDir = await mkdtemp(join(tmpdir(), "codez-installer-pre-cancel-test-"));
     await mkdir(join(releaseDir, "server"), { recursive: true });
-    await writeFile(join(releaseDir, "server", "zcode-server.cjs"), "server", "utf8");
+    await writeFile(join(releaseDir, "server", "codez-server.cjs"), "server", "utf8");
     const controller = new AbortController();
     controller.abort();
     const backend = new InstallerBackend();
@@ -378,8 +378,8 @@ describe("LocalUploadAssetInstaller", () => {
     await expect(
       installer.installFile({
         componentId: "server-bundle",
-        sourceRelativePath: "server/zcode-server.cjs",
-        remotePath: "~/.zcode/server/zcode-server.cjs",
+        sourceRelativePath: "server/codez-server.cjs",
+        remotePath: "~/.codez/server/codez-server.cjs",
       }),
     ).rejects.toMatchObject({ name: "AbortError" });
 
@@ -388,14 +388,14 @@ describe("LocalUploadAssetInstaller", () => {
   });
 
   shellBackedIt("SSH staging janitor 只删除超过 24 小时的 owner 文件", async () => {
-    const rootDir = await mkdtemp(join(tmpdir(), "zcode-installer-stale-shell-test-"));
+    const rootDir = await mkdtemp(join(tmpdir(), "codez-installer-stale-shell-test-"));
     try {
       const releaseDir = join(rootDir, "release");
       const remoteDir = join(rootDir, "remote");
       await mkdir(join(releaseDir, "server"), { recursive: true });
       await mkdir(remoteDir, { recursive: true });
-      await writeFile(join(releaseDir, "server", "zcode-server.cjs"), "server", "utf8");
-      const targetPath = join(remoteDir, "zcode-server.cjs");
+      await writeFile(join(releaseDir, "server", "codez-server.cjs"), "server", "utf8");
+      const targetPath = join(remoteDir, "codez-server.cjs");
       const stalePath = `${targetPath}.new-stale`;
       const freshPath = `${targetPath}.new-fresh`;
       await writeFile(targetPath, "final", "utf8");
@@ -417,7 +417,7 @@ describe("LocalUploadAssetInstaller", () => {
 
       await installer.installFile({
         componentId: "server-bundle",
-        sourceRelativePath: "server/zcode-server.cjs",
+        sourceRelativePath: "server/codez-server.cjs",
         remotePath: toLocalShellPath(targetPath),
       });
       await execFileAsync(localShellCommand!, ["-c", backend.commands[0]!]);
@@ -431,9 +431,9 @@ describe("LocalUploadAssetInstaller", () => {
   });
 
   it("文件上传取消后不再执行正式文件替换", async () => {
-    const releaseDir = await mkdtemp(join(tmpdir(), "zcode-installer-cancel-test-"));
+    const releaseDir = await mkdtemp(join(tmpdir(), "codez-installer-cancel-test-"));
     await mkdir(join(releaseDir, "server"), { recursive: true });
-    await writeFile(join(releaseDir, "server", "zcode-server.cjs"), "server", "utf8");
+    await writeFile(join(releaseDir, "server", "codez-server.cjs"), "server", "utf8");
     const controller = new AbortController();
     const backend = new InstallerBackend();
     let markUploadStarted!: () => void;
@@ -469,8 +469,8 @@ describe("LocalUploadAssetInstaller", () => {
 
     const installing = installer.installFile({
       componentId: "server-bundle",
-      sourceRelativePath: "server/zcode-server.cjs",
-      remotePath: "~/.zcode/server/zcode-server.cjs",
+      sourceRelativePath: "server/codez-server.cjs",
+      remotePath: "~/.codez/server/codez-server.cjs",
     });
     await uploadStarted;
     controller.abort();
@@ -481,7 +481,7 @@ describe("LocalUploadAssetInstaller", () => {
   });
 
   it("目录上传取消后不再通过已释放连接执行远端清理", async () => {
-    const releaseDir = await mkdtemp(join(tmpdir(), "zcode-installer-dir-cancel-test-"));
+    const releaseDir = await mkdtemp(join(tmpdir(), "codez-installer-dir-cancel-test-"));
     const sourceDir = join(releaseDir, "tools", "linux-x64", "ripgrep");
     await mkdir(sourceDir, { recursive: true });
     await writeFile(join(sourceDir, "rg"), "ripgrep", "utf8");
@@ -521,7 +521,7 @@ describe("LocalUploadAssetInstaller", () => {
     const installing = installer.installDirectory({
       componentId: "ripgrep",
       sourceRelativePath: "tools/linux-x64/ripgrep",
-      remoteDir: "~/.zcode/server/tools/ripgrep",
+      remoteDir: "~/.codez/server/tools/ripgrep",
     });
     await uploadStarted;
     controller.abort();
@@ -532,7 +532,7 @@ describe("LocalUploadAssetInstaller", () => {
   });
 
   it("新的 SSH 目录上传会先清理超过 24 小时的归档和解压 staging", async () => {
-    const releaseDir = await mkdtemp(join(tmpdir(), "zcode-installer-stale-dir-test-"));
+    const releaseDir = await mkdtemp(join(tmpdir(), "codez-installer-stale-dir-test-"));
     const sourceDir = join(releaseDir, "tools", "linux-x64", "ripgrep");
     await mkdir(sourceDir, { recursive: true });
     await writeFile(join(sourceDir, "rg"), "ripgrep", "utf8");
@@ -551,7 +551,7 @@ describe("LocalUploadAssetInstaller", () => {
     await installer.installDirectory({
       componentId: "ripgrep",
       sourceRelativePath: "tools/linux-x64/ripgrep",
-      remoteDir: "~/.zcode/server/tools/ripgrep",
+      remoteDir: "~/.codez/server/tools/ripgrep",
     });
 
     expect(backend.commands[0]).toContain("find");
@@ -561,9 +561,9 @@ describe("LocalUploadAssetInstaller", () => {
   });
 
   it("uses a unique staging path for each uploaded file replacement", async () => {
-    const releaseDir = await mkdtemp(join(tmpdir(), "zcode-installer-test-"));
+    const releaseDir = await mkdtemp(join(tmpdir(), "codez-installer-test-"));
     await mkdir(join(releaseDir, "server"), { recursive: true });
-    await writeFile(join(releaseDir, "server", "zcode-server.cjs"), "server", "utf8");
+    await writeFile(join(releaseDir, "server", "codez-server.cjs"), "server", "utf8");
     const backend = new InstallerBackend();
     const installer = new LocalUploadAssetInstaller(
       backend,
@@ -573,19 +573,19 @@ describe("LocalUploadAssetInstaller", () => {
 
     await installer.installFile({
       componentId: "server-bundle",
-      sourceRelativePath: "server/zcode-server.cjs",
-      remotePath: "~/.zcode/server/zcode-server.cjs",
+      sourceRelativePath: "server/codez-server.cjs",
+      remotePath: "~/.codez/server/codez-server.cjs",
     });
 
     expect(backend.uploads[0]?.remotePath).toMatch(
-      /^~\/\.zcode\/server\/zcode-server\.cjs\.new-[\w-]+$/u,
+      /^~\/\.codez\/server\/codez-server\.cjs\.new-[\w-]+$/u,
     );
     expect(backend.commands.join("\n")).toContain(backend.uploads[0]!.remotePath.split("/").at(-1));
     expect(backend.commands[0]).not.toContain("find");
   });
 
   it("非取消文件替换失败时清理当前 owner staging", async () => {
-    const releaseDir = await mkdtemp(join(tmpdir(), "zcode-installer-cleanup-test-"));
+    const releaseDir = await mkdtemp(join(tmpdir(), "codez-installer-cleanup-test-"));
     await mkdir(join(releaseDir, "node"), { recursive: true });
     await writeFile(join(releaseDir, "node", "node"), "node", "utf8");
     const backend = new FailingReplaceBackend();
@@ -599,7 +599,7 @@ describe("LocalUploadAssetInstaller", () => {
       installer.installFile({
         componentId: "node-runtime",
         sourceRelativePath: "node/node",
-        remotePath: "~/.zcode/server/node",
+        remotePath: "~/.codez/server/node",
         executable: true,
       }),
     ).rejects.toThrow("chmod denied");
@@ -611,12 +611,12 @@ describe("LocalUploadAssetInstaller", () => {
   });
 
   it("resolves component versions from per-component release dirs", async () => {
-    const releaseDir = await mkdtemp(join(tmpdir(), "zcode-installer-test-"));
+    const releaseDir = await mkdtemp(join(tmpdir(), "codez-installer-test-"));
     await writeFile(
       join(releaseDir, "manifest-linux-x64.json"),
       JSON.stringify({
         schemaVersion: 1,
-        appVersion: ZCODE_VERSION,
+        appVersion: CODEZ_VERSION,
         platformArch: "linux-x64",
         components: [
           {
@@ -650,7 +650,7 @@ describe("LocalUploadAssetInstaller", () => {
   });
 
   it("allows callers to probe optional local assets without throwing", async () => {
-    const releaseDir = await mkdtemp(join(tmpdir(), "zcode-installer-test-"));
+    const releaseDir = await mkdtemp(join(tmpdir(), "codez-installer-test-"));
     const installer = new LocalUploadAssetInstaller(
       new InstallerBackend(),
       { releaseDir, platformArch: "linux-x64" },
@@ -662,14 +662,14 @@ describe("LocalUploadAssetInstaller", () => {
     ).resolves.toBeNull();
 
     await mkdir(join(releaseDir, "server"), { recursive: true });
-    await writeFile(join(releaseDir, "server", "zcode-server.cjs"), "server");
+    await writeFile(join(releaseDir, "server", "codez-server.cjs"), "server");
     await expect(
-      installer.tryResolveLocalPath(["server-bundle"], "server/zcode-server.cjs"),
-    ).resolves.toBe(join(releaseDir, "server", "zcode-server.cjs"));
+      installer.tryResolveLocalPath(["server-bundle"], "server/codez-server.cjs"),
+    ).resolves.toBe(join(releaseDir, "server", "codez-server.cjs"));
   });
 
   it("creates directory upload archives without relying on local system tar", async () => {
-    const rootDir = await mkdtemp(join(tmpdir(), "zcode-installer-test-"));
+    const rootDir = await mkdtemp(join(tmpdir(), "codez-installer-test-"));
     const releaseDir = join(rootDir, "release");
     const sourceDir = join(releaseDir, "tools", "linux-x64", "ripgrep");
     const backend = new InstallerBackend();
@@ -685,7 +685,7 @@ describe("LocalUploadAssetInstaller", () => {
     const installParams = {
       componentId: "ripgrep",
       sourceRelativePath: "tools/linux-x64/ripgrep",
-      remoteDir: "~/.zcode/server/tools/ripgrep",
+      remoteDir: "~/.codez/server/tools/ripgrep",
     };
     await Promise.all([
       installer.installDirectory(installParams),
@@ -696,7 +696,7 @@ describe("LocalUploadAssetInstaller", () => {
     const remoteTarPaths = backend.uploads.map((upload) => upload.remotePath);
     expect(new Set(remoteTarPaths)).toHaveLength(2);
     for (const remoteTarPath of remoteTarPaths) {
-      expect(remoteTarPath).toMatch(/^~\/.zcode\/server\/tools\/ripgrep\.tar\.gz-[\w-]+$/u);
+      expect(remoteTarPath).toMatch(/^~\/.codez\/server\/tools\/ripgrep\.tar\.gz-[\w-]+$/u);
     }
     expect(backend.commands.join("\n")).toContain("ripgrep.extract-");
     expect(backend.commands.join("\n")).toContain("trap cleanup_staging EXIT");
@@ -713,12 +713,12 @@ describe("LocalUploadAssetInstaller", () => {
   });
 
   it("falls back to CDN cache when local directory exists but required child paths are missing", async () => {
-    const rootDir = await mkdtemp(join(tmpdir(), "zcode-installer-test-"));
+    const rootDir = await mkdtemp(join(tmpdir(), "codez-installer-test-"));
     const staleReleaseDir = join(rootDir, "stale-release");
     const cdnReleaseDir = join(rootDir, "cdn-release");
     const sourceRelativePath = "glm/linux-x64/packages";
     await mkdir(join(staleReleaseDir, sourceRelativePath), { recursive: true });
-    await mkdir(join(cdnReleaseDir, sourceRelativePath, "skill-creator-plugin", ".zcode-plugin"), {
+    await mkdir(join(cdnReleaseDir, sourceRelativePath, "skill-creator-plugin", ".codez-plugin"), {
       recursive: true,
     });
     await writeFile(
@@ -726,7 +726,7 @@ describe("LocalUploadAssetInstaller", () => {
         cdnReleaseDir,
         sourceRelativePath,
         "skill-creator-plugin",
-        ".zcode-plugin",
+        ".codez-plugin",
         "plugin.json",
       ),
       '{"name":"skill-creator-plugin"}',
@@ -737,7 +737,7 @@ describe("LocalUploadAssetInstaller", () => {
       {
         releaseDir: staleReleaseDir,
         platformArch: "linux-x64",
-        version: ZCODE_VERSION,
+        version: CODEZ_VERSION,
         remoteCacheDir: rootDir,
         remoteCdnBaseUrl: "https://cdn.example.test/releases",
       },
@@ -755,13 +755,13 @@ describe("LocalUploadAssetInstaller", () => {
 
     await expect(
       installer.tryResolveLocalPath(["glm"], sourceRelativePath, [
-        `${sourceRelativePath}/skill-creator-plugin/.zcode-plugin/plugin.json`,
+        `${sourceRelativePath}/skill-creator-plugin/.codez-plugin/plugin.json`,
       ]),
     ).resolves.toBe(join(cdnReleaseDir, sourceRelativePath));
   });
 
   it("bounds the internal CDN fallback with the configured manifest deadline", async () => {
-    const releaseDir = await mkdtemp(join(tmpdir(), "zcode-installer-test-"));
+    const releaseDir = await mkdtemp(join(tmpdir(), "codez-installer-test-"));
     const fetchMock = vi.fn(
       async (_input: RequestInfo | URL, init?: RequestInit) =>
         await new Promise<Response>((_resolve, reject) => {
@@ -776,7 +776,7 @@ describe("LocalUploadAssetInstaller", () => {
       {
         releaseDir,
         platformArch: "linux-x64",
-        version: ZCODE_VERSION,
+        version: CODEZ_VERSION,
         remoteCacheDir: join(releaseDir, "cache"),
         remoteCdnBaseUrl: "https://cdn.example.test/releases",
         manifestRequestTimeoutMs: 25,
@@ -786,7 +786,7 @@ describe("LocalUploadAssetInstaller", () => {
 
     const startedAt = Date.now();
     await expect(
-      installer.tryResolveLocalPath(["glm"], "glm/linux-x64/missing-zcode.cjs"),
+      installer.tryResolveLocalPath(["glm"], "glm/linux-x64/missing-codez.cjs"),
     ).resolves.toBeNull();
     expect(Date.now() - startedAt).toBeLessThan(1_000);
     expect(fetchMock).toHaveBeenCalled();
@@ -806,11 +806,11 @@ describe("RemoteDownloadAssetInstaller", () => {
   )(
     "远端 $stage 失败保留原始错误并清理，恢复后可重试（progress=$supportsProgress）",
     async ({ stage, diagnostic, supportsProgress }) => {
-      const rootDir = await mkdtemp(join(tmpdir(), "zcode-installer-download-failure-"));
-      const sourcePath = join(rootDir, "zcode-server.cjs");
+      const rootDir = await mkdtemp(join(tmpdir(), "codez-installer-download-failure-"));
+      const sourcePath = join(rootDir, "codez-server.cjs");
       const archivePath = join(rootDir, "component.tar.gz");
       await writeFile(sourcePath, "current server");
-      await createTarGzArchive(archivePath, [{ sourcePath, archivePath: "zcode-server.cjs" }]);
+      await createTarGzArchive(archivePath, [{ sourcePath, archivePath: "codez-server.cjs" }]);
       const sha256 = createHash("sha256")
         .update(await readFile(archivePath))
         .digest("hex");
@@ -826,13 +826,13 @@ describe("RemoteDownloadAssetInstaller", () => {
             ? 'wget() { while [ "$1" != -O ]; do shift; done; shift; printf corrupt > "$1"; }'
             : 'tar() { echo "fixture extraction failed" >&2; return 2; }';
       const backend = new ShellInstallerBackend(rootDir, `${download}\n${failure}`);
-      const installedPath = join(rootDir, ".zcode/server/zcode-server.cjs");
-      await mkdir(join(rootDir, ".zcode/server"), { recursive: true });
+      const installedPath = join(rootDir, ".codez/server/codez-server.cjs");
+      await mkdir(join(rootDir, ".codez/server"), { recursive: true });
       await writeFile(installedPath, "previous server");
       const installer = new RemoteDownloadAssetInstaller(
         backend,
         {
-          version: ZCODE_VERSION,
+          version: CODEZ_VERSION,
           platformArch: "linux-x64",
           remoteCdnBaseUrl: "https://cdn.example.test/releases",
         },
@@ -848,30 +848,30 @@ describe("RemoteDownloadAssetInstaller", () => {
         await expect(
           installer.installFile({
             componentId: "server-bundle",
-            sourceRelativePath: "server/zcode-server.cjs",
-            remotePath: "~/.zcode/server/zcode-server.cjs",
+            sourceRelativePath: "server/codez-server.cjs",
+            remotePath: "~/.codez/server/codez-server.cjs",
           }),
         ).rejects.toThrow(diagnostic);
         expect(backend.commands).toHaveLength(1);
-        await expect(readdir(join(rootDir, ".zcode/server/asset-cache/staging"))).resolves.toEqual(
+        await expect(readdir(join(rootDir, ".codez/server/asset-cache/staging"))).resolves.toEqual(
           [],
         );
         await expect(
-          readdir(join(rootDir, ".zcode/server/asset-cache/components/linux-x64/server-bundle")),
+          readdir(join(rootDir, ".codez/server/asset-cache/components/linux-x64/server-bundle")),
         ).resolves.toEqual([]);
         await expect(readFile(installedPath, "utf8")).resolves.toBe("previous server");
         backend.prelude = download;
         await installer.installFile({
           componentId: "server-bundle",
-          sourceRelativePath: "server/zcode-server.cjs",
-          remotePath: "~/.zcode/server/zcode-server.cjs",
+          sourceRelativePath: "server/codez-server.cjs",
+          remotePath: "~/.codez/server/codez-server.cjs",
         });
         await expect(readFile(installedPath, "utf8")).resolves.toBe("current server");
-        await expect(readdir(join(rootDir, ".zcode/server/asset-cache/staging"))).resolves.toEqual(
+        await expect(readdir(join(rootDir, ".codez/server/asset-cache/staging"))).resolves.toEqual(
           [],
         );
         await expect(
-          readdir(join(rootDir, ".zcode/server/asset-cache/components/linux-x64/server-bundle")),
+          readdir(join(rootDir, ".codez/server/asset-cache/components/linux-x64/server-bundle")),
         ).resolves.toEqual([sha256]);
       } finally {
         vi.unstubAllGlobals();
@@ -888,7 +888,7 @@ describe("RemoteDownloadAssetInstaller", () => {
     const installer = new RemoteDownloadAssetInstaller(
       backend,
       {
-        version: ZCODE_VERSION,
+        version: CODEZ_VERSION,
         platformArch: "linux-x64",
         remoteCdnBaseUrls: ["https://cdn.example.test/releases"],
         signal: controller.signal,
@@ -900,8 +900,8 @@ describe("RemoteDownloadAssetInstaller", () => {
     await expect(
       installer.installFile({
         componentId: "server-bundle",
-        sourceRelativePath: "server/zcode-server.cjs",
-        remotePath: "~/.zcode/server/zcode-server.cjs",
+        sourceRelativePath: "server/codez-server.cjs",
+        remotePath: "~/.codez/server/codez-server.cjs",
       }),
     ).rejects.toMatchObject({ name: "AbortError" });
 
@@ -925,7 +925,7 @@ describe("RemoteDownloadAssetInstaller", () => {
     const installer = new RemoteDownloadAssetInstaller(
       backend,
       {
-        version: ZCODE_VERSION,
+        version: CODEZ_VERSION,
         platformArch: "linux-x64",
         remoteCdnBaseUrls: ["https://cdn.example.test/releases"],
         remoteAssetNetwork: { fetch: remoteAssetFetch },
@@ -937,8 +937,8 @@ describe("RemoteDownloadAssetInstaller", () => {
     try {
       await installer.installFile({
         componentId: "server-bundle",
-        sourceRelativePath: "server/zcode-server.cjs",
-        remotePath: "~/.zcode/server/zcode-server.cjs",
+        sourceRelativePath: "server/codez-server.cjs",
+        remotePath: "~/.codez/server/codez-server.cjs",
       });
 
       expect(directFetch).not.toHaveBeenCalled();
@@ -972,7 +972,7 @@ describe("RemoteDownloadAssetInstaller", () => {
     const installer = new RemoteDownloadAssetInstaller(
       backend,
       {
-        version: ZCODE_VERSION,
+        version: CODEZ_VERSION,
         platformArch: "linux-x64",
         remoteCdnBaseUrls: ["https://cdn.example.test/releases"],
         signal: controller.signal,
@@ -983,8 +983,8 @@ describe("RemoteDownloadAssetInstaller", () => {
 
     const installing = installer.installFile({
       componentId: "server-bundle",
-      sourceRelativePath: "server/zcode-server.cjs",
-      remotePath: "~/.zcode/server/zcode-server.cjs",
+      sourceRelativePath: "server/codez-server.cjs",
+      remotePath: "~/.codez/server/codez-server.cjs",
     });
     await headStarted;
     controller.abort();
@@ -1006,7 +1006,7 @@ describe("RemoteDownloadAssetInstaller", () => {
     const installer = new RemoteDownloadAssetInstaller(
       backend,
       {
-        version: ZCODE_VERSION,
+        version: CODEZ_VERSION,
         platformArch: "linux-x64",
         remoteCdnBaseUrls: ["https://cdn.example.test/releases"],
       },
@@ -1016,8 +1016,8 @@ describe("RemoteDownloadAssetInstaller", () => {
 
     await installer.installFile({
       componentId: "server-bundle",
-      sourceRelativePath: "server/zcode-server.cjs",
-      remotePath: "~/.zcode/server/zcode-server.cjs",
+      sourceRelativePath: "server/codez-server.cjs",
+      remotePath: "~/.codez/server/codez-server.cjs",
     });
 
     const command = backend.commands.join("\n");
@@ -1027,11 +1027,11 @@ describe("RemoteDownloadAssetInstaller", () => {
     expect(command).toContain("stat -f %m");
     expect(command).toContain("stale lock for server-bundle@1.0.0-server-bundle");
     expect(command).toContain(
-      'touch "$HOME"\'/.zcode/server/asset-cache/components/linux-x64/server-bundle/',
+      'touch "$HOME"\'/.codez/server/asset-cache/components/linux-x64/server-bundle/',
     );
     expect(command).toContain('kill "$lock_heartbeat_pid"');
     expect(command).toMatch(/\.new-[^\s']+/u);
-    expect(command).toMatch(/zcode-server\.cjs\.new-[\w-]+/u);
+    expect(command).toMatch(/codez-server\.cjs\.new-[\w-]+/u);
     expect(command).toContain("curl -fL");
     expect(command).toContain("sha256sum");
     vi.unstubAllGlobals();
@@ -1047,7 +1047,7 @@ describe("RemoteDownloadAssetInstaller", () => {
     const installer = new RemoteDownloadAssetInstaller(
       backend,
       {
-        version: ZCODE_VERSION,
+        version: CODEZ_VERSION,
         platformArch: "linux-x64",
         remoteCdnBaseUrls: ["https://cdn.example.test/releases"],
       },
@@ -1060,8 +1060,8 @@ describe("RemoteDownloadAssetInstaller", () => {
 
     await installer.installFile({
       componentId: "server-bundle",
-      sourceRelativePath: "server/zcode-server.cjs",
-      remotePath: "~/.zcode/server/zcode-server.cjs",
+      sourceRelativePath: "server/codez-server.cjs",
+      remotePath: "~/.codez/server/codez-server.cjs",
     });
 
     expect(logs).toContain(
@@ -1077,7 +1077,7 @@ describe("RemoteDownloadAssetInstaller", () => {
     const installer = new RemoteDownloadAssetInstaller(
       backend,
       {
-        version: ZCODE_VERSION,
+        version: CODEZ_VERSION,
         platformArch: "linux-x64",
         remoteCdnBaseUrls: ["https://cdn.example.test/releases"],
       },
@@ -1087,8 +1087,8 @@ describe("RemoteDownloadAssetInstaller", () => {
 
     await installer.installFile({
       componentId: "server-bundle",
-      sourceRelativePath: "server/zcode-server.cjs",
-      remotePath: "~/.zcode/server/zcode-server.cjs",
+      sourceRelativePath: "server/codez-server.cjs",
+      remotePath: "~/.codez/server/codez-server.cjs",
     });
 
     expect(backend.commands.join("\n")).toContain("total=2097152");
@@ -1111,14 +1111,14 @@ describe("RemoteDownloadAssetInstaller", () => {
     const backend = new InstallerBackend(
       [],
       new Set([
-        `~/.zcode/server/asset-cache/components/linux-x64/server-bundle/${expectedCacheSegment}/.ready`,
+        `~/.codez/server/asset-cache/components/linux-x64/server-bundle/${expectedCacheSegment}/.ready`,
       ]),
     );
     const logs: string[] = [];
     const installer = new RemoteDownloadAssetInstaller(
       backend,
       {
-        version: ZCODE_VERSION,
+        version: CODEZ_VERSION,
         platformArch: "linux-x64",
         remoteCdnBaseUrls: ["https://cdn.example.test/releases"],
       },
@@ -1131,8 +1131,8 @@ describe("RemoteDownloadAssetInstaller", () => {
 
     await installer.installFile({
       componentId: "server-bundle",
-      sourceRelativePath: "server/zcode-server.cjs",
-      remotePath: "~/.zcode/server/zcode-server.cjs",
+      sourceRelativePath: "server/codez-server.cjs",
+      remotePath: "~/.codez/server/codez-server.cjs",
     });
 
     const commands = backend.commands.join("\n");
@@ -1165,14 +1165,14 @@ describe("RemoteDownloadAssetInstaller", () => {
     const expectedCacheSegment = "b".repeat(64);
     const backend = new InstallerBackend(
       [],
-      new Set([`~/.zcode/server/asset-cache/components/linux-x64/glm/${oldCacheSegment}/.ready`]),
+      new Set([`~/.codez/server/asset-cache/components/linux-x64/glm/${oldCacheSegment}/.ready`]),
     );
     const logs: string[] = [];
     const warnings: string[] = [];
     const installer = new RemoteDownloadAssetInstaller(
       backend,
       {
-        version: ZCODE_VERSION,
+        version: CODEZ_VERSION,
         platformArch: "linux-x64",
         remoteCdnBaseUrls: ["https://cdn.example.test/releases"],
       },
@@ -1185,19 +1185,19 @@ describe("RemoteDownloadAssetInstaller", () => {
 
     await installer.installFile({
       componentId: "glm",
-      sourceRelativePath: "glm/linux-x64/zcode.cjs",
-      remotePath: "~/.zcode/server/agents/glm/zcode.cjs",
+      sourceRelativePath: "glm/linux-x64/codez.cjs",
+      remotePath: "~/.codez/server/agents/glm/codez.cjs",
     });
 
     const commands = backend.commands.join("\n");
     expect(commands).toContain("curl -fL");
     expect(commands).toContain(`asset-cache/components/linux-x64/glm/${expectedCacheSegment}`);
     expect(commands).not.toContain(
-      `rm -rf "$HOME"'/.zcode/server/asset-cache/components/linux-x64/glm/${oldCacheSegment}'`,
+      `rm -rf "$HOME"'/.codez/server/asset-cache/components/linux-x64/glm/${oldCacheSegment}'`,
     );
     expect(logs).not.toContain(`[remote-assets] remote component cache hit: glm@${hashedVersion}`);
     expect(warnings).toContain(
-      `[remote-assets] download required: component=glm reason=remote component cache missing path=~/.zcode/server/asset-cache/components/linux-x64/glm/${expectedCacheSegment}/.ready`,
+      `[remote-assets] download required: component=glm reason=remote component cache missing path=~/.codez/server/asset-cache/components/linux-x64/glm/${expectedCacheSegment}/.ready`,
     );
     vi.unstubAllGlobals();
   });
@@ -1210,7 +1210,7 @@ describe("RemoteDownloadAssetInstaller", () => {
     const installer = new RemoteDownloadAssetInstaller(
       new InstallerBackend(),
       {
-        version: ZCODE_VERSION,
+        version: CODEZ_VERSION,
         platformArch: "linux-x64",
         remoteCdnBaseUrls: ["https://cdn.example.test/releases"],
       },
@@ -1221,8 +1221,8 @@ describe("RemoteDownloadAssetInstaller", () => {
     await expect(
       installer.installFile({
         componentId: "server-bundle",
-        sourceRelativePath: "server/zcode-server.cjs",
-        remotePath: "~/.zcode/server/zcode-server.cjs",
+        sourceRelativePath: "server/codez-server.cjs",
+        remotePath: "~/.codez/server/codez-server.cjs",
       }),
     ).rejects.toThrow("sha256 is invalid");
     vi.unstubAllGlobals();

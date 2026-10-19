@@ -45,7 +45,7 @@ non-retryable behavior.
 
 ## Dynamic-workflow exception
 
-Inside a dynamic-workflow run (`apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md`) the adapter-layer
+Inside a dynamic-workflow run (`apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md`) the adapter-layer
 classification above is not the retry authority. Subagent and tool-side requests carry an
 unbounded retry budget and consult a workflow-specific policy table instead:
 

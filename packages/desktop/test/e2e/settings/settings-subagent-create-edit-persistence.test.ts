@@ -1,6 +1,6 @@
 import { access, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { decodeCustomModelValue, encodeCustomModelValue } from "@zcode/shared";
+import { decodeCustomModelValue, encodeCustomModelValue } from "@codez/shared";
 import {
   TID_CHAT_MODEL_SELECT_GROUP,
   TID_CHAT_MODEL_SELECT_ITEM,
@@ -15,7 +15,7 @@ import {
   TID_SUBAGENT_ROW,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -84,7 +84,7 @@ const USER_REMOVED_MODEL = {
 const USER_AGENT_ROOT = join(resolveE2EStorageRoot(), "agents");
 const PLUGIN_JUDGE_AGENT_NAME = "documents:visual-judge";
 const PLUGIN_JUDGE_AGENT_ID = "plugin:documents@zcode-plugins-official:visual-judge";
-const WORKSPACE_AGENT_ROOT = join(DEFAULT_WORKSPACE, ".zcode", "agents");
+const WORKSPACE_AGENT_ROOT = join(DEFAULT_WORKSPACE, ".codez", "agents");
 const SUBAGENT_FORM_SELECTOR = `form:has(input[type="text"]):has(${sel(
   TID_CHAT_MODEL_SELECT_TRIGGER,
 )})`;

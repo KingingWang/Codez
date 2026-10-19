@@ -1,12 +1,12 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { QueueState } from "@zcode/shared/zcode-protocol-v4";
+import type { QueueState } from "@codez/shared/codez-protocol-v4";
 import {
   ConversationQueuePanel,
   resolveV4QueueReorderAnchor,
 } from "@/v4/ConversationQueuePanel.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 vi.mock("@/ControlHintTooltip.js", async () => {
   const React = await import("react");
@@ -53,7 +53,7 @@ function queueState(): QueueState {
 function renderPanel(): string {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(ConversationQueuePanel, {
         queue: queueState(),
@@ -74,7 +74,7 @@ describe("ConversationQueuePanel", () => {
     ];
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationQueuePanel, { queue }),
       ),
@@ -99,7 +99,7 @@ describe("ConversationQueuePanel", () => {
     const queue = { ...queueState(), autoDrain: false, pauseReason: "stopped" as const };
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationQueuePanel, {
           queue,
@@ -122,7 +122,7 @@ describe("ConversationQueuePanel", () => {
     };
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationQueuePanel, {
           queue,
@@ -142,7 +142,7 @@ describe("ConversationQueuePanel", () => {
   it("queue edit 只触发撤回动作，并在 ACK 期间锁定目标行", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationQueuePanel, {
           queue: queueState(),
@@ -173,7 +173,7 @@ describe("ConversationQueuePanel", () => {
     ];
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationQueuePanel, {
           queue,
@@ -247,7 +247,7 @@ it("renders standard references without leaking the wire encoding into queue tex
     'Review\n\n# userselect:\n```userselect\n[{"text":"quoted original"}]\n```';
   const html = renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(ConversationQueuePanel, { queue }),
     ),

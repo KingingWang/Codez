@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { ProjectEditor } from "@/project-sidebar/ProjectEditor.js";
 import type { SaveProjectInput } from "@/project-sidebar/contract.js";
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/project-sidebar/useProjectDirectoryServices.js", () => ({
   useProjectDirectoryServices: () => ({ services: {}, error: null }),

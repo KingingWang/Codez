@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": "~/.zcode/agents/e2e-runtime-reviewer.md",
+      "path": "~/.codez/agents/e2e-runtime-reviewer.md",
       "source": "created-by-spec",
       "description": "通过真实 Settings 创建和更新；不重启 Host、CLI 或父 session。"
     }

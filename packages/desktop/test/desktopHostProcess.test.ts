@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HostMessageTypes, HostResponseTypes } from "@zcode/shared";
+import { HostMessageTypes, HostResponseTypes } from "@codez/shared";
 import {
   disposeHostProcess,
   disposeHostProcessAndWait,
@@ -28,7 +28,7 @@ afterEach(() => {
 
 vi.mock("electron", () => ({
   app: {
-    getPath: vi.fn(() => "/tmp/zcode-test"),
+    getPath: vi.fn(() => "/tmp/codez-test"),
     get isPackaged() {
       return electronMock.isPackaged;
     },

@@ -1,5 +1,5 @@
 // SHARE-OAUTH01：完整 Web 入口的分享登录回调，第三方 OAuth/API 使用受控响应。
-// 启动：pnpm --filter @zcode/web exec vite --host 127.0.0.1 --port 5178 --strictPort
+// 启动：pnpm --filter @codez/web exec vite --host 127.0.0.1 --port 5178 --strictPort
 // 运行：node packages/web/test/e2e/manual-review/pending/share-oauth-callback.mjs
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";

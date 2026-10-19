@@ -2,7 +2,7 @@
 import { createElement } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 
 const h = vi.hoisted(() => {
   const initialize = vi.fn(async () => {});
@@ -45,7 +45,7 @@ const h = vi.hoisted(() => {
     },
   };
   const providerSettingsState = {
-    view: null as import("@zcode/services").ProviderSettingsView | null,
+    view: null as import("@codez/services").ProviderSettingsView | null,
   };
   const state = {
     loading: false,
@@ -109,7 +109,7 @@ vi.mock("@/hooks/useSettingService.js", () => ({
   useSettings: () => ({ settings: h.settings }),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: h.locale.current,
     intl: {
       formatMessage: ({ id }: { id: string }) => h.messages.current[id] ?? id,

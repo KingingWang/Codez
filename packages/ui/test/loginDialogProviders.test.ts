@@ -2,7 +2,7 @@ import {
   BIGMODEL_PROVIDER_ID,
   type OAuthProviderMeta,
   ZAI_PROVIDER_ID,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { describe, expect, it } from "vitest";
 import {
   resolveLoginRetryProvider,

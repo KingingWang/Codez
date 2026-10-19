@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAgentTelemetrySpawnEnv } from "../src/zcode-agent/agentTelemetryEnv.js";
+import { buildAgentTelemetrySpawnEnv } from "../src/codez-agent/agentTelemetryEnv.js";
 
 describe("buildAgentTelemetrySpawnEnv", () => {
   it("未配置 OTLP 时不注入身份", () => {
@@ -25,11 +25,11 @@ describe("buildAgentTelemetrySpawnEnv", () => {
     });
     expect(result).toMatchObject({
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "https://arms.example.com/v1/traces",
-      ZCODE_TELEMETRY_DEVICE_MID: "device-1",
-      ZCODE_TELEMETRY_IDENTITY_STATE: "authenticated",
-      ZCODE_TELEMETRY_RUNTIME_SURFACE: "desktop_local_host",
+      CODEZ_TELEMETRY_DEVICE_MID: "device-1",
+      CODEZ_TELEMETRY_IDENTITY_STATE: "authenticated",
+      CODEZ_TELEMETRY_RUNTIME_SURFACE: "desktop_local_host",
     });
-    expect(result.ZCODE_TELEMETRY_USER_SUBJECT_ID).toMatch(/^[0-9a-f]{64}$/u);
-    expect(result.ZCODE_TELEMETRY_USER_ID).toBeUndefined();
+    expect(result.CODEZ_TELEMETRY_USER_SUBJECT_ID).toMatch(/^[0-9a-f]{64}$/u);
+    expect(result.CODEZ_TELEMETRY_USER_ID).toBeUndefined();
   });
 });

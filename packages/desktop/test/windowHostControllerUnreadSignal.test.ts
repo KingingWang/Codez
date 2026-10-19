@@ -1,18 +1,18 @@
 import { expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { ZCodeTaskMeta, ZCodeWorkspaceEvent } from "@zcode/shared";
-import type { IZCodeTaskService, WindowHostTaskUnreadSignal } from "@zcode/services";
+import { Emitter } from "@codez/rpc";
+import type { CodezTaskMeta, CodezWorkspaceEvent } from "@codez/shared";
+import type { ICodezTaskService, WindowHostTaskUnreadSignal } from "@codez/services";
 import { createWindowHostControllerRuntime } from "../src/host/windowHostControllerService.js";
 
 async function fixture() {
-  const events = new Emitter<ZCodeWorkspaceEvent>();
+  const events = new Emitter<CodezWorkspaceEvent>();
   const scope = {
     kind: "remote" as const,
     sourceServerId: "source",
     workspacePath: "/repo",
     workspaceIdentity: "remote:server:source:/repo",
   };
-  const meta: ZCodeTaskMeta = {
+  const meta: CodezTaskMeta = {
     taskId: "task",
     traceId: "trace",
     title: "task",
@@ -29,7 +29,7 @@ async function fixture() {
     listArchivedTasks: async () => [],
     onDynamicWorkspaceEvent: () => events.event,
     setTaskUnread: vi.fn(async () => ({ ...meta, unreadAt: 10 })),
-  } as unknown as IZCodeTaskService;
+  } as unknown as ICodezTaskService;
   const source = { scope, taskService, sourceAvailability: "online" as "online" | "offline" };
   const onSourceError = vi.fn();
   const runtime = createWindowHostControllerRuntime({
@@ -109,7 +109,7 @@ it.each(["disconnect", "replace", "dispose"])(
 
 it("does not return an old unread write as current after the source service changes", async () => {
   const f = await fixture();
-  const pending = Promise.withResolvers<ZCodeTaskMeta>();
+  const pending = Promise.withResolvers<CodezTaskMeta>();
   vi.mocked(f.taskService.setTaskUnread).mockReturnValue(pending.promise);
   try {
     const write = f.runtime.service.mutateTask({
@@ -127,7 +127,7 @@ it("does not return an old unread write as current after the source service chan
 
 it("admits a newly completed task before writing its unread marker", async () => {
   const f = await fixture();
-  const result = Promise.withResolvers<ZCodeTaskMeta | null>();
+  const result = Promise.withResolvers<CodezTaskMeta | null>();
   f.runtime.service.onDynamicTaskUnreadSignal()((signal) => {
     void f.runtime.service
       .mutateTask({ address: signal.address, mutation: { kind: "mark-unread" } })
@@ -144,9 +144,9 @@ it("admits a newly completed task before writing its unread marker", async () =>
 
 it("rejects an early completion write when its source changes during admission", async () => {
   const f = await fixture();
-  const pending = Promise.withResolvers<ZCodeTaskMeta[]>();
+  const pending = Promise.withResolvers<CodezTaskMeta[]>();
   const started = Promise.withResolvers<void>();
-  const result = Promise.withResolvers<ZCodeTaskMeta | null>();
+  const result = Promise.withResolvers<CodezTaskMeta | null>();
   const receive = vi.fn((signal: WindowHostTaskUnreadSignal) => {
     void f.runtime.service
       .mutateTask({ address: signal.address, mutation: { kind: "mark-unread" } })
@@ -179,10 +179,10 @@ it("rejects an early completion write when its source changes during admission",
 
 it("admits a newly completed task after an older in-flight snapshot finishes", async () => {
   const f = await fixture();
-  const pending = Promise.withResolvers<ZCodeTaskMeta[]>();
+  const pending = Promise.withResolvers<CodezTaskMeta[]>();
   const started = Promise.withResolvers<void>();
   const previousMeta = { ...f.meta };
-  const result = Promise.withResolvers<ZCodeTaskMeta | null>();
+  const result = Promise.withResolvers<CodezTaskMeta | null>();
   f.taskService.listTasks = vi
     .fn(async () => [{ ...f.meta }])
     .mockImplementationOnce(() => {
@@ -215,10 +215,10 @@ it("admits a newly completed task after an older in-flight snapshot finishes", a
 
 it("keeps a known live completion writable when an earlier refresh fails", async () => {
   const f = await fixture();
-  const pending = Promise.withResolvers<ZCodeTaskMeta[]>();
+  const pending = Promise.withResolvers<CodezTaskMeta[]>();
   const started = Promise.withResolvers<void>();
   const failure = new Error("refresh failed");
-  const result = Promise.withResolvers<ZCodeTaskMeta | null>();
+  const result = Promise.withResolvers<CodezTaskMeta | null>();
   f.taskService.listTasks = vi
     .fn(async () => [{ ...f.meta }])
     .mockImplementationOnce(() => {
@@ -250,7 +250,7 @@ it("keeps a known live completion writable when an earlier refresh fails", async
 
 it("rejects the exact write marker if its source changes while the post-write refresh is pending", async () => {
   const f = await fixture();
-  const pending = Promise.withResolvers<ZCodeTaskMeta[]>();
+  const pending = Promise.withResolvers<CodezTaskMeta[]>();
   f.taskService.listTasks = vi.fn(() => pending.promise);
   try {
     const write = f.runtime.service.mutateTask({
@@ -288,7 +288,7 @@ it.each(["mark-read", "mark-unread"] as const)(
   "does not execute %s against a replacement source after the admission refresh",
   async (kind) => {
     const f = await fixture();
-    const pending = Promise.withResolvers<ZCodeTaskMeta[]>();
+    const pending = Promise.withResolvers<CodezTaskMeta[]>();
     const old = {
       ...f.taskService,
       listTasks: vi.fn(() => pending.promise),
@@ -322,7 +322,7 @@ it("delivers the explicit completion of a known task even when its projection re
   const f = await fixture();
   const failure = new Error("transient refresh failure");
   f.taskService.listTasks = vi.fn(async () => [f.meta]).mockRejectedValueOnce(failure);
-  const result = Promise.withResolvers<ZCodeTaskMeta | null>();
+  const result = Promise.withResolvers<CodezTaskMeta | null>();
   const receive = vi.fn((signal: WindowHostTaskUnreadSignal) => {
     void f.runtime.service
       .mutateTask({ address: signal.address, mutation: { kind: "mark-unread" } })

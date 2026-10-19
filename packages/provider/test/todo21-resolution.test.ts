@@ -80,7 +80,7 @@ function resolve(input: {
   const builtinModelIds = input.builtinModelIds ?? ["a", "b"];
   const modelIds = input.personalModelIds ?? [];
   return new ProviderConfigResolver().resolve({
-    zcodeBuiltinProviders: new ProviderConfigMap([
+    codezBuiltinProviders: new ProviderConfigMap([
       [
         "provider-a",
         new ProviderConfig({
@@ -102,7 +102,7 @@ function resolve(input: {
         new ProviderConfig({ personalModelIds: modelIds, modelOrder: input.modelOrder }),
       ],
     ]),
-    zcodeBuiltinModelRules: new ModelConfigRules([
+    codezBuiltinModelRules: new ModelConfigRules([
       { type: "model", modelMatch: ".*", config: completeModelConfig() },
       ...(input.disabledModelId
         ? [

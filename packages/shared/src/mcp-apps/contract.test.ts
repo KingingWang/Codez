@@ -62,11 +62,11 @@ describe("mcp-apps-protocol contract", () => {
     expect(normalizeMcpToolUiMeta({ ui: { resourceUri: "https://a/b" } })).toBeNull();
   });
 
-  it("zcode/csp 只认已知布尔键", () => {
+  it("codez/csp 只认已知布尔键", () => {
     expect(normalizeMcpAppCspRelaxations(exampleResourceMetaWithRelaxations)).toEqual({
       unsafeEval: true,
     });
-    expect(normalizeMcpAppCspRelaxations({ "zcode/csp": { unsafeEval: false, other: true } })).toBe(
+    expect(normalizeMcpAppCspRelaxations({ "codez/csp": { unsafeEval: false, other: true } })).toBe(
       null,
     );
   });

@@ -2,18 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 本计划禁止自动提交；完成后只输出验证结果和 `git status --short`，除非用户再次明确要求提交。
 
-**Goal:** 在保留当前 `ExitPlanMode({ plan, allowedPrompts? })` 输入形态的前提下，让审批通过的 plan 同步写入 workspace 下的 `.zcode/plans/*.md`，并在 compact 成功后通过 `plan_file_reference` 持久化恢复完整 plan，保证 compact/resume 后 plan 不丢。
+**Goal:** 在保留当前 `ExitPlanMode({ plan, allowedPrompts? })` 输入形态的前提下，让审批通过的 plan 同步写入 workspace 下的 `.codez/plans/*.md`，并在 compact 成功后通过 `plan_file_reference` 持久化恢复完整 plan，保证 compact/resume 后 plan 不丢。
 
 **Architecture:** 这是一个保证 `plan_file_reference` 连续性的最小过渡方案，不做完整 provider-visible schema 重构。`ExitPlanMode` 审批通过后由 tool handler 通过现有 `FileSystemPort.writeTextFile({ createParents: true, atomic: true })` 写入确定性 plan file；`compactActiveConversation()` 在构造 `postCompactReminderEntries` 时读取同一文件并追加 `plan_file_reference` model-only reminder，复用现有 compact summary/reminder 原子持久化路径。没有 plan file 的会话不追加该 reminder。
 
 **Review update:** 最终实现按 review 反馈进一步收敛 provider-visible plan file 效果：`plan_file_reference` 使用固定文案，plan file 写入原始 `plan` 字符串，保存失败不阻断已批准的退出 plan mode。下方早期执行步骤中的代码片段只保留为实施轨迹，最终合同以 `docs/plan-mode-plan-file-compact-continuity.md` 和源码为准。
 
-**Tech Stack:** TypeScript, Vitest, ZCode core runtime, `FileSystemPort`, system reminder source registry, WDIO desktop conversation-session E2E, manual-review fixture promotion workflow.
+**Tech Stack:** TypeScript, Vitest, Codez core runtime, `FileSystemPort`, system reminder source registry, WDIO desktop conversation-session E2E, manual-review fixture promotion workflow.
 
 ## Global Constraints
 
 - 本计划只实现 compact/resume 后 plan 连续性小 hack；不移除 provider-visible `ExitPlanMode.plan`，不新增 runtime injected input，不改变 permission broker schema，不实现完整的 plan-file schema 重构。
-- plan file 路径固定为 `${workspaceRoot}/.zcode/plans/plan-${sanitizedSessionId}.md`；路径语义使用 `workspaceRoot`，不能使用会随 Bash `cd` 变化的 `workingDirectory`。
+- plan file 路径固定为 `${workspaceRoot}/.codez/plans/plan-${sanitizedSessionId}.md`；路径语义使用 `workspaceRoot`，不能使用会随 Bash `cd` 变化的 `workingDirectory`。
 - 写 plan file 必须发生在用户审批通过并得到最终 plan input 之后；保存原始 `plan` 字符串，不做 trim 或补换行。写失败不阻断 `sessionModePort.exitPlanMode()`。
 - compact 只在确定性 plan file 存在且内容非空时追加 `plan_file_reference`；没有 plan file 的普通会话不能因为读取缺失文件导致 compact 失败。
 - `plan_file_reference` 内容必须包含固定文案：`A plan file exists from plan mode at: ${planFilePath}`、`Plan contents:`、完整 plan 正文，以及 `If this plan is relevant to the current work and not already complete, continue working on it.`。
@@ -28,25 +28,25 @@
 
 - Create: `docs/plan-mode-plan-file-compact-continuity.md`
   - 记录当前小 hack 的产品边界、路径合同、compact reminder 合同、非目标。
-- Modify: `apps/zcode-cli/docs/design/v2/tool/16-plan-mode.md`
-  - 更新当前 ZCode plan mode 设计说明：`ExitPlanMode.plan` 仍保留，但审批通过后写 plan file，compact 后用 `plan_file_reference` 恢复。
-- Create: `apps/zcode-cli/packages/core/src/runtime/helpers/plan-file-continuity.ts`
+- Modify: `apps/codez-cli/docs/design/v2/tool/16-plan-mode.md`
+  - 更新当前 Codez plan mode 设计说明：`ExitPlanMode.plan` 仍保留，但审批通过后写 plan file，compact 后用 `plan_file_reference` 恢复。
+- Create: `apps/codez-cli/packages/core/src/runtime/helpers/plan-file-continuity.ts`
   - 封装 plan file 路径、写入、读取、`plan_file_reference` entry 构造。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/index.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/helpers/index.ts`
   - 导出 `plan-file-continuity.ts`。
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/plan-mode.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/plan-mode.ts`
   - `ExitPlanMode` 审批通过后 best-effort 写入 plan file，再退出 plan mode；写失败不阻断退出。
-- Modify: `apps/zcode-cli/packages/core/src/system-reminder/source.ts`
+- Modify: `apps/codez-cli/packages/core/src/system-reminder/source.ts`
   - 新增 persisted source：`plan_file_reference`。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/compact-active.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/compact-active.ts`
   - compact 成功时把 plan file reference entry 放入 `postCompactReminderEntries`，排在 read-state reminders 前。
-- Create: `apps/zcode-cli/packages/core/tests/plan-file-continuity.test.ts`
+- Create: `apps/codez-cli/packages/core/tests/plan-file-continuity.test.ts`
   - 覆盖路径、写入、读取、reminder 正文。
-- Modify: `apps/zcode-cli/packages/core/tests/plan-mode-tool.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/plan-mode-tool.test.ts`
   - 覆盖 `ExitPlanMode` 审批后的 plan file 写入和写失败仍退出 plan mode。
-- Modify: `apps/zcode-cli/packages/core/tests/system-reminder-source.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/system-reminder-source.test.ts`
   - 覆盖 `plan_file_reference` source 分组、descriptor、wrapper。
-- Modify: `apps/zcode-cli/packages/core/tests/runtime-compact.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/runtime-compact.test.ts`
   - 覆盖 compact 后 runtime history/provider context 包含 `plan_file_reference` 完整 plan。
 - Modify: `docs/conversation-session-case-catalog.md`
   - 新增 plan approval + compact continuity accepted case。
@@ -55,7 +55,7 @@
 - Create: `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-file-compact-continuity.test.ts`
   - 通过真实桌面窗口验证 plan approval、plan file 落盘、`/compact`、后续 provider request 中 plan continuity。
 - After manual review, move: `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-file-compact-continuity.test.ts` -> `packages/desktop/test/e2e/conversation-session/conversation-session-plan-file-compact-continuity.test.ts`
-  - 通过 `pnpm --filter @zcode/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/conversation-session-plan-file-compact-continuity.test.ts --reviewed --apply` 完成移动和脚手架生成。
+  - 通过 `pnpm --filter @codez/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/conversation-session-plan-file-compact-continuity.test.ts --reviewed --apply` 完成移动和脚手架生成。
 
 ---
 
@@ -65,7 +65,7 @@
 
 **Files:**
 - Create: `docs/plan-mode-plan-file-compact-continuity.md`
-- Modify: `apps/zcode-cli/docs/design/v2/tool/16-plan-mode.md`
+- Modify: `apps/codez-cli/docs/design/v2/tool/16-plan-mode.md`
 
 **Interfaces:**
 - Consumes: 当前 `ExitPlanModeInputSchema` 仍要求 `plan: string`。
@@ -80,7 +80,7 @@ Create `docs/plan-mode-plan-file-compact-continuity.md` with this content:
 
 ## 背景
 
-当前 ZCode 的 `ExitPlanMode` 仍通过 tool input 的 `plan` 字段承载完整 plan。若 `ExitPlanMode` 审批后很快触发 compact，summary 可能没有保留完整 plan，compact/resume 后模型无法稳定拿回已批准 plan。
+当前 Codez 的 `ExitPlanMode` 仍通过 tool input 的 `plan` 字段承载完整 plan。若 `ExitPlanMode` 审批后很快触发 compact，summary 可能没有保留完整 plan，compact/resume 后模型无法稳定拿回已批准 plan。
 
 ## 目标
 
@@ -91,7 +91,7 @@ Create `docs/plan-mode-plan-file-compact-continuity.md` with this content:
 plan file 路径为：
 
 ```text
-${workspaceRoot}/.zcode/plans/plan-${sanitizedSessionId}.md
+${workspaceRoot}/.codez/plans/plan-${sanitizedSessionId}.md
 ```
 
 `workspaceRoot` 表示工作区根路径；不能使用可能被 Bash `cd` 改变的 `workingDirectory`。`sanitizedSessionId` 只保留 `A-Z`、`a-z`、`0-9`、`.`、`_`、`-`，其他字符替换成 `-`，并去掉首尾 `-`。
@@ -119,17 +119,17 @@ ${planContent}
 - 不改变 `ExitPlanMode` output shape。
 - 不新增 UI 展示。
 - 不把 plan file 加入 generic read-state reminder。
-- 不处理用户手动删除 `.zcode/plans` 后的恢复。
+- 不处理用户手动删除 `.codez/plans` 后的恢复。
 ```
 
 - [ ] **Step 2: 更新 plan mode 设计文档**
 
-In `apps/zcode-cli/docs/design/v2/tool/16-plan-mode.md`, keep the current statement that ZCode `ExitPlanMode` receives `plan` in tool input, and add a subsection named `审批后 plan file 连续性` containing:
+In `apps/codez-cli/docs/design/v2/tool/16-plan-mode.md`, keep the current statement that Codez `ExitPlanMode` receives `plan` in tool input, and add a subsection named `审批后 plan file 连续性` containing:
 
 ```markdown
 ### 审批后 plan file 连续性
 
-当前过渡实现仍保留 `ExitPlanMode({ plan, allowedPrompts? })` 的 provider-visible 输入形态。审批通过后，runtime 会把最终批准的 plan 写入 workspace root 下的 `.zcode/plans/plan-${sanitizedSessionId}.md`。
+当前过渡实现仍保留 `ExitPlanMode({ plan, allowedPrompts? })` 的 provider-visible 输入形态。审批通过后，runtime 会把最终批准的 plan 写入 workspace root 下的 `.codez/plans/plan-${sanitizedSessionId}.md`。
 
 这个文件不是新的 provider-visible input，也不是完整的 plan-file schema 重构；它只用于 compact/resume continuity。compact 成功时，如果该 plan file 存在且非空，runtime 会在 compact 后历史中持久化 `plan_file_reference` model-only reminder：
 
@@ -147,7 +147,7 @@ ${planContent}
 Run:
 
 ```bash
-rg -n "runtime injected|provider-visible.*allowedPrompts|remove.*plan|filePath output|EnterPlanMode.*draft|schema parity" docs/plan-mode-plan-file-compact-continuity.md apps/zcode-cli/docs/design/v2/tool/16-plan-mode.md
+rg -n "runtime injected|provider-visible.*allowedPrompts|remove.*plan|filePath output|EnterPlanMode.*draft|schema parity" docs/plan-mode-plan-file-compact-continuity.md apps/codez-cli/docs/design/v2/tool/16-plan-mode.md
 ```
 
 Expected: no lines that require removing provider-visible `plan` or adding injected input. Lines inside the `非目标` section are acceptable only when they explicitly say the item is not implemented.
@@ -159,8 +159,8 @@ Expected: no lines that require removing provider-visible `plan` or adding injec
 ### Task 1.1: 先写 plan-file continuity helper 单测
 
 **Files:**
-- Create: `apps/zcode-cli/packages/core/tests/plan-file-continuity.test.ts`
-- Use existing: `apps/zcode-cli/packages/core/tests/memory-test-utils.ts`
+- Create: `apps/codez-cli/packages/core/tests/plan-file-continuity.test.ts`
+- Use existing: `apps/codez-cli/packages/core/tests/memory-test-utils.ts`
 
 **Interfaces:**
 - Produces expected signatures:
@@ -171,11 +171,11 @@ Expected: no lines that require removing provider-visible `plan` or adding injec
 
 - [ ] **Step 1: Add failing helper tests**
 
-Create `apps/zcode-cli/packages/core/tests/plan-file-continuity.test.ts`:
+Create `apps/codez-cli/packages/core/tests/plan-file-continuity.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { createRootTraceContext, createSessionId } from "@zcode/contracts";
+import { createRootTraceContext, createSessionId } from "@codez/contracts";
 import { MemoryFileSystem } from "./memory-test-utils.js";
 import {
   formatPlanFileReference,
@@ -192,7 +192,7 @@ describe("plan file continuity", () => {
     });
 
     expect(path.replace(/\\/g, "/")).toBe(
-      "/workspace/project/.zcode/plans/plan-session-with-slashes.md",
+      "/workspace/project/.codez/plans/plan-session-with-slashes.md",
     );
   });
 
@@ -210,7 +210,7 @@ describe("plan file continuity", () => {
     });
 
     expect(result.path.replace(/\\/g, "/")).toBe(
-      "/workspace/project/.zcode/plans/plan-plan-file-write.md",
+      "/workspace/project/.codez/plans/plan-plan-file-write.md",
     );
     expect(fileSystemPort.files[result.path]).toBe(
       "1. Read current code\n2. Add compact reminder",
@@ -220,12 +220,12 @@ describe("plan file continuity", () => {
   it("formats the plan_file_reference reminder body", () => {
     expect(
       formatPlanFileReference({
-        planFilePath: "/workspace/project/.zcode/plans/plan-session.md",
+        planFilePath: "/workspace/project/.codez/plans/plan-session.md",
         planContent: "1. Keep the approved plan\n2. Verify after compact",
       }),
     ).toBe(
       [
-        "A plan file exists from plan mode at: /workspace/project/.zcode/plans/plan-session.md",
+        "A plan file exists from plan mode at: /workspace/project/.codez/plans/plan-session.md",
         "",
         "1. Keep the approved plan\n2. Verify after compact",
       ].join("\n"),
@@ -235,7 +235,7 @@ describe("plan file continuity", () => {
   it("returns a model-only plan_file_reference entry when the plan file exists", async () => {
     const sessionId = createSessionId("plan-file-reference");
     const fileSystemPort = new MemoryFileSystem({
-      "/workspace/project/.zcode/plans/plan-plan-file-reference.md":
+      "/workspace/project/.codez/plans/plan-plan-file-reference.md":
         "1. Preserve plan marker E2E_PLAN_FILE_CONTINUITY",
     });
 
@@ -269,7 +269,7 @@ describe("plan file continuity", () => {
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- plan-file-continuity.test.ts
+pnpm --filter @codez/core test -- plan-file-continuity.test.ts
 ```
 
 Expected: FAIL with module resolution error for `../src/runtime/helpers/plan-file-continuity.js`.
@@ -277,8 +277,8 @@ Expected: FAIL with module resolution error for `../src/runtime/helpers/plan-fil
 ### Task 1.2: 实现 plan-file continuity helper
 
 **Files:**
-- Create: `apps/zcode-cli/packages/core/src/runtime/helpers/plan-file-continuity.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/index.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/helpers/plan-file-continuity.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/helpers/index.ts`
 
 **Interfaces:**
 - Consumes: `FileSystemPort`, `PLAN_MODE_MAX_PLAN_CHARS`, `systemReminderAttachmentEntry`.
@@ -286,7 +286,7 @@ Expected: FAIL with module resolution error for `../src/runtime/helpers/plan-fil
 
 - [ ] **Step 1: Add helper implementation**
 
-Create `apps/zcode-cli/packages/core/src/runtime/helpers/plan-file-continuity.ts`:
+Create `apps/codez-cli/packages/core/src/runtime/helpers/plan-file-continuity.ts`:
 
 ```ts
 import { join } from "node:path";
@@ -298,7 +298,7 @@ import {
   type FileSystemPort,
   type SessionId,
   type TraceContext,
-} from "@zcode/contracts";
+} from "@codez/contracts";
 import {
   systemReminderAttachmentEntry,
   type RuntimeMessageEntry,
@@ -312,7 +312,7 @@ export function resolveApprovedPlanFilePath(input: {
 }): string {
   return join(
     input.workspaceRoot,
-    ".zcode",
+    ".codez",
     "plans",
     `plan-${sanitizePlanFileSessionId(input.sessionId)}.md`,
   );
@@ -408,7 +408,7 @@ function sanitizePlanFileSessionId(sessionId: SessionId | string): string {
 
 - [ ] **Step 2: Export helper**
 
-Append to `apps/zcode-cli/packages/core/src/runtime/helpers/index.ts`:
+Append to `apps/codez-cli/packages/core/src/runtime/helpers/index.ts`:
 
 ```ts
 export * from "./plan-file-continuity.js";
@@ -419,7 +419,7 @@ export * from "./plan-file-continuity.js";
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- plan-file-continuity.test.ts
+pnpm --filter @codez/core test -- plan-file-continuity.test.ts
 ```
 
 Expected: PASS all five tests.
@@ -431,7 +431,7 @@ Expected: PASS all five tests.
 ### Task 2.1: 先写 ExitPlanMode 写入/失败行为测试
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/tests/plan-mode-tool.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/plan-mode-tool.test.ts`
 
 **Interfaces:**
 - Consumes: `writeApprovedPlanFile()` from Phase 1.
@@ -442,7 +442,7 @@ Expected: PASS all five tests.
 In `createPlanModeExecutor()` test helper input type, add:
 
 ```ts
-  fileSystemPort?: import("@zcode/contracts").FileSystemPort;
+  fileSystemPort?: import("@codez/contracts").FileSystemPort;
   workingDirectory?: string;
   workspaceRoot?: string;
 ```
@@ -475,7 +475,7 @@ After the existing output/modelContent assertions, add:
 ```ts
     expect(
       fileSystemPort.files[
-        "/workspace/project/.zcode/plans/plan-exit-plan-mode.md"
+        "/workspace/project/.codez/plans/plan-exit-plan-mode.md"
       ],
     ).toBe("1. Update the service boundary\n2. Add tests");
 ```
@@ -553,7 +553,7 @@ Add this test in `describe("plan mode tools", ...)`:
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- plan-mode-tool.test.ts
+pnpm --filter @codez/core test -- plan-mode-tool.test.ts
 ```
 
 Expected: FAIL because `ExitPlanMode` has not written the plan file yet.
@@ -561,7 +561,7 @@ Expected: FAIL because `ExitPlanMode` has not written the plan file yet.
 ### Task 2.2: 写入 approved plan file 再退出 plan mode
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/plan-mode.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/plan-mode.ts`
 
 **Interfaces:**
 - Consumes: `writeApprovedPlanFile()`.
@@ -569,7 +569,7 @@ Expected: FAIL because `ExitPlanMode` has not written the plan file yet.
 
 - [ ] **Step 1: Import helper**
 
-In `apps/zcode-cli/packages/core/src/tool/handlers/plan-mode.ts`, add:
+In `apps/codez-cli/packages/core/src/tool/handlers/plan-mode.ts`, add:
 
 ```ts
 import { writeApprovedPlanFile } from "../../runtime/helpers/plan-file-continuity.js";
@@ -627,7 +627,7 @@ In `exitPlanModeHandler`, after the mode check and before `context.sessionModePo
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- plan-mode-tool.test.ts plan-file-continuity.test.ts
+pnpm --filter @codez/core test -- plan-mode-tool.test.ts plan-file-continuity.test.ts
 ```
 
 Expected: PASS. The existing output shape still includes `plan`, `approved`, `previousMode`, `mode`, and `allowedPrompts`; no `planFilePath` output field is introduced.
@@ -639,7 +639,7 @@ Expected: PASS. The existing output shape still includes `plan`, `approved`, `pr
 ### Task 3.1: 先写 system reminder source 测试
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/tests/system-reminder-source.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/system-reminder-source.test.ts`
 
 **Interfaces:**
 - Produces: `plan_file_reference` is a persisted `history_continuity` / `resume_history` meta provider-visible reminder source.
@@ -672,7 +672,7 @@ Add:
   it("wraps plan_file_reference without nested reminder metadata", () => {
     const reminder = wrapSystemReminderForSource(
       "plan_file_reference",
-      "A plan file exists from plan mode at: /workspace/.zcode/plans/plan-session.md\n\n1. approved plan",
+      "A plan file exists from plan mode at: /workspace/.codez/plans/plan-session.md\n\n1. approved plan",
     );
 
     expectExactlyOneSystemReminderWrapper(reminder);
@@ -686,7 +686,7 @@ Add:
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- system-reminder-source.test.ts
+pnpm --filter @codez/core test -- system-reminder-source.test.ts
 ```
 
 Expected: FAIL because `plan_file_reference` is not registered yet.
@@ -694,7 +694,7 @@ Expected: FAIL because `plan_file_reference` is not registered yet.
 ### Task 3.2: 注册 `plan_file_reference`
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/system-reminder/source.ts`
+- Modify: `apps/codez-cli/packages/core/src/system-reminder/source.ts`
 
 **Interfaces:**
 - Consumes: persisted compact reminder entry metadata source.
@@ -750,7 +750,7 @@ immediately after `resume_referenced_session_context`.
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- system-reminder-source.test.ts
+pnpm --filter @codez/core test -- system-reminder-source.test.ts
 ```
 
 Expected: PASS.
@@ -762,7 +762,7 @@ Expected: PASS.
 ### Task 4.1: 先写 compact runtime 回归测试
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/tests/runtime-compact.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/runtime-compact.test.ts`
 
 **Interfaces:**
 - Consumes: `readApprovedPlanFileReferenceEntry()`.
@@ -770,7 +770,7 @@ Expected: PASS.
 
 - [ ] **Step 1: Add regression test near existing compact post-reminder tests**
 
-In `apps/zcode-cli/packages/core/tests/runtime-compact.test.ts`, add this import near the existing test helper imports:
+In `apps/codez-cli/packages/core/tests/runtime-compact.test.ts`, add this import near the existing test helper imports:
 
 ```ts
 import { MemoryFileSystem } from "./memory-test-utils.js";
@@ -786,7 +786,7 @@ it("persists approved plan file reference after compact so resume keeps the full
   const requests: Array<{ messages: Array<{ content: unknown; role: string }> }> = [];
   const planMarker = "E2E_PLAN_FILE_COMPACT_CONTINUITY_MARKER";
   const fileSystemPort = new MemoryFileSystem({
-    "/workspace/project/.zcode/plans/plan-runtime-compact-plan-file-reference.md":
+    "/workspace/project/.codez/plans/plan-runtime-compact-plan-file-reference.md":
       `1. Preserve ${planMarker}\n2. Continue after compact`,
   });
   const modelAdapter = {
@@ -874,7 +874,7 @@ it("persists approved plan file reference after compact so resume keeps the full
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- runtime-compact.test.ts -t "persists approved plan file reference after compact"
+pnpm --filter @codez/core test -- runtime-compact.test.ts -t "persists approved plan file reference after compact"
 ```
 
 Expected: FAIL because `compactActiveConversation()` only appends read-state reminders today.
@@ -882,7 +882,7 @@ Expected: FAIL because `compactActiveConversation()` only appends read-state rem
 ### Task 4.2: Append plan file reference before generic read-state reminders
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/compact-active.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/compact-active.ts`
 
 **Interfaces:**
 - Consumes: `readApprovedPlanFileReferenceEntry()`.
@@ -935,7 +935,7 @@ with:
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- runtime-compact.test.ts -t "persists approved plan file reference after compact"
+pnpm --filter @codez/core test -- runtime-compact.test.ts -t "persists approved plan file reference after compact"
 ```
 
 Expected: PASS.
@@ -945,7 +945,7 @@ Expected: PASS.
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- plan-file-continuity.test.ts plan-mode-tool.test.ts system-reminder-source.test.ts runtime-compact.test.ts
+pnpm --filter @codez/core test -- plan-file-continuity.test.ts plan-mode-tool.test.ts system-reminder-source.test.ts runtime-compact.test.ts
 ```
 
 Expected: PASS for the four targeted files.
@@ -957,7 +957,7 @@ Expected: PASS for the four targeted files.
 ### Task 5.1: 确认 provider-visible tool schema 没有被小 hack 改动
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/tests/tool-contracts.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/tool-contracts.test.ts`
 
 **Interfaces:**
 - Consumes: existing `ExitPlanModeInputSchema`.
@@ -965,7 +965,7 @@ Expected: PASS for the four targeted files.
 
 - [ ] **Step 1: Add or update tool-contract assertion**
 
-In the plan-mode portion of `apps/zcode-cli/packages/core/tests/tool-contracts.test.ts`, ensure there is an assertion equivalent to:
+In the plan-mode portion of `apps/codez-cli/packages/core/tests/tool-contracts.test.ts`, ensure there is an assertion equivalent to:
 
 ```ts
 expect(exitPlanModeContract.inputSchema).toHaveProperty("properties.plan");
@@ -978,7 +978,7 @@ expect(exitPlanModeContract.inputSchema).not.toHaveProperty("properties.filePath
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- tool-contracts.test.ts
+pnpm --filter @codez/core test -- tool-contracts.test.ts
 ```
 
 Expected: PASS. Any failure blocks completion until its source is identified; do not edit unrelated files while diagnosing this gate.
@@ -996,7 +996,7 @@ Expected: PASS. Any failure blocks completion until its source is identified; do
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- runtime-compact.test.ts -t "persists approved plan file reference after compact" --reporter verbose
+pnpm --filter @codez/core test -- runtime-compact.test.ts -t "persists approved plan file reference after compact" --reporter verbose
 ```
 
 Expected: PASS. The assertion must inspect the post-resume provider request messages and must include both `A plan file exists from plan mode at:` and `E2E_PLAN_FILE_COMPACT_CONTINUITY_MARKER`.
@@ -1019,7 +1019,7 @@ Expected: PASS. The assertion must inspect the post-resume provider request mess
 In `docs/conversation-session-case-catalog.md`, add a new accepted row in the plan approval / tool interaction area with these fields:
 
 ```markdown
-| P01 | `completed(success)` 或 `plan` flow，用户批准 `ExitPlanMode` 后立即触发 `/compact` | approve plan -> `/compact` -> resume/continue | planFileReferenceAfterCompact | 已批准 plan 写入 `.zcode/plans/plan-${sessionId}.md`；compact 成功后后续 provider context 包含 `plan_file_reference` 路径和完整 plan 内容；UI 不出现错误 banner，session 可继续完成下一轮 | accepted |
+| P01 | `completed(success)` 或 `plan` flow，用户批准 `ExitPlanMode` 后立即触发 `/compact` | approve plan -> `/compact` -> resume/continue | planFileReferenceAfterCompact | 已批准 plan 写入 `.codez/plans/plan-${sessionId}.md`；compact 成功后后续 provider context 包含 `plan_file_reference` 路径和完整 plan 内容；UI 不出现错误 banner，session 可继续完成下一轮 | accepted |
 ```
 
 Before editing, run:
@@ -1137,7 +1137,7 @@ describe("conversation session plan file compact continuity", () => {
     await waitForAssistantMessageContaining("deepseek-e2e-ok");
 
     const planFile = await waitForPlanFileContaining(`${PLAN_MARKER}_${runId}`, 30000);
-    expect(planFile.path).toContain(".zcode");
+    expect(planFile.path).toContain(".codez");
     expect(planFile.path).toContain("plans");
 
     await sendPrompt(COMPACT_COMMAND);
@@ -1200,7 +1200,7 @@ async function waitForPlanFileContaining(
 }
 
 async function readLatestPlanFile(): Promise<{ content: string; path: string }> {
-  const planDir = join(DEFAULT_WORKSPACE, ".zcode", "plans");
+  const planDir = join(DEFAULT_WORKSPACE, ".codez", "plans");
   const planFiles = await browser.electron.execute((dir) => {
     const { readdirSync, statSync } = require("node:fs");
     const { join } = require("node:path");
@@ -1226,7 +1226,7 @@ async function readLatestPlanFile(): Promise<{ content: string; path: string }> 
 Run:
 
 ```bash
-pnpm --filter @zcode/desktop typecheck:e2e
+pnpm --filter @codez/desktop typecheck:e2e
 ```
 
 Expected: PASS.
@@ -1244,7 +1244,7 @@ Expected: PASS.
 Run:
 
 ```bash
-ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/conversation-session-plan-file-compact-continuity.test.ts'
+CODEZ_E2E_MANUAL_REVIEW=1 pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/conversation-session-plan-file-compact-continuity.test.ts'
 ```
 
 Expected:
@@ -1287,7 +1287,7 @@ Expected:
 Run:
 
 ```bash
-pnpm --filter @zcode/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/conversation-session-plan-file-compact-continuity.test.ts --reviewed --apply
+pnpm --filter @codez/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/conversation-session-plan-file-compact-continuity.test.ts --reviewed --apply
 ```
 
 Expected:
@@ -1328,7 +1328,7 @@ The fixture may reuse `packages/desktop/test/e2e/fixtures/upstream/common.json` 
 Run:
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec './test/e2e/conversation-session/conversation-session-plan-file-compact-continuity.test.ts'
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec './test/e2e/conversation-session/conversation-session-plan-file-compact-continuity.test.ts'
 ```
 
 Expected: PASS.
@@ -1338,7 +1338,7 @@ Expected: PASS.
 Run:
 
 ```bash
-pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/conversation-session-plan-file-compact-continuity.test.ts'
+pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/conversation-session-plan-file-compact-continuity.test.ts'
 ```
 
 Expected: PASS. The replay must assert `plan_file_reference` in the post-compact provider request, not only visible UI completion.
@@ -1358,8 +1358,8 @@ Expected: PASS.
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- plan-file-continuity.test.ts plan-mode-tool.test.ts system-reminder-source.test.ts runtime-compact.test.ts
-pnpm --filter @zcode/desktop typecheck:e2e
+pnpm --filter @codez/core test -- plan-file-continuity.test.ts plan-mode-tool.test.ts system-reminder-source.test.ts runtime-compact.test.ts
+pnpm --filter @codez/desktop typecheck:e2e
 pnpm typecheck
 pnpm lint
 ```
@@ -1390,14 +1390,14 @@ Expected: shows the docs, core, tests, and E2E files changed by this implementat
 ## Acceptance Criteria
 
 - `ExitPlanMode` provider-visible input schema still includes required `plan`.
-- `ExitPlanMode` approved final plan is written to `${workspaceRoot}/.zcode/plans/plan-${sanitizedSessionId}.md`.
+- `ExitPlanMode` approved final plan is written to `${workspaceRoot}/.codez/plans/plan-${sanitizedSessionId}.md`.
 - `ExitPlanMode` file write failure prevents mode exit.
 - compact after plan approval persists a `plan_file_reference` model-only reminder with full plan content.
 - resume after compact preserves the reminder in the next provider-visible context.
 - Generic read-state reminders remain independent and still skip `docs/superpowers/plans/`.
 - Conversation-session catalog and coverage matrix include the new accepted case before E2E implementation.
 - The E2E is run through a visible desktop window, passes, is promoted, and passes replay/fixture checks.
-- `pnpm --filter @zcode/desktop typecheck:e2e`, `pnpm typecheck`, and `pnpm lint` pass or have clearly documented unrelated pre-existing failures.
+- `pnpm --filter @codez/desktop typecheck:e2e`, `pnpm typecheck`, and `pnpm lint` pass or have clearly documented unrelated pre-existing failures.
 - No commit is created automatically.
 
 ## Change Surface and Cost

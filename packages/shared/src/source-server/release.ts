@@ -41,7 +41,7 @@ export const sourceServerReleaseArchiveSchema = z
   })
   .strict()
   .superRefine((archive, context) => {
-    const expectedFileName = `zcode-server-${archive.target}.tar.gz`;
+    const expectedFileName = `codez-server-${archive.target}.tar.gz`;
     if (archive.fileName !== expectedFileName) {
       context.addIssue({
         code: "custom",

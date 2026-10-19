@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
-import { ZCODE_CUA_OFFICIAL_PLUGIN_ID } from "@zcode/shared";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
+import { CODEZ_CUA_OFFICIAL_PLUGIN_ID } from "@codez/shared";
 import {
   TID_LOGIN_USE_API_KEY_BUTTON,
   TID_TASK_SETTINGS_BUTTON,
   TID_CHAT_MODEL_SELECT_TRIGGER,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,
@@ -28,7 +28,7 @@ import { skipOccupationOnboardingIfPresent } from "../helpers/occupation-onboard
 
 const CASE_NAME = "conversation-session-composer-compression";
 const evidence = join(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? join(process.cwd(), ".e2e-artifacts"),
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? join(process.cwd(), ".e2e-artifacts"),
   CASE_NAME,
 );
 
@@ -192,7 +192,7 @@ describe("Composer 五档压缩", () => {
             localePreference: "zh-CN",
           }),
         );
-        const configFile = join(paths.homeDir, ".zcode", "cli", "config.json");
+        const configFile = join(paths.homeDir, ".codez", "cli", "config.json");
         const config = JSON.parse(
           await readFile(configFile, "utf8").catch((error: NodeJS.ErrnoException) => {
             if (error.code === "ENOENT") return "{}";
@@ -209,7 +209,7 @@ describe("Composer 五档压缩", () => {
               enabled: true,
               enabledPlugins: {
                 ...config.plugins?.enabledPlugins,
-                [ZCODE_CUA_OFFICIAL_PLUGIN_ID]: true,
+                [CODEZ_CUA_OFFICIAL_PLUGIN_ID]: true,
               },
             },
           }),

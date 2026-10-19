@@ -73,7 +73,7 @@ it("PD06 首发账本写入失败时不能允许上行或留下不可恢复的�
     const registry = new PendingCommandRegistry({ storage });
     const original = storage.setItem.bind(storage);
     storage.setItem = (key, value) => {
-      if (key === "zcode-v4-pending-commands:v1") throw new Error("quota");
+      if (key === "codez-v4-pending-commands:v1") throw new Error("quota");
       original(key, value);
     };
     const composer = {
@@ -94,7 +94,7 @@ import type {
   CommandAck,
   CommandEnvelope,
   ConversationSnapshot,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import {
   PENDING_COMMAND_TTL_MS,
   PendingCommandRegistry,

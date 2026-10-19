@@ -9,15 +9,15 @@ import {
   type SkillSyncImportResult,
   type SkillSyncRemoteStatus,
   type SkillSyncSizeLimitErrorData,
-} from "@zcode/shared";
-import type { ISkillSyncService } from "@zcode/services";
+} from "@codez/shared";
+import type { ISkillSyncService } from "@codez/services";
 import { Button } from "@/components/ui/button.js";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
 } from "@/components/ui/dialog.js";
-import { useZCodeIntl, type IntlInstance } from "@/i18n/IntlProvider.js";
+import { useCodezIntl, type IntlInstance } from "@/i18n/IntlProvider.js";
 import {
   RemoteSkillSyncSelectionList,
   type RemoteSkillSyncRow,
@@ -164,7 +164,7 @@ export function RemoteSkillSyncExistingFilterCheckbox({
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
 
   return (
     <label className="inline-flex h-6 cursor-pointer items-center gap-2 rounded-md px-1 text-ui-base text-foreground-subtle hover:text-foreground">
@@ -190,7 +190,7 @@ export function RemoteSkillSyncTargetRow({
   showExistingFilter: boolean;
   onShowExistingRemoteSkillsChange: (checked: boolean) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
 
   return (
     <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -223,7 +223,7 @@ export function RemoteSkillSyncBulkSelectionCheckbox({
   onSelectAll: () => void;
   onClearAll: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const inputRef = useRef<HTMLInputElement>(null);
   const selectionState = getRemoteSkillSyncBulkSelectionState({
     selectedCount,
@@ -263,7 +263,7 @@ export function RemoteSkillSyncBulkSelectionCheckbox({
 }
 
 export function RemoteSkillSyncDialog(props: RemoteSkillSyncDialogProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const {
     open,
     onOpenChange,

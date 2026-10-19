@@ -5,15 +5,15 @@ import {
   BotGroupDeliveryAction,
   ConnectedBotGroupDeliveryAction,
 } from "@/v4/BotGroupDeliveryAction.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
-import type { BotGroupDelivery } from "@zcode/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
+import type { BotGroupDelivery } from "@codez/shared";
 
 import { DeliveryContext } from "@/v4/botGroupDeliveryContext.js";
 
 const render = (results: BotGroupDelivery[]) =>
   renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(BotGroupDeliveryAction, {
         turnId: "product-turn-a",
@@ -67,7 +67,7 @@ describe("group reply delivery action", () => {
       } satisfies NonNullable<ContextType<typeof DeliveryContext>>;
       const html = renderToStaticMarkup(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(
             DeliveryContext.Provider,

@@ -5,7 +5,7 @@ import {
   TID_OAUTH_CANCEL,
   TID_OAUTH_LOGIN_BUTTON,
   TID_TASK_SETTINGS_BUTTON,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { seedCredentials, seedSettings, waitForTestIdByDom } from "../../helpers/desktop-app.js";
 
 async function enterWorkspace() {
@@ -37,12 +37,12 @@ async function openRemoteControlDialog(label: string) {
 describe("桌面远控登录门禁", () => {
   it("AUTH-08: 未登录时只展示登录入口，四种主题语言组合无HTTP或WS连接", async function () {
     this.timeout(180_000);
-    const baseUrl = process.env.ZCODE_E2E_REMOTE_AUTH_GATE_URL;
-    const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+    const baseUrl = process.env.CODEZ_E2E_REMOTE_AUTH_GATE_URL;
+    const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
     if (!baseUrl || !artifactDir) throw new Error("缺少远控门禁 fixture 或产物目录");
     const endpoint = await browser.electron.execute(() => ({
-      origin: process.env.ZCODE_ENDPOINT_ORIGIN,
-      relay: process.env.ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL,
+      origin: process.env.CODEZ_ENDPOINT_ORIGIN,
+      relay: process.env.CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL,
     }));
     expect(endpoint.origin).toBe(baseUrl);
     expect(endpoint.relay).toBe(`${baseUrl.replace("http:", "ws:")}/api/v1/remote/ws2`);
@@ -50,7 +50,7 @@ describe("桌面远控登录门禁", () => {
     for (const locale of ["zh-CN", "en-US"] as const) {
       for (const theme of ["zai-light", "zai-dark"] as const) {
         await seedSettings({ locale, localePreference: locale });
-        await browser.execute((value) => localStorage.setItem("zcode-theme", value), theme);
+        await browser.execute((value) => localStorage.setItem("codez-theme", value), theme);
         await browser.refresh();
         await enterWorkspace();
         expect(
@@ -79,9 +79,9 @@ describe("桌面远控登录门禁", () => {
           await browser.execute(() => {
             const bridge = (
               window as Window & {
-                zcode?: { getWebRemoteControlStatus(): Promise<{ status: string }> };
+                codez?: { getWebRemoteControlStatus(): Promise<{ status: string }> };
               }
-            ).zcode;
+            ).codez;
             if (!bridge) throw new Error("缺少 preload 远控平台接口");
             return bridge.getWebRemoteControlStatus();
           }),
@@ -108,8 +108,8 @@ describe("桌面远控登录门禁", () => {
 
   it("AUTH-08: 远控401保留全局用户时，登录按钮仍启动当前渠道OAuth并停留在等待页", async function () {
     this.timeout(90_000);
-    const baseUrl = process.env.ZCODE_E2E_REMOTE_AUTH_GATE_URL;
-    const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+    const baseUrl = process.env.CODEZ_E2E_REMOTE_AUTH_GATE_URL;
+    const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
     if (!baseUrl || !artifactDir) throw new Error("缺少远控门禁 fixture 或产物目录");
     const openExternal = await browser.electron.mock("shell", "openExternal");
     await openExternal.mockResolvedValue(undefined);
@@ -120,12 +120,12 @@ describe("桌面远控登录门禁", () => {
       await enterWorkspace();
       await browser.waitUntil(
         async () =>
-          (await $(`[data-testid="${TID_LOGIN_TRIGGER}"]`).getText()).includes("ZCode E2E"),
+          (await $(`[data-testid="${TID_LOGIN_TRIGGER}"]`).getText()).includes("Codez E2E"),
         { timeout: 20_000, timeoutMsg: "缓存OAuth用户未恢复" },
       );
       await openRemoteControlDialog("Mobile remote control");
       await waitForTestIdByDom("web-remote-control-auth-required");
-      expect(await $(`[data-testid="${TID_LOGIN_TRIGGER}"]`).getText()).toContain("ZCode E2E");
+      expect(await $(`[data-testid="${TID_LOGIN_TRIGGER}"]`).getText()).toContain("Codez E2E");
       const login = $('[data-testid="web-remote-control-login"]');
       await login.waitForEnabled({ timeout: 10_000 });
       await login.click();

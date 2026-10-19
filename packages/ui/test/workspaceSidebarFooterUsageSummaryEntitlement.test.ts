@@ -2,9 +2,9 @@
 
 import { createElement, type ReactNode } from "react";
 import { renderHook, waitFor } from "@testing-library/react";
-import type { UsageEntitlementSnapshot } from "@zcode/shared";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
-import type { IServiceAccessor, ProviderSettingsView } from "@zcode/services";
+import type { UsageEntitlementSnapshot } from "@codez/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
+import type { IServiceAccessor, ProviderSettingsView } from "@codez/services";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { useWorkspaceSidebarFooterUsageSummaryState } from "@/WorkspaceSidebarFooterUsageSummary.js";

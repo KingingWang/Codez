@@ -3,8 +3,8 @@ import {
   buildCustomSupplierKey,
   buildGhostSupplierKey,
   buildNativeSupplierKey,
-  type ZCodeConfigOption,
-} from "@zcode/shared";
+  type CodezConfigOption,
+} from "@codez/shared";
 import {
   isCustomSupplierKeyForProvider,
   parseCustomProviderIdFromSupplierKey,
@@ -13,7 +13,7 @@ import {
   type ModelConfigSyncWorkspaceSnapshot,
 } from "../src/lib/modelConfigSync.js";
 
-function createModelOption(currentValue: string): ZCodeConfigOption {
+function createModelOption(currentValue: string): CodezConfigOption {
   return {
     id: "model",
     name: "Model",

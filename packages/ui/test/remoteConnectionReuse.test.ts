@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { act, renderHook, screen, cleanup } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
-import type { IPlatformService, RemoteTarget } from "@zcode/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { IPlatformService, RemoteTarget } from "@codez/shared";
 import { useRemoteWorkspaceHistory } from "@/root/useRemoteWorkspaceHistory.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { createTabStore } from "@/store/tabStore.js";
@@ -23,7 +23,7 @@ it.each([false, true])(
       settingService: { get: async () => ({}), update: vi.fn(async () => undefined) },
       credentialService: { load: async () => null, save, delete: vi.fn() },
       fileService: { resolvePath: async ({ path }: { path: string }) => path },
-      zcodeTaskService: {
+      codezTaskService: {
         listPinnedTasks: async () => [],
         listTasks: async () => ({ items: [], total: 0, hasMore: false }),
       },

@@ -23,7 +23,7 @@ const credentials = {
 };
 
 const teamCredentials = {
-  jwt: "team-zcode-jwt",
+  jwt: "team-codez-jwt",
   codingPlanApiKey: "team-api-key.team-secret-key",
   kind: "bigmodel-team" as const,
   providerFamily: "bigmodel" as const,
@@ -327,12 +327,12 @@ describe("offPeakServerClient × offPeakMockGateway 契约联测", () => {
       "/api/v1/off-peak/ticket",
     ]);
     for (const request of requests) {
-      expect(request.headers.get("authorization")).toBe("Bearer team-zcode-jwt");
+      expect(request.headers.get("authorization")).toBe("Bearer team-codez-jwt");
       expect(request.headers.get("x-coding-plan-api-key")).toBe("team-api-key.team-secret-key");
       expect(request.headers.get("bigmodel-organization")).toBe("org-team");
       expect(request.headers.get("bigmodel-project")).toBe("project-team");
       expect(request.headers.get("x-request-id")).toBeTruthy();
-      expect(request.headers.get("user-agent")).toMatch(/^ZCode\//);
+      expect(request.headers.get("user-agent")).toMatch(/^Codez\//);
       expect(request.headers.get("http-referer")).toBeTruthy();
     }
     const serializedWarnings = JSON.stringify(warnings);
@@ -383,7 +383,7 @@ describe("offPeakServerClient × offPeakMockGateway 契约联测", () => {
       "/api/v1/off-peak/ticket/ticket-1/settle",
     ]);
     for (const request of requests) {
-      expect(request.headers.get("authorization")).toBe("Bearer team-zcode-jwt");
+      expect(request.headers.get("authorization")).toBe("Bearer team-codez-jwt");
       expect(request.headers.get("x-coding-plan-api-key")).toBe("team-api-key.team-secret-key");
       expect(request.headers.get("bigmodel-organization")).toBe("org-team");
       expect(request.headers.get("bigmodel-project")).toBe("project-team");
@@ -422,9 +422,9 @@ describe("offPeakServerClient × offPeakMockGateway 契约联测", () => {
     }
   });
 
-  it("isOffPeakMockEnabled：仅 ZCODE_OFFPEAK_MOCK=1 开启", () => {
-    expect(isOffPeakMockEnabled({ ZCODE_OFFPEAK_MOCK: "1" } as NodeJS.ProcessEnv)).toBe(true);
-    expect(isOffPeakMockEnabled({ ZCODE_OFFPEAK_MOCK: "0" } as NodeJS.ProcessEnv)).toBe(false);
+  it("isOffPeakMockEnabled：仅 CODEZ_OFFPEAK_MOCK=1 开启", () => {
+    expect(isOffPeakMockEnabled({ CODEZ_OFFPEAK_MOCK: "1" } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isOffPeakMockEnabled({ CODEZ_OFFPEAK_MOCK: "0" } as NodeJS.ProcessEnv)).toBe(false);
     expect(isOffPeakMockEnabled({} as NodeJS.ProcessEnv)).toBe(false);
   });
 });

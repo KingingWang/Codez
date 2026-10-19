@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BotConfig } from "@zcode/shared";
+import type { BotConfig } from "@codez/shared";
 
 const wsState = vi.hoisted(() => ({
   constructorParams: null as Record<string, unknown> | null,

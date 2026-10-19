@@ -3,7 +3,7 @@ import { join, basename } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { waitForWorkspaceApp, DEFAULT_WORKSPACE } from "../../../helpers/desktop-app.js";
 import { loginWithApiKey } from "#e2e/helpers/v4-conversation";
-import { TID_AUTOMATIONS_OPEN } from "@zcode/shared/test-ids";
+import { TID_AUTOMATIONS_OPEN } from "@codez/shared/test-ids";
 
 const projectId = "e2e-project-behavior";
 const name = "E2E_PROJECT_BEHAVIOR";
@@ -21,16 +21,16 @@ describe("虚拟项目旧产品体验", () => {
   before(async function () {
     this.timeout(60_000);
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45_000);
-    const home = process.env.ZCODE_E2E_HOME_DIR;
-    if (!home || !basename(home).startsWith("zcode-project-behavior-e2e-"))
+    const home = process.env.CODEZ_E2E_HOME_DIR;
+    if (!home || !basename(home).startsWith("codez-project-behavior-e2e-"))
       throw new Error("isolated project behavior E2E HOME required");
-    const root = join(DEFAULT_WORKSPACE, ".zcode-e2e", "project-behavior");
+    const root = join(DEFAULT_WORKSPACE, ".codez-e2e", "project-behavior");
     await mkdir(root, { recursive: true });
     await writeFile(join(root, "E2E_TASK_FILES.txt"), "project root file");
     const taskRoot = join(root, "task-cwd");
     await mkdir(taskRoot, { recursive: true });
     await writeFile(join(taskRoot, "E2E_PINNED_TASK_FILES.txt"), "task cwd file");
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+    const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
     try {
       // 纯列表 fixture：只在隔离库准备已持久化的历史镜像，不声称覆盖模型/CLI 执行。
       db.prepare(
@@ -165,10 +165,10 @@ describe("虚拟项目旧产品体验", () => {
       const targetId = "e2e-empty-a";
       const target = $(`[data-project-id="${targetId}"]`);
       const preferences = await browser.execute(() =>
-        localStorage.getItem("zcode-project-sidebar-preferences"),
+        localStorage.getItem("codez-project-sidebar-preferences"),
       );
       const db = new DatabaseSync(
-        join(process.env.ZCODE_E2E_HOME_DIR!, ".zcode/v2/tasks-index.sqlite"),
+        join(process.env.CODEZ_E2E_HOME_DIR!, ".codez/v2/tasks-index.sqlite"),
       );
       try {
         await browser.electron.execute((electron) => {
@@ -207,7 +207,7 @@ describe("虚拟项目旧产品体验", () => {
           return window.__projectDeletionTrace!.orders;
         });
         await writeFile(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `project-deletion-${entry}.json`),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `project-deletion-${entry}.json`),
           JSON.stringify(orders, null, 2),
         );
         const before = orders[0]!;
@@ -223,8 +223,8 @@ describe("虚拟项目旧产品体验", () => {
         db.prepare("UPDATE projects SET deleted=0 WHERE project_id=?").run(targetId);
         db.close();
         await browser.execute((saved) => {
-          if (saved) localStorage.setItem("zcode-project-sidebar-preferences", saved);
-          else localStorage.removeItem("zcode-project-sidebar-preferences");
+          if (saved) localStorage.setItem("codez-project-sidebar-preferences", saved);
+          else localStorage.removeItem("codez-project-sidebar-preferences");
         }, preferences);
         await browser.refresh();
         await $(rowSelector).waitForDisplayed({ timeout: 45_000 });
@@ -234,7 +234,7 @@ describe("虚拟项目旧产品体验", () => {
 
   it("VP31：任务分区会话与项目内会话左侧留白一致", async () => {
     const db = new DatabaseSync(
-      join(process.env.ZCODE_E2E_HOME_DIR!, ".zcode/v2/tasks-index.sqlite"),
+      join(process.env.CODEZ_E2E_HOME_DIR!, ".codez/v2/tasks-index.sqlite"),
     );
     const task = $('[data-testid="conversation-section"] [data-testid="task-item-e2e-behavior-6"]');
     const layouts: {
@@ -310,7 +310,7 @@ describe("虚拟项目旧产品体验", () => {
         false,
       );
       await writeFile(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "task-section-inset.json"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "task-section-inset.json"),
         JSON.stringify(layouts, null, 2),
       );
       for (const layout of layouts) {
@@ -439,7 +439,7 @@ describe("虚拟项目旧产品体验", () => {
     ).toBe(true);
     await assertDropIndicator("e2e-empty-b", "after");
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "project-insertion-pointer.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "project-insertion-pointer.png"),
     );
     await browser.performActions([
       {
@@ -478,7 +478,7 @@ describe("虚拟项目旧产品体验", () => {
     expect(await order()).toEqual(after);
     await $(rowSelector).$('[data-testid="virtual-project-toggle"]').click();
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "sidebar-regression.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "sidebar-regression.json"),
       JSON.stringify({ geometry, motion, before, pointerOrder, after }, null, 2),
     );
   });
@@ -531,8 +531,8 @@ describe("虚拟项目旧产品体验", () => {
     expect(await $('[data-testid="project-task-sort-created"]').isExisting()).toBe(false);
     await browser.keys("Escape");
     await browser.execute(() => {
-      localStorage.setItem("zcode-sidebar-task-preferences", JSON.stringify({ sortBy: "created" }));
-      const key = "zcode-project-sidebar-preferences";
+      localStorage.setItem("codez-sidebar-task-preferences", JSON.stringify({ sortBy: "created" }));
+      const key = "codez-project-sidebar-preferences";
       localStorage.setItem(
         key,
         JSON.stringify({ ...JSON.parse(localStorage.getItem(key) ?? "{}"), sort: "updated" }),
@@ -565,7 +565,7 @@ describe("虚拟项目旧产品体验", () => {
       true,
     );
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "sidebar-view-icons.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "sidebar-view-icons.png"),
     );
     await $('[data-testid="sidebar-view-timeline"]').click();
     const timeline = $('[data-testid="project-timeline-tasks"]');
@@ -599,7 +599,7 @@ describe("虚拟项目旧产品体验", () => {
     ).toBe(true);
     expect(await timeline.$$("[data-timeline-date-heading]").length).toBe(2);
     const db = new DatabaseSync(
-      join(process.env.ZCODE_E2E_HOME_DIR!, ".zcode/v2/tasks-index.sqlite"),
+      join(process.env.CODEZ_E2E_HOME_DIR!, ".codez/v2/tasks-index.sqlite"),
     );
     let expected: string[];
     try {
@@ -641,10 +641,10 @@ describe("虚拟项目旧产品体验", () => {
     expect(await $('[data-testid="task-item-e2e-behavior-6"]').isExisting()).toBe(false);
     expect(await readNavigation()).toEqual(before);
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "sidebar-view.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "sidebar-view.json"),
       JSON.stringify({ before, expected, actual }, null, 2),
     );
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "sidebar-recent.png"));
+    await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "sidebar-recent.png"));
     await captureLayouts(undefined, "sidebar-recent");
     await $('[data-testid="sidebar-view-menu"]').click();
     await $('[data-testid="sidebar-view-projects"]').click();
@@ -673,7 +673,7 @@ describe("虚拟项目旧产品体验", () => {
     const before = await readNavigation();
     const close = await sampleProjectMotion(false);
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "project-collapse-close.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "project-collapse-close.json"),
       JSON.stringify(close, null, 2),
     );
     expect(close.some((frame) => frame.height > 1 && frame.height < close[0]!.height - 1)).toBe(
@@ -692,7 +692,7 @@ describe("虚拟项目旧产品体验", () => {
     expect(await $(rowSelector).$$(taskSelector).length).toBe(5);
     expect(await readNavigation()).toEqual(before);
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "project-collapse-motion.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "project-collapse-motion.json"),
       JSON.stringify({ close, open, reverse }, null, 2),
     );
   });
@@ -706,8 +706,8 @@ describe("虚拟项目旧产品体验", () => {
     const activeBefore = await browser.execute(
       () =>
         (
-          window as Window & { __zcodeTabStoreE2E?: { getState(): { activeTabId: string | null } } }
-        ).__zcodeTabStoreE2E?.getState().activeTabId,
+          window as Window & { __codezTabStoreE2E?: { getState(): { activeTabId: string | null } } }
+        ).__codezTabStoreE2E?.getState().activeTabId,
     );
     await files.click();
     const taskBack = $(
@@ -724,9 +724,9 @@ describe("虚拟项目旧产品体验", () => {
         () =>
           (
             window as Window & {
-              __zcodeTabStoreE2E?: { getState(): { activeTabId: string | null } };
+              __codezTabStoreE2E?: { getState(): { activeTabId: string | null } };
             }
-          ).__zcodeTabStoreE2E?.getState().activeTabId,
+          ).__codezTabStoreE2E?.getState().activeTabId,
       ),
     ).toBe(activeBefore);
     const ordinary = $(rowSelector).$(taskSelector);
@@ -779,8 +779,8 @@ describe("虚拟项目旧产品体验", () => {
   });
 
   it("VP31：41 个项目拖拽启动保持响应，取消不改顺序", async () => {
-    const home = process.env.ZCODE_E2E_HOME_DIR!;
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+    const home = process.env.CODEZ_E2E_HOME_DIR!;
+    const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
     try {
       const insert = db.prepare(
         "INSERT INTO projects(project_id,host_id,name,position,created_at,updated_at) VALUES(?,'local',?,?,1,1)",
@@ -883,7 +883,7 @@ describe("虚拟项目旧产品体验", () => {
       return sample;
     });
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "project-drag-performance.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "project-drag-performance.json"),
       JSON.stringify({ projects: coords.order.length, ...sample }, null, 2),
     );
     expect(sample.gaps.length).toBeGreaterThan(5);
@@ -961,10 +961,10 @@ async function sampleProjectMotion(reverse: boolean) {
 async function readNavigation() {
   return browser.execute(() => {
     const bridge = window as Window & {
-      __zcodeTabStoreE2E?: {
+      __codezTabStoreE2E?: {
         getState(): { activeWorkspacePath: string | null; activeWorkspaceIdentity?: string | null };
       };
-      __zcodeSessionStoreE2E?: {
+      __codezSessionStoreE2E?: {
         getState(): {
           getWorkspaceState(
             path: string,
@@ -977,8 +977,8 @@ async function readNavigation() {
         };
       };
     };
-    const tabs = bridge.__zcodeTabStoreE2E?.getState();
-    const sessions = bridge.__zcodeSessionStoreE2E?.getState();
+    const tabs = bridge.__codezTabStoreE2E?.getState();
+    const sessions = bridge.__codezSessionStoreE2E?.getState();
     if (!tabs || !sessions || !tabs.activeWorkspacePath)
       throw new Error("missing E2E navigation bridge");
     const state = sessions.getWorkspaceState(
@@ -1004,7 +1004,7 @@ async function assertDropIndicator(project: string, edge: "before" | "after") {
     );
   });
   await writeFile(
-    join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "insertion-diagnostics.json"),
+    join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "insertion-diagnostics.json"),
     JSON.stringify(
       await browser.execute(() => ({
         width: innerWidth,
@@ -1156,7 +1156,7 @@ async function captureLayouts(
         expect(toolbar.inside).toBe(true);
         await browser.saveScreenshot(
           join(
-            process.env.ZCODE_E2E_ARTIFACT_DIR!,
+            process.env.CODEZ_E2E_ARTIFACT_DIR!,
             `${prefix ?? (beforeCapture ? "project-insertion" : "project-behavior")}-${width}-${theme}.png`,
           ),
         );

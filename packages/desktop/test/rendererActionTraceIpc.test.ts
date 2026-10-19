@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PlatformChannels, type RendererActionTraceConfigV1 } from "@zcode/shared";
+import { PlatformChannels, type RendererActionTraceConfigV1 } from "@codez/shared";
 
 const ipcListeners = new Map<string, (event: unknown, payload: unknown) => void>();
 
@@ -38,7 +38,7 @@ function createBatch(rendererInstanceId: string) {
     sequence: 1,
     droppedSinceLastFlush: 0,
     resource: {
-      serviceName: "zcode-desktop-renderer",
+      serviceName: "codez-desktop-renderer",
       serviceVersion: "test",
       deploymentEnvironment: "test",
       rendererInstanceId,

@@ -1,4 +1,4 @@
-# 应用用量改造：数据源迁移到 zcode agent 数据库
+# 应用用量改造：数据源迁移到 codez agent 数据库
 
 日期：2026-06-02
 分支：feat/new-agent
@@ -6,11 +6,11 @@
 ## 背景与目标
 
 「应用用量」（App Usage）面板当前的数据全部来自**本地 session JSON 文件**
-（`~/.zcode/sessions/*.json`），经宿主进程的 `usageStatsAggregator.ts` 用
+（`~/.codez/sessions/*.json`），经宿主进程的 `usageStatsAggregator.ts` 用
 「字符数 / 3」**估算** token 后聚合成三个区块：概要、热力图、趋势，支持
 全部 / 7d / 30d 时间筛选。
 
-zcode agent 新增了可观测性数据库（迁移 `0010_usage_observability`），三张表记录
+codez agent 新增了可观测性数据库（迁移 `0010_usage_observability`），三张表记录
 **真实**用量数据：
 
 - `model_usage` — 真实 token（input / output / reasoning / cache 读写）、provider/model、
@@ -29,28 +29,28 @@ zcode agent 新增了可观测性数据库（迁移 `0010_usage_observability`�
 2. **新增指标范围**：真实 Token 拆分 + 工具使用统计 + 质量/可靠性指标。
    **不做**按 query_source 拆分（主对话/压缩/子 agent/workflow）。
 3. **热力图形态 → 30 天日历格**（约 5 列，GitHub 式），每格 = 当天真实 token 总量。
-4. **取数路径 → ZCode Protocol**：新增协议方法，由 agent 侧 SQL 聚合后回传。
+4. **取数路径 → Codez Protocol**：新增协议方法，由 agent 侧 SQL 聚合后回传。
 
 ## 架构与数据流
 
 宿主进程**不直接持有** agent 的 SQLite；agent 是独立子进程，宿主只能通过
-ZCode Protocol（stdio JSON-RPC）请求数据（现有 `session/list`、`session/messages` 即此模式）。
+Codez Protocol（stdio JSON-RPC）请求数据（现有 `session/list`、`session/messages` 即此模式）。
 聚合放在 **agent 侧（SQL）**，而非把原始行拉回宿主再算 —— 省 stdio 传输、天然带 30 天窗口。
 
 ```
 旧:  useAppUsageStats → usageStatsService.getAppUsageSnapshot()
-        → readPersistedSessionFiles(~/.zcode/sessions/*.json)      [删]
+        → readPersistedSessionFiles(~/.codez/sessions/*.json)      [删]
         → buildUsageStatsSnapshot()  字符数/3 估算                 [删]
 
 新:  useAppUsageStats → usageStatsService.getAppUsageSnapshot()
-        → zcodeProtocolClient.request("usage/stats", {range,timeZone})   [新协议方法]
+        → codezProtocolClient.request("usage/stats", {range,timeZone})   [新协议方法]
         → [agent 子进程] handler → SessionStore 新增 read 方法
         → SQL GROUP BY 聚合 model_usage / turn_usage / tool_usage        [真实数据]
         → 回传 AppUsageSnapshot
 ```
 
 **备选方案（不采用）**：宿主进程直接只读打开同一个 `default.db` 文件。否决原因：
-与 agent 并发访问同一 DB、schema 双份耦合、违反「新代码走 ZCode Protocol」约定。
+与 agent 并发访问同一 DB、schema 双份耦合、违反「新代码走 Codez Protocol」约定。
 
 ## 指标变更
 
@@ -93,20 +93,20 @@ ZCode Protocol（stdio JSON-RPC）请求数据（现有 `session/list`、`sessio
 
 ### Agent 侧（取数 + 聚合）
 
-- `apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts`
+- `apps/codez-cli/packages/contracts/src/interfaces/session-store.port.ts`
   — `UsageStorePort` 增加只读聚合方法（当前仅有写方法）及结果类型。
-- `apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/usage.ts`
+- `apps/codez-cli/packages/adapters/src/storage/session-store/repositories/usage.ts`
   — 新增 SQL 聚合查询（GROUP BY day / model / tool，带 30 天 + range 过滤）。
-- `apps/zcode-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts`
+- `apps/codez-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts`
   — 代理新读方法。
-- `packages/shared/src/zcode-protocol/index.ts`
-  — 新协议方法 `usage/stats` + zod 入参/结果 schema，登记到 `zcodeProtocolMethods`。
+- `packages/shared/src/codez-protocol/index.ts`
+  — 新协议方法 `usage/stats` + zod 入参/结果 schema，登记到 `codezProtocolMethods`。
 - agent server 侧 handler（与 `session/list` 同位置）— 处理 `usage/stats`。
 
 ### 宿主服务侧（换数据源）
 
 - `packages/services/src/usage-stats/usageStatsService.ts`
-  — `getAppUsageSnapshot()` 改走 `zcodeProtocolClient` / `zcodeAgentService`。
+  — `getAppUsageSnapshot()` 改走 `codezProtocolClient` / `codezAgentService`。
 - **删除**：`usageStatsAggregator.ts`、`repo/sessionUsageRepo.ts`、`usageStatsSeries.ts`、
   字符估算常量（`ESTIMATED_TOKEN_CHAR_DIVISOR`、`estimateTokensFromCharacterCount` 等）。
 - `packages/shared/src/usage-stats.ts`

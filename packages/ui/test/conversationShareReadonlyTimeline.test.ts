@@ -88,7 +88,7 @@ const buildArtifactRow = (rowId: number, artifactVersionId: string) => ({
   mimeType: "application/pdf",
   sizeBytes: 172_974,
   sha256: "a".repeat(64),
-  ref: `zcode-artifact://share/${artifactVersionId}`,
+  ref: `codez-artifact://share/${artifactVersionId}`,
   state: "current" as const,
 });
 
@@ -119,8 +119,8 @@ describe("ConversationShareReadonlyTimeline", () => {
         ...rows[1],
         attachments: [
           {
-            ref: "zcode-artifact://share/share-input-text-1",
-            previewRef: "zcode-artifact://share/share-input-text-1",
+            ref: "codez-artifact://share/share-input-text-1",
+            previewRef: "codez-artifact://share/share-input-text-1",
             fileName: "pasted-text.txt",
             mime: "text/plain",
             bytes: 245_760,
@@ -192,7 +192,7 @@ describe("ConversationShareReadonlyTimeline", () => {
           "",
           "| 项目 | 内容 |",
           "| --- | --- |",
-          "| 公司 | **ZCode** |",
+          "| 公司 | **Codez** |",
           "",
           "```ts",
           "const answer = 42;",
@@ -338,7 +338,7 @@ describe("ConversationShareReadonlyTimeline", () => {
         mimeType: "application/pdf",
         sizeBytes: 172_974,
         sha256: "a".repeat(64),
-        ref: "zcode-artifact://share/artifact-1",
+        ref: "codez-artifact://share/artifact-1",
         state: "current" as const,
       },
     ];
@@ -375,7 +375,7 @@ describe("ConversationShareReadonlyTimeline", () => {
         mimeType: "application/pdf",
         sizeBytes: 172_974,
         sha256: "a".repeat(64),
-        ref: "zcode-artifact://share/artifact-1",
+        ref: "codez-artifact://share/artifact-1",
         state: "current" as const,
       },
     ];
@@ -385,7 +385,7 @@ describe("ConversationShareReadonlyTimeline", () => {
         locale: "zh-CN",
         workspacePath: "/workspace",
         artifactWorkspaceRelativePaths: new Map([
-          ["artifact-1", ".zcode-share/share-1/shared-artifacts/晨报.pdf"],
+          ["artifact-1", ".codez-share/share-1/shared-artifacts/晨报.pdf"],
         ]),
         onOpenCodeViewer: () => undefined,
         artifactOpenAction: StubArtifactOpenAction,
@@ -394,18 +394,18 @@ describe("ConversationShareReadonlyTimeline", () => {
 
     expect(html).toContain('data-open-split-button="true"');
     expect(html).toContain(
-      'data-target-path="/workspace/.zcode-share/share-1/shared-artifacts/晨报.pdf"',
+      'data-target-path="/workspace/.codez-share/share-1/shared-artifacts/晨报.pdf"',
     );
     expect(openActionProps.values).toHaveLength(1);
     expect(openActionProps.values[0]?.target).toMatchObject({
       type: "file",
-      path: "/workspace/.zcode-share/share-1/shared-artifacts/晨报.pdf",
+      path: "/workspace/.codez-share/share-1/shared-artifacts/晨报.pdf",
       title: "晨报.pdf",
       label: "晨报.pdf",
       previewSource: {
         type: "file",
         title: "晨报.pdf",
-        path: "/workspace/.zcode-share/share-1/shared-artifacts/晨报.pdf",
+        path: "/workspace/.codez-share/share-1/shared-artifacts/晨报.pdf",
         workspacePath: "/workspace",
       },
     });
@@ -423,7 +423,7 @@ describe("ConversationShareReadonlyTimeline", () => {
         locale: "zh-CN",
         workspacePath: "/workspace",
         artifactWorkspaceRelativePaths: new Map([
-          ["artifact-1", ".zcode-share/share-1/shared-artifacts/晨报.pdf"],
+          ["artifact-1", ".codez-share/share-1/shared-artifacts/晨报.pdf"],
         ]),
         onOpenCodeViewer: () => undefined,
       }),
@@ -453,7 +453,7 @@ describe("ConversationShareReadonlyTimeline", () => {
         mimeType: "application/pdf",
         sizeBytes: 172_974,
         sha256: "a".repeat(64),
-        ref: "zcode-artifact://share/artifact-1",
+        ref: "codez-artifact://share/artifact-1",
         state: "current" as const,
       },
     ];
@@ -520,15 +520,15 @@ describe("ConversationShareReadonlyTimeline", () => {
         workspacePath: "/workspace",
         artifactWorkspaceRelativePaths: new Map([
           // 嵌套子目录：5 段。
-          ["artifact-1", ".zcode-share/share-1/shared-artifacts/sub/a.pdf"],
+          ["artifact-1", ".codez-share/share-1/shared-artifacts/sub/a.pdf"],
           // 浅路径：3 段。
-          ["artifact-2", ".zcode-share/share-1/a.pdf"],
+          ["artifact-2", ".codez-share/share-1/a.pdf"],
           // 4 段但第 2 段是 ..：等价于跳出本 share 目录。
-          ["artifact-3", ".zcode-share/../shared-artifacts/a.pdf"],
+          ["artifact-3", ".codez-share/../shared-artifacts/a.pdf"],
           // 4 段但文件名是 .：不是合法产物文件。
-          ["artifact-4", ".zcode-share/share-1/shared-artifacts/."],
+          ["artifact-4", ".codez-share/share-1/shared-artifacts/."],
           // 反斜杠分隔不能绕过段校验。
-          ["artifact-5", ".zcode-share\\share-1\\shared-artifacts\\a.pdf\\..\\b.pdf"],
+          ["artifact-5", ".codez-share\\share-1\\shared-artifacts\\a.pdf\\..\\b.pdf"],
         ]),
         onOpenCodeViewer: () => undefined,
         artifactOpenAction: StubArtifactOpenAction,
@@ -554,7 +554,7 @@ describe("ConversationShareReadonlyTimeline", () => {
         workspacePath: "/workspace",
         artifactUrls: new Map([["artifact-1", "https://example.invalid/a.pdf"]]),
         artifactWorkspaceRelativePaths: new Map([
-          ["artifact-1", ".zcode-share/share-1/shared-artifacts/晨报.pdf"],
+          ["artifact-1", ".codez-share/share-1/shared-artifacts/晨报.pdf"],
         ]),
         onOpenCodeViewer: () => undefined,
         artifactOpenAction: StubArtifactOpenAction,

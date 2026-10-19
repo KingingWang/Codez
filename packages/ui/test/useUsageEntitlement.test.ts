@@ -1,7 +1,7 @@
 import { BigModelUsageQuotaProvider } from "../../services/src/usage-stats/providers/bigmodelUsageQuotaProvider.js";
 import type { ReactElement } from "react";
 import type { Root } from "react-dom/client";
-import type { UsageEntitlementSnapshot, ZCodeAccountAccess } from "@zcode/shared";
+import type { UsageEntitlementSnapshot, CodezAccountAccess } from "@codez/shared";
 import { readCachedUsageEntitlementSnapshot } from "@/lib/usageEntitlementCache.js";
 import {
   buildEntitlementFreshnessKey,
@@ -9,7 +9,7 @@ import {
   shouldDeferSharedEntitlementRefresh,
   readSharedEntitlementSnapshot,
 } from "@/lib/usageEntitlementRefreshPolicy.js";
-import type { IUsageStatsService, IServiceAccessor } from "@zcode/services";
+import type { IUsageStatsService, IServiceAccessor } from "@codez/services";
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -28,7 +28,7 @@ const auth = vi.hoisted(() => ({
   state: undefined as undefined | { user: { id: string } | null; authSessionSeq: number },
 }));
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStoreWithDefault: (
+  useCodezStoreWithDefault: (
     selector: (state: NonNullable<typeof auth.state>) => unknown,
     fallback: unknown,
   ) => (auth.state ? selector(auth.state) : fallback),
@@ -245,12 +245,12 @@ describe("useUsageEntitlement team context refresh", () => {
       usageStatsService,
     } as unknown as IServiceAccessor;
 
-    const accountAccessByProject = new Map<string, ZCodeAccountAccess>();
-    function getTeamAccess(organizationId: string, projectId: string): ZCodeAccountAccess {
+    const accountAccessByProject = new Map<string, CodezAccountAccess>();
+    function getTeamAccess(organizationId: string, projectId: string): CodezAccountAccess {
       const key = `${organizationId}:${projectId}`;
       const existing = accountAccessByProject.get(key);
       if (existing) return existing;
-      const access: ZCodeAccountAccess = {
+      const access: CodezAccountAccess = {
         type: "zhipu-account",
         family: "bigmodel",
         planKind: "team-coding-plan",
@@ -308,7 +308,7 @@ describe("刷新失败保留已确认订阅", () => {
     "%s 真实订阅服务失败保留快照和退避，明确无套餐才清除",
     async (scope) => {
       let mode: "active" | "failure" | "unknown" | "none" = "active";
-      const accountAccess: ZCodeAccountAccess =
+      const accountAccess: CodezAccountAccess =
         scope === "team"
           ? {
               type: "zhipu-account",
@@ -320,7 +320,7 @@ describe("刷新失败保留已确认订阅", () => {
           : { type: "zhipu-account", family: "bigmodel", planKind: "individual-coding-plan" };
       const providerId = `account:bigmodel-${scope === "team" ? "team" : "individual"}-coding-plan`;
       const provider = new BigModelUsageQuotaProvider({
-        env: { ZCODE_ENV: "production" },
+        env: { CODEZ_ENV: "production" },
         credentialService: { load: async () => "business" },
         accountRequestAuthService: {
           resolveAccessCurrent: vi.fn(),

@@ -1,4 +1,4 @@
-import type { ArmsCustomEventPayload } from "@zcode/shared";
+import type { ArmsCustomEventPayload } from "@codez/shared";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   prepareV4ConversationE2E,
@@ -70,9 +70,9 @@ async function clearSessionOpenArmsEvents(): Promise<void> {
   await browser.execute(() => {
     (
       window as Window & {
-        __zcodeArmsCustomEventsE2E?: Array<ArmsCustomEventPayload & { recordedAt?: number }>;
+        __codezArmsCustomEventsE2E?: Array<ArmsCustomEventPayload & { recordedAt?: number }>;
       }
-    ).__zcodeArmsCustomEventsE2E = [];
+    ).__codezArmsCustomEventsE2E = [];
   });
 }
 
@@ -82,9 +82,9 @@ async function readSessionOpenArmsEvents(sessionId: string): Promise<ArmsCustomE
       const events =
         (
           window as Window & {
-            __zcodeArmsCustomEventsE2E?: Array<ArmsCustomEventPayload & { recordedAt?: number }>;
+            __codezArmsCustomEventsE2E?: Array<ArmsCustomEventPayload & { recordedAt?: number }>;
           }
-        ).__zcodeArmsCustomEventsE2E ?? [];
+        ).__codezArmsCustomEventsE2E ?? [];
       return events
         .filter(
           (event) =>

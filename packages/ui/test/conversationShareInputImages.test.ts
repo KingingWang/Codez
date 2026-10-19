@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 import { ConversationShareReadonlyTimeline } from "@/v4/ConversationShareReadonlyTimeline.js";
 
 const base = { turnId: "turn-1", productTurnId: "product-1", createdAt: 1 };
@@ -24,14 +24,14 @@ const rows: ConversationRow[] = [
     text: "Describe this image",
     attachments: [
       {
-        ref: "zcode-artifact://share/image-1",
-        previewRef: "zcode-artifact://share/thumb-1",
+        ref: "codez-artifact://share/image-1",
+        previewRef: "codez-artifact://share/thumb-1",
         fileName: "photo.png",
         mime: "image/png",
         bytes: 120,
       },
       {
-        ref: "zcode-artifact://share/text-1",
+        ref: "codez-artifact://share/text-1",
         fileName: "notes.txt",
         mime: "text/plain",
         bytes: 20,

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { PassThrough } from "node:stream";
-import type { IDisposable, Event } from "@zcode/rpc";
-import type { ZCodePromptAttachment } from "@zcode/shared";
+import type { IDisposable, Event } from "@codez/rpc";
+import type { CodezPromptAttachment } from "@codez/shared";
 import {
   REMOTE_PROMPT_ATTACHMENT_ROOT,
   buildRemotePromptAttachmentPath,
@@ -33,8 +33,8 @@ describe("remote prompt attachment materialization", () => {
       .mockResolvedValueOnce(createClosedStream("/home/tester"))
       .mockResolvedValueOnce(createClosedStream())
       .mockResolvedValueOnce(createClosedStream());
-    const hostPath = "C:\\Users\\tester\\.zcode\\tmp\\paste-attachments\\pasted-text.txt";
-    const attachments: ZCodePromptAttachment[] = [
+    const hostPath = "C:\\Users\\tester\\.codez\\tmp\\paste-attachments\\pasted-text.txt";
+    const attachments: CodezPromptAttachment[] = [
       {
         kind: "file",
         filename: "pasted text.txt",
@@ -63,7 +63,7 @@ describe("remote prompt attachment materialization", () => {
 
     const remotePath = upload.mock.calls[0]?.[1] ?? "";
     expect(remotePath).toMatch(
-      /^\/home\/tester\/\.zcode\/tmp\/prompt-attachments\/trace-abc-123\/[A-Za-z0-9._-]+\/01-pasted-text\.txt$/,
+      /^\/home\/tester\/\.codez\/tmp\/prompt-attachments\/trace-abc-123\/[A-Za-z0-9._-]+\/01-pasted-text\.txt$/,
     );
     expect(upload).toHaveBeenCalledWith(hostPath, remotePath);
     expect(exec.mock.calls[0]?.[0]).toBe('printf %s "$HOME"');
@@ -85,7 +85,7 @@ describe("remote prompt attachment materialization", () => {
     const upload = vi.fn(async (_localPath: string, _remotePath: string) => undefined);
     const exec = vi.fn(async (_command: string) => createClosedStream());
     const remotePath = `${REMOTE_PROMPT_ATTACHMENT_ROOT}/trace/01-image.png`;
-    const attachments: ZCodePromptAttachment[] = [
+    const attachments: CodezPromptAttachment[] = [
       {
         kind: "image",
         filename: "image.png",
@@ -109,8 +109,8 @@ describe("remote prompt attachment materialization", () => {
   it("skips attachments that already point at the resolved remote materialization directory", async () => {
     const upload = vi.fn(async (_localPath: string, _remotePath: string) => undefined);
     const exec = vi.fn(async (_command: string) => createClosedStream("/home/tester"));
-    const remotePath = "/home/tester/.zcode/tmp/prompt-attachments/trace/01-image.png";
-    const attachments: ZCodePromptAttachment[] = [
+    const remotePath = "/home/tester/.codez/tmp/prompt-attachments/trace/01-image.png";
+    const attachments: CodezPromptAttachment[] = [
       {
         kind: "image",
         filename: "image.png",

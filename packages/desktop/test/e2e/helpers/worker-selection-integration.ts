@@ -8,17 +8,17 @@ import {
   createAccountProviderConfigSnapshot,
   createFailClosedAccountProviderConfigSnapshot,
   type ModelSelectionViewInput,
-} from "@zcode/provider";
-import { NodeProviderRegistryRuntime, createNodeModelSelectionFacade } from "@zcode/provider-node";
+} from "@codez/provider";
+import { NodeProviderRegistryRuntime, createNodeModelSelectionFacade } from "@codez/provider-node";
 import {
-  createZCodeAgentService,
-  createZCodeTaskServiceAdapter,
+  createCodezAgentService,
+  createCodezTaskServiceAdapter,
   getDataBaseDir,
   setDataBaseDir,
-} from "@zcode/services/node";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+} from "@codez/services/node";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import { TaskIndexRepo } from "../../../../services/src/session/taskIndexRepo.js";
-import { createZCodeTaskIndexSyncer } from "../../../../services/src/zcode-agent/zcodeTaskIndexSyncer.js";
+import { createCodezTaskIndexSyncer } from "../../../../services/src/codez-agent/codezTaskIndexSyncer.js";
 import { getE2EAppDataPaths } from "./desktop-app.js";
 
 /** 独立测试 Host + 真实 stdio Worker；仅账号上游和模型 HTTP 使用隔离 fixture。 */
@@ -33,8 +33,8 @@ export async function createWorkerSelectionIntegration() {
   const deliverySource = new MutableAccountProviderConfigSource();
   let deliveryPaused = false;
   const runtimePaths = {
-    zcodeBuiltinFilePath: resolve("../../config/provider/zcode-builtin.json"),
-    personalFilePath: join(home, ".zcode/v2/provider_config.json"),
+    codezBuiltinFilePath: resolve("../../config/provider/codez-builtin.json"),
+    personalFilePath: join(home, ".codez/v2/provider_config.json"),
   };
   const runtime = new NodeProviderRegistryRuntime({
     ...runtimePaths,
@@ -61,7 +61,7 @@ export async function createWorkerSelectionIntegration() {
     }
     source.replace(
       createAccountProviderConfigSnapshot(
-        config.zcodeBuiltinRevision,
+        config.codezBuiltinRevision,
         new ProviderConfigMap([...providers]),
         Object.fromEntries(
           [individual, team].map((id) => [
@@ -86,17 +86,17 @@ export async function createWorkerSelectionIntegration() {
       dispose: facade.onDidChange(listener),
     }),
   };
-  const agent = createZCodeAgentService({
+  const agent = createCodezAgentService({
     commandResolver: () => ({
       command: process.execPath,
-      args: [resolve("../../apps/zcode-cli/packages/cli/dist/zcode.cjs"), "app-server", "--stdio"],
+      args: [resolve("../../apps/codez-cli/packages/cli/dist/codez.cjs"), "app-server", "--stdio"],
       env: {
         HOME: home,
         USERPROFILE: home,
-        ZCODE_DATA_BASE_DIR: home,
-        ZCODE_RUNTIME_ENV: "development",
-        ZCODE_BUILTIN_PROVIDER_CONFIG_FILE: runtimePaths.zcodeBuiltinFilePath,
-        ZCODE_PERSONAL_PROVIDER_CONFIG_FILE: runtimePaths.personalFilePath,
+        CODEZ_DATA_BASE_DIR: home,
+        CODEZ_RUNTIME_ENV: "development",
+        CODEZ_BUILTIN_PROVIDER_CONFIG_FILE: runtimePaths.codezBuiltinFilePath,
+        CODEZ_PERSONAL_PROVIDER_CONFIG_FILE: runtimePaths.personalFilePath,
       },
     }),
     modelSelectionReadinessSource: modelSelectionService,
@@ -116,9 +116,9 @@ export async function createWorkerSelectionIntegration() {
     },
   });
   const repo = new TaskIndexRepo();
-  const syncer = createZCodeTaskIndexSyncer({ agentService: agent, taskIndexRepo: repo });
-  const task = createZCodeTaskServiceAdapter({
-    zcodeAgentService: agent,
+  const syncer = createCodezTaskIndexSyncer({ agentService: agent, taskIndexRepo: repo });
+  const task = createCodezTaskServiceAdapter({
+    codezAgentService: agent,
     taskIndexRepo: repo,
     taskIndexSyncer: syncer,
   });

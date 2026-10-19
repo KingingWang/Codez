@@ -70,7 +70,7 @@ describe("off-peak 端到端集成（进程内 mock 网关全链路）", () => {
   }
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "zcode-off-peak-e2e-"));
+    tempDir = mkdtempSync(join(tmpdir(), "codez-off-peak-e2e-"));
     setDataBaseDir(tempDir);
     repo = new OffPeakTaskRepo();
     wakes = 0;

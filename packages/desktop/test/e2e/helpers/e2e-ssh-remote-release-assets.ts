@@ -3,7 +3,7 @@ import { basename, join } from "node:path";
 import {
   SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME,
   SOURCE_SERVER_RELEASE_TARGETS,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export interface EnsureSshRemoteReleaseAssetsOptions {
   /**
@@ -11,7 +11,7 @@ export interface EnsureSshRemoteReleaseAssetsOptions {
    */
   releaseDir: string;
   /**
-   * 执行根 package.json 的 `pnpm prepare:remote-assets`（→ @zcode/server-cli stage:remote-assets）
+   * 执行根 package.json 的 `pnpm prepare:remote-assets`（→ @codez/server-cli stage:remote-assets）
    * 的回调，由 wdio.conf.ts 注入以复用 runPnpmWorkspaceCommand（处理 CI HOME / NODE_OPTION /
    * Windows shell）。
    */
@@ -25,13 +25,13 @@ export interface EnsureSshRemoteReleaseAssetsOptions {
 // Bug 根因：release 产物已切换为 descriptor + archive 布局（stage:remote-assets →
 // remoteAssetRelease.ts collectSourceServerRemoteReleaseArchives），旧的 manifest-<platform>.json
 // 不再产出；继续用它做哨兵会让新布局永远判“不完整”，进而调用已删除的
-// `pnpm --filter @zcode/desktop prepare:remote-assets` 并让 onPrepare fatal。
-// 这里直接复用 @zcode/shared 的 target 与 descriptor 文件名常量，避免再次漂移。
+// `pnpm --filter @codez/desktop prepare:remote-assets` 并让 onPrepare fatal。
+// 这里直接复用 @codez/shared 的 target 与 descriptor 文件名常量，避免再次漂移。
 function resolveReleaseAssetPaths(releaseDir: string): string[] {
   return [
     join(releaseDir, SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME),
     ...SOURCE_SERVER_RELEASE_TARGETS.map((target) =>
-      join(releaseDir, `zcode-server-${target}.tar.gz`),
+      join(releaseDir, `codez-server-${target}.tar.gz`),
     ),
   ];
 }

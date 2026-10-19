@@ -24,7 +24,7 @@ describe("Gen UI output directory", () => {
   it.each([undefined, "ssh:executor:/home/dev"])(
     "allows the fixed output root within or equal to the workspace (%s)",
     (workspaceIdentity) => {
-      for (const outputRoot of [scope.workspacePath, join(scope.workspacePath, ".zcode")]) {
+      for (const outputRoot of [scope.workspacePath, join(scope.workspacePath, ".codez")]) {
         const directory = getGenUiOutputDirectory(outputRoot, { ...scope, workspaceIdentity });
         expect(dirname(directory)).toBe(outputRoot);
         expect(directory).not.toBe(outputRoot);

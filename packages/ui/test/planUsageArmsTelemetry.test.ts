@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS, type ArmsCustomEventPayload } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, type ArmsCustomEventPayload } from "@codez/shared";
 import {
   PLAN_USAGE_ARMS_EVENT_TTFT,
   PLAN_USAGE_ARMS_EVENT_REQUEST,

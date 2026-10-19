@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { ChannelClient, ChannelServer, ProxyChannel, createQueuePair } from "@zcode/rpc";
-import { IGenUiService, ServiceCollection, type IServiceAccessor } from "@zcode/services";
+import { ChannelClient, ChannelServer, ProxyChannel, createQueuePair } from "@codez/rpc";
+import { IGenUiService, ServiceCollection, type IServiceAccessor } from "@codez/services";
 import { REMOTE_WORKSPACE_RPC_CHANNELS } from "@desktop/host/remoteWorkspaceRpcContract.js";
 import { createServerRemoteWorkspaceServiceCollection } from "@desktop/host/remoteWorkspaceServiceCollection.js";
 import { resolveWindowHostServiceExposurePolicy } from "@desktop/host/windowHostAttachmentRpcPolicy.js";
@@ -10,7 +10,7 @@ const target = {
   workspacePath: "/workspace/project",
   workspaceIdentity: "ssh:example.test:/workspace/project",
   sessionId: "fork-session",
-  path: "/root/.zcode/v2/visualizations/parent/view.html",
+  path: "/root/.codez/v2/visualizations/parent/view.html",
 };
 
 function genUiService(): IGenUiService {

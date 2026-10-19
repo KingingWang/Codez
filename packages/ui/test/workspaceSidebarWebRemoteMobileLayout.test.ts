@@ -61,7 +61,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => {
       removeHost: fixture.removeHost,
       removeEntry: fixture.removeEntry,
     },
-    zcodeTaskService: { onDynamicWorkspaceEvent: () => () => ({ dispose: vi.fn() }) },
+    codezTaskService: { onDynamicWorkspaceEvent: () => () => ({ dispose: vi.fn() }) },
     broadcastService: { onMessage: () => ({ dispose: vi.fn() }) },
   };
   return { useBaseWorkspaceServices: () => base };
@@ -73,8 +73,8 @@ vi.mock("@/store/TabStoreProvider.js", () => ({
   // 项目目录的未读监听使用原 store 的订阅接口，布局夹具也需提供可释放的订阅。
   useTabStoreApi: () => ({ getState: () => fixture.state, subscribe: () => () => {} }),
 }));
-vi.mock("@/store/zcodeSessionStore.js", () => ({
-  useZCodeSessionStore: Object.assign(
+vi.mock("@/store/codezSessionStore.js", () => ({
+  useCodezSessionStore: Object.assign(
     (selector: (state: unknown) => unknown) => selector({ workspaces: {} }),
     {
       subscribe: () => () => {},
@@ -84,13 +84,13 @@ vi.mock("@/store/zcodeSessionStore.js", () => ({
   ),
 }));
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (selector: (state: unknown) => unknown) => selector({ setTheme: vi.fn() }),
+  useCodezStore: (selector: (state: unknown) => unknown) => selector({ setTheme: vi.fn() }),
 }));
 vi.mock("@/v4/useWorkspaceSessionsIndexItems.js", () => ({
   useWorkspaceSessionsIndexItems: () => ({ items: [] }),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: ({ id }: { id: string }) => id },
     localePreference: "en-US",
     setLocalePreference: vi.fn(),

@@ -8,7 +8,7 @@ import type {
 } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { GripHorizontal, LoaderIcon } from "lucide-react";
-import { TID_APP_HEADER } from "@zcode/shared/test-ids";
+import { TID_APP_HEADER } from "@codez/shared/test-ids";
 // 保活：workspace tab 真正关闭时，按 workspaceKey 回收 side pane terminal 的常驻 PTY/xterm。
 // 对称下侧 Terminal.tsx 的 openWorkspaceKeys 回收。
 import { sidePaneTerminalSessionRegistry } from "@/terminal/sidePaneTerminalSessionRegistry.js";
@@ -85,7 +85,7 @@ import { Button } from "@/components/ui/button.js";
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable.js";
 import { toast } from "@/components/ui/toast.js";
 import { getGitDirtyFileCount } from "@/git-branch-switcher/display.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { getPathLeaf, toFileUrl } from "@/lib/path.js";
 import { shouldOpenAssistantHtmlInBrowser } from "@/lib/assistantPreviewCards.js";
@@ -110,18 +110,18 @@ import {
 import type { WorkspaceShellLayoutProps } from "@/app-shell/types.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
 import { useTabStore, useTabStoreApi } from "@/store/TabStoreProvider.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
-import type { ComposerMentionPrefill } from "@/store/zcodeSessionStoreTypes.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
+import type { ComposerMentionPrefill } from "@/store/codezSessionStoreTypes.js";
 
 const WEB_REMOTE_CONTROL_MOBILE_QUERY = "(max-width: 767px)";
 const WEB_REMOTE_CONTROL_COLLAPSE_ONCE_SESSION_KEY =
-  "zcode:web-remote-control:collapse-navigation-once";
+  "codez:web-remote-control:collapse-navigation-once";
 const WEB_REMOTE_CONTROL_VIEWPORT_HEIGHT_FALLBACK_PX = 800;
 const WEB_REMOTE_CONTROL_DRAG_CLICK_THRESHOLD_PX = 4;
 const WORKSPACE_SIDEBAR_DEFAULT_WIDTH_PX = 264;
 const WORKSPACE_SIDEBAR_MIN_WIDTH_PX = 264;
 const WORKSPACE_SIDEBAR_MAX_WIDTH_RATIO = 0.5;
-const WORKSPACE_SIDEBAR_WIDTH_STORAGE_KEY = "zcode:workspace-shell:sidebar-width-px";
+const WORKSPACE_SIDEBAR_WIDTH_STORAGE_KEY = "codez:workspace-shell:sidebar-width-px";
 const LEGACY_WORKSPACE_SHELL_LAYOUT_STORAGE_KEY =
   "react-resizable-panels:workspace-shell-layout:sidebar:content";
 const WORKSPACE_SIDEBAR_RESIZE_KEYBOARD_STEP_PX = 16;
@@ -313,7 +313,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   isDesktop,
   isMacDesktop,
   isWindowsDesktop,
-  workspaceShellZCodeState,
+  workspaceShellCodezState,
   theme,
   isMacFullscreen,
   desktopWindowChromeState,
@@ -424,7 +424,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   setGitSelectedSourceId,
   taskFindDialogProps,
 }: WorkspaceShellLayoutProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const isOfficeMode = useIsOfficeMode();
   const baseServices = useBaseWorkspaceServices();
   const tabStoreApi = useTabStoreApi();
@@ -512,7 +512,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   usePaneSessionPersistence({
     workspaceKey,
     activeSessionId: activeTaskId,
-    draftFocusVersion: workspaceShellZCodeState.draftFocusVersion,
+    draftFocusVersion: workspaceShellCodezState.draftFocusVersion,
     enabled: !isWebRemoteControlShell,
     restoreOnStartup: Boolean(isDesktop && restorePaneSession),
     selectSession: (sessionId) => handleSelectTask(workspaceAbsPath, sessionId, workspaceIdentity),
@@ -1446,8 +1446,8 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
     (
       targetWorkspacePath: string,
       targetWorkspaceIdentity?: string,
-      targetWorkspacePurpose?: import("@zcode/shared").WorkspacePurpose,
-      createSource?: import("@zcode/shared").SessionCreateSource,
+      targetWorkspacePurpose?: import("@codez/shared").WorkspacePurpose,
+      createSource?: import("@codez/shared").SessionCreateSource,
     ) => {
       showChatMainView();
       handleStartDraftInWorkspace(
@@ -1508,7 +1508,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   ]);
   const handleSelectComposerPlugin = useCallback(
     (mention: ComposerMentionPrefill) => {
-      useZCodeSessionStore
+      useCodezSessionStore
         .getState()
         .requestComposerTextInsert(
           workspaceAbsPath,
@@ -2012,7 +2012,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
                 providerWorkspaceConfigPath={providerConfigFile.path}
                 providerWorkspaceConfigExists={providerConfigFile.exists}
                 providerWorkspaceConfigLoading={providerConfigFile.loading}
-                workspaceHeaderState={workspaceShellZCodeState}
+                workspaceHeaderState={workspaceShellCodezState}
                 gitSummary={gitState.summary}
                 gitDirtyFileCount={gitDirtyFileCount}
                 isMacDesktop={isMacDesktop}
@@ -2400,7 +2400,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
                           providerWorkspaceConfigPath={providerConfigFile.path}
                           providerWorkspaceConfigExists={providerConfigFile.exists}
                           providerWorkspaceConfigLoading={providerConfigFile.loading}
-                          workspaceHeaderState={workspaceShellZCodeState}
+                          workspaceHeaderState={workspaceShellCodezState}
                           gitSummary={gitState.summary}
                           gitDirtyFileCount={gitDirtyFileCount}
                           isMacDesktop={isMacDesktop}
@@ -2719,7 +2719,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   );
   return (
     <DesktopWindowFrame
-      title={`ZCode / ${getPathLeaf(workspaceAbsPath)}`}
+      title={`Codez / ${getPathLeaf(workspaceAbsPath)}`}
       showHeader
       isDesktop={isDesktop}
       isMacDesktop={isMacDesktop}

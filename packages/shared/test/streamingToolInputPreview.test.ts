@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
-  appendZCodeStreamingToolInputDelta,
-  buildZCodeStreamingToolInputPreview,
-  markZCodeStreamingToolInputPreviewMaterialized,
-  shouldMaterializeZCodeStreamingToolInputPreview,
+  appendCodezStreamingToolInputDelta,
+  buildCodezStreamingToolInputPreview,
+  markCodezStreamingToolInputPreviewMaterialized,
+  shouldMaterializeCodezStreamingToolInputPreview,
 } from "../src/streaming-tool-input-preview.js";
 
 describe("streaming tool input preview", () => {
   it("extracts file path and growing content from partial JSON", () => {
-    const first = appendZCodeStreamingToolInputDelta(
+    const first = appendCodezStreamingToolInputDelta(
       undefined,
       '{"file_path":"src/app.ts","content":"line 1\\n',
     );
-    const second = appendZCodeStreamingToolInputDelta(first, "line 2");
-    const preview = buildZCodeStreamingToolInputPreview(second.rawInput);
+    const second = appendCodezStreamingToolInputDelta(first, "line 2");
+    const preview = buildCodezStreamingToolInputPreview(second.rawInput);
 
     expect(first.deltaCount).toBe(1);
     expect(second.deltaCount).toBe(2);
@@ -25,7 +25,7 @@ describe("streaming tool input preview", () => {
   });
 
   it("extracts a growing ExitPlanMode plan from partial JSON", () => {
-    const preview = buildZCodeStreamingToolInputPreview(
+    const preview = buildCodezStreamingToolInputPreview(
       '{"plan":"# 实施计划\\n\\n- 第一步\\n- 第二',
     );
 
@@ -36,7 +36,7 @@ describe("streaming tool input preview", () => {
   });
 
   it("prefers complete tool call input when available", () => {
-    const preview = buildZCodeStreamingToolInputPreview('{"file_path":"old.ts"', {
+    const preview = buildCodezStreamingToolInputPreview('{"file_path":"old.ts"', {
       file_path: "src/final.ts",
       content: "done",
     });
@@ -49,7 +49,7 @@ describe("streaming tool input preview", () => {
   });
 
   it("extracts a user-facing title from partial tool input", () => {
-    const preview = buildZCodeStreamingToolInputPreview(
+    const preview = buildCodezStreamingToolInputPreview(
       '{"code":"await openPage();","title":"打开目标页面',
     );
 
@@ -59,7 +59,7 @@ describe("streaming tool input preview", () => {
 
   it("extracts a CreateWorkflow name and growing script from partial JSON", () => {
     // 工作流卡的流式草稿靠半截 script 扫站；name 先到就先显示名字而不是兜底词。
-    const preview = buildZCodeStreamingToolInputPreview(
+    const preview = buildCodezStreamingToolInputPreview(
       '{"name":"Research pipeline","script":"phase(\\"plan\\");\\nconst p = agent(\\"pl',
     );
 
@@ -71,23 +71,23 @@ describe("streaming tool input preview", () => {
   });
 
   it("budgets active preview materialization and keeps background as tombstone", () => {
-    const first = appendZCodeStreamingToolInputDelta(undefined, '{"content":"a');
-    expect(shouldMaterializeZCodeStreamingToolInputPreview(first)).toBe(true);
-    markZCodeStreamingToolInputPreviewMaterialized(first, 1_000);
+    const first = appendCodezStreamingToolInputDelta(undefined, '{"content":"a');
+    expect(shouldMaterializeCodezStreamingToolInputPreview(first)).toBe(true);
+    markCodezStreamingToolInputPreviewMaterialized(first, 1_000);
 
-    const second = appendZCodeStreamingToolInputDelta(first, "b");
+    const second = appendCodezStreamingToolInputDelta(first, "b");
     expect(
-      shouldMaterializeZCodeStreamingToolInputPreview(second, {
+      shouldMaterializeCodezStreamingToolInputPreview(second, {
         now: 1_100,
       }),
     ).toBe(false);
     expect(
-      shouldMaterializeZCodeStreamingToolInputPreview(second, {
+      shouldMaterializeCodezStreamingToolInputPreview(second, {
         now: 2_000,
       }),
     ).toBe(true);
     expect(
-      shouldMaterializeZCodeStreamingToolInputPreview(second, {
+      shouldMaterializeCodezStreamingToolInputPreview(second, {
         mode: "background-summary",
         now: 2_000,
       }),
@@ -97,29 +97,29 @@ describe("streaming tool input preview", () => {
   it.each(["Write", "Edit"])(
     "%s previews the first delta eagerly and subsequent deltas once per second",
     (toolName) => {
-      const first = appendZCodeStreamingToolInputDelta(undefined, '{"content":"a');
-      expect(shouldMaterializeZCodeStreamingToolInputPreview(first, { now: 1_000, toolName })).toBe(
+      const first = appendCodezStreamingToolInputDelta(undefined, '{"content":"a');
+      expect(shouldMaterializeCodezStreamingToolInputPreview(first, { now: 1_000, toolName })).toBe(
         true,
       );
-      markZCodeStreamingToolInputPreviewMaterialized(first, 1_000);
+      markCodezStreamingToolInputPreviewMaterialized(first, 1_000);
 
-      const second = appendZCodeStreamingToolInputDelta(first, "b".repeat(9 * 1024));
+      const second = appendCodezStreamingToolInputDelta(first, "b".repeat(9 * 1024));
       expect(
-        shouldMaterializeZCodeStreamingToolInputPreview(second, { now: 1_999, toolName }),
+        shouldMaterializeCodezStreamingToolInputPreview(second, { now: 1_999, toolName }),
       ).toBe(false);
       expect(
-        shouldMaterializeZCodeStreamingToolInputPreview(second, { now: 2_000, toolName }),
+        shouldMaterializeCodezStreamingToolInputPreview(second, { now: 2_000, toolName }),
       ).toBe(true);
     },
   );
 
   it("keeps the raw-growth shortcut for non-file tools", () => {
-    const first = appendZCodeStreamingToolInputDelta(undefined, '{"command":"p');
-    markZCodeStreamingToolInputPreviewMaterialized(first, 1_000);
-    const second = appendZCodeStreamingToolInputDelta(first, "x".repeat(8 * 1024));
+    const first = appendCodezStreamingToolInputDelta(undefined, '{"command":"p');
+    markCodezStreamingToolInputPreviewMaterialized(first, 1_000);
+    const second = appendCodezStreamingToolInputDelta(first, "x".repeat(8 * 1024));
 
     expect(
-      shouldMaterializeZCodeStreamingToolInputPreview(second, {
+      shouldMaterializeCodezStreamingToolInputPreview(second, {
         now: 1_001,
         toolName: "Bash",
       }),
@@ -127,20 +127,20 @@ describe("streaming tool input preview", () => {
   });
 
   it("does not time-flush large active inputs before raw growth budget", () => {
-    const first = appendZCodeStreamingToolInputDelta(undefined, "x".repeat(9 * 1024));
-    expect(shouldMaterializeZCodeStreamingToolInputPreview(first)).toBe(true);
-    markZCodeStreamingToolInputPreviewMaterialized(first, 1_000);
+    const first = appendCodezStreamingToolInputDelta(undefined, "x".repeat(9 * 1024));
+    expect(shouldMaterializeCodezStreamingToolInputPreview(first)).toBe(true);
+    markCodezStreamingToolInputPreviewMaterialized(first, 1_000);
 
-    const slowChunk = appendZCodeStreamingToolInputDelta(first, "y");
+    const slowChunk = appendCodezStreamingToolInputDelta(first, "y");
     expect(
-      shouldMaterializeZCodeStreamingToolInputPreview(slowChunk, {
+      shouldMaterializeCodezStreamingToolInputPreview(slowChunk, {
         now: 10_000,
       }),
     ).toBe(false);
 
-    const grownChunk = appendZCodeStreamingToolInputDelta(first, "y".repeat(8 * 1024));
+    const grownChunk = appendCodezStreamingToolInputDelta(first, "y".repeat(8 * 1024));
     expect(
-      shouldMaterializeZCodeStreamingToolInputPreview(grownChunk, {
+      shouldMaterializeCodezStreamingToolInputPreview(grownChunk, {
         now: 10_000,
       }),
     ).toBe(true);

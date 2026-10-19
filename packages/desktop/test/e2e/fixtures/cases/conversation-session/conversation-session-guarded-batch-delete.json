@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-guarded-batch-delete",
+      "path": ".codez-e2e/conversation-session-guarded-batch-delete",
       "source": "created-by-spec",
       "description": "独立 Git 仓库和受保护文件；after 清理。"
     }

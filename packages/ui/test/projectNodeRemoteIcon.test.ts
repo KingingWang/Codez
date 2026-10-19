@@ -7,7 +7,7 @@ import type { ProjectNodeProps } from "@/project-sidebar/ProjectNodeContent.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/project-sidebar/ProjectTaskRows.js", () => ({ ProjectTaskRows: () => null }));
 afterEach(cleanup);

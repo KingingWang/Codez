@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAccountProjectTokenClient } from "../src/model-provider/accountProjectTokenClient.js";
 import { createNodeApiClient } from "../src/providers/api/nodeApiClient.js";
-import { CREDENTIAL_DECRYPT_ERROR_CODE } from "@zcode/shared";
+import { CREDENTIAL_DECRYPT_ERROR_CODE } from "@codez/shared";
 
 afterEach(() => vi.useRealTimers());
 
@@ -18,7 +18,7 @@ describe("项目位置缓存恢复", () => {
       const data = url.endsWith("getCustomerInfo")
         ? { organizations: [{ organizationId: "org", projects: [{ projectId: "project" }] }] }
         : url.endsWith("api_keys")
-          ? [{ apiKey: "key", name: "zcode-api-key" }]
+          ? [{ apiKey: "key", name: "codez-api-key" }]
           : {
               accessToken: "pat",
               tokenType: "Bearer",
@@ -159,7 +159,7 @@ describe("Desktop PAT 临时故障分类", () => {
           data = {
             organizations: [{ organizationId: "org", projects: [{ projectId: "project" }] }],
           };
-        else if (url.endsWith("api_keys")) data = [{ apiKey: "key", name: "zcode-api-key" }];
+        else if (url.endsWith("api_keys")) data = [{ apiKey: "key", name: "codez-api-key" }];
         else {
           issues++;
           if (issues > 1) {

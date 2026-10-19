@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AppUsageSnapshot } from "@zcode/shared";
+import type { AppUsageSnapshot } from "@codez/shared";
 import {
   buildAppUsageDailyModelChartViewModel,
   filterDailyModelTooltipPayload,

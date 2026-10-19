@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { Emitter } from "@zcode/rpc";
-import type { SourceServerManagementSnapshot } from "@zcode/shared";
+import { Emitter } from "@codez/rpc";
+import type { SourceServerManagementSnapshot } from "@codez/shared";
 import { describe, expect, it, vi } from "vitest";
 import { useSourceServerManagementSnapshot } from "@/hooks/useSourceServerManagementSnapshot.js";
 

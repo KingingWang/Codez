@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
-**Goal:** Add a Desktop remote workspace target that connects to an already running ZCode HTTP/WebSocket server and manages its workspace with the existing App UI.
+**Goal:** Add a Desktop remote workspace target that connects to an already running Codez HTTP/WebSocket server and manages its workspace with the existing App UI.
 
 **Architecture:** Extend the shared remote target model with `kind: "server"`, then route Desktop remote session creation through the existing utility host process. The host process uses a Node WebSocket connector to the server `/ws` ChannelServer, wraps it as `RemoteServiceAccess`, exposes it through the existing MessagePort path, and keeps Desktop as `desktop-continuous`.
 
-**Tech Stack:** TypeScript, Electron utilityProcess, `ws`, `@zcode/rpc` `SocketProtocol`, `@zcode/client` `RemoteServiceAccess`, existing `ServiceCollection` and Remote Connection dialog.
+**Tech Stack:** TypeScript, Electron utilityProcess, `ws`, `@codez/rpc` `SocketProtocol`, `@codez/client` `RemoteServiceAccess`, existing `ServiceCollection` and Remote Connection dialog.
 
 ## Global Constraints
 

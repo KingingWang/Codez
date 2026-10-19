@@ -17,7 +17,7 @@ function validRecord(overrides: Record<string, unknown> = {}): Record<string, un
     grantedAt: "2026-08-17T09:00:00.000Z",
     eventAtGrant: "SessionStart",
     displayCommandAtGrant: "node recorder.mjs",
-    sourcePathAtGrant: ".zcode/config.json",
+    sourcePathAtGrant: ".codez/config.json",
     ...overrides,
   };
 }

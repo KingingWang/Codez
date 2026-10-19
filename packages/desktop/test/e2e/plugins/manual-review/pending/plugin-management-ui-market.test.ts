@@ -2,7 +2,7 @@ import { startDraftFromProject } from "../../../helpers/project-sidebar.js";
 import { selectUpstreamModel } from "../../../helpers/upstream-provider.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_SIDE_PANE_TOGGLE } from "@zcode/shared/test-ids";
+import { TID_SIDE_PANE_TOGGLE } from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -133,7 +133,7 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
             (await browser.electron.execute(async (electron) => {
               const guests = electron.webContents
                 .getAllWebContents()
-                .filter((guest) => guest.getURL().startsWith("zcode-sandbox://"));
+                .filter((guest) => guest.getURL().startsWith("codez-sandbox://"));
               for (const guest of guests) {
                 for (const frame of guest.mainFrame.frames) {
                   const ready = await frame

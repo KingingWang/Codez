@@ -1,11 +1,11 @@
 import { expect, it, vi } from "vitest";
-import type { IZCodeTaskService } from "@zcode/services";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { ICodezTaskService } from "@codez/services";
+import type { CodezTaskMeta } from "@codez/shared";
 import { createWindowHostControllerRuntime } from "../src/host/windowHostControllerService.js";
 
 const workspacePath = "/repo";
 const workspaceIdentity = "remote:server:source:/repo";
-const task: ZCodeTaskMeta = {
+const task: CodezTaskMeta = {
   taskId: "task",
   traceId: "trace",
   title: "Task",
@@ -30,7 +30,7 @@ it("clears unread through the first attachment after a Source-only sidebar query
     listPinnedTasks: async () => [],
     listArchivedTasks: async () => [],
     setTaskUnread: vi.fn(async () => ({ ...task, unreadAt: undefined })),
-  } as unknown as IZCodeTaskService;
+  } as unknown as ICodezTaskService;
   const runtime = createWindowHostControllerRuntime({
     createId: () => crypto.randomUUID(),
     resolveSource: () => ({
@@ -85,12 +85,12 @@ it("clears unread through the first attachment after a Source-only sidebar query
 
 it("does not admit an attachment that changed while its first task snapshot was loading", async () => {
   let remoteSessionId = "first-attachment";
-  const loading = Promise.withResolvers<ZCodeTaskMeta[]>();
+  const loading = Promise.withResolvers<CodezTaskMeta[]>();
   const service = {
     listTasks: vi.fn(() => loading.promise),
     listPinnedTasks: async () => [],
     listArchivedTasks: async () => [],
-  } as unknown as IZCodeTaskService;
+  } as unknown as ICodezTaskService;
   const runtime = createWindowHostControllerRuntime({
     createId: () => crypto.randomUUID(),
     resolveSource: () => ({

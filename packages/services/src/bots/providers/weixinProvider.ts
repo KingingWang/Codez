@@ -6,7 +6,7 @@ import type {
   BotConfig,
   BotInboundMessage,
   BotOutboundMessage,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { BotProviderAdapter, BotTypingTarget } from "./types.js";
 import { fetchBotProviderJson } from "#src/bots/providers/providerRequest.js";
 
@@ -476,7 +476,7 @@ function readWeixinContextToken(message: Record<string, unknown>): string | unde
 }
 
 function buildWeixinClientId(): string {
-  return `zcode-weixin-${randomUUID()}`;
+  return `codez-weixin-${randomUUID()}`;
 }
 
 function buildWeixinText(message: BotOutboundMessage): string {
@@ -609,7 +609,7 @@ export function createWeixinBotProvider(deps: WeixinProviderDeps): BotProviderAd
 
     async send(bot, message) {
       // Bugfix: 微信 iLink 发送协议必须走 /ilink/bot/sendmessage，并把文本放进 msg.item_list。
-      // 之前把 openclaw-weixin 当成本地 gateway 依赖，会导致 ZCode 不能独立完成微信接入。
+      // 之前把 openclaw-weixin 当成本地 gateway 依赖，会导致 Codez 不能独立完成微信接入。
       await requestWeixinJson(bot, deps, "/sendmessage", {
         msg: {
           from_user_id: bot.providerUserId ?? "",

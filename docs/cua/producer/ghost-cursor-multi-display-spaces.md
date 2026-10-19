@@ -57,7 +57,7 @@ overlay 仍是**单窗口**，但窗口 frame 由「整个并集」改为「**�
 
 - 源码契约：窗口 frame 不再取 `ComputeDisplayUnion()`；`MoveGhostTo` / 涟漪 / focus-rect /
   `ScreenParamsChanged` 都先经 `EnsureWindowOnScreenForGlobalDip`。
-- live（`ZCODE_CUA_LIVE_NATIVE=1`）：对每块活动显示器的中心点 `ghostMove`，断言
+- live（`CODEZ_CUA_LIVE_NATIVE=1`）：对每块活动显示器的中心点 `ghostMove`，断言
   `windowFrame` 等于该显示器 bounds。
 - 真机：多屏 + 默认 Spaces 下，光标在两块屏上都能被肉眼看到（截屏对该窗口无效，默认
   `NSWindowSharingNone`）。

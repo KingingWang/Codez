@@ -7,7 +7,7 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   buildPresetLabels,
   orderArtifactsPrimaryFirst,
@@ -39,7 +39,7 @@ function renderRow(
   const labels = buildPresetLabels((descriptor) => descriptor.id.split(".").at(-1)!);
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: options.locale ?? "en-US" },
       createElement(WorkflowArtifactRow, {
         artifact,

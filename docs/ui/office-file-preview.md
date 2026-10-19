@@ -22,7 +22,7 @@ URL 原样交给主 renderer 的 DOM 导航或脚本执行路径。
 - PDF 预览当前强制 `renderAnnotationLayer={false}`，因此链接注解不会进入主 renderer DOM；若未来启用 annotation layer，必须先在 PDF 挂载点接入同一链接净化与受控外链回调，不能仅依赖 pdf.js 默认导航行为。
 - 当前第三方 Office renderer 没有统一的 relationship 拦截接口，因此 DOM 门禁是强制收口；后续若 parser 暴露 Target hook，应复用同一白名单前置拒绝。
 - 未来若 renderer 需要保留文档内链接交互，应放入无 preload、无 Node、禁止导航/弹窗的 sandbox iframe；主 renderer 不得直接承载第三方文档脚本。
-- 外链打开必须走受控回调；不能把不可信 `href` 直接传给 `window.zcode` 或 `shell.openExternal`。
+- 外链打开必须走受控回调；不能把不可信 `href` 直接传给 `window.codez` 或 `shell.openExternal`。
 
 安全回归必须覆盖协议白名单、编码/控制字符绕过、DOCX 真实 hyperlink relationship，以及 Desktop 主 renderer 点击后的人工验收。
 同时必须锁定 PDF annotation layer 关闭状态，并验证异步新增链接只净化变更子树而不重复扫描整个预览根节点。
@@ -42,7 +42,7 @@ URL 原样交给主 renderer 的 DOM 导航或脚本执行路径。
 | 文件读取   | 所有 Office 类型使用同一受限二进制读取和 base64 RPC 返回           | 无                                                                              | 不修改 file service、workspace identity 或 25 MB 上限 |
 | 路由与错误 | `PreviewPaneOfficeContent` 统一懒加载、空白 loading 和本地化错误态 | `.xlsx`、`.docx`、`.doc` 进入独立 renderer chunk                                | `.docx` 可替换实现而不影响 Excel 或旧 `.doc`          |
 | 渲染       | 都是只读 Preview Pane 内容                                         | `.docx` 用 `docx-preview`；`.doc` 用 legacy `react-docx`；Excel 用 `react-xlsx` | `docx-preview` 不支持 OLE `.doc`，必须显式分流        |
-| Excel 多表 | Excel workbook 共用同一个只读 controller                          | ZCode 自定义 sheet 导航只展示可见 workbook tab，不启用库的编辑/导出 toolbar   | 多表切换不能以重新解析文件或开放写入能力为代价        |
+| Excel 多表 | Excel workbook 共用同一个只读 controller                          | Codez 自定义 sheet 导航只展示可见 workbook tab，不启用库的编辑/导出 toolbar   | 多表切换不能以重新解析文件或开放写入能力为代价        |
 | DOCX 分页  | 页面必须保留 OOXML section 边界及各自页边距                        | 使用 `docx-preview` 官方默认的 section 分组行为；不额外启用 `lastRenderedPageBreak` | 同尺寸 section 也可能拥有不同页边距，禁止合并        |
 | 响应式     | Word 预览共用 `calculateDocxPreviewFit` 的只缩小不放大规则         | DOCX 测量生成的 HTML wrapper；legacy `.doc` 测量 editor 画布                    | 保持桌面窄侧栏和小屏布局语义                          |
 | 生命周期   | source 切换时清理当前可见内容                                      | DOCX 的 `renderAsync` 无取消 API，使用 detached DOM + active guard              | 旧异步结果不能覆盖最新文件                            |
@@ -94,7 +94,7 @@ URL 原样交给主 renderer 的 DOM 导航或脚本执行路径。
 
 | 状态            | 节点 / 边                                                                                                 | 原因                                   | 动作                                                                                 |
 | --------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------ |
-| confirmed drift | 原图缺少 Office file preview capability / surface / local render owner / binary preview service           | live code 和已有 spec 已存在该产品能力 | 已补充 `.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml` |
+| confirmed drift | 原图缺少 Office file preview capability / surface / local render owner / binary preview service           | live code 和已有 spec 已存在该产品能力 | 已补充 `.agents/skills/feature-boundary-planner/references/codez-feature-graph.yaml` |
 | confirmed delta | Office surface reads through workspace file service，并与 desktop continuous / web remote replayable 隔离 | 本次替换保持既有边界                   | 已写入节点、edge、code seed；YAML 完整性和 seed 文件检查通过                         |
 
 ### Unresolved Questions

@@ -1,8 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { QueueItem } from "@zcode/shared/zcode-protocol-v4";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import type { QueueItem } from "@codez/shared/codez-protocol-v4";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ConversationPendingGuideList } from "@/v4/ConversationPendingGuideList.js";
 
 vi.mock("@/v4/ConversationTurnRow.js", async () => {
@@ -42,7 +42,7 @@ describe("ConversationPendingGuideList", () => {
   it("在消息气泡下显示等待引导提示", () => {
     const markup = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationPendingGuideList, {
           context: {} as never,

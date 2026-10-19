@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import {
   MemoTaskItem,
   shouldShowRemoteConnectionOverlay,
@@ -21,13 +21,13 @@ vi.mock("@/useTaskListItemContextActions.js", () => ({
 }));
 
 function renderRemoteTask(variant: "default" | "timeline") {
-  const task: ZCodeTaskMeta = {
+  const task: CodezTaskMeta = {
     taskId: "remote-task",
     traceId: "remote-trace",
     title: "Remote task",
-    workspacePath: "/home/dev/.zcode/workspace/default",
+    workspacePath: "/home/dev/.codez/workspace/default",
     workspaceIdentity:
-      "remote:server:source-1:/home/dev/.zcode/workspace/default",
+      "remote:server:source-1:/home/dev/.codez/workspace/default",
     createdAt: 1,
     updatedAt: 1,
     mode: "default",

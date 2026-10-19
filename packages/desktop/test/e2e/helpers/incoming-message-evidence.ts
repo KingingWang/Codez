@@ -36,13 +36,13 @@ export async function assertIncomingMessage(
   const fixture = JSON.parse(
     await readFile(
       new URL(
-        "../../../../../apps/zcode-cli/packages/core/tests/fixtures/runtime-input-presentation.json",
+        "../../../../../apps/codez-cli/packages/core/tests/fixtures/runtime-input-presentation.json",
         import.meta.url,
       ),
       "utf8",
     ),
   ) as { expected: Record<Presentation, string> };
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
   if (artifactDir) {
     const directory = join(artifactDir, "incoming-message-wire");
     await mkdir(directory, { recursive: true });

@@ -8,7 +8,7 @@ import {
   createRemoteProjectService,
   projectWorkspaceSettings,
 } from "#src/remote-projects/index.js";
-import { appSettingsSchema } from "@zcode/shared";
+import { appSettingsSchema } from "@codez/shared";
 import type { RemoteProjectCache } from "#src/remote-projects/contract.js";
 const databases: DatabaseSync[] = [];
 const directories: string[] = [];

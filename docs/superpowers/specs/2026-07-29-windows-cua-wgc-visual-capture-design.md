@@ -361,8 +361,8 @@ source 开发阶段接受 Windows 自带捕获边框，这是系统向用户展�
    - 没有图像时 `state_image` fail closed；
    - Helper 正常关闭且无 orphan。
 7. **全量门禁**
-   - zcode-cua focused/full tests、build、typecheck、lint；
-   - ZCode CUA focused tests、`pnpm typecheck`、`pnpm lint`；
+   - codez-cua focused/full tests、build、typecheck、lint；
+   - Codez CUA focused tests、`pnpm typecheck`、`pnpm lint`；
    - 现有非 CUA 基线失败如仍存在，必须单独列出，不能伪报全绿。
 
 ## 实机 smoke

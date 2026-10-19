@@ -1,5 +1,5 @@
 {
-  "name": "@zcode/shared",
+  "name": "@codez/shared",
   "private": true,
   "type": "module",
   "imports": {
@@ -19,10 +19,10 @@
     "./config-schema": "./src/config-schema.ts",
     "./node": "./src/node.ts",
     "./sqlite-migrations": "./src/sqlite-migrations/index.ts",
-    "./zcodeEndpoint": "./src/zcodeEndpoint.ts",
+    "./codezEndpoint": "./src/codezEndpoint.ts",
     "./workspaceFileSearch": "./src/workspaceFileSearch.ts",
     "./workspaceFileEntriesCodec": "./src/workspaceFileEntriesCodec.ts",
-    "./zcode-protocol-v4": "./src/zcode-protocol-v4/index.ts",
+    "./codez-protocol-v4": "./src/codez-protocol-v4/index.ts",
     "./mcp-apps": "./src/mcp-apps/index.ts",
     "./workspace-hook-discovery": "./src/workspace-hook-discovery.ts",
     "./workspace-hook-mutation": "./src/workspace-hook-mutation.ts",
@@ -38,7 +38,7 @@
     "lint:fix": "oxlint --fix"
   },
   "dependencies": {
-    "@zcode/model-option-map": "workspace:*",
+    "@codez/model-option-map": "workspace:*",
     "zod": "4.6.5"
   },
   "devDependencies": {

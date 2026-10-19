@@ -15,13 +15,13 @@ import {
   TID_WORKFLOW_CARD_RUN,
   TID_WORKFLOW_DETAIL,
   TID_WORKFLOW_PROJECT_GROUP,
-  type ZCodeSavedWorkflowEntry,
-  type ZCodeSavedWorkflowRun,
-  type ZCodeWorkflowsListResult,
-} from "@zcode/shared";
-import { testId } from "@zcode/shared/test-ids";
+  type CodezSavedWorkflowEntry,
+  type CodezSavedWorkflowRun,
+  type CodezWorkflowsListResult,
+} from "@codez/shared";
+import { testId } from "@codez/shared/test-ids";
 import type { AutomationWorkspaceOption } from "@/settings/automationWorkspaceOptions.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { resetSavedWorkflowStoreForTests } from "@/store/savedWorkflowStore.js";
 
 const confirmMock = vi.fn(async () => true);
@@ -38,10 +38,10 @@ const fileWatcherService = {
 };
 
 function makeAgent() {
-  const listResult: { current: ZCodeWorkflowsListResult } = {
-    current: { workflows: [], invalid: [], dir: "/beta/.zcode/workflows" },
+  const listResult: { current: CodezWorkflowsListResult } = {
+    current: { workflows: [], invalid: [], dir: "/beta/.codez/workflows" },
   };
-  const runsResult: { current: ZCodeSavedWorkflowRun[] } = { current: [] };
+  const runsResult: { current: CodezSavedWorkflowRun[] } = { current: [] };
   const agent = {
     listResult,
     runsResult,
@@ -49,7 +49,7 @@ function makeAgent() {
     listSavedWorkflowRuns: vi.fn(async () => ({ runs: runsResult.current })),
     deleteSavedWorkflow: vi.fn(async () => ({
       ok: true as const,
-      path: "/beta/.zcode/workflows/x.dwf.ts",
+      path: "/beta/.codez/workflows/x.dwf.ts",
     })),
     getSavedWorkflow: vi.fn(),
     updateSavedWorkflowMeta: vi.fn(),
@@ -65,7 +65,7 @@ const agentByPath: Record<string, ReturnType<typeof makeAgent>> = {
 
 vi.mock("@/hooks/useWorkspaceServices.js", () => ({
   useWorkspaceServicesResolution: (workspacePath: string) => ({
-    services: { zcodeAgentService: agentByPath[workspacePath] ?? agentRepo, fileWatcherService },
+    services: { codezAgentService: agentByPath[workspacePath] ?? agentRepo, fileWatcherService },
     remoteSessionId: null,
     isRemoteTarget: false,
     connectionKind: "local-ready" as const,
@@ -107,13 +107,13 @@ vi.mock("@/settings/saved-workflows/SavedWorkflowCard.js", () => ({
     onMove,
     onDelete,
   }: {
-    entry: ZCodeSavedWorkflowEntry;
-    lastRun: ZCodeSavedWorkflowRun | undefined;
-    onOpen: (entry: ZCodeSavedWorkflowEntry) => void;
-    onRun: (entry: ZCodeSavedWorkflowEntry) => void;
-    onRevise: (entry: ZCodeSavedWorkflowEntry) => void;
-    onMove?: (entry: ZCodeSavedWorkflowEntry) => void;
-    onDelete: (entry: ZCodeSavedWorkflowEntry) => void;
+    entry: CodezSavedWorkflowEntry;
+    lastRun: CodezSavedWorkflowRun | undefined;
+    onOpen: (entry: CodezSavedWorkflowEntry) => void;
+    onRun: (entry: CodezSavedWorkflowEntry) => void;
+    onRevise: (entry: CodezSavedWorkflowEntry) => void;
+    onMove?: (entry: CodezSavedWorkflowEntry) => void;
+    onDelete: (entry: CodezSavedWorkflowEntry) => void;
   }) =>
     createElement(
       "div",
@@ -181,13 +181,13 @@ const { SavedWorkflowProjectGroup } =
 
 function entry(
   name: string,
-  overrides: Partial<ZCodeSavedWorkflowEntry> = {},
-): ZCodeSavedWorkflowEntry {
+  overrides: Partial<CodezSavedWorkflowEntry> = {},
+): CodezSavedWorkflowEntry {
   return {
     name,
     description: `${name} 的说明`,
     scope: "project",
-    path: `/beta/.zcode/workflows/${name}.dwf.ts`,
+    path: `/beta/.codez/workflows/${name}.dwf.ts`,
     ...overrides,
   };
 }
@@ -203,7 +203,7 @@ function mount(props: Partial<Parameters<typeof SavedWorkflowProjectGroup>[0]> =
   const onBack = vi.fn();
   const result = render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(SavedWorkflowProjectGroup, {
         project: BETA,
@@ -234,9 +234,9 @@ function mount(props: Partial<Parameters<typeof SavedWorkflowProjectGroup>[0]> =
 describe("SavedWorkflowProjectGroup", () => {
   beforeEach(() => {
     resetSavedWorkflowStoreForTests();
-    agentBeta.listResult.current = { workflows: [], invalid: [], dir: "/beta/.zcode/workflows" };
+    agentBeta.listResult.current = { workflows: [], invalid: [], dir: "/beta/.codez/workflows" };
     agentBeta.runsResult.current = [];
-    agentRepo.listResult.current = { workflows: [], invalid: [], dir: "/repo/.zcode/workflows" };
+    agentRepo.listResult.current = { workflows: [], invalid: [], dir: "/repo/.codez/workflows" };
     agentRepo.runsResult.current = [];
     changeListener = null;
     vi.clearAllMocks();
@@ -322,13 +322,13 @@ describe("SavedWorkflowProjectGroup", () => {
   it("坏文件条列出路径与原因，组仍出现", async () => {
     agentBeta.listResult.current = {
       workflows: [entry("ok")],
-      invalid: [{ path: "/beta/.zcode/workflows/bad.dwf.ts", reason: "invalid_yaml" }],
+      invalid: [{ path: "/beta/.codez/workflows/bad.dwf.ts", reason: "invalid_yaml" }],
     };
     const { container } = mount();
     await screen.findByTestId(testId(TID_WORKFLOW_CARD, "ok"));
     const strip = container.querySelector('[data-workflows-invalid="true"]');
     expect(strip?.textContent).toContain("1 个文件无法读取");
-    expect(strip?.textContent).toContain("/beta/.zcode/workflows/bad.dwf.ts");
+    expect(strip?.textContent).toContain("/beta/.codez/workflows/bad.dwf.ts");
   });
 
   it("refreshSeq 变化时绕过缓存重拉；目录变更去抖后刷新；卸载拆监听", async () => {
@@ -339,7 +339,7 @@ describe("SavedWorkflowProjectGroup", () => {
 
     rerender(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(SavedWorkflowProjectGroup, {
           project: BETA,
@@ -357,7 +357,7 @@ describe("SavedWorkflowProjectGroup", () => {
     );
     await waitFor(() => expect(agentBeta.listSavedWorkflows).toHaveBeenCalledTimes(2));
 
-    expect(fileWatcherService.watch).toHaveBeenCalledWith({ path: "/beta/.zcode/workflows" });
+    expect(fileWatcherService.watch).toHaveBeenCalledWith({ path: "/beta/.codez/workflows" });
     await waitFor(() => expect(changeListener).not.toBeNull());
     changeListener?.();
     await waitFor(() => expect(agentBeta.listSavedWorkflows).toHaveBeenCalledTimes(3), {
@@ -414,7 +414,7 @@ describe("SavedWorkflowProjectGroup", () => {
     agentBeta.listResult.current = {
       workflows: [entry("x")],
       invalid: [],
-      dir: "/beta/.zcode/workflows",
+      dir: "/beta/.codez/workflows",
     };
     mount();
     await screen.findByTestId(testId(TID_WORKFLOW_CARD, "x"));
@@ -423,7 +423,7 @@ describe("SavedWorkflowProjectGroup", () => {
     expect(promoteMock.mock.calls[0]?.[0]).toEqual({ workspacePath: "/beta" });
     expect(promoteMock.mock.calls[0]?.[1]).toEqual({
       name: "x",
-      path: "/beta/.zcode/workflows/x.dwf.ts",
+      path: "/beta/.codez/workflows/x.dwf.ts",
       locale: "zh-CN",
     });
     expect(toastMock).not.toHaveBeenCalled();
@@ -435,7 +435,7 @@ describe("SavedWorkflowProjectGroup", () => {
     agentBeta.listResult.current = {
       workflows: [entry("x")],
       invalid: [],
-      dir: "/beta/.zcode/workflows",
+      dir: "/beta/.codez/workflows",
     };
     promoteMock.mockResolvedValueOnce({
       ok: false,
@@ -453,7 +453,7 @@ describe("SavedWorkflowProjectGroup", () => {
     agentBeta.listResult.current = {
       workflows: [entry("x")],
       invalid: [],
-      dir: "/beta/.zcode/workflows",
+      dir: "/beta/.codez/workflows",
     };
     mount({ project: { ...BETA, remoteSessionId: "remote-1" } });
     await screen.findByTestId(testId(TID_WORKFLOW_CARD, "x"));

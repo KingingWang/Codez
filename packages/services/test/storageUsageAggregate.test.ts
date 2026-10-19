@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createStorageUsageAccumulator } from "../src/storage/domain/usageAggregate.js";
-import { STORAGE_CATEGORY_IDS, STORAGE_MORE_ENTRIES_PATH } from "@zcode/shared";
+import { STORAGE_CATEGORY_IDS, STORAGE_MORE_ENTRIES_PATH } from "@codez/shared";
 
-const spec = { id: "home" as const, path: "/h/.zcode", hasCustomDataBaseDir: false };
+const spec = { id: "home" as const, path: "/h/.codez", hasCustomDataBaseDir: false };
 
 describe("createStorageUsageAccumulator", () => {
   it("folds entries into every category with stable ordering and totals", () => {
@@ -47,7 +47,7 @@ describe("createStorageUsageAccumulator", () => {
     const volume = { deviceId: "9", mountPoint: "/", totalBytes: 10, freeBytes: 1 };
     expect(createStorageUsageAccumulator(spec).snapshot(volume)).toMatchObject({
       id: "home",
-      path: "/h/.zcode",
+      path: "/h/.codez",
       volume,
       bytes: 0,
     });

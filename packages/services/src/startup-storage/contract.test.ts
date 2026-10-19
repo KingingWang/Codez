@@ -8,7 +8,7 @@ afterEach(async () => {
   if (directory) await rm(directory, { recursive: true, force: true });
 });
 async function command(source: string) {
-  directory = await realpath(await mkdtemp(join(tmpdir(), "zcode startup migration ")));
+  directory = await realpath(await mkdtemp(join(tmpdir(), "codez startup migration ")));
   const file = join(directory, "fake cli.cjs");
   await writeFile(file, source);
   return {
@@ -20,13 +20,13 @@ async function command(source: string) {
 it("awaits the resolved CLI migration command, preserves paths and data root, and validates its report", async () => {
   const fixture = await command(`
     if (JSON.stringify(process.argv.slice(2)) !== '["storage-migrate"]') process.exit(2);
-    if (process.env.ZCODE_DATA_BASE_DIR !== process.cwd()) process.exit(3);
+    if (process.env.CODEZ_DATA_BASE_DIR !== process.cwd()) process.exit(3);
     process.stdout.write(JSON.stringify({version:1,kind:"storage-migrated",applied:["0020"],backupSkipped:true}));
   `);
   await expect(
     startupStorage.migrateAgent({
       command: fixture,
-      env: { ...process.env, ZCODE_DATA_BASE_DIR: directory },
+      env: { ...process.env, CODEZ_DATA_BASE_DIR: directory },
     }),
   ).resolves.toEqual({ applied: ["0020"], backupSkipped: true });
 });

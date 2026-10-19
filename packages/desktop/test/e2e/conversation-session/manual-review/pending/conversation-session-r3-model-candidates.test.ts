@@ -6,7 +6,7 @@ import {
 } from "#e2e/helpers/remote-project-actions";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_CHAT_MODEL_SELECT_GROUP,
   TID_CHAT_MODEL_SELECT_ITEM,
@@ -17,7 +17,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_V4_COMPOSER_INPUT,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, DEFAULT_WORKSPACE } from "../../../helpers/desktop-app.js";
 import { refreshSeededOpenAIProvidersThroughSettings } from "../../../helpers/custom-openai-provider.js";
 import { seedCustomOpenAIChatCompletionsProvider } from "../../../helpers/custom-openai-provider-store.js";
@@ -32,7 +32,7 @@ import { openWorkspaceDraftFromSidebar } from "../../../helpers/workspace-agent-
 
 const CASE_MARKER = "E2E_R3_MODEL_CANDIDATES";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-model-candidates",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-model-candidates",
 );
 const LOCAL_ONLY_PROVIDER_ID = "e2e-r3-local-only";
 const LOCAL_ONLY_LABEL = "R3 Local Only Provider";
@@ -163,14 +163,14 @@ describe(`${CASE_MARKER}: 远端 tab 候选读目标远端（离线不 fallback 
         const activated = await browser.execute((identity) => {
           const store = (
             window as Window & {
-              __zcodeTabStoreE2E?: {
+              __codezTabStoreE2E?: {
                 getState(): {
                   tabs: Array<{ id: string; workspaceIdentity?: string }>;
                   activateTab(id: string): void;
                 };
               };
             }
-          ).__zcodeTabStoreE2E;
+          ).__codezTabStoreE2E;
           const state = store?.getState();
           const tab = state?.tabs.find((item) => item.workspaceIdentity === identity);
           if (!tab) return false;
@@ -283,7 +283,7 @@ describe(`${CASE_MARKER}: 远端 tab 候选读目标远端（离线不 fallback 
     expect(hasLocalOnly(remoteOffline)).toBe(false);
     const remoteConfigOffline = await runSSHCommand(
       prepared.config,
-      `grep -c "${LOCAL_ONLY_PROVIDER_ID}" "$HOME/.zcode/v2/provider_config.json" || true`,
+      `grep -c "${LOCAL_ONLY_PROVIDER_ID}" "$HOME/.codez/v2/provider_config.json" || true`,
     );
     const remoteConfigHasLocalOnlyWhileOffline =
       Number.parseInt(remoteConfigOffline.stdout.trim() || "0", 10) > 0;
@@ -322,7 +322,7 @@ describe(`${CASE_MARKER}: 远端 tab 候选读目标远端（离线不 fallback 
       async () => {
         const result = await runSSHCommand(
           prepared.config,
-          `grep -c "${LOCAL_ONLY_PROVIDER_ID}" "$HOME/.zcode/v2/provider_config.json" || true`,
+          `grep -c "${LOCAL_ONLY_PROVIDER_ID}" "$HOME/.codez/v2/provider_config.json" || true`,
         );
         return Number.parseInt(result.stdout.trim() || "0", 10) > 0;
       },

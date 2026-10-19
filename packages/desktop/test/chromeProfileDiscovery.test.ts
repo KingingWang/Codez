@@ -13,7 +13,7 @@ import {
 let tempRoot = "";
 
 beforeEach(async () => {
-  tempRoot = await mkdtemp(join(tmpdir(), "zcode-chrome-discovery-test-"));
+  tempRoot = await mkdtemp(join(tmpdir(), "codez-chrome-discovery-test-"));
 });
 
 afterEach(async () => {
@@ -219,7 +219,7 @@ describe("chromeProfileDiscovery", () => {
   it("忽略 Electron/Chrome 的 crashpad 与 helper 子进程", () => {
     expect(
       parseRunningChromeInstallations([
-        "/Applications/ZCode.app/Contents/Frameworks/Electron Framework.framework/Helpers/chrome_crashpad_handler --user-data-dir=/tmp/zcode",
+        "/Applications/Codez.app/Contents/Frameworks/Electron Framework.framework/Helpers/chrome_crashpad_handler --user-data-dir=/tmp/codez",
       ]),
     ).toEqual([]);
   });

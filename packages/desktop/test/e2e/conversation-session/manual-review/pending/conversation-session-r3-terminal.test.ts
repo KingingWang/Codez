@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import { TID_TERMINAL, TID_TERMINAL_TOGGLE } from "@zcode/shared/test-ids";
+import { TID_TERMINAL, TID_TERMINAL_TOGGLE } from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, waitForTestIdByDom } from "../../../helpers/desktop-app.js";
 import {
   connectSSHWorkspaceAndSendFirstTurn,
@@ -19,7 +19,7 @@ import {
 import { selectV4TaskById } from "../../../helpers/v4-conversation.js";
 
 const CASE_MARKER = "E2E_R3_TERMINAL";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-terminal");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-terminal");
 const run = promisify(execFile);
 
 async function severDesktopSshSessions(container: string): Promise<string> {
@@ -271,8 +271,8 @@ describe(`${CASE_MARKER}: 远端终端长命令、跨 workspace 归属、断线�
 
   it("R3A-DEV-03 A 终端长命令持续输出；切到 B 的终端 cwd 归属正确；断线恢复后 A 输出仍在；关闭终端回收远端 PTY", async function () {
     this.timeout(30 * 60_000);
-    const container = process.env.ZCODE_E2E_SSH_CONTAINER?.trim();
-    if (!container) throw new Error(`${CASE_MARKER}: 缺少 ZCODE_E2E_SSH_CONTAINER`);
+    const container = process.env.CODEZ_E2E_SSH_CONTAINER?.trim();
+    if (!container) throw new Error(`${CASE_MARKER}: 缺少 CODEZ_E2E_SSH_CONTAINER`);
     const prepared = await prepareSSHLifecycle(CASE_MARKER, { tunnelUsername: "tunnel" });
     provider = prepared.provider;
     const [workspaceA, workspaceB] = prepared.config.workspacePaths;

@@ -1,12 +1,12 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { type IZCodeTaskService, type ISettingService } from "@zcode/services";
+import { type ICodezTaskService, type ISettingService } from "@codez/services";
 import {
   appSettingsSchema,
   buildRemoteWorkspaceIdentity,
   buildServerRemoteWorkspaceIdentity,
   type BotsConfigFile,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { createBotProjectRuntime } from "../../../../../../services/src/bot-project-runtime/index.js";
 import { SourceServerDirectory } from "../../../../../src/host/sourceServerDirectory.js";
 import { resolveBotRemoteWorkspace } from "../../../../../src/host/botRemoteWorkspaceResolver.js";
@@ -124,7 +124,7 @@ it("BOT-E2E-RW-02 legacy 与 stable Bot 通过同一 Source 身份完成任务�
   const bound: string[] = [];
   const connection = {
     owner: {},
-    taskService: taskService as unknown as IZCodeTaskService,
+    taskService: taskService as unknown as ICodezTaskService,
     modelSelectionService: { getView: async () => ({ ...view, effectiveSelection: selected }) },
     agentService: { syncAppRuntimePreferences: async () => {} },
     bindWorkspace: async (workspace: { workspaceIdentity: string }) => {
@@ -259,7 +259,7 @@ it("BOT-E2E-RW-02 legacy 与 stable Bot 通过同一 Source 身份完成任务�
     expect(bound.every((identity) => identity === stable)).toBe(true);
     expect(connections).toBe(1);
     const artifactDir = resolve(
-      process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/bot-r3-workspace-identity",
+      process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/bot-r3-workspace-identity",
     );
     await mkdir(artifactDir, { recursive: true });
     await writeFile(

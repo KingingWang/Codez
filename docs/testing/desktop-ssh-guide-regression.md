@@ -2,7 +2,7 @@
 
 Status: done
 
-本轮依据《ZCode 远程连接新版测试指南》第 41 版（2026-10-09），业务基线为
+本轮依据《Codez 远程连接新版测试指南》第 41 版（2026-10-09），业务基线为
 `a13999a28927f629d0c64080a5096cf8b4f23bae`。仅验证桌面 SSH；手机、WSL、Docker
 产品连接方式不在本轮范围。Linux 上的独立 Docker 容器只用于模拟真实 SSH 服务器。
 
@@ -132,7 +132,7 @@ Desktop `build:no-runtime-assets`，分别构建 test / production。最终构�
 
 ## 验证与环境边界
 
-- `pnpm --filter @zcode/desktop typecheck:e2e`、根 `pnpm typecheck`、`pnpm lint` 通过。
+- `pnpm --filter @codez/desktop typecheck:e2e`、根 `pnpm typecheck`、`pnpm lint` 通过。
   Lint 的 81 条既有警告保留，无新错误。
 - `pnpm architecture:check --changed` 通过，0 新违规；受影响根单测 20 文件 / 110 用例和
   14 条 Node 审计测试通过，未跑未经授权的全量单测。

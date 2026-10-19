@@ -1,5 +1,5 @@
 // RV01–RV03：真实 Web 入口与浏览器导航；模拟 relay/桌面响应，不验证外部资源路由服务。
-// 启动：pnpm --filter @zcode/web exec vite --host 127.0.0.1 --port 5178 --strictPort
+// 启动：pnpm --filter @codez/web exec vite --host 127.0.0.1 --port 5178 --strictPort
 // 运行：node packages/web/test/e2e/manual-review/pending/remote-version.mjs
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
@@ -18,8 +18,8 @@ async function scenario({ width, theme, locale, missingVersion = false, oldDeskt
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await context.addInitScript((value) => {
-    localStorage.setItem("zcode-theme", value);
-    localStorage.setItem("zcodejwttoken", "e2e-jwt");
+    localStorage.setItem("codez-theme", value);
+    localStorage.setItem("codezjwttoken", "e2e-jwt");
     localStorage.setItem("oauth:active_provider", "zai");
     localStorage.setItem("oauth:zai:access_token", "e2e-access");
     localStorage.setItem(
@@ -66,12 +66,12 @@ async function scenario({ width, theme, locale, missingVersion = false, oldDeskt
       if (message.type === "pair_status_query")
         send({ type: "pair_status_ack", pair_status: "matched" });
       const payload = message.payload;
-      if (payload?.zcode_type === "bootstrap-request") {
+      if (payload?.codez_type === "bootstrap-request") {
         bootstrapCount += 1;
         send({
           type: "data",
           payload: {
-            zcode_type: "bootstrap-response",
+            codez_type: "bootstrap-response",
             requestId: payload.requestId,
             success: true,
             result: {
@@ -83,18 +83,18 @@ async function scenario({ width, theme, locale, missingVersion = false, oldDeskt
           },
         });
       }
-      if (payload?.zcode_type === "workspace-list-request") {
+      if (payload?.codez_type === "workspace-list-request") {
         send({
           type: "data",
           payload: {
-            zcode_type: "workspace-list-response",
+            codez_type: "workspace-list-response",
             requestId: payload.requestId,
             success: true,
             result: { workspaces: [workspace], tasks: [] },
           },
         });
       }
-      if (payload?.zcode_type === "workspace-bridge-open") bridgeCount += 1;
+      if (payload?.codez_type === "workspace-bridge-open") bridgeCount += 1;
     });
   });
 

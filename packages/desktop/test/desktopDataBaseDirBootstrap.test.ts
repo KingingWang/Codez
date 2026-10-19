@@ -8,9 +8,9 @@ describe("desktopDataBaseDirBootstrap", () => {
   it("应从 bootstrap setting 中提取并裁剪 dataBaseDir", () => {
     expect(
       extractBootstrapDataBaseDir({
-        dataBaseDir: "  /tmp/zcode-data  ",
+        dataBaseDir: "  /tmp/codez-data  ",
       }),
-    ).toBe("/tmp/zcode-data");
+    ).toBe("/tmp/codez-data");
   });
 
   it("应忽略无效的 bootstrap 配置", () => {
@@ -23,7 +23,7 @@ describe("desktopDataBaseDirBootstrap", () => {
     const result = resolveBootstrapSettingsFile("/Users/tester");
     // Windows 下 path.join 使用反斜杠，统一为正斜杠后再比较
     expect(result.replace(/\\/g, "/")).toBe(
-      "/Users/tester/.zcode/v2/setting.json",
+      "/Users/tester/.codez/v2/setting.json",
     );
   });
 });

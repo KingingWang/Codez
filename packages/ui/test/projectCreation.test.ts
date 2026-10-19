@@ -7,7 +7,7 @@ import { ProjectCreation } from "@/project-sidebar/ProjectCreation.js";
 import { ProjectEditor } from "@/project-sidebar/ProjectEditor.js";
 import zhCN from "@/i18n/locales/zh-CN.js";
 import enUS from "@/i18n/locales/en-US.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 
 Element.prototype.scrollIntoView = vi.fn();
 const state = vi.hoisted(() => ({
@@ -22,7 +22,7 @@ const state = vi.hoisted(() => ({
   refresh: undefined as undefined | (() => void),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => {
         if (!state.locale) return id;
@@ -102,8 +102,8 @@ vi.mock("@/DirectoryBrowser.js", () => ({
     createElement("button", { onClick: () => onSelect("/source/selected") }, "choose-root"),
 }));
 beforeEach(() => {
-  useZCodeSessionStore.setState({ workspaces: {} });
-  useZCodeSessionStore.getState().startDraft("/draft", undefined, undefined, {
+  useCodezSessionStore.setState({ workspaces: {} });
+  useCodezSessionStore.getState().startDraft("/draft", undefined, undefined, {
     projectId: "original",
     taskGroupId: "group",
   });
@@ -199,16 +199,16 @@ it("selects the saved project only after directory refresh and preserves the dra
 it.each(["existing", "save", "refresh", "draft", "workspace", "failure"])(
   "does not select a created project after %s invalidates the draft",
   async (boundary) => {
-    if (boundary === "existing") useZCodeSessionStore.getState().setActiveTaskId("/draft", "task");
+    if (boundary === "existing") useCodezSessionStore.getState().setActiveTaskId("/draft", "task");
     const { props, service, rerender } = await setup();
     if (boundary === "save")
       service.saveProject.mockImplementationOnce(async () => {
-        useZCodeSessionStore.getState().setActiveTaskId("/draft", "task");
+        useCodezSessionStore.getState().setActiveTaskId("/draft", "task");
         return { id: "project", hostId: "local", name: "Draft", roots: [] };
       });
     props.onSaved.mockImplementation(async () => {
-      if (boundary === "refresh") useZCodeSessionStore.getState().setActiveTaskId("/draft", "task");
-      if (boundary === "draft") useZCodeSessionStore.getState().startDraft("/draft");
+      if (boundary === "refresh") useCodezSessionStore.getState().setActiveTaskId("/draft", "task");
+      if (boundary === "draft") useCodezSessionStore.getState().startDraft("/draft");
       if (boundary === "workspace")
         rerender(createElement(ProjectCreation, { ...props, workspacePath: "/other" } as never));
     });

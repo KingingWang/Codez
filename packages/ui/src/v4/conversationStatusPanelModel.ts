@@ -1,4 +1,4 @@
-import type { GitRepositorySummary } from "@zcode/shared";
+import type { GitRepositorySummary } from "@codez/shared";
 import type {
   BackgroundWorkSummary,
   GoalState,
@@ -6,12 +6,12 @@ import type {
   RunningSubagentSummary,
   ToolCallRow,
   WorkflowRunState,
-} from "@zcode/shared/zcode-protocol-v4";
-import type { SessionWorkflowPhaseSummary } from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
+import type { SessionWorkflowPhaseSummary } from "@codez/shared/codez-protocol-v4";
 import {
   deriveSessionWorkflowPhases,
   workflowRunStepCounts,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { extractPlanToolCallContent, getPlanDirectoryTitle } from "@/lib/planToolCall.js";
 import { workflowRunParallelPhaseLabel } from "@/lib/workflowRunLine.js";
 
@@ -254,7 +254,7 @@ function buildRunningWorkflowRuns(
     if (run.status !== "pending" && run.status !== "running") continue;
     const work = workflowWorkByWorkId.get(run.runId);
     if (work) joinedWorkIds.add(run.runId);
-    // 计数与聊天紧凑卡同源（唯一实现在 @zcode/shared 的 workflowRunStepCounts：表内 + 表外）。
+    // 计数与聊天紧凑卡同源（唯一实现在 @codez/shared 的 workflowRunStepCounts：表内 + 表外）。
     const steps = workflowRunStepCounts(run);
     rows.push({
       runId: run.runId,

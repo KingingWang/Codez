@@ -13,15 +13,15 @@
 - cold resume / new process 不从磁盘恢复 snapshot path，也不扫描旧 snapshot。
 - retention cleanup 只清理 `shell-snapshots/` 顶层超过默认 30 天 cutoff 的 `.sh` 文件。
 
-## ZCode Target
+## Codez Target
 
 - POSIX 和 Git Bash 支持 shell init snapshot；CMD 和 legacy shell 保持原行为。
-- snapshot 文件位于 ZCode storage 的 `shell-snapshots/snapshot-${shell}-${timestamp}-${random}.sh`。
+- snapshot 文件位于 Codez storage 的 `shell-snapshots/snapshot-${shell}-${timestamp}-${random}.sh`。
 - snapshot creation script 使用 host path 写文件；Git Bash 只在后续 source snapshot 时转换 path。
 - manager 对同一 adapter/root/shell/dialect 缓存创建 promise；失败缓存为 `undefined`，后续继续 login shell fallback。
 - 当前进程创建成功的 snapshot 在 `NodeExecutionAdapter.close()` 中 cleanup。
 - adapter 构造时执行 retention cleanup，清理顶层 stale `.sh`。
-- ZCode startup script 仍是独立的内部 `.sh`，执行顺序是：source shell init snapshot -> source ZCode startup script -> user command -> cwd capture trailer。
+- Codez startup script 仍是独立的内部 `.sh`，执行顺序是：source shell init snapshot -> source Codez startup script -> user command -> cwd capture trailer。
 - 不启用 find/grep/rg alias 注入；后续 bundled search 另开任务处理。
 
 ## Implementation Checklist
@@ -38,7 +38,7 @@
   - [x] snapshot creation env 使用 resolved shell overlay。
   - [x] cancellation/close during snapshot creation 不继续 spawn user command。
 - [x] `bash-startup-script.ts`
-  - [x] 支持在 ZCode startup script 前插入 optional leading source。
+  - [x] 支持在 Codez startup script 前插入 optional leading source。
 - [x] Tests
   - [x] creation script 单测覆盖 bash/zsh/no-rc/Git Bash path。
   - [x] cleanup 单测覆盖 process cleanup 和顶层 retention。
@@ -49,13 +49,13 @@
 ## Validation Commands
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/adapters exec vitest run \
+pnpm --dir apps/codez-cli --filter @codez/adapters exec vitest run \
   tests/shell-init-snapshot.test.ts \
   tests/shell-init-snapshot-cleanup.test.ts \
   tests/bash-startup-script.test.ts \
   tests/exec.test.ts
 
-pnpm --dir apps/zcode-cli --filter @zcode/adapters typecheck
+pnpm --dir apps/codez-cli --filter @codez/adapters typecheck
 
 git diff --check
 ```

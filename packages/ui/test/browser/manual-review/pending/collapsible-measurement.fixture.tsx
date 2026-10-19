@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Collapsible as Primitive } from "radix-ui";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ToolLayout } from "@/ToolCallBlocks/ToolLayout.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import {
@@ -22,7 +22,7 @@ function Fixture() {
   const [special, setSpecial] = useState(false);
   const [running, setRunning] = useState(true);
   return (
-    <ZCodeIntlProvider initialLocale={query.get("mobile") === "true" ? "en-US" : "zh-CN"}>
+    <CodezIntlProvider initialLocale={query.get("mobile") === "true" ? "en-US" : "zh-CN"}>
       <TooltipProvider>
         <div className="h-dvh overflow-auto bg-background text-foreground text-ui-base">
           <nav className="sticky top-0 z-10 flex flex-wrap gap-2 bg-background">
@@ -102,7 +102,7 @@ function Fixture() {
           )}
         </div>
       </TooltipProvider>
-    </ZCodeIntlProvider>
+    </CodezIntlProvider>
   );
 }
 createRoot(document.getElementById("root")!).render(<Fixture />);

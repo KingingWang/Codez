@@ -14,7 +14,7 @@ vi.mock("@/plugin-ui/adapters/useUiPluginRecommendations.js", () => ({
   useUiPluginRecommendations: () => ({ recommendations: context.recommendations, loading: false }),
 }));
 vi.mock("@/logger.js", () => ({ logger: { warn: vi.fn(), error: vi.fn() } }));
-vi.mock("@/lib/zcodeDraftSkillInvalidation.js", () => ({
+vi.mock("@/lib/codezDraftSkillInvalidation.js", () => ({
   invalidateDeferredDraftSessionForSkillChange: context.invalidate,
 }));
 vi.mock("@/lib/skillStoreRefresh.js", () => ({

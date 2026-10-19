@@ -1,7 +1,7 @@
 import { PassThrough } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
-import type { Event, IDisposable } from "@zcode/rpc";
-import type { RemoteUploadOptions } from "@zcode/server/remote";
+import type { Event, IDisposable } from "@codez/rpc";
+import type { RemoteUploadOptions } from "@codez/server/remote";
 import { createRemotePromptAttachmentTransferService } from "../src/host/promptAttachmentTransferService.js";
 
 function createClosedStream(stdoutText = "") {

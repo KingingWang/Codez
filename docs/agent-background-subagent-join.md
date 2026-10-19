@@ -4,7 +4,7 @@
 
 该方案已经废弃，不再作为实现目标。新的执行计划见：
 
-- `apps/zcode-cli/docs/design/v2/tool/07-subagent-background-plan.md`
+- `apps/codez-cli/docs/design/v2/tool/07-subagent-background-plan.md`
 
 ## 废弃原因
 

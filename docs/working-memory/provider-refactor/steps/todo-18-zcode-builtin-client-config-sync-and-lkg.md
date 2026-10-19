@@ -1,16 +1,16 @@
-# 18 ZCode Built-in Config 远端同步与 LKG 兜底
+# 18 Codez Built-in Config 远端同步与 LKG 兜底
 
 > 状态：已完成
 >
 > 日期：2026-08-25
 >
-> 来源讨论：Provider Refactor 完成后的 ZCode Built-in Provider/Model 配置发布方式收口
+> 来源讨论：Provider Refactor 完成后的 Codez Built-in Provider/Model 配置发布方式收口
 >
-> 相关任务：[`10`](./todo-10-zcode-builtin-provider-config-naming-cutover.md)、
+> 相关任务：[`10`](./todo-10-codez-builtin-provider-config-naming-cutover.md)、
 > [`13`](./todo-13-target-host-model-selection-authority.md)、
 > [`15`](./todo-15-provider-release-validation.md)、
 > [`17`](./todo-17-provider-registry-settings-authority-boundary-closure.md)、
-> [`19`](./todo-19-zcode-builtin-release-integrity-validation.md)
+> [`19`](./todo-19-codez-builtin-release-integrity-validation.md)
 >
 > 相关设计：[`configuration.md`](../design/registry/configuration.md)、
 > [`registry.md`](../design/registry/registry.md)、
@@ -19,8 +19,8 @@
 
 ## 0. 任务定位
 
-ZCode Built-in Provider Config 与 ZCode Built-in Model Config Rules 当前只从随仓库和安装包发布的
-`config/provider/zcode-builtin.json` 读取。本 Todo 将 `/api/v1/client/configs` 增加为这同一份 Built-in
+Codez Built-in Provider Config 与 Codez Built-in Model Config Rules 当前只从随仓库和安装包发布的
+`config/provider/codez-builtin.json` 读取。本 Todo 将 `/api/v1/client/configs` 增加为这同一份 Built-in
 事实的远端优先发布通道，并为每个 Environment 保存最近一次确认可用的远端配置（Last Known Good，LKG）。
 
 本 Todo 只做完成该目标所需的最小改动，不统一重构现有 Client Config 基础设施：
@@ -31,10 +31,10 @@ ZCode Built-in Provider Config 与 ZCode Built-in Model Config Rules 当前只�
 - 不改变 Coding Plan、官方版本安全校验、Off-Peak 或 `modelContextBudget.strategy` 的现有配置所有权；
 - 允许本阶段为 Built-in Config 增加一条独立的 `/client/configs` 请求；公共 Client Config 收口另立任务。
 
-本 Todo 只改变 ZCode Built-in Config 的 Source 与发布时序，不改变 Provider 领域主链：
+本 Todo 只改变 Codez Built-in Config 的 Source 与发布时序，不改变 Provider 领域主链：
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
               |
               v
     Account Provider Config
@@ -45,7 +45,7 @@ ZCode Built-in Provider Config
               v
  Effective Provider Config
 
-ZCode Built-in Model Config Rules
+Codez Built-in Model Config Rules
               +
  Personal Model Config Rules
               |
@@ -56,7 +56,7 @@ Effective Model Config Rules
         Registry / ModelFactory
 ```
 
-远端、LKG 与安装包配置是同一份 ZCode Built-in Source 的三个候选，不是新的 Overlay 层。
+远端、LKG 与安装包配置是同一份 Codez Built-in Source 的三个候选，不是新的 Overlay 层。
 
 ## 1. 已确认裁决
 
@@ -65,22 +65,22 @@ Effective Model Config Rules
 服务端在 `data.configs` 下增加一个一级字段：
 
 ```ts
-interface ZCodeBuiltinConfigContent {
-  /** 现有 ZCode Built-in Provider Config 的纯内容。 */
+interface CodezBuiltinConfigContent {
+  /** 现有 Codez Built-in Provider Config 的纯内容。 */
   readonly providers: Record<string, ProviderConfigObject>;
-  /** 现有 ZCode Built-in Model Config Rules 的纯内容。 */
+  /** 现有 Codez Built-in Model Config Rules 的纯内容。 */
   readonly modelConfigRules: readonly ModelConfigRuleObject[];
 }
 
-interface ZCodeBuiltinRelease {
+interface CodezBuiltinRelease {
   readonly schemaVersion: number;
   /** 每次发布单调递增；内容回滚也产生更大的 revision。 */
   readonly revision: number;
-  readonly config: ZCodeBuiltinConfigContent;
+  readonly config: CodezBuiltinConfigContent;
 }
 
 interface ClientConfigFields {
-  readonly zcodeBuiltin?: ZCodeBuiltinRelease;
+  readonly codezBuiltin?: CodezBuiltinRelease;
 }
 ```
 
@@ -94,7 +94,7 @@ interface ClientConfigFields {
   "code": 0,
   "data": {
     "configs": {
-      "zcodeBuiltin": {
+      "codezBuiltin": {
         "schemaVersion": 1,
         "revision": 42,
         "config": {
@@ -110,7 +110,7 @@ interface ClientConfigFields {
 `config.providers` 与 `config.modelConfigRules` 必须作为同一次发布共同出现、共同解析、共同应用。客户端不支持两个独立
 一级字段，不允许把远端 Provider 与本地 Model Rules 或本地 Provider 与远端 Model Rules 混合。
 
-`zcodeBuiltin` 是 Client Config 传输边界的原子分组，不成为新的 Provider 领域对象或 Overlay 层。解析成功后
+`codezBuiltin` 是 Client Config 传输边界的原子分组，不成为新的 Provider 领域对象或 Overlay 层。解析成功后
 立即投影为现有 `ProviderConfigLayerSnapshot` 所需的 `ProviderConfigMap + ModelConfigRules`。
 
 仓库/安装包中的 Built-in 也继续维护为一份完整 JSON。Provider 分组和 Model Rule 分层通过
@@ -120,13 +120,13 @@ interface ClientConfigFields {
 
 ### 1.2 远端配置是完整替换，不是相对 Bundled 的补丁
 
-远端 `config.providers` 是当前 ZCode Built-in Provider 的完整有序集合，`config.modelConfigRules` 是当前完整、有序的
+远端 `config.providers` 是当前 Codez Built-in Provider 的完整有序集合，`config.modelConfigRules` 是当前完整、有序的
 Built-in Rule 数组。服务端删除 Provider、模型成员或 Rule 时，客户端必须在新快照中同样删除，不能继续从
 Bundled Config 补回。
 
 ```text
 Bundled Release ─────┐
-Active Cache Release ┼─> 选择一个兼容候选 ─> ZCode Built-in Source
+Active Cache Release ┼─> 选择一个兼容候选 ─> Codez Built-in Source
 Remote Release ──────┘
 ```
 
@@ -141,9 +141,9 @@ Built-in Release 的业务完整性发布门禁不属于客户端同步首版；
 | ------------------------ | ---------------------------------------------------------- | ------------ | -------------------- |
 | Bundled Config           | 当前安装包携带的兼容基线                                   | App 发布版本 | 否                   |
 | Environment Active Cache | 当前 Environment 已接受并正在使用的 Built-in；同时承担 LKG | 跨进程重启   | 是，原子替换         |
-| Remote Config            | `/client/configs.data.configs.zcodeBuiltin` 当前响应       | 单次远端刷新 | 不直接作为持久化文件 |
+| Remote Config            | `/client/configs.data.configs.codezBuiltin` 当前响应       | 单次远端刷新 | 不直接作为持久化文件 |
 
-运行时不得改写仓库中的 `config/provider/zcode-builtin.json` 或安装包只读资产。远端成功结果只原子替换所属
+运行时不得改写仓库中的 `config/provider/codez-builtin.json` 或安装包只读资产。远端成功结果只原子替换所属
 Environment 的可写 `active.json`。该文件既是 Host/Worker 共同读取的活动 Source，也是重启时的 LKG；不再维护
 第二份 LKG 文件。
 
@@ -185,7 +185,7 @@ JSON 恰好可解析就跨版本复用。后续若需要跨补丁版本复用，
 ### 1.5 `revision` 必须可排序并由同一发布流程生成
 
 普通内容 Hash 或 HTTP ETag 只能判断相同/不同，不能判断 LKG 与 Bundled 谁更新。本 Todo 要求
-`zcodeBuiltin.revision` 使用服务端单调递增整数，并同步写入同次发布生成的 Bundled Config。
+`codezBuiltin.revision` 使用服务端单调递增整数，并同步写入同次发布生成的 Bundled Config。
 
 内容回滚也必须产生新 revision：
 
@@ -217,7 +217,7 @@ SSH / Server Environment Host
 ```
 
 Desktop 控制远程 Workspace 时只读取 Remote Host 的 Settings/Selection Facade。Desktop 不把本地
-`zcodeBuiltin`、LKG、Registry Snapshot 或 Provider/Model 静态事实推给远端。
+`codezBuiltin`、LKG、Registry Snapshot 或 Provider/Model 静态事实推给远端。
 
 普通 Core Worker 不独立请求 `/client/configs`。Host 先选择启动候选并把同一可读 Built-in 文件路径提供给
 Worker；远端成功更新后原子更新该 Environment 的活动文件，由 Host 和 Worker 的现有 Source watcher 刷新。
@@ -259,14 +259,14 @@ Provider Config Source 反向依赖 Subscription Service。
 Environment composition root existing ApiClient
               |
               v
-ZCode Built-in remote fetch/synchronizer
+Codez Built-in remote fetch/synchronizer
               |
               v
 Built-in active Source file（同时承担 LKG）
 ```
 
 后续统一 Client Config 时可以把这条网络读取迁入公共 Transport/Service；不得改变本 Todo 已确认的
-Environment 所有权、原子 `zcodeBuiltin` 契约和 Active Cache 选择边界。
+Environment 所有权、原子 `codezBuiltin` 契约和 Active Cache 选择边界。
 
 ### 1.9 Environment 级落盘刷新消抖
 
@@ -322,7 +322,7 @@ start remote refresh in background
 | 情况                           | 处理                                     |
 | ------------------------------ | ---------------------------------------- |
 | HTTP/超时/JSON/Envelope 失败   | 保持当前 Snapshot 与 LKG，记录可诊断错误 |
-| `configs.zcodeBuiltin` 缺失    | 视为服务端尚未下发，保持当前 Snapshot    |
+| `configs.codezBuiltin` 缺失    | 视为服务端尚未下发，保持当前 Snapshot    |
 | Schema 不支持                  | 拒绝响应，保持当前 Snapshot 与 LKG       |
 | Provider/Rule 严格解析失败     | 拒绝整份响应，不做局部应用               |
 | revision 小于当前有效 revision | 视为陈旧响应，忽略                       |
@@ -353,14 +353,14 @@ publish Source changed
 
 ### Step 0：先更新正式 Design
 
-- 在 Environment Design 中把 Management Service 的长期蓝图收敛为本轮 `/client/configs.zcodeBuiltin` 入口；
+- 在 Environment Design 中把 Management Service 的长期蓝图收敛为本轮 `/client/configs.codezBuiltin` 入口；
 - 在 Configuration/Runtime Design 中写明 Bundled/LKG/Remote 是同一个 Built-in Source 的候选；
 - 写明 Environment 组合根是同步 owner，Core Worker 只读活动文件；
 - 写明当前不统一 Client Config Service。
 
 ### Step 1：定义两层 Release Schema 与缓存路径
 
-- 为 `configs.zcodeBuiltin` 建立严格运行时 Schema；
+- 为 `configs.codezBuiltin` 建立严格运行时 Schema；
 - 增加单调递增 `revision` 与 `schemaVersion`；
 - 内层 `config` 只保存现有 Provider Config 与 Model Config Rules 内容；
 - Bundled、Remote 与 Active Cache 使用完全相同的两层 Release 结构；
@@ -379,7 +379,7 @@ publish Source changed
 
 - 在 Environment 组合根使用现有 `ApiClient` 请求 `/client/configs`；
 - 使用当前 Environment 的 Endpoint、App Version 和平台参数；
-- 对原子 `zcodeBuiltin` 执行严格 Envelope 与现有 Provider/Model Config Parser 兼容解析；
+- 对原子 `codezBuiltin` 执行严格 Envelope 与现有 Provider/Model Config Parser 兼容解析；
 - 使用落盘 `refresh-control.json`、可过期 lease、请求超时和递增退避做 Environment 级去重；
 - 多 Host 共享同一 Environment 路径时在文件锁内重新比较 revision，防止晚到请求陈旧覆盖；
 - 不修改其他 Client Config 消费者。
@@ -410,7 +410,7 @@ publish Source changed
 
 ### 4.1 Schema 与原子性
 
-- `zcodeBuiltin` 完整对象严格解析；
+- `codezBuiltin` 完整对象严格解析；
 - 缺失 `config.providers`、`config.modelConfigRules`、`schemaVersion` 或 `revision` 时整份拒绝；
 - 未知旧 `builtinProviders/builtinModels` 不进入正式 Source；
 - Rule 正则、Provider API/Access、Model Properties 与 Reasoning Mapping 使用当前正式 Schema；
@@ -458,7 +458,7 @@ publish Source changed
 
 ## 5. 完成定义
 
-- `/client/configs.data.configs.zcodeBuiltin` 成为远端 Built-in 的唯一传输字段；
+- `/client/configs.data.configs.codezBuiltin` 成为远端 Built-in 的唯一传输字段；
 - Provider 与 Model Rules 原子发布、原子校验、原子应用；
 - Bundled 与 Active Cache 按兼容性和 revision 正确选择；
 - `active.json` 同时承担活动 Source 与 LKG，写入不会修改仓库或安装包资产；
@@ -473,7 +473,7 @@ publish Source changed
 
 - 不建立全局或跨进程 Client Config 单例；
 - 不统一 `BigModelCodingPlanSubscriptionProvider`、Desktop Main 与 Force Update 的 Client Config 请求；
-- 不持久化整份 `/client/configs`，只持久化验证后的 `zcodeBuiltin`；
+- 不持久化整份 `/client/configs`，只持久化验证后的 `codezBuiltin`；
 - 不把远端、LKG、Bundled 建模为三层 Provider Overlay；
 - 不允许 Remote Provider Config 与 Bundled Model Rules 混合；
 - 不恢复旧 `builtinProviders`、`builtinModels`、Catalog、Preset 或具体模型 hardcode；
@@ -484,9 +484,9 @@ publish Source changed
 
 2026-08-25 已按本文完成：
 
-- `@zcode/provider-node` 增加严格两层 Release Schema、Bundled/Active 候选选择、原子 Active Source、
+- `@codez/provider-node` 增加严格两层 Release Schema、Bundled/Active 候选选择、原子 Active Source、
   跨进程刷新控制文件与 Remote Synchronizer；
-- 正式 `config/provider/zcode-builtin.json` 已迁为 `revision=1` 的两层 Release；
+- 正式 `config/provider/codez-builtin.json` 已迁为 `revision=1` 的两层 Release；
 - Services Environment 组合根使用当前 Endpoint、App Version、平台参数和既有 `ApiClient` 后台读取
   `/api/v1/client/configs`；Local/Remote Host 向 Worker 注入 Active 路径；
 - Standalone Server 复用 Services owner；独立 Prompt CLI/TUI 负责自己的 Active/LKG 与后台刷新，Host

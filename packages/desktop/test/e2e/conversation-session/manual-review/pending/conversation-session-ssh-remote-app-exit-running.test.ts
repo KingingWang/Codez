@@ -24,7 +24,7 @@ import {
 
 const MARKER = "E2E_SSH_APP_EXIT_RUNNING";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-app-exit-running",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-app-exit-running",
 );
 
 describe(`${MARKER}: 完整退出 Desktop 后远端回合继续`, () => {
@@ -69,7 +69,7 @@ describe(`${MARKER}: 完整退出 Desktop 后远端回合继续`, () => {
         // Server 控制命令直接位于根命令；误加 server 会落入旧 CLI，无法取得运行任务。
         const beforeRelease = await runSSHCommand(
           prepared.config,
-          '"$HOME/.zcode/server/bin/zcode" running-tasks --json',
+          '"$HOME/.codez/server/bin/codez" running-tasks --json',
         );
         expect(beforeRelease.code).toBe(0);
         expect(beforeRelease.stdout).toContain(task.taskId);
@@ -84,7 +84,7 @@ describe(`${MARKER}: 完整退出 Desktop 后远端回合继续`, () => {
         do {
           result = await runSSHCommand(
             prepared.config,
-            '"$HOME/.zcode/server/bin/zcode" running-tasks --json',
+            '"$HOME/.codez/server/bin/codez" running-tasks --json',
           );
           if (result.code === 0 && !result.stdout.includes(task.taskId)) break;
           await delay(200);

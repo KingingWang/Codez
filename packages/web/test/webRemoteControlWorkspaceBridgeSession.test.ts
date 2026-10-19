@@ -3,8 +3,8 @@ import { act, renderHook } from "@testing-library/react";
 import { useProjectFileTree } from "@/project-sidebar/useProjectFileTree.js";
 import type { ProjectSidebarProps, ProjectTask } from "@/project-sidebar/contract.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
-import { useRemoteWorkspaceSessionStore } from "@zcode/ui/remote-workspace-session-store";
+import type { IServiceAccessor } from "@codez/services";
+import { useRemoteWorkspaceSessionStore } from "@codez/ui/remote-workspace-session-store";
 import { registerWebRemoteControlWorkspaceBridgeServices } from "#src/web-remote-control/index.js";
 
 describe("registerWebRemoteControlWorkspaceBridgeServices", () => {

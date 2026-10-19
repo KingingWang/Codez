@@ -1,7 +1,7 @@
-import { ChannelClient, ChannelServer, createQueuePair } from "@zcode/rpc";
-import { ISettingService, ITerminalService, ServiceCollection } from "@zcode/services";
+import { ChannelClient, ChannelServer, createQueuePair } from "@codez/rpc";
+import { ISettingService, ITerminalService, ServiceCollection } from "@codez/services";
 import { describe, expect, it, vi } from "vitest";
-import { ServiceChannels } from "@zcode/shared";
+import { ServiceChannels } from "@codez/shared";
 import {
   exposeWindowHostAttachmentServices,
   resolveWindowHostServiceExposurePolicy,
@@ -12,7 +12,7 @@ describe("Window Host attachment RPC policy", () => {
     const policy = resolveWindowHostServiceExposurePolicy("web-remote-replayable");
 
     expect(policy?.allowedChannels.has(ServiceChannels.Setting)).toBe(true);
-    expect(policy?.allowedChannels.has(ServiceChannels.ZCodeTask)).toBe(true);
+    expect(policy?.allowedChannels.has(ServiceChannels.CodezTask)).toBe(true);
     expect(policy?.allowedChannels.has(ServiceChannels.Terminal)).toBe(false);
     expect(policy?.allowedChannels.has(ServiceChannels.SourceServerManagement)).toBe(false);
     expect(policy?.allowedChannels.has(ServiceChannels.ProviderProvisioningTarget)).toBe(false);

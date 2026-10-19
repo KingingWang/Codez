@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { botsStateFileSchema, botGroupInputSourceSchema, type BotActor } from "@zcode/shared";
+import { botsStateFileSchema, botGroupInputSourceSchema, type BotActor } from "@codez/shared";
 import {
   getBotConversationKey,
   getBotStateKey,

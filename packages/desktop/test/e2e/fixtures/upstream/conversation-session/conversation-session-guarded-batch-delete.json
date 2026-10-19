@@ -49,7 +49,7 @@
           "id": "toolu_E2E_GUARDED_DELETE_RECURSIVE",
           "name": "Bash",
           "input": {
-            "command": "cd .zcode-e2e/conversation-session-guarded-batch-delete/E2E_GUARDED_DELETE_RECURSIVE && echo executed > executed && rm -r target"
+            "command": "cd .codez-e2e/conversation-session-guarded-batch-delete/E2E_GUARDED_DELETE_RECURSIVE && echo executed > executed && rm -r target"
           }
         }
       }
@@ -101,7 +101,7 @@
           "id": "toolu_E2E_GUARDED_DELETE_BATCH",
           "name": "Bash",
           "input": {
-            "command": "cd .zcode-e2e/conversation-session-guarded-batch-delete/E2E_GUARDED_DELETE_BATCH && echo executed > executed && rm one.txt two.txt"
+            "command": "cd .codez-e2e/conversation-session-guarded-batch-delete/E2E_GUARDED_DELETE_BATCH && echo executed > executed && rm one.txt two.txt"
           }
         }
       }
@@ -153,7 +153,7 @@
           "id": "toolu_E2E_GUARDED_DELETE_GLOB",
           "name": "Bash",
           "input": {
-            "command": "cd .zcode-e2e/conversation-session-guarded-batch-delete/E2E_GUARDED_DELETE_GLOB && echo executed > executed && rm *.txt"
+            "command": "cd .codez-e2e/conversation-session-guarded-batch-delete/E2E_GUARDED_DELETE_GLOB && echo executed > executed && rm *.txt"
           }
         }
       }
@@ -205,7 +205,7 @@
           "id": "toolu_E2E_GUARDED_DELETE_FIND",
           "name": "Bash",
           "input": {
-            "command": "cd .zcode-e2e/conversation-session-guarded-batch-delete/E2E_GUARDED_DELETE_FIND && echo executed > executed && find target -type f -delete"
+            "command": "cd .codez-e2e/conversation-session-guarded-batch-delete/E2E_GUARDED_DELETE_FIND && echo executed > executed && find target -type f -delete"
           }
         }
       }
@@ -257,7 +257,7 @@
           "id": "toolu_E2E_GUARDED_DELETE_CLEAN",
           "name": "Bash",
           "input": {
-            "command": "cd .zcode-e2e/conversation-session-guarded-batch-delete/E2E_GUARDED_DELETE_CLEAN && echo executed > executed && git clean -f"
+            "command": "cd .codez-e2e/conversation-session-guarded-batch-delete/E2E_GUARDED_DELETE_CLEAN && echo executed > executed && git clean -f"
           }
         }
       }

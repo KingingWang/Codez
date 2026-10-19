@@ -1,4 +1,4 @@
-import type { IChannelServer } from "@zcode/rpc";
+import type { IChannelServer } from "@codez/rpc";
 import {
   ServiceCollection,
   IProjectService,
@@ -9,9 +9,9 @@ import {
   IWindowProjectChangesService,
   createWindowProjectChangesService,
   type ServiceExposurePolicy,
-  type ZCodeAgentV4ClientMode,
-} from "@zcode/services";
-import { ServiceChannels } from "@zcode/shared";
+  type CodezAgentV4ClientMode,
+} from "@codez/services";
+import { ServiceChannels } from "@codez/shared";
 
 const WEB_REMOTE_REPLAYABLE_ALLOWED_CHANNELS = new Set<string>([
   ServiceChannels.File,
@@ -26,10 +26,10 @@ const WEB_REMOTE_REPLAYABLE_ALLOWED_CHANNELS = new Set<string>([
   ServiceChannels.CuaPermission,
   ServiceChannels.CuaPipSession,
   ServiceChannels.Broadcast,
-  ServiceChannels.ZCodeTask,
+  ServiceChannels.CodezTask,
   ServiceChannels.WindowController,
-  ServiceChannels.ZCodeAgent,
-  ServiceChannels.ZCodeSession,
+  ServiceChannels.CodezAgent,
+  ServiceChannels.CodezSession,
   ServiceChannels.Project,
   ServiceChannels.TaskGroups,
   ServiceChannels.RemoteProjects,
@@ -71,7 +71,7 @@ const WEB_REMOTE_REPLAYABLE_EXPOSURE_POLICY: ServiceExposurePolicy = {
 };
 
 export function resolveWindowHostServiceExposurePolicy(
-  clientMode: ZCodeAgentV4ClientMode,
+  clientMode: CodezAgentV4ClientMode,
 ): ServiceExposurePolicy | undefined {
   // Bug 根因：Host 以前把完整 ServiceCollection 当成 attachment 授权，并只用 denylist
   // 排除了 Source 管理；新注册的高权限 channel 会自动暴露给手机，Terminal 因此可直接创建 PTY。
@@ -82,7 +82,7 @@ export function resolveWindowHostServiceExposurePolicy(
 export function exposeWindowHostAttachmentServices(params: {
   server: IChannelServer;
   services: ServiceCollection;
-  clientMode: ZCodeAgentV4ClientMode;
+  clientMode: CodezAgentV4ClientMode;
   overrides?: ReadonlyMap<string, unknown>;
   attachmentScope?: { kind: "local" | "remote" | "source-settings" };
   windowServices?: ServiceCollection;

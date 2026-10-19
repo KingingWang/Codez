@@ -1,20 +1,20 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { IServiceAccessor, IZCodeTaskService, ProjectTask } from "@zcode/services";
+import { Emitter } from "@codez/rpc";
+import type { IServiceAccessor, ICodezTaskService, ProjectTask } from "@codez/services";
 import type {
   IPlatformService,
   WebRemoteControlMobileTaskView,
   WebRemoteControlStatus,
-  ZCodeTaskMeta,
-  ZCodeWorkspaceEvent,
-} from "@zcode/shared";
+  CodezTaskMeta,
+  CodezWorkspaceEvent,
+} from "@codez/shared";
 import { useProjectTree } from "@/project-sidebar/useProjectTree.js";
 import { useWorkspaceTaskNavigation } from "@/app-shell/useWorkspaceTaskNavigation.js";
 import { ensureTaskNavigationWorkspace } from "@/app-shell/taskNavigationWorkspace.js";
 import { createTabStore, type TabStore } from "@/store/tabStore.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { createWindowHostControllerRuntime } from "@desktop/host/windowHostControllerService.js";
 
 const mocks = vi.hoisted(() => ({
@@ -57,7 +57,7 @@ beforeEach(() => {
     },
   };
   mocks.tabs = createTabStore(null);
-  useZCodeSessionStore.setState({ workspaces: {}, taskNavHistory: { entries: [], cursor: -1 } });
+  useCodezSessionStore.setState({ workspaces: {}, taskNavHistory: { entries: [], cursor: -1 } });
 });
 afterEach(cleanup);
 
@@ -85,10 +85,10 @@ async function fixture(
     pinned: false,
     archived: false,
   };
-  const events = new Emitter<ZCodeWorkspaceEvent>();
+  const events = new Emitter<CodezWorkspaceEvent>();
   let marker = 10;
   let delay: Promise<void> | undefined;
-  const setTaskUnread = vi.fn(async (params: Parameters<IZCodeTaskService["setTaskUnread"]>[0]) => {
+  const setTaskUnread = vi.fn(async (params: Parameters<ICodezTaskService["setTaskUnread"]>[0]) => {
     if (params.unread) task.unreadAt = ++marker;
     else if (params.expectedUnreadAt == null || task.unreadAt === params.expectedUnreadAt)
       delete task.unreadAt;
@@ -104,7 +104,7 @@ async function fixture(
     });
     return response;
   });
-  const getTaskMeta = vi.fn(async (): Promise<ZCodeTaskMeta | null> => ({ ...task }));
+  const getTaskMeta = vi.fn(async (): Promise<CodezTaskMeta | null> => ({ ...task }));
   const service = {
     getTaskMeta,
     listTasks: vi.fn(async () => [{ ...task }]),
@@ -112,7 +112,7 @@ async function fixture(
     listArchivedTasks: async () => [],
     onDynamicWorkspaceEvent: () => events.event,
     setTaskUnread,
-  } as unknown as IZCodeTaskService;
+  } as unknown as ICodezTaskService;
   const runtime = createWindowHostControllerRuntime({
     createId: () => crypto.randomUUID(),
     resolveSource: () => ({
@@ -136,7 +136,7 @@ async function fixture(
   mocks.services = {
     projectService: {},
     ...(controller ? { windowControllerService: runtime.service } : {}),
-    zcodeTaskService: service,
+    codezTaskService: service,
     broadcastService: { onMessage: () => ({ dispose() {} }) },
   } as unknown as IServiceAccessor;
   const hook = renderHook(() => useProjectTree(desktop));
@@ -157,7 +157,7 @@ async function fixture(
   };
   const focus = (workspaceIdentity = identity) => {
     mocks.tabs!.getState().addTab("/repo", { workspaceIdentity });
-    useZCodeSessionStore.getState().setActiveTaskId("/repo", "task", workspaceIdentity);
+    useCodezSessionStore.getState().setActiveTaskId("/repo", "task", workspaceIdentity);
   };
   return {
     ...hook,
@@ -185,11 +185,11 @@ describe("project directory background unread", () => {
     async ({ controller, draft }) => {
       const identity = "remote:server:source:/repo";
       mocks.tabs!.getState().addTab("/repo", { workspaceIdentity: identity });
-      useZCodeSessionStore.getState().setActiveTaskId("/repo", "task", identity);
+      useCodezSessionStore.getState().setActiveTaskId("/repo", "task", identity);
       mocks.tabs!.getState().addTab("/workspace-a");
       // 同名 task ID 也必须按完整 workspace 地址隔离；先建齐 scope，避免测试中途换代 owner。
-      if (draft) useZCodeSessionStore.getState().startDraft("/workspace-a");
-      else useZCodeSessionStore.getState().setActiveTaskId("/workspace-a", "task");
+      if (draft) useCodezSessionStore.getState().startDraft("/workspace-a");
+      else useCodezSessionStore.getState().setActiveTaskId("/workspace-a", "task");
       const f = await fixture(controller);
       const blocked = Promise.withResolvers<void>();
       const navigation = renderHook(() =>
@@ -221,7 +221,7 @@ describe("project directory background unread", () => {
         });
         await act(async () => blocked.resolve());
         expect(
-          useZCodeSessionStore
+          useCodezSessionStore
             .getState()
             .getWorkspaceState(f.task.workspacePath, f.task.workspaceIdentity).activeTaskId,
         ).toBe("task-2");
@@ -242,7 +242,7 @@ describe("project directory background unread", () => {
       try {
         act(() => {
           f.focus();
-          useZCodeSessionStore.setState({
+          useCodezSessionStore.setState({
             taskNavHistory:
               route === "missing"
                 ? { entries: [], cursor: -1 }

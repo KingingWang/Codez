@@ -1,4 +1,4 @@
-import type { GenUiStateTarget, GenUiTweak, GenUiTweakValues } from "@zcode/shared/gen-ui";
+import type { GenUiStateTarget, GenUiTweak, GenUiTweakValues } from "@codez/shared/gen-ui";
 export { collectGenUiSourcePaths, matchesGenUiSourcePath } from "@/gen-ui/domain/sourceFiles.js";
 export interface GenUiCardTarget extends GenUiStateTarget {
   remoteSessionId?: string;

@@ -98,7 +98,7 @@ describe("TTFT01 真实 Composer 到最终 OTLP", () => {
         return records.some((record) =>
           record.data.resourceMetrics?.some((resource) =>
             resource.scopeMetrics.some((scope) =>
-              scope.metrics.some((metric) => metric.name === "zcode.local_ttft.duration"),
+              scope.metrics.some((metric) => metric.name === "codez.local_ttft.duration"),
             ),
           ),
         );
@@ -155,7 +155,7 @@ describe("TTFT01 真实 Composer 到最终 OTLP", () => {
       .flatMap((resource) => resource.scopeMetrics)
       .flatMap((scope) => scope.metrics);
     const total = metrics
-      .filter((metric) => metric.name === "zcode.local_ttft.duration")
+      .filter((metric) => metric.name === "codez.local_ttft.duration")
       .flatMap((metric) => metric.histogram?.dataPoints ?? []);
     expect(total.reduce((count, point) => count + Number(point.count), 0)).toBe(1);
     expect(total[0]?.explicitBounds).toEqual([
@@ -171,7 +171,7 @@ describe("TTFT01 真实 Composer 到最终 OTLP", () => {
     this.timeout(120000);
     await waitForV4ConversationState((state) => state.state === "idle", "正文轮尚未完成");
     await browser.execute(() => {
-      (window as unknown as { __zcodeTransportDelayE2E: unknown }).__zcodeTransportDelayE2E = {
+      (window as unknown as { __codezTransportDelayE2E: unknown }).__codezTransportDelayE2E = {
         commandMs: 250,
         ackMs: 7000,
       };
@@ -202,9 +202,9 @@ describe("TTFT01 真实 Composer 到最终 OTLP", () => {
     const ackReleased = await browser.execute(() => {
       const plan = (
         window as unknown as {
-          __zcodeTransportDelayE2E?: { consumed?: boolean; ackReleased?: boolean };
+          __codezTransportDelayE2E?: { consumed?: boolean; ackReleased?: boolean };
         }
-      ).__zcodeTransportDelayE2E;
+      ).__codezTransportDelayE2E;
       if (!plan?.consumed) throw new Error("真实 command 未进入延迟 seam");
       return plan.ackReleased === true;
     });

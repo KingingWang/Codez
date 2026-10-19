@@ -3,13 +3,13 @@ import { createElement } from "react";
 import { render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MessageResponse } from "@/components/ai-elements/message.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 afterEach(() => vi.restoreAllMocks());
 
 describe("MessageResponse artifact session changes", () => {
   it("releases the old image and reads through the new session context", async () => {
-    const ref = "zcode-artifact://session-a/cua-shot";
+    const ref = "codez-artifact://session-a/cua-shot";
     const markdown = `![shot](${ref})`;
     const readSessionA = vi.fn().mockResolvedValue({
       bytes: new Uint8Array([1]),
@@ -26,7 +26,7 @@ describe("MessageResponse artifact session changes", () => {
 
     const renderMessage = (sessionId: string, readAttachment: typeof readSessionA) =>
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           MessageResponse,

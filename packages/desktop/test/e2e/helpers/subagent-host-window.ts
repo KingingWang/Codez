@@ -15,12 +15,12 @@ export interface HostFaultControl {
   released?: string[];
 }
 export async function setHostFaults(control: HostFaultControl) {
-  const path = join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "host-fault-control.json");
+  const path = join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "host-fault-control.json");
   await writeFile(path + ".tmp", JSON.stringify(control));
   await rename(path + ".tmp", path);
 }
 export async function readHostBoundary() {
-  const root = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+  const root = process.env.CODEZ_E2E_ARTIFACT_DIR!;
   return (
     await Promise.all(
       (
@@ -61,7 +61,7 @@ export async function openSubagentHostWindow() {
   );
 }
 
-/** env 只注入新窗口的 Host，例如 ZCODE_E2E_FS_FAULTS，不影响已有窗口。 */
+/** env 只注入新窗口的 Host，例如 CODEZ_E2E_FS_FAULTS，不影响已有窗口。 */
 export async function openFaultInjectedHostWindow(
   preloadPath: string,
   env: Record<string, string> = {},
@@ -86,7 +86,7 @@ export async function openFaultInjectedHostWindow(
         electron.utilityProcess.fork = originalFork;
         const child = originalFork(preload, [path, ...(args ?? [])], {
           ...options,
-          env: { ...options?.env, ...extraEnv, ZCODE_E2E_HOST_FAULT_ROOT: root },
+          env: { ...options?.env, ...extraEnv, CODEZ_E2E_HOST_FAULT_ROOT: root },
         });
         didFork();
         return child;
@@ -102,7 +102,7 @@ export async function openFaultInjectedHostWindow(
       }
     },
     preloadPath,
-    process.env.ZCODE_E2E_ARTIFACT_DIR!,
+    process.env.CODEZ_E2E_ARTIFACT_DIR!,
     env,
   );
   let handle = "";

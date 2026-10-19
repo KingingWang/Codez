@@ -1,4 +1,4 @@
-import { TID_V4_TIMELINE } from "@zcode/shared/test-ids";
+import { TID_V4_TIMELINE } from "@codez/shared/test-ids";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   countUpstreamRequests,
@@ -126,6 +126,6 @@ function readContinueTurnSnapshot(): Promise<ContinueTurnSnapshot> {
 }
 
 function readManualReviewHoldMs(): number {
-  const parsed = Number(process.env.ZCODE_E2E_MANUAL_REVIEW_HOLD_MS ?? "0");
+  const parsed = Number(process.env.CODEZ_E2E_MANUAL_REVIEW_HOLD_MS ?? "0");
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
 }

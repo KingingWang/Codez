@@ -12,14 +12,14 @@ import {
   createRegistryProviderConfig,
   type ModelSelection,
   type ProviderRegistryServiceSnapshot,
-} from "@zcode/provider";
-import { NodeZCodeBuiltinProviderConfigSource } from "../src/index.js";
+} from "@codez/provider";
+import { NodeCodezBuiltinProviderConfigSource } from "../src/index.js";
 import { createNodeModelSelectionFacade } from "../src/model-selection-facade.js";
 import { legacyReasoningLevelRenames } from "../src/legacy-reasoning-level-renames.js";
 
-const source = new NodeZCodeBuiltinProviderConfigSource({
+const source = new NodeCodezBuiltinProviderConfigSource({
   bundledFilePath: fileURLToPath(
-    new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
+    new URL("../../../config/provider/codez-builtin.json", import.meta.url),
   ),
   watch: false,
 });
@@ -37,17 +37,17 @@ function view(
 ) {
   const config = {
     revision: "c",
-    zcodeBuiltinRevision: "b",
+    codezBuiltinRevision: "b",
     personalRevision: "p",
-    zcodeBuiltinProviders: builtin.providers,
-    zcodeBuiltinProviderTemplates: builtin.templates,
+    codezBuiltinProviders: builtin.providers,
+    codezBuiltinProviderTemplates: builtin.templates,
     personalProviders: ProviderConfigMap.empty(),
-    zcodeBuiltinModelRules: modelRules,
+    codezBuiltinModelRules: modelRules,
     personalModels,
   };
   const account = {
     revision: "a",
-    basedOnZCodeBuiltinRevision: "b",
+    basedOnCodezBuiltinRevision: "b",
     providers: new ProviderConfigMap([
       [
         "account:bigmodel-individual-coding-plan",

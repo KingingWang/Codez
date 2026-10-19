@@ -5,7 +5,7 @@ import {
   TID_CHAT_MESSAGE_EDIT_SUBMIT,
   TID_CHAT_USER_MESSAGE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clickTestIdByDom } from "./desktop-app.js";
 
 export interface EditButtonSnapshot {
@@ -24,7 +24,7 @@ type LexicalInputE2EBridge = {
 };
 
 type LexicalInputE2EElement = HTMLElement & {
-  __zcodeLexicalInputE2E?: LexicalInputE2EBridge;
+  __codezLexicalInputE2E?: LexicalInputE2EBridge;
 };
 
 export async function waitForEditButtonForUserContaining(
@@ -217,7 +217,7 @@ function getEditInputDiagnostics(testIdValue: string) {
     return {
       bridgeAttr: input?.getAttribute("data-e2e-lexical-bridge") ?? null,
       bridgeProperty: Boolean(
-        (input as LexicalInputE2EElement | null)?.__zcodeLexicalInputE2E,
+        (input as LexicalInputE2EElement | null)?.__codezLexicalInputE2E,
       ),
       contentEditable: input?.getAttribute("contenteditable") ?? null,
       exists: Boolean(input),
@@ -233,7 +233,7 @@ async function waitForEditInputInitializers(testIdValue: string) {
     const input = document.querySelector<LexicalInputE2EElement>(
       `[data-testid="${inputTestId}"]`,
     );
-    input?.__zcodeLexicalInputE2E?.focus();
+    input?.__codezLexicalInputE2E?.focus();
     // 修复原因：UserMessage 和 ChatPromptEditor 都会在 RAF 回填 initialValue。
     // 等两帧后再模拟用户输入，避免刚写入的新文本被初始化回填覆盖。
     requestAnimationFrame(() => {
@@ -259,7 +259,7 @@ async function replaceContentEditableTextByDom(testIdValue: string, text: string
         const latestInput = document.querySelector<LexicalInputE2EElement>(
           `[data-testid="${inputTestId}"]`,
         );
-        const latestBridge = latestInput?.__zcodeLexicalInputE2E;
+        const latestBridge = latestInput?.__codezLexicalInputE2E;
         return (
           latestBridge?.getText() ??
           latestInput?.innerText ??
@@ -270,7 +270,7 @@ async function replaceContentEditableTextByDom(testIdValue: string, text: string
           .trim();
       };
 
-      const bridge = input.__zcodeLexicalInputE2E;
+      const bridge = input.__codezLexicalInputE2E;
       if (bridge) {
         bridge.focus();
         bridge.setText("");
@@ -281,7 +281,7 @@ async function replaceContentEditableTextByDom(testIdValue: string, text: string
           const latestInput = document.querySelector<LexicalInputE2EElement>(
             `[data-testid="${inputTestId}"]`,
           );
-          const latestBridge = latestInput?.__zcodeLexicalInputE2E;
+          const latestBridge = latestInput?.__codezLexicalInputE2E;
           if (!latestBridge) {
             done({
               actual: "",

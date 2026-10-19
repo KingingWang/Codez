@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { OAuthProviderId } from "@zcode/shared";
+import type { OAuthProviderId } from "@codez/shared";
 import { OAuthService } from "#src/oauth/oauthService.js";
 import {
   isCurrentOAuthCredentialRequest,
@@ -22,7 +22,7 @@ function fixture(provider: OAuthProviderId = "zai", responseStatus = 401) {
     ["oauth:active_provider", provider],
     [tokenKey, "old-token"],
     [`oauth:${provider}:refresh_token`, "refresh-token"],
-    ["zcodejwttoken", "old-jwt"],
+    ["codezjwttoken", "old-jwt"],
     ["bot:test:credential", "independent"],
   ]);
   const credentials = {
@@ -36,7 +36,7 @@ function fixture(provider: OAuthProviderId = "zai", responseStatus = 401) {
   };
   const refresh = vi.fn(async () => ({ accessToken: "new-token", refreshToken: "refresh-token" }));
   const onProviderLogout = vi.fn(async () => {});
-  const env = { ZCODE_ENV: "production" };
+  const env = { CODEZ_ENV: "production" };
   const service = new OAuthService(credentials, {
     env,
     onProviderLogout,
@@ -44,7 +44,7 @@ function fixture(provider: OAuthProviderId = "zai", responseStatus = 401) {
       {
         providerId: provider,
         meta: { id: provider, displayName: provider, enabled: true, order: 0 },
-        redirectUri: "zcode://oauth/callback",
+        redirectUri: "codez://oauth/callback",
         apiClient: { request: async () => new Response("{}") },
         buildAuthorizeUrl: ({ state }) => `https://example.test/login?state=${state}`,
         parseCallbackParams: (url) => ({
@@ -241,7 +241,7 @@ describe("401 条件退出与会话写入串行化", () => {
       for (const response of responses) expect(await response.json()).toMatchObject({ code: 401 });
       expect(f.store.has(f.tokenKey)).toBe(false);
       expect(f.store.has("oauth:active_provider")).toBe(false);
-      expect(f.store.has("zcodejwttoken")).toBe(false);
+      expect(f.store.has("codezjwttoken")).toBe(false);
       expect(f.store.get("bot:test:credential")).toBe("independent");
       expect(f.onProviderLogout).toHaveBeenCalledExactlyOnceWith(provider, "old-account");
       expect(f.notified).toHaveBeenCalledOnce();
@@ -293,7 +293,7 @@ describe("401 条件退出与会话写入串行化", () => {
       if (key === f.tokenKey && !loggedIn) {
         loggedIn = true;
         const { state } = await f.service.startOAuth(provider);
-        await f.service.handleCallback(`zcode://oauth/callback?code=code&state=${state}`);
+        await f.service.handleCallback(`codez://oauth/callback?code=code&state=${state}`);
       }
       return value;
     });
@@ -358,7 +358,7 @@ describe("401 条件退出与会话写入串行化", () => {
     expect(await f.service.logoutIfCurrentCredentialRequest(f.url, f.headers)).toBe(true);
     expect(await f.service.logoutIfCurrentCredentialRequest(f.url, f.headers)).toBe(false);
     expect(f.store.has(f.tokenKey)).toBe(false);
-    expect(f.store.has("zcodejwttoken")).toBe(false);
+    expect(f.store.has("codezjwttoken")).toBe(false);
     expect(f.store.get("bot:test:credential")).toBe("independent");
     expect(f.onProviderLogout).toHaveBeenCalledOnce();
   });

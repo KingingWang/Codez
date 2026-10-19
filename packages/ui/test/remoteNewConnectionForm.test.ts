@@ -7,7 +7,7 @@ import type {
   SourceServerManagementSnapshot,
   SSHConfigAliasOption,
   WSLDistro,
-} from "@zcode/shared";
+} from "@codez/shared";
 import zhCN from "@/i18n/locales/zh-CN.js";
 
 /**
@@ -41,7 +41,7 @@ const ports = vi.hoisted(() => ({
   confirm: vi.fn(async () => true),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "zh-CN",
     intl: {
       formatMessage: ({ id }: { id: string }, values: Record<string, string> = {}) =>

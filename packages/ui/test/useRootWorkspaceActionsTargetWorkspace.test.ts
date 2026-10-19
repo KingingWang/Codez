@@ -62,7 +62,7 @@ describe("resolveNewTaskTargetFromRequest", () => {
       workspaceIdentity: "remote:ssh:dev:/active",
     }));
 
-    const target = resolveNewTaskTargetFromRequest("zcode", fallback);
+    const target = resolveNewTaskTargetFromRequest("codez", fallback);
 
     expect(target).toEqual({
       workspacePath: "/active",
@@ -73,7 +73,7 @@ describe("resolveNewTaskTargetFromRequest", () => {
   it("provider 字符串请求与 undefined 请求都走回退，且回退返回 null 时透传 null", () => {
     const nullFallback = vi.fn<[], WorkbenchNewTaskTarget | null>(() => null);
 
-    expect(resolveNewTaskTargetFromRequest("zcode", nullFallback)).toBeNull();
+    expect(resolveNewTaskTargetFromRequest("codez", nullFallback)).toBeNull();
     expect(resolveNewTaskTargetFromRequest(undefined, nullFallback)).toBeNull();
     expect(nullFallback).toHaveBeenCalledTimes(2);
   });

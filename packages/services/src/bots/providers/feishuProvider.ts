@@ -3,7 +3,7 @@ import {
   createGroupMemberDirectory,
   type GroupMemberPage,
 } from "#src/bots/providers/groupMemberDirectory.js";
-import { channelContentPartsSchema, channelContentText, botGroupCardSchema } from "@zcode/shared";
+import { channelContentPartsSchema, channelContentText, botGroupCardSchema } from "@codez/shared";
 import {
   isFeishuBotSender,
   isGroupControlCard,
@@ -13,7 +13,7 @@ import {
   readGroupMentionText,
 } from "#src/bots/providers/feishuGroupMessages.js";
 /* eslint-disable max-lines -- Feishu provider 集中承载鉴权、消息解析、卡片发送和 reaction typing 适配，后续按能力拆分。 */
-import { botTopicMessageSchema } from "@zcode/shared";
+import { botTopicMessageSchema } from "@codez/shared";
 import { readTopicHistory, TopicHistoryPermissionError } from "#src/bots/topicHistory.js";
 import type {
   BotInboundAttachment,
@@ -22,7 +22,7 @@ import type {
   BotOutboundMessage,
   BotProvider,
   SelectionPrompt,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type {
   BotProviderAdapter,
   BotStreamingReplyCardHandle,
@@ -288,7 +288,7 @@ function buildFeishuElicitationForm(
         type: "callback",
         value: {
           command: buildFeishuElicitationFormCommand(selection.token),
-          zcodeCardText: message.text,
+          codezCardText: message.text,
         },
       },
     ],
@@ -545,7 +545,7 @@ function getFeishuDomainProvider(bot: Pick<BotConfig, "provider">): "feishu" | "
 }
 
 function readFeishuPayloadProvider(payload: Record<string, unknown>): BotProvider {
-  return readString(payload, "zcodeProvider") === "lark" ? "lark" : "feishu";
+  return readString(payload, "codezProvider") === "lark" ? "lark" : "feishu";
 }
 
 function getFeishuBaseUrl(bot: Pick<BotConfig, "provider">): string {
@@ -728,13 +728,13 @@ function readFeishuTextMessage(
   const message = isRecord(event?.message) ? event.message : null;
   const sender = isRecord(event?.sender) ? event.sender : null;
   const senderId = isRecord(sender?.sender_id) ? sender.sender_id : null;
-  const content = isRecord(payload.zcodeNativeCardContent)
-    ? payload.zcodeNativeCardContent
+  const content = isRecord(payload.codezNativeCardContent)
+    ? payload.codezNativeCardContent
     : parseJsonRecord(message?.content);
   const msgType = readString(message, "message_type") || readString(message, "msg_type");
   // 交互卡及其机器人确认回复属于控制流程，过去提取卡片文字会误触发另一机器人。
   if (
-    payload.zcodeIgnoreInteractionMessage === true ||
+    payload.codezIgnoreInteractionMessage === true ||
     (isFeishuBotSender(readString(sender, "sender_type")) &&
       msgType === "interactive" &&
       isGroupControlCard(content))
@@ -742,8 +742,8 @@ function readFeishuTextMessage(
     return null;
   const attachment = readFeishuAttachment(msgType, content);
   const attachments: BotInboundAttachment[] = attachment ? [attachment] : [];
-  if (isRecord(payload.zcodeReferencedAttachment)) {
-    const ref = payload.zcodeReferencedAttachment;
+  if (isRecord(payload.codezReferencedAttachment)) {
+    const ref = payload.codezReferencedAttachment;
     if (
       (ref.kind === "image" || ref.kind === "file") &&
       typeof ref.providerFileId === "string" &&
@@ -763,8 +763,8 @@ function readFeishuTextMessage(
         });
     }
   }
-  if (Array.isArray(payload.zcodeReferencedInlineImages)) {
-    for (const image of payload.zcodeReferencedInlineImages) {
+  if (Array.isArray(payload.codezReferencedInlineImages)) {
+    for (const image of payload.codezReferencedInlineImages) {
       if (
         isRecord(image) &&
         typeof image.imageKey === "string" &&
@@ -802,7 +802,7 @@ function readFeishuTextMessage(
     readString(content, "text") ||
     readFeishuPostText(
       content,
-      readString(payload, "zcodeBotOpenId") || undefined,
+      readString(payload, "codezBotOpenId") || undefined,
       message?.mentions,
     ) ||
     readString(event, "text_without_at_bot") ||
@@ -814,7 +814,7 @@ function readFeishuTextMessage(
       ? readGroupMessage(
           rawText,
           message?.mentions,
-          readString(payload, "zcodeBotOpenId"),
+          readString(payload, "codezBotOpenId"),
           readString(sender, "sender_type"),
           readString(senderId, "open_id"),
         )
@@ -858,7 +858,7 @@ function readFeishuTextMessage(
           ...(isFeishuBotSender(readString(sender, "sender_type"))
             ? { senderType: "app" as const }
             : {}),
-          botOpenId: readString(payload, "zcodeBotOpenId") || undefined,
+          botOpenId: readString(payload, "codezBotOpenId") || undefined,
           mentionedBot: groupMessage.mentionedBot,
           commandText: groupMessage.commandText,
           ...(groupMessage.contentParts
@@ -874,17 +874,17 @@ function readFeishuTextMessage(
                 ),
               }
             : {}),
-          topicRootIsCurrentBot: payload.zcodeTopicRootIsCurrentBot === true,
+          topicRootIsCurrentBot: payload.codezTopicRootIsCurrentBot === true,
         }
       : {}),
-    ...(isRecord(payload.zcodeReferencedMessage) &&
-    typeof payload.zcodeReferencedMessage.messageId === "string" &&
-    typeof payload.zcodeReferencedMessage.text === "string"
+    ...(isRecord(payload.codezReferencedMessage) &&
+    typeof payload.codezReferencedMessage.messageId === "string" &&
+    typeof payload.codezReferencedMessage.text === "string"
       ? {
           referencedMessage: {
-            ...payload.zcodeReferencedMessage,
-            messageId: payload.zcodeReferencedMessage.messageId,
-            text: payload.zcodeReferencedMessage.text,
+            ...payload.codezReferencedMessage,
+            messageId: payload.codezReferencedMessage.messageId,
+            text: payload.codezReferencedMessage.text,
           },
         }
       : {}),
@@ -959,7 +959,7 @@ function readFeishuCardAction(
   }
   // Bugfix: 飞书卡片回调的 context.open_chat_id 在私聊按钮里也可能存在。
   // 之前用 chatId 是否存在判断群聊，会把私聊里的卡片按钮误拒成“只支持私聊”。
-  const chatType = readFeishuChatType(readString(payload, "zcodeChatType") || contextChatType);
+  const chatType = readFeishuChatType(readString(payload, "codezChatType") || contextChatType);
   const groupCard = botGroupCardSchema.safeParse(value?.groupCard ?? behaviorValue?.groupCard);
   return {
     botId,
@@ -1031,9 +1031,9 @@ function readFeishuCardOriginalText(payload: unknown): string | null {
   const behavior = Array.isArray(action?.behaviors) ? action.behaviors.find(isRecord) : null;
   const behaviorValue = isRecord(behavior?.value) ? behavior.value : null;
   return (
-    readString(value, "zcodeCardText") ||
+    readString(value, "codezCardText") ||
     readString(value, "cardText") ||
-    readString(behaviorValue, "zcodeCardText") ||
+    readString(behaviorValue, "codezCardText") ||
     readString(behaviorValue, "cardText") ||
     null
   );
@@ -1087,7 +1087,7 @@ function buildFeishuButtonElement(params: {
         type: "callback",
         value: {
           command: params.command,
-          zcodeCardText: params.originalText,
+          codezCardText: params.originalText,
         },
       },
     ],
@@ -1756,15 +1756,15 @@ export function createFeishuWebSocketEventHandlers(params: {
       await onPayload({
         ...(isRecord(payload) ? payload : { payload }),
         botId: bot.id,
-        zcodeProvider: bot.provider,
+        codezProvider: bot.provider,
       });
     },
     "im.chat.member.bot.deleted_v1": async (payload: unknown) => {
       await onPayload({
         ...(isRecord(payload) ? payload : {}),
         botId: bot.id,
-        zcodeProvider: bot.provider,
-        zcodeBotRemoved: true,
+        codezProvider: bot.provider,
+        codezBotRemoved: true,
       });
     },
     // Bugfix: 我们用 Typing reaction 模拟输入中状态，飞书会把自己创建的 reaction 再推回长连接。
@@ -1774,13 +1774,13 @@ export function createFeishuWebSocketEventHandlers(params: {
       const responseState = { deferred: false };
       const callbackPayload = {
         ...(isRecord(payload) ? payload : { payload }),
-        zcodeFeishuCardResponseState: responseState,
+        codezFeishuCardResponseState: responseState,
         botId: bot.id,
-        zcodeProvider: bot.provider,
-        zcodeFeishuSynchronousCardAction: true,
+        codezProvider: bot.provider,
+        codezFeishuSynchronousCardAction: true,
       };
       // 修复原因：飞书点击后的同步响应才是客户端可靠采用的卡片状态。传输层不能再从
-      // zcodeCardText 拼简化卡，也不能返回 undefined 后依赖旁路 PATCH；它必须消费业务层
+      // codezCardText 拼简化卡，也不能返回 undefined 后依赖旁路 PATCH；它必须消费业务层
       // 已推进完成的完整 outbound，并用同一份 elicitation 状态生成下一题卡片。
       // 飞书要求三秒内响应。超时只切换卡片投递方式，业务请求仍执行一次。
       let deadline: ReturnType<typeof setTimeout> | undefined;
@@ -2465,7 +2465,7 @@ export function createFeishuBotProvider(deps: FeishuProviderDeps): BotProviderAd
             readString(isRecord(sender?.sender_id) ? sender.sender_id : null, "open_id") !==
               openId)) &&
         !(
-          payload.zcodeTopicHasAcceptedInput === true &&
+          payload.codezTopicHasAcceptedInput === true &&
           parentId === rootId &&
           !isFeishuBotSender(readString(sender, "sender_type"))
         ) &&
@@ -2529,7 +2529,7 @@ export function createFeishuBotProvider(deps: FeishuProviderDeps): BotProviderAd
             isFeishuBotSender(referenced.sender?.sender_type ?? "") &&
             isGroupControlCard(parseJsonRecord(referenced.body?.content))
           )
-            return { ...payload, zcodeIgnoreInteractionMessage: true };
+            return { ...payload, codezIgnoreInteractionMessage: true };
           const text = readGroupCardText(parseJsonRecord(referenced.body?.content));
           if (!text) throw new Error("Referenced message has no readable text");
           referencedMessage = { messageId: parentId, text };
@@ -2602,12 +2602,12 @@ export function createFeishuBotProvider(deps: FeishuProviderDeps): BotProviderAd
       }
       return {
         ...payload,
-        zcodeBotOpenId: openId,
-        ...(nativeCardContent ? { zcodeNativeCardContent: nativeCardContent } : {}),
-        zcodeTopicRootIsCurrentBot: topicRootIsCurrentBot,
-        zcodeReferencedAttachment: referencedAttachment,
-        zcodeReferencedMessage: referencedMessage,
-        zcodeReferencedInlineImages: referencedInlineImages,
+        codezBotOpenId: openId,
+        ...(nativeCardContent ? { codezNativeCardContent: nativeCardContent } : {}),
+        codezTopicRootIsCurrentBot: topicRootIsCurrentBot,
+        codezReferencedAttachment: referencedAttachment,
+        codezReferencedMessage: referencedMessage,
+        codezReferencedInlineImages: referencedInlineImages,
       };
     },
     splitStreamingReplyCardStates: splitFeishuStreamingCardStates,

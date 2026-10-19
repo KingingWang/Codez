@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ZCodeIntlProvider } from "../src/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "../src/i18n/IntlProvider.js";
 import {
   McpFailurePresentation,
   resolveMcpFailureMessageId,
@@ -20,7 +20,7 @@ describe("MCP failure presentation", () => {
     (locale, message) => {
       const html = renderToStaticMarkup(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: locale },
           createElement(McpFailurePresentation, {
             error: "raw sdk error",

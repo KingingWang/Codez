@@ -10,11 +10,11 @@
 
 ## Global Constraints
 
-- 不直接把 `ZCODE_E2E_MAX_INSTANCES` 从 `1` 调大；当前 worker 共用 `.e2e-home`，并会在 `beforeSession` 递归删除。
+- 不直接把 `CODEZ_E2E_MAX_INSTANCES` 从 `1` 调大；当前 worker 共用 `.e2e-home`，并会在 `beforeSession` 递归删除。
 - 不牺牲 Windows/macOS/Linux 兼容；Windows 优化必须保留 POSIX 平台现有清理路径。
 - 不降低 conversation case 的产品断言；有意覆盖 45 秒边界的 case 进入显式 slow lane，而不是静默缩短。
 - 每项优化都先运行定向 spec，最终只运行一次完整 `pnpm test:e2e`，不做无证据的全量循环。
-- 完成前执行 `pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm typecheck` 和 `pnpm lint`。
+- 完成前执行 `pnpm --filter @codez/desktop typecheck:e2e`、`pnpm typecheck` 和 `pnpm lint`。
 - 当前工作区已有未提交的 DeepSeek V4 与 edit E2E 修改；实施时只提交本计划对应文件，不覆盖或夹带这些改动。
 
 ---
@@ -171,7 +171,7 @@
 
 ### 10. 并行化边界
 
-虽然配置暴露 `ZCODE_E2E_MAX_INSTANCES`，但当前：
+虽然配置暴露 `CODEZ_E2E_MAX_INSTANCES`，但当前：
 
 - `E2E_HOME_DIR` 在 config 加载时只计算一次
 - 每个 `beforeSession` 都删除同一个 HOME
@@ -210,7 +210,7 @@
 - `worker teardown P50 <= 8 s`
 - 串行完整 Windows E2E `<= 42 min`
 - `model-switch-queue` 第二个 case `<= 30 s`
-- 运行结束无残留 `ZCode E2E`、host、agent 和 Chromedriver 进程
+- 运行结束无残留 `Codez E2E`、host、agent 和 Chromedriver 进程
 
 第二阶段完成标准：
 
@@ -317,7 +317,7 @@ Run: `pnpm exec vitest run packages/e2e-report/test/node-index.test.ts`
 
 Expected: PASS。
 
-Run: `pnpm --filter @zcode/desktop typecheck:e2e`
+Run: `pnpm --filter @codez/desktop typecheck:e2e`
 
 Expected: PASS。
 
@@ -326,8 +326,8 @@ Expected: PASS。
 PowerShell:
 
 ```powershell
-$env:ZCODE_E2E_SPEC='./test/e2e/container-boot.test.ts,./test/e2e/conversation-session/conversation-session-first-send.test.ts'
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts
+$env:CODEZ_E2E_SPEC='./test/e2e/container-boot.test.ts,./test/e2e/conversation-session/conversation-session-first-send.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts
 ```
 
 Expected: summary 包含 prepare、before-session、before、after、after-session、complete；case 数与原 spec 一致。
@@ -383,7 +383,7 @@ isOwnE2EProcess = commandIncludesExactHome(item.command, e2eHomeDir);
 type E2EQuitStrategy = "app-quit-before-delete" | "webdriver-owned";
 
 const e2eQuitStrategy: E2EQuitStrategy =
-  process.env.ZCODE_E2E_QUIT_STRATEGY === "webdriver-owned"
+  process.env.CODEZ_E2E_QUIT_STRATEGY === "webdriver-owned"
     ? "webdriver-owned"
     : "app-quit-before-delete";
 ```
@@ -393,12 +393,12 @@ const e2eQuitStrategy: E2EQuitStrategy =
 - [ ] **Step 5: 对同一组 spec 各运行一次 A/B**
 
 ```powershell
-$env:ZCODE_E2E_SPEC='./test/e2e/container-boot.test.ts,./test/e2e/conversation-session/conversation-session-first-send.test.ts,./test/e2e/conversation-session/conversation-session-running-actions.test.ts'
-$env:ZCODE_E2E_QUIT_STRATEGY='app-quit-before-delete'
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts
+$env:CODEZ_E2E_SPEC='./test/e2e/container-boot.test.ts,./test/e2e/conversation-session/conversation-session-first-send.test.ts,./test/e2e/conversation-session/conversation-session-running-actions.test.ts'
+$env:CODEZ_E2E_QUIT_STRATEGY='app-quit-before-delete'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts
 
-$env:ZCODE_E2E_QUIT_STRATEGY='webdriver-owned'
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts
+$env:CODEZ_E2E_QUIT_STRATEGY='webdriver-owned'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts
 ```
 
 比较两个 summary 的 `after`、`after-session` P50/P95，并检查进程列表。
@@ -416,7 +416,7 @@ Run: `pnpm exec vitest run packages/desktop/test/e2e-process-cleanup.test.ts`
 
 Expected: PASS。
 
-Run: `pnpm --filter @zcode/desktop typecheck:e2e`
+Run: `pnpm --filter @codez/desktop typecheck:e2e`
 
 Expected: PASS。
 
@@ -463,13 +463,13 @@ git commit -m "test(desktop): reduce windows e2e session teardown"
 
 - [ ] **Step 4: 校验 fixture**
 
-Run: `pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-model-switch-queue.test.ts`
+Run: `pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-model-switch-queue.test.ts`
 
 Expected: PASS。
 
 - [ ] **Step 5: 运行一次定向 E2E**
 
-Run: `pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/conversation-session/conversation-session-model-switch-queue.test.ts`
+Run: `pnpm --filter @codez/desktop test:e2e -- --spec ./test/e2e/conversation-session/conversation-session-model-switch-queue.test.ts`
 
 Expected: 2 passing；第二个 case不超过 30 秒；request capture 仍为 secondary model/thought。
 
@@ -517,7 +517,7 @@ Expected: FAIL，分组函数尚不存在。
 
 ```ts
 const groupCompatibleSpecs =
-  process.env.ZCODE_E2E_GROUP_COMPATIBLE_SPECS === "1";
+  process.env.CODEZ_E2E_GROUP_COMPATIBLE_SPECS === "1";
 ```
 
 分组函数只在某个 group 的全部成员都包含于 configured specs 时生成嵌套数组；只命中部分成员时保持独立。reporter 的 configured spec 计数使用 flatten 后的文件列表；WDIO `config.specs` 保留嵌套数组。
@@ -528,16 +528,16 @@ Run: `pnpm exec vitest run packages/desktop/test/spec-groups.test.ts`
 
 Expected: PASS。
 
-Run: `pnpm --filter @zcode/desktop typecheck:e2e`
+Run: `pnpm --filter @codez/desktop typecheck:e2e`
 
 Expected: PASS。
 
 - [ ] **Step 5: 运行一次 canary 分组 E2E**
 
 ```powershell
-$env:ZCODE_E2E_GROUP_COMPATIBLE_SPECS='1'
-$env:ZCODE_E2E_SPEC='./test/e2e/conversation-session/conversation-session-markdown-table-enhanced-scroll.test.ts,./test/e2e/conversation-session/conversation-session-markdown-table-layout.test.ts,./test/e2e/conversation-session/conversation-session-status-panel-inline-layout.test.ts'
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts
+$env:CODEZ_E2E_GROUP_COMPATIBLE_SPECS='1'
+$env:CODEZ_E2E_SPEC='./test/e2e/conversation-session/conversation-session-markdown-table-enhanced-scroll.test.ts,./test/e2e/conversation-session/conversation-session-markdown-table-layout.test.ts,./test/e2e/conversation-session/conversation-session-status-panel-inline-layout.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts
 ```
 
 Expected: 三个文件在一个 worker 内顺序执行，case 总数一致，只有一次 before-session/after-session，无 fixture mismatch 或状态串扰。
@@ -579,9 +579,9 @@ git commit -m "test(desktop): group compatible windows e2e specs"
 
 ```ts
 {
-  ZCODE_E2E_HOME_DIR: `.e2e-home-${runId}-shard-${index}`,
-  ZCODE_E2E_RUN_ID: `${runId}-shard-${index}-of-${total}`,
-  ZCODE_E2E_SKIP_BUILD: "1",
+  CODEZ_E2E_HOME_DIR: `.e2e-home-${runId}-shard-${index}`,
+  CODEZ_E2E_RUN_ID: `${runId}-shard-${index}-of-${total}`,
+  CODEZ_E2E_SKIP_BUILD: "1",
 }
 ```
 
@@ -597,8 +597,8 @@ Expected: FAIL，runner 尚不存在。
 
 runner 顺序固定为：
 
-1. 执行 `pnpm --filter @zcode/e2e-report build:node`
-2. 执行 `pnpm --filter @zcode/desktop build:no-runtime-assets`
+1. 执行 `pnpm --filter @codez/e2e-report build:node`
+2. 执行 `pnpm --filter @codez/desktop build:no-runtime-assets`
 3. 执行 `node scripts/build-desktop-agent-cli.mjs`
 4. 并行启动两个 `wdio run wdio.conf.ts --shard=x/2`
 5. 等待两个子进程
@@ -616,7 +616,7 @@ runner 顺序固定为：
 根 `package.json`：
 
 ```json
-"test:e2e:windows:sharded": "pnpm --filter @zcode/desktop test:e2e:windows:sharded"
+"test:e2e:windows:sharded": "pnpm --filter @codez/desktop test:e2e:windows:sharded"
 ```
 
 - [ ] **Step 5: 运行 runner 单测**
@@ -692,25 +692,25 @@ manifest 原因写明：`55s` replay 用于证明超过历史 `45s` timeout 后�
 ./test/e2e/container-boot.test.ts
 ```
 
-健康门负责完成 fresh build；主 suite 设置 `ZCODE_E2E_SKIP_BUILD=1`。健康门失败时直接退出，不派发后续 conversation spec。
+健康门负责完成 fresh build；主 suite 设置 `CODEZ_E2E_SKIP_BUILD=1`。健康门失败时直接退出，不派发后续 conversation spec。
 
 PowerShell 中保存主 artifact，再给健康门使用独立目录：
 
 ```powershell
-$mainArtifactDir = $env:ZCODE_E2E_ARTIFACT_DIR
-$mainRunId = $env:ZCODE_E2E_RUN_ID
-$mainSpecs = $env:ZCODE_E2E_SPEC
+$mainArtifactDir = $env:CODEZ_E2E_ARTIFACT_DIR
+$mainRunId = $env:CODEZ_E2E_RUN_ID
+$mainSpecs = $env:CODEZ_E2E_SPEC
 
-$env:ZCODE_E2E_ARTIFACT_DIR = "$mainArtifactDir-preflight"
-$env:ZCODE_E2E_RUN_ID = "$mainRunId-preflight"
-$env:ZCODE_E2E_SPEC = './test/e2e/container-boot.test.ts'
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts
+$env:CODEZ_E2E_ARTIFACT_DIR = "$mainArtifactDir-preflight"
+$env:CODEZ_E2E_RUN_ID = "$mainRunId-preflight"
+$env:CODEZ_E2E_SPEC = './test/e2e/container-boot.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-$env:ZCODE_E2E_ARTIFACT_DIR = $mainArtifactDir
-$env:ZCODE_E2E_RUN_ID = $mainRunId
-$env:ZCODE_E2E_SPEC = $mainSpecs
-$env:ZCODE_E2E_SKIP_BUILD = '1'
+$env:CODEZ_E2E_ARTIFACT_DIR = $mainArtifactDir
+$env:CODEZ_E2E_RUN_ID = $mainRunId
+$env:CODEZ_E2E_SPEC = $mainSpecs
+$env:CODEZ_E2E_SKIP_BUILD = '1'
 ```
 
 - [ ] **Step 5: 主 shard 完成后执行预算脚本**
@@ -718,7 +718,7 @@ $env:ZCODE_E2E_SKIP_BUILD = '1'
 PowerShell:
 
 ```powershell
-node packages/desktop/scripts/check-e2e-duration-budget.mjs "$env:ZCODE_E2E_ARTIFACT_DIR\summary.json"
+node packages/desktop/scripts/check-e2e-duration-budget.mjs "$env:CODEZ_E2E_ARTIFACT_DIR\summary.json"
 ```
 
 Expected: summary 完整、普通 case P95 和 teardown P50 在预算内；slow-time-boundary 单独报告。
@@ -747,7 +747,7 @@ git commit -m "ci(desktop): add windows e2e runtime budgets"
 
 - [x] **Step 1: 执行机械检查**
 
-Run: `pnpm --filter @zcode/desktop typecheck:e2e`
+Run: `pnpm --filter @codez/desktop typecheck:e2e`
 
 Expected: PASS。
 
@@ -859,7 +859,7 @@ run id，保证四个 job 的 summary、network capture 和失败证据互不覆
 仅为该 job 的 `parallel` 数量，不改变 conversation-session 测试合同。
 
 分片后的 summary 覆盖门禁必须使用与 WDIO 9.27 相同的有序分配，不能让单个 summary 继续对照
-完整 `ZCODE_E2E_SPEC`。预检仍展开完整 glob，运行后则按配置中的 glob 顺序、每个 glob 内排序，
+完整 `CODEZ_E2E_SPEC`。预检仍展开完整 glob，运行后则按配置中的 glob 顺序、每个 glob 内排序，
 再使用 `specsPerShard = max(round(totalSpecs / shardTotal), 1)` 和连续 `slice` 得到当前 shard 的
 精确期望集合：
 

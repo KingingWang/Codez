@@ -9,7 +9,7 @@
 
 ## 背景
 
-zcode app 当前有一套逻辑：当某个 bash/shell 工具调用运行时间超过阈值（30 秒）时，会在聊天辅助面板区显示一个「运行中 N 个终端」面板（`LongRunningToolCallPanel`），列出长时间运行的 shell 命令并提供「强制结束任务」按钮。该显示完全依据 tool 的 `startedAt` 与当前时间之差判断。
+codez app 当前有一套逻辑：当某个 bash/shell 工具调用运行时间超过阈值（30 秒）时，会在聊天辅助面板区显示一个「运行中 N 个终端」面板（`LongRunningToolCallPanel`），列出长时间运行的 shell 命令并提供「强制结束任务」按钮。该显示完全依据 tool 的 `startedAt` 与当前时间之差判断。
 
 需求：删除这个基于 tool 时间判断的「运行中终端」面板。
 

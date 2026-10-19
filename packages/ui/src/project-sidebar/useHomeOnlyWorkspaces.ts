@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { WebRemoteControlWorkspaceTarget } from "@zcode/shared";
+import type { WebRemoteControlWorkspaceTarget } from "@codez/shared";
 import { getErrorMessage } from "@/lib/errorMessage.js";
 import { logger } from "@/logger.js";
 import type { WebRemoteControlWorkspaceSwitcherApi } from "@/root/types.js";

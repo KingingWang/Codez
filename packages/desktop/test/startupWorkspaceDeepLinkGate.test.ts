@@ -143,11 +143,11 @@ describe("startup workspace deep link gate", () => {
 });
 
 function createTempWorkspace(): string {
-  const dir = mkdtempSync(join(tmpdir(), "zcode-startup-deep-link-"));
+  const dir = mkdtempSync(join(tmpdir(), "codez-startup-deep-link-"));
   tempDirs.push(dir);
   return dir;
 }
 
 function buildWorkspaceOpenUrl(workspacePath: string): string {
-  return `zcode://workspace/open?path=${encodeURIComponent(workspacePath)}`;
+  return `codez://workspace/open?path=${encodeURIComponent(workspacePath)}`;
 }

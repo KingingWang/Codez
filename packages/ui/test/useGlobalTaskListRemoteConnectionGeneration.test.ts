@@ -1,17 +1,17 @@
 // @vitest-environment jsdom
 import { createElement, type ReactNode } from "react";
 import { renderHook, waitFor } from "@testing-library/react";
-import { Emitter } from "@zcode/rpc";
+import { Emitter } from "@codez/rpc";
 import type {
   IServiceAccessor,
   IWindowControllerService,
   WindowHostControllerFrame,
-} from "@zcode/services";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+} from "@codez/services";
+import type { CodezTaskMeta } from "@codez/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { useGlobalTaskList } from "@/hooks/useGlobalTaskList.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 
 const REMOTE_IDENTITY = "remote:wsl:default:root:/root";
@@ -28,7 +28,7 @@ function remoteTab(remoteSessionId?: string): WorkspaceTabState {
   } as WorkspaceTabState;
 }
 
-function remoteTask(): ZCodeTaskMeta {
+function remoteTask(): CodezTaskMeta {
   return {
     taskId: "task-before-connect",
     traceId: "trace-task-before-connect",
@@ -43,7 +43,7 @@ function remoteTask(): ZCodeTaskMeta {
 
 describe("useGlobalTaskList remote connection generation", () => {
   afterEach(() => {
-    useZCodeSessionStore.setState({ workspaces: {} });
+    useCodezSessionStore.setState({ workspaces: {} });
   });
 
   it("同一 WSL workspace 从断开占位变为在线 session 后重新查询 Controller", async () => {

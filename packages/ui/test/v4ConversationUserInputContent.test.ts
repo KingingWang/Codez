@@ -120,7 +120,7 @@ describe("V4 user input mention rendering", () => {
 
   it("renders skill markdown as a structured label without exposing its path", () => {
     const skillPath =
-      "/Users/dev/.zcode/cli/plugins/cache/zcode-plugins-official/cloudbase-skills/0.1.0/skills/cloudbase/references/ai-model-nodejs/SKILL.md";
+      "/Users/dev/.codez/cli/plugins/cache/zcode-plugins-official/cloudbase-skills/0.1.0/skills/cloudbase/references/ai-model-nodejs/SKILL.md";
     const html = renderToStaticMarkup(
       createElement(ConversationUserInputContent, {
         text: `[$ai-model-nodejs](${skillPath}) 111`,

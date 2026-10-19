@@ -84,7 +84,7 @@ describe("redactArmsEventBatch - exception", () => {
         type: "error",
         source: "uncaughtException",
         message: "boom",
-        file: "file:///C:/Users/erin/AppData/Local/Programs/ZCode/resources/app.asar/dist/renderer/assets/index-9f3a.js",
+        file: "file:///C:/Users/erin/AppData/Local/Programs/Codez/resources/app.asar/dist/renderer/assets/index-9f3a.js",
         line: 1,
         column: 2345,
       },
@@ -106,7 +106,7 @@ describe("redactArmsEventBatch - exception", () => {
   });
 
   it("不改写原生 crashReporter dump 事件的 binary_images 判定字段", () => {
-    const binaryImages = [{ name: "zcode" }];
+    const binaryImages = [{ name: "codez" }];
     const [event] = redactArmsEventBatch([
       {
         event_type: "exception",
@@ -162,7 +162,7 @@ describe("redactArmsEventBatch - api / resource", () => {
         event_type: "resource",
         type: "api",
         url: "https://zcode.z.ai/api/v1/ping",
-        message: "connect ECONNREFUSED for /Users/erin/.zcode/socket",
+        message: "connect ECONNREFUSED for /Users/erin/.codez/socket",
       },
     ]);
     expect(event!.message).not.toContain("erin");

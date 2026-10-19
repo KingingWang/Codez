@@ -2,7 +2,7 @@
 
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ConversationOpenTiming, ConversationSnapshot } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationOpenTiming, ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
 import type { SessionOpenRendererTiming } from "@/v4/conversationProjectionStore.js";
 import {
   clearSessionOpenArmsReporterForTest,

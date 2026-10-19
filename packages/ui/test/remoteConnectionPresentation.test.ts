@@ -124,7 +124,7 @@ it.each([
 });
 
 import { classifyRemoteConnectionError } from "@/lib/remoteConnectionPresentation.js";
-import { PUBLIC_ZCODE_ERROR_CODES } from "@zcode/shared";
+import { PUBLIC_CODEZ_ERROR_CODES } from "@codez/shared";
 
 it.each([
   ["remote-authentication-failed", "authentication", "edit-auth"],
@@ -146,7 +146,7 @@ it.each([
     primaryAction,
   });
 });
-it.each(PUBLIC_ZCODE_ERROR_CODES)("公开错误码 %s 有明确映射", (errorCode) => {
+it.each(PUBLIC_CODEZ_ERROR_CODES)("公开错误码 %s 有明确映射", (errorCode) => {
   expect(classifyRemoteConnectionError({ errorCode }).category).not.toBe("unrecognized");
 });
 it.each([undefined, "", "future-error"])("未知错误 %s 安全兜底", (errorCode) => {

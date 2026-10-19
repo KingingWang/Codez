@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import type { BotsStateFile } from "@zcode/shared";
+import type { BotsStateFile } from "@codez/shared";
 import {
   createBotsServiceHarness,
   createFeishuCallback,
@@ -49,13 +49,13 @@ describe("BOT-E2E-DT-01 deleted task recovery", () => {
       },
     });
     let deletionReads = 0;
-    h.zcodeTaskService.listDeletedTaskIds = async (params: unknown) => {
+    h.codezTaskService.listDeletedTaskIds = async (params: unknown) => {
       expect(params).toEqual({ workspacePath, workspaceIdentity: undefined });
       deletionReads += 1;
       return ["task-deleted"];
     };
     let resumeCalls = 0;
-    h.zcodeTaskService.resumeTask = async () => {
+    h.codezTaskService.resumeTask = async () => {
       resumeCalls += 1;
       throw new Error("deleted task must not resume");
     };

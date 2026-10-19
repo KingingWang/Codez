@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make ZCode Bash read-only permission classification conservative and keep it independent from cwd persistence.
+**Goal:** Make Codez Bash read-only permission classification conservative and keep it independent from cwd persistence.
 
 **Architecture:** Keep using `unbash` for AST parsing, then apply a conservative safety layer over parsed simple commands, redirects, assignments, and argv. Bash read-only classification may grant plan-mode permission and concurrency safety, but it must not decide whether a successful Bash call persists cwd.
 
-**Tech Stack:** TypeScript, Vitest, `unbash`, `@zcode/core` permission service, Bash tool handler.
+**Tech Stack:** TypeScript, Vitest, `unbash`, `@codez/core` permission service, Bash tool handler.
 
 ## Global Constraints
 
@@ -34,14 +34,14 @@
 
 ### Task 1: Parser Surface
 
-- [x] Extend `apps/zcode-cli/packages/core/src/tool/handlers/bash-command-parser.ts` so each `BashCommandInvocation` exposes normalized redirects and assignment names, not just boolean flags.
+- [x] Extend `apps/codez-cli/packages/core/src/tool/handlers/bash-command-parser.ts` so each `BashCommandInvocation` exposes normalized redirects and assignment names, not just boolean flags.
 - [x] Keep dynamic word detection conservative for command substitution, process substitution, parameter expansion, arithmetic expansion, brace expansion, and extended glob.
 - [x] Preserve parse-error and unsupported-node rejection.
 
 ### Task 2: Readonly Safety Policy
 
 - [x] Update the Bash readonly policy with conservative command sets, safe flag tables, wrapper stripping, redirect validation, env assignment validation, and `find`/git guards.
-- [x] Keep `apps/zcode-cli/packages/core/src/tool/handlers/bash-readonly-policy.ts` as the small public entrypoint.
+- [x] Keep `apps/codez-cli/packages/core/src/tool/handlers/bash-readonly-policy.ts` as the small public entrypoint.
 - [x] Split policy internals by responsibility:
   - `bash-readonly-policy-types.ts`: shared policy types.
   - `bash-readonly-policy-flags.ts`: safe flag/value tables.
@@ -53,27 +53,27 @@
 
 ### Task 3: Runtime Semantics
 
-- [x] Update `apps/zcode-cli/packages/core/src/tool/handlers/bash-semantics.ts` so `isRuntimeReadOnlyBashCommand()` checks all parsed simple commands using the readonly policy.
+- [x] Update `apps/codez-cli/packages/core/src/tool/handlers/bash-semantics.ts` so `isRuntimeReadOnlyBashCommand()` checks all parsed simple commands using the readonly policy.
 - [x] Make `isBashReadOnlyCommand()` and concurrency safety share the same safety contract.
 - [x] Remove any cwd behavior that depends on read-only classification.
 
 ### Task 4: Handler Cwd Persistence
 
-- [x] Update `apps/zcode-cli/packages/core/src/tool/handlers/bash.ts` so successful foreground main-thread Bash always calls `decideBashCwdPolicy(...)`, including commands that were classified as read-only.
+- [x] Update `apps/codez-cli/packages/core/src/tool/handlers/bash.ts` so successful foreground main-thread Bash always calls `decideBashCwdPolicy(...)`, including commands that were classified as read-only.
 - [x] Preserve existing subagent/non-main protection through `runtimeScope`.
 
 ### Task 5: Tests and Verification
 
-- [x] Add failing tests in `apps/zcode-cli/packages/core/tests/bash-permission.test.ts` for safe read/search/list commands, safe redirects, wrapper stripping, denied dynamic/assignment/write cases, denied `cd && git`, and denied write redirects.
-- [x] Add failing tests in `apps/zcode-cli/packages/core/tests/bash-handler.test.ts` proving read-only classification does not suppress main-thread cwd persistence.
+- [x] Add failing tests in `apps/codez-cli/packages/core/tests/bash-permission.test.ts` for safe read/search/list commands, safe redirects, wrapper stripping, denied dynamic/assignment/write cases, denied `cd && git`, and denied write redirects.
+- [x] Add failing tests in `apps/codez-cli/packages/core/tests/bash-handler.test.ts` proving read-only classification does not suppress main-thread cwd persistence.
 - [x] Run focused Vitest files first.
-- [x] Run `pnpm --filter @zcode/core typecheck`.
+- [x] Run `pnpm --filter @codez/core typecheck`.
 - [x] Run root `pnpm lint`; note unrelated failures if present.
 
 ## Verification Notes
 
-- `pnpm --filter @zcode/core exec vitest run tests/bash-permission.test.ts tests/bash-handler.test.ts` passed.
-- `pnpm --filter @zcode/core typecheck` passed.
+- `pnpm --filter @codez/core exec vitest run tests/bash-permission.test.ts tests/bash-handler.test.ts` passed.
+- `pnpm --filter @codez/core typecheck` passed.
 - `oxfmt --check` on touched Bash files and this plan passed.
 - `pnpm lint` passed with existing warnings only.
 - `pnpm typecheck` still fails in `packages/desktop/test/e2e/reporting/e2e-ui-coverage.ts` because the existing Istanbul packages lack local declarations and several callback parameters are implicit `any`.

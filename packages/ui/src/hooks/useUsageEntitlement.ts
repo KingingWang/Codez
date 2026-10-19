@@ -2,13 +2,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   UsageEntitlementSnapshot,
-  ZCodeAccountAccess,
-  ZCodeProviderAccountAccess,
-} from "@zcode/shared";
-import type { IUsageStatsService } from "@zcode/services";
+  CodezAccountAccess,
+  CodezProviderAccountAccess,
+} from "@codez/shared";
+import type { IUsageStatsService } from "@codez/services";
 import { useOptionalBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useStableAccountAccess } from "@/hooks/useStableAccountAccess.js";
-import { useZCodeStoreWithDefault } from "@/store/StoreProvider.js";
+import { useCodezStoreWithDefault } from "@/store/StoreProvider.js";
 import { logger } from "@/logger.js";
 import {
   readCachedUsageEntitlementSnapshot,
@@ -137,7 +137,7 @@ export interface UseUsageEntitlementOptions {
   enabled?: boolean;
   includeSubscription?: boolean;
   preferredProviderId?: string;
-  accountAccess?: ZCodeProviderAccountAccess | ZCodeAccountAccess;
+  accountAccess?: CodezProviderAccountAccess | CodezAccountAccess;
   allowDisabledPreferredProvider?: boolean;
   requirePreferredProvider?: boolean;
   allowEnvApiKey?: boolean;
@@ -168,7 +168,7 @@ export function useUsageEntitlementWithService(
   const allowDisabledPreferredProvider = options.allowDisabledPreferredProvider === true;
   const requirePreferredProvider = options.requirePreferredProvider === true;
   const allowEnvApiKey = options.allowEnvApiKey;
-  const authScope = useZCodeStoreWithDefault(
+  const authScope = useCodezStoreWithDefault(
     (store) => (store.user ? `${store.user.id}:${store.authSessionSeq}` : "signed-out"),
     "unscoped",
   );

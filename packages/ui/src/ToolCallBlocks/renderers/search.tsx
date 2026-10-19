@@ -1,6 +1,6 @@
 import { SearchIcon } from "lucide-react";
 import { useMemo } from "react";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { ToolSnapshotFieldNotice } from "@/ToolCallBlocks/ToolSnapshotFieldNotice.js";
 import { ToolLayout } from "../ToolLayout.js";
 import type { ToolCallBlockRenderContext } from "../shared.js";
@@ -87,7 +87,7 @@ export function getSearchPrimaryText(intl: IntlLike, input: unknown): string {
 }
 
 export function SearchToolCallBlock(context: ToolCallBlockRenderContext) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   return (
     <SearchToolCallLayout
       {...context}
@@ -97,7 +97,7 @@ export function SearchToolCallBlock(context: ToolCallBlockRenderContext) {
 }
 
 export function ToolSearchToolCallBlock(context: ToolCallBlockRenderContext) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { input } = context.toolCallNode.toolCall;
   const query = isPlainRecord(input) && typeof input.query === "string" ? input.query.trim() : "";
   const selection = /^select:(.+)$/i.exec(query);
@@ -124,7 +124,7 @@ export function ToolSearchToolCallBlock(context: ToolCallBlockRenderContext) {
 function SearchToolCallLayout(
   context: ToolCallBlockRenderContext & { searchPrimaryText: string; hideSnapshotNotice?: boolean },
 ) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { toolCallNode, isRunning, statusLabel, errorText } = context;
   const { toolCall } = toolCallNode;
   const { searchPrimaryText } = context;

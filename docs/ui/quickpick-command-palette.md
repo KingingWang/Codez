@@ -1,6 +1,6 @@
 # Quickpick Command Palette
 
-ZCode exposes a workspace-level command center from `Cmd/Ctrl+K` and the compatibility shortcut `Cmd/Ctrl+Shift+P`.
+Codez exposes a workspace-level command center from `Cmd/Ctrl+K` and the compatibility shortcut `Cmd/Ctrl+Shift+P`.
 `Cmd/Ctrl+P` and `Cmd/Ctrl+G` no longer open standalone file or conversation search dialogs; their command entries route back into the command center so search has one modal surface.
 Workspace-level shortcuts are handled globally even when focus is inside the composer or another text input, so command access remains keyboard-first while typing.
 

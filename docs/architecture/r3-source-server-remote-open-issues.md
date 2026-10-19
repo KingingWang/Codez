@@ -76,7 +76,7 @@
 - 严重度：P0
 - 置信度：已确认
 - 状态：待验证
-- 现象：新构建链只生成 `source-server-release.json` 和四个 `zcode-server-*.tar.gz`，正式 `release:validate` 仍要求 `manifest-*.json` 与 `components/**`。
+- 现象：新构建链只生成 `source-server-release.json` 和四个 `codez-server-*.tar.gz`，正式 `release:validate` 仍要求 `manifest-*.json` 与 `components/**`。
 - 影响：干净发布目录会稳定失败；脏目录可能用旧产物通过校验，却没有验证本轮真正发布的 Source Server archive。
 - 证据：
   - [`.gitlab/ci/30-build.yml`](../../.gitlab/ci/30-build.yml) 的 `build:remote:assets` 只收集 descriptor 和四个 archive；
@@ -90,8 +90,8 @@
 - 状态：待验证
 - 修复提交：`feat/multi-device-remote-3-real-ssh-feature` 上包含本记录的提交（`fix(release): validate Source Server descriptor and archives`）
 - 根因：构建/上传两端已切换到 descriptor+archive 合同，`validateRemoteAssets()` 未同步，且 `build:remote:assets` 切换时删掉了共享目录旧产物清理。复现：用真实脚本对"6 平台 + descriptor + 4 archive"目录校验抛 `missing remote manifest: manifest-darwin-arm64.json`；目录残留旧 manifest 时把 archive 改坏、甚至删掉 descriptor 都能通过。
-- 修复：`validateRemoteAssets()` 改为 `validateSourceServerRelease()`，校验 descriptor 的 `schemaVersion`、版本、四个 target、`fileName`、`version`、`urls`（必须含指向 archive 的安全相对路径）、`sizeBytes`、`sha256` 与真实 archive，并 fail-closed 拒绝残留 `manifest-*.json` / `components/` 及未被引用的 `zcode-server-*.tar.gz`；`build:remote:assets` 在复制前清掉自己负责的根目录产物；`docs/desktop-ci-cd.md` validate 描述同步。
-- 自动化验证：`packages/desktop/test/validateReleaseArtifacts.test.ts` 重写为新布局（含 target 常量与 `@zcode/shared` 的 `SOURCE_SERVER_RELEASE_TARGETS` 对接断言）；`gitlabCiBuildGraph.test.ts` 新增“CI 收集 target 集合 == validator 期望集合、复制前有清理”断言。
+- 修复：`validateRemoteAssets()` 改为 `validateSourceServerRelease()`，校验 descriptor 的 `schemaVersion`、版本、四个 target、`fileName`、`version`、`urls`（必须含指向 archive 的安全相对路径）、`sizeBytes`、`sha256` 与真实 archive，并 fail-closed 拒绝残留 `manifest-*.json` / `components/` 及未被引用的 `codez-server-*.tar.gz`；`build:remote:assets` 在复制前清掉自己负责的根目录产物；`docs/desktop-ci-cd.md` validate 描述同步。
+- 自动化验证：`packages/desktop/test/validateReleaseArtifacts.test.ts` 重写为新布局（含 target 常量与 `@codez/shared` 的 `SOURCE_SERVER_RELEASE_TARGETS` 对接断言）；`gitlabCiBuildGraph.test.ts` 新增“CI 收集 target 集合 == validator 期望集合、复制前有清理”断言。
 - 运行时验证：未在真实 tag / `ci*` 管道上运行，需下一次 `CI_RELEASE_BRANCH=1` 演练确认后关闭。
 - 剩余风险：`scripts/upload-oss.sh` 仍保留 `manifest-*.json` 特判分支（死代码，未清理）；validator 拒绝 legacy 残留后，若 runner 共享目录被人工放入旧文件会直接阻断 validate，需清理目录后重试。
 
@@ -112,7 +112,7 @@
   - 已新增共享 strict payload schema，并由 Main、Preload、Renderer 共同消费；Preload 不再手工白名单重建 payload；
   - focused tests 已覆盖 Main payload、真实 Preload listener → Renderer parser 透传、缺失 scope fail-closed、unbound session 直接绑定 conversation，以及 project → conversation 使用独立 logical session；
   - 真实 SSH Electron pending case `conversation-session-ssh-remote-project-conversation-scope.test.ts` 在 `linux-amd64-dev` 通过，证明 project/conversation 使用不同 `remoteSessionId` 且复用同一 Window Host；artifact：`desktop-e2e-20260828023242575-p87386-071a9e0ea38732ee`。
-  - 当前 HEAD `86f5701e10` 再次通过真实 SSH 运行时复验：`dev@localhost:2222` 握手到 Source `32a10b89-141c-469b-aa97-850f41ab7deb`；project `/home/dev` 返回 `remoteSessionId=58423030-60c1-4dda-b21e-3c5254b7d08a`，conversation `/home/dev/.zcode/workspace/default` 返回 `remoteSessionId=a1188548-5cfe-4162-ae74-b4cf1315dd6f`。两者 stable identity 各自保留，conversation bind 明确返回 `workspacePurpose=conversation`，连接请求均完成 Renderer attachment ready ACK。
+  - 当前 HEAD `86f5701e10` 再次通过真实 SSH 运行时复验：`dev@localhost:2222` 握手到 Source `32a10b89-141c-469b-aa97-850f41ab7deb`；project `/home/dev` 返回 `remoteSessionId=58423030-60c1-4dda-b21e-3c5254b7d08a`，conversation `/home/dev/.codez/workspace/default` 返回 `remoteSessionId=a1188548-5cfe-4162-ae74-b4cf1315dd6f`。两者 stable identity 各自保留，conversation bind 明确返回 `workspacePurpose=conversation`，连接请求均完成 Renderer attachment ready ACK。
 
 ### R3-ISSUE-003：手机 attachment 可访问 Terminal RPC
 
@@ -135,7 +135,7 @@
 - 根因：`disconnect()` 把 online 物理 owner 误当成 Source 生命周期是否存在的判据；意外断线已经摘除该 owner，因此显式断开只清理恢复 timer 后提前返回。已经启动的恢复 flight 也没有 Source 级取消 owner，迟到成功仍可重新发布 online。
 - 修复：显式断开先捕获 Source 的全部 Profile，再清理恢复状态并统一发布 offline；已识别 Source 的 connect flight 持有可取消 owner，disconnect 会使旧 flight 失效，异步边界在发布状态前检查取消信号，迟到连接只释放、不发布 online 或 reconnect event。
 - 验证：Manager focused tests 24 项通过，覆盖多 Profile retrying-disconnect、取消全部 timer/probe 和 in-flight 迟到成功；Registry、Main、Renderer 三条终态 focused tests 通过；真实定时器最小复现保持 offline、无恢复次数且没有新增连接；全量 unit 1496 个文件、13247 项通过；`pnpm typecheck`、`pnpm lint` 与 `pnpm verify:pre-push` 通过。
-- 当前 HEAD `86f5701e10` 通过真实 SSH/进程故障注入复验：停止专用 `zcode-ssh-linux-amd64` 容器后，Source 从“已连接”进入“连接中”；在 mounted `SourceServerManagementPanel` 使用的真实 `ISourceServerManagementService` 上调用 `disconnectSource(sourceServerId)`，Host 日志记录 `source-server-management.disconnectSource OK (3.1ms)`，状态立即变为“未连接”。恢复容器并等待 6 秒后仍保持“未连接”，没有迟到 reconnect 复活；测试后容器、daemon 与 Desktop 均已恢复在线。
+- 当前 HEAD `86f5701e10` 通过真实 SSH/进程故障注入复验：停止专用 `codez-ssh-linux-amd64` 容器后，Source 从“已连接”进入“连接中”；在 mounted `SourceServerManagementPanel` 使用的真实 `ISourceServerManagementService` 上调用 `disconnectSource(sourceServerId)`，Host 日志记录 `source-server-management.disconnectSource OK (3.1ms)`，状态立即变为“未连接”。恢复容器并等待 6 秒后仍保持“未连接”，没有迟到 reconnect 复活；测试后容器、daemon 与 Desktop 均已恢复在线。
 - 交互边界：设置页和 Sidebar 当前只在 aggregated status 为 online 时展示“断开”，retrying/connecting 时没有可点击的用户入口。因此本轮证明的是生产 Renderer → MessagePort RPC → Host → Manager 的运行时合同，不是纯 UI 点击路径；若产品要求用户在恢复中主动取消，需要另补交互入口或调整按钮可见性。
 
 ### R3-ISSUE-005：同一 Source 的不同 Profile 可能产生两个 logical owner
@@ -177,7 +177,7 @@
 - 根因：retry 与 offline probe 各自维护终止条件，且只硬编码识别 `SourceServerUpgradeRequiredError`；`connectOnce()` 已发布的 install/identity/non-retryable 终态随后又被调度器覆盖。Host 同时只转发 `retrying/offline`，pending 状态无法让 logical recovery 收口。
 - 修复：Manager 在更新断连、2/4/8 秒 retry 和 2 分钟 probe 三个入口统一按公开错误码、原始 `retryable` 与 recovery owner 状态终止自动路径；owner 保留 actionable 状态，sibling Profile 收口为 terminal offline。Host 复用纯 recovery policy，把 pending 与 `failed + retryable:false` 转为既有 `recoverable:false` close，不修改 Registry、relay、main 或 realtime delivery 合同。
 - 验证：Manager、recovery policy、Window Registry 与 Directory 四个 focused test 文件共 110 项通过，覆盖 install/upgrade/identity、普通 `retryable:false`、offline probe、更新断连、同 Source 多 Profile、瞬态预算和手动恢复；fake timer 运行时回放跨过 4/8 秒及 2 分钟边界后没有新增 probe。`pnpm typecheck`、`pnpm lint` 以及新增 policy/test 与本 issue 文档的 `oxfmt --check` 通过；lint 仅报告仓库既有 warning。
-- 实机验证：当前修复提交 `9b56031ac2` 执行 `pnpm bootstrap:with-remote` 与真实 Electron `pnpm dev:desktop`，通过 CDP 9229 将 SSH `linux-amd64-dev`（Ubuntu x64、用户 `dev`）连接到 Source `32a10b89-141c-469b-aa97-850f41ab7deb`。15:49:40 UTC 临时移走 `/home/dev/.zcode/server/bin/zcode` 并由备份 launcher 正常停止 daemon；约 2 秒后 UI 从首次 recovery 直接收口为“未连接 / 远端已卸载 ZCode Server”，3 个项目历史保留。176 秒观察窗口完整跨过 2/4/8 秒和 2 分钟 probe 边界，UI 未进入 2/3、3/3 或 offline probe，Host 在首次 recoverable close 后只再发布一次 terminal close，日志没有新的 connect、remote-connected、upload 或 recovery-budget 记录，远端始终保持 `stopped`。恢复 launcher 后等待 8 秒仍未自动复活；用户显式点击“重新安装并连接”后于 15:55:03 恢复 online，Desktop 退出后远端保持 3.9.1 `ready`，临时备份已清除。截图证据位于 `packages/desktop/.e2e-artifacts/r3-issue-007-live-20260828-9b56031a/`。
+- 实机验证：当前修复提交 `9b56031ac2` 执行 `pnpm bootstrap:with-remote` 与真实 Electron `pnpm dev:desktop`，通过 CDP 9229 将 SSH `linux-amd64-dev`（Ubuntu x64、用户 `dev`）连接到 Source `32a10b89-141c-469b-aa97-850f41ab7deb`。15:49:40 UTC 临时移走 `/home/dev/.codez/server/bin/codez` 并由备份 launcher 正常停止 daemon；约 2 秒后 UI 从首次 recovery 直接收口为“未连接 / 远端已卸载 Codez Server”，3 个项目历史保留。176 秒观察窗口完整跨过 2/4/8 秒和 2 分钟 probe 边界，UI 未进入 2/3、3/3 或 offline probe，Host 在首次 recoverable close 后只再发布一次 terminal close，日志没有新的 connect、remote-connected、upload 或 recovery-budget 记录，远端始终保持 `stopped`。恢复 launcher 后等待 8 秒仍未自动复活；用户显式点击“重新安装并连接”后于 15:55:03 恢复 online，Desktop 退出后远端保持 3.9.1 `ready`，临时备份已清除。截图证据位于 `packages/desktop/.e2e-artifacts/r3-issue-007-live-20260828-9b56031a/`。
 - 实机覆盖边界：本次确认 SSH install-required、Desktop continuous logical terminal 与显式恢复；identity-change、普通 `retryable:false` 和 Mobile replayable 仍由 focused state matrix 覆盖，未以修改共享 installation identity 或未建立的手机配对环境伪报实测。
 
 ### R3-ISSUE-008：启动自动重连偏好被完整 AppSettings schema 丢弃
@@ -238,7 +238,7 @@
   CDP 9229 将 SSH `linux-amd64-dev`（Ubuntu x64、`dev@localhost:2222`）连接到 Source
   `32a10b89-141c-469b-aa97-850f41ab7deb`，上传并运行 3.9.1 linux-x64 release。打开
   `/home/dev/r3-issue-011-a`、`/home/dev/r3-issue-011-b` 与 Source conversation 后，Host 稳定为
-  `connections=1, logicalSessions=3, attachments=4`。首次真实 `zcode restart --json` 后三条旧 session
+  `connections=1, logicalSessions=3, attachments=4`。首次真实 `codez restart --json` 后三条旧 session
   同时 fail-closed，并在约 2.6 秒内全部换代恢复。随后使用仅存在于本次实测构建、测试后已删除的一次性
   fault injection 拒绝 B 的首次 `onSessionReconnected`：A 从 `7b9f032a-...` 单次换代为
   `7f940331-...`，conversation 单次换代为 `d37b04dd-...`；B 保持旧 `eb878642-...`，未产生对外 ghost
@@ -264,7 +264,7 @@
 
 #### 决策记录 2026-09-13
 
-- 依据：Provider 重构合并（路线 A，Q3）接受明文 Personal Config；`modelProviderService`、`zcode.apiKeyCredentialKey` 加密镜像与 provider-sync 只读校验路径已全部删除，代码中不再有 `apiKeyCredentialKey` 引用。主规格 §8 已改为「设置页绑定本地 + Provisioning 单向下发」，不再要求 Provider store 无明文；原要求该门禁的发布测试方案已归档。
+- 依据：Provider 重构合并（路线 A，Q3）接受明文 Personal Config；`modelProviderService`、`codez.apiKeyCredentialKey` 加密镜像与 provider-sync 只读校验路径已全部删除，代码中不再有 `apiKeyCredentialKey` 引用。主规格 §8 已改为「设置页绑定本地 + Provisioning 单向下发」，不再要求 Provider store 无明文；原要求该门禁的发布测试方案已归档。
 - 结论：「规格与实现冲突」的两端都已不存在，按 `不修复` 关闭。`docs/model-provider-opencode-config.md` 中描述该镜像的小节同日删除。
 
 ### R3-ISSUE-013：首次 Directory 迁移失败可能遗留孤儿凭据
@@ -276,7 +276,7 @@
 - 根因：`migrateProfileTarget()` 在 Directory settings 提交前就把 legacy secret 复制到新 Profile key，`migrateLegacyRemoteEntries()` 却没有持有这些写入的 before state。settings 失败后初始化允许用新 `profileId` 重试，首代 key 因而永久失去引用；密码与私钥口令并行复制时，先失败的 Promise 还会让另一条迟到写越过 rollback。
 - 修复：首次迁移以整个 Directory 写入为凭据事务边界，记录每个目标 key 的旧值，任一凭据或 settings 写入失败都在返回前恢复本轮全部变更；密码与私钥口令改为顺序等待，禁止迟到 save。已有 `connectionProfiles` 作为提交权威时不再为被排除的临时 Profile 复制 secret。
 - 验证：新增 settings 失败后回滚并以新 Profile ID 重试、双凭据部分失败迟到写和未进入提交集的临时 Profile 三组回归；`sourceServerDirectory.test.ts` 38 项全部通过，`pnpm typecheck` 通过，`pnpm lint` 0 error（仅 38 个仓库既有 warning）。
-- 实机验证：提交 `8d25737576` 执行 `pnpm bootstrap:with-remote` 与 `pnpm dev:desktop`，通过 CDP 9229（`agent-browser` daemon 启动失败后按 Electron skill 回退 Playwright CDP）使用 SSH `linux-amd64-dev`（`dev@localhost:2222`、用户 `dev`）连接真实 Source `32a10b89-141c-469b-aa97-850f41ab7deb`，UI/Host 日志确认 `direct-tcpip 通道已建立`、远端 `ZCode v3.9.1`、握手成功与链路就绪。
+- 实机验证：提交 `8d25737576` 执行 `pnpm bootstrap:with-remote` 与 `pnpm dev:desktop`，通过 CDP 9229（`agent-browser` daemon 启动失败后按 Electron skill 回退 Playwright CDP）使用 SSH `linux-amd64-dev`（`dev@localhost:2222`、用户 `dev`）连接真实 Source `32a10b89-141c-469b-aa97-850f41ab7deb`，UI/Host 日志确认 `direct-tcpip 通道已建立`、远端 `Codez v3.9.1`、握手成功与链路就绪。
 - 隔离迁移回放：在独立 `/tmp` 数据目录预置一条 legacy SSH entry 和加密 legacy credential，首次 Desktop 启动用一次性 `ENOSPC` settings fault 命中 `setting.json`；Host 日志记录 `Source Server directory initialization failed`，此时 `migrationVersion=null`、Profile/history 均为 0，credentials 仅剩 legacy key。移除 fault 后重启同一 Desktop，最终 `migrationVersion=1`、Profile/history 引用同一 canonical Profile，credentials 仅有 legacy + canonical 两个 key 且解密值一致；真实 settings 中由连接验证临时创建的 Profile/Source 已通过 Directory API 清理恢复，隔离目录已移入 `/tmp/.Trash/`。
 
 ### R3-ISSUE-014：Release Resolver 下载缺少取消和 cache single-flight
@@ -297,8 +297,8 @@
 
 - 根因：controller handler 全部为 optional，生产只装配 `open-conversation`；Root 继续向 Sidebar、Settings、Dialog 和 tab lifecycle 暴露分散的连接、断开、项目打开、重连和关闭回调。
 - 修复：六类 handler 改为强类型必填，在 `useRemoteWorkspaceHistory` 内按 Source/attachment/persistence owner 完整装配单一 controller，并通过 Root provider 供 UI 使用；普通 Profile 连接统一携带 `open-conversation` completion intent。项目选择、设备断开、workspace 重连和 user-close 均先 dispatch，再进入既有 owner helper。
-- 验证：controller 全 intent/错误传播、Root production wiring、Settings disconnect 和 Sidebar 禁止直接 `disconnectSource` 的 focused tests 通过；全量 unit（1500 passed，1 skipped）、`pnpm typecheck` 与 `pnpm lint` 通过。`pnpm bootstrap:with-remote` 构建成功，`VITE_ZCODE_E2E_STORE_BRIDGE=1 pnpm dev:desktop` 启动成功并监听 CDP 9229。
-- 真实 SSH/CDP（2026-08-28）：使用 SSH alias `linux-amd64-dev`（`dev@localhost:2222`，密码由测试环境注入）连接真实设备，远端 `~/.zcode/server/current.json` 为 `3.9.1`，设备 `4fedce9b49f0`，Source Server 为 `32a10b89-141c-469b-aa97-850f41ab7deb`。设置页普通连接完成后自动打开 `/home/dev/.zcode/workspace/default` 的 `conversation` tab，`workspaceIdentity=remote:server:<sourceServerId>:/home/dev/.zcode/workspace/default`；断开后卡片由“已连接”变为“未连接”，远程 attachment/session 被释放；再次连接生成新的 `remoteSessionId` 并重新打开 conversation。随后从 conversation 选择 `/home/dev` 打开 project，project 与 conversation 使用不同 `remoteSessionId`；通过真实 tab close 触发 user-close 后 project 被移除且 conversation 保留。
+- 验证：controller 全 intent/错误传播、Root production wiring、Settings disconnect 和 Sidebar 禁止直接 `disconnectSource` 的 focused tests 通过；全量 unit（1500 passed，1 skipped）、`pnpm typecheck` 与 `pnpm lint` 通过。`pnpm bootstrap:with-remote` 构建成功，`VITE_CODEZ_E2E_STORE_BRIDGE=1 pnpm dev:desktop` 启动成功并监听 CDP 9229。
+- 真实 SSH/CDP（2026-08-28）：使用 SSH alias `linux-amd64-dev`（`dev@localhost:2222`，密码由测试环境注入）连接真实设备，远端 `~/.codez/server/current.json` 为 `3.9.1`，设备 `4fedce9b49f0`，Source Server 为 `32a10b89-141c-469b-aa97-850f41ab7deb`。设置页普通连接完成后自动打开 `/home/dev/.codez/workspace/default` 的 `conversation` tab，`workspaceIdentity=remote:server:<sourceServerId>:/home/dev/.codez/workspace/default`；断开后卡片由“已连接”变为“未连接”，远程 attachment/session 被释放；再次连接生成新的 `remoteSessionId` 并重新打开 conversation。随后从 conversation 选择 `/home/dev` 打开 project，project 与 conversation 使用不同 `remoteSessionId`；通过真实 tab close 触发 user-close 后 project 被移除且 conversation 保留。
 - 自动化 SSH E2E：`E2E_SSH_REMOTE_PROJECT_CONVERSATION_SCOPE` 1 项通过，报告 [`desktop-e2e-20260828-153721-524`](../../packages/desktop/.e2e-artifacts/desktop-e2e-20260828-153721-524/summary.md)。同轮执行的 pending-cancel 手工复核因代理 socket 在 30 秒断言窗口后约 1.5 秒才关闭而失败（`desktop-e2e-20260828-153846-870`）；该失败路径不涉及本 issue 的 controller 写入口变更，未将其计入 R3-ISSUE-015 关闭条件。
 
 ### R3-ISSUE-016：RemoteWorkspaceProjection 未完全接线且会误投影本地 tab
@@ -312,7 +312,7 @@
 - 根因：`buildRemoteWorkspaceProjection()` 使用全部 `input.tabs` 构建 `openWorkspaces`；本地 tab 没有 `remoteSessionId`，随后被 `stateForOpenWorkspace()` 误标为 `disconnected`。同时 Sidebar、Root 和 Source 管理面板没有完整消费 projection join 结果。
 - 修复：`openWorkspaces` 先按统一 remote-tab 判定过滤；`executionContexts` 保留全部 local/remote tab，并只为 remote context 关联 open workspace。Sidebar 合并为单次 projection 计算，Root 的 Source open-tab 集合及 Source 管理面板的设备 Profile/聚合状态改从 projection 读取；新增本地 tab 回归与生产接线测试，并将边界合同写入远程 workspace 规格。
 - 自动化验证：受影响的 6 个 UI 测试文件 56 项通过；全量单测 1500 个文件、13290 项通过（1 个文件 skipped、11 项 skipped）；`pnpm typecheck` 通过；`pnpm lint` 0 errors（保留 38 个既有 warning）。`pnpm verify:pre-push` 首轮因旧静态断言失败，修正该断言后等价全量 `pnpm test:unit` 已通过。
-- 运行时验证：`VITE_ZCODE_E2E_STORE_BRIDGE=1 pnpm dev:desktop` 成功完成 Desktop/Host 构建，Electron 监听 CDP 9229，Renderer 加载 ZCode 页面并显示本地与远程历史 workspace。已补做真实 local + SSH remote 混合 TabStore/Projection/Sidebar 复验，详见下方 SSH/CDP 记录。
+- 运行时验证：`VITE_CODEZ_E2E_STORE_BRIDGE=1 pnpm dev:desktop` 成功完成 Desktop/Host 构建，Electron 监听 CDP 9229，Renderer 加载 Codez 页面并显示本地与远程历史 workspace。已补做真实 local + SSH remote 混合 TabStore/Projection/Sidebar 复验，详见下方 SSH/CDP 记录。
 - 剩余风险：真实 attachment fact 仍未由该 projection 在所有入口注入，远程 workspace 的 ready/attaching 细节需继续由各 attachment 生命周期验证；该风险不会使 local tab 进入 `openWorkspaces`。手机 `/remote` relay 实机不在本次 SSH 环境内，沿用 focused mobile tests，属于独立跨端验证项。
 
 #### 真实 SSH/CDP 复验 2026-08-29
@@ -373,7 +373,7 @@
 
 #### 修复记录 2026-09-13
 
-- 已做：新增 `docs/remote/README.md` 作为远程主链阅读入口并在 AGENTS.md 登记；主规格 §1 状态改为「已实现（基线 `fad93b9e57`）」、§7.1 启动重连门禁字段改为 `lastOnlineAt`、新增 §8.4 设备管理合同、§9.1 并入控制端逐表盘点、§15 并入 Provider 合并遗留项；领域简化规格标注 Phase 0–4 已实现；`desktop-remote-session-renderer-reattach.md` 门禁描述改为「Host 设备级 7 天 + Renderer 不按 connected 历史过滤」；18 份过程 / 评审 / 实机记录文档移入 `docs/archive/remote-r3/`，全部入站链接（含 `.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml`）已改指归档路径；`r3-remote-ui-redesign.md` 删除 §11–§19 历史日志并标注原型未入库；`zcode-agent-remote-deployment.md`、`server-remote-workspace-connection.md` 加旧主链状态注记；coverage matrix 修正 SSH-P0-LIFE-03 的不存在 spec 引用。
+- 已做：新增 `docs/remote/README.md` 作为远程主链阅读入口并在 AGENTS.md 登记；主规格 §1 状态改为「已实现（基线 `fad93b9e57`）」、§7.1 启动重连门禁字段改为 `lastOnlineAt`、新增 §8.4 设备管理合同、§9.1 并入控制端逐表盘点、§15 并入 Provider 合并遗留项；领域简化规格标注 Phase 0–4 已实现；`desktop-remote-session-renderer-reattach.md` 门禁描述改为「Host 设备级 7 天 + Renderer 不按 connected 历史过滤」；18 份过程 / 评审 / 实机记录文档移入 `docs/archive/remote-r3/`，全部入站链接（含 `.agents/skills/feature-boundary-planner/references/codez-feature-graph.yaml`）已改指归档路径；`r3-remote-ui-redesign.md` 删除 §11–§19 历史日志并标注原型未入库；`codez-agent-remote-deployment.md`、`server-remote-workspace-connection.md` 加旧主链状态注记；coverage matrix 修正 SSH-P0-LIFE-03 的不存在 spec 引用。
 - 未做：统一「candidate SHA + 自动化结果 + 实机 artifact」的发布状态入口仍由本文与 `docs/testing/r3-remote-full-rerun-2026-09-10.md` 分担；R3-ISSUE-001 / 020 关闭后在本文补发布结论即可关闭本项。
 
 ### R3-ISSUE-020：历史实机记录不能证明当前 HEAD
@@ -408,9 +408,9 @@
 
 - 状态：已关闭
 - 根因：删除 legacy 资产链时，“构建并断言官方插件 MCP runtime”的责任没有落到新 staging 链任何一环。
-- 修复：`scripts/build-desktop-agent-cli.mjs` 的 MCP runtime 清单补入 `@zcode/android-emulator-plugin` 与 `@zcode/ios-simulator-plugin`，该脚本是桌面与 Source Server staging 共用的唯一构建入口；`stage.ts` 复制每个插件后新增 `assertOfficialPluginRuntime`，manifest 缺失或 `mcpServers` 引用的 `${ZCODE_PLUGIN_ROOT}/...` 文件不存在即抛错。R2 spec 新增“官方插件 MCP runtime 不变量”条目。
+- 修复：`scripts/build-desktop-agent-cli.mjs` 的 MCP runtime 清单补入 `@codez/android-emulator-plugin` 与 `@codez/ios-simulator-plugin`，该脚本是桌面与 Source Server staging 共用的唯一构建入口；`stage.ts` 复制每个插件后新增 `assertOfficialPluginRuntime`，manifest 缺失或 `mcpServers` 引用的 `${CODEZ_PLUGIN_ROOT}/...` 文件不存在即抛错。R2 spec 新增“官方插件 MCP runtime 不变量”条目。
 - 自动化验证：`packaging.test.ts` 新增 2 项 fail-closed 用例（缺 MCP 入口、缺 manifest），修复前失败、修复后通过；既有插件 staging 用例补断言 `dist/mcp/server.js` 被打包；`runtime-asset-scripts.test.ts` 清单断言同步。
-- 运行时验证：本地删除 `apps/zcode-cli/packages/{android-emulator,ios-simulator}-plugin/dist` 后执行 `pnpm --filter @zcode/server-cli stage --target linux-x64`，构建链实际重建两个插件，`zcode-server-linux-x64.tar.gz` 内四个 MCP 插件的 `runtime/packages/*/dist/mcp/server.js` 均存在，耗时约 1 分钟。未运行真实 CI `build:remote:assets`。
+- 运行时验证：本地删除 `apps/codez-cli/packages/{android-emulator,ios-simulator}-plugin/dist` 后执行 `pnpm --filter @codez/server-cli stage --target linux-x64`，构建链实际重建两个插件，`codez-server-linux-x64.tar.gz` 内四个 MCP 插件的 `runtime/packages/*/dist/mcp/server.js` 均存在，耗时约 1 分钟。未运行真实 CI `build:remote:assets`。
 - 剩余风险：`stageRelease` 现在会对所有被复制的 `*-plugin` 目录做校验，若未来新增声明 mcpServers 却不在构建清单中的官方插件，staging 会显式失败而非静默残缺，这是预期行为。
 
 ### R3-ISSUE-023：恢复态手动连接成功不发 reconnect，Registry 停在 recovering
@@ -430,7 +430,7 @@
 - 严重度：P0
 - 置信度：已确认
 - 状态：待验证
-- 现象：Windows 3.12.0（`0d926421`）连接 WSL Ubuntu，五步弹窗在「部署 ZCode Server」阶段报「远端服务器缺少 tar，无法解压 ZCode Source Server。请安装 tar 后重试。」；同一台机器用线上 3.12.1 旧主链连接正常。日志里 `[connect-remote] caught error` 之前没有任何部署日志，失败点是 `transportAdapter.installOrUpdate` 本地上传分支的 `detectRemoteTarTool` 预检；该预检要求远端退出码为 0，所以只能是「脚本成功但 `tar=` 为空」。
+- 现象：Windows 3.12.0（`0d926421`）连接 WSL Ubuntu，五步弹窗在「部署 Codez Server」阶段报「远端服务器缺少 tar，无法解压 Codez Source Server。请安装 tar 后重试。」；同一台机器用线上 3.12.1 旧主链连接正常。日志里 `[connect-remote] caught error` 之前没有任何部署日志，失败点是 `transportAdapter.installOrUpdate` 本地上传分支的 `detectRemoteTarTool` 预检；该预检要求远端退出码为 0，所以只能是「脚本成功但 `tar=` 为空」。
 - 根因：`WSLBackend.exec` / `execDirect` 以 `spawn("wsl.exe", ["-d", distro, "-u", user, "--", "bash", "-lc", command])` 启动。Node 对含空格/引号的参数加双引号并把内部双引号转义；wsl.exe 不带 `--exec` 时把 `--` 之后的原始命令行整段交给用户默认 shell 以 `-c` 执行（microsoft/WSL `WslClient.cpp` 非 exec 分支把整段 commandLineString 作为 argv[0]，经用户默认 shell 以 -c 执行）。外层 bash 解析这段双引号字串时先把 `"$tar_tool"` 展开成空串，内层 `bash -lc` 实际收到 `printf 'tar=%s\n' ""`，远端输出 `tar=`、退出码 0，预检判定缺少 tar。同一机制还让 `installOrUpdate` 的过期 staging 清理循环（`$candidate`、`${name##*-}`）与 `probeSourceServer` 的 `$status_pid` 存活检查在 WSL 上静默失效。旧主链只引用 `$HOME` 类环境变量（外层展开结果相同），部署锁（`77433f1616`）与 agent wrapper 写入又各自做了落盘绕行，所以从未暴露。
 - 证据：隔离探针用真实 `detectRemoteTarTool` + libuv `quote_cmd_arg` 规则 + `$SHELL -c <原始尾巴>` 稳定复现同一报错（stdout `tar=\n`、exit 0）；改为 `--exec` argv 直传或 SSH 后端的 `/bin/sh -c '…'` 包装均得到 `tar=tar`。现有 `remoteAssetPreflight.test.ts` 6 项全部通过，因为假后端直接回传正确文本，覆盖不到引号链路。
 
@@ -441,7 +441,7 @@
 - 根因：见上；责任边界是 `WSLBackend` 向 wsl.exe 交付命令的方式，不是 preflight 或错误文案。
 - 修复：`buildWslArgs` 的分隔符由 `--` 改为 `--exec`。wsl.exe 按 `CommandLineToArgvW` 解析 argv 后直接 exec `bash -lc <command>`，该解析与 Node 的加引号规则互逆，命令字节原样到达 bash；登录环境仍由显式的 `bash -lc` 提供。`exec`（部署、上传流）与 `execSimple` / `execDirect`（身份解析、`uname`、代理探测）同时生效；preflight、错误文案与部署锁/agent wrapper 的既有落盘路径不动。
 - 自动化验证：`packages/server/test/wslBackend.test.ts` 新增「exec 与 execSimple 都以 --exec 直传 argv，命令不经默认 shell 二次解析」，并把 3 处 `--` 参数期望改为 `--exec`；修复前 3 项失败、修复后 18 项通过。`wslProxy`、`remoteAssetPreflight`、`sourceServerTransportAdapter`、`remoteDeployLock`、`remoteAssetInstaller` 合计 6 文件 75 项通过；`tsc -b packages/server`、`pnpm architecture:check --changed`、oxlint、oxfmt 通过。隔离探针：真实 `buildWslArgs` → libuv 加引号 → `CommandLineToArgvW` 规则解析回 argv 后直接 exec，对 tar preflight、完整资源 preflight、Source Server probe、WSL 网关探测四条真实命令均字节一致回环，真实 `detectRemoteTarTool` 返回 `tar`，`probeSourceServer` 正常解析。
-- 运行时验证：未在真实 Windows/WSL 上运行。关闭条件：Windows 实机用本修复构建连接 WSL Ubuntu，五步弹窗走到「链路就绪」，且 `~/.zcode/server/.bootstrap-*` 过期目录会被清理、`status.json` 存活时 `ensureDaemon` 不再重复 `serve --daemon`。
+- 运行时验证：未在真实 Windows/WSL 上运行。关闭条件：Windows 实机用本修复构建连接 WSL Ubuntu，五步弹窗走到「链路就绪」，且 `~/.codez/server/.bootstrap-*` 过期目录会被清理、`status.json` 存活时 `ensureDaemon` 不再重复 `serve --daemon`。
 - 剩余风险：`--exec` 要求 distro 内 PATH 能解析 `bash`，与现有 `bash -lc` 依赖一致；此前被外层 shell 掩盖的脚本（stale staging 清理、`$status_pid` 检查、网关 `route=` 行）在 WSL 上首次真正执行，语义与 SSH 路径一致。若用户默认 shell 不是 POSIX shell，旧路径本会以非零退出码失败，新路径不再经过它。
 
 ### R3-ISSUE-029：replacement 在途时不保留后续 reconnect
@@ -456,7 +456,7 @@
 ### R3-ISSUE-030：Provider 共享刷新等待没有接入单调用者取消
 
 - 状态：待修复，当前无传 signal 的生产调用方；2026-10-11 登记，评审核对基线 `f5c233df918e`（CR-07）。
-- 责任位置：`zcodeAgentService.ts` 的 `generateWorkspaceText` / `testProviderModelConnectivity` 等待 `ensureAccountProviderConfigSynced` 时未消费 signal。
+- 责任位置：`codezAgentService.ts` 的 `generateWorkspaceText` / `testProviderModelConnectivity` 等待 `ensureAccountProviderConfigSynced` 时未消费 signal。
 - 证据：真实 Service 探针中取消后仍等待刷新结束，随后以 AbortError 收口；协议客户端在后续请求发出前检查 signal，因此不会执行已取消的模型请求。该证据证明收口延迟，不表示取消失效。
 - 当前处理：仅登记。首个支持取消的生产调用方接入时，单个等待者与 signal 竞速；共享 `accountConfigSyncByClient` 刷新继续完成，不能由一个调用者取消其他调用者依赖的刷新。
 - 关闭条件：一个等待者取消时及时拒绝，其他等待者仍可完成，且已取消的模型请求不会发送；共享刷新失败仍向未取消调用者传播。

@@ -85,7 +85,7 @@ Desktop→远端环境 provisioning 与 Host→Worker Account 同步是不同边
 | 账号作用域隔离 | Resolver 按身份/连接作用域选择可复用的旧结果，不因一次查询失败直接把另一账号的可用事实继承过来 | `packages/services/src/model-provider/accountProviderConnectionResolver.ts:76` |
 | UI 异步隔离 | 公共 Hook 处理 owner、输入变化、请求代次、旧回包；有输入时收到通用 change 通知会重新带原选择取 View | `packages/ui/src/hooks/useModelSelectionView.ts` |
 | Composer 原意图 | 草稿保存原意图，显示/提交派生有效选择；读取失败不把原意图清库；accepted 写回有独立边界 | `packages/ui/src/v4/composer/useDraftConfigControl.ts:173` |
-| 最终创建 Model | 精确校验已经给定的 Provider/Model/档位，再创建冻结配置的 Model；不回退套餐首模型 | `apps/zcode-cli/packages/bootstrap/src/app/provider-registry-model-runtime.ts:43` |
+| 最终创建 Model | 精确校验已经给定的 Provider/Model/档位，再创建冻结配置的 Model；不回退套餐首模型 | `apps/codez-cli/packages/bootstrap/src/app/provider-registry-model-runtime.ts:43` |
 
 因此，所谓“统一解决中间态”不是全仓加锁，也不是删除现有正确机制。应明确：Account 发布完整结果，Registry 发布完整应用结果，所有需要组合事实的消费者读后者；异步来源的生产还需要针对性保证作用域一致。
 
@@ -93,7 +93,7 @@ Desktop→远端环境 provisioning 与 Host→Worker Account 同步是不同边
 
 ### P100-01：跨进程丢失 states，执行资格不一致（确认，优先修）
 
-Host Account revision 已包含 states，但 `zcodeAgentService.ts:1169` 发出的信封只有 revision、basedOnZCodeBuiltinRevision、providers。基线协议和 Worker 接收路径也没有把 states 接通。
+Host Account revision 已包含 states，但 `codezAgentService.ts:1169` 发出的信封只有 revision、basedOnCodezBuiltinRevision、providers。基线协议和 Worker 接收路径也没有把 states 接通。
 
 Resolver 使用 `accountStates?.[providerId]?.current !== false`。这对不定义 current 的普通 Provider / Off-Peak 有既定用途，但信息丢失后也会让非当前普通 Account 通过。
 
@@ -113,8 +113,8 @@ Worker: entitled=true, current=undefined -> current 条件放行
 
 链路：
 
-- `bootstrap/src/zcode-protocol-entrypoint.ts:239` 替换 Account Source，await Registry refresh，但没有核实返回的 applied snapshot。
-- `bootstrap/src/zcode-protocol/account-provider-config.ts` 无条件回复输入 `snapshot.revision` 为 `appliedRevision`。
+- `bootstrap/src/codez-protocol-entrypoint.ts:239` 替换 Account Source，await Registry refresh，但没有核实返回的 applied snapshot。
+- `bootstrap/src/codez-protocol/account-provider-config.ts` 无条件回复输入 `snapshot.revision` 为 `appliedRevision`。
 - Host 把该结果存进每个 Client 的确认缓存，之后同 revision 跳过。
 - Registry 在 Built-in 来源不匹配时允许 refresh 返回旧快照，这是**正确的 Registry 行为**。
 
@@ -161,10 +161,10 @@ Worker 正在使用 A
 
 ### P100-05：任务发送有附件分支丢选择（确认分支缺口，尚无真机复现）
 
-`zcodeTaskServiceAdapter.ts:363` 的 `sendPromptToAgent` 接收 modelSelection/modelExecution。
+`codezTaskServiceAdapter.ts:363` 的 `sendPromptToAgent` 接收 modelSelection/modelExecution。
 
 - 无附件：发送 V4 sendText，携带这两项。
-- 有附件：调用旧 `zcodeAgentService.sendPrompt`，手工重建参数时两项都未携带。
+- 有附件：调用旧 `codezAgentService.sendPrompt`，手工重建参数时两项都未携带。
 
 它不会必然让每一次附件发送出错：若 Session 已经恰好处于同一选择，表现可能正常。但若调用方依靠本次选择覆盖或执行专用 scope，附件分支无法保留同等语义。上层“已经调用了 getView”不足以证明最终执行正确。
 

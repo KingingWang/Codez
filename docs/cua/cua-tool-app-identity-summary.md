@@ -15,14 +15,14 @@ Computer Use 收成 `node_repl` 的 JS 面之后，模型可见的工具名只�
 Helper application_info / capture
         |
         v
-producer 统一 wrapper 附加 _meta["zcode.cua/app-associations-v1"].primary
+producer 统一 wrapper 附加 _meta["codez.cua/app-associations-v1"].primary
   { appKey, displayName?, icon? }
         |
         v  broker 响应（沙箱不可见）
 node-repl-host CUA bridge —— 唯一可信记录点
         |
         v  run 结果的可信槽位
-node_repl 工具结果 _meta["zcode/nodeReplCuaApp"] = { appKey, displayName? }
+node_repl 工具结果 _meta["codez/nodeReplCuaApp"] = { appKey, displayName? }
         |
         v
 Core display `node_repl_images.app`
@@ -33,9 +33,9 @@ Node REPL 工具卡 leading icon -> IPlatformService.getApplicationIcon(locator)
 
 - **信任边界**：身份只能由 node-repl-host 的 CUA bridge 在收到 broker 响应时记录。
   `nodeRepl.setResponseMeta` 与 `nodeRepl.emitStructuredResult` 都挂在模型可见的 sandbox
-  globals 上，因此经这两条通道到达的 `zcode.cua/app-associations-v1` 一律**丢弃**，不得参与展示
-  （同 `zcode/nodeReplBrowserScreenshotContentIndices` 的既有处置）。宿主自己写的
-  `zcode/nodeReplCuaApp` 是唯一被 Core 消费的键。
+  globals 上，因此经这两条通道到达的 `codez.cua/app-associations-v1` 一律**丢弃**，不得参与展示
+  （同 `codez/nodeReplBrowserScreenshotContentIndices` 的既有处置）。宿主自己写的
+  `codez/nodeReplCuaApp` 是唯一被 Core 消费的键。
 - **一个 cell 多次调用**：最后一个产生 `primary` 的 CUA 方法胜出，与 `_meta` 既有的
   last-write-wins 语义一致。`request_access`、`stop_computer_control` 声明 `none`，
   `list_apps` 声明 `items`，三者都不产生 `primary`，因此不会把前面的身份覆盖掉。

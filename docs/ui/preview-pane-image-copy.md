@@ -91,8 +91,8 @@ E2E 候选：`packages/desktop/test/e2e/manual-review/pending/preview-pane-image
 候选 E2E 使用公共 replay 夹具启动环境，不产生模型请求：
 
 ```sh
-ZCODE_E2E_MANUAL_REVIEW=1 \
+CODEZ_E2E_MANUAL_REVIEW=1 \
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json \
-pnpm --filter @zcode/desktop test:e2e -- \
+pnpm --filter @codez/desktop test:e2e -- \
   --spec './test/e2e/manual-review/pending/preview-pane-image-copy.test.ts'
 ```

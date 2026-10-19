@@ -63,7 +63,7 @@ describe("chat session scroll memory", () => {
     ]);
   });
 
-  it("uses a task fallback until the ZCode Agent session id is restored", () => {
+  it("uses a task fallback until the Codez Agent session id is restored", () => {
     expect(
       buildChatSessionScrollMemoryKey({
         workspacePath: "/repo/demo",

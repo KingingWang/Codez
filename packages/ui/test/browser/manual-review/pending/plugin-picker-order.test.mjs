@@ -26,7 +26,7 @@ before(async () => {
           if (id.endsWith("/hooks/useWorkspaceServices.tsx"))
             return 'import {useServices} from "@/hooks/useServices.js"; export function useWorkspaceServicesResolution(){ return {services:useServices(),rpcReady:true,remoteSessionId:"attachment"}; }';
           if (id.endsWith("/v4/activeTaskProvider.ts"))
-            return 'export function useChatViewActiveTaskProvider(){return "zcode";}';
+            return 'export function useChatViewActiveTaskProvider(){return "codez";}';
           for (const [file, fn] of [
             ["fileMentionProvider", "useFileMentionProvider"],
             ["sessionsMentionProvider", "useSessionsMentionProvider"],
@@ -207,9 +207,9 @@ for (const [width, locale, theme] of [
       assert.ok(calls.some((x) => x.sessionId === "frozen-session"));
       assert.ok(calls.some((x) => !x.sessionId));
       assert.deepEqual(errors, []);
-      await mkdir(join(tmpdir(), "zcode-plugin-picker-order"), { recursive: true });
+      await mkdir(join(tmpdir(), "codez-plugin-picker-order"), { recursive: true });
       await page.screenshot({
-        path: join(tmpdir(), "zcode-plugin-picker-order", `${width}-${locale}.png`),
+        path: join(tmpdir(), "codez-plugin-picker-order", `${width}-${locale}.png`),
       });
     } catch (error) {
       console.error(error, { errors, calls, requests }, await page.locator("body").innerText());

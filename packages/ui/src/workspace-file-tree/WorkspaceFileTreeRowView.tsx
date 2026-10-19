@@ -1,9 +1,9 @@
 import { SidebarNativeTooltip, ControlHintTooltip } from "@/ControlHintTooltip.js";
 /* eslint-disable max-lines -- 文件树行集中维护拖拽、打开方式、Git 状态与上下文菜单交互。 */
-import type { EditorInfo, OpenInEditorRemoteTarget } from "@zcode/shared";
+import type { EditorInfo, OpenInEditorRemoteTarget } from "@codez/shared";
 import type { CSSProperties, KeyboardEvent, MouseEvent } from "react";
 import { AlertCircle, ChevronRight, LoaderCircle } from "lucide-react";
-import { TID_WORKSPACE_FILE_TREE_ROW, testId } from "@zcode/shared/test-ids";
+import { TID_WORKSPACE_FILE_TREE_ROW, testId } from "@codez/shared/test-ids";
 import { cn } from "@/components/lib/utils.js";
 import {
   ContextMenu,

@@ -2,7 +2,7 @@
 
 > 状态：2026-08-14 revised implementation（Electron MediaRecorder / WebM）。
 >
-> 目标：让 `video2code` 等普通插件通过官方 Browser Use SDK 录制 ZCode 内置浏览器，移除
+> 目标：让 `video2code` 等普通插件通过官方 Browser Use SDK 录制 Codez 内置浏览器，移除
 > Playwright/独立 Chromium 依赖；普通插件仍不获得 raw CDP 或 Electron 权限。
 >
 > 本能力随 Browser Use plugin `0.3.0` 发布，版本与录屏文档资产合同见
@@ -17,7 +17,7 @@
 | Change layer | validation / commit-effect / transient state / artifact materialization |
 | Operating mode | implementation handoff |
 | Primary seeds | `BrowserGuestManager`、`DesktopBrowserScreenshotSurfaceCoordinator`、`BrowserControlMainBridge`、Browser client `Tab` |
-| Out of scope | 给第三方插件开放 raw CDP；另起 Chromium；录制整个 ZCode 窗口；把录制任务写入 task snapshot；为其它视频处理功能提供转码 |
+| Out of scope | 给第三方插件开放 raw CDP；另起 Chromium；录制整个 Codez 窗口；把录制任务写入 task snapshot；为其它视频处理功能提供转码 |
 
 ## 2. 产品与安全决策
 
@@ -30,7 +30,7 @@
 4. 录制动作使用受限 DSL（wait/click/type/hover/move/scroll/scrollTo/wheel/drag/waitFor），不接受
    `eval` 或任意脚本。selector 是 CSS selector；交互仍走 CDP trusted input。
 5. 录制使用 Electron `session.setDisplayMediaRequestHandler` 把目标 guest 的 `WebFrameMain` 定向授权给
-   ZCode 自有的隐藏 recorder renderer；renderer 用 Chromium `MediaRecorder` 直接编码 VP8 WebM。
+   Codez 自有的隐藏 recorder renderer；renderer 用 Chromium `MediaRecorder` 直接编码 VP8 WebM。
    不收集 JPEG 帧、不启动 FFmpeg，也不依赖 PATH 或用户安装的系统软件。
 6. recorder renderer 运行在一次性内存 session 中，只能捕获 main 指定的目标 frame；WebM 分片经
    `MessagePort` 流式交给 main 写盘。被录网页与普通插件都拿不到 capture stream、录制分片或 IPC 权限。
@@ -236,7 +236,7 @@ const status = await tab.recording.status(job.id, {
 **覆盖注记**
 
 - `scripts/browser-*-smoke.mjs` 系列需要 Electron GUI 与屏幕录制权限，**未接入 CI**，属于手工/本地门禁。改录制链路时需手动跑
-  `pnpm --filter @zcode/desktop test:browser-webm-recording-smoke`。
+  `pnpm --filter @codez/desktop test:browser-webm-recording-smoke`。
 - `packages/desktop/test/*.test.ts`（非 e2e 单测）不被任何 `tsconfig` include，类型错误不会被 `pnpm typecheck` 拦住。
 - `browserVideoRecorder.ts` 返回的 `width/height/fps/durationMs/frameCount` 全部由入参推算，不解析 WebM。
   只有 Electron smoke 会核对容器里的真实分辨率与时长，单测层对这几个字段的断言是重言式。

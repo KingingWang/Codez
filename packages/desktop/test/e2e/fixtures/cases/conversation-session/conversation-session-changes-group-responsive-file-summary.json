@@ -7,7 +7,7 @@
     "./test/e2e/fixtures/upstream/conversation-session/conversation-session-changes-group-responsive-file-summary.json"
   ],
   "fileFixtures": [
-    { "path": ".zcode-e2e/conversation-session-changes-group-responsive-file-summary", "source": "created-by-spec", "description": "TGE03 四个写入文件及重复 Edit 的 case-owned fixture。" }
+    { "path": ".codez-e2e/conversation-session-changes-group-responsive-file-summary", "source": "created-by-spec", "description": "TGE03 四个写入文件及重复 Edit 的 case-owned fixture。" }
   ],
   "requests": [
     { "id": "tge03-write-app", "kind": "main", "source": "synthetic", "timingPolicy": "tool-use", "syntheticReason": "固定多扩展名文件顺序，验证 Changes file chips。" },

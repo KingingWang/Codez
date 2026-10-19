@@ -169,7 +169,7 @@ impact-only，本轮不修改产品 spec/测试或自动 promotion。后续计�
 | -------------------------------------------- | ----------------------------------------------------- |
 | workspace freshness                          | 通过；新 test 分支没有 upstream                       |
 | `pnpm typecheck`                             | 失败，9 处错误，详见下表                              |
-| `pnpm --filter @zcode/desktop typecheck:e2e` | 失败，权益 E2E 的 5 处旧 API 错误                     |
+| `pnpm --filter @codez/desktop typecheck:e2e` | 失败，权益 E2E 的 5 处旧 API 错误                     |
 | `pnpm lint`                                  | 0 errors / 45 warnings，未修改代码去消除已有 warnings |
 | `pnpm architecture:check --changed`          | 0 violations                                          |
 
@@ -185,7 +185,7 @@ impact-only，本轮不修改产品 spec/测试或自动 promotion。后续计�
 
 ### 实际 E2E
 
-所有运行均为隔离 fixture，不领取线上套餐、不执行支付。第一次构建设置 `ZCODE_E2E_COVERAGE=1`，后续复用同一覆盖率构建。
+所有运行均为隔离 fixture，不领取线上套餐、不执行支付。第一次构建设置 `CODEZ_E2E_COVERAGE=1`，后续复用同一覆盖率构建。
 
 | Run ID（`packages/desktop/.e2e-artifacts/` 下） | 范围                                         | 结果            | 解释                                                                                                        |
 | ----------------------------------------------- | -------------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -193,17 +193,17 @@ impact-only，本轮不修改产品 spec/测试或自动 promotion。后续计�
 | `desktop-e2e-20260911-171040-787`               | 保留必要前置，跳过模型定位，9 个用例         | 4 通过 / 5 失败 | MTA-06 单独通过，证明首轮此失败是污染；MTA-07 本轮仍等待事件数超时（35s），后面 4 个又受残留遮挡            |
 | `desktop-e2e-20260911-171255-869`               | 保留必要前置，跳过模型定位与升级页，7 个用例 | 7/7 通过        | ZIP Banner、失败 Dialog、Markdown/HTML、MP4 Banner 可以通过；不是整套通过                                   |
 
-三轮去重后：17 个既有测试中 14 个至少通过一次，3 个仍未通过（模型定位、升级确认、权益连接）。**14/17 是用例执行结果，不是代码覆盖率。** 不把隔离通过替代全套稳定性验收，三轮没有改测试或产品代码。第三轮日志为 `/tmp/zcode-marketing-e2e-audit-assets.log`。
+三轮去重后：17 个既有测试中 14 个至少通过一次，3 个仍未通过（模型定位、升级确认、权益连接）。**14/17 是用例执行结果，不是代码覆盖率。** 不把隔离通过替代全套稳定性验收，三轮没有改测试或产品代码。第三轮日志为 `/tmp/codez-marketing-e2e-audit-assets.log`。
 
 升级页用例失败的精确范围：容器显示断言已经通过，但没有在 35s 内满足预期 action 事件数。尚未证明是 webview ready、fixture 时序还是产品确认逻辑根因；不能直接归为支付/网络服务端问题。应为 ready/失败/超时分别建可控 fixture 并保留请求关联日志。
 
-原始证据为各 run 的 `summary.md`、`test-results.ndjson`、`coverage/` 和 runtime logs。CLI 文本日志在 `/tmp/zcode-marketing-e2e-audit.log`、`/tmp/zcode-marketing-e2e-audit-isolated.log`；类型、Lint、架构日志分别为 `/tmp/zcode-marketing-audit-{typecheck,e2e-types,lint,architecture}.log`。这些本地产物没有加入 Git，不包含在报告公开数据中。
+原始证据为各 run 的 `summary.md`、`test-results.ndjson`、`coverage/` 和 runtime logs。CLI 文本日志在 `/tmp/codez-marketing-e2e-audit.log`、`/tmp/codez-marketing-e2e-audit-isolated.log`；类型、Lint、架构日志分别为 `/tmp/codez-marketing-audit-{typecheck,e2e-types,lint,architecture}.log`。这些本地产物没有加入 Git，不包含在报告公开数据中。
 
 复跑命令：
 
 ```sh
-ZCODE_E2E_COVERAGE=1 ZCODE_E2E_MANUAL_REVIEW=1 \
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts \
+CODEZ_E2E_COVERAGE=1 CODEZ_E2E_MANUAL_REVIEW=1 \
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts \
   --spec './test/e2e/ui-shell/manual-review/pending/marketing-touch-delivery.test.ts' \
   --spec './test/e2e/ui-shell/manual-review/pending/marketing-touch-entitlement.test.ts'
 ```
@@ -228,7 +228,7 @@ Lottie runtime 36 个已映射行首轮 0 hit，Marketing 协议没有 Lottie �
 
 ### 三轮同构建 Renderer 合并结果
 
-后两轮设置 `ZCODE_E2E_SKIP_BUILD=1 ZCODE_E2E_SKIP_AGENT_BUILD=1`，保持与首轮相同源码及 instrumentation。只对这三轮 Renderer 的 `coverage/coverage-final.json` 使用 Istanbul merge；不混合 Host/Main，也不合入任何单测结果。
+后两轮设置 `CODEZ_E2E_SKIP_BUILD=1 CODEZ_E2E_SKIP_AGENT_BUILD=1`，保持与首轮相同源码及 instrumentation。只对这三轮 Renderer 的 `coverage/coverage-final.json` 使用 Istanbul merge；不混合 Host/Main，也不合入任何单测结果。
 
 计算方法：`git diff --unified=0 <merge-base> d0028042fe -- <file>` 提取新侧变更行，与 `getLineCoverage()` 相交；函数按声明起始行、分支按 branchMap.line（或 loc.start.line）是否在差异中选取，并保留每个分支出口计数。因此函数/分支数字是差异节点口径，不是“所在函数任意一行变更就把整个函数算进来”。字段被删除或 JSX/导入没有单独 statement 时仍须行为回归，不能因指标 0/0 免验。
 
@@ -240,7 +240,7 @@ Lottie runtime 36 个已映射行首轮 0 hit，Marketing 协议没有 Lottie �
 
 这些是执行覆盖上界证据，含失败流程实际经过的代码；不代表对应断言通过，也不覆盖未打包的 16 行旧失败文案函数。将该文件零命中补入分母后，行/函数/分支分别为 653/912、164/224、546/899，只会更低。表中的缺口数量也不是新增用例数量，不承诺固定数量测试即可达标。
 
-计算脚本与详细临时数据：`/tmp/zcode-marketing-diff-coverage.cjs`、`/tmp/zcode-marketing-diff-coverage-union.json`。原始持久证据见三个 run 的 coverage JSON；脚本只读取 Git/coverage，没有调用产品函数。临时 JSON 的跨域按行合计未通过上文口径审查，**不得作为验收百分比**，本报告仅采用 `domains.renderer` 的单域结果。
+计算脚本与详细临时数据：`/tmp/codez-marketing-diff-coverage.cjs`、`/tmp/codez-marketing-diff-coverage-union.json`。原始持久证据见三个 run 的 coverage JSON；脚本只读取 Git/coverage，没有调用产品函数。临时 JSON 的跨域按行合计未通过上文口径审查，**不得作为验收百分比**，本报告仅采用 `domains.renderer` 的单域结果。
 
 逐文件映射结果（路径前缀 `packages/ui/src/`；0/0 表示没有相应差异节点，不表示功能免验）：
 

@@ -23,7 +23,7 @@ import { getE2EAppDataPaths } from "./desktop-app.js";
 
 export async function readWorkspacePluginConfig(): Promise<Record<string, unknown>> {
   const { workspace } = getE2EAppDataPaths();
-  return JSON.parse(await readFile(join(workspace, ".zcode", "config.json"), "utf8")) as Record<string, unknown>;
+  return JSON.parse(await readFile(join(workspace, ".codez", "config.json"), "utf8")) as Record<string, unknown>;
 }
 
 export async function readUserPluginConfig(): Promise<Record<string, unknown>> {

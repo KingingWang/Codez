@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  ZCODE_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
+  CODEZ_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
   type IMcpSyncService,
-} from "@zcode/services";
+} from "@codez/services";
 import {
   buildMcpOAuthAuthorizationStatusRefreshOptions,
   buildPluginMcpServerStatusListKey,
@@ -237,7 +237,7 @@ describe("McpSettingsSection status list", () => {
     const mergeServerStatusSnapshots = vi.fn();
     const listWorkspaceMcpServerStatuses = vi.fn(async () => {
       throw Object.assign(new Error("status-only unsupported"), {
-        code: ZCODE_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
+        code: CODEZ_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
       });
     });
     const mcpSyncService = {
@@ -327,7 +327,7 @@ describe("McpSettingsSection status list", () => {
     currentWorkspaceKey = "ssh://dev/remote/workspace-b";
     rejectWorkspaceA(
       Object.assign(new Error("status-only unsupported"), {
-        code: ZCODE_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
+        code: CODEZ_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
       }),
     );
 
@@ -574,12 +574,12 @@ describe("McpSettingsSection status list", () => {
 
   it("status list key changes for enable toggles but ignores display status", () => {
     const baseServer = {
-      id: "zcodeagentmcp-global-broken",
+      id: "codezagentmcp-global-broken",
       name: "broken",
       config: { type: "stdio" as const, command: "missing-mcp-command" },
       enabled: true,
       status: "unknown" as const,
-      source: "zcodeagentmcp" as const,
+      source: "codezagentmcp" as const,
       scope: "user" as const,
     };
 
@@ -597,12 +597,12 @@ describe("McpSettingsSection status list", () => {
 
   it("tracks pending OAuth authorization as a refresh trigger", () => {
     const pendingServer = {
-      id: "zcodeagentmcp-global-figma",
+      id: "codezagentmcp-global-figma",
       name: "figma",
       config: { type: "http" as const, url: "https://mcp.example.test/mcp" },
       enabled: true,
       status: "connecting" as const,
-      source: "zcodeagentmcp" as const,
+      source: "codezagentmcp" as const,
       scope: "user" as const,
       authorization: {
         authorizationUrl: "https://auth.example.test/authorize?state=state_test",
@@ -612,7 +612,7 @@ describe("McpSettingsSection status list", () => {
     };
 
     expect(buildPendingMcpOAuthAuthorizationRefreshKey([pendingServer])).toBe(
-      "zcodeagentmcp-global-figma:2026-07-08T00:00:00.000Z",
+      "codezagentmcp-global-figma:2026-07-08T00:00:00.000Z",
     );
     expect(
       buildPendingMcpOAuthAuthorizationRefreshKey([
@@ -666,16 +666,16 @@ describe("McpSettingsSection status list", () => {
       buildMcpOAuthAuthorizationStatusRefreshServers(
         [
           {
-            id: "zcodeagentmcp-global-figma",
+            id: "codezagentmcp-global-figma",
             name: "figma",
             config: { type: "http" as const, url: "https://mcp.example.test/mcp" },
             enabled: true,
             status: "connecting" as const,
-            source: "zcodeagentmcp" as const,
+            source: "codezagentmcp" as const,
             scope: "user" as const,
           },
           {
-            id: "zcodeagentmcp-global-everything",
+            id: "codezagentmcp-global-everything",
             name: "everything",
             config: {
               type: "stdio" as const,
@@ -684,7 +684,7 @@ describe("McpSettingsSection status list", () => {
             },
             enabled: true,
             status: "connected" as const,
-            source: "zcodeagentmcp" as const,
+            source: "codezagentmcp" as const,
             scope: "user" as const,
           },
         ],

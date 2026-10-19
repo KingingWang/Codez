@@ -169,7 +169,7 @@ describe("conversation share public-page bundle boundary", () => {
           'import type { OpenSplitButtonTarget } from "@/OpenSplitButton.js";',
           'export type { OpenSplitButtonTarget } from "@/OpenSplitButton.js";',
           'import { TooltipProvider } from "@/components/ui/tooltip.js";',
-          'const x = await import("@zcode/shared");',
+          'const x = await import("@codez/shared");',
         ].join("\n"),
         sourceDir,
       );

@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import type { DatabaseStartupState } from "@zcode/shared";
+import type { DatabaseStartupState } from "@codez/shared";
 import { DatabaseStartupAdmission } from "../src/renderer/src/databaseStartupAdmission.js";
 const state = (
   startupId: string,

@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ZCodePluginsOverviewResult, ZCodePluginInfo } from "@zcode/shared";
-import type { IPluginManagementService } from "@zcode/services";
+import type { CodezPluginsOverviewResult, CodezPluginInfo } from "@codez/shared";
+import type { IPluginManagementService } from "@codez/services";
 import {
   createPluginManagementStore,
   usePluginManagementStore,
 } from "../src/store/pluginManagementStore.js";
 import { buildStoreItems } from "../src/settings/pluginStoreListing.js";
 
-function makePlugin(overrides: Partial<ZCodePluginInfo> = {}): ZCodePluginInfo {
+function makePlugin(overrides: Partial<CodezPluginInfo> = {}): CodezPluginInfo {
   return {
     id: "skill-creator@zcode-plugins-official",
     name: "skill-creator",
@@ -57,8 +57,8 @@ function createPluginServiceMock(overrides?: {
 }
 
 function makeOverview(
-  overrides: Partial<ZCodePluginsOverviewResult> = {},
-): ZCodePluginsOverviewResult {
+  overrides: Partial<CodezPluginsOverviewResult> = {},
+): CodezPluginsOverviewResult {
   return {
     marketplaces: [
       {
@@ -190,7 +190,7 @@ describe("pluginManagementStore", () => {
     const pending = new Map<string, () => void>();
     const listPlugins = vi.fn(
       ({ configScope }: { configScope?: "user" | "workspace" }) =>
-        new Promise<{ plugins: ZCodePluginInfo[]; diagnostics: [] }>((resolve) => {
+        new Promise<{ plugins: CodezPluginInfo[]; diagnostics: [] }>((resolve) => {
           pending.set(configScope ?? "effective", () =>
             resolve({
               plugins: [
@@ -344,10 +344,10 @@ describe("pluginManagementStore", () => {
   });
 
   it("ignores a stale toggle response after the selected configuration scope changes", async () => {
-    let resolveWrite: ((value: { plugin: ZCodePluginInfo; enabled: boolean }) => void) | undefined;
+    let resolveWrite: ((value: { plugin: CodezPluginInfo; enabled: boolean }) => void) | undefined;
     const setPluginEnabled = vi.fn(
       () =>
-        new Promise<{ plugin: ZCodePluginInfo; enabled: boolean }>((resolve) => {
+        new Promise<{ plugin: CodezPluginInfo; enabled: boolean }>((resolve) => {
           resolveWrite = resolve;
         }),
     );
@@ -915,10 +915,10 @@ describe("pluginManagementStore", () => {
   });
 
   it("reuses an in-flight load for the same workspace", async () => {
-    let resolveList: ((value: { plugins: ZCodePluginInfo[]; diagnostics: [] }) => void) | undefined;
+    let resolveList: ((value: { plugins: CodezPluginInfo[]; diagnostics: [] }) => void) | undefined;
     const listPlugins = vi.fn(
       () =>
-        new Promise<{ plugins: ZCodePluginInfo[]; diagnostics: [] }>((resolve) => {
+        new Promise<{ plugins: CodezPluginInfo[]; diagnostics: [] }>((resolve) => {
           resolveList = resolve;
         }),
     );
@@ -948,10 +948,10 @@ describe("pluginManagementStore", () => {
   });
 
   it("does not reuse an in-flight load across Sources with the same home", async () => {
-    let resolveA: ((value: { plugins: ZCodePluginInfo[]; diagnostics: [] }) => void) | undefined;
+    let resolveA: ((value: { plugins: CodezPluginInfo[]; diagnostics: [] }) => void) | undefined;
     const listA = vi.fn(
       () =>
-        new Promise<{ plugins: ZCodePluginInfo[]; diagnostics: [] }>((resolve) => {
+        new Promise<{ plugins: CodezPluginInfo[]; diagnostics: [] }>((resolve) => {
           resolveA = resolve;
         }),
     );
@@ -980,10 +980,10 @@ describe("pluginManagementStore", () => {
   });
 
   it("ignores a stale toggle response after the Source authority changes for the same home", async () => {
-    let resolveWrite: ((value: { plugin: ZCodePluginInfo; enabled: boolean }) => void) | undefined;
+    let resolveWrite: ((value: { plugin: CodezPluginInfo; enabled: boolean }) => void) | undefined;
     const setPluginEnabled = vi.fn(
       () =>
-        new Promise<{ plugin: ZCodePluginInfo; enabled: boolean }>((resolve) => {
+        new Promise<{ plugin: CodezPluginInfo; enabled: boolean }>((resolve) => {
           resolveWrite = resolve;
         }),
     );

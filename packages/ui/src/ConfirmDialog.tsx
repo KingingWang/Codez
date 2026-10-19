@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox.js";
 import { XIcon } from "lucide-react";
-import { TID_CONFIRM_DIALOG_CONFIRM } from "@zcode/shared/test-ids";
+import { TID_CONFIRM_DIALOG_CONFIRM } from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import {
   Dialog,
@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useConfirmDialogStore } from "@/store/confirmDialogStore.js";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -22,7 +22,7 @@ import {
 import { SourceServerBoundaryDialogContent } from "@/remote/SourceServerBoundaryDialogContent.js";
 
 export function ConfirmDialogHost() {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const pendingRequest = useConfirmDialogStore((state) => state.pendingRequest);
   const settleConfirmation = useConfirmDialogStore((state) => state.settleConfirmation);
 

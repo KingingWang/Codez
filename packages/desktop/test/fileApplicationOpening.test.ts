@@ -10,7 +10,7 @@ const { accessMock, execFileMock, spawnMock, statMock } = vi.hoisted(() => ({
 vi.mock("node:fs/promises", () => ({ access: accessMock, readdir: vi.fn(), stat: statMock }));
 vi.mock("node:child_process", () => ({ execFile: execFileMock, spawn: spawnMock }));
 vi.mock("electron", () => ({ shell: { openPath: vi.fn(), showItemInFolder: vi.fn() } }));
-vi.mock("@zcode/server/remote/wsl-detect.js", () => ({ listWSLDistros: vi.fn() }));
+vi.mock("@codez/server/remote/wsl-detect.js", () => ({ listWSLDistros: vi.fn() }));
 vi.mock("../src/main/logger.js", () => ({ logger: { warn: vi.fn() } }));
 vi.mock("../src/main/editors.js", async () => {
   const { getFileApplicationDefs } = await import("../src/main/fileApplications.js");

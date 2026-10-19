@@ -1,8 +1,8 @@
 import { SourceServerConnectionManager } from "../src/host/sourceServerConnectionManager.js";
-import type { SourceServerTransportAdapter } from "@zcode/server/source-server";
+import type { SourceServerTransportAdapter } from "@codez/server/source-server";
 import { describe, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { SourceServerConnectionStateSnapshot } from "@zcode/shared";
+import { Emitter } from "@codez/rpc";
+import type { SourceServerConnectionStateSnapshot } from "@codez/shared";
 import { createSourceServerManagementService } from "../src/host/sourceServerManagementService.js";
 
 const profileId = "17ef20b3-622d-4a53-98c1-0cdff29f3e6d";
@@ -138,7 +138,7 @@ describe("SourceServerManagementService", () => {
     const recordConversationWorkspace = vi.fn(async () => undefined);
     let nextDirectory = 0;
     const prepareSession = vi.fn(async () => ({
-      workspacePath: `/home/dev/.zcode/workspace/task-${++nextDirectory}`,
+      workspacePath: `/home/dev/.codez/workspace/task-${++nextDirectory}`,
       projectId: null,
       additionalDirectories: [],
     }));
@@ -172,16 +172,16 @@ describe("SourceServerManagementService", () => {
     });
 
     await expect(service.ensureConversationWorkspace(sourceServerId)).resolves.toEqual({
-      path: "/home/dev/.zcode/workspace/task-1",
+      path: "/home/dev/.codez/workspace/task-1",
       created: true,
       workspacePurpose: "conversation",
     });
     expect(recordConversationWorkspace).toHaveBeenCalledWith(
       sourceServerId,
-      "/home/dev/.zcode/workspace/task-1",
+      "/home/dev/.codez/workspace/task-1",
     );
     await expect(service.ensureConversationWorkspace(sourceServerId)).resolves.toMatchObject({
-      path: "/home/dev/.zcode/workspace/task-2",
+      path: "/home/dev/.codez/workspace/task-2",
     });
     expect(prepareSession).toHaveBeenCalledWith();
     service.dispose();

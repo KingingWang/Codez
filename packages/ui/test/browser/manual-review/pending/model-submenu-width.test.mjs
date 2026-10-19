@@ -56,7 +56,7 @@ after(async () => {
   await server?.close();
 });
 
-const artifacts = join(tmpdir(), "zcode-model-submenu-width");
+const artifacts = join(tmpdir(), "codez-model-submenu-width");
 for (const width of [390, 1200]) {
   for (const theme of ["light", "dark"]) {
     for (const name of ["short", "long", "extreme"]) {

@@ -4,8 +4,8 @@ Status: implemented. This document describes what the model and the user see whe
 workflow is written: the facade the script is written against, the `/workflow` command and
 the authoring skill, the prompts a subagent receives, the artifact channel, `world.run`, and
 the snippet tool. The analyzer that checks the script is in
-`apps/zcode-cli/packages/dynamic-workflow/docs/analysis.md`; what happens after the script
-is accepted is in `apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md`; the
+`apps/codez-cli/packages/dynamic-workflow/docs/analysis.md`; what happens after the script
+is accepted is in `apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md`; the
 tools that submit and confirm a run are in `docs/dynamic-workflow/launch.md`.
 
 ## The authoring surface
@@ -580,7 +580,7 @@ a snippet runs a command. Neither set is carried into the run: the driver re-che
 ## The `/workflow` command and the skill
 
 Both are built into the CLI. Neither lives in a plugin any more: until 2026-09-21 they
-shipped from the `zcode-guide` official plugin, and a user who uninstalled or disabled that
+shipped from the `codez-guide` official plugin, and a user who uninstalled or disabled that
 plugin lost the command, the composer's plus-menu entry and the skill while the ten workflow
 tools stayed registered (the 2026-09-19 "no workflow" reports). The tools and their
 teaching material now have the same lifetime.
@@ -588,11 +588,11 @@ teaching material now have the same lifetime.
 | Asset                     | Where it lives                                                                                       | How it ships                      |
 | ------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------- |
 | `/workflow`               | `bootstrap/src/builtin-workflow-command.ts`, expanded by `builtin-prompt-command.ts` next to `/init` | compiled into the CLI             |
-| `dynamic-workflows` skill | `apps/zcode-cli/packages/bundled-skills/skills/dynamic-workflows/`                                   | the **bundled skill pack**, below |
+| `dynamic-workflows` skill | `apps/codez-cli/packages/bundled-skills/skills/dynamic-workflows/`                                   | the **bundled skill pack**, below |
 
 The bundled skill pack (`bootstrap/src/app/bundled-skills.ts`) is a skill root with
 `source: "bundled"` and `scope: "system"`, injected next to the plugin skill roots wherever
-the CLI discovers skills (the runtime's skill port, `zcode skills list`, the protocol's
+the CLI discovers skills (the runtime's skill port, `codez skills list`, the protocol's
 skill catalog). It is not a plugin: it is absent from the plugin store, has no
 enable/disable switch, cannot be uninstalled, and is not listed on the Settings skills page
 or in the composer's `$` skill picker (the protocol's `skills/referenceCatalog` filters
@@ -606,11 +606,11 @@ How the pack reaches each runtime:
 - Development and the Electron desktop resolve `packages/bundled-skills` on disk next to the
   CLI entry, through the same candidate-directory walk official plugins use, and read it in
   place; nothing is copied. `packages/desktop/scripts/prepare-agent-node-bundle.mjs` stages
-  it beside `resources/glm/zcode.cjs`; `scripts/prepare-prebuilds.mjs` stages it for remote
+  it beside `resources/glm/codez.cjs`; `scripts/prepare-prebuilds.mjs` stages it for remote
   hosts.
-- SEA binaries embed `skills/**` under the `zcode-bundled-skills/` asset prefix
+- SEA binaries embed `skills/**` under the `codez-bundled-skills/` asset prefix
   (`cli/scripts/sea-bundled-skill-assets.mjs`) with a manifest whose hash covers every file.
-  On start the CLI extracts the pack once into `~/.zcode/cli/bundled-skills/<hash>/`; the
+  On start the CLI extracts the pack once into `~/.codez/cli/bundled-skills/<hash>/`; the
   directory name is the content identity, so restarts are idempotent and concurrent starts
   have exactly one winner. A hash mismatch refuses the pack and falls back to the newest
   complete extraction.
@@ -633,7 +633,7 @@ what result each returns), then write the script and call `CreateWorkflow`. It n
 `Agent` tool, because the older script-workflow feature still exists under the same word.
 
 `workflow` is a reserved slash-command name (it has an entry in
-`packages/shared/src/zcode-slash-command-help.ts`, which is also where the catalog's
+`packages/shared/src/codez-slash-command-help.ts`, which is also where the catalog's
 description and input hint come from). A user or plugin command of the same name is not
 advertised and is never expanded, so nothing can shadow the built-in or reach around the
 gray gate through a look-alike custom command.
@@ -683,7 +683,7 @@ as §16 "Tool reference", the contract the tool descriptions no longer carry: `C
 three sources and its fields, the facade declarations embedded verbatim between
 `<!-- facade-dts:start -->` and `<!-- facade-dts:end -->`, the rules the compiler and the
 analyzer enforce, and the fields and rules of `AmendWorkflow`, `SaveWorkflow` and
-`EvalWorkflowSnippet`. Two reference files are read on demand through `${ZCODE_SKILL_DIR}`:
+`EvalWorkflowSnippet`. Two reference files are read on demand through `${CODEZ_SKILL_DIR}`:
 `patterns.md`, a catalogue of sixteen topology shapes as fragments, whose index sends the
 reader to the pipeline shapes first (per-item chaining, streaming through channels, a feedback
 loop with a counted close) and then lists the rest (fan-out over a glob, changed-file review
@@ -830,7 +830,7 @@ size budget per description; `core/tests/workflow-skill-gate.test.ts` and
 A workflow subagent does not get the interactive agent's identity. The context builder
 takes a third path when the runtime config carries `workflowActor` (mutually exclusive
 with a custom system prompt; both present is a wiring error). The CLI prefix ("You are
-ZCode, an interactive coding agent") is skipped, and the identity section is replaced by a
+Codez, an interactive coding agent") is skipped, and the identity section is replaced by a
 **Workflow Actor Identity** section, which is the first line of the system prompt:
 
 1. An opening sentence: "You are a subagent inside a dynamic workflow run, named
@@ -1169,7 +1169,7 @@ In brief, because the rendering belongs to `docs/dynamic-workflow/presentation.m
   source the tab can reach, and "copy path". The header therefore carries one file control,
   not two; where the split button is absent, "show in workspace" stands in the header on
   its own. The file is a **copy the desktop writes** from the bytes the tab
-  already read, at `~/.zcode/tmp/workflow-artifacts/<runId>-<digest>/<artifactId>-<digest>/v<N>/<name>`;
+  already read, at `~/.codez/tmp/workflow-artifacts/<runId>-<digest>/<artifactId>-<digest>/v<N>/<name>`;
   the name is the base name of `sourcePath` for `file` (its extension picks the app) and
   `<artifactId>.md` for `markdown`. Each `<digest>` is the first 8 hex digits of the SHA-256 of
   the id before it, as the CLI sent it. It keeps two ids the engine tells apart in two directories
@@ -1323,7 +1323,7 @@ already cumulative; a cache hit adds nothing, since its cost is inside the inher
 resumed run continues its own count. In both cases the engine re-emits the carried total right
 after `run-started`, so a card never shows zero for a run that has already cost something.
 The predecessor keeps its own figure; it is the successor that reports the whole
-(`apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md`, "Usage across the lineage").
+(`apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md`, "Usage across the lineage").
 
 ## Alternatives not taken
 

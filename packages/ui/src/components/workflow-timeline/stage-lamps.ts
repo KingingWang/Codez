@@ -1,4 +1,4 @@
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import { phaseNameMatches } from "@/components/workflow-graph/phase-name.js";
 import type { StepRunStatus } from "@/components/workflow-graph/types.js";
 import type { StreamSpec } from "./timeline-bands.js";

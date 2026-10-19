@@ -183,7 +183,7 @@ Desktop Local Host、Web Remote 与 Remote Workspace 均遵守目标 Environment
 ### 7.3 回归
 
 - Account Config 继续通过既有 Protocol 显式同步，不并入 Personal 文件轮询；
-- ZCode Built-in Active/LKG 与远端刷新机制不变；
+- Codez Built-in Active/LKG 与远端刷新机制不变；
 - Model Selection、Provider Settings 和普通模型请求最终看到相同 Registry 事实；
 - macOS、Windows、Linux 均不依赖各自的文件事件实现。
 
@@ -203,5 +203,5 @@ Desktop Local Host、Web Remote 与 Remote Workspace 均遵守目标 Environment
   后续轮询继续重试并可自行恢复；
 - Provider connectivity 协议入口在查找 Provider/Model 和创建正式 Model 前，显式等待当前 Worker
   `ProviderRegistryService.refresh("provider-connectivity")`，没有新增 Host 请求旁路、Registry Snapshot 或测试专用 Model；
-- `@zcode/provider-node` 44 个测试、Services Provider Runtime 11 个定向测试、Bootstrap 协议 108 个测试及相关
+- `@codez/provider-node` 44 个测试、Services Provider Runtime 11 个定向测试、Bootstrap 协议 108 个测试及相关
   typecheck 通过；macOS 实机复验留在最终人工验证阶段。

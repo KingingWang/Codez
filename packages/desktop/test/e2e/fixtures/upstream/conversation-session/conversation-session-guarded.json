@@ -49,7 +49,7 @@
           "id": "toolu_E2E_GUARDED_RM",
           "name": "Bash",
           "input": {
-            "command": "cd .zcode-e2e/conversation-session-guarded && echo executed >> E2E_GUARDED_RM.executed && rm -rf remove-target --help --version"
+            "command": "cd .codez-e2e/conversation-session-guarded && echo executed >> E2E_GUARDED_RM.executed && rm -rf remove-target --help --version"
           }
         }
       }
@@ -101,7 +101,7 @@
           "id": "toolu_E2E_GUARDED_STORAGE",
           "name": "Bash",
           "input": {
-            "command": "echo executed >> .zcode-e2e/conversation-session-guarded/E2E_GUARDED_STORAGE.executed; dd if=.zcode-e2e/conversation-session-guarded/missing-input of=.zcode-e2e/conversation-session-guarded/disk-output count=0"
+            "command": "echo executed >> .codez-e2e/conversation-session-guarded/E2E_GUARDED_STORAGE.executed; dd if=.codez-e2e/conversation-session-guarded/missing-input of=.codez-e2e/conversation-session-guarded/disk-output count=0"
           }
         }
       }
@@ -153,7 +153,7 @@
           "id": "toolu_E2E_GUARDED_RESET",
           "name": "Bash",
           "input": {
-            "command": "echo executed >> .zcode-e2e/conversation-session-guarded/E2E_GUARDED_RESET.executed; git -C .zcode-e2e/conversation-session-guarded/missing-repo reset --hard"
+            "command": "echo executed >> .codez-e2e/conversation-session-guarded/E2E_GUARDED_RESET.executed; git -C .codez-e2e/conversation-session-guarded/missing-repo reset --hard"
           }
         }
       }
@@ -205,7 +205,7 @@
           "id": "toolu_E2E_GUARDED_CLEAN",
           "name": "Bash",
           "input": {
-            "command": "echo executed >> .zcode-e2e/conversation-session-guarded/E2E_GUARDED_CLEAN.executed; git -C .zcode-e2e/conversation-session-guarded/missing-repo clean -fd"
+            "command": "echo executed >> .codez-e2e/conversation-session-guarded/E2E_GUARDED_CLEAN.executed; git -C .codez-e2e/conversation-session-guarded/missing-repo clean -fd"
           }
         }
       }
@@ -257,7 +257,7 @@
           "id": "toolu_E2E_GUARDED_PUSH",
           "name": "Bash",
           "input": {
-            "command": "echo executed >> .zcode-e2e/conversation-session-guarded/E2E_GUARDED_PUSH.executed; git -C .zcode-e2e/conversation-session-guarded/missing-repo push --force .zcode-e2e/conversation-session-guarded/missing-remote HEAD"
+            "command": "echo executed >> .codez-e2e/conversation-session-guarded/E2E_GUARDED_PUSH.executed; git -C .codez-e2e/conversation-session-guarded/missing-repo push --force .codez-e2e/conversation-session-guarded/missing-remote HEAD"
           }
         }
       }
@@ -309,7 +309,7 @@
           "id": "toolu_E2E_GUARDED_DISCARD",
           "name": "Bash",
           "input": {
-            "command": "echo executed >> .zcode-e2e/conversation-session-guarded/E2E_GUARDED_DISCARD.executed; git -C .zcode-e2e/conversation-session-guarded/missing-repo checkout -f main"
+            "command": "echo executed >> .codez-e2e/conversation-session-guarded/E2E_GUARDED_DISCARD.executed; git -C .codez-e2e/conversation-session-guarded/missing-repo checkout -f main"
           }
         }
       }
@@ -361,7 +361,7 @@
           "id": "toolu_E2E_GUARDED_STASH",
           "name": "Bash",
           "input": {
-            "command": "echo executed >> .zcode-e2e/conversation-session-guarded/E2E_GUARDED_STASH.executed; git -C .zcode-e2e/conversation-session-guarded/missing-repo stash clear"
+            "command": "echo executed >> .codez-e2e/conversation-session-guarded/E2E_GUARDED_STASH.executed; git -C .codez-e2e/conversation-session-guarded/missing-repo stash clear"
           }
         }
       }
@@ -413,7 +413,7 @@
           "id": "toolu_E2E_GUARDED_WORKTREE",
           "name": "Bash",
           "input": {
-            "command": "echo executed >> .zcode-e2e/conversation-session-guarded/E2E_GUARDED_WORKTREE.executed; git -C .zcode-e2e/conversation-session-guarded/missing-repo worktree remove -ff .zcode-e2e/conversation-session-guarded/missing-tree"
+            "command": "echo executed >> .codez-e2e/conversation-session-guarded/E2E_GUARDED_WORKTREE.executed; git -C .codez-e2e/conversation-session-guarded/missing-repo worktree remove -ff .codez-e2e/conversation-session-guarded/missing-tree"
           }
         }
       }
@@ -465,7 +465,7 @@
           "id": "toolu_E2E_GUARDED_RSYNC",
           "name": "Bash",
           "input": {
-            "command": "echo executed >> .zcode-e2e/conversation-session-guarded/E2E_GUARDED_RSYNC.executed; rsync --delete .zcode-e2e/conversation-session-guarded/missing-source/ .zcode-e2e/conversation-session-guarded/missing-dest/"
+            "command": "echo executed >> .codez-e2e/conversation-session-guarded/E2E_GUARDED_RSYNC.executed; rsync --delete .codez-e2e/conversation-session-guarded/missing-source/ .codez-e2e/conversation-session-guarded/missing-dest/"
           }
         }
       }
@@ -517,7 +517,7 @@
           "id": "toolu_E2E_GUARDED_ALLOW",
           "name": "Bash",
           "input": {
-            "command": "echo executed >> .zcode-e2e/conversation-session-guarded/E2E_GUARDED_ALLOW.executed; rm -rf .zcode-e2e/conversation-session-guarded/E2E_GUARDED_ALLOW.target"
+            "command": "echo executed >> .codez-e2e/conversation-session-guarded/E2E_GUARDED_ALLOW.executed; rm -rf .codez-e2e/conversation-session-guarded/E2E_GUARDED_ALLOW.target"
           }
         }
       }
@@ -569,7 +569,7 @@
           "id": "toolu_E2E_GUARDED_YOLO",
           "name": "Bash",
           "input": {
-            "command": "echo executed >> .zcode-e2e/conversation-session-guarded/E2E_GUARDED_YOLO.executed; rm -rf .zcode-e2e/conversation-session-guarded/E2E_GUARDED_YOLO.target"
+            "command": "echo executed >> .codez-e2e/conversation-session-guarded/E2E_GUARDED_YOLO.executed; rm -rf .codez-e2e/conversation-session-guarded/E2E_GUARDED_YOLO.target"
           }
         }
       }
@@ -928,7 +928,7 @@
           "id": "toolu_E2E_GUARDED_CHILD",
           "name": "Bash",
           "input": {
-            "command": "echo executed >> .zcode-e2e/conversation-session-guarded/E2E_GUARDED_CHILD.executed; rm -rf .zcode-e2e/conversation-session-guarded/child-target"
+            "command": "echo executed >> .codez-e2e/conversation-session-guarded/E2E_GUARDED_CHILD.executed; rm -rf .codez-e2e/conversation-session-guarded/child-target"
           }
         }
       }

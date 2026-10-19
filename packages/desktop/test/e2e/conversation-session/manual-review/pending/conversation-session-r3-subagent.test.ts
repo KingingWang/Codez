@@ -6,7 +6,7 @@ import {
   TID_V4_RETRY_SUBSCRIBE,
   TID_V4_SUBAGENT_OPEN_SIDE_PANE,
   TID_V4_STOP,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   getUpstreamRequestRecordCount,
@@ -32,8 +32,8 @@ import {
 } from "../../../helpers/v4-conversation.js";
 
 const CASE_MARKER = "E2E_R3_SUBAGENT";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-subagent");
-const REMOTE_RELEASE_DIR = "/home/dev/r3-workspace-a/.zcode-e2e/r3-subagent";
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-subagent");
+const REMOTE_RELEASE_DIR = "/home/dev/r3-workspace-a/.codez-e2e/r3-subagent";
 const REMOTE_RELEASE_FILE = `${REMOTE_RELEASE_DIR}/release-child`;
 
 async function selectFullAccessMode(): Promise<void> {
@@ -207,7 +207,7 @@ describe(`${CASE_MARKER}: 远端 task 的子 Agent 会话：打开、继续观�
         });
         const remoteLog = await runSSHCommand(
           prepared.config,
-          'F=$(ls -t ~/.zcode/cli/log/*.jsonl | head -n1); grep -c "\"Agent\"" "$F" || true; grep -o "\"event\":\"[a-z_.]*subagent[a-z_.]*\"" "$F" | sort | uniq -c | tail -n 8',
+          'F=$(ls -t ~/.codez/cli/log/*.jsonl | head -n1); grep -c "\"Agent\"" "$F" || true; grep -o "\"event\":\"[a-z_.]*subagent[a-z_.]*\"" "$F" | sort | uniq -c | tail -n 8',
         );
         facts.remoteSubagentLog = remoteLog.stdout.trim().split("\n");
         throw error;

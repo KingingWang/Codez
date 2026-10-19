@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AssistantCodeCommentCards } from "@/AssistantCodeCommentCards.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import type { AssistantCodeCommentCard } from "@/lib/assistantCodeComment.js";
 
 function card(index: number): AssistantCodeCommentCard {
@@ -31,7 +31,7 @@ describe("AssistantCodeCommentCards", () => {
     const onOpenCodeViewer = vi.fn();
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(AssistantCodeCommentCards, {
           cards: Array.from({ length: 7 }, (_, index) => card(index + 1)),

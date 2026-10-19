@@ -42,15 +42,15 @@ describe("model provider restart runtime", () => {
   });
 
   it("通过正式 Model Selection Config 设置冷启动默认模型", async () => {
-    const homeDir = await mkdtemp(join(tmpdir(), "zcode-restart-selection-"));
-    vi.stubEnv("ZCODE_E2E_HOME_DIR", homeDir);
+    const homeDir = await mkdtemp(join(tmpdir(), "codez-restart-selection-"));
+    vi.stubEnv("CODEZ_E2E_HOME_DIR", homeDir);
     const { seedTurboAgentStartupModel } =
       await import("./e2e/helpers/model-provider-restart-runtime.js");
 
     await seedTurboAgentStartupModel("provider-a", "model-a");
 
     expect(
-      JSON.parse(await readFile(join(homeDir, ".zcode", "v2", "provider_config.json"), "utf-8")),
+      JSON.parse(await readFile(join(homeDir, ".codez", "v2", "provider_config.json"), "utf-8")),
     ).toEqual({
       schemaVersion: 1,
       config: {
@@ -61,7 +61,7 @@ describe("model provider restart runtime", () => {
       },
     });
     await expect(
-      stat(join(homeDir, "ZCodeProject", ".zcode", "config.json")),
+      stat(join(homeDir, "CodezProject", ".codez", "config.json")),
     ).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

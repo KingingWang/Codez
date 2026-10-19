@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 vi.mock("@/hooks/usePlatform.js", () => ({
   usePlatform: () => ({
@@ -20,7 +20,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: <T,>(selector: (state: Record<string, unknown>) => T) =>
+  useCodezStore: <T,>(selector: (state: Record<string, unknown>) => T) =>
     selector({
       codePreviewSettings: {
         darkTheme: "github-dark",
@@ -54,7 +54,7 @@ async function renderPreviewPane(renderHeavyContent: boolean) {
 
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(PreviewPane, {
         onClose: vi.fn(),

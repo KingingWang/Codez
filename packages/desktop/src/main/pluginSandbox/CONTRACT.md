@@ -6,7 +6,7 @@ Electron Main 适配层，拥有沙箱内容、guest、端口和浏览器分区�
 - partition 为 `persist:plugin-sandbox-v2-<hash(appIdentity)>`。shell/plugin 两个不同 origin 都由可信 appIdentity 派生；随机 sandboxId 位于资源路径。Chromium 的顶层站点存储键必须稳定，才能使 localStorage/IndexedDB 跨进程恢复。
 - 稳定 origin 不授予资源权限。protocol 校验 origin、实例路径和登记；session 请求检查实际 guest 与目标实例；will-attach-webview 验证 owner、partition 和句柄。重载、销毁与越界导航撤销旧登记。
 - guest 固定 contextIsolation/sandbox/webSecurity，禁用 Node、子框架 Node、webviewTag、plugins、dialogs/popups。MessagePort 在受信 guest 就绪后分发，shell 只转发 JSON-RPC；旧端口不能替代新实例。
-- CSP 使用 default-src none；资源域、连接域、frame 域按声明派生。frame-ancestors 只允许该稳定 shell origin；form-action none。既有 zcode/csp 扩展只放宽 unsafe-eval/wasm-unsafe-eval，不增加浏览器能力。
+- CSP 使用 default-src none；资源域、连接域、frame 域按声明派生。frame-ancestors 只允许该稳定 shell origin；form-action none。既有 codez/csp 扩展只放宽 unsafe-eval/wasm-unsafe-eval，不增加浏览器能力。
 - 原生 camera/microphone/geolocation/clipboardWrite 仍按资源声明和既有确认策略授权；绑定实际 guest/frame、owner、运行凭证，异步确认和系统授权返回后再验证。失效页面的确认不能授权替换页面。
 - guest 输入产生 5 秒一次性手势 token。关闭实例同时释放 ports 和实际 guest，partition 持久保留。
 - 上限 64；Main 不抢占其他窗口或刚准备的实例，只清过期且未被 guest pin 的登记。Renderer owner 决定业务回收；容量不足明确报错。

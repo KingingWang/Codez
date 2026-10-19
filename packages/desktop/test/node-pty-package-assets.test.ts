@@ -7,7 +7,7 @@ import {
 describe("node-pty package assets", () => {
   it("resolves the unpacked node-pty prebuild path used by packaged Windows apps", () => {
     const resolvedPath = resolvePackagedNodePtyPrebuildPath({
-      resourcesDir: "C:/Program Files/ZCode/resources",
+      resourcesDir: "C:/Program Files/Codez/resources",
       platformKey: "win32-x64",
     }).replaceAll("\\", "/");
 
@@ -32,11 +32,11 @@ describe("node-pty package assets", () => {
 
   it("resolves the unpacked node-pty prebuild path used by packaged Linux apps", () => {
     const resolvedPath = resolvePackagedNodePtyPrebuildPath({
-      resourcesDir: "/opt/ZCode/resources",
+      resourcesDir: "/opt/Codez/resources",
       platformKey: "linux-x64",
     }).replaceAll("\\", "/");
 
-    expect(resolvedPath).toContain("/opt/ZCode/resources/");
+    expect(resolvedPath).toContain("/opt/Codez/resources/");
     expect(resolvedPath).toMatch(
       /app\.asar\.unpacked\/node_modules\/node-pty\/prebuilds\/linux-x64\/pty\.node$/,
     );

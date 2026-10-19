@@ -2,18 +2,18 @@
 import { createElement } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
+import { Emitter } from "@codez/rpc";
 import type {
   SourceServerConnectionStateSnapshot,
   SourceServerManagementSnapshot,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   getProjectCount,
   SourceServerManagementPanel,
 } from "@/settings/SourceServerManagementPanel.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, number | string>) =>
         values?.projects
@@ -811,15 +811,15 @@ describe("SourceServerManagementPanel", () => {
             },
             {
               sourceServerId: "source-1",
-              workspacePath: "/remote/.zcode/workspace/default",
-              workspaceIdentity: "remote:server:source-1:/remote/.zcode/workspace/default",
+              workspacePath: "/remote/.codez/workspace/default",
+              workspaceIdentity: "remote:server:source-1:/remote/.codez/workspace/default",
             },
           ],
         } as never,
         "source-1",
         {
           "source-1": {
-            workspacePath: "/remote/.zcode/workspace/default",
+            workspacePath: "/remote/.codez/workspace/default",
             lastResolvedAt: 1,
           },
         },

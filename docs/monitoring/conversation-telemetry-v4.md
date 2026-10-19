@@ -44,7 +44,7 @@ persisted hydration / initial / recovery
                MUST NOT emit telemetry facts
 ```
 
-不得复活旧 `zcodeTaskRuntimeMonitor`，也不得把 supervisor 放在 `SessionPane`、
+不得复活旧 `codezTaskRuntimeMonitor`，也不得把 supervisor 放在 `SessionPane`、
 `SessionDataLayer` 或受 30 秒 keep-warm 控制的 connection 上。supervisor 归属于窗口的
 workspace/service attachment，隔离 key 为：
 
@@ -214,7 +214,7 @@ feedback 行为。旧事件与旧持久化记录缺少 attribution 时继续按�
 的模型和内置 provider 下未命中白名单的模型统一写为 `custom`，provider 或 model 缺失时写空字符串。
 白名单匹配与输出均使用规范化小写 ID，新增内置模型未进入白名单时必须默认降级为 `custom`，不得原样
 透传。禁止上传 base URL/完整 URL、header、token、请求或响应正文、prompt/tool 内容、stack、完整
-detail、requestId。ZCode 只上报事实归因，不上报 `owner` 或 `shouldAlert` 等监控策略结论。
+detail、requestId。Codez 只上报事实归因，不上报 `owner` 或 `shouldAlert` 等监控策略结论。
 
 `exceptionKind` 必须在 adapter 边界由 allowlist 规范，禁止把自定义 Error name 原样带入协议或 ARMS。
 `failure_reason=unknown` 不等于诊断字段缺失；Dashboard 分开统计 reason coverage 与
@@ -295,7 +295,7 @@ conversation 正式用例编号与剪枝结论见 case catalog 的 `TEL` 分组�
 它只表示会话运行实例创建时采用的 App Memory 设置，不表示 CLI memory 最终生效、
 记忆读取命中或写入成功；不新增 read/write 指标，不改变 Memory 开关行为。
 
-唯一数据源为 CLI `ZCodeProtocolSessionRecord.memoryEnabled`，不在发送或完成时重新读取
+唯一数据源为 CLI `CodezProtocolSessionRecord.memoryEnabled`，不在发送或完成时重新读取
 App 当前设置。用户中途修改设置不会改变存量运行实例；新建/冷恢复实例使用其创建期值。
 
 ```text

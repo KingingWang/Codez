@@ -2,13 +2,13 @@
 import { createElement } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
+import type { IServiceAccessor } from "@codez/services";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { ProjectNode } from "@/project-sidebar/ProjectNode.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import type { ProjectNodeProps } from "@/project-sidebar/ProjectNodeContent.js";
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/project-sidebar/ProjectTaskRows.js", () => ({ ProjectTaskRows: () => null }));
 afterEach(cleanup);

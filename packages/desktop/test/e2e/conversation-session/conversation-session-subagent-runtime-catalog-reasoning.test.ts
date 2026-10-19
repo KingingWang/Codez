@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { decodeCustomModelValue, encodeCustomModelValue } from "@zcode/shared";
+import { decodeCustomModelValue, encodeCustomModelValue } from "@codez/shared";
 import {
   TID_CHAT_MODEL_SELECT_GROUP,
   TID_CHAT_MODEL_SELECT_ITEM,
@@ -16,7 +16,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_V4_MODEL_CONFIG,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { selectCombinedComposerThoughtLevel } from "../helpers/composer-model-picker.js";
 import {
   DEFAULT_WORKSPACE,

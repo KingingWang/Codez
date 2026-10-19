@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS, type ApiClient } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, type ApiClient } from "@codez/shared";
 import { BigModelUsageQuotaProvider } from "../src/usage-stats/providers/bigmodelUsageQuotaProvider.js";
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -22,7 +22,7 @@ function createProviderForTest(options: {
     credentialService: {
       load: vi.fn(async (key: string) => options.credentials?.[key] ?? null),
     },
-    env: { ZCODE_ENV: "test" },
+    env: { CODEZ_ENV: "test" },
   });
   const methodNames = new Set([
     "getCodingPlanResetStatus",
@@ -93,7 +93,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const provider = createProviderForTest({
       apiClient: { request },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:zai:access_token": "zai-business-jwt",
       },
     });
@@ -125,7 +125,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const zaiProvider = createProviderForTest({
       apiClient: { request: zaiRequest },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "wrong-bigmodel-token",
       },
     });
@@ -140,7 +140,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const bigmodelProvider = createProviderForTest({
       apiClient: { request: bigmodelRequest },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:zai:access_token": "wrong-zai-token",
       },
     });
@@ -169,7 +169,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const provider = createProviderForTest({
       apiClient: { request },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -190,7 +190,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const [url, init] = request.mock.calls[0] ?? [];
     expect(String(url)).toBe("https://zcode.z.ai/api/v1/coding-plan/reset/status");
     const headers = new Headers(init?.headers);
-    expect(headers.get("Authorization")).toBe("Bearer zcode-jwt");
+    expect(headers.get("Authorization")).toBe("Bearer codez-jwt");
     // 后端契约:X-Bigmodel-Authorization 传 MaaS 登录态 JWT,不是 Coding Plan API key。
     expect(headers.get("X-Bigmodel-Authorization")).toBe("maas-login-jwt");
     expect(headers.get("Bigmodel-Target-Type")).toBe("PERSONAL");
@@ -214,7 +214,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const provider = createProviderForTest({
       apiClient: { request },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "oauth-token",
       },
     });
@@ -243,7 +243,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const provider = createProviderForTest({
       apiClient: { request },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -262,7 +262,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
       idempotency_key: "opportunity-idempotency-key",
     });
     const headers = new Headers(init?.headers);
-    expect(headers.get("Authorization")).toBe("Bearer zcode-jwt");
+    expect(headers.get("Authorization")).toBe("Bearer codez-jwt");
     expect(headers.get("X-Bigmodel-Authorization")).toBe("maas-login-jwt");
     expect(headers.get("Bigmodel-Target-Type")).toBe("PERSONAL");
   });
@@ -273,7 +273,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
       if (url.endsWith("/api_keys")) {
         return jsonResponse({
           code: 200,
-          data: [{ apiKey: "team-ak", keyType: 2, name: "zcode-team-api-key" }],
+          data: [{ apiKey: "team-ak", keyType: 2, name: "codez-team-api-key" }],
         });
       }
       if (url.endsWith("/api_keys/copy/team-ak")) {
@@ -287,7 +287,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const provider = createProviderForTest({
       apiClient: { request },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "oauth-token",
       },
     });
@@ -323,7 +323,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
         ),
       },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -345,7 +345,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
         ),
       },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -363,7 +363,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
         ),
       },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -382,7 +382,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
         request: vi.fn(async () => jsonResponse({ message: "请求过快或发卡锁被占用" }, 429)),
       },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -399,7 +399,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
         request: vi.fn(async () => jsonResponse({ message: "too fast" }, 429)),
       },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -415,7 +415,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const provider = createProviderForTest({
       apiClient: { request },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -442,7 +442,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const provider = createProviderForTest({
       apiClient: { request },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -468,7 +468,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const provider = createProviderForTest({
       apiClient: { request },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -480,7 +480,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const [url, init] = request.mock.calls[0] ?? [];
     expect(String(url)).toBe("https://zcode.z.ai/api/v1/coding-plan/reset/history/read");
     const headers = new Headers(init?.headers);
-    expect(headers.get("Authorization")).toBe("Bearer zcode-jwt");
+    expect(headers.get("Authorization")).toBe("Bearer codez-jwt");
     expect(headers.get("X-Bigmodel-Authorization")).toBe("maas-login-jwt");
     expect(headers.has("Bigmodel-Target-Type")).toBe(false);
   });
@@ -494,15 +494,15 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
       missingJwtProvider.getCodingPlanResetStatus({
         preferredProviderId: BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan,
       }),
-    ).rejects.toThrow("coding_plan_reset_zcode_jwt_required");
+    ).rejects.toThrow("coding_plan_reset_codez_jwt_required");
     expect(missingJwtRequest).not.toHaveBeenCalled();
 
-    // 只有 zcode JWT、没有 MaaS 登录态 JWT 时同样拒绝且不发请求:后端要求
+    // 只有 codez JWT、没有 MaaS 登录态 JWT 时同样拒绝且不发请求:后端要求
     // X-Bigmodel-Authorization 必须是 MaaS JWT,不能回退 provider API key。
     const missingMaasJwtRequest = vi.fn();
     const missingMaasJwtProvider = createProviderForTest({
       apiClient: { request: missingMaasJwtRequest },
-      credentials: { zcodejwttoken: "zcode-jwt" },
+      credentials: { codezjwttoken: "codez-jwt" },
     });
     await expect(
       missingMaasJwtProvider.getCodingPlanResetStatus({
@@ -516,7 +516,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
         request: vi.fn(async () => jsonResponse({ code: 2007, msg: "任意文案", data: null })),
       },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -533,7 +533,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
         ),
       },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -559,7 +559,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
     const provider = createProviderForTest({
       apiClient: { request },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -582,7 +582,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
         ),
       },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });
@@ -610,7 +610,7 @@ describe("BigModelUsageQuotaProvider coding plan reset", () => {
         ),
       },
       credentials: {
-        zcodejwttoken: "zcode-jwt",
+        codezjwttoken: "codez-jwt",
         "oauth:bigmodel:access_token": "maas-login-jwt",
       },
     });

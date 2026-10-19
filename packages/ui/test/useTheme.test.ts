@@ -6,7 +6,7 @@ import { applyTheme } from "@/useTheme.js";
 beforeEach(() => {
   document.head.innerHTML = "";
   document.documentElement.className = "";
-  document.documentElement.removeAttribute("data-zcode-browser-theme-surface");
+  document.documentElement.removeAttribute("data-codez-browser-theme-surface");
   document.documentElement.removeAttribute("style");
   vi.stubGlobal(
     "matchMedia",
@@ -23,7 +23,7 @@ describe("applyTheme", () => {
     ["zai-dark", "dark", "#161616"],
     ["zai-light", "light", "#f8f8f8"],
   ] as const)("把 %s 同步到已 opt-in 的浏览器主题表面", (theme, resolvedTheme, background) => {
-    document.documentElement.setAttribute("data-zcode-browser-theme-surface", "light");
+    document.documentElement.setAttribute("data-codez-browser-theme-surface", "light");
     document.documentElement.style.setProperty("--color-background", background);
     document.head.innerHTML = `
         <meta name="theme-color" content="#ffffff" />
@@ -32,7 +32,7 @@ describe("applyTheme", () => {
 
     applyTheme(theme);
 
-    expect(document.documentElement.getAttribute("data-zcode-browser-theme-surface")).toBe(
+    expect(document.documentElement.getAttribute("data-codez-browser-theme-surface")).toBe(
       resolvedTheme,
     );
     expect(document.documentElement.style.colorScheme).toBe(resolvedTheme);
@@ -49,14 +49,14 @@ describe("applyTheme", () => {
       "matchMedia",
       vi.fn(() => ({ matches: true })),
     );
-    document.documentElement.setAttribute("data-zcode-browser-theme-surface", "light");
+    document.documentElement.setAttribute("data-codez-browser-theme-surface", "light");
     document.documentElement.style.setProperty("--color-background", "#161616");
 
     applyTheme("system");
 
     expect(document.documentElement.classList.contains("dark")).toBe(true);
     expect(document.documentElement.classList.contains("theme-zai-dark")).toBe(true);
-    expect(document.documentElement.getAttribute("data-zcode-browser-theme-surface")).toBe("dark");
+    expect(document.documentElement.getAttribute("data-codez-browser-theme-surface")).toBe("dark");
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
       "#161616",
     );

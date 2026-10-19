@@ -1,14 +1,14 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { ModelConfigRules, ProviderConfigMap } from "@zcode/provider";
+import { ModelConfigRules, ProviderConfigMap } from "@codez/provider";
 import {
   decodeProviderConfigFile,
   encodeProviderConfigFile,
 } from "../src/provider-config-file-codec.js";
 import {
-  decodeZCodeBuiltinRelease,
-  encodeZCodeBuiltinRelease,
-} from "../src/zcode-builtin-release.js";
+  decodeCodezBuiltinRelease,
+  encodeCodezBuiltinRelease,
+} from "../src/codez-builtin-release.js";
 
 describe("Todo104 最终文件外壳", () => {
   it("个人配置必需三个空数组，默认选择位于 config，往返不丢失", () => {
@@ -71,14 +71,14 @@ describe("Todo104 最终文件外壳", () => {
   it("实际 Builtin 用最终包装并完整往返，发布 revision 不倒退", async () => {
     const raw = JSON.parse(
       await readFile(
-        new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
+        new URL("../../../config/provider/codez-builtin.json", import.meta.url),
         "utf8",
       ),
     );
     expect(raw.schemaVersion).toBe(1);
     expect(raw.revision).toBeGreaterThanOrEqual(18);
-    const parsed = decodeZCodeBuiltinRelease(raw);
-    expect(encodeZCodeBuiltinRelease(parsed)).toEqual(raw);
+    const parsed = decodeCodezBuiltinRelease(raw);
+    expect(encodeCodezBuiltinRelease(parsed)).toEqual(raw);
     expect(parsed.config.providers.keys().length).toBeGreaterThan(0);
     expect(parsed.config.providerTemplates.keys().length).toBeGreaterThan(0);
     for (const rule of parsed.config.providers.toJSON()) {

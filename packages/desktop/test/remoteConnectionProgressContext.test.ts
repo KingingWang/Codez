@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createRemoteConnectionProgressContext } from "@zcode/server/remote/remoteConnectionProgressContext.js";
+import { createRemoteConnectionProgressContext } from "@codez/server/remote/remoteConnectionProgressContext.js";
 
 describe("remoteConnectionProgressContext", () => {
   it("只输出显式文本，脱敏路径、凭据和设备标识", async () => {
@@ -30,7 +30,7 @@ describe("remoteConnectionProgressContext", () => {
   it("带空格的绝对路径也不能残留在用户日志", async () => {
     const messages: string[] = [];
     const context = createRemoteConnectionProgressContext({ emit: (event) => messages.push(String(event.args[0])) });
-    await context.run("request", async () => context.report("info", [String.raw`upload "/Users/Alice Smith/private file.tar" and "C:\Program Files\ZCode\key"`]));
+    await context.run("request", async () => context.report("info", [String.raw`upload "/Users/Alice Smith/private file.tar" and "C:\Program Files\Codez\key"`]));
     expect(messages.join("")).not.toMatch(/Alice|Smith|Program|Files|private file/);
   });
 

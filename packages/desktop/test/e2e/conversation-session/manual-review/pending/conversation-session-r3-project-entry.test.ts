@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import * as app from "#e2e/helpers/desktop-app";
 import * as ssh from "#e2e/helpers/ssh-remote-p0";
 import * as v4 from "#e2e/helpers/v4-conversation";
@@ -18,10 +18,10 @@ describe(`${marker}: R3 首连后显式添加项目`, () => {
     this.timeout(120_000);
     const config = ssh.readSSHRuntimeConfig(marker);
     await v4.prepareV4ConversationE2E({ skipProvider: true });
-    const artifact = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR!);
+    const artifact = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR!);
     await mkdir(artifact, { recursive: true });
     const recording =
-      process.env.ZCODE_E2E_FAILURE_ARTIFACTS === "1"
+      process.env.CODEZ_E2E_FAILURE_ARTIFACTS === "1"
         ? undefined
         : await recorder.startElectronWindowRecording({
             outputPath: resolve(artifact, "project-entry.webm"),

@@ -17,10 +17,10 @@
 
 - [ ] **Step 1: Add the failing regression test**
 
-Add this test inside `describe("shouldIncludeModelProviderInSelection", ...)`, after the existing "ZCode Agent 下 custom provider 只配置 openai endpoint 时也展示" case:
+Add this test inside `describe("shouldIncludeModelProviderInSelection", ...)`, after the existing "Codez Agent 下 custom provider 只配置 openai endpoint 时也展示" case:
 
 ```ts
-  it("ZCode Agent 下 custom provider 只配置 responses endpoint 时也展示", () => {
+  it("Codez Agent 下 custom provider 只配置 responses endpoint 时也展示", () => {
     const provider = createModelProviderConfig({
       id: "provider-glm-custom-responses",
       endpoints: {
@@ -77,7 +77,7 @@ Add this test after "GLM /model 入口允许只配置 openai endpoint 的供应�
     });
 
     expect(getProviderModelsForSelection("glm", provider)).toEqual(["glm-5"]);
-    expect(isModelProviderSelectableForZCodeProvider("glm", provider)).toBe(true);
+    expect(isModelProviderSelectableForCodezProvider("glm", provider)).toBe(true);
   });
 ```
 
@@ -151,7 +151,7 @@ Expected: PASS.
 Add this bullet under "兼容边界":
 
 ```md
-- GLM/ZCode Agent 的自定义 provider 模型菜单按 Agent 当前可发送协议过滤，当前支持 Anthropic-compatible、OpenAI-compatible Chat Completions 和 OpenAI Responses；Bot `/model` 入口使用同一能力边界。
+- GLM/Codez Agent 的自定义 provider 模型菜单按 Agent 当前可发送协议过滤，当前支持 Anthropic-compatible、OpenAI-compatible Chat Completions 和 OpenAI Responses；Bot `/model` 入口使用同一能力边界。
 ```
 
 - [ ] **Step 2: Run required verification**

@@ -69,7 +69,7 @@ async function idle() {
 }
 async function prompt(marker: string, newTask = true) {
   if (newTask) {
-    // 合并适配：全局新任务落到独立聊天目录，Bash fixture 必须从 ZCodeProject 发起。
+    // 合并适配：全局新任务落到独立聊天目录，Bash fixture 必须从 CodezProject 发起。
     await startDraftFromProject(DEFAULT_WORKSPACE);
 
     // 项目新草稿恢复 build；显式选择 yolo，避免把模式切换动画中的旧文案当成已选中。
@@ -297,7 +297,7 @@ describe("Bash 直接文件输出补充 E2E", () => {
     this.timeout(60000);
     const id = "toolu_bdo_realtime";
     const marker = "E2E_BDO_REALTIME";
-    const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+    const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
     if (!artifactDir) throw new Error("E2E artifact directory is required for refresh timings");
     const observations: {
       stage: number;

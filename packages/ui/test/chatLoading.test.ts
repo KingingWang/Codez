@@ -1,9 +1,9 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { ActiveWorkSummary, PendingInteraction } from "@zcode/shared/zcode-protocol-v4";
+import type { ActiveWorkSummary, PendingInteraction } from "@codez/shared/codez-protocol-v4";
 import { ChatLoading } from "@/components/ai-elements/chat-loading.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   hasChatLoadingBlockingActiveWork,
   hasChatLoadingBlockingInteraction,
@@ -12,7 +12,7 @@ import {
 function renderChatLoading() {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(ChatLoading, { loading: true }),
     ),

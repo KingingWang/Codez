@@ -1,11 +1,11 @@
-import type { ConnectionFlowControl, Event, IMessagePassingProtocol } from "@zcode/rpc";
+import type { ConnectionFlowControl, Event, IMessagePassingProtocol } from "@codez/rpc";
 import {
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   type WebRemoteControlRpcTransportFault,
   type WebRemoteControlRpcTransportFramePayload,
   type WebRemoteControlRpcTransportIdentity,
   type WebRemoteControlRpcTransportPayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export const ACKNOWLEDGED_WEB_REMOTE_CONTROL_RELAY_LIMITS = {
   saturationHighWaterMarkBytes: 1024 * 1024,
@@ -77,7 +77,7 @@ export function rawIdentityMatches(
 
 export function isRawTransportCandidate(candidate: unknown): boolean {
   if (typeof candidate !== "object" || candidate === null) return false;
-  const type = (candidate as { zcode_type?: unknown }).zcode_type;
+  const type = (candidate as { codez_type?: unknown }).codez_type;
   return type === "rpc-frame" || type === "rpc-frame-ack";
 }
 

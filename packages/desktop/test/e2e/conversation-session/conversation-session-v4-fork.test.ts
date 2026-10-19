@@ -3,7 +3,7 @@
 // v4-bridge 经 resolveStableForkTarget 把 targetRowId 固定到 logical turn 边界 →
 // forkStableConversation → ACK.result.sessionId → pane 原地切到 child session（新
 // sessionId，但历史含父会话内容）。证明稳定边界解析与 conversation-only fork 打通。
-import { TID_V4_MODEL_CONFIG } from "@zcode/shared/test-ids";
+import { TID_V4_MODEL_CONFIG } from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData, waitForWorkspaceApp } from "../helpers/desktop-app.js";
 import {
   selectUpstreamProviderModelById,

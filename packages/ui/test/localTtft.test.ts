@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LocalTtftObserver } from "../src/v4/telemetry/localTtftObserver.js";
-import type { LocalTtftRecord } from "@zcode/shared";
+import type { LocalTtftRecord } from "@codez/shared";
 
 describe("Renderer 首输出与乱序归属", () => {
   it("首输出早于 ACK 只收口一次，空开始不触发，正文晚到独立计数", () => {
@@ -380,7 +380,7 @@ it("准备检查点早于 initial 订阅快照时不误判恢复", () => {
     toSeq: 1,
     sentAt: 100,
     payload: { kind: "snapshot" },
-  } as unknown as import("@zcode/shared/zcode-protocol-v4").ConversationTopicFrame;
+  } as unknown as import("@codez/shared/codez-protocol-v4").ConversationTopicFrame;
   observer.receive("w", snapshot, "initial");
   expect(records.some((record) => record.outcome === "recovery")).toBe(false);
   observer.receive("w", snapshot, "recovery");
@@ -415,7 +415,7 @@ it("桌面 continuous 的 online snapshot 按 resync 排除，不借用手机 re
       toSeq: 1,
       sentAt: 100,
       payload: { kind: "snapshot" },
-    } as unknown as import("@zcode/shared/zcode-protocol-v4").ConversationTopicFrame,
+    } as unknown as import("@codez/shared/codez-protocol-v4").ConversationTopicFrame,
     "online",
   );
   expect(records.filter((record) => record.kind === "excluded")).toMatchObject([

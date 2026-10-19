@@ -4,7 +4,7 @@ import {
   type ConfigWorkspaceTarget,
 } from "@/workspace-config-catalog/contract.js";
 
-export { readProjectCatalog as readConfigCatalog } from "@zcode/services";
+export { readProjectCatalog as readConfigCatalog } from "@codez/services";
 
 export function projectConfigTargets(
   snapshot: ConfigCatalogSnapshot,

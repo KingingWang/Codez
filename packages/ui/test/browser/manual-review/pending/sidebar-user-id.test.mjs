@@ -9,7 +9,7 @@ import { chromium } from "playwright-core";
 
 const root = fileURLToPath(new URL("../../../../../../", import.meta.url));
 const entry = "/packages/ui/test/browser/manual-review/pending/sidebar-user-id.fixture.tsx";
-const artifacts = "/tmp/zcode-sidebar-user-id";
+const artifacts = "/tmp/codez-sidebar-user-id";
 let server, browser, origin;
 before(async () => {
   await mkdir(artifacts, { recursive: true });
@@ -27,7 +27,7 @@ before(async () => {
           if (id.endsWith("/shortcuts/useShortcutBindings.ts"))
             return 'export const useShortcutCommandLabel=()=>"";';
           if (id.endsWith("/store/StoreProvider.tsx"))
-            return 'export const useZCodeStore=(select)=>select({interfaceMode:"coding",setInterfaceMode:()=>{},isRestoringOAuthSession:false});';
+            return 'export const useCodezStore=(select)=>select({interfaceMode:"coding",setInterfaceMode:()=>{},isRestoringOAuthSession:false});';
           if (id.endsWith("/WorkspaceWebRemoteControlTrigger.tsx"))
             return "export const WorkspaceWebRemoteControlTrigger=()=>null;";
           if (id.endsWith("/WorkspaceSidebarFooterUsageSummary.tsx"))

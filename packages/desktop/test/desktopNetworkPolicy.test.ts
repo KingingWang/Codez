@@ -67,7 +67,7 @@ describe("desktopNetworkPolicy", () => {
     // 会连本机系统代理一起屏蔽。内置浏览器是用户的浏览出口，需要代理才能访问的站点
     // 会直接 ERR_CONNECTION_TIMED_OUT，与用户本机浏览器行为漂移。
     expect(embeddedBrowserSession.setProxy).toHaveBeenCalledWith({ mode: "system" });
-    // defaultSession 承载 ZCode 自身的后端与模型流量，留空时保持显式收敛，不受系统代理影响。
+    // defaultSession 承载 Codez 自身的后端与模型流量，留空时保持显式收敛，不受系统代理影响。
     expect(defaultSession.setProxy).toHaveBeenCalledWith({ mode: "direct" });
   });
 
@@ -136,7 +136,7 @@ describe("desktopNetworkPolicy", () => {
       logger,
     );
 
-    // 放行只属于内置浏览器出口；defaultSession 承载 ZCode 自身的后端与模型流量，必须保持严格校验。
+    // 放行只属于内置浏览器出口；defaultSession 承载 Codez 自身的后端与模型流量，必须保持严格校验。
     expect(defaultSession.setCertificateVerifyProc).toHaveBeenCalledWith(null);
   });
 

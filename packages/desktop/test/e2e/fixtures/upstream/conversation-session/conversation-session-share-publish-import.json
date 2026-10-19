@@ -134,7 +134,7 @@
           "id": "conversation-share-preview-main",
           "inputTokens": 64,
           "outputTokens": 64,
-          "text": "~/Code/vibe/shows/deliver/晨报_2026-09-08_早会版.pdf\n.zcode-e2e/conversation-share-preview/晨报_2026-09-08_早会版.pdf\nbuild_mn/qa/layout-review.md\n.zcode-e2e/conversation-share-preview/condensed.mp4\n.zcode-e2e/conversation-share-preview/纵横四海_电影解说.mp4\n.zcode-e2e/conversation-share-preview/final_subtitled.mp4"
+          "text": "~/Code/vibe/shows/deliver/晨报_2026-09-08_早会版.pdf\n.codez-e2e/conversation-share-preview/晨报_2026-09-08_早会版.pdf\nbuild_mn/qa/layout-review.md\n.codez-e2e/conversation-share-preview/condensed.mp4\n.codez-e2e/conversation-share-preview/纵横四海_电影解说.mp4\n.codez-e2e/conversation-share-preview/final_subtitled.mp4"
         }
       }
     }

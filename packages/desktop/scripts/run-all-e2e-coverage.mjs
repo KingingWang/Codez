@@ -57,8 +57,8 @@ export function createAllE2ECoverageRunPlan({
     ],
     env: {
       ...env,
-      ZCODE_E2E_COVERAGE: "1",
-      ZCODE_E2E_MANUAL_REVIEW: "1",
+      CODEZ_E2E_COVERAGE: "1",
+      CODEZ_E2E_MANUAL_REVIEW: "1",
     },
     notes: upstreamReady
       ? []

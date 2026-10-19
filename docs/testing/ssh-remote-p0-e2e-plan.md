@@ -1,6 +1,6 @@
 # SSH Remote P0 E2E 规格
 
-> **2026-09-07 新一轮完整回归**：范围、材料与隔离以 [R3 合并后自动化方案](r3-remote-automation-plan.md) 为执行入口，逐项合同见 [R3A 矩阵](r3-remote-automation-case-matrix.md)。下文历史“单服务器/不含手机”剪枝不限制新方案；旧 `zcode-server.cjs` PID helper、legacy manifest 代理断言和显式 Provider 同步表述需按现行 R3/Provisioning 改造后才能复用。已有 formal/pending 状态不代表新基线运行通过。
+> **2026-09-07 新一轮完整回归**：范围、材料与隔离以 [R3 合并后自动化方案](r3-remote-automation-plan.md) 为执行入口，逐项合同见 [R3A 矩阵](r3-remote-automation-case-matrix.md)。下文历史“单服务器/不含手机”剪枝不限制新方案；旧 `codez-server.cjs` PID helper、legacy manifest 代理断言和显式 Provider 同步表述需按现行 R3/Provisioning 改造后才能复用。已有 formal/pending 状态不代表新基线运行通过。
 
 ## 定义
 
@@ -52,7 +52,7 @@ Ubuntu 24.04 + password SSH
 
 ### B. 远端开发基础能力
 
-测试数据只放在由 case 创建的 `/root/.zcode-e2e/ssh-p0-*` 隔离目录；setup/cleanup 通过测试控制连接完成，不修改隔离目录外的用户文件。
+测试数据只放在由 case 创建的 `/root/.codez-e2e/ssh-p0-*` 隔离目录；setup/cleanup 通过测试控制连接完成，不修改隔离目录外的用户文件。
 
 | Case ID       | Setup                                        | Action                                                               | Assertions                                                                                   | 状态   |
 | ------------- | -------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------ |
@@ -73,18 +73,18 @@ Ubuntu 24.04 + password SSH
 | Case ID        | Setup                                                                                                     | Action                                                                                                 | Assertions                                                                                                                                                                           | 状态                                                                                     |
 | -------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
 | SSH-P0-LIFE-01 | A/B 有历史 task；默认 Profile 凭据可静默取得；Server 最近 7 天连接过；显式断开后保留工作区历史全部 failed | 完整重启 Electron/Main/Host；不点击手动重连，等待主窗口 Host 在 10 秒单节点预算内自动重连并继续原 task | 稳定 Source/identity/path 无 secret；failed 历史不阻断 A/B 自动获得新 `remoteSessionId`；恢复 task/history；续发命中原 task；不重复 workspace/daemon；启动阶段每个 Server 只尝试一次 | pending (`manual-review/pending/conversation-session-ssh-remote-cold-reconnect.test.ts`) |
-| SSH-P0-LIFE-02 | A/B 共享同一 SSH Host 且在线                                                                              | 只终止本 case 启动的远端 `zcode-server`，不操作 `sshd`；随后对 A 点击重连                              | A/B 同时 disconnected，本地 workspace 不受影响；只建立一次新 SSH Host；A/B 分别获得新 `remoteSessionId` 并恢复；task/file 路由不串                                                   | pending (`manual-review/pending/conversation-session-ssh-remote-server-fault.test.ts`)   |
+| SSH-P0-LIFE-02 | A/B 共享同一 SSH Host 且在线                                                                              | 只终止本 case 启动的远端 `codez-server`，不操作 `sshd`；随后对 A 点击重连                              | A/B 同时 disconnected，本地 workspace 不受影响；只建立一次新 SSH Host；A/B 分别获得新 `remoteSessionId` 并恢复；task/file 路由不串                                                   | pending (`manual-review/pending/conversation-session-ssh-remote-server-fault.test.ts`)   |
 
 ## 共享不变量
 
 | 不变量                                  | P0 证明                                                                                                  |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | 每个 BrowserWindow 只有一个 Host        | 所有 case 前后 Process Monitor 只存在同一个 Window Host PID；App 冷启动除外，冷启动后只能有一个新 Host   |
-| 同 target workspace 共用 SSH connection | A/B 不重复部署/握手；远端只有一个对应 `zcode-server`；logical session 独立                               |
+| 同 target workspace 共用 SSH connection | A/B 不重复部署/握手；远端只有一个对应 `codez-server`；logical session 独立                               |
 | identity 与 path 不混用                 | 隔离/key 使用 `workspaceIdentity?.trim() \|\| workspacePath`；file/git/terminal cwd 使用 `workspacePath` |
 | 远端执行、本地 app-global               | file/git/terminal/Agent 来自远端；setting/credential/provider 来自本地并显式同步                         |
 | desktop continuous 不扩散 replayable    | P0 不建立手机 attachment，不断言 replayable gap/snapshot                                                 |
-| secret 不持久化、不进证据               | password 只来自 `ZCODE_E2E_SSH_PASSWORD`；tab、settings、fixture、capture、日志和失败文本均不包含密码    |
+| secret 不持久化、不进证据               | password 只来自 `CODEZ_E2E_SSH_PASSWORD`；tab、settings、fixture、capture、日志和失败文本均不包含密码    |
 
 2026-08-19 用户确认 SSH cancel/retry 的状态剪枝：只接受“最后一个 SSH pending waiter 取消”作为新增
 底层 abort 语义；共享 waiter、online SSH cache 继续使用现有契约用例；WSL、Docker、Server 保持原 transport
@@ -93,14 +93,14 @@ Ubuntu 24.04 + password SSH
 
 ## Fixture 与运行约束
 
-- 必需环境变量：`ZCODE_E2E_SSH_HOST`、`ZCODE_E2E_SSH_PORT`、`ZCODE_E2E_SSH_USERNAME`、`ZCODE_E2E_SSH_PASSWORD`。
-- 默认 formal 全量发现只有在 `ZCODE_E2E_SSH_HOST`、`ZCODE_E2E_SSH_USERNAME`、
-  `ZCODE_E2E_SSH_PASSWORD` 均存在时才纳入真实 SSH spec；端口继续允许默认 22。缺少凭据
+- 必需环境变量：`CODEZ_E2E_SSH_HOST`、`CODEZ_E2E_SSH_PORT`、`CODEZ_E2E_SSH_USERNAME`、`CODEZ_E2E_SSH_PASSWORD`。
+- 默认 formal 全量发现只有在 `CODEZ_E2E_SSH_HOST`、`CODEZ_E2E_SSH_USERNAME`、
+  `CODEZ_E2E_SSH_PASSWORD` 均存在时才纳入真实 SSH spec；端口继续允许默认 22。缺少凭据
   时默认套件应排除这些环境型 case，不能把“环境未配置”统计成产品失败。显式定向运行 SSH
   spec 仍保持 fail-closed，并报告缺少的变量，方便环境维护者验证配置。
-- workspace 路径使用 `ZCODE_E2E_SSH_WORKSPACE_PATHS`；conversation 默认 `/root,/home`，开发基础能力使用 case-local `/root/.zcode-e2e/ssh-p0-*`。
+- workspace 路径使用 `CODEZ_E2E_SSH_WORKSPACE_PATHS`；conversation 默认 `/root,/home`，开发基础能力使用 case-local `/root/.codez-e2e/ssh-p0-*`。
 - provider case 使用 case-local OpenAI-compatible replay fixture；reverse tunnel 只传递测试 provider 流量，产品 SSH 连接仍通过真实 UI 建立。
-- 远端 fixture 必须带本次 run 唯一前缀并在 `finally` 清理。断线 case 只能终止由当前窗口连接启动的 `zcode-server`，禁止修改 `sshd`、系统网络或其它用户进程。
+- 远端 fixture 必须带本次 run 唯一前缀并在 `finally` 清理。断线 case 只能终止由当前窗口连接启动的 `codez-server`，禁止修改 `sshd`、系统网络或其它用户进程。
 - 所有 spec 先放在 `manual-review/pending`，未经人工审阅不晋升 formal。
 - `SSH-P0-CONN-04` 的代理/CDN 必须完全由 case 本地进程提供，不访问真实发布 CDN；测试目标 URL
   在直连路径不可解析，只有代理 mock 能返回 manifest，以机械证明没有 silent direct fallback。
@@ -111,7 +111,7 @@ Ubuntu 24.04 + password SSH
 - `SSH-P0-CONN-01/02`：2026-08-10 在同一 Ubuntu 24.04 上完成 formal 默认 replay，1 passing，artifact `desktop-e2e-20260810-073137-368`。
 - `SSH-P0-DEV-01/02/03`：2026-08-10 在 case-local `/tmp` repo 上完成 formal 默认 replay，1 passing，artifact `desktop-e2e-20260810-073248-576`。
 - `SSH-P0-TASK-02`、`SSH-P0-LIFE-01/02/03` 在实际运行通过前保持 `pending`；不得用 unit/integration 证据替代真实 SSH Electron E2E 状态。
-- `SSH-P0-TASK-03`（2026-09-04 新增）：来源于 3.11.1 WSL 用户反馈——远程 workspace 运行中打开设置页后侧栏永久转圈；根因与单元证据见 `docs/wsl-task-status-inconsistency.md` T3。fixture 合同检查已通过（`pnpm --filter @zcode/desktop e2e:fixture:check`），真实 SSH 运行通过前保持 `pending`。
+- `SSH-P0-TASK-03`（2026-09-04 新增）：来源于 3.11.1 WSL 用户反馈——远程 workspace 运行中打开设置页后侧栏永久转圈；根因与单元证据见 `docs/wsl-task-status-inconsistency.md` T3。fixture 合同检查已通过（`pnpm --filter @codez/desktop e2e:fixture:check`），真实 SSH 运行通过前保持 `pending`。
 
 ## Lifecycle pending 实现
 
@@ -120,7 +120,7 @@ formal/covered；必须在真实 SSH 环境完成 capture/replay 与人工审阅
 
 - `conversation-session-ssh-remote-task-lifecycle.test.ts`：关闭 A、验证 B 续发，再重新打开 A。
 - `conversation-session-ssh-remote-cold-reconnect.test.ts`：`browser.reloadSession()` 冷重启后不触发任何手动重连，等待主窗口 Host 单次自动重连并恢复 A/B；交互凭据负例归 R3-REMOTE-05。
-- `conversation-session-ssh-remote-server-fault.test.ts`：只终止本次连接新建且记录的 `zcode-server` PID，验证 A/B 断连和按组重连；不会调用 `sshd`、`wsl --terminate` 或 `wsl --shutdown`。
+- `conversation-session-ssh-remote-server-fault.test.ts`：只终止本次连接新建且记录的 `codez-server` PID，验证 A/B 断连和按组重连；不会调用 `sshd`、`wsl --terminate` 或 `wsl --shutdown`。
 - `conversation-session-ssh-remote-cancel-retry.test.ts`：首连接保持 pending，确认停止后同 target 立即以正确 password 重试；不发送 provider 请求。
 
 上述四条 pending spec 在 R3 下统一以握手返回的稳定

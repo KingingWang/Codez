@@ -2,7 +2,7 @@
 import { createElement } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen, fireEvent } from "@testing-library/react";
-import { Emitter } from "@zcode/rpc";
+import { Emitter } from "@codez/rpc";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { RemoteConnectionStatusTag } from "@/remote-connection/RemoteConnectionTags.js";
@@ -14,7 +14,7 @@ import { resolveRemoteConnectionPresentation } from "@/lib/remoteConnectionPrese
 import zh from "@/i18n/locales/zh-CN.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, string | number>) =>
         Object.entries(values ?? {}).reduce(

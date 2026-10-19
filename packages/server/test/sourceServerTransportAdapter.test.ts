@@ -1,6 +1,6 @@
 import { PassThrough } from "node:stream";
-import { Emitter } from "@zcode/rpc";
-import type { RemoteTarget } from "@zcode/shared";
+import { Emitter } from "@codez/rpc";
+import type { RemoteTarget } from "@codez/shared";
 import type { IRemoteBackend, StdioStream } from "../src/remote/backend.js";
 import {
   createSourceServerTransportAdapter,
@@ -51,24 +51,24 @@ class FakeBackend implements IRemoteBackend {
 
   async exec(command: string): Promise<StdioStream> {
     this.commands.push(command);
-    if (command.includes("__ZCODE_PROBE_PLATFORM__")) {
-      const releaseSection = command.includes("__ZCODE_PROBE_RELEASE__")
-        ? `__ZCODE_PROBE_RELEASE__\n${JSON.stringify({ version: "3.8.0", archiveSha256: "c".repeat(64) })}\n`
+    if (command.includes("__CODEZ_PROBE_PLATFORM__")) {
+      const releaseSection = command.includes("__CODEZ_PROBE_RELEASE__")
+        ? `__CODEZ_PROBE_RELEASE__\n${JSON.stringify({ version: "3.8.0", archiveSha256: "c".repeat(64) })}\n`
         : "";
       return completedStream(
-        `__ZCODE_PROBE_PLATFORM__\nLinux\n` +
-          `__ZCODE_PROBE_ARCH__\nx86_64\n` +
-          `__ZCODE_PROBE_KERNEL__\nLinux\n` +
-          `__ZCODE_PROBE_INSTALLED__\n1\n` +
+        `__CODEZ_PROBE_PLATFORM__\nLinux\n` +
+          `__CODEZ_PROBE_ARCH__\nx86_64\n` +
+          `__CODEZ_PROBE_KERNEL__\nLinux\n` +
+          `__CODEZ_PROBE_INSTALLED__\n1\n` +
           releaseSection +
-          `__ZCODE_PROBE_VERSION__\n${this.versionOutput}` +
-          `__ZCODE_PROBE_STATUS__\n${JSON.stringify({
+          `__CODEZ_PROBE_VERSION__\n${this.versionOutput}` +
+          `__CODEZ_PROBE_STATUS__\n${JSON.stringify({
             state: "ready",
             port: 43123,
             version: "3.8.0",
             serviceRegistered: false,
           })}\n` +
-          `__ZCODE_PROBE_END__\n`,
+          `__CODEZ_PROBE_END__\n`,
       );
     }
     if (command.includes("command -v tar") && !command.includes("command -v curl")) {
@@ -150,7 +150,7 @@ class FakeBackend implements IRemoteBackend {
 const targets: RemoteTarget[] = [
   { kind: "ssh", host: "example.com", username: "alice" },
   { kind: "wsl", distro: "Ubuntu-24.04", user: "alice" },
-  { kind: "docker", container: "zcode-dev" },
+  { kind: "docker", container: "codez-dev" },
 ];
 
 it("reads the installed release identity only when development probing requests it", async () => {
@@ -161,12 +161,12 @@ it("reads the installed release identity only when development probing requests 
   });
 
   await expect(adapter.probe(target, {})).resolves.not.toHaveProperty("installedArchiveSha256");
-  expect(backend.commands.at(-1)).not.toContain("__ZCODE_PROBE_RELEASE__");
+  expect(backend.commands.at(-1)).not.toContain("__CODEZ_PROBE_RELEASE__");
 
   await expect(adapter.probe(target, {}, { includeReleaseIdentity: true })).resolves.toMatchObject({
     installedArchiveSha256: "c".repeat(64),
   });
-  expect(backend.commands.at(-1)).toContain("__ZCODE_PROBE_RELEASE__");
+  expect(backend.commands.at(-1)).toContain("__CODEZ_PROBE_RELEASE__");
 });
 
 describe("probe failure classification", () => {
@@ -217,8 +217,8 @@ describe("probe failure classification", () => {
     await expect(
       probeWith(async () =>
         completedStream(
-          "__ZCODE_PROBE_PLATFORM__\nMINGW64_NT-10.0\n__ZCODE_PROBE_ARCH__\nx86_64\n" +
-            "__ZCODE_PROBE_INSTALLED__\n0\n__ZCODE_PROBE_END__\n",
+          "__CODEZ_PROBE_PLATFORM__\nMINGW64_NT-10.0\n__CODEZ_PROBE_ARCH__\nx86_64\n" +
+            "__CODEZ_PROBE_INSTALLED__\n0\n__CODEZ_PROBE_END__\n",
         ),
       ),
     ).rejects.toMatchObject({ code: "remote-preflight-failed" });
@@ -234,7 +234,7 @@ it("probes environment, installation, release identity, version and live status 
   await adapter.probe(targets[0]!, {}, { includeReleaseIdentity: true });
 
   const probeCommands = backend.commands.filter((command) =>
-    command.includes("__ZCODE_PROBE_PLATFORM__"),
+    command.includes("__CODEZ_PROBE_PLATFORM__"),
   );
   expect(probeCommands).toHaveLength(1);
   expect(probeCommands[0]).toContain("current.json");
@@ -279,25 +279,25 @@ function contract(name: string, target: RemoteTarget): void {
       await adapter.installOrUpdate(
         target,
         {
-          localArchivePath: "/tmp/zcode-server-linux-x64.tar.gz",
+          localArchivePath: "/tmp/codez-server-linux-x64.tar.gz",
           target: "linux-x64",
           version: "3.8.0",
           sha256: "a".repeat(64),
           sizeBytes: 1024,
-          urls: ["https://cdn.example.test/zcode-server-linux-x64.tar.gz"],
+          urls: ["https://cdn.example.test/codez-server-linux-x64.tar.gz"],
         },
         {},
         { force: true },
       );
       expect(backend.uploads).toHaveLength(1);
       expect(backend.uploads[0]?.remotePath).toMatch(
-        /^~\/\.zcode\/server\/\.bootstrap-[^/]+\/zcode-server\.tar\.gz$/u,
+        /^~\/\.codez\/server\/\.bootstrap-[^/]+\/codez-server\.tar\.gz$/u,
       );
       expect(backend.uploads[0]?.remotePath).not.toContain("/tmp/");
       const prepareCommand = backend.commands.find(
         (command) => command.includes("mkdir -p") && command.includes(".bootstrap-"),
       );
-      expect(prepareCommand).toContain('"$HOME/.zcode/server"/.bootstrap-*');
+      expect(prepareCommand).toContain('"$HOME/.codez/server"/.bootstrap-*');
       expect(prepareCommand).toContain("1800000");
       expect(prepareCommand).toContain("date +%s");
       const updateCommand = backend.commands.find((command) =>
@@ -305,9 +305,9 @@ function contract(name: string, target: RemoteTarget): void {
       );
       expect(updateCommand).toContain("--force");
       if (target.kind === "ssh") {
-        expect(updateCommand).not.toContain("ZCODE_SERVER_SKIP_SERVICE_REGISTRATION=1");
+        expect(updateCommand).not.toContain("CODEZ_SERVER_SKIP_SERVICE_REGISTRATION=1");
       } else {
-        expect(updateCommand).toContain("ZCODE_SERVER_SKIP_SERVICE_REGISTRATION=1");
+        expect(updateCommand).toContain("CODEZ_SERVER_SKIP_SERVICE_REGISTRATION=1");
       }
       const daemonLogs: string[] = [];
       const ingress = await adapter.ensureDaemon(target, {
@@ -324,9 +324,9 @@ function contract(name: string, target: RemoteTarget): void {
         command.includes("'serve' '--daemon'"),
       );
       if (target.kind === "ssh") {
-        expect(serveCommand).not.toContain("ZCODE_SERVER_SKIP_SERVICE_REGISTRATION=1");
+        expect(serveCommand).not.toContain("CODEZ_SERVER_SKIP_SERVICE_REGISTRATION=1");
       } else {
-        expect(serveCommand).toContain("ZCODE_SERVER_SKIP_SERVICE_REGISTRATION=1");
+        expect(serveCommand).toContain("CODEZ_SERVER_SKIP_SERVICE_REGISTRATION=1");
       }
 
       const channel = await adapter.openChannel(target, ingress, {});
@@ -387,7 +387,7 @@ it.each(targets)("forwards $kind install progress before command completion", as
 });
 
 it("extracts a unique semver from legacy decorated version output", async () => {
-  const backend = new FakeBackend("legacy zcode server version v3.7.4\n");
+  const backend = new FakeBackend("legacy codez server version v3.7.4\n");
   const adapter = createSourceServerTransportAdapter("docker", {
     createBackend: async () => backend,
   });
@@ -437,12 +437,12 @@ it("preserves a public archive update guard from CLI JSON", async () => {
     adapter.installOrUpdate(
       { kind: "docker", container: "busy" },
       {
-        localArchivePath: "/tmp/zcode-server-linux-x64.tar.gz",
+        localArchivePath: "/tmp/codez-server-linux-x64.tar.gz",
         target: "linux-x64",
         version: "3.9.0",
         sha256: "b".repeat(64),
         sizeBytes: 2048,
-        urls: ["https://cdn.example.test/zcode-server-linux-x64.tar.gz"],
+        urls: ["https://cdn.example.test/codez-server-linux-x64.tar.gz"],
       },
       {},
     ),
@@ -456,9 +456,9 @@ it("preserves a public archive update guard from CLI JSON", async () => {
   );
   expect(updateCommand).toMatch(/trap .* EXIT/u);
   expect(updateCommand).toContain(".bootstrap-");
-  expect(updateCommand).toContain("zcode-server.tar.gz");
-  expect(updateCommand).not.toContain("/tmp/zcode-server-bootstrap-");
-  expect(updateCommand).toContain('"$HOME/.zcode/server"/.bootstrap-');
+  expect(updateCommand).toContain("codez-server.tar.gz");
+  expect(updateCommand).not.toContain("/tmp/codez-server-bootstrap-");
+  expect(updateCommand).toContain('"$HOME/.codez/server"/.bootstrap-');
 });
 
 it.each(targets)(
@@ -478,7 +478,7 @@ it.each(targets)(
       adapter.installOrUpdate(
         target,
         {
-          localArchivePath: "/tmp/zcode-server-linux-x64.tar.gz",
+          localArchivePath: "/tmp/codez-server-linux-x64.tar.gz",
           target: "linux-x64",
           version: "3.9.0",
           sha256: "b".repeat(64),
@@ -559,7 +559,7 @@ describe("SSH gateway that merges remote stderr into stdout", () => {
       adapter.installOrUpdate(
         target,
         {
-          localArchivePath: "/tmp/zcode-server-linux-x64.tar.gz",
+          localArchivePath: "/tmp/codez-server-linux-x64.tar.gz",
           target: "linux-x64",
           version: "3.9.0",
           sha256: "b".repeat(64),
@@ -582,12 +582,12 @@ it("fails before uploading when the remote host cannot extract the archive", asy
     adapter.installOrUpdate(
       { kind: "ssh", host: "example.com", username: "alice" },
       {
-        localArchivePath: "/tmp/zcode-server-linux-x64.tar.gz",
+        localArchivePath: "/tmp/codez-server-linux-x64.tar.gz",
         target: "linux-x64",
         version: "3.8.1",
         sha256: "d".repeat(64),
         sizeBytes: 4096,
-        urls: ["https://cdn.example.test/zcode-server-linux-x64.tar.gz"],
+        urls: ["https://cdn.example.test/codez-server-linux-x64.tar.gz"],
       },
       {},
     ),
@@ -614,7 +614,7 @@ it("downloads and verifies the Source Server archive on the SSH target when requ
       version: "3.9.0",
       sha256: "c".repeat(64),
       sizeBytes: 4096,
-      urls: ["https://cdn.example.test/zcode-server-linux-x64.tar.gz"],
+      urls: ["https://cdn.example.test/codez-server-linux-x64.tar.gz"],
     },
     { onLog },
   );
@@ -651,7 +651,7 @@ it("uploads an explicitly resolved local development archive despite the SSH dow
       version: "3.8.1",
       sha256: "d".repeat(64),
       sizeBytes: 4096,
-      urls: ["https://cdn.example.test/zcode-server-linux-x64.tar.gz"],
+      urls: ["https://cdn.example.test/codez-server-linux-x64.tar.gz"],
     },
     {},
   );
@@ -660,7 +660,7 @@ it("uploads an explicitly resolved local development archive despite the SSH dow
     {
       localPath: "/tmp/current-development-source-server.tar.gz",
       remotePath: expect.stringMatching(
-        /^~\/\.zcode\/server\/\.bootstrap-[^/]+\/zcode-server\.tar\.gz$/u,
+        /^~\/\.codez\/server\/\.bootstrap-[^/]+\/codez-server\.tar\.gz$/u,
       ),
     },
   ]);

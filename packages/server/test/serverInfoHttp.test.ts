@@ -3,8 +3,8 @@ import { AddressInfo } from "node:net";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { ServiceCollection } from "@zcode/services";
-import { SERVER_REMOTE_PROTOCOL_VERSION } from "@zcode/shared";
+import { ServiceCollection } from "@codez/services";
+import { SERVER_REMOTE_PROTOCOL_VERSION } from "@codez/shared";
 import { createHttpServer } from "../src/http.js";
 
 describe("server info HTTP endpoint", () => {
@@ -37,7 +37,7 @@ describe("server info HTTP endpoint", () => {
       name: "Studio Server",
       workspaces: [
         {
-          path: "/srv/zcode/project",
+          path: "/srv/codez/project",
           label: "project",
         },
       ],
@@ -63,7 +63,7 @@ describe("server info HTTP endpoint", () => {
       identity: { osUser: expect.any(String), hostname: expect.any(String) },
       workspaces: [
         {
-          path: "/srv/zcode/project",
+          path: "/srv/codez/project",
           label: "project",
         },
       ],
@@ -104,11 +104,11 @@ describe("server info HTTP endpoint", () => {
 
     const accepted = await fetch(`${baseUrl}/api/server-info?token=secret-token`);
     expect(accepted.status).toBe(200);
-    expect(accepted.headers.get("set-cookie")).toContain("zcode_lite_token=");
+    expect(accepted.headers.get("set-cookie")).toContain("codez_lite_token=");
 
     const cookieAccepted = await fetch(`${baseUrl}/api/server-info`, {
       headers: {
-        cookie: "zcode_lite_token=secret-token",
+        cookie: "codez_lite_token=secret-token",
       },
     });
     expect(cookieAccepted.status).toBe(200);
@@ -147,7 +147,7 @@ describe("server info HTTP endpoint", () => {
   });
 
   it("serves static web files with SPA fallback", async () => {
-    const staticRoot = await mkdtemp(join(tmpdir(), "zcode-lite-static-"));
+    const staticRoot = await mkdtemp(join(tmpdir(), "codez-lite-static-"));
     tempDirs.push(staticRoot);
     await writeFile(join(staticRoot, "index.html"), "<html>lite</html>", "utf8");
     await writeFile(join(staticRoot, "app.js"), "console.log('lite');", "utf8");

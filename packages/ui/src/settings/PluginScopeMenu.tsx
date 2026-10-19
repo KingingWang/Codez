@@ -1,7 +1,7 @@
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 import { useSettingsMachineLabel, useSettingsUserScope } from "@/settings/SettingsMachine.js";
 import { ChevronDown, Cloud, Folder, Monitor } from "lucide-react";
-import { testId } from "@zcode/shared/test-ids";
+import { testId } from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import {
   DropdownMenu,
@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { getWorkspaceKey } from "@/lib/workspaceKey.js";
 import type { ConfigWorkspaceTarget } from "@/workspace-config-catalog/index.js";
 
@@ -65,7 +65,7 @@ export function PluginScopeMenu({
   userSourceServerId?: string | null;
   onScopeKeyChange: (scopeKey: string) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const machineLabel = useSettingsMachineLabel();
   const inheritedUserScope = useSettingsUserScope();
   const userMachine = machineLabel(

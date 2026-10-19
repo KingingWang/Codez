@@ -1,14 +1,14 @@
 import { SidebarNativeTooltip, ControlHintTooltip } from "@/ControlHintTooltip.js";
-import type { ProjectTask as ZCodeTaskMeta } from "@/project-sidebar/contract.js";
+import type { ProjectTask as CodezTaskMeta } from "@/project-sidebar/contract.js";
 import type {
-  ZCodeGroupedTaskViewNode,
-  ZCodeTaskGroupColor,
+  CodezGroupedTaskViewNode,
+  CodezTaskGroupColor,
 } from "@/project-sidebar/grouped/types.js";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 
-import { CRON_DEFAULT_GROUP_ID, OFF_PEAK_DEFAULT_GROUP_ID } from "@zcode/shared";
+import { CRON_DEFAULT_GROUP_ID, OFF_PEAK_DEFAULT_GROUP_ID } from "@codez/shared";
 import { ChevronDownIcon, ChevronRightIcon, MessageCirclePlus } from "lucide-react";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
@@ -30,7 +30,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { isImeComposingKeyEvent } from "@/lib/imeComposition.js";
 import { EmptyGroupDropZone } from "@/project-sidebar/grouped/task-item.js";
@@ -84,17 +84,17 @@ export function GroupItem({
   activeDragGroupId,
   tooltipsDisabled,
 }: {
-  node: Extract<ZCodeGroupedTaskViewNode, { type: "group" }>;
+  node: Extract<CodezGroupedTaskViewNode, { type: "group" }>;
   groups: TaskGroupMenuItem[];
   activeWorkspacePath: string;
   activeWorkspaceIdentity?: string;
   activeTaskId: string | null;
   mobileActiveTaskKey?: string | null;
-  getTaskRemoteSessionId: (task: ZCodeTaskMeta) => string | undefined;
-  getTaskWorkspaceLabel: (task: ZCodeTaskMeta) => string;
+  getTaskRemoteSessionId: (task: CodezTaskMeta) => string | undefined;
+  getTaskWorkspaceLabel: (task: CodezTaskMeta) => string;
   onSelectTask: (workspacePath: string, taskId: string, workspaceIdentity?: string) => void;
-  onCloseTask: (task: ZCodeTaskMeta) => void;
-  onOpenFileTree?: (task: ZCodeTaskMeta) => void;
+  onCloseTask: (task: CodezTaskMeta) => void;
+  onOpenFileTree?: (task: CodezTaskMeta) => void;
   onCreateTask: () => void;
   hasDraftTask?: boolean;
   draftTaskActive?: boolean;
@@ -102,13 +102,13 @@ export function GroupItem({
   onSelectDraftTask?: () => void;
   onCloseDraftTask?: () => void;
   onRenameGroup: (groupId: string, title: string) => void;
-  onUpdateGroupColor: (groupId: string, color: ZCodeTaskGroupColor) => void;
+  onUpdateGroupColor: (groupId: string, color: CodezTaskGroupColor) => void;
   onUngroupGroup: (groupId: string) => void;
-  onMoveTaskToGroup: (task: ZCodeTaskMeta, groupId: string | null) => void;
-  onMoveTaskToTop: (task: ZCodeTaskMeta) => void;
-  onStartRenameTask: (task: ZCodeTaskMeta) => void;
-  onArchiveTask: (task: ZCodeTaskMeta) => void;
-  onMarkTaskAsUnread: (task: ZCodeTaskMeta) => void;
+  onMoveTaskToGroup: (task: CodezTaskMeta, groupId: string | null) => void;
+  onMoveTaskToTop: (task: CodezTaskMeta) => void;
+  onStartRenameTask: (task: CodezTaskMeta) => void;
+  onArchiveTask: (task: CodezTaskMeta) => void;
+  onMarkTaskAsUnread: (task: CodezTaskMeta) => void;
   newGroupSetup: boolean;
   onNewGroupSetupStarted: (groupId: string) => void;
   collapsed: boolean;
@@ -117,7 +117,7 @@ export function GroupItem({
   activeDragGroupId?: string | null;
   tooltipsDisabled?: boolean;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [renaming, setRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState(node.group.title);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
@@ -419,7 +419,7 @@ export function GroupItem({
 
   const handleGroupColorChange = useCallback(
     (color: string) => {
-      onUpdateGroupColor(node.group.id, color as ZCodeTaskGroupColor);
+      onUpdateGroupColor(node.group.id, color as CodezTaskGroupColor);
     },
     [node.group.id, onUpdateGroupColor],
   );

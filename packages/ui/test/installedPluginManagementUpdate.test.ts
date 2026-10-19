@@ -2,7 +2,7 @@ import { act, createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ZCodePluginInfo, ZCodePluginUserConfigOption } from "@zcode/shared";
+import type { CodezPluginInfo, CodezPluginUserConfigOption } from "@codez/shared";
 
 // 复用 taskListItemHoverActions.test.ts 的「mock Button 捕获 onClick」套路：
 // renderToStaticMarkup 不会派发真实点击事件，故把 Button 替换成记录 props 的桩，
@@ -18,7 +18,7 @@ vi.mock("@/components/ui/button.js", () => ({
   },
 }));
 
-function basePlugin(overrides: Partial<ZCodePluginInfo> = {}): ZCodePluginInfo {
+function basePlugin(overrides: Partial<CodezPluginInfo> = {}): CodezPluginInfo {
   return {
     id: "skill-creator@zcode-plugins-official",
     name: "skill-creator",
@@ -40,13 +40,13 @@ function basePlugin(overrides: Partial<ZCodePluginInfo> = {}): ZCodePluginInfo {
 
 const sharedPanelProps = {
   getPluginOptionValue: (
-    _plugin: ZCodePluginInfo,
+    _plugin: CodezPluginInfo,
     _key: string,
-    option: ZCodePluginUserConfigOption,
+    option: CodezPluginUserConfigOption,
   ) => option.default ?? "",
   onSavePluginOptions: () => {},
   setPluginOptionDraft: () => {},
-  renderPluginSource: (target: ZCodePluginInfo) => target.marketplace,
+  renderPluginSource: (target: CodezPluginInfo) => target.marketplace,
 } as const;
 
 function createMinimalElement(ownerDocument: Document, tagName = "div") {
@@ -129,11 +129,11 @@ describe("InstalledPluginDetailPanel update badge", () => {
   it("renders the update button, target version, and new-sessions note when update-available", async () => {
     const { InstalledPluginDetailPanel } =
       await import("../src/settings/InstalledPluginManagement.js");
-    const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+    const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
 
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(InstalledPluginDetailPanel, {
           ...sharedPanelProps,
@@ -155,11 +155,11 @@ describe("InstalledPluginDetailPanel update badge", () => {
   it("omits the update block when there is no update", async () => {
     const { InstalledPluginDetailPanel } =
       await import("../src/settings/InstalledPluginManagement.js");
-    const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+    const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
 
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(InstalledPluginDetailPanel, {
           ...sharedPanelProps,
@@ -179,14 +179,14 @@ describe("InstalledPluginDetailPanel update badge", () => {
   it("invokes onRequestUpdate with the plugin id when the update button is clicked", async () => {
     const { InstalledPluginDetailPanel } =
       await import("../src/settings/InstalledPluginManagement.js");
-    const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+    const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
     const onRequestUpdate = vi.fn();
     const root: Root = createRoot(installMinimalDom());
 
     act(() => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "en-US" },
           createElement(InstalledPluginDetailPanel, {
             ...sharedPanelProps,

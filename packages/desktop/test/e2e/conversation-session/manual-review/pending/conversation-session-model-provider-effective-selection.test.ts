@@ -4,7 +4,7 @@ import {
   type ModelSelection,
   encodeCustomModelValue,
   BUILTIN_MODEL_PROVIDER_IDS,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   TID_MODEL_PROVIDER_CONNECTION_MODE_ITEM,
   TID_MODEL_PROVIDER_CONNECTION_MODE_TRIGGER,
@@ -28,7 +28,7 @@ import {
   TID_CHAT_THOUGHT_LEVEL_SELECT_TRIGGER,
   TID_CHAT_THOUGHT_LEVEL_SELECT_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -88,7 +88,7 @@ describe("SR87 当前有效选择与原意图", () => {
       async () =>
         await browser.execute((workspace) => {
           const value = JSON.parse(
-            localStorage.getItem(`zcode-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`) ??
+            localStorage.getItem(`codez-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`) ??
               "{}",
           );
           return value.scopes?.__draft__?.text === "E2E_R95C_LEGACY_DRAFT";
@@ -99,7 +99,7 @@ describe("SR87 当前有效选择与原意图", () => {
     const previousDocument = await browser.execute(() => performance.timeOrigin);
     await browser.execute(
       (workspace, providerId) => {
-        const key = `zcode-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`;
+        const key = `codez-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`;
         window.addEventListener(
           "pagehide",
           () => {
@@ -131,7 +131,7 @@ describe("SR87 当前有效选择与原意图", () => {
     const beforeEditing = await browser.execute(
       (workspace) =>
         JSON.parse(
-          localStorage.getItem(`zcode-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`) ??
+          localStorage.getItem(`codez-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`) ??
             "{}",
         ).scopes?.__draft__?.modelSelection,
       DEFAULT_WORKSPACE,
@@ -144,7 +144,7 @@ describe("SR87 当前有效选择与原意图", () => {
           await browser.execute((workspace) => {
             const draft = JSON.parse(
               localStorage.getItem(
-                `zcode-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`,
+                `codez-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`,
               ) ?? "{}",
             ).scopes?.__draft__;
             return (
@@ -157,7 +157,7 @@ describe("SR87 当前有效选择与原意图", () => {
       .catch(async (error) => {
         const persisted = await browser.execute(
           (workspace) =>
-            localStorage.getItem(`zcode-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`),
+            localStorage.getItem(`codez-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`),
           DEFAULT_WORKSPACE,
         );
         throw new Error(
@@ -180,7 +180,7 @@ describe("SR87 当前有效选择与原意图", () => {
           const scopes =
             JSON.parse(
               localStorage.getItem(
-                `zcode-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`,
+                `codez-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`,
               ) ?? "{}",
             ).scopes ?? {};
           return Object.values(scopes).some((value) => {
@@ -219,7 +219,7 @@ describe("SR87 当前有效选择与原意图", () => {
         text: document.body.innerText.slice(-5000),
         drafts: Object.fromEntries(
           Object.entries(localStorage).filter(([key]) =>
-            key.startsWith("zcode-v4-composer-drafts:v1:"),
+            key.startsWith("codez-v4-composer-drafts:v1:"),
           ),
         ),
       }));
@@ -240,7 +240,7 @@ describe("SR87 当前有效选择与原意图", () => {
           (workspace) =>
             JSON.parse(
               localStorage.getItem(
-                `zcode-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`,
+                `codez-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`,
               ) ?? "{}",
             ).scopes?.__draft__,
           DEFAULT_WORKSPACE,
@@ -252,7 +252,7 @@ describe("SR87 当前有效选择与原意图", () => {
     const saved = await browser.execute(
       (workspace) =>
         JSON.parse(
-          localStorage.getItem(`zcode-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`) ??
+          localStorage.getItem(`codez-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`) ??
             "{}",
         ).scopes?.__draft__?.modelSelection,
       DEFAULT_WORKSPACE,
@@ -286,7 +286,7 @@ describe("SR87 当前有效选择与原意图", () => {
             const scopes =
               JSON.parse(
                 localStorage.getItem(
-                  `zcode-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`,
+                  `codez-v4-composer-drafts:v1:${encodeURIComponent(workspace)}`,
                 ) ?? "{}",
               ).scopes ?? {};
             return Object.values(scopes).map(
@@ -326,7 +326,7 @@ describe("SR87 当前有效选择与原意图", () => {
     await browser.execute(() => {
       const item = Array.from(
         document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]'),
-      ).find((node) => node.innerText.trim() === "ZCodeProject");
+      ).find((node) => node.innerText.trim() === "CodezProject");
       if (!item) throw new Error("缺少目标项目");
       item.click();
     });

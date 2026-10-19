@@ -2,7 +2,7 @@ import { BrowserWindow, clipboard, type WebContents } from "electron";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
-import type { PluginSandboxHandle } from "@zcode/shared/mcp-apps";
+import type { PluginSandboxHandle } from "@codez/shared/mcp-apps";
 import { checkPreviewCorners } from "./preview-corner-checks.js";
 import { checkUnifiedStyles } from "./style-checks.js";
 
@@ -60,7 +60,7 @@ export async function checkCapture(
     captureRect: { x: 5, y: 5, width: viewport.width - 10, height: viewport.height - 10 },
   };
   const copyRequest = (value: unknown) =>
-    `window.zcodePluginSandbox.copyImage(${JSON.stringify(value)})`;
+    `window.codezPluginSandbox.copyImage(${JSON.stringify(value)})`;
   await assert.rejects(
     win.webContents.executeJavaScript(copyRequest({ ...request, initId: request.initId + 1 })),
     /no longer available/,

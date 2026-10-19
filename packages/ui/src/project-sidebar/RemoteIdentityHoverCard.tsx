@@ -2,13 +2,13 @@ import { useEffect, useRef, useState, type ReactElement } from "react";
 import { HoverCard as HoverCardPrimitive } from "radix-ui";
 import { ChevronRight, Settings } from "lucide-react";
 import { Anchor, createPopperScope } from "@radix-ui/react-popper";
-import { sourceServerConnectionStateSchema } from "@zcode/shared";
+import { sourceServerConnectionStateSchema } from "@codez/shared";
 import type { RemoteProjectHost } from "@/project-sidebar/contract.js";
 import { remoteHostLabel } from "@/project-sidebar/RemoteHostSection.js";
 import { RemoteConnectionProgressSection } from "@/project-sidebar/RemoteConnectionProgressSection.js";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card.js";
 import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   formatRemoteProjectConnectionAddress,
   resolveRemoteConnectionPresentation,
@@ -46,7 +46,7 @@ export function RemoteIdentityHoverCard({
   onOpenDeviceSettings?: () => void;
   children: ReactElement;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const scope = useHoverCardScope(undefined);
   const popperScope = usePopperScope(scope.__scopeHoverCard);
   const trigger = useRef<HTMLAnchorElement>(null);

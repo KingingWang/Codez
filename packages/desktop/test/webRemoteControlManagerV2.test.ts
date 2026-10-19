@@ -1,20 +1,20 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { WebSocket } from "ws";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createFakeRelayV2, type FakeRelayV2Options } from "@zcode/shared/testing/fake-relay-v2";
+import { createFakeRelayV2, type FakeRelayV2Options } from "@codez/shared/testing/fake-relay-v2";
 import {
-  buildZCodeEndpointUrls,
+  buildCodezEndpointUrls,
   type AppSettings,
   type WebRemoteControlContext,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   parseWebRemoteControlRelayV2IncomingMessage,
   type WebRemoteControlRelayV2IncomingMessage,
-} from "@zcode/shared/web-remote-relay";
+} from "@codez/shared/web-remote-relay";
 import { createWebRemoteControlManager } from "@desktop/main/webRemoteControlManager.js";
 import { createWebRemoteControlDeviceStorage } from "#src/main/web-remote-relay/index.js";
 import { createWebRemoteControlFeatureGate } from "@desktop/main/webRemoteControlFeatureGate.js";
-import { createOAuthService } from "@zcode/services/node";
+import { createOAuthService } from "@codez/services/node";
 
 const cleanups: Array<() => void | Promise<void>> = [];
 afterEach(async () => {
@@ -62,7 +62,7 @@ async function fixture(
     relayWsUrl: relay.wsUrl,
     mobileRemoteControlUrl: `${relay.httpUrl}/remote/v4`,
     getEndpointUrls: () => ({
-      ...buildZCodeEndpointUrls(endpoint, { appVersion: "3.13.0" }),
+      ...buildCodezEndpointUrls(endpoint, { appVersion: "3.13.0" }),
       relayWsUrl: endpoint.replace("http", "ws") + "/api/v1/remote/ws2",
     }),
     getLogin: readLogin,
@@ -157,7 +157,7 @@ function requestBootstrap(socket: WebSocket) {
   socket.send(
     JSON.stringify({
       type: "data",
-      payload: { zcode_type: "bootstrap-request", requestId: "account-isolation" },
+      payload: { codez_type: "bootstrap-request", requestId: "account-isolation" },
     }),
   );
 }
@@ -256,10 +256,10 @@ describe("V2 manager public API with real relay", () => {
         JSON.stringify({ id: "user", username: "User", displayName: "User" }),
       ],
       ["oauth:zai:access_token", "access"],
-      ["zcodejwttoken", "jwt"],
+      ["codezjwttoken", "jwt"],
     ]);
     f.readLogin.mockImplementation(async () =>
-      credentials.has("zcodejwttoken") ? { jwt: "jwt", userId: "user" } : undefined,
+      credentials.has("codezjwttoken") ? { jwt: "jwt", userId: "user" } : undefined,
     );
     const oauth = createOAuthService(
       {
@@ -292,7 +292,7 @@ describe("V2 manager public API with real relay", () => {
     await expect(oauth.logout()).rejects.toThrow("derived settings failed");
     await vi.waitFor(() => expect(terminal.socket.readyState).toBe(WebSocket.CLOSED));
     expect(f.manager.getStatus(1)).toEqual({ status: "auth-required" });
-    expect(credentials.has("zcodejwttoken")).toBe(false);
+    expect(credentials.has("codezjwttoken")).toBe(false);
     expect(f.settings.webRemoteControlLastEnabledContext).toEqual({ workspacePath: "/workspace" });
   });
   it("首次注册503交给连接退避恢复，无需再次点击启动", async () => {
@@ -348,7 +348,7 @@ describe("V2 manager public API with real relay", () => {
       expect(current.messages).toContainEqual(
         expect.objectContaining({
           type: "data",
-          payload: expect.objectContaining({ zcode_type: "bootstrap-response" }),
+          payload: expect.objectContaining({ codez_type: "bootstrap-response" }),
         }),
       ),
     );

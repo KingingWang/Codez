@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { TID_CHAT_ATTACHMENT_BUTTON, TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_CHAT_ATTACHMENT_BUTTON, TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import { clearAppData, setInputValueByTestIdDom } from "../../../helpers/desktop-app.js";
 import {
   getV4ComposerText,
@@ -110,9 +110,9 @@ describe("PLUS composer context menu", () => {
     // 通过现有 E2E bridge 模拟程序回填；菜单应关闭，重开后使用新草稿。
     await browser.execute((testId) => {
       const input = document.querySelector(`[data-testid="${testId}"]`) as HTMLElement & {
-        __zcodeLexicalInputE2E: { setText: (text: string) => void };
+        __codezLexicalInputE2E: { setText: (text: string) => void };
       };
-      input.__zcodeLexicalInputE2E.setText("E2E_PLUS_MENU replacement ");
+      input.__codezLexicalInputE2E.setText("E2E_PLUS_MENU replacement ");
     }, TID_V4_COMPOSER_INPUT);
     await browser.waitUntil(
       async () => (await getV4ComposerText()) === "E2E_PLUS_MENU replacement ",

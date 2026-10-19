@@ -1,11 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { beforeAll, describe, expect, it } from "vitest";
-import { compileModelOptionMaps } from "@zcode/model-option-map";
+import { compileModelOptionMaps } from "@codez/model-option-map";
 import {
   ModelConfig,
   ModelOptionSpecsConfig,
-  parseZCodeBuiltinModelConfigRules,
-} from "@zcode/provider";
+  parseCodezBuiltinModelConfigRules,
+} from "@codez/provider";
 
 type Release = {
   config: {
@@ -22,12 +22,12 @@ type Release = {
   };
 };
 let release: Release;
-let rules: ReturnType<typeof parseZCodeBuiltinModelConfigRules>;
+let rules: ReturnType<typeof parseCodezBuiltinModelConfigRules>;
 beforeAll(async () => {
   release = JSON.parse(
-    await readFile(new URL("../../../config/provider/zcode-builtin.json", import.meta.url), "utf8"),
+    await readFile(new URL("../../../config/provider/codez-builtin.json", import.meta.url), "utf8"),
   );
-  rules = parseZCodeBuiltinModelConfigRules(release.config.modelConfigRules);
+  rules = parseCodezBuiltinModelConfigRules(release.config.modelConfigRules);
 });
 const resolve = (
   modelId: string,

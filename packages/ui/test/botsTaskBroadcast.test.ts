@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BOT_TASK_BROADCAST_CHANNEL } from "@zcode/shared";
+import { BOT_TASK_BROADCAST_CHANNEL } from "@codez/shared";
 import {
   resolveBotTaskBroadcastRefresh,
   resolveBotTaskBroadcastRuntimeStatus,

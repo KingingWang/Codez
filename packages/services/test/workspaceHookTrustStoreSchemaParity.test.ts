@@ -6,7 +6,7 @@ import { createHooksService } from "../src/hooks/hooksService.js";
 import {
   parseWorkspaceHookTrustStoreContent,
   type WorkspaceHookTrustStoreParseResult,
-} from "@zcode/shared/workspace-hook-trust-store-file";
+} from "@codez/shared/workspace-hook-trust-store-file";
 
 /**
  * Trust store schema parity（CR-01 回归）。
@@ -26,7 +26,7 @@ import {
 const roots: string[] = [];
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), "zcode-hook-trust-parity-"));
+  const root = mkdtempSync(join(tmpdir(), "codez-hook-trust-parity-"));
   roots.push(root);
   return root;
 }
@@ -40,7 +40,7 @@ function setupWorkspaceWithHook(): { home: string; workspace: string } {
   const home = makeRoot();
   const workspace = makeRoot();
   mkdirSync(join(workspace, ".git"));
-  writeJson(join(workspace, ".zcode", "config.json"), {
+  writeJson(join(workspace, ".codez", "config.json"), {
     hooks: {
       enabled: true,
       events: {
@@ -54,7 +54,7 @@ function setupWorkspaceWithHook(): { home: string; workspace: string } {
 }
 
 function trustStorePath(home: string): string {
-  return join(home, ".zcode", "security", "workspace-hook-trust-v1.json");
+  return join(home, ".codez", "security", "workspace-hook-trust-v1.json");
 }
 
 const VALID_DIGEST = "a".repeat(64);
@@ -89,7 +89,7 @@ const STRUCTURALLY_INVALID_SAMPLES: Array<{ name: string; file: unknown }> = [
           grantedAt: "2026-08-17T09:00:00.000Z",
           eventAtGrant: "SessionStart",
           displayCommandAtGrant: "node recorder.mjs",
-          sourcePathAtGrant: ".zcode/config.json",
+          sourcePathAtGrant: ".codez/config.json",
         },
       ],
     },
@@ -107,7 +107,7 @@ const STRUCTURALLY_INVALID_SAMPLES: Array<{ name: string; file: unknown }> = [
           grantedAt: "not-a-timestamp",
           eventAtGrant: "SessionStart",
           displayCommandAtGrant: "node recorder.mjs",
-          sourcePathAtGrant: ".zcode/config.json",
+          sourcePathAtGrant: ".codez/config.json",
         },
       ],
     },
@@ -137,7 +137,7 @@ const STRUCTURALLY_INVALID_SAMPLES: Array<{ name: string; file: unknown }> = [
           grantedAt: "2026-08-17T09:00:00.000Z",
           eventAtGrant: "SessionStart",
           displayCommandAtGrant: "node recorder.mjs",
-          sourcePathAtGrant: ".zcode/config.json",
+          sourcePathAtGrant: ".codez/config.json",
           injected: true,
         },
       ],
@@ -201,7 +201,7 @@ describe("trust store schema parity：services 与 runtime 对同一文件必须
           grantedAt: "2026-08-17T09:00:00.000Z",
           eventAtGrant: "SessionStart",
           displayCommandAtGrant: "echo hello",
-          sourcePathAtGrant: ".zcode/config.json",
+          sourcePathAtGrant: ".codez/config.json",
         },
       ],
     };
@@ -230,7 +230,7 @@ describe("trust store schema parity：services 与 runtime 对同一文件必须
           grantedAt: "2026-08-17T09:00:00.000Z",
           eventAtGrant: "SessionStart",
           displayCommandAtGrant: "echo hello",
-          sourcePathAtGrant: ".zcode/config.json",
+          sourcePathAtGrant: ".codez/config.json",
         },
       ],
     };

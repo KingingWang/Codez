@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { WebRemoteControlRelayV2Device } from "@zcode/shared/web-remote-relay";
+import type { WebRemoteControlRelayV2Device } from "@codez/shared/web-remote-relay";
 import type {
   WebRemoteControlDeviceGroup,
   WebRemoteControlDeviceListView,
@@ -65,7 +65,7 @@ describe("连接前设备列表", () => {
       expect(html).toContain(zh ? "选择电脑" : "Choose a computer");
       expect(html).toMatch(new RegExp(`${zh ? "在线" : "Online"}<span[^>]*>1</span>`));
       expect(html).toMatch(new RegExp(`${zh ? "离线" : "Offline"}<span[^>]*>2</span>`));
-      expect(html).toContain("macOS · ZCode 3.15.0");
+      expect(html).toContain("macOS · Codez 3.15.0");
       expect(html).toContain(zh ? "Linux · 离线" : "Linux · Offline");
       expect(html).toContain(zh ? "未命名设备" : "Unnamed device");
       expect(html).toContain('data-device-platform-icon="darwin"');
@@ -79,7 +79,7 @@ describe("连接前设备列表", () => {
       );
       expect(html).toContain(
         zh
-          ? "没看到你的电脑？在电脑端 ZCode 登录同一账号并开启远程控制，然后刷新。"
+          ? "没看到你的电脑？在电脑端 Codez 登录同一账号并开启远程控制，然后刷新。"
           : "Don&#x27;t see your computer?",
       );
     },
@@ -155,9 +155,9 @@ describe("连接前设备列表", () => {
         }),
       );
     const zh = list("zh-CN");
-    expect(zh).toContain("ZCode 3.15.0");
+    expect(zh).toContain("Codez 3.15.0");
     expect(zh).toContain("3小时前启动 · ID a41f9c");
-    expect(zh).toContain(">ZCode</span>");
+    expect(zh).toContain(">Codez</span>");
     expect(zh).toContain("前天启动 · ID tifier");
     expect(zh).not.toContain("e2e-device-alternative");
     expect(list("en-US")).toContain("started 3 hours ago · ID a41f9c");

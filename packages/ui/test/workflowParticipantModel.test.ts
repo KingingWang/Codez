@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import {
   collapseStatuses,
   handoffsAround,

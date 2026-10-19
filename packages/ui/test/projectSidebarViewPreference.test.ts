@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { readProjectSidebarView } from "@/project-sidebar/view-preference.js";
 const storage = (current: unknown, legacy: unknown) => ({
   getItem: (key: string) =>
-    JSON.stringify(key === "zcode-project-sidebar-preferences" ? current : legacy),
+    JSON.stringify(key === "codez-project-sidebar-preferences" ? current : legacy),
 });
 it("migrates the previous group selection and keeps a subsequent explicit choice", () => {
   expect(readProjectSidebarView(storage(null, { organizeBy: "grouped" }))).toBe("grouped");

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { IConversationShareService, type IServiceAccessor } from "@zcode/services";
+import { IConversationShareService, type IServiceAccessor } from "@codez/services";
 import { createServerRemoteWorkspaceServiceCollection } from "@desktop/host/remoteWorkspaceServiceCollection.js";
 import { REMOTE_WORKSPACE_RPC_CHANNELS } from "@desktop/host/remoteWorkspaceRpcContract.js";
 import { scopeConversationShareServiceForAttachment } from "@desktop/host/conversationShareAttachmentService.js";

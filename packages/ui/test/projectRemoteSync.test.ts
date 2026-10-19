@@ -12,7 +12,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
   useWorkspaceServicesResolution: () => ({ services: {}, rpcReady: true }),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/settings/RemoteSyncActions.js", () => ({
   RemoteSyncDialogs: () => null,

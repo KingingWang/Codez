@@ -1,10 +1,10 @@
 # Conversation Session Tool Cross Product Matrix
 
-目标：补齐 conversation-session 的 compact、fork、goal 在“含工具调用历史”下的覆盖。旧口径只用 `Read /tmp/zcode-e2e-readonly-tool.txt` 证明单一只读工具存在，无法代表文件编辑、命令、网络失败态、计划模式、用户问询、session-local 状态和失败态 tool block。
+目标：补齐 conversation-session 的 compact、fork、goal 在“含工具调用历史”下的覆盖。旧口径只用 `Read /tmp/codez-e2e-readonly-tool.txt` 证明单一只读工具存在，无法代表文件编辑、命令、网络失败态、计划模式、用户问询、session-local 状态和失败态 tool block。
 
 ## 覆盖边界
 
-强叉乘工具名以 `packages/shared/src/tool-identity.ts`、`apps/zcode-cli/packages/core/src/tool/handlers/index.ts` 和计划模式工具为边界。默认 active 工具要覆盖成功态；条件注册或当前未注册工具也要进入 UI 叉乘，但可以用快速失败态收束，不把工具业务成功率混进 conversation UI spec。没有暴露到本链路的工具不纳入本矩阵。
+强叉乘工具名以 `packages/shared/src/tool-identity.ts`、`apps/codez-cli/packages/core/src/tool/handlers/index.ts` 和计划模式工具为边界。默认 active 工具要覆盖成功态；条件注册或当前未注册工具也要进入 UI 叉乘，但可以用快速失败态收束，不把工具业务成功率混进 conversation UI spec。没有暴露到本链路的工具不纳入本矩阵。
 
 | 工具                 | 默认状态                     | E2E 输入策略                                                    | 结果形态                     | 清理要求                          |
 | -------------------- | ---------------------------- | --------------------------------------------------------------- | ---------------------------- | --------------------------------- |
@@ -102,7 +102,7 @@ projection 等价测试代表，不复制工具业务矩阵。
 所有文件系统副作用必须落在：
 
 ```text
-/tmp/zcode-e2e-tool-cross-product
+/tmp/codez-e2e-tool-cross-product
 ```
 
 测试在每个工具 turn 前创建 fixture，`afterEach` 和 `after` 都执行 recursive cleanup。任何新增写文件工具或 shell 写入 case，都必须先进入这个目录，再补矩阵里的清理说明。

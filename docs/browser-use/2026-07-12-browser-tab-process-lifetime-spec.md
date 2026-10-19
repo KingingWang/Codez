@@ -11,7 +11,7 @@
 
 | 字段           | 决策                                                                                                                 |
 | -------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Change         | IAB tab 从“turn 临时资源、显式保留”改为“ZCode 进程内持久资源、显式关闭”                                              |
+| Change         | IAB tab 从“turn 临时资源、显式保留”改为“Codez 进程内持久资源、显式关闭”                                              |
 | 用户可见入口   | agent `browser.tabs.new()` 创建的 browser-use tab；用户已打开并被 agent claim 的 tab                                 |
 | 状态 owner     | Electron main 的 `BrowserGuestManager` 管理控制权；residency coordinator 管理逻辑上限；renderer 保留 tab 壳          |
 | 关闭 authority | 模型显式 `tab.close()`；用户手动关闭；每窗口超过 32 个逻辑 tab 的 LRU 自动关闭；workspace 清空；recovery orphan 兜底 |
@@ -23,7 +23,7 @@
 | -------------------------------- | ---------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | 1                                | 是否应依赖模型写 lifecycle JS 保留 tab         | 不应依赖，默认都保留           | `turnEnded` 不得自动关闭 tab                                                                           |
 | 2                                | `finalize({ keep })` 中未列出的 tab 是否可关闭 | 不可以；没有主动关闭就必须保留 | `keep` omission 不具有删除语义                                                                         |
-| 3                                | “默认保存”是否跨 ZCode 重启                    | 只要求当前 ZCode 进程运行期间  | `closeWindow`/进程退出可以回收；不新增持久化恢复                                                       |
+| 3                                | “默认保存”是否跨 Codez 重启                    | 只要求当前 Codez 进程运行期间  | `closeWindow`/进程退出可以回收；不新增持久化恢复                                                       |
 | 4（2026-07-31，2026-08-05 修订） | 是否引入 Tab 跨进程恢复与逻辑 tab 上限         | 引入，并按运行反馈修订         | Tab 壳可跨进程恢复；每窗口最多 32 个逻辑 tab，超限完整关闭最老安全候选；快照 100 页/64 MiB/500 history |
 
 第 4 轮是新产品决策，取代第 3 轮的“不新增持久化恢复”，详细状态机见 residency spec。
@@ -43,7 +43,7 @@
 | 窗口/进程退出             | 只回收 live guest；保留符合持久化条件的 logical tab           | 不能解释为用户逐个关闭 tab                       |
 | 第 33 个逻辑 tab          | 按 LRU 完整关闭最老安全候选，并删除恢复事实和 renderer tab 壳 | 不能只销毁 guest 后保留 suspended tab 壳         |
 | forced restore orphan     | shell/page-state/restoreUrl 全缺失时定向关闭无法恢复的孤儿壳  | 不能用于普通快照淘汰；不能形成恢复/关闭循环      |
-| ZCode 退出                | 回收 live guest；按 page-state repository 恢复 logical tab 壳 | 不能一次性 mount 全部历史 guest                  |
+| Codez 退出                | 回收 live guest；按 page-state repository 恢复 logical tab 壳 | 不能一次性 mount 全部历史 guest                  |
 
 ## Domain scope and high-risk cross-products
 
@@ -64,8 +64,8 @@
 | tab guest、CDP attachment、lifecycle、scope | `BrowserGuestManager`                        | `packages/desktop/src/main/browserView/browserGuestManager.ts`                                |
 | logical tab 上限、保护 lease、恢复状态      | `BrowserTabResidencyCoordinator`             | `packages/desktop/src/main/browserView/browserTabResidencyCoordinator.ts`                     |
 | tab 可见 webview 和用户关闭动作             | renderer side pane                           | `packages/ui/src/hooks/useAppPanels.ts`、`packages/ui/src/browser-use/UnifiedBrowserView.tsx` |
-| turn/session lifecycle 通知                 | ZCode agent runtime → browser control broker | `apps/zcode-cli/packages/core/src/runtime/methods/turn.ts`、`agent-runtime.ts`                |
-| 模型 API 与 guidance                        | browser-use plugin API/docs/skill            | `apps/zcode-cli/packages/browser-use-plugin`                                                  |
+| turn/session lifecycle 通知                 | Codez agent runtime → browser control broker | `apps/codez-cli/packages/core/src/runtime/methods/turn.ts`、`agent-runtime.ts`                |
+| 模型 API 与 guidance                        | browser-use plugin API/docs/skill            | `apps/codez-cli/packages/browser-use-plugin`                                                  |
 | 进程退出                                    | Electron main/window lifecycle               | `packages/desktop/src/main/index.ts`                                                          |
 
 ## Dimensions and candidate decisions
@@ -78,7 +78,7 @@
 | BTL-004 | agent tab + claimed user tab | `closeSession`         | 两者释放为原 session 的 user tabs，不触发 renderer close | accepted；全局 unclaimed 为 bug-candidate |
 | BTL-005 | 任意 open tab                | 模型 `tab.close()`     | 只关闭目标 tab并留下 tombstone                           | accepted                                  |
 | BTL-006 | 任意 open tab                | 用户关闭 tab           | webview 销毁，tab 不再可控且不自动重建                   | accepted                                  |
-| BTL-007 | 任意 open tabs               | 窗口关闭/ZCode 退出    | 回收 live guest；保留可恢复 logical tab                  | accepted；2026-07-31 新决策               |
+| BTL-007 | 任意 open tabs               | 窗口关闭/Codez 退出    | 回收 live guest；保留可恢复 logical tab                  | accepted；2026-07-31 新决策               |
 | BTL-008 | 上次进程曾有 tabs            | 新进程启动             | 恢复 tab 壳；当前/被访问 tab 惰性恢复 guest              | accepted；2026-07-31 新决策取代旧排除     |
 | BTL-009 | 创建第 33 个逻辑 tab         | residency 上限评估     | 按保护集合与 LRU 完整关闭最老安全候选                    | accepted；详见 residency spec             |
 
@@ -108,5 +108,5 @@
 `tabs.finalize({ keep })` 不具有清理未列出临时 tab 的语义。本 spec 只保留“进程内不自动关闭”的
 产品语义；释放后的 tab 仍必须按对话隔离，详见
 `docs/browser-use/2026-07-14-browser-tab-conversation-isolation-spec.md`。API 形状保持不变：
-ZCode IAB 的 omission 不具有删除语义。所有模型提示、API semantics、实现和测试必须
+Codez IAB 的 omission 不具有删除语义。所有模型提示、API semantics、实现和测试必须
 同时声明这一点，禁止用“未列出即清理”的文案诱导模型决定页面是否存活。

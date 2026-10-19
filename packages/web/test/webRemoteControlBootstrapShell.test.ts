@@ -18,14 +18,14 @@ function readWorkspaceFileDataUrl(path: string, mimeType: string): string {
 function createBootstrapDocument(theme: "zai-dark" | "zai-light"): JSDOM {
   return new JSDOM(readWebIndexHtml(), {
     beforeParse(window) {
-      window.localStorage.setItem("zcode-theme", theme);
+      window.localStorage.setItem("codez-theme", theme);
       Object.defineProperty(window, "matchMedia", {
         configurable: true,
         value: () => ({ matches: false }),
       });
     },
     runScripts: "dangerously",
-    url: "https://zcode.example/remote",
+    url: "https://codez.example/remote",
   });
 }
 
@@ -54,7 +54,7 @@ describe("web remote control bootstrap shell", () => {
       const dom = createBootstrapDocument(storedTheme);
       const { document } = dom.window;
 
-      expect(document.documentElement.getAttribute("data-zcode-browser-theme-surface")).toBe(
+      expect(document.documentElement.getAttribute("data-codez-browser-theme-surface")).toBe(
         resolvedTheme,
       );
       expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(

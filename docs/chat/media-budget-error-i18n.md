@@ -17,7 +17,7 @@ message.
 - UI retains the previous codes for errors persisted by older runtimes:
   - `MEDIA_BUDGET_CURRENT_IMAGE_TOO_LARGE`
   - `MEDIA_BUDGET_CURRENT_VIDEO_TOO_LARGE`
-- UI maps all three stable codes through `zcode.error.*` locale entries in the
+- UI maps all three stable codes through `codez.error.*` locale entries in the
   shared desktop and mobile Web banner; transport and recovery semantics are unchanged.
 - Telemetry classifies all three codes as `runtime / invalid_input`; it must not rely
   on English-only message matching.

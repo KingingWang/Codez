@@ -66,7 +66,7 @@ describe("Playwright DOM snapshot", () => {
       if (method === "Runtime.evaluate") {
         const expression = String((params as { expression?: unknown }).expression ?? "");
         if (expression.startsWith("Boolean(globalThis.")) return { result: { value: false } };
-        if (expression.includes("globalThis.__zcodePlaywrightInjected = new")) {
+        if (expression.includes("globalThis.__codezPlaywrightInjected = new")) {
           return { result: { value: true } };
         }
         if (expression.includes("const snapshot = injected.incrementalAriaSnapshot")) {
@@ -108,7 +108,7 @@ describe("Playwright DOM snapshot", () => {
         };
         const expression = input.expression ?? "";
         if (expression.startsWith("Boolean(globalThis.")) return { result: { value: false } };
-        if (expression.includes("globalThis.__zcodePlaywrightInjected = new")) {
+        if (expression.includes("globalThis.__codezPlaywrightInjected = new")) {
           return { result: { value: true } };
         }
         if (expression.includes("const snapshot = injected.incrementalAriaSnapshot")) {
@@ -144,7 +144,7 @@ describe("Playwright DOM snapshot", () => {
       if (method === "Runtime.evaluate") {
         const expression = String((params as { expression?: unknown }).expression ?? "");
         if (expression.startsWith("Boolean(globalThis.")) return { result: { value: false } };
-        if (expression.includes("globalThis.__zcodePlaywrightInjected = new")) {
+        if (expression.includes("globalThis.__codezPlaywrightInjected = new")) {
           return { result: { value: true } };
         }
         if (expression.includes("const snapshot = injected.incrementalAriaSnapshot")) {
@@ -177,7 +177,7 @@ describe("Playwright DOM snapshot", () => {
         const input = params as { contextId?: number; expression?: string };
         const expression = input.expression ?? "";
         if (expression.startsWith("Boolean(globalThis.")) return { result: { value: false } };
-        if (expression.includes("globalThis.__zcodePlaywrightInjected = new")) {
+        if (expression.includes("globalThis.__codezPlaywrightInjected = new")) {
           return { result: { value: true } };
         }
         if (expression.includes("const snapshot = injected.incrementalAriaSnapshot")) {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-// 工具卡 join 回退的信源：journal-backed 的发现查询（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md
+// 工具卡 join 回退的信源：journal-backed 的发现查询（apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md
 // 「发现查询」+「UI 回退的重试语义」）。
 //
 // 这个 hook 存在的理由就是一个实测失效：查询原本一次性发出、失败即静默 null，而它恰好
@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import type {
   V4ConversationWorkflowRunsParams,
   V4ConversationWorkflowRunsResult,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 
 vi.mock("@/logger.js", () => ({
   logger: { debug: vi.fn(), warn: vi.fn() },

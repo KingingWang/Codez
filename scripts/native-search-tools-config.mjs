@@ -8,7 +8,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // 仓库内置的预编译归档与内网镜像同名、同 SHA-256；只在未配置内网依赖源时作为离线来源。
 export const NATIVE_SEARCH_DEPENDENCIES_DIR = join(
   repoRoot,
-  "apps/zcode-cli/dependencies/native-search",
+  "apps/codez-cli/dependencies/native-search",
 );
 
 export const MACOS_NATIVE_SEARCH_DEPLOYMENT_TARGET = "12.0";

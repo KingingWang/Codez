@@ -10,11 +10,11 @@
 
 **Architecture:** 在 adapter 中新增独立的 Responses JSON fetch 兼容器，并只组合到 `providerKind === "openai"` 的显式 `provider.responses` factory。兼容器只补两个已证实缺失字段；共享 business-error fetch、Chat Completions、Anthropic、Gateway 和 retry 生命周期保持不变。
 
-**Tech Stack:** TypeScript、Vitest、AI SDK `@ai-sdk/openai`、Node HTTP fake server、ZCode compact E2E harness。
+**Tech Stack:** TypeScript、Vitest、AI SDK `@ai-sdk/openai`、Node HTTP fake server、Codez compact E2E harness。
 
 ## Global Constraints
 
-- 协议判据只使用 ZCode `providerKind === "openai"` 与 AI SDK `provider.responses` factory，不检查 URL、method、模型名、provider 名或 baseURL。
+- 协议判据只使用 Codez `providerKind === "openai"` 与 AI SDK `provider.responses` factory，不检查 URL、method、模型名、provider 名或 baseURL。
 - 只补 `message.id === undefined` 和 `output_text.annotations === undefined`；其他 schema 问题不在本次范围内。
 - 缺失 message ID 使用 Node `node:crypto.randomUUID()` 生成为 `msg_<UUIDv4>`；不新增 UUID 依赖或 collision resolver。
 - 不修改 compact 的非流式调用，不做 stream fallback，不增加请求、重试、model-io、遥测或协议事件。
@@ -28,9 +28,9 @@
 
 **Files:**
 
-- Create: `apps/zcode-cli/packages/adapters/tests/openai-responses-json-compat.test.ts`
-- Create: `apps/zcode-cli/packages/adapters/src/model/openai-responses-json-compat.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/model/registry.ts`
+- Create: `apps/codez-cli/packages/adapters/tests/openai-responses-json-compat.test.ts`
+- Create: `apps/codez-cli/packages/adapters/src/model/openai-responses-json-compat.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/registry.ts`
 
 **Interfaces:**
 
@@ -95,7 +95,7 @@ expect(requests[0]?.url).toBe("/responses");
 Run:
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest run packages/adapters/tests/openai-responses-json-compat.test.ts
+pnpm --dir apps/codez-cli exec vitest run packages/adapters/tests/openai-responses-json-compat.test.ts
 ```
 
 Expected: FAIL with adapter `Model request failed.`；cause 为 `AI_APICallError: Invalid JSON response`，validation issues 指向 `output[0].id` 与 `output[0].content[0].annotations`。不得是 server、路径或 API key 错误。
@@ -175,11 +175,11 @@ case "openai": {
 Run:
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest run \
+pnpm --dir apps/codez-cli exec vitest run \
   packages/adapters/tests/openai-responses-json-compat.test.ts \
   packages/adapters/tests/registry.test.ts
-pnpm --dir apps/zcode-cli --filter @zcode/adapters typecheck
-pnpm --dir apps/zcode-cli --filter @zcode/adapters lint
+pnpm --dir apps/codez-cli --filter @codez/adapters typecheck
+pnpm --dir apps/codez-cli --filter @codez/adapters lint
 ```
 
 Expected: 两个测试文件、adapter typecheck 和变更文件定向 lint 通过；包级 lint 若命中未改文件的既有基线，留到 Task 3 如实记录。
@@ -190,13 +190,13 @@ Expected: 两个测试文件、adapter typecheck 和变更文件定向 lint 通�
 
 - Modify: `docs/conversation-session-case-catalog.md`
 - Modify: `docs/testing/conversation-session-e2e-coverage-matrix.md`
-- Modify: `apps/zcode-cli/e2e/compact-microcompact/constants.mjs`
-- Modify: `apps/zcode-cli/e2e/compact-microcompact/suite-cases.mjs`
-- Modify: `apps/zcode-cli/e2e/compact-microcompact/case-utils.mjs`
-- Modify: `apps/zcode-cli/e2e/compact-microcompact/run.mjs`
-- Modify: `apps/zcode-cli/e2e/compact-microcompact/scripted-provider.mjs`
-- Modify: `apps/zcode-cli/e2e/compact-microcompact/README.md`
-- Create: `apps/zcode-cli/e2e/compact-microcompact/case-openai-responses-compact.mjs`
+- Modify: `apps/codez-cli/e2e/compact-microcompact/constants.mjs`
+- Modify: `apps/codez-cli/e2e/compact-microcompact/suite-cases.mjs`
+- Modify: `apps/codez-cli/e2e/compact-microcompact/case-utils.mjs`
+- Modify: `apps/codez-cli/e2e/compact-microcompact/run.mjs`
+- Modify: `apps/codez-cli/e2e/compact-microcompact/scripted-provider.mjs`
+- Modify: `apps/codez-cli/e2e/compact-microcompact/README.md`
+- Create: `apps/codez-cli/e2e/compact-microcompact/case-openai-responses-compact.mjs`
 
 **Interfaces:**
 
@@ -210,7 +210,7 @@ Expected: 两个测试文件、adapter typecheck 和变更文件定向 lint 通�
 
 Responses 缺字段是 F08 手动 compact success 的 provider 输入变体，不新增会话产品状态。catalog
 在 F08 分组下记录兼容边界，coverage matrix 的 F08 备注直接引用
-`apps/zcode-cli/e2e/compact-microcompact/case-openai-responses-compact.mjs` 作为补充证据。
+`apps/codez-cli/e2e/compact-microcompact/case-openai-responses-compact.mjs` 作为补充证据。
 不得新增 F10、自动化缩写、产品统计或通用 coverage audit 规则；也不扩展 malformed JSON、
 manual/auto、remote 或 provider 名排列。
 
@@ -281,7 +281,7 @@ compact 非流式响应的 output text 固定为：
 把 `openai-responses-compact` 加入 `CASE_NAMES`、`FAKE_CASE_NAMES` 和 `suite-cases.mjs`；README 增加：
 
 ```bash
-pnpm --filter zcode-cli exec tsx ../../apps/zcode-cli/e2e/compact-microcompact/run.mjs \
+pnpm --filter codez-cli exec tsx ../../apps/codez-cli/e2e/compact-microcompact/run.mjs \
   --case=openai-responses-compact
 ```
 
@@ -290,9 +290,9 @@ pnpm --filter zcode-cli exec tsx ../../apps/zcode-cli/e2e/compact-microcompact/r
 Run:
 
 ```bash
-pnpm --dir apps/zcode-cli build
-pnpm --filter zcode-cli exec tsx \
-  ../../apps/zcode-cli/e2e/compact-microcompact/run.mjs \
+pnpm --dir apps/codez-cli build
+pnpm --filter codez-cli exec tsx \
+  ../../apps/codez-cli/e2e/compact-microcompact/run.mjs \
   --case=openai-responses-compact
 pnpm audit:conversation-session-coverage
 ```
@@ -319,7 +319,7 @@ Run（只检查生产实现；E2E 对实际 wire pathname 的断言不是协议�
 
 ```bash
 if rg -n 'pathname|endsWith\(.*/responses|request\.method' \
-  apps/zcode-cli/packages/adapters/src/model/openai-responses-json-compat.ts; then
+  apps/codez-cli/packages/adapters/src/model/openai-responses-json-compat.ts; then
   exit 1
 fi
 ```
@@ -331,8 +331,8 @@ Expected: 无输出且退出码为 0，生产兼容器没有 URL/method guard。
 Run:
 
 ```bash
-pnpm --dir apps/zcode-cli typecheck
-pnpm --dir apps/zcode-cli lint
+pnpm --dir apps/codez-cli typecheck
+pnpm --dir apps/codez-cli lint
 pnpm typecheck
 pnpm lint
 git diff --check

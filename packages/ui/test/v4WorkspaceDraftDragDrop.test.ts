@@ -58,7 +58,7 @@ describe("V4WorkspaceChatArea draft drag/drop", () => {
 
     const primaryPane = leafPaneCapture.props[0];
     const payload = {
-      kind: "zcode/session" as const,
+      kind: "codez/session" as const,
       sessionId: "sess-b",
       workspacePath: "/workspace",
     };

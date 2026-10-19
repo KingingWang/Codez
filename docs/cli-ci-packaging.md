@@ -11,19 +11,19 @@ job 默认不运行，失败不阻塞桌面发布；不依赖桌面构建、Help
 
 独立入口 `node scripts/ci-cli-sea.mjs --target <target> --shared-root <path>`。
 target 使用既有 SEA 命名：darwin-arm64、darwin-x64、linux-arm64、linux-x64、win-arm64、win-x64。
-先编译不提供 build script 的根 shared 包，再由根 pnpm workspace 按依赖图构建 CLI packages 及其完整依赖闭包，最后生成普通 zcode.cjs 并调用既有 build-sea 的单平台入口。
+先编译不提供 build script 的根 shared 包，再由根 pnpm workspace 按依赖图构建 CLI packages 及其完整依赖闭包，最后生成普通 codez.cjs 并调用既有 build-sea 的单平台入口。
 不能只使用 CLI 子 workspace 的 Turbo 图，否则会漏掉根 model-option-map 等 TUI runtime 依赖。
 SEA 暂存资源内将 workspace package exports/main/module 的 src 路径映射到已编译的 dist 文件；不改源码 package.json，不把 TS 源文件塞进发布包。
 SEA 依赖不能只按包名去重：同名不同来源版本按 Node 解析规则放到消费者的嵌套 node_modules，同一可见版本才复用。回归覆盖 contracts 的 Zod 3 与 shared 的 Zod 4 同时加载。
-不能调用固定带 --all 的 build:sea。Node 版本由现有 ci:assert-node 校验，CLI 版本来自 apps/zcode-cli/package.json。
+不能调用固定带 --all 的 build:sea。Node 版本由现有 ci:assert-node 校验，CLI 版本来自 apps/codez-cli/package.json。
 保持现有 SEA 签名和验证：macOS 主机 ad-hoc 签名、本机目标 --version 冒烟、跨架构目标明确跳过运行。
 生成 JS 后先运行 build-sea.test.mjs，包括独立解包后的 TUI 加载；失败时不生成或上传 SEA。
 
 ## 上传与并发
 
 复用桌面 CI 的 runner、registry、依赖安装函数及共享目录文件复制方式；不调用桌面安装包筛选脚本。
-共享根使用 ZCODE_CI_SHARED_ROOT（macOS）、ZCODE_CI_LINUX_CONTAINER_OUT（Linux）、ZCODE_CI_WINDOWS_SHARED_ROOT（Windows）。
-它们均表示共享的 zcode 目录，目标保持 `<shared-root>/deps/zcode-cli-<CLI版本>/<既有SEA文件名>`。
+共享根使用 CODEZ_CI_SHARED_ROOT（macOS）、CODEZ_CI_LINUX_CONTAINER_OUT（Linux）、CODEZ_CI_WINDOWS_SHARED_ROOT（Windows）。
+它们均表示共享的 codez 目录，目标保持 `<shared-root>/deps/codez-cli-<CLI版本>/<既有SEA文件名>`。
 新增 job 内部变量 CLI_SEA_TARGET 仅选择构建目标，不传入产品运行时配置。
 共享根必须已经存在，避免挂载丢失时悄悄创建本地替代目录。
 
@@ -45,8 +45,8 @@ job 日志记录 commit、pipeline、版本、目标和目标路径以追踪覆�
 
 ## CLI 独立版本维护
 
-CLI 使用 `apps/zcode-cli/.release-it.json` 独立配置，仅共用仓库已安装的 release-it 工具，不加载根桌面 `.release-it.mjs`。
-命令在 `apps/zcode-cli` 工作目录执行，以该目录 package.json 的 version 为唯一输入和修改目标；不改根版本、CLI 入口子包版本、桌面 changelog 或 runtime descriptor。
+CLI 使用 `apps/codez-cli/.release-it.json` 独立配置，仅共用仓库已安装的 release-it 工具，不加载根桌面 `.release-it.mjs`。
+命令在 `apps/codez-cli` 工作目录执行，以该目录 package.json 的 version 为唯一输入和修改目标；不改根版本、CLI 入口子包版本、桌面 changelog 或 runtime descriptor。
 
 ```bash
 pnpm release:cli                 # 交互选择新版本
@@ -54,7 +54,7 @@ pnpm release:cli patch --ci      # 仅递增 CLI patch
 pnpm release:cli minor --ci
 pnpm release:cli 0.17.0 --ci     # 显式指定版本
 pnpm release:cli:dry patch --ci  # 预览，不落盘
-pnpm --dir apps/zcode-cli run release patch --ci
+pnpm --dir apps/codez-cli run release patch --ci
 ```
 
 默认关闭 git 操作、npm publish、GitHub/GitLab release，不自动构建或上传；版本改动通过正常 commit/MR 合入后，由用户点选对应 CI job。
@@ -85,6 +85,6 @@ CLI package.json 同时提供 `release` 与 `release:dry`，根 package.json 提
 
 每个平台由 `ci-cli-sea.mjs` 在 SEA 构建及上传完成后发送一次飞书成功卡片，复用现有通知服务、`ci.build.completed` 场景和收件人配置。卡片标题明确标记 CLI，包含版本、平台、分支、提交人/信息、同一行水平排列的下载按钮及 Job 按钮。下载地址通过 `resolveIntranetDepsBaseUrl` 和实际发布目录/文件名生成。
 
-顺序：`构建 → 单平台上传成功 → 飞书通知`。构建或上传失败不发送成功通知；缺少通知凭据或通知服务失败只记录警告，不改变构建成功状态。沿用 `ZCODE_FEISHU_NOTIFY_TOKEN`、`ZCODE_FEISHU_NOTIFY_BASE_URL`、`FEISHU_RECEIVE_ID`/`FEISHU_RECEIVE_ID_TYPE`；`SANDBOX_RELEASE=1` 或 tag 包含 test（不区分大小写） 时跳过通知。每次手动重跑成功都会再次通知，不增加去重状态。桌面通知入口及 DAG 不变。
+顺序：`构建 → 单平台上传成功 → 飞书通知`。构建或上传失败不发送成功通知；缺少通知凭据或通知服务失败只记录警告，不改变构建成功状态。沿用 `CODEZ_FEISHU_NOTIFY_TOKEN`、`CODEZ_FEISHU_NOTIFY_BASE_URL`、`FEISHU_RECEIVE_ID`/`FEISHU_RECEIVE_ID_TYPE`；`SANDBOX_RELEASE=1` 或 tag 包含 test（不区分大小写） 时跳过通知。每次手动重跑成功都会再次通知，不增加去重状态。桌面通知入口及 DAG 不变。
 
 验证：模拟通知服务检查六平台地址和卡片、缺少 token/发送失败/沙箱跳过；编排测试验证先上传后通知以及失败不发送。

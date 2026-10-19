@@ -225,41 +225,41 @@
     ".agents/skills/react-best-practices/rules/server-serialization.md": "f4c7d68b29c82381baad059c4a7f09e868e71ec9c3115a26ad3ae7d24c0dfe1f",
     ".agents/skills/react-best-practices/SKILL.md": "71ed7794962fa6e803ee83030517b5b93a9f70fbfeb431ec4535c5480a8d8355",
     "apps/dev-docs/package.json": "3830c01890b83081debf6596aceb19734924f43b4dee2111c5ea85584f3e944b",
-    "apps/zcode-cli/package.json": "f4622eb66460133ac75eba76135a022f12078bf7182ecc02379b15a9f7c68615",
-    "apps/zcode-cli/packages/adapters/package.json": "12316ccf002e19a4fbc6536007b2e89ded5704a8f757baeec4dc83d47c0ea345",
-    "apps/zcode-cli/packages/android-emulator-plugin/package.json": "96ecaa9ce091e13f7e508b0aed8ab116360b40ba21dc1be78c906b2eebbf5571",
-    "apps/zcode-cli/packages/bootstrap/package.json": "554ddd3fc3a017e1bde9af23477d7cff16d4e86b63f3faeda19ce3af7f1edee8",
-    "apps/zcode-cli/packages/browser-use-plugin/package.json": "53a2c64811fbb85a8a88bf22ac2b42dbca7a283e3c83f0ebd24601889223741d",
-    "apps/zcode-cli/packages/cli/package.json": "c7f319da5c9c354b891c2741a119276ab0abeea82c8d1e14585d14661fb1175c",
-    "apps/zcode-cli/packages/contracts/package.json": "d71e04825072c7407dcc3e1fcca3d8b9221cfac411ea58a024998a57cb579029",
-    "apps/zcode-cli/packages/core/package.json": "e70205607c75f7fb51cd1815ff3d411d7ea63bef6a0148f3a698229c30189d32",
-    "apps/zcode-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts": "60fa5acd9f5c357f4e51b1d1e944ee39da92680e4bc5e98dd708f1457fcf612b",
-    "apps/zcode-cli/packages/debug/package.json": "0cf03ea1dd384546319e8f301e99c2b668c7c15271f5d38d5a3b0526c24a3279",
-    "apps/zcode-cli/packages/documents-plugin/package.json": "7ce3663e5e14ff8f4e9c2c456e0e023c1228ca0823518e56073fdc1149389ff7",
-    "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "700fb16f330bee73cd84d6e1fc8609663faf14ffa2108415e3bfb267ae9bcb3a",
-    "apps/zcode-cli/packages/dynamic-workflow/package.json": "9edb746ae170418d81c4431dc16533e814bf3a97e4693a2a94f06b4516151a95",
-    "apps/zcode-cli/packages/i18n/package.json": "cd51fc9cda66d726ab54f9821ff748bc150bf4bd84143bb7c8aa9b712a7e6c61",
-    "apps/zcode-cli/packages/image-search-plugin/package.json": "f59cba2c8890624a2f5164c9e2f68f808021d2958a7f088544c268eddc9a26a5",
-    "apps/zcode-cli/packages/ios-simulator-plugin/package.json": "fc38d3f6d88598f2c84aced1dfbbef0682addc54e477500dbe323e829c74217a",
-    "apps/zcode-cli/packages/node-repl-host/package.json": "3b8fafd78a122a59eb7941e7ef44f62fbacdc75b344aa5859f814c250f9de4d8",
-    "apps/zcode-cli/packages/office-runtime/package.json": "c51046c5646a0670e554ac4b5949c70cc029c1ba94a5ee3b277b26208e2b4063",
-    "apps/zcode-cli/packages/pdf-plugin/package.json": "63588284641c57e2d7a6b8ff5826cdcb451a5b21f7bc91d6f544ef535d36bc14",
-    "apps/zcode-cli/packages/plugin-creator-plugin/package.json": "17ab1504c465c165b013f983270f54868aa282538557bf6f935daac153e46ba6",
-    "apps/zcode-cli/packages/presentations-plugin/package.json": "8c8bc559c98ca67cbe95616032589d14425dc85fae309a824101efc1a021e861",
-    "apps/zcode-cli/packages/restore-legacy-sessions-plugin/package.json": "ee180a70bc31e945dfa798fd2592a3150cd2e55d546d44be361a90a24cb33fd3",
-    "apps/zcode-cli/packages/shared-types/package.json": "6616fb50cf5b4b854273d09411f38857c17df5d4b4abebdfe5d9601e7341e451",
-    "apps/zcode-cli/packages/skill-creator-plugin/package.json": "9477f2dbaf0de233856a8d71f8aa1e4fac95e189358887df5c3b7c13672727a6",
-    "apps/zcode-cli/packages/spreadsheets-plugin/package.json": "b293c49125bfb98e5798210fb773f71266d725867c97e9b01442f1ae3a530228",
-    "apps/zcode-cli/packages/superpowers-plugin/LICENSE": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
-    "apps/zcode-cli/packages/superpowers-plugin/package.json": "003495dd8441f4a9b017931e081770a157fa48b895752d0cfe7487d437507685",
-    "apps/zcode-cli/packages/swift-bridge/package.json": "958674fcd44c789564ee672b0e6c687f1f900f4286174280700ddfb442d23906",
-    "apps/zcode-cli/packages/telemetry/package.json": "2c7efa1d5b42700400b971fff61314c7277f5e05b5f96f48b7d50c9ccf11772e",
-    "apps/zcode-cli/packages/tui/package.json": "303b8c2f0eb3f8ea0476935f452dd0d2c620ac52587ebb08b24a193f3e3658e0",
-    "apps/zcode-cli/packages/visualize-plugin/package.json": "f38e0334cd743a4ca15cf8884ca563aaf0b37bccbdfca63505f56f84f5576971",
-    "apps/zcode-cli/packages/zcode-cua-plugin/package.json": "d923446edcf3277fe30375a6db251612515ef5e42f6d0d290549ccf80982d879",
-    "apps/zcode-cli/packages/zcode-guide-plugin/package.json": "b6b6c4a0097496f5bf8848ad4fecea1c2e9f8a94d4a3b962217a74a6253deacf",
-    "apps/zcode-cli/tools/prompt-trajectory/package.json": "a8374fef7b1f1814d91dfe5ef5f3d369de8d12f73601dbed6e026f2b12bcca0d",
-    "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
+    "apps/codez-cli/package.json": "f4622eb66460133ac75eba76135a022f12078bf7182ecc02379b15a9f7c68615",
+    "apps/codez-cli/packages/adapters/package.json": "12316ccf002e19a4fbc6536007b2e89ded5704a8f757baeec4dc83d47c0ea345",
+    "apps/codez-cli/packages/android-emulator-plugin/package.json": "96ecaa9ce091e13f7e508b0aed8ab116360b40ba21dc1be78c906b2eebbf5571",
+    "apps/codez-cli/packages/bootstrap/package.json": "554ddd3fc3a017e1bde9af23477d7cff16d4e86b63f3faeda19ce3af7f1edee8",
+    "apps/codez-cli/packages/browser-use-plugin/package.json": "53a2c64811fbb85a8a88bf22ac2b42dbca7a283e3c83f0ebd24601889223741d",
+    "apps/codez-cli/packages/cli/package.json": "c7f319da5c9c354b891c2741a119276ab0abeea82c8d1e14585d14661fb1175c",
+    "apps/codez-cli/packages/contracts/package.json": "d71e04825072c7407dcc3e1fcca3d8b9221cfac411ea58a024998a57cb579029",
+    "apps/codez-cli/packages/core/package.json": "e70205607c75f7fb51cd1815ff3d411d7ea63bef6a0148f3a698229c30189d32",
+    "apps/codez-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts": "60fa5acd9f5c357f4e51b1d1e944ee39da92680e4bc5e98dd708f1457fcf612b",
+    "apps/codez-cli/packages/debug/package.json": "0cf03ea1dd384546319e8f301e99c2b668c7c15271f5d38d5a3b0526c24a3279",
+    "apps/codez-cli/packages/documents-plugin/package.json": "7ce3663e5e14ff8f4e9c2c456e0e023c1228ca0823518e56073fdc1149389ff7",
+    "apps/codez-cli/packages/dynamic-workflow-runtime/package.json": "700fb16f330bee73cd84d6e1fc8609663faf14ffa2108415e3bfb267ae9bcb3a",
+    "apps/codez-cli/packages/dynamic-workflow/package.json": "9edb746ae170418d81c4431dc16533e814bf3a97e4693a2a94f06b4516151a95",
+    "apps/codez-cli/packages/i18n/package.json": "cd51fc9cda66d726ab54f9821ff748bc150bf4bd84143bb7c8aa9b712a7e6c61",
+    "apps/codez-cli/packages/image-search-plugin/package.json": "f59cba2c8890624a2f5164c9e2f68f808021d2958a7f088544c268eddc9a26a5",
+    "apps/codez-cli/packages/ios-simulator-plugin/package.json": "fc38d3f6d88598f2c84aced1dfbbef0682addc54e477500dbe323e829c74217a",
+    "apps/codez-cli/packages/node-repl-host/package.json": "3b8fafd78a122a59eb7941e7ef44f62fbacdc75b344aa5859f814c250f9de4d8",
+    "apps/codez-cli/packages/office-runtime/package.json": "c51046c5646a0670e554ac4b5949c70cc029c1ba94a5ee3b277b26208e2b4063",
+    "apps/codez-cli/packages/pdf-plugin/package.json": "63588284641c57e2d7a6b8ff5826cdcb451a5b21f7bc91d6f544ef535d36bc14",
+    "apps/codez-cli/packages/plugin-creator-plugin/package.json": "17ab1504c465c165b013f983270f54868aa282538557bf6f935daac153e46ba6",
+    "apps/codez-cli/packages/presentations-plugin/package.json": "8c8bc559c98ca67cbe95616032589d14425dc85fae309a824101efc1a021e861",
+    "apps/codez-cli/packages/restore-legacy-sessions-plugin/package.json": "ee180a70bc31e945dfa798fd2592a3150cd2e55d546d44be361a90a24cb33fd3",
+    "apps/codez-cli/packages/shared-types/package.json": "6616fb50cf5b4b854273d09411f38857c17df5d4b4abebdfe5d9601e7341e451",
+    "apps/codez-cli/packages/skill-creator-plugin/package.json": "9477f2dbaf0de233856a8d71f8aa1e4fac95e189358887df5c3b7c13672727a6",
+    "apps/codez-cli/packages/spreadsheets-plugin/package.json": "b293c49125bfb98e5798210fb773f71266d725867c97e9b01442f1ae3a530228",
+    "apps/codez-cli/packages/superpowers-plugin/LICENSE": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+    "apps/codez-cli/packages/superpowers-plugin/package.json": "003495dd8441f4a9b017931e081770a157fa48b895752d0cfe7487d437507685",
+    "apps/codez-cli/packages/swift-bridge/package.json": "958674fcd44c789564ee672b0e6c687f1f900f4286174280700ddfb442d23906",
+    "apps/codez-cli/packages/telemetry/package.json": "2c7efa1d5b42700400b971fff61314c7277f5e05b5f96f48b7d50c9ccf11772e",
+    "apps/codez-cli/packages/tui/package.json": "303b8c2f0eb3f8ea0476935f452dd0d2c620ac52587ebb08b24a193f3e3658e0",
+    "apps/codez-cli/packages/visualize-plugin/package.json": "f38e0334cd743a4ca15cf8884ca563aaf0b37bccbdfca63505f56f84f5576971",
+    "apps/codez-cli/packages/codez-cua-plugin/package.json": "d923446edcf3277fe30375a6db251612515ef5e42f6d0d290549ccf80982d879",
+    "apps/codez-cli/packages/codez-guide-plugin/package.json": "b6b6c4a0097496f5bf8848ad4fecea1c2e9f8a94d4a3b962217a74a6253deacf",
+    "apps/codez-cli/tools/prompt-trajectory/package.json": "a8374fef7b1f1814d91dfe5ef5f3d369de8d12f73601dbed6e026f2b12bcca0d",
+    "apps/codez-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
     "docs/knip/docs/.gitignore": "ceb40af0a4929eda8eb4d8e9562783000df06dd09ef7a4de9f170b7c1b79aaac",
     "docs/knip/docs/astro.config.ts": "e28f72a471b759d9caa185f9b0e0f65ed50bf2314a4513a8513ce6fa0bfb42fb",
     "docs/knip/docs/LICENSE": "ef3e637bb6cc9fa34bacda2f2d31a794ca65abfe3109c150e00bb10dca25e431",
@@ -1612,7 +1612,7 @@
     "packages/services/package.json": "08ea06b5adac4515f771daf5068eb33353c59979768eb1eb0c64fc066354a24a",
     "packages/share-ui/package.json": "bf4e08759bc010d24d2559aa82a538832bee7c749c07c230158ee8d810cfdf41",
     "packages/shared/package.json": "75d61b530bda3441611d433007a86ae51283a0637247e179becc6947260430fd",
-    "packages/shared/src/zcode-protocol-v4/wire-codec.ts": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75",
+    "packages/shared/src/codez-protocol-v4/wire-codec.ts": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75",
     "packages/stream-animate/package.json": "31cb25ed87e64dbcd695bbc932729ac30499107d45f747b96a5c3de832afdc28",
     "packages/ui/package.json": "06c26cbfcb4eb44a193c4e69eb9cfb8d14a7aee55d243a9c226c424ee1bdd24a",
     "packages/ui/src/components/ai-elements/agent.tsx": "830e7ea9e927de1524851337f1d35bda0e5690e3e4fa307fff854b60006b16c7",
@@ -1725,7 +1725,7 @@
     "packages/ui/src/components/ui/toast.tsx": "e8db1fb2da2fec35c99146a75698aa071b354d67c1211c8774145791b96ee51f",
     "packages/ui/src/components/ui/tooltip.tsx": "b385da0f882ef4a44c101051107a670c42f7b347b86ef8ca0dba40369ed34d3b",
     "packages/ui/src/components/ui/usePdfZoomOverlay.ts": "c8c91b003ce2fded32c7a2369dc6eac43aa4b9dc9c830a0f5ceccb21d366b610",
-    "packages/ui/src/components/ui/ZCodeAboutLogo.tsx": "1e5b7c2e8a9dc98a3c597cbe34122521319eaeb89825e4c41641e77715d1407a",
+    "packages/ui/src/components/ui/CodezAboutLogo.tsx": "1e5b7c2e8a9dc98a3c597cbe34122521319eaeb89825e4c41641e77715d1407a",
     "packages/ui/src/lib/builtinSkillI18n.ts": "c4df1dae0eaf5d65cc2cbf28ff162993f0d2bb1c482e8cb52a5e222f7778ab12",
     "packages/ui/src/styles.css": "ae1c3575fa770258bba05afb5a0ebbeda59ecbd8b4cfa9d0355b5fbfd8dcbd8b",
     "packages/web-share/package.json": "4865c14968b96d355c45c2edf612443f79d6d05cfbe433a28374e19b1b0c9d88",
@@ -2876,8 +2876,8 @@
     "packages/web/public/material-icons/zeabur.svg": "8bb7c84934202e9b24842ddb1ca69d316b9d69f1a4f5ebc9bbcce78eb2cea1a7",
     "packages/web/public/material-icons/zig.svg": "37be0ce02cf471b18d86150b3c38e80caa7c16c49a15078e7db6f1f41788d101",
     "packages/web/public/material-icons/zip.svg": "dad79a45f756542d37abd422502ecfbea15720b92ea1c9d80ef0439ab6b9448a",
-    "packages/zcode-cua/package.json": "794687f6e1bf78cc4838e776263908223e2df0a79e15d867a655b112f123ce20",
-    "packages/zcode-server-cli/package.json": "698f659142ac592cddba0e0f9b1ea932a8c1ac7d8ee3d049c5defe2a493b9235",
+    "packages/codez-cua/package.json": "794687f6e1bf78cc4838e776263908223e2df0a79e15d867a655b112f123ce20",
+    "packages/codez-server-cli/package.json": "698f659142ac592cddba0e0f9b1ea932a8c1ac7d8ee3d049c5defe2a493b9235",
     "patches/@ai-sdk__anthropic@3.0.81.patch": "d3a7c381eba7f5157f765a0528003af17cf84544911dfb7412c7800168e01c18",
     "patches/@ai-sdk__openai-compatible@2.0.60.patch": "9632fe9d821b3dc20939ae509cc35b968d90d018bbd1d812390718898182a38b",
     "patches/@arms__rum-electron@0.0.3.patch": "36855354851ea495bc47a03340b0484ff62836b739cad56904b8a69f18e2ae97",
@@ -19779,7 +19779,7 @@
         "packages/ui/src/components/ui",
         "packages/ui/src/styles.css"
       ],
-      "scope": "Upstream-derived portions only; ZCode-specific files in the same directory are not attributed to the upstream project.",
+      "scope": "Upstream-derived portions only; Codez-specific files in the same directory are not attributed to the upstream project.",
       "license": "MIT",
       "files": [
         {
@@ -19791,7 +19791,7 @@
           "sha256": "5b5d554e2ad0c8e095258d70e5c3f35f58b9340a850c767f7b76bbe19c3b42d0"
         },
         {
-          "file": "packages/ui/src/components/ui/ZCodeAboutLogo.tsx",
+          "file": "packages/ui/src/components/ui/CodezAboutLogo.tsx",
           "sha256": "1e5b7c2e8a9dc98a3c597cbe34122521319eaeb89825e4c41641e77715d1407a"
         },
         {
@@ -19996,7 +19996,7 @@
         "packages/ui/src/components/ai-elements",
         ".agents/skills/ai-elements"
       ],
-      "scope": "Upstream-derived UI components, skill instructions, reference documentation and example scripts only; locally adapted for ZCode imports, styling and agent workflow. Original import revision not recorded.",
+      "scope": "Upstream-derived UI components, skill instructions, reference documentation and example scripts only; locally adapted for Codez imports, styling and agent workflow. Original import revision not recorded.",
       "license": "Apache-2.0",
       "modifiedFiles": [
         "packages/ui/src/components/ai-elements/agent.tsx",
@@ -20909,7 +20909,7 @@
     {
       "id": "Fig autocomplete registry",
       "roots": [
-        "apps/zcode-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts"
+        "apps/codez-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts"
       ],
       "license": "MIT",
       "source": "https://raw.githubusercontent.com/withfig/autocomplete/aef52acff84c45edde61ae610cc2c964802b9a38/LICENSE",
@@ -20919,7 +20919,7 @@
       "importRevision": null,
       "files": [
         {
-          "file": "apps/zcode-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts",
+          "file": "apps/codez-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts",
           "sha256": "60fa5acd9f5c357f4e51b1d1e944ee39da92680e4bc5e98dd708f1457fcf612b"
         }
       ]
@@ -30120,7 +30120,7 @@
         ".agents/skills/dogfood",
         ".agents/skills/electron"
       ],
-      "scope": "Upstream-derived instructions, reference documents and shell templates; locally adapted for the ZCode workspace. Reference release v0.20.0 contains all three skills.",
+      "scope": "Upstream-derived instructions, reference documents and shell templates; locally adapted for the Codez workspace. Reference release v0.20.0 contains all three skills.",
       "license": "Apache-2.0",
       "modifiedFiles": [
         ".agents/skills/agent-browser/SKILL.md",
@@ -30207,9 +30207,9 @@
       "roots": [
         "packages/rpc/src",
         "packages/rpc/examples",
-        "packages/shared/src/zcode-protocol-v4/wire-codec.ts"
+        "packages/shared/src/codez-protocol-v4/wire-codec.ts"
       ],
-      "scope": "Upstream-derived IPC, serialization, buffer, lifecycle and event portions only. Local RPC extensions, transports and envelope measurement are ZCode adaptations; inclusion does not attribute all local code to Microsoft.",
+      "scope": "Upstream-derived IPC, serialization, buffer, lifecycle and event portions only. Local RPC extensions, transports and envelope measurement are Codez adaptations; inclusion does not attribute all local code to Microsoft.",
       "license": "MIT",
       "files": [
         {
@@ -30293,7 +30293,7 @@
           "sha256": "fe43a2d631ba54a1cf63a86e344b6e2e58d83c2e8c95f2f8b7371f63e6442541"
         },
         {
-          "file": "packages/shared/src/zcode-protocol-v4/wire-codec.ts",
+          "file": "packages/shared/src/codez-protocol-v4/wire-codec.ts",
           "sha256": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75"
         }
       ]
@@ -30308,7 +30308,7 @@
       "provenance": "Original import revision is not recorded. This pinned upstream license/source reference is not asserted to be the original import version.",
       "roots": [
         "packages/ui/src/lib/builtinSkillI18n.ts",
-        "apps/zcode-cli/packages/superpowers-plugin/LICENSE"
+        "apps/codez-cli/packages/superpowers-plugin/LICENSE"
       ],
       "scope": "Superpowers-derived skill descriptions and their translations only; unrelated descriptions from other projects in this file are not covered. The former bundled plugin implementation has been removed; only its retained license remains.",
       "license": "MIT",
@@ -30318,7 +30318,7 @@
           "sha256": "c4df1dae0eaf5d65cc2cbf28ff162993f0d2bb1c482e8cb52a5e222f7778ab12"
         },
         {
-          "file": "apps/zcode-cli/packages/superpowers-plugin/LICENSE",
+          "file": "apps/codez-cli/packages/superpowers-plugin/LICENSE",
           "sha256": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400"
         }
       ]

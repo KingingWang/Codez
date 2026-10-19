@@ -1,4 +1,4 @@
-import { resolveWorkspaceKey } from "@zcode/shared";
+import { resolveWorkspaceKey } from "@codez/shared";
 import type { SubagentIndexRepair } from "#src/task-facts/contract.js";
 
 const IDENTITY_QUERY_BATCH_SIZE = 64;

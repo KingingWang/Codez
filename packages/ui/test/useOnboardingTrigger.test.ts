@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { OnboardingSettingsSyncPatch } from "@zcode/services";
+import type { OnboardingSettingsSyncPatch } from "@codez/services";
 import { useOnboardingTrigger } from "@/onboarding/useOnboardingTrigger.js";
-import type { IOnboardingRecordService } from "@zcode/services";
+import type { IOnboardingRecordService } from "@codez/services";
 
 /**
  * CR 修复回归：useOnboardingTrigger 曾因坏 copy-paste 把 useState/useRef 嵌进

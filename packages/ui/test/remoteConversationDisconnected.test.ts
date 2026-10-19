@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import zhCN from "@/i18n/locales/zh-CN.js";
 const ports = vi.hoisted(() => ({ reconnect: vi.fn(), details: vi.fn() }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: ({ id }: { id: keyof typeof zhCN }) => zhCN[id] ?? id },
   }),
 }));

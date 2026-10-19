@@ -22,7 +22,7 @@ function storage() {
 }
 
 const selection = { providerId: "provider", modelId: "model", options: { reasoningLevel: "high" } };
-const key = "zcode-model-selection-recent-v1:/repo";
+const key = "codez-model-selection-recent-v1:/repo";
 
 describe("composerRecent", () => {
   it("PD07 持久化的接纳顺序阻止恢复查询中的旧配置回写", () => {

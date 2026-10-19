@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ModelSelectionView } from "@zcode/services";
+import type { ModelSelectionView } from "@codez/services";
 import { resolveProviderBaseURL, resolveProviderLabel } from "@/lib/registryProviderView.js";
 
 const registryView: ModelSelectionView = {

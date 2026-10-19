@@ -9,7 +9,7 @@ import {
   reduceWorkflowRunsState,
   type WorkflowRunProgressEnvelope,
   type WorkflowRunsState,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/types.js";
 import { buildWorkflowTimeline } from "@/components/workflow-timeline/timeline-model.js";
 import { workflowActorStartState } from "@/app-shell/workflowRunPanel.js";

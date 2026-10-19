@@ -3,7 +3,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import type { PptxElementReference } from "@/lib/pptxElementReference.js";
 import { PptxElementReferenceChip } from "@/v4/composer/PptxElementReferenceChip.js";
 
@@ -37,7 +37,7 @@ describe("PptxElementReferenceChip", () => {
     const onRemove = vi.fn();
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(PptxElementReferenceChip, {
           references: [reference],

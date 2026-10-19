@@ -5,7 +5,7 @@ import {
 } from "#e2e/helpers/remote-project-actions";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   connectSSHWorkspaceAndSendFirstTurn,
@@ -26,7 +26,7 @@ import {
 
 const CASE_MARKER = "E2E_R3_DAEMON_DETACHED";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-daemon-detached",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-daemon-detached",
 );
 
 describe(`${CASE_MARKER}: 无 user service manager 目标的 daemon 生命周期`, () => {
@@ -55,7 +55,7 @@ describe(`${CASE_MARKER}: 无 user service manager 目标的 daemon 生命周期
     });
     const core0 = await readRemoteCoreIdentity(prepared.config, CASE_MARKER);
     const status0 = JSON.parse(
-      (await runSSHCommand(prepared.config, 'cat "$HOME/.zcode/server/run/status.json"')).stdout,
+      (await runSSHCommand(prepared.config, 'cat "$HOME/.codez/server/run/status.json"')).stdout,
     ) as { serviceRegistered: boolean; state: string };
     // 容器没有 systemd user manager：只能是 detached daemon，且不得伪装成已注册服务。
     expect(status0.serviceRegistered).toBe(false);
@@ -122,7 +122,7 @@ describe(`${CASE_MARKER}: 无 user service manager 目标的 daemon 生命周期
     expect(core1.supervisorPid).not.toBe(core0.supervisorPid);
     expect(core1.state).toBe("ready");
     const status1 = JSON.parse(
-      (await runSSHCommand(prepared.config, 'cat "$HOME/.zcode/server/run/status.json"')).stdout,
+      (await runSSHCommand(prepared.config, 'cat "$HOME/.codez/server/run/status.json"')).stdout,
     ) as { serviceRegistered: boolean };
     expect(status1.serviceRegistered).toBe(false);
     facts.core1 = core1;

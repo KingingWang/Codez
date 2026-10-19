@@ -26,20 +26,20 @@ import type {
   Locale,
   UsageEntitlementSnapshot,
   UserInfo,
-  ZCodeInteractionBehavior,
-} from "@zcode/shared";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+  CodezInteractionBehavior,
+} from "@codez/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import {
   TID_SETTINGS_BACK_BUTTON,
   TID_SETTINGS_PAGE,
   TID_SETTINGS_SECTION_NAV,
   TID_SETTINGS_USAGE_TAB,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
 import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { logger } from "@/logger.js";
 import { getPathLeaf } from "@/lib/path.js";
@@ -96,7 +96,7 @@ import {
   SettingsHeaderBreadcrumb,
   type SettingsBreadcrumbItem,
 } from "@/settings/SettingsHeaderBreadcrumb.js";
-import { useZCodeStore } from "@/store/StoreProvider.js";
+import { useCodezStore } from "@/store/StoreProvider.js";
 import { useTabStore } from "@/store/TabStoreProvider.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
 import type { Theme } from "@/useTheme.js";
@@ -109,7 +109,7 @@ import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { cn } from "@/components/lib/utils.js";
 import { useSelectDirectory } from "@/hooks/usePlatform.js";
 import { ServiceProvider, useServices } from "@/hooks/useServices.js";
-import type { AppToolSearchMode } from "@zcode/shared";
+import type { AppToolSearchMode } from "@codez/shared";
 import { useSettings } from "@/hooks/useSettingService.js";
 import type { CreateTaskRequest, RemoteConnectionOpenPreference } from "@/app-shell/types.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
@@ -165,7 +165,7 @@ function SettingsUsageProviderTabs({
   codingPlanSources: CodingPlanUsageSource[];
   onTabChange: (tab: UsageStatsSectionTab) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const tabItems = [
     {
       id: "app" as const,
@@ -321,7 +321,7 @@ export function SettingsPage({
   onLogout?: () => void;
   user?: UserInfo | null;
 }) {
-  const { intl, localePreference, setLocalePreference } = useZCodeIntl();
+  const { intl, localePreference, setLocalePreference } = useCodezIntl();
   const { settingsSectionGroups, settingsSections } = useMemo(
     () =>
       createSettingsPageConfig({
@@ -412,18 +412,18 @@ export function SettingsPage({
   const [settingsBreadcrumbItems, setSettingsBreadcrumbItems] = useState<
     readonly SettingsBreadcrumbItem[]
   >([]);
-  const interfaceMode = useZCodeStore((state) => state.interfaceMode);
-  const setInterfaceMode = useZCodeStore((state) => state.setInterfaceMode);
-  const theme = useZCodeStore((state) => state.theme);
-  const setTheme = useZCodeStore((state) => state.setTheme);
-  const codePreviewSettings = useZCodeStore((state) => state.codePreviewSettings);
-  const setCodePreviewSettings = useZCodeStore((state) => state.setCodePreviewSettings);
-  const uiFontSizePx = useZCodeStore((state) => state.uiFontSizePx);
-  const setUiFontSizePx = useZCodeStore((state) => state.setUiFontSizePx);
-  const notificationEnabled = useZCodeStore((state) => state.notificationEnabled);
-  const setNotificationEnabled = useZCodeStore((state) => state.setNotificationEnabled);
-  const notificationSoundEnabled = useZCodeStore((state) => state.notificationSoundEnabled);
-  const setNotificationSoundEnabled = useZCodeStore((state) => state.setNotificationSoundEnabled);
+  const interfaceMode = useCodezStore((state) => state.interfaceMode);
+  const setInterfaceMode = useCodezStore((state) => state.setInterfaceMode);
+  const theme = useCodezStore((state) => state.theme);
+  const setTheme = useCodezStore((state) => state.setTheme);
+  const codePreviewSettings = useCodezStore((state) => state.codePreviewSettings);
+  const setCodePreviewSettings = useCodezStore((state) => state.setCodePreviewSettings);
+  const uiFontSizePx = useCodezStore((state) => state.uiFontSizePx);
+  const setUiFontSizePx = useCodezStore((state) => state.setUiFontSizePx);
+  const notificationEnabled = useCodezStore((state) => state.notificationEnabled);
+  const setNotificationEnabled = useCodezStore((state) => state.setNotificationEnabled);
+  const notificationSoundEnabled = useCodezStore((state) => state.notificationSoundEnabled);
+  const setNotificationSoundEnabled = useCodezStore((state) => state.setNotificationSoundEnabled);
   const usageProviderSettingsRead = useProviderSettingsView();
   const usageProviderSettingsView =
     usageProviderSettingsRead.state.status === "ready"
@@ -666,7 +666,7 @@ export function SettingsPage({
         : "app",
     );
   }, [selectedUsageCodingPlanSource, usageActiveTab, usageCodingPlanSources]);
-  const setNewUserOnboardingOpen = useZCodeStore((state) => state.setNewUserOnboardingOpen);
+  const setNewUserOnboardingOpen = useCodezStore((state) => state.setNewUserOnboardingOpen);
   const requestOnboardingDialog = () => setNewUserOnboardingOpen(true);
   const setActiveSettingsSection = useCallback(
     (section: SettingsSectionId, fallbackSection: SettingsSectionId = activeSection) => {
@@ -813,8 +813,8 @@ export function SettingsPage({
   const [toolGroupingExploreEnabled, setToolGroupingExploreEnabled] = useState(true);
   const [toolGroupingTerminalEnabled, setToolGroupingTerminalEnabled] = useState(true);
   const [toolGroupingChangesEnabled, setToolGroupingChangesEnabled] = useState(false);
-  const [zcodeInteractionBehavior, setZCodeInteractionBehavior] =
-    useState<ZCodeInteractionBehavior>("queue");
+  const [codezInteractionBehavior, setCodezInteractionBehavior] =
+    useState<CodezInteractionBehavior>("queue");
   const [defaultHomeDir, setDefaultHomeDir] = useState("");
   const [hostPlatform, setHostPlatform] = useState("");
 
@@ -948,7 +948,7 @@ export function SettingsPage({
     setToolGroupingExploreEnabled(sharedSettings.toolGroupingExploreEnabled ?? true);
     setToolGroupingTerminalEnabled(sharedSettings.toolGroupingTerminalEnabled ?? true);
     setToolGroupingChangesEnabled(sharedSettings.toolGroupingChangesEnabled ?? false);
-    setZCodeInteractionBehavior(sharedSettings.zcodeInteractionBehavior ?? "queue");
+    setCodezInteractionBehavior(sharedSettings.codezInteractionBehavior ?? "queue");
     setReceivePreviewUpdates(sharedSettings.receivePreviewUpdates ?? false);
     setAutoDownloadAndInstallUpdates(sharedSettings.autoDownloadAndInstallUpdates ?? false);
   }, [sharedSettings]);
@@ -1389,16 +1389,16 @@ export function SettingsPage({
     },
     [updateSharedSettings],
   );
-  const handleZCodeInteractionBehaviorChange = useCallback(
-    async (behavior: ZCodeInteractionBehavior) => {
+  const handleCodezInteractionBehaviorChange = useCallback(
+    async (behavior: CodezInteractionBehavior) => {
       await runSettingsActionAsync({
         featureId: "settings.conversation",
         action: "change_interaction_behavior",
         trigger: "select",
-        operation: () => updateSharedSettings({ zcodeInteractionBehavior: behavior }),
+        operation: () => updateSharedSettings({ codezInteractionBehavior: behavior }),
         completed: { resultSource: "shared_settings", valueAfter: behavior },
       });
-      setZCodeInteractionBehavior(behavior);
+      setCodezInteractionBehavior(behavior);
     },
     [updateSharedSettings],
   );
@@ -1877,7 +1877,7 @@ export function SettingsPage({
                               toolGroupingExploreEnabled={toolGroupingExploreEnabled}
                               toolGroupingTerminalEnabled={toolGroupingTerminalEnabled}
                               toolGroupingChangesEnabled={toolGroupingChangesEnabled}
-                              zcodeInteractionBehavior={zcodeInteractionBehavior}
+                              codezInteractionBehavior={codezInteractionBehavior}
                               askUserQuestionAutoResolutionEnabled={
                                 askUserQuestionAutoResolutionEnabled
                               }
@@ -1920,8 +1920,8 @@ export function SettingsPage({
                               onToolGroupingChangesEnabledChange={
                                 handleToolGroupingChangesEnabledChange
                               }
-                              onZCodeInteractionBehaviorChange={
-                                handleZCodeInteractionBehaviorChange
+                              onCodezInteractionBehaviorChange={
+                                handleCodezInteractionBehaviorChange
                               }
                               onAskUserQuestionAutoResolutionEnabledChange={
                                 handleAskUserQuestionAutoResolutionEnabledChange

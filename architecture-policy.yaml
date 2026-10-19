@@ -43,8 +43,8 @@ modules:
   - id: server
     roots: [packages/server/src]
     managed: false
-  - id: zcode-server-cli
-    roots: [packages/zcode-server-cli/src]
+  - id: codez-server-cli
+    roots: [packages/codez-server-cli/src]
     managed: false
   - id: ui
     roots: [packages/ui/src]
@@ -64,8 +64,8 @@ modules:
   - id: e2e-report
     roots: [packages/e2e-report/src]
     managed: false
-  - id: zcode-cli
-    roots: [apps/zcode-cli]
+  - id: codez-cli
+    roots: [apps/codez-cli]
     managed: false
   # sqlite-migrations：由 architecture:adopt 登记
   - id: sqlite-migrations
@@ -281,10 +281,10 @@ modules:
       domain: "."
     owner: plugin
   - id: mcp-ui
-    roots: [apps/zcode-cli/packages/bootstrap/src/zcode-protocol/mcp-ui]
+    roots: [apps/codez-cli/packages/bootstrap/src/codez-protocol/mcp-ui]
     managed: true
-    requires: [zcode-cli, shared, mcp-apps-protocol]
-    publicEntrypoints: [apps/zcode-cli/packages/bootstrap/src/zcode-protocol/mcp-ui/index.ts, apps/zcode-cli/packages/bootstrap/src/zcode-protocol/mcp-ui/contract.ts]
+    requires: [codez-cli, shared, mcp-apps-protocol]
+    publicEntrypoints: [apps/codez-cli/packages/bootstrap/src/codez-protocol/mcp-ui/index.ts, apps/codez-cli/packages/bootstrap/src/codez-protocol/mcp-ui/contract.ts]
     layers:
       app: "."
     owner: plugin
@@ -384,29 +384,29 @@ modules:
   # cli-subagent-config：由 architecture:adopt 登记
   - id: cli-subagent-config
     roots:
-      - apps/zcode-cli/packages/bootstrap/src/runtime-subagents
-      - apps/zcode-cli/packages/bootstrap/tests/runtime-subagents
+      - apps/codez-cli/packages/bootstrap/src/runtime-subagents
+      - apps/codez-cli/packages/bootstrap/tests/runtime-subagents
     managed: true
     requires:
       - shared
     publicEntrypoints:
-      - apps/zcode-cli/packages/bootstrap/src/runtime-subagents/index.ts
-      - apps/zcode-cli/packages/bootstrap/src/runtime-subagents/contract.ts
+      - apps/codez-cli/packages/bootstrap/src/runtime-subagents/index.ts
+      - apps/codez-cli/packages/bootstrap/src/runtime-subagents/contract.ts
     layers:
       domain: .
     owner: agent
   # cli-session-execution：由 architecture:adopt 登记
   - id: cli-session-execution
     roots:
-      - apps/zcode-cli/packages/bootstrap/src/session-execution
-      - apps/zcode-cli/packages/bootstrap/tests/session-execution
+      - apps/codez-cli/packages/bootstrap/src/session-execution
+      - apps/codez-cli/packages/bootstrap/tests/session-execution
     managed: true
     requires:
       - shared
-      - zcode-cli
+      - codez-cli
     publicEntrypoints:
-      - apps/zcode-cli/packages/bootstrap/src/session-execution/index.ts
-      - apps/zcode-cli/packages/bootstrap/src/session-execution/contract.ts
+      - apps/codez-cli/packages/bootstrap/src/session-execution/index.ts
+      - apps/codez-cli/packages/bootstrap/src/session-execution/contract.ts
     layers:
       app: .
     owner: conversation
@@ -464,7 +464,7 @@ modules:
       - packages/ui/src/components/mobile-ui/index.ts
       - packages/ui/src/components/mobile-ui/contract.ts
       - packages/ui/src/components/mobile-ui/DevicePlatformIcon.tsx
-      - packages/ui/src/components/mobile-ui/ZCodeAppLogo.tsx
+      - packages/ui/src/components/mobile-ui/CodezAppLogo.tsx
       - packages/ui/src/components/mobile-ui/bottom-sheet.tsx
     layers:
       contract: contract.ts
@@ -537,55 +537,55 @@ modules:
   # 保留既有源码位置；精确登记源文件，不扩大到整个 CLI 或 handlers 目录。
   - id: cli-arguments
     roots:
-      - apps/zcode-cli/packages/cli/src/argument-parsing
-      - apps/zcode-cli/packages/cli/src/arguments.ts
-      - apps/zcode-cli/packages/cli/tests/argument-parsing
+      - apps/codez-cli/packages/cli/src/argument-parsing
+      - apps/codez-cli/packages/cli/src/arguments.ts
+      - apps/codez-cli/packages/cli/tests/argument-parsing
     managed: true
     requires: []
     publicEntrypoints:
-      - apps/zcode-cli/packages/cli/src/arguments.ts
-      - apps/zcode-cli/packages/cli/src/argument-parsing/contract.ts
+      - apps/codez-cli/packages/cli/src/arguments.ts
+      - apps/codez-cli/packages/cli/src/argument-parsing/contract.ts
     layers: {adapters: .}
     owner: agent
   - id: workflow-tool-entrypoints
     roots:
-      - apps/zcode-cli/packages/core/src/tool/workflow-entrypoints
-      - apps/zcode-cli/packages/core/src/tool/handlers/amend-workflow.ts
-      - apps/zcode-cli/packages/core/src/tool/handlers/list-models.ts
-      - apps/zcode-cli/packages/core/src/tool/handlers/fill-workflow-hole.ts
-      - apps/zcode-cli/packages/core/tests/workflow-entrypoints
+      - apps/codez-cli/packages/core/src/tool/workflow-entrypoints
+      - apps/codez-cli/packages/core/src/tool/handlers/amend-workflow.ts
+      - apps/codez-cli/packages/core/src/tool/handlers/list-models.ts
+      - apps/codez-cli/packages/core/src/tool/handlers/fill-workflow-hole.ts
+      - apps/codez-cli/packages/core/tests/workflow-entrypoints
     managed: true
-    requires: [zcode-cli]
+    requires: [codez-cli]
     publicEntrypoints:
-      - apps/zcode-cli/packages/core/src/tool/handlers/amend-workflow.ts
-      - apps/zcode-cli/packages/core/src/tool/handlers/list-models.ts
-      - apps/zcode-cli/packages/core/src/tool/handlers/fill-workflow-hole.ts
-      - apps/zcode-cli/packages/core/src/tool/workflow-entrypoints/contract.ts
+      - apps/codez-cli/packages/core/src/tool/handlers/amend-workflow.ts
+      - apps/codez-cli/packages/core/src/tool/handlers/list-models.ts
+      - apps/codez-cli/packages/core/src/tool/handlers/fill-workflow-hole.ts
+      - apps/codez-cli/packages/core/src/tool/workflow-entrypoints/contract.ts
     layers: {app: .}
     owner: agent
 
   - id: tool-result-settlement
     roots:
-      - apps/zcode-cli/packages/core/src/runtime/tool-result-settlement
-      - apps/zcode-cli/packages/core/src/runtime/methods/tool-result-settlement.ts
-      - apps/zcode-cli/packages/core/tests/tool-result-settlement
+      - apps/codez-cli/packages/core/src/runtime/tool-result-settlement
+      - apps/codez-cli/packages/core/src/runtime/methods/tool-result-settlement.ts
+      - apps/codez-cli/packages/core/tests/tool-result-settlement
     managed: true
-    requires: [zcode-cli]
+    requires: [codez-cli]
     publicEntrypoints:
-      - apps/zcode-cli/packages/core/src/runtime/methods/tool-result-settlement.ts
-      - apps/zcode-cli/packages/core/src/runtime/tool-result-settlement/contract.ts
+      - apps/codez-cli/packages/core/src/runtime/methods/tool-result-settlement.ts
+      - apps/codez-cli/packages/core/src/runtime/tool-result-settlement/contract.ts
     layers: {app: .}
     owner: agent
   - id: channel-reply-tool
     roots:
-      - apps/zcode-cli/packages/core/src/tool/channel-reply
-      - apps/zcode-cli/packages/core/src/tool/handlers/reply-to-channel.ts
-      - apps/zcode-cli/packages/core/tests/channel-reply
+      - apps/codez-cli/packages/core/src/tool/channel-reply
+      - apps/codez-cli/packages/core/src/tool/handlers/reply-to-channel.ts
+      - apps/codez-cli/packages/core/tests/channel-reply
     managed: true
-    requires: [shared, zcode-cli]
+    requires: [shared, codez-cli]
     publicEntrypoints:
-      - apps/zcode-cli/packages/core/src/tool/handlers/reply-to-channel.ts
-      - apps/zcode-cli/packages/core/src/tool/channel-reply/contract.ts
+      - apps/codez-cli/packages/core/src/tool/handlers/reply-to-channel.ts
+      - apps/codez-cli/packages/core/src/tool/channel-reply/contract.ts
     layers: {app: .}
     owner: agent
 
@@ -677,12 +677,12 @@ modules:
   # office-runtime：内置文档插件查看面板的共享运行时，由 architecture:adopt 登记
   - id: office-runtime
     roots:
-      - apps/zcode-cli/packages/office-runtime
+      - apps/codez-cli/packages/office-runtime
     managed: true
     requires: []
     publicEntrypoints:
-      - apps/zcode-cli/packages/office-runtime/index.ts
-      - apps/zcode-cli/packages/office-runtime/contract.ts
+      - apps/codez-cli/packages/office-runtime/index.ts
+      - apps/codez-cli/packages/office-runtime/contract.ts
     layers:
       app: .
     owner: plugin
@@ -735,13 +735,13 @@ global:
 exceptions:
   - id: opensource-cua-test-project-config
     rule: unmanaged-new-file
-    paths: [packages/zcode-cua/vitest.config.ts]
+    paths: [packages/codez-cua/vitest.config.ts]
     reason: 该文件只装配测试项目，开源占位版本用于保持根单测入口可运行；不包含 producer 运行逻辑，不为同目录实现文件开放例外。
   - id: opensource-tool-search-comment-cleanup
     rule: unmanaged-new-file
     paths:
-      - apps/zcode-cli/packages/contracts/src/tools/tool-search.ts
-      - apps/zcode-cli/packages/core/src/tool/handlers/tool-search.ts
+      - apps/codez-cli/packages/contracts/src/tools/tool-search.ts
+      - apps/codez-cli/packages/core/src/tool/handlers/tool-search.ts
     reason: 已有上游文件仅去掉两行产品对标注释；去除注释后的 TypeScript 输出与 staging 完全一致。契约、实现和模块边界不变，整目录接管不在本次开源整理范围内；后续逻辑修改须重新核对模块治理。
   - id: project-location-cache-recovery-existing-edit
     rule: unmanaged-new-file
@@ -756,7 +756,7 @@ exceptions:
       - packages/ui/src/browser-use/EmbeddedBrowserPermissionPrompts.tsx
       - packages/ui/src/hooks/useStartPlanRecommendation.ts
       - packages/ui/src/settings/DynamicWorkflowModeSetting.tsx
-    reason: 已准入的存量文件只把 TID 导入从 @zcode/shared 根入口改为 @zcode/shared/test-ids 子路径（根入口不再导出 test-ids，以收窄受影响单测范围）；行为与模块边界不变，接管 ui 目录不在本次范围内。
+    reason: 已准入的存量文件只把 TID 导入从 @codez/shared 根入口改为 @codez/shared/test-ids 子路径（根入口不再导出 test-ids，以收窄受影响单测范围）；行为与模块边界不变，接管 ui 目录不在本次范围内。
   - id: connection-log-secret-token-unmanaged-edit
     rule: unmanaged-new-file
     paths: [packages/shared/src/source-server/connectionLog.ts]
@@ -771,7 +771,7 @@ exceptions:
     reason: Existing upstream public config parser gains one validated recommendation field; ownership and module boundaries remain unchanged, and adopting the shared package is outside this change.
   - id: highspeed-fallback-snapshot-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/zcode-cli/packages/core/src/runtime/methods/turn-execution-fallback.ts]
+    paths: [apps/codez-cli/packages/core/src/runtime/methods/turn-execution-fallback.ts]
     reason: 合并已存在于 staging 的加速卡回退模块，仅将可变 Session 读取替换为本轮固定候选；保持现有 Core 模块边界，不在同步分支时机械拆分整个 runtime。
   - id: shortcut-settings-existing-ui-edit
     rule: unmanaged-new-file
@@ -809,9 +809,9 @@ exceptions:
   - id: workflow-amend-provider-boundary-unmanaged-edit
     rule: unmanaged-new-file
     paths:
-      - apps/zcode-cli/packages/contracts/src/tools/amend-workflow.ts
-      - apps/zcode-cli/packages/core/src/tool/handlers/amend-workflow-resolve.ts
-    reason: Admitted upstream files edited only to make an own-run AmendWorkflow that brings in a new provider ask the user; adopting the zcode-cli contracts and core handlers needs a separate module boundary refactor.
+      - apps/codez-cli/packages/contracts/src/tools/amend-workflow.ts
+      - apps/codez-cli/packages/core/src/tool/handlers/amend-workflow-resolve.ts
+    reason: Admitted upstream files edited only to make an own-run AmendWorkflow that brings in a new provider ask the user; adopting the codez-cli contracts and core handlers needs a separate module boundary refactor.
   - id: workflow-share-unmanaged-new-files
     rule: unmanaged-new-file
     paths:
@@ -835,13 +835,13 @@ exceptions:
   - id: workflow-notifications-unmanaged-files
     rule: unmanaged-new-file
     paths:
-      - apps/zcode-cli/packages/core/src/runtime-task/workflow-blocked-reminder.ts
-      - apps/zcode-cli/packages/core/src/runtime/methods/dynamic-workflow-blocked-reminder.ts
-      - apps/zcode-cli/packages/core/src/runtime-task/workflow-notification-copy.ts
-      - apps/zcode-cli/packages/core/src/runtime/methods/dynamic-workflow-run-hole-notification.ts
-      - apps/zcode-cli/packages/core/src/tool/handlers/model-reference.ts
+      - apps/codez-cli/packages/core/src/runtime-task/workflow-blocked-reminder.ts
+      - apps/codez-cli/packages/core/src/runtime/methods/dynamic-workflow-blocked-reminder.ts
+      - apps/codez-cli/packages/core/src/runtime-task/workflow-notification-copy.ts
+      - apps/codez-cli/packages/core/src/runtime/methods/dynamic-workflow-run-hole-notification.ts
+      - apps/codez-cli/packages/core/src/tool/handlers/model-reference.ts
       - packages/shared/src/test-ids-workflow.ts
-    reason: Workflow reminder, notification and model reference files reached staging without the MR architecture gate running; adopting the zcode-cli core and shared test ids needs a separate module boundary refactor.
+    reason: Workflow reminder, notification and model reference files reached staging without the MR architecture gate running; adopting the codez-cli core and shared test ids needs a separate module boundary refactor.
   - id: composer-toolbar-unmanaged-files
     rule: unmanaged-new-file
     paths:
@@ -858,6 +858,6 @@ exceptions:
   - id: provider-endpoint-routing-unmanaged-edit
     rule: unmanaged-new-file
     paths:
-      - apps/zcode-cli/packages/adapters/src/model/endpoint-routing-edition/index.ts
-      - apps/zcode-cli/packages/adapters/src/model/provider-endpoint-routing-options.ts
+      - apps/codez-cli/packages/adapters/src/model/endpoint-routing-edition/index.ts
+      - apps/codez-cli/packages/adapters/src/model/provider-endpoint-routing-options.ts
     reason: Existing upstream routing assembly files gain the endpoint origin and injected JWT reader; adopting the full CLI model adapter directory needs a separate module boundary refactor.

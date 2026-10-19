@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { ServiceChannels } from "@zcode/shared";
+import { ServiceChannels } from "@codez/shared";
 import {
   TID_DOCKER_CONTAINER_INPUT,
   TID_CONFIRM_DIALOG_CONFIRM,
@@ -21,13 +21,13 @@ import {
   TID_SSH_SUCCESS,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   installHandoffRpcProbe,
   callHandoffHost,
   restoreHandoffProbes,
 } from "#e2e/helpers/remote-project-handoff-probe";
-import type { RemoteProjectDirectory } from "@zcode/services";
+import type { RemoteProjectDirectory } from "@codez/services";
 import { clearAppData, clickTestIdByDom } from "#e2e/helpers/desktop-app";
 import { requestRemoteProjectConnection } from "#e2e/helpers/remote-project-actions";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
@@ -111,7 +111,7 @@ async function measureAddingForm() {
 }
 
 async function captureAddingForms(kind: string) {
-  const artifacts = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR!);
+  const artifacts = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR!);
   await mkdir(artifacts, { recursive: true });
   for (const locale of ["zh-CN", "en-US"]) {
     for (const theme of ["light", "dark"]) {
@@ -196,13 +196,13 @@ async function counts() {
   const workspaceScopes = await browser.execute(() => {
     const store = (
       window as Window & {
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState(): {
             tabs: Array<{ type: string; workspacePath?: string; workspaceIdentity?: string }>;
           };
         };
       }
-    ).__zcodeTabStoreE2E;
+    ).__codezTabStoreE2E;
     if (!store) throw new Error("E2E tab store unavailable");
     return store
       .getState()
@@ -281,9 +281,9 @@ describe(`${marker}: 设置内连接独立完成`, () => {
   it("RDUX15-10/18/21 SSH 添加、普通重连与在线复用、Docker 添加保持设置和项目数量", async function () {
     this.timeout(15 * 60_000);
     const config = readSSHRuntimeConfig(marker);
-    const container = process.env.ZCODE_E2E_SSH_CONTAINER;
-    if (!container) throw new Error(`${marker}: ZCODE_E2E_SSH_CONTAINER required`);
-    const home = process.env.ZCODE_E2E_HOME_DIR;
+    const container = process.env.CODEZ_E2E_SSH_CONTAINER;
+    if (!container) throw new Error(`${marker}: CODEZ_E2E_SSH_CONTAINER required`);
+    const home = process.env.CODEZ_E2E_HOME_DIR;
     if (!home) throw new Error("isolated E2E home required");
     await mkdir(resolve(home, ".ssh"), { recursive: true });
     await writeFile(
@@ -482,7 +482,7 @@ describe(`${marker}: 设置内连接独立完成`, () => {
       async () => !(await $("body").getText()).includes("已直接使用现有连接"),
       { timeout: 15_000, timeoutMsg: "复用提示未收起" },
     );
-    const artifacts = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR!);
+    const artifacts = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR!);
     await mkdir(artifacts, { recursive: true });
     for (const locale of ["zh-CN", "en-US"]) {
       for (const theme of ["light", "dark"]) {
@@ -604,7 +604,7 @@ describe(`${marker}: 设置内连接独立完成`, () => {
     await card.$('[data-remote-connection-status="offline"]').waitForExist({ timeout: 30_000 });
 
     // 主机改成不可解析的 .invalid 域名，连接后由真实 ENOTFOUND 给出「修改主机」操作。
-    const missingHost = "zcode-e2e-missing.invalid";
+    const missingHost = "codez-e2e-missing.invalid";
     await card.$('.//button[normalize-space(.)="编辑"]').click();
     await $(editConnectionDialog).waitForDisplayed();
     await replaceInputValue(
@@ -647,7 +647,7 @@ describe(`${marker}: 设置内连接独立完成`, () => {
       TID_SSH_USERNAME_INPUT,
     );
     await browser.saveScreenshot(
-      resolve(process.env.ZCODE_E2E_ARTIFACT_DIR!, "edit-host-validation-focus.png"),
+      resolve(process.env.CODEZ_E2E_ARTIFACT_DIR!, "edit-host-validation-focus.png"),
     );
 
     // 恢复真实线路，保存成功后弹窗关闭。

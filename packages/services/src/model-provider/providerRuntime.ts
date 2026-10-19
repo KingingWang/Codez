@@ -1,7 +1,7 @@
 import {
   NodeModelSelectionConfigRepository,
   createNodeModelSelectionFacade,
-} from "@zcode/provider-node";
+} from "@codez/provider-node";
 import {
   ProviderRegistryService,
   ProviderSettingsFacade,
@@ -10,7 +10,7 @@ import {
   type ProviderConfigSnapshot,
   type ProviderSettingsMutationTarget,
   type ProviderSource,
-} from "@zcode/provider";
+} from "@codez/provider";
 import {
   createProviderConfigRuntime,
   type ProviderConfigRuntime,
@@ -84,12 +84,12 @@ export class ProviderRuntime {
     this.configService = this.#configRuntime.configService;
     const accountSource: RefreshableProviderSource<AccountProviderConfigSnapshot> =
       dependencies.accountSource ?? new EmptyAccountProviderConfigSource(this.configService);
-    this.#disposeBuiltinRecovery = this.#configRuntime.onDidCheckZCodeBuiltin(async () => {
+    this.#disposeBuiltinRecovery = this.#configRuntime.onDidCheckCodezBuiltin(async () => {
       const [config, account] = await Promise.all([
         this.configService.read(),
         accountSource.read(),
       ]);
-      if (!this.#disposed && config.zcodeBuiltinRevision !== account.basedOnZCodeBuiltinRevision) {
+      if (!this.#disposed && config.codezBuiltinRevision !== account.basedOnCodezBuiltinRevision) {
         await accountSource.refresh?.("builtin-account-recovery");
       }
     });
@@ -183,7 +183,7 @@ function createSettingsMutationTarget(
     refresh: (reason) => registryService.refresh(reason),
     refreshSources: async (reason) => {
       const [builtinResult, accountResult] = await Promise.allSettled([
-        configRuntime.refreshZCodeBuiltin({ force: true }),
+        configRuntime.refreshCodezBuiltin({ force: true }),
         accountSource.refresh?.(reason) ?? Promise.resolve(),
       ]);
       // 远端更新失败不代表本地配置不可用；此前统一抛错会让套餐切换回滚，

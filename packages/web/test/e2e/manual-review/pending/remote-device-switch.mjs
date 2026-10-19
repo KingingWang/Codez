@@ -1,5 +1,5 @@
 // MD07：真实 Web 入口，受控 relay/桌面响应；不替代真机 OAuth/线上部署验收。
-// 启动：pnpm --filter @zcode/web exec vite --host 127.0.0.1 --port 5178 --strictPort
+// 启动：pnpm --filter @codez/web exec vite --host 127.0.0.1 --port 5178 --strictPort
 // 运行：pnpm exec tsx packages/web/test/e2e/manual-review/pending/remote-device-switch.mjs
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -51,7 +51,7 @@ try {
               if (message.type === "pair_status_query")
                 socket.send(JSON.stringify({ type: "pair_status_ack", pair_status: "matched" }));
               const payload = message.payload;
-              if (payload?.zcode_type === "rpc-frame" || payload?.zcode_type === "rpc-frame-ack") {
+              if (payload?.codez_type === "rpc-frame" || payload?.codez_type === "rpc-frame-ack") {
                 connection.bridge?.acceptPayload(payload);
                 return;
               }
@@ -64,7 +64,7 @@ try {
                 ...(mode === "bridge" ? { remoteSessionId: `remote-${connection.sid}` } : {}),
               };
               connection.result ??= { workspaces: [workspace] };
-              if (payload?.zcode_type === "workspace-bridge-open") {
+              if (payload?.codez_type === "workspace-bridge-open") {
                 const bridge = {
                   ...workspace,
                   workspaceKey: workspace.workspaceIdentity,
@@ -72,7 +72,7 @@ try {
                   bridgeGeneration: payload.bridgeGeneration,
                 };
                 send(socket, {
-                  zcode_type: "workspace-bridge-ready",
+                  codez_type: "workspace-bridge-ready",
                   requestId: payload.requestId,
                   bridgeSessionId: payload.bridgeSessionId,
                   bridgeGeneration: payload.bridgeGeneration,
@@ -83,9 +83,9 @@ try {
                   theme,
                 });
               }
-              if (payload?.zcode_type === "bootstrap-request") {
+              if (payload?.codez_type === "bootstrap-request") {
                 const response = {
-                  zcode_type: "bootstrap-response",
+                  codez_type: "bootstrap-response",
                   requestId: payload.requestId,
                   success: true,
                   result: {
@@ -97,16 +97,16 @@ try {
                 if (connection.holdBootstrap) connection.pendingBootstrap = response;
                 else send(socket, response);
               }
-              if (payload?.zcode_type === "workspace-list-request")
+              if (payload?.codez_type === "workspace-list-request")
                 send(socket, {
                   ...(connection.failList
                     ? {
-                        zcode_type: "app-error",
+                        codez_type: "app-error",
                         reason: "unexpected-error",
                         error: "E2E_REFRESH_FAILED",
                       }
                     : {
-                        zcode_type: "workspace-list-response",
+                        codez_type: "workspace-list-response",
                         success: true,
                         result: connection.result,
                       }),
@@ -130,7 +130,7 @@ try {
           const waitForHome = async (name) => {
             const button = page.getByRole("button", { name: buttonName(), exact: true });
             const onboarding = page.getByTestId("onboarding-page");
-            const welcome = page.getByRole("dialog", { name: /欢迎使用 ZCode|Welcome to ZCode/ });
+            const welcome = page.getByRole("dialog", { name: /欢迎使用 Codez|Welcome to Codez/ });
             // home-only 空设置必定触发职业引导；等待其异步判定落定，避免测试中途覆盖菜单。
             if (mode === "home-only") await onboarding.waitFor();
             else await button.or(onboarding).or(welcome).first().waitFor();
@@ -189,7 +189,7 @@ try {
             assert.equal(new URL(page.url()).searchParams.has("name"), false);
             assert.equal(new URL(page.url()).searchParams.get("app_version"), "3.13.0");
             assert.equal(
-              await page.evaluate(() => localStorage.getItem("zcode-web-remote-last-device-sid")),
+              await page.evaluate(() => localStorage.getItem("codez-web-remote-last-device-sid")),
               "e2e-device",
             );
             await page.getByRole("button", { name: /Alice’s MacBook/ }).waitFor();

@@ -405,7 +405,7 @@ ready-empty，不得只用 helper 单测证明。最后执行定向单测、相�
 
 - Provider/Model Selection、Repo Wiki、Root、Composer、Automation、Subagent 定向单测；
 - 根 `pnpm typecheck`；
-- `pnpm --filter @zcode/desktop typecheck:e2e`；
+- `pnpm --filter @codez/desktop typecheck:e2e`；
 - 根 `pnpm lint`（0 error；仓库既存 warning 不在本 Todo 范围）；
 - Feature Graph YAML 解析、增量节点/seed 存在性和 `git diff --check`。
 
@@ -416,7 +416,7 @@ Desktop E2E 已实际启动并完成 production build，但当前 Linux 执行�
 ### 8.4 2026-09-01 状态复验
 
 - `useModelSelectionView`、Workspace target、Repo Wiki Model State 与事实来源 4 个定向测试文件实跑通过，共 15 条；
-- `pnpm --filter @zcode/desktop typecheck:e2e` 通过；
+- `pnpm --filter @codez/desktop typecheck:e2e` 通过；
 - 当前 Linux 执行机仍未安装 `xvfb-run`，没有把无法创建浏览器 Session 记成 E2E 通过；
 - MacBook Air 当前工作副本位于另一个提交，未用旧构建替当前 HEAD 伪造验证结果。后续需同步当前提交后实跑
   `repo-wiki-generation-settings.test.ts` 与 `repo-wiki-generation-produces-wiki.test.ts`。

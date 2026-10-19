@@ -1,10 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { buildServerRemoteWorkspaceIdentity, type RemoteTarget } from "@zcode/shared";
+import { buildServerRemoteWorkspaceIdentity, type RemoteTarget } from "@codez/shared";
 import {
   TID_COMPOSER_WORK_OUTSIDE_PROJECT,
   TID_COMPOSER_WORKSPACE_TRIGGER,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_CONVERSATION_WORKSPACE,
   DEFAULT_WORKSPACE,
@@ -18,7 +18,7 @@ const REMOTE_IDENTITY = buildServerRemoteWorkspaceIdentity({
   workspacePath: DEFAULT_WORKSPACE,
 });
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/local-conversation-identity",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/local-conversation-identity",
 );
 
 interface NavigationTab {
@@ -31,7 +31,7 @@ interface NavigationTab {
 }
 
 interface NavigationWindow extends Window {
-  __zcodeTabStoreE2E?: {
+  __codezTabStoreE2E?: {
     getState(): {
       tabs: NavigationTab[];
       activeTabId: string | null;
@@ -48,7 +48,7 @@ interface NavigationWindow extends Window {
 
 async function readNavigation() {
   return browser.execute(() => {
-    const state = (window as NavigationWindow).__zcodeTabStoreE2E?.getState();
+    const state = (window as NavigationWindow).__codezTabStoreE2E?.getState();
     if (!state) throw new Error("导航 store 未就绪");
     return {
       activeTabId: state.activeTabId,
@@ -86,7 +86,7 @@ describe(`${CASE_MARKER}: 本地项目解除绑定按完整工作区身份匹配
     // 只构造离线 open-set，不连接 SSH；调用真实 store 的 add/activate，复现新 tab 置顶的顺序。
     const localId = await browser.execute(
       (path, identity) => {
-        const store = (window as NavigationWindow).__zcodeTabStoreE2E;
+        const store = (window as NavigationWindow).__codezTabStoreE2E;
         const localTab = store
           ?.getState()
           .tabs.find(

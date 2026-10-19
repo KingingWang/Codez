@@ -1,4 +1,4 @@
-import type { IZCodeTaskService } from "@zcode/services";
+import type { ICodezTaskService } from "@codez/services";
 import { restartWithSeededOpenAIProviders } from "../../../helpers/custom-openai-provider.js";
 import {
   selectUpstreamProviderModelById,
@@ -81,7 +81,7 @@ describe("BOT-E2E-TP-01 topic start-now and original messages", () => {
         const actions = (
           window as unknown as {
             __testActions: {
-              submitBotGroupInput: NonNullable<IZCodeTaskService["submitBotGroupInput"]>;
+              submitBotGroupInput: NonNullable<ICodezTaskService["submitBotGroupInput"]>;
             };
           }
         ).__testActions;
@@ -134,7 +134,7 @@ describe("BOT-E2E-TP-01 topic start-now and original messages", () => {
           ],
           authorizationId: "e2e-authorization",
         },
-      } satisfies Parameters<NonNullable<IZCodeTaskService["submitBotGroupInput"]>>[0],
+      } satisfies Parameters<NonNullable<ICodezTaskService["submitBotGroupInput"]>>[0],
     );
     expect(ack.result).toMatchObject({ type: "inputAccepted", delivery: "startNow" });
     await waitForV4QueueCount(0, 30000);

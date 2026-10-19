@@ -9,7 +9,7 @@
 
 1. **ARMS RUM（`@arms/rum-electron`，electron 主进程 init）**：`armsRum.init(...)`（`appARMSBootstrap.ts`）**没有传 `user`**，renderer 的 `buildArmsBrowserInitConfig()`（`armsRumShared.ts`）也没有。因此 ARMS 后台看到的「用户」只是 SDK 自动生成的**匿名 session**。唯一与身份相关的维度是三处 `armsRum.setConfig("properties", { device_mid, ... })`，其中 `device_mid = sha256(app.getPath("userData")).slice(0, 32)`（`index.ts:353`）——**一台设备一个值，与登录账号无关**。
 
-2. **自研 telemetry core（`@zcode/shared` / `packages/services` 的 `createTelemetryCore`，运行在 fork 出的 host 子进程）**：用真实账号 `userId`，来源是 `createTelemetryUserIdLoader`（`node.ts:453`），即 OAuth `loadUserProfile(activeProvider).id`。
+2. **自研 telemetry core（`@codez/shared` / `packages/services` 的 `createTelemetryCore`，运行在 fork 出的 host 子进程）**：用真实账号 `userId`，来源是 `createTelemetryUserIdLoader`（`node.ts:453`），即 OAuth `loadUserProfile(activeProvider).id`。
 
 **结论**：ARMS 监控里现在没有账号级 userId，只有匿名 session + 设备级 `device_mid`。目标是把第 2 套里的真实账号 `userId` 注入 ARMS RUM 的 `user.id`。
 

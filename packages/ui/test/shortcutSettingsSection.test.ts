@@ -12,7 +12,7 @@ vi.mock("@/hooks/useSettingService.js", () => ({
 }));
 vi.mock("@/hooks/usePlatform.js", () => ({ usePlatform: () => ({}) }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/logger.js", () => ({ logger: { error: mocks.error } }));
 vi.mock("@/components/ui/toast.js", () => ({ toast: vi.fn() }));

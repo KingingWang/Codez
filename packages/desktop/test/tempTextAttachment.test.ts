@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { setDataBaseDir } from "@zcode/services/node";
+import { setDataBaseDir } from "@codez/services/node";
 import { createTempTextAttachment } from "../src/main/tempTextAttachment.js";
 
 let tempRoot: string | null = null;
@@ -16,8 +16,8 @@ afterEach(async () => {
 });
 
 describe("createTempTextAttachment", () => {
-  it("writes pasted text under the zcode temp attachment directory", async () => {
-    tempRoot = await mkdtemp(join(tmpdir(), "zcode-temp-text-"));
+  it("writes pasted text under the codez temp attachment directory", async () => {
+    tempRoot = await mkdtemp(join(tmpdir(), "codez-temp-text-"));
     setDataBaseDir(tempRoot);
 
     const result = await createTempTextAttachment({
@@ -27,7 +27,7 @@ describe("createTempTextAttachment", () => {
 
     expect(result.mimeType).toBe("text/plain");
     expect(result.filename).toMatch(/^pasted-text-20260630-104512-[a-f0-9-]+\.txt$/u);
-    expect(result.localPath).toContain(join(tempRoot, ".zcode", "tmp", "paste-attachments"));
+    expect(result.localPath).toContain(join(tempRoot, ".codez", "tmp", "paste-attachments"));
     await expect(readFile(result.localPath, "utf8")).resolves.toBe("hello pasted text");
     await expect(stat(result.localPath)).resolves.toMatchObject({
       size: Buffer.byteLength("hello pasted text", "utf8"),

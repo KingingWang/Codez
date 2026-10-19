@@ -35,7 +35,7 @@ describe("通信中性能复现：四分屏 streaming + Agent subagent", () => {
     this.timeout(420000);
 
     await prepareV4ConversationE2E();
-    const profileOnly = process.env.ZCODE_E2E_PROFILE_ONLY === "1";
+    const profileOnly = process.env.CODEZ_E2E_PROFILE_ONLY === "1";
     const recording = profileOnly
       ? null
       : await startElectronWindowRecording({
@@ -43,7 +43,7 @@ describe("通信中性能复现：四分屏 streaming + Agent subagent", () => {
           outputPath: resolveArtifactPath(`${CASE_NAME}.webm`),
         });
     const profiler =
-      process.env.ZCODE_E2E_PROFILE_STREAMING === "1"
+      process.env.CODEZ_E2E_PROFILE_STREAMING === "1"
         ? await startRendererCpuProfile()
         : null;
 
@@ -145,7 +145,7 @@ async function bindRunningSessionsToFourPane(lanes: PerfLane[]) {
 
 function resolveArtifactPath(fileName: string) {
   return resolve(
-    process.env.ZCODE_E2E_ARTIFACT_DIR?.trim() ||
+    process.env.CODEZ_E2E_ARTIFACT_DIR?.trim() ||
       process.env.CODEX_E2E_ARTIFACT_DIR?.trim() ||
       join(process.cwd(), ".e2e-artifacts", CASE_NAME),
     fileName,

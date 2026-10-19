@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { DEFAULT_WORKSPACE } from "../../../helpers/desktop-app.js";
 
-const FIXTURE_DIR_RELATIVE = ".zcode-e2e/continue-markdown-otc10";
+const FIXTURE_DIR_RELATIVE = ".codez-e2e/continue-markdown-otc10";
 const FIXTURE_DIR = join(DEFAULT_WORKSPACE, FIXTURE_DIR_RELATIVE);
 const LINK_TARGET_RELATIVE = `${FIXTURE_DIR_RELATIVE}/link-target.md`;
 const IMAGE_ONE_RELATIVE = `${FIXTURE_DIR_RELATIVE}/one.svg`;
@@ -44,7 +44,7 @@ export type MarkdownContinueCaseId =
   | "inline-math"
   | "display-math"
   | "mermaid"
-  | "zcode-file-citation";
+  | "codez-file-citation";
 
 export interface MarkdownContinueCaseDefinition {
   finalAnchor: string;
@@ -211,10 +211,10 @@ export const MARKDOWN_CONTINUE_CASES: readonly MarkdownContinueCaseDefinition[] 
     finalAnchor: "MERMAID_DONE",
   },
   {
-    id: "zcode-file-citation",
-    partial: `::zcode-file-citation{path="${FIXTURE_DIR_RELATIVE}/cita`,
-    continuation: 'tion.txt" purpose="output"}\n\nZCODE_FILE_CITATION_DONE',
-    finalAnchor: "ZCODE_FILE_CITATION_DONE",
+    id: "codez-file-citation",
+    partial: `::codez-file-citation{path="${FIXTURE_DIR_RELATIVE}/cita`,
+    continuation: 'tion.txt" purpose="output"}\n\nCODEZ_FILE_CITATION_DONE',
+    finalAnchor: "CODEZ_FILE_CITATION_DONE",
   },
 ];
 

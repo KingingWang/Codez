@@ -128,7 +128,7 @@ export function productionPackages(projects, isInstallable = () => true) {
     for (const [alias, info] of Object.entries(deps ?? {})) {
       const name = info.name ?? alias;
       if (!isInstallable(name, info.version)) continue;
-      if (!own.has(name) && !name.startsWith("@zcode/") && !info.version.startsWith("link:")) {
+      if (!own.has(name) && !name.startsWith("@codez/") && !info.version.startsWith("link:")) {
         required.set(`${name}@${info.version}`, { name, version: info.version });
       }
       dependencies(info.dependencies);
@@ -224,7 +224,7 @@ export async function scanInstalledPackages(root, projects) {
   }
   for (const project of projects) await scanNodeModules(join(project.path, "node_modules"));
   await scanNodeModules(join(root, "node_modules"));
-  await scanNodeModules(join(root, "apps/zcode-cli/node_modules"));
+  await scanNodeModules(join(root, "apps/codez-cli/node_modules"));
   return installed;
 }
 

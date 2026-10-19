@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RemoteTarget } from "@zcode/shared";
+import type { RemoteTarget } from "@codez/shared";
 import { pushDynamicWorkflowUserModeToRemoteHosts } from "../src/host/remoteDynamicWorkflowUserMode.js";
 
 // DWG-21（docs/dynamic-workflow/launch.md「The user's choice」）：desktop-attached remote Host 读不到
@@ -14,10 +14,10 @@ describe("pushDynamicWorkflowUserModeToRemoteHosts（DWG-21）", () => {
     const ssh = agent();
     const docker = agent();
     const server = agent();
-    const targets: Array<{ target: RemoteTarget; zcodeAgentService: ReturnType<typeof agent> }> = [
-      { target: { kind: "ssh", host: "h", username: "u" }, zcodeAgentService: ssh },
-      { target: { kind: "docker", container: "c" }, zcodeAgentService: docker },
-      { target: { kind: "server", url: "https://s.example.com" }, zcodeAgentService: server },
+    const targets: Array<{ target: RemoteTarget; codezAgentService: ReturnType<typeof agent> }> = [
+      { target: { kind: "ssh", host: "h", username: "u" }, codezAgentService: ssh },
+      { target: { kind: "docker", container: "c" }, codezAgentService: docker },
+      { target: { kind: "server", url: "https://s.example.com" }, codezAgentService: server },
     ];
     await pushDynamicWorkflowUserModeToRemoteHosts(targets, "onDemand", vi.fn());
     expect(ssh.syncDynamicWorkflowUserMode).toHaveBeenCalledWith({ mode: "onDemand" });
@@ -28,7 +28,7 @@ describe("pushDynamicWorkflowUserModeToRemoteHosts（DWG-21）", () => {
   it("跟随服务端时推不带 mode 的信号", async () => {
     const ssh = agent();
     await pushDynamicWorkflowUserModeToRemoteHosts(
-      [{ target: { kind: "ssh", host: "h", username: "u" }, zcodeAgentService: ssh }],
+      [{ target: { kind: "ssh", host: "h", username: "u" }, codezAgentService: ssh }],
       undefined,
       vi.fn(),
     );
@@ -46,8 +46,8 @@ describe("pushDynamicWorkflowUserModeToRemoteHosts（DWG-21）", () => {
     await expect(
       pushDynamicWorkflowUserModeToRemoteHosts(
         [
-          { target: { kind: "wsl", distro: "Ubuntu" }, zcodeAgentService: broken },
-          { target: { kind: "ssh", host: "h", username: "u" }, zcodeAgentService: ok },
+          { target: { kind: "wsl", distro: "Ubuntu" }, codezAgentService: broken },
+          { target: { kind: "ssh", host: "h", username: "u" }, codezAgentService: ok },
         ],
         "disabled",
         onError,

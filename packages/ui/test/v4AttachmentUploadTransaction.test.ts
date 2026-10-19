@@ -1,6 +1,6 @@
 import { createHash, webcrypto } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { PROTOCOL_V4_LIMITS } from "@zcode/shared/zcode-protocol-v4";
+import { PROTOCOL_V4_LIMITS } from "@codez/shared/codez-protocol-v4";
 import {
   ATTACHMENT_UPLOAD_CHUNK_BYTES,
   measureAttachmentChannelRequestBytes,
@@ -32,7 +32,7 @@ function agent(overrides: Partial<AttachmentUploadAgent> = {}): AttachmentUpload
       uploadId: params.uploadId,
       nextChunkIndex: params.chunkIndex + 1,
     })),
-    attachmentCommitV4: vi.fn(async () => ({ ref: "zcode-artifact://upload/one" })),
+    attachmentCommitV4: vi.fn(async () => ({ ref: "codez-artifact://upload/one" })),
     attachmentAbortV4: vi.fn(async () => {}),
     ...overrides,
   };
@@ -51,7 +51,7 @@ describe("v4 attachment upload transaction", () => {
         },
         input(bytes),
       ),
-    ).resolves.toEqual({ ref: "zcode-artifact://upload/one" });
+    ).resolves.toEqual({ ref: "codez-artifact://upload/one" });
 
     const expectedChunks = Math.ceil(bytes.byteLength / ATTACHMENT_UPLOAD_CHUNK_BYTES);
     expect(service.attachmentChunkV4).toHaveBeenCalledTimes(expectedChunks);
@@ -115,7 +115,7 @@ describe("v4 attachment upload transaction", () => {
         uploadId: params.uploadId,
         state: "committed" as const,
         nextChunkIndex: 1,
-        ref: "zcode-artifact://upload/existing",
+        ref: "codez-artifact://upload/existing",
       })),
     });
     await expect(
@@ -124,7 +124,7 @@ describe("v4 attachment upload transaction", () => {
         { workspacePath: "/workspace" },
         input(Buffer.from("already there")),
       ),
-    ).resolves.toEqual({ ref: "zcode-artifact://upload/existing" });
+    ).resolves.toEqual({ ref: "codez-artifact://upload/existing" });
     expect(service.attachmentChunkV4).not.toHaveBeenCalled();
     expect(service.attachmentCommitV4).not.toHaveBeenCalled();
   });

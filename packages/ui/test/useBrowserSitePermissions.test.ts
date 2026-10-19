@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { EmbeddedBrowserSitePermissionsSnapshot } from "@zcode/shared";
+import type { EmbeddedBrowserSitePermissionsSnapshot } from "@codez/shared";
 import { useBrowserSitePermissions } from "@/hooks/useBrowserSitePermissions.js";
 
 const h = vi.hoisted(() => ({

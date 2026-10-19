@@ -4,18 +4,18 @@
 
 **Goal:** 用 CLI 同源的 `unbash` AST 分析替换 UI Explore 聚合里的 Bash 正则扫字符串逻辑，避免 `pnpm install ... | tail -5` 这类真实执行命令被误展示到“探索”分组下。
 
-**Architecture:** 把浏览器安全的 Bash 解析、只读策略和 Explore 展示分类抽到 `@zcode/shared/shell` 子路径，CLI core 和 UI 同时依赖 shared 纯函数。Node-only 的 git runtime guard 继续留在 `@zcode/core`，避免 Web/移动端 bundle 引入 `node:fs` / `node:path`。UI 的 PowerShell 分类保留现有规则，只把 Unix shell / Bash / sh / zsh 命令切到 shared classifier。
+**Architecture:** 把浏览器安全的 Bash 解析、只读策略和 Explore 展示分类抽到 `@codez/shared/shell` 子路径，CLI core 和 UI 同时依赖 shared 纯函数。Node-only 的 git runtime guard 继续留在 `@codez/core`，避免 Web/移动端 bundle 引入 `node:fs` / `node:path`。UI 的 PowerShell 分类保留现有规则，只把 Unix shell / Bash / sh / zsh 命令切到 shared classifier。
 
-**Tech Stack:** TypeScript, Vitest, `unbash@4.0.1`, `@zcode/shared`, `@zcode/core`, React UI tool-call aggregation.
+**Tech Stack:** TypeScript, Vitest, `unbash@4.0.1`, `@codez/shared`, `@codez/core`, React UI tool-call aggregation.
 
 ## Global Constraints
 
 - 这是 UI 展示分类 bugfix，不改变 Bash runtime 执行、权限、sandbox、session stream、desktop continuous 或 web remote replayable 语义。
 - 涉及 `packages/ui`，实现前必须阅读并遵守根目录 `DESIGN.md`；本计划不做视觉重设计。
-- UI 层禁止直接依赖 `apps/zcode-cli/packages/core` 或 `@zcode/core`。
+- UI 层禁止直接依赖 `apps/codez-cli/packages/core` 或 `@codez/core`。
 - Node-only runtime guard（例如读取 `.git` 的逻辑）禁止从 shared 顶层或 browser-facing 子路径导出。
 - `packages/ui/src/lib/toolCallAggregation.ts` 继续只做聚合入口；真正修复应落在 `packages/ui/src/lib/exploreToolCall.ts` 和 shared classifier。
-- Import 路径保持绝对路径；UI 从 `@zcode/shared/shell` 导入，不写跨域相对路径。
+- Import 路径保持绝对路径；UI 从 `@codez/shared/shell` 导入，不写跨域相对路径。
 - 注释用中文，只解释 bug 原因和边界，不写空泛注释。
 - 不自动提交；只有用户在当前任务明确要求 commit 时才提交。实现完成后可给出 Conventional Commits 消息建议。
 - 验证必须至少运行 targeted Vitest、`pnpm typecheck`、`pnpm lint`；如果 Web build 无法完整运行，需要在交付说明列出原因和风险。
@@ -31,8 +31,8 @@
 - Read: `docs/ui/tool-display-rendering.md`
 - Read: `packages/ui/src/lib/exploreToolCall.ts`
 - Read: `packages/ui/src/lib/toolCallAggregation.ts`
-- Read: `apps/zcode-cli/packages/core/src/tool/handlers/bash-command-parser.ts`
-- Read: `apps/zcode-cli/packages/core/src/tool/handlers/bash-semantics.ts`
+- Read: `apps/codez-cli/packages/core/src/tool/handlers/bash-command-parser.ts`
+- Read: `apps/codez-cli/packages/core/src/tool/handlers/bash-semantics.ts`
 
 **Interfaces:**
 - Consumes: 当前 UI 聚合入口 `shouldAggregateToolCall(toolCall)`。
@@ -86,7 +86,7 @@ Run:
 
 ```bash
 node --input-type=module <<'NODE'
-import { isRuntimeReadOnlyBashCommand, isSearchOrReadBashCommand } from './apps/zcode-cli/packages/core/dist/tool/handlers/bash-semantics.js';
+import { isRuntimeReadOnlyBashCommand, isSearchOrReadBashCommand } from './apps/codez-cli/packages/core/dist/tool/handlers/bash-semantics.js';
 const command = 'eval "$(fnm env --shell bash 2>/dev/null)"; cd /d/aai-projects/www-aicodezen && pnpm install --ignore-workspace 2>&1 | tail -5';
 console.log({
   readOnly: isRuntimeReadOnlyBashCommand(command),
@@ -108,16 +108,16 @@ Expected:
 
 ## Phase 1: 抽出 browser-safe shell shared 模块
 
-### Task 1.1: 新增 `@zcode/shared/shell` 子路径和依赖归属
+### Task 1.1: 新增 `@codez/shared/shell` 子路径和依赖归属
 
 **Files:**
 - Modify: `packages/shared/package.json`
-- Modify: `apps/zcode-cli/packages/core/package.json`
+- Modify: `apps/codez-cli/packages/core/package.json`
 - Modify: `pnpm-lock.yaml`
 - Create: `packages/shared/src/shell/index.ts`
 
 **Interfaces:**
-- Produces: `@zcode/shared/shell` 子路径，供 UI 和 core 导入。
+- Produces: `@codez/shared/shell` 子路径，供 UI 和 core 导入。
 - Produces: shared 拥有 `unbash@4.0.1` 直接依赖。
 - Consumes: core 通过 workspace dependency 使用 shared shell helpers。
 
@@ -127,12 +127,12 @@ Edit `packages/shared/package.json`:
 
 ```json
 {
-  "name": "@zcode/shared",
+  "name": "@codez/shared",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./zcodeEndpoint": "./src/zcodeEndpoint.ts",
+    "./codezEndpoint": "./src/codezEndpoint.ts",
     "./shell": "./src/shell/index.ts"
   },
   "dependencies": {
@@ -151,21 +151,21 @@ Edit `packages/shared/package.json`:
 
 - [ ] **Step 2: 修改 core package 依赖**
 
-Edit `apps/zcode-cli/packages/core/package.json` dependencies:
+Edit `apps/codez-cli/packages/core/package.json` dependencies:
 
 ```json
 {
   "dependencies": {
-    "@zcode/contracts": "workspace:*",
-    "@zcode/shared": "workspace:*",
-    "@zcode/shared-types": "workspace:*",
+    "@codez/contracts": "workspace:*",
+    "@codez/shared": "workspace:*",
+    "@codez/shared-types": "workspace:*",
     "cheerio": "^1.0.0",
     "diff": "^9.0.0"
   }
 }
 ```
 
-Expected: `unbash` 不再是 `@zcode/core` 的直接 dependency，避免 parser 所属权继续留在 agent core。
+Expected: `unbash` 不再是 `@codez/core` 的直接 dependency，避免 parser 所属权继续留在 agent core。
 
 - [ ] **Step 3: 创建 shared shell 入口**
 
@@ -186,13 +186,13 @@ Run:
 pnpm install --lockfile-only
 ```
 
-Expected: `pnpm-lock.yaml` 中 `@zcode/shared` 直接依赖 `unbash@4.0.1`，`@zcode/core` 不再直接列出 `unbash`。
+Expected: `pnpm-lock.yaml` 中 `@codez/shared` 直接依赖 `unbash@4.0.1`，`@codez/core` 不再直接列出 `unbash`。
 
 ### Task 1.2: 移动 browser-safe Bash parser 和 readonly policy
 
 **Files:**
-- Move: `apps/zcode-cli/packages/core/src/tool/handlers/bash-command-parser.ts` -> `packages/shared/src/shell/bash-command-parser.ts`
-- Move: `apps/zcode-cli/packages/core/src/tool/handlers/bash-readonly-policy*.ts` -> `packages/shared/src/shell/`
+- Move: `apps/codez-cli/packages/core/src/tool/handlers/bash-command-parser.ts` -> `packages/shared/src/shell/bash-command-parser.ts`
+- Move: `apps/codez-cli/packages/core/src/tool/handlers/bash-readonly-policy*.ts` -> `packages/shared/src/shell/`
 - Modify: moved `packages/shared/src/shell/bash-readonly-policy-argv.ts`
 - Test: `packages/shared/test/bashCommandParser.test.ts`
 
@@ -208,11 +208,11 @@ Run:
 
 ```bash
 mkdir -p packages/shared/src/shell
-git mv apps/zcode-cli/packages/core/src/tool/handlers/bash-command-parser.ts packages/shared/src/shell/bash-command-parser.ts
-for file in apps/zcode-cli/packages/core/src/tool/handlers/bash-readonly-policy*.ts; do git mv "$file" packages/shared/src/shell/; done
+git mv apps/codez-cli/packages/core/src/tool/handlers/bash-command-parser.ts packages/shared/src/shell/bash-command-parser.ts
+for file in apps/codez-cli/packages/core/src/tool/handlers/bash-readonly-policy*.ts; do git mv "$file" packages/shared/src/shell/; done
 ```
 
-Expected: parser 和 `bash-readonly-policy*` 文件只剩 shared 版本；`apps/zcode-cli/packages/core/src/tool/handlers/bash-git-runtime-safety.ts` 不移动。
+Expected: parser 和 `bash-readonly-policy*` 文件只剩 shared 版本；`apps/codez-cli/packages/core/src/tool/handlers/bash-git-runtime-safety.ts` 不移动。
 
 - [ ] **Step 2: 让 readonly policy 去 Node-only `process.platform` 依赖**
 
@@ -611,13 +611,13 @@ Expected: PASS.
 ### Task 3.1: 更新 core imports 并保持权限语义不变
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/bash-semantics.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/bash-metadata.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/bash-semantics.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/bash-metadata.ts`
 - Modify: any remaining core import found by search
-- Test: `apps/zcode-cli/packages/core/tests/bash-permission.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/bash-permission.test.ts`
 
 **Interfaces:**
-- Consumes from `@zcode/shared/shell`:
+- Consumes from `@codez/shared/shell`:
   - `analyzeBashCommand`
   - `isBashCommandPermissionSafe`
   - `evaluateBashReadonlyPolicy`
@@ -634,14 +634,14 @@ Expected: PASS.
 Edit import block to:
 
 ```ts
-import type { ExecutionResult } from "@zcode/contracts";
+import type { ExecutionResult } from "@codez/contracts";
 import {
   analyzeBashCommand,
   evaluateBashReadonlyPolicy,
   hasKnownBashWriteOption,
   isBashCommandPermissionSafe,
   isSedInPlaceOption,
-} from "@zcode/shared/shell";
+} from "@codez/shared/shell";
 import {
   analysisContainsGitAndDirectoryChange,
   analysisContainsGitCommand,
@@ -674,17 +674,17 @@ Expected: CLI keeps the same Windows `xargs` branch behavior while shared browse
 Run:
 
 ```bash
-rg -n "bash-command-parser|bash-readonly-policy" apps/zcode-cli/packages/core/src
+rg -n "bash-command-parser|bash-readonly-policy" apps/codez-cli/packages/core/src
 ```
 
-Expected: No import points to removed `./bash-command-parser.js` or `./bash-readonly-policy.js`; remaining references either import from `@zcode/shared/shell` or refer to test/documentation text.
+Expected: No import points to removed `./bash-command-parser.js` or `./bash-readonly-policy.js`; remaining references either import from `@codez/shared/shell` or refer to test/documentation text.
 
 - [ ] **Step 4: Run core Bash permission tests**
 
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/bash-permission.test.ts
+pnpm --filter @codez/core exec vitest run tests/bash-permission.test.ts
 ```
 
 Expected: PASS. Existing plan-mode read-only behavior must not regress.
@@ -692,7 +692,7 @@ Expected: PASS. Existing plan-mode read-only behavior must not regress.
 ### Task 3.2: Keep core search/read classifier behavior stable
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/tests/bash-permission.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/bash-permission.test.ts`
 - Test: same file
 
 **Interfaces:**
@@ -714,7 +714,7 @@ Add to `"keeps mutating Bash commands denied in plan mode"` command list:
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/bash-permission.test.ts -t "keeps mutating Bash commands denied in plan mode"
+pnpm --filter @codez/core exec vitest run tests/bash-permission.test.ts -t "keeps mutating Bash commands denied in plan mode"
 ```
 
 Expected: PASS.
@@ -731,7 +731,7 @@ Expected: PASS.
 - Test: `packages/ui/test/toolCallAggregation.test.ts`
 
 **Interfaces:**
-- Consumes: `classifyBashCommandForExplore(command)` from `@zcode/shared/shell`
+- Consumes: `classifyBashCommandForExplore(command)` from `@codez/shared/shell`
 - Produces: `isExploreToolCall({ kind, input }): boolean` keeps public signature unchanged。
 
 - [ ] **Step 1: Change command extraction to preserve complete shell script**
@@ -752,7 +752,7 @@ Expected: UI no longer splits Bash by `&&` / `||` / `;`; `unbash` owns shell str
 Add imports:
 
 ```ts
-import { classifyBashCommandForExplore } from "@zcode/shared/shell";
+import { classifyBashCommandForExplore } from "@codez/shared/shell";
 import { resolveToolCallIdentity } from "@/lib/toolIdentity.js";
 ```
 
@@ -999,7 +999,7 @@ pnpm exec vitest run \
   packages/ui/test/toolCallBlocks.test.ts \
   packages/ui/test/toolCallAggregation.test.ts \
   packages/ui/test/chatMessage.test.ts \
-  apps/zcode-cli/packages/core/tests/bash-permission.test.ts
+  apps/codez-cli/packages/core/tests/bash-permission.test.ts
 ```
 
 Expected: PASS.
@@ -1009,7 +1009,7 @@ Expected: PASS.
 Run:
 
 ```bash
-pnpm --filter @zcode/core typecheck
+pnpm --filter @codez/core typecheck
 ```
 
 Expected: PASS.
@@ -1039,10 +1039,10 @@ Expected: PASS or existing warnings only.
 Run:
 
 ```bash
-pnpm --filter @zcode/web exec vite build --base=/remote/__test__/
+pnpm --filter @codez/web exec vite build --base=/remote/__test__/
 ```
 
-Expected: PASS. There should be no `node:fs`, `node:path`, or `process is not defined` bundle errors from `@zcode/shared/shell`.
+Expected: PASS. There should be no `node:fs`, `node:path`, or `process is not defined` bundle errors from `@codez/shared/shell`.
 
 - [ ] **Step 6: Inspect dependency ownership**
 
@@ -1052,14 +1052,14 @@ Run:
 pnpm list unbash --depth 4 --recursive
 ```
 
-Expected: `@zcode/shared` owns `unbash@4.0.1`; `@zcode/core` reaches it through `@zcode/shared`, not as a direct dependency.
+Expected: `@codez/shared` owns `unbash@4.0.1`; `@codez/core` reaches it through `@codez/shared`, not as a direct dependency.
 
 - [ ] **Step 7: Review diff before handoff**
 
 Run:
 
 ```bash
-git diff -- packages/shared packages/ui apps/zcode-cli/packages/core docs/ui/tool-display-rendering.md package.json pnpm-lock.yaml
+git diff -- packages/shared packages/ui apps/codez-cli/packages/core docs/ui/tool-display-rendering.md package.json pnpm-lock.yaml
 git status --short
 ```
 
@@ -1072,7 +1072,7 @@ Expected: Only files in this plan changed. No unrelated user edits are reverted.
 Only use this if the user explicitly asks for a commit in the current task:
 
 ```bash
-git add packages/shared packages/ui apps/zcode-cli/packages/core docs/ui/tool-display-rendering.md pnpm-lock.yaml
+git add packages/shared packages/ui apps/codez-cli/packages/core docs/ui/tool-display-rendering.md pnpm-lock.yaml
 git commit -m "fix(ui): align Explore shell classification with bash parser"
 ```
 

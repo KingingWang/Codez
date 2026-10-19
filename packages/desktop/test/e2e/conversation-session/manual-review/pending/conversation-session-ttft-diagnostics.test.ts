@@ -6,7 +6,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_SETTINGS_BACK_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clickTestIdByDom,
@@ -85,7 +85,7 @@ async function focus() {
 }
 
 async function setInteractionBehavior(behavior: "queue" | "guide") {
-  if ((await readSettings()).zcodeInteractionBehavior === behavior) return;
+  if ((await readSettings()).codezInteractionBehavior === behavior) return;
   await clickTestIdByDom(TID_TASK_SETTINGS_BUTTON);
   await clickTestIdByDom(testId(TID_SETTINGS_SECTION_NAV, "general"));
   await browser.waitUntil(
@@ -118,7 +118,7 @@ async function setInteractionBehavior(behavior: "queue" | "guide") {
     { timeout: 15000 },
   );
   await browser.waitUntil(
-    async () => (await readSettings()).zcodeInteractionBehavior === behavior,
+    async () => (await readSettings()).codezInteractionBehavior === behavior,
     { timeout: 15000 },
   );
   await clickTestIdByDom(TID_SETTINGS_BACK_BUTTON);
@@ -126,7 +126,7 @@ async function setInteractionBehavior(behavior: "queue" | "guide") {
 }
 
 describe("TTFT02 真实发送诊断到最终 OTLP", () => {
-  const configPath = join(dirname(DEFAULT_WORKSPACE), ".zcode", "cli", "config.json");
+  const configPath = join(dirname(DEFAULT_WORKSPACE), ".codez", "cli", "config.json");
   let originalConfig: string | undefined;
   const runtimeEvidence: unknown[] = [];
   beforeEach(async () => {
@@ -168,7 +168,7 @@ describe("TTFT02 真实发送诊断到最终 OTLP", () => {
     });
     const processes = await browser.electron.execute((electron) => electron.app.getAppMetrics());
     runtimeEvidence.push({ renderer, processes });
-    const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+    const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
     if (artifactDir)
       await writeFile(
         join(artifactDir, "ttft-diagnostics-performance.json"),
@@ -230,11 +230,11 @@ describe("TTFT02 真实发送诊断到最终 OTLP", () => {
           .flatMap((record) => record.data.resourceMetrics ?? [])
           .flatMap((resource) => resource.scopeMetrics)
           .flatMap((scope) => scope.metrics)
-          .filter((metric) => metric.name.startsWith("zcode.local_ttft."));
+          .filter((metric) => metric.name.startsWith("codez.local_ttft."));
       };
       const count = async () =>
         (await metrics())
-          .filter((metric) => metric.name === "zcode.local_ttft.duration")
+          .filter((metric) => metric.name === "codez.local_ttft.duration")
           .flatMap((metric) => metric.histogram?.dataPoints ?? [])
           .reduce((sum, point) => sum + Number(point.count ?? 0), 0);
       await browser.waitUntil(async () => (await count()) >= roots.length, {
@@ -264,7 +264,7 @@ describe("TTFT02 真实发送诊断到最终 OTLP", () => {
           .flatMap((point) => point.attributes ?? [])
           .some((attribute) => forbidden.has(attribute.key)),
       ).toBe(false);
-      const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+      const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
       if (artifactDir)
         await writeFile(
           join(artifactDir, "ttft-diagnostics-otlp.json"),
@@ -408,7 +408,7 @@ describe("TTFT02 真实发送诊断到最终 OTLP", () => {
     await focus();
     const before = (await spans()).filter((span) => span.name === "local_ttft").length;
     await sendV4Prompt(
-      "E2E_TTFT_DIAG_GUIDE_PARENT: Read .zcode-e2e/ttft-diagnostics/input.txt then reply ttft-diag-guide-ok.",
+      "E2E_TTFT_DIAG_GUIDE_PARENT: Read .codez-e2e/ttft-diagnostics/input.txt then reply ttft-diag-guide-ok.",
     );
     await waitForV4ConversationState((state) => state.state === "streaming", "引导主轮未启动");
     await sendV4Prompt("E2E_TTFT_DIAG_GUIDE_INPUT: Keep the requested final answer.");

@@ -10,7 +10,7 @@
 
 目标：让模型写 `const tab = ...` 就能跨 `js` 调用复用（消除此类 not-defined）。采**路线 B（免 `--experimental-vm-modules` flag）**：保留 async-IIFE 拿 TLA，但用 parser 把顶层声明 instrument 成"复制到持久 context"。同时把接缝留好，将来若能加 flag 可低成本升级到**路线 A（SourceTextModule）**。
 
-不选 A 首发的原因：`vm.SourceTextModule` 强依赖 `--experimental-vm-modules`，而 zcode 打包态 agent 走 `ELECTRON_RUN_AS_NODE`，加 flag 未验证；B 零 flag、风险低，且是 A 不可行时的稳定落点。
+不选 A 首发的原因：`vm.SourceTextModule` 强依赖 `--experimental-vm-modules`，而 codez 打包态 agent 走 `ELECTRON_RUN_AS_NODE`，加 flag 未验证；B 零 flag、风险低，且是 A 不可行时的稳定落点。
 
 ## 2. 路线 B 机制
 
@@ -38,7 +38,7 @@
 - `NodeReplSession.run()` 只调 `this.executor.run(...)`，切换 executor 即切路线，主体不动。
 
 ## 4. 依赖
-- 给 `apps/zcode-cli/packages/core` 加 `meriyah`（零依赖、ESTree 兼容、随 tsup 打包）。
+- 给 `apps/codez-cli/packages/core` 加 `meriyah`（零依赖、ESTree 兼容、随 tsup 打包）。
 
 ## 5. 实现任务（TDD）
 - **T1**：`instrument.ts` 三个纯函数 + 单测：`collectTopLevelBindingNames` 覆盖 `const a`、`let a,b`、`var`、解构 `const {x,y}=o` / `const [p,[q]]=arr` / rest、`function f(){}`、`class C{}`；忽略块内/函数内声明。`instrumentForContextPersistence` 断言注入了 `globalThis.a=a` 等；解析失败路径。
@@ -46,8 +46,8 @@
 - **T3**：文档回滚——`documentation()` 与 `js` 工具描述改回示范 `const tab = await agent.browsers.open(url)`（跨调用可用），移除"用 globalThis"的过渡说明（B 落地后 const 已能持久）。
 
 ## 6. 影响文件
-- 新增 `apps/zcode-cli/packages/core/src/repl/instrument.ts` + 测试
-- 改 `apps/zcode-cli/packages/core/src/repl/node-repl-session.ts`（executor 接缝 + run 走 instrument）
-- 改 `apps/zcode-cli/packages/core/src/browser-client/facade.ts`（documentation 回滚 const 示范）
-- 改 `apps/zcode-cli/packages/core/src/tool/handlers/node-repl.ts`（js 描述回滚）
-- `apps/zcode-cli/packages/core/package.json`（加 meriyah）
+- 新增 `apps/codez-cli/packages/core/src/repl/instrument.ts` + 测试
+- 改 `apps/codez-cli/packages/core/src/repl/node-repl-session.ts`（executor 接缝 + run 走 instrument）
+- 改 `apps/codez-cli/packages/core/src/browser-client/facade.ts`（documentation 回滚 const 示范）
+- 改 `apps/codez-cli/packages/core/src/tool/handlers/node-repl.ts`（js 描述回滚）
+- `apps/codez-cli/packages/core/package.json`（加 meriyah）

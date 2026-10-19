@@ -1,28 +1,28 @@
 /* eslint-disable max-lines -- Bot service 的共享测试桩集中维护协议、任务和模型 registry 能力。 */
 import { afterEach, vi } from "vitest";
 import type {
-  ZCodeConfigOption,
+  CodezConfigOption,
   BotsConfigFile,
   BotsStateFile,
   Locale,
   ModelSelection,
-  ZCodeTaskMode,
-  ZCodeSessionSettingsState,
-} from "@zcode/shared";
+  CodezTaskMode,
+  CodezSessionSettingsState,
+} from "@codez/shared";
 import {
-  ZCODE_MODEL_REASONING_SEPARATOR,
-  ZCODE_PROTOCOL_NAME,
-  ZCODE_PROTOCOL_VERSION,
+  CODEZ_MODEL_REASONING_SEPARATOR,
+  CODEZ_PROTOCOL_NAME,
+  CODEZ_PROTOCOL_VERSION,
   botsConfigFileSchema,
-} from "@zcode/shared";
+} from "@codez/shared";
 export { botsConfigFileSchema };
-import type { IZCodeSessionService } from "../src/zcode-session/zcodeSession.js";
-import type { IZCodeTaskService } from "../src/session/zcodeTaskService.js";
+import type { ICodezSessionService } from "../src/codez-session/codezSession.js";
+import type { ICodezTaskService } from "../src/session/codezTaskService.js";
 import type { IBroadcastService } from "../src/broadcast/broadcast.js";
 import type { ICredentialService } from "../src/credential/credential.js";
 import type { ISettingService } from "../src/setting/setting.js";
 import type { VirtualProject } from "../src/project/contract.js";
-import { remoteHostIdFromWorkspaceIdentity } from "@zcode/shared";
+import { remoteHostIdFromWorkspaceIdentity } from "@codez/shared";
 import { createBotsService as createBotsServiceImpl } from "../src/bots/botsService.js";
 
 afterEach(() => {
@@ -72,7 +72,7 @@ export function createMemoryRepo(config: BotsConfigFile, state?: BotsStateFile) 
   };
 }
 
-export function createLegacyTaskService(): IZCodeTaskService {
+export function createLegacyTaskService(): ICodezTaskService {
   return {
     listTasks: vi.fn(async () => []),
     listDeletedTaskIds: vi.fn(async () => []),
@@ -129,7 +129,7 @@ export function createLegacyTaskService(): IZCodeTaskService {
     respondElicitation: vi.fn(async () => true),
     stopGeneration: vi.fn(async () => undefined),
     onDynamicStreamEvent: vi.fn(() => () => ({ dispose() {} })),
-  } as unknown as IZCodeTaskService;
+  } as unknown as ICodezTaskService;
 }
 
 export function createCredentialService(values: Record<string, string> = {}): ICredentialService {
@@ -218,7 +218,7 @@ function parseModelSelectionForTest(value: string): ModelSelection {
   }
   const providerId = value.slice(0, separatorIndex);
   const rawModelId = value.slice(separatorIndex + 1);
-  const reasoningSeparatorIndex = rawModelId.indexOf(ZCODE_MODEL_REASONING_SEPARATOR);
+  const reasoningSeparatorIndex = rawModelId.indexOf(CODEZ_MODEL_REASONING_SEPARATOR);
   if (reasoningSeparatorIndex <= 0 || reasoningSeparatorIndex >= rawModelId.length - 1) {
     return { providerId, modelId: rawModelId };
   }
@@ -229,7 +229,7 @@ function parseModelSelectionForTest(value: string): ModelSelection {
   };
 }
 
-function normalizeZCodeModeForTest(value: unknown): ZCodeTaskMode {
+function normalizeCodezModeForTest(value: unknown): CodezTaskMode {
   switch (value) {
     case "plan":
     case "build":
@@ -247,18 +247,18 @@ function normalizeZCodeModeForTest(value: unknown): ZCodeTaskMode {
 }
 
 function readSelectOption(
-  configOptions: readonly ZCodeConfigOption[],
+  configOptions: readonly CodezConfigOption[],
   category: string,
-): (ZCodeConfigOption & { type: "select" }) | undefined {
+): (CodezConfigOption & { type: "select" }) | undefined {
   return configOptions.find(
-    (option): option is ZCodeConfigOption & { type: "select" } =>
+    (option): option is CodezConfigOption & { type: "select" } =>
       option.type === "select" && (option.category === category || option.id === category),
   );
 }
 
-export function createZCodeSessionSettingsFromConfigOptions(
-  configOptions: readonly ZCodeConfigOption[] = [],
-): ZCodeSessionSettingsState {
+export function createCodezSessionSettingsFromConfigOptions(
+  configOptions: readonly CodezConfigOption[] = [],
+): CodezSessionSettingsState {
   const modelOption = readSelectOption(configOptions, "model");
   const currentModelValue =
     typeof modelOption?.currentValue === "string"
@@ -295,17 +295,17 @@ export function createZCodeSessionSettingsFromConfigOptions(
         })) ?? [],
     },
     mode: {
-      current: normalizeZCodeModeForTest(modeOption?.currentValue),
+      current: normalizeCodezModeForTest(modeOption?.currentValue),
     },
     permission: {
-      mode: normalizeZCodeModeForTest(modeOption?.currentValue),
+      mode: normalizeCodezModeForTest(modeOption?.currentValue),
     },
   };
 }
 
-function createZCodeWorkspaceState(
-  settings: ZCodeSessionSettingsState = createZCodeSessionSettingsFromConfigOptions(),
-): ZCodeWorkspaceStateSnapshot {
+function createCodezWorkspaceState(
+  settings: CodezSessionSettingsState = createCodezSessionSettingsFromConfigOptions(),
+): CodezWorkspaceStateSnapshot {
   return {
     workspace: {
       workspacePath: "/tmp/workspace",
@@ -316,16 +316,16 @@ function createZCodeWorkspaceState(
   };
 }
 
-export function createZCodeSessionService(
-  settings: ZCodeSessionSettingsState = createZCodeSessionSettingsFromConfigOptions(),
-): IZCodeSessionService {
-  const workspaceState = createZCodeWorkspaceState(settings);
+export function createCodezSessionService(
+  settings: CodezSessionSettingsState = createCodezSessionSettingsFromConfigOptions(),
+): ICodezSessionService {
+  const workspaceState = createCodezWorkspaceState(settings);
   return {
     initializeWorkspace: vi.fn(async () => ({
       available: true,
       workspaceKey: workspaceState.workspace.workspaceKey,
-      protocolName: ZCODE_PROTOCOL_NAME,
-      protocolVersion: ZCODE_PROTOCOL_VERSION,
+      protocolName: CODEZ_PROTOCOL_NAME,
+      protocolVersion: CODEZ_PROTOCOL_VERSION,
       transportKind: "stdio",
     })),
     readWorkspacePresentation: vi.fn(async () => ({
@@ -337,34 +337,34 @@ export function createZCodeSessionService(
       applied: true,
       revision: "test-provider-registry",
     })),
-  } as unknown as IZCodeSessionService;
+  } as unknown as ICodezSessionService;
 }
 
 export function createBotsService(
   deps: Omit<
     Parameters<typeof createBotsServiceImpl>[0],
-    "zcodeSessionService" | "zcodeTaskService" | "projectService"
+    "codezSessionService" | "codezTaskService" | "projectService"
   > & {
-    zcodeTaskService?: IZCodeTaskService;
-    /** 旧测试名保留为别名；真实注入的是 ZCode task service。 */
-    legacyTaskService?: IZCodeTaskService;
-    zcodeSessionService?: IZCodeSessionService;
+    codezTaskService?: ICodezTaskService;
+    /** 旧测试名保留为别名；真实注入的是 Codez task service。 */
+    legacyTaskService?: ICodezTaskService;
+    codezSessionService?: ICodezSessionService;
     projectService?: Parameters<typeof createBotsServiceImpl>[0]["projectService"];
   },
 ): ReturnType<typeof createBotsServiceImpl> {
   const {
     legacyTaskService,
-    zcodeTaskService: providedZCodeTaskService,
-    zcodeSessionService: _providedZCodeSessionService,
+    codezTaskService: providedCodezTaskService,
+    codezSessionService: _providedCodezSessionService,
     ...rest
   } = deps;
-  const zcodeTaskService =
-    providedZCodeTaskService ?? legacyTaskService ?? createLegacyTaskService();
+  const codezTaskService =
+    providedCodezTaskService ?? legacyTaskService ?? createLegacyTaskService();
   const modelSelectionService =
     deps.modelSelectionService ??
     createModelSelectionService([{ id: "glm", name: "GLM", models: ["default"] }]);
   return createBotsServiceImpl({
-    ...createBotProjectServices(undefined, (target) => zcodeTaskService.listTasks(target)),
+    ...createBotProjectServices(undefined, (target) => codezTaskService.listTasks(target)),
     settingService: createSettingService({
       locale: "zh-CN",
       lastWorkspaceSession: [
@@ -378,12 +378,12 @@ export function createBotsService(
     remoteWorkspaceService: {
       isConnected: vi.fn(async () => true),
       ensureConnected: vi.fn(async () => ({ ok: true })),
-      getZCodeTaskService: vi.fn(async () => zcodeTaskService),
+      getCodezTaskService: vi.fn(async () => codezTaskService),
       getModelSelectionService: vi.fn(async () => modelSelectionService),
     },
     modelSelectionService,
     ...rest,
-    zcodeTaskService,
+    codezTaskService,
   });
 }
 
@@ -398,7 +398,7 @@ export function createBotProjectServices(
   readTasks?: (target: {
     workspacePath: string;
     workspaceIdentity?: string;
-  }) => ReturnType<IZCodeTaskService["listTasks"]>,
+  }) => ReturnType<ICodezTaskService["listTasks"]>,
 ) {
   const projects: VirtualProject[] = workspaces.map((workspace, index) => ({
     id: `project-${index}`,

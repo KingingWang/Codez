@@ -19,7 +19,7 @@ import type {
   V4ConversationWorkflowRunArtifactsResult,
   WorkflowRunArtifact,
   WorkflowRunArtifactSummary,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 
 vi.mock("@/logger.js", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn() },

@@ -20,7 +20,7 @@ import {
   readPlusMenuAddOptionIds,
   setComposerDraft,
 } from "../../../helpers/dynamic-workflow-gray.js";
-import { TID_SETTINGS_DYNAMIC_WORKFLOW_MODE_TRIGGER } from "@zcode/shared";
+import { TID_SETTINGS_DYNAMIC_WORKFLOW_MODE_TRIGGER } from "@codez/shared";
 
 // DWG-08（disabled 档）：服务端 /client/configs 不下发 dynamicWorkflow key，
 // 三个入口必须同时消失——`+` 菜单的「工作流」、`/` 面板的 workflow、自动化页的「工作流」标签。

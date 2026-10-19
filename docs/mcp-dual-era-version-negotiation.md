@@ -7,7 +7,7 @@
 
 ## 1. 目标
 
-ZCode MCP client 同时支持两类 server：
+Codez MCP client 同时支持两类 server：
 
 - modern：MCP `2026-07-28` 及以后，使用逐请求 `_meta` 和 `server/discover`，不发送
   `initialize` / `initialized`；
@@ -70,7 +70,7 @@ pin 2026-07-28 -> server/discover
         `-- 不支持或无法确认 ----> 连接失败；禁止 legacy fallback
 ```
 
-stdio 的 `auto` / pin probe 由 MCP TypeScript SDK 在 disposable sibling process 中执行。ZCode
+stdio 的 `auto` / pin probe 由 MCP TypeScript SDK 在 disposable sibling process 中执行。Codez
 必须给 probe 设置有界预算：不超过 5 秒，且不超过 server 总连接预算的一半；剩余预算用于 legacy
 server 的真实 session child 启动和 `initialize`。总连接超时仍由现有 `timeoutMs` 控制。
 
@@ -101,7 +101,7 @@ legacy HTTP 响应才允许回退。
   识别，不匹配错误文本）；settings UI 据此展示"将协议版本切换为「兼容旧版」"的失败引导，而不是
   误导性的"网络不可达"。协议版本可在 MCP server 编辑表单（`protocolVersion` 下拉，sse 形态隐藏）
   或 JSON 配置中手工设置。
-- ZCode 不新增跨 session 的 era 持久化。SDK/transport 内部可缓存当前连接结果，但不得把一个 server 的
+- Codez 不新增跨 session 的 era 持久化。SDK/transport 内部可缓存当前连接结果，但不得把一个 server 的
   结果复用于不同 server config、workspace identity 或 remote runtime。
 - desktop `desktop-continuous` 与 mobile `web-remote-replayable` 只承载既有 session/tool 事件；版本协商
   不进入 relay、snapshot、queue 或 owner state。
@@ -137,7 +137,7 @@ server。该变更不改变 conversation UI/product state，不新增 conversati
 
 另增 Desktop 真实进程 E2E `packages/desktop/test/e2e/settings/mcp-dual-era-version-negotiation.test.ts`，
 用隔离 HOME 中的真实 CLI 配置启动 modern/legacy stdio fixture，并从 worker 专属
-`ZCODE_LOG_DIR` 读取 `mcp.server.connected` JSONL。这条 E2E 必须同时锁定：
+`CODEZ_LOG_DIR` 读取 `mcp.server.connected` JSONL。这条 E2E 必须同时锁定：
 
 - modern fixture 实际协商 `2026-07-28`，无 legacy `initialize`；
 - legacy fixture 经 disposable probe 后由真实 session child 完成 `initialize`；
@@ -147,5 +147,5 @@ server。该变更不改变 conversation UI/product state，不新增 conversati
   draft/session consumer 时，E2E 通过 wire 中缺少 `tools/list` 的存活 PID 识别残留 probe，不再把
   fixture 的全局存活进程数错误限定为 1。
 
-该用例不发送 provider 请求；真实性来自 Electron -> Local Host -> ZCode Agent -> MCP
+该用例不发送 provider 请求；真实性来自 Electron -> Local Host -> Codez Agent -> MCP
 client -> stdio server 的完整产品进程链。

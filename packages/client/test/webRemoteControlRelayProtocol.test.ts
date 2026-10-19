@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { VSBuffer } from "@zcode/rpc";
+import { VSBuffer } from "@codez/rpc";
 import {
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   encodeWebRemoteControlRpcTransportMessage,
@@ -8,7 +8,7 @@ import {
   type WebRemoteControlRpcFramePayload,
   type WebRemoteControlRpcTransportFramePayload,
   type WebRemoteControlRpcTransportPayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   createAcknowledgedWebRemoteControlRelayProtocol,
   createWebRemoteControlRelayProtocol,
@@ -37,7 +37,7 @@ function encodeAcknowledgedMessage(
 function isTransportFrame(
   payload: WebRemoteControlRpcTransportPayload,
 ): payload is WebRemoteControlRpcTransportFramePayload {
-  return payload.zcode_type === "rpc-frame";
+  return payload.codez_type === "rpc-frame";
 }
 
 function queueBatch(messageSeq: number, outerBytes = 1): AcknowledgedRelayOutboundBatch {
@@ -101,7 +101,7 @@ describe("createWebRemoteControlRelayProtocol", () => {
 
     expect(sent).toEqual([
       {
-        zcode_type: "rpc-frame",
+        codez_type: "rpc-frame",
         bridgeSessionId: "bridge-1",
         bridgeGeneration: 2,
         recoveryId: "recovery-1",
@@ -134,13 +134,13 @@ describe("createWebRemoteControlRelayProtocol", () => {
     });
 
     adapter.acceptPayload({
-      zcode_type: "rpc-frame",
+      codez_type: "rpc-frame",
       bridgeSessionId: "bridge-other",
       seq: 1,
       dataBase64: "CQk=",
     });
     adapter.acceptPayload({
-      zcode_type: "rpc-frame",
+      codez_type: "rpc-frame",
       bridgeSessionId: "bridge-1",
       seq: 1,
       dataBase64: "AQID",
@@ -157,7 +157,7 @@ describe("createWebRemoteControlRelayProtocol", () => {
     });
     adapter.protocol.onMessage((buffer) => {
       received.push({
-        zcode_type: "rpc-frame",
+        codez_type: "rpc-frame",
         bridgeSessionId: "received",
         seq: 1,
         dataBase64: String(buffer.byteLength),
@@ -167,7 +167,7 @@ describe("createWebRemoteControlRelayProtocol", () => {
     adapter.dispose();
     adapter.protocol.send(VSBuffer.wrap(new Uint8Array([1, 2, 3])));
     adapter.acceptPayload({
-      zcode_type: "rpc-frame",
+      codez_type: "rpc-frame",
       bridgeSessionId: "bridge-1",
       seq: 1,
       dataBase64: "AQID",
@@ -263,25 +263,25 @@ describe("createWebRemoteControlRelayProtocol", () => {
     });
 
     adapter.acceptPayload({
-      zcode_type: "rpc-frame",
+      codez_type: "rpc-frame",
       bridgeSessionId: "bridge-1",
       seq: 1,
       dataBase64: "AQ==",
     });
     adapter.acceptPayload({
-      zcode_type: "rpc-frame",
+      codez_type: "rpc-frame",
       bridgeSessionId: "bridge-1",
       seq: 1,
       dataBase64: "Ag==",
     });
     adapter.acceptPayload({
-      zcode_type: "rpc-frame",
+      codez_type: "rpc-frame",
       bridgeSessionId: "bridge-1",
       seq: 3,
       dataBase64: "Aw==",
     });
     adapter.acceptPayload({
-      zcode_type: "rpc-frame",
+      codez_type: "rpc-frame",
       bridgeSessionId: "bridge-1",
       seq: 2,
       dataBase64: "BA==",
@@ -374,7 +374,7 @@ describe("createAcknowledgedWebRemoteControlRelayProtocol", () => {
     expect(received).toEqual([bytes]);
     expect(acknowledgements).toEqual([
       {
-        zcode_type: "rpc-frame-ack",
+        codez_type: "rpc-frame-ack",
         ...acknowledgedIdentity,
         ackMessageSeq: 1,
       },
@@ -416,14 +416,14 @@ describe("createAcknowledgedWebRemoteControlRelayProtocol", () => {
 
     const totalBeforeAck = adapter.unacknowledgedBytes;
     adapter.acceptPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       ...acknowledgedIdentity,
       ackMessageSeq: 2,
       bridgeSessionId: "foreign-bridge",
     });
     expect(adapter.unacknowledgedBytes).toBe(totalBeforeAck);
     adapter.acceptPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       ...acknowledgedIdentity,
       ackMessageSeq: 1,
     });
@@ -431,14 +431,14 @@ describe("createAcknowledgedWebRemoteControlRelayProtocol", () => {
     expect(adapter.unacknowledgedBytes).toBeLessThan(totalBeforeAck);
     expect(drained).toBe(0);
     adapter.acceptPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       ...acknowledgedIdentity,
       ackMessageSeq: 2,
     });
     expect(adapter.unacknowledgedBytes).toBe(0);
     expect(drained).toBe(1);
     adapter.acceptPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       ...acknowledgedIdentity,
       ackMessageSeq: 1,
     });
@@ -449,14 +449,14 @@ describe("createAcknowledgedWebRemoteControlRelayProtocol", () => {
       faults.push(fault.reasonCode);
     });
     adapter.acceptPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       ...acknowledgedIdentity,
       ackMessageSeq: 3,
     });
     expect(faults).toEqual(["remote.rpcFrame.futureAck"]);
     expect(adapter.isDegraded()).toBe(true);
     adapter.acceptPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       ...acknowledgedIdentity,
       ackMessageSeq: 4,
     });
@@ -473,7 +473,7 @@ describe("createAcknowledgedWebRemoteControlRelayProtocol", () => {
     });
     partial.protocol.send(VSBuffer.wrap(new Uint8Array([1])));
     partial.acceptPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       ...acknowledgedIdentity,
       ackMessageSeq: 1,
     });
@@ -498,7 +498,7 @@ describe("createAcknowledgedWebRemoteControlRelayProtocol", () => {
     expect(measured).toHaveLength(2);
     expect(adapter.unacknowledgedBytes).toBe(74);
     adapter.acceptPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       ...acknowledgedIdentity,
       ackMessageSeq: 1,
     });
@@ -539,12 +539,12 @@ describe("createAcknowledgedWebRemoteControlRelayProtocol", () => {
         messageSeq: 2,
       })[0]!,
     );
-    expect(attempts.at(-1)?.zcode_type).toBe("rpc-frame-ack");
+    expect(attempts.at(-1)?.codez_type).toBe("rpc-frame-ack");
 
     sendAll = true;
     attempts.length = 0;
     expect(adapter.flushPendingFrames()).toBe(true);
-    expect(attempts[0]).toMatchObject({ zcode_type: "rpc-frame-ack", ackMessageSeq: 2 });
+    expect(attempts[0]).toMatchObject({ codez_type: "rpc-frame-ack", ackMessageSeq: 2 });
     const flushedFrames = attempts.filter(isTransportFrame);
     expect(flushedFrames).toHaveLength(expectedOutbound.length - 1);
     expect(flushedFrames[0]).toBe(secondAttempt);
@@ -743,14 +743,14 @@ describe("createAcknowledgedWebRemoteControlRelayProtocol", () => {
     now = 45_001;
 
     adapter.acceptPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       ...acknowledgedIdentity,
       bridgeSessionId: "foreign-bridge",
       ackMessageSeq: 1,
     });
     expect(faults).toHaveLength(0);
     adapter.acceptPayload({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       ...acknowledgedIdentity,
       ackMessageSeq: 1,
     });

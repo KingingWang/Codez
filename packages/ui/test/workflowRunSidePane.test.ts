@@ -11,8 +11,8 @@
 import { createElement, type ReactNode } from "react";
 import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TID_WORKFLOW_ARTIFACTS_SECTION, TID_WORKFLOW_ARTIFACT_CARD } from "@zcode/shared";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import { TID_WORKFLOW_ARTIFACTS_SECTION, TID_WORKFLOW_ARTIFACT_CARD } from "@codez/shared";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowRunSidePaneTab } from "@/lib/workspaceSidePane.js";
 
 vi.mock("@/logger.js", () => ({
@@ -82,7 +82,7 @@ vi.mock("@/hooks/useModelSelectionView.js", () => ({
 }));
 
 // eslint-disable-next-line import/first -- 必须在全部 mock 之后再引入被测组件。
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 // eslint-disable-next-line import/first
 import { WorkflowRunSidePane } from "@/app-shell/WorkflowRunSidePane.js";
 // eslint-disable-next-line import/first
@@ -262,7 +262,7 @@ function renderPane(
 ) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(WorkflowRunSidePane, {
         tab,
@@ -286,7 +286,7 @@ type Pane = ReturnType<typeof renderPane>;
 function rerenderPane(view: Pane, locale: "en-US" | "zh-CN" = "en-US"): Pane {
   view.rerender(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(WorkflowRunSidePane, { tab: { ...tab }, onOpenWorkflowActorSession }),
     ),
@@ -451,7 +451,7 @@ describe("WorkflowRunSidePane 状态头与阶段清单", () => {
         toolCallId: "tool-wf-1",
         name: "Fan-out review",
         scope: "project" as const,
-        path: "/workspace/.zcode/workflows/fan-out-review.dwf.ts",
+        path: "/workspace/.codez/workflows/fan-out-review.dwf.ts",
         display: graphRow.display,
         script: "export default async function main() {}",
       },
@@ -473,7 +473,7 @@ describe("WorkflowRunSidePane 状态头与阶段清单", () => {
       toolCallId: "tool-wf-1",
       name: "Fan-out review",
       scope: "global" as const,
-      path: "/home/u/.zcode/workflows/fan-out-review.dwf.ts",
+      path: "/home/u/.codez/workflows/fan-out-review.dwf.ts",
       description: "Review a change from several angles.",
       args: { topic: "adaptive concurrency", depth: 3 },
       display: graphRow.display,
@@ -1833,7 +1833,7 @@ describe("WorkflowRunSidePane 阶段名册", () => {
   // focusPhaseId 到这里——展开、开门、节头滚到顶、亮一下；同一站换 openedAt 再落一次。
   const landedTree = (overrides: Partial<WorkflowRunSidePaneTab>) =>
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(WorkflowRunSidePane, {
         tab: { ...tab, ...overrides },
@@ -2089,7 +2089,7 @@ describe("WorkflowRunSidePane 配置", () => {
     };
     view.rerender(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(WorkflowRunSidePane, { tab: { ...tab }, onOpenWorkflowRun }),
       ),
@@ -2158,7 +2158,7 @@ describe("WorkflowRunSidePane 配置", () => {
     };
     const borrowed = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(WorkflowRunSidePane, { tab: settingsTab }),
       ),
@@ -2198,7 +2198,7 @@ describe("WorkflowRunSidePane 配置", () => {
     };
     const landed = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(WorkflowRunSidePane, { tab: settingsTab }),
       ),
@@ -2244,7 +2244,7 @@ describe("WorkflowRunSidePane 配置", () => {
     };
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(WorkflowRunSidePane, { tab: retuneTab }),
       ),

@@ -15,12 +15,12 @@ import {
   TID_WORKFLOW_META_SAVE,
   TID_WORKFLOW_ARTIFACT_CHIP,
   TID_WORKFLOW_RUN_ROW,
-  type ZCodeSavedWorkflowEntry,
-  type ZCodeSavedWorkflowRun,
-  type ZCodeWorkflowsGetResult,
-} from "@zcode/shared";
-import { testId } from "@zcode/shared/test-ids";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+  type CodezSavedWorkflowEntry,
+  type CodezSavedWorkflowRun,
+  type CodezWorkflowsGetResult,
+} from "@codez/shared";
+import { testId } from "@codez/shared/test-ids";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const toastMock = vi.fn();
 vi.mock("@/components/ui/toast.js", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
@@ -41,15 +41,15 @@ const { SavedWorkflowDetailView } =
   await import("@/settings/saved-workflows/SavedWorkflowDetailView.js");
 
 const SCRIPT = 'export default async ({ agent }) => {\n  await agent("检查发布");\n};\n';
-const ENTRY: ZCodeSavedWorkflowEntry = {
+const ENTRY: CodezSavedWorkflowEntry = {
   name: "release-check",
   description: "发布前检查",
   whenToUse: "发版前",
   scope: "project",
-  path: "/repo/.zcode/workflows/release-check.dwf.ts",
+  path: "/repo/.codez/workflows/release-check.dwf.ts",
   args: { branch: { type: "string", required: true } },
 };
-const detailResult: { current: ZCodeWorkflowsGetResult } = {
+const detailResult: { current: CodezWorkflowsGetResult } = {
   current: {
     ok: true,
     name: "release-check",
@@ -69,7 +69,7 @@ const agentService = {
 };
 
 const NOW = 1_700_000_000_000;
-const RUNS: ZCodeSavedWorkflowRun[] = [
+const RUNS: CodezSavedWorkflowRun[] = [
   {
     runId: "r-open",
     name: "release-check",
@@ -116,7 +116,7 @@ function mount(overrides: Partial<Parameters<typeof SavedWorkflowDetailView>[0]>
   };
   render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(SavedWorkflowDetailView, props),
     ),
@@ -280,7 +280,7 @@ describe("SavedWorkflowDetailView", () => {
   });
 
   it("resolveRunProject 在每行渲染项目列，并按行 canOpen 控制「查看实例」", async () => {
-    const resolveRunProject = vi.fn((run: ZCodeSavedWorkflowRun) =>
+    const resolveRunProject = vi.fn((run: CodezSavedWorkflowRun) =>
       run.runId === "r-open"
         ? { label: "Alpha", title: "/repo/alpha", canOpen: true }
         : { label: "Beta", title: "/repo/beta", canOpen: false },
@@ -319,7 +319,7 @@ describe("SavedWorkflowDetailView", () => {
 
   // ── 产物（docs/dynamic-workflow/authoring.md「How the user sees them」）──
   // ⚠ 术语：这里的「产物」是脚本经 `artifact.*` 交付给用户的产出，不是脚本的顶层返回值。
-  const ARTIFACT_RUNS: ZCodeSavedWorkflowRun[] = [
+  const ARTIFACT_RUNS: CodezSavedWorkflowRun[] = [
     {
       runId: "r-latest",
       name: "release-check",

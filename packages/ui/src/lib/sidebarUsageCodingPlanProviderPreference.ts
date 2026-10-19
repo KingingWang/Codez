@@ -1,6 +1,6 @@
 import {
   BUILTIN_MODEL_PROVIDER_IDS,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { logger } from "@/logger.js";
 
 export type SidebarUsageCodingPlanProviderId =
@@ -13,7 +13,7 @@ export type SidebarUsageCodingPlanSourceId =
   | `team:${string}`;
 
 const SIDEBAR_USAGE_CODING_PLAN_PROVIDER_STORAGE_KEY =
-  "zcode:sidebar-usage-coding-plan-provider";
+  "codez:sidebar-usage-coding-plan-provider";
 
 const SIDEBAR_USAGE_CODING_PLAN_PROVIDER_IDS: SidebarUsageCodingPlanProviderId[] = [
   BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,

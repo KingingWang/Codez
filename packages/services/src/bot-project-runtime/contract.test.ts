@@ -3,7 +3,7 @@ import { createBotProjectRuntime } from "#src/bot-project-runtime/index.js";
 import type {
   BotProjectConnection,
   BotProjectRuntimePort,
-  IZCodeTaskService,
+  ICodezTaskService,
 } from "#src/bot-project-runtime/contract.js";
 const target = { workspacePath: "/same", workspaceIdentity: "remote:server:source:/same" };
 function fixture() {
@@ -17,7 +17,7 @@ function fixture() {
       eventListeners.push(listener);
       return { dispose };
     }),
-  } as unknown as IZCodeTaskService;
+  } as unknown as ICodezTaskService;
   const connection: BotProjectConnection = {
     owner: {},
     taskService,
@@ -81,11 +81,11 @@ function fixture() {
 it("没有 tab 也可使用已在线 Source；查询不隐式连接，目录身份必须一致", async () => {
   const f = fixture();
   expect(await f.service.isConnected(target)).toBe(true);
-  await f.service.getZCodeTaskService(target);
+  await f.service.getCodezTaskService(target);
   expect(f.connection.bindWorkspace).toHaveBeenCalledWith(target);
   expect(f.port.remoteProjectService.connectHost).not.toHaveBeenCalled();
   await expect(
-    f.service.getZCodeTaskService({ ...target, workspacePath: "/other" }),
+    f.service.getCodezTaskService({ ...target, workspacePath: "/other" }),
   ).rejects.toThrow();
 });
 it("移除成员不能通过重连复活；admission 期间重加或连接换代拒绝迟到结果", async () => {
@@ -97,11 +97,11 @@ it("移除成员不能通过重连复活；admission 期间重加或连接换代
   vi.mocked(f.connection.bindWorkspace).mockImplementation(async () => {
     f.setMember("two");
   });
-  await expect(f.service.getZCodeTaskService(target)).rejects.toThrow();
+  await expect(f.service.getCodezTaskService(target)).rejects.toThrow();
 });
 it("Bot 订阅随物理连接换代，仅接收 continuous 新事件，旧回调失效", async () => {
   const f = fixture();
-  const service = await f.service.getZCodeTaskService(target);
+  const service = await f.service.getCodezTaskService(target);
   const receive = vi.fn();
   const subscription = service!.onDynamicTaskEvent({
     ...target,
@@ -133,12 +133,12 @@ it("旧 canonical 绑定按已固化 host 路由，不再依赖项目入口；�
   };
   expect(await f.service.isConnected(legacy)).toBe(true);
   await expect(
-    f.service.getZCodeTaskService({ ...target, hostId: "remote:server:another" }),
+    f.service.getCodezTaskService({ ...target, hostId: "remote:server:another" }),
   ).rejects.toThrow();
 });
 it("旧服务句柄不能在物理连接换代后执行命令，迟到绑定也不能恢复已关闭订阅", async () => {
   const f = fixture();
-  const service = (await f.service.getZCodeTaskService(target))!;
+  const service = (await f.service.getCodezTaskService(target))!;
   const subscription = service.onDynamicTaskEvent({
     ...target,
     taskId: "task",

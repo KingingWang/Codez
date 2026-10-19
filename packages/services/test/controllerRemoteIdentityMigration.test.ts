@@ -9,7 +9,7 @@ import { runTasksDatabaseMigrations } from "#src/session/tasksDatabase/migration
 
 describe("controller remote identity migration inventory", () => {
   it("returns the original failure even when the failed audit cannot be written", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-controller-audit-failure-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-controller-audit-failure-"));
     const dbPath = join(root, "tasks-index.sqlite");
     const db = new DatabaseSync(dbPath);
     try {
@@ -51,7 +51,7 @@ describe("controller remote identity migration inventory", () => {
   });
 
   it("rekeys every inventoried workspace table in one transaction", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-r3-controller-identity-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-r3-controller-identity-"));
     const dbPath = join(root, "tasks-index.sqlite");
     const oldKey = "remote:ssh:old.example:22:alice:/srv/project";
     const newKey = "remote:server:3cd4f9da-cd79-426c-9d70-75f36e9f6a87:/srv/project";

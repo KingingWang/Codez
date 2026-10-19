@@ -2,12 +2,12 @@ import { expect, it } from "vitest";
 import {
   buildWebRemoteControlExternalQrUrl,
   parseWebRemoteControlExternalQrParams,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   getWebRemoteControlHeartbeatDelayMs,
   WEB_REMOTE_CONTROL_V2_HEARTBEAT_INTERVAL_MS,
   WEB_REMOTE_CONTROL_V2_HEARTBEAT_JITTER_MS,
-} from "@zcode/shared/web-remote-relay";
+} from "@codez/shared/web-remote-relay";
 
 it("builds V2 links without secrets, including removal of stale base URL credentials", () => {
   const url = buildWebRemoteControlExternalQrUrl({

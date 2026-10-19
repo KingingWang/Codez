@@ -41,7 +41,7 @@ it("远端自身没有旧 workspace 清单时，按历史任务目录建项目�
   add("old-dev", "/home/dev", identity("/home/dev"));
   add("old-a1", "/home/dev/a", identity("/home/dev/a"));
   add("old-a2", "/home/dev/a", identity("/home/dev/a"));
-  add("chat", "/home/dev/.zcode/workspace/default", identity("/home/dev/.zcode/workspace/default"));
+  add("chat", "/home/dev/.codez/workspace/default", identity("/home/dev/.codez/workspace/default"));
   add("gone", "/home/dev/gone", identity("/home/dev/gone"));
   db.prepare("UPDATE tasks SET deleted=1 WHERE task_id='gone'").run();
   db.prepare("UPDATE tasks SET updated_at=50 WHERE task_id='old-a2'").run();

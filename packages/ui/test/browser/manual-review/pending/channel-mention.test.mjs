@@ -56,7 +56,7 @@ after(async () => {
   await server?.close();
 });
 
-const artifacts = join(tmpdir(), "zcode-channel-mention");
+const artifacts = join(tmpdir(), "codez-channel-mention");
 for (const width of [390, 1200]) {
   for (const theme of ["light", "dark"]) {
     test(`BOT-UI-MN ${width}/${theme}`, async () => {

@@ -38,14 +38,14 @@ describe("用户连接日志路径边界", () => {
   });
 
   it.each([
-    "/home/dev/.zcode/server",
+    "/home/dev/.codez/server",
     "~/server",
     "C:\\Users\\dev\\server",
     "\\\\host\\share\\server",
   ])("遮蔽 %s 后仍保留失败原因", (path) => {
     expect(
-      sanitizeRemoteConnectionLog(`Installing ZCode Server to ${path} failed with exit code 1`),
-    ).toBe("Installing ZCode Server to [redacted-path] failed with exit code 1");
+      sanitizeRemoteConnectionLog(`Installing Codez Server to ${path} failed with exit code 1`),
+    ).toBe("Installing Codez Server to [redacted-path] failed with exit code 1");
   });
 
   it.each([

@@ -11,7 +11,7 @@ import { collectServiceMemoryDiagnostics } from "../src/memoryDiagnostics.js";
 const tempDirs: string[] = [];
 
 function makeTempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "zcode-file-watcher-"));
+  const dir = mkdtempSync(join(tmpdir(), "codez-file-watcher-"));
   tempDirs.push(dir);
   return dir;
 }

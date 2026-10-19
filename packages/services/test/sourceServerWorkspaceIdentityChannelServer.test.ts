@@ -1,5 +1,5 @@
-import { Emitter, type IChannelServer, type IServerChannel } from "@zcode/rpc";
-import { ServiceChannels } from "@zcode/shared";
+import { Emitter, type IChannelServer, type IServerChannel } from "@codez/rpc";
+import { ServiceChannels } from "@codez/shared";
 import {
   conversationTopicFrameSchema,
   encodeTopicWireFrames,
@@ -9,7 +9,7 @@ import {
   sessionsIndexTopicFrameSchema,
   TopicWireFrameAssembler,
   type TopicWireFrameCandidate,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   SourceServerWorkspaceIdentityChannelServer,
@@ -164,7 +164,7 @@ describe("SourceServerWorkspaceIdentityChannelServer", () => {
     const captured = createCapturingServer();
     const server = new SourceServerWorkspaceIdentityChannelServer(captured.server, mapper);
     const events = new Emitter<unknown>();
-    server.registerChannel("zcode-agent", {
+    server.registerChannel("codez-agent", {
       async call() {
         return undefined;
       },
@@ -173,7 +173,7 @@ describe("SourceServerWorkspaceIdentityChannelServer", () => {
       },
     });
 
-    const channel = captured.channels.get("zcode-agent")!;
+    const channel = captured.channels.get("codez-agent")!;
     const outputAssembler = new TopicWireFrameAssembler(sessionsIndexTopicFrameSchema);
     const outputEvents: ReturnType<typeof outputAssembler.accept> = [];
     const subscription = channel.listen("core", "onDynamicSessionsIndexFrame", [
@@ -248,7 +248,7 @@ describe("SourceServerWorkspaceIdentityChannelServer", () => {
     const captured = createCapturingServer();
     const server = new SourceServerWorkspaceIdentityChannelServer(captured.server, mapper);
     const events = new Emitter<unknown>();
-    server.registerChannel("zcode-agent", {
+    server.registerChannel("codez-agent", {
       async call() {
         return undefined;
       },
@@ -260,7 +260,7 @@ describe("SourceServerWorkspaceIdentityChannelServer", () => {
     const outputAssembler = new TopicWireFrameAssembler(sessionsIndexTopicFrameSchema);
     const outputEvents: ReturnType<typeof outputAssembler.accept> = [];
     const subscription = captured.channels
-      .get("zcode-agent")!
+      .get("codez-agent")!
       .listen(
         "core",
         "onDynamicSessionsIndexFrame",
@@ -340,7 +340,7 @@ describe("SourceServerWorkspaceIdentityChannelServer", () => {
     const captured = createCapturingServer();
     const server = new SourceServerWorkspaceIdentityChannelServer(captured.server, mapper);
     const events = new Emitter<unknown>();
-    server.registerChannel("zcode-agent", {
+    server.registerChannel("codez-agent", {
       async call() {
         return undefined;
       },
@@ -383,7 +383,7 @@ describe("SourceServerWorkspaceIdentityChannelServer", () => {
     const outputAssembler = new TopicWireFrameAssembler(conversationTopicFrameSchema);
     const outputEvents: ReturnType<typeof outputAssembler.accept> = [];
     const subscription = captured.channels
-      .get("zcode-agent")!
+      .get("codez-agent")!
       .listen(
         "core",
         "onDynamicConversationFrame",
@@ -424,7 +424,7 @@ describe("SourceServerWorkspaceIdentityChannelServer", () => {
     const captured = createCapturingServer();
     const server = new SourceServerWorkspaceIdentityChannelServer(captured.server, mapper);
     const events = new Emitter<unknown>();
-    server.registerChannel("zcode-agent", {
+    server.registerChannel("codez-agent", {
       async call() {
         return undefined;
       },
@@ -434,7 +434,7 @@ describe("SourceServerWorkspaceIdentityChannelServer", () => {
     });
     const received: unknown[] = [];
     const subscription = captured.channels
-      .get("zcode-agent")!
+      .get("codez-agent")!
       .listen(
         "core",
         "onDynamicSessionsIndexFrame",

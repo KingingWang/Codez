@@ -7,7 +7,7 @@
 ```text
 Workspace Window
   └─ Window Host（唯一 PID）
-      ├─ LocalSource -> local workspaceKey -> local zcode-cli
+      ├─ LocalSource -> local workspaceKey -> local codez-cli
       └─ RemoteConnectionRegistry
           ├─ shared SSH connection (remoteHostKey)
           │  ├─ remoteSessionId A -> ssh workspaceKey A

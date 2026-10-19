@@ -58,7 +58,7 @@ describe("marketing touch wire contract", () => {
         { text: { format, content }, action: { type: "close" } },
         {
           text: { format, content },
-          action: { type: "claim_zcode_plan", args: { plan_id: "plan" } },
+          action: { type: "claim_codez_plan", args: { plan_id: "plan" } },
         },
       ],
       success_popup: popup,
@@ -151,7 +151,7 @@ describe("marketing touch wire contract", () => {
                 close,
                 {
                   text: optionalText,
-                  action: { type: "claim_zcode_plan", args: { plan_id: "plan" } },
+                  action: { type: "claim_codez_plan", args: { plan_id: "plan" } },
                 },
               ],
               success_popup: content,
@@ -222,7 +222,7 @@ describe("marketing touch wire contract", () => {
             background: { type: "image", image: { default: asset } },
             buttons: [
               button(),
-              { text, action: { type: "claim_zcode_plan", args: { plan_id: "plan" } } },
+              { text, action: { type: "claim_codez_plan", args: { plan_id: "plan" } } },
             ],
             success_popup: popup,
           },
@@ -257,7 +257,7 @@ describe("marketing touch wire contract", () => {
       { type: "open_url", args: { url: "javascript:alert(1)" } },
       { type: "open_url", args: { url: "https://user:pass@example.com" } },
       { type: "open_popup" },
-      { type: "claim_zcode_plan", args: {} },
+      { type: "claim_codez_plan", args: {} },
     ])
       expect(marketingActionSchema.safeParse(action).success).toBe(false);
   });

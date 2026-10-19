@@ -10,12 +10,12 @@ import {
   resolveWorkspaceHookRuntimeRoot,
   workspaceHooksConfigSchema,
   type WorkspaceHooksConfig,
-} from "@zcode/shared/workspace-hook-discovery";
+} from "@codez/shared/workspace-hook-discovery";
 
 const roots: string[] = [];
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), "zcode-hook-digest-parity-"));
+  const root = mkdtempSync(join(tmpdir(), "codez-hook-digest-parity-"));
   roots.push(root);
   return root;
 }
@@ -55,10 +55,10 @@ describe("workspace hook dual builder digest parity (D17)", () => {
     const home = makeRoot();
     const workspace = makeRoot();
     mkdirSync(join(workspace, ".git"), { recursive: true });
-    writeJson(join(home, ".zcode", "cli", "config.json"), {
+    writeJson(join(home, ".codez", "cli", "config.json"), {
       hooks: { enabled: true, timeoutMs: 30_000 },
     });
-    writeJson(join(workspace, "zcode.json"), {
+    writeJson(join(workspace, "codez.json"), {
       hooks: {
         enabled: true,
         events: {
@@ -71,7 +71,7 @@ describe("workspace hook dual builder digest parity (D17)", () => {
         },
       },
     });
-    writeJson(join(workspace, ".zcode", "config.json"), {
+    writeJson(join(workspace, ".codez", "config.json"), {
       hooks: {
         enabled: true,
         events: {
@@ -89,7 +89,7 @@ describe("workspace hook dual builder digest parity (D17)", () => {
       workingDirectory: workspace,
     });
     expect(projectSources.length).toBeGreaterThan(0);
-    const userFile = (await parseJsonIfExists(join(home, ".zcode", "cli", "config.json"))) as
+    const userFile = (await parseJsonIfExists(join(home, ".codez", "cli", "config.json"))) as
       | { hooks?: unknown }
       | undefined;
     const parsedUserHooks = workspaceHooksConfigSchema.safeParse(userFile?.hooks);

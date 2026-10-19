@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { GitRepositorySummary, ZCodeTaskChangeSummary } from "@zcode/shared";
+import type { GitRepositorySummary, CodezTaskChangeSummary } from "@codez/shared";
 import type { GitBranchCommitPreviewFile } from "@/git-branch-switcher/display.js";
 import { filterCommitPreviewFilesByCurrentSession } from "@/git-action-menu/currentSessionFileScope.js";
 
@@ -31,7 +31,7 @@ function createChange(workspaceRelativePath: string): GitBranchCommitPreviewFile
   };
 }
 
-function createSummary(path: string): ZCodeTaskChangeSummary {
+function createSummary(path: string): CodezTaskChangeSummary {
   return {
     fileCount: 1,
     added: 1,

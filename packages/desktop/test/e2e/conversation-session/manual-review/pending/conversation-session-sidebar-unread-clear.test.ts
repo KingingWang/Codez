@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom } from "../../../helpers/desktop-app.js";
 import {
   getV4PaneSnapshot,
@@ -161,7 +161,7 @@ async function waitForTaskIndexUnread(
 }
 
 function readTaskIndexUnread(taskId: string): number | null | undefined {
-  const db = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"));
+  const db = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"));
   try {
     const row = db.prepare("select unread_at from tasks where task_id = ?").get(taskId) as
       | { unread_at?: number | null }

@@ -1,7 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { createServer, type ServerResponse } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createFakeRelayV2 } from "@zcode/shared/testing/fake-relay-v2";
+import { createFakeRelayV2 } from "@codez/shared/testing/fake-relay-v2";
 import {
   WebRemoteControlTerminalTransport,
   createWebRemoteControlV2TokenClient,
@@ -157,13 +157,13 @@ describe("terminal 与 V2 假 relay 的线级契约", () => {
     });
     expect((auth as { client_ts: number }).client_ts).toBeLessThan(253402300800);
     expect(
-      h.terminal.sendPayload({ zcode_type: "bootstrap-request", requestId: "mobile-bootstrap" }),
+      h.terminal.sendPayload({ codez_type: "bootstrap-request", requestId: "mobile-bootstrap" }),
     ).toBe(true);
     await vi.waitFor(() =>
       expect(h.received).toContainEqual(
         expect.objectContaining({
           type: "data",
-          payload: { zcode_type: "bootstrap-request", requestId: "mobile-bootstrap" },
+          payload: { codez_type: "bootstrap-request", requestId: "mobile-bootstrap" },
         }),
       ),
     );

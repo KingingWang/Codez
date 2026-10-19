@@ -25,7 +25,7 @@
 - `optionId`：稳定选项 ID。
 - `kind`：UI 展示语义。
 - `name` / `description`：展示文案。
-- `response`：用户选择该 option 时原样回传给 agent 的 `ZCodePermissionResponse`。
+- `response`：用户选择该 option 时原样回传给 agent 的 `CodezPermissionResponse`。
 
 legacy app 按 option.response 透传裁决；V4 通过稳定 optionId 交给 Agent 已登记的交互处理，不根据 UI 序号推导响应。完全访问属于下述独立提交动作，不能当成普通 allow。
 
@@ -76,7 +76,7 @@ UI focus (fullAccess): [1 Allow once] <-> [2 Allow project] <-> [3 Full access]
 - 只有通过 official plugin authority secret gate 验证的 CUA tool entry 才携带运行时
   `permissionCapabilityGroup: "official_cua"`。其 `allow_project` 建议规则在既有
   `{toolName, ruleContent?}` 结构中使用保留 key
-  `zcode:permission-capability:official_cua`，不增加 wire 字段，也不从可伪造的 MCP
+  `codez:permission-capability:official_cua`，不增加 wire 字段，也不从可伪造的 MCP
   server/tool 名推导。
 - 能力组保留规则不携带 `ruleContent`。它表达用户对该项目内整组官方 Computer Use
   能力的授权，而不是某次坐标、路径或 app input 的字符串匹配。

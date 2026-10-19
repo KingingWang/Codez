@@ -22,7 +22,7 @@ The action area is ordered as:
 - `Remote connection`
 - `Work without a project`
 
-`Work without a project` ensures the stable backing workspace at `<dataBaseDir>/.zcode/workspace/default` and starts a draft there. The backing workspace is classified as `conversation`, excluded from project search/results, and displayed as `Select project` in the trigger. Selecting it repeatedly is a no-op.
+`Work without a project` ensures the stable backing workspace at `<dataBaseDir>/.codez/workspace/default` and starts a draft there. The backing workspace is classified as `conversation`, excluded from project search/results, and displayed as `Select project` in the trigger. Selecting it repeatedly is a no-op.
 
 When a real project is selected, the trigger reveals a separate close action on hover/focus. Closing only rebinds the unsent draft to the conversation backing workspace; it does not close the project tab or move an existing task. Workspace targets include path, optional identity, and purpose so remote workspaces with the same path remain isolated.
 

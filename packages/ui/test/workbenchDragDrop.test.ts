@@ -11,7 +11,7 @@ import {
 describe("workbench session drag/drop helpers", () => {
   it("serializes and parses session drag payloads", () => {
     const serialized = serializeWorkbenchSessionDragPayload({
-      kind: "zcode/session",
+      kind: "codez/session",
       workspacePath: "/ws/a",
       workspaceIdentity: " remote:ssh:host:/ws/a ",
       remoteSessionId: "remote-1",
@@ -25,7 +25,7 @@ describe("workbench session drag/drop helpers", () => {
         getData: () => serialized,
       }),
     ).toEqual({
-      kind: "zcode/session",
+      kind: "codez/session",
       workspacePath: "/ws/a",
       workspaceIdentity: " remote:ssh:host:/ws/a ",
       remoteSessionId: "remote-1",
@@ -56,7 +56,7 @@ describe("workbench session drag/drop helpers", () => {
 
   it("falls back to the active renderer-local payload when dragover cannot read data", () => {
     const payload = {
-      kind: "zcode/session" as const,
+      kind: "codez/session" as const,
       workspacePath: "/ws/a",
       sessionId: "sess-a",
     };

@@ -12,8 +12,8 @@
 
 2. 任务摘要在读取任务列表时动态聚合
    - 聚合实现：`packages/services/src/session/taskChangeSummary.ts`
-   - 注入位置：`packages/services/src/session/zcodeTaskService.ts`
-   - 摘要字段挂在 `ZCodeTaskMeta.changeSummary`
+   - 注入位置：`packages/services/src/session/codezTaskService.ts`
+   - 摘要字段挂在 `CodezTaskMeta.changeSummary`
 
 3. UI 只消费摘要，不直接扫描完整快照
    - 格式化实现：`packages/ui/src/lib/taskChangeSummary.ts`

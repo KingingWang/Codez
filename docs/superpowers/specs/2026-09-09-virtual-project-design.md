@@ -34,13 +34,13 @@
 ### 2.1 左侧列表的数据源今天有 4 个
 
 ```text
-setting.json (~/.zcode/v2/settings/setting.json)
+setting.json (~/.codez/v2/settings/setting.json)
   ├─ recentProjects: string[]              本地路径历史（最多 10）
   └─ lastWorkspaceSession: Entry[]          真正的侧栏 workspace 列表（顺序 = 侧栏顺序）
        ├─ {kind:"local",  workspacePath, workspacePurpose}
        └─ {kind:"remote", workspacePath, workspaceIdentity, target(快照), lastConnectionStatus...}
 
-tasks-index.sqlite (~/.zcode/v2/tasks-index.sqlite，注意文件名带 s)
+tasks-index.sqlite (~/.codez/v2/tasks-index.sqlite，注意文件名带 s)
   ├─ tasks                      title / searchable_text / pinned / archived / deleted / unread / status
   │                              PK = (workspace_key, task_id)
   ├─ task_groups                 group 元数据（title/color）
@@ -50,7 +50,7 @@ tasks-index.sqlite (~/.zcode/v2/tasks-index.sqlite，注意文件名带 s)
   ├─ off_peak_tasks              闲时任务
   └─ automations / automation_runs   定时任务
 
-cli/db/db.sqlite (~/.zcode/cli/db/db.sqlite，CLI 自有，有正规 migration runner)
+cli/db/db.sqlite (~/.codez/cli/db/db.sqlite，CLI 自有，有正规 migration runner)
   └─ session / message / part / local_setting / session_task_link ...  会话正文与 CLI 侧状态
 
 renderer localStorage
@@ -63,13 +63,13 @@ UI 在 `useGroupedTaskView` / `useWorkspaceTaskLists` 里做客户端 join：`li
 
 - 口径：`workspaceKey = workspaceIdentity?.trim() || workspacePath`（`packages/shared/src/task-realtime-core.ts:92`）。
 - remote 落库值形如 `remote:ssh:dev.internal:22:developer:/work/demo`，即把 ssh 账号写进了主键。
-- 同一口径还被用于：`~/.zcode/v2/sessions/{hash}`、`agent-config/{provider}/{hash}`、CLI memory 目录 hash、web-remote bridge key、automation/off-peak 的 `workspaceKey` 字段。**改主键的同时这些派生 hash 也会变**，需要一并迁移或保留兼容映射。
-- remote 的 `zcodeTaskService` 是 RPC 代理到远端 Host，写的是远端机器自己的 `tasks-index.sqlite`，本机没有远程 session 的索引副本。
+- 同一口径还被用于：`~/.codez/v2/sessions/{hash}`、`agent-config/{provider}/{hash}`、CLI memory 目录 hash、web-remote bridge key、automation/off-peak 的 `workspaceKey` 字段。**改主键的同时这些派生 hash 也会变**，需要一并迁移或保留兼容映射。
+- remote 的 `codezTaskService` 是 RPC 代理到远端 Host，写的是远端机器自己的 `tasks-index.sqlite`，本机没有远程 session 的索引副本。
 
 ### 2.3 现有迁移基础设施
 
 - app 侧：**没有** schema 版本号、没有「上次运行版本」记录。sqlite 用 `CREATE TABLE IF NOT EXISTS + ensureColumn`，setting.json 用 zod preprocess 链就地迁移。
-- CLI 侧：`schema_migration(id, checksum, app_version)` + 18 条顺序 migration（`apps/zcode-cli/packages/adapters/src/storage/session-store/migration-runner.ts`），可以直接复用这套模式。
+- CLI 侧：`schema_migration(id, checksum, app_version)` + 18 条顺序 migration（`apps/codez-cli/packages/adapters/src/storage/session-store/migration-runner.ts`），可以直接复用这套模式。
 - 备份/压缩：已有 `yazl`（exportLogs、feedback）、`backupCorruptFile`、`copyDataDirectory`（basedir 切换用）。**没有**磁盘空间检查。
 - 启动链：main `whenReady` → `mainSettingService.get()` → spawn cron scheduler → 建窗口 → Host `InitLocal` 时首次打开 sqlite。renderer 有 `RootStartupLoading`（`shouldShowRootStartupLoading`）可加一个 `isMigrating` 输入。
 
@@ -77,19 +77,19 @@ UI 在 `useGroupedTaskView` / `useWorkspaceTaskLists` 里做客户端 join：`li
 
 | 配置                                    | 用户级                                    | 项目级路径                                                                  | 解析根                                  | 多层合并规则                                                                                   |
 | --------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| settings（model/permission/ui/storage） | `~/.zcode/cli/config.json`                | `<dir>/zcode.json`、`<dir>/.zcode/config.json`                              | cwd 向上到 git root，根在前 cwd 在后    | 深合并，后者覆盖                                                                               |
+| settings（model/permission/ui/storage） | `~/.codez/cli/config.json`                | `<dir>/codez.json`、`<dir>/.codez/config.json`                              | cwd 向上到 git root，根在前 cwd 在后    | 深合并，后者覆盖                                                                               |
 | MCP servers                             | 同上 `mcp.servers`                        | 同上                                                                        | 同上                                    | 按 name：system → project → **user** → env → cli（用户级覆盖项目级）；project 来源标 untrusted |
 | hooks                                   | `config.json.hooks` 直接可执行            | 同上                                                                        | 同上                                    | 项目级只生成 hookCandidate，走 workspace hook trust                                            |
-| skills                                  | `~/.zcode/skills`、`~/.agents/skills`     | `<dir>/.zcode/skills`、`<dir>/.agents/skills`                               | cwd 向上到 git root 每一级              | 全部可见；同名先发现者胜（用户级 shadow 项目级）                                               |
-| commands                                | `~/.zcode/commands`、`~/.agents/commands` | `<dir>/.zcode/commands`、`<dir>/.agents/commands`                           | 同 skills                               | 同名先到先赢 + duplicate diagnostic                                                            |
-| subagents                               | `~/.zcode/cli/agents/*.md`                | `<cwd>/.zcode/agents/*.md`                                                  | **仅 cwd 本级，不向上**                 | Map 按 name，后加载覆盖（项目级覆盖用户级）                                                    |
-| AGENTS.md                               | `~/.zcode/AGENTS.md`                      | `<dir>/AGENTS.md`                                                           | cwd 向上到 git root，**只取第一个命中** | user + workspace 两段拼接                                                                      |
-| agent 自写 memory                       | —                                         | `~/.zcode/cli/memories/projects/<slug>-<sha(identity‖path)>/memory`         | 按 workspaceKey hash                    | 一目录一份                                                                                     |
+| skills                                  | `~/.codez/skills`、`~/.agents/skills`     | `<dir>/.codez/skills`、`<dir>/.agents/skills`                               | cwd 向上到 git root 每一级              | 全部可见；同名先发现者胜（用户级 shadow 项目级）                                               |
+| commands                                | `~/.codez/commands`、`~/.agents/commands` | `<dir>/.codez/commands`、`<dir>/.agents/commands`                           | 同 skills                               | 同名先到先赢 + duplicate diagnostic                                                            |
+| subagents                               | `~/.codez/cli/agents/*.md`                | `<cwd>/.codez/agents/*.md`                                                  | **仅 cwd 本级，不向上**                 | Map 按 name，后加载覆盖（项目级覆盖用户级）                                                    |
+| AGENTS.md                               | `~/.codez/AGENTS.md`                      | `<dir>/AGENTS.md`                                                           | cwd 向上到 git root，**只取第一个命中** | user + workspace 两段拼接                                                                      |
+| agent 自写 memory                       | —                                         | `~/.codez/cli/memories/projects/<slug>-<sha(identity‖path)>/memory`         | 按 workspaceKey hash                    | 一目录一份                                                                                     |
 | permissions ruleset                     | —                                         | sqlite `local_setting(scope=project, scope_id=projectIdFromDirectory(cwd))` | cwd 精确目录                            | 一目录一份                                                                                     |
-| plugins                                 | `~/.zcode/cli/plugins` + `config.json`    | 项目 config 的 plugin 段                                                    | 同 settings                             | `resolvePluginConfigSources`                                                                   |
+| plugins                                 | `~/.codez/cli/plugins` + `config.json`    | 项目 config 的 plugin 段                                                    | 同 settings                             | `resolvePluginConfigSources`                                                                   |
 | workspace-config topic（设置页）        | —                                         | —                                                                           | key = `workspace-config/<workspaceId>`  | 一 workspace 一份                                                                              |
 
-CLI 侧已有一份多工作区草案 `apps/zcode-cli/docs/design/v2/multi-workspace.md`（`WorkspaceScope{primaryRoot, additionalRoots}`、`--add-dir`、roots 存 `local_setting(scope=workspace)`），尚未实现，可作为本次 agent 侧改动的落点。
+CLI 侧已有一份多工作区草案 `apps/codez-cli/docs/design/v2/multi-workspace.md`（`WorkspaceScope{primaryRoot, additionalRoots}`、`--add-dir`、roots 存 `local_setting(scope=workspace)`），尚未实现，可作为本次 agent 侧改动的落点。
 
 > 2026-10-10：远程单目录、无 Host 分组、项目先于会话、控制端统一混排的最新裁决见 [整合规格](2026-10-10-session-manage-upstream-integration.md)。本篇与其冲突的历史过程记录不再作为实现依据。
 
@@ -103,9 +103,9 @@ CLI 侧已有一份多工作区草案 `apps/zcode-cli/docs/design/v2/multi-works
 | A2  | 真实目录是否作为可见节点  | 不作为节点，只是项目的 root 属性                                                                                                                                                                                |
 | A3  | 公共管理移除              | 移除 Group/Project 视图切换器、group 管理菜单与新建 group 入口、集中管理页；图 7 工具栏整体移除，排序（按时间 / 按项目）放入「项目」标题右键菜单；时间线保留实现但隐藏入口，归档入口与展开/折叠全部图标不再保留 |
 | A4  | 视图模式                  | 只保留项目树 + 时间线                                                                                                                                                                                           |
-| A5  | 「任务」区                | 未归类 session 的分类：`project_id IS NULL`，不限制绑定目录；session 一定有 workspace，全局新建任务默认创建 `~/.zcode/workspace/<唯一目录>` 作为 cwd；项目里的 session 只能拖到另一个项目，不能拖到项目外       |
+| A5  | 「任务」区                | 未归类 session 的分类：`project_id IS NULL`，不限制绑定目录；session 一定有 workspace，全局新建任务默认创建 `~/.codez/workspace/<唯一目录>` 作为 cwd；项目里的 session 只能拖到另一个项目，不能拖到项目外       |
 | A6  | 同一真实目录属于多个项目  | 允许                                                                                                                                                                                                            |
-| A7  | 0 root 项目新建 session   | 自动创建 `~/.zcode/workspace/<时间戳>`，并把它加为该项目的 root 且设为主要目录                                                                                                                                  |
+| A7  | 0 root 项目新建 session   | 自动创建 `~/.codez/workspace/<时间戳>`，并把它加为该项目的 root 且设为主要目录                                                                                                                                  |
 | A8  | session 绑定目录（cwd）   | 创建后永远不变                                                                                                                                                                                                  |
 | A9  | 项目内新建 session 的 cwd | 固定为主要目录，不提供选择                                                                                                                                                                                      |
 
@@ -138,7 +138,7 @@ CLI 侧已有一份多工作区草案 `apps/zcode-cli/docs/design/v2/multi-works
 | --- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | D1  | 置顶                      | 保留全局置顶 session 区；项目也可置顶，置顶到全局置顶区并排在 session 之下；远程 session 也可置顶                                                                                |
 | D2  | 拖拽                      | session 跨项目、从「任务」区拖入项目、项目排序；不做项目内手动排序与多选拖拽；目标项目不含该 session 的真实工作区时弹窗确认加入                                                  |
-| D3  | 新建任务入口              | 项目行在该项目主要目录建草稿；Cmd/Ctrl+N 与左上角新建继承当前会话或草稿的项目，无项目才在自动创建的 `~/.zcode/workspace/<唯一目录>` 建未归类草稿；任务分区新建显式创建未归类草稿 |
+| D3  | 新建任务入口              | 项目行在该项目主要目录建草稿；Cmd/Ctrl+N 与左上角新建继承当前会话或草稿的项目，无项目才在自动创建的 `~/.codez/workspace/<唯一目录>` 建未归类草稿；任务分区新建显式创建未归类草稿 |
 | D4  | 项目右键菜单              | 编辑项目、置顶、删除项目；可编辑的远程项目与本地项目一致，不显示「从本机移除」「添加远程项目」；「从本机移除」只在不可编辑（离线 / error、legacy 单 root）时显示（2026-10-16）   |
 | D5  | Web / 手机远控侧栏        | 都显示项目层级                                                                                                                                                                   |
 | D6  | 右侧 workbench 分屏 group | 与本次无关，不动                                                                                                                                                                 |
@@ -213,8 +213,8 @@ PRO01 验证：`desktop-e2e-20260915130441227-p90013-a508c06fba08fa3a` 1/1 通�
 | F4  | 降级期 group 增删改                                                              | 忽略；group→项目只在首次升级迁移一次                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | F5  | setting.json                                                                     | 继续双写 lastWorkspaceSession / recentProjects；远程条目从本机仍保留的远程项目入口派生，移除入口后清理对应旧条目，不从远端全量项目列表重新生成                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | F6  | 执行位置                                                                         | main whenReady 后、起 Host 前同步执行；失败 fail-closed（重试 / 打开备份目录），不做第二套实现                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| F7  | 备份                                                                             | 定位：只保证「迁移失败 / 迁移把库写坏」时能恢复到升级前，不作为降级机制，也不作为通用数据保险；正常流程只产生不消费。做法：通用表级备份（见 7.1），仅在有待执行 migration 时、事务前，把这些 migration 声明的 `touchedTables` 在同一读事务里逐表导出到 `~/.zcode/backup/<版本>-<时间>/<库名>.sqlite`，写 backup.json，保留 2 份；不做整库快照（本机实测整库 770MB/12s，gzip 160MB/19s；表级 CLI 1.9MB/70ms、tasks-index 14MB/165ms）。当前卷不足依次试其他可写卷，都不足则跳过并提示，不删轨迹                                                                                                     |
-| F8  | 老 workspace                                                                     | 本地及远端各自仅将旧 lastWorkspaceSession 中保留的项目 workspace → 同名单 root 项目，其下全部 session 归入；仅历史 tasks 或 recentProjects 中的目录不建项目，其任务保留原 cwd 与组织态，无匹配项目时保持未归类；本机 lastWorkspaceSession 中的 remote 条目只在首次迁移时导入本机远程项目入口及基础信息缓存，不在本机创建远端权威项目。远端例外（2026-10-15）：持库 owner 不是 local 时，首次迁移另把仍有未删除任务、不在 `*/.zcode/workspace/*` 系统目录下、且未被 settings 标为 conversation 的历史任务 root 建为同名单 root 项目并归入；远端项目只经本机入口进入桌面侧栏，推断不会复活已移除入口 |
+| F7  | 备份                                                                             | 定位：只保证「迁移失败 / 迁移把库写坏」时能恢复到升级前，不作为降级机制，也不作为通用数据保险；正常流程只产生不消费。做法：通用表级备份（见 7.1），仅在有待执行 migration 时、事务前，把这些 migration 声明的 `touchedTables` 在同一读事务里逐表导出到 `~/.codez/backup/<版本>-<时间>/<库名>.sqlite`，写 backup.json，保留 2 份；不做整库快照（本机实测整库 770MB/12s，gzip 160MB/19s；表级 CLI 1.9MB/70ms、tasks-index 14MB/165ms）。当前卷不足依次试其他可写卷，都不足则跳过并提示，不删轨迹                                                                                                     |
+| F8  | 老 workspace                                                                     | 本地及远端各自仅将旧 lastWorkspaceSession 中保留的项目 workspace → 同名单 root 项目，其下全部 session 归入；仅历史 tasks 或 recentProjects 中的目录不建项目，其任务保留原 cwd 与组织态，无匹配项目时保持未归类；本机 lastWorkspaceSession 中的 remote 条目只在首次迁移时导入本机远程项目入口及基础信息缓存，不在本机创建远端权威项目。远端例外（2026-10-15）：持库 owner 不是 local 时，首次迁移另把仍有未删除任务、不在 `*/.codez/workspace/*` 系统目录下、且未被 settings 标为 conversation 的历史任务 root 建为同名单 root 项目并归入；远端项目只经本机入口进入桌面侧栏，推断不会复活已移除入口 |
 | F9  | 手建 group                                                                       | 仅迁移包含未删除 session 的手建 group（归档成员有效），空/悬空/仅已删成员跳过；roots = 有效成员目录去重，主要 = 成员最多的目录；名字沿用并标 name_overridden；颜色丢弃                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | F10 | 混合 host 的 group                                                               | 按 host 拆成多个项目，名字后缀 host 名                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | F11 | 系统组（定时 / 闲时）                                                            | 不转项目，成员归各自 workspace 项目，保留 cron / off-peak 图标                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -223,7 +223,7 @@ PRO01 验证：`desktop-e2e-20260915130441227-p90013-a508c06fba08fa3a` 1/1 通�
 
 #### 2026-10-15 旧执行后端会话可见性修复
 
-项目树与既有任务列表/Controller 使用同一执行后端准入规则：只读取 `tasks.provider = ZCODE_AGENT_PROVIDER`（当前为 `glm`）的任务。此列是执行后端，不是模型供应商；新导入到当前 CLI 的会话仍保留，不能按 `migration_source` 或标题过滤。项目、置顶、未归类、时间线、归档与未读展示均消费该 Host 项目树，远端在所属 Host 执行相同读取。
+项目树与既有任务列表/Controller 使用同一执行后端准入规则：只读取 `tasks.provider = CODEZ_AGENT_PROVIDER`（当前为 `glm`）的任务。此列是执行后端，不是模型供应商；新导入到当前 CLI 的会话仍保留，不能按 `migration_source` 或标题过滤。项目、置顶、未归类、时间线、归档与未读展示均消费该 Host 项目树，远端在所属 Host 执行相同读取。
 
 根因：迁移为旧行补齐 `cli_*` 后，项目仓库漏掉旧列表的 provider 过滤，使旧后端行可见，Controller 操作前的列表却找不到它。修复只收口读取，不删除旧行、不重写 provider/时间/组织态、不改已发布 migration/checksum；已有迁移 ledger 的库同样立即生效。不按目录是否存在或是否打开 tab 隐藏正常历史。
 
@@ -284,7 +284,7 @@ Session
  └─ CLI 事实镜像：cli_title / cli_title_source / cli_updated_at / cli_created_at / cli_last_outcome / cli_deleted
 ```
 
-普通分区由项目归属决定；置顶、归档和 session 删除继续按各自规则过滤。`~/.zcode/workspace/*` 是全局新建任务的默认执行目录，不是任务区筛选条件。
+普通分区由项目归属决定；置顶、归档和 session 删除继续按各自规则过滤。`~/.codez/workspace/*` 是全局新建任务的默认执行目录，不是任务区筛选条件。
 
 ```text
 Session（cwd 始终不变）
@@ -387,9 +387,9 @@ createSession / 显式 resume / v4/conversation/subscribe 参数新增（可选�
   additionalDirectories: string[]        // Host 解析的目录列表；本地绝对路径或远端实际路径
                                         // 仅初始化运行实例时消费；live subscribe 不更新目录范围
 CLI 消费点
-  1. skillPort.discoverSkills/loadSkill(roots?)  → 为每个附加目录追加 <dir>/.zcode/skills、<dir>/.agents/skills、<dir>/.zcode/commands
+  1. skillPort.discoverSkills/loadSkill(roots?)  → 为每个附加目录追加 <dir>/.codez/skills、<dir>/.agents/skills、<dir>/.codez/commands
                                                    来自附加目录的 skill.qualifiedName = `${basename(dir)}/${name}`；prompt 与 mention 列表使用 qualifiedName
-  2. subagents roots                             → 追加 <dir>/.zcode/agents；同名并存，qualifiedName 同上
+  2. subagents roots                             → 追加 <dir>/.codez/agents；同名并存，qualifiedName 同上
   3. tool path policy                            → additionalDirectories 并入可读写根
   4. 环境 prompt                                 → 主目录之后列出 Additional directories，仅含路径；空列表不输出
 不变：AGENTS.md、config(settings/mcp/hooks/plugins)、memory、permissions 仍只按 workingDirectory 解析。
@@ -438,7 +438,7 @@ Host app 库：任务归属 + 项目当前 roots（唯一配置来源）
        本次运行期间目录范围固定
 ```
 
-实现落点：在 Host 的 `subscribeConversationV4` 发出请求前调用同一目录解析逻辑；可沿用已有 `resumeThoughtLevel` 的参数传递路径，但目录查询错误不能被静默吞掉。同步更新 `packages/shared/src/zcode-protocol/index.ts` 的 create/resume schema 和 `packages/shared/src/zcode-protocol-v4/transport.ts` 的 subscribe schema；将 `additionalDirectories` 贯穿 Gateway → `ColdSessionResumeCoordinator` → `resumePersistedSession` → `activateSessionForResume`，在运行实例构建前交给能力与环境 prompt 消费点。Host 通过服务接口注入解析能力，Renderer 不负责拼装目录列表。
+实现落点：在 Host 的 `subscribeConversationV4` 发出请求前调用同一目录解析逻辑；可沿用已有 `resumeThoughtLevel` 的参数传递路径，但目录查询错误不能被静默吞掉。同步更新 `packages/shared/src/codez-protocol/index.ts` 的 create/resume schema 和 `packages/shared/src/codez-protocol-v4/transport.ts` 的 subscribe schema；将 `additionalDirectories` 贯穿 Gateway → `ColdSessionResumeCoordinator` → `resumePersistedSession` → `activateSessionForResume`，在运行实例构建前交给能力与环境 prompt 消费点。Host 通过服务接口注入解析能力，Renderer 不负责拼装目录列表。
 
 实施补充（2026-09-10）：当前 rowsRange / search 等查询也可能先于 subscribe 触发冷恢复。该路径复用既有 `session/requestRuntimePreferences` 的 runtime-materialization 请求，从 Host 同一目录解析接口取得 `additionalDirectories`；不建立另一个目录缓存或同步协议。显式 create/resume/subscribe 的数组仍只在新实例初始化时使用；Host 查询失败必须拒绝初始化。该反向请求已由 READY single-flight 覆盖，因此查询与订阅竞争时只读取一次目录快照。
 
@@ -682,7 +682,7 @@ desktop continuous / mobile replayable -> original attachment, no new runtime
 
 | 场景                                                                            | 预期                                                                         |
 | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| 全局新建任务                                                                    | 在 `~/.zcode/workspace/<唯一目录>` 下创建，`project_id = NULL`，显示在任务区 |
+| 全局新建任务                                                                    | 在 `~/.codez/workspace/<唯一目录>` 下创建，`project_id = NULL`，显示在任务区 |
 | 首次发现默认目录之外的历史 session，绑定目录匹配同 host 下唯一一个未删除项目    | 归入该项目，cwd 不变                                                         |
 | 首次发现默认目录之外的历史 session，绑定目录匹配多个未删除项目                  | 保持未归类，显示在任务区；不按主要目录优先选择，不新建项目                   |
 | 首次发现默认目录之外的历史 session，绑定目录不匹配任何未删除项目                | 保持未归类，显示在任务区，不新建项目                                         |
@@ -712,7 +712,7 @@ desktop continuous / mobile replayable -> original attachment, no new runtime
 
 ## 7. 迁移（启动门禁，复用同一迁移实现）
 
-共享迁移模块通过 `@zcode/shared/sqlite-migrations` 导出；CLI/desktop agent 的构建子路径映射必须从 shared 包的 exports 派生，不维护第二份手工子路径清单。实际 bundle 构建与导入属于迁移交付验证，不能只检查 TypeScript 源码。
+共享迁移模块通过 `@codez/shared/sqlite-migrations` 导出；CLI/desktop agent 的构建子路径映射必须从 shared 包的 exports 派生，不维护第二份手工子路径清单。实际 bundle 构建与导入属于迁移交付验证，不能只检查 TypeScript 源码。
 
 2026-10-10 合并后采用上游的可观测启动门禁：Host Worker 在业务服务初始化前准备 app 库，再用同一 CLI bundle 的存储准备入口准备会话库。Worker 必须读取旧 settings 并传给项目迁移，不能先记账再丢掉旧项目种子。两边复用既有 SQL、checksum、表级备份及 Repo；锁等待异步，提交成功后才发布 ready，不创建第二套会话迁移实现。失败进入启动错误/重试流程；重试以完整 migration ID 幂等跳过已完成的库，不假设两库之间存在原子事务。CLI 正常打开数据库仍检查 migration，覆盖独立 TUI 与远端运行。两个不同名称的 0004 和 CLI 双方迁移都保留，不按序号覆盖；0023_session_soft_delete_outcome 识别开发期已执行的 0020 同内容记录。
 
@@ -749,12 +749,12 @@ runner（备份只为迁移失败恢复；未触及的表迁移前后是同一�
 
 ```text
 M0 探测：tasks-index 无 schema_migration 或缺 '0001_projects' → 进入迁移；否则跳过
-M1 备份：按 7.1 表级备份两库 → ~/.zcode/backup/<ver>-<ts>/
+M1 备份：按 7.1 表级备份两库 → ~/.codez/backup/<ver>-<ts>/
 M2 建表加列（5.1、5.3）；本机远程项目入口与远端权威项目分开保存
 M3 hosts：'local' + 从 tasks.workspace_key / setting.json remote 条目解析出的 remote authority
 M4 tasks 回填：host_id、root_path（= workspace_path）、cli_* 从旧列拷贝一份初值；`deleted=1` 的行置 handoff_pending|=1，`title_overridden=1` 的行置 handoff_pending|=2（历史 Host 事实待交接给 CLI，见 7.4）
 M5 本地及远端各自仅将旧 lastWorkspaceSession 中保留的项目 workspace → 单 root 项目（name = 目录名，name_overridden=0，primary = 该 root）；
-    首次 position 仅按 setting.json 的 lastWorkspaceSession 中本 Host 项目条目的原顺序分配（同目录去重、无 session 的已保存项目也保留）；conversation 条目不参与。历史 tasks、recentProjects 和 Group 都不能扩充项目集合；已移除目录、仅已归档或已删除任务的目录不因历史记录重建项目。未归属任务按 F3 保留原 cwd、标题、时间、归档/删除/置顶/未读状态；settings 缺失或列表为空时也不从任务记录推断项目。持库 owner 不是 local 时按 F8 远端例外补充：settings 条目之后，按历史任务最近活动时间倒序，把未删除、非 `*/.zcode/workspace/*`、非 conversation 条目、尚无同目录项目的 root 建为单 root 项目；归属仍由 M6a 的唯一目录匹配完成。
+    首次 position 仅按 setting.json 的 lastWorkspaceSession 中本 Host 项目条目的原顺序分配（同目录去重、无 session 的已保存项目也保留）；conversation 条目不参与。历史 tasks、recentProjects 和 Group 都不能扩充项目集合；已移除目录、仅已归档或已删除任务的目录不因历史记录重建项目。未归属任务按 F3 保留原 cwd、标题、时间、归档/删除/置顶/未读状态；settings 缺失或列表为空时也不从任务记录推断项目。持库 owner 不是 local 时按 F8 远端例外补充：settings 条目之后，按历史任务最近活动时间倒序，把未删除、非 `*/.codez/workspace/*`、非 conversation 条目、尚无同目录项目的 root 建为单 root 项目；归属仍由 M6a 的唯一目录匹配完成。
     position 只在首次迁移初始化；已有 ledger 时不重跑转换、不从 settings 重排，也不自动清理已生成的项目，保留升级后用户的编辑与手动排序。远端条目仍按原 Host/入口边界导入，不把本机排列写成远端权威项目顺序；默认手动模式读取 position，显式选择按活动排序或置顶时沿用对应展示规则。
     其下所有 tasks.project_id = 该项目；定时/闲时定义按同 Host + workspace_path 匹配已保存项目，远端身份 key 不作为真实目录；未匹配者保留 NULL 与原执行范围。bootstrap 组（task_group_workspace_bootstraps）不再单独建项目。
     本机 lastWorkspaceSession 的 remote 条目只在首次迁移时导入 remote_project_entries，保留基础信息与原 workspace 标识，等待连接后解析远端项目 ID；不在本机建远端权威项目。已保存 Source/有效 Profile 同时导入连接成员关系，优先已有稳定 Source ID 和首选 Profile；旧地址入口关联到同一稳定 Host，未握手过的地址保留临时地址身份。已有 migration ledger 后不再从 settings 反向导入
@@ -796,7 +796,7 @@ workspace 的 CLI 因任何原因可用时（不为交接单独拉起 Agent）
 
 | MR  | 内容                                                                                                                                                                                                                                                    | 主要目录                                             | 验证                                                                                 |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| 1   | CLI 0020 migration、time_deleted / last_outcome、deleteSession 语义、SessionSummary.lastOutcome、`sessionsIndex/reconcile` 命令、additionalDirectories 消费点及 V4 冷恢复参数贯穿、skill/subagent qualifiedName                                         | apps/zcode-cli                                       | 单测 + 协议 schema 测试                                                              |
+| 1   | CLI 0020 migration、time_deleted / last_outcome、deleteSession 语义、SessionSummary.lastOutcome、`sessionsIndex/reconcile` 命令、additionalDirectories 消费点及 V4 冷恢复参数贯穿、skill/subagent qualifiedName                                         | apps/codez-cli                                       | 单测 + 协议 schema 测试                                                              |
 | 2   | 通用 migration runner（抽自 CLI，加 touchedTables 与表级备份、恢复脚本、逐表哈希单测）、5.1 schema、空间守卫、main 建窗前执行、schema.baseline.sql + CI diff                                                                                            | packages/services、packages/desktop/main、scripts/ci | 单测：各分支 + 升降级 fixture                                                        |
 | 3   | 归属收口：syncer 只写 cli\_\* 与旧列镜像；删 3 处 Date.now；renameTask / deleteTask 改经 CLI 命令并写意图位；7.4 启动对账、惰性交接、snapshot 缺席 reconcile                                                                                            | packages/services                                    | 单测 + e2e 标题 / 状态回归                                                           |
 | 4   | 项目服务：projects/hosts/roots CRUD、move session、软删除与恢复匹配、4.3.1 统一目录解析与三入口注入、F3 首次归位与 NULL 组织态保留、setting.json 双写、预热改上次活动目录、自动归档触发点迁到项目树查询、本机远程项目入口与缓存、离线移除及防止重连重建 | packages/services、packages/shared                   | 单测：含首次归位、重复启动不改归属、默认目录之外的任务自动归档；含入口移除与迟到刷新 |
@@ -943,7 +943,7 @@ subscribe in flight -> runtime available/restart -> old ACK rejected
 
 ### 项目编辑器源文件夹列表（2026-09-11 用户纠偏）
 
-- 零 root 显示整块“添加 ZCode 可读取和编辑的文件夹”；已有 root 后切换为同一个带边框的列表，末行是 FolderPlus +“添加文件夹”，不继续显示空态大卡片。每个 root 行显示文件夹图标、末级目录名（完整路径放 title），右侧为“主要”标记或“设为主要”按钮，以及移除按钮。
+- 零 root 显示整块“添加 Codez 可读取和编辑的文件夹”；已有 root 后切换为同一个带边框的列表，末行是 FolderPlus +“添加文件夹”，不继续显示空态大卡片。每个 root 行显示文件夹图标、末级目录名（完整路径放 title），右侧为“主要”标记或“设为主要”按钮，以及移除按钮。
 - “设为主要”只修改编辑器草稿，保存才经既有 saveProject(primaryRoot) 写入所属 Host；取消不写入。第一个目录默认主要，移除主要目录后选择剩余首项，全部移除后无主要。新任务经 prepareSession 使用最新主要目录，已有任务 cwd 不变。
 - 编辑已有项目时，底部左侧恢复删除项目按钮；创建时无删除按钮。沿用 deleteProject 的软删除语义，不删除文件或任务，不增加确认层；远端必须传原 hostId，失败停留弹窗并显示错误，不降级成本机移除。保存/删除共用提交互斥状态，成功后刷新并关闭。
 - 表单草稿归 ProjectEditor，持久态归 Host projectService，复用已有目录浏览器和 API；不增加 schema、migration 或同步队列。桌面与手机使用相同 UI/服务路径，continuous/replayable 边界不变。明暗主题、长路径与 390px 布局均需验证。
@@ -971,7 +971,7 @@ subscribe in flight -> runtime available/restart -> old ACK rejected
 - 项目列表恢复 dnd-kit 垂直排序位移和过渡，支持指针及键盘。同置顶分区内允许跨 Host 交换位置；仅写当前控制端侧栏偏好，不改远端 position。任务拖入项目继续走原生 session payload 和 moveTask，不触发项目排序。点击、菜单、新建与文件入口不误启动拖拽，Escape 取消不写入。
 - Host 是项目顺序的唯一已提交 owner；拖动期间只有 UI transform，落下通过 reorderProjects 提交后刷新，失败保留权威树并提示。桌面 continuous、手机 shared-host/replayable 边界不变。
 - 已展开空项目、在线 Host 的空任务列表显示国际化 `taskList.noTasks`（中文“暂无任务”），沿用旧任务文字缩进；空置顶区不显示标题或空态，离线/加载态不伪造“暂无任务”。
-- 系统 `~/.zcode/workspace/default` 曾因旧 settings 缺失/误写 purpose 被首次迁移建成项目。新增一次性 `0006_default_workspace_tasks`，不改已发布 0005 SQL/checksum：仅纠正旧迁移时创建、单 root 为系统 default、未改名/编辑的自动项目；任务 project_id 清空，误建容器软删。普通路径下的 default、手建/改名/多 root 项目保留。只写 Host tasks/projects，任务 cwd、CLI 镜像、置顶/归档/未读、定时/闲时执行快照不变。迁移有表级备份且事务失败回滚，重复启动不重算归属。
+- 系统 `~/.codez/workspace/default` 曾因旧 settings 缺失/误写 purpose 被首次迁移建成项目。新增一次性 `0006_default_workspace_tasks`，不改已发布 0005 SQL/checksum：仅纠正旧迁移时创建、单 root 为系统 default、未改名/编辑的自动项目；任务 project_id 清空，误建容器软删。普通路径下的 default、手建/改名/多 root 项目保留。只写 Host tasks/projects，任务 cwd、CLI 镜像、置顶/归档/未读、定时/闲时执行快照不变。迁移有表级备份且事务失败回滚，重复启动不重算归属。
 
 ```text
 拖动 -> UI 位移 -> 同 Host reorderProjects -> Host 顺序 -> readTree
@@ -1051,7 +1051,7 @@ user selects {hostId, projectId} -> existing Root createTask -> Host prepareSess
 
 ### 当前任务元数据与自动归档收尾（2026-09-11）
 
-- 详情元数据通过已有 workspace-scoped `ZCodeTaskService.getTaskMeta` 读取 Host 索引（CLI 事实镜像 + Host 组织态），不再读取 CLI active runtime 的 `readSession`，也不依赖旧列表/query cache 是否恰好含当前任务。已归档历史直接打开仍可读取标题。首发尚未落索引时只复用现有未提交乐观元数据，不新增事实写者。
+- 详情元数据通过已有 workspace-scoped `CodezTaskService.getTaskMeta` 读取 Host 索引（CLI 事实镜像 + Host 组织态），不再读取 CLI active runtime 的 `readSession`，也不依赖旧列表/query cache 是否恰好含当前任务。已归档历史直接打开仍可读取标题。首发尚未落索引时只复用现有未提交乐观元数据，不新增事实写者。
 - 详情读取由现有 active-task hook 拥有；监听当前 workspace 的列表变更、已有 taskListVersion 和 projects 广播重读。请求按 service/attachment + workspaceKey + taskId 隔离；后发请求优先，切换身份或卸载即丢弃迟到结果。失败记录日志，不能拿前一任务标题填当前任务，也不为标题恢复 CLI。
 - 自动归档判据、七天追溯生效及未读 CAS 不变。项目树接受新结果时，只对同 Host + workspaceKey + taskId 从 `archived=false` 变为 `true` 的任务，调用既有 `removeTaskState` 清理本窗口选中态/详情；手动、自动、另一端归档保持相同效果。不把首次读到已归档记录、离线缺行、移除项目入口或失败响应当成归档事件；明确打开既有归档历史仍可查看。
 - 自动归档发生时退出当前详情到原工作区草稿，不自动选中下一条同名任务。导航和草稿仍由现有 session UI store 拥有；项目读取 hook 只比较两个已接受快照，不持久化第二份 archived 或新增同步计时器。
@@ -1130,7 +1130,7 @@ Host 首轮/定时扫描 → SettingService.get → 锁内重读旧配置
 - 最近更新复用现有 timeline 双行任务样式：首行状态与标题，第二行左侧为任务绑定工作目录的末级名称（不是虚拟项目名），右侧为相对更新时间及原有元信息。无状态任务不显示圆点，保留图标槽以对齐标题；未读/错误/运行/置顶/手机激活状态沿用共享行规则。按项目仍用紧凑单行。
 - 日期标题只在已排序并分页的相邻日期段首项前显示，不占分页名额、不重复创建任务分组，也不改变完整任务 key。日期按客户端本地日历和语言计算（en-US 周日开周，zh-CN 周一开周），跨日以日历日期判定，避免夏令时误差；刷新投影/重新渲染时重新派生。追加分页不重复同段标题，时间变化可跨段重排，操作中的行仍由完整任务身份保持。
 - 选择器和渲染层显式接收展示模式，避免渲染层重新套用运行优先。排序时间只来自 CLI 镜像，不从 Host 组织修改时间或 Date.now 派生；pin 不影响时间顺序，archive 成功后退出两种视图。
-- 唯一偏好 owner 为 ProjectDirectoryProvider 中的 useProjectSidebarPreferences。既有 zcode-project-sidebar-preferences 新增 view=projects|timeline，默认/非法值回落 projects；继续保存 expanded。旧 sort 和 zcode-sidebar-task-preferences.sortBy 不再读取，旧折叠保留，Host position 仅作首次种子，项目显示顺序改存控制端 order=[hostId,projectId]。localStorage 不可用时当前窗口仍可切换，桌面/手机各自保存偏好。
+- 唯一偏好 owner 为 ProjectDirectoryProvider 中的 useProjectSidebarPreferences。既有 codez-project-sidebar-preferences 新增 view=projects|timeline，默认/非法值回落 projects；继续保存 expanded。旧 sort 和 codez-sidebar-task-preferences.sortBy 不再读取，旧折叠保留，Host position 仅作首次种子，项目显示顺序改存控制端 order=[hostId,projectId]。localStorage 不可用时当前窗口仍可切换，桌面/手机各自保存偏好。
 - 视图切换不改任务归属、当前任务与项目折叠；composer 项目选择器继续共用目录并按手动项目顺序显示，不响应侧栏视图切换。无 Host/CLI/RPC/SQLite 变更。
 - 本地/远端任务来源沿用原项目树可见范围，不为列表建立新连接或任务缓存；身份仍是 Host + (workspaceIdentity.trim() || workspacePath) + taskId。桌面 desktop-continuous 和手机 web-remote-replayable 保持原 shared-host 导航与传输边界。
 
@@ -1161,7 +1161,7 @@ Host readTree + CLI 时间镜像 -> 纯选择器 -> 项目列表 / 最近更新�
 
 桌面验证：`desktop-e2e-20260915131918480-p99856-ceccb6286a056017`，8/8 通过；含 SBV01–05、旧项目交互及 1200/390px 明暗主题截图。相关单测 7 文件 / 45 条通过；`pnpm typecheck`、`pnpm lint`（47 条既有 warning，0 error）及 desktop E2E 类型检查通过。相对 HEAD 的架构检查 0 违规；默认相对 origin/staging 仍有开工前已存在的 `packages/ui/src/root/resolveConversationWorkspaceTarget.ts` 未受管文件错误，本次不改其模块归属。
 
-手机验证：`desktop-e2e-20260915133055419-p10183-be1302f33f03e81a`，1/1 通过；Chrome for Testing 以 390×844、hasTouch/isMobile 访问本仓 Web，经真实 relay/shared-host 完成搜索、两种视图与刷新恢复、任务重开和连续切换保留当前任务，桌面 task 标记及 Host/tab 数断言通过。用例使用隔离 HOME 与既有 synthetic provider fixture；新入口使用 touch tap，菜单关闭后继续下一操作。取 Host 证据后关闭资源管理器，避免检查器持续采样干扰待启动 CLI。通过 `ZCODE_E2E_BROWSER_NO_PROXY=1` 与 `ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE` 选用测试浏览器直连，未关闭 TLS 校验。
+手机验证：`desktop-e2e-20260915133055419-p10183-be1302f33f03e81a`，1/1 通过；Chrome for Testing 以 390×844、hasTouch/isMobile 访问本仓 Web，经真实 relay/shared-host 完成搜索、两种视图与刷新恢复、任务重开和连续切换保留当前任务，桌面 task 标记及 Host/tab 数断言通过。用例使用隔离 HOME 与既有 synthetic provider fixture；新入口使用 touch tap，菜单关闭后继续下一操作。取 Host 证据后关闭资源管理器，避免检查器持续采样干扰待启动 CLI。通过 `CODEZ_E2E_BROWSER_NO_PROXY=1` 与 `CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE` 选用测试浏览器直连，未关闭 TLS 校验。
 
 范围说明：手机证据为浏览器触屏模拟中的真实 shared-host 链路，不是实体手机；Windows/Linux 快捷键由单测覆盖，未在对应操作系统跑 GUI。跨 Host 同路径/同 taskId 的排序身份由单测覆盖，未新增 SSH/WSL 真机验证。默认 staging 架构基线问题保持单独记录，不记为本次增量通过。
 

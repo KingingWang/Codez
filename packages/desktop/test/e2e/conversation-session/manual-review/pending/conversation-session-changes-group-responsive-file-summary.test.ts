@@ -1,5 +1,5 @@
 import { readFile, rm } from "node:fs/promises";
-import { TID_PREVIEW_PANE } from "@zcode/shared/test-ids";
+import { TID_PREVIEW_PANE } from "@codez/shared/test-ids";
 import { clearAppData, seedSettings } from "../../../helpers/desktop-app.js";
 import {
   toggleLatestConversationToolGroup,

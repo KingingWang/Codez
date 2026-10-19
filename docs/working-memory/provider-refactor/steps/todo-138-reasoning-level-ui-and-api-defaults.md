@@ -63,7 +63,7 @@ UI 只拥有未提交草稿；规则和有效模型配置仍由 Provider 解析�
 
 - UI：packages/ui/src/settings/model-provider-section/ProviderCardSections.tsx。
 - 解析/投影：useModelConfigResolution.ts、useProviderModelDraft.ts、ProviderModelDraftState.ts（仅回归，不改生命周期）。
-- 内置：config/provider/zcode-builtin.json 第一条 Model 规则与三条通用 Model + API map。
+- 内置：config/provider/codez-builtin.json 第一条 Model 规则与三条通用 Model + API map。
 - 规则顺序：packages/provider/src/config/schema.ts、model-config.ts（保持现状）。
 
 ## 验证记录

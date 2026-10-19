@@ -4,7 +4,7 @@ import {
   TID_V4_COMPOSER_SEND,
   TID_V4_SESSION_PANE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   prepareV4ConversationE2E,
@@ -495,13 +495,13 @@ async function setComposerText(paneTestId: string, text: string): Promise<void> 
           const bridge = (
             input as
               | (HTMLElement & {
-                  __zcodeLexicalInputE2E?: {
+                  __codezLexicalInputE2E?: {
                     getText: () => string;
                     setText: (value: string) => void;
                   };
                 })
               | undefined
-          )?.__zcodeLexicalInputE2E;
+          )?.__codezLexicalInputE2E;
           if (!bridge) return false;
           bridge.setText(nextText);
           return bridge.getText() === nextText;
@@ -528,10 +528,10 @@ async function expectComposerState(
           const bridge = (
             input as
               | (HTMLElement & {
-                  __zcodeLexicalInputE2E?: { getText: () => string };
+                  __codezLexicalInputE2E?: { getText: () => string };
                 })
               | undefined
-          )?.__zcodeLexicalInputE2E;
+          )?.__codezLexicalInputE2E;
           return (
             bridge?.getText() === expectedText &&
             pane?.querySelector(
@@ -579,10 +579,10 @@ async function expectComposerText(paneTestId: string, text: string): Promise<voi
             (
               input as
                 | (HTMLElement & {
-                    __zcodeLexicalInputE2E?: { getText: () => string };
+                    __codezLexicalInputE2E?: { getText: () => string };
                   })
                 | undefined
-            )?.__zcodeLexicalInputE2E?.getText() === expectedText
+            )?.__codezLexicalInputE2E?.getText() === expectedText
           );
         },
         paneTestId,
@@ -660,7 +660,7 @@ async function waitForSelectionSidePaneContaining(
  * 斜杠面板依赖真实键入（programmatic setText 不触发）。
  * 修复原因：
  * 1. WebDriver click 落在 composer 包装层不保证把焦点交给 Lexical 编辑器；
- * 2. `__zcodeLexicalInputE2E` bridge 按共享 testid 单点挂载，多 composer 长流程后
+ * 2. `__codezLexicalInputE2E` bridge 按共享 testid 单点挂载，多 composer 长流程后
  *    可能从当前输入框脱落。因此这里不依赖 bridge：直接对 contenteditable 原生
  *    focus + 光标置末，键入后用 textContent 校验，失败重试。
  */

@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MarkdownImage } from "@/components/ai-elements/markdown-image.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 let optionalServices: {
   fileService: {
@@ -22,7 +22,7 @@ vi.mock("@/hooks/useServices.js", () => ({
 function renderMarkdownImage(src: string, workspacePath?: string) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(MarkdownImage, { alt: "示例图", src, workspacePath }),
     ),
@@ -65,7 +65,7 @@ describe("MarkdownImage loading state", () => {
 
     view.rerender(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(MarkdownImage, {
           alt: "示例图",

@@ -11,7 +11,7 @@ describe("buildSlashApplyMentionPayload", () => {
       label: "$code-review",
       description: "Workspace · review code",
       data: {
-        path: "/repo/.zcode/skills/code-review/SKILL.md",
+        path: "/repo/.codez/skills/code-review/SKILL.md",
         scope: "workspace",
       },
     };
@@ -23,10 +23,10 @@ describe("buildSlashApplyMentionPayload", () => {
       category: "skills",
       label: "code-review",
       value: "code-review",
-      markdown: "[$code-review](/repo/.zcode/skills/code-review/SKILL.md)",
+      markdown: "[$code-review](/repo/.codez/skills/code-review/SKILL.md)",
       description: "Workspace · review code",
       data: {
-        path: "/repo/.zcode/skills/code-review/SKILL.md",
+        path: "/repo/.codez/skills/code-review/SKILL.md",
         scope: "workspace",
       },
     });

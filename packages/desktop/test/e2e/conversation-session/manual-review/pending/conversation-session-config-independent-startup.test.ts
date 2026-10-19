@@ -5,7 +5,7 @@ import {
   TID_V4_SESSION_PANE,
   TID_V4_COMPOSER_INPUT,
   TID_V4_COMPOSER_SEND,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,
@@ -37,7 +37,7 @@ interface Timing {
   userVisibleAt?: number;
 }
 
-// SCB01/02：配置网关在 beforeSession 就保持 pending，不启用 ZCODE_OFFPEAK_MOCK。
+// SCB01/02：配置网关在 beforeSession 就保持 pending，不启用 CODEZ_OFFPEAK_MOCK。
 // 必须在网关一个配置响应都没返回的条件下证明真实 Enter -> 接纳投影 -> HTTP dispatch。
 describe("配置等待与普通聊天隔离", () => {
   after(async () => {
@@ -47,7 +47,7 @@ describe("配置等待与普通聊天隔离", () => {
 
   it("SCB01/02: 冷 draft、续发与重启冷恢复都能在配置 pending 时发送", async function () {
     this.timeout(240_000);
-    expect(process.env.ZCODE_OFFPEAK_MOCK).not.toBe("1");
+    expect(process.env.CODEZ_OFFPEAK_MOCK).not.toBe("1");
     await prepareV4ConversationE2E();
     const evidence: unknown[] = [];
     let sessionId = "";
@@ -109,7 +109,7 @@ describe("配置等待与普通聊天隔离", () => {
         expect(tools).toContain("OffPeakList");
       }
     } finally {
-      const root = join(getE2EAppDataPaths().homeDir, "ZCodeProject", ".zcode-e2e", CASE_NAME);
+      const root = join(getE2EAppDataPaths().homeDir, "CodezProject", ".codez-e2e", CASE_NAME);
       await mkdir(root, { recursive: true });
       await writeFile(join(root, "timing.json"), JSON.stringify(evidence, null, 2));
       console.log("SCB_TIMING", JSON.stringify(evidence));
@@ -122,7 +122,7 @@ async function configStatus(): Promise<{
   configRequests: number;
   configResponses: number;
 }> {
-  const origin = process.env.ZCODE_TEST_BASE_URL;
+  const origin = process.env.CODEZ_TEST_BASE_URL;
   if (!origin) throw new Error("缺少 case-local 配置网关");
   return await (await fetch(new URL("/__scb/status", origin))).json();
 }

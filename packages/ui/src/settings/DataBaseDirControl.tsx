@@ -1,15 +1,15 @@
 import { FolderOpen, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { isDataBaseDirForbiddenWindowsInstallDirError } from "@zcode/shared";
+import { isDataBaseDirForbiddenWindowsInstallDirError } from "@codez/shared";
 import {
   TID_SETTINGS_DATA_BASE_DIR_BROWSE,
   TID_SETTINGS_DATA_BASE_DIR_INPUT,
   TID_SETTINGS_DATA_BASE_DIR_SAVE,
   TID_SETTINGS_DATA_BASE_DIR_STATUS,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 export function DataBaseDirControl({
   dataBaseDir,
@@ -22,7 +22,7 @@ export function DataBaseDirControl({
   onDataBaseDirChange: (dir: string) => Promise<void>;
   onSelectDataBaseDir: () => Promise<string | null>;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const effectiveDir = dataBaseDir || defaultHomeDir;
   const [localDataBaseDir, setLocalDataBaseDir] = useState(effectiveDir);
   const [isPickingDataBaseDir, setIsPickingDataBaseDir] = useState(false);

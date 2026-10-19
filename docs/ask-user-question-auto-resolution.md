@@ -199,5 +199,5 @@ hiddenGrace ── 首次有效操作 ──> snoozed
 
 GUI 候选位于
 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-auto-resolution-setting.test.ts`。
-它只允许在 `ZCODE_ENV=test` 下使用 `ZCODE_E2E_ASK_USER_QUESTION_CLOCK_SCALE=20`
+它只允许在 `CODEZ_ENV=test` 下使用 `CODEZ_E2E_ASK_USER_QUESTION_CLOCK_SCALE=20`
 缩放 runtime 的 60 秒/300 秒窗口；生产环境忽略该注入。候选在人工确认前不晋级正式 E2E。

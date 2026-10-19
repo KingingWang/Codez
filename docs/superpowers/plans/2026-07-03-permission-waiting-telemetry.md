@@ -54,7 +54,7 @@ expect(completion.eventExtraDetail).toMatchObject({
 **Files:**
 - Modify: `packages/ui/src/hooks/taskStreamEventHandlers.ts`
 - Modify: `packages/ui/src/hooks/useChatTaskControlActions.ts`
-- Modify: `packages/ui/src/lib/zcodeTaskRuntimeMonitor.ts`
+- Modify: `packages/ui/src/lib/codezTaskRuntimeMonitor.ts`
 - Test: relevant UI handler/runtime monitor tests when needed
 
 - [x] Register permission requests with their full stream event.

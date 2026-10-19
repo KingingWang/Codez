@@ -39,7 +39,7 @@ export function preparePluginSandboxSession(input: {
   );
   // 稳定 origin 不能授予跨实例资源访问；以 Electron 提供的实际 guest 与路径登记交叉验证。
   session.webRequest.onBeforeRequest(
-    { urls: ["zcode-sandbox://*/*", "https://*/*"] },
+    { urls: ["codez-sandbox://*/*", "https://*/*"] },
     (details, callback) => {
       const target = parsePluginSandboxUrl(details.url);
       const guest =

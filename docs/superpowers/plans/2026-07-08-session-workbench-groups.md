@@ -189,7 +189,7 @@ Expected: FAIL because the module does not exist.
 
 - [ ] **Step 3: Implement pure model and store**
 
-Implement `WorkbenchGroup` with `primaryBinding`, `root`, `panes`, `focusedPaneId`, `updatedAt`. Persist to `zcode-v4-session-workbench-groups:v1`. Sanitize restored groups by requiring at least two valid bound sessions; otherwise drop the group and session index.
+Implement `WorkbenchGroup` with `primaryBinding`, `root`, `panes`, `focusedPaneId`, `updatedAt`. Persist to `codez-v4-session-workbench-groups:v1`. Sanitize restored groups by requiring at least two valid bound sessions; otherwise drop the group and session index.
 
 Use Chinese comments only where the group GC or restore logic would otherwise be easy to misread.
 
@@ -266,7 +266,7 @@ Expected: PASS.
 
 ```ts
 type WorkbenchSessionDragPayload = {
-  kind: "zcode/session";
+  kind: "codez/session";
   sessionId: string;
   workspacePath: string;
   workspaceIdentity?: string;

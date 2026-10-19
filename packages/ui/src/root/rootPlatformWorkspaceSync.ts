@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { IPlatformService, WebRemoteControlWorkspaceTarget } from "@zcode/shared";
+import type { IPlatformService, WebRemoteControlWorkspaceTarget } from "@codez/shared";
 import { isWorkspaceTab, type WindowTabState } from "@/store/tabStore.js";
 
 export function buildWebRemoteControlWorkspaceTargets({

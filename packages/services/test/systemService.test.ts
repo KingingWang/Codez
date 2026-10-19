@@ -246,7 +246,7 @@ describe("systemService", () => {
       ) => Promise<{ latencyMs: number; marker?: string }>>()
       .mockResolvedValueOnce({
         latencyMs: 19,
-        marker: "zcode-intranet-lab",
+        marker: "codez-intranet-lab",
       });
     const service = createSystemService({
       serviceProbe,
@@ -258,7 +258,7 @@ describe("systemService", () => {
         {
           kind: "service",
           url: PROBE_SERVICE_URL,
-          expectedMarker: "zcode-intranet-lab",
+          expectedMarker: "codez-intranet-lab",
         },
       ],
     });
@@ -283,7 +283,7 @@ describe("systemService", () => {
         reachable: true,
         attemptCount: 1,
         latencyMs: 19,
-        marker: "zcode-intranet-lab",
+        marker: "codez-intranet-lab",
       },
     ]);
   });

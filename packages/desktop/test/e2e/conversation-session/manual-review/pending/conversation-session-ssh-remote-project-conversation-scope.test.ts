@@ -2,7 +2,7 @@ import {
   TID_COMPOSER_PROJECT_DETACH,
   TID_COMPOSER_WORK_OUTSIDE_PROJECT,
   TID_COMPOSER_WORKSPACE_TRIGGER,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByWebDriver, readSettings } from "#e2e/helpers/desktop-app";
 import {
   connectSSHWorkspace,

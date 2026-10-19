@@ -18,7 +18,7 @@ export default {
     if (!selected.length) return [];
     const manifest = join(
       tmpdir(),
-      `.zcode-lint-staged-vitest-${process.pid}-${randomUUID()}.json`,
+      `.codez-lint-staged-vitest-${process.pid}-${randomUUID()}.json`,
     );
     await writeFile(manifest, JSON.stringify({ mode: "affected", files: selected }));
     return `node scripts/run-lint-staged-vitest.mjs affected --files-manifest ${quote(manifest)}`;

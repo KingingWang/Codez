@@ -7,7 +7,7 @@
 - 恢复旧分区时增加了 `grid gap-3`，却没有约束隐式列的最小宽度。旧代码的普通块布局没有这一行为。TaskTitleOverflowText 的滚动副本因此影响父列宽度，形成“溢出→加副本→撑宽→不溢出→删副本”的布局反馈。
 - 本机真实 renderer 在鼠标移动次数为 0 的对照中，容器宽度一直为 586px，按钮宽度却在 637.695px 与 1237.492px 间交替，标题副本数随之在 0/2 间变化。临时施加单列约束后按钮稳定为 570px；恢复原样后复现。此处不涉及任务行集合或数据库变化。
 - 原 UI 回归覆盖了空项目与少量任务，没有用长标题触发 Grid intrinsic sizing；本次新增隔离 HOME 的 25+25 条长短标题真实 Electron 分页回归。合成任务索引仅服务布局，不创建真实 CLI 历史、不触发 provider 请求。
-- 运行中打开 DevTools 后，agent-browser 每次传 `--cdp` 会选中新的 DevTools target；随后的空侧栏结果无效。改为按 ZCode 标题及 localhost URL 固定 CDP page 后再进行对照，未把目标切换误判为产品卸载。
+- 运行中打开 DevTools 后，agent-browser 每次传 `--cdp` 会选中新的 DevTools target；随后的空侧栏结果无效。改为按 Codez 标题及 localhost URL 固定 CDP page 后再进行对照，未把目标切换误判为产品卸载。
 
 ## 验证
 

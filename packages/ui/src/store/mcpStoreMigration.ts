@@ -1,4 +1,4 @@
-import type { McpServerConfig, NativeMcpServerRecord } from "@zcode/shared";
+import type { McpServerConfig, NativeMcpServerRecord } from "@codez/shared";
 import { logger } from "@/logger.js";
 import {
   fetchNativeMcpServers,
@@ -16,15 +16,15 @@ interface CommonMcpMigrationResult extends MigrateLegacyResult {
   changed: boolean;
 }
 
-function isZCodeAgentUserServer(server: NativeMcpServerRecord): boolean {
+function isCodezAgentUserServer(server: NativeMcpServerRecord): boolean {
   return (
-    server.source === "zcodeagentmcp" &&
+    server.source === "codezagentmcp" &&
     server.scope === "user" &&
-    (!server.location || server.location.source === "zcode")
+    (!server.location || server.location.source === "codez")
   );
 }
 
-export async function importLegacyCommonServersToZCodeAgent(
+export async function importLegacyCommonServersToCodezAgent(
   platform: McpPlatformService | null,
   legacyServers: Record<string, McpServerConfig>,
   nativeServers: NativeMcpServerRecord[],
@@ -44,7 +44,7 @@ export async function importLegacyCommonServersToZCodeAgent(
   }
 
   const existingNames = new Set(
-    nativeServers.filter(isZCodeAgentUserServer).map((server) => server.name),
+    nativeServers.filter(isCodezAgentUserServer).map((server) => server.name),
   );
   let importedCount = 0;
   let skippedCount = 0;
@@ -58,7 +58,7 @@ export async function importLegacyCommonServersToZCodeAgent(
     try {
       const persisted = await persistCliMcpToUserDirectory(platform, {
         action: "upsert",
-        source: "zcodeagentmcp",
+        source: "codezagentmcp",
         name,
         config,
       });
@@ -98,7 +98,7 @@ export async function importLegacyCommonServersToZCodeAgent(
   };
 }
 
-export async function migrateStoredCommonMcpToZCodeAgent(
+export async function migrateStoredCommonMcpToCodezAgent(
   platform: McpPlatformService | null,
   nativeServers: NativeMcpServerRecord[],
   workspacePath?: string,
@@ -109,14 +109,14 @@ export async function migrateStoredCommonMcpToZCodeAgent(
   }
 
   // 旧通用 MCP 保存在 localStorage，不迁移就直接去掉 common 读取会让用户配置从设置页和运行时消失。
-  const migration = await importLegacyCommonServersToZCodeAgent(
+  const migration = await importLegacyCommonServersToCodezAgent(
     platform,
     legacyServers,
     nativeServers,
-    "localStorage:zcode-mcp-config",
+    "localStorage:codez-mcp-config",
   );
   if (migration.completed) {
-    // 只有确认写入 zcode agent 目录后才清理旧数据，避免 Web 端没有 desktop bridge 时丢配置。
+    // 只有确认写入 codez agent 目录后才清理旧数据，避免 Web 端没有 desktop bridge 时丢配置。
     clearLegacyCommonMcpServers();
   }
   if (!migration.changed) {
@@ -124,7 +124,7 @@ export async function migrateStoredCommonMcpToZCodeAgent(
   }
 
   logger.info(
-    `[mcpStore] migrated ${migration.importedCount} legacy common MCP servers to zcode agent config`,
+    `[mcpStore] migrated ${migration.importedCount} legacy common MCP servers to codez agent config`,
   );
   return fetchNativeMcpServers(platform, { workspacePath });
 }

@@ -5,8 +5,8 @@
 //   17:26:44.395 [cua-product-helper] cua helper ready
 //                → reconcileRecoveredHelper → recycleUntilStable → disposeWorkspace
 //   17:26:44.719 在途 subscribe 被 transport.onClose 的 rejectAll 打断：
-//                Error: ZCode agent transport closed
-//   17:26:44.96  ZCode agent process exited terminationReason='workspace-dispose'
+//                Error: Codez agent transport closed
+//   17:26:44.96  Codez agent process exited terminationReason='workspace-dispose'
 //
 // 修复前 store 的两处缺陷让面板永久卡死（SessionPane 的 errored 分支整块替换成红字+重连按钮）：
 //   1. constructor 无条件只订阅 onRuntimeRestart。但 transport.ts 已写明：dispose 当场只有
@@ -15,16 +15,16 @@
 //   2. connect() 的 catch 除 initialFrameStagingOverflow 外一律定格 status="error"，
 //      没有 sessionsIndexStore 那样的有界退避。
 //
-// 自愈成立的前提（zcodeAgentService.ts:5581）：subscribeConversationV4 走
+// 自愈成立的前提（codezAgentService.ts:5581）：subscribeConversationV4 走
 // getReadOnlyClient(params) 默认 start-if-needed，重订阅本身会把 agent 拉起来——这与侧栏
 // subscribeSessionsIndexV4 显式用 existing-only + dormant 的策略差异是故意设计的。
-import { Emitter } from "@zcode/rpc";
-import type { CommandEnvelope, ConversationTopicWireFrame } from "@zcode/shared/zcode-protocol-v4";
+import { Emitter } from "@codez/rpc";
+import type { CommandEnvelope, ConversationTopicWireFrame } from "@codez/shared/codez-protocol-v4";
 import {
-  createZCodeAgentConnectionScope,
-  readTrustedZCodeAgentV4Connection,
-  type IZCodeAgentService,
-} from "@zcode/services";
+  createCodezAgentConnectionScope,
+  readTrustedCodezAgentV4Connection,
+  type ICodezAgentService,
+} from "@codez/services";
 import { describe, expect, it, vi } from "vitest";
 import { createAgentConversationTransport } from "@/v4/agentConversationTransport.js";
 import { ConversationProjectionStore } from "@/v4/conversationProjectionStore.js";
@@ -55,8 +55,8 @@ function lifecycleEvent(state: "available" | "unavailable", generation: number):
   };
 }
 
-/** workspace-dispose 打断在途 subscribe 时，ZCodeProtocolClient.rejectAll 抛出的真实文案。 */
-const TRANSPORT_CLOSED = "ZCode agent transport closed";
+/** workspace-dispose 打断在途 subscribe 时，CodezProtocolClient.rejectAll 抛出的真实文案。 */
+const TRANSPORT_CLOSED = "Codez agent transport closed";
 
 /** 与实现的 RUNTIME_RECYCLE_RETRY_DELAYS_MS 长度一致（250/1000/3000ms）。 */
 const RUNTIME_RECYCLE_RETRY_ATTEMPTS = 3;
@@ -67,7 +67,7 @@ function setupBase(options: { withLifecycle?: boolean } = {}) {
   const runtimeLifecycle = new Emitter<LifecycleEvent>();
   const nextSerialByConnection = new Map<string, number>();
   const nextId = (params: unknown) => {
-    const connection = readTrustedZCodeAgentV4Connection(params);
+    const connection = readTrustedCodezAgentV4Connection(params);
     if (!connection) throw new Error("missing trusted connection");
     const serial = (nextSerialByConnection.get(connection.connectionId) ?? 0) + 1;
     nextSerialByConnection.set(connection.connectionId, serial);
@@ -116,7 +116,7 @@ function setupBase(options: { withLifecycle?: boolean } = {}) {
       : {}),
   };
   return {
-    base: mocks as unknown as IZCodeAgentService,
+    base: mocks as unknown as ICodezAgentService,
     mocks,
     runtimeLifecycle,
     runtimeRestarts,
@@ -125,11 +125,11 @@ function setupBase(options: { withLifecycle?: boolean } = {}) {
 }
 
 function createStore(
-  base: IZCodeAgentService,
+  base: ICodezAgentService,
   connectionId: string,
   clientMode: "desktop-continuous" | "web-remote-replayable" = "desktop-continuous",
 ) {
-  const scope = createZCodeAgentConnectionScope(base, {
+  const scope = createCodezAgentConnectionScope(base, {
     connectionId,
     clientMode,
   });
@@ -299,7 +299,7 @@ describe("conversation projection 在 CUA Helper 回收 agent runtime 后自愈"
   // 退订旧 proxy 上的订阅，store 却停在 live + 旧 subscriptionId，帧流静默中断且不自愈。
   it("lifecycle 模式下仍接收 proxy 换代（transportReplaced），携原水位重订阅", async () => {
     const { base, mocks } = setupBase({ withLifecycle: true });
-    const scope = createZCodeAgentConnectionScope(base, {
+    const scope = createCodezAgentConnectionScope(base, {
       connectionId: "conn-proxy-1",
       clientMode: "desktop-continuous",
     });
@@ -315,7 +315,7 @@ describe("conversation projection 在 CUA Helper 回收 agent runtime 后自愈"
     expect(mocks.subscribeConversationV4).toHaveBeenCalledTimes(1);
 
     // activateRemoteService() → replace()：新 proxy 接管，旧订阅已被退订。
-    const nextScope = createZCodeAgentConnectionScope(base, {
+    const nextScope = createCodezAgentConnectionScope(base, {
       connectionId: "conn-proxy-2",
       clientMode: "desktop-continuous",
     });
@@ -355,7 +355,7 @@ describe("conversation projection 在 CUA Helper 回收 agent runtime 后自愈"
       const { store } = createStore(base, "conn-retry");
 
       await store.connect();
-      // 修复前：这里已是 status="error" + lastError="ZCode agent transport closed"，
+      // 修复前：这里已是 status="error" + lastError="Codez agent transport closed"，
       // 且没有任何 timer——面板从此只能靠用户点「重新连接」。
       expect(store.getState().status).not.toBe("error");
       expect(mocks.subscribeConversationV4).toHaveBeenCalledTimes(1);

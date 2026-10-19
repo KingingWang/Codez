@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
-import { ServiceChannels } from "@zcode/shared";
-import { TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
-import type { WindowHostControllerTaskListResult } from "@zcode/services";
+import { ServiceChannels } from "@codez/shared";
+import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
+import type { WindowHostControllerTaskListResult } from "@codez/services";
 import { releaseControlledReplay } from "#e2e/helpers/controlled-replay";
 import {
   holdProjectUnread,
@@ -57,7 +57,7 @@ const SIBLING_PROMPT = "E2E_SSH_NEW_PROJECT_SIDEBAR_SIBLING";
 const SIBLING_REPLY = "SSH_NEW_PROJECT_SIBLING_DONE";
 const NAVIGATION_PROMPT = "E2E_SSH_NEW_PROJECT_SIDEBAR_NAVIGATION";
 const NAVIGATION_REPLY = "SSH_NEW_PROJECT_NAVIGATION_DONE";
-const OUTPUT_PATH = ".zcode-e2e/ssh-new-project-sidebar/output.txt";
+const OUTPUT_PATH = ".codez-e2e/ssh-new-project-sidebar/output.txt";
 interface SidebarState {
   exists: boolean;
   running: boolean;
@@ -98,7 +98,7 @@ async function waitForSidebarState(taskId: string, expected: Omit<SidebarState, 
   } catch (cause) {
     const navigation = await browser.execute(() => {
       const target = window as Window & {
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState(): {
             activeTabId?: string;
             activeWorkspaceIdentity?: string;
@@ -111,15 +111,15 @@ async function waitForSidebarState(taskId: string, expected: Omit<SidebarState, 
             }>;
           };
         };
-        __zcodeSessionStoreE2E?: {
+        __codezSessionStoreE2E?: {
           getState(): {
             workspaces?: Record<string, { activeTaskId?: string }>;
             taskNavHistory?: unknown;
           };
         };
       };
-      const tabs = target.__zcodeTabStoreE2E?.getState();
-      const state = target.__zcodeSessionStoreE2E?.getState();
+      const tabs = target.__codezTabStoreE2E?.getState();
+      const state = target.__codezSessionStoreE2E?.getState();
       const tab = tabs?.tabs?.find((item) => item.id === tabs.activeTabId);
       return {
         activeTab: tab
@@ -139,9 +139,9 @@ async function waitForSidebarState(taskId: string, expected: Omit<SidebarState, 
         taskNavHistory: state?.taskNavHistory,
       };
     });
-    if (process.env.ZCODE_E2E_ARTIFACT_DIR) {
+    if (process.env.CODEZ_E2E_ARTIFACT_DIR) {
       await writeFile(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR, "sidebar-failure-state.json"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR, "sidebar-failure-state.json"),
         JSON.stringify({ taskId, expected, latest, navigation }, null, 2),
       );
       await saveStateScreenshot("sidebar-state-failure");
@@ -310,11 +310,11 @@ describe(`${CASE_MARKER}: 新建远程项目首次任务的侧栏实时状态`, 
     ).not.toBe(tab.workspaceIdentity);
     const cachedTask = await browser.execute((identity) => {
       const target = window as Window & {
-        __zcodeSessionStoreE2E?: {
+        __codezSessionStoreE2E?: {
           getState(): { workspaces: Record<string, { activeTaskId: string | null }> };
         };
       };
-      return target.__zcodeSessionStoreE2E?.getState().workspaces[identity]?.activeTaskId;
+      return target.__codezSessionStoreE2E?.getState().workspaces[identity]?.activeTaskId;
     }, tab.workspaceIdentity);
     expect(cachedTask).toBe(taskId);
     await holdProjectUnread(taskId, tab.workspaceIdentity);
@@ -352,8 +352,8 @@ describe(`${CASE_MARKER}: 新建远程项目首次任务的侧栏实时状态`, 
   });
 });
 async function saveStateScreenshot(name: string) {
-  if (process.env.ZCODE_E2E_ARTIFACT_DIR)
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR, `${name}.png`));
+  if (process.env.CODEZ_E2E_ARTIFACT_DIR)
+    await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR, `${name}.png`));
 }
 /** 390px 是桌面 renderer 窄屏视觉证据，不冒充手机 replayable 路径。 */
 async function captureRemoteProjectThemes() {

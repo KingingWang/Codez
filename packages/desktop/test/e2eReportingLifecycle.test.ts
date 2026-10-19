@@ -13,7 +13,7 @@ import type {
 const createdDirs: string[] = [];
 
 async function createArtifactsDir(): Promise<string> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "zcode-e2e-reporting-lifecycle-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "codez-e2e-reporting-lifecycle-"));
   createdDirs.push(dir);
   return dir;
 }
@@ -28,11 +28,11 @@ describe("desktop e2e reporting lifecycle", () => {
   it("compacts completed process coverage after each case instead of waiting for worker exit", async () => {
     const artifactsDir = await createArtifactsDir();
     const previous = {
-      coverage: process.env.ZCODE_E2E_COVERAGE,
-      artifacts: process.env.ZCODE_E2E_ARTIFACT_DIR,
+      coverage: process.env.CODEZ_E2E_COVERAGE,
+      artifacts: process.env.CODEZ_E2E_ARTIFACT_DIR,
     };
-    process.env.ZCODE_E2E_COVERAGE = "1";
-    process.env.ZCODE_E2E_ARTIFACT_DIR = artifactsDir;
+    process.env.CODEZ_E2E_COVERAGE = "1";
+    process.env.CODEZ_E2E_ARTIFACT_DIR = artifactsDir;
     try {
       const reporter = createE2EReporter({
         containerE2E: false,
@@ -45,7 +45,7 @@ describe("desktop e2e reporting lifecycle", () => {
       await writeFile(rawFile, JSON.stringify({ result: [] }));
       reporter.recordTestResult({ title: "case after reload" }, { duration: 1, passed: true });
       const raw = JSON.parse(await readFile(rawFile, "utf8"));
-      expect(raw["zcode-e2e-normalized-source-map-root"]).toBe(
+      expect(raw["codez-e2e-normalized-source-map-root"]).toBe(
         path.join(artifactsDir, "out", "main").replaceAll("\\", "/"),
       );
       expect(raw.result).toEqual([]);
@@ -55,8 +55,8 @@ describe("desktop e2e reporting lifecycle", () => {
       expect(result.passed).toBe(true);
     } finally {
       for (const [name, value] of [
-        ["ZCODE_E2E_COVERAGE", previous.coverage],
-        ["ZCODE_E2E_ARTIFACT_DIR", previous.artifacts],
+        ["CODEZ_E2E_COVERAGE", previous.coverage],
+        ["CODEZ_E2E_ARTIFACT_DIR", previous.artifacts],
       ]) {
         if (value === undefined) delete process.env[name!];
         else process.env[name!] = value;
@@ -66,7 +66,7 @@ describe("desktop e2e reporting lifecycle", () => {
 
   it("appends lifecycle ndjson and aggregates by phase", async () => {
     const artifactsDir = await createArtifactsDir();
-    process.env.ZCODE_E2E_ARTIFACT_DIR = artifactsDir;
+    process.env.CODEZ_E2E_ARTIFACT_DIR = artifactsDir;
     const reporter = createE2EReporter({
       containerE2E: false,
       desktopDir: artifactsDir,
@@ -151,7 +151,7 @@ describe("desktop e2e reporting lifecycle", () => {
 
   it("keeps lifecycle events even when summary is never written", async () => {
     const artifactsDir = await createArtifactsDir();
-    process.env.ZCODE_E2E_ARTIFACT_DIR = artifactsDir;
+    process.env.CODEZ_E2E_ARTIFACT_DIR = artifactsDir;
     const reporter = createE2EReporter({
       containerE2E: false,
       desktopDir: artifactsDir,
@@ -190,7 +190,7 @@ describe("desktop e2e reporting lifecycle", () => {
 
   it("records bounded failure-artifact collection errors without replacing the test result", async () => {
     const artifactsDir = await createArtifactsDir();
-    process.env.ZCODE_E2E_ARTIFACT_DIR = artifactsDir;
+    process.env.CODEZ_E2E_ARTIFACT_DIR = artifactsDir;
     const reporter = createE2EReporter({
       containerE2E: false,
       desktopDir: artifactsDir,

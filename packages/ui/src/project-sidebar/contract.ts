@@ -1,4 +1,4 @@
-import type { Locale, RemoteTarget, UserInfo } from "@zcode/shared";
+import type { Locale, RemoteTarget, UserInfo } from "@codez/shared";
 import type { LucideIcon } from "lucide-react";
 import type {
   AppProps,
@@ -7,8 +7,8 @@ import type {
 } from "@/app-shell/types.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import type { Theme } from "@/useTheme.js";
-export { LEGACY_SINGLE_ROOT_PROJECT_PREFIX } from "@zcode/services";
-export type { WebRemoteControlMobileTaskView, WebRemoteControlStatus } from "@zcode/shared";
+export { LEGACY_SINGLE_ROOT_PROJECT_PREFIX } from "@codez/services";
+export type { WebRemoteControlMobileTaskView, WebRemoteControlStatus } from "@codez/shared";
 export interface ProjectDevice {
   id: string;
   label: string;
@@ -30,11 +30,11 @@ export {
   buildRemoteWorkspaceIdentity,
   buildServerRemoteWorkspaceIdentity,
   remoteHostIdFromWorkspaceIdentity,
-} from "@zcode/shared";
+} from "@codez/shared";
 export type {
   WindowHostTaskAddress,
   WindowHostControllerTaskActivity,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 export type {
   TaskGroup,
   TaskGroupColor,
@@ -49,7 +49,7 @@ export type {
   SaveProjectInput,
   IProjectService,
   IWindowControllerService,
-  IZCodeTaskService,
+  ICodezTaskService,
   WindowHostControllerMutation,
   WindowHostControllerFrame,
   WindowHostTaskUnreadSignal,
@@ -57,7 +57,7 @@ export type {
   RemoteProjectDirectory,
   RemoteProjectEntry,
   RemoteProjectHost,
-} from "@zcode/services";
+} from "@codez/services";
 export interface ProjectAvailability {
   entryId?: string;
   online: boolean;

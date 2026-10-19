@@ -1,12 +1,12 @@
-# zcode-cli 默认思考强度族补全 Implementation Plan
+# codez-cli 默认思考强度族补全 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 让 zcode-cli 在 dynamic provider model 缺少 reasoning metadata 时，为 Qwen、Kimi、MiMo 补默认思考强度能力。
+**Goal:** 让 codez-cli 在 dynamic provider model 缺少 reasoning metadata 时，为 Qwen、Kimi、MiMo 补默认思考强度能力。
 
-**Architecture:** 只修改 zcode-cli bootstrap 的 workspace model catalog overlay。默认 reasoning 仍由 agent catalog override 承载，App/UI 不参与本次推断。
+**Architecture:** 只修改 codez-cli bootstrap 的 workspace model catalog overlay。默认 reasoning 仍由 agent catalog override 承载，App/UI 不参与本次推断。
 
-**Tech Stack:** TypeScript, Vitest, zcode protocol dynamic provider catalog overlay.
+**Tech Stack:** TypeScript, Vitest, codez protocol dynamic provider catalog overlay.
 
 ## Global Constraints
 
@@ -21,7 +21,7 @@
 ### Task 1: Add failing dynamic provider default reasoning tests
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
 
 **Interfaces:**
 - Consumes: `workspaceUpsertModelProvider` protocol method.
@@ -53,18 +53,18 @@ it("synthesizes Anthropic MiMo thinking toggle defaults for dynamic providers wi
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap test -- tests/zcode-protocol.test.ts
+pnpm --filter @codez/bootstrap test -- tests/codez-protocol.test.ts
 ```
 
 Expected: new tests fail because catalog overrides do not contain reasoning for Qwen/Kimi/MiMo without metadata.
 
-### Task 2: Implement zcode-cli default reasoning families
+### Task 2: Implement codez-cli default reasoning families
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts`
 
 **Interfaces:**
-- Consumes: `ZCodeModelProviderConfig`, `ZCodeModelProviderModel`.
+- Consumes: `CodezModelProviderConfig`, `CodezModelProviderModel`.
 - Produces: `createDynamicProviderDefaultReasoning(provider, model)`.
 
 - [ ] **Step 1: Update helper signature**
@@ -108,10 +108,10 @@ For OpenAI-compatible providers, return Qwen `enable_thinking` defaults before t
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap test -- tests/zcode-protocol.test.ts
+pnpm --filter @codez/bootstrap test -- tests/codez-protocol.test.ts
 ```
 
-Expected: all `zcode-protocol.test.ts` tests pass.
+Expected: all `codez-protocol.test.ts` tests pass.
 
 ### Task 3: Verify repository constraints and commit
 
@@ -137,6 +137,6 @@ Expected: both commands pass.
 Run:
 
 ```bash
-git add docs/superpowers/specs/2026-06-29-zcode-cli-default-reasoning-families-design.md docs/superpowers/plans/2026-06-29-zcode-cli-default-reasoning-families.md apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts
+git add docs/superpowers/specs/2026-06-29-codez-cli-default-reasoning-families-design.md docs/superpowers/plans/2026-06-29-codez-cli-default-reasoning-families.md apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts
 git commit -m "feat: infer dynamic provider reasoning defaults"
 ```

@@ -1,11 +1,11 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { FeedbackTicketDetail } from "@zcode/shared";
-import type { IFeedbackService } from "@zcode/services";
+import type { FeedbackTicketDetail } from "@codez/shared";
+import type { IFeedbackService } from "@codez/services";
 
 import { FeedbackProcessView } from "@/feedback/FeedbackProcessView.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 function createTicket(): FeedbackTicketDetail {
   return {
@@ -43,7 +43,7 @@ describe("FeedbackProcessView", () => {
   it("localizes the latest summary in the process header", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(FeedbackProcessView, {
           ticket: createTicket(),

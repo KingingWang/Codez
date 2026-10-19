@@ -3,7 +3,7 @@ import {
   channelContentPartsSchema,
   channelContentText,
   resolveChannelReplyParts,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { readGroupMessage } from "../src/bots/providers/feishuGroupMessages.js";
 describe("trusted channel mention nodes", () => {
   const mentions = [

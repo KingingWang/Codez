@@ -1,7 +1,7 @@
 import { appendFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 const requireAdapter = createRequire(
-  new URL("../../../../../../apps/zcode-cli/packages/adapters/package.json", import.meta.url),
+  new URL("../../../../../../apps/codez-cli/packages/adapters/package.json", import.meta.url),
 );
 const { McpServer } = requireAdapter("@modelcontextprotocol/sdk/server/mcp.js");
 const { StdioServerTransport } = requireAdapter("@modelcontextprotocol/sdk/server/stdio.js");

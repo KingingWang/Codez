@@ -6,16 +6,16 @@
 
 - 支持 marketplace plugin entry 指向 CDN 托管的 `.zip` 插件包，并复用现有安装闭环：
   `installMarketplacePlugin` -> `cacheMarketplacePlugin` -> `resolvePluginSourceRoot` -> 拷贝到
-  `~/.zcode/cli/plugins/cache/{marketplace}/{plugin}/{version}/` -> 写入
+  `~/.codez/cli/plugins/cache/{marketplace}/{plugin}/{version}/` -> 写入
   `installed_plugins.json`。
 - 在 plugin entry 现有 `{ "source": "url" }` 上新增显式 artifact type：
   `{ "source": "url", "type": "zip", ... }`。无 `type` 的 `{ "source": "url" }`
   继续保持 legacy git clone 语义；不要靠 URL 后缀推断 zip。
 - 下载、校验、解压后仍返回 plain directory tree。最终安装产物继续是包含
-  `.zcode-plugin/plugin.json`、`.claude-plugin/plugin.json` 或 `.codex-plugin/plugin.json`
+  `.codez-plugin/plugin.json`、`.claude-plugin/plugin.json` 或 `.codex-plugin/plugin.json`
   的目录，不长期保留 zip archive。
 - 下载链路要对齐现有 marketplace/git 网络出口策略。现有 git 子进程通过
-  `buildMarketplaceGitEnv()` 和 `applyNetworkEgressEnv()` 注入 `ZCODE_HTTP_PROXY` 等显式网络环境；
+  `buildMarketplaceGitEnv()` 和 `applyNetworkEgressEnv()` 注入 `CODEZ_HTTP_PROXY` 等显式网络环境；
   zip 下载应使用同一网络出口语义，而不是绕过代理配置。
 - 保持 Claude Marketplace Git 兼容性。本 Phase 1 原本不改变 `github`、`git`、`url`、
   `git-subdir`；后续 [公开 GitHub 插件源无 Git安装规格](./plugin-github-archive-source.md)
@@ -45,7 +45,7 @@
   "source": {
     "source": "url",
     "type": "zip",
-    "url": "https://cdn.example.com/zcode/plugins/cdn-plugin-1.2.3.zip",
+    "url": "https://cdn.example.com/codez/plugins/cdn-plugin-1.2.3.zip",
     "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
     "path": "packages/cdn-plugin",
     "stripRoot": true
@@ -120,7 +120,7 @@
 ```json
 {
   "name": "zcode-plugins-official",
-  "description": "Official ZCode plugins marketplace",
+  "description": "Official Codez plugins marketplace",
   "plugins": [
     {
       "name": "example-plugin",
@@ -128,7 +128,7 @@
       "source": {
         "source": "url",
         "type": "zip",
-        "url": "https://cdn-zcode.z.ai/zcode/official-plugin/plugins/example-plugin/0.1.1/plugin.zip",
+        "url": "https://cdn-zcode.z.ai/codez/official-plugin/plugins/example-plugin/0.1.1/plugin.zip",
         "sha256": "5e93c44a9a3c292d6c59688d76874d9035ff740486390612c5daf13566d4049b",
         "path": "example-plugin"
       }
@@ -137,7 +137,7 @@
 }
 ```
 
-入口 URL 为 `https://cdn-zcode.z.ai/zcode/official-plugin/index.json`。示例中的版本和 digest
+入口 URL 为 `https://cdn-zcode.z.ai/codez/official-plugin/index.json`。示例中的版本和 digest
 仅表示发布时快照；客户端 smoke 测试应从 overview 读取 live 版本，避免 CDN 增量发布造成硬编码漂移。
 
 ## 3. Install pipeline steps
@@ -164,10 +164,10 @@ Phase 1 zip 安装步骤：
    - 其他 `type`：报 unsupported/invalid source。
    - 校验 `url` / `sha256` / `path` / `headers` / `stripRoot` shape。
    - 调用 `resolveZipPluginSource({ url, sha256, path, headers, stripRoot, signal })`。
-4. `resolveZipPluginSource()` 创建临时目录，例如 `mkdtemp(join(tmpdir(), "zcode-plugin-zip-"))`。
+4. `resolveZipPluginSource()` 创建临时目录，例如 `mkdtemp(join(tmpdir(), "codez-plugin-zip-"))`。
 5. 下载 zip 到临时文件或流式写入临时文件：
    - 使用与 marketplace 操作一致的 AbortSignal。
-   - 对齐 `ZCODE_HTTP_PROXY` / `ZCODE_HTTPS_PROXY` / `ZCODE_NO_PROXY` / CA 等网络出口配置。
+   - 对齐 `CODEZ_HTTP_PROXY` / `CODEZ_HTTPS_PROXY` / `CODEZ_NO_PROXY` / CA 等网络出口配置。
    - 记录累计下载字节，超过上限立即 abort 并删除临时目录。
 6. 计算下载内容 SHA-256：
    - 若 entry 提供 `sha256`，实际 digest 必须完全相等。
@@ -186,7 +186,7 @@ Phase 1 zip 安装步骤：
 10. `cacheMarketplacePlugin()` 继续按现有逻辑复制 plain directory 到：
 
 ```text
-~/.zcode/cli/plugins/cache/{marketplace}/{plugin}/{version}/
+~/.codez/cli/plugins/cache/{marketplace}/{plugin}/{version}/
 ```
 
 11. cache 复制成功后的 source cleanup 是 best-effort；cleanup failure 不得阻断安装记录构造和
@@ -211,10 +211,10 @@ Phase 1 zip 安装步骤：
 
 ### Network egress
 
-- ZIP 下载必须使用 adapters 的 web-fetch 网络出口语义：显式 `ZCODE_HTTP_PROXY` / `ZCODE_NO_PROXY`
-  优先，并回退读取 `ZCODE_TOOL_ENV_PASSTHROUGH_JSON` 中封存的用户 `HTTP_PROXY` / `HTTPS_PROXY` /
+- ZIP 下载必须使用 adapters 的 web-fetch 网络出口语义：显式 `CODEZ_HTTP_PROXY` / `CODEZ_NO_PROXY`
+  优先，并回退读取 `CODEZ_TOOL_ENV_PASSTHROUGH_JSON` 中封存的用户 `HTTP_PROXY` / `HTTPS_PROXY` /
   `NO_PROXY`。
-- 不能直接使用只识别显式 ZCode proxy 的默认 HTTP resolver；否则 agent 清理标准代理变量后，git source
+- 不能直接使用只识别显式 Codez proxy 的默认 HTTP resolver；否则 agent 清理标准代理变量后，git source
   可以安装而 ZIP source 会尝试直连。
 - CA、timeout、下载大小限制和 AbortSignal 继续由共享 HTTP adapter 处理，不在 plugin 层重复实现。
 
@@ -258,17 +258,17 @@ const ZIP_MAX_SINGLE_FILE_BYTES = 50 * 1024 * 1024;
 ### Network / proxy
 
 - 现有 git clone 使用 `execGitCommand()`，其 env 来自 `buildMarketplaceGitEnv()` ->
-  `sanitizeZCodeRuntimeEnv()` -> `applyNetworkEgressEnv()`。
+  `sanitizeCodezRuntimeEnv()` -> `applyNetworkEgressEnv()`。
 - zip 下载不走 git 子进程，不能自然继承这套 env；实现应新增一个 fetch dispatcher/proxy-agent
   适配点，或抽出共享 network egress helper，让 HTTP zip download 与 marketplace/git 网络策略一致。
-- `@zcode/adapters` 已依赖 `proxy-agent`，可优先用它构造 Node fetch dispatcher；具体 API 需要 coding
+- `@codez/adapters` 已依赖 `proxy-agent`，可优先用它构造 Node fetch dispatcher；具体 API 需要 coding
   阶段按当前 Node/undici 类型验证，不在 spec 中假设不存在的调用签名。
 
 ## 5. Update detection changes
 
 当前更新检测事实：
 
-- `apps/zcode-cli/packages/bootstrap/src/plugins.ts` 构建 `latestPinByPluginId` 时读取
+- `apps/codez-cli/packages/bootstrap/src/plugins.ts` 构建 `latestPinByPluginId` 时读取
   `entry.version` 和 `readPluginSourceSha(entry.source)`。
 - `comparePluginUpdate()` 的优先级是：
   1. latest version 存在 -> semver/version compare；
@@ -311,39 +311,39 @@ Phase 1 为最小改动，也可以扩展现有 `readPluginSourceSha()`：
 - `docs/claude-code-marketplace-plugin-compat.md`
   - 在 plugin entry source 矩阵新增 `{source:"url", type:"zip"}`。
   - 明确无 `type` 的 `{source:"url"}` 仍是 git clone 兼容路径，不代表 HTTP zip。
-- `apps/zcode-cli/packages/adapters/package.json`
-  - `@zcode/adapters` 当前没有 `yauzl`；若采用 yauzl，需要在 adapters 自己声明 dependency。
+- `apps/codez-cli/packages/adapters/package.json`
+  - `@codez/adapters` 当前没有 `yauzl`；若采用 yauzl，需要在 adapters 自己声明 dependency。
   - 仓库已有 `yauzl`：`packages/desktop/package.json` 和 `packages/services/package.json` 均依赖
     `yauzl` / `@types/yauzl`，但不能跨 package 隐式使用。
-- `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts`
+- `apps/codez-cli/packages/adapters/src/plugins/marketplace.ts`
   - `PluginMarketplaceEntry.source` 仍是 `unknown`，但 `sourceKind === "url"` 需要按 `source.type` 分发。
   - 新增 `readPluginSourceIdentityPin()` 或扩展/重命名 `readPluginSourceSha()`。
   - `validateMarketplaceEntryShape()` 新增 zip shape 和 integrity diagnostic。
   - `getMarketplaceSourceValidationDeferral()` 可把 zip 也视为 remote plugin source，在 marketplace-level
     validate 时 deferral，避免批量下载数百个 zip。
-- `apps/zcode-cli/packages/adapters/src/plugins/zip-source.ts`（建议新文件）
+- `apps/codez-cli/packages/adapters/src/plugins/zip-source.ts`（建议新文件）
   - `resolveZipPluginSource()`、download、sha256、safe extract、root locate。
   - 保持 marketplace.ts 体积可控。
-- `apps/zcode-cli/packages/adapters/src/plugins/index.ts`
+- `apps/codez-cli/packages/adapters/src/plugins/index.ts`
   - 如新增 public helper 或测试需要导出，更新 barrel。
-- `apps/zcode-cli/packages/adapters/src/network/subprocess-env.ts` 或相邻 network helper
-  - 抽出 HTTP fetch/proxy 对齐逻辑，避免 zip 下载绕过 `ZCODE_HTTP_PROXY` 等网络策略。
-- `apps/zcode-cli/packages/bootstrap/src/plugins.ts`
+- `apps/codez-cli/packages/adapters/src/network/subprocess-env.ts` 或相邻 network helper
+  - 抽出 HTTP fetch/proxy 对齐逻辑，避免 zip 下载绕过 `CODEZ_HTTP_PROXY` 等网络策略。
+- `apps/codez-cli/packages/bootstrap/src/plugins.ts`
   - update overview 的 latest/installed pin 读取从 git sha 扩展到 zip sha256。
-- `apps/zcode-cli/packages/adapters/src/plugins/version-compare.ts`
+- `apps/codez-cli/packages/adapters/src/plugins/version-compare.ts`
   - 如果保留字符串 pin，逻辑可不变但命名/注释要更新；如果区分 pin kind，更新类型和测试。
 
 必须新增/更新测试：
 
-- `apps/zcode-cli/packages/adapters/tests/plugins.test.ts`
-- `apps/zcode-cli/packages/adapters/tests/version-compare.test.ts`
+- `apps/codez-cli/packages/adapters/tests/plugins.test.ts`
+- `apps/codez-cli/packages/adapters/tests/version-compare.test.ts`
 - 如网络/proxy helper 抽出：对应 adapters network 单测。
 
 可能需要修改：
 
 - `pnpm-lock.yaml`
   - adapters 新增 `yauzl` dependency 后会更新。
-- `apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts`
+- `apps/codez-cli/packages/bootstrap/tests/plugins.test.ts`
   - 如果 overview schema 或 helper 语义在 bootstrap 层暴露，需要补覆盖。
 
 不应修改：
@@ -376,8 +376,8 @@ Phase 1 为最小改动，也可以扩展现有 `readPluginSourceSha()`：
 - 支持 AbortSignal：下载中 abort 后清理临时目录。
 - cleanup failure：失败路径保留原始错误并附带 cleanup diagnostic；cache 已复制成功时仍写入
   installed record。
-- 代理配置测试：仅在 `ZCODE_TOOL_ENV_PASSTHROUGH_JSON` 中提供用户 `HTTP_PROXY`，不设置
-  `ZCODE_HTTP_PROXY`，断言 ZIP 请求仍通过本地代理；测试不得访问外网。
+- 代理配置测试：仅在 `CODEZ_TOOL_ENV_PASSTHROUGH_JSON` 中提供用户 `HTTP_PROXY`，不设置
+  `CODEZ_HTTP_PROXY`，断言 ZIP 请求仍通过本地代理；测试不得访问外网。
 - redirect 安全测试：跳转到非 HTTPS、非 loopback URL 时拒绝；跨 origin 跳转时不转发自定义
   `headers`，同 origin 跳转仍可保留普通 header。
 
@@ -428,9 +428,9 @@ cache/{marketplace}/{plugin}/{version}/
 - pending manual-review spec：
   `packages/desktop/test/e2e/plugins/manual-review/pending/plugin-cdn-zip-marketplace-install.test.ts`。
 - WDIO `beforeSession` 在 Electron 启动前启动 loopback zip fixture server，并把 zip marketplace seed 到
-  `<E2E_HOME>/.zcode/cli/plugins/known_marketplaces.json` 与
-  `<E2E_HOME>/.zcode/cli/plugins/marketplaces/{marketplace}/marketplace.json`。
-- spec 通过 renderer `window.__testActions` 调用真实 `zcodeAgentService.installPlugin()`，覆盖
+  `<E2E_HOME>/.codez/cli/plugins/known_marketplaces.json` 与
+  `<E2E_HOME>/.codez/cli/plugins/marketplaces/{marketplace}/marketplace.json`。
+- spec 通过 renderer `window.__testActions` 调用真实 `codezAgentService.installPlugin()`，覆盖
   desktop renderer -> services -> agent protocol -> bootstrap -> adapters 的安装链路。
 - 断言范围：
   - install 前 overview 可见 seeded marketplace 和 zip plugin；
@@ -512,9 +512,9 @@ cache/{marketplace}/{plugin}/{version}/
 ## 10. Implementation task checklist
 
 - [ ] 阅读并保持本 spec 与 `docs/claude-code-marketplace-plugin-compat.md` 一致。
-- [ ] 在 adapters 增加 zip dependency：优先评估 `yauzl`，并在 `apps/zcode-cli/packages/adapters/package.json`
+- [ ] 在 adapters 增加 zip dependency：优先评估 `yauzl`，并在 `apps/codez-cli/packages/adapters/package.json`
   显式声明，不依赖 desktop/services 的 transitive dependency。
-- [ ] 新建 `apps/zcode-cli/packages/adapters/src/plugins/zip-source.ts`：
+- [ ] 新建 `apps/codez-cli/packages/adapters/src/plugins/zip-source.ts`：
   - [ ] `resolveZipPluginSource(input): Promise<ResolvedPluginSourceRoot>`；
   - [ ] HTTPS URL 和 redirect 校验；
   - [ ] headers allow/deny list；
@@ -545,10 +545,10 @@ cache/{marketplace}/{plugin}/{version}/
   - [ ] update detection via sha256；
   - [ ] git url/sha existing behavior regression。
 - [ ] 运行窄验证：
-  - [ ] `pnpm --filter @zcode/adapters test -- plugins.test.ts`
-  - [ ] `pnpm --filter @zcode/adapters test -- version-compare.test.ts`
-  - [ ] `pnpm --filter @zcode/adapters typecheck`
-  - [ ] `pnpm --filter @zcode/adapters lint`
+  - [ ] `pnpm --filter @codez/adapters test -- plugins.test.ts`
+  - [ ] `pnpm --filter @codez/adapters test -- version-compare.test.ts`
+  - [ ] `pnpm --filter @codez/adapters typecheck`
+  - [ ] `pnpm --filter @codez/adapters lint`
 - [ ] 按仓库要求运行全局：
   - [ ] `pnpm typecheck`
   - [ ] `pnpm lint`

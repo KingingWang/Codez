@@ -1,4 +1,4 @@
-import { TID_CHAT_ERROR_BANNER } from "@zcode/shared/test-ids";
+import { TID_CHAT_ERROR_BANNER } from "@codez/shared/test-ids";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import { prepareHighspeedDrawWorkspace } from "../../../helpers/highspeed-card.js";
 import { E2E_BIGMODEL_PLAN_PROVIDER_ID } from "../../../helpers/model-provider-restart.js";

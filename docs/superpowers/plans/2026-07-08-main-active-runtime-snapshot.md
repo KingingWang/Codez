@@ -8,7 +8,7 @@
 
 **Goal:** 将 `isMainActive` 从本地临时 UI 猜测收敛为 runtime snapshot / live monitor 同步的临时投影，确保 main idle + background running 时不显示底部 fake loading、普通消息不进 queue、queued prompt 可以正常 drain，同时 restore / reconnect 不会误判仍在运行的 main turn。
 
-**Architecture:** `mainActive` 作为 `ZCodeSessionRuntimeSnapshot.runtime` 的 ephemeral 字段，从 agent runtime active turn 投影生成；UI 通过 `applyTaskSnapshotEphemeralRuntimeState()` 和 live stream/background monitor 统一同步到 `TaskUiState.isMainActive`。旧的 `runtime.status`、`activeInputId`、`activeTurnKind` 状态流保持不变，`isMainActive` 只被三类消费点读取：main loading 展示、普通发送 queue 判定、queued prompt drain 判定。
+**Architecture:** `mainActive` 作为 `CodezSessionRuntimeSnapshot.runtime` 的 ephemeral 字段，从 agent runtime active turn 投影生成；UI 通过 `applyTaskSnapshotEphemeralRuntimeState()` 和 live stream/background monitor 统一同步到 `TaskUiState.isMainActive`。旧的 `runtime.status`、`activeInputId`、`activeTurnKind` 状态流保持不变，`isMainActive` 只被三类消费点读取：main loading 展示、普通发送 queue 判定、queued prompt drain 判定。
 
 **Tech Stack:** TypeScript、Zod protocol schema、Zustand store、Vitest、WDIO conversation-session E2E、pnpm workspace。
 
@@ -45,19 +45,19 @@
 
 ## Current Files And Responsibilities
 
-- `packages/shared/src/zcode-protocol/index.ts`
+- `packages/shared/src/codez-protocol/index.ts`
   - 定义 session runtime snapshot 的 Zod schema。
   - 新增 `runtime.mainActive?: boolean`。
 
-- `packages/shared/src/zcode-task-types.ts`
+- `packages/shared/src/codez-task-types.ts`
   - 定义 UI/service 侧消费的 snapshot TypeScript interface。
-  - 新增 `ZCodeSessionRuntimeSnapshot.mainActive?: boolean`。
+  - 新增 `CodezSessionRuntimeSnapshot.mainActive?: boolean`。
 
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts`
-  - 将 agent runtime projection / active turn 转成 ZCode protocol snapshot。
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol/session-mapper.ts`
+  - 将 agent runtime projection / active turn 转成 Codez protocol snapshot。
   - 负责设置 `mainActive: Boolean(input.activeTurn)`。
 
-- `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
+- `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
   - 覆盖 session mapper 对 `mainActive` 的生成。
 
 - `packages/ui/src/hooks/taskSnapshotRuntimeStateSync.ts`
@@ -72,7 +72,7 @@
   - 切换/恢复 task 时读取 fresh snapshot 并调用 `applyTaskSnapshotEphemeralRuntimeState()`。
   - 确认 restore path 通过新字段恢复 `isMainActive`。
 
-- `packages/ui/src/store/zcodeSessionStoreTaskSlice.ts`
+- `packages/ui/src/store/codezSessionStoreTaskSlice.ts`
   - 已有 `setTaskMainActive()` 和 `setTaskRuntimeState(non-running)` 清理逻辑。
   - 只在必要时小幅调整，避免新增重复清理路径。
 
@@ -80,17 +80,17 @@
   - foreground live stream event handler。
   - 保留 main activity event 设置 `isMainActive=true`；不让 background child tool event 设置 true。
 
-- `packages/ui/src/lib/zcodeTaskRuntimeMonitor.ts`
+- `packages/ui/src/lib/codezTaskRuntimeMonitor.ts`
   - inactive/background task event monitor。
   - 保留 active task run started / main chunks 设置 true；terminal 通过 runtime non-running 清 false。
 
 - `packages/ui/test/chatStatus.test.ts`
   - 覆盖 mainActivity status 派生。
 
-- `packages/ui/test/useZCodeChatSendPromptQueuePolicy.test.ts`
+- `packages/ui/test/useCodezChatSendPromptQueuePolicy.test.ts`
   - 覆盖普通发送是否进入 queue。
 
-- `packages/ui/test/zcodeTaskRuntimeMonitorQueueDrain.test.ts`
+- `packages/ui/test/codezTaskRuntimeMonitorQueueDrain.test.ts`
   - 覆盖 queued prompt drain。
 
 - `packages/ui/test/taskSnapshotRuntimeStateSync.test.ts`
@@ -107,14 +107,14 @@
 **Purpose:** 在改实现前确认当前 `isMainActive` 的消费面和缺失面，写出本轮必须失败的测试。
 
 **Files:**
-- Inspect: `packages/ui/src/store/zcodeSessionStoreTaskSlice.ts`
+- Inspect: `packages/ui/src/store/codezSessionStoreTaskSlice.ts`
 - Inspect: `packages/ui/src/hooks/taskSnapshotRuntimeStateSync.ts`
 - Inspect: `packages/ui/src/hooks/taskStreamEventSnapshotSync.ts`
 - Inspect: `packages/ui/src/hooks/useTaskRestore.ts`
 - Inspect: `packages/ui/src/hooks/taskStreamEventHandlers.ts`
-- Inspect: `packages/ui/src/lib/zcodeTaskRuntimeMonitor.ts`
-- Inspect: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts`
-- Inspect: `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
+- Inspect: `packages/ui/src/lib/codezTaskRuntimeMonitor.ts`
+- Inspect: `apps/codez-cli/packages/bootstrap/src/codez-protocol/session-mapper.ts`
+- Inspect: `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
 
 ### Checklist
 
@@ -122,7 +122,7 @@
 
 ```bash
 rg -n "isMainActive|setTaskMainActive|mainActive|activeTurnId|activeTurnKind" \
-  packages/ui/src packages/ui/test packages/shared/src apps/zcode-cli/packages/bootstrap
+  packages/ui/src packages/ui/test packages/shared/src apps/codez-cli/packages/bootstrap
 ```
 
 Expected:
@@ -134,8 +134,8 @@ Expected:
 ```bash
 pnpm exec vitest run \
   packages/ui/test/chatStatus.test.ts \
-  packages/ui/test/useZCodeChatSendPromptQueuePolicy.test.ts \
-  packages/ui/test/zcodeTaskRuntimeMonitorQueueDrain.test.ts
+  packages/ui/test/useCodezChatSendPromptQueuePolicy.test.ts \
+  packages/ui/test/codezTaskRuntimeMonitorQueueDrain.test.ts
 ```
 
 Expected: PASS before this plan starts changing snapshot behavior.
@@ -159,22 +159,22 @@ Expected: PASS before this plan starts changing snapshot behavior.
 **Purpose:** 让 snapshot 自身携带 main 是否 active 的事实，避免 UI 从 `activeTurnId` 临时猜测。
 
 **Files:**
-- Modify: `packages/shared/src/zcode-protocol/index.ts`
-- Modify: `packages/shared/src/zcode-task-types.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
+- Modify: `packages/shared/src/codez-protocol/index.ts`
+- Modify: `packages/shared/src/codez-task-types.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/session-mapper.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
 
 **Interfaces Produced:**
 
 ```ts
-// packages/shared/src/zcode-task-types.ts
-export interface ZCodeSessionRuntimeSnapshot {
+// packages/shared/src/codez-task-types.ts
+export interface CodezSessionRuntimeSnapshot {
   mainActive?: boolean;
 }
 ```
 
 ```ts
-// packages/shared/src/zcode-protocol/index.ts
+// packages/shared/src/codez-protocol/index.ts
 mainActive: z.boolean().optional()
 ```
 
@@ -195,7 +195,7 @@ const mainActive = Boolean(input.activeTurn);
 - [ ] Add RED protocol test for active turn snapshot.
 
 Add a test near existing active turn snapshot tests in:
-`apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
+`apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
 
 Test intent:
 
@@ -211,13 +211,13 @@ it("marks runtime mainActive while a session active turn exists", async () => {
 Expected RED before implementation:
 
 ```bash
-pnpm --filter @zcode/zcode-cli-bootstrap test -- zcode-protocol.test.ts -t "marks runtime mainActive"
+pnpm --filter @codez/codez-cli-bootstrap test -- codez-protocol.test.ts -t "marks runtime mainActive"
 ```
 
 If the package script differs locally, use:
 
 ```bash
-pnpm exec vitest run apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts -t "marks runtime mainActive"
+pnpm exec vitest run apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts -t "marks runtime mainActive"
 ```
 
 Expected: FAIL because `runtime.mainActive` is missing.
@@ -237,20 +237,20 @@ it("marks runtime mainActive false when no session active turn exists", async ()
 - [ ] Implement schema/type changes.
 
 Change:
-- `packages/shared/src/zcode-protocol/index.ts`
-- `packages/shared/src/zcode-task-types.ts`
+- `packages/shared/src/codez-protocol/index.ts`
+- `packages/shared/src/codez-task-types.ts`
 
 - [ ] Implement mapper change.
 
 Change:
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol/session-mapper.ts`
 
 Add `mainActive` to the runtime snapshot object generated from active turn state.
 
 - [ ] Run Phase 1 tests.
 
 ```bash
-pnpm exec vitest run apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts -t "mainActive"
+pnpm exec vitest run apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts -t "mainActive"
 pnpm typecheck
 ```
 
@@ -275,13 +275,13 @@ Expected:
 - Modify: `packages/ui/src/hooks/taskSnapshotRuntimeStateSync.ts`
 - Modify: `packages/ui/src/hooks/taskStreamEventSnapshotSync.ts`
 - Test: `packages/ui/test/taskSnapshotRuntimeStateSync.test.ts` or create it if missing
-- Test: `packages/ui/test/zcodeTaskRuntimeMonitorQueueDrain.test.ts`
+- Test: `packages/ui/test/codezTaskRuntimeMonitorQueueDrain.test.ts`
 
 **Interfaces Consumed:**
 
 ```ts
 runtime?: Pick<
-  ZCodeSessionRuntimeSnapshot,
+  CodezSessionRuntimeSnapshot,
   | "activeTurnKind"
   | "mainActive"
   | "contextUsage"
@@ -365,7 +365,7 @@ it("clears isMainActive when accepted runtime.mainActive is false", () => {
 ```bash
 pnpm exec vitest run \
   packages/ui/test/taskSnapshotRuntimeStateSync.test.ts \
-  packages/ui/test/zcodeTaskRuntimeMonitorQueueDrain.test.ts
+  packages/ui/test/codezTaskRuntimeMonitorQueueDrain.test.ts
 ```
 
 Expected: PASS.
@@ -375,8 +375,8 @@ Expected: PASS.
 ```bash
 pnpm exec vitest run \
   packages/ui/test/chatStatus.test.ts \
-  packages/ui/test/useZCodeChatSendPromptQueuePolicy.test.ts \
-  packages/ui/test/zcodeTaskRuntimeMonitorQueueDrain.test.ts
+  packages/ui/test/useCodezChatSendPromptQueuePolicy.test.ts \
+  packages/ui/test/codezTaskRuntimeMonitorQueueDrain.test.ts
 ```
 
 Expected: PASS.
@@ -396,9 +396,9 @@ Expected: PASS.
 
 **Files:**
 - Modify: `packages/ui/src/hooks/taskStreamEventHandlers.ts`
-- Modify: `packages/ui/src/lib/zcodeTaskRuntimeMonitor.ts`
-- Test: `packages/ui/test/zcodeTaskRuntimeMonitorQueueDrain.test.ts`
-- Test: `packages/ui/test/useZCodeChatSendPromptQueuePolicy.test.ts`
+- Modify: `packages/ui/src/lib/codezTaskRuntimeMonitor.ts`
+- Test: `packages/ui/test/codezTaskRuntimeMonitorQueueDrain.test.ts`
+- Test: `packages/ui/test/useCodezChatSendPromptQueuePolicy.test.ts`
 
 **Implementation Notes:**
 
@@ -430,7 +430,7 @@ Expected:
 - [ ] Add or confirm test: background-only streaming does not queue normal prompt.
 
 Existing target:
-`packages/ui/test/useZCodeChatSendPromptQueuePolicy.test.ts`
+`packages/ui/test/useCodezChatSendPromptQueuePolicy.test.ts`
 
 Expected assertion:
 
@@ -465,7 +465,7 @@ expect(
 - [ ] Add or confirm test: queued drain proceeds when only background keeps runtime streaming.
 
 Existing target:
-`packages/ui/test/zcodeTaskRuntimeMonitorQueueDrain.test.ts`
+`packages/ui/test/codezTaskRuntimeMonitorQueueDrain.test.ts`
 
 Expected assertion:
 - runtime status can be `streaming`
@@ -477,8 +477,8 @@ Expected assertion:
 
 ```bash
 pnpm exec vitest run \
-  packages/ui/test/useZCodeChatSendPromptQueuePolicy.test.ts \
-  packages/ui/test/zcodeTaskRuntimeMonitorQueueDrain.test.ts
+  packages/ui/test/useCodezChatSendPromptQueuePolicy.test.ts \
+  packages/ui/test/codezTaskRuntimeMonitorQueueDrain.test.ts
 ```
 
 Expected: PASS.
@@ -498,7 +498,7 @@ Expected: PASS.
 
 **Files:**
 - Test: `packages/ui/test/taskSnapshotRuntimeStateSync.test.ts`
-- Test: `packages/ui/test/useZCodeChatSendPromptQueuePolicy.test.ts`
+- Test: `packages/ui/test/useCodezChatSendPromptQueuePolicy.test.ts`
 - Optional Test: `packages/ui/test/taskStreamEventSnapshotSync.test.ts` if existing helpers make stale snapshot behavior easy to isolate
 
 ### Checklist
@@ -541,8 +541,8 @@ If the current test harness cannot call `syncTaskSnapshotAfterEvent()` cleanly w
 pnpm exec vitest run \
   packages/ui/test/taskSnapshotRuntimeStateSync.test.ts \
   packages/ui/test/chatStatus.test.ts \
-  packages/ui/test/useZCodeChatSendPromptQueuePolicy.test.ts \
-  packages/ui/test/zcodeTaskRuntimeMonitorQueueDrain.test.ts
+  packages/ui/test/useCodezChatSendPromptQueuePolicy.test.ts \
+  packages/ui/test/codezTaskRuntimeMonitorQueueDrain.test.ts
 ```
 
 Expected: PASS.
@@ -623,14 +623,14 @@ Expected:
 - [ ] Run focused unit tests.
 
 ```bash
-# workdir: apps/zcode-cli
+# workdir: apps/codez-cli
 ./node_modules/.bin/vitest run \
-  packages/bootstrap/tests/zcode-protocol.test.ts -t "mainActive|last projected turn"
+  packages/bootstrap/tests/codez-protocol.test.ts -t "mainActive|last projected turn"
 pnpm exec vitest run \
   packages/ui/test/taskSnapshotRuntimeStateSync.test.ts \
   packages/ui/test/chatStatus.test.ts \
-  packages/ui/test/useZCodeChatSendPromptQueuePolicy.test.ts \
-  packages/ui/test/zcodeTaskRuntimeMonitorQueueDrain.test.ts
+  packages/ui/test/useCodezChatSendPromptQueuePolicy.test.ts \
+  packages/ui/test/codezTaskRuntimeMonitorQueueDrain.test.ts
 ```
 
 Expected: PASS.
@@ -668,7 +668,7 @@ Expected: PASS.
 ```bash
 git diff --stat
 rg -n "mainActive|isMainActive|setTaskMainActive|activeTurnId|activeInputId" \
-  packages/shared/src packages/ui/src packages/ui/test apps/zcode-cli/packages/bootstrap
+  packages/shared/src packages/ui/src packages/ui/test apps/codez-cli/packages/bootstrap
 ```
 
 Expected:
@@ -721,7 +721,7 @@ Expected:
 
 - [ ] The plan does not introduce a new durable DB field.
 - [ ] The plan does not rename or repurpose `activeInputId`.
-- [ ] The plan does not infer `mainActive` in ChatView/useZCodeChat from `activeTurnId`.
+- [ ] The plan does not infer `mainActive` in ChatView/useCodezChat from `activeTurnId`.
 - [ ] The plan keeps terminal cleanup centralized in `setTaskRuntimeState(non-running)`.
 - [ ] The plan includes RED/GREEN unit tests before each implementation phase.
 - [ ] The plan includes targeted E2E before final completion.

@@ -26,7 +26,7 @@ import {
   TID_WORKFLOW_PROJECT_GROUP,
   TID_WORKFLOWS_CREATE_VIA_CHAT,
   TID_WORKFLOWS_EMPTY,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   TID_AUTOMATIONS_OPEN,
   TID_CHAT_SUMMARY_PANEL,
@@ -35,7 +35,7 @@ import {
   TID_V4_COMPOSER_BACKGROUND_WORK_TRIGGER,
   TID_V4_TIMELINE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -54,7 +54,7 @@ import { readDynamicWorkflowGrayMockStatus } from "#e2e/helpers/dynamic-workflow
 import { startDraftFromProject } from "#e2e/helpers/project-sidebar";
 
 const WORKFLOW_NAME = "release-check";
-const WORKFLOWS_DIR = join(DEFAULT_WORKSPACE, ".zcode", "workflows");
+const WORKFLOWS_DIR = join(DEFAULT_WORKSPACE, ".codez", "workflows");
 const WORKFLOW_FILE = join(WORKFLOWS_DIR, `${WORKFLOW_NAME}.dwf.ts`);
 const EDITED_DESCRIPTION = "发布前检查（E2E 已编辑）";
 // 脚本正文：元数据编辑只改文件顶部的 frontmatter，这一段必须逐字节保留（不变式 4）。
@@ -65,7 +65,7 @@ const SCRIPT = [
   "",
 ].join("\n");
 const SEED = [
-  "/* zcode-workflow",
+  "/* codez-workflow",
   "description: 发布前检查",
   "whenToUse: 准备发版时",
   "args:",
@@ -127,7 +127,7 @@ async function clickRunSidePaneControl(currentTestId: string): Promise<void> {
 /**
  * 已保存工作流中枢「列表 → 详情 → 改元数据 → 删除」端到端（docs/dynamic-workflow/launch.md）。
  *
- * 只碰 UI + 项目目录里的 `.zcode/workflows/`：不发送 prompt、不依赖模型回放，因此是确定性的。
+ * 只碰 UI + 项目目录里的 `.codez/workflows/`：不发送 prompt、不依赖模型回放，因此是确定性的。
  * 「运行」走对话的用例在 conversation-session/ 下单独立案（需要回放 provider）。
  */
 describe("已保存工作流中枢 E2E", () => {
@@ -160,7 +160,7 @@ describe("已保存工作流中枢 E2E", () => {
       timeoutMsg: "自动化页标题没有「工作流」切换",
     });
 
-    // 2) 全局视图按项目分组：默认工作区（folder 名 ZCodeProject）自成一组，组头带名字，
+    // 2) 全局视图按项目分组：默认工作区（folder 名 CodezProject）自成一组，组头带名字，
     //    组内「通过对话创建」按钮带以 workspaceKey 收尾的 test id。
     //    group / create 的 test id 后缀是 workspaceKey（本地通常 = workspacePath），但
     //    resolveWorkspaceKey 若对本地路径做归一化（大小写 / 去尾斜杠 / realpath）后缀就不等于
@@ -194,9 +194,9 @@ describe("已保存工作流中枢 E2E", () => {
     );
     const seen = groupInfo as GroupHeaderInfo | null;
     expect(seen?.groupTestId?.startsWith(TID_WORKFLOW_PROJECT_GROUP)).toBe(true);
-    expect(seen?.text).toContain("ZCodeProject");
+    expect(seen?.text).toContain("CodezProject");
     expect(seen?.createTestId?.startsWith(testId(TID_WORKFLOWS_CREATE_VIA_CHAT, ""))).toBe(true);
-    expect(seen?.createTestId).toContain("ZCodeProject");
+    expect(seen?.createTestId).toContain("CodezProject");
 
     // 3) 预置文件以卡片出现：名字 + frontmatter 里的说明。
     const cardTestId = testId(TID_WORKFLOW_CARD, WORKFLOW_NAME);
@@ -215,7 +215,7 @@ describe("已保存工作流中枢 E2E", () => {
     await waitForTestIdByDom(TID_WORKFLOW_DETAIL_PROJECT, {
       timeoutMsg: "详情页标题旁没有项目归属小标",
     });
-    expect(await readTestIdText(TID_WORKFLOW_DETAIL_PROJECT)).toBe("ZCodeProject");
+    expect(await readTestIdText(TID_WORKFLOW_DETAIL_PROJECT)).toBe("CodezProject");
     const crumbs = (await browser.execute(() => {
       const nav = document.querySelector('[data-testid="automations-main-drag-region"] nav');
       return nav
@@ -250,7 +250,7 @@ describe("已保存工作流中枢 E2E", () => {
       { timeout: 15000, timeoutMsg: "保存后磁盘文件的说明没有更新" },
     );
     const saved = await readFile(WORKFLOW_FILE, "utf-8");
-    expect(saved.startsWith("/* zcode-workflow\n")).toBe(true);
+    expect(saved.startsWith("/* codez-workflow\n")).toBe(true);
     expect(saved.endsWith(`*/\n${SCRIPT}`)).toBe(true);
     expect(saved).toContain("whenToUse: 准备发版时");
     expect(saved).toContain("required: true");
@@ -278,12 +278,12 @@ describe("已保存工作流中枢 E2E", () => {
 
 // ── 全局工作流：置顶「全局」组 + 全局→项目搬文件 + 项目→全局 AI 概括（docs/dynamic-workflow/launch.md）──
 // E2E_HOME_DIR 由 wdio 配置设为隔离目录并写进 HOME（wdio.conf.ts:520），app / agent 进程都继承它，
-// 因此 agent 的 os.homedir() 解析到这里，全局根 = `<E2E_HOME>/.zcode/workflows/`。
+// 因此 agent 的 os.homedir() 解析到这里，全局根 = `<E2E_HOME>/.codez/workflows/`。
 const E2E_HOME = dirname(DEFAULT_WORKSPACE);
 const GLOBAL_WORKFLOW_NAME = "global-note";
-const GLOBAL_WORKFLOWS_DIR = join(E2E_HOME, ".zcode", "workflows");
+const GLOBAL_WORKFLOWS_DIR = join(E2E_HOME, ".codez", "workflows");
 const GLOBAL_WORKFLOW_FILE = join(GLOBAL_WORKFLOWS_DIR, `${GLOBAL_WORKFLOW_NAME}.dwf.ts`);
-const GLOBAL_PROJECT_WORKFLOWS_DIR = join(DEFAULT_WORKSPACE, ".zcode", "workflows");
+const GLOBAL_PROJECT_WORKFLOWS_DIR = join(DEFAULT_WORKSPACE, ".codez", "workflows");
 const GLOBAL_PROJECT_WORKFLOW_FILE = join(
   GLOBAL_PROJECT_WORKFLOWS_DIR,
   `${GLOBAL_WORKFLOW_NAME}.dwf.ts`,
@@ -296,7 +296,7 @@ const GLOBAL_SCRIPT = [
   "",
 ].join("\n");
 const GLOBAL_SEED = [
-  "/* zcode-workflow",
+  "/* codez-workflow",
   "description: 深度调研（全局）",
   "*/",
   GLOBAL_SCRIPT,
@@ -412,7 +412,7 @@ describe("全局工作流中枢 E2E", () => {
 });
 
 // ── 直接启动：中枢「运行」→ 新会话顶部启动卡（docs/dynamic-workflow/launch.md）─────────
-// 与前两组一样只碰 UI + 项目目录里的 `.zcode/workflows/`，且刻意用**无 agent()/模型调用**的
+// 与前两组一样只碰 UI + 项目目录里的 `.codez/workflows/`，且刻意用**无 agent()/模型调用**的
 // 常量工作流：run 的子代理一个都不起，因此整条路（建会话 → startSavedWorkflow → run 结算）
 // 都不需要 provider 回放，skipProvider 下即可跑到 completed。run 终态之后会触发既有的完成
 // 通知回合（那一跳才第一次要模型），本组**刻意断言到启动卡 completed 为止**，不依赖模型——
@@ -424,7 +424,7 @@ const LAUNCH_OK_FILE = join(WORKFLOWS_DIR, `${LAUNCH_OK_NAME}.dwf.ts`);
 // 脚本体：无 agent()、立即返回常量。声明一个必填实参 `topic`，好让「运行」弹出实参窗
 // （无实参的项目档点击即跑、不弹窗，见 spec）。编译干净（`return <字面量>` 是合法脚本体）。
 const LAUNCH_OK_SEED = [
-  "/* zcode-workflow",
+  "/* codez-workflow",
   "description: 常量工作流（直接启动 E2E）",
   "args:",
   "  topic:",
@@ -443,7 +443,7 @@ const LAUNCH_OK_SEED = [
 const LAUNCH_SLEEP_NAME = "direct-launch-sleeping";
 const LAUNCH_SLEEP_FILE = join(WORKFLOWS_DIR, `${LAUNCH_SLEEP_NAME}.dwf.ts`);
 const LAUNCH_SLEEP_SEED = [
-  "/* zcode-workflow",
+  "/* codez-workflow",
   "description: 停留 running 的常量工作流（composer 徽标直达 E2E）",
   "*/",
   'await world.run("sleep", ["40"]);',
@@ -458,7 +458,7 @@ const LAUNCH_SAVE_NAME = "direct-launch-save";
 const LAUNCH_SAVE_FILE = join(WORKFLOWS_DIR, `${LAUNCH_SAVE_NAME}.dwf.ts`);
 const LAUNCH_SAVE_SCRIPT = "return { ok: true, savedFromRun: 1 };\n";
 const LAUNCH_SAVE_SEED = [
-  "/* zcode-workflow",
+  "/* codez-workflow",
   "description: 保存与再次运行（直接启动 E2E）",
   "*/",
   LAUNCH_SAVE_SCRIPT,
@@ -472,7 +472,7 @@ const LAUNCH_ARTIFACT_FILE = join(WORKFLOWS_DIR, `${LAUNCH_ARTIFACT_NAME}.dwf.ts
 const LAUNCH_ARTIFACT_ID = "e2e-report";
 const LAUNCH_ARTIFACT_MARKDOWN = "# E2E 报告\n\n作为文件打开。\n";
 const LAUNCH_ARTIFACT_SEED = [
-  "/* zcode-workflow",
+  "/* codez-workflow",
   "description: 发布 markdown 产物（作为文件打开 E2E）",
   "*/",
   `await artifact.markdown(${JSON.stringify(LAUNCH_ARTIFACT_ID)}, ${JSON.stringify(
@@ -488,7 +488,7 @@ const LAUNCH_FAIL_FILE = join(WORKFLOWS_DIR, `${LAUNCH_FAIL_NAME}.dwf.ts`);
 // 赋给 number）。编译只在启动的 ② 阶段发生，因此错误在 startSavedWorkflow 的 ACK 里以
 // compile_failed 回来，被实参窗行内错误区接住——会话在此之前不存在（不变式 2）。
 const LAUNCH_FAIL_SEED = [
-  "/* zcode-workflow",
+  "/* codez-workflow",
   "description: 编译失败工作流（直接启动 E2E）",
   "args:",
   "  topic:",
@@ -507,7 +507,7 @@ const LAUNCH_MODEL_NAME = "direct-launch-unknown-model";
 const LAUNCH_MODEL_FILE = join(WORKFLOWS_DIR, `${LAUNCH_MODEL_NAME}.dwf.ts`);
 const LAUNCH_MODEL_UNKNOWN = "no-such-model-e2e";
 const LAUNCH_MODEL_SEED = [
-  "/* zcode-workflow",
+  "/* codez-workflow",
   "description: 点名未知模型的工作流（直接启动 E2E）",
   "args:",
   "  topic:",
@@ -528,7 +528,7 @@ const LAUNCH_MANY_FILE = join(WORKFLOWS_DIR, `${LAUNCH_MANY_NAME}.dwf.ts`);
 const LAUNCH_MANY_COUNT = 40;
 const LAUNCH_MANY_REQUIRED = "arg20";
 const LAUNCH_MANY_SEED = [
-  "/* zcode-workflow",
+  "/* codez-workflow",
   "description: 实参很多的常量工作流（实参窗限高 E2E）",
   "args:",
   ...Array.from({ length: LAUNCH_MANY_COUNT }, (_, index) => {
@@ -1268,7 +1268,7 @@ describe("直接启动 E2E", () => {
       timeoutMsg: "直接保存后磁盘上没有出现工作流文件",
     });
     const written = await readFile(LAUNCH_SAVE_FILE, "utf-8");
-    expect(written.startsWith("/* zcode-workflow")).toBe(true);
+    expect(written.startsWith("/* codez-workflow")).toBe(true);
     expect(written.endsWith(`*/\n${LAUNCH_SAVE_SCRIPT}`)).toBe(true);
 
     // 7) 卡片立刻翻面：芯片回来，动词又是「再次运行」。

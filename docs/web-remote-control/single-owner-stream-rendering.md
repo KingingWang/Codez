@@ -12,7 +12,7 @@
 
 ## 方案
 
-每轮 prompt 由发送端 renderer 生成并传递 `clientId`。Host process 仍是唯一 ZCode runtime 和持久化事实源，`task_stream_mirror_batch` 会携带 `ownerClientId`。
+每轮 prompt 由发送端 renderer 生成并传递 `clientId`。Host process 仍是唯一 Codez runtime 和持久化事实源，`task_stream_mirror_batch` 会携带 `ownerClientId`。
 
 Replayable 订阅按订阅端 `clientId` 过滤普通内容类 batch：
 

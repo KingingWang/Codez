@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createGroupQueueCardSync } from "#src/bots/groupQueueCard.js";
-import type { BotGroupInputProgress } from "@zcode/shared";
+import type { BotGroupInputProgress } from "@codez/shared";
 
 function setup(initial: BotGroupInputProgress = { status: "waiting" }) {
   let saved: BotGroupInputProgress | undefined = initial;

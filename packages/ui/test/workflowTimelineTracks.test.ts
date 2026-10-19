@@ -5,7 +5,7 @@
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/types.js";
 import { buildWorkflowTimeline } from "@/components/workflow-timeline/timeline-model.js";
 import { timelineLayout, timelineWidth } from "@/components/workflow-timeline/timeline-geometry.js";
@@ -14,7 +14,7 @@ import {
   WorkflowTimeline,
 } from "@/components/workflow-timeline/WorkflowTimeline.js";
 import { timelineRailPieces } from "@/components/workflow-timeline/WorkflowTimelineTracks.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 interface GraphSpec {
   names: readonly string[];
@@ -98,7 +98,7 @@ function modelOf(spec: GraphSpec, run?: WorkflowRunState) {
 function renderTimeline(model: ReturnType<typeof buildWorkflowTimeline>) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(WorkflowTimeline, { model }),
     ),

@@ -67,7 +67,7 @@ const config = {
     pluginOrder: { productivity: [`p5@${official}`, `p4@${official}`] },
   },
 };
-const artifacts = join(tmpdir(), "zcode-plugin-mode-order");
+const artifacts = join(tmpdir(), "codez-plugin-mode-order");
 for (const [width, locale, theme] of [
   [1200, "en-US", "light"],
   [1200, "zh-CN", "dark"],
@@ -225,7 +225,7 @@ for (const [width, locale, theme] of [
       assert.deepEqual(await cards(sections().nth(0)), ["p1", "p0"]);
       assert.equal(requests, 1);
       assert.equal(
-        await page.evaluate(() => localStorage.getItem("zcode-interface-mode")),
+        await page.evaluate(() => localStorage.getItem("codez-interface-mode")),
         "office",
       );
       // 个人与当前来源搜索继续按各自原来的名称顺序。

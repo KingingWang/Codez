@@ -19,11 +19,11 @@
 2. `ZaiProviderAdapter.buildAuthorizeUrl` 生成授权 URL：
    - `https://chat.z.ai/api/oauth/authorize`
    - `client_id=client_P8X5CMWmlaRO9gyO-KSqtg`
-   - `redirect_uri=zcode://zai-auth/callback`
+   - `redirect_uri=codez://zai-auth/callback`
    - `state=<random-state>`
 3. 桌面端通过平台层打开浏览器。
 4. 用户授权后，系统 deep link 回到：
-   - `zcode://zai-auth/callback?code=<code>&state=<state>`
+   - `codez://zai-auth/callback?code=<code>&state=<state>`
 5. `OAuthService.handleCallback` 校验 pending state 后调用 ZAI adapter。
 6. ZAI adapter 调用后端：
 
@@ -33,7 +33,7 @@ Content-Type: application/json
 
 {
   "code": "<code>",
-  "redirect_uri": "zcode://zai-auth/callback",
+  "redirect_uri": "codez://zai-auth/callback",
   "state": "<state>"
 }
 ```
@@ -70,8 +70,8 @@ ZAI provider 配置：
 - `tokenUrl`: `https://zcode.z.ai/api/v1/oauth/token`
 - `userinfoUrl`: 保留配置字段但本次登录成功路径不再调用
 - `appId`: 使用 `client_P8X5CMWmlaRO9gyO-KSqtg`
-- `redirectUri`: `zcode://zai-auth/callback`
-- `legacyRedirectUri`: 继续保留 `zcode://oauth/callback` 兼容旧 deep link 解析能力
+- `redirectUri`: `codez://zai-auth/callback`
+- `legacyRedirectUri`: 继续保留 `codez://oauth/callback` 兼容旧 deep link 解析能力
 
 Token 映射：
 

@@ -166,7 +166,7 @@
             "id": "toolu_e2e_plan_mode_boundary_write",
             "name": "Write",
             "input": {
-              "file_path": "{{e2eRuntimeRoot}}/conversation-session-plan-mode-capabilities/zcode-e2e-plan-mode-denied-write.txt",
+              "file_path": "{{e2eRuntimeRoot}}/conversation-session-plan-mode-capabilities/codez-e2e-plan-mode-denied-write.txt",
               "content": "this file must not be written in plan mode\n"
             }
           },

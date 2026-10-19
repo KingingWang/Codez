@@ -1,4 +1,4 @@
-import { TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,

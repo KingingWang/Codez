@@ -117,7 +117,7 @@ describe("E2E Electron binary preflight", () => {
 });
 
 async function createWorkspace() {
-  const repoRoot = await mkdtemp(resolve(tmpdir(), "zcode-e2e-electron-"));
+  const repoRoot = await mkdtemp(resolve(tmpdir(), "codez-e2e-electron-"));
   temporaryRoots.push(repoRoot);
   const desktopDir = resolve(repoRoot, "packages", "desktop");
   const electronRoot = resolve(repoRoot, "node_modules", "electron");

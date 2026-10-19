@@ -3,7 +3,7 @@ export const PROVIDER_RESPONSIVE_TEAM_NAME = "北京智谱华章科技股份有�
 // 用例专属业务数据：只提供有效体验权益，不发起真实购买或模型请求。
 export function buildProviderResponsiveStartBalance(model = "GLM-5-Turbo") {
   const now = Math.floor(Date.now() / 1000);
-  const planId = "zcode-v3-start-plan";
+  const planId = "codez-v3-start-plan";
   const entitlementId = "E2E_PROVIDER_RESPONSIVE_START";
   return {
     code: 0,
@@ -14,7 +14,7 @@ export function buildProviderResponsiveStartBalance(model = "GLM-5-Turbo") {
       plans: [
         {
           plan_id: planId,
-          name: "ZCode V3 Start Plan",
+          name: "Codez V3 Start Plan",
           status: "active",
           starts_at: now - 86400,
           ends_at: now + 86400,

@@ -21,7 +21,7 @@
 
 - Coding Plan 也有 Chat Completions 端点，路径是 `/api/coding/paas/v4`，不能与普通 `/api/paas/v4` 混用。四模板默认值按上表，不借本次扩大成全部协议模板组合。
 - 账号授权连接的个人／团队 Provider 仍独立存在，不计入这四个手动 Key 模板。
-- 手动套餐 Key 的使用不依赖 ZCode OAuth 登录；个人／团队 Key 共用此 Access，不为团队 Key 强制要求组织、项目或当前账号事实。
+- 手动套餐 Key 的使用不依赖 Codez OAuth 登录；个人／团队 Key 共用此 Access，不为团队 Key 强制要求组织、项目或当前账号事实。
 - 支持持 Key 接入不代表官方允许任意分发 Key；不把用户关于分发的业务描述写成已核实的官方授权结论。
 
 ## 2. 请求安全校验链路与复用边界
@@ -130,7 +130,7 @@
 | Z.ai Coding Plan     | `https://z.ai/manage-apikey/apikey-list`            |
 
 - Z.ai 普通与套餐模板使用相同主链接，不为了凑四个不同链接自行编造 URL。
-- 一个套餐模板可接受个人／团队 Key，但获取入口不按身份拆分；控制台内的个人／团队导航交给用户，不根据 ZCode 当前账号猜测。
+- 一个套餐模板可接受个人／团队 Key，但获取入口不按身份拆分；控制台内的个人／团队导航交给用户，不根据 Codez 当前账号猜测。
 - 获取 Key 直接跳转上表控制台，不采用说明页替代。仅使用 `apiKeyManagementUrl`，不保留团队专用字段或双入口 UI，复用同一平台打开机制，不在组件硬编码地址。
 - 普通 API 使用已确认的直接 Key 管理页；沿用 Todo107 的模板元数据唯一来源和平台打开机制，不在组件维护第二份地址表。
 
@@ -155,7 +155,7 @@
 - [GLM-5.3](https://docs.z.ai/guides/llm/glm-5.3)、[GLM-5.3-Flash](https://docs.z.ai/guides/vlm/glm-5.3-flash)：文本与原生多模态的区别。
 - [智谱搜索](https://docs.bigmodel.cn/cn/guide/tools/web-search)、[Z.ai 搜索](https://docs.z.ai/guides/tools/web-search)：独立搜索与对话内搜索的区别；不作为所有模型已实测的依据。
 
-主要代码：`config/provider/zcode-builtin.json`；`packages/provider/src/config/provider-data-schema.ts`、`provider-config.ts`、`schema.ts` 与 `packages/provider/src/resolver.ts`；`packages/ui/src/settings/model-provider-section/ProviderDraftSave.ts`、`InlineEditableProviderCard.tsx`；`apps/zcode-cli/packages/adapters/src/model/model-execution.ts`、`tool-transform.ts`；官方版本的请求安全校验实现；`packages/services/src/model-provider/accountProviderRequestAuthService.ts`。
+主要代码：`config/provider/codez-builtin.json`；`packages/provider/src/config/provider-data-schema.ts`、`provider-config.ts`、`schema.ts` 与 `packages/provider/src/resolver.ts`；`packages/ui/src/settings/model-provider-section/ProviderDraftSave.ts`、`InlineEditableProviderCard.tsx`；`apps/codez-cli/packages/adapters/src/model/model-execution.ts`、`tool-transform.ts`；官方版本的请求安全校验实现；`packages/services/src/model-provider/accountProviderRequestAuthService.ts`。
 
 现有设计 `design/registry/request-compatibility-and-access-protocols.md` 明确将官方版本请求安全校验限定为账号个人／团队，本 Todo 是新增显式 Access 的后续裁决。实施前更新该 spec 及功能图，普通 `api-key` 仍不启用请求安全校验，不将新 Access 写入 Model Config。
 
@@ -183,6 +183,6 @@
 - 单一实现位置仍为 Adapter 的官方版本请求安全校验准入入口，使用已绑定的 Access/Base URL。匹配只影响是否进入同一请求安全校验；没有配置迁移、持久化写入、额外缓存、UI/Host 分支或模型名特判。
 - 测试先红后绿：普通 Key 的官方 URL、尾斜杠及标准 URL 等价形式原先未进入校验，修复后通过；普通 API 路径、其他路径、相似／第三方域名、非默认端口、HTTP、查询串、fragment 不误入校验。开关关闭时即使命中也不进入校验，原显式套餐类型仍支持原来的自定义端点。
 - Adapter 定向 2 文件 51 项、共享请求安全校验／开关 2 文件 47 项，共 98 项通过，包含既有账号 Start/Off-Peak 排除、按 Key 隔离、缓存、重试／降级与错误边界。
-- 使用用户授权的 Key，在隔离内存配置中将 Access 保持为 `api-key`，实际请求 BigModel 官方套餐端点：官方版本请求安全校验流程完成，最终模型请求 HTTP 200、正常结束。Prompt 严格为 system `You are ZCode connectivity probe.` / user `hi`。Key 与校验材料不写入文档、配置或诊断输出；没有修改 Air 配置。
+- 使用用户授权的 Key，在隔离内存配置中将 Access 保持为 `api-key`，实际请求 BigModel 官方套餐端点：官方版本请求安全校验流程完成，最终模型请求 HTTP 200、正常结束。Prompt 严格为 system `You are Codez connectivity probe.` / user `hi`。Key 与校验材料不写入文档、配置或诊断输出；没有修改 Air 配置。
 - 根目录 typecheck、Adapter typecheck、根目录 lint（41 个既有 warnings、0 errors）、修改文件格式检查、架构检查（baseline/new 均 0）通过。Adapter 全目录 lint 仍因未改文件的既有 max-lines 等问题失败，不借本项扩修；修改文件定向 lint 通过。
 - 本次没有改交互和消息投递边界，不新增 UI E2E；两家地址均有实际 SDK + 离线 transport 断言。新增普通 Key 路径的线上实测仅 BigModel，不将其写成 Z.ai、Air 安装包、真实手机或 SSH 均已验收。

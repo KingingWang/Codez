@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button.js";
 import { useProjectTaskActions } from "@/project-sidebar/useProjectTaskActions.js";
 import { ProjectTaskListContext } from "@/project-sidebar/ProjectTaskListContext.js";
 import { compareProjectTaskRows } from "@/project-sidebar/view.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { timelineDateHeadings } from "@/project-sidebar/timelineDates.js";
 
 const EMPTY: ProjectTask[] = [];
@@ -27,7 +27,7 @@ export const ProjectTaskRow = memo(function Row({
   const presentation = useContext(ProjectTaskListContext);
   const { remoteSessionId, rename, pin, archive, unread } = useProjectTaskActions(task, refresh);
   const workspaceKey = task.workspaceIdentity?.trim() || task.workspacePath;
-  const activeId = useZCodeSessionStore(
+  const activeId = useCodezSessionStore(
     (state) => state.workspaces[workspaceKey]?.activeTaskId ?? null,
   );
   const rows = useMemo(() => [task], [task]);
@@ -94,7 +94,7 @@ export function ProjectTaskRows({
   onSelect: ProjectSidebarProps["onSelectTask"];
   refresh(): Promise<void>;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const pageSize = kind === "timeline" ? 20 : 5;
   const [limit, setLimit] = useState(pageSize);
   const [showAll, setShowAll] = useState(false);

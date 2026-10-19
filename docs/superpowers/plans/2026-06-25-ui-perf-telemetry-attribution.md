@@ -74,7 +74,7 @@ Expected: fail because `reportUiTurnBreakdown` and `chunkType` support do not ex
 **Files:**
 - Modify: `packages/ui/src/lib/uiPerfArmsTelemetry.ts`
 - Modify: `packages/ui/src/hooks/taskStreamEventHandlers.ts`
-- Modify: `packages/ui/src/hooks/useZCodeChat.ts`
+- Modify: `packages/ui/src/hooks/useCodezChat.ts`
 
 - [x] **Step 1: Add `UI_PERF_EVENT_TURN_BREAKDOWN` and `reportUiTurnBreakdown`**
 
@@ -94,7 +94,7 @@ Pass `chunkType: "message"` for `agent_message_chunk` and `chunkType: "thought"`
 
 - [x] **Step 4: Emit turn breakdown from prompt completion**
 
-Parse existing `completionTelemetry.eventExtraDetail` values in `useZCodeChat.ts` and call `reportUiTurnBreakdown()` once alongside `reportUiMessageComplete()`.
+Parse existing `completionTelemetry.eventExtraDetail` values in `useCodezChat.ts` and call `reportUiTurnBreakdown()` once alongside `reportUiMessageComplete()`.
 
 ### Task 4: Add Failing Tests for Plan Network Status Mirroring
 
@@ -150,6 +150,6 @@ pnpm lint
 - [x] **Step 3: Commit**
 
 ```bash
-git add docs/superpowers/specs/2026-06-16-ui-perf-arms-telemetry-design.md docs/superpowers/plans/2026-06-25-ui-perf-telemetry-attribution.md packages/ui/src/lib/uiPerfArmsTelemetry.ts packages/ui/src/lib/planUsageArmsTelemetry.ts packages/ui/src/hooks/taskStreamEventHandlers.ts packages/ui/src/hooks/useZCodeChat.ts packages/ui/test/uiPerfArmsTelemetry.test.ts packages/ui/test/planUsageArmsTelemetry.test.ts
+git add docs/superpowers/specs/2026-06-16-ui-perf-arms-telemetry-design.md docs/superpowers/plans/2026-06-25-ui-perf-telemetry-attribution.md packages/ui/src/lib/uiPerfArmsTelemetry.ts packages/ui/src/lib/planUsageArmsTelemetry.ts packages/ui/src/hooks/taskStreamEventHandlers.ts packages/ui/src/hooks/useCodezChat.ts packages/ui/test/uiPerfArmsTelemetry.test.ts packages/ui/test/planUsageArmsTelemetry.test.ts
 git commit -m "feat: enrich ui perf telemetry attribution"
 ```

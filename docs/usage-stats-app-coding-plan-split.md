@@ -66,7 +66,7 @@ Coding Plan:                         [ today / 7d / 30d ]
 - 5 小时额度：`--color-usage-chart-1`
 - 每周额度：`--color-usage-chart-2`
 - 工具调用（月度）：`--color-usage-chart-3`
-- ZCode MCP 每日额度：`--color-usage-chart-5`（图表色板暖黄色）
+- Codez MCP 每日额度：`--color-usage-chart-5`（图表色板暖黄色）
 
 Start Plan 余额卡保持成功态绿色，不跟随 Coding Plan 多色 quota 色板。
 

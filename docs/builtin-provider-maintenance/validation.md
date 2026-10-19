@@ -48,22 +48,22 @@
 
 ```bash
 pnpm provider:config:check-test
-pnpm exec vitest run packages/provider-node/test/zcode-builtin-integrity.test.ts
+pnpm exec vitest run packages/provider-node/test/codez-builtin-integrity.test.ts
 pnpm exec vitest run packages/provider/test/model-config-rules.test.ts packages/provider/test/provider-template.test.ts
-pnpm exec vitest run packages/provider-node/test/zcode-builtin-reasoning-map.test.ts
+pnpm exec vitest run packages/provider-node/test/codez-builtin-reasoning-map.test.ts
 ```
 
 参考测试还有 `packages/provider-node/test/new-model-catalog*.test.ts`、`opencode-go.test.ts`、`openrouter-reasoning-contract.test.ts`、`zhipu-api-templates.test.ts`；按本项新增边界补充，不只修改快照以让失败消失。
 
-最终文件完整性测试支持 `ZCODE_BUILTIN_RELEASE_TEST_FILE` 指定实际文件；分别验证正式和生成的测试配置。POSIX shell 示例：
+最终文件完整性测试支持 `CODEZ_BUILTIN_RELEASE_TEST_FILE` 指定实际文件；分别验证正式和生成的测试配置。POSIX shell 示例：
 
 ```bash
-ZCODE_BUILTIN_RELEASE_TEST_FILE="$PWD/config/provider/zcode-builtin.test.json" pnpm exec vitest run packages/provider-node/test/zcode-builtin-integrity.test.ts
+CODEZ_BUILTIN_RELEASE_TEST_FILE="$PWD/config/provider/codez-builtin.test.json" pnpm exec vitest run packages/provider-node/test/codez-builtin-integrity.test.ts
 ```
 
 其他 shell 使用相应环境变量设置方式，变量值仍为实际绝对路径。此测试包含当前目录业务断言，不是任意旧 Release 的通用兼容测试；不应为了验收历史文件而放松断言。
 
-普通代码变更执行 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed` 和 `pnpm test:unit:affected --base <起点commit>`。CLI 代码另执行 `pnpm --dir apps/zcode-cli typecheck`、`pnpm --dir apps/zcode-cli lint`，并使用其包脚本/Turbo 选择受影响包及调用方的测试；根 affected 单测不能代替 CLI 测试。CLI 范围无法可靠确定或改动公共测试基础设施时，执行 `pnpm --dir apps/zcode-cli test`。
+普通代码变更执行 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed` 和 `pnpm test:unit:affected --base <起点commit>`。CLI 代码另执行 `pnpm --dir apps/codez-cli typecheck`、`pnpm --dir apps/codez-cli lint`，并使用其包脚本/Turbo 选择受影响包及调用方的测试；根 affected 单测不能代替 CLI 测试。CLI 范围无法可靠确定或改动公共测试基础设施时，执行 `pnpm --dir apps/codez-cli test`。
 
 APP 交互变化先补桌面 E2E 场景，再实现；覆盖新增实例、已有实例继承、显式覆盖保留、模型选择及真实执行链，按影响补手机路径。场景、spec 和测试 case 保持一致；验证使用 `pnpm test:e2e` 并按实际受影响 spec 选择范围，不把一次本地 HTTP fixture 的通过当作供应商公网验证。视觉变化还需桌面/手机、深浅主题及相关语言检查。缺环境时列出未验证组合，不写成全部通过。
 

@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import type { BotInboundMessage } from "@zcode/shared";
+import type { BotInboundMessage } from "@codez/shared";
 import { createTopicPreparationState } from "../src/bots/topicPreparationState.js";
 
 it("isolates topic preparation and exposes no attachment payload in its UI snapshot", () => {

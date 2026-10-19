@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { PluginStoreOrder, ClientConfigSnapshot } from "@zcode/shared";
+import type { PluginStoreOrder, ClientConfigSnapshot } from "@codez/shared";
 import { usePluginStoreOrder } from "@/hooks/usePluginStoreOrder.js";
 
 const context = vi.hoisted(() => ({ service: { getSnapshot: vi.fn() } }));

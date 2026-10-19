@@ -5,7 +5,7 @@ import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { RemoteIdentityHoverCard } from "@/project-sidebar/RemoteIdentityHoverCard.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, unknown>) =>
         values ? `${id}${JSON.stringify(values)}` : id,
@@ -243,7 +243,7 @@ it("连接中在详情顶部显示阶段、上传进度、步数、耗时与自�
         operation: "connect",
         phase: "upload",
         level: "info",
-        message: "zcode.tar.gz",
+        message: "codez.tar.gz",
         progress: 0.43,
         timestamp: 39_000,
       },
@@ -265,7 +265,7 @@ it("连接中在详情顶部显示阶段、上传进度、步数、耗时与自�
     ),
   ).toEqual(["complete", "complete", "active", "pending"]);
   expect(details.textContent).not.toContain("Checking the remote device");
-  expect(details.textContent).not.toContain("zcode.tar.gz");
+  expect(details.textContent).not.toContain("codez.tar.gz");
   expect(screen.queryByTestId("remote-connection-failure")).toBeNull();
 });
 

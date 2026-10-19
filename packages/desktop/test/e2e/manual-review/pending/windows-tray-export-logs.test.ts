@@ -9,7 +9,7 @@ type TrayCapture = {
 };
 type TrayTestGlobal = typeof globalThis & { __trayExportCapture?: TrayCapture };
 type DesktopBridge = {
-  zcode: { setApplicationLocale: (locale: "en-US" | "zh-CN") => Promise<void> };
+  codez: { setApplicationLocale: (locale: "en-US" | "zh-CN") => Promise<void> };
 };
 
 describe("Windows 托盘导出日志", () => {
@@ -43,7 +43,7 @@ describe("Windows 托盘导出日志", () => {
         ["zh-CN", "导出日志", "清除所有数据"],
       ] as const) {
         await browser.execute(async (value) => {
-          await (window as unknown as DesktopBridge).zcode.setApplicationLocale(value);
+          await (window as unknown as DesktopBridge).codez.setApplicationLocale(value);
         }, locale);
         const labels = await browser.electron.execute(() =>
           (globalThis as TrayTestGlobal).__trayExportCapture?.menu?.items.map((item) => item.label),
@@ -72,7 +72,7 @@ describe("Windows 托盘导出日志", () => {
         { timeout: 30_000, timeoutMsg: "托盘导出未生成日志包并请求系统定位" },
       );
       const archivePath = String(reveal.mock.calls[0]?.[0]);
-      expect(archivePath).toMatch(/zcode-logs-[^/\\]+\.zip$/);
+      expect(archivePath).toMatch(/codez-logs-[^/\\]+\.zip$/);
       expect((await readFile(archivePath)).subarray(0, 4).toString("hex")).toBe("504b0304");
       expect(
         await browser.electron.execute((electron) =>
@@ -90,7 +90,7 @@ describe("Windows 托盘导出日志", () => {
       });
       await reveal.mockRestore();
       await browser.execute(async (locale) => {
-        await (window as unknown as DesktopBridge).zcode.setApplicationLocale(locale);
+        await (window as unknown as DesktopBridge).codez.setApplicationLocale(locale);
       }, originalSettings.locale ?? "en-US");
     }
   });

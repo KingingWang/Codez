@@ -4,7 +4,7 @@ import { syncBuiltinESMExports } from "node:module";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const outputDir = process.env.ZCODE_E2E_STORAGE_WORKER_DIAGNOSTICS_DIR;
+const outputDir = process.env.CODEZ_E2E_STORAGE_WORKER_DIAGNOSTICS_DIR;
 if (outputDir) {
   const OriginalWorker = workerThreads.Worker;
   workerThreads.Worker = class extends OriginalWorker {

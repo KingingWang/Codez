@@ -74,7 +74,7 @@ PDF、Audio 继续隐藏且在编辑其他字段时无损保留。
 “全部恢复默认”入口，并对 Built-in 成员和 Personal Provider 的模型始终展示：
 
 ```text
-ZCode Built-in Model Config Rules
+Codez Built-in Model Config Rules
                   |
                   v
        Personal Model Config Rule（稀疏 Overlay）
@@ -272,9 +272,9 @@ Team 状态机拆分可独立并行实施
 - 两个复杂 JSON 编辑区去掉重复的外层边框、背景和内边距，只保留固定高度输入框；MFJS 开关归入“其他设置”分区；
 - Team Plan 状态机区分 loading、request error 与服务端明确 unavailable；详情页不再以“未分配”状态阻止
   entitlement refresh，消除首次缺 quota 后永久自锁；
-- Runtime Headers 请求直接使用 `zcodeProviderAccountAccessSchema`。API Key、Start、Individual、Team、
+- Runtime Headers 请求直接使用 `codezProviderAccountAccessSchema`。API Key、Start、Individual、Team、
   Off-Peak 五种 Registry mode 均通过严格 Protocol 测试，旧 `planKind` 形状被拒绝；
-- 设置页、Usage 和登录恢复不再用动态 `zcodeAccountAccessSchema` 解析 Registry Access。UI 只传递
+- 设置页、Usage 和登录恢复不再用动态 `codezAccountAccessSchema` 解析 Registry Access。UI 只传递
   `{ type, family, mode }` 静态事实，Host 的 Account Request Auth Service 再根据当前连接解析动态
   `planKind` 与 Team scope；Team usage source 由静态 `team-coding-plan` mode 与已订阅项目事实组合，
   不把项目身份写回 Provider Config；

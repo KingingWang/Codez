@@ -6,7 +6,7 @@ import type {
   TimelineMarkerRow,
   TurnHeaderRow,
   UserInputRow,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { buildConversationTurnRenderUnits } from "@/v4/conversationTurnRenderUnits.js";
 import {
   buildConversationTurnNavigatorItems,

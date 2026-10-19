@@ -15,13 +15,13 @@ import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_TASK_SETTINGS_BUTTON,
   TID_SETTINGS_BACK_BUTTON,
   TID_SETTINGS_SECTION_NAV,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -52,7 +52,7 @@ import {
 
 const CASE_MARKER = "E2E_R3_SERVER_UPDATE";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-server-update",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-server-update",
 );
 const run = promisify(execFile);
 const updateScenario = process.env.R3_SERVER_UPDATE_CASE ?? "cancel";
@@ -61,8 +61,8 @@ const updateScenario = process.env.R3_SERVER_UPDATE_CASE ?? "cancel";
 async function dockerSh(
   command: string,
 ): Promise<{ code: number | null; stdout: string; stderr: string }> {
-  const container = process.env.ZCODE_E2E_SSH_CONTAINER?.trim();
-  if (!container) throw new Error(`${CASE_MARKER}: 缺少 ZCODE_E2E_SSH_CONTAINER`);
+  const container = process.env.CODEZ_E2E_SSH_CONTAINER?.trim();
+  if (!container) throw new Error(`${CASE_MARKER}: 缺少 CODEZ_E2E_SSH_CONTAINER`);
   try {
     const result = await run("docker", ["exec", "-u", "dev", container, "bash", "-lc", command], {
       maxBuffer: 1 << 22,
@@ -81,7 +81,7 @@ async function dockerSh(
 
 async function readRemoteCurrentSha(_config: SSHConnectionConfig): Promise<string> {
   const result = await dockerSh(
-    'grep -o \'"archiveSha256": *"[0-9a-f]*"\' "$HOME/.zcode/server/current.json" | grep -o "[0-9a-f]\\{64\\}"',
+    'grep -o \'"archiveSha256": *"[0-9a-f]*"\' "$HOME/.codez/server/current.json" | grep -o "[0-9a-f]\\{64\\}"',
   );
   return result.stdout.trim();
 }
@@ -94,7 +94,7 @@ async function readRemoteCoreIdentityViaDocker(): Promise<{
   startTicks: number;
 }> {
   const result = await dockerSh(
-    'S="$HOME/.zcode/server/run/status.json"; cat "$S"; echo; P=$(sed -nE \'s/.*"pid": *([0-9]+).*/\\1/p\' "$S" | head -n1); echo "__STAT__ $(awk \'{print $4" "$22}\' /proc/$P/stat)"',
+    'S="$HOME/.codez/server/run/status.json"; cat "$S"; echo; P=$(sed -nE \'s/.*"pid": *([0-9]+).*/\\1/p\' "$S" | head -n1); echo "__STAT__ $(awk \'{print $4" "$22}\' /proc/$P/stat)"',
   );
   const statusText = result.stdout.slice(0, result.stdout.indexOf("__STAT__"));
   const status = JSON.parse(statusText) as { pid: number; generation: number; state: string };
@@ -344,7 +344,7 @@ describe(`${CASE_MARKER}: 同版本异 SHA 更新在 running task 下被守卫�
       );
     // running-tasks 是 Server 根命令；多加 server 会误走旧 CLI，使守卫取证失真。
     facts.runningTasksBeforeUpdate = (
-      await dockerSh('"$HOME/.zcode/server/bin/zcode" running-tasks --json')
+      await dockerSh('"$HOME/.codez/server/bin/codez" running-tasks --json')
     ).stdout;
     // 手动原项目连接应自动尝试一次受保护更新；直接等待 running-task 守卫，不能补点更新掩盖交接缺失。
     await browser
@@ -363,7 +363,7 @@ describe(`${CASE_MARKER}: 同版本异 SHA 更新在 running task 下被守卫�
         facts.guardFailure = {
           body: await browser.execute(() => document.body.innerText.slice(-3500)),
           currentSha: await readRemoteCurrentShaOrNull(prepared.config),
-          runningTasks: (await dockerSh('"$HOME/.zcode/server/bin/zcode" running-tasks --json'))
+          runningTasks: (await dockerSh('"$HOME/.codez/server/bin/codez" running-tasks --json'))
             .stdout,
           core: await readRemoteCoreIdentityViaDocker().catch(() => null),
         };
@@ -407,7 +407,7 @@ describe(`${CASE_MARKER}: 同版本异 SHA 更新在 running task 下被守卫�
       );
       expect(await readRemoteCurrentSha(prepared.config)).toBe(shaBefore);
       const runningAfterCancel = await dockerSh(
-        '"$HOME/.zcode/server/bin/zcode" running-tasks --json',
+        '"$HOME/.codez/server/bin/codez" running-tasks --json',
       );
       expect(runningAfterCancel.code).toBe(0);
       expect(JSON.parse(runningAfterCancel.stdout).length).toBeGreaterThan(0);
@@ -420,7 +420,7 @@ describe(`${CASE_MARKER}: 同版本异 SHA 更新在 running task 下被守卫�
       await releaseControlledReplay("r3-update-slow-turn");
       await browser.waitUntil(
         async () => {
-          const result = await dockerSh('"$HOME/.zcode/server/bin/zcode" running-tasks --json');
+          const result = await dockerSh('"$HOME/.codez/server/bin/codez" running-tasks --json');
           return result.code === 0 && JSON.parse(result.stdout).length === 0;
         },
         { timeout: 120_000, timeoutMsg: `${CASE_MARKER}: 释放回合后运行任务未收口` },
@@ -484,7 +484,7 @@ describe(`${CASE_MARKER}: 同版本异 SHA 更新在 running task 下被守卫�
     expect(reconnected.remoteSessionId).not.toBe(taskA.remoteSessionId);
     const releaseDirs = await readRemoteRuntimeReleaseDirs(prepared.config);
     const remoteMarker = await dockerSh(
-      'ls "$HOME"/.zcode/server/releases/*/runtime/E2E_R3_UPGRADE_MARKER.txt 2>/dev/null | wc -l; grep -o \'"releaseId": *"[^"]*"\' "$HOME/.zcode/server/current.json"; ls "$HOME/.zcode/server/releases"',
+      'ls "$HOME"/.codez/server/releases/*/runtime/E2E_R3_UPGRADE_MARKER.txt 2>/dev/null | wc -l; grep -o \'"releaseId": *"[^"]*"\' "$HOME/.codez/server/current.json"; ls "$HOME/.codez/server/releases"',
     );
     facts.after = {
       sha: repack.newSha,

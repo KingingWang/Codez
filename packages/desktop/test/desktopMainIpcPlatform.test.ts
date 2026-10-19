@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { DesktopCommandIds, PlatformChannels } from "@zcode/shared";
+import { DesktopCommandIds, PlatformChannels } from "@codez/shared";
 
 type IpcHandler = (...args: unknown[]) => unknown;
 

@@ -5,9 +5,9 @@
 import { createElement, useState } from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { TID_AUTOMATIONS_PAGE_TAB } from "@zcode/shared";
-import { testId } from "@zcode/shared/test-ids";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { TID_AUTOMATIONS_PAGE_TAB } from "@codez/shared";
+import { testId } from "@codez/shared/test-ids";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   AutomationsPageTitle,
   type AutomationsPageTab,
@@ -22,7 +22,7 @@ function Title({
 }) {
   const [tab, setTab] = useState<AutomationsPageTab>("automation");
   return createElement(
-    ZCodeIntlProvider,
+    CodezIntlProvider,
     { initialLocale: locale },
     createElement(AutomationsPageTitle, {
       workflowTabEnabled,

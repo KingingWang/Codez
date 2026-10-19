@@ -2,7 +2,7 @@
 // ——直接启动轮按元数据、CreateWorkflow 按 toolCallId、ResumeWorkflowRun 按 runId；图按 run 的发起
 // toolCallId 到图表里取；联接不到活投影的来源出中性卡（summary 缺席）；同 run 一轮一张。
 import { describe, expect, it } from "vitest";
-import type { ToolCallRow, WorkflowLaunchMeta } from "@zcode/shared/zcode-protocol-v4";
+import type { ToolCallRow, WorkflowLaunchMeta } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowRunCardSummary } from "@/ToolCallBlocks/shared.js";
 import { resolveWorkflowTurnDigests } from "@/v4/workflowTurnDigests.js";
 
@@ -46,7 +46,7 @@ const LAUNCH: WorkflowLaunchMeta = {
   toolCallId: "launch-abc",
   name: "deep-research",
   scope: "project",
-  path: "/w/.zcode/workflows/deep-research.dwf.ts",
+  path: "/w/.codez/workflows/deep-research.dwf.ts",
 };
 
 describe("resolveWorkflowTurnDigests", () => {

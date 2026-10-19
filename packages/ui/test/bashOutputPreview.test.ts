@@ -1,9 +1,9 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { toolCallRowToLegacyNode } from "../src/v4/toolCallRowAdapter.js";
-import type { ToolCallRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import { ExecuteToolCallBlock } from "../src/ToolCallBlocks/renderers/execute.js";
 
 describe("Bash bounded output preview", () => {
@@ -31,7 +31,7 @@ describe("Bash bounded output preview", () => {
       } as ToolCallRow);
       const html = renderToStaticMarkup(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ExecuteToolCallBlock, {
             toolCallNode,
@@ -83,7 +83,7 @@ describe("Bash final output content", () => {
     } as ToolCallRow;
     return renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ExecuteToolCallBlock, {
           toolCallNode: toolCallRowToLegacyNode(row),

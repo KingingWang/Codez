@@ -1,7 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { EventEmitter, once } from "node:events";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createFakeRelayV2 } from "@zcode/shared/testing/fake-relay-v2";
+import { createFakeRelayV2 } from "@codez/shared/testing/fake-relay-v2";
 import {
   createWebRemoteControlV2Http,
   WebRemoteControlDeviceTransport,
@@ -204,7 +204,7 @@ describe("desktop relay V2 transport", () => {
     const f = await fixture();
     f.transport.start();
     await vi.waitFor(() => expect(f.states.at(-1)).toBe("waiting_terminal"));
-    expect(f.transport.sendPayload({ zcode_type: "bootstrap-request", requestId: "before" })).toBe(
+    expect(f.transport.sendPayload({ codez_type: "bootstrap-request", requestId: "before" })).toBe(
       false,
     );
     const { data } = await f.request("token", { role: "terminal" });
@@ -217,20 +217,20 @@ describe("desktop relay V2 transport", () => {
     await new Promise<void>((resolve) => terminal.once("open", resolve));
     terminal.send(JSON.stringify({ type: "auth_init", device_sid: f.device.device_sid }));
     await vi.waitFor(() => expect(f.states.at(-1)).toBe("paired"));
-    expect(f.transport.sendPayload({ zcode_type: "bootstrap-request", requestId: "paired" })).toBe(
+    expect(f.transport.sendPayload({ codez_type: "bootstrap-request", requestId: "paired" })).toBe(
       true,
     );
     await vi.waitFor(() =>
       expect(received).toContainEqual(
         expect.objectContaining({
           type: "data",
-          payload: { zcode_type: "bootstrap-request", requestId: "paired" },
+          payload: { codez_type: "bootstrap-request", requestId: "paired" },
         }),
       ),
     );
     terminal.close();
     await vi.waitFor(() => expect(f.states.at(-1)).toBe("waiting_terminal"));
-    expect(f.transport.sendPayload({ zcode_type: "bootstrap-request", requestId: "after" })).toBe(
+    expect(f.transport.sendPayload({ codez_type: "bootstrap-request", requestId: "after" })).toBe(
       false,
     );
   });

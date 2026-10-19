@@ -1,8 +1,8 @@
 import { act, createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
-import type { IPlatformService, UpdateStatePayload } from "@zcode/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { IPlatformService, UpdateStatePayload } from "@codez/shared";
 
 const { buttonPropsCalls, dialogPropsCalls } = vi.hoisted(() => ({
   buttonPropsCalls: [] as Array<Record<string, unknown>>,
@@ -149,7 +149,7 @@ describe("UpdateStatusButton release notes cache", () => {
 
   it("opens the dialog from the main update entry", async () => {
     const { UpdateStatusButton } = await import("@/UpdateStatusButton.js");
-    const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+    const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
     const { PlatformProvider } = await import("@/hooks/usePlatform.js");
     const { ServiceProvider } = await import("@/hooks/useServices.js");
     const root: Root = createRoot(installMinimalDom());
@@ -163,7 +163,7 @@ describe("UpdateStatusButton release notes cache", () => {
             PlatformProvider,
             { platform: noopPlatform },
             createElement(
-              ZCodeIntlProvider,
+              CodezIntlProvider,
               { initialLocale: "zh-CN" },
               createElement(UpdateStatusButton, {
                 platform: noopPlatform,
@@ -201,7 +201,7 @@ describe("UpdateStatusButton release notes cache", () => {
 
   it("opens the native update window when the desktop bridge is available", async () => {
     const { UpdateStatusButton } = await import("@/UpdateStatusButton.js");
-    const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+    const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
     const { PlatformProvider } = await import("@/hooks/usePlatform.js");
     const { ServiceProvider } = await import("@/hooks/useServices.js");
     const root: Root = createRoot(installMinimalDom());
@@ -219,7 +219,7 @@ describe("UpdateStatusButton release notes cache", () => {
             PlatformProvider,
             { platform },
             createElement(
-              ZCodeIntlProvider,
+              CodezIntlProvider,
               { initialLocale: "zh-CN" },
               createElement(UpdateStatusButton, {
                 platform,
@@ -255,7 +255,7 @@ describe("UpdateStatusButton release notes cache", () => {
 
   it("restores hidden release notes after download finishes without notes payload", async () => {
     const { UpdateStatusButton } = await import("@/UpdateStatusButton.js");
-    const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+    const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
     const { PlatformProvider } = await import("@/hooks/usePlatform.js");
     const { ServiceProvider } = await import("@/hooks/useServices.js");
     const root: Root = createRoot(installMinimalDom());
@@ -279,7 +279,7 @@ describe("UpdateStatusButton release notes cache", () => {
           PlatformProvider,
           { platform: noopPlatform },
           createElement(
-            ZCodeIntlProvider,
+            CodezIntlProvider,
             { initialLocale: "en-US" },
             createElement(UpdateStatusButton, {
               platform: noopPlatform,
@@ -337,7 +337,7 @@ describe("UpdateStatusButton release notes cache", () => {
 
   it("keeps the dialog mounted during transient states after starting download", async () => {
     const { UpdateStatusButton } = await import("@/UpdateStatusButton.js");
-    const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+    const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
     const { PlatformProvider } = await import("@/hooks/usePlatform.js");
     const { ServiceProvider } = await import("@/hooks/useServices.js");
     const root: Root = createRoot(installMinimalDom());
@@ -354,7 +354,7 @@ describe("UpdateStatusButton release notes cache", () => {
           PlatformProvider,
           { platform },
           createElement(
-            ZCodeIntlProvider,
+            CodezIntlProvider,
             { initialLocale: "zh-CN" },
             createElement(UpdateStatusButton, {
               platform,
@@ -421,7 +421,7 @@ describe("UpdateStatusButton release notes cache", () => {
 
   it("persists auto download preference and starts downloading the current available update", async () => {
     const { UpdateStatusButton } = await import("@/UpdateStatusButton.js");
-    const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+    const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
     const { PlatformProvider } = await import("@/hooks/usePlatform.js");
     const { ServiceProvider } = await import("@/hooks/useServices.js");
     const root: Root = createRoot(installMinimalDom());
@@ -440,7 +440,7 @@ describe("UpdateStatusButton release notes cache", () => {
             PlatformProvider,
             { platform },
             createElement(
-              ZCodeIntlProvider,
+              CodezIntlProvider,
               { initialLocale: "zh-CN" },
               createElement(UpdateStatusButton, {
                 platform,
@@ -476,7 +476,7 @@ describe("UpdateStatusButton release notes cache", () => {
   it("asks for confirmation before restart when desktop tasks are running", async () => {
     vi.useFakeTimers();
     const { UpdateStatusButton } = await import("@/UpdateStatusButton.js");
-    const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+    const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
     const { PlatformProvider } = await import("@/hooks/usePlatform.js");
     const { ServiceProvider } = await import("@/hooks/useServices.js");
     const { useConfirmDialogStore } = await import("@/store/confirmDialogStore.js");
@@ -498,7 +498,7 @@ describe("UpdateStatusButton release notes cache", () => {
             PlatformProvider,
             { platform },
             createElement(
-              ZCodeIntlProvider,
+              CodezIntlProvider,
               { initialLocale: "zh-CN" },
               createElement(UpdateStatusButton, {
                 platform,
@@ -550,7 +550,7 @@ describe("UpdateStatusButton release notes cache", () => {
             PlatformProvider,
             { platform },
             createElement(
-              ZCodeIntlProvider,
+              CodezIntlProvider,
               { initialLocale: "zh-CN" },
               createElement(UpdateStatusButton, {
                 platform,
@@ -576,7 +576,7 @@ describe("UpdateStatusButton release notes cache", () => {
 
   it("releases restart pending when the install IPC rejects", async () => {
     const { UpdateStatusButton } = await import("@/UpdateStatusButton.js");
-    const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+    const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
     const { PlatformProvider } = await import("@/hooks/usePlatform.js");
     const { ServiceProvider } = await import("@/hooks/useServices.js");
     const root: Root = createRoot(installMinimalDom());
@@ -597,7 +597,7 @@ describe("UpdateStatusButton release notes cache", () => {
             PlatformProvider,
             { platform },
             createElement(
-              ZCodeIntlProvider,
+              CodezIntlProvider,
               { initialLocale: "zh-CN" },
               createElement(UpdateStatusButton, {
                 platform,

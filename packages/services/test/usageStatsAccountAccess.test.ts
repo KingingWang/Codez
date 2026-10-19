@@ -1,4 +1,4 @@
-import { BUILTIN_MODEL_PROVIDER_IDS, type ApiClient } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, type ApiClient } from "@codez/shared";
 import { describe, expect, it, vi } from "vitest";
 import { createUsageStatsService } from "../src/usage-stats/usageStatsService.js";
 
@@ -26,7 +26,7 @@ describe("UsageStats account access", () => {
         assertCurrent: vi.fn(async () => undefined),
       },
       credentialService: { load: vi.fn(async () => null) },
-      zcodeAgentService: {
+      codezAgentService: {
         getAppUsageStats: vi.fn(),
       },
     });
@@ -93,7 +93,7 @@ describe("UsageStats account access", () => {
           key === "oauth:bigmodel:access_token" ? "team-business-token" : null,
         ),
       },
-      zcodeAgentService: { getAppUsageStats: vi.fn() },
+      codezAgentService: { getAppUsageStats: vi.fn() },
     });
 
     await expect(

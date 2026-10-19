@@ -1,5 +1,5 @@
-import type { AppSettings } from "@zcode/shared";
-import { ServiceChannels } from "@zcode/shared";
+import type { AppSettings } from "@codez/shared";
+import { ServiceChannels } from "@codez/shared";
 import { createServiceDescriptor } from "../descriptors.js";
 
 /** Host 私有装配端口：只读取本机已提交目录，禁止递归读取设置或网络。 */

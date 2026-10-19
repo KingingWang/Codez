@@ -1,5 +1,5 @@
-import { ChannelServer, ProxyChannel } from "@zcode/rpc";
-import { createAcknowledgedWebRemoteControlRelayProtocol } from "@zcode/client";
+import { ChannelServer, ProxyChannel } from "@codez/rpc";
+import { createAcknowledgedWebRemoteControlRelayProtocol } from "@codez/client";
 import {
   connectWebRemoteControlWorkspaceBridgeServices,
   replayWebRemoteControlWorkspaceBridgeFrames,
@@ -27,7 +27,7 @@ function fixture(
   const mobile = createAcknowledgedWebRemoteControlRelayProtocol({
     ...identity,
     sendFrame: (frame) => {
-      if (dropFirstRequest && frame.zcode_type === "rpc-frame") {
+      if (dropFirstRequest && frame.codez_type === "rpc-frame") {
         dropFirstRequest = false;
         reportDroppedRequest();
         return true;

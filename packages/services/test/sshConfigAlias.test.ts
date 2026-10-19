@@ -34,7 +34,7 @@ afterEach(async () => {
 });
 
 async function createTempHome(): Promise<string> {
-  const homeDir = await mkdtemp(join(tmpdir(), "zcode-ssh-alias-test-"));
+  const homeDir = await mkdtemp(join(tmpdir(), "codez-ssh-alias-test-"));
   tempDirs.push(homeDir);
   await mkdir(join(homeDir, ".ssh"), { recursive: true });
   return homeDir;
@@ -55,7 +55,7 @@ async function createFakeSshExecutable(homeDir: string, lines: string[]): Promis
 }
 
 async function loadAliasParser() {
-  const { listSSHConfigAliasesFromLocalConfig } = await import("@zcode/services/node");
+  const { listSSHConfigAliasesFromLocalConfig } = await import("@codez/services/node");
   return listSSHConfigAliasesFromLocalConfig;
 }
 
