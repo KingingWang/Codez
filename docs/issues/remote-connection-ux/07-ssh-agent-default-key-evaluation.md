@@ -1,6 +1,7 @@
 # 07 — ssh-agent 与默认密钥评估
 
-Status: ready-for-human
+Status: done（用户已通过 GitHub issue KingingWang/Codez#14 决定排期；实施见
+[28-ssh-auto-auth-implementation](./28-ssh-auto-auth-implementation.md)）
 
 **父规格：** [远程连接交互与视觉体验优化](./01-remote-connection-ux-optimization.md)
 

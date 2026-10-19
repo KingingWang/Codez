@@ -1,7 +1,4 @@
-export {
-  cloudContentPayloadSchema,
-  contentBundleSchema,
-} from "./cloudContent.js";
+export { cloudContentPayloadSchema, contentBundleSchema } from "./cloudContent.js";
 export * from "./networkCapture.js";
 export type {
   CloudContentPayload,
@@ -53,7 +50,8 @@ export type {
   SSHConnectOptions,
   WSLConnectOptions,
 } from "./remoteTarget.js";
-export { stripRemoteTargetSecrets } from "./remoteTarget.js";
+export type { SSHAuthMode } from "./remoteTarget.js";
+export { SSH_AUTH_MODES, stripRemoteTargetSecrets } from "./remoteTarget.js";
 export { buildSshRemoteHostKey } from "./remoteSshHostKey.js";
 export { buildRemoteEnvironmentKey } from "./remoteEnvironmentKey.js";
 export type {
@@ -186,11 +184,7 @@ export {
 export * from "./remoteUsageTelemetry.js";
 export * from "./sessionCreateTelemetry.js";
 export type { LaunchMarks } from "./launchMarks.js";
-export {
-  LAUNCH_MARKS_QUERY_KEY,
-  parseLaunchMarks,
-  serializeLaunchMarks,
-} from "./launchMarks.js";
+export { LAUNCH_MARKS_QUERY_KEY, parseLaunchMarks, serializeLaunchMarks } from "./launchMarks.js";
 export type {
   BrowserViewSurfaceScaleMode,
   CancelPendingRemoteConnectionRequest,
@@ -359,10 +353,7 @@ export * from "./rewardsEmbedded.js";
 export * from "./rewardsBridge.js";
 export * from "./session-debug.js";
 export { redactFeedbackText } from "./feedbackPrivacy.js";
-export {
-  API_KEY_USAGE_SCENE,
-  type ApiKeyCreationUsageScene,
-} from "./api-key-usage-scene.js";
+export { API_KEY_USAGE_SCENE, type ApiKeyCreationUsageScene } from "./api-key-usage-scene.js";
 export {
   projectAccessTokenFingerprint,
   ProjectAccessTokenTransientError,

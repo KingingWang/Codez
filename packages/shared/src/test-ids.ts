@@ -188,6 +188,8 @@ export const TID_SSH_PASSWORD_INPUT = "ssh-password-input";
 export const TID_SSH_PRIVATE_KEY_INPUT = "ssh-private-key-input";
 /** SSH 认证方式：密码 */
 export const TID_SSH_AUTH_PASSWORD = "ssh-auth-password";
+/** SSH 认证方式：自动（config 私钥 / ssh-agent / 默认密钥） */
+export const TID_SSH_AUTH_AUTO = "ssh-auth-auto";
 /** SSH 认证方式：私钥 */
 export const TID_SSH_AUTH_PRIVATE_KEY = "ssh-auth-private-key";
 /** WSL 发行版选择框 */

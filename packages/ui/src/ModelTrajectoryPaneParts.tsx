@@ -117,7 +117,9 @@ function SourceTitle({ record, intl }: { record: CodezModelTrajectoryRecord; int
   const callSource: NonNullable<CodezModelTrajectoryRecord["callSource"]> = record.callSource ?? {
     kind: "main",
   };
-  const labelId = sourceLabelId(callSource);
+  // Codex rollout 是 per-turn 投影而非 Codez Agent 的 model-io 请求，来源文案必须显式区分。
+  const labelId =
+    record.provider === "codex" ? "modelTrajectory.source.codex" : sourceLabelId(callSource);
 
   return (
     <span

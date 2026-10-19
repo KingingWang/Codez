@@ -1,6 +1,7 @@
 import type { Event } from "@codez/rpc";
 import type {
   RemoteTarget,
+  SSHAuthMode,
   SourceServerUpdateRequest,
   SourceServerMigrationReport,
   SourceServerManagementSnapshot,
@@ -17,7 +18,7 @@ export interface UpdateConnectionProfileInput {
   profileDisplayName: string;
   sourceDisplayName?: string;
   target: Exclude<RemoteTarget, { kind: "server" }>;
-  sshAuthMethod?: "password" | "privateKey";
+  sshAuthMethod?: SSHAuthMode;
 }
 
 export interface ISourceServerManagementService {

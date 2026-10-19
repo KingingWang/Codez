@@ -162,6 +162,7 @@ export function collectRemoteFormFieldErrors(
       if (!snapshot.host.trim()) add("host", "ssh.validation.hostRequired");
       if (isInvalidPort(snapshot.port.trim())) add("port", "ssh.validation.port");
       if (!snapshot.username.trim()) add("username", "ssh.validation.usernameRequired");
+      // auto 模式（issue #14）不要求预先填写凭据：候选在连接时按 config/agent/默认密钥解析。
       if (
         snapshot.sshAuthMethod === "password" &&
         !snapshot.password &&
@@ -236,6 +237,7 @@ export function buildRemoteTarget(
           host: snapshot.host.trim(),
           port: port ? Number(port) : undefined,
           username: snapshot.username.trim(),
+          authMode: snapshot.sshAuthMethod,
           ...(sshConfigAlias ? { sshConfigAlias } : {}),
           assetInstallMode: snapshot.assetInstallMode,
           ...(snapshot.sshAuthMethod === "password" && snapshot.password
@@ -318,6 +320,7 @@ export function buildRemoteTargetFromProfile(
         host: profile.target.host,
         ...(profile.target.port ? { port: profile.target.port } : {}),
         username: profile.target.username,
+        ...(profile.target.authMode ? { authMode: profile.target.authMode } : {}),
         ...(profile.target.sshConfigAlias ? { sshConfigAlias: profile.target.sshConfigAlias } : {}),
         ...(profile.target.privateKeyPath ? { privateKeyPath: profile.target.privateKeyPath } : {}),
         ...(profile.target.assetInstallMode

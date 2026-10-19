@@ -13,6 +13,12 @@
   - `User -> username`
   - `IdentityFile -> privateKeyPath`
 - 当 alias 含 `IdentityFile` 时，认证方式自动切换为 `privateKey`。
+- 当 alias 不含 `IdentityFile` 时，认证方式默认切换为 `auto`（自动认证）：连接时依次尝试
+  SSH 配置私钥、ssh-agent（`SSH_AUTH_SOCK`；Windows 额外探测系统 OpenSSH agent 管道
+  `\\.\pipe\openssh-ssh-agent`）与默认私钥白名单（`~/.ssh/id_ed25519`、`id_ecdsa`、`id_rsa`，
+  跳过无口令不可用的加密文件）。全部不可用时给出明确的补充凭据提示，用户仍可选择
+  `password` / `privateKey` 显式模式。见
+  `docs/issues/remote-connection-ux/28-ssh-auto-auth-implementation.md`。
 - 用户后续手动改动 SSH 关键字段（host/port/username/privateKey）会清除“已选 alias”状态，避免误导。
 - 通过 alias 建立的 SSH remote workspace 会把 alias 作为非敏感连接元数据写入 remote target snapshot。
 - 通过 alias 首次识别一个 Source 设备时，alias 作为设备默认名称；已经存在或已经手工改名的设备不被后续握手覆盖。

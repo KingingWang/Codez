@@ -1571,6 +1571,114 @@ describe("SourceServerDirectory", () => {
     });
   });
 
+  it("auto 认证 Profile 无任何已保存凭据也可静默连接（issue #14）", async () => {
+    const settings = createSettingService({
+      sourceServerDirectoryMigrationVersion: 1,
+      connectionProfiles: [
+        {
+          profileId,
+          transport: "ssh",
+          target: {
+            kind: "ssh",
+            host: "example.com",
+            port: 22,
+            username: "alice",
+            authMode: "auto",
+          },
+          sourceServerId,
+          createdAt: 1,
+        },
+      ],
+      sourceServers: [
+        {
+          sourceServerId,
+          displayName: "devbox · alice",
+          lastOnlineAt: 90,
+          preferredProfileId: profileId,
+        },
+      ],
+    });
+    const directory = new SourceServerDirectory({
+      settingService: settings.service,
+      credentialService: createCredentialService({}).service,
+    });
+
+    await expect(directory.resolveProfileTarget(profileId)).resolves.toEqual({
+      kind: "ssh",
+      host: "example.com",
+      port: 22,
+      username: "alice",
+      authMode: "auto",
+    });
+    await expect(directory.listStartupReconnectCandidates()).resolves.toEqual([
+      {
+        profile: settings.read().connectionProfiles?.[0],
+        target: {
+          kind: "ssh",
+          host: "example.com",
+          port: 22,
+          username: "alice",
+          authMode: "auto",
+        },
+      },
+    ]);
+  });
+
+  it("编辑为 auto 认证时清除旧凭据与私钥路径（issue #14）", async () => {
+    const passwordKey = `connection-profile:${profileId}:password`;
+    const passphraseKey = `connection-profile:${profileId}:private-key-passphrase`;
+    const settings = createSettingService({
+      sourceServerDirectoryMigrationVersion: 1,
+      connectionProfiles: [
+        {
+          profileId,
+          transport: "ssh",
+          displayName: "primary",
+          target: {
+            kind: "ssh",
+            host: "example.com",
+            username: "alice",
+            privateKeyPath: "/home/alice/.ssh/id_ed25519",
+            passwordCredentialKey: passwordKey,
+            privateKeyPassphraseCredentialKey: passphraseKey,
+          },
+          sourceServerId,
+          createdAt: 1,
+        },
+      ],
+    });
+    const credentials = createCredentialService({
+      [passwordKey]: "old-password",
+      [passphraseKey]: "old-passphrase",
+    });
+    const directory = new SourceServerDirectory({
+      settingService: settings.service,
+      credentialService: credentials.service,
+    });
+
+    await directory.updateProfile({
+      profileId,
+      profileDisplayName: "primary",
+      sshAuthMethod: "auto",
+      target: {
+        kind: "ssh",
+        host: "example.com",
+        username: "alice",
+        authMode: "auto",
+      },
+    });
+
+    expect(settings.read().connectionProfiles?.[0]?.target).toEqual({
+      kind: "ssh",
+      host: "example.com",
+      port: 22,
+      username: "alice",
+      authMode: "auto",
+    });
+    expect(credentials.read(passwordKey)).toBeUndefined();
+    expect(credentials.read(passphraseKey)).toBeUndefined();
+  });
+
   it("uses complete private key auth when a stale password ref has no value", async () => {
     const stalePasswordKey = `connection-profile:${profileId}:password`;
     const settings = createSettingService({

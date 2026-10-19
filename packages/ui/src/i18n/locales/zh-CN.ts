@@ -1500,7 +1500,7 @@ const zhCN: Record<string, string> = {
   "modelTrajectory.refresh": "刷新",
   "modelTrajectory.close": "关闭",
   "modelTrajectory.loading": "正在加载调用轨迹…",
-  "modelTrajectory.empty": "暂无模型调用记录（仅 Codez Agent 会落盘 model-io）",
+  "modelTrajectory.empty": "暂无模型调用记录",
   "modelTrajectory.error": "读取调用轨迹失败",
   "modelTrajectory.truncatedNotice": "记录过多，仅展示最近的调用",
   "modelTrajectory.summaryCalls": "{count} 次调用",
@@ -1517,6 +1517,7 @@ const zhCN: Record<string, string> = {
   "modelTrajectory.source.targetCompletion": "目标验证",
   "modelTrajectory.source.subagent": "子智能体",
   "modelTrajectory.source.sidecar": "辅助请求",
+  "modelTrajectory.source.codex": "Codex 会话",
   "modelTrajectory.source.unknown": "未知来源",
   "modelTrajectory.inputSection": "输入",
   "modelTrajectory.outputSection": "输出",
@@ -2256,6 +2257,9 @@ const zhCN: Record<string, string> = {
   "ssh.username": "用户名",
   "ssh.usernamePlaceholder": "输入用户名，例如 root",
   "ssh.authMethod": "认证方式",
+  "ssh.auth.auto": "自动",
+  "ssh.auth.autoHint":
+    "依次尝试 SSH 配置私钥、ssh-agent 与默认密钥（~/.ssh/id_ed25519、id_ecdsa、id_rsa）；均不可用时再改用密码或手动私钥。",
   "ssh.auth.password": "密码",
   "ssh.auth.privateKey": "私钥",
   "ssh.assetInstallMode": "资源下载方式",
@@ -4334,6 +4338,7 @@ const zhCN: Record<string, string> = {
   "settings.usage.toolChartDescription":
     "来自当前供应商工具用量接口，统计联网搜索 / Web Reader / Zread 等工具调用次数。",
   "settings.usage.sourceProvider": "来源：{provider}",
+  "settings.usage.sourceMachine": "数据来源：{label}",
   "settings.usage.billingBanner.title": "{provider} 编程套餐",
   "settings.usage.billingBanner.description":
     "连接 {provider} 账号后查询编程套餐权益，购买或配置后回到 Codez 即可继续编码。",

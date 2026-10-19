@@ -46,6 +46,8 @@ export interface SSHBackendOptions {
   privateKeyPassphrase?: string;
   password?: string;
   agent?: string;
+  /** auto 模式已完成 agent 端点解析，禁止隐式 SSH_AUTH_SOCK 回退。 */
+  disableImplicitAgent?: boolean;
 }
 
 type SSHUploadFailureKind = "sftp-session" | "sftp-write" | "local-read" | "aborted";
@@ -137,6 +139,7 @@ export class SSHBackend implements IRemoteBackend {
       passphrase: options.privateKeyPassphrase,
       password: options.password,
       agent: options.agent,
+      disableImplicitAgent: options.disableImplicitAgent,
     });
     if (resolveCodezRuntimeEnv(process.env) === "development") {
       this.config.debug = (message: string) => {

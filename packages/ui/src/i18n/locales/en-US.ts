@@ -1625,7 +1625,7 @@ const enUS: Record<string, string> = {
   "modelTrajectory.refresh": "Refresh",
   "modelTrajectory.close": "Close",
   "modelTrajectory.loading": "Loading trajectory…",
-  "modelTrajectory.empty": "No model calls recorded (only Codez Agent writes model-io)",
+  "modelTrajectory.empty": "No model calls recorded",
   "modelTrajectory.error": "Failed to load trajectory",
   "modelTrajectory.truncatedNotice": "Too many records, showing the most recent calls",
   "modelTrajectory.summaryCalls": "{count} calls",
@@ -1642,6 +1642,7 @@ const enUS: Record<string, string> = {
   "modelTrajectory.source.targetCompletion": "Goal check",
   "modelTrajectory.source.subagent": "Subagent",
   "modelTrajectory.source.sidecar": "Sidecar",
+  "modelTrajectory.source.codex": "Codex session",
   "modelTrajectory.source.unknown": "Unknown source",
   "modelTrajectory.inputSection": "Input",
   "modelTrajectory.outputSection": "Output",
@@ -2442,6 +2443,9 @@ const enUS: Record<string, string> = {
   "ssh.username": "Username",
   "ssh.usernamePlaceholder": "Enter username, e.g. root",
   "ssh.authMethod": "Authentication method",
+  "ssh.auth.auto": "Auto",
+  "ssh.auth.autoHint":
+    "Tries the SSH config identity, ssh-agent, and default keys (~/.ssh/id_ed25519, id_ecdsa, id_rsa) in order; if none work, switch to password or a manual private key.",
   "ssh.auth.password": "Password",
   "ssh.auth.privateKey": "Private key",
   "ssh.assetInstallMode": "Resource download method",
@@ -4627,6 +4631,7 @@ const enUS: Record<string, string> = {
   "settings.usage.toolChartDescription":
     "From the selected provider tool-usage API: Network Search / Web Reader / Zread call counts.",
   "settings.usage.sourceProvider": "Source: {provider}",
+  "settings.usage.sourceMachine": "Data source: {label}",
   "settings.usage.billingBanner.title": "{provider} Coding Plan",
   "settings.usage.billingBanner.description":
     "Connect your {provider} account to query Coding Plan entitlement, then keep coding in Codez after purchase or setup.",

@@ -126,11 +126,14 @@ function profileTargetIdentityKey(
   switch (target.kind) {
     case "ssh":
       // assetInstallMode、alias 和 resourcePackages 只影响部署/展示，不是连接身份。
+      // 认证策略参与身份：同一主机的 auto 与显式凭据连接不能被去重合并（issue #14）。
+      // 旧 Profile 没有 authMode 字段，按既有规则推导，保持新旧记录去重行为一致。
       return JSON.stringify({
         kind: "ssh",
         host: target.host.trim().toLowerCase(),
         port: target.port ?? 22,
         username: target.username.trim(),
+        authMode: target.authMode ?? (target.privateKeyPath?.trim() ? "privateKey" : "password"),
         privateKeyPath: target.privateKeyPath?.trim() ?? "",
       });
     case "wsl":
@@ -666,7 +669,17 @@ export class SourceServerDirectory {
           if (!input.sshAuthMethod) {
             throw new Error("SSH authentication method is required");
           }
-          if (input.sshAuthMethod === "password") {
+          if (input.sshAuthMethod === "auto") {
+            // 自动认证（issue #14）：不需要任何已保存凭据；
+            // 切换到 auto 时清掉旧凭据引用，避免已不属于当前认证方式的凭据残留在 Profile 里。
+            await deleteCredential(currentProfile.target.passwordCredentialKey);
+            await deleteCredential(currentProfile.target.privateKeyPassphraseCredentialKey);
+            const { privateKeyPath: _autoPrivateKeyPath, ...autoTarget } = normalizedTarget;
+            nextTarget = {
+              ...autoTarget,
+              authMode: "auto",
+            } as SSHProfileTarget;
+          } else if (input.sshAuthMethod === "password") {
             const { privateKeyPath: _privateKeyPath, ...passwordTarget } = normalizedTarget;
             const passwordCredentialKey =
               currentProfile.target.passwordCredentialKey ??
@@ -686,6 +699,7 @@ export class SourceServerDirectory {
             await deleteCredential(currentProfile.target.privateKeyPassphraseCredentialKey);
             nextTarget = {
               ...passwordTarget,
+              authMode: "password",
               passwordCredentialKey,
             } as SSHProfileTarget;
           } else {
@@ -711,6 +725,7 @@ export class SourceServerDirectory {
             }
             nextTarget = {
               ...normalizedTarget,
+              authMode: "privateKey",
               ...(privateKeyPassphraseCredentialKey ? { privateKeyPassphraseCredentialKey } : {}),
             } as SSHProfileTarget;
           }
@@ -1236,6 +1251,7 @@ export class SourceServerDirectory {
         host: target.host.trim().toLowerCase(),
         port: target.port ?? 22,
         username: target.username.trim(),
+        ...(target.authMode ? { authMode: target.authMode } : {}),
         ...(target.sshConfigAlias ? { sshConfigAlias: target.sshConfigAlias } : {}),
         ...(target.privateKeyPath ? { privateKeyPath: target.privateKeyPath } : {}),
         ...(target.assetInstallMode ? { assetInstallMode: target.assetInstallMode } : {}),
@@ -1266,6 +1282,7 @@ export class SourceServerDirectory {
         host: target.host.trim().toLowerCase(),
         port: target.port ?? 22,
         username: target.username.trim(),
+        ...(target.authMode ? { authMode: target.authMode } : {}),
         ...(target.sshConfigAlias ? { sshConfigAlias: target.sshConfigAlias } : {}),
         ...(target.privateKeyPath ? { privateKeyPath: target.privateKeyPath } : {}),
         ...(target.assetInstallMode ? { assetInstallMode: target.assetInstallMode } : {}),
@@ -1391,12 +1408,16 @@ export class SourceServerDirectory {
       profile.target.privateKeyPath &&
       (!profile.target.privateKeyPassphraseCredentialKey || privateKeyPassphrase),
     );
-    if (!hasPasswordAuth && !hasPrivateKeyAuth) return null;
+    // 自动认证（issue #14）：候选是 config IdentityFile、ssh-agent 与默认密钥，
+    // 全部无需已保存凭据即可尝试；服务端拒绝时按普通认证失败路径回到交互流程。
+    const hasAutoAuth = profile.target.authMode === "auto";
+    if (!hasPasswordAuth && !hasPrivateKeyAuth && !hasAutoAuth) return null;
     return {
       kind: "ssh",
       host: profile.target.host,
       port: profile.target.port,
       username: profile.target.username,
+      ...(profile.target.authMode ? { authMode: profile.target.authMode } : {}),
       ...(profile.target.sshConfigAlias ? { sshConfigAlias: profile.target.sshConfigAlias } : {}),
       ...(hasPrivateKeyAuth && profile.target.privateKeyPath
         ? { privateKeyPath: profile.target.privateKeyPath }
