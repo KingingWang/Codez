@@ -3197,7 +3197,7 @@ Todo139：SHARE30/31/32 的共享初始化 Hook／草稿单测与 `packages/ui/t
 
 | ID | 状态 | Setup → action → assertion | 非 UI 证据与 GUI 缺口 |
 | --- | --- | --- | --- |
-| VP-CODEX-01/02 | planned | 先有 CLI A 历史，后建 A；A+B 新会话 `cwd=A`，另有外部 A/B 会话 → A 视图收录全部 A，A+B 只收自己的 ID；全局去重，归属不改 | Host/project-sidebar 单测 + native `thread/list` 与创建来源证据；manual-review/pending virtual-project GUI 待补 |
+| VP-CODEX-01/02 | partial / planned | 先有 CLI A 历史，后建 A；A+B 新会话 `cwd=A`，另有外部 A/B 会话 → A 视图收录全部 A，A+B 只收自己的 ID；全局去重，归属不改 | Host/project-sidebar 单测 + native `thread/list` 与创建来源证据；01 的 CLI→单目录 GUI 子场景 `manual-review/pending/conversation-session-codex-project-history.test.ts` 于 2026-10-19 macOS pinned Codex 1 passing，artifact `desktop-e2e-20261019-141400-535`，刷新后可重开原线程；仍待人工审阅、不计 formal。02 多目录 GUI 待补 |
 | VP-CODEX-03/04 | planned | A+B 与 A+C 共用 A → 新建、移动、改 roots、冷启动 → 不串项目；热实例不刷新，冷恢复更新；A 配置只取 A | Host 归属/原生 start-resume 参数及受限目录访问单测 + Desktop 手工 GUI 待补；真实手机待补 |
 | VP-CODEX-05 | planned | 原生 Codex A+B 历史，无 Host 归属 → 建 A 并打开 → 保留原 B root | Codex thread/read + resume 请求省略 roots、Host NULL 不变；原生 E2E 待补 |
 
