@@ -190,4 +190,23 @@ describe("project-storage migration order", () => {
       expect(tree.tasks.every((task) => task.projectId === null)).toBe(true);
     },
   );
+
+  it("ensures the owner host row when an already-migrated database reopens with a server hostId", async () => {
+    const { db, context } = await fixture();
+    // 与生产一致：TaskIndexRepo 初始化时开启外键，FK 失败才会真实暴露。
+    db.exec("PRAGMA foreign_keys = ON");
+    // 第一次以本地身份完成迁移（远端库历史上被本地身份的入口迁移过，hosts 只有 local）。
+    await port.migrate(db, context);
+    // 回归场景：Source Server 以 server hostId 重启时迁移已全部应用，
+    // 此前不会再补 hosts 行，首个 saveProject 必现 FOREIGN KEY constraint failed。
+    const hostId = "remote:server:985bef15-e8ae-4647-9030-21ff76b80f8e";
+    await port.migrate(db, { ...context, hostId });
+    const project = port
+      .repository(db, hostId)
+      .saveProject({ roots: ["/home/kingingwang/workspace/ai/ZCode"] });
+    expect(project.hostId).toBe(hostId);
+    expect(
+      db.prepare("SELECT kind FROM hosts WHERE host_id=?").get(hostId),
+    ).toEqual({ kind: "server" });
+  });
 });
