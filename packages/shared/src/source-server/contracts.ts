@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { RemoteTarget } from "#src/remoteTarget.js";
+import { SSH_AUTH_MODES, type RemoteTarget } from "#src/remoteTarget.js";
 import { publicCodezErrorCodeSchema } from "./errorCodes.js";
 import { REMOTE_ASSET_INSTALL_MODES } from "../remoteAssetInstallMode.js";
 import { isKnownRemoteResourcePackageId } from "../remoteResourcePackages.js";
@@ -19,6 +19,8 @@ export const sshProfileTargetSchema = z
     host: nonEmptyStringSchema,
     port: z.number().int().positive().max(65_535).optional(),
     username: nonEmptyStringSchema,
+    /** 显式认证策略；旧 Profile 缺省时按 privateKeyPath/passwordCredentialKey 推导。 */
+    authMode: z.enum(SSH_AUTH_MODES).optional(),
     sshConfigAlias: nonEmptyStringSchema.optional(),
     privateKeyPath: z.string().optional(),
     assetInstallMode: z.enum(REMOTE_ASSET_INSTALL_MODES).optional(),

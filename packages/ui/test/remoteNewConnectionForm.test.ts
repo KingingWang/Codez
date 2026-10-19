@@ -177,8 +177,13 @@ describe("设置入口的新建连接表单", () => {
     expect((screen.getByTestId("ssh-host-input") as HTMLInputElement).value).toBe(
       "staging.example.com",
     );
+    // issue #14：alias 未配置 IdentityFile 时默认自动认证，
+    // 不再要求填写密码/私钥，焦点直接到主操作。
+    const auth = screen.getByRole("group", { name: zhCN["ssh.authMethod"] });
+    expect(within(auth).getByTestId("ssh-auth-auto").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(zhCN["ssh.auth.autoHint"])).toBeTruthy();
     await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByTestId("ssh-password-input")),
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "添加并连接" })),
     );
 
     fireEvent.click(within(chip).getByRole("button", { name: zhCN["ssh.configAliasUnlink"] }));
@@ -224,8 +229,9 @@ describe("设置入口的新建连接表单", () => {
     expect((screen.getByTestId("ssh-port-input") as HTMLInputElement).value).toBe("2222");
     expect(screen.getByText("已识别 root@10.0.0.5:2222")).toBeTruthy();
     expect(screen.queryByTestId("remote-ssh-config-alias-chip")).toBeNull();
+    // 导入无 IdentityFile 的 alias 后为自动认证（issue #14）：无凭据必填项，焦点到主操作。
     await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByTestId("ssh-password-input")),
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "添加并连接" })),
     );
 
     // 手动修改主机后识别提示消失；不匹配的文本交给浏览器默认粘贴。

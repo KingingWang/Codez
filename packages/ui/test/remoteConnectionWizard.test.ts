@@ -95,8 +95,34 @@ describe("buildRemoteTarget", () => {
         host: "demo.internal",
         port: 22,
         username: "root",
+        authMode: "privateKey",
         privateKeyPath: "~/.ssh/id_ed25519",
         privateKeyPassphrase: "key-secret",
+      },
+    });
+  });
+
+  it("auto 模式不要求凭据，目标只携带认证策略（issue #14）", () => {
+    const result = buildRemoteTarget(intl, {
+      kind: "ssh",
+      host: "demo.internal",
+      port: "22",
+      username: "root",
+      sshAuthMethod: "auto",
+      password: "",
+      privateKeyPath: "",
+      privateKeyPassphrase: "",
+      wslDistro: "",
+      dockerContainer: "",
+    });
+
+    expect(result).toEqual({
+      target: {
+        kind: "ssh",
+        host: "demo.internal",
+        port: 22,
+        username: "root",
+        authMode: "auto",
       },
     });
   });
@@ -383,6 +409,17 @@ describe("collectRemoteFormFieldErrors", () => {
         { ...emptySsh, host: "h", username: "u" },
         { passwordOptional: true },
       ),
+    ).toEqual([]);
+  });
+
+  it("auto 模式没有凭据必填校验（issue #14）", () => {
+    expect(
+      collectRemoteFormFieldErrors(intl, {
+        ...emptySsh,
+        host: "h",
+        username: "u",
+        sshAuthMethod: "auto",
+      }),
     ).toEqual([]);
   });
 

@@ -25,6 +25,28 @@ const profileId = "17ef20b3-622d-4a53-98c1-0cdff29f3e6d";
 const sourceServerId = "3cd4f9da-cd79-426c-9d70-75f36e9f6a87";
 
 describe("R3 Source Server contracts", () => {
+  it("SSH Profile target 接受显式 authMode 并拒绝未知取值（issue #14）", () => {
+    const base = { kind: "ssh", host: "example.com", username: "dev" };
+    for (const authMode of ["auto", "password", "privateKey"] as const) {
+      expect(
+        connectionProfileSchema.safeParse({
+          profileId,
+          transport: "ssh",
+          target: { ...base, authMode },
+          createdAt: 1,
+        }).success,
+      ).toBe(true);
+    }
+    expect(
+      connectionProfileSchema.safeParse({
+        profileId,
+        transport: "ssh",
+        target: { ...base, authMode: "agent" },
+        createdAt: 1,
+      }).success,
+    ).toBe(false);
+  });
+
   it("negotiates optional virtualProjects without changing the legacy wire version", () => {
     const legacy = {
       serverId: sourceServerId,

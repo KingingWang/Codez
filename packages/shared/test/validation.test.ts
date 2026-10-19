@@ -6,9 +6,19 @@ import {
   hostIncomingMessageSchema,
   webRemoteControlAppPayloadSchema,
   hostResponseMessageSchema,
+  sshConnectOptionsSchema,
   wslConnectOptionsSchema,
   codezPersistedMessageSchema,
 } from "../src/validation.js";
+
+it("SSH 连接目标接受显式 authMode 并拒绝未知取值（issue #14）", () => {
+  const base = { kind: "ssh", host: "example.com", username: "dev" };
+  for (const authMode of ["auto", "password", "privateKey"] as const) {
+    expect(sshConnectOptionsSchema.safeParse({ ...base, authMode }).success).toBe(true);
+  }
+  expect(sshConnectOptionsSchema.safeParse(base).success).toBe(true);
+  expect(sshConnectOptionsSchema.safeParse({ ...base, authMode: "agent" }).success).toBe(false);
+});
 
 it("PD01 手机任务草稿身份通过两层协议，且不能注入路径或混用项目", () => {
   const intent = {

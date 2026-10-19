@@ -26,6 +26,7 @@ const messages: Record<string, string> = {
   "modelTrajectory.role.user": "用户消息",
   "modelTrajectory.source.main": "主会话",
   "modelTrajectory.source.sessionTitle": "标题生成",
+  "modelTrajectory.source.codex": "Codex 会话",
   "modelTrajectory.finish.toolCalls": "工具调用",
   "modelTrajectory.toolCall": "工具调用",
   "modelTrajectory.toolId": "ID",
@@ -51,6 +52,34 @@ afterEach(() => {
 });
 
 describe("ModelTrajectoryPaneParts", () => {
+  it("labels Codex rollout records without treating them as main model-io calls", () => {
+    const { container } = render(
+      createElement(CallCard, {
+        record: {
+          provider: "codex",
+          requestId: "codex-turn-1",
+          attempt: 1,
+          startedAt: "2026-06-03T12:00:00.000Z",
+          callSource: { kind: "sidecar", querySource: "codex_rollout" },
+          model: { modelId: "gpt-test" },
+          request: {
+            messages: [{ role: "user", parts: [{ kind: "text", text: "hello" }] }],
+            toolNames: [],
+          },
+          response: { toolCalls: [] },
+        },
+        index: 0,
+        inputMessages: [{ role: "user", parts: [{ kind: "text", text: "hello" }] }],
+        intl: intl as never,
+      }),
+    );
+
+    const source = container.querySelector('[data-trajectory-source-title=""]');
+    expect(source?.textContent).toBe("Codex 会话");
+    expect(source?.getAttribute("data-trajectory-source-kind")).toBe("sidecar");
+    expect(source?.getAttribute("data-trajectory-query-source")).toBe("codex_rollout");
+  });
+
   it("temporarily reveals the active search target without changing local expansion", () => {
     const props = {
       message: { role: "user" as const, parts: [{ kind: "text" as const, text: "hidden text" }] },

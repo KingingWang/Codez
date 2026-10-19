@@ -136,6 +136,7 @@ function mapRecord(record: Record<string, unknown>): CodezModelTrajectoryRecord 
   const modelRole = asString(model?.role);
 
   const mapped: CodezModelTrajectoryRecord = {
+    provider: "codez-agent",
     requestId: asString(record.requestId) ?? "",
     attempt: asNumber(record.attempt) ?? 1,
     startedAt: asString(record.startedAt) ?? "",

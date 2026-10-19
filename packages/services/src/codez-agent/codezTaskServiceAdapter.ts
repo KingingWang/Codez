@@ -152,6 +152,7 @@ import type {
   CodezTaskIndexTerminalEvent,
 } from "./codezTaskIndexSyncer.js";
 import { readModelTrajectory } from "./modelTrajectory.js";
+import { readCodexModelTrajectory } from "./model-trajectory/index.js";
 import { getAppConfigDir } from "#src/paths.js";
 import {
   buildCodexAutomationSendTextPayload,
@@ -192,6 +193,8 @@ interface CreateCodezTaskServiceAdapterOptions {
   taskIndexSyncer: CodezTaskIndexSyncer;
   settingService?: Pick<ISettingService, "get">;
   cuaProductMcpServerResolver?: CuaProductMcpServerResolver;
+  /** Host 装配事实：同一时刻只有一个 agent 底座，Codex 模式必须读原生 rollout。 */
+  agentRuntimeMode?: "legacy" | "codex";
 }
 
 interface TaskTarget {
@@ -2962,9 +2965,23 @@ export function createCodezTaskServiceAdapter(
     },
 
     async getModelTrajectory(params) {
+      if (options.agentRuntimeMode === "codex") {
+        // Codex 不落 model-io；Host 的 agentRuntimeMode 是底座路由事实，不能按 taskId 形态猜测。
+        const codexTrajectory = await readCodexModelTrajectory(params.taskId, params.limit);
+        logger.info(
+          `[CodezTaskService] getModelTrajectory runtime=codex taskId=${params.taskId} records=${codexTrajectory.records.length} files=${codexTrajectory.sourceFiles.length} truncated=${codexTrajectory.truncated}`,
+        );
+        return codexTrajectory;
+      }
+
+      const trajectory = await readModelTrajectory(params.taskId, params.limit);
+      if (trajectory.records.length === 0) {
+        // 兼容同一索引里没有 model-io 的历史任务：只有文件头 session_meta 精确匹配时才采用 Codex。
+        const codexTrajectory = await readCodexModelTrajectory(params.taskId, params.limit);
+        if (codexTrajectory.records.length > 0) return codexTrajectory;
+      }
       // Codez Agent 把 taskId 当作 sessionId 落盘 model-io（见本文件其它 sessionId: params.taskId 用法），
       // 这里按 sessionId 还原该 task 的模型调用轨迹，供 UI 侧边栏可视化。
-      const trajectory = await readModelTrajectory(params.taskId, params.limit);
       logger.info(
         `[CodezTaskService] getModelTrajectory taskId=${params.taskId} records=${trajectory.records.length} files=${trajectory.sourceFiles.length} truncated=${trajectory.truncated}`,
       );

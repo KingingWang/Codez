@@ -99,12 +99,16 @@ export interface CodezModelTrajectoryCallSource {
   querySource?: string;
 }
 
+/** 轨迹数据源；缺省表示旧 Codez Agent model-io 记录。 */
+export type CodezModelTrajectoryProvider = "codez-agent" | "codex";
+
 /**
  * 一次模型调用（一条 model_io 记录）。轨迹按时间顺序由多条调用组成。
  * request.messages 是该次请求发送给模型的完整上下文（随轮次增长），
  * response 是这次调用模型产出的新内容。
  */
 export interface CodezModelTrajectoryRecord {
+  provider?: CodezModelTrajectoryProvider;
   requestId: string;
   attempt: number;
   startedAt: string;
@@ -142,7 +146,7 @@ export interface CodezModelTrajectoryRecord {
 /** 某个 task/session 的完整模型调用轨迹。 */
 export interface CodezModelTrajectory {
   taskId: string;
-  /** runtime 是否支持读取 model-io 轨迹（仅 Codez Agent 落盘 model-io）。 */
+  /** runtime 是否支持读取模型轨迹；Codez Agent 读 model-io，Codex 读 rollout。 */
   available: boolean;
   records: CodezModelTrajectoryRecord[];
   /** 命中的源文件绝对路径，便于排查。 */
@@ -650,8 +654,9 @@ export interface ICodezTaskService {
   }>;
 
   /**
-   * 读取 task 对应的模型调用轨迹（来自 ~/.codez/cli/{debug,rollout} 的 model-io JSONL）。
-   * taskId 即 Codez Agent 的 sessionId，按 sessionId 匹配 model-io 记录。
+   * 读取 task 对应的模型调用轨迹。Codez Agent 读取
+   * ~/.codez/cli/{debug,rollout} 的 model-io JSONL；Codex 读取原生 rollout JSONL。
+   * 路由由 Host 当前 agent runtime mode 决定，并在 legacy 空结果时做精确 rollout 兜底。
    */
   getModelTrajectory(params: {
     taskId: string;

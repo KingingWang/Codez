@@ -108,7 +108,6 @@ function EditConnectionProfileForm({
       form.setHost(profile.target.host);
       form.setPort(String(profile.target.port ?? 22));
       form.setUsername(profile.target.username);
-      form.setSshAuthMethod(profile.target.privateKeyPath ? "privateKey" : "password");
       form.setPrivateKeyPath(profile.target.privateKeyPath ?? "");
       if (profile.target.sshConfigAlias)
         form.applySshConfigAlias({
@@ -118,6 +117,11 @@ function EditConnectionProfileForm({
           username: profile.target.username,
           privateKeyPath: profile.target.privateKeyPath,
         });
+      // 必须在 applySshConfigAlias 之后设置：alias 应用会按 IdentityFile 有无推导认证方式，
+      // 已保存 Profile 的显式 authMode（尤其 auto）优先级更高，不能被 alias 推导覆盖。
+      form.setSshAuthMethod(
+        profile.target.authMode ?? (profile.target.privateKeyPath ? "privateKey" : "password"),
+      );
       form.setAssetInstallMode(
         profile.target.assetInstallMode ?? DEFAULT_REMOTE_ASSET_INSTALL_MODE,
       );
@@ -158,6 +162,7 @@ function EditConnectionProfileForm({
         host: host.trim(),
         port: normalizedPort,
         username: username.trim(),
+        authMode: sshAuthMethod,
         assetInstallMode,
         ...(form.selectedSshConfigAlias ? { sshConfigAlias: form.selectedSshConfigAlias } : {}),
         ...(profile.target.resourcePackages

@@ -20,6 +20,7 @@ import {
 } from "./provider-provisioning.js";
 import { codezProviderSchema } from "./providers.js";
 import { REMOTE_ASSET_INSTALL_MODES } from "./remoteAssetInstallMode.js";
+import { SSH_AUTH_MODES } from "./remoteTarget.js";
 import { isKnownRemoteResourcePackageId } from "./remoteResourcePackages.js";
 import {
   normalizeWebRemoteControlWirePayload,
@@ -442,6 +443,7 @@ export const sshConnectOptionsSchema = z.object({
   host: nonEmptyStringSchema,
   port: z.number().int().positive().max(65535).optional(),
   username: nonEmptyStringSchema,
+  authMode: z.enum(SSH_AUTH_MODES).optional(),
   sshConfigAlias: nonEmptyStringSchema.optional(),
   password: z.string().optional(),
   privateKeyPath: z.string().optional(),
