@@ -1,14 +1,19 @@
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
 // @vitest-environment jsdom
 import { createElement } from "react";
 import { cleanup, render, screen, within, fireEvent, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { RemoteConnectionLogEntry } from "@/hooks/useRemoteConnectionLogs.js";
 
+const feedback = vi.hoisted(() => ({ openExternal: vi.fn() }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({
+    locale: "zh-CN",
+    intl: { formatMessage: ({ id }: { id: string }) => id },
+  }),
 }));
-vi.mock("@/hooks/usePlatform.js", () => ({ usePlatform: () => ({}) }));
+vi.mock("@/hooks/usePlatform.js", () => ({
+  usePlatform: () => ({ openExternal: feedback.openExternal }),
+}));
 
 import { RemoteConnectionConnectingStep } from "@/remote-connection/RemoteConnectionConnectingStep.js";
 
@@ -65,7 +70,7 @@ it("replaces upload percentage with live install stages and preserves the failur
   expect(within(screen.getByRole("list")).queryByText("remote.phaseSub.readyOnline")).toBeNull();
 });
 
-it("连接反馈只附带当前可见日志，不自动上传全量诊断文件", async () => {
+it("连接反馈只带错误摘要，不把连接日志发往外部 Issue", async () => {
   render(
     createElement(RemoteConnectionConnectingStep, {
       kind: "ssh",
@@ -77,10 +82,10 @@ it("连接反馈只附带当前可见日志，不自动上传全量诊断文件"
     }),
   );
   fireEvent.click(screen.getByText("remoteConnection.feedback"));
-  await waitFor(() =>
-    expect(useFeedbackStore.getState().submitDraft?.description).toContain("safe connection log"),
-  );
-  expect(useFeedbackStore.getState().submitDraft?.includeLogs).toBe(false);
+  await waitFor(() => expect(feedback.openExternal).toHaveBeenCalledOnce());
+  const url = decodeURIComponent(feedback.openExternal.mock.calls[0]?.[0] ?? "");
+  expect(url).toContain("连接失败");
+  expect(url).not.toContain("safe connection log");
 });
 
 it("shows download progress and speed inside the installation stage with collapsed logs", () => {

@@ -561,6 +561,7 @@ const zhCN: Record<string, string> = {
   "common.close": "关闭",
   "common.gotIt": "知道了",
   "chat.plan.removeMarker": "取消下一次提交的计划模式",
+  "chat.plan.attachmentsBlocked": "计划快捷命令暂不支持附件或上下文，请先切换计划模式再发送。",
   "common.confirm": "确认",
   "common.more": "更多",
   "common.refresh": "刷新",

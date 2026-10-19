@@ -150,7 +150,9 @@ it("并发 Source/Core 初始化只记账一次，默认业务表与远端扩展
         { id: "0001_adopt_task_schema" },
         { id: "0002_provider_selection" },
         { id: "0003_official_glm_selection" },
+        { id: "0004_codex_automation_correlations" },
         { id: "0004_project_execution_scopes" },
+        { id: "0005_codex_automation_stopped" },
         { id: "0005_source_server_workspace_schema" },
         { id: "0006_task_group_admissions" },
       ]);
@@ -174,11 +176,13 @@ it("Controller 与 Source 的附加表登记到同库账本，保留旧记录且
       oldWorkspaceKey: "remote:ssh:old:22:u:/repo",
       newWorkspaceKey: "remote:server:source:/repo",
     });
-    expect(db.prepare("SELECT id FROM tasks_schema_migration WHERE id LIKE '0004%'").get()).toEqual(
-      {
-        id: "0004_controller_remote_identity",
-      },
-    );
+    expect(
+      db
+        .prepare("SELECT id FROM tasks_schema_migration WHERE id='0004_controller_remote_identity'")
+        .get(),
+    ).toEqual({
+      id: "0004_controller_remote_identity",
+    });
     expect(
       db.prepare("SELECT 1 FROM sqlite_master WHERE name='workspace_alias'").get(),
     ).toBeUndefined();
@@ -218,7 +222,11 @@ it("Controller 与 Source 的附加表登记到同库账本，保留旧记录且
     await repo.getFailedPathCount();
     await runTasksDatabaseMigrations(sourceDb);
     expect(
-      sourceDb.prepare("SELECT * FROM tasks_schema_migration WHERE id LIKE '0005%'").all(),
+      sourceDb
+        .prepare(
+          "SELECT * FROM tasks_schema_migration WHERE id='0005_source_server_workspace_schema'",
+        )
+        .all(),
     ).toEqual(sourceLedger);
   } finally {
     sourceDb.close();
@@ -317,7 +325,7 @@ it.each(["base", "controller-remote", "source-server"] as const)(
         migration,
         onProgress: (phase) => phases.push(phase),
       });
-      const expectedCount = scope === "base" ? 5 : 1;
+      const expectedCount = scope === "base" ? 7 : 1;
       expect(db.isTransaction).toBe(false);
       expect(migration).toEqual({
         kind: "initialize",

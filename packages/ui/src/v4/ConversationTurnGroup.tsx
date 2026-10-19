@@ -14,10 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import { ChevronRightIcon, EyeIcon } from "lucide-react";
-import {
-  type HighspeedMessageMeta,
-  type CodezApiRetryStatus,
-} from "@codez/shared";
+import { type HighspeedMessageMeta, type CodezApiRetryStatus } from "@codez/shared";
 import {
   TID_CHAT_ASSISTANT_HISTORY_CONTENT,
   TID_CHAT_ASSISTANT_HISTORY_TRIGGER,
@@ -33,7 +30,6 @@ import type {
   ConversationRowTarget,
   SessionUsageState,
   TurnHeaderRow,
-  WorkflowNotificationMeta,
 } from "@codez/shared/codez-protocol-v4";
 import { ChatLoading } from "@/components/ai-elements/chat-loading.js";
 import { ChatApiRetryStatus } from "@/chat-input-toolbar/display.js";
@@ -91,7 +87,11 @@ import {
 import type { ConversationCuaGroupEvent } from "@/v4/conversationCuaGroups.js";
 import { ConversationAgentToolCallRow } from "@/v4/ConversationAgentToolCallRow.js";
 import { ConversationFileSummaryPanel } from "@/v4/ConversationFileSummaryPanel.js";
-import { WorkflowNotificationToolRow } from "@/v4/WorkflowNotificationToolRow.js";
+import {
+  WorkflowNotificationToolRow,
+  workflowRowNotification,
+  type WorkflowRowNotification,
+} from "@/v4/WorkflowNotificationToolRow.js";
 import { ConversationWorkflowDigests } from "@/v4/ConversationWorkflowDigests.js";
 import { ConversationWorkflowCompletion } from "@/v4/ConversationWorkflowCompletion.js";
 import { resolveWorkflowTurnDigests } from "@/v4/workflowTurnDigests.js";
@@ -212,9 +212,7 @@ function HighspeedOutputFooter({
   );
 }
 
-function toRetryStatus(
-  apiRetry: Exclude<ApiRetryState, { source: "codex" }>,
-): CodezApiRetryStatus {
+function toRetryStatus(apiRetry: Exclude<ApiRetryState, { source: "codex" }>): CodezApiRetryStatus {
   const attempt = Math.max(1, Math.floor(apiRetry.attempt));
   // v4 maxAttempts 包含首次请求，而展示口径是重试次数；直接展示会把
   // 默认 10 次重试写成 1/11。
@@ -1336,10 +1334,11 @@ function resolveBackgroundResultTitle(unit: ConversationTurnRenderUnit): string 
  */
 function resolveWorkflowNotification(
   unit: ConversationTurnRenderUnit,
-): WorkflowNotificationMeta | undefined {
+): WorkflowRowNotification | undefined {
   if (unit.header?.origin !== "backgroundResult") return undefined;
-  const originMeta = unit.header.originMeta;
-  return originMeta?.backgroundSource === "workflow" ? originMeta.workflowNotification : undefined;
+  // Bug 原因：提醒放在独立的 workflowBlocked 键上，旧分支只读取 workflowNotification，
+  // 导致新版客户端仍画裸标题行；复用通知行组件的双载荷解析保持展示与留白判据一致。
+  return workflowRowNotification(unit.header.originMeta);
 }
 
 function ConversationBackgroundResultWork({
@@ -2016,7 +2015,10 @@ function ConversationTurnGroupImpl({
       ) : null}
       {/* 手动 stop 后保留轮尾恢复入口，和上游话题准备状态独立显示。 */}
       {interruptedContinueTarget && onContinue ? (
-        <ConversationTurnContinueAction target={interruptedContinueTarget} onContinue={onContinue} />
+        <ConversationTurnContinueAction
+          target={interruptedContinueTarget}
+          onContinue={onContinue}
+        />
       ) : null}
     </section>
   );
