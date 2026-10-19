@@ -82,6 +82,7 @@ export interface PendingOAuthLogin {
   /** 区域登录的 state 来自服务端，无法携带回跳地址，只能记在这里。 */
   appReturnTo?: string;
   regional?: PendingRegionalFlow;
+  hash?: string;
 }
 
 function isPendingRegionalFlow(value: unknown): value is PendingRegionalFlow {
@@ -113,7 +114,8 @@ function isPendingOAuthLogin(value: unknown): value is PendingOAuthLogin {
     typeof login.expectedSession === "string" &&
     hasText(login.expectedSession) &&
     (login.appReturnTo === undefined || typeof login.appReturnTo === "string") &&
-    (login.regional === undefined || isPendingRegionalFlow(login.regional))
+    (login.regional === undefined || isPendingRegionalFlow(login.regional)) &&
+    (login.hash === undefined || typeof login.hash === "string")
   );
 }
 

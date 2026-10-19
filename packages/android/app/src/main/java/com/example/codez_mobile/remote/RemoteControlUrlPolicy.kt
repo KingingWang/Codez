@@ -35,6 +35,30 @@ object RemoteControlUrlPolicy {
         return isAllowedRemoteUri(uri)
     }
 
+    fun isAllowedOAuthNavigationUri(uri: Uri?): Boolean {
+        if (uri == null) return false
+        return RemoteControlUrlMatcher.isAllowedOAuthNavigationTarget(
+            scheme = uri.scheme,
+            host = uri.host,
+        )
+    }
+
+    fun resolveOfficialOAuthCallbackToTrustedUrl(uri: Uri?): String? {
+        if (uri == null) return null
+        val names = runCatching { uri.queryParameterNames }.getOrDefault(emptySet())
+        if (
+            !RemoteControlUrlMatcher.isOfficialOAuthCallback(
+                scheme = uri.scheme,
+                host = uri.host,
+                path = uri.path,
+                queryParameterNames = names,
+            )
+        ) {
+            return null
+        }
+        return buildDefaultRemoteUrl(uri)
+    }
+
     private fun buildDefaultRemoteUrl(uri: Uri): String {
         val base = Uri.parse(BuildConfig.REMOTE_CONTROL_DEFAULT_URL).buildUpon()
         uri.encodedQuery?.let { base.encodedQuery(it) }

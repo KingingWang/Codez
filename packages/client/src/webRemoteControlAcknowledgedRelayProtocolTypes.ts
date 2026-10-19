@@ -20,6 +20,7 @@ export const ACKNOWLEDGED_WEB_REMOTE_CONTROL_RELAY_LIMITS = {
 export interface AcknowledgedWebRemoteControlRelayProtocolOptions extends WebRemoteControlRpcTransportIdentity {
   sendFrame(payload: WebRemoteControlRpcTransportPayload): boolean | void;
   measureFrameBytes?(payload: WebRemoteControlRpcTransportFramePayload): number;
+  maxPhysicalFrameBytes?: number;
   saturationHighWaterMarkBytes?: number;
   saturationLowWaterMarkBytes?: number;
   replayBufferMaxBytes?: number;
