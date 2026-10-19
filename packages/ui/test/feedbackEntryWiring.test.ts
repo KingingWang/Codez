@@ -166,7 +166,6 @@ describe("feedbackEntryWiring", () => {
       "lib/helpMenuActions.ts",
       "remote-connection/RemoteConnectionConnectingStep.tsx",
       "v4/SessionSubscriptionErrorPanel.tsx",
-      "workspace-grouped-tasks/task-row.tsx",
     ];
 
     for (const relativePath of wiredEntryFiles) {

@@ -38,7 +38,6 @@ import type {
   ConversationRowTarget,
   SessionUsageState,
   TurnHeaderRow,
-  WorkflowNotificationMeta,
 } from "@codez/shared/codez-protocol-v4";
 import { ChatLoading } from "@/components/ai-elements/chat-loading.js";
 import { ChatApiRetryStatus } from "@/chat-input-toolbar/display.js";
@@ -96,7 +95,11 @@ import {
 } from "@/v4/conversationAssistantWorkItems.js";
 import { ConversationAgentToolCallRow } from "@/v4/ConversationAgentToolCallRow.js";
 import { ConversationFileSummaryPanel } from "@/v4/ConversationFileSummaryPanel.js";
-import { WorkflowNotificationToolRow } from "@/v4/WorkflowNotificationToolRow.js";
+import {
+  WorkflowNotificationToolRow,
+  workflowRowNotification,
+  type WorkflowRowNotification,
+} from "@/v4/WorkflowNotificationToolRow.js";
 import { ConversationWorkflowDigests } from "@/v4/ConversationWorkflowDigests.js";
 import { ConversationWorkflowCompletion } from "@/v4/ConversationWorkflowCompletion.js";
 import { resolveWorkflowTurnDigests } from "@/v4/workflowTurnDigests.js";
@@ -1430,10 +1433,11 @@ function resolveBackgroundResultTitle(unit: ConversationTurnRenderUnit): string 
  */
 function resolveWorkflowNotification(
   unit: ConversationTurnRenderUnit,
-): WorkflowNotificationMeta | undefined {
+): WorkflowRowNotification | undefined {
   if (unit.header?.origin !== "backgroundResult") return undefined;
-  const originMeta = unit.header.originMeta;
-  return originMeta?.backgroundSource === "workflow" ? originMeta.workflowNotification : undefined;
+  // Bug 原因：提醒放在独立的 workflowBlocked 键上，旧分支只读取 workflowNotification，
+  // 导致新版客户端仍画裸标题行；复用通知行组件的双载荷解析保持展示与留白判据一致。
+  return workflowRowNotification(unit.header.originMeta);
 }
 
 function ConversationBackgroundResultWork({

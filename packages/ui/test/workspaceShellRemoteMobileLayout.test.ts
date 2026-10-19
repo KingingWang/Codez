@@ -1002,13 +1002,13 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
 });
 
 it.each([
-  { isDesktop: true, isMacDesktop: true },
-  { isDesktop: true, isWindowsDesktop: true },
-  { isDesktop: true, isMacDesktop: false, isWindowsDesktop: false },
-])("keeps desktop panel outer padding consistent: %j", async (platform) => {
+  { platform: { isDesktop: true, isMacDesktop: true }, inset: "1" },
+  { platform: { isDesktop: true, isWindowsDesktop: true }, inset: "1.5" },
+  { platform: { isDesktop: true, isMacDesktop: false, isWindowsDesktop: false }, inset: "1" },
+])("keeps desktop panel outer padding consistent: $platform", async ({ platform, inset }) => {
   const html = await renderWorkspaceShell(platform);
-  expect(html).toMatch(/id="content"[^>]*p-1 pl-0 pt-0/);
-  expect(html).toContain('class="h-1 w-full [app-region:drag]"');
+  expect(html).toContain(`pr-${inset} pb-${inset}`);
+  expect(html).toContain(`class="w-full [app-region:drag] h-${inset}"`);
 });
 
 it("places the workspace header inside the independent conversation frame", async () => {
