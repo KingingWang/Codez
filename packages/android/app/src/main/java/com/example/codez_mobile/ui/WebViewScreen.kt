@@ -329,12 +329,23 @@ private fun createRemoteControlWebView(
                     return false
                 }
 
+                val trustedCallbackUrl =
+                    RemoteControlUrlPolicy.resolveOfficialOAuthCallbackToTrustedUrl(request.url)
+                if (trustedCallbackUrl != null) {
+                    view.loadUrl(trustedCallbackUrl)
+                    return true
+                }
+
                 val resolved = RemoteControlUrlPolicy.resolve(request.url)
                 if (resolved != null) {
                     if (request.url.scheme == "codez") {
                         view.loadUrl(resolved)
                         return true
                     }
+                    return false
+                }
+
+                if (RemoteControlUrlPolicy.isAllowedOAuthNavigationUri(request.url)) {
                     return false
                 }
 

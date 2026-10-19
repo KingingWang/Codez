@@ -6,13 +6,18 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
 import okio.ByteString.Companion.decodeBase64
+import java.io.IOException
 import org.json.JSONObject
 
 /**
@@ -98,6 +103,74 @@ class NativeSocketBridge(private val webView: WebView) {
         sockets[id]?.close(code, reason)
     }
 
+    @JavascriptInterface
+    fun fetch(id: Int, url: String, method: String, headersJson: String, body: String) {
+        if (destroyed) {
+            return
+        }
+        if (!isAllowedApiUrl(url)) {
+            dispatchHttp(
+                id,
+                JSONObject()
+                    .put("type", "error")
+                    .put("message", "Blocked by native HTTP bridge policy"),
+            )
+            return
+        }
+        val normalizedMethod = method.trim().uppercase().ifEmpty { "GET" }
+        val requestBuilder = runCatching { Request.Builder().url(url) }.getOrElse { error ->
+            dispatchHttp(
+                id,
+                JSONObject()
+                    .put("type", "error")
+                    .put("message", error.message ?: "Invalid URL"),
+            )
+            return
+        }
+        runCatching {
+            val headersObj = JSONObject(headersJson.ifEmpty { "{}" })
+            val keys = headersObj.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                if (key.equals("Origin", ignoreCase = true)) continue
+                val value = headersObj.optString(key, "")
+                if (value.isNotEmpty()) {
+                    requestBuilder.header(key, value)
+                }
+            }
+        }
+        val requestBody = if (normalizedMethod == "GET" || normalizedMethod == "HEAD") {
+            null
+        } else {
+            body.toRequestBody("application/json; charset=utf-8".toMediaType())
+        }
+        requestBuilder.method(normalizedMethod, requestBody)
+
+        client.newCall(requestBuilder.build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                dispatchHttp(
+                    id,
+                    JSONObject()
+                        .put("type", "error")
+                        .put("message", e.message?.take(120).orEmpty()),
+                )
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use { res ->
+                    val responseText = runCatching { res.body?.string().orEmpty() }.getOrDefault("")
+                    dispatchHttp(
+                        id,
+                        JSONObject()
+                            .put("type", "response")
+                            .put("status", res.code)
+                            .put("body", responseText),
+                    )
+                }
+            }
+        })
+    }
+
     fun destroy() {
         destroyed = true
         sockets.values.forEach { socket ->
@@ -135,6 +208,25 @@ class NativeSocketBridge(private val webView: WebView) {
             )
         }
     }
+
+    private fun dispatchHttp(id: Int, event: JSONObject) {
+        if (destroyed) {
+            return
+        }
+        val json = event.toString()
+        mainHandler.post {
+            if (destroyed) {
+                return@post
+            }
+            webView.evaluateJavascript(
+                "window.__codezAndroidHttpEvent && window.__codezAndroidHttpEvent($id, ${JSONObject.quote(json)})",
+                null,
+            )
+        }
+    }
+
+    private fun isAllowedApiUrl(url: String): Boolean =
+        url.startsWith("https://zcode.z.ai/api/v1/")
 
     companion object {
         private const val NORMAL_CLOSE_CODE = 1000
