@@ -128,6 +128,19 @@ describe("desktop tsup chunk isolation", () => {
     ).toThrow("OSS_PATH_PREFIX must contain one value or match CDN_DOMAIN count");
   });
 
+  it("构建期注入的 fork GitHub Release 根应优先且保持精确下载根", () => {
+    expect(
+      resolveBuildRemoteCdnReleaseRoots({
+        CDN_DOMAIN: "cdn-zcode.z.ai",
+        OSS_PATH_PREFIX: "codez/electron/releases",
+        CODEZ_SOURCE_SERVER_GITHUB_RELEASE_ROOT:
+          "https://github.com/KingingWang/Codez/releases/download/codez-build-1-0123456789ab///",
+      }),
+    ).toEqual([
+      "https://github.com/KingingWang/Codez/releases/download/codez-build-1-0123456789ab",
+    ]);
+  });
+
   it("正式安装包 Agent OTLP 配置应映射为 Main 使用的标准环境字段", () => {
     expect(
       resolveBuildPackagedAgentTelemetryEnv({
@@ -182,7 +195,7 @@ describe("desktop tsup chunk isolation", () => {
       const defines = getDefines(entry);
       expect(defines).toHaveProperty("__CODEZ_ENV__");
       expect(defines).toHaveProperty("__CODEZ_PRODUCT_FLAVOR__");
-      expect(["\"production\"", "\"preview\""]).toContain(defines.__CODEZ_PRODUCT_FLAVOR__);
+      expect(['"production"', '"preview"', '"codex"']).toContain(defines.__CODEZ_PRODUCT_FLAVOR__);
     }
   });
 
