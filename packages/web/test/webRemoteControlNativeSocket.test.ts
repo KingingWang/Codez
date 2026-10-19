@@ -1,11 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resolveWebRemoteControlWebSocketCtor } from "../src/webRemoteControlNativeSocket.js";
+import {
+  isCodezAndroidApp,
+  resolveWebRemoteControlFetcher,
+  resolveWebRemoteControlWebSocketCtor,
+} from "../src/webRemoteControlNativeSocket.js";
 
 interface MockBridge {
   open: ReturnType<typeof vi.fn>;
   sendText: ReturnType<typeof vi.fn>;
   sendBinary: ReturnType<typeof vi.fn>;
   close: ReturnType<typeof vi.fn>;
+  fetch: ReturnType<typeof vi.fn>;
 }
 
 function installMockBridge(): MockBridge {
@@ -14,6 +19,7 @@ function installMockBridge(): MockBridge {
     sendText: vi.fn(() => true),
     sendBinary: vi.fn(() => true),
     close: vi.fn(),
+    fetch: vi.fn(),
   };
   vi.stubGlobal("window", { CodezAndroidSocket: bridge });
   return bridge;
@@ -26,12 +32,14 @@ afterEach(() => {
 describe("resolveWebRemoteControlWebSocketCtor", () => {
   it("无原生桥时回退到全局 WebSocket", () => {
     vi.stubGlobal("window", {});
+    expect(isCodezAndroidApp()).toBe(false);
     const Ctor = resolveWebRemoteControlWebSocketCtor();
     expect(Ctor).toBe(globalThis.WebSocket);
   });
 
   it("检测到 Android 桥时返回适配构造器并实现浏览器 WebSocket 子集", () => {
     const bridge = installMockBridge();
+    expect(isCodezAndroidApp()).toBe(true);
     const Ctor = resolveWebRemoteControlWebSocketCtor();
     expect(Ctor.OPEN).toBe(1);
     expect(Ctor.CONNECTING).toBe(0);
@@ -125,5 +133,41 @@ describe("resolveWebRemoteControlWebSocketCtor", () => {
     expect(bridge.close).toHaveBeenCalledWith(id, 4000, "bye");
     socket.close(4001, "again");
     expect(bridge.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolveWebRemoteControlFetcher 经原生桥转发 HTTP 请求并解析响应", async () => {
+    const bridge = installMockBridge();
+    const fetcher = resolveWebRemoteControlFetcher();
+    const promise = fetcher("https://zcode.z.ai/api/v1/remote/token", {
+      method: "POST",
+      headers: { Authorization: "Bearer jwt", "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "terminal" }),
+    });
+    expect(bridge.fetch).toHaveBeenCalledWith(
+      expect.any(Number),
+      "https://zcode.z.ai/api/v1/remote/token",
+      "POST",
+      JSON.stringify({ Authorization: "Bearer jwt", "Content-Type": "application/json" }),
+      JSON.stringify({ role: "terminal" }),
+    );
+    const id = bridge.fetch.mock.calls[0]![0] as number;
+    const sink = (
+      window as unknown as { __codezAndroidHttpEvent: CallableFunction }
+    ).__codezAndroidHttpEvent;
+    sink(
+      id,
+      JSON.stringify({
+        type: "response",
+        status: 200,
+        body: JSON.stringify({ code: 0, msg: "", data: { token: "tok", expires_in: 60 } }),
+      }),
+    );
+    const response = await promise;
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      code: 0,
+      msg: "",
+      data: { token: "tok", expires_in: 60 },
+    });
   });
 });

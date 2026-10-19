@@ -18,6 +18,7 @@ const BIGMODEL_USER_INFO_KEY = "oauth:bigmodel:user_info";
 const OAUTH_PENDING_NONCE_KEY = "oauth_pending_nonce";
 const OAUTH_PENDING_PROVIDER_KEY = "oauth_pending_provider";
 const OAUTH_PENDING_REDIRECT_URI_KEY = "oauth_pending_redirect_uri";
+const OAUTH_PENDING_HASH_KEY = "oauth_pending_hash";
 
 /** 本仓支持的登录 provider。private 分享的 owner 身份是 provider 特定的，两边都要能登。 */
 export type WebOAuthProviderId = typeof ZAI_PROVIDER_ID | typeof BIGMODEL_PROVIDER_ID;
@@ -259,5 +260,40 @@ export class BrowserOAuthCredentialRepo {
 
   clearPendingRedirectUri(): void {
     this.sessionStorage.removeItem(OAUTH_PENDING_REDIRECT_URI_KEY);
+  }
+
+  savePendingHash(nonce: string, hash: string): void {
+    const trimmed = hash.trim();
+    if (!trimmed) {
+      this.sessionStorage.removeItem(OAUTH_PENDING_HASH_KEY);
+      return;
+    }
+    this.sessionStorage.setItem(OAUTH_PENDING_HASH_KEY, JSON.stringify({ nonce, hash: trimmed }));
+  }
+
+  loadPendingHash(nonce: string): string | null {
+    const raw = this.sessionStorage.getItem(OAUTH_PENDING_HASH_KEY);
+    if (!raw) return null;
+    try {
+      const pending: unknown = JSON.parse(raw);
+      if (
+        pending &&
+        typeof pending === "object" &&
+        "nonce" in pending &&
+        pending.nonce === nonce &&
+        "hash" in pending &&
+        typeof pending.hash === "string" &&
+        pending.hash.trim()
+      ) {
+        return pending.hash.trim();
+      }
+    } catch {
+      // ignore corrupt hash
+    }
+    return null;
+  }
+
+  clearPendingHash(): void {
+    this.sessionStorage.removeItem(OAUTH_PENDING_HASH_KEY);
   }
 }

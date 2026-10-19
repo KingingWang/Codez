@@ -8,6 +8,8 @@ export interface WebRemoteControlDeviceStorage {
   load(): Promise<WebRemoteControlRegisteredDevice | undefined>;
   save(device: WebRemoteControlRegisteredDevice): Promise<void>;
   clearLegacy(): Promise<void>;
+  loadE2eeKey?: () => Promise<string | undefined>;
+  saveE2eeKey?: (key: string) => Promise<void>;
 }
 
 export interface WebRemoteControlLogin {
@@ -20,6 +22,7 @@ export type WebRemoteControlDeviceTransportState =
   | "connecting"
   | "authenticating"
   | "waiting_terminal"
+  | "securing"
   | "paired"
   | "kicked"
   | "error";
@@ -27,6 +30,8 @@ export type WebRemoteControlDeviceTransportState =
 export interface WebRemoteControlDeviceTransportOptions {
   relayWsUrl: string;
   deviceMid: string;
+  e2eeKey?: string;
+  e2eeHandshakeTimeoutMs?: number;
   meta: WebRemoteControlRelayV2Meta;
   getToken(signal: AbortSignal): Promise<string>;
   resolveDeviceSid(signal: AbortSignal, forceRegistration: boolean): Promise<string>;
@@ -41,4 +46,5 @@ export interface WebRemoteControlDeviceTransportOptions {
   onRawTransportFault?(reasonCode: string): void;
   onError(error: Error): void;
   onSendReady?(event: { kind: "same-socket" | "reconnected-socket" }): void;
+  onE2eeReset?: () => void;
 }

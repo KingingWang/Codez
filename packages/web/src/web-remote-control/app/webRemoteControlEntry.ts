@@ -5,7 +5,10 @@ import type {
   WebRemoteControlDeviceGroup,
 } from "#src/web-remote-control/contract.js";
 import type { WebRemoteControlRelayV2Device } from "@codez/shared/web-remote-relay";
-import { parseWebRemoteControlExternalQrParams } from "@codez/shared";
+import {
+  parseWebRemoteControlE2eeQrFragment,
+  parseWebRemoteControlExternalQrParams,
+} from "@codez/shared";
 import { WebRemoteControlV2ConnectionError } from "@codez/shared/web-remote-relay";
 import type { WebOAuthProviderId } from "#src/auth/browserOAuthCredentialRepo.js";
 import { groupWebRemoteControlDevices } from "#src/web-remote-control/domain/webRemoteControlDeviceGroups.js";
@@ -16,7 +19,9 @@ import {
 
 export function isWebRemoteControlOAuthCallback(url: URL): boolean {
   return (
-    ["/remote/v4", "/remote/v4/"].includes(url.pathname) &&
+    ["/remote/v4", "/remote/v4/", "/Codez/remote/v4", "/Codez/remote/v4/"].includes(
+      url.pathname,
+    ) &&
     url.searchParams.has("state") &&
     // BigModel 使用 authCode；必须先进入既有回调校验，不能落回未登录门禁。
     (url.searchParams.has("code") ||
@@ -27,6 +32,51 @@ export function isWebRemoteControlOAuthCallback(url: URL): boolean {
 
 const LAST_DEVICE_KEY = "codez-web-remote-last-device-sid";
 const LAST_DEVICE_MID_KEY = "codez-web-remote-last-device-mid";
+const E2EE_KEYS_BY_DEVICE_KEY = "codez-web-remote-e2ee-keys";
+
+function readStoredE2eeKeyMap(storage: Pick<Storage, "getItem">): Record<string, string> {
+  try {
+    const raw = storage.getItem(E2EE_KEYS_BY_DEVICE_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const map: Record<string, string> = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof v === "string" && parseWebRemoteControlE2eeQrFragment(`#e2ee=v1&k=${v}`)) {
+        map[k] = v;
+      }
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+function rememberDeviceE2eeKey(
+  storage: Pick<Storage, "getItem" | "setItem">,
+  sid: string,
+  mid: string | undefined,
+  e2eeKey: string | undefined,
+): void {
+  if (!e2eeKey || !parseWebRemoteControlE2eeQrFragment(`#e2ee=v1&k=${e2eeKey}`)) return;
+  try {
+    const map = readStoredE2eeKeyMap(storage);
+    map[`sid:${sid}`] = e2eeKey;
+    if (mid?.trim()) map[`mid:${mid.trim()}`] = e2eeKey;
+    storage.setItem(E2EE_KEYS_BY_DEVICE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function lookupDeviceE2eeKey(
+  storage: Pick<Storage, "getItem">,
+  sid: string,
+  mid: string | undefined,
+): string | undefined {
+  const map = readStoredE2eeKeyMap(storage);
+  return map[`sid:${sid}`] ?? (mid?.trim() ? map[`mid:${mid.trim()}`] : undefined);
+}
 
 /**
  * 最近设备的自动落点：最近 SID 在线优先；否则同一台电脑（最近 MID）恰好一个在线 SID 时接上它。
@@ -90,11 +140,21 @@ export class WebRemoteControlEntry {
       this.options.onView({ kind: "failure", failure: { reason: "invalid-mobile-connection" } });
       return;
     }
+    const fragmentE2eeKey = parseWebRemoteControlE2eeQrFragment(url.hash) ?? undefined;
     if (!params.deviceSid) {
       await this.openDevices(true);
       return;
     }
-    this.connect({ ...params, deviceSid: params.deviceSid });
+    const resolvedE2eeKey =
+      fragmentE2eeKey ?? lookupDeviceE2eeKey(this.options.storage, params.deviceSid, params.deviceMid);
+    if (fragmentE2eeKey) {
+      rememberDeviceE2eeKey(this.options.storage, params.deviceSid, params.deviceMid, fragmentE2eeKey);
+    }
+    this.connect({
+      ...params,
+      deviceSid: params.deviceSid,
+      ...(resolvedE2eeKey ? { e2eeKey: resolvedE2eeKey } : {}),
+    });
   }
 
   private async openDevices(autoConnect: boolean): Promise<void> {
@@ -190,13 +250,20 @@ export class WebRemoteControlEntry {
     const name = device.meta.name?.trim();
     if (name) url.searchParams.set("name", name);
     else url.searchParams.delete("name");
+    const e2eeKey =
+      parseWebRemoteControlE2eeQrFragment(url.hash) ??
+      lookupDeviceE2eeKey(this.options.storage, device.device_sid, device.device_mid);
+    if (e2eeKey) {
+      url.hash = new URLSearchParams({ e2ee: "v1", k: e2eeKey }).toString();
+    }
     this.options.replaceHref(url.href);
-    this.rememberDevice(device.device_sid, device.device_mid);
+    this.rememberDevice(device.device_sid, device.device_mid, e2eeKey);
     this.connect({
       deviceSid: device.device_sid,
       deviceMid: device.device_mid,
       deviceName: name || undefined,
       appVersion: url.searchParams.get("app_version") || undefined,
+      ...(e2eeKey ? { e2eeKey } : {}),
     });
   }
 
@@ -208,10 +275,11 @@ export class WebRemoteControlEntry {
     await this.openDevices(false);
   }
 
-  private rememberDevice(sid: string, mid: string | undefined): void {
+  private rememberDevice(sid: string, mid: string | undefined, e2eeKey?: string): void {
     try {
       this.options.storage.setItem(LAST_DEVICE_KEY, sid);
       if (mid) this.options.storage.setItem(LAST_DEVICE_MID_KEY, mid);
+      rememberDeviceE2eeKey(this.options.storage, sid, mid, e2eeKey);
     } catch {
       // 偏好持久化失败不影响连接，也不修改按 SID 隔离的业务状态。
     }
@@ -229,7 +297,8 @@ export class WebRemoteControlEntry {
         return this.options.token(jwt, tokenSignal);
       },
       onPaired: () => {
-        if (!signal.aborted) this.rememberDevice(params.deviceSid, params.deviceMid);
+        if (!signal.aborted)
+          this.rememberDevice(params.deviceSid, params.deviceMid, params.e2eeKey);
       },
       onFailure: (failure) => {
         if (signal.aborted) return;

@@ -3,6 +3,7 @@ import {
   sessionCreateTelemetrySchema,
   type RendererTelemetryEventPayload,
   WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS,
+  WEB_REMOTE_CONTROL_E2EE_RPC_PHYSICAL_BUDGET,
   createWebRemoteControlConnectionRecoveryTimeoutFailure,
   resolveWebRemoteControlRelayWsUrl,
   matchesWebRemoteControlRoutePath,
@@ -40,7 +41,11 @@ import { createWebAuthService } from "./auth/webAuthService.js";
 import { WEB_ZAI_OAUTH_CONFIG, resolveWebAuthDevReturnTo } from "./auth/webZaiOAuthConfig.js";
 import { parseOAuthState, resolveSafeAppReturnTo } from "./auth/oauthStateCodec.js";
 import { resolveWebCommunityUrl } from "./communityUrl.js";
-import { resolveWebRemoteControlWebSocketCtor } from "./webRemoteControlNativeSocket.js";
+import {
+  isCodezAndroidApp,
+  resolveWebRemoteControlFetcher,
+  resolveWebRemoteControlWebSocketCtor,
+} from "./webRemoteControlNativeSocket.js";
 import {
   ConversationShareLandingLoader,
   ConversationShareLandingStatus,
@@ -94,6 +99,7 @@ import {
   resolveWebRemoteControlInitialTheme,
   collectWebRemoteControlMobileDeviceInfo,
   createWebRemoteControlVersionGuard,
+  isVersionedWebRemoteControlRoute,
   resolveWebRemoteControlRoutePath,
   registerWebRemoteControlWorkspaceBridgeServices,
   connectWebRemoteControlWorkspaceBridgeServices,
@@ -253,7 +259,21 @@ function buildWebFeedbackUrl(locale: "zh-CN" | "en-US"): string | null {
 // 浏览器标签页 / 手机切后台时禁用 CSS 动画，避免 DocumentTimeline 持有已卸载的 DOM 子树。
 installDocumentHiddenMotionPause();
 const root = createRoot(document.getElementById("root")!);
-const webAuthService = createWebAuthService();
+const webRemoteControlFetcher = resolveWebRemoteControlFetcher();
+function resolveRemoteRelayApiOrigin(): string {
+  return (
+    import.meta.env.VITE_CODEZ_BASE_URL?.trim() ||
+    import.meta.env.VITE_CODEZ_ENDPOINT_ORIGIN?.trim() ||
+    window.location.origin
+  );
+}
+const webAuthService = createWebAuthService({
+  config: {
+    ...WEB_ZAI_OAUTH_CONFIG,
+    tokenUrl: new URL(WEB_ZAI_OAUTH_CONFIG.tokenUrl, resolveRemoteRelayApiOrigin()).toString(),
+  },
+  fetcher: webRemoteControlFetcher,
+});
 let isPageUnloading = false;
 
 // 初始化 Web 端流式 clientId，确保所有 hook 在首次渲染前就使用稳定 ID
@@ -332,14 +352,15 @@ function renderWebAuthCallbackPage(): void {
     new URLSearchParams(window.location.search).get("state") ?? "",
   );
   const safeRetryTarget = resolveSafeAppReturnTo(callbackState?.app_return_to);
+  const fallbackPath = resolveWebRemoteControlRoutePath(import.meta.env);
   root.render(
     <WebCallbackPage
       authService={webAuthService}
       onSuccess={({ appReturnTo }) => {
-        window.location.replace(appReturnTo ?? "/remote/v4");
+        window.location.replace(appReturnTo ?? fallbackPath);
       }}
       onRetry={() => {
-        window.location.replace(safeRetryTarget ?? "/remote/v4");
+        window.location.replace(safeRetryTarget ?? fallbackPath);
       }}
     />,
   );
@@ -424,6 +445,7 @@ function renderWebLoginPage(): void {
 }
 
 // 访问 window.localStorage 本身在部分浏览器会抛错，统一包在方法里交给调用方兜底。
+// 访问 window.localStorage 本身在部分浏览器会抛错，统一包在方法里交给调用方兜底。
 const webRemoteControlStorage: Pick<Storage, "getItem" | "setItem"> = {
   getItem: (key) => window.localStorage.getItem(key),
   setItem: (key, value) => window.localStorage.setItem(key, value),
@@ -435,7 +457,10 @@ const remoteEntry = new WebRemoteControlEntry({
   replaceHref: (href) => window.history.replaceState(window.history.state, "", href),
   storage: webRemoteControlStorage,
   locale: resolveWebRemoteControlScreenLocale(navigator.language),
-  devices: createWebRemoteControlDeviceClient(window.location.origin),
+  devices: createWebRemoteControlDeviceClient(
+    resolveRemoteRelayApiOrigin(),
+    webRemoteControlFetcher,
+  ),
   subscribeVisible: (listener) => {
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") listener();
@@ -444,7 +469,10 @@ const remoteEntry = new WebRemoteControlEntry({
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   },
   loginOptions: { devReturnTo: resolveWebAuthDevReturnTo(WEB_ZAI_OAUTH_CONFIG) },
-  token: createWebRemoteControlV2TokenClient(window.location.origin),
+  token: createWebRemoteControlV2TokenClient(
+    resolveRemoteRelayApiOrigin(),
+    webRemoteControlFetcher,
+  ),
   connect: (connection) => {
     void bootstrapExternalRelayWebRemoteControl(connection);
   },
@@ -1067,7 +1095,14 @@ export function createHomeOnlyWebRemoteControlServices(): RootServices {
 }
 
 function resolveExternalRelayWsUrl(): string {
-  return resolveWebRemoteControlRelayWsUrl({ endpointOrigin: window.location.origin });
+  const endpointOrigin =
+    import.meta.env.VITE_CODEZ_BASE_URL?.trim() ||
+    import.meta.env.VITE_CODEZ_ENDPOINT_ORIGIN?.trim() ||
+    window.location.origin;
+  return resolveWebRemoteControlRelayWsUrl({
+    endpointOrigin,
+    overrideUrl: import.meta.env.VITE_CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL,
+  });
 }
 
 function isZhLocale(): boolean {
@@ -1093,6 +1128,18 @@ async function bootstrapExternalRelayWebRemoteControl(
 ): Promise<void> {
   if (connection.signal.aborted) return;
   const { params: relayParams, getToken } = connection;
+  const requireE2ee = window.location.hostname === "kingingwang.github.io";
+  if (requireE2ee && !relayParams.e2eeKey) {
+    connection.onFailure(
+      toWebRemoteControlFailure(
+        "invalid-mobile-connection",
+        isZhLocale()
+          ? "加密远控链接缺少有效密钥，请重新扫描桌面上的二维码。"
+          : "Missing or invalid encrypted remote-control pairing link. Scan the new desktop QR code.",
+      ),
+    );
+    return;
+  }
   seedStableWebRemoteControlClientId(relayParams.deviceSid);
   // 平台只是展示偏好：取本机按 MID 记住的记录，扫码直连的陌生设备显示通用电脑图标。
   const connectingDevice: WebRemoteControlConnectingDevice = {
@@ -1120,10 +1167,15 @@ async function bootstrapExternalRelayWebRemoteControl(
   let bridgeRecoveryRetryAttempt = 0;
   let bridgeRecoveryRetryTimer: ReturnType<typeof setTimeout> | undefined;
   let nextBridgeGeneration = 0;
-  const checkVersionOnRecovery = window.location.pathname.replace(/\/+$/, "") === "/remote/v4";
+  const routePath = resolveWebRemoteControlRoutePath(import.meta.env);
+  const checkVersionOnRecovery = isVersionedWebRemoteControlRoute(
+    window.location.pathname,
+    routePath,
+  );
   let disposeVersionNotice: (() => void) | undefined;
   const versionGuard = createWebRemoteControlVersionGuard({
     requestBootstrap: () => requestBootstrap(),
+    routePath,
     onAccepted: (result) => {
       if (terminalTransportState === "paired") taskViewPublisher.seed(result.mobileTaskViewEpoch);
     },
@@ -1389,6 +1441,7 @@ async function bootstrapExternalRelayWebRemoteControl(
   const transport = new WebRemoteControlTerminalTransport({
     relayWsUrl: resolveExternalRelayWsUrl(),
     deviceSid: relayParams.deviceSid,
+    e2eeKey: relayParams.e2eeKey,
     deviceMid: relayParams.deviceMid,
     appVersion: relayParams.appVersion,
     getToken,
@@ -1400,6 +1453,14 @@ async function bootstrapExternalRelayWebRemoteControl(
     onRawTransportFault: (reasonCode) => {
       pendingRelayProtocol?.markDegraded(reasonCode);
       activeRelayProtocol?.markDegraded(reasonCode);
+    },
+    onE2eeReset: () => {
+      pendingRelayProtocol?.dispose();
+      pendingRelayProtocol = undefined;
+      activeRelayProtocol?.dispose();
+      activeRelayProtocol = undefined;
+      activeBridgeServiceRegistration?.dispose();
+      activeBridgeServiceRegistration = undefined;
     },
     onPayload: (payload) => {
       if (terminated) {
@@ -1720,6 +1781,7 @@ async function bootstrapExternalRelayWebRemoteControl(
       bridgeSessionId: response.bridge.bridgeSessionId,
       bridgeGeneration: response.bridge.bridgeGeneration,
       recoveryId: response.bridge.recoveryId,
+      maxPhysicalFrameBytes: WEB_REMOTE_CONTROL_E2EE_RPC_PHYSICAL_BUDGET,
       measureFrameBytes: (frame) => transport.measurePayloadBytes(frame),
       sendFrame: (frame) => {
         if (versionGuard.isBlocked()) return false;
@@ -2071,6 +2133,17 @@ async function bootstrapWebApp() {
   }
 
   if (isWebRemoteControlRoute()) {
+    if (window.location.hostname === "kingingwang.github.io" && !isCodezAndroidApp()) {
+      renderWebRemoteControlFailure(
+        toWebRemoteControlFailure(
+          "unsupported-action",
+          isZhLocale()
+            ? "为保障端到端加密与连接安全，请使用 Codez 手机 App 扫描桌面二维码连接。"
+            : "For end-to-end encrypted remote control, please scan the desktop QR code using the Codez Android App.",
+        ),
+      );
+      return;
+    }
     await remoteEntry.start();
     return;
   }

@@ -163,6 +163,7 @@ export class ZaiWebOAuthProvider {
   constructor(
     private readonly config: WebZaiOAuthProviderConfig,
     private readonly now: () => number = Date.now,
+    private readonly fetcher: typeof fetch = (...args) => globalThis.fetch(...args),
   ) {}
 
   buildAuthorizeUrl(params: {
@@ -215,7 +216,7 @@ export class ZaiWebOAuthProvider {
     provider?: WebOAuthProviderId;
   }): Promise<WebZaiTokenExchangeResult> {
     const provider = params.provider ?? ZAI_PROVIDER_ID;
-    const response = await fetch(this.config.tokenUrl, {
+    const response = await this.fetcher(this.config.tokenUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

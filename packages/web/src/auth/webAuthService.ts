@@ -1,4 +1,8 @@
-import { ZAI_PROVIDER_ID, type UserInfo } from "@codez/shared";
+import {
+  parseWebRemoteControlE2eeQrFragment,
+  ZAI_PROVIDER_ID,
+  type UserInfo,
+} from "@codez/shared";
 import {
   BrowserOAuthCredentialRepo,
   type WebOAuthProviderId,
@@ -28,6 +32,7 @@ interface WebAuthServiceDependencies {
   provider?: ZaiWebOAuthProvider;
   repo?: BrowserOAuthCredentialRepo;
   runtime?: WebAuthServiceRuntime;
+  fetcher?: typeof fetch;
 }
 
 interface WebAuthLoginOptions {
@@ -79,7 +84,13 @@ export class WebAuthService {
 
   constructor(dependencies: WebAuthServiceDependencies = {}) {
     this.config = dependencies.config ?? WEB_ZAI_OAUTH_CONFIG;
-    this.provider = dependencies.provider ?? new ZaiWebOAuthProvider(this.config);
+    this.provider =
+      dependencies.provider ??
+      new ZaiWebOAuthProvider(
+        this.config,
+        Date.now,
+        dependencies.fetcher ?? ((...args) => globalThis.fetch(...args)),
+      );
     this.repo = dependencies.repo ?? new BrowserOAuthCredentialRepo();
     this.runtime = dependencies.runtime ?? createDefaultRuntime();
   }
@@ -88,6 +99,7 @@ export class WebAuthService {
     const nonce = this.runtime.createNonce();
     const provider = options.provider ?? ZAI_PROVIDER_ID;
     const appReturnTo = options.appReturnTo ?? this.runtime.getCurrentHref();
+    const sourceUrl = parseOptionalUrl(appReturnTo);
     const returnToOptions = { currentOrigin: this.runtime.getCurrentOrigin() };
     const redirectUri = buildWebRemoteOAuthRedirectUri(
       options.redirectUri ?? this.config.redirectUri,
@@ -97,6 +109,11 @@ export class WebAuthService {
     this.repo.savePendingNonce(nonce);
     this.repo.savePendingProvider(provider);
     this.repo.savePendingRedirectUri(nonce, redirectUri);
+    const e2eeHash =
+      sourceUrl?.hash && parseWebRemoteControlE2eeQrFragment(sourceUrl.hash)
+        ? sourceUrl.hash
+        : "";
+    this.repo.savePendingHash(nonce, e2eeHash);
 
     const state = buildOAuthState({
       nonce,
@@ -159,9 +176,11 @@ export class WebAuthService {
     // 都是 provider 特定的。缺失时按 zai 兜底，保持旧回调链接可用。
     const provider = this.repo.loadPendingProvider() ?? ZAI_PROVIDER_ID;
     const pendingRedirectUri = this.repo.loadPendingRedirectUri(statePayload.nonce);
+    const pendingHash = this.repo.loadPendingHash(statePayload.nonce);
     this.repo.clearPendingNonce();
     this.repo.clearPendingProvider();
     this.repo.clearPendingRedirectUri();
+    this.repo.clearPendingHash();
 
     // 旧页面发起的登录没有 pending 地址，沿用原配置；不能把本次 code/state 当作 redirect_uri。
     const callbackRedirectUri =
@@ -179,12 +198,21 @@ export class WebAuthService {
     this.repo.saveTokenSet(exchange.tokenSet, provider);
     this.repo.saveUserInfo(exchange.rawUserInfo, provider);
     this.repo.setActiveProvider(provider);
+    const resolvedAppReturnTo = resolveSafeAppReturnTo(statePayload.app_return_to, {
+      currentOrigin: this.runtime.getCurrentOrigin(),
+    });
+    const normalizedHash = pendingHash
+      ? pendingHash.startsWith("#")
+        ? pendingHash
+        : `#${pendingHash}`
+      : "";
 
     return {
       userInfo: exchange.userInfo,
-      appReturnTo: resolveSafeAppReturnTo(statePayload.app_return_to, {
-        currentOrigin: this.runtime.getCurrentOrigin(),
-      }),
+      appReturnTo:
+        resolvedAppReturnTo && normalizedHash
+          ? `${resolvedAppReturnTo}${normalizedHash}`
+          : resolvedAppReturnTo,
     };
   }
 
@@ -221,6 +249,6 @@ export class WebAuthService {
   }
 }
 
-export function createWebAuthService(): WebAuthService {
-  return new WebAuthService();
+export function createWebAuthService(dependencies?: WebAuthServiceDependencies): WebAuthService {
+  return new WebAuthService(dependencies);
 }
