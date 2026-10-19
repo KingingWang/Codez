@@ -198,6 +198,7 @@ export function admitTaskIdentity(
   db: DatabaseSync,
   task: { workspacePath: string; workspaceIdentity?: string; taskId: string },
   ownerHostId?: string,
+  originProjectId?: string | null,
 ): void {
   const key = resolveWorkspaceKey(task);
   const hostId = ensureHost(db, key, ownerHostId);
@@ -209,18 +210,33 @@ export function admitTaskIdentity(
   if (
     !row ||
     (row.host_id != null &&
-      (row.host_id !== hostId || hostId === "local" || row.project_id != null))
+      (row.host_id !== hostId ||
+        hostId === "local" ||
+        row.project_id != null ||
+        originProjectId !== undefined))
   )
     return;
-  // 首次摄入继承 fork 父任务；只允许后续事实修复当前远端 owner 的缺失归属，不重算本地 NULL。
-  const projectId = discoveredProject(db, {
-    workspace_key: key,
-    task_id: task.taskId,
-    root_path: task.workspacePath,
-    host_id: hostId,
-    forked_from_task_id:
-      typeof row.forked_from_task_id === "string" ? row.forked_from_task_id : null,
-  });
+  // 原因：多目录项目共享 cwd，唯一目录匹配不能表达创建时的项目选择；原生
+  // threadSource 只在首次插入决定组织归属，已决定的行（含用户移动）由上方守卫保护。
+  // 3.17.2 的远端缺失归属修复仍走确切父事实/唯一目录，不重新应用原生创建提示。
+  if (originProjectId) {
+    const owner = db
+      .prepare("SELECT host_id FROM projects WHERE project_id=?")
+      .get(originProjectId);
+    if (!owner) throw new Error("project.not-found");
+    if (owner.host_id !== hostId) throw new Error("project.host-mismatch");
+  }
+  const projectId =
+    originProjectId === undefined
+      ? discoveredProject(db, {
+          workspace_key: key,
+          task_id: task.taskId,
+          root_path: task.workspacePath,
+          host_id: hostId,
+          forked_from_task_id:
+            typeof row.forked_from_task_id === "string" ? row.forked_from_task_id : null,
+        })
+      : originProjectId;
   db.prepare(`UPDATE tasks SET host_id=?,root_path=workspace_path,project_id=?,handoff_pending=handoff_pending | ?
     WHERE workspace_key=? AND task_id=? AND (host_id IS NULL OR (host_id=? AND project_id IS NULL))`).run(
     hostId,

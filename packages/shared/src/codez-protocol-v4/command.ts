@@ -57,6 +57,8 @@ export const commandPayloadSchemas = {
     // Host 预留归属使用稳定 ID；CLI 仍负责拒绝覆盖既有会话。
     sessionId: z.string().min(1).optional(),
     additionalDirectories: z.array(z.string().min(1)).max(256).optional(),
+    /** 只由 Host 为 Codex bridge 注入；旧 CLI 忽略，不以 cwd 推断多目录项目。 */
+    codexProjectId: z.string().min(1).max(128).nullable().optional(),
     workspaceId: z.string(),
     permissionScope: z.literal("session").optional(),
     titleGenerationModel: codexTitleModelSchema.optional(),
@@ -174,7 +176,11 @@ export const commandPayloadSchemas = {
   // 因为 admission 与当前 revision 无关，不走 CAS；sourceCommandId 提供幂等边界。
   compact: z.object({ modelSelection: modelSelectionSchema.optional() }),
   // running 时对稳定 assistant row 可用。
-  forkAssistant: z.object({ target: conversationRowTargetSchema }),
+  forkAssistant: z.object({
+    target: conversationRowTargetSchema,
+    /** Host 当前归属，只由 native bridge 用于新 child 的首次归属来源。 */
+    codexProjectId: z.string().min(1).max(128).nullable().optional(),
+  }),
   applyFileRewind: z.object({ target: conversationRowTargetSchema }),
   editUserQuery: z
     .object({

@@ -17,6 +17,8 @@ import { string, unsupported } from "./json.js";
 import type { SessionTitleCoordinator } from "./session-title.js";
 import type { CodexProviderKeyGate } from "./provider-key-gate.js";
 import { resolveCodexInitSlashCommandPrompt } from "./builtin-init-command.js";
+import { nativeProjectSource } from "./project-origin.js";
+import { isAbsolute } from "node:path";
 
 export async function createNativeSession(
   command: CommandEnvelope,
@@ -35,12 +37,24 @@ export async function createNativeSession(
     throw new Error("Workspace identity mismatch");
   if (p.mcpServers?.length || p.offPeakToolEnabled || p.dynamicWorkflowEnabled)
     unsupported("legacy session extensions; configure native Codex MCP and plugins instead");
+  // 原因：Host 已按项目解析 roots；原生字段会替换线程的可写目录，缺省或相对路径
+  // 都不能被当作“稍后自动补齐”的安全范围。非项目调用继续沿用 Codex 原生缺省。
+  if (p.additionalDirectories?.some((path) => !isAbsolute(path)) || !isAbsolute(store.cwd))
+    throw new Error("Native workspace roots must be absolute");
+  const runtimeWorkspaceRoots =
+    p.additionalDirectories !== undefined
+      ? [...new Set([store.cwd, ...p.additionalDirectories])]
+      : undefined;
   const selection = p.firstInput?.modelSelection ?? p.config?.modelSelection;
   const response = await rpc.request("thread/start", {
     cwd: store.cwd,
     historyMode: "paginated",
     model: selection?.modelId ?? p.config?.model,
     modelProvider: selection?.providerId ?? p.config?.provider,
+    ...(runtimeWorkspaceRoots ? { runtimeWorkspaceRoots } : {}),
+    ...(p.codexProjectId !== undefined
+      ? { threadSource: nativeProjectSource(p.codexProjectId) }
+      : {}),
   });
   const state = store.markStarted(decorateNativeThread(response));
   const sessionId = string(state.thread.id);
@@ -69,10 +83,9 @@ export async function createNativeSession(
     context.title?.armFirstInput(sessionId, p.titleGenerationModel);
     // 首条输入即将发起模型请求；缺本机临时 Key 的供应商在此处 fail-closed。
     await context.providerKeyGate?.assertTurnAllowed(selection?.providerId ?? p.config?.provider);
-    const expandedInitText =
-      !p.firstInput.attachments?.length
-        ? resolveCodexInitSlashCommandPrompt(p.firstInput.text, store.cwd)
-        : undefined;
+    const expandedInitText = !p.firstInput.attachments?.length
+      ? resolveCodexInitSlashCommandPrompt(p.firstInput.text, store.cwd)
+      : undefined;
     const turnParams = {
       threadId: sessionId,
       clientUserMessageId: command.commandId,
