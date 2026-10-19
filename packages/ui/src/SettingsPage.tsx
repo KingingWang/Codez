@@ -2300,6 +2300,8 @@ export function SettingsPage({
                               selectedCodingPlanSource={selectedUsageCodingPlanSource}
                               workspaceIdentity={activeWorkspaceIdentity}
                               workspacePath={activeWorkspacePath ?? undefined}
+                              remoteSessionId={activeWorkspaceTab?.remoteSessionId}
+                              remoteTarget={activeWorkspaceTab?.remoteTarget}
                             />
                           ) : activeSection === "subagents" ? (
                             <SubagentsSection

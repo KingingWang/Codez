@@ -1,10 +1,14 @@
 # Settings Usage Stats
 
-设置页 `Usage`（使用统计）分区收敛为纯本地应用用量面板（`AppUsagePanel`），不再展示特定商业套餐的剩余额度、重置卡或远端监控 Tab。
+设置页 `Usage`（使用统计）分区展示当前所属服务器（workspace host）上的应用用量面板（`AppUsagePanel`），不再展示特定商业套餐的剩余额度、重置卡或远端监控 Tab。
 
 ## 数据来源
 
-- UI 只通过 `useAppUsageStats(range)` 调用 `usageStatsService.getAppUsageSnapshot({ range, timeZone })`，经 `v4/usage/stats` 获取 `AppUsageSnapshot`。
+- UsageStatsSection 是机器用量数据的目标解析唯一所有者：按当前 workspace 的 `workspacePath`、`remoteSessionId`、`workspaceIdentity` 与 `remoteTarget` 复用 `useWorkspaceServicesResolution`。本地 workspace 使用本机 accessor；远程 workspace 使用同一 `remoteSessionId` 对应的远端 accessor。
+- UI 通过 `useAppUsageStats(range, { usageStatsService })` 调用目标 accessor 的 `usageStatsService.getAppUsageSnapshot({ range, timeZone })` 获取 `AppUsageSnapshot`。Codex usage observations 同样使用该目标 accessor；两者都属于机器本地会话历史，不允许一半远端、一半本机。
+- 已知远程 workspace 缺少可用 remote session 或连接注册表未命中时必须进入 remote-waiting/disconnected 状态并展示明确错误；此时不得回退本机 accessor，也不得展示本机数据。
+- 面板顶部展示机器来源标签：本地为“本机”，远程复用 SettingsMachine 的机器名投影（例如“构建机（远程）”）。该标签只描述数据归属，不改变 workspace 身份。
+- Coding Plan entitlement / quota 是账号级数据，与 workspace 所属机器无关，继续沿用原有 app-global 服务路径，不随 UsageStatsSection 的机器 accessor 切换。
 - Codex 桌面桥接模式（`packages/codex-bridge`）直接聚合 `CODEX_HOME`（默认 `~/.codex`）下的本地持久化记录：
   - `state_*.sqlite` 的 `threads` 表（会话总 Token、模型、创建与更新时间戳、rollout 路径）
   - `thread_history_*.sqlite` 的 `thread_turns` 表（各轮次耗时与会话累计时长）
