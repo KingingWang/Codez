@@ -119,3 +119,8 @@ export { GlobalDatabaseStartupLoading } from "./root/GlobalDatabaseStartupLoadin
 
 export { LocalTtftObserver, setLocalTtftObserver } from "@/v4/telemetry/localTtftObserver.js";
 export { ensurePendingTaskDraft } from "@/v4/composer/composerDraftStore.js";
+export {
+  DEFAULT_FEEDBACK_REPOSITORY_URL,
+  buildFeedbackDiagnosticEntries,
+  buildFeedbackPrefilledUrl,
+} from "@/feedback/feedbackDiagnostics.js";

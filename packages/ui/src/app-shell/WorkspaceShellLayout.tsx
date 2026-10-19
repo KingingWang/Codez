@@ -8,6 +8,7 @@ import type {
 } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { GripHorizontal, LoaderIcon } from "lucide-react";
+import { LOCAL_WORKSPACE_SCOPE } from "@codez/shared";
 import { TID_APP_HEADER } from "@codez/shared/test-ids";
 // 保活：workspace tab 真正关闭时，按 workspaceKey 回收 side pane terminal 的常驻 PTY/xterm。
 // 对称下侧 Terminal.tsx 的 openWorkspaceKeys 回收。
@@ -44,6 +45,12 @@ import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
 import { WorkspacePluginPreview } from "@/workspace-plugin-preview/index.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { GitBranchSwitcher } from "@/GitBranchSwitcher.js";
+import { GitWorktreeMenuProvider, type GitWorktreeMenuValue } from "@/GitWorktreeMenu.js";
+import { useBranchDeletion } from "@/hooks/useBranchDeletion.js";
+import { useWorktreeCreation } from "@/hooks/useWorktreeCreation.js";
+import { useWorktreeRemoval } from "@/hooks/useWorktreeRemoval.js";
+import { useProjectWorktreeDiscovery } from "@/hooks/useProjectWorktreeDiscovery.js";
+import type { WorktreeDiscoveryEntry } from "@/lib/projectGrouping.js";
 import { ScopedErrorBoundary } from "@/ErrorBoundary.js";
 
 import { AUTOMATIONS_TOAST_ANCHOR_ID, AutomationsSection } from "@/settings/AutomationsSection.js";
@@ -284,6 +291,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   handleOpenPluginStore,
   onConnectRemote,
   onSelectRemoteProject,
+  onOpenWorktreeEntry,
   onCancelRemoteProject,
   onReconnectRemoteWorkspace,
   onLogout,
@@ -491,6 +499,156 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   const webRemoteControlNavigationCollapsedRef = useRef(isWebRemoteControlNavigationCollapsed);
   const webRemoteControlNavigationDragRef = useRef<WebRemoteNavigationDragSession | null>(null);
   const suppressWebRemoteControlNavigationClickRef = useRef(false);
+  const worktreeDiscovery = useProjectWorktreeDiscovery();
+  const worktreeProjectKey = worktreeDiscovery.projectKeyForWorkspace(workspaceKey);
+  const worktreeProjectGroup = useMemo(
+    () => worktreeDiscovery.groups.find((group) => group.projectKey === worktreeProjectKey) ?? null,
+    [worktreeDiscovery.groups, worktreeProjectKey],
+  );
+  const worktreeEntries = useMemo(
+    () =>
+      worktreeProjectKey ? (worktreeDiscovery.entriesByProjectKey[worktreeProjectKey] ?? []) : [],
+    [worktreeDiscovery.entriesByProjectKey, worktreeProjectKey],
+  );
+  const handleOpenWorktreeEntry = useCallback(
+    (entry: WorktreeDiscoveryEntry) => {
+      if (!onOpenWorktreeEntry || !worktreeProjectGroup) return;
+      void onOpenWorktreeEntry({
+        entry,
+        projectMemberKeys: worktreeProjectGroup.members.map(
+          (member) => member.workspaceIdentity?.trim() || member.workspacePath,
+        ),
+        isRemoteScope: worktreeProjectGroup.scope !== LOCAL_WORKSPACE_SCOPE,
+      }).catch(() => undefined);
+    },
+    [onOpenWorktreeEntry, worktreeProjectGroup],
+  );
+  const handleCreatedWorktree = useCallback(
+    async (result: import("@codez/shared").GitWorktreeCreateResult) => {
+      if (!onOpenWorktreeEntry) throw new Error("Worktree open is unsupported");
+      await onOpenWorktreeEntry({
+        entry: {
+          path: result.workspacePath,
+          branchName: result.branchName,
+          headCommitHash: result.baselineCommit,
+          isMain: false,
+          isDetached: false,
+          isLocked: false,
+          lockReason: null,
+          isPrunable: false,
+          prunableReason: null,
+          isOpen: false,
+        },
+        projectMemberKeys: worktreeProjectGroup
+          ? worktreeProjectGroup.members.map(
+              (member) => member.workspaceIdentity?.trim() || member.workspacePath,
+            )
+          : [workspaceKey],
+        isRemoteScope: worktreeProjectGroup
+          ? worktreeProjectGroup.scope !== LOCAL_WORKSPACE_SCOPE
+          : Boolean(workspaceIdentity?.trim()),
+        intent: "new-session",
+      });
+      worktreeDiscovery.refresh();
+    },
+    [
+      onOpenWorktreeEntry,
+      worktreeProjectGroup,
+      workspaceKey,
+      workspaceIdentity,
+      worktreeDiscovery.refresh,
+    ],
+  );
+  const handleOpenOccupiedWorktree = useCallback(
+    (path: string) => {
+      const entry = worktreeEntries.find((item) => item.path === path);
+      if (entry) {
+        handleOpenWorktreeEntry(entry);
+        return;
+      }
+      if (onOpenWorktreeEntry) {
+        void onOpenWorktreeEntry({
+          entry: {
+            path,
+            branchName: null,
+            headCommitHash: null,
+            isMain: false,
+            isDetached: false,
+            isLocked: false,
+            lockReason: null,
+            isPrunable: false,
+            prunableReason: null,
+            isOpen: false,
+          },
+          projectMemberKeys: [workspaceKey],
+          isRemoteScope: Boolean(workspaceIdentity?.trim()),
+        }).catch(() => undefined);
+      }
+    },
+    [
+      handleOpenWorktreeEntry,
+      worktreeEntries,
+      onOpenWorktreeEntry,
+      workspaceKey,
+      workspaceIdentity,
+    ],
+  );
+  const worktreeCreation = useWorktreeCreation({
+    workspacePath: workspaceAbsPath,
+    workspaceIdentity,
+    remoteSessionId: workspaceRemoteSessionId,
+    allowOpenWorkspace:
+      allowOpenWorkspace && Boolean(onOpenWorktreeEntry) && !workspaceReadOnlyReason,
+    onCreated: handleCreatedWorktree,
+    onOpenOccupied: handleOpenOccupiedWorktree,
+  });
+  const refreshWorktreeMenu = useCallback(() => {
+    worktreeDiscovery.refresh();
+    worktreeCreation.refreshAvailability();
+  }, [worktreeDiscovery.refresh, worktreeCreation.refreshAvailability]);
+  const worktreeProjectMemberKeys = useMemo(
+    () =>
+      worktreeProjectGroup
+        ? worktreeProjectGroup.members.map(
+            (member) => member.workspaceIdentity?.trim() || member.workspacePath,
+          )
+        : [workspaceKey],
+    [worktreeProjectGroup, workspaceKey],
+  );
+  const worktreeRemoval = useWorktreeRemoval({
+    workspacePath: workspaceAbsPath,
+    workspaceIdentity,
+    remoteSessionId: workspaceRemoteSessionId,
+    projectScope: worktreeProjectGroup?.scope ?? null,
+    projectMemberKeys: worktreeProjectMemberKeys,
+    onRemoved: worktreeDiscovery.refresh,
+    onOpenWorktreePath: handleOpenOccupiedWorktree,
+  });
+  const branchDeletion = useBranchDeletion({
+    workspacePath: workspaceAbsPath,
+    workspaceIdentity,
+    remoteSessionId: workspaceRemoteSessionId,
+    onDeleted: () => undefined,
+    onOpenWorktreePath: handleOpenOccupiedWorktree,
+  });
+  const gitWorktreeMenu = useMemo<GitWorktreeMenuValue>(
+    () => ({
+      workspacePath: workspaceAbsPath,
+      workspaceIdentity,
+      disabledReason: worktreeCreation.disabledReason,
+      onCreate: worktreeCreation.openDialog,
+      onRefresh: refreshWorktreeMenu,
+      onDeleteBranch: branchDeletion.openDeletion,
+    }),
+    [
+      workspaceAbsPath,
+      workspaceIdentity,
+      worktreeCreation.disabledReason,
+      worktreeCreation.openDialog,
+      refreshWorktreeMenu,
+      branchDeletion.openDeletion,
+    ],
+  );
   const screenshotSurfaceRequest = useBrowserScreenshotSurfaceRequest(sidePaneState?.tabs ?? []);
   const screenshotSurfaceTab = screenshotSurfaceRequest
     ? findScreenshotSurfaceTabForRender(sidePaneState?.tabs ?? [], screenshotSurfaceRequest)
@@ -2718,15 +2876,20 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
     </SavedWorkflowHubProvider>
   );
   return (
-    <DesktopWindowFrame
-      title={`Codez / ${getPathLeaf(workspaceAbsPath)}`}
-      showHeader
-      isDesktop={isDesktop}
-      isMacDesktop={isMacDesktop}
-      isWindowsDesktop={isWindowsDesktop}
-      headerTestId={TID_APP_HEADER}
-    >
-      {isWebRemoteControlShell ? renderRemoteShell(wideContent) : wideContent}
-    </DesktopWindowFrame>
+    <GitWorktreeMenuProvider value={gitWorktreeMenu}>
+      <DesktopWindowFrame
+        title={`Codez / ${getPathLeaf(workspaceAbsPath)}`}
+        showHeader
+        isDesktop={isDesktop}
+        isMacDesktop={isMacDesktop}
+        isWindowsDesktop={isWindowsDesktop}
+        headerTestId={TID_APP_HEADER}
+      >
+        {isWebRemoteControlShell ? renderRemoteShell(wideContent) : wideContent}
+        {worktreeCreation.dialog}
+        {worktreeRemoval.dialog}
+        {branchDeletion.dialog}
+      </DesktopWindowFrame>
+    </GitWorktreeMenuProvider>
   );
 });

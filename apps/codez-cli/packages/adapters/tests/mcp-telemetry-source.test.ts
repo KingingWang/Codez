@@ -23,7 +23,7 @@ describe("MCP telemetry source provenance", () => {
     const fixture = await discoverPluginMcp("official-cdn");
     try {
       expect(fixture.outcome.plugins[0]).toMatchObject({
-        marketplace: "zcode-plugins-official",
+        marketplace: "codez-plugins-official",
         source: "cache",
       });
       expect(fixture.outcome.mcpServers[MCP_RUNTIME_NAME]).toMatchObject({
@@ -50,7 +50,7 @@ async function discoverPluginMcp(channel: "builtin" | "official-cdn" | "inline")
   const root = await mkdtemp(join(tmpdir(), `codez-${channel}-plugin-mcp-source-`));
   const pluginRoot = join(root, PLUGIN_NAME);
   const storageRoot = join(root, "storage");
-  const marketplace = channel === "inline" ? "inline" : "zcode-plugins-official";
+  const marketplace = channel === "inline" ? "inline" : "codez-plugins-official";
   const pluginId = `${PLUGIN_NAME}@${marketplace}`;
   await mkdir(join(pluginRoot, ".codez-plugin"), { recursive: true });
   await mkdir(storageRoot, { recursive: true });

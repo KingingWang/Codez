@@ -764,8 +764,8 @@ describe("McpSettingsSection status list", () => {
           commandRootCount: 0,
           declaredMcpServerNames: ["canva"],
           enabled: true,
-          id: "canva@zcode-plugins-official",
-          marketplace: "zcode-plugins-official",
+          id: "canva@codez-plugins-official",
+          marketplace: "codez-plugins-official",
           mcpServerNames: ["plugin:canva:canva"],
           name: "canva",
           rootPath: "/plugins/canva",
@@ -773,15 +773,15 @@ describe("McpSettingsSection status list", () => {
           source: "official",
         },
       ]),
-    ).toBe("canva@zcode-plugins-official:enabled:canva:plugin:canva:canva");
+    ).toBe("canva@codez-plugins-official:enabled:canva:plugin:canva:canva");
     expect(
       buildPluginMcpServerStatusListKey([
         {
           commandRootCount: 0,
           declaredMcpServerNames: ["canva"],
           enabled: false,
-          id: "canva@zcode-plugins-official",
-          marketplace: "zcode-plugins-official",
+          id: "canva@codez-plugins-official",
+          marketplace: "codez-plugins-official",
           mcpServerNames: ["plugin:canva:canva"],
           name: "canva",
           rootPath: "/plugins/canva",

@@ -18,10 +18,10 @@ When enabled, Codez loads:
 ## Codez CLI Usage
 
 Codez bundles this package as the official
-`android-emulator@zcode-plugins-official` plugin. Enable the plugin to project
+`android-emulator@codez-plugins-official` plugin. Enable the plugin to project
 its skill, slash command, and MCP server into the session.
 At startup Codez copies the packaged plugin files into
-`~/.codez/cli/plugins/cache/zcode-plugins-official/android-emulator/0.1.0/`
+`~/.codez/cli/plugins/cache/codez-plugins-official/android-emulator/0.1.0/`
 and runs the MCP server from that cache directory. SEA builds rewrite the
 official plugin's Codez manifest to launch the cached MCP server through Codez's
 internal plugin host, so the server uses the embedded Node.js runtime.
@@ -34,10 +34,10 @@ Example `~/.codez/cli/config.json` entry:
 {
   "plugins": {
     "enabledPlugins": {
-      "android-emulator@zcode-plugins-official": true
+      "android-emulator@codez-plugins-official": true
     },
     "options": {
-      "android-emulator@zcode-plugins-official": {
+      "android-emulator@codez-plugins-official": {
         "default_avd": "medium_phone",
         "api_level": "35"
       }

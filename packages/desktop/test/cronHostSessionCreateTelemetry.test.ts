@@ -34,16 +34,27 @@ function setup() {
   const report = vi.fn();
   const taskKey = Symbol(),
     modelKey = Symbol(),
-    botsKey = Symbol();
+    botsKey = Symbol(),
+    agentKey = Symbol();
   const selection = { providerId: "test", modelId: "test" };
   const dispatch = createDispatch({
     ICodezTaskService: taskKey,
     IModelSelectionService: modelKey,
     IBotsService: botsKey,
+    ICodezAgentService: agentKey,
+    codexAutomationRunInFlight: new Set(),
+    assertCodexScheduledPromptCapability: vi.fn(async () => {}),
     resolveAutomationTargetServices: () => ({
-      getOptional: (key: symbol) => (key === taskKey ? service : key === modelKey ? {} : undefined),
+      getOptional: (key: symbol) =>
+        key === taskKey ? service : key === modelKey || key === agentKey ? {} : undefined,
     }),
-    cronAutomationRepo: { getRun: async () => null, fixRunModelSelection: async () => selection },
+    cronAutomationRepo: {
+      getRun: async () => null,
+      fixRunModelSelection: async () => selection,
+      getCodexAutomationCorrelation: async () => null,
+      prepareCodexAutomationCorrelation: async () => ({ created: true }),
+      transitionCodexAutomationCorrelation: vi.fn(async () => {}),
+    },
     resolveAutomationSubmissionModelSelection: async () => selection,
     resolveWorkspaceKey: () => "workspace",
     formatModelPickerValue: () => "test/test",

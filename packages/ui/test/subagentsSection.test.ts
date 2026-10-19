@@ -717,7 +717,7 @@ describe("SubagentsSection", () => {
         scope: "workspace",
         source: "plugin",
         enabled: true,
-        pluginId: "computer-use@zcode-plugins-official",
+        pluginId: "computer-use@codez-plugins-official",
         pluginName: "computer-use",
       },
       {
@@ -735,8 +735,8 @@ describe("SubagentsSection", () => {
     ]);
 
     expect(groups.map(([key, items]) => [key, items[0]?.id])).toEqual([
-      ["computer-use@zcode-plugins-official", "official-agent"],
       ["codez-cua@custom-marketplace", "custom-agent"],
+      ["computer-use@codez-plugins-official", "official-agent"],
     ]);
   });
 
@@ -1130,14 +1130,14 @@ describe("SubagentsSection", () => {
       options: { reasoningLevel: "high" },
     };
     const pluginAgent = {
-      id: "plugin:document-skills@zcode-plugins-official:judge",
+      id: "plugin:document-skills@codez-plugins-official:judge",
       name: "document-skills:judge",
       description: "Visual acceptance reviewer",
       systemPrompt: "Judge.",
       path: "/cache/document-skills/0.1.4/agents/judge.md",
       scope: "user",
       source: "plugin",
-      pluginId: "document-skills@zcode-plugins-official",
+      pluginId: "document-skills@codez-plugins-official",
       pluginName: "document-skills",
       enabled: true,
       readOnly: true,

@@ -1,6 +1,8 @@
 import { sampleModel } from "./sample-model.js";
 import { grantPermissionFullAccess } from "../permission-full-access.js";
 import {
+  applyMemoryRuntimeConfig,
+  getMemoryRuntimeConfig,
   getSessionShellSelection,
   initializeSessionShellEnvironmentIfNeeded,
   updateConfig,
@@ -201,6 +203,8 @@ type AgentRuntimeConstructor = { prototype: object };
 export function installAgentRuntimeMethods(ctor: AgentRuntimeConstructor): void {
   const proto = ctor.prototype as Record<string, unknown>;
   proto.updateConfig = updateConfig;
+  proto.applyMemoryRuntimeConfig = applyMemoryRuntimeConfig;
+  proto.getMemoryRuntimeConfig = getMemoryRuntimeConfig;
   proto.setExecutionState = setExecutionState;
   proto.grantPermissionFullAccess = grantPermissionFullAccess;
   proto.initializeSessionShellEnvironmentIfNeeded = initializeSessionShellEnvironmentIfNeeded;

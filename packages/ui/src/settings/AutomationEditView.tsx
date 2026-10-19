@@ -121,6 +121,7 @@ import {
 } from "@/settings/automationEditDirtyState.js";
 import {
   clearAutomationEditRequiredFieldError,
+  isAutomationEditSubmissionContextReady,
   resolveAutomationEditRequiredFieldErrors,
   type AutomationEditRequiredField,
 } from "@/settings/automationEditValidation.js";
@@ -1615,13 +1616,12 @@ export function AutomationEditView({
     [cronExpr, prompt, title],
   );
   const hasValidWorkspace = Boolean(editing || selectedWorkspace);
-  const submissionContextReady =
-    hasValidWorkspace &&
-    (Boolean(editing) || selectedWorkspace !== null) &&
-    modelSelectionRead.state.status === "ready" &&
-    selectedModelItem !== null &&
-    Boolean(effectiveReasoningLevel) &&
-    !modelSelectionView?.selectionIssue;
+  const submissionContextReady = isAutomationEditSubmissionContextReady({
+    workspaceSelected: hasValidWorkspace,
+    modelViewReady: modelSelectionRead.state.status === "ready",
+    selectedModelValue: effectiveModelValue,
+    selectionIssue: modelSelectionView?.selectionIssue,
+  });
   const canSubmit = submissionContextReady && requiredFieldErrors.length === 0;
 
   const requestRequiredFieldValidation = useCallback(
@@ -1658,7 +1658,8 @@ export function AutomationEditView({
 
   const buildSubmitInput = useCallback(
     ({ modeValue }: { modeValue: string }): CreateAutomationInput | UpdateAutomationInput => {
-      if (!effectiveSelection || !effectiveReasoningLevel) {
+      // 修复：Codex 的原生默认思考档允许为空，提交时保留 Host 给出的稀疏选择。
+      if (!effectiveSelection) {
         throw new Error("Automation model selection is required");
       }
       return {
@@ -1688,7 +1689,6 @@ export function AutomationEditView({
       preserveSessionCreatedSchedule,
       prompt,
       effectiveSelection,
-      effectiveReasoningLevel,
       title,
       touchedFields,
     ],
@@ -2664,17 +2664,25 @@ export function AutomationEditView({
                         "w-fit max-w-72 min-w-0 shrink @max-sm/composer:size-7 @max-sm/composer:justify-center @max-sm/composer:gap-0 @max-sm/composer:p-0",
                       )}
                       triggerIconClassName="inline-flex @sm/composer:hidden"
+                      pending={modelSelectionRead.state.status === "loading"}
+                      pendingLabel={intl.formatMessage({ id: "common.loading" })}
                       disabled={modelSelectionRead.state.status !== "ready"}
                     />
+                    {/* 读取未完成时仅禁用模型按钮会隐藏原因；复用读取状态展示加载和失败反馈。 */}
                     {modelSelectionRead.state.status === "error" ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="xs"
-                        onClick={modelSelectionRead.reload}
-                      >
-                        {intl.formatMessage({ id: "common.retry" })}
-                      </Button>
+                      <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1">
+                        <span role="status" className="text-ui-sm text-destructive">
+                          {intl.formatMessage({ id: "root.modelSelection.loadFailed" })}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          onClick={modelSelectionRead.reload}
+                        >
+                          {intl.formatMessage({ id: "common.retry" })}
+                        </Button>
+                      </div>
                     ) : null}
                     {thoughtLevelOption ? (
                       <ThoughtLevelCycleControl

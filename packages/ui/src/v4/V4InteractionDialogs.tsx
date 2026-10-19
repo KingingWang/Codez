@@ -1,4 +1,7 @@
+/* eslint-disable max-lines -- Codex 问题映射与上游权限回执共用会话关联和通知生命周期。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CodexQuestionDialog } from "@/settings/codex/CodexQuestionDialog.js";
+import { readCodexQuestions } from "@/settings/codex/codexQuestions.js";
 import type { CodezElicitationRequest, CodezPermissionOption, CodezProvider } from "@codez/shared";
 import type { ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
 import { ElicitationDialog } from "@/ElicitationDialog.js";
@@ -365,6 +368,17 @@ export function V4InteractionDialogs({
             setPermissionResponse({ interactionId, pending: false, failed: !accepted });
           });
         }}
+      />
+    );
+  }
+
+  const codexQuestions = readCodexQuestions(pending.payload.input);
+  if (codexQuestions) {
+    return (
+      <CodexQuestionDialog
+        key={`${sessionId}:${pending.interactionId}`}
+        questions={codexQuestions}
+        onRespond={(answer) => resolveInteraction(pending.interactionId, answer)}
       />
     );
   }

@@ -64,7 +64,7 @@ function officialPluginRoot(home: string, pluginName: string, version = "0.1.0")
     "cli",
     "plugins",
     "cache",
-    "zcode-plugins-official",
+    "codez-plugins-official",
     pluginName,
     version,
   );
@@ -488,9 +488,9 @@ body`,
     expect(result.capability).toEqual({ userScopeAvailable: true });
     expect(result.skills.map((skill) => skill.name)).toEqual([
       "agents-global",
+      "codez-global",
       "copied-global",
       "shared-review",
-      "codez-global",
     ]);
     expect(result.skills.find((skill) => skill.name === "copied-global")?.path).toContain(
       join(home, ".codez", "skills", "copied-global"),
@@ -611,7 +611,7 @@ android-body`,
     writeCliConfig(home, {
       plugins: {
         enabledPlugins: {
-          "ios-simulator@zcode-plugins-official": true,
+          "ios-simulator@codez-plugins-official": true,
         },
       },
     });
@@ -635,10 +635,10 @@ android-body`,
     ]);
     expect(result.skills.map((skill) => skill.pluginName).sort()).toEqual([
       "browser-use",
+      "codez-guide",
       "documents",
       "documents",
       "ios-simulator",
-      "codez-guide",
     ]);
   });
 
@@ -709,9 +709,9 @@ diagnosing-body`,
     writeCliConfig(home, {
       plugins: {
         suppressedBuiltins: [
-          "browser-use@zcode-plugins-official",
-          "documents@zcode-plugins-official",
-          "codez-guide@zcode-plugins-official",
+          "browser-use@codez-plugins-official",
+          "documents@codez-plugins-official",
+          "codez-guide@codez-plugins-official",
         ],
       },
     });
@@ -843,7 +843,8 @@ bundle-root-body`,
 
   it("非桌面 runtime 不读取用户级技能", async () => {
     const home = makeTempHome();
-    const workspacePath = join(home, "workspace");
+    // 用户根不能同时是 workspace 的祖先，否则其技能会合法地作为 workspace scope 被发现。
+    const workspacePath = join(makeTempHome(), "workspace");
     writeSkill(
       userSkillRoot(home),
       "codez-global",

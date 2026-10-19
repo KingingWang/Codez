@@ -116,7 +116,7 @@ describe("codezEndpoint", () => {
     );
   });
 
-  it("derives runtime codez-plan urls from CODEZ_ENV", () => {
+  it("derives runtime zcode-plan urls from CODEZ_ENV", () => {
     expect(buildRuntimeCodezEndpointUrls({ CODEZ_ENV: "test" }).codezPlanOpenAiBaseUrl).toBe(
       "https://zcode.z.ai/api/v1/zcode-plan",
     );

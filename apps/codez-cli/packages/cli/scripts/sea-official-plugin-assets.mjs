@@ -22,7 +22,7 @@ const officeViewerRuntimePaths = ["dist/server.mjs", "dist/ui/assets.json", "dis
 
 export const officialSeaPlugins = [
   {
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "visualize",
     packageName: "@codez/visualize-plugin",
     requiresRuntime: false,
@@ -58,7 +58,7 @@ export const officialSeaPlugins = [
   {
     // node_repl 宿主：Browser Use 与 Computer Use 共用的运行时产物，自己不是面向用户的插件
     // （无 skill、无市场 listing）。它必须始终随发布物嵌入，否则任一能力启用时都没有宿主可跑。
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "node-repl-host",
     packageName: "@codez/node-repl-host",
     requiresRuntime: true,
@@ -67,7 +67,7 @@ export const officialSeaPlugins = [
     version: "0.6.1",
   },
   {
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "android-emulator",
     packageName: "@codez/android-emulator-plugin",
     requiresRuntime: true,
@@ -76,7 +76,7 @@ export const officialSeaPlugins = [
     version: "0.1.0",
   },
   {
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "documents",
     packageName: "@codez/documents-plugin",
     // 0.2.0 起带查看面板：SEA 必须在嵌入前校验 office-runtime 构建出的 server 与面板资源。
@@ -92,7 +92,7 @@ export const officialSeaPlugins = [
     version: "0.2.0",
   },
   {
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "image-search",
     packageName: "@codez/image-search-plugin",
     requiresRuntime: false,
@@ -102,7 +102,7 @@ export const officialSeaPlugins = [
     version: "0.1.1",
   },
   {
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "pdf",
     packageName: "@codez/pdf-plugin",
     // 0.2.0 起带查看面板：SEA 必须在嵌入前校验 office-runtime 构建出的 server 与面板资源。
@@ -118,7 +118,7 @@ export const officialSeaPlugins = [
     version: "0.2.1",
   },
   {
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "presentations",
     packageName: "@codez/presentations-plugin",
     // 0.2.0 起带查看面板：SEA 必须在嵌入前校验 office-runtime 构建出的 server 与面板资源。
@@ -134,7 +134,7 @@ export const officialSeaPlugins = [
     version: "0.2.0",
   },
   {
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "spreadsheets",
     packageName: "@codez/spreadsheets-plugin",
     // 0.2.0 起带查看面板：SEA 必须在嵌入前校验 office-runtime 构建出的 server 与面板资源。
@@ -151,7 +151,7 @@ export const officialSeaPlugins = [
   },
   {
     // browser-use 使用真实 node_repl MCP runtime，SEA 必须校验并嵌入 server.js。
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "browser-use",
     packageName: "@codez/browser-use-plugin",
     requiresRuntime: true,
@@ -164,7 +164,7 @@ export const officialSeaPlugins = [
     version: "0.5.1",
   },
   {
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "ios-simulator",
     packageName: "@codez/ios-simulator-plugin",
     requiresRuntime: true,
@@ -173,7 +173,7 @@ export const officialSeaPlugins = [
     version: "0.1.0",
   },
   {
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "restore-legacy-sessions",
     packageName: "@codez/restore-legacy-sessions-plugin",
     requiresRuntime: false,
@@ -181,7 +181,7 @@ export const officialSeaPlugins = [
     version: "0.1.0",
   },
   {
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "skill-creator",
     packageName: "@codez/skill-creator-plugin",
     requiresRuntime: false,
@@ -189,7 +189,7 @@ export const officialSeaPlugins = [
     version: "0.1.0",
   },
   {
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "plugin-creator",
     packageName: "@codez/plugin-creator-plugin",
     requiresRuntime: false,
@@ -202,13 +202,28 @@ export const officialSeaPlugins = [
     // runtime 按 (name, version) 精确匹配 SEA 资产，这里落后会让整个插件在 SEA 下不 seed
     // （browser-use 0.3.1 的既有教训，build-sea.test.mjs:564 钉住四处对齐）。
     // 0.3.0：`/workflow` 与 dynamic-workflows 技能移出本插件（见 sea-bundled-skill-assets.mjs）。
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     name: "codez-guide",
     packageName: "@codez/codez-guide-plugin",
     requiresRuntime: false,
     requiredSeedPaths: ["skills/codez-configuration-guide/SKILL.md"],
     rootPath: join("packages", "codez-guide-plugin"),
     version: "0.3.0",
+  },
+  {
+    marketplace: "codez-plugins-official",
+    name: "computer-use",
+    packageName: "@codez/codez-cua-plugin",
+    requiresRuntime: false,
+    // Computer Use 的 executable host 归 node-repl-host；这里必须只嵌入公开 SDK、文档和
+    // skill。过去 SEA 漏掉整包，开发机 cache 会掩盖问题，干净安装则无法 seed。
+    requiredSeedPaths: [
+      "docs/computer-use.md",
+      "scripts/computer-use-client.mjs",
+      "skills/computer-use/SKILL.md",
+    ],
+    rootPath: join("packages", "codez-cua-plugin"),
+    version: "0.1.0",
   },
   // superpowers 已从内置插件下线，改走 UI 推荐区按需安装；这里不再打入 SEA 资源清单。
 ];

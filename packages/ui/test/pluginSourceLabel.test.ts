@@ -50,7 +50,7 @@ describe("resolvePluginSourceLabel", () => {
       resolvePluginSourceLabel({
         ...common,
         source: "official",
-        marketplace: "zcode-plugins-official",
+        marketplace: "codez-plugins-official",
       }),
     ).toBe("Built-in");
   });

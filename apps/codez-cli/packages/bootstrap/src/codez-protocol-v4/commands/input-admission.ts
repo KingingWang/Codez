@@ -126,6 +126,10 @@ export function resolveSubmittedExecutionState(
     planEnabled?: boolean;
   },
 ): { modelSelection: ModelSelection; mode: SubmissionMode; planEnabled: boolean } {
+  // 上游将 admission 移至本模块；必须在真实入口拒绝 Codex-only 模式，不能静默降档。
+  if (payload.mode === "custom") {
+    throw new Error('Submission mode "custom" is Codex-only; Codez Agent sessions must not receive it');
+  }
   let modelSelection = payload.modelSelection;
   if (!modelSelection) {
     const runtimeSelection = record.app.runtime?.getSessionModelSelection?.();

@@ -6,7 +6,8 @@
  * 导致 main/index.ts 导入 resolveWindowsAppUserModelIdForFlavor 时报 TS2724。
  * 改 .mjs 导出时必须同步本文件。
  */
-export type DesktopProductFlavor = "production" | "preview";
+export type DesktopProductFlavor = "production" | "preview" | "codex";
+export type DesktopRuntime = "codex" | "legacy";
 
 export interface DesktopProductIdentity {
   readonly flavor: DesktopProductFlavor;
@@ -14,11 +15,12 @@ export interface DesktopProductIdentity {
   readonly productName: string;
   readonly linuxExecutableName: string;
   readonly linuxPackageName: string;
-  readonly cuaHelperInstallVariant: "preview" | null;
+  readonly cuaHelperInstallVariant: "preview" | "codex" | null;
 }
 
 export const CODEZ_PREVIEW_IDENTITY_ENV: "CODEZ_PREVIEW_IDENTITY";
 
+export function resolveDesktopRuntime(env?: Record<string, string | undefined>): DesktopRuntime;
 export function isPreviewIdentityRequested(env?: Record<string, string | undefined>): boolean;
 export function resolveDesktopProductFlavor(
   env?: Record<string, string | undefined>,
@@ -38,4 +40,5 @@ export function resolveWindowsAppUserModelId(
 export const desktopProductIdentities: Readonly<{
   production: DesktopProductIdentity;
   preview: DesktopProductIdentity;
+  codex: DesktopProductIdentity;
 }>;

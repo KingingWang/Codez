@@ -4,7 +4,7 @@
 
 2026-09-16：插件市场、插件管理 User 视图共用“添加”菜单，只有“创建插件”和“添加插件市场”两项；不提供录制技能。Workspace 配置视图不出现市场写入入口，空态“浏览插件”保持原行为。
 
-创建插件只打开新任务草稿，预填官方 `plugin-creator@zcode-plugins-official` 所提供的 `plugin-creator` Skill canonical 引用和一个尾空格。不自动发送，不切换模型，不安装或启用插件。使用标准 Root 新任务编排及其草稿持久化。
+创建插件只打开新任务草稿，预填官方 `plugin-creator@codez-plugins-official` 所提供的 `plugin-creator` Skill canonical 引用和一个尾空格。不自动发送，不切换模型，不安装或启用插件。使用标准 Root 新任务编排及其草稿持久化。
 
 ```text
 点击创建 -> 解析 Root 新任务目标 -> 该 workspace 的 skillsService.list
@@ -98,4 +98,4 @@ UI/草稿 owner：管理和商店组件负责展示/入口，Root 负责新任�
 
 ## 插件创建器图标
 
-官方 `plugin-creator@zcode-plugins-official` 在商店卡片、已安装条、详情与管理列表使用本地 `packages/ui/src/assets/plugin-icons/plugin-creator.png`：蓝色渐变圆角积木与白色加号，透明底，延续现有文档插件图标风格。既有缓存中的旧图片由该官方身份的本地图标覆盖，其他市场同名插件保留自己的 listing 图标。
+官方 `plugin-creator@codez-plugins-official` 在商店卡片、已安装条、详情与管理列表使用本地 `packages/ui/src/assets/plugin-icons/plugin-creator.png`：蓝色渐变圆角积木与白色加号，透明底，延续现有文档插件图标风格。既有缓存中的旧图片由该官方身份的本地图标覆盖，其他市场同名插件保留自己的 listing 图标。

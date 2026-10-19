@@ -155,7 +155,7 @@ export interface McpHttpServerConfig extends McpServerConfigBase {
 ```
 
 **为什么不再要求 pluginId 来自官方 marketplace（2026-08 决策变更）**：该检查曾作为第二道
-控制存在（要求 pluginId 以 `@zcode-plugins-official` 结尾）。移除原因有两条：
+控制存在（要求 pluginId 以 `@codez-plugins-official` 结尾）。移除原因有两条：
 
 1. **它让官方插件在发布前无法自测。** 本地安装的插件 id 是 `official-tools@inline`
    （`plugins.dirs`）或 `official-tools@<本地 marketplace>`，永远拿不到官方后缀。而 dev
@@ -591,7 +591,7 @@ interaction/requestOfficialMcpAuthHeaders
     "workspacePath": "/repo",
     "workspaceIdentity": "optional-remote-identity"
   },
-  "pluginId": "codez-tools@zcode-plugins-official",
+  "pluginId": "codez-tools@codez-plugins-official",
   "mcpKey": "image-search",
   "targetOrigin": "https://mcp.codez.example"
 }

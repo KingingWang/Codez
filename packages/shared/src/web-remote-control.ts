@@ -21,6 +21,11 @@ import type {
 import type { CodezProvider } from "./codez-task-types-core.js";
 import type { SessionWorkflowActivity } from "./codez-protocol-v4/sessions-index-workflow-activity.js";
 import type { WebRemoteControlRpcTransportPayload } from "./web-remote-control-rpc-transport.js";
+import type { WebRemoteControlE2eeWirePayload } from "./web-remote-control-e2ee.js";
+import type {
+  WebRemoteControlClientCapabilities,
+  WebRemoteControlGzipEnvelope,
+} from "./web-remote-control-gzip.js";
 import type { WorkspacePurpose } from "./workspacePurpose.js";
 
 export const WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS = 120_000;
@@ -118,6 +123,142 @@ export interface WebRemoteControlV2QrParams {
   deviceMid?: string;
   deviceName?: string;
   appVersion?: string;
+  theme?: WebRemoteControlThemeSeed;
+  e2eeKey?: string;
+}
+export type WebRemoteControlRelayRole = "device" | "terminal";
+// Bugfix: codez-remote-hub 当前只会把配对状态表示为 waiting/matched；
+// KICKED、WRONG_PARAM 等是 error code，不是 pair_status。这里收窄共享类型，
+// 避免客户端把不存在的 rejected/kicked 配对状态误判成桌面端 WS 需要关闭。
+export type WebRemoteControlRelayPairStatus = "waiting" | "matched";
+export type WebRemoteControlRelayErrorCode =
+  | "AUTH_FAILED"
+  | "DEVICE_OFFLINE"
+  | "KICKED"
+  | "WRONG_PARAM"
+  | "INTERNAL";
+
+export interface WebRemoteControlRelayOutgoingBase {
+  client_ts?: number;
+}
+
+export interface WebRemoteControlRelayIncomingBase {
+  server_ts?: number;
+}
+
+export interface WebRemoteControlRelayDeviceRegisterInit extends WebRemoteControlRelayOutgoingBase {
+  type: "device_register_init";
+  device_mid: string;
+  pass_hash: string;
+  meta: WebRemoteControlRelayDeviceMeta;
+}
+
+export interface WebRemoteControlRelayDeviceRegisterAck extends WebRemoteControlRelayIncomingBase {
+  type: "device_register_ack";
+  device_sid: string;
+}
+
+export interface WebRemoteControlRelayAuthInit extends WebRemoteControlRelayOutgoingBase {
+  type: "auth_init";
+  role: WebRemoteControlRelayRole;
+  device_sid: string;
+  meta: WebRemoteControlRelayDeviceMeta;
+}
+
+export interface WebRemoteControlRelayAuthChallenge extends WebRemoteControlRelayIncomingBase {
+  type: "auth_challenge";
+  nonce: string;
+}
+
+export interface WebRemoteControlRelayAuthResponse extends WebRemoteControlRelayOutgoingBase {
+  type: "auth_response";
+  device_sid: string;
+  proof: string;
+}
+
+export interface WebRemoteControlRelayAuthAck extends WebRemoteControlRelayIncomingBase {
+  type: "auth_ack";
+  device_sid: string;
+  terminal_sid?: string;
+  pair_status: WebRemoteControlRelayPairStatus;
+}
+
+export interface WebRemoteControlRelayPairStatusQuery extends WebRemoteControlRelayOutgoingBase {
+  type: "pair_status_query";
+  device_sid: string;
+}
+
+export interface WebRemoteControlRelayPairStatusAck extends WebRemoteControlRelayIncomingBase {
+  type: "pair_status_ack";
+  terminal_sid?: string;
+  pair_status: WebRemoteControlRelayPairStatus;
+}
+
+export interface WebRemoteControlRelayDataMessage<TPayload = unknown>
+  extends WebRemoteControlRelayOutgoingBase, WebRemoteControlRelayIncomingBase {
+  type: "data";
+  payload: TPayload;
+}
+
+export interface WebRemoteControlRelayError extends WebRemoteControlRelayIncomingBase {
+  type: "error";
+  code: WebRemoteControlRelayErrorCode;
+  message: string;
+}
+
+export type WebRemoteControlRelayOutgoingMessage =
+  | WebRemoteControlRelayDeviceRegisterInit
+  | WebRemoteControlRelayAuthInit
+  | WebRemoteControlRelayAuthResponse
+  | WebRemoteControlRelayPairStatusQuery
+  | WebRemoteControlRelayDataMessage<
+      | WebRemoteControlWireAppPayload
+      | WebRemoteControlWireTransportEnvelopePayload
+      | WebRemoteControlE2eeWirePayload
+    >;
+
+export type WebRemoteControlRelayIncomingMessage =
+  | WebRemoteControlRelayDeviceRegisterAck
+  | WebRemoteControlRelayAuthChallenge
+  | WebRemoteControlRelayAuthAck
+  | WebRemoteControlRelayPairStatusAck
+  | WebRemoteControlRelayDataMessage<WebRemoteControlAppPayload | WebRemoteControlE2eeWirePayload>
+  | WebRemoteControlRelayError;
+
+export interface WebRemoteControlRelayAuthProofVector {
+  passHash: string;
+  nonce: string;
+  role: WebRemoteControlRelayRole;
+  deviceSid: string;
+  proof: string;
+}
+
+export const WEB_REMOTE_CONTROL_RELAY_AUTH_PROOF_VECTORS: WebRemoteControlRelayAuthProofVector[] = [
+  {
+    passHash: "dGVzdF9oYXNo",
+    nonce: "nonce-1",
+    role: "device",
+    deviceSid: "device-1",
+    proof: "XK0m7u-26VS88uk7ISAX5Z_9pjzq8jqyP77N-HkCsPE",
+  },
+  {
+    passHash: "dGVzdF9oYXNo",
+    nonce: "nonce-1",
+    role: "terminal",
+    deviceSid: "device-1",
+    proof: "YkqkJy-p-iZK1g1AcoGd0Q83REOggX1EygWkcxW4oLU",
+  },
+];
+
+export interface WebRemoteControlExternalQrParams {
+  deviceSid: string;
+  passHash: string;
+  timestamp: number;
+  deviceMid?: string;
+  deviceName?: string;
+  appVersion?: string;
+  theme?: WebRemoteControlThemeSeed;
+  e2eeKey?: string;
 }
 
 export type BuildWebRemoteControlExternalQrUrlOptions = WebRemoteControlV2QrParams & {
@@ -169,6 +310,8 @@ export function buildWebRemoteControlExternalQrUrl({
   deviceMid,
   deviceName,
   appVersion,
+  theme,
+  e2eeKey,
 }: BuildWebRemoteControlExternalQrUrlOptions): string {
   const url = new URL(baseUrl);
   if (deviceSid !== undefined) url.searchParams.set("sid", deviceSid);
@@ -185,7 +328,41 @@ export function buildWebRemoteControlExternalQrUrl({
   if (appVersion?.trim()) {
     url.searchParams.set("app_version", appVersion);
   }
+  if (e2eeKey !== undefined) {
+    if (!/^[A-Za-z0-9_-]{43}$/u.test(e2eeKey)) {
+      throw new Error("Invalid Web remote control encryption key");
+    }
+    url.hash = new URLSearchParams({ e2ee: "v1", k: e2eeKey }).toString();
+  }
+  void theme;
+  // Bugfix: 手机端主题现在固定走本地默认 dark，不再通过二维码 URL 透传 theme。
+  // 之前 theme 参数会把桌面端主题耦合到手机首次进入行为，后续维护和排障都更复杂。
+  // 这里保留入参仅做向后兼容，避免旧调用点一次性改动过大。
+
   return url.toString();
+}
+
+export function parseWebRemoteControlE2eeQrFragment(fragment: string): string | null {
+  const params = new URLSearchParams(fragment.replace(/^#/u, ""));
+  if (
+    params.get("e2ee") !== "v1" ||
+    params.getAll("e2ee").length !== 1 ||
+    params.getAll("k").length !== 1
+  ) {
+    return null;
+  }
+  const key = params.get("k");
+  if (!key || !/^[A-Za-z0-9_-]{43}$/u.test(key)) return null;
+  try {
+    const base64 = key.replace(/-/gu, "+").replace(/_/gu, "/") + "=";
+    const decoded = atob(base64);
+    return decoded.length === 32 &&
+      btoa(decoded).replace(/\+/gu, "-").replace(/\//gu, "_").replace(/=+$/u, "") === key
+      ? key
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export function parseWebRemoteControlExternalQrParams(
@@ -624,6 +801,47 @@ export type WebRemoteControlAppPayload =
   | WebRemoteControlBridgeDegradedPayload
   | WebRemoteControlAppErrorPayload
   | WebRemoteControlMobileDiagnosticPayload;
+
+type UpstreamWirePayload<T> = T extends { codez_type: infer TType }
+  ? Omit<T, "codez_type"> & { zcode_type: TType }
+  : never;
+
+export type WebRemoteControlWireAppPayload = UpstreamWirePayload<WebRemoteControlAppPayload>;
+
+/**
+ * transport 层在序列化前注入的控制/编码信封（gzip 信封 / 能力宣告），不参与业务
+ * 路由 schema 校验；接收端在 parseWebRemoteControlAppPayload 之前按 codez_type 拦截还原。
+ * 旧版本收到未知 codez_type 会静默丢弃，协商对旧端安全。
+ */
+export type WebRemoteControlTransportEnvelopePayload =
+  | WebRemoteControlGzipEnvelope
+  | WebRemoteControlClientCapabilities;
+
+/** 信封的 wire 形态（zcode_type 改名后）。 */
+export type WebRemoteControlWireTransportEnvelopePayload =
+  UpstreamWirePayload<WebRemoteControlTransportEnvelopePayload>;
+
+/** 只转换外部 relay 字段；不改变内部路由、RPC 字节或业务状态。 */
+export function toWebRemoteControlWirePayload(
+  payload: WebRemoteControlAppPayload | WebRemoteControlTransportEnvelopePayload,
+): WebRemoteControlWireAppPayload | WebRemoteControlWireTransportEnvelopePayload {
+  // Bugfix：二维码打开的是上游托管页面，品牌重命名不能改变它的 wire discriminator。
+  const { codez_type, ...fields } = payload;
+  return { zcode_type: codez_type, ...fields } as
+    | WebRemoteControlWireAppPayload
+    | WebRemoteControlWireTransportEnvelopePayload;
+}
+
+/** 输入仍是不可信数据，归一之后必须继续经过原有 schema / raw RPC 校验。 */
+export function normalizeWebRemoteControlWirePayload(payload: unknown): unknown {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
+  const record = payload as Record<string, unknown>;
+  if (!("zcode_type" in record)) return payload;
+  // 两种字段同时出现时拒绝，避免普通业务 schema 的 strip 隐藏歧义或 raw strict 校验被绕过。
+  if ("codez_type" in record) return null;
+  const { zcode_type, ...fields } = record;
+  return { codez_type: zcode_type, ...fields };
+}
 
 export interface WebRemoteControlWorkspaceTarget {
   workspacePath: string;

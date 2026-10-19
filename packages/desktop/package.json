@@ -1,5 +1,6 @@
 {
   "name": "@codez/desktop",
+  "version": "0.0.0",
   "private": true,
   "description": "Codez Desktop App",
   "author": "Codez",
@@ -18,6 +19,9 @@
     "prepare:build-meta": "node scripts/build-metadata.mjs",
     "prepare:runtime-assets": "node scripts/prepare-runtime-assets.mjs",
     "prepare:glm": "node ../../scripts/download-glm.mjs",
+    "prepare:codex-runtime": "node scripts/prepare-codex-runtime.mjs",
+    "prepare:codex-remote": "node ../../scripts/codex-runtime-remote-assets.mjs",
+    "prepare:remote-assets": "node scripts/prepare-remote-assets.mjs",
     "prepare:agent-bundle": "node scripts/prepare-agent-node-bundle.mjs",
     "prepare:windows-cua-helper": "node scripts/prepare-windows-cua-helper.mjs",
     "prepare:native-search": "node ../../scripts/prepare-native-search-tools.mjs",

@@ -1181,7 +1181,7 @@ describe("script workflow child runtime — 子代理的技能清单", () => {
             priority: 1_000,
             scope: "system",
             source: "plugin",
-            pluginId: "browser-use@zcode-plugins-official",
+            pluginId: "browser-use@codez-plugins-official",
           },
         ],
       }),

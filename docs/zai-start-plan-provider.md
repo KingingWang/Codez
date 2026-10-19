@@ -47,10 +47,10 @@ builtin:zai-start-plan
 builtin:bigmodel-start-plan
 ```
 
-Both providers intentionally reuse the same `codez-plan` runtime endpoint and
+Both providers intentionally reuse the same `zcode-plan` runtime endpoint and
 free model set. OAuth preset sync derives each Start Plan provider from its own
 brand login domain, so runtime model calls can continue to use the same
-`codez-plan` endpoint while keeping credentials isolated by provider id.
+`zcode-plan` endpoint while keeping credentials isolated by provider id.
 
 Status checks are separate from paid Coding Plan checks. `builtin:zai-start-plan`
 reads the active free plan identity and the daily quota bucket renewal time from

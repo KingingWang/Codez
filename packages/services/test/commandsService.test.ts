@@ -31,7 +31,7 @@ function officialPluginRoot(
     "cli",
     "plugins",
     "cache",
-    "zcode-plugins-official",
+    "codez-plugins-official",
     pluginName,
     version,
   );
@@ -422,7 +422,7 @@ describe("commandsService", () => {
     writeCliConfig(home, {
       plugins: {
         enabledPlugins: {
-          "ios-simulator@zcode-plugins-official": true,
+          "ios-simulator@codez-plugins-official": true,
         },
       },
     });
@@ -440,7 +440,7 @@ describe("commandsService", () => {
         enabled: true,
         name: "/ios/dev",
         pluginEnabled: true,
-        pluginMarketplace: "zcode-plugins-official",
+        pluginMarketplace: "codez-plugins-official",
         pluginName: "ios-simulator",
         source: "plugin",
       }),
@@ -483,7 +483,7 @@ describe("commandsService", () => {
     // document-skills 被卸载（suppressed），skill-creator 保持默认启用。
     writeCliConfig(home, {
       plugins: {
-        suppressedBuiltins: ["document-skills@zcode-plugins-official"],
+        suppressedBuiltins: ["document-skills@codez-plugins-official"],
       },
     });
 

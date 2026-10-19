@@ -9,6 +9,7 @@ import { conversationRowTargetSchema, timestampSchema } from "./core.js";
 import { attachmentRefSchema } from "./attachment-ref.js";
 import { v4ConversationFileRewindPreviewResultSchema } from "./transport.js";
 import { modelSelectionSchema } from "../model-selection.js";
+import { codexTitleModelSchema } from "../codex-runtime.js";
 import { modelExecutionSchema } from "../model-execution.js";
 import { submissionModeSchema } from "./submission.js";
 import { botGroupInputSourceSchema, codezAutomationBotDeliveryTargetSchema } from "../bots.js";
@@ -57,6 +58,7 @@ export const commandPayloadSchemas = {
     additionalDirectories: z.array(z.string().min(1)).max(256).optional(),
     workspaceId: z.string(),
     permissionScope: z.literal("session").optional(),
+    titleGenerationModel: codexTitleModelSchema.optional(),
     firstInput: z
       .object({
         text: z.string(),
@@ -95,6 +97,10 @@ export const commandPayloadSchemas = {
   sendText: z
     .object({
       text: z.string(),
+      // 中断轮点击「继续」时的目标行锚点；携带时不向上下文注入合成用户提示词，
+      // 由 owner 按中断轮已完成工具边界决定回退重发或无气泡续跑。
+      interruptedContinueTarget: conversationRowTargetSchema.optional(),
+      titleGenerationModel: codexTitleModelSchema.optional(),
       attachments: z.array(attachmentRefSchema).optional(),
       // Desktop Cmd/Ctrl+Enter 只覆盖本次 busy input，不改 session followupMode。
       // startNow 由 CLI 原子抢占当前 turn，不经过 queue admission。
@@ -177,6 +183,8 @@ export const commandPayloadSchemas = {
       // 编辑重发按新的主动发送处理：只接受本次重新 prepare 得到的卡与执行材料，
       // 不从被 rewind 的历史消息复用旧凭据。
       modelSelection: modelSelectionSchema.optional(),
+      mode: submissionModeSchema.optional(),
+      planEnabled: z.boolean().optional(),
       modelExecution: modelExecutionSchema.optional(),
       highspeedMeta: highspeedMessageMetaSchema.optional(),
     // 缺省 preserve：仅切 conversation branch；rewind 会先安全恢复该轮文件。
@@ -259,7 +267,7 @@ export const commandPayloadSchemas = {
   // additive（冻结面按黄金测试背书演进）：agent 协作模式切换。
   // 值域 = core CollaborationMode 的可切换子集（auto 非用户可切，不进 UI 命令面）。
   switchCollaborationMode: z.object({
-    mode: z.enum(["build", "edit", "plan", "yolo", "guarded"]),
+    mode: z.enum(["build", "edit", "plan", "yolo", "guarded", "custom"]),
   }),
   setFollowupMode: z.object({ mode: z.enum(["queue", "guide"]) }),
   pauseGoal: z.object({}),

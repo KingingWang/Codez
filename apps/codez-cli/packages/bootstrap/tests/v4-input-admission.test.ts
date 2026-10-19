@@ -27,6 +27,16 @@ describe("v4 input admission canonical intent", () => {
 
   it("非输入命令不创建 session_input", () => {
     expect(resolveInputCommandForAdmission(envelope("stop", {}), "s-parent", vi.fn())).toBeNull();
+    expect(
+      resolveInputCommandForAdmission(
+        envelope("sendText", {
+          text: "",
+          interruptedContinueTarget: { rowId: 2, entityId: "user-2" },
+        }),
+        "s-parent",
+        vi.fn(),
+      ),
+    ).toBeNull();
   });
 
   it("compact admission 保留 typed maintenance intent，不伪装成 sendText", () => {

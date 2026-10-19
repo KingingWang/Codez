@@ -32,6 +32,10 @@ describe("parseV4VisibleSlashCommand", () => {
       kind: "resumeGoal",
       displayText: "/goal resume",
     });
+    expect(parseV4VisibleSlashCommand("/goal pause", [])).toEqual({
+      kind: "pauseGoal",
+      displayText: "/goal pause",
+    });
   });
 
   it("does not consume the removed UI-only /resume-goal alias", () => {
@@ -47,14 +51,64 @@ describe("parseV4VisibleSlashCommand", () => {
     ).toBeNull();
   });
 
-  it.each(["/plan", "  /PLAN  帮我做 X  ", "/planner 做普通任务"])(
-    "does not interpret %s as a send-time command",
-    (text) => {
-      expect(parseV4VisibleSlashCommand(text)).toBeNull();
-      expect(parseV4VisibleSlashCommand(text, [{ ref: "codez-artifact://a" }])).toBeNull();
-      expect(parseV4VisibleSlashCommand(text, [], { contextAttachmentCount: 1 })).toBeNull();
-    },
-  );
+  it("parses /plan as a mode shortcut and keeps only the task argument", () => {
+    expect(parseV4VisibleSlashCommand("/plan", [])).toEqual({
+      kind: "planShortcut",
+      task: "",
+      displayText: "/plan",
+    });
+    expect(parseV4VisibleSlashCommand("  /plan    ", [])).toEqual({
+      kind: "planShortcut",
+      task: "",
+      displayText: "/plan",
+    });
+    expect(parseV4VisibleSlashCommand("  /PLAN  帮我做 X  ", [])).toEqual({
+      kind: "planShortcut",
+      task: "帮我做 X",
+      displayText: "/PLAN  帮我做 X",
+    });
+    expect(parseV4VisibleSlashCommand("/planner 做普通任务", [])).toBeNull();
+  });
+
+  it("parses /mode and /model into local config shortcuts", () => {
+    expect(parseV4VisibleSlashCommand("/mode", [])).toEqual({
+      kind: "modeShortcut",
+      mode: "",
+      displayText: "/mode",
+    });
+    expect(parseV4VisibleSlashCommand("/mode yolo", [])).toEqual({
+      kind: "modeShortcut",
+      mode: "yolo",
+      displayText: "/mode yolo",
+    });
+    expect(parseV4VisibleSlashCommand("/model", [])).toEqual({
+      kind: "modelShortcut",
+      modelArg: "",
+      displayText: "/model",
+    });
+    expect(parseV4VisibleSlashCommand("/model openai/gpt-5.6-codex$high", [])).toEqual({
+      kind: "modelShortcut",
+      modelArg: "openai/gpt-5.6-codex$high",
+      displayText: "/model openai/gpt-5.6-codex$high",
+    });
+  });
+
+  it("rejects /plan when attachments or context are present", () => {
+    expect(
+      parseV4VisibleSlashCommand("/plan 检查附件", [
+        { ref: "codez-artifact://a", fileName: "a.txt", mime: "text/plain", bytes: 1 },
+      ]),
+    ).toMatchObject({
+      kind: "unsupportedPlanShortcut",
+      task: "检查附件",
+    });
+    expect(
+      parseV4VisibleSlashCommand("/plan 检查网页", [], { contextAttachmentCount: 1 }),
+    ).toMatchObject({
+      kind: "unsupportedPlanShortcut",
+      task: "检查网页",
+    });
+  });
 
   it("does not consume commands with web element contexts", () => {
     expect(

@@ -35,7 +35,7 @@ Phase 1 当时把 browser use 视为由官方 `browser` plugin 整体控制的�
 - `docs/documents.json`：声明 documentation 需要拼接的 markdown 文档。
 - `docs/*.md`：工作流、安全规则、截图/图片回传说明。
 
-bootstrap 在解析官方 `browser-use@zcode-plugins-official` 插件时，把 `rootPath/docs` 作为内部 runtime feature 透传给 core。该字段属于 Codez 内部 runtime config，不属于 plugin schema。
+bootstrap 在解析官方 `browser-use@codez-plugins-official` 插件时，把 `rootPath/docs` 作为内部 runtime feature 透传给 core。该字段属于 Codez 内部 runtime config，不属于 plugin schema。
 
 ### REPL 元数据
 

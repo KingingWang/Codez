@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AppUsageRange, AppUsageSnapshot } from "@codez/shared";
 import type { IServiceAccessor } from "@codez/services";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
+import { UsageStatsSection } from "@/settings/UsageStatsSection.js";
 import {
   AppUsageLifetimeSummaryStrip,
   AppUsagePanel,
@@ -111,6 +112,7 @@ function createServices(): IServiceAccessor {
 }
 
 afterEach(() => {
+  cleanup();
   vi.restoreAllMocks();
 });
 
@@ -190,5 +192,119 @@ describe("AppUsageLifetimeSummaryStrip", () => {
     expect(screen.queryByText("消息数量")).toBeNull();
     expect(screen.queryByText("活跃天数")).toBeNull();
     expect(screen.queryByText("最常用模型")).toBeNull();
+  });
+
+  it("UsageStatsSection converges to AppUsagePanel even when desktopCodex is true and refreshes snapshot on range switch", async () => {
+    await Promise.all([
+      import("@/settings/usage-stats/AppUsageDailyModelTrendChart.js"),
+      import("@/settings/usage-stats/AppUsageModelUsagePieChart.js"),
+    ]);
+    const services = createServices();
+    render(
+      createElement(
+        ServiceProvider,
+        { services },
+        createElement(
+          CodezIntlProvider,
+          { initialLocale: "zh-CN" },
+          createElement(UsageStatsSection, {
+            activeTab: "app",
+            desktopCodex: true,
+            providerSourcesLoading: false,
+            workspacePath: "/workspace",
+          }),
+        ),
+      ),
+    );
+
+    await screen.findByText("累计 Token 数");
+    await waitFor(
+      () => {
+        expect(screen.queryAllByText("正在统计中")).toHaveLength(0);
+      },
+      { timeout: 5000 },
+    );
+    expect(await screen.findByText("每日 Token 趋势图")).toBeTruthy();
+    expect(screen.queryByTestId("codex-usage-observations")).toBeNull();
+
+    const thirtyDayTab = screen.getByRole("tab", { name: "近 30 日" });
+    fireEvent.mouseDown(thirtyDayTab);
+    fireEvent.click(thirtyDayTab);
+    await waitFor(() => {
+      expect(services.usageStatsService.getAppUsageSnapshot).toHaveBeenCalledWith(
+        expect.objectContaining({ range: "30d" }),
+      );
+    });
+  });
+
+  it("keeps chart color indicators above the charts", async () => {
+    const dailyChartSource = await readFile(
+      "packages/ui/src/settings/usage-stats/AppUsageDailyModelTrendChart.tsx",
+      "utf8",
+    );
+    const modelChartSource = await readFile(
+      "packages/ui/src/settings/usage-stats/AppUsageModelUsagePieChart.tsx",
+      "utf8",
+    );
+
+    const dailyLegendIndex = dailyChartSource.indexOf('role="list"');
+    const modelLegendIndex = modelChartSource.indexOf('role="list"');
+
+    expect(dailyLegendIndex).toBeGreaterThan(-1);
+    expect(modelLegendIndex).toBeGreaterThan(-1);
+    expect(dailyLegendIndex).toBeLessThan(dailyChartSource.indexOf("<ChartContainer"));
+    expect(modelLegendIndex).toBeGreaterThan(modelChartSource.indexOf("<ChartContainer"));
+    expect(modelChartSource).toContain("md:grid-cols-2");
+    expect(modelChartSource).toContain("grid grid-cols-[auto_minmax(0,1fr)_auto]");
+    expect(modelChartSource).toContain("size-2 shrink-0 self-center rounded-full");
+    expect(modelChartSource).not.toContain("h-2.5 w-1");
+    expect(modelChartSource).not.toContain("mt-0.5");
+    expect(dailyChartSource).not.toContain("rounded-md bg-surface/60");
+    expect(modelChartSource).not.toContain("rounded-md bg-surface/60");
+    expect(dailyChartSource).toContain('className="space-y-3 rounded-xl bg-surface p-4"');
+    expect(modelChartSource).toContain('className="space-y-3 rounded-xl bg-surface p-4"');
+  });
+
+  it("uses small typography for chart content while keeping chart titles unchanged", async () => {
+    const [
+      chartUiSource,
+      dailyChartSource,
+      modelChartSource,
+      heatmapSource,
+      codingPlanSource,
+      codingPlanLineSource,
+    ] = await Promise.all(
+      [
+        "packages/ui/src/components/ui/chart.tsx",
+        "packages/ui/src/settings/usage-stats/AppUsageDailyModelTrendChart.tsx",
+        "packages/ui/src/settings/usage-stats/AppUsageModelUsagePieChart.tsx",
+        "packages/ui/src/settings/usage-stats/UsageHeatmap.tsx",
+        "packages/ui/src/settings/usage-stats/CodingPlanUsagePanel.tsx",
+        "packages/ui/src/settings/usage-stats/CodingPlanUsageLineChart.tsx",
+      ].map((path) => readFile(path, "utf8")),
+    );
+
+    expect(chartUiSource).toContain("justify-center text-ui-sm");
+    expect(chartUiSource).toContain("text-ui-sm/relaxed");
+    expect(dailyChartSource).toContain('className="flex min-w-0 items-center gap-2 text-ui-sm"');
+    expect(dailyChartSource).toContain('<h3 className="text-ui-base font-medium text-foreground">');
+    expect(modelChartSource).toContain("font-mono text-ui-sm text-foreground");
+    expect(modelChartSource).toContain("font-mono text-ui-sm text-foreground-subtle tabular-nums");
+    expect(modelChartSource).toContain('<h3 className="text-ui-base font-medium text-foreground">');
+    expect(heatmapSource).toContain(
+      'className="min-w-0 truncate text-ui-sm text-foreground-subtle"',
+    );
+    expect(heatmapSource).toContain(
+      '<h3 className="min-w-0 truncate text-ui-base font-medium text-foreground">',
+    );
+    expect(codingPlanSource).toContain(
+      'className="mt-3 flex flex-wrap items-center gap-3 text-ui-sm"',
+    );
+    expect(codingPlanSource).toContain(
+      'className="flex min-w-0 items-center gap-1 rounded-md px-2 py-1 text-ui-sm"',
+    );
+    expect(codingPlanLineSource).toContain(
+      'className="flex min-w-0 items-center gap-2 text-ui-sm"',
+    );
   });
 });

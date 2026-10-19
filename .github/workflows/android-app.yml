@@ -1,0 +1,94 @@
+name: Android app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/android/**"
+      - ".github/workflows/android-app.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-app
+  cancel-in-progress: false
+
+env:
+  ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+jobs:
+  build:
+    if: github.repository == 'KingingWang/Codez'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install SDK components
+        run: |
+          # ubuntu-24.04  runner 预装 Android SDK（$ANDROID_HOME/cmdline-tools/latest）。
+          # android-actions/setup-android@v3 会尝试安装已被 Google 移除的 tools 包而失败，故不用它。
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null
+          "$SDKMANAGER" "platforms;android-36.1" "build-tools;36.1.0" > /dev/null
+      - name: Unit tests
+        working-directory: packages/android
+        # AGP 9 默认只生成 debug 变体的单测任务。
+        run: ./gradlew :app:testDebugUnitTest --console=plain
+      - name: Assemble release APK
+        working-directory: packages/android
+        run: ./gradlew :app:assembleRelease --console=plain
+      - name: Sign release APK
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYSTORE="$RUNNER_TEMP/codez-upload.keystore"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+          UNSIGNED="packages/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          APK="$RUNNER_TEMP/codez-android.apk"
+          "$ANDROID_HOME/build-tools/36.1.0/zipalign" -p -f 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
+          "$ANDROID_HOME/build-tools/36.1.0/apksigner" sign \
+            --ks "$KEYSTORE" \
+            --ks-pass "pass:$ANDROID_KEYSTORE_PASSWORD" \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --key-pass "pass:$ANDROID_KEY_PASSWORD" \
+            --out "$APK" \
+            "$RUNNER_TEMP/aligned.apk"
+          "$ANDROID_HOME/build-tools/36.1.0/apksigner" verify --verbose "$APK"
+          rm -f "$KEYSTORE"
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+      - name: Debug-signed fallback APK
+        if: env.ANDROID_KEYSTORE_BASE64 == ''
+        working-directory: packages/android
+        run: |
+          ./gradlew :app:assembleDebug --console=plain
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/codez-android.apk"
+          echo "APK_PATH=$RUNNER_TEMP/codez-android.apk" >> "$GITHUB_ENV"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          VERSION_NAME=$(grep -oP 'versionName = "\K[^"]+' packages/android/app/build.gradle.kts)
+          TAG="android-v$VERSION_NAME"
+          TITLE="Codez Android v$VERSION_NAME"
+          NOTES="手机远控 App（扫码连接桌面 Codez）。端到端加密，经中转服务连接。"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$APK_PATH" --clobber
+          else
+            gh release create "$TAG" "$APK_PATH" --title "$TITLE" --notes "$NOTES" --target main
+          fi
+          gh release view "$TAG" --json tagName,assets

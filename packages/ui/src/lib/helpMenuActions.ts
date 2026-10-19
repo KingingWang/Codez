@@ -1,11 +1,12 @@
 import type { IPlatformService } from "@codez/shared";
 import type { IntlInstance } from "@/i18n/IntlProvider.js";
-import type { FeedbackSubmitDraft } from "@/feedback/feedbackStore.js";
+import type { FeedbackEntryContext } from "@/feedback/feedbackEntryPlan.js";
 import { runExportLogsAction } from "@/lib/exportLogsAction.js";
 import { CODEZ_PRODUCT_DOCS_URL } from "@/lib/productDocs.js";
 
 export interface HelpMenuActionHandlers {
   openIssueReport: () => Promise<void>;
+  openProductRequest: () => Promise<void>;
   openProductDocs: () => void;
   exportLogs: () => void;
 }
@@ -13,21 +14,18 @@ export interface HelpMenuActionHandlers {
 export function createHelpMenuActionHandlers({
   platform,
   intl,
-  openSubmit,
+  runFeedbackEntry,
 }: {
   platform: Pick<IPlatformService, "captureWindowScreenshot" | "exportLogs" | "openExternal">;
   intl: IntlInstance;
-  openSubmit: (draft?: FeedbackSubmitDraft) => void;
+  runFeedbackEntry: (context: FeedbackEntryContext) => unknown;
 }): HelpMenuActionHandlers {
   return {
     openIssueReport: async () => {
-      openSubmit({
-        type: "bug",
-        module: "其它",
-        severity: "P2-中",
-        includeLogs: true,
-        screenshots: [],
-      });
+      runFeedbackEntry({ kind: "bug" });
+    },
+    openProductRequest: async () => {
+      runFeedbackEntry({ kind: "feature" });
     },
     openProductDocs: () => {
       platform.openExternal(CODEZ_PRODUCT_DOCS_URL);

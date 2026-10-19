@@ -966,6 +966,10 @@ interface ReasoningRow extends RowBase {
   text: string; // 流式：path="text"
   state: "streaming" | "complete" | "interrupted";
   durationMs?: number; // 完成时出现
+  truncated?: {
+    totalBytes: number;
+    ref: string; // v4/conversation/rowPayload 按 rowId 按需拉取完整思考正文
+  };
 }
 ```
 
@@ -987,6 +991,10 @@ interface ToolCallRow extends RowBase {
   status: "inputStreaming" | "pendingApproval" | "running" | "success" | "error" | "cancelled";
   inputText: string; // 流式：path="inputText"（仅 continuous 档）
   input?: unknown; // 结构化 input，进入 running 时出现
+  inputTruncated?: {
+    totalBytes: number;
+    ref: string; // 终态大参数裁剪标记，v4/conversation/rowPayload 按 rowId 按需拉取
+  };
   output?: ToolOutput; // 终态出现（success/error 均可有）
   error?: { code: string; message: string }; // status=error 时必带
   progress?: ToolProgress; // 仅 replayable 档运行中出现，终态清除
@@ -1498,6 +1506,16 @@ rows/range {
 ### 7.2 toolOutput/get、attachment/read 与 artifactd
 
 ```ts
+v4/conversation/rowPayload {
+  sessionId: string;
+  rowId: number;
+} -> {
+  row: (ToolCallRow | ReasoningRow) | null;
+  atSeq: number;
+  atRevision: number;
+  atLogEpoch: string;
+}
+
 toolOutput/get { ref: string; byteRange?: { start: number; end: number } }
   -> { bytes: binary; totalBytes: number }
 
@@ -1526,6 +1544,11 @@ ref 有效期 = 对应 message 生命周期（artifact store 落盘，跨重启�
 允许读取该 ref，但仍必须通过当前 session row 授权。query 不新增 conversation event、snapshot、
 queue 或 relay/main 业务状态；桌面 `desktop-continuous` 与手机 `web-remote-replayable` 共用该
 读取合同。
+
+`v4/conversation/rowPayload` 用于按需拉取已完成折叠行（`toolCall` / `reasoning`）的完整载荷：
+
+- 首屏 `ConversationSnapshot`、终态 `row.upserted` 与 `rows/range` 对已完成的非外提 `toolCall` 和 `reasoning` 行进行确定性紧凑化（`output.text` 512B 内联预览、`file_diff` 折叠态省略 `structuredPatch` Hunk 行、大体积 `input` 保留路径/命令摘要键并标记 `inputTruncated`、长 `reasoning.text` 512B 预览并标记 `truncated`），保证 `desktop-continuous` 与 `web-remote-replayable` 终态逐字节一致。
+- 用户在客户端展开具体工具卡片或思考块时，Store 自动发起单飞 `v4/conversation/rowPayload` 查询，校验 `atLogEpoch === snapshot.logEpoch` 后原地替换为完整行（`output.text` 仍受 `toolOutputFinalHeadBytes + toolOutputFinalTailBytes` 64KiB 保护上界约束），并在同 `logEpoch` 内防后续快照冲刷。
 
 ### 7.3 commands/query（重连对账）
 

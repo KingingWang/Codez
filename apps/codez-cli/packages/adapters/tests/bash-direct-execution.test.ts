@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NodeExecutionAdapter } from "../src/exec/node-execution-adapter.js";
+import { buildExecutionEnv } from "../src/exec/execution-command.js";
 import { OutputCollector } from "../src/exec/output-collector.js";
 import { BashFileOutput } from "../src/exec/bash-file-output.js";
 import * as outputEncoding from "../src/exec/outputEncoding.js";
@@ -89,6 +90,15 @@ const timer = setInterval(() => {
 }, 10);`;
 
 describe.each(shells)("direct Bash $display.name", (shell) => {
+  it("never passes a captured model Key to Bash", () => {
+    const env = buildExecutionEnv(undefined, {
+      processEnv: {
+        CODEZ_MODEL_API_KEY_ABC123: "do-not-expose",
+        PATH: "/bin",
+      },
+    });
+    expect(env.CODEZ_MODEL_API_KEY_ABC123).toBeUndefined();
+  });
   it.each(["foreground", "explicit", "auto_on_timeout", "start"] as const)(
     "resolves output encoding once and reuses it for output reads (%s)",
     async (mode) => {

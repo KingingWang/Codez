@@ -36,8 +36,8 @@ import {
   openPluginSettings,
 } from "../helpers/plugin-management-lifecycle.js";
 
-const PLUGIN_STABLE_ID = "skill-creator@zcode-plugins-official";
-const STORE_TRY_PLUGIN_STABLE_ID = "codez-guide@zcode-plugins-official";
+const PLUGIN_STABLE_ID = "skill-creator@codez-plugins-official";
+const STORE_TRY_PLUGIN_STABLE_ID = "codez-guide@codez-plugins-official";
 const STORE_TRY_PLUGIN_ICON =
   "https://cdn-zcode.z.ai/codez/official-plugin/assets/codez-guide/icon.png";
 const PROMPT_MARKER = "E2E_PLUGIN_REFERENCE";

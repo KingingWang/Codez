@@ -410,6 +410,12 @@ export const TID_RESOURCE_MANAGER_STORAGE_CONFIRM_CANCEL =
   "resource-manager-storage-confirm-cancel";
 /** Memory 设置模块中的总开关 */
 export const TID_SETTINGS_MEMORY_SWITCH = "settings-memory-switch";
+/** Memory 设置：对话中使用记忆开关 */
+export const TID_SETTINGS_MEMORY_USE_SWITCH = "settings-memory-use-switch";
+/** Memory 设置：自动提取记忆开关 */
+export const TID_SETTINGS_MEMORY_EXTRACTION_SWITCH = "settings-memory-extraction-switch";
+/** Memory 设置：提取模型选择触发器 */
+export const TID_SETTINGS_MEMORY_EXTRACTION_MODEL = "settings-memory-extraction-model";
 /** Memory 设置模块刷新按钮 */
 export const TID_SETTINGS_MEMORY_REFRESH = "settings-memory-refresh";
 /** Memory Workspace Scope 菜单触发器 */
@@ -485,6 +491,7 @@ export const TID_MODEL_PROVIDER_START_PLAN_SWITCH_PREFIX =
 export const TID_MODEL_PROVIDER_CONNECTION_MODE_ITEM = "model-provider-connection-mode-item";
 /** 模型供应商详情 API Key 输入框 */
 export const TID_MODEL_PROVIDER_API_KEY_INPUT = "model-provider-api-key-input";
+export const TID_MODEL_PROVIDER_KEY_MODE_SELECT = "model-provider-key-mode-select";
 /** 模型供应商名称编辑按钮 */
 export const TID_MODEL_PROVIDER_NAME_EDIT_BUTTON = "model-provider-name-edit-button";
 /** 模型供应商名称编辑输入框 */

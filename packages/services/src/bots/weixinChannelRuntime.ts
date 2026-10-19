@@ -1,8 +1,4 @@
-import type {
-  BotConfig,
-  BotProviderCallbackResult,
-  BotsConfigFile,
-} from "@codez/shared";
+import type { BotConfig, BotProviderCallbackResult, BotsConfigFile } from "@codez/shared";
 import type { ICredentialService } from "../credential/credential.js";
 import { getWeixinUpdates } from "./providers/weixinProvider.js";
 import {
@@ -55,9 +51,7 @@ export function createWeixinChannelRuntime(deps: WeixinChannelRuntimeDeps) {
   }
 
   async function pollBot(bot: BotConfig, signal: AbortSignal): Promise<void> {
-    const token = bot.credentialRef
-      ? await deps.credentialService.load(bot.credentialRef)
-      : null;
+    const token = bot.credentialRef ? await deps.credentialService.load(bot.credentialRef) : null;
     if (!token?.trim()) {
       deps.statusSink.setRuntimeStatus({
         botId: bot.id,
@@ -261,10 +255,7 @@ export function createWeixinChannelRuntime(deps: WeixinChannelRuntimeDeps) {
     }
     const activeWeixinIds = new Set(
       currentConfig.bots
-        .filter(
-          (bot) =>
-            bot.provider === "weixin" && bot.enabled && bot.credentialRef,
-        )
+        .filter((bot) => bot.provider === "weixin" && bot.enabled && bot.credentialRef)
         .map((bot) => bot.id),
     );
     for (const botId of runtimes.keys()) {
@@ -323,6 +314,9 @@ export function createWeixinChannelRuntime(deps: WeixinChannelRuntimeDeps) {
 
   async function dispose(): Promise<void> {
     refreshQueue.invalidate();
+    // 修复原因：invalidate 只阻止后续 reconcile；正在执行的一轮仍可能写 bot 配置/状态文件，
+    // 先等队列清空再快照并中止长轮询，避免销毁返回后仍有文件落盘。
+    await refreshQueue.whenIdle();
     const activeRuntimes = [...runtimes.values()];
     for (const runtime of activeRuntimes) {
       runtime.controller.abort();

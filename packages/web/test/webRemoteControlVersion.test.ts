@@ -12,7 +12,9 @@ const bootstrap = (desktopAppVersion?: string): WebRemoteControlWindowBootstrapR
   ...(desktopAppVersion === undefined ? {} : { desktopAppVersion }),
 });
 
-function harness(options: { url?: string; ready?: boolean; version?: string } = {}) {
+function harness(
+  options: { url?: string; ready?: boolean; version?: string; routePath?: string } = {},
+) {
   const requestBootstrap = vi.fn(async () => bootstrap(options.version));
   const navigate = vi.fn();
   const onMismatch = vi.fn();
@@ -21,6 +23,7 @@ function harness(options: { url?: string; ready?: boolean; version?: string } = 
     options.url ?? "https://zcode.z.ai/remote/v4?sid=a&hash=x%2By&t=1&app_version=3.12.1#task";
   const guard = createWebRemoteControlVersionGuard({
     requestBootstrap,
+    routePath: options.routePath ?? "/remote/v4",
     getUrl: () => url,
     isPageReady: () => options.ready ?? false,
     navigate,
@@ -48,6 +51,15 @@ describe("remote v4 desktop version guard", () => {
     await h.guard.check();
     expect(h.navigate).toHaveBeenCalledWith(
       "https://zcode.z.ai/remote/v4/?sid=a&app_version=3.12.2",
+    );
+  });
+
+  it("preserves the E2EE fragment and query when navigating the Pages project route", async () => {
+    const url = "https://kingingwang.github.io/Codez/remote/v4/?sid=a&hash=x%2By&t=1#e2ee=v1&k=key";
+    const h = harness({ url, routePath: "/Codez/remote/v4", version: "3.15.1" });
+    await h.guard.check();
+    expect(h.navigate).toHaveBeenCalledExactlyOnceWith(
+      "https://kingingwang.github.io/Codez/remote/v4/?sid=a&hash=x%2By&t=1&app_version=3.15.1#e2ee=v1&k=key",
     );
   });
 

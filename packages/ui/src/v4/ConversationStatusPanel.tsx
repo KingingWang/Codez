@@ -23,6 +23,7 @@ import {
   CircleIcon,
   EllipsisIcon,
   FileDiffIcon,
+  GitBranchIcon,
   GoalIcon,
   ListChecksIcon,
   Maximize2Icon,
@@ -109,6 +110,7 @@ export interface ConversationStatusPanelProps {
   gitDirtyFileCount?: number;
   gitWorktreeReviewSourceId?: GitChangeSourceId | null;
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
+  gitAuxiliaryGenerationSupported?: boolean;
   activeTaskChangeSummary?: CodezTaskChangeSummary | null;
   goal?: GoalState | null;
   sessionPlans?: readonly ToolCallRow[];
@@ -362,6 +364,7 @@ function StatusSection({
 
 function GitStatusSection({
   activeTaskChangeSummary,
+  auxiliaryGenerationSupported,
   gitSummary,
   gitWorktreeReviewSourceId,
   model,
@@ -373,6 +376,7 @@ function GitStatusSection({
   useVerticalFloatingPanels,
 }: {
   activeTaskChangeSummary?: CodezTaskChangeSummary | null;
+  auxiliaryGenerationSupported?: boolean;
   gitSummary: GitRepositorySummary | null | undefined;
   gitWorktreeReviewSourceId?: GitChangeSourceId | null;
   model: ConversationStatusPanelModel;
@@ -436,6 +440,7 @@ function GitStatusSection({
         </button>
         <GitBranchSwitcher
           workspacePath={workspacePath}
+          workspaceIdentity={workspaceIdentity}
           gitSummary={gitSummary}
           dirtyFileCount={git.dirtyFileCount}
           onRefreshGit={onRefreshGit}
@@ -451,6 +456,7 @@ function GitStatusSection({
           workspaceIdentity={workspaceIdentity}
           gitSummary={gitSummary}
           activeTaskChangeSummary={activeTaskChangeSummary ?? null}
+          auxiliaryGenerationSupported={auxiliaryGenerationSupported}
           onRefreshGit={onRefreshGit}
           triggerLayout="status-row"
           className="w-full"
@@ -1832,8 +1838,8 @@ function StatusSummaryRow({
   ) : endedWorkflowRunCount > 0 ? (
     // 胶囊的兜底链止步于「活动计数」，而面板级的卸载闸门（!hasContent &&
     // !canRenderEndedWorkflows）为了保住 run 目录入口，会在**只剩已结束 run**时仍保留
-    // 整个壳——工作区无 Git 变更时 workflow 一结束，胶囊各分支全 null，只剩一条 2px
-    // 空壳线（与 goal notSatisfied 那次是同一个失效形状）。这里补上最低优先级的终态
+    // 整个壳——非 Git 工作区 workflow 一结束，胶囊各分支全 null，只剩一条 2px
+    // 空壳线（与 goal notSatisfied 那次是同一个失效形状）。这里补上终态
     // 分支：图标沿用 Workflow 域，文案与 Workflows 分区页脚同 key，点开即展开面板。
     <StatusSummaryMetric
       icon={<Workflow className="size-4 text-[var(--color-foreground-subtle)]" />}
@@ -1843,6 +1849,13 @@ function StatusSummaryRow({
       </span>
       <span className="shrink-0 text-[var(--color-foreground-subtle)]">
         {endedWorkflowRunCount}
+      </span>
+    </StatusSummaryMetric>
+  ) : model.git ? (
+    // 干净仓库没有 +/- 摘要；仍要让胶囊有可见的 Git 入口，避免空壳无法展开。
+    <StatusSummaryMetric icon={<GitBranchIcon className="size-4 text-[var(--color-foreground)]" />}>
+      <span className="min-w-0 truncate">
+        {intl.formatMessage({ id: "chat.statusPanel.environment" })}
       </span>
     </StatusSummaryMetric>
   ) : null;
@@ -1877,6 +1890,7 @@ function ConversationStatusPanelImpl({
   gitDirtyFileCount = 0,
   gitWorktreeReviewSourceId,
   gitWorktreeChangeSummary,
+  gitAuxiliaryGenerationSupported,
   activeTaskChangeSummary,
   goal,
   sessionPlans,
@@ -2114,6 +2128,7 @@ function ConversationStatusPanelImpl({
                 workspacePath={workspacePath}
                 workspaceIdentity={workspaceIdentity}
                 activeTaskChangeSummary={activeTaskChangeSummary}
+                auxiliaryGenerationSupported={gitAuxiliaryGenerationSupported}
                 onRefreshGit={onRefreshGit}
                 onOpenGitReview={onOpenGitReview}
                 separated={false}

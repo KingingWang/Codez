@@ -26,6 +26,17 @@ fault spec 在正式目录前可以先以 `manual-review/pending` 形式登记�
 
 ## 当前统计
 
+Codex 原生专项（不并入 legacy fault row 统计）：
+
+| ID | 覆盖状态 | 自动化 | 备注 |
+| --- | --- | --- | --- |
+| CODEX-FAIL-01/02 | missing | `packages/desktop/test/e2e/conversation-session/manual-review/pending/codex-failed-turn-recovery.mjs`；Bridge focused tests | synthetic Responses fault；失败后同线程显式发送及 Renderer reload；pending，不宣称真实 SSH/macOS/手机或正式 CI 准入 |
+
+2026-10-11：隔离 Linux Electron → Host → Bridge → 固定版本原生 Codex 验证：
+旧 Bridge 在终态错误后 `contenteditable=false`；修复后错误保留、按钮续发、刷新恢复同一线程、
+Enter 续发及 Shift+Enter 换行通过，Renderer 无异常。Bridge 集成测试覆盖两个 delivery mode
+及新实例冷历史；实际 macOS、SSH transport、手机和人工 review 尚未验收，不转正。
+
 | 范围 | 数量 |
 | --- | ---: |
 | 产品 fault row | 40 |

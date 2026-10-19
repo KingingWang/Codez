@@ -68,6 +68,28 @@ function createDraft(overrides: Partial<ProviderDraftValues> = {}): ProviderDraf
 }
 
 describe("Provider draft uses formal Provider Config", () => {
+  it("连接字段自动保存不得把临时模式的 Key 草稿写回 Personal Config", () => {
+    const access = {
+      type: "api-key" as const,
+      apiKey: null,
+      apiKeyEnv: "CODEZ_MODEL_API_KEY_ABC123",
+    };
+    const provider = createProvider({
+      personalConfig: { access },
+      config: {
+        access,
+        api: { type: "openai-chat-completions", baseUrl: "https://old.example.com/v1" },
+      },
+    });
+    const result = resolvePendingProviderDraftSave({
+      provider,
+      draft: createDraft({ apiKeyValue: "secret-draft" }),
+      now: () => 0,
+    });
+    expect(result?.personalConfig.access).toEqual(access);
+    expect(JSON.stringify(result)).not.toContain("secret-draft");
+  });
+
   it("套餐 Key 编辑保留 Access 类型，不物化模板管理入口", () => {
     const provider = createProvider({
       personalConfig: {},

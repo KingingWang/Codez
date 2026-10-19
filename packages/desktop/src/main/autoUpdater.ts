@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- autoUpdater 需要集中维护 Electron 事件、菜单状态与 IPC 交互，过度拆分会让更新状态流更难追踪 */
-import { app, BrowserWindow, ipcMain, Menu } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, shell } from "electron";
 import type { ISettingService } from "@codez/services";
 import pkg, { CancellationToken } from "electron-updater";
 import semver from "semver";
@@ -19,6 +19,7 @@ import {
   type UpdateCheckResultPayload,
   type UpdateStatePayload,
 } from "@codez/shared";
+import { isCodexDesktop, resolveCodexGitHubUpdateFeedOptions } from "./desktopProductRuntime.js";
 import { logger } from "./logger.js";
 import { ManifestUpdateProvider, getElectronReleasePlatform } from "./manifestUpdateProvider.js";
 
@@ -764,6 +765,7 @@ export function resolveUpdateFeedSourceFromStartupConfig(
     env?: Record<string, string | undefined>;
   } = {},
 ): RuntimeUpdateFeedSource | undefined {
+  if (isCodexDesktop) return undefined;
   const argv = options.argv ?? process.argv;
   const env = options.env ?? process.env;
   const feedUrl = readSwitchValue(argv, UPDATE_FEED_URL_SWITCH) ?? env[UPDATE_FEED_URL_ENV]?.trim();
@@ -811,7 +813,23 @@ async function syncAutoUpdateCheckChannelFromSettings(
   activeAutoUpdateCheckChannel = nextChannel;
 }
 
+function applyCodexGitHubUpdateProvider(): void {
+  // codex 走 electron-updater 内置 GitHub provider：feed 指向 fork 的 KingingWang/Codez。
+  // 显式 setFeedURL 而非依赖烘焙的 app-update.yml：dev 更新验证（forceDevUpdateConfig）
+  // 没有烘焙配置也能跑通，且运行时意图与打包元数据解耦。
+  // 修复依据：setFeedURL 会立即安装 provider，GitHub provider 的 channel 只取自本
+  // options（或 autoUpdater.channel），不再回读 app-update.yml 的烘焙值；缺省会静默
+  // 回退 "latest"，请求 latest-mac.yml 命中 404（release 只发布 per-arch yml）。
+  autoUpdater.setFeedURL(resolveCodexGitHubUpdateFeedOptions(process.arch));
+  // 只有被标记 Latest 的正式发布才提供更新；feature 分支发布的 prerelease 永不参与。
+  autoUpdater.allowPrerelease = false;
+  logger.info("[auto-update] codex github provider applied repo=KingingWang/Codez");
+}
+
 function applyManifestUpdateProvider(options: InitAutoUpdaterOptions): void {
+  // Codex 禁止复用上游 manifest provider，即使调用方错误地走到这里也不能跨产品升级。
+  if (isCodexDesktop)
+    throw new Error("Codez automatic-update trust is not configured; use the fork GitHub provider");
   const manifestUrl = options.updateFeedSource?.url.trim();
   autoUpdater.setFeedURL({
     provider: "custom",
@@ -1498,6 +1516,10 @@ export function refreshAutoUpdaterReleaseChannel(
   reason = "settings receivePreviewUpdates changed",
 ) {
   if (quitAndInstallState !== "idle") return;
+  // codex 没有 stable/preview manifest 通道概念，preview 偏好不改变其 GitHub feed。
+  if (isCodexDesktop) {
+    return;
+  }
   const nextChannel: ElectronReleaseChannel = receivePreviewUpdates ? "preview" : "stable";
 
   if (!canUseAutoUpdaterInCurrentRuntime()) {
@@ -1650,7 +1672,12 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
   // 由 before-quit 主动安装，避免目标已经升高后退出装上旧包。
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.logger = logger;
-  applyManifestUpdateProvider(options);
+  // codex 与上游 flavor 的更新源完全分离：codex 用 GitHub releases，其余走服务端 manifest。
+  if (isCodexDesktop) {
+    applyCodexGitHubUpdateProvider();
+  } else {
+    applyManifestUpdateProvider(options);
+  }
 
   const triggerCheckForUpdates = (reason: string) => {
     if (quitAndInstallState !== "idle") return;
@@ -1666,13 +1693,16 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
     }
 
     const checkId = beginAutoUpdateCheck();
-    const checkForUpdatesPromise = options.settingService
-      ? (async () => {
-          await syncAutoUpdateCheckChannelFromSettings(checkId, options.settingService, reason);
-          if (isUpdateTargetLocked()) return;
-          await autoUpdater.checkForUpdates();
-        })()
-      : autoUpdater.checkForUpdates();
+    // codex 的更新 channel 由 feed options 的 per-arch 值唯一决定
+    // （见 applyCodexGitHubUpdateProvider），不接入 receivePreviewUpdates 的 stable/preview 切换。
+    const checkForUpdatesPromise =
+      !isCodexDesktop && options.settingService
+        ? (async () => {
+            await syncAutoUpdateCheckChannelFromSettings(checkId, options.settingService, reason);
+            if (isUpdateTargetLocked()) return;
+            await autoUpdater.checkForUpdates();
+          })()
+        : autoUpdater.checkForUpdates();
 
     checkForUpdatesPromise
       .catch((err) => {
@@ -2069,7 +2099,6 @@ export function requestAutoUpdateCheckWithoutWindow(reason = "force-update") {
 export function checkForUpdateMenuClick(originWindow?: BrowserWindow | null) {
   if (quitAndInstallState !== "idle") return;
   logger.info("[auto-update] user clicked Check for Updates");
-
   const targetWindow =
     originWindow && !originWindow.isDestroyed()
       ? originWindow

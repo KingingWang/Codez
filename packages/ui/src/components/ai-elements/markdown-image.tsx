@@ -8,6 +8,10 @@ import type { ComponentProps, MouseEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ImagePreviewDialog } from "@/components/ai-elements/image-preview-dialog.js";
 import {
+  cacheArtifactImage,
+  getCachedArtifactImage,
+} from "@/components/ai-elements/artifactImageCache.js";
+import {
   sanitizeImageSourceForLog,
   type ImagePreviewDialogItem,
 } from "@/components/ai-elements/image-preview-dialog.js";
@@ -220,8 +224,17 @@ export function MarkdownImage({
       return;
     }
 
+    // 命中模块级缓存则不再走 attachmentReadV4：bridge 重建导致的整树重挂
+    // 过去会让每张可见图片按 512KiB chunk 全量重下，是手机远控持续高带宽的来源之一。
+    const cached = getCachedArtifactImage(sessionId, artifactRef);
+    if (cached) {
+      setArtifactImageUrl(cached.objectUrl);
+      return;
+    }
+
     let disposed = false;
     let objectUrl: string | null = null;
+    let objectUrlCached = false;
     readAttachment({ sessionId, ref: artifactRef })
       .then((result) => {
         if (disposed) return;
@@ -232,6 +245,13 @@ export function MarkdownImage({
         objectUrl = URL.createObjectURL(
           new Blob([Uint8Array.from(result.bytes)], { type: result.mediaType }),
         );
+        // objectURL 所有权移交给缓存（逐出时才 revoke），effect 清理不再回收。
+        cacheArtifactImage(sessionId, artifactRef, {
+          objectUrl,
+          mediaType: result.mediaType,
+          byteLength: result.bytes.byteLength,
+        });
+        objectUrlCached = true;
         setArtifactImageUrl(objectUrl);
       })
       .catch((error) => {
@@ -244,7 +264,10 @@ export function MarkdownImage({
       });
     return () => {
       disposed = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      // 已入缓存的 objectURL 由缓存持有；只有未入缓存（请求在途被取消）才回收。
+      if (objectUrl && !objectUrlCached) {
+        URL.revokeObjectURL(objectUrl);
+      }
     };
   }, [artifactRef, readAttachment, sessionId]);
 

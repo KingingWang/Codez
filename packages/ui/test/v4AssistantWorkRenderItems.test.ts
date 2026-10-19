@@ -698,6 +698,40 @@ describe("buildAssistantWorkRenderItems", () => {
     expect(items.some((item) => item.kind === "row" && item.row.rowId === 2)).toBe(false);
   });
 
+  // codex flavor 的 spawn 工具名是 spawn_agent（codex-bridge COLLAB_TOOL_NAMES.spawnAgent）。
+  // 不在白名单里就配不上对：agent 卡片拿不到 childSessionId 入口，subagent 行还会重复渲染。
+  it("pairs codex spawn_agent tool calls with projected subagent rows", () => {
+    const rows = [
+      toolCall(1, "spawn_agent", {
+        prompt: "调查子代理下钻",
+        senderThreadId: "thread-1",
+        receiverThreadIds: ["thread-2"],
+      }),
+      subagent(2, {
+        parentToolCallId: "tool-1",
+        subagentType: "subagent",
+        childSessionId: "thread-2",
+        summaryText: "调查子代理下钻",
+      }),
+      toolCall(3, "wait_agent", {
+        senderThreadId: "thread-1",
+        receiverThreadIds: ["thread-2"],
+      }),
+    ];
+
+    const items = buildRenderItems(rows);
+
+    expect(items.map((item) => item.kind)).toEqual(["agentToolCall", "row"]);
+    const agentItem = items[0];
+    expect(agentItem?.kind).toBe("agentToolCall");
+    if (agentItem?.kind !== "agentToolCall") {
+      throw new Error("expected paired agent item");
+    }
+    expect(agentItem.subagentRow.childSessionId).toBe("thread-2");
+    // wait_agent 等后续交互工具不进白名单：同一子代理只允许一张可点卡片。
+    expect(items.some((item) => item.kind === "row" && item.row.rowId === 2)).toBe(false);
+  });
+
   it("keeps concurrent agent details bound when subagents spawn in reverse order", () => {
     const rows = [
       toolCall(1, "Agent", { description: "测试 general-purpose agent" }),

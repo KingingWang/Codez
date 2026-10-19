@@ -51,7 +51,7 @@ const skill = {
   scope: "plugin",
   enabled: true,
   path: "/workspace/creator/SKILL.md",
-  pluginId: "plugin-creator@zcode-plugins-official",
+  pluginId: "plugin-creator@codez-plugins-official",
   description: "Create",
   body: "",
 };

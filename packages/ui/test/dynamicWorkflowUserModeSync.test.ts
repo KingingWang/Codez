@@ -35,6 +35,13 @@ function setup() {
       return applyDynamicWorkflowUserMode(OFFER, currentChoice);
     }),
   } as unknown as ICodingPlanSubscriptionService;
+  // Root loader 先绑定当前 Host；reload 只读取这个 owner，不能让旧 Host 迟到重启工作流。
+  const ready = useDynamicWorkflowAvailabilityStore
+    .getState()
+    .ensureLoaded(codingPlanSubscriptionService)
+    .then(() => {
+      events.length = 0;
+    });
   const hook = renderHook(
     (props: { settingsLoaded: boolean; userMode: DynamicWorkflowMode | undefined }) => {
       currentChoice = props.userMode;
@@ -46,7 +53,7 @@ function setup() {
     },
     { initialProps: { settingsLoaded: false, userMode: undefined } },
   );
-  return { events, hook, codezAgentService };
+  return { events, hook, codezAgentService, ready };
 }
 
 describe("useDynamicWorkflowUserModeSync（DWG-22）", () => {
@@ -55,14 +62,16 @@ describe("useDynamicWorkflowUserModeSync（DWG-22）", () => {
     resetDynamicWorkflowAvailabilityStoreForTests();
   });
 
-  it("设置未加载与首次读到的值都不发信号", () => {
-    const { events, hook } = setup();
+  it("设置未加载与首次读到的值都不发信号", async () => {
+    const { events, hook, ready } = setup();
+    await ready;
     hook.rerender({ settingsLoaded: true, userMode: "onDemand" });
     expect(events).toEqual([]);
   });
 
   it("选择变化：先让 Host 重发策略，再重读快照；回到跟随时发不带 mode 的信号", async () => {
-    const { events, hook } = setup();
+    const { events, hook, ready } = setup();
+    await ready;
     hook.rerender({ settingsLoaded: true, userMode: undefined });
     hook.rerender({ settingsLoaded: true, userMode: "disabled" });
     await waitFor(() => expect(events).toEqual(["sync:disabled", "reload"]));
@@ -80,7 +89,8 @@ describe("useDynamicWorkflowUserModeSync（DWG-22）", () => {
   });
 
   it("连续两次变化串行：第二次信号在第一次重读之后才发", async () => {
-    const { events, hook } = setup();
+    const { events, hook, ready } = setup();
+    await ready;
     hook.rerender({ settingsLoaded: true, userMode: undefined });
     hook.rerender({ settingsLoaded: true, userMode: "disabled" });
     hook.rerender({ settingsLoaded: true, userMode: "onDemand" });
@@ -93,7 +103,8 @@ describe("useDynamicWorkflowUserModeSync（DWG-22）", () => {
   });
 
   it("Host 同步失败也会重读快照（快照以 Host 当前结果为准）", async () => {
-    const { events, hook, codezAgentService } = setup();
+    const { events, hook, codezAgentService, ready } = setup();
+    await ready;
     codezAgentService.syncDynamicWorkflowUserMode.mockRejectedValueOnce(new Error("host gone"));
     hook.rerender({ settingsLoaded: true, userMode: undefined });
     hook.rerender({ settingsLoaded: true, userMode: "disabled" });

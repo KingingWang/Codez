@@ -92,6 +92,13 @@ vi.mock("@/hooks/useDesktopUpdateMenu.js", () => ({
 }));
 
 vi.mock("@/hooks/usePlatform.js", () => ({
+  useOptionalPlatform: () => ({
+    captureWindowScreenshot: vi.fn(async () => null),
+    executeDesktopCommand: captured.executeDesktopCommand,
+    exportLogs: captured.exportLogs,
+    openCommunity: vi.fn(async () => undefined),
+    openExternal: captured.openExternal,
+  }),
   usePlatform: () => ({
     captureWindowScreenshot: vi.fn(async () => null),
     executeDesktopCommand: captured.executeDesktopCommand,

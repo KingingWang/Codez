@@ -46,6 +46,7 @@ interface TcpProbeParams {
 }
 
 interface CreateSystemServiceOptions {
+  agentRuntimeMode?: NonNullable<SystemInfo["agentRuntimeMode"]>;
   env?: NodeJS.ProcessEnv;
   isExecutable?: (path: string) => boolean;
   platform?: NodeJS.Platform;
@@ -350,7 +351,11 @@ export function createSystemService(options: CreateSystemServiceOptions = {}): I
 
   return {
     async info(): Promise<SystemInfo> {
-      return { homedir: homedir(), platform: process.platform };
+      return {
+        homedir: homedir(),
+        platform: process.platform,
+        ...(options.agentRuntimeMode ? { agentRuntimeMode: options.agentRuntimeMode } : {}),
+      };
     },
 
     async listIntegratedTerminalShells(): Promise<IntegratedTerminalShellOption[]> {

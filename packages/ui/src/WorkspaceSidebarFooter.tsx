@@ -44,6 +44,9 @@ import {
 } from "lucide-react";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useOpenRewards } from "@/rewards/RewardsProvider.js";
+import { useCodexMessages } from "@/settings/codex/messages.js";
+import { setPendingSettingsSectionIntent } from "@/lib/settingsNavigation.js";
+import { useTabStore } from "@/store/TabStoreProvider.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { useCodezStore } from "@/store/StoreProvider.js";
@@ -131,6 +134,12 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   className?: string;
 }) {
   const { intl } = useCodezIntl();
+  const codexText = useCodexMessages();
+  const openSettingsTab = useTabStore((state) => state.openSettingsTab);
+  const openCodexAccount = () => {
+    setPendingSettingsSectionIntent("codex");
+    openSettingsTab();
+  };
   const platform = usePlatform();
   const openRewards = useOpenRewards();
   const interfaceMode = useCodezStore((state) => state.interfaceMode);
@@ -139,12 +148,14 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   const zoomOutShortcutLabel = useShortcutCommandLabel("zoomOut");
   const resetZoomShortcutLabel = useShortcutCommandLabel("resetZoom");
   const isRestoringOAuthSession = useCodezStore((state) => state.isRestoringOAuthSession);
-  const profileBadge = getSidebarProfileBadge(user, intl.formatMessage);
+  const profileBadge = isDesktop
+    ? `${codexText.title} · ${codexText.account}`
+    : getSidebarProfileBadge(user, intl.formatMessage);
   const avatarFallbackText = getAvatarFallbackText(user);
   const avatarKey = user?.avatarUrl ?? user?.id ?? "guest";
-  const showAuthRestoreLoading = !user && isRestoringOAuthSession;
+  const showAuthRestoreLoading = !isDesktop && !user && isRestoringOAuthSession;
   const usageSummaryState = useWorkspaceSidebarFooterUsageSummaryState({
-    enabled: true,
+    enabled: !isDesktop,
     workspaceIdentity,
     workspacePath,
   });
@@ -160,9 +171,13 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   const profileContent = (
     <>
       <Avatar key={avatarKey} size="default">
-        {user?.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={profileBadge} /> : null}
+        {!isDesktop && user?.avatarUrl ? (
+          <AvatarImage src={user.avatarUrl} alt={profileBadge} />
+        ) : null}
         <AvatarFallback className="bg-background text-foreground">
-          {user ? (
+          {isDesktop ? (
+            "C"
+          ) : user ? (
             avatarFallbackText
           ) : showAuthRestoreLoading ? (
             <>
@@ -182,6 +197,9 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
           <span className="min-w-0 truncate text-ui-base font-semibold text-foreground">
             {profileBadge}
           </span>
+          {!isDesktop && user ? (
+            <WorkspaceSidebarFooterPlanBadge state={usageSummaryState} />
+          ) : null}
         </div>
       </div>
     </>
@@ -429,13 +447,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
             ) : null}
-            {/* Bugfix: 升级入口状态不再以菜单开关为生命周期边界。 */}
-            <WorkspaceSidebarFooterUsageSummaryContent
-              state={usageSummaryState}
-              onUsageClick={usageButtonClick}
-              onUpgradeClick={onUpgradeClick}
-            />
-            {user ? (
+            {!isDesktop && user ? (
               <DropdownMenuItem onSelect={() => openRewards?.()} data-testid="rewards-menu-item">
                 <Gift className="size-4" />
                 {intl.formatMessage({ id: "rewards.menuTitle" })}
@@ -447,7 +459,21 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
                 </Badge>
               </DropdownMenuItem>
             ) : null}
-            {onLogin && !user ? (
+            {/* 升级入口状态不再以菜单开关为生命周期边界。*/}
+            {!isDesktop && (
+              <WorkspaceSidebarFooterUsageSummaryContent
+                state={usageSummaryState}
+                onUsageClick={usageButtonClick}
+                onUpgradeClick={onUpgradeClick}
+              />
+            )}
+            {isDesktop && (
+              <DropdownMenuItem onSelect={openCodexAccount}>
+                <User className="size-4" />
+                {codexText.title} · {codexText.account}
+              </DropdownMenuItem>
+            )}
+            {!isDesktop && onLogin && !user ? (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={onLogin} data-testid={TID_LOGIN_MENU_ITEM}>
@@ -456,12 +482,14 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
                 </DropdownMenuItem>
               </>
             ) : null}
-            {onLogout ? <DropdownMenuSeparator /> : null}
-            {onLogout ? (
-              <DropdownMenuItem onSelect={onLogout} data-testid={TID_LOGOUT_BUTTON}>
-                <LogOut className="size-4" />
-                {intl.formatMessage({ id: "app.logout" })}
-              </DropdownMenuItem>
+            {!isDesktop && onLogout ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={onLogout} data-testid={TID_LOGOUT_BUTTON}>
+                  <LogOut className="size-4" />
+                  {intl.formatMessage({ id: "app.logout" })}
+                </DropdownMenuItem>
+              </>
             ) : null}
           </DropdownMenuContent>
         </DropdownMenu>

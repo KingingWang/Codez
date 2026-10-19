@@ -11,7 +11,7 @@ const creator: SkillSummary = {
   scope: "plugin",
   enabled: true,
   pluginName: "plugin-creator",
-  pluginId: "plugin-creator@zcode-plugins-official",
+  pluginId: "plugin-creator@codez-plugins-official",
 };
 describe("Plugin Creator prefill", () => {
   it("binds the real official skill path and preserves trailing space without submission", () => {

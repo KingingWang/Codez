@@ -23,6 +23,10 @@ vi.mock("@/ControlHintTooltip.js", async (importOriginal) => ({
     createElement("span", { "data-tooltip-title": title }, children),
 }));
 
+vi.mock("@/store/TabStoreProvider.js", () => ({
+  useTabStore: (selector: (state: unknown) => unknown) => selector({ openSettingsTab: vi.fn() }),
+}));
+
 vi.mock("@/WorkspaceWebRemoteControlTrigger.js", () => ({
   WorkspaceWebRemoteControlTrigger: () =>
     createElement("button", {

@@ -27,7 +27,7 @@ const items: DraftSuggestedPromptItem[] = [
       en: "Create a PDF from the workspace.",
     },
     plugin: {
-      stableId: "document-skills@zcode-plugins-official",
+      stableId: "document-skills@codez-plugins-official",
       label: { cn: "文档技能", en: "Document skills" },
     },
   },
@@ -92,7 +92,7 @@ describe("ConversationDraftSuggestedPrompts", () => {
     expect(onSelect).toHaveBeenCalledOnce();
     expect(onSelect).toHaveBeenCalledWith(items[1]);
     expect(items[0]?.plugin).toBeUndefined();
-    expect(items[1]?.plugin?.stableId).toBe("document-skills@zcode-plugins-official");
+    expect(items[1]?.plugin?.stableId).toBe("document-skills@codez-plugins-official");
 
     view.rerender(createElement(ConversationDraftSuggestedPrompts, { items }));
     expect(() => fireEvent.click(screen.getAllByRole("button")[0]!)).not.toThrow();

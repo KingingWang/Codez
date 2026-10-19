@@ -1,3 +1,5 @@
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("electron", () => ({
@@ -94,6 +96,13 @@ describe("editors", () => {
     expect(getEditorDefsForCurrentPlatform()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          id: "zed",
+          name: "Zed",
+          appPath: "/Applications/Zed.app",
+          appPathCandidates: [join(homedir(), "Applications", "Zed.app")],
+          command: "zed",
+        }),
+        expect.objectContaining({
           id: "qspace",
           name: "QSpace",
           appPath: "/Applications/QSpace.app",
@@ -116,7 +125,7 @@ describe("editors", () => {
     const editorIds = getEditorDefsForCurrentPlatform().map((editor) => editor.id);
 
     expect(editorIds).toEqual(
-      expect.arrayContaining(["explorer", "vscode", "trae", "idea", "pycharm"]),
+      expect.arrayContaining(["explorer", "vscode", "trae", "zed", "idea", "pycharm"]),
     );
   });
 

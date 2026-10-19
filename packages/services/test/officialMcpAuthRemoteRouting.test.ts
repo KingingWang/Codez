@@ -175,7 +175,7 @@ function officialMcpAuthRequest(
     method: codezProtocolMethods.interactionRequestOfficialMcpAuthHeaders,
     params: {
       mcpKey: "image-search",
-      pluginId: "codez-tools@zcode-plugins-official",
+      pluginId: "codez-tools@codez-plugins-official",
       requestId: `official-mcp-auth:${id}`,
       targetOrigin: "https://mcp.codez.example",
       workspace,
@@ -362,7 +362,7 @@ describe("official mcp auth headers over desktop-attached remote", () => {
           seen.push(input);
           return {
             trusted:
-              input.pluginId === "codez-tools@zcode-plugins-official" &&
+              input.pluginId === "codez-tools@codez-plugins-official" &&
               input.mcpKey === "image-search" &&
               input.origin === "https://mcp.codez.example",
           };
@@ -419,7 +419,7 @@ describe("official mcp auth headers over desktop-attached remote", () => {
       expect(resolveHeaders).toHaveBeenCalledWith(
         expect.objectContaining({
           mcpKey: "image-search",
-          pluginId: "codez-tools@zcode-plugins-official",
+          pluginId: "codez-tools@codez-plugins-official",
           targetOrigin: "https://mcp.codez.example",
           workspace: expect.objectContaining({
             workspaceIdentity: REMOTE_WORKSPACE.workspaceIdentity,
@@ -450,7 +450,7 @@ describe("official mcp auth headers over desktop-attached remote", () => {
         params: {
           jwt: "leaked",
           mcpKey: "image-search",
-          pluginId: "codez-tools@zcode-plugins-official",
+          pluginId: "codez-tools@codez-plugins-official",
           requestId: "official-mcp-auth:bad",
           workspace: REMOTE_WORKSPACE,
         },

@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import type { ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import { buildToolDisplayModel } from "@/lib/toolDisplay.js";
+import { readRawToolCallFileSummaries } from "@/ToolCallBlocks/fileSummaries.js";
 import { toolCallRowToLegacyNode } from "@/v4/toolCallRowAdapter.js";
 
 function makeRow(overrides: Partial<ToolCallRow> = {}): ToolCallRow {
@@ -61,6 +62,46 @@ describe("toolCallRowToLegacyNode", () => {
     );
     expect(node.toolCall.output).toBe("partial output");
     expect(node.toolCall.error).toBe("command not found");
+  });
+
+  it("Codex fileChange 的 output.display 经 adapter 成为编辑卡片的逐文件 diff", () => {
+    const row = makeRow({
+      toolName: "ApplyPatch",
+      status: "success",
+      inputText: "",
+      input: {
+        changes: [{ path: "src/demo.ts", diff: "@@ -1 +1 @@\n-old\n+new" }],
+      },
+      output: {
+        text: "src/demo.ts\n@@ -1 +1 @@\n-old\n+new",
+        display: {
+          kind: "file_diff",
+          filePath: "src/demo.ts",
+          operation: "update",
+          additions: 1,
+          deletions: 1,
+          structuredPatch: [
+            {
+              oldStart: 1,
+              oldLines: 1,
+              newStart: 1,
+              newLines: 1,
+              lines: ["-old", "+new"],
+            },
+          ],
+        },
+      },
+    });
+    const toolCall = toolCallRowToLegacyNode(row).toolCall;
+    const summaries = readRawToolCallFileSummaries(toolCall.raw, toolCall);
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]).toMatchObject({
+      path: "src/demo.ts",
+      changeStat: { added: 1, removed: 1 },
+      operationKind: "update",
+    });
+    expect(summaries[0]?.patch).toContain("-old\n+new");
+    expect(buildToolDisplayModel(toolCall, "/workspace").showOutput).toBe(false);
   });
 
   it.each([
@@ -195,7 +236,9 @@ describe("toolCallRowToLegacyNode", () => {
     const node = toolCallRowToLegacyNode(
       makeRow({
         status: "error",
-        output: { text: "Permission denied while reading /workspace/secret.txt" },
+        output: {
+          text: "Permission denied while reading /workspace/secret.txt",
+        },
       }),
     );
 
@@ -255,5 +298,38 @@ describe("toolCallRowToLegacyNode", () => {
 
     const empty = toolCallRowToLegacyNode(makeRow({ input: undefined, inputText: "" }));
     expect(empty.toolCall.input).toBeUndefined();
+  });
+
+  it("将 v4-row-payload 的 inputTruncated 与 output.truncated 映射为 snapshotRefs", () => {
+    const node = toolCallRowToLegacyNode(
+      makeRow({
+        rowId: 42,
+        toolName: "Edit",
+        status: "success",
+        inputText: '{"file_path":"/workspace/a.ts"}',
+        input: { file_path: "/workspace/a.ts" },
+        inputTruncated: { totalBytes: 8192, ref: "v4-row-payload/42" },
+        output: {
+          text: "Updated",
+          truncated: { totalBytes: 16384, ref: "v4-row-payload/42" },
+        },
+      }),
+    );
+    expect(node.toolCall.snapshotRefs).toEqual([
+      {
+        field: "input",
+        refId: "v4-row-payload/42",
+        hash: "v4-row-payload/42",
+        fullBytes: 8192,
+        previewBytes: '{"file_path":"/workspace/a.ts"}'.length,
+      },
+      {
+        field: "output",
+        refId: "v4-row-payload/42",
+        hash: "v4-row-payload/42",
+        fullBytes: 16384,
+        previewBytes: "Updated".length,
+      },
+    ]);
   });
 });

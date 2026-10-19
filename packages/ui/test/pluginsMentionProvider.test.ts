@@ -220,7 +220,7 @@ describe("plugin mention markdown carrier", () => {
 });
 
 describe("输入框复用市场排序", () => {
-  const official = "zcode-plugins-official";
+  const official = "codez-plugins-official";
   const entries = [
     entry({ pluginId: "personal@personal", marketplace: "personal" }),
     entry({ name: "b", pluginId: `b@${official}`, marketplace: official, category: "utilities" }),
@@ -267,7 +267,7 @@ describe("输入框复用市场排序", () => {
 });
 
 it("市场和 Picker 的官方子集同序，查询同分保序且匹配度优先", () => {
-  const official = "zcode-plugins-official";
+  const official = "codez-plugins-official";
   const catalog = [
     entry({ name: "b", pluginId: `b@${official}`, marketplace: official, category: "guides" }),
     entry({ name: "a", pluginId: `a@${official}`, marketplace: official, category: "utilities" }),

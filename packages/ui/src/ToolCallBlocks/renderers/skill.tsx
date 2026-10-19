@@ -171,10 +171,20 @@ export function SkillToolCallBlock(context: ToolCallBlockRenderContext) {
             </div>
           )
         )}
+        <ToolSnapshotFieldNotice
+          refs={toolCall.snapshotRefs ?? []}
+          autoLoadWhenMounted
+          onLoadFullToolCallFields={
+            context.onLoadFullToolCallFields
+              ? () => context.onLoadFullToolCallFields?.(toolCall.toolId)
+              : undefined
+          }
+        />
       </div>
     ),
     [
       context.isRunning,
+      context.onLoadFullToolCallFields,
       detailText,
       skillArgs,
       skillArgsLabel,
@@ -182,7 +192,9 @@ export function SkillToolCallBlock(context: ToolCallBlockRenderContext) {
       skillName,
       skillNoOutputLabel,
       skillUnknownLabel,
+      toolCall.snapshotRefs,
       toolCall.title,
+      toolCall.toolId,
     ],
   );
 

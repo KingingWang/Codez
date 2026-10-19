@@ -52,7 +52,7 @@ describe("ToolExecutor trace propagation", () => {
         context.recordSkillTelemetryMetadata?.({
           name: "pptx",
           qualifiedName: "document-skills:pptx",
-          pluginId: "document-skills@zcode-plugins-official",
+          pluginId: "document-skills@codez-plugins-official",
           source: "plugin",
         });
         throw new Error("post hook failed");
@@ -77,7 +77,7 @@ describe("ToolExecutor trace propagation", () => {
       skillMetadata: {
         name: "pptx",
         qualifiedName: "document-skills:pptx",
-        pluginId: "document-skills@zcode-plugins-official",
+        pluginId: "document-skills@codez-plugins-official",
         source: "plugin",
       },
     });
@@ -1356,7 +1356,7 @@ describe("ToolExecutor trace propagation", () => {
                     '"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" session-start "${CLAUDE_PROJECT_DIR}" "${CLAUDE_SESSION_ID}"',
                   plugin: {
                     dataPath: "/tmp/plugin-data",
-                    id: "superpowers@zcode-plugins-official",
+                    id: "superpowers@codez-plugins-official",
                     name: "superpowers",
                     rootPath: "/tmp/superpowers",
                   },
@@ -1398,7 +1398,7 @@ describe("ToolExecutor trace propagation", () => {
       CLAUDE_PROJECT_DIR: "/workspace",
       CLAUDE_SESSION_ID: sessionId,
       CODEZ_PLUGIN_DATA: "/tmp/plugin-data",
-      CODEZ_PLUGIN_ID: "superpowers@zcode-plugins-official",
+      CODEZ_PLUGIN_ID: "superpowers@codez-plugins-official",
       CODEZ_PLUGIN_ROOT: "/tmp/superpowers",
       CODEZ_PROJECT_DIR: "/workspace",
       CODEZ_SESSION_ID: sessionId,

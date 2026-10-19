@@ -1,7 +1,7 @@
 // Storage adapters - EventStore, ArtifactStore, MemoryStore implementations
 
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import type {
@@ -9,6 +9,7 @@ import type {
   MediaAttachmentPathPrimeRequest,
   MediaAttachmentPathEnsureRequest,
   MediaAttachmentPathResult,
+  PromptAttachmentPathEnsureRequest,
   ToolBinaryArtifactWriteRequest,
   ToolArtifactStorePort,
   ToolArtifactReadRequest,
@@ -43,6 +44,7 @@ export class NodeToolArtifactStore implements ToolArtifactStorePort {
   private readonly pdfCacheRootDir: string;
   private readonly rootDir: string;
   private readonly videoCacheRootDir: string;
+  private readonly promptAttachmentCacheRootDir: string;
   private readonly mediaAttachmentPathFlights = new Map<
     string,
     Promise<MediaAttachmentPathResult>
@@ -53,6 +55,7 @@ export class NodeToolArtifactStore implements ToolArtifactStorePort {
     this.rootDir = options.rootDir;
     this.pdfCacheRootDir = options.pdfCacheRootDir ?? join(dirname(options.rootDir), "pdf-cache");
     this.videoCacheRootDir = options.videoCacheRootDir;
+    this.promptAttachmentCacheRootDir = join(dirname(options.rootDir), "prompt-file-cache");
   }
 
   async writeToolResultArtifact(
@@ -240,6 +243,52 @@ export class NodeToolArtifactStore implements ToolArtifactStorePort {
       }
       return this.writeDerivedMediaAttachment(request.uri, decoded.mediaType, decoded.bytes);
     });
+  }
+
+  async ensurePromptAttachmentPath(request: PromptAttachmentPathEnsureRequest): Promise<string> {
+    const parsed = parseArtifactUri(request.uri);
+    if (parsed.sessionId !== request.sessionId)
+      throw new Error("Prompt attachment belongs to another session");
+    const artifact = await this.readToolResultArtifact({ uri: request.uri });
+    const match = /^data:([A-Za-z0-9!#$&^_.+-]+\/[A-Za-z0-9!#$&^_.+-]+);base64,([A-Za-z0-9+/]*={0,2})$/u.exec(
+      artifact.content,
+    );
+    if (
+      !match ||
+      match[2]!.length % 4 !== 0 ||
+      match[2]!.length > 4 * Math.ceil(request.maxBytes / 3)
+    )
+      throw new Error("Prompt attachment artifact has no original bytes");
+    const bytes = Buffer.from(match[2]!, "base64");
+    if (bytes.length > request.maxBytes || bytes.toString("base64") !== match[2])
+      throw new Error("Prompt attachment artifact exceeds limit or is corrupt");
+    const sessionDir = join(
+      this.promptAttachmentCacheRootDir,
+      sanitizePathSegment(request.sessionId),
+    );
+    const hash = createHash("sha256").update(request.uri).digest("hex");
+    const path = join(sessionDir, `${hash}.data`);
+    // 原因：artifact 持久化的是 data URL 文本，直接把其 path 给 Agent 会读到编码而非原文件。
+    // 派生文件仅是可重建缓存；每次从会话 artifact 校验原始字节，不信任旧缓存或外部路径。
+    await mkdir(sessionDir, { recursive: true, mode: 0o700 });
+    try {
+      const info = await lstat(path);
+      if (!info.isFile() || info.isSymbolicLink()) throw new Error("Unsafe attachment cache path");
+      const cached = await readFile(path);
+      if (cached.equals(bytes)) return path;
+      throw new Error("Prompt attachment cache differs from original bytes");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    const temporary = `${path}.tmp-${randomUUID()}`;
+    try {
+      await writeFile(temporary, bytes, { flag: "wx", mode: 0o600 });
+      await rename(temporary, path);
+    } catch (error) {
+      await unlink(temporary).catch(() => undefined);
+      throw error;
+    }
+    return path;
   }
 
   private runMediaAttachmentPathFlight(

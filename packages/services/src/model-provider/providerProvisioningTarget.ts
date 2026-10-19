@@ -2,17 +2,25 @@
 import { readFile } from "node:fs/promises";
 import { atomicWritePrivateTextFile, withFileLock } from "@codez/shared/node";
 import {
+  isApiKeyAccess,
   type PersonalProviderConfigRepository,
   type ProviderConfigLayerUpdate,
 } from "@codez/provider";
-import { decodeProviderConfigFile, encodeProviderConfigFile } from "@codez/provider-node";
+import {
+  decodeProviderConfigFile,
+  encodeProviderConfigFile,
+} from "@codez/provider-node";
 import {
   providerProvisioningEnvelopeSchema,
   providerProvisioningResultSchema,
+  providerRuntimeApiKeyInstallSchema,
+  codexNativeProviderKeyInstallSchema,
   isProviderProvisioningAccountCredentialKey,
   type ProviderProvisioningEnvelope,
   type ProviderProvisioningResult,
   type ProviderProvisioningErrorCode,
+  type ProviderRuntimeApiKey,
+  type CodexNativeProviderKeyEntry,
 } from "@codez/shared";
 import type { ICredentialService } from "../credential/credential.js";
 import type { ISettingService } from "../setting/setting.js";
@@ -21,12 +29,15 @@ import type { AccountProviderService } from "@codez/provider";
 import type { IProviderProvisioningTargetService } from "./providerProvisioning.js";
 import {
   PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS,
+  providerRuntimeConfigFingerprint,
   readProvisionablePersonalConfig,
 } from "./providerProvisioningSource.js";
 
 const PROVISIONING_SCHEMA_VERSION = 1 as const;
 
-const OAUTH_CREDENTIAL_KEYS = new Set<string>(PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS);
+const OAUTH_CREDENTIAL_KEYS = new Set<string>(
+  PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS,
+);
 
 export interface ProviderProvisioningTargetOptions {
   readonly providerRuntime: ProviderRuntime;
@@ -37,6 +48,17 @@ export interface ProviderProvisioningTargetOptions {
   readonly personalConfigFilePath: string;
   readonly stateFilePath: string;
   readonly listProvisioningCredentialKeys?: () => Promise<readonly string[]>;
+  readonly installRuntimeApiKeys?: (
+    keys: readonly ProviderRuntimeApiKey[],
+  ) => void | Promise<void>;
+  /**
+   * Codex 原生临时 Key 的目标侧回调：实现方只写进程内存并在值变化时重造 runtime；
+   * 不落盘、不写 Credential Store。缺省表示该 Target 不支持此能力。
+   */
+  readonly codexNativeKeys?: {
+    beginRotation(): Promise<void>;
+    install(keys: readonly CodexNativeProviderKeyEntry[]): Promise<void>;
+  };
 }
 
 interface ProvisioningStateRecord {
@@ -54,7 +76,9 @@ export function createProviderProvisioningTarget(
   options: ProviderProvisioningTargetOptions,
 ): IProviderProvisioningTargetService {
   return {
-    async apply(input: ProviderProvisioningEnvelope): Promise<ProviderProvisioningResult> {
+    async apply(
+      input: ProviderProvisioningEnvelope,
+    ): Promise<ProviderProvisioningResult> {
       const envelope = providerProvisioningEnvelopeSchema.parse(input);
       return withFileLock(options.stateFilePath, async () => {
         const previousState = await readStateFile(options.stateFilePath);
@@ -77,6 +101,12 @@ export function createProviderProvisioningTarget(
         await options.providerRuntime.start();
         const before = await captureBeforeState(envelope, options);
         const personalUpdate = parsePersonalConfig(envelope);
+        if (
+          runtimeKeyNames(personalUpdate).length &&
+          envelope.schemaVersion !== 3
+        ) {
+          throw new Error("临时 Key Provider 需要 Provisioning v3");
+        }
         const applied: AppliedProvisioningState = {
           settings: false,
           settingsExpected: envelope.accountSettings,
@@ -110,12 +140,16 @@ export function createProviderProvisioningTarget(
           );
 
           const incomingCredentials = new Map(
-            oauthCredentials.map((credential) => [credential.key, credential.value]),
+            oauthCredentials.map((credential) => [
+              credential.key,
+              credential.value,
+            ]),
           );
           for (const key of before.credentials.keys()) {
             const value = incomingCredentials.get(key);
             applied.credentials.push({ key, value: value ?? null });
-            if (value === undefined) await options.credentialService.delete(key);
+            if (value === undefined)
+              await options.credentialService.delete(key);
             else await options.credentialService.save(key, value);
           }
 
@@ -123,7 +157,9 @@ export function createProviderProvisioningTarget(
           await options.personalRepository.update((current) => {
             // 其他域写入期间 Personal 可能已被编辑；检查与替换必须在同一个文件锁内。
             if (!samePersonalConfig(current, before.personal)) {
-              throw new Error("Personal Provider Config 在同步期间被其它操作修改");
+              throw new Error(
+                "Personal Provider Config 在同步期间被其它操作修改",
+              );
             }
             return personalUpdate;
           });
@@ -131,7 +167,9 @@ export function createProviderProvisioningTarget(
           errorCode = "target-refresh-failed";
           await options.accountProviderSource.refresh("provider-provisioning");
           const snapshot =
-            await options.providerRuntime.registryService.refresh("provider-provisioning");
+            await options.providerRuntime.registryService.refresh(
+              "provider-provisioning",
+            );
           // 失效默认只是新会话偏好；把它当同步硬条件会让正常 SSH 被旧模型/档位阻断。
           // 原样保留偏好，由 Host 现有推荐逻辑解析；真实写入/刷新失败仍按事务回滚。
 
@@ -144,7 +182,10 @@ export function createProviderProvisioningTarget(
             rolledBack: false,
           } satisfies ProviderProvisioningResult;
           errorCode = "target-commit-failed";
-          await writeStateFile(options.stateFilePath, appendStateRecord(previousState, result));
+          await writeStateFile(
+            options.stateFilePath,
+            appendStateRecord(previousState, result),
+          );
           return result;
         } catch (error) {
           // 回滚前对每个 domain 做 CAS 式校验；若期间已有其它写入，宁可报告
@@ -173,7 +214,59 @@ export function createProviderProvisioningTarget(
         }
       });
     },
+    async installRuntimeApiKeys(input): Promise<void> {
+      const parsed = providerRuntimeApiKeyInstallSchema.parse(input);
+      const personal = await readProvisionablePersonalConfig(
+        options.personalRepository,
+        options.personalConfigFilePath,
+      );
+      if (
+        providerRuntimeConfigFingerprint(personal) !== parsed.configFingerprint
+      ) {
+        throw new Error("临时 Key 与远端 Provider 配置版本不匹配");
+      }
+      const expected = runtimeKeyNames(personal);
+      const received = parsed.keys.map((key) => key.name);
+      if (
+        expected.length !== received.length ||
+        new Set(received).size !== received.length ||
+        expected.some((name) => !received.includes(name))
+      ) {
+        throw new Error("临时 Key 与远端 Provider Config 引用不匹配");
+      }
+      if (expected.length && !options.installRuntimeApiKeys) {
+        throw new Error("远端 Host 不支持临时 Key");
+      }
+      // 回调只替换进程私有内存，不写入 Credential Store 或幂等状态文件。
+      await options.installRuntimeApiKeys?.(parsed.keys);
+    },
+    async beginCodexProviderKeyRotation(): Promise<void> {
+      if (!options.codexNativeKeys) {
+        throw new Error("远端不支持 Codex 临时 Key");
+      }
+      await options.codexNativeKeys.beginRotation();
+    },
+    async installCodexProviderKeys(input): Promise<void> {
+      const parsed = codexNativeProviderKeyInstallSchema.parse(input);
+      if (!options.codexNativeKeys) {
+        // 无任何托管引用时允许 no-op（首连兼容旧 Target）；有引用必须 fail-closed。
+        if (parsed.keys.length > 0)
+          throw new Error("远端不支持 Codex 临时 Key");
+        return;
+      }
+      await options.codexNativeKeys.install(parsed.keys);
+    },
   };
+}
+
+function runtimeKeyNames(personal: ProviderConfigLayerUpdate): string[] {
+  return personal.providers.keys().flatMap((providerId) => {
+    const access = personal.providers.get(providerId)?.access;
+    if (!isApiKeyAccess(access) || !access.apiKeyEnv) return [];
+    if (access.apiKey?.trim())
+      throw new Error("临时 Key Provider 同时包含明文 Key");
+    return [access.apiKeyEnv];
+  });
 }
 
 interface BeforeState {
@@ -191,9 +284,14 @@ interface AppliedProvisioningState {
   personalConfigExpected: ProviderConfigLayerUpdate;
 }
 
-function parsePersonalConfig(envelope: ProviderProvisioningEnvelope): ProviderConfigLayerUpdate {
+function parsePersonalConfig(
+  envelope: ProviderProvisioningEnvelope,
+): ProviderConfigLayerUpdate {
   // 信封与本地保存复用正式 Personal codec，不在接收端另建字段清单或模式判断。
-  return decodeProviderConfigFile({ schemaVersion: 1, config: envelope.personalConfig });
+  return decodeProviderConfigFile({
+    schemaVersion: 1,
+    config: envelope.personalConfig,
+  });
 }
 
 async function captureBeforeState(
@@ -201,7 +299,10 @@ async function captureBeforeState(
   options: ProviderProvisioningTargetOptions,
 ): Promise<BeforeState> {
   const [personal, settings] = await Promise.all([
-    readProvisionablePersonalConfig(options.personalRepository, options.personalConfigFilePath),
+    readProvisionablePersonalConfig(
+      options.personalRepository,
+      options.personalConfigFilePath,
+    ),
     options.settingService.get(),
   ]);
   const credentials = new Map<string, string | null>();
@@ -234,7 +335,9 @@ async function rollback(
       await options.personalRepository.update((current) => {
         if (samePersonalConfig(current, before.personal)) return current;
         if (!samePersonalConfig(current, applied.personalConfigExpected)) {
-          throw new Error("Personal Provider Config 在同步期间被其它操作修改，跳过回滚");
+          throw new Error(
+            "Personal Provider Config 在同步期间被其它操作修改，跳过回滚",
+          );
         }
         // 默认选择与 Provider/Model 共用一份 CAS；不能分别回滚制造混合状态或覆盖新选择。
         return before.personal;
@@ -251,7 +354,9 @@ async function rollback(
         continue;
       }
       if (current !== value) {
-        errors.push(new Error(`Credential ${key} 在同步期间被其它操作修改，跳过回滚`));
+        errors.push(
+          new Error(`Credential ${key} 在同步期间被其它操作修改，跳过回滚`),
+        );
         continue;
       }
       if (previous === null) {
@@ -296,8 +401,12 @@ async function rollback(
     return new Error(errors.map(formatError).join("；"));
   }
   try {
-    await options.accountProviderSource.refresh("provider-provisioning-rollback");
-    await options.providerRuntime.registryService.refresh("provider-provisioning-rollback");
+    await options.accountProviderSource.refresh(
+      "provider-provisioning-rollback",
+    );
+    await options.providerRuntime.registryService.refresh(
+      "provider-provisioning-rollback",
+    );
   } catch (error) {
     return error instanceof Error ? error : new Error(String(error));
   }
@@ -319,7 +428,8 @@ function toProvisioningAccountSettings(
 ): ProviderProvisioningEnvelope["accountSettings"] {
   return {
     providerFamilyDomain: settings.providerFamilyDomain ?? null,
-    providerFamilyConnectionSelections: settings.providerFamilyConnectionSelections ?? {},
+    providerFamilyConnectionSelections:
+      settings.providerFamilyConnectionSelections ?? {},
   };
 }
 
@@ -327,24 +437,37 @@ function sameAccountSettings(
   current: Awaited<ReturnType<ISettingService["get"]>>,
   expected: ProviderProvisioningEnvelope["accountSettings"],
 ): boolean {
-  return JSON.stringify(toProvisioningAccountSettings(current)) === JSON.stringify(expected);
+  return (
+    JSON.stringify(toProvisioningAccountSettings(current)) ===
+    JSON.stringify(expected)
+  );
 }
 
-function validateCredentialEntries(envelope: ProviderProvisioningEnvelope): void {
+function validateCredentialEntries(
+  envelope: ProviderProvisioningEnvelope,
+): void {
   const seen = new Set<string>();
   for (const entry of envelope.credentials) {
-    if (seen.has(entry.key)) throw new Error(`重复 Provisioning Credential key: ${entry.key}`);
+    if (seen.has(entry.key))
+      throw new Error(`重复 Provisioning Credential key: ${entry.key}`);
     seen.add(entry.key);
     const allowed =
-      (entry.scope === "oauth-session" && OAUTH_CREDENTIAL_KEYS.has(entry.key)) ||
-      (entry.scope === "account-provider" && isProviderProvisioningAccountCredentialKey(entry.key));
+      (entry.scope === "oauth-session" &&
+        OAUTH_CREDENTIAL_KEYS.has(entry.key)) ||
+      (entry.scope === "account-provider" &&
+        isProviderProvisioningAccountCredentialKey(entry.key));
     if (!allowed) throw new Error(`不允许同步的 Credential key: ${entry.key}`);
   }
 }
 
-async function readStateFile(filePath: string): Promise<ProvisioningStateFile | null> {
+async function readStateFile(
+  filePath: string,
+): Promise<ProvisioningStateFile | null> {
   try {
-    const parsed = JSON.parse(await readFile(filePath, "utf8")) as Record<string, unknown>;
+    const parsed = JSON.parse(await readFile(filePath, "utf8")) as Record<
+      string,
+      unknown
+    >;
     if (parsed.schemaVersion !== PROVISIONING_SCHEMA_VERSION) {
       return null;
     }
@@ -356,9 +479,14 @@ async function readStateFile(filePath: string): Promise<ProvisioningStateFile | 
     const records = rawRecords.flatMap((record) => {
       if (typeof record !== "object" || record === null) return [];
       const candidate = record as Record<string, unknown>;
-      if (typeof candidate.syncId !== "string" || !candidate.syncId.trim()) return [];
-      const result = providerProvisioningResultSchema.safeParse(candidate.result);
-      return result.success ? [{ syncId: candidate.syncId, result: result.data }] : [];
+      if (typeof candidate.syncId !== "string" || !candidate.syncId.trim())
+        return [];
+      const result = providerProvisioningResultSchema.safeParse(
+        candidate.result,
+      );
+      return result.success
+        ? [{ syncId: candidate.syncId, result: result.data }]
+        : [];
     });
     return { schemaVersion: PROVISIONING_SCHEMA_VERSION, records };
   } catch (error) {
@@ -372,7 +500,9 @@ function appendStateRecord(
   result: ProviderProvisioningResult,
 ): ProvisioningStateFile {
   const records = [
-    ...(previousState?.records ?? []).filter((record) => record.syncId !== result.syncId),
+    ...(previousState?.records ?? []).filter(
+      (record) => record.syncId !== result.syncId,
+    ),
     { syncId: result.syncId, result },
   ];
   return {
@@ -381,8 +511,14 @@ function appendStateRecord(
   };
 }
 
-function writeStateFile(filePath: string, state: ProvisioningStateFile): Promise<void> {
-  return atomicWritePrivateTextFile(filePath, `${JSON.stringify(state, null, 2)}\n`);
+function writeStateFile(
+  filePath: string,
+  state: ProvisioningStateFile,
+): Promise<void> {
+  return atomicWritePrivateTextFile(
+    filePath,
+    `${JSON.stringify(state, null, 2)}\n`,
+  );
 }
 
 function isFileNotFound(error: unknown): boolean {

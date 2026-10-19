@@ -16,6 +16,11 @@ export interface StartPromptTurnParamsBase {
   /** v4 锚点：inputId=queryId=commandId（权威数据 sourceCommandId 对账）。 */
   inputId: string;
   inputPresentation?: SendInputOptions["inputPresentation"];
+  inputSource?: SendInputOptions["inputSource"];
+  inputVisibility?: SendInputOptions["inputVisibility"];
+  recordedInputMessageId?: SendInputOptions["recordedInputMessageId"];
+  skipInputRecord?: SendInputOptions["skipInputRecord"];
+  skipUserPromptSubmitHooks?: SendInputOptions["skipUserPromptSubmitHooks"];
   /** 附件命令面：AttachmentRef 已在 handler 层映射为 core TurnAttachment。 */
   attachments?: TurnAttachment[];
   browserAmbientContext?: SendInputOptions["browserAmbientContext"];
@@ -211,6 +216,15 @@ async function startPromptTurnAfterPreflight(
           : {}),
         inputId: params.inputId,
         ...(params.inputPresentation ? { inputPresentation: params.inputPresentation } : {}),
+        ...(params.inputSource ? { inputSource: params.inputSource } : {}),
+        ...(params.inputVisibility ? { inputVisibility: params.inputVisibility } : {}),
+        ...(params.recordedInputMessageId
+          ? { recordedInputMessageId: params.recordedInputMessageId }
+          : {}),
+        ...(params.skipInputRecord ? { skipInputRecord: params.skipInputRecord } : {}),
+        ...(params.skipUserPromptSubmitHooks
+          ? { skipUserPromptSubmitHooks: params.skipUserPromptSubmitHooks }
+          : {}),
         ...turnBackgroundAttributionOf({
           automationId: activeAutomationId,
           // 归因用解析后的 id：resume 段仅靠 inputId 前缀兜底时也要进 core loop state。

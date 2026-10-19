@@ -75,7 +75,7 @@ describe("createCodezSessionService", () => {
           command: "uvx",
           args: ["codez-cua"],
           env: [
-            { name: "CODEZ_PLUGIN_ID", value: "computer-use@zcode-plugins-official" },
+            { name: "CODEZ_PLUGIN_ID", value: "computer-use@codez-plugins-official" },
             {
               name: "CODEZ_CUA_PLUGIN_AUTHORITY",
               value: "dev.codez.cua-helper/dev",

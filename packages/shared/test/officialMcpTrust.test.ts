@@ -2,7 +2,7 @@
  *
  * 规则：目标 origin 等于当前 Codez API origin（https）。
  *
- * 2026-08 决策变更：移除了「pluginId 必须以 `@zcode-plugins-official` 结尾」这道检查。
+ * 2026-08 决策变更：移除了「pluginId 必须以 `@codez-plugins-official` 结尾」这道检查。
  * 它会让官方插件在发布到官方 marketplace 之前无法对真实端点自测（本地装的插件 id 是
  * `@inline` 或 `@<本地 marketplace>`），而 dev loopback 开关只放开 http loopback、救不了
  * https 端点。因此这里的承重项只剩 **origin 相等**（防外泄）。
@@ -13,7 +13,7 @@ import {
   isOfficialMcpOriginTrusted,
 } from "../src/official-mcp-auth.js";
 
-const OFFICIAL_PLUGIN = "codez-tools@zcode-plugins-official";
+const OFFICIAL_PLUGIN = "codez-tools@codez-plugins-official";
 const CODEZ_ORIGIN = "https://zcode.z.ai";
 
 function check(input: {

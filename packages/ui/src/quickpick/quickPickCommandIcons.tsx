@@ -1,5 +1,8 @@
 import {
+  BarChart3Icon,
   BookOpenIcon,
+  BotIcon,
+  PackageIcon,
   FileDiffIcon,
   FolderOpenIcon,
   GlobeIcon,
@@ -21,6 +24,9 @@ import type { QuickPickCommandIcon } from "@/quickpick/quickPickCommands.js";
 
 export const QUICK_PICK_ICON_BY_KIND = {
   book: BookOpenIcon,
+  bot: BotIcon,
+  chart: BarChart3Icon,
+  package: PackageIcon,
   browser: GlobeIcon,
   community: UsersIcon,
   diff: FileDiffIcon,

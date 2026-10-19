@@ -1,4 +1,7 @@
-import { resolveWebRemoteControlRoutePathFromBaseUrl } from "@codez/shared";
+import {
+  matchesWebRemoteControlRoutePath,
+  resolveWebRemoteControlRoutePathFromBaseUrl,
+} from "@codez/shared";
 
 interface WebRemoteControlRouteEnv {
   readonly VITE_WEB_REMOTE_CONTROL_ROUTE_PATH?: string;
@@ -13,4 +16,11 @@ interface WebRemoteControlRouteEnv {
 export function resolveWebRemoteControlRoutePath(env: WebRemoteControlRouteEnv): string {
   const explicitRoutePath = env.VITE_WEB_REMOTE_CONTROL_ROUTE_PATH?.trim();
   return resolveWebRemoteControlRoutePathFromBaseUrl(explicitRoutePath || env.BASE_URL);
+}
+
+/** GitHub Pages 的项目名前缀也属于 v4 页面路由，v3/开发入口不参与桌面版本校验。 */
+export function isVersionedWebRemoteControlRoute(pathname: string, routePath: string): boolean {
+  return (
+    /\/remote\/v4\/?$/u.test(routePath) && matchesWebRemoteControlRoutePath(pathname, routePath)
+  );
 }

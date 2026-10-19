@@ -35,7 +35,7 @@ async function writeOfficialPluginFixture(
     "cli",
     "plugins",
     "cache",
-    "zcode-plugins-official",
+    "codez-plugins-official",
     pluginName,
     version,
   );
@@ -113,7 +113,7 @@ describe("subagent markdown helpers", () => {
 
   it("lists built-in official plugin agents from the official cache without an install record", async () => {
     // Bug 根因：discoverPluginAgents 只读 installed_plugins.json，内置官方插件由 CLI seed 到
-    // cache/zcode-plugins-official 且没有安装记录，documents:visual-judge 在 Settings 永远不可见。
+    // cache/codez-plugins-official 且没有安装记录，documents:visual-judge 在 Settings 永远不可见。
     const home = await makeTempHome();
     const workspacePath = join(home, "workspace");
     await writeOfficialPluginFixture(home, "documents", "0.1.9", "visual-judge");
@@ -134,7 +134,7 @@ describe("subagent markdown helpers", () => {
       join(home, ".codez", "cli", "config.json"),
       JSON.stringify({
         plugins: {
-          suppressedBuiltins: ["browser-use@zcode-plugins-official"],
+          suppressedBuiltins: ["browser-use@codez-plugins-official"],
         },
       }),
       "utf8",
@@ -145,8 +145,8 @@ describe("subagent markdown helpers", () => {
 
     expect(result.pluginAgents.map((agent) => agent.name)).toEqual(["documents:visual-judge"]);
     expect(result.pluginAgents[0]).toMatchObject({
-      id: "plugin:documents@zcode-plugins-official:visual-judge",
-      pluginId: "documents@zcode-plugins-official",
+      id: "plugin:documents@codez-plugins-official:visual-judge",
+      pluginId: "documents@codez-plugins-official",
       pluginName: "documents",
       // 多版本缓存共存时取数字感知最新的版本目录，而不是字典序首项。
       path: join(newRoot, "agents", "visual-judge.md"),
@@ -160,8 +160,8 @@ describe("subagent markdown helpers", () => {
       join(home, ".codez", "cli", "config.json"),
       JSON.stringify({
         plugins: {
-          enabledPlugins: { "documents@zcode-plugins-official": false },
-          suppressedBuiltins: ["browser-use@zcode-plugins-official"],
+          enabledPlugins: { "documents@codez-plugins-official": false },
+          suppressedBuiltins: ["browser-use@codez-plugins-official"],
         },
       }),
     );
@@ -210,9 +210,9 @@ describe("subagent markdown helpers", () => {
         version: 1,
         plugins: [
           {
-            id: "documents@zcode-plugins-official",
+            id: "documents@codez-plugins-official",
             name: "documents",
-            marketplace: "zcode-plugins-official",
+            marketplace: "codez-plugins-official",
             version: "9.9.9",
             installPath: installedRoot,
             scope: "user",
@@ -224,7 +224,7 @@ describe("subagent markdown helpers", () => {
     await writeFile(
       join(home, ".codez", "cli", "config.json"),
       JSON.stringify({
-        plugins: { enabledPlugins: { "documents@zcode-plugins-official": true } },
+        plugins: { enabledPlugins: { "documents@codez-plugins-official": true } },
       }),
       "utf8",
     );
@@ -239,8 +239,8 @@ describe("subagent markdown helpers", () => {
       join(home, ".codez", "cli", "config.json"),
       JSON.stringify({
         plugins: {
-          enabledPlugins: { "documents@zcode-plugins-official": true },
-          suppressedBuiltins: ["documents@zcode-plugins-official"],
+          enabledPlugins: { "documents@codez-plugins-official": true },
+          suppressedBuiltins: ["documents@codez-plugins-official"],
         },
       }),
     );
@@ -248,7 +248,7 @@ describe("subagent markdown helpers", () => {
     await writeFile(
       join(home, ".codez", "cli", "config.json"),
       JSON.stringify({
-        plugins: { enabledPlugins: { "documents@zcode-plugins-official": false } },
+        plugins: { enabledPlugins: { "documents@codez-plugins-official": false } },
       }),
     );
     expect((await service.list({ workspacePath, provider: "glm" })).pluginAgents).toEqual([]);
@@ -941,19 +941,63 @@ tools:
     expect(result.pluginAgents.every((agent) => agent.readOnly)).toBe(true);
   });
 
+  it("prefers the install record over the official cache for the same plugin id", async () => {
+    const home = await makeTempHome();
+    const workspacePath = join(home, "workspace");
+    await writeOfficialPluginFixture(home, "documents", "0.1.4", "visual-judge");
+    const installedRoot = join(home, "installed", "documents");
+    await mkdir(join(installedRoot, ".codez-plugin"), { recursive: true });
+    await mkdir(join(installedRoot, "agents"), { recursive: true });
+    await writeFile(
+      join(installedRoot, ".codez-plugin", "plugin.json"),
+      JSON.stringify({ name: "documents" }),
+      "utf8",
+    );
+    await writeFile(
+      join(installedRoot, "agents", "visual-judge.md"),
+      "---\nname: visual-judge\ndescription: installed visual-judge\n---\ninstalled prompt",
+      "utf8",
+    );
+    await writeFile(
+      join(home, ".codez", "cli", "plugins", "installed_plugins.json"),
+      JSON.stringify({
+        version: 1,
+        plugins: [
+          {
+            id: "documents@codez-plugins-official",
+            name: "documents",
+            marketplace: "codez-plugins-official",
+            version: "9.9.9",
+            installPath: installedRoot,
+            scope: "user",
+          },
+        ],
+      }),
+      "utf8",
+    );
+    await writeFile(
+      join(home, ".codez", "cli", "config.json"),
+      JSON.stringify({
+        plugins: { enabledPlugins: { "documents@codez-plugins-official": true } },
+      }),
+      "utf8",
+    );
+    const service = createSubagentsService({ homeDir: home, isDesktopRuntime: true });
+
+    const result = await service.list({ workspacePath, provider: "glm" });
+
+    expect(result.pluginAgents.map((agent) => agent.path)).toEqual([
+      join(installedRoot, "agents", "visual-judge.md"),
+    ]);
+  });
+
   it("persists plugin agent model overrides by agent id and echoes them in list", async () => {
     const home = await makeTempHome();
     const workspacePath = join(home, "workspace");
-    const pluginRoot = await writeOfficialPluginFixture(
-      home,
-      "documents",
-      "0.1.4",
-      "visual-judge",
-      {
-        model: "custom:custom-openai:gpt-5.4",
-      },
-    );
-    const agentId = "plugin:documents@zcode-plugins-official:visual-judge";
+    const pluginRoot = await writeOfficialPluginFixture(home, "documents", "0.1.4", "visual-judge", {
+      model: "custom:custom-openai:gpt-5.4",
+    });
+    const agentId = "plugin:documents@codez-plugins-official:visual-judge";
     const service = createSubagentsService({ homeDir: home, isDesktopRuntime: true });
 
     const before = await service.list({ workspacePath, provider: "glm" });

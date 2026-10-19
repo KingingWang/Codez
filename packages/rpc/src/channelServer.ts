@@ -1,6 +1,12 @@
 import { VSBuffer } from "./buffer.js";
 import { type IDisposable, CancellationTokenSource, toDisposable } from "./foundation.js";
-import { BufferReader, BufferWriter, deserialize, serialize } from "./serialization.js";
+import {
+  BufferReader,
+  BufferWriter,
+  deserialize,
+  serialize,
+  type RpcJsonBinaryDialect,
+} from "./serialization.js";
 import type { IMessagePassingProtocol } from "./protocol.js";
 import {
   type IChannelServer,
@@ -24,6 +30,7 @@ export class ChannelServer<TContext = string> implements IChannelServer<TContext
     private ctx: TContext,
     private timeoutDelay = 1000,
     private deferInit = false,
+    private jsonBinaryDialect: RpcJsonBinaryDialect = "codez",
   ) {
     this.protocolListener = this.protocol.onMessage((msg) => this.onRawMessage(msg));
     if (!this.deferInit) {
@@ -57,7 +64,7 @@ export class ChannelServer<TContext = string> implements IChannelServer<TContext
   private send(header: any, body: any = undefined): void {
     const writer = new BufferWriter();
     serialize(writer, header);
-    serialize(writer, body);
+    serialize(writer, body, this.jsonBinaryDialect);
     try {
       this.protocol.send(writer.buffer);
     } catch {

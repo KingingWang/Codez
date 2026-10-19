@@ -19,9 +19,9 @@ describe("codezAgentService Plugin operation progress", () => {
         params: { operationId: "suggested-progress", state: "refreshing" },
       });
       return {
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@codez-plugins-official",
         status: "missing",
-        marketplace: "zcode-plugins-official",
+        marketplace: "codez-plugins-official",
         pluginName: "document-skills",
         sourceTrust: "official",
         diagnostics: [],
@@ -65,7 +65,7 @@ describe("codezAgentService Plugin operation progress", () => {
     try {
       await service.resolveSuggestedPluginReference({
         workspacePath: "/workspace",
-        stableId: "document-skills@zcode-plugins-official",
+        stableId: "document-skills@codez-plugins-official",
         operationId: "suggested-progress",
         clientMode: "desktop-continuous",
         deliveryKind: "desktop-continuous",

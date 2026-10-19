@@ -1,0 +1,396 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { build } from "esbuild";
+import { mkdtemp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { createRequire } from "node:module";
+import { codexWorkspaceRoot } from "./codex-runtime.mjs";
+
+test("workflow gates six native targets, four bundled remote targets and isolated bridge smoke", async () => {
+  const require = createRequire(new URL("../packages/desktop/package.json", import.meta.url));
+  const workflow = require("yaml").parse(
+    await readFile(new URL("../.github/workflows/codex-desktop.yml", import.meta.url), "utf8"),
+  );
+  assert.deepEqual(workflow.on.push.branches, ["**"]);
+  assert.deepEqual(workflow.on.push.tags, ["**"]);
+  assert.match(workflow.concurrency.group, /github\.run_id/);
+  assert.match(workflow.concurrency.group, /pull_request/);
+  assert.equal(workflow.permissions.contents, "read");
+  for (const name of ["build", "remote-assets"]) {
+    const job = workflow.jobs[name];
+    assert.equal(job.permissions.contents, "read");
+    assert.equal(
+      job.steps.find((step) => step.uses?.startsWith("actions/setup-node")).with["node-version"],
+      "24.14.0",
+    );
+    assert.equal(
+      job.steps.find((step) => step.uses?.startsWith("pnpm/action-setup")).with.version,
+      "10.33.2",
+    );
+    assert.ok(job.steps.find((step) => step.run === "pnpm install --frozen-lockfile"));
+  }
+  const { build, release } = workflow.jobs;
+  const remoteRuns = workflow.jobs["remote-assets"].steps.map((step) => step.run ?? "");
+  const nativeRegressionRun = (command) =>
+    command.includes("pnpm exec tsx --test") &&
+    command.includes("packages/services/test/codex*.test.ts") &&
+    command.includes("packages/desktop/test/codex*.test.ts") &&
+    command.includes("packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts") &&
+    command.includes("packages/server/test/codex*.test.ts");
+  assert.equal(remoteRuns.filter(nativeRegressionRun).length, 1);
+  assert.equal(
+    build.steps.some((step) => nativeRegressionRun(step.run ?? "")),
+    false,
+  );
+
+  const uiRegressionRun = (command) =>
+    command.includes("pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test") &&
+    command.includes("packages/ui/src/settings/codex/*.test.ts") &&
+    command.includes("packages/ui/src/settings/codex/*.test.tsx");
+  assert.equal(remoteRuns.filter(uiRegressionRun).length, 1);
+  assert.equal(
+    build.steps.some((step) => uiRegressionRun(step.run ?? "")),
+    false,
+  );
+  assert.equal(
+    new Set(build.strategy.matrix.include.map(({ os, arch }) => `${os}-${arch}`)).size,
+    6,
+  );
+  assert.equal(build.strategy["fail-fast"], false);
+  assert.equal(build.needs, "remote-assets");
+  // 每次 run 由 remote-assets 解析 fork 最新 Codex release，六个构建共享同一份清单。
+  assert.ok(
+    workflow.jobs["remote-assets"].steps.some(
+      (step) => step.run === "node scripts/codex-runtime-resolve-latest.mjs codex-manifest.json",
+    ),
+  );
+  assert.ok(
+    build.steps.some(
+      (step) =>
+        step.uses?.startsWith("actions/download-artifact") && step.with?.name === "codez-manifest",
+    ),
+  );
+  const nativeSmoke = build.steps.findIndex(
+    (step) => step.run === "node scripts/codex-runtime-smoke.mjs",
+  );
+  assert.ok(
+    build.steps.findIndex((step) => step.run?.includes("test-codex-distribution")) < nativeSmoke,
+  );
+  assert.equal(
+    build.steps[nativeSmoke + 1].run,
+    "node --test scripts/test-codex-bridge-smoke.mjs scripts/test-codex-project-discovery.mjs scripts/test-codex-native-cua-smoke.mjs scripts/test-codex-native-control-isolation.mjs",
+  );
+  assert.equal(release.needs, "build");
+  assert.match(release.if, /github.event_name == 'push'/);
+  // 侧分支/tag push 不再自动发布：release 列表顶部必须始终是 main 的构建，否则手动
+  // 下载时极易装到侧分支 prerelease（曾因此装错构建，误判内容丢失修复没有生效）。
+  // 手动 dispatch 仍是非 main 出包的唯一入口，所以这里同时锁住两条分支条件。
+  assert.match(release.if, /github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/);
+  assert.match(release.if, /github\.event_name == 'workflow_dispatch' && inputs\.publish/);
+  assert.doesNotMatch(release.if, /refs\/tags/);
+  assert.equal(release.permissions.contents, "write");
+  assert.equal(workflow.on.workflow_dispatch.inputs.publish.default, true);
+  assert.ok(
+    release.steps.some((step) => step.run === "node scripts/codex-runtime-release.mjs artifacts"),
+  );
+  assert.ok(release.steps.some((step) => step.uses?.startsWith("actions/checkout")));
+});
+
+test("workflow includes automation and Git UI regressions outside the Codex settings directory", async () => {
+  const require = createRequire(new URL("../packages/desktop/package.json", import.meta.url));
+  const workflow = require("yaml").parse(
+    await readFile(new URL("../.github/workflows/codex-desktop.yml", import.meta.url), "utf8"),
+  );
+  const commands = workflow.jobs["remote-assets"].steps
+    .map((step) => step.run ?? "")
+    .filter((command) => command.includes("tsx --tsconfig packages/ui/tsconfig.json --test"));
+  for (const path of [
+    "packages/ui/src/hooks/useModelSelectionView.test.ts",
+    "packages/ui/src/settings/automationEditValidation.test.ts",
+    "packages/ui/src/v4/ConversationStatusPanel.test.tsx",
+    "packages/ui/src/v4/conversationStatusPanelModel.test.ts",
+    "packages/ui/src/capabilities/useGitAuxiliaryCapability.test.ts",
+    "packages/ui/src/capabilities/useCodexMessageFeedbackCapability.test.tsx",
+    "packages/ui/src/settings/usage-stats/AppUsagePanel.test.tsx",
+    "packages/ui/src/TaskActionMenuContent.test.tsx",
+  ]) {
+    assert.ok(
+      commands.some((command) => command.includes(path)),
+      `Missing UI regression: ${path}`,
+    );
+  }
+});
+
+test("each native build typechecks the Codex bridge once through the root script", async () => {
+  const require = createRequire(new URL("../packages/desktop/package.json", import.meta.url));
+  const workflow = require("yaml").parse(
+    await readFile(new URL("../.github/workflows/codex-desktop.yml", import.meta.url), "utf8"),
+  );
+  const root = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const bridgeTypecheck = "pnpm --filter @codez/codex-bridge typecheck";
+  assert.ok(root.scripts.typecheck.split(" && ").includes(bridgeTypecheck));
+  const commands = workflow.jobs.build.steps.flatMap((step) =>
+    (step.run ?? "").split("\n").map((line) => line.trim()),
+  );
+  assert.equal(commands.filter((command) => command === "pnpm typecheck").length, 1);
+  assert.equal(commands.filter((command) => command === bridgeTypecheck).length, 0);
+});
+
+test("native validation has a step-scoped 4 GiB Node heap budget", async () => {
+  const require = createRequire(new URL("../packages/desktop/package.json", import.meta.url));
+  const workflow = require("yaml").parse(
+    await readFile(new URL("../.github/workflows/codex-desktop.yml", import.meta.url), "utf8"),
+  );
+  const { build } = workflow.jobs;
+  const validation = build.steps.find((step) => step.run?.split("\n").includes("pnpm typecheck"));
+  assert.ok(validation);
+  assert.equal(validation.env?.NODE_OPTIONS, "--max-old-space-size=4096");
+  assert.equal(workflow.env?.NODE_OPTIONS, undefined);
+  assert.equal(build.env.NODE_OPTIONS, undefined);
+  assert.equal(build.steps.filter((step) => step.env?.NODE_OPTIONS).length, 1);
+});
+
+test("native builds consume remote producer assets read-only and upload packaged-index receipts", async () => {
+  const require = createRequire(new URL("../packages/desktop/package.json", import.meta.url));
+  const workflow = require("yaml").parse(
+    await readFile(new URL("../.github/workflows/codex-desktop.yml", import.meta.url), "utf8"),
+  );
+  const producer = workflow.jobs["remote-assets"];
+  const { build, release } = workflow.jobs;
+  assert.equal(producer.env.CODEZ_CODEX_REMOTE_ASSETS_READONLY, undefined);
+  assert.equal(build.env.CODEZ_CODEX_REMOTE_ASSETS_READONLY, "1");
+  const steps = build.steps;
+  const download = steps.findIndex((step) => step.with?.name === "codex-remote-assets");
+  const nativeBuild = steps.findIndex((step) => step.run === "pnpm --filter @codez/desktop build");
+  assert.ok(download >= 0 && nativeBuild > download);
+  assert.ok(
+    steps
+      .find((step) => step.uses?.startsWith("actions/upload-artifact"))
+      .with.path.split("\n")
+      .includes("packages/desktop/dist/codex-remote-index-*.json"),
+  );
+  assert.ok(release.steps.some((step) => step.with?.name === "codex-remote-assets"));
+  const builder = await readFile(
+    new URL("../packages/desktop/electron-builder.config.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(builder, /copyFile\(\s*join\(packagedRemoteRoot, "index\.json"\)/);
+  assert.match(builder, /codex-remote-index-\$\{targetPlatform\.key\}\.json/);
+  assert.match(
+    builder,
+    /mkdir\(join\(packagedCodexRoot, "codex-resources"\), \{ recursive: true \}\)/,
+  );
+  assert.match(
+    builder,
+    /existsSync\(resolve\(codexStaging\.directory, "codex-resources\/zsh\/bin\/zsh"\)\)/,
+  );
+});
+
+async function loadRuntimeModule(t, source, flavor = "codex", plugins = []) {
+  const directory = await mkdtemp(join(tmpdir(), "codez-identity-test-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const outfile = join(directory, "test.cjs");
+  await build({
+    entryPoints: [resolve(codexWorkspaceRoot, source)],
+    outfile,
+    bundle: true,
+    platform: "node",
+    format: "cjs",
+    logLevel: "silent",
+    plugins,
+    define: {
+      __CODEZ_PRODUCT_FLAVOR__: JSON.stringify(flavor),
+      __CODEZ_ENV__: '"production"',
+      "process.env.CODEZ_DESKTOP_RUNTIME": JSON.stringify(flavor === "codex" ? "codex" : ""),
+    },
+  });
+  return { module: createRequire(import.meta.url)(outfile), directory };
+}
+
+test("compiled codex flavor survives normalization and preserves upstream defaults", async (t) => {
+  const { module } = await loadRuntimeModule(t, "packages/shared/src/env.ts");
+  assert.equal(module.CODEZ_PRODUCT_FLAVOR, "codex");
+  for (const backend of ["production", "test"])
+    assert.equal(module.normalizeCodezProductFlavor("codex", backend), "codex");
+  assert.equal(module.normalizeCodezProductFlavor(undefined, "production"), "production");
+  assert.equal(module.normalizeCodezProductFlavor(undefined, "test"), "preview");
+  assert.equal(module.normalizeCodezProductFlavor("codex-other", "production"), "production");
+});
+
+test("runtime identities, settings and data roots are disjoint and idempotent", async (t) => {
+  const { module: runtime, directory } = await loadRuntimeModule(
+    t,
+    "packages/desktop/src/main/desktopProductRuntime.ts",
+  );
+  assert.equal(runtime.resolveDesktopApplicationName("codex", true), "Codez");
+  assert.equal(runtime.resolveDesktopApplicationName("codex", false), "Codez Dev");
+  const base = join(directory, ".codez-codex");
+  assert.equal(runtime.resolveDesktopDataBaseDir(undefined, directory), base);
+  assert.equal(runtime.resolveDesktopDataBaseDir(base, directory), base);
+  assert.equal(
+    runtime.resolveDesktopBootstrapSettingsFile(directory),
+    join(base, ".codez/v2/setting.json"),
+  );
+  assert.notEqual(
+    runtime.resolveDesktopBootstrapSettingsFile(directory),
+    runtime.resolveDesktopBootstrapSettingsFile(directory, "production"),
+  );
+  // codex 已启用 GitHub releases 自动更新，不再有手动网页回退；只有 preview 保持关闭。
+  assert.deepEqual(runtime.resolveDesktopUpdatePolicy(), { automatic: true });
+  assert.equal(runtime.resolveDesktopUpdatePolicy("production").automatic, true);
+  assert.equal(runtime.resolveDesktopUpdatePolicy("preview").automatic, false);
+});
+
+test("Codex remote routing passes the bundle root without legacy CDN or mock fallback", async (t) => {
+  const { module: runtime, directory } = await loadRuntimeModule(
+    t,
+    "packages/desktop/src/main/desktopProductRuntime.ts",
+  );
+  const options = {
+    resourcesPath: join(directory, "resources"),
+    desktopRoot: join(directory, "desktop"),
+    cacheDir: join(directory, "shared-override-cache"),
+  };
+  for (const isPackaged of [true, false]) {
+    assert.deepEqual(runtime.resolveCodexRemoteAssetDirs({ ...options, isPackaged }), {
+      packagedRemoteAssetsDir: isPackaged
+        ? join(options.resourcesPath, "codex-remote")
+        : join(options.desktopRoot, "bundled-resources/codex-remote"),
+      remoteCacheDir: join(options.cacheDir, "codex"),
+    });
+  }
+});
+
+test("Codex deep links accept only the fork scheme, including encoded argv", async (t) => {
+  const { module: links } = await loadRuntimeModule(
+    t,
+    "packages/desktop/src/main/desktopDeepLinkUrl.ts",
+  );
+  const url = "codez-codex://workspace/open?path=%2Ftmp%2Fworkspace";
+  assert.equal(links.extractDeepLinkUrlFromArgs([encodeURIComponent(url)]), url);
+  assert.equal(links.extractWorkspaceOpenPath(new URL(url)), "/tmp/workspace");
+  assert.equal(links.extractDeepLinkUrlFromArgs(["codez://workspace/open?path=/tmp"]), null);
+  assert.equal(links.isOAuthCallbackUrl(new URL("codez://oauth/callback?state=abc")), false);
+  assert.equal(links.isOAuthCallbackUrl(new URL("codez-codex://oauth/callback?state=abc")), true);
+  const upstream = await loadRuntimeModule(
+    t,
+    "packages/desktop/src/main/desktopDeepLinkUrl.ts",
+    "production",
+  );
+  assert.equal(upstream.module.extractDeepLinkUrlFromArgs([url]), null);
+});
+
+test("Linux registration neither replaces nor deletes the upstream desktop entry", async (t) => {
+  const { module, directory } = await loadRuntimeModule(
+    t,
+    "packages/desktop/src/main/desktopLinuxDeepLinkRegistration.ts",
+  );
+  const applications = join(directory, ".local/share/applications");
+  await mkdir(applications, { recursive: true });
+  const upstream = join(applications, "codez.desktop");
+  await writeFile(upstream, "Comment=Codez Desktop App\nupstream sentinel\n");
+  const calls = [];
+  module.registerLinuxDeepLinkProtocol({
+    executablePath: "/opt/Codez/codez-codex",
+    homeDir: directory,
+    systemApplicationDirs: [],
+    env: {},
+    logger: { info() {}, warn() {} },
+    runCommand(command, args) {
+      calls.push([command, args]);
+      return { status: 0 };
+    },
+  });
+  assert.match(await readFile(upstream, "utf8"), /upstream sentinel/);
+  const entry = await readFile(join(applications, "codez-codex.desktop"), "utf8");
+  assert.match(entry, /MimeType=x-scheme-handler\/codez-codex;/);
+  assert.match(entry, /Icon=codez-codex/);
+  assert.ok(
+    calls.some(([command, args]) => command === "xdg-mime" && args[1] === "codez-codex.desktop"),
+  );
+});
+
+test("Finder workflow has a separate name, bundle id and protocol", async (t) => {
+  const { module, directory } = await loadRuntimeModule(
+    t,
+    "packages/desktop/src/main/desktopFinderOpenFolderWorkflow.ts",
+  );
+  module.installFinderOpenFolderWorkflow({
+    platform: "darwin",
+    locale: "en-US",
+    homeDir: directory,
+    refreshServicesIndex() {},
+    logger: { info() {}, warn() {} },
+  });
+  const contents = join(directory, "Library/Services/Open in Codez.workflow/Contents");
+  assert.match(
+    await readFile(join(contents, "Info.plist"), "utf8"),
+    /io.github.kingingwang.codez.codex.finder-open-workflow/,
+  );
+  assert.match(
+    await readFile(join(contents, "document.wflow"), "utf8"),
+    /codez-codex:\/\/workspace\/open/,
+  );
+});
+
+test("early bootstrap ignores upstream settings and namespaces a fork custom root", async (t) => {
+  const home = await mkdtemp(join(tmpdir(), "codez-bootstrap-test-"));
+  const previousDataBaseDir = process.env.CODEZ_DATA_BASE_DIR;
+  delete process.env.CODEZ_DATA_BASE_DIR;
+  t.after(() => {
+    process.env.CODEZ_DATA_BASE_DIR = previousDataBaseDir;
+    delete globalThis.__codexTestBase;
+    return rm(home, { recursive: true, force: true });
+  });
+  await mkdir(join(home, ".codez/v2"), { recursive: true });
+  await writeFile(
+    join(home, ".codez/v2/setting.json"),
+    JSON.stringify({ dataBaseDir: "/upstream-must-not-be-read" }),
+  );
+  const plugins = [
+    {
+      name: "bootstrap-ports",
+      setup(build) {
+        build.onResolve({ filter: /^@codez\/services\/node$|^node:os$/ }, ({ path }) => ({
+          path,
+          namespace: "fixture",
+        }));
+        build.onLoad({ filter: /.*/, namespace: "fixture" }, ({ path }) => ({
+          contents:
+            path === "node:os"
+              ? `export const homedir = () => ${JSON.stringify(home)};`
+              : "export function setDataBaseDir(dir) { globalThis.__codexTestBase = dir; }",
+        }));
+      },
+    },
+  ];
+  const { module } = await loadRuntimeModule(
+    t,
+    "packages/desktop/src/main/desktopDataBaseDirBootstrap.ts",
+    "codex",
+    plugins,
+  );
+  assert.equal(module.applyEarlyDataBaseDirBootstrap(), join(home, ".codez-codex"));
+  assert.equal(globalThis.__codexTestBase, join(home, ".codez-codex"));
+  const forkSettings = join(home, ".codez-codex/.codez/v2");
+  await mkdir(forkSettings, { recursive: true });
+  await writeFile(
+    join(forkSettings, "setting.json"),
+    JSON.stringify({ dataBaseDir: join(home, "custom") }),
+  );
+  assert.equal(module.applyEarlyDataBaseDirBootstrap(), join(home, "custom/.codez-codex"));
+});
+
+test("macOS development bundle uses Codex identity and protocol", async (t) => {
+  const { module } = await loadRuntimeModule(
+    t,
+    "packages/desktop/scripts/devElectronAppBundle.mjs",
+  );
+  const plist =
+    "<plist><dict><key>CFBundleDisplayName</key><string>Electron</string><key>CFBundleIdentifier</key><string>com.github.Electron</string><key>CFBundleName</key><string>Electron</string></dict></plist>";
+  const patched = module.patchDevElectronInfoPlist(plist);
+  assert.match(patched, /Codez Dev/);
+  assert.match(patched, /io.github.kingingwang.codez.codex.development/);
+  assert.match(patched, /<string>codez-codex<\/string>/);
+});

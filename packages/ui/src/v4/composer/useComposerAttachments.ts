@@ -7,12 +7,14 @@ import { WORKSPACE_FILE_DRAG_MIME } from "@/lib/workspaceFileDrag.js";
 import {
   MAX_CHAT_ATTACHMENTS,
   MissingInlinePdfContentError,
+  OversizedInlineFileAttachmentError,
   OversizedInlinePdfAttachmentError,
   OversizedInlineVideoAttachmentError,
   createChatComposerAttachment,
   createChatComposerPathAttachment,
   createClipboardTextAttachmentFilenameForDate,
   createClipboardTextPathComposerAttachment,
+  countClipboardTextLines,
   formatAttachmentSize,
   revokeChatComposerAttachment,
   serializeChatComposerAttachment,
@@ -43,6 +45,7 @@ import {
   type ComposerAttachmentUploadStatus,
 } from "@/store/composerAttachmentUploadStore.js";
 import { uploadComposerAttachment, type AttachmentPutFn } from "@/v4/composer/attachmentUpload.js";
+import { useCodexMessages } from "@/settings/codex/messages.js";
 
 export const COMPOSER_ATTACHMENT_UPLOAD_CONCURRENCY = 2;
 export const COMPOSER_ATTACHMENT_AUTO_RETRY_DELAY_MS = 500;
@@ -60,6 +63,7 @@ export type {
 } from "@/store/composerAttachmentUploadStore.js";
 
 interface UploadTarget {
+  nativeCodex?: boolean;
   sessionId: string | null;
   workspacePath: string;
   workspaceIdentity?: string;
@@ -106,13 +110,16 @@ export interface ComposerAttachmentsApi {
 }
 
 export interface UseComposerAttachmentsOptions {
+  nativeCodex?: boolean;
   workspacePath: string;
   workspaceIdentity?: string;
   remoteSessionId?: string;
   scopeId: string;
   attachmentSessionId?: string | null;
   attachmentPut: AttachmentPutFn;
-  onRuntimeRestart?: (listener: () => void) => () => void;
+  onRuntimeRestart?: (
+    listener: (reason?: "runtimeRestart" | "transportReplaced") => void,
+  ) => () => void;
   /**
    * 承载 transport 暴露 runtime 存活态时优先用它，替代 onRuntimeRestart。
    * unavailable 在 workspace-dispose 当场到达，把作废与唤醒拆到两个真实时点。
@@ -159,6 +166,7 @@ export function isTransientAttachmentUploadError(error: unknown): boolean {
   if (isAbortError(error)) return false;
   if (error instanceof OversizedInlineVideoAttachmentError) return false;
   if (error instanceof OversizedInlinePdfAttachmentError) return false;
+  if (error instanceof OversizedInlineFileAttachmentError) return false;
   if (error instanceof MissingInlinePdfContentError) return false;
   if (
     error instanceof Error &&
@@ -193,6 +201,7 @@ export function useComposerAttachments(
   options: UseComposerAttachmentsOptions,
 ): ComposerAttachmentsApi {
   const {
+    nativeCodex = false,
     workspacePath,
     workspaceIdentity,
     remoteSessionId,
@@ -207,6 +216,7 @@ export function useComposerAttachments(
   const platform = usePlatform();
   const { promptAttachmentTransferService } = useServices();
   const { intl } = useCodezIntl();
+  const codexText = useCodexMessages();
   const scopeKey = buildScopeKey(workspacePath, workspaceIdentity, scopeId);
   exposeComposerAttachmentScopeKeyForE2E(scopeKey);
 
@@ -232,6 +242,7 @@ export function useComposerAttachments(
   const dragFeedbackTimerRef = useRef<number | null>(null);
 
   targetsRef.current.set(scopeKey, {
+    nativeCodex,
     sessionId: attachmentSessionId,
     workspacePath,
     workspaceIdentity,
@@ -272,9 +283,16 @@ export function useComposerAttachments(
   }, []);
 
   const finishWithReady = useCallback(
-    (targetScopeKey: string, attachmentId: string, ref: AttachmentRef, staged: boolean) => {
+    (
+      targetScopeKey: string,
+      attachmentId: string,
+      ref: AttachmentRef,
+      staged: boolean,
+      committedSessionId: string,
+    ) => {
       updateItem(targetScopeKey, attachmentId, (item) => ({
         ...item,
+        committedSessionId,
         uploadStatus: "ready",
         uploadProgress: 100,
         uploadError: undefined,
@@ -316,8 +334,8 @@ export function useComposerAttachments(
           (candidate) => candidate.id === attachmentId,
         );
         if (!item || !target.sessionId) return;
-        if (item.localPath && isRemoteAttachmentTarget(target)) {
-          if (!target.remoteSessionId) {
+        if (item.localPath && (isRemoteAttachmentTarget(target) || target.nativeCodex)) {
+          if (isRemoteAttachmentTarget(target) && !target.remoteSessionId) {
             updateItem(targetScopeKey, attachmentId, (current) => ({
               ...current,
               uploadStatus: "waitingSession",
@@ -353,9 +371,11 @@ export function useComposerAttachments(
           // staged:false + host localPath。远端 Agent 无法读取该路径，因此必须阻止发送。
           if (!result.staged) {
             throw new RemoteAttachmentNotStagedError(
-              intl.formatMessage({
-                id: "chat.attachments.upload.remoteMaterializationRequired",
-              }),
+              target.nativeCodex
+                ? codexText.attachmentStagingRequired
+                : intl.formatMessage({
+                    id: "chat.attachments.upload.remoteMaterializationRequired",
+                  }),
             );
           }
           finishWithReady(
@@ -371,6 +391,7 @@ export function useComposerAttachments(
                 : {}),
             },
             result.staged,
+            target.sessionId,
           );
           return;
         }
@@ -397,7 +418,7 @@ export function useComposerAttachments(
         );
         if (!ref) throw new Error("附件缺少可读取内容");
         if (controllersRef.current.get(controllerKey) !== controller) return;
-        finishWithReady(targetScopeKey, attachmentId, ref, false);
+        finishWithReady(targetScopeKey, attachmentId, ref, false, target.sessionId);
       } catch (error) {
         if (controllersRef.current.get(controllerKey) !== controller || controller.signal.aborted) {
           return;
@@ -426,14 +447,23 @@ export function useComposerAttachments(
                     maxSize: formatAttachmentSize(error.maxSizeBytes),
                   },
                 )
-              : error instanceof MissingInlinePdfContentError
+              : error instanceof OversizedInlineFileAttachmentError
                 ? intl.formatMessage(
-                    { id: "chat.attachments.missingInlinePdfContent" },
-                    { filename: error.filename },
+                    { id: "chat.attachments.oversizedInlineFile" },
+                    {
+                      filename: error.filename,
+                      size: formatAttachmentSize(error.sizeBytes),
+                      maxSize: formatAttachmentSize(error.maxSizeBytes),
+                    },
                   )
-                : error instanceof Error
-                  ? error.message
-                  : String(error);
+                : error instanceof MissingInlinePdfContentError
+                  ? intl.formatMessage(
+                      { id: "chat.attachments.missingInlinePdfContent" },
+                      { filename: error.filename },
+                    )
+                  : error instanceof Error
+                    ? error.message
+                    : String(error);
         const transient = isTransientAttachmentUploadError(error);
         if (transient && current.autoRetryCount < 1) {
           updateItem(targetScopeKey, attachmentId, (item) => ({
@@ -473,7 +503,7 @@ export function useComposerAttachments(
         pumpQueueRef.current();
       }
     },
-    [enqueueUpload, finishWithReady, intl, updateItem],
+    [enqueueUpload, finishWithReady, intl, updateItem, codexText.attachmentStagingRequired],
   );
 
   const pumpQueue = useCallback(() => {
@@ -505,6 +535,75 @@ export function useComposerAttachments(
     }
   }, [runUpload, updateItem]);
   pumpQueueRef.current = pumpQueue;
+
+  useEffect(() => {
+    // 原因：预热会话因 runtime 换代、技能/模型失效或远端 proxy 重连被替换后，旧 sessionId
+    // 下的附件引用不能跨会话混用。但 composer 仍持有原始 File / localPath 时，应像換代恢复
+    // 一样自动降回 waitingSession / queued 重传到新会话，而不是直接判为永久失败打断用户。
+    for (const item of attachments) {
+      if (item.referenceOwnership === "session" || item.localZeroCopy || !item.committedSessionId) {
+        continue;
+      }
+      if (item.uploadStatus !== "ready" || item.committedSessionId === attachmentSessionId)
+        continue;
+      const key = `${scopeKey}\u0000${item.id}`;
+      const completeTimer = completeTimersRef.current.get(key);
+      if (completeTimer !== undefined) {
+        window.clearTimeout(completeTimer);
+        completeTimersRef.current.delete(key);
+      }
+      const target = targetsRef.current.get(scopeKey);
+      if (item.staged) void target?.transferService.cleanup(item.operationId).catch(() => {});
+      const canReupload = Boolean(item.file || item.localPath);
+      if (canReupload && item.runtimeRebuildRetryCount < COMPOSER_ATTACHMENT_REBUILD_RETRY_LIMIT) {
+        const remoteTargetReady =
+          !isRemoteAttachmentTarget({ remoteSessionId, workspaceIdentity }) ||
+          Boolean(remoteSessionId);
+        const shouldQueueNow = Boolean(attachmentSessionId && remoteTargetReady);
+        updateItem(scopeKey, item.id, (current) => ({
+          ...current,
+          committedSessionId: undefined,
+          uploadStatus: shouldQueueNow ? "queued" : "waitingSession",
+          uploadProgress: 0,
+          uploadError: undefined,
+          uploadErrorKind: undefined,
+          attachmentRef: undefined,
+          staged: false,
+          adopted: false,
+          showComplete: false,
+          runtimeRebuildRetryCount: current.runtimeRebuildRetryCount + 1,
+        }));
+        if (shouldQueueNow) {
+          enqueueUpload(scopeKey, item.id);
+        }
+        continue;
+      }
+      updateItem(scopeKey, item.id, (current) => ({
+        ...current,
+        committedSessionId: undefined,
+        uploadStatus: "failed",
+        uploadProgress: 0,
+        uploadError: canReupload
+          ? intl.formatMessage({ id: "chat.attachments.upload.runtimeRestarted" })
+          : codexText.attachmentSessionLost,
+        uploadErrorKind: canReupload ? "runtimeRestarted" : "permanent",
+        attachmentRef: undefined,
+        staged: false,
+        adopted: false,
+        showComplete: false,
+      }));
+    }
+  }, [
+    attachmentSessionId,
+    attachments,
+    codexText.attachmentSessionLost,
+    enqueueUpload,
+    intl,
+    remoteSessionId,
+    scopeKey,
+    updateItem,
+    workspaceIdentity,
+  ]);
 
   useEffect(() => {
     const current = readComposerAttachmentScope(scopeKey);
@@ -547,7 +646,8 @@ export function useComposerAttachments(
           if (
             item.referenceOwnership === "session" ||
             item.localZeroCopy ||
-            item.uploadStatus === "failed"
+            item.uploadStatus === "failed" ||
+            item.uploadStatus === "waitingSession"
           ) {
             continue;
           }
@@ -559,6 +659,7 @@ export function useComposerAttachments(
             // 重传配额用尽是真失败，无论静默与否都必须让用户看见。
             updateItem(targetScopeKey, item.id, (current) => ({
               ...current,
+              committedSessionId: undefined,
               uploadStatus: "failed",
               uploadProgress: 0,
               uploadError: intl.formatMessage({
@@ -577,6 +678,7 @@ export function useComposerAttachments(
           // 由 restartEpoch / 新 attachmentSessionId 驱动的唤醒 effect 在会话可用后统一入队。
           updateItem(targetScopeKey, item.id, (current) => ({
             ...current,
+            committedSessionId: undefined,
             uploadStatus: "waitingSession",
             uploadProgress: 0,
             ...(silent
@@ -600,9 +702,8 @@ export function useComposerAttachments(
   );
 
   useEffect(() => {
-    // 二选一订阅：两条通道都订会让同一次换代作废两次，白烧一次重传配额。
     if (onRuntimeLifecycle) {
-      return onRuntimeLifecycle((state) => {
+      const offLifecycle = onRuntimeLifecycle((state) => {
         if (state === "unavailable") {
           // 作废与唤醒到此才真正解耦：此刻旧 CLI 已死、新的还没起来，递增 restartEpoch 会让
           // 唤醒 effect 立即入队并直撞死进程（正式会话态 sessionId 原地不变时尤其明显）。
@@ -612,6 +713,18 @@ export function useComposerAttachments(
         // 草稿态实际由重建后的新 attachmentSessionId 唤醒；这一路是正式会话态的兜底。
         setRestartEpoch((current) => current + 1);
       });
+      // 原因：远程 workspace 的 proxy 换代（ReplaceableConversationTransport.replace）只发
+      // onRuntimeRestart("transportReplaced")，不发 lifecycle 事件；仅在 transportReplaced 时
+      // 作废并唤醒，避免与底层进程换代的 lifecycle 事件重复计数。
+      const offRestart = onRuntimeRestart?.((reason) => {
+        if (reason !== "transportReplaced") return;
+        invalidateAttachmentsForRuntimeChange({ silent: true });
+        setRestartEpoch((current) => current + 1);
+      });
+      return () => {
+        offLifecycle();
+        offRestart?.();
+      };
     }
     if (!onRuntimeRestart) return;
     return onRuntimeRestart(() => {
@@ -648,7 +761,10 @@ export function useComposerAttachments(
       const items: ComposerAttachmentUploadItem[] = accepted.map((attachment) => {
         // 远端 identity 往往早于 remoteSessionId 注入；这段窗口不能退化为本地路径直读。
         const localZeroCopy = Boolean(
-          attachment.localPath && target && !isRemoteAttachmentTarget(target),
+          attachment.localPath &&
+          target &&
+          !target.nativeCodex &&
+          !isRemoteAttachmentTarget(target),
         );
         return {
           ...attachment,
@@ -663,6 +779,7 @@ export function useComposerAttachments(
                   fileName: attachment.filename,
                   mime: attachment.mimeType,
                   bytes: attachment.sizeBytes,
+                  ...(attachment.sourceKind ? { sourceKind: attachment.sourceKind } : {}),
                 },
               }
             : {}),
@@ -691,7 +808,8 @@ export function useComposerAttachments(
         selectedFiles.map((file) => {
           let localPath: string | undefined;
           try {
-            const resolvedPath = platform.getPathForFile?.(file);
+            // native bridge 只接受绑定会话的 opaque ref；File 必须走现有 bytes 上传，不能用路径冒充 ref。
+            const resolvedPath = nativeCodex ? undefined : platform.getPathForFile?.(file);
             localPath = resolvedPath?.trim() ? resolvedPath : undefined;
           } catch (error) {
             // Electron 32+ 的 File 需要经 preload webUtils 解析；失败时仍可走 Web bytes。
@@ -701,7 +819,7 @@ export function useComposerAttachments(
         }),
       );
     },
-    [addPreparedAttachments, platform],
+    [addPreparedAttachments, platform, nativeCodex],
   );
 
   const addAttachmentLocalPaths = useCallback(
@@ -716,7 +834,7 @@ export function useComposerAttachments(
       showAttachmentLimitWarning();
       return;
     }
-    if (!platform.canSelectFilePath) {
+    if (nativeCodex || !platform.canSelectFilePath) {
       attachmentInputRef.current?.click();
       return;
     }
@@ -731,7 +849,7 @@ export function useComposerAttachments(
           ),
         );
       });
-  }, [addAttachmentLocalPaths, intl, platform, scopeKey, showAttachmentLimitWarning]);
+  }, [addAttachmentLocalPaths, intl, platform, scopeKey, showAttachmentLimitWarning, nativeCodex]);
 
   const handleAttachmentInputChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -767,6 +885,21 @@ export function useComposerAttachments(
       if (!shouldCreateClipboardTextAttachment(text)) return;
       event.preventDefault();
       event.stopPropagation?.();
+      if (nativeCodex) {
+        addPreparedAttachments([
+          {
+            ...createChatComposerAttachment(
+              new File([text], createClipboardTextAttachmentFilenameForDate(), {
+                type: "text/plain",
+              }),
+            ),
+            sourceKind: "clipboard-text",
+            lineCount: countClipboardTextLines(text),
+            charCount: text.length,
+          },
+        ]);
+        return;
+      }
       void (async () => {
         try {
           const attachment = await platform.createTempTextAttachment?.({
@@ -786,7 +919,7 @@ export function useComposerAttachments(
         }
       })();
     },
-    [addAttachmentFiles, addPreparedAttachments, disabled, intl, platform],
+    [addAttachmentFiles, addPreparedAttachments, disabled, intl, platform, nativeCodex],
   );
 
   const clearDragFeedbackTimer = useCallback(() => {
@@ -948,10 +1081,14 @@ export function useComposerAttachments(
       );
       if (!current || current.uploadStatus !== "failed") return;
       const target = targetsRef.current.get(scopeKey);
+      const remoteTargetReady =
+        !target || !isRemoteAttachmentTarget(target) || Boolean(target.remoteSessionId);
+      const shouldQueueNow = Boolean(target?.sessionId && remoteTargetReady);
       void target?.transferService.cleanup(current.operationId).catch(() => {});
       updateItem(scopeKey, id, (item) => ({
         ...item,
-        uploadStatus: target?.sessionId ? "queued" : "waitingSession",
+        committedSessionId: undefined,
+        uploadStatus: shouldQueueNow ? "queued" : "waitingSession",
         uploadProgress: 0,
         uploadError: undefined,
         uploadErrorKind: undefined,
@@ -962,7 +1099,7 @@ export function useComposerAttachments(
         adopted: false,
         showComplete: false,
       }));
-      if (target?.sessionId) enqueueUpload(scopeKey, id);
+      if (shouldQueueNow) enqueueUpload(scopeKey, id);
     },
     [enqueueUpload, scopeKey, updateItem],
   );
@@ -1040,6 +1177,7 @@ export function useComposerAttachments(
           uploadStatus: "ready",
           uploadProgress: 100,
           attachmentRef: { ...attachmentRef },
+          committedSessionId: targetsRef.current.get(scopeKey)?.sessionId ?? undefined,
           operationId: `session-owned-${id}`,
           autoRetryCount: 0,
           runtimeRebuildRetryCount: 0,
@@ -1060,6 +1198,12 @@ export function useComposerAttachments(
 
   const prepareForSend = useCallback(async (): Promise<AttachmentRef[] | null> => {
     const current = readComposerAttachmentScope(scopeKey);
+    const target = targetsRef.current.get(scopeKey);
+    if (
+      target?.nativeCodex &&
+      current.some((item) => !target.sessionId || item.committedSessionId !== target.sessionId)
+    )
+      return null;
     if (current.some((item) => item.uploadStatus !== "ready" || !item.attachmentRef)) {
       return null;
     }

@@ -163,6 +163,26 @@ describe("R1 window Host control protocol", () => {
   it("remote attachment scope 强制携带完整 session、path 和 identity", () => {
     expect(windowHostAttachmentScopeSchema.safeParse({ kind: "local" }).success).toBe(true);
     expect(
+      windowHostAttachmentScopeSchema.parse({
+        kind: "local",
+        workspacePath: "/local",
+        workspaceIdentity: "local-identity",
+      }),
+    ).toEqual({ kind: "local", workspacePath: "/local", workspaceIdentity: "local-identity" });
+    expect(
+      windowHostAttachmentScopeSchema.safeParse({
+        kind: "local",
+        workspacePath: "",
+      }).success,
+    ).toBe(false);
+    expect(
+      windowHostAttachmentScopeSchema.safeParse({
+        kind: "local",
+        workspacePath: "/local",
+        untrusted: true,
+      }).success,
+    ).toBe(false);
+    expect(
       windowHostAttachmentScopeSchema.safeParse({
         kind: "remote",
         remoteSessionId: "remote-session-1",

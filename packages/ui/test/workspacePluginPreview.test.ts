@@ -9,9 +9,9 @@ function entry(
   overrides: Partial<CodezPluginReferenceCatalogEntry> = {},
 ): CodezPluginReferenceCatalogEntry {
   return {
-    pluginId: "pdf@zcode-plugins-official",
+    pluginId: "pdf@codez-plugins-official",
     name: "pdf",
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     icon: "https://cdn.example.com/pdf.png",
     enabled: true,
     conflictingPluginIds: [],
@@ -33,13 +33,13 @@ describe("workspace plugin preview", () => {
 
   it("构造与 Composer @ Picker 相同的 canonical 插件引用", () => {
     expect(buildWorkspacePluginMention(entry())).toEqual({
-      id: "plugin:pdf@zcode-plugins-official",
+      id: "plugin:pdf@codez-plugins-official",
       category: "plugins",
       label: "pdf",
-      value: "pdf@zcode-plugins-official",
-      markdown: "[@pdf](plugin://pdf@zcode-plugins-official)",
+      value: "pdf@codez-plugins-official",
+      markdown: "[@pdf](plugin://pdf@codez-plugins-official)",
       data: {
-        pluginId: "pdf@zcode-plugins-official",
+        pluginId: "pdf@codez-plugins-official",
         icon: "https://cdn.example.com/pdf.png",
       },
     });

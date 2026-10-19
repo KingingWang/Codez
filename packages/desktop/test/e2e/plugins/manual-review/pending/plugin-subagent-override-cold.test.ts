@@ -29,7 +29,7 @@ import {
   waitForV4ConversationState,
 } from "../../../helpers/v4-conversation.js";
 
-const AGENT_ID = "plugin:document-skills@zcode-plugins-official:judge";
+const AGENT_ID = "plugin:document-skills@codez-plugins-official:judge";
 const PARENT = "E2E_PLUGIN_OVERRIDE_COLD_PARENT";
 const CHILD = "E2E_PLUGIN_OVERRIDE_COLD_CHILD";
 const RESULT = "E2E_PLUGIN_OVERRIDE_COLD_RESULT";

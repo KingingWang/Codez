@@ -4,7 +4,7 @@ import type { McpServerConfig } from "../interfaces/mcp.port.js";
 import type { SkillRoot } from "../skills/index.js";
 import type { ExecutionContext, TraceContext } from "../tracing/tracer.js";
 
-export const CODEZ_OFFICIAL_PLUGIN_MARKETPLACE = "zcode-plugins-official";
+export const CODEZ_OFFICIAL_PLUGIN_MARKETPLACE = "codez-plugins-official";
 export const CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE = "claude-plugins-official";
 export const CODEZ_INLINE_PLUGIN_MARKETPLACE = "inline";
 export const CODEZ_PLUGIN_HOST_COMMAND = "__codez-plugin-host";

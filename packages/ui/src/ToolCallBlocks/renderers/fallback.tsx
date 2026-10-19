@@ -54,6 +54,7 @@ export function FallbackToolCallBlock(context: FallbackToolCallBlockProps) {
         />
         <ToolSnapshotFieldNotice
           refs={toolCall.snapshotRefs ?? []}
+          autoLoadWhenMounted
           onLoadFullToolCallFields={
             handleLoadFullToolCallFields
               ? () => handleLoadFullToolCallFields(toolCall.toolId)

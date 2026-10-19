@@ -228,6 +228,23 @@ describe("ProviderConfig access / api boundaries", () => {
     });
   });
 
+  it("临时 Key 引用可执行，但不得与明文 Key 同时进入完整 Provider", () => {
+    const envAccess = new ApiKeyAccessConfig({
+      apiKeyEnv: "CODEZ_MODEL_API_KEY_ABC123",
+    });
+    expect(envAccess.validateComplete(["access"])).toEqual([]);
+    expect(envAccess.toJSON()).toEqual({
+      type: "api-key",
+      apiKeyEnv: "CODEZ_MODEL_API_KEY_ABC123",
+    });
+    expect(
+      new ApiKeyAccessConfig({
+        apiKey: "must-not-sync",
+        apiKeyEnv: "CODEZ_MODEL_API_KEY_ABC123",
+      }).validateComplete(["access"]),
+    ).not.toEqual([]);
+  });
+
   it("Personal Provider 允许暂存非法 endpoint，并在完整性校验时 fail-closed", () => {
     const providers = parsePersonalProviderConfigMap({
       providerRules: [

@@ -16,11 +16,16 @@ import {
   type ConversationSnapshot,
   type ConversationOpenTiming,
   type ConversationTopicFrame,
+  type ReasoningRow,
   type SessionModelTransition,
   type ToolCallRow,
   type TopicFrameDeliveryKind,
 } from "@codez/shared/codez-protocol-v4";
 import { logger } from "@/logger.js";
+import {
+  takeConversationSnapshotHandoff,
+  writeConversationSnapshotHandoff,
+} from "@/v4/conversationSnapshotHandoff.js";
 import type { ConversationTurnNavigatorHydrationResult } from "@/v4/conversationTurnNavigatorHelpers.js";
 import type { ConversationTransport } from "@/v4/transport.js";
 import { ConversationRowPool } from "@/v4/conversationRowSharing.js";
@@ -164,17 +169,46 @@ const TERMINAL_PLAN_STATUSES: ReadonlySet<ToolCallRow["status"]> = new Set([
   "cancelled",
 ]);
 
+function isTerminalExitPlanModeRow(row: ConversationRow): row is ToolCallRow {
+  return (
+    row.kind === "toolCall" &&
+    row.toolName === "ExitPlanMode" &&
+    TERMINAL_PLAN_STATUSES.has(row.status)
+  );
+}
+
+function isRealUserInputRow(row: ConversationRow): boolean {
+  return row.kind === "userInput" && row.origin === "realUser";
+}
+
+/**
+ * Codex bridge 没有增量 delta 日志，每次流式或状态更新都发布完整 snapshot 帧。
+ * 若同 logEpoch 的单调 snapshot 无条件递增 planDirectoryRevision，会导致每帧都触发一次
+ * `v4/conversation/plans` 全量历史投影查询（大长会话单次 ~130ms，形成持续 RPC 风暴）。
+ * 仅当首次建立基线、切换 logEpoch、水位回退，或窗口内终态 ExitPlanMode 集合实际变化时失效。
+ */
+function shouldInvalidatePlanDirectoryOnSnapshot(
+  previous: ConversationSnapshot | null,
+  next: ConversationSnapshot,
+): boolean {
+  if (!previous || previous.logEpoch !== next.logEpoch || next.seq < previous.seq) {
+    return true;
+  }
+  const prevPlans = previous.rows.window.filter(isTerminalExitPlanModeRow);
+  const nextPlans = next.rows.window.filter(isTerminalExitPlanModeRow);
+  if (prevPlans.length !== nextPlans.length) return true;
+  return prevPlans.some((row, index) => {
+    const candidate = nextPlans[index];
+    return !candidate || candidate.rowId !== row.rowId || candidate.status !== row.status;
+  });
+}
+
 function shouldInvalidatePlanDirectory(frame: ConversationTopicFrame): boolean {
   if (frame.payload.kind === "snapshot") return true;
   return frame.payload.deltas.some((delta) => {
     if (delta.op === "row.removed") return true;
     if (delta.op !== "row.appended" && delta.op !== "row.upserted") return false;
-    const row = delta.row;
-    return (
-      row.kind === "toolCall" &&
-      row.toolName === "ExitPlanMode" &&
-      TERMINAL_PLAN_STATUSES.has(row.status)
-    );
+    return isTerminalExitPlanModeRow(delta.row);
   });
 }
 
@@ -182,18 +216,33 @@ function shouldInvalidatePlanDirectory(frame: ConversationTopicFrame): boolean {
  * 问题导航目录是否需要失效。
  * not-enough-queries 终态曾只以 logEpoch 判定，导致同一 epoch
  * 内追加 real-user query 后永久命中缓存。判定条件：
- * - snapshot 整体替换 → true（全新状态，终态作废）；
+ * - 首次/跨 logEpoch snapshot 或窗口内 realUser userInput 集合变化 → true；
  * - row.removed → true（rewind/分支裁剪改变可导航 query 集合）；
  * - row.appended/row.upserted 命中 realUser userInput → true（新增/变更用户问题）；
  * - 其余 delta（assistant text、tool、reasoning 流式）→ false，不触发重探测。
  */
+function shouldInvalidateTurnNavigatorDirectoryOnSnapshot(
+  previous: ConversationSnapshot | null,
+  next: ConversationSnapshot,
+): boolean {
+  if (!previous || previous.logEpoch !== next.logEpoch || next.seq < previous.seq) {
+    return true;
+  }
+  const prevQueries = previous.rows.window.filter(isRealUserInputRow);
+  const nextQueries = next.rows.window.filter(isRealUserInputRow);
+  if (prevQueries.length !== nextQueries.length) return true;
+  return prevQueries.some((row, index) => {
+    const candidate = nextQueries[index];
+    return !candidate || candidate.rowId !== row.rowId || candidate.entityId !== row.entityId;
+  });
+}
+
 function shouldInvalidateTurnNavigatorDirectory(frame: ConversationTopicFrame): boolean {
   if (frame.payload.kind === "snapshot") return true;
   return frame.payload.deltas.some((delta) => {
     if (delta.op === "row.removed") return true;
     if (delta.op !== "row.appended" && delta.op !== "row.upserted") return false;
-    const row = delta.row;
-    return row.kind === "userInput" && row.origin === "realUser";
+    return isRealUserInputRow(delta.row);
   });
 }
 
@@ -284,7 +333,7 @@ uiMemoryDiagnosticsRegistry.register("projection", () => {
 });
 
 export class ConversationProjectionStore {
-  private state: ConversationStoreState = INITIAL_STATE;
+  private state: ConversationStoreState;
   private readonly listeners = new Set<() => void>();
   private readonly modelTransitionListeners = new Set<
     (transition: SessionModelTransition) => void
@@ -326,6 +375,16 @@ export class ConversationProjectionStore {
   private initialSubscribeAckAt: number | null = null;
   private planQueryInFlight = false;
   private planQueryPending = false;
+  /**
+   * 本 store 已锚定到会话首行（firstRowId）或已通过 rows/range（loadOlder / loadAllOlder）
+   * 分页拉回的历史行上界（开区间）。仅保留 rowId < pagedOlderBeforeRowId 的已锚定历史行，
+   * 避免 Codex 全量尾窗 snapshot 每次流式更新或尾窗向前滑动时冲掉用户正在浏览的早期轮次，
+   * 同时在未完成分页拉取的截断尾窗 resync 时不复活过期游标的旧尾窗行。
+   */
+  private pagedOlderBeforeRowId: number | null = null;
+  /** 当前 logEpoch 下已通过 v4/conversation/rowPayload 按需水合的完整行，防后续快照冲刷。 */
+  private readonly hydratedRowsByRowId = new Map<number, ToolCallRow | ReasoningRow>();
+  private readonly rowPayloadFlights = new Map<number, Promise<boolean>>();
   /** accepted input 的 projection confirmation watchdog；不承载命令，也不生成本地事实。 */
   private readonly acceptedInputProjectionTimers = new Map<string, ReturnType<typeof setTimeout>>();
   // hydrated/not-enough-queries 终态缓存。过去仅以
@@ -346,6 +405,22 @@ export class ConversationProjectionStore {
     // SessionDataLayer 注入跨 store 共享的池，独立构造时退化为 store 内共享。
     private readonly rowPool: ConversationRowPool = new ConversationRowPool(),
   ) {
+    // 重挂恢复（手机远控 bridge 重建会整体重挂 React 树）：若上一个同 topic store
+    // close 时交接了一致快照，直接以它为初始状态。connect() 会自动把它作为
+    // subscribe base 请求 CLI 增量续传，避免每次恢复都全量重发数百条消息；
+    // 命中期间 UI 立即有内容可渲染，不再白屏转圈。CLI 拒绝 base 时按既有规则
+    // 发全量快照整体替换，一致性仍由协议裁决。
+    const handoffSnapshot = takeConversationSnapshotHandoff(this.topic);
+    this.state = handoffSnapshot ? { ...INITIAL_STATE, snapshot: handoffSnapshot } : INITIAL_STATE;
+    if (handoffSnapshot) {
+      logger.lifecycle.info("v4 conversation store restored from snapshot handoff", {
+        event: "v4.conversation.store.snapshot_handoff",
+        module: "ui.v4.conversation_projection_store",
+        seq: handoffSnapshot.seq,
+        status: "completed",
+        topic: this.topic,
+      });
+    }
     liveProjectionStores.add(this);
     this.offAssemblyFault = transport.onAssemblyFault((fault) => {
       if (fault.topic === this.topic) {
@@ -683,14 +758,19 @@ export class ConversationProjectionStore {
   ): void {
     if (frame.payload.kind === "snapshot") {
       const hadAppliedBase = this.subscriptionHasAppliedBase;
+      const previousSnapshot = this.state.snapshot;
       const snapshot = this.shareSnapshotRows(frame.payload.snapshot);
-      logSubagentProjectionTransition(this.topic, this.state.snapshot, snapshot, "snapshot");
+      logSubagentProjectionTransition(this.topic, previousSnapshot, snapshot, "snapshot");
       // 规则 1：整体替换，扔掉手里的一切换新的（行对象按值复用旧引用，语义仍是整体替换）。
       this.setState({
         snapshot,
-        planDirectoryRevision: this.state.planDirectoryRevision + 1,
-        // snapshot 整体替换后 real-user query 集合可能已变，终态缓存必须失效。
-        turnNavigatorDirectoryRevision: this.state.turnNavigatorDirectoryRevision + 1,
+        ...(shouldInvalidatePlanDirectoryOnSnapshot(previousSnapshot, snapshot)
+          ? { planDirectoryRevision: this.state.planDirectoryRevision + 1 }
+          : {}),
+        // snapshot 首次到达、切换 logEpoch 或 real-user query 集合变化时，终态缓存必须失效。
+        ...(shouldInvalidateTurnNavigatorDirectoryOnSnapshot(previousSnapshot, snapshot)
+          ? { turnNavigatorDirectoryRevision: this.state.turnNavigatorDirectoryRevision + 1 }
+          : {}),
       });
       this.subscriptionHasAppliedBase = true;
       this.reconcileOptimistic(snapshot);
@@ -753,6 +833,19 @@ export class ConversationProjectionStore {
           : earliest,
       null,
     );
+    if (removedFromRowId !== null && this.pagedOlderBeforeRowId !== null) {
+      this.pagedOlderBeforeRowId =
+        removedFromRowId <= (next.rows.firstRowId ?? Number.POSITIVE_INFINITY)
+          ? null
+          : Math.min(this.pagedOlderBeforeRowId, removedFromRowId);
+    }
+    if (removedFromRowId !== null) {
+      for (const rowId of this.hydratedRowsByRowId.keys()) {
+        if (rowId >= removedFromRowId) {
+          this.hydratedRowsByRowId.delete(rowId);
+        }
+      }
+    }
     this.setState({
       snapshot: next,
       // row.removed 已给出权威裁剪边界，可以同步删掉缓存目录中的旧分支计划；
@@ -787,14 +880,72 @@ export class ConversationProjectionStore {
    */
   /** rows/range 补拉的历史行与池中仍存活的旧行共享（冷打开后往上翻时常见）。 */
   private shareRows(rows: readonly ConversationRow[]): ConversationRow[] {
-    return rows.map((row) => this.rowPool.shareRow(this.topic, row));
+    return rows.map((row) => this.rowPool.shareRow(this.topic, this.preferHydratedRow(row)));
+  }
+
+  private preferHydratedRow(row: ConversationRow): ConversationRow {
+    const hydrated = this.hydratedRowsByRowId.get(row.rowId);
+    if (!hydrated || hydrated.kind !== row.kind) return row;
+    if (row.kind === "toolCall" && hydrated.kind === "toolCall" && hydrated.status === row.status) {
+      return row.actions !== hydrated.actions ? { ...hydrated, actions: row.actions } : hydrated;
+    }
+    if (row.kind === "reasoning" && hydrated.kind === "reasoning" && hydrated.state === row.state) {
+      return row.actions !== hydrated.actions ? { ...hydrated, actions: row.actions } : hydrated;
+    }
+    return row;
   }
 
   private shareSnapshotRows(snapshot: ConversationSnapshot): ConversationSnapshot {
+    const previous = this.state.snapshot;
+    if (!previous || previous.logEpoch !== snapshot.logEpoch || snapshot.rows.firstRowId === null) {
+      this.pagedOlderBeforeRowId = null;
+      this.hydratedRowsByRowId.clear();
+    }
+    // 修复原因：Codex bridge 没有增量重放日志，每次工具调用或思考流式更新都下发截断后的
+    // 尾窗 snapshot。若本地窗口已完整锚定到会话首行（window[0].rowId === firstRowId）或已通过
+    // rows/range 补拉了更早轮次（pagedOlderBeforeRowId !== null），直接丢弃早期历史行会导致
+    // 顶部轮次消失、虚拟列表总高度骤缩，随后自动补拉又把行插回或使后续轮次顶替原视口，将
+    // scrollTop 往下推，造成用户在阅读第 1 轮历史时收到新消息画面不断往下跳（桌面端与手机端同现）。
+    // 边界：仅在同一 logEpoch、水位单调推进（snapshot.seq >= previous.seq）且新快照仍保留
+    // 合法 firstRowId 时保留已锚定的更早历史行；未经分页拉取的截断尾窗替换保持原行为。
+    const incomingFirstRowId = snapshot.rows.window[0]?.rowId;
+    const branchFirstRowId = snapshot.rows.firstRowId;
+    const retainedOlderRows =
+      previous &&
+      previous.logEpoch === snapshot.logEpoch &&
+      snapshot.seq >= previous.seq &&
+      this.pagedOlderBeforeRowId !== null &&
+      branchFirstRowId !== null &&
+      incomingFirstRowId !== undefined &&
+      incomingFirstRowId > branchFirstRowId
+        ? previous.rows.window.filter(
+            (row) => row.rowId >= branchFirstRowId && row.rowId < incomingFirstRowId,
+          )
+        : [];
+    if (retainedOlderRows.length > 0 && incomingFirstRowId !== undefined) {
+      this.pagedOlderBeforeRowId = Math.max(this.pagedOlderBeforeRowId ?? 0, incomingFirstRowId);
+    }
+    const candidateWindow =
+      retainedOlderRows.length > 0
+        ? [...retainedOlderRows, ...snapshot.rows.window]
+        : snapshot.rows.window;
+    if (branchFirstRowId !== null && candidateWindow[0]?.rowId === branchFirstRowId) {
+      const lastAnchoredRowId = candidateWindow.at(-1)?.rowId;
+      if (lastAnchoredRowId !== undefined) {
+        this.pagedOlderBeforeRowId = Math.max(
+          this.pagedOlderBeforeRowId ?? 0,
+          lastAnchoredRowId + 1,
+        );
+      }
+    }
+    const hydratedCandidateWindow =
+      this.hydratedRowsByRowId.size > 0
+        ? candidateWindow.map((row) => this.preferHydratedRow(row))
+        : candidateWindow;
     const window = this.rowPool.shareWindow(
       this.topic,
-      snapshot.rows.window,
-      this.state.snapshot?.rows.window,
+      hydratedCandidateWindow,
+      previous?.rows.window,
     );
     return window === snapshot.rows.window
       ? snapshot
@@ -816,7 +967,7 @@ export class ConversationProjectionStore {
     let window: ConversationRow[] | null = null;
     snapshot.rows.window.forEach((row, index) => {
       if (shareIds.has(row.rowId)) {
-        const shared = this.rowPool.shareRow(this.topic, row);
+        const shared = this.rowPool.shareRow(this.topic, this.preferHydratedRow(row));
         if (shared !== row) {
           window ??= [...snapshot.rows.window];
           window[index] = shared;
@@ -1083,6 +1234,7 @@ export class ConversationProjectionStore {
       if (current.rows.window[0]?.rowId !== beforeRowId) return;
       const window = mergeOlderRows(current.rows.window, this.shareRows(result.rows));
       if (window === null) return;
+      this.pagedOlderBeforeRowId = Math.max(this.pagedOlderBeforeRowId ?? 0, beforeRowId);
       this.setState({
         snapshot: { ...current, rows: { ...current.rows, window } },
       });
@@ -1094,6 +1246,59 @@ export class ConversationProjectionStore {
     } finally {
       if (!this.closed) this.setState({ loadingOlder: false });
     }
+  }
+
+  /**
+   * 按 rowId 按需读取折叠 toolCall / reasoning 行的完整载荷并原地回填。
+   * 同 rowId 在途请求自动单飞合并；logEpoch 不匹配时静默丢弃。
+   */
+  async loadRowPayload(rowId: number): Promise<boolean> {
+    if (this.closed) return false;
+    if (this.hydratedRowsByRowId.has(rowId)) return true;
+    const existingFlight = this.rowPayloadFlights.get(rowId);
+    if (existingFlight) return existingFlight;
+    const snapshot = this.state.snapshot;
+    const sessionId = parseConversationTopic(this.topic);
+    if (!snapshot || !sessionId || !this.transport.rowPayload) return false;
+
+    const requestedEpoch = snapshot.logEpoch;
+    const flight = (async () => {
+      try {
+        const result = await this.transport.rowPayload!({ sessionId, rowId });
+        if (this.closed || !result.row) return false;
+        const current = this.state.snapshot;
+        if (!current || current.logEpoch !== requestedEpoch || result.atLogEpoch !== current.logEpoch) {
+          return false;
+        }
+        const sharedRow = this.rowPool.shareRow(this.topic, result.row) as
+          | ToolCallRow
+          | ReasoningRow;
+        this.hydratedRowsByRowId.set(rowId, sharedRow);
+        const index = current.rows.window.findIndex((candidate) => candidate.rowId === rowId);
+        if (index < 0) return true;
+        const existingRow = current.rows.window[index]!;
+        const mergedRow =
+          existingRow.actions !== sharedRow.actions
+            ? ({ ...sharedRow, actions: existingRow.actions } as ConversationRow)
+            : sharedRow;
+        const window = [...current.rows.window];
+        window[index] = mergedRow;
+        this.setState({
+          snapshot: { ...current, rows: { ...current.rows, window } },
+        });
+        return true;
+      } catch (error) {
+        logger.warn(
+          `[v4-store] rowPayload ${this.topic}#${rowId} 失败: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return false;
+      } finally {
+        this.rowPayloadFlights.delete(rowId);
+      }
+    })();
+
+    this.rowPayloadFlights.set(rowId, flight);
+    return flight;
   }
 
   /**
@@ -1194,6 +1399,10 @@ export class ConversationProjectionStore {
         if (preserveIncompleteLeadingTurn) {
           const window = mergeOlderRows(current.rows.window, this.shareRows(olderRows));
           if (window === null) return stale(initialLogEpoch);
+          this.pagedOlderBeforeRowId = Math.max(
+            this.pagedOlderBeforeRowId ?? 0,
+            initialBeforeRowId,
+          );
           committed = true;
           this.setState({
             loadingOlder: false,
@@ -1225,6 +1434,7 @@ export class ConversationProjectionStore {
       }
       const window = mergeOlderRows(current.rows.window, this.shareRows(olderRows));
       if (window === null) return stale(initialLogEpoch);
+      this.pagedOlderBeforeRowId = Math.max(this.pagedOlderBeforeRowId ?? 0, initialBeforeRowId);
       committed = true;
       this.setState({
         loadingOlder: false,
@@ -1404,6 +1614,12 @@ export class ConversationProjectionStore {
   async close(): Promise<void> {
     if (this.closed) return;
     liveProjectionStores.delete(this);
+    // 跨重挂交接：快照是已完整应用的一致投影（store 水位不变量），写给下一个
+    // 同 topic store 做 subscribe base。手机远控 bridge 重建时这一步让恢复从
+    // 「全量重订阅数 MB 首帧」降为「增量续传」，是打破降级循环的关键。
+    if (this.state.snapshot) {
+      writeConversationSnapshotHandoff(this.topic, this.state.snapshot);
+    }
     const closeStartedAt = monotonicNow();
     logger.lifecycle.info("v4 conversation store close started", {
       event: "v4.conversation.store.close.started",

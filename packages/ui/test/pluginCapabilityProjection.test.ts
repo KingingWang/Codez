@@ -70,7 +70,7 @@ const skills = [
 // enabled=true，否则类型强转会把缺失字段伪装成合法数据并错误测试成空投影。
 const sameNamePlugins = [
   {
-    id: "computer-use@zcode-plugins-official",
+    id: "computer-use@codez-plugins-official",
     name: "computer-use",
     enabled: true,
     source: "official",
@@ -266,7 +266,7 @@ describe("Plugin capability projection", () => {
         name: "official-skill",
         scope: "plugin",
         pluginName: "computer-use",
-        pluginId: "computer-use@zcode-plugins-official",
+        pluginId: "computer-use@codez-plugins-official",
         path: "/official",
       },
       {
@@ -283,10 +283,10 @@ describe("Plugin capability projection", () => {
     const groups = groupScopedSkillsBySource(selected, "User");
 
     expect(groups.map((group) => [group.id, group.label])).toEqual([
-      ["plugin:computer-use@zcode-plugins-official", "computer-use"],
       ["plugin:codez-cua@custom-marketplace", "codez-cua"],
+      ["plugin:computer-use@codez-plugins-official", "computer-use"],
     ]);
-    expect(groups.map((group) => group.skills[0]?.id)).toEqual(["official-skill", "custom-skill"]);
+    expect(groups.map((group) => group.skills[0]?.id)).toEqual(["custom-skill", "official-skill"]);
   });
 
   it("does not select a same-name plugin command from another marketplace", () => {
@@ -295,7 +295,7 @@ describe("Plugin capability projection", () => {
         id: "official-command",
         source: "plugin",
         pluginName: "computer-use",
-        pluginMarketplace: "zcode-plugins-official",
+        pluginMarketplace: "codez-plugins-official",
       },
       {
         id: "custom-command",
@@ -355,7 +355,7 @@ it("puts official PDF, PPT, Excel and Word first in the preset group", () => {
   const plugins = names.map(
     (name) =>
       ({
-        id: `${name}@zcode-plugins-official`,
+        id: `${name}@codez-plugins-official`,
         name,
         source: "official",
         enabled: false,

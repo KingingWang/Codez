@@ -11,10 +11,10 @@ small mirror of the default-enabled official plugin ids because it reads the
 official plugin cache directly. The mirror must include every default-enabled
 official content plugin:
 
-- `document-skills@zcode-plugins-official`
-- `browser-use@zcode-plugins-official`
-- `skill-creator@zcode-plugins-official`
-- `codez-guide@zcode-plugins-official`
+- `document-skills@codez-plugins-official`
+- `browser-use@codez-plugins-official`
+- `skill-creator@codez-plugins-official`
+- `codez-guide@codez-plugins-official`
 
 Bugfix note: if `codez-guide` is omitted from the services mirror, the plugin may
 still appear enabled in plugin management while its `diagnosing-*` skills are

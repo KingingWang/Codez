@@ -20,12 +20,12 @@ describe("InstalledPluginDetailPanel", () => {
 
     for (const enabled of [true, false]) {
       const plugin: CodezPluginInfo = {
-        id: "superpowers@zcode-plugins-official",
+        id: "superpowers@codez-plugins-official",
         name: "superpowers",
         version: "5.1.0",
         enabled,
         source: "official",
-        marketplace: "zcode-plugins-official",
+        marketplace: "codez-plugins-official",
         // 停用时 CLI 的 skillCount 为 0，但 components 仍完整。
         skillCount: enabled ? 14 : 0,
         skillRootCount: enabled ? 1 : 0,
@@ -138,12 +138,12 @@ describe("InstalledPluginDetailPanel", () => {
   it("renders a details empty state for a plugin that declares no components", () => {
     // 真正无组件的插件给出诚实空态，不留白。
     const plugin: CodezPluginInfo = {
-      id: "empty-plugin@zcode-plugins-official",
+      id: "empty-plugin@codez-plugins-official",
       name: "empty-plugin",
       version: "0.1.0",
       enabled: false,
       source: "cache",
-      marketplace: "zcode-plugins-official",
+      marketplace: "codez-plugins-official",
       skillCount: 0,
       skillRootCount: 0,
       commandRootCount: 0,

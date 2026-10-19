@@ -1,0 +1,66 @@
+// 「MCP 服务」面板的文案（specs/codex-desktop-mcp-settings.md）；
+// 从 messages.ts 拆出以控制单文件行数，键集必须与 zhMcp 对齐。
+export const enMcp = {
+  mcpAdd: "Add MCP server",
+  mcpEdit: "Edit",
+  mcpScopeUser: "Global (all workspaces)",
+  mcpScopeProject: "Project (this workspace)",
+  mcpScopeBuiltin: "Built-in",
+  mcpScopeProjectUntrusted: "Project (not trusted)",
+  mcpProjectUntrustedHelp:
+    "Codex has not trusted this project, so project-level MCP servers are not loaded. Trusting also enables project hooks and exec policies from this workspace.",
+  mcpTrustProject: "Trust this project",
+  mcpFormScope: "Save to",
+  mcpFormScopeHelp:
+    "Global writes the Codex user config.toml; project writes this workspace's .codex/config.toml.",
+  mcpFormName: "Name",
+  mcpFormNameHelp: "Letters, digits, hyphens and underscores only.",
+  mcpFormTransport: "Transport",
+  mcpFormCommand: "Command",
+  mcpFormArgs: "Arguments (one per line)",
+  mcpFormEnv: "Environment variables",
+  mcpFormCwd: "Working directory (optional)",
+  mcpFormUrl: "Server URL",
+  mcpFormHeaders: "HTTP headers",
+  mcpFormBearerEnv: "Bearer token environment variable (optional)",
+  mcpFormBearerEnvHelp:
+    "Codex reads the token from this environment variable at runtime; the token itself is not stored in the config file.",
+  mcpFormStartupTimeout: "Startup timeout (seconds, optional)",
+  mcpFormToolTimeout: "Tool timeout (seconds, optional)",
+  mcpFormAddRow: "Add row",
+  mcpUnmanagedName:
+    "This name contains characters the GUI cannot safely write. Edit it directly in the config file.",
+  mcpBuiltinHelp: "Injected by the app or a higher-priority layer; read-only here.",
+  mcpConfigUnavailable: "Native configuration is unavailable; MCP management is disabled.",
+} as const;
+
+export const zhMcp: Record<keyof typeof enMcp, string> = {
+  mcpAdd: "添加 MCP 服务",
+  mcpEdit: "编辑",
+  mcpScopeUser: "全局（所有工作区）",
+  mcpScopeProject: "项目（当前工作区）",
+  mcpScopeBuiltin: "内置",
+  mcpScopeProjectUntrusted: "项目（未信任）",
+  mcpProjectUntrustedHelp:
+    "Codex 尚未信任该项目，项目级 MCP 服务不会被加载。信任后将同时启用此工作区的项目级 hooks 与执行策略。",
+  mcpTrustProject: "信任此项目",
+  mcpFormScope: "保存位置",
+  mcpFormScopeHelp: "全局写入 Codex 用户 config.toml；项目写入当前工作区的 .codex/config.toml。",
+  mcpFormName: "名称",
+  mcpFormNameHelp: "仅限字母、数字、连字符和下划线。",
+  mcpFormTransport: "传输方式",
+  mcpFormCommand: "命令",
+  mcpFormArgs: "参数（每行一个）",
+  mcpFormEnv: "环境变量",
+  mcpFormCwd: "工作目录（可选）",
+  mcpFormUrl: "服务地址",
+  mcpFormHeaders: "HTTP 请求头",
+  mcpFormBearerEnv: "Bearer 令牌环境变量（可选）",
+  mcpFormBearerEnvHelp: "Codex 运行时从该环境变量读取令牌，令牌本身不写入配置文件。",
+  mcpFormStartupTimeout: "启动超时（秒，可选）",
+  mcpFormToolTimeout: "工具超时（秒，可选）",
+  mcpFormAddRow: "添加一行",
+  mcpUnmanagedName: "该名称包含 GUI 无法安全写入的字符，请直接在配置文件中编辑。",
+  mcpBuiltinHelp: "由应用或更高优先级配置层注入，此处只读。",
+  mcpConfigUnavailable: "原生配置不可用，MCP 管理已停用。",
+} as const;

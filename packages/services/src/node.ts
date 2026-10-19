@@ -25,7 +25,6 @@ import { createGenUiService } from "./gen-ui/node.js";
 import { channelReplyHostRequestSchema, channelReplyResultSchema } from "@codez/shared";
 /* eslint-disable max-lines -- host process 服务注册和启动装配需要集中维护，拆散后会更难追踪依赖注入顺序 */
 // Node.js service implementations — NOT safe to import in browser code
-import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -34,7 +33,8 @@ import {
   NodeModelSelectionConfigRepository,
   PERSONAL_PROVIDER_CONFIG_FILE_NAME,
 } from "@codez/provider-node";
-import { getAppConfigDir as resolveAppConfigDir } from "./paths.js";
+import { getAppConfigDir as resolveAppConfigDir, getCodezDataRootDir } from "./paths.js";
+import { createDesktopBrowserRelay } from "./codez-agent/desktopBrowserRelay.js";
 import {
   createHasExistingLocalTask,
   hasAnyAgentSessionRow,
@@ -43,6 +43,9 @@ import {
 import {
   buildLocalMediaPreviewUrl,
   type DynamicWorkflowMode,
+  codexConfigResponseSchema,
+  codexModelsResponseSchema,
+  isProviderProvisioningAccountCredentialKey,
   type ProviderProvisioningTrigger,
 } from "@codez/shared";
 
@@ -124,6 +127,7 @@ export {
 export { createGitService } from "./git/gitService.js";
 export { GitCommitMessageGenerator } from "./git/gitCommitMessageGenerator.js";
 export { createGitCheckpointService } from "./git/gitCheckpointService.js";
+export { createCodexDesktopFileRewindService } from "./desktop-file-rewindService.js";
 export { createSystemService } from "./system/systemService.js";
 export { listSSHConfigAliasesFromLocalConfig } from "./system/sshConfigAlias.js";
 export { createTerminalService } from "./terminal/terminalService.js";
@@ -135,6 +139,11 @@ export { createCredentialService } from "./credential/credentialService.js";
 export { createBroadcastService } from "./broadcast/broadcastService.js";
 export { createCodezAgentService } from "./codez-agent/codezAgentService.js";
 export { createCodezTaskServiceAdapter } from "./codez-agent/codezTaskServiceAdapter.js";
+export {
+  isCodexScheduledPromptCapabilitySupported,
+  resolveCodexAutomationHistory,
+  type CodexAutomationHistoryResolution,
+} from "./codez-agent/codexAutomationAdapter.js";
 export { createCodezSessionService } from "./codez-session/codezSessionService.js";
 export {
   resolveDefaultCodezAgentCommand,
@@ -165,6 +174,7 @@ export {
   createCanonicalCuaHelperInstaller,
   normalizeCuaHelperArch,
   normalizeCuaHelperArchs,
+  resolveCuaPermissionUnavailableErrorKind,
 } from "./cua-permission-broker/cuaHelperInstaller.js";
 export type {
   CuaHelperInstaller,
@@ -211,6 +221,10 @@ export {
   EmptyAccountProviderConfigSource,
   ProviderRuntime,
 } from "./model-provider/providerRuntime.js";
+export {
+  createCodexModelSelectionService,
+  type CodexModelSelectionService,
+} from "./model-provider/codexModelSelectionService.js";
 export type {
   ProviderRuntimeDependencies,
   ProviderRuntimeOptions,
@@ -218,6 +232,7 @@ export type {
 export {
   createProviderProvisioningSource,
   listProviderProvisioningCredentialKeys,
+  providerRuntimeApiKeyCredentialKey,
   resolveCredentialFilePath,
   type ProviderProvisioningSource,
   type ProviderProvisioningSourceOptions,
@@ -226,6 +241,16 @@ export {
   createProviderProvisioningTarget,
   type ProviderProvisioningTargetOptions,
 } from "./model-provider/providerProvisioningTarget.js";
+export {
+  CODEX_NATIVE_PROVIDER_LOCAL_ENVIRONMENT_KEY,
+  codexNativeProviderKeyCredentialKey,
+  codexNativeProviderKeyEnvName,
+  createCodexNativeProviderKeyService,
+  readCodexNativeProviderKeyEntries,
+  type CodexNativeProviderKeyServiceOptions,
+  type CodexNativeProviderSpawnEnv,
+} from "./model-provider/codexNativeProviderKey.js";
+export { ICodexNativeProviderKeyService } from "./model-provider/codexNativeProviderKeyService.js";
 export {
   createModelSelectionService,
   createProviderSettingsService,
@@ -319,6 +344,13 @@ export {
   computeRetryAt,
 } from "./session/automationRepo.js";
 export { AutomationService, InvalidCronExprError } from "./session/automationService.js";
+// Codex 原生定时任务与 scheduler 共用终态判定；仓储实现保持内部封装。
+export {
+  CODEX_AUTOMATION_CORRELATION_STATES,
+  isTerminalCodexAutomationCorrelationState,
+  type CodexAutomationCorrelationState,
+  type CodexAutomationCorrelation,
+} from "./session/codexAutomationCorrelation.js";
 // 闲时任务与 automation 同库不同表；类型/常量全独立。
 export { OffPeakTaskRepo, OFF_PEAK_CLAIM_STALE_MS } from "./session/offPeakTaskRepo.js";
 // host 域终态回填 files_changed 复用现有 task diff 汇总。
@@ -384,6 +416,7 @@ import {
   conversationShareConnectionScopeFactory,
 } from "./conversation-share/conversationShareService.js";
 import { createLocalConversationShareArtifactSource } from "./conversation-share/conversationShareArtifactSource.js";
+import { SharedContextContentCopyError } from "./conversation-share/codexSharedContextContentCopy.js";
 import { ConversationShareHttpClient } from "./conversation-share/conversationShareHttpClient.js";
 import { IBotsService } from "./bots/bots.js";
 import { IFileWatcherService } from "./fileWatcher/fileWatcher.js";
@@ -412,6 +445,8 @@ import type { WorkspaceFileSearchFilter } from "./file/workspaceFileMentionFilte
 import { createGitService } from "./git/gitService.js";
 import { GitCommitMessageGenerator } from "./git/gitCommitMessageGenerator.js";
 import { createGitCheckpointService } from "./git/gitCheckpointService.js";
+import { ICodexDesktopFileRewindService } from "./desktop-file-rewind.js";
+import { createCodexDesktopFileRewindService } from "./desktop-file-rewindService.js";
 import { createSystemService } from "./system/systemService.js";
 import { createTerminalService } from "./terminal/terminalService.js";
 import {
@@ -424,6 +459,8 @@ import { createObservableSettingService } from "./setting/observableSettingServi
 import { createCredentialService } from "./credential/credentialService.js";
 import { createBroadcastService } from "./broadcast/broadcastService.js";
 import { createCodezAgentService } from "./codez-agent/codezAgentService.js";
+import { resolveDefaultCodezAgentCommand } from "./codez-agent/codezAgentProcessManager.js";
+import { usesCodexBridgeRuntime } from "./codez-agent/codexBridgeCommand.js";
 import type { CodezAgentCommandResolver } from "./codez-agent/codezAgentProcessManager.js";
 import { buildAgentTelemetrySpawnEnv } from "./codez-agent/agentTelemetryEnv.js";
 import { resolveCodezAgentPresentationSurface } from "./codez-agent/codezAgentPresentationSurface.js";
@@ -470,6 +507,7 @@ import {
   createProviderRuntimeFromConfigRuntime,
   type ProviderRuntime,
 } from "./model-provider/providerRuntime.js";
+import { createCodexModelSelectionService } from "./model-provider/codexModelSelectionService.js";
 import {
   IModelSelectionService,
   IProviderSettingsService,
@@ -479,11 +517,21 @@ import {
   createProviderProvisioningSource,
   listProviderProvisioningCredentialKeys,
   PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS,
+  providerRuntimeApiKeyCredentialKey,
   resolveCredentialFilePath,
   type ProviderProvisioningSource,
 } from "./model-provider/providerProvisioningSource.js";
 import { createProviderProvisioningTarget } from "./model-provider/providerProvisioningTarget.js";
 import { IProviderProvisioningTargetService } from "./model-provider/providerProvisioning.js";
+import { saveProviderApiKeySource } from "./model-provider/providerKeySourceService.js";
+import {
+  CODEX_NATIVE_PROVIDER_LOCAL_ENVIRONMENT_KEY,
+  codexNativeProviderSpawnEnvFromInstalled,
+  createCodexNativeProviderKeyService,
+  filterCodexNativeKeysByConfigFile,
+  resolveCodexNativeProviderSpawnEnv,
+} from "./model-provider/codexNativeProviderKey.js";
+import { ICodexNativeProviderKeyService } from "./model-provider/codexNativeProviderKeyService.js";
 import { buildOffPeakModelSelectionView } from "./model-provider/offPeakModelSelectionView.js";
 import { resolveClientConfigPlatform } from "./runtime-tools/clientPlatform.js";
 import {
@@ -511,6 +559,7 @@ import type { PluginSandboxHandle, PluginSandboxRegisterInput } from "@codez/sha
 import { createPluginSyncService } from "./plugin-sync/pluginSyncService.js";
 import { createPluginsService } from "./plugins/pluginsService.js";
 import { createPluginManagementService } from "./plugins/pluginManagementService.js";
+import { syncCodexNativeCuaSkill } from "./plugins/codexNativeCuaSkill.js";
 import { createSubagentsService } from "./subagents/subagentsService.js";
 import { createCommandsService } from "./commands/commandsService.js";
 import { createHooksService } from "./hooks/hooksService.js";
@@ -537,7 +586,6 @@ import {
   buildAgentRuntimeEnv,
 } from "./runtime-tools/agentProxyEnv.js";
 import { ensureAppCaCert } from "./runtime-tools/appCaCert.js";
-import { buildHelperOpenArgs, isCuaLocalDevelopmentRuntime } from "@codez/codez-cua/broker/server";
 import { createServiceLogger, type ServiceLogger } from "#src/logger/serviceLogger.js";
 import { IOffPeakTaskService } from "./session/offPeakTask.js";
 import type { HighspeedMockScenario } from "@codez/shared";
@@ -563,25 +611,36 @@ import {
   resolveOfficialMcpCredentials,
 } from "./official-mcp/officialMcpCredentials.js";
 import {
+  CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY,
+  CODEZ_CODEX_BLOCKED_PROVIDER_IDS_ENV_KEY,
   createOfficialMcpTrustedOriginRegistry,
   OFFICIAL_MCP_DEV_TRUSTED_ORIGINS_ENV,
 } from "@codez/shared";
 import {
+  BROKER_GENERATION_ENV,
   BROKER_SOCKET_ENV,
   BROKER_UNAVAILABLE_ENV,
+  clearCuaProductHelperAgentEnvUnavailable,
   createCuaPipSessionService,
   createCuaProductMcpServerResolver,
   createProductCuaHelperHost,
   CuaHelperLifecycleManager,
+  CuaProductHelperWorkspaceRegistry,
+  hasCuaProductHelperAgentEnvUnavailable,
   ICuaPermissionService,
   ICuaPipSessionService,
+  isCuaHelperError,
+  isCuaLocalDevelopmentRuntime,
   isOfficialCuaPluginEnabledForWorkspace,
   isPotentialCodezCuaAgentMcpServer,
   isScreenCaptureProbeSuccess,
+  markCuaProductHelperAgentEnvUnavailable,
+  queryHelperScreenRecordingPreflightViaLaunchServices,
   reapOrphanedHelpers,
-  resolveStandaloneStatusLaunchAppPath,
   shouldRunCuaScreenCaptureProbe,
+  waitForCuaHelperStartup,
   type CuaHelperHost,
+  type CuaHelperTransportHandle,
   type CuaHelperTransportRestartOptions,
   type CuaHelperTransportRestartResult,
   type ManagedCuaProductHelperHost,
@@ -589,23 +648,28 @@ import {
   type CuaProductMcpServerResolverContext,
   type CuaPermissionRestartOptions,
   type CuaPermissionRestartResult,
-  type CuaPermissionState,
   type CuaPermissionStatusQueryOptions,
   type CuaPermissionStatusResult,
 } from "#src/cua-permission-broker/index.js";
 import {
-  resolveWindowsCuaRuntime,
+  resolveCuaNodeRuntime,
   WindowsCuaDevRuntimeResolutionError,
+  type CuaNodeRuntime,
   type WindowsCuaRuntime,
 } from "#src/cua-permission-broker/windowsCuaDevRuntime.js";
-import { createCanonicalCuaHelperInstaller } from "./cua-permission-broker/cuaHelperInstaller.js";
-import { WindowsCuaHelperHost } from "#src/cua-permission-broker/windowsCuaDevHelperHost.js";
 import {
-  getStableCuaPipeName,
-  resolveStableCuaWinRecipe,
-} from "#src/cua-permission-broker/stableCuaTransport.js";
+  createCanonicalCuaHelperInstaller,
+  resolveCuaPermissionUnavailableErrorKind,
+} from "./cua-permission-broker/cuaHelperInstaller.js";
+import { WindowsCuaHelperHost } from "#src/cua-permission-broker/windowsCuaDevHelperHost.js";
 import { HELPER_APP_NAME } from "@codez/codez-cua/broker/helperConstants";
-import { resolveBrokerSocketPath } from "@codez/codez-cua/broker/socketPath";
+import {
+  CUA_CREDENTIAL_GRANT_FILE_ENV,
+  attachCuaCredentialGrantPublisher,
+  createCuaCredentialGrantPublisher,
+  resolveCuaCredentialGrantRootDirectory,
+  type CuaCredentialGrantPublisher,
+} from "./codez-agent/cuaCredentialGrantPublisher.js";
 import {
   DEFAULT_CODEZ_MODEL_CONTEXT_BUDGET_STRATEGY,
   CODEZ_JWT_INVALID_BROADCAST_CHANNEL,
@@ -624,17 +688,27 @@ import {
   isCodezCuaMcpCommand,
   isCodezCuaMcpPackageArg,
   isCodezCuaInternalFeatureEnabled,
+  CODEZ_CUA_PRODUCT_HELPER_ENV_KEY,
   CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY,
   type CodezAutomation,
   type CodezAutomationRun,
   getCapturedCodezAgentTelemetryEnv,
   CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_CUA_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
+  CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE,
+  CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY,
   ZAI_PROVIDER_ID,
   codezAccountAccessSchema,
   codezProviderAccountAccessSchema,
   CODEZ_VERSION,
   CODEZ_ENV,
   buildRuntimeCodezApiUrl,
+  isRemoteWorkspaceIdentity,
 } from "@codez/shared";
 
 // 这些 conversation-share 实现依赖 Node 文件系统；仅通过 @codez/services/node 暴露，
@@ -654,21 +728,60 @@ interface ServiceWithDisposeAllAndWait {
   disposeAllAndWait: () => Promise<void>;
 }
 
+const CUA_PRODUCT_HELPER_AGENT_ENV_RETRY_MS = 30_000;
 // Bug A: the Helper's first cold launch (large Node SEA + first-time Gatekeeper/notarization
 // assessment) routinely exceeds the old 5s health budget; warm it is <1s. Give the cold path
 // plenty of headroom.
 const CUA_HELPER_HEALTH_TIMEOUT_MS = 30_000;
+const CUA_PRODUCT_HELPER_SPAWN_READY_DEADLINE_MS = 1_000;
 
 type DefaultCuaProductHelper = {
   host: ManagedCuaProductHelperHost;
   macPermissionHost?: CuaHelperHost;
   resolver: CuaProductMcpServerResolver;
+  credentialGrantPublisher?: CuaCredentialGrantPublisher;
 };
 
 type ManagedDefaultCuaProductHelper = {
   helper: DefaultCuaProductHelper;
   seedContext?: CuaProductMcpServerResolverContext;
+  credentialGrantPublisher: CuaCredentialGrantPublisher;
 };
+
+const cuaProductHelperAgentEnvRetryAt = new WeakMap<Pick<CuaHelperHost, "start">, number>();
+const cuaProductHelperTrackedStart = new WeakMap<Pick<CuaHelperHost, "start">, Promise<unknown>>();
+const cuaProductHelperReservedSpawns = new WeakSet<Pick<CuaHelperHost, "start">>();
+const cuaProductHelperTransportSpawns = new WeakSet<Pick<CuaHelperHost, "start">>();
+
+function trackCuaProductHelperStartup(
+  host: Pick<CuaHelperHost, "start">,
+  startup: Promise<unknown>,
+): void {
+  if (cuaProductHelperTrackedStart.get(host) === startup) return;
+  cuaProductHelperTrackedStart.set(host, startup);
+  void startup.then(
+    () => {
+      cuaProductHelperAgentEnvRetryAt.delete(host);
+      cuaProductHelperReservedSpawns.delete(host);
+      cuaProductHelperTransportSpawns.delete(host);
+      if (cuaProductHelperTrackedStart.get(host) === startup) {
+        cuaProductHelperTrackedStart.delete(host);
+      }
+    },
+    () => {
+      cuaProductHelperAgentEnvRetryAt.set(host, Date.now() + CUA_PRODUCT_HELPER_AGENT_ENV_RETRY_MS);
+      if (cuaProductHelperReservedSpawns.delete(host)) {
+        markCuaProductHelperAgentEnvUnavailable(host);
+      }
+      if (cuaProductHelperTransportSpawns.delete(host)) {
+        markCuaProductHelperAgentEnvUnavailable(host);
+      }
+      if (cuaProductHelperTrackedStart.get(host) === startup) {
+        cuaProductHelperTrackedStart.delete(host);
+      }
+    },
+  );
+}
 
 function hasDisposeAll(instance: unknown): instance is ServiceWithDisposeAll {
   return (
@@ -697,7 +810,18 @@ interface ManagedCuaHelperHostDispose {
 // 的 WeakMap 侧表登记，dispose 时统一终止（best-effort，不阻断其它资源回收）。
 const managedCuaHelperHosts = new WeakMap<ServiceCollection, ManagedCuaHelperHostDispose>();
 const providerRuntimes = new WeakMap<ServiceCollection, ProviderRuntime>();
+const codexModelSelectionServices = new WeakMap<ServiceCollection, IModelSelectionService>();
+
+/** legacy Provider Runtime 自行 dispose；仅 Codex 适配服务需要额外汇总释放。 */
+function disposeHostModelSelectionService(services: ServiceCollection): void {
+  const service = codexModelSelectionServices.get(services);
+  if (!service || service === providerRuntimes.get(services)?.modelSelection) return;
+  (service as { dispose?: () => void }).dispose?.();
+  codexModelSelectionServices.delete(services);
+}
 const providerProvisioningSources = new WeakMap<ServiceCollection, ProviderProvisioningSource>();
+// messageStreamShowTodos 变更触发的活动 workspace runtime 重造订阅；随服务集合释放。
+const settingsRuntimeRestartDisposers = new WeakMap<ServiceCollection, (() => void)[]>();
 const providerProvisioningTriggerDisposers = new WeakMap<
   ServiceCollection,
   readonly (() => void)[]
@@ -710,9 +834,11 @@ const taskAutoArchiveDisposers = new WeakMap<ServiceCollection, () => void>();
 // 与其它侧表一样按 ServiceCollection 登记并在 dispose 时统一 close。
 const sharedSqliteRepos = new WeakMap<ServiceCollection, ReadonlyArray<{ close(): void }>>();
 const accountRequestAuthServices = new WeakMap<ServiceCollection, IAccountRequestAuthService>();
-export type OffPeakRequestAuthBuilder = (
-  ticketId: string,
-) => Promise<{ apiKey: string; headers: Record<string, string>; accountScope?: string }>;
+export type OffPeakRequestAuthBuilder = (ticketId: string) => Promise<{
+  apiKey: string;
+  headers: Record<string, string>;
+  accountScope?: string;
+}>;
 const offPeakRequestAuthBuilders = new WeakMap<ServiceCollection, OffPeakRequestAuthBuilder>();
 
 /** Local Host 进程内能力；不会随 ServiceCollection 暴露到通用 RPC Channel。 */
@@ -757,12 +883,14 @@ export function shouldEnableDefaultCuaProductHelper(
     env?: NodeJS.ProcessEnv;
   } = {},
 ): boolean {
-  // CUA 已随正式版默认开启（isCodezCuaInternalFeatureEnabled 默认 ON，仅显式 0/false/off 关闭；2026-08 注释更正——旧注释称默认关闭已过期）。显式开启后 macOS 使用既有产品 Helper，Windows 使用安装包内 runtime；
-  // 两端都保持按需启动。关闭时不创建 host、不探测资源、不产生子进程或权限提示。
+  // 这里只判断打包资源/平台是否可用；workspace 启用 admission 由
+  // isCuaEnabledForContext + shouldCreateDefaultCuaProductHelper 单点持有。复用 internal gate
+  // 会让配置中已开启的正式插件因环境变量缺省而永远拿不到 Helper。
   const env = options.env ?? process.env;
-  if (!isCodezCuaInternalFeatureEnabled(env)) return false;
+  const explicit = env[CODEZ_CUA_PRODUCT_HELPER_ENV_KEY]?.trim().toLowerCase();
+  if (explicit === "0" || explicit === "false" || explicit === "off") return false;
   const platform = options.platform ?? process.platform;
-  return platform === "darwin" || platform === "win32";
+  return platform === "darwin" || platform === "linux" || platform === "win32";
 }
 
 /**
@@ -900,13 +1028,15 @@ type CreateDefaultCuaProductHelperOptions = {
   resourcesPath?: string;
   arch?: NodeJS.Architecture;
   electronVersion?: string;
+  resolveNodeRuntime?: () => Promise<CuaNodeRuntime>;
   resolveWindowsRuntime?: () => Promise<WindowsCuaRuntime>;
   createMacHost?: () => CuaHelperHost;
+  createNodeHost?: (runtime: CuaNodeRuntime) => ManagedCuaProductHelperHost;
   createWindowsHost?: (runtime: WindowsCuaRuntime) => ManagedCuaProductHelperHost;
 };
 
 /**
- * Windows 侧 Helper 宿主的懒解析包装：把「解析安装包运行时」推迟到首次 start()/checkHealth()，
+ * Windows/Linux Helper 宿主的懒解析包装：把「解析安装包运行时」推迟到首次 start()/checkHealth()，
  * 并把解析结果缓存（含 rejection）。
  *
  * resolveWindowsCuaRuntime 可能因 missing-native-addon、artifact-integrity-mismatch、
@@ -915,7 +1045,7 @@ type CreateDefaultCuaProductHelperOptions = {
  * error 日志，且因为 rejection 被缓存、日志挂在同一条 promise 链上，重复 start() 不会刷屏。
  * 载荷只有 reason/artifact/errorName/message：解析发生在 mint token 与命名管道之前，天然不含密钥。
  */
-export function createWindowsCuaHelperHost(options: {
+export function createCuaNodeHelperHost(options: {
   resolveRuntime: () => Promise<WindowsCuaRuntime>;
   createHost: (runtime: WindowsCuaRuntime) => ManagedCuaProductHelperHost;
   logger?: ServiceLogger;
@@ -930,7 +1060,7 @@ export function createWindowsCuaHelperHost(options: {
     const resolutionError =
       error instanceof WindowsCuaDevRuntimeResolutionError ? error : undefined;
     const artifact = resolutionError?.artifact;
-    options.logger.error(undefined, "Windows CUA Helper runtime resolution failed", {
+    options.logger.error(undefined, "CUA Node Helper runtime resolution failed", {
       reason: resolutionError?.reason ?? "unknown",
       ...(artifact ? { artifact } : {}),
       errorName: error instanceof Error ? error.name : typeof error,
@@ -939,7 +1069,7 @@ export function createWindowsCuaHelperHost(options: {
   };
   const assertActive = (epoch: number): void => {
     if (stopped || epoch !== lifecycleEpoch) {
-      throw new Error("Windows Computer Use Helper startup stopped");
+      throw new Error("Computer Use Helper startup stopped");
     }
   };
   const getHost = async (epoch: number): Promise<ManagedCuaProductHelperHost> => {
@@ -980,8 +1110,14 @@ export function createWindowsCuaHelperHost(options: {
     get socketPath() {
       return host?.socketPath ?? null;
     },
+    get pipSocketPath() {
+      return host?.pipSocketPath ?? null;
+    },
     get pluginAuthority() {
       return host?.pluginAuthority ?? null;
+    },
+    get generation() {
+      return host?.generation;
     },
     async start() {
       return withActiveHost((activeHost) => activeHost.start());
@@ -995,7 +1131,9 @@ export function createWindowsCuaHelperHost(options: {
           // 兼容旧注入 Host：没有两阶段接口时，完整 start handle 就是唯一可用 tuple。
           return activeHost.start().then((handle) => ({
             socketPath: handle.socketPath,
+            pipSocketPath: handle.pipSocketPath,
             pluginAuthority: handle.pluginAuthority,
+            generation: handle.generation,
           }));
         }
         return activeHost.waitForTransport(timeoutMs);
@@ -1015,7 +1153,7 @@ export function createWindowsCuaHelperHost(options: {
           return activeHost.restartAfterCurrentStartPreservingTransport(restartOptions);
         }
         // 兼容旧注入 Host：wrapper 一旦暴露 preserving 接口，就必须代为提交 fresh-start
-        // marker；否则 producer 会在新 tuple 已启动后判定 fail-closed 契约被破坏。
+        // marker；否则开放 Helper 会在新 tuple 已启动后判定 fail-closed 契约被破坏。
         restartOptions?.beforeFreshStart?.();
         return activeHost.restartAfterCurrentStart().then((handle) => ({ handle, reused: false }));
       });
@@ -1033,6 +1171,13 @@ export function createWindowsCuaHelperHost(options: {
       return stopDrain;
     },
   };
+}
+
+/** Compatibility wrapper for existing Windows-only callers. */
+export function createWindowsCuaHelperHost(
+  options: Parameters<typeof createCuaNodeHelperHost>[0],
+): ManagedCuaProductHelperHost {
+  return createCuaNodeHelperHost(options);
 }
 
 export function createDefaultCuaProductHelper(
@@ -1066,10 +1211,12 @@ export function createDefaultCuaProductHelper(
       options.createMacHost?.() ??
       createProductCuaHelperHost({
         logger,
-        env: process.env,
+        // 根因：使用全局 process.env 会让 host 与本次 Local Host 的冻结环境分叉，
+        // 预检/安装器可能因此选择另一套开发或产品策略。
+        env,
         helperInstaller: createCanonicalCuaHelperInstaller({
           logger,
-          env: process.env,
+          env,
           bundledAppPath: bundledHelperAppPath,
         }),
         // 冲突解决原则：macOS 继续严格消费应用内置 Helper，不能退回下载源；
@@ -1077,16 +1224,23 @@ export function createDefaultCuaProductHelper(
         bundledHelperAppPath,
         // tolerate the Helper's cold first-launch instead of the 5s default.
         healthTimeoutMs: CUA_HELPER_HEALTH_TIMEOUT_MS,
-        // producer product factory 统一固定 ghost cursor/PiP=true、background=false。
-        // consumer 不再传伪动态 getter，避免两个仓库各保存一份产品策略。
+        // 根因：本地 unsigned dev 模式下，ad-hoc 签名的 Helper 没有 Developer ID TeamIdentifier，
+        // 通过 LaunchServices (/usr/bin/open) 冷启的独立进程无法继承宿主进程已获得的 TCC 录屏授权，
+        // 会永远返回 denied 并把常驻 Helper 真实的 ScreenCaptureKit 截图成功状态覆盖掉。
+        queryScreenRecordingPreflight: isCuaLocalDevelopmentRuntime(env)
+          ? undefined
+          : queryHelperScreenRecordingPreflightViaLaunchServices,
+        // 开放 Helper 的产品策略在本仓固定为启用 PiP、禁用后台控制；调用方不再传伪动态
+        // getter，避免 services 与 Helper runtime 各保存一份策略。
       });
     host = macPermissionHost;
   } else {
-    host = createWindowsCuaHelperHost({
+    host = createCuaNodeHelperHost({
       resolveRuntime:
-        options.resolveWindowsRuntime ??
+        options.resolveNodeRuntime ??
+        (platform === "win32" ? options.resolveWindowsRuntime : undefined) ??
         (() =>
-          resolveWindowsCuaRuntime({
+          resolveCuaNodeRuntime({
             platform,
             env,
             resourcesPath: options.resourcesPath,
@@ -1094,12 +1248,12 @@ export function createDefaultCuaProductHelper(
             electronVersion: options.electronVersion,
           })),
       createHost:
-        options.createWindowsHost ??
+        options.createNodeHost ??
+        (platform === "win32" ? options.createWindowsHost : undefined) ??
         ((runtime) =>
           new WindowsCuaHelperHost({
             runtime,
             logger,
-            mintSocketPath: () => getStableCuaPipeName(),
           })),
       logger,
     });
@@ -1169,6 +1323,129 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function buildCuaBrokerCredentialEnv(
+  transport: Pick<CuaHelperTransportHandle, "socketPath" | "pluginAuthority" | "generation">,
+): Record<string, string> {
+  return {
+    [BROKER_SOCKET_ENV]: transport.socketPath,
+    [CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]: transport.pluginAuthority,
+    [BROKER_GENERATION_ENV]: String(transport.generation ?? 0),
+  };
+}
+
+export async function buildCuaProductHelperAgentEnv(
+  host:
+    | (Pick<CuaHelperHost, "start"> &
+        Partial<
+          Pick<CuaHelperHost, "running" | "checkHealth" | "reservedTransport"> & {
+            waitForTransport(timeoutMs?: number): Promise<CuaHelperTransportHandle>;
+          }
+        >)
+    | undefined,
+  logger = createServiceLogger("cua-product-helper"),
+): Promise<Record<string, string>> {
+  if (!host) return {};
+  if (hasCuaProductHelperAgentEnvUnavailable(host)) {
+    if (host.running && host.checkHealth) {
+      try {
+        await host.checkHealth(CUA_PRODUCT_HELPER_SPAWN_READY_DEADLINE_MS);
+        clearCuaProductHelperAgentEnvUnavailable(host);
+      } catch {
+        // helper 仍在恢复（冷启动 / 轮换在途）——不阻塞，交给下一次 demand boundary。
+      }
+    }
+    if (hasCuaProductHelperAgentEnvUnavailable(host)) {
+      return {
+        [BROKER_UNAVAILABLE_ENV]:
+          "broker_unavailable: recovered Helper credentials are waiting for a future spawn",
+      };
+    }
+  }
+  const retryAt = cuaProductHelperAgentEnvRetryAt.get(host);
+  try {
+    if (host.running && host.checkHealth) {
+      await host.checkHealth(1000);
+      cuaProductHelperAgentEnvRetryAt.delete(host);
+      if (hasCuaProductHelperAgentEnvUnavailable(host)) {
+        return {
+          [BROKER_UNAVAILABLE_ENV]:
+            "broker_unavailable: recovered Helper credentials are waiting for a future spawn",
+        };
+      }
+    } else if (retryAt && Date.now() < retryAt) {
+      return {
+        [BROKER_UNAVAILABLE_ENV]: "broker_unavailable: helper startup retry is deferred",
+      };
+    }
+    const startup = host.start();
+    trackCuaProductHelperStartup(host, startup);
+    if (host.waitForTransport) {
+      const transport = await waitForCuaHelperStartup(
+        host.waitForTransport(CUA_PRODUCT_HELPER_SPAWN_READY_DEADLINE_MS),
+        CUA_PRODUCT_HELPER_SPAWN_READY_DEADLINE_MS,
+      );
+      if (hasCuaProductHelperAgentEnvUnavailable(host)) {
+        return {
+          [BROKER_UNAVAILABLE_ENV]:
+            "broker_unavailable: recovered Helper credentials are waiting for a future spawn",
+        };
+      }
+      cuaProductHelperTransportSpawns.add(host);
+      cuaProductHelperAgentEnvRetryAt.delete(host);
+      return buildCuaBrokerCredentialEnv(transport);
+    }
+    const reserved = host.reservedTransport;
+    if (reserved && !hasCuaProductHelperAgentEnvUnavailable(host)) {
+      cuaProductHelperReservedSpawns.add(host);
+      cuaProductHelperAgentEnvRetryAt.delete(host);
+      return buildCuaBrokerCredentialEnv(reserved);
+    }
+    const handle = await waitForCuaHelperStartup(
+      startup,
+      CUA_PRODUCT_HELPER_SPAWN_READY_DEADLINE_MS,
+    );
+    if (hasCuaProductHelperAgentEnvUnavailable(host)) {
+      return {
+        [BROKER_UNAVAILABLE_ENV]:
+          "broker_unavailable: recovered Helper credentials are waiting for a future spawn",
+      };
+    }
+    cuaProductHelperAgentEnvRetryAt.delete(host);
+    return buildCuaBrokerCredentialEnv(handle);
+  } catch (error) {
+    const isCallerTimeout = isCuaHelperError(error) && error.code === "caller_timeout";
+    if (isCallerTimeout) {
+      const reserved = host.reservedTransport;
+      if (reserved && !hasCuaProductHelperAgentEnvUnavailable(host)) {
+        cuaProductHelperReservedSpawns.add(host);
+        cuaProductHelperAgentEnvRetryAt.delete(host);
+        return buildCuaBrokerCredentialEnv(reserved);
+      }
+    }
+    markCuaProductHelperAgentEnvUnavailable(host);
+    if (!isCallerTimeout) {
+      cuaProductHelperAgentEnvRetryAt.set(host, Date.now() + CUA_PRODUCT_HELPER_AGENT_ENV_RETRY_MS);
+    }
+    logger.warn(
+      undefined,
+      `Computer Use Helper broker_unavailable; disabling workspace codez-cua MCP server for this agent spawn (${cuaHelperStartErrorDetail(error)})`,
+    );
+    return {
+      [BROKER_UNAVAILABLE_ENV]: isCallerTimeout
+        ? "broker_unavailable: helper broker warming up"
+        : `broker_unavailable: ${cuaHelperStartErrorDetail(error)}`,
+    };
+  }
+}
+
+function cuaHelperStartErrorDetail(error: unknown): string {
+  return isCuaHelperError(error)
+    ? `${error.code}: ${error.message}`
+    : error instanceof Error
+      ? error.message
+      : String(error);
+}
+
 /**
  * 创建包含所有本地服务的 ServiceCollection
  *
@@ -1231,6 +1508,22 @@ export function createLocalServices(options: {
   codezAgentCommandResolver?: CodezAgentCommandResolver;
   /** Desktop Main 提前异步采集的本机 runtime 环境；Local Host 注入后不再同步启动 login shell。 */
   runtimeProcessEnvPatch?: Record<string, string>;
+  /** Desktop Main 提供的稳定 Browser/CUA native MCP availability facts。 */
+  nativeBrowserCua?: {
+    browserAvailable: boolean;
+    cuaAvailable: boolean;
+  };
+  /** Main 当前窗口授予的临时 MCP 清单；仅用于本地默认 Codex bridge。 */
+  desktopCodexMcpServers?: import("@codez/shared").DesktopCodexMcpServer[];
+  /**
+   * 桌面浏览器 MCP 的运行时持有器（spec: codex-desktop-native-browser-cua「Global enable
+   * toggle」）：Main 推送的清单/可用性事实会即时更新，优先于 InitLocal 快照；
+   * resolveSpawnEnv 每次 spawn 现读，保证开关切换后下一次 spawn 不再使用旧注册。
+   */
+  desktopBrowserMcpStateSource?: () => {
+    servers: readonly import("@codez/shared").DesktopCodexMcpServer[];
+    nativeBrowserCua?: { browserAvailable: boolean; cuaAvailable: boolean };
+  };
   /** 本地桌面上次 workspace 缺失时，仅用于 Agent 子进程 spawn.cwd 兜底。 */
   codezAgentSpawnFallbackCwd?: string;
   /** desktop-attached remote server 从 Desktop Host 收到的一次性 Agent 网络配置。 */
@@ -1258,6 +1551,9 @@ export function createLocalServices(options: {
     "connectHost" | "readConnectionStates"
   >;
   cuaProductMcpServerResolver?: CuaProductMcpServerResolver;
+  createDefaultCuaProductHelper?: (
+    options: CreateDefaultCuaProductHelperOptions,
+  ) => DefaultCuaProductHelper | undefined;
   agentTelemetry?: {
     getDeviceMid?: () => string | undefined;
     runtimeSurface?: "desktop_local_host" | "remote_workspace_host";
@@ -1294,6 +1590,11 @@ export function createLocalServices(options: {
   cuaOperationStateReporter?: CuaOperationStateReporter;
 }): ServiceCollection {
   const isDesktopAttachedRemote = options?.serviceAuthorityMode === "desktop-attached-remote";
+  // 远端 relay：仅 desktop-attached-remote 装配；窗口 Host 经 RPC 授予/撤销能力，
+  // 本地与独立 server 永远不创建（spec: codex-desktop-native-browser-cua「Remote workspace relay」）。
+  const desktopBrowserRelay = isDesktopAttachedRemote
+    ? createDesktopBrowserRelay({ dataDirectory: getCodezDataRootDir() })
+    : undefined;
   // host / remote server 以前直接沿用当前进程环境启动后续服务。
   // GUI 启动的 desktop、SSH/WSL/Docker 拉起的 remote server 往往拿不到用户 login shell 里的 PATH，
   // 导致 bun 这类只在 shell profile 里追加的命令在 Codez Agent/终端里不可见。
@@ -1309,6 +1610,19 @@ export function createLocalServices(options: {
       : desktopContextPromptEnabledRaw === "0"
         ? false
         : undefined;
+  const presentationSurface = resolveCodezAgentPresentationSurface({
+    runtimeSurface: options?.agentTelemetry?.runtimeSurface,
+    serviceAuthorityMode: options?.serviceAuthorityMode,
+    desktopContextPromptEnabled,
+  });
+  const usesDefaultCodexDesktopBridge = usesCodexBridgeRuntime({
+    desktopDefault: !isDesktopAttachedRemote && presentationSurface === "desktop",
+    customCommandResolver: Boolean(
+      options.codezAgentCommandResolver &&
+      options.codezAgentCommandResolver !== resolveDefaultCodezAgentCommand,
+    ),
+  });
+  const nativeBrowserCua = options?.nativeBrowserCua;
 
   // app 自签 CA：首次启动生成一份根 CA（幂等），供 agent 子进程经 NODE_EXTRA_CA_CERTS 信任、
   // 出口代理用其私钥重签。生成失败不应阻断启动（例如只读文件系统），仅记录日志后继续。
@@ -1339,6 +1653,13 @@ export function createLocalServices(options: {
       }
     },
   });
+  // 临时模型 Key 由目标 Host 进程独占；Main、Renderer 和远端 Credential Store 均不持有。
+  const installedRuntimeApiKeys = new Map<string, string>();
+  // Codex 原生自定义供应商的本机临时 Key（spec: codex-provider-runtime-env-key）：
+  // 远端 Host 只保存 Window Host 逐连接安装到内存的 envName→value；断线/进程退出即消失。
+  // rotationActive 期间全部托管供应商 fail-closed，直到 install 携带最新事实解除。
+  const installedCodexNativeKeys = new Map<string, { providerId: string; value: string | null }>();
+  let codexNativeKeyRotationActive = false;
   const accountProviderCredentialStore = createAccountProviderCredentialStore({
     credentialService,
   });
@@ -1369,7 +1690,9 @@ export function createLocalServices(options: {
     resolveCodezEndpointOrigin: resolveCurrentCodezEndpointOrigin,
     resolveClientLanguage: options?.resolveClientLanguage,
   });
-  const systemService = createSystemService();
+  const systemService = createSystemService({
+    agentRuntimeMode: usesDefaultCodexDesktopBridge ? "codex" : "legacy",
+  });
   // onboarding 资格与任务列表共用同一份全局 tasks-index；repo 懒加载数据库，提前构造不会
   // 增加启动 I/O，后续 session syncer 也继续复用这一实例。
   const taskIndexRepo = new TaskIndexRepo(undefined, options?.projectStorageHostId);
@@ -1527,7 +1850,9 @@ export function createLocalServices(options: {
         }),
     },
     onCodezBuiltinRefreshError: (error) => {
-      providerConfigLog.warn(undefined, "Codez Built-in Config 远端刷新失败", { error });
+      providerConfigLog.warn(undefined, "Codez Built-in Config 远端刷新失败", {
+        error,
+      });
     },
     onPersonalConfigRecovery: (event) => {
       providerConfigLog.warn(
@@ -1575,8 +1900,10 @@ export function createLocalServices(options: {
     settingService,
     credentialFilePath: resolveCredentialFilePath(resolveAppConfigDir()),
     personalConfigFilePath: join(resolveAppConfigDir(), PERSONAL_PROVIDER_CONFIG_FILE_NAME),
+    credentialService,
   });
   const providerProvisioningDisposers = [
+    () => installedRuntimeApiKeys.clear(),
     providerConfigRuntime.configService.onDidChange((reason) => {
       // 每个 Window Host 都会轮询同一文件；只把本进程成功提交的 updated
       // 作为同步触发，避免其它 Host 的 poll-changed 把一次保存重复计入多个代际。
@@ -1628,6 +1955,39 @@ export function createLocalServices(options: {
       accountProviderConfigSource.dispose();
     },
   });
+  const providerSettingsService: IProviderSettingsService = {
+    ...providerRuntime.providerSettings,
+    deletePersonalProvider: async (providerId) => {
+      if (isDesktopAttachedRemote) {
+        return providerRuntime.providerSettings.deletePersonalProvider(providerId);
+      }
+      const key = providerRuntimeApiKeyCredentialKey(providerId);
+      const previous = await credentialService.load(key);
+      if (previous !== null) await credentialService.delete(key);
+      try {
+        return await providerRuntime.providerSettings.deletePersonalProvider(providerId);
+      } catch (error) {
+        if (previous !== null) await credentialService.save(key, previous);
+        throw error;
+      }
+    },
+    saveApiKeySource: async (input) => {
+      if (isDesktopAttachedRemote || usesDefaultCodexDesktopBridge) {
+        throw new Error("当前 Environment 不支持本机临时 API Key 保存");
+      }
+      await codezAgentService.disposeActiveWorkspaceRuntimes({
+        reason: "provider-key-source-change",
+        includeLegacy: true,
+      });
+      return saveProviderApiKeySource(
+        {
+          providerSettings: providerRuntime.providerSettings,
+          credentials: credentialService,
+        },
+        input,
+      );
+    },
+  };
   handleOAuthProviderLogout = createOAuthProviderLogoutHandler({
     accountProviderCredentialStore,
     refreshAccountProviders: (reason: string) => accountProviderConfigSource.refresh(reason),
@@ -1706,9 +2066,7 @@ export function createLocalServices(options: {
   const modelSelectionReadinessSource = providerRuntime.modelSelection;
   const agentAccountProviderConfigSource = accountProviderConfigSource;
   // ===== Computer Use Helper lifecycle 层（port 自 feat）=====
-  // 约束：lifecycle coordinator 懒获取 + 代际 fence（dispose 仅来自显式 workspace 生命周期）；
-  // 不创建定时健康探测；Helper restart 尽可能复用 host transport，既有 Agent 的 session、
-  // 进程与 MCP stream 保持不变。
+  const cuaProductHelperWorkspaceRegistry = new CuaProductHelperWorkspaceRegistry();
   // P1-a mitigation：createDefaultCuaProductHelper() 在 codezAgentService 存在之前就要组装 resolver，
   // 但"是否有活跃 turn"这个信号只有 codezAgentService 建好之后才能查询。用前向引用占位——resolver 真正
   // 调用 hasActiveTurn() 发生在后续某次 resolveMcpServers（异步），那时 hasActiveTurnRef 早已被赋值。
@@ -1716,10 +2074,8 @@ export function createLocalServices(options: {
   // service 创建完成后再赋值。Helper recovery 始终不能回收 Agent。
   let hasActiveTurnRef: (() => boolean) | undefined;
   const isCuaEnabledForContext = (context?: CuaProductMcpServerResolverContext): boolean =>
-    // 保留 main 原有 gate 行为（避免回归）：dev/internal 特性开启时（CODEZ_CUA_DEV_MODE=1 或
-    // CODEZ_CUA_PRODUCT_HELPER=1）即视为启用，不依赖 config.json 显式 enable——main 的 bootstrap
-    // 用 isCodezCuaInternalFeatureEnabled 门控 bundled plugin，与 feat 的 workspace enablement 不同。
-    // 生产路径（dev mode off）回落到官方插件 workspace enablement 判定（与 feat 一致）。
+    // internal feature 只为开发路径 bypass 持久化配置；正式产品由官方插件 workspace
+    // enablement 决定。插件 discovery 始终保留，不再把缺省关闭误作“插件不存在”。
     isCodezCuaInternalFeatureEnabled(process.env) ||
     isOfficialCuaPluginEnabledForWorkspace({
       env: process.env,
@@ -1727,24 +2083,38 @@ export function createLocalServices(options: {
     });
   const defaultCuaProductHelperLifecycle =
     new CuaHelperLifecycleManager<ManagedDefaultCuaProductHelper>(async (managed) => {
+      const publisher = managed.credentialGrantPublisher;
+      if (publisher) {
+        // 先置 dispose fence，阻止晚到的 cold-start 在 Helper stop 后写入授权。
+        await publisher.dispose();
+      }
       await managed.helper.host.stop();
     });
   const createManagedDefaultCuaProductHelper = (
     context?: CuaProductMcpServerResolverContext,
-  ): ManagedDefaultCuaProductHelper | undefined => {
-    const helper = createDefaultCuaProductHelper({
+  ): Promise<ManagedDefaultCuaProductHelper | undefined> => {
+    const helper = (options?.createDefaultCuaProductHelper ?? createDefaultCuaProductHelper)({
       // 转发活跃-turn 查询（前向引用，codezAgentService 建好后赋值）。
       hasActiveTurn: () => hasActiveTurnRef?.() ?? false,
     });
-    if (!helper) return undefined;
+    if (!helper) return Promise.resolve(undefined);
+    const logger = createServiceLogger("cua-product-helper");
+    return createCuaCredentialGrantPublisher({
+      grantRootDirectory: resolveCuaCredentialGrantRootDirectory(resolveAppConfigDir()),
+      logger,
+    }).then((credentialGrantPublisher) => {
+      attachCuaCredentialGrantPublisher(helper.host, credentialGrantPublisher);
+      helper.credentialGrantPublisher = credentialGrantPublisher;
 
-    // 历史默认装配启动 10 秒周期 watchdog；空闲期一次 broker_info 超时就会在后台
-    // 调用 resolver.restart()。Helper 不是 Agent runtime owner，且无需在没有 CUA 需求时自愈；
-    // 健康检查保留在 spawn env / resolver request boundary，避免后台 timer 干扰其他模块。
-    return {
-      helper,
-      ...(context ? { seedContext: context } : {}),
-    };
+      // 历史默认装配启动 10 秒周期 watchdog；空闲期一次 broker_info 超时就会在后台
+      // 调用 resolver.restart()。Helper 不是 Agent runtime owner，且无需在没有 CUA 需求时自愈；
+      // 健康检查保留在 spawn env / resolver request boundary，避免后台 timer 干扰其他模块。
+      return {
+        helper,
+        credentialGrantPublisher,
+        ...(context ? { seedContext: context } : {}),
+      };
+    });
   };
   const getOrCreateDefaultCuaProductHelper = async (
     context?: CuaProductMcpServerResolverContext,
@@ -1764,129 +2134,6 @@ export function createLocalServices(options: {
   };
   const isDefaultCuaProductHelperCurrent = (helper: DefaultCuaProductHelper): boolean =>
     defaultCuaProductHelperLifecycle.peek()?.helper === helper;
-  // Helper 懒启动：宿主启动时仅探测稳定 socket 上是否有一个
-  // 自启动（SDK 首调拉起）的 Helper。只 ping，绝不拉起；300ms 预算。probe 结果仅用于
-  // 状态展示 / PiP 凭据发现；权限详情与 onboarding 仍走显式 host 流。
-  const probeStableCuaHelperSocket = async (): Promise<string | null> => {
-    const socketPath =
-      process.platform === "win32" ? getStableCuaPipeName() : resolveBrokerSocketPath();
-    try {
-      const { createConnection } = await import("node:net");
-      return await new Promise<string | null>((resolve) => {
-        const socket = createConnection(socketPath);
-        const finish = (value: string | null): void => {
-          socket.destroy();
-          resolve(value);
-        };
-        const timer = setTimeout(() => finish(null), 300);
-        socket.on("connect", () => {
-          clearTimeout(timer);
-          socket.write(`{"id":0,"method":"ping","params":{}}\n`);
-          let buffer = "";
-          socket.on("data", (chunk: Buffer) => {
-            buffer += chunk.toString("utf8");
-            if (buffer.includes("\n")) {
-              try {
-                const nl = buffer.indexOf("\n");
-                const reply = JSON.parse(buffer.slice(0, nl)) as { ok?: boolean };
-                finish(reply.ok === true ? socketPath : null);
-              } catch {
-                finish(null);
-              }
-            }
-          });
-        });
-        socket.on("error", () => {
-          clearTimeout(timer);
-          finish(null);
-        });
-      });
-    } catch {
-      return null;
-    }
-  };
-
-  // 按需启动：拉起 standalone Helper（稳定 socket）。dev 场景（本 Helper 构建内嵌 dev
-  // policy）成对带 unsigned-launcher/external-escape argv，让 ad-hoc 签名的本进程也能过
-  // 签名门查询；产品 Helper 不嵌 dev policy，这对 argv 无效（产品签名天然过 Team 门）。
-  // 拉起后轮询 ping（5s/100ms），就绪返回 socket 路径，否则 null。
-  //
-  // dev 判定直接用上游的 isCuaLocalDevelopmentRuntime（@codez/codez-cua/broker/server，
-  // 即本文件已经用来 import buildHelperOpenArgs 的那个 subpath，可正常导入）。
-  //
-  // 行为等价性（别误读成安全加固）：上游是 `COMPILED_LOCAL_DEVELOPMENT_RUNTIME &&
-  // CODEZ_RUNTIME_ENV!=="production"`，而那个编译期常量只有 scripts/build-cua-helper-app.mjs
-  // 会用 define 折叠（Helper bundle）；desktop host bundle 没有该 define，于是回退成
-  // `process.env.NODE_ENV !== "production"` —— 正是复制品写的那一项。所以在**当前**打包形态下
-  // 两者逐字等价，关门靠的是 CODEZ_RUNTIME_ENV=production（打包态显式注入且不传 NODE_ENV）。
-  //
-  // 换成上游的收益是消除漂移面：折叠点、因子个数与 fail-closed 方向都由上游一处决定，
-  // 哪天 host bundle 也补上 __CODEZ_LOCAL_DEVELOPMENT_RUNTIME__ define（Helper 侧已经有），
-  // 编译期门自动生效，不需要再回来改这里。
-
-  const cuaStatusLaunchLog = createServiceLogger("cua-status-launch");
-  const launchStandaloneCuaHelperForStatus = async (): Promise<string | null> => {
-    if (process.platform !== "darwin") return null;
-    const { existsSync } = await import("node:fs");
-    const { execFile } = await import("node:child_process");
-    const { promisify } = await import("node:util");
-    const socketPath = resolveBrokerSocketPath();
-    let appPath: string | null;
-    try {
-      appPath = await resolveStandaloneStatusLaunchAppPath({
-        env: process.env,
-        bundledAppPath: resolveBundledCuaHelperAppPath(),
-        exists: existsSync,
-        ensureInstalled: (bundledAppPath) =>
-          createCanonicalCuaHelperInstaller({
-            logger: cuaStatusLaunchLog,
-            env: process.env,
-            bundledAppPath,
-          }).ensureInstalled(),
-      });
-    } catch (error) {
-      cuaStatusLaunchLog.warn(undefined, "CUA Helper install before status launch failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return null;
-    }
-    if (!appPath) return null;
-    // Helper 启动参数统一由 buildHelperOpenArgs 构造，避免多处手写导致漏传或漂移。
-    // 设置页只读权限探测不承载 PiP，不传 --launcher-pid 和 --pip-mode；
-    // exit-log 使用 .settings.exit.log。新增参数应定义在 HelperLaunchSpec 中供调用方共用。
-    const args = buildHelperOpenArgs({
-      appPath,
-      socketPath,
-      exitLogPath: `${socketPath}.settings.exit.log`,
-      ...(isCuaLocalDevelopmentRuntime(process.env)
-        ? { allowUnsignedLauncherLocalDev: true, allowExternalBrokerClientLocalDev: true }
-        : {}),
-    });
-    try {
-      await promisify(execFile)("/usr/bin/open", args, { timeout: 5_000 });
-    } catch {
-      // LaunchServices 已接单也可能超时；继续等 ping。
-    }
-    for (let attempt = 0; attempt < 50; attempt += 1) {
-      const ready = await probeStableCuaHelperSocket();
-      if (ready) return ready;
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-    return null;
-  };
-
-  const launchWindowsCuaHelperForStatus = async (): Promise<string | null> => {
-    try {
-      const managed = await getOrCreateDefaultCuaProductHelper(undefined);
-      if (managed) void managed.host.start().catch(() => {});
-    } catch {}
-    for (let attempt = 0; attempt < 50; attempt += 1) {
-      const ready = await probeStableCuaHelperSocket();
-      if (ready) return ready;
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-    return null;
-  };
 
   // enabled 与 onCuaPipSessionLifecycle 是否挂上，都由 serviceAuthorityMode 单点决定；
   // 提出来命名，避免下面的启动期诊断与真实取值漂移。
@@ -1895,16 +2142,30 @@ export function createLocalServices(options: {
   const cuaPipSessionService = createCuaPipSessionService({
     enabled: cuaPipSessionEnabled,
     resolveCredentials: async () => {
-      const host = defaultCuaProductHelperLifecycle.peek()?.helper.macPermissionHost;
-      // PiP 客户端以 role=presentation 声明，资格由 Helper 按对端（Codez 主进程）签名 identifier 裁决。
-      if (host?.running && host.socketPath) {
-        return {
-          socketPath: host.socketPath,
-        };
+      const helper = defaultCuaProductHelperLifecycle.peek()?.helper;
+      if (!helper || !isDefaultCuaProductHelperCurrent(helper)) return undefined;
+      const host = helper.host;
+      const transport =
+        host.running && host.pipSocketPath && host.pluginAuthority
+          ? {
+              pipSocketPath: host.pipSocketPath,
+              pluginAuthority: host.pluginAuthority,
+              generation: host.generation,
+            }
+          : host.reservedTransport;
+      if (
+        !transport?.pipSocketPath ||
+        !transport.pluginAuthority ||
+        !Number.isSafeInteger(transport.generation) ||
+        (transport.generation ?? -1) < 0
+      ) {
+        return undefined;
       }
-      // 懒启动：无托管 host 时探测稳定 socket 上自启动的 Helper（probe-only，不拉起）。
-      const stable = await probeStableCuaHelperSocket();
-      return stable ? { socketPath: stable } : undefined;
+      return {
+        pipSocketPath: transport.pipSocketPath,
+        capability: transport.pluginAuthority,
+        generation: transport.generation!,
+      };
     },
   });
   // 启动期就把 PiP 投递链的接线状态写出来。dev 实测 PiP 事件一条都没投，而
@@ -1945,60 +2206,19 @@ export function createLocalServices(options: {
           reason: "Codez Computer Use is not enabled (plugin off or not product mode).",
         };
       }
-      // 懒启动：状态查询绝不拉起 Helper。托管 host 在（如刚完成授权流）→ 全量查询；
-      // 否则探测稳定 socket 上自启动的 Helper（probe-only）；都没有 → 未运行（首次使用时自动启动）。
-      const peeked = defaultCuaProductHelperLifecycle.peek()?.helper;
-      const helper = peeked && isDefaultCuaProductHelperCurrent(peeked) ? peeked : undefined;
-      const host = helper ? helper.macPermissionHost : undefined;
-      if (!host || !host.running) {
-        // Helper 按需启动：设置页查询 = 拉起 standalone Helper（稳定 socket、
-        // 无 launcher-pid → 300s 无访问自动休眠，不进托管体系）。拉起后经稳定 socket 查真值。
-        let stable = await probeStableCuaHelperSocket();
-        if (!stable) {
-          stable =
-            process.platform === "darwin"
-              ? await launchStandaloneCuaHelperForStatus()
-              : await launchWindowsCuaHelperForStatus();
-        }
-        if (!stable) {
-          return {
-            available: false,
-            reason:
-              "Codez Computer Use is not running; it will start automatically on first Computer Use use.",
-            idle: true,
-          } satisfies { available: false; reason: string; idle: true };
-        }
-        // standalone Helper 上直接查权限真值（身份模式，无 token）。
-        try {
-          const { callBrokerMethod } = await import("@codez/codez-cua/broker/helperHealth");
-          const report = await callBrokerMethod<{
-            grant_owner: string;
-            owner?: { display_name?: string };
-            accessibility: CuaPermissionState;
-            accessibility_probe_ok?: boolean;
-            screen_recording: CuaPermissionState;
-          }>({
-            socketPath: stable,
-            method: "permission_status",
-            timeoutMs: 3000,
-          });
-          return {
-            grantOwner: report.grant_owner,
-            grantOwnerDisplayName: report.owner?.display_name ?? report.grant_owner,
-            accessibility: report.accessibility,
-            accessibilityProbeOk: report.accessibility_probe_ok === true,
-            screenRecording: report.screen_recording,
-            screenCaptureProbeOk: false,
-          };
-        } catch {
-          return {
-            available: false,
-            reason: "Codez Computer Use is starting up; retry in a moment.",
-            idle: true,
-          } satisfies { available: false; reason: string; idle: true };
-        }
-      }
+      // 权限页与 Agent 必须消费同一个受管 Host tuple；旧 standalone 分支会分别铸造
+      // socket/capability，既无法认证也无法被生命周期 owner 回收。
       try {
+        // acquire/create 里的 Helper 启动失败（如 Gatekeeper 拒杀）也要落到 catch，
+        // 才能把 errorKind 带给 UI；过去它在 try 外抛出，被上层吞成笼统不可用。
+        const helper = await getOrCreateDefaultCuaProductHelper(context);
+        const host = helper?.macPermissionHost;
+        if (!helper || !host || !isDefaultCuaProductHelperCurrent(helper)) {
+          return {
+            available: false,
+            reason: "Codez Computer Use Helper is unavailable.",
+          };
+        }
         const report = await host.queryPermissionStatus();
         if (!helper || !isDefaultCuaProductHelperCurrent(helper)) {
           return {
@@ -2037,17 +2257,20 @@ export function createLocalServices(options: {
           grantOwnerDisplayName: reportedOwnerDisplayName ?? report.grant_owner,
           accessibility: report.accessibility,
           accessibilityProbeOk:
-            report.accessibility_probe?.ok === true &&
-            report.accessibility_probe?.classification === "functional",
+            (report as { accessibility_probe_ok?: boolean }).accessibility_probe_ok === true ||
+            (report.accessibility_probe?.ok === true &&
+              report.accessibility_probe?.classification === "functional"),
           screenRecording,
           screenCaptureProbeOk,
         };
       } catch (error) {
+        const errorKind = resolveCuaPermissionUnavailableErrorKind(error);
         return {
           available: false,
           reason: `Could not read Computer Use Helper permission status: ${
             error instanceof Error ? error.message : String(error)
           }`,
+          ...(errorKind ? { errorKind } : {}),
         };
       }
     },
@@ -2130,7 +2353,7 @@ export function createLocalServices(options: {
   let offPeakTaskServiceForAgent: OffPeakTaskService | undefined;
   // desktop-attached-remote 装配不暴露 Off-Peak 工具面（远程不在支持范围）。
   const offPeakToolWiring =
-    options?.serviceAuthorityMode === "desktop-attached-remote"
+    usesDefaultCodexDesktopBridge || options?.serviceAuthorityMode === "desktop-attached-remote"
       ? {}
       : {
           resolveOffPeakClientConfig: () => codingPlanSubscriptionService.getOffPeakClientConfig(),
@@ -2214,6 +2437,12 @@ export function createLocalServices(options: {
     hostId: options?.projectStorageHostId ?? "local",
     workspaceIdentity: undefined,
   });
+  // ConversationShareService 需要已创建的 Agent service，而 Codex 命令需要 Host 授权的
+  // shared-context reader。这个 forward holder 只在服务集合装配完成后被绑定；装配期命令
+  // 不可能到达，未绑定时 fail closed。
+  let conversationShareContentCopyReader:
+    | IConversationShareService["readSharedContextContentCopy"]
+    | undefined;
   const codezAgentService = createCodezAgentService({
     prepareProjectExecution,
     prepareSessionCreation: async (target) =>
@@ -2225,26 +2454,41 @@ export function createLocalServices(options: {
     resolveSessionDirectories: async (target) =>
       (await projectService.resolveSessionDirectories({ ...target, taskId: target.sessionId }))
         .additionalDirectories,
+    safeDesktopFileRewindOwner: usesDefaultCodexDesktopBridge && !isDesktopAttachedRemote,
     ...(agentAccountProviderConfigSource
       ? { accountProviderConfigSource: agentAccountProviderConfigSource }
       : {}),
     accountRequestAuthService,
     ...(modelSelectionReadinessSource ? { modelSelectionReadinessSource } : {}),
+    // desktop-attached-remote 的 ConversationShare reader 是 unsupported wrapper；
+    // 注入“函数存在”会让能力投影误报 degraded。只在真实授权 reader 所在的
+    // Desktop-local/legacy assembly 提供该 owner fact。
+    ...(isDesktopAttachedRemote
+      ? {}
+      : {
+          readSharedContextContentCopy: (input) => {
+            if (!conversationShareContentCopyReader) {
+              throw new SharedContextContentCopyError(
+                "capability_missing",
+                "Codex shared-context content copy is unavailable",
+              );
+            }
+            return conversationShareContentCopyReader(input);
+          },
+          supportsSharedContextContentCopy: true as const,
+        }),
     authorizeLocalMediaPreviewPath: options?.authorizeLocalMediaPreviewPath,
     ...offPeakToolWiring,
     // 动态工作流灰度：与 Off-Peak 不同，
     // 这里不按 serviceAuthorityMode 裁剪——SSH/WSL/Docker 的 desktop-attached-remote Host
     // 是它自己那些 workspace 的唯一裁决者，灰度开启时远程 workspace 同样提供工作流。
-    resolveDynamicWorkflowClientConfig: () =>
-      codingPlanSubscriptionService.getDynamicWorkflowClientConfig(),
+    resolveDynamicWorkflowClientConfig: usesDefaultCodexDesktopBridge
+      ? undefined
+      : () => codingPlanSubscriptionService.getDynamicWorkflowClientConfig(),
     ...(resolveDynamicWorkflowUserMode ? { resolveDynamicWorkflowUserMode } : {}),
     forwardDynamicWorkflowUserMode: options?.forwardDynamicWorkflowUserMode,
     commandResolver: options?.codezAgentCommandResolver,
-    presentationSurface: resolveCodezAgentPresentationSurface({
-      runtimeSurface: options?.agentTelemetry?.runtimeSurface,
-      serviceAuthorityMode: options?.serviceAuthorityMode,
-      desktopContextPromptEnabled,
-    }),
+    presentationSurface,
     onAutomationManualRunRequested: options?.onAutomationManualRunRequested,
     // createLocalServices 虽然暴露了 reporter 注入点，旧装配却没有继续传给
     // CodezAgentProcessManager，导致 host 永远不向 main 上报 Agent spawn/exit，进程监控器
@@ -2299,6 +2543,7 @@ export function createLocalServices(options: {
         throw new Error("Topic resource authorization is unavailable");
       return bots.validateTopicResource({ ...request, signal });
     },
+    ...(desktopBrowserRelay ? { desktopBrowserRelay } : {}),
     // 官方 Server MCP 身份头：host 是唯一身份权威，Agent 经反向请求索取。
     // Provider 存在性读取正式 Model Selection View；不恢复旧 Provider Snapshot。
     officialMcpAuthHeadersResolver: createOfficialMcpAuthHeadersResolver({
@@ -2332,9 +2577,10 @@ export function createLocalServices(options: {
     // 设置页的 HTTP 代理、No Proxy + 自定义 CA 按 spawn 时读取注入 agent 子进程 env，
     // 覆盖模型 API / MCP / Bash 出口流量并信任用户显式配置的证书；改动后下次启动 agent 生效。
     resolveSpawnEnv: async (context) => {
-      const [settings] = await Promise.all([settingService.get(), providerRuntime.start()]);
-      // 本地 Host 准备解析快照；远程 CLI 继续由自己的文件 loader 读取和迁移配置。
-      if (!isDesktopAttachedRemote) await subagentsService.prepareRuntimeState(context);
+      const [settings] = await Promise.all([
+        settingService.get(),
+        usesDefaultCodexDesktopBridge ? Promise.resolve() : providerRuntime.start(),
+      ]);
       const agentNetwork =
         isDesktopAttachedRemote && options?.remoteAgentNetwork
           ? options.remoteAgentNetwork
@@ -2342,30 +2588,199 @@ export function createLocalServices(options: {
               httpProxy: settings.httpProxy,
               noProxy: settings.httpProxyNoProxy,
             };
-      const cuaPluginEnabled = isCuaEnabledForContext(context);
+      const networkEnv = buildAgentRuntimeEnv({
+        httpProxy: agentNetwork.httpProxy,
+        noProxy: agentNetwork.noProxy,
+        caCertPath: settings.httpProxyCaCertPath,
+      });
+      // 远端 workspace 身份或非本地 Host 绝不拉起或暴露本机 CUA Helper。
+      const isRemoteWorkspaceContext =
+        isDesktopAttachedRemote ||
+        options?.serviceAuthorityMode !== "desktop-local" ||
+        Boolean(
+          context?.workspaceIdentity?.trim() &&
+          (context.workspaceIdentity.trim() !== context.workspacePath?.trim() ||
+            isRemoteWorkspaceIdentity(context.workspaceIdentity.trim())),
+        );
+      // 与 helper 创建同一个门控（isCuaEnabledForContext：dev/internal 特性 OR 官方插件 enablement），
+      // 避免 dev mode 下 helper 建了但 resolveSpawnEnv 漏注入 broker env 的割裂。
+      const cuaPluginEnabled = !isRemoteWorkspaceContext && isCuaEnabledForContext(context);
+      // 所有平台都先取得 Local Host 的单一 owner；macOS 旧分支在没有 host 时自行铸造
+      // socket/capability，却没有对应 launcher，runtime 会永久缓存一组无人监听的凭据。
+      const peekedHelper = defaultCuaProductHelperLifecycle.peek()?.helper;
+      const helper = !cuaPluginEnabled
+        ? undefined
+        : peekedHelper && isDefaultCuaProductHelperCurrent(peekedHelper)
+          ? peekedHelper
+          : await getOrCreateDefaultCuaProductHelper(context);
+      // setting.get / 生命周期队列都可能跨过 host dispose。仅凭调用前的 enabled 会让延迟恢复的
+      // resolveSpawnEnv 在 terminal fence 后重新启动 Helper；必须在真正构造 env 前校验代际。
+      const cuaProductHelperHost =
+        helper && isDefaultCuaProductHelperCurrent(helper) ? helper.host : undefined;
+      // 等待 Helper 启动前登记。Registry 只记录尝试过 admission 的 workspace，
+      // 供后续配置/生命周期 bookkeeping 使用；recovery 只清理 marker，不回收已有 Agent。
+      cuaProductHelperWorkspaceRegistry.setEnabled(context, Boolean(cuaProductHelperHost));
       let cuaProductHelperEnv: Record<string, string> = {};
-      if (cuaPluginEnabled && (process.platform === "darwin" || process.platform === "win32")) {
-        const brokerSocket =
-          process.platform === "win32" ? getStableCuaPipeName() : resolveBrokerSocketPath();
-        cuaProductHelperEnv = {
-          [BROKER_SOCKET_ENV]: brokerSocket,
-          [CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]: randomBytes(16).toString("hex"),
-        };
-        if (process.platform === "win32") {
-          const recipe = await resolveStableCuaWinRecipe();
-          if (recipe) {
-            cuaProductHelperEnv["CODEZ_CUA_WIN_HELPER_RECIPE"] = JSON.stringify({
-              ...recipe,
-              hostPid: process.pid,
-            });
-          } else {
-            cuaProductHelperEnv = {
-              [BROKER_UNAVAILABLE_ENV]:
-                "broker_unavailable: windows helper recipe could not be resolved",
-            };
-          }
+      if (cuaProductHelperHost && helper) {
+        const candidateEnv = await buildCuaProductHelperAgentEnv(
+          cuaProductHelperHost,
+          createServiceLogger("cua-product-helper"),
+        );
+        if (isDefaultCuaProductHelperCurrent(helper)) {
+          cuaProductHelperEnv = candidateEnv;
+        } else {
+          cuaProductHelperWorkspaceRegistry.setEnabled(context, false);
+          cuaProductHelperEnv = {
+            [BROKER_UNAVAILABLE_ENV]: "broker_unavailable: helper lifecycle is disposed",
+          };
         }
+      } else if (cuaPluginEnabled) {
+        cuaProductHelperEnv = {
+          [BROKER_UNAVAILABLE_ENV]: defaultCuaProductHelperLifecycle.disposed
+            ? "broker_unavailable: helper lifecycle is disposed"
+            : "broker_unavailable: managed Helper host is unavailable",
+        };
       }
+      const cuaActive = Boolean(
+        cuaProductHelperEnv[BROKER_SOCKET_ENV]?.trim() &&
+        cuaProductHelperEnv[CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]?.trim(),
+      );
+      // Codex 拥有账号、配置与工具；旧 Provider/Zai/CUA/Subagent 准备不能成为其启动前置条件。
+      // PATH 仍由 initializeRuntimeProcessEnv 统一准备，身份与 transport 仍由进程管理器注入。
+      if (usesDefaultCodexDesktopBridge) {
+        if (!isRemoteWorkspaceContext && options?.serviceAuthorityMode === "desktop-local") {
+          await syncCodexNativeCuaSkill(cuaPluginEnabled, process.env).catch(() => undefined);
+        }
+        // 本机临时 Key 在 spawn 边界现读（本地读 Credential Store；远端读本进程内
+        // 逐连接安装的内存事实）。缺值注入 undefined 显式屏蔽继承变量，并把供应商
+        // 列入 bridge 的 fail-closed 名单；名单只含 provider id，不含任何 Key 材料。
+        const codexNativeKeyMaterial = isDesktopAttachedRemote
+          ? codexNativeProviderSpawnEnvFromInstalled(
+              installedCodexNativeKeys,
+              codexNativeKeyRotationActive,
+            )
+          : await resolveCodexNativeProviderSpawnEnv({
+              credentialService,
+              environmentKey: CODEX_NATIVE_PROVIDER_LOCAL_ENVIRONMENT_KEY,
+            });
+        // 官方插件的 ZCode 专有 HTTP MCP 通过 bearer_token_env_var 从进程环境取 token；
+        // 仅在已登录 z.ai 时注入，token 不落盘、不进入物化文件（spec: codex-zcode-plugin-compatibility）。
+        const zaiOfficialMcpToken = (
+          await credentialService
+            .load(`oauth:${ZAI_PROVIDER_ID}:access_token`)
+            .catch(() => undefined)
+        )?.trim();
+        return {
+          ...networkEnv,
+          ...codexNativeKeyMaterial.env,
+          [CODEZ_CODEX_BLOCKED_PROVIDER_IDS_ENV_KEY]:
+            codexNativeKeyMaterial.blockedProviderIds.join(","),
+          ...(zaiOfficialMcpToken ? { CODEZ_ZAI_OFFICIAL_MCP_TOKEN: zaiOfficialMcpToken } : {}),
+          // codex bridge 的 update_plan 工具注册在 app-server 配置加载期，只能随进程启动注入；
+          // 开关变更由下方 messageStreamShowTodos 订阅统一释放活动 workspace 后生效。
+          ...(settings.messageStreamShowTodos === true
+            ? { [CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY]: "1" }
+            : {}),
+          // spec: codex-desktop-native-browser-cua「Remote workspace relay」「Global enable toggle」。
+          // 本地：清单来自 Main 授权（InitLocal 快照 + Main 推送的运行时持有器，spawn 时现读）；
+          // 远端：仅当 relay 已被窗口 Host 授予时由本进程自建 remote-local 注册——
+          // endpoint/tokenFile 都指向远端 relay，窗口 token 不出桌面进程。
+          // 其余场景一律显式清空/置 0，防止 bridge 从继承环境注册桌面工具或误报可用性。
+          ...(() => {
+            if (isDesktopAttachedRemote) {
+              const relayDescriptor = desktopBrowserRelay?.activeDescriptor();
+              const remoteBridgePath = process.env.CODEZ_CODEX_BRIDGE_PATH?.trim();
+              if (!relayDescriptor || !remoteBridgePath) {
+                return {
+                  [CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]: "",
+                  [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: "0",
+                  [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: "0",
+                  [CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED_ENV]: "0",
+                };
+              }
+              return {
+                [CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]: JSON.stringify([
+                  {
+                    name: CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
+                    command: process.execPath,
+                    args: [remoteBridgePath, CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE],
+                    env: {
+                      [CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_ENV]: relayDescriptor.endpoint,
+                      [CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE_ENV]: relayDescriptor.tokenFile,
+                      [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: "1",
+                      [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: "0",
+                      [CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED_ENV]: "0",
+                    },
+                  },
+                ]),
+                [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: "1",
+                [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: "0",
+                [CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED_ENV]: "0",
+              };
+            }
+            const liveState = options?.desktopBrowserMcpStateSource?.();
+            const localServers =
+              options?.serviceAuthorityMode === "desktop-local"
+                ? (liveState?.servers ?? options.desktopCodexMcpServers)
+                : undefined;
+            const localFacts = liveState?.nativeBrowserCua ?? nativeBrowserCua;
+            const mergedServers = localServers?.map((server) =>
+              server.name === CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME
+                ? {
+                    ...server,
+                    env: {
+                      // Main 只拥有 browser 授权；CUA 环境由当前 Local Host 独占写入。
+                      ...Object.fromEntries(
+                        Object.entries(server.env).filter(([key]) => !key.startsWith("CODEZ_CUA_")),
+                      ),
+                      [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: localFacts?.browserAvailable
+                        ? "1"
+                        : "0",
+                      [CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED_ENV]: cuaPluginEnabled ? "1" : "0",
+                      [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]: cuaActive ? "1" : "0",
+                      // 授权文件只落在 MCP server env；bridge 每次调用现读完整 tuple，
+                      // 原始凭据不进入完整 Agent 环境变量。
+                      ...(helper?.credentialGrantPublisher
+                        ? {
+                            [CUA_CREDENTIAL_GRANT_FILE_ENV]:
+                              helper.credentialGrantPublisher.grantFilePath,
+                          }
+                        : {}),
+                      ...(cuaActive
+                        ? {
+                            [BROKER_SOCKET_ENV]: cuaProductHelperEnv[BROKER_SOCKET_ENV]!,
+                            [CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]:
+                              cuaProductHelperEnv[CODEZ_CUA_PLUGIN_AUTHORITY_ENV_KEY]!,
+                            ...(cuaProductHelperEnv[BROKER_GENERATION_ENV]
+                              ? {
+                                  [BROKER_GENERATION_ENV]:
+                                    cuaProductHelperEnv[BROKER_GENERATION_ENV],
+                                }
+                              : {}),
+                          }
+                        : {}),
+                    },
+                  }
+                : server,
+            );
+            return {
+              [CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY]: mergedServers?.length
+                ? JSON.stringify(mergedServers)
+                : "",
+              ...(localFacts
+                ? {
+                    [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: localFacts.browserAvailable ? "1" : "0",
+                    [CODEZ_NATIVE_BROWSER_CUA_CUA_ENABLED_ENV]: cuaPluginEnabled ? "1" : "0",
+                    [CODEZ_NATIVE_BROWSER_CUA_CUA_ENV]:
+                      cuaActive || localFacts.cuaAvailable ? "1" : "0",
+                  }
+                : {}),
+            };
+          })(),
+        };
+      }
+      // 内置 Subagent 的旧覆盖必须在 CLI 独立读取之前导入，不能等待设置页操作。
+      if (!isDesktopAttachedRemote) await subagentsService.prepareRuntimeState(context);
       const telemetryEnv = getCapturedCodezAgentTelemetryEnv();
       const telemetryConfigured = Boolean(
         telemetryEnv.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || telemetryEnv.OTEL_EXPORTER_OTLP_ENDPOINT,
@@ -2379,12 +2794,12 @@ export function createLocalServices(options: {
       // Host 是旧配置迁移的唯一写入者。Agent spawn 前等待初始化完成，避免 Worker
       // 先拿到尚不存在的 provider_config.json 并发布短暂空 Registry。
       await providerConfigRuntime.start();
+      const runtimeApiKeys = isDesktopAttachedRemote
+        ? [...installedRuntimeApiKeys].map(([name, value]) => ({ name, value }))
+        : (await providerProvisioningSource.readRuntimeApiKeys()).keys;
       return {
-        ...buildAgentRuntimeEnv({
-          httpProxy: agentNetwork.httpProxy,
-          noProxy: agentNetwork.noProxy,
-          caCertPath: settings.httpProxyCaCertPath,
-        }),
+        ...networkEnv,
+        ...Object.fromEntries(runtimeApiKeys.map(({ name, value }) => [name, value])),
         // 把 host 解析出的权威 origin（含 settings 覆盖）下发给 agent，否则 agent 侧只按
         // env 推导，test env + 自定义端点时两侧信任判定的输入分叉、官方 MCP 整体 fail closed。
         ...buildAgentEndpointOriginEnv(await resolveCurrentCodezEndpointOrigin()),
@@ -2422,6 +2837,10 @@ export function createLocalServices(options: {
               nativeSearchEnhancementsEnabled: settings.nativeSearchEnhancementsEnabled !== false,
               toolSearchMode: settings.toolSearchMode ?? "off",
               memoryEnabled: settings.memoryEnabled === true,
+              // 完整记忆偏好随会话 materialization 下发；与热更新共用同一事实源。
+              memoryUseEnabled: settings.memoryUseEnabled !== false,
+              memoryExtractionEnabled: settings.memoryExtractionEnabled !== false,
+              memoryExtractionModel: settings.memoryExtractionModel ?? null,
               modelContextBudgetStrategy,
               // user-execution 只消费 Shell；共享默认策略是统一 result schema 的兼容占位，
               // 不会覆盖 runtime-materialization 阶段已经固定的 strategy。
@@ -2483,7 +2902,70 @@ export function createLocalServices(options: {
   });
   const gitCommitMessageGenerator = new GitCommitMessageGenerator({
     currentModelProvider: {
-      async readCurrentModel() {
+      async readCurrentModel(workspace) {
+        if (usesDefaultCodexDesktopBridge) {
+          // Git 辅助也必须使用目标 cwd 的原生配置；旧 View 会启动 Provider Runtime 并误拦截 Codex。
+          const [rawConfig, rawModels] = await Promise.all([
+            codezAgentService.codexRequest({
+              ...workspace,
+              request: {
+                method: "config/read",
+                params: { cwd: workspace.workspacePath, includeLayers: false },
+              },
+            }),
+            codezAgentService.codexRequest({
+              ...workspace,
+              request: {
+                method: "model/list",
+                params: { includeHidden: false },
+              },
+            }),
+          ]);
+          const { config } = codexConfigResponseSchema.parse(rawConfig);
+          const catalog = codexModelsResponseSchema.parse(rawModels);
+          const cursors = new Set<string>();
+          while (catalog.nextCursor) {
+            const cursor = catalog.nextCursor;
+            if (cursors.has(cursor) || cursors.size >= 100) {
+              throw new Error("Invalid Codex model pagination cursor");
+            }
+            cursors.add(cursor);
+            const page = codexModelsResponseSchema.parse(
+              await codezAgentService.codexRequest({
+                ...workspace,
+                request: {
+                  method: "model/list",
+                  params: { includeHidden: false, cursor },
+                },
+              }),
+            );
+            catalog.data.push(...page.data);
+            catalog.nextCursor = page.nextCursor;
+          }
+          const configuredModel =
+            typeof config.model === "string" ? config.model.trim() : undefined;
+          const model = catalog.data.find(
+            (entry) =>
+              !entry.hidden &&
+              (configuredModel ? entry.model === configuredModel : entry.isDefault),
+          );
+          // custom provider 的配置模型可能不在发现目录；保留有效配置，不伪造模型能力。
+          const modelId = configuredModel || model?.model;
+          if (!modelId) return null;
+          const providerId =
+            typeof config.model_provider === "string"
+              ? config.model_provider.trim() || "openai"
+              : "openai";
+          const effort =
+            (typeof config.model_reasoning_effort === "string"
+              ? config.model_reasoning_effort.trim()
+              : undefined) || model?.defaultReasoningEffort;
+          return {
+            providerId,
+            modelId,
+            ...(effort ? { options: { reasoningLevel: effort } } : {}),
+          };
+        }
         // Git sidecar 属于目标 Environment；初始模型直接读取同一 Host View，
         // 不再通过临时 Agent workspace state 反推模型与 reasoning。
         return (await providerRuntime.modelSelection.getView()).preferredSelection ?? null;
@@ -2492,6 +2974,7 @@ export function createLocalServices(options: {
     textGenerator: {
       async generateText(params) {
         return await codezAgentService.generateWorkspaceText({
+          ...(params.signal ? { signal: params.signal } : {}),
           workspacePath: params.workspacePath,
           ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
           selection: params.selection,
@@ -2501,6 +2984,9 @@ export function createLocalServices(options: {
       },
     },
     logger: createServiceLogger("git-commit-message"),
+    capabilityChecker: {
+      canGenerateWorkspaceText: (params) => codezAgentService.canGenerateWorkspaceText(params),
+    },
   });
   const gitService = createGitService({
     commitMessageGenerator: gitCommitMessageGenerator,
@@ -2634,12 +3120,31 @@ export function createLocalServices(options: {
         client: conversationShareClient,
         artifactSource: createLocalConversationShareArtifactSource(),
       });
+  conversationShareContentCopyReader = (input) =>
+    conversationShareService.readSharedContextContentCopy(input);
   // 注册链上的懒工厂（如 OffPeak）会各自创建 tasks-index sqlite repo；先收集到本数组，
   // services 集合建好后在 return 前统一登记进 sharedSqliteRepos 侧表
   const sqliteReposToClose: Array<{ close(): void }> = [];
   const marketingAssets = createMarketingAssetRegistry({
     allowLoopback: CODEZ_ENV === "test" || process.env.NODE_ENV === "development",
   });
+  // Codex bridge 模式：账号/配置/模型目录由 Codex 持有，legacy Provider Registry 不启动。
+  // Bot、Automation 与移动 Web 都经 IModelSelectionService 解析 Submission 模型——
+  // 用 Codex 原生目录（config/read + model/list）适配同一合同；legacy 模式保持原视图。
+  const hostModelSelectionService: IModelSelectionService = usesDefaultCodexDesktopBridge
+    ? createCodexModelSelectionService({
+        send: (params) => codezAgentService.codexRequest(params),
+        readCatalogProviderMap: (target) => codezAgentService.readCodexCatalog(target),
+      })
+    : providerRuntime.modelSelection;
+  const supportsDesktopFileRewindOwner = usesDefaultCodexDesktopBridge && !isDesktopAttachedRemote;
+  const codexDesktopFileRewindService = supportsDesktopFileRewindOwner
+    ? createCodexDesktopFileRewindService({
+        agentService: codezAgentService,
+        isRegisteredOwner: () => supportsDesktopFileRewindOwner,
+        rootDir: getCodezDataRootDir(),
+      })
+    : undefined;
   const services = new ServiceCollection()
     .register(
       IMarketingTouchService,
@@ -2689,7 +3194,7 @@ export function createLocalServices(options: {
         codezTaskService,
         broadcastService,
         settingService,
-        modelSelectionService: providerRuntime.modelSelection,
+        modelSelectionService: hostModelSelectionService,
         remoteWorkspaceService: botRemoteWorkspaceService
           ? { ...botRemoteWorkspaceService, resolveWorkspace: options?.resolveBotRemoteWorkspace }
           : undefined,
@@ -2826,7 +3331,9 @@ export function createLocalServices(options: {
         const resolveHighspeedLoginHeaders = async (): Promise<Record<string, string>> => {
           const jwt = (await credentialService.load("codezjwttoken"))?.trim() ?? "";
           if (!jwt) throw new Error("highspeed request requires codez jwt");
-          return { Authorization: /^Bearer\s/i.test(jwt) ? jwt : `Bearer ${jwt}` };
+          return {
+            Authorization: /^Bearer\s/i.test(jwt) ? jwt : `Bearer ${jwt}`,
+          };
         };
         const transport = mockScenario
           ? createHighspeedMockTransport({ scenario: mockScenario })
@@ -2923,6 +3430,10 @@ export function createLocalServices(options: {
       createPluginManagementService({
         codezAgentService,
         reportTelemetryEvent: options?.reportPluginTelemetryEvent,
+        disposeActiveWorkspaceRuntimes: (params) =>
+          codezAgentService.disposeActiveWorkspaceRuntimes(params),
+        codexNativeCuaMode:
+          usesDefaultCodexDesktopBridge && options?.serviceAuthorityMode === "desktop-local",
       }),
     )
     .register(ISubagentsService, subagentsService)
@@ -2960,10 +3471,16 @@ export function createLocalServices(options: {
   // Helper 懒启动：不预热——Helper 由 SDK 首次 CUA 调用拉起（spawn env 注入
   // 稳定 socket），或用户显式授权流（restartHelper）拉起。启动即零 Helper 常驻。
 
+  // Rewind is Desktop-local only. Registering `undefined` would create a channel-map entry
+  // even though `getOptional` resolves it as absent, so registration itself must be conditional.
+  if (codexDesktopFileRewindService)
+    services.register(ICodexDesktopFileRewindService, codexDesktopFileRewindService);
+
   accountRequestAuthServices.set(services, accountRequestAuthService);
   offPeakRequestAuthBuilders.set(services, buildOffPeakRequestAuthForTicket);
 
   providerRuntimes.set(services, providerRuntime);
+  codexModelSelectionServices.set(services, hostModelSelectionService);
   providerProvisioningSources.set(services, providerProvisioningSource);
   providerProvisioningTriggerDisposers.set(services, providerProvisioningDisposers);
   // desktop-attached-remote 的组织态在远端 Host 库里，由远端自己的扫描器归档；本机不扫。
@@ -2979,9 +3496,40 @@ export function createLocalServices(options: {
       taskAutoArchiveScheduler.dispose();
     });
   }
+  settingsRuntimeRestartDisposers.set(services, [
+    settingService.onDidUpdate((event) => {
+      // update_plan 的工具注册发生在 app-server 配置加载期，进程内热切换不存在；
+      // 设置变更后释放本 Host 全部活动 workspace runtime，下一次使用时按新值拉起。
+      // 进行中的 turn 会被打断，与切换模型的 workspace 重启语义一致。
+      if (!event.keys.includes("messageStreamShowTodos")) return;
+      void codezAgentService
+        .disposeActiveWorkspaceRuntimes({ reason: "messageStreamShowTodos" })
+        .catch((error: unknown) => {
+          createServiceLogger("settings-runtime-restart").warn(
+            undefined,
+            "restart workspace runtimes for messageStreamShowTodos failed",
+            { message: error instanceof Error ? error.message : String(error) },
+          );
+        });
+    }),
+  ]);
   services
-    .register(IProviderSettingsService, providerRuntime.providerSettings)
-    .register(IModelSelectionService, providerRuntime.modelSelection);
+    .register(IProviderSettingsService, providerSettingsService)
+    .register(IModelSelectionService, hostModelSelectionService);
+  if (!isDesktopAttachedRemote) {
+    // Renderer 面只暴露「保存/提交/回滚」命令与是否已配置；Key 值由本 Host 进程私有读写。
+    services.register(
+      ICodexNativeProviderKeyService,
+      createCodexNativeProviderKeyService({
+        environmentKey: CODEX_NATIVE_PROVIDER_LOCAL_ENVIRONMENT_KEY,
+        credentialService,
+        disposeLocalRuntimes: () =>
+          codezAgentService.disposeActiveWorkspaceRuntimes({
+            reason: "codex-provider-key-change",
+          }),
+      }),
+    );
+  }
   if (isDesktopAttachedRemote || options.providerProvisioningTargetEnabled === true) {
     services.register(
       IProviderProvisioningTargetService,
@@ -2995,22 +3543,81 @@ export function createLocalServices(options: {
         stateFilePath: join(resolveAppConfigDir(), "runtime", "provider", "provisioning.json"),
         listProvisioningCredentialKeys: () =>
           listProviderProvisioningCredentialKeys(resolveCredentialFilePath(resolveAppConfigDir())),
+        installRuntimeApiKeys: isDesktopAttachedRemote
+          ? async (keys) => {
+              const changed =
+                keys.length !== installedRuntimeApiKeys.size ||
+                keys.some(({ name, value }) => installedRuntimeApiKeys.get(name) !== value);
+              if (changed) {
+                await codezAgentService.disposeActiveWorkspaceRuntimes({
+                  reason: "remote-runtime-key-change",
+                  includeLegacy: true,
+                });
+              }
+              installedRuntimeApiKeys.clear();
+              for (const { name, value } of keys) installedRuntimeApiKeys.set(name, value);
+            }
+          : undefined,
+        codexNativeKeys: isDesktopAttachedRemote
+          ? {
+              beginRotation: async () => {
+                codexNativeKeyRotationActive = true;
+                // 先停止旧 Agent：原生配置热刷新不更新进程环境，旧进程不得继续以旧 Key 接单。
+                await codezAgentService.disposeActiveWorkspaceRuntimes({
+                  reason: "codex-provider-key-rotation",
+                });
+              },
+              install: async (keys) => {
+                const codexConfigTomlPath = join(
+                  process.env.CODEX_HOME?.trim() || join(homedir(), ".codex"),
+                  "config.toml",
+                );
+                // 只安装远端配置仍引用的条目；外部改写/删除的引用静默失效，不做磁盘回写。
+                const filtered = await filterCodexNativeKeysByConfigFile(keys, codexConfigTomlPath);
+                const changed =
+                  filtered.length !== installedCodexNativeKeys.size ||
+                  filtered.some((key) => {
+                    const current = installedCodexNativeKeys.get(key.envName);
+                    return (
+                      !current ||
+                      current.providerId !== key.providerId ||
+                      current.value !== key.value
+                    );
+                  });
+                installedCodexNativeKeys.clear();
+                for (const key of filtered) {
+                  installedCodexNativeKeys.set(key.envName, {
+                    providerId: key.providerId,
+                    value: key.value,
+                  });
+                }
+                codexNativeKeyRotationActive = false;
+                if (changed) {
+                  await codezAgentService.disposeActiveWorkspaceRuntimes({
+                    reason: "codex-provider-key-change",
+                  });
+                }
+              },
+            }
+          : undefined,
       }),
     );
   }
   const log = createServiceLogger("provider-runtime");
-  void providerRuntime.start().then(
-    () => {
-      const snapshot = providerRuntime.registryService.getSnapshot()!;
-      log.info("Provider Registry 已就绪", {
-        configRevision: snapshot.sourceRevisions.config,
-        providerCount: snapshot.registry.providers.length,
-      });
-    },
-    (error: unknown) => {
-      log.error("Provider 配置事实初始化失败", error);
-    },
-  );
+  // 旧装配无条件预热会在 Codex 登录前读取 Zai 账号并启动配置同步；原生默认路径保持按需服务。
+  if (!usesDefaultCodexDesktopBridge)
+    void providerRuntime.start().then(
+      () => {
+        const snapshot = providerRuntime.registryService.getSnapshot()!;
+        log.info("Provider Registry 已就绪", {
+          configRevision: snapshot.sourceRevisions.config,
+          providerCount: snapshot.registry.providers.length,
+        });
+      },
+      (error: unknown) => {
+        log.error("Provider 配置事实初始化失败", error);
+      },
+    );
 
   // 见 sharedSqliteRepos 声明处注释：登记全部 tasks-index sqlite 句柄，dispose 链统一关闭
   sqliteReposToClose.push(taskIndexRepo);
@@ -3130,9 +3737,12 @@ export function disposeServiceResources(services: ServiceCollection): void {
   // 关闭共享 tasks-index sqlite 句柄（Windows 上悬着句柄会让后续目录清理撞 EBUSY）
   for (const repo of sharedSqliteRepos.get(services) ?? []) repo.close();
   sharedSqliteRepos.delete(services);
+  disposeHostModelSelectionService(services);
   providerRuntimes.get(services)?.dispose();
   for (const dispose of providerProvisioningTriggerDisposers.get(services) ?? []) dispose();
   providerProvisioningTriggerDisposers.delete(services);
+  for (const dispose of settingsRuntimeRestartDisposers.get(services) ?? []) dispose();
+  settingsRuntimeRestartDisposers.delete(services);
   providerProvisioningSources.delete(services);
   taskAutoArchiveDisposers.get(services)?.();
   taskAutoArchiveDisposers.delete(services);
@@ -3174,9 +3784,12 @@ export async function disposeServiceResourcesAndWait(services: ServiceCollection
   // 关闭共享 tasks-index sqlite 句柄（同 disposeServiceResources，异步收口路径也要释放）
   for (const repo of sharedSqliteRepos.get(services) ?? []) repo.close();
   sharedSqliteRepos.delete(services);
+  disposeHostModelSelectionService(services);
   providerRuntimes.get(services)?.dispose();
   for (const dispose of providerProvisioningTriggerDisposers.get(services) ?? []) dispose();
   providerProvisioningTriggerDisposers.delete(services);
+  for (const dispose of settingsRuntimeRestartDisposers.get(services) ?? []) dispose();
+  settingsRuntimeRestartDisposers.delete(services);
   providerProvisioningSources.delete(services);
   taskAutoArchiveDisposers.get(services)?.();
   taskAutoArchiveDisposers.delete(services);

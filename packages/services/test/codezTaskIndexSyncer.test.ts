@@ -842,7 +842,7 @@ describe("createCodezTaskIndexSyncer", () => {
     env.configEmitter.dispose();
   });
 
-  it("silently seeds persisted summaries including draft execution phase", async () => {
+  it("seeds first-snapshot membership with one scoped invalidation and skips drafts", async () => {
     const env = setupEnv({
       initialSessions: [
         summaryOf("sess_history", "completedSuccess", { title: "历史会话" }),
@@ -863,7 +863,7 @@ describe("createCodezTaskIndexSyncer", () => {
     });
     await subscribed(env);
 
-    // 冷启动 snapshot 不回放历史终态/广播，但必须补齐缺失索引行，避免远端新库永远为空。
+    // 冷启动不回放历史终态；补齐行后只发一次 scoped membership invalidation。
     await vi.waitFor(async () => {
       const meta = await env.repo.getTaskMeta({ workspacePath: "/repo", taskId: "sess_history" });
       expect(meta).toMatchObject({
@@ -874,11 +874,14 @@ describe("createCodezTaskIndexSyncer", () => {
       });
     });
 
-    // 未提交草稿由 CLI 排除；initial 中的 draft 是已持久化但尚未开始执行的任务。
-    expect(
-      await env.repo.getTaskMeta({ workspacePath: "/repo", taskId: "sess_draft" }),
-    ).toMatchObject({ title: "已提交" });
-    expect(broadcasts.length).toBe(0);
+    // draft 会话（纯内存态）不进 task index。
+    env.indexEmitter.fire(indexUpsertFrame(summaryOf("sess_draft", "draft", { title: "草稿" })));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(await env.repo.getTaskMeta({ workspacePath: "/repo", taskId: "sess_draft" })).toBeNull();
+    expect(broadcasts).toEqual([
+      expect.objectContaining({ type: "workspace_task_list_changed", reason: "task_created" }),
+    ]);
+    expect(broadcasts[0]).not.toHaveProperty("taskMeta");
 
     subscription.dispose();
     syncer.disposeAll();

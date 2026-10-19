@@ -5,6 +5,7 @@ import { databaseMigrationIdSchema, type DatabaseMigrationFacts } from "@codez/s
 import type { DatabaseSync } from "node:sqlite";
 import { sqliteMigrations, type SqliteMigration } from "@codez/shared/sqlite-migrations";
 import {
+  CODEX_AUTOMATION_CORRELATIONS_SCHEMA,
   AUTOMATION_SCHEMA,
   OFF_PEAK_SCHEMA,
   TASK_INDEX_SCHEMA,
@@ -56,6 +57,28 @@ const executionColumns = [
   ["off_peak_tasks", "host_id"],
   ["off_peak_tasks", "additional_directories"],
 ] as const;
+// 0004 使用冻结的旧 CHECK 参与 checksum；新终态只能在独立迁移中无损扩表。
+const CODEX_AUTOMATION_STOPPED_MIGRATION_SQL = `
+  CREATE TABLE codex_automation_correlations_v2 (
+    workspace_key TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    automation_id TEXT NOT NULL,
+    command_id TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('pending', 'accepted', 'unknown', 'completed', 'failed', 'stopped')),
+    thread_id TEXT,
+    turn_id TEXT,
+    error TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (workspace_key, run_id)
+  );
+  INSERT INTO codex_automation_correlations_v2
+    (workspace_key, run_id, automation_id, command_id, state, thread_id, turn_id, error, created_at, updated_at)
+  SELECT workspace_key, run_id, automation_id, command_id, state, thread_id, turn_id, error, created_at, updated_at
+    FROM codex_automation_correlations;
+  DROP TABLE codex_automation_correlations;
+  ALTER TABLE codex_automation_correlations_v2 RENAME TO codex_automation_correlations;
+`;
 
 // 与 Agent 同样是库级串行事务，但不跨域依赖其具体 adapter。TS 转换使用冻结语义版本，
 // 禁用 function.toString 哈希：Electron/SEA 打包会改变函数文本而非迁移语义。
@@ -117,6 +140,18 @@ const definitions = [
     touchedTables: ["task_group_admissions"],
     checksumInput: [TASK_GROUP_ADMISSIONS_SQL],
     apply: (db: DatabaseSync) => db.exec(TASK_GROUP_ADMISSIONS_SQL),
+  },
+  {
+    id: "0004_codex_automation_correlations",
+    touchedTables: ["codex_automation_correlations"],
+    checksumInput: [CODEX_AUTOMATION_CORRELATIONS_SCHEMA],
+    apply: (db: DatabaseSync) => db.exec(CODEX_AUTOMATION_CORRELATIONS_SCHEMA),
+  },
+  {
+    id: "0005_codex_automation_stopped",
+    touchedTables: ["codex_automation_correlations"],
+    checksumInput: [CODEX_AUTOMATION_STOPPED_MIGRATION_SQL],
+    apply: (db: DatabaseSync) => db.exec(CODEX_AUTOMATION_STOPPED_MIGRATION_SQL),
   },
 ] as const;
 

@@ -16,6 +16,7 @@ import { normalizeRemoteConnectionError, sanitizeRemoteConnectionLog } from "@co
  */
 import { createHostDatabaseStartup } from "./database-startup/hostDatabaseStartup.js";
 import { isOffPeakTerminalStatus } from "@codez/shared";
+import { scopeModelSelectionServiceForAttachment } from "./modelSelectionAttachmentScope.js";
 import { createHostNetworkCapture } from "./hostNetworkCapture.js";
 import { randomUUID } from "node:crypto";
 import { createPluginSandboxRegistrationBridge } from "./pluginSandbox/index.js";
@@ -119,6 +120,7 @@ import {
   type CodezAutomationRun,
   type CodezAutomationRunOutcome,
   type ModelSelection,
+  type ProviderProvisioningResult,
 } from "@codez/shared";
 import {
   parseHostIncomingMessageEvent,
@@ -143,6 +145,14 @@ import {
   createServerRemoteWorkspaceServiceCollection,
   resolveServerProjectService,
 } from "./remoteWorkspaceServiceCollection.js";
+import {
+  createNativeBrowserCuaMcpStateHolder,
+  type NativeBrowserCuaMcpStateHolder,
+} from "./nativeBrowserCuaMcpState.js";
+import {
+  executeNativeBrowserCuaBrokerRequest,
+  synthesizeNativeBrowserCuaFailureLine,
+} from "./nativeBrowserCuaBrokerClient.js";
 import { getRemoteProviderProvisioningExecutor } from "./remoteProviderProvisioningService.js";
 import {
   createSourceSettingsServiceCollection,
@@ -189,6 +199,12 @@ import {
 } from "./sourceServerManagementService.js";
 import { resolveSourceServerReleaseAsset } from "./sourceServerReleaseResolver.js";
 import { resolveAutomationSubmissionModelSelection } from "./automationModelSelection.js";
+import {
+  assertCodexScheduledPromptCapability,
+  codexCorrelationStateFromRunOutcome,
+  codexRunOutcomeFromCorrelationState,
+  reconcileCodexAutomationHistory,
+} from "./codexAutomationCorrelation.js";
 import { createRemoteConnectionProgressContext } from "@codez/server/remote/remoteConnectionProgressContext.js";
 import {
   createRemotePromptAttachmentTransferService,
@@ -244,6 +260,32 @@ type RemoteAssetDirs = import("./windowRemoteConnectionRegistry.js").WindowRemot
 const { parentPort } = process;
 const hostNetworkCapture = createHostNetworkCapture(parentPort);
 
+// Codex 原生临时 Key 的跨连接屏障（spec: codex-provider-runtime-env-key）：
+// Window Host 只向 Main 发送阶段请求并按 requestId 关联结果；Key 值不经 Main。
+const pendingCodexKeyRotations = new Map<string, { resolve(): void; reject(error: Error): void }>();
+
+function requestCodexKeyRotation(
+  environmentKey: string,
+  phase: "begin" | "commit" | "rollback",
+): Promise<void> {
+  if (!parentPort) return Promise.reject(new Error("parentPort unavailable"));
+  const requestId = randomUUID();
+  return new Promise<void>((resolve, reject) => {
+    pendingCodexKeyRotations.set(requestId, { resolve, reject });
+    try {
+      parentPort.postMessage({
+        type: HostResponseTypes.CodexProviderKeyRotationRequest,
+        requestId,
+        environmentKey,
+        phase,
+      });
+    } catch (error) {
+      pendingCodexKeyRotations.delete(requestId);
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
+}
+
 // 进程检索体验优化：host 由 utilityProcess 拉起时外壳仍是 Electron Helper，
 // 这里根据 main 传入的窗口 label 补一层稳定的 codez-* title，方便系统进程列表过滤。
 process.title = formatCodezHostProcessName(process.env["CODEZ_PROCESS_LABEL"]);
@@ -274,7 +316,10 @@ function authorizeLocalMediaPreviewPath(path: string): Promise<string> {
   }
   const requestId = randomUUID();
   return new Promise<string>((resolve, reject) => {
-    pendingLocalMediaPreviewPathAuthorizations.set(requestId, { resolve, reject });
+    pendingLocalMediaPreviewPathAuthorizations.set(requestId, {
+      resolve,
+      reject,
+    });
     try {
       parentPort.postMessage({
         type: HostResponseTypes.LocalMediaPreviewPathAuthorizeRequest,
@@ -420,6 +465,8 @@ const logger = {
 
 const cronAutomationRepo = new AutomationRepo();
 const cronRunSubscriptions = new Map<string, { dispose(): void }>();
+/** Host 内同一 run 的 native-send 单飞；跨进程幂等由 correlation ledger 负责。 */
+const codexAutomationRunInFlight = new Set<string>();
 
 // ---- 闲时任务（off-peak）派发：与 cron 并行的独立链路（表/消息/常量互不复用）----
 const offPeakTaskRepo = new OffPeakTaskRepo();
@@ -955,13 +1002,28 @@ function trackCronRunOutcome(params: {
   const disposable = params.codezTaskService.onDynamicTaskTerminalOutcome(params.taskId)(
     (result) => {
       if (result.inputId !== params.traceId) return;
-      void settleCronRunTerminalOutcome({
-        ...params,
-        outcome: result.outcome,
-        error: result.error,
-        repo: cronAutomationRepo,
-        logWarn: (message, error) => logger.warn(message, error),
-      });
+      void (async () => {
+        const state = await markCodexAutomationCorrelationTerminal({
+          workspaceKey: params.workspaceKey,
+          runId: params.runId,
+          threadId: params.taskId,
+          outcome: result.outcome,
+          error: result.error,
+        });
+        // 修复原因：终态持久化先于历史投影；重复/迟到事件以已存 correlation 为准。
+        await settleCronRunTerminalOutcome({
+          ...params,
+          outcome:
+            state === "completed" || state === "failed" || state === "stopped"
+              ? codexRunOutcomeFromCorrelationState(state)
+              : result.outcome,
+          error: result.error,
+          repo: cronAutomationRepo,
+          logWarn: (message, error) => logger.warn(message, error),
+        });
+      })().catch((error) =>
+        logger.warn(`结算 Codex automation 终态失败 runId=${params.runId}`, error),
+      );
       // 定时任务在后台完成后统一置为未读，真正打开 task 时再由导航链路清除。
       void params.codezTaskService.setTaskUnread({
         taskId: params.taskId,
@@ -988,6 +1050,173 @@ function trackCronRunOutcome(params: {
   });
 }
 
+async function markCodexAutomationCorrelationTerminal(params: {
+  workspaceKey: string;
+  runId: string;
+  threadId: string;
+  outcome: "succeeded" | "failed" | "stopped";
+  error?: string;
+}): Promise<"completed" | "failed" | "stopped" | null> {
+  try {
+    const current = await cronAutomationRepo.getCodexAutomationCorrelation({
+      workspaceKey: params.workspaceKey,
+      runId: params.runId,
+    });
+    // 终态事件可能先于 sendPrompt ACK 返回。pending 先落 unknown，再用权威终态收敛；
+    // 这保留“没有 ACK 不代表 accepted”的状态机边界。
+    if (current?.state === "pending") {
+      await cronAutomationRepo.transitionCodexAutomationCorrelation({
+        workspaceKey: params.workspaceKey,
+        runId: params.runId,
+        to: "unknown",
+        threadId: params.threadId,
+        now: Date.now(),
+      });
+    }
+    const settled = await cronAutomationRepo.transitionCodexAutomationCorrelation({
+      workspaceKey: params.workspaceKey,
+      runId: params.runId,
+      to: codexCorrelationStateFromRunOutcome(params.outcome),
+      threadId: params.threadId,
+      error: params.error,
+      now: Date.now(),
+    });
+    return settled.state === "completed" ||
+      settled.state === "failed" ||
+      settled.state === "stopped"
+      ? settled.state
+      : null;
+  } catch (error) {
+    logger.warn(`回写 Codex automation correlation 终态失败 runId=${params.runId}`, error);
+    return null;
+  }
+}
+
+async function dispatchExistingCronRunCorrelation(params: {
+  codezTaskService: ICodezTaskService;
+  agentService: Pick<ICodezAgentService, "conversationRowsRangeV4">;
+  workspacePath: string;
+  workspaceIdentity?: string;
+  workspaceKey: string;
+  runId: string;
+  automationId: string;
+  scheduledAt: number | null;
+  trigger: "schedule" | "manual";
+}): Promise<{ taskId: string; sessionId: string }> {
+  const correlation = await cronAutomationRepo.getCodexAutomationCorrelation({
+    workspaceKey: params.workspaceKey,
+    runId: params.runId,
+  });
+  if (!correlation?.threadId) throw new Error("Codex automation correlation has no thread id");
+
+  if (
+    correlation.state === "completed" ||
+    correlation.state === "failed" ||
+    correlation.state === "stopped"
+  ) {
+    const outcome = codexRunOutcomeFromCorrelationState(correlation.state);
+    await settleCronRunTerminalOutcome({
+      ...params,
+      repo: cronAutomationRepo,
+      outcome,
+      logWarn: (message, error) => logger.warn(message, error),
+    });
+    return { taskId: correlation.threadId, sessionId: correlation.threadId };
+  }
+
+  const reconciliation = await reconcileCodexAutomationHistory({
+    agentService: params.agentService,
+    workspacePath: params.workspacePath,
+    ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+    threadId: correlation.threadId,
+    commandId: correlation.commandId,
+  });
+  if (reconciliation.kind === "resolved" && reconciliation.resolution.terminal) {
+    const correlationOutcome = reconciliation.resolution.outcome;
+    const settled = await cronAutomationRepo.transitionCodexAutomationCorrelation({
+      workspaceKey: params.workspaceKey,
+      runId: params.runId,
+      to: correlationOutcome,
+      threadId: correlation.threadId,
+      ...(reconciliation.resolution.turnId ? { turnId: reconciliation.resolution.turnId } : {}),
+      now: Date.now(),
+    });
+    await settleCronRunTerminalOutcome({
+      ...params,
+      repo: cronAutomationRepo,
+      // 修复原因：历史回放与实时事件并发时，以持久化终态为准，不重写 stopped。
+      outcome:
+        settled.state === "completed" || settled.state === "failed" || settled.state === "stopped"
+          ? codexRunOutcomeFromCorrelationState(settled.state)
+          : codexRunOutcomeFromCorrelationState(correlationOutcome),
+      logWarn: (message, error) => logger.warn(message, error),
+    });
+    return { taskId: correlation.threadId, sessionId: correlation.threadId };
+  }
+
+  if (
+    reconciliation.kind === "resolved" &&
+    !reconciliation.resolution.terminal &&
+    reconciliation.resolution.admitted
+  ) {
+    if (correlation.state === "pending") {
+      await cronAutomationRepo.transitionCodexAutomationCorrelation({
+        workspaceKey: params.workspaceKey,
+        runId: params.runId,
+        to: "accepted",
+        threadId: correlation.threadId,
+        ...(reconciliation.resolution.turnId ? { turnId: reconciliation.resolution.turnId } : {}),
+        now: Date.now(),
+      });
+    }
+    trackCronRunOutcome({
+      codezTaskService: params.codezTaskService,
+      taskId: correlation.threadId,
+      traceId: correlation.runId as TraceId,
+      workspacePath: params.workspacePath,
+      ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+      runId: params.runId,
+      automationId: params.automationId,
+      workspaceKey: params.workspaceKey,
+      scheduledAt: params.scheduledAt,
+      trigger: params.trigger,
+    });
+    return { taskId: correlation.threadId, sessionId: correlation.threadId };
+  }
+
+  if (reconciliation.kind === "unrecoverable") {
+    await cronAutomationRepo.transitionCodexAutomationCorrelation({
+      workspaceKey: params.workspaceKey,
+      runId: params.runId,
+      to: "failed",
+      threadId: correlation.threadId,
+      error: "native thread is deleted or unrecoverable",
+      now: Date.now(),
+    });
+    await settleCronRunTerminalOutcome({
+      ...params,
+      repo: cronAutomationRepo,
+      outcome: "failed",
+      error: "native thread is deleted or unrecoverable",
+      logWarn: (message, error) => logger.warn(message, error),
+    });
+    return { taskId: correlation.threadId, sessionId: correlation.threadId };
+  }
+
+  // No authoritative evidence is not permission to resend. Pending becomes unknown so restart
+  // can never turn a previously prepared run into a second native turn.
+  if (correlation.state === "pending") {
+    await cronAutomationRepo.transitionCodexAutomationCorrelation({
+      workspaceKey: params.workspaceKey,
+      runId: params.runId,
+      to: "unknown",
+      threadId: correlation.threadId,
+      now: Date.now(),
+    });
+  }
+  return { taskId: correlation.threadId, sessionId: correlation.threadId };
+}
+
 /**
  * 把一次 cron/manual run 直接提交给当前 host 的 V4 task service。
  * 会话内 automation 可能绑定到未激活 session，必须先恢复再应用保存的运行参数。
@@ -996,7 +1225,16 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
   taskId: string;
   sessionId: string;
 }> {
+  if (codexAutomationRunInFlight.has(request.runId)) {
+    throw new Error(`Codex automation run is already dispatching: ${request.runId}`);
+  }
+  codexAutomationRunInFlight.add(request.runId);
   const targetServices = resolveAutomationTargetServices(request);
+  const agentService = targetServices.getOptional(ICodezAgentService);
+  if (!agentService) {
+    throw new Error("Codez agent service is not initialized.");
+  }
+  await assertCodexScheduledPromptCapability(agentService);
   const codezTaskService = targetServices.getOptional(ICodezTaskService);
   if (!codezTaskService) {
     throw new Error("Codez task service is not initialized.");
@@ -1012,6 +1250,10 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
     selection: request.modelSelection,
     fixedSelection: existingRun?.modelSelection,
     modelSelectionService,
+    workspace: {
+      workspacePath: request.workspacePath,
+      ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
+    },
     // Repo 已在读取前完成离线导入；不再为迁移绕行 Agent/账号服务。
     // 未迁入或损坏的新值仍由此入口明确拒绝，不能当成跟随 Workspace。
     readSelection: () =>
@@ -1028,7 +1270,25 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
   const workspaceKey = resolveWorkspaceKey(request);
   const trigger = request.runId.includes(":manual:") ? "manual" : "schedule";
   const scheduledAt = parseCronRunScheduledAt(request.runId, request.automationId);
+  let correlationPrepared = false;
   try {
+    const existingCorrelation = await cronAutomationRepo.getCodexAutomationCorrelation({
+      workspaceKey,
+      runId: request.runId,
+    });
+    if (existingCorrelation) {
+      return await dispatchExistingCronRunCorrelation({
+        codezTaskService,
+        agentService,
+        workspacePath: request.workspacePath,
+        ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
+        workspaceKey,
+        runId: request.runId,
+        automationId: request.automationId,
+        scheduledAt,
+        trigger,
+      });
+    }
     const task = request.targetTaskId
       ? { taskId: request.targetTaskId }
       : await codezTaskService.createTask({
@@ -1087,6 +1347,26 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
       }
     }
     trackedKey = cronRunSubscriptionKey(task.taskId, promptTraceId);
+    const prepared = await cronAutomationRepo.prepareCodexAutomationCorrelation({
+      workspaceKey,
+      runId: request.runId,
+      automationId: request.automationId,
+      threadId: task.taskId,
+    });
+    correlationPrepared = prepared.created;
+    if (!prepared.created) {
+      return await dispatchExistingCronRunCorrelation({
+        codezTaskService,
+        agentService,
+        workspacePath: request.workspacePath,
+        ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
+        workspaceKey,
+        runId: request.runId,
+        automationId: request.automationId,
+        scheduledAt,
+        trigger,
+      });
+    }
     trackCronRunOutcome({
       codezTaskService,
       taskId: task.taskId,
@@ -1105,6 +1385,14 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
       content: request.prompt,
       clientMode: "desktop-continuous",
       automationId: request.automationId,
+      modelSelection: submissionModelSelection,
+    });
+    await cronAutomationRepo.transitionCodexAutomationCorrelation({
+      workspaceKey,
+      runId: request.runId,
+      to: "accepted",
+      threadId: task.taskId,
+      now: Date.now(),
     });
     // prompt 创建的定时任务带 targetTaskId，追加原会话不能计成 session_create。
     if (!request.targetTaskId) {
@@ -1117,6 +1405,19 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
     }
     return { taskId: task.taskId, sessionId: task.taskId };
   } catch (error) {
+    if (correlationPrepared) {
+      try {
+        await cronAutomationRepo.transitionCodexAutomationCorrelation({
+          workspaceKey,
+          runId: request.runId,
+          to: "unknown",
+          error: error instanceof Error ? error.message : String(error),
+          now: Date.now(),
+        });
+      } catch (ledgerError) {
+        logger.warn(`回写 Codex automation ACK-loss 状态失败 runId=${request.runId}`, ledgerError);
+      }
+    }
     if (trackedKey) disposeCronRunSubscription(trackedKey);
     markCronRunOutcome({
       runId: request.runId,
@@ -1128,6 +1429,8 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;
+  } finally {
+    codexAutomationRunInFlight.delete(request.runId);
   }
 }
 
@@ -1247,7 +1550,10 @@ const runtimeProcessLifecycleReporter = {
     });
   },
   onException(event) {
-    parentPort?.postMessage({ type: HostResponseTypes.AgentProcessException, ...event });
+    parentPort?.postMessage({
+      type: HostResponseTypes.AgentProcessException,
+      ...event,
+    });
   },
 } satisfies NonNullable<Parameters<typeof createLocalServices>[0]>["processLifecycleReporter"];
 
@@ -1742,6 +2048,11 @@ let activeServices: ServiceCollection | null = null;
  * 也不能代表当前界面，所以只认 Main 的 InitLocal 初值与 application-locale-changed 变更。
  */
 let applicationLocale: Locale | undefined;
+// 窗口级内置浏览器 MCP 状态持有器：InitLocal 快照初始化，Main 推送即时更新；
+// 本地 spawn env 与远程 relay 授权共用同一事实源
+// （spec: codex-desktop-native-browser-cua「Global enable toggle」「Remote workspace relay」）。
+const nativeBrowserCuaMcpState: NativeBrowserCuaMcpStateHolder =
+  createNativeBrowserCuaMcpStateHolder();
 let activeHostApiNetworkTransport: HostApiNetworkTransport | null = null;
 let sourceServerDirectory: SourceServerDirectory | null = null;
 let sourceServerConnectionManager: SourceServerConnectionManager | null = null;
@@ -1885,6 +2196,59 @@ async function createWindowRemoteConnectionHandle(params: {
     }
   };
   let connection: HostRemoteConnection;
+  const environmentKey = buildRemoteEnvironmentKey(params.target);
+  const codexKeyRotationBridge =
+    params.target.kind === "server"
+      ? undefined
+      : {
+          request: (phase: "begin" | "commit" | "rollback") =>
+            requestCodexKeyRotation(environmentKey, phase),
+        };
+  let desktopBrowserRelayCleanup: (() => void) | undefined;
+  const bindDesktopBrowserRelay = (remoteCodezAgentService: ICodezAgentService) => {
+    desktopBrowserRelayCleanup?.();
+    if (params.target.kind === "server") return;
+    const pushDesktopBrowserControl = () => {
+      const enabled = nativeBrowserCuaMcpState.brokerTarget() !== undefined;
+      void remoteCodezAgentService.updateDesktopBrowserControl({ enabled }).catch((error) => {
+        logger.warn("push desktop browser control capability failed", {
+          enabled,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    };
+    pushDesktopBrowserControl();
+    const unsubscribeDesktopBrowserControl =
+      nativeBrowserCuaMcpState.subscribe(pushDesktopBrowserControl);
+    const desktopBrowserCommandDisposable =
+      remoteCodezAgentService.onDynamicDesktopBrowserCommandRequest()((request) => {
+        void (async () => {
+          const target = nativeBrowserCuaMcpState.brokerTarget();
+          const payload = target
+            ? await executeNativeBrowserCuaBrokerRequest({
+                target,
+                payload: request.payload,
+              })
+            : synthesizeNativeBrowserCuaFailureLine(
+                request.payload,
+                "Native Browser/CUA control is unavailable for this window",
+              );
+          await remoteCodezAgentService.respondDesktopBrowserCommand({
+            requestId: request.requestId,
+            payload,
+          });
+        })().catch((error: unknown) => {
+          logger.warn("desktop browser relay request failed", {
+            requestId: request.requestId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+      });
+    desktopBrowserRelayCleanup = () => {
+      unsubscribeDesktopBrowserControl();
+      desktopBrowserCommandDisposable.dispose();
+    };
+  };
   let managedProfile: import("@codez/shared").ConnectionProfile | undefined;
   let reusedConnectionTarget: RemoteTarget | undefined;
   let managerStateSubscription: { dispose(): void } | undefined;
@@ -2055,7 +2419,11 @@ async function createWindowRemoteConnectionHandle(params: {
         serverId: reconnected.serverInfo.serverId,
         sourceServices: activeServices ?? undefined,
         targetKind: params.target.kind,
+        ...(params.target.kind !== "server"
+          ? { environmentKey, codexKeyRotationBridge }
+          : {}),
       });
+      bindDesktopBrowserRelay(reconnected.services.codezAgentService);
       refreshResourceTelemetry();
       lastNotifiedRecoveryAttempt = 0;
       for (const listener of reconnectListeners) listener();
@@ -2075,7 +2443,11 @@ async function createWindowRemoteConnectionHandle(params: {
     serverId: connection.serverInfo.serverId,
     targetKind: params.target.kind,
     sourceServices: activeServices ?? undefined,
+    ...(params.target.kind !== "server"
+      ? { environmentKey, codexKeyRotationBridge }
+      : {}),
   });
+  bindDesktopBrowserRelay(connection.services.codezAgentService);
   if (params.target.kind === "server") {
     projectSubscription = connection.services.broadcastService.onMessage((event) => {
       if (!disposed && !sourceClosed && event.channel === "state:projects") notifyProjectChange();
@@ -2179,6 +2551,7 @@ async function createWindowRemoteConnectionHandle(params: {
         return;
       }
       disposed = true;
+      desktopBrowserRelayCleanup?.();
       detachOwnSourceSettings();
       topicResourceRelay?.dispose();
       closeListeners.clear();
@@ -2506,7 +2879,11 @@ function createControllerRoutedTaskService(
       if (property === "deleteArchivedTasks") {
         return async (params: Parameters<ICodezTaskService["deleteArchivedTasks"]>[0]) => {
           if (params.taskIds.length === 0) {
-            return { deletedTaskIds: [], skippedTaskIds: [], failedTaskIds: [] };
+            return {
+              deletedTaskIds: [],
+              skippedTaskIds: [],
+              failedTaskIds: [],
+            };
           }
           return windowHostControllerRuntime.service.deleteArchivedTasks({
             address: await windowHostControllerRuntime.resolveTaskAddress({
@@ -2579,7 +2956,13 @@ function exposeServicesOnMessagePort(
   // renderer 会立即发请求但 channel 还没注册，导致 "Unknown channel" 超时错误。
   // attach 模式复用已就绪服务，必须立即初始化新的 RPC MessagePort。
   logger.info(`creating ChannelServer (deferInit=${deferInit})`);
-  const rawServer = new ChannelServer(protocol, "host", 1000, deferInit);
+  const rawServer = new ChannelServer(
+    protocol,
+    "host",
+    1000,
+    deferInit,
+    clientMode === "web-remote-replayable" ? "upstream" : "codez",
+  );
   const loggedServer = new LoggingChannelServer(rawServer, logRpc);
   const server = new NetworkTelemetryChannelServer(loggedServer);
   const agentService = services.getOptional(ICodezAgentService);
@@ -2604,6 +2987,13 @@ function exposeServicesOnMessagePort(
     overrides.set(IProjectService.channelName, activeServices.get(IProjectService));
     overrides.set(IRemoteProjectService.channelName, activeServices.get(IRemoteProjectService));
     services.register(ITaskGroupService, activeServices.get(ITaskGroupService));
+  }
+  const modelSelectionService = services.getOptional(IModelSelectionService);
+  if (modelSelectionService) {
+    overrides.set(
+      IModelSelectionService.channelName,
+      scopeModelSelectionServiceForAttachment(modelSelectionService, clientMode, attachmentScope),
+    );
   }
   // 远端媒体必须按 attachment 的 clientMode 选择数据面：桌面使用 Host loopback Range，手机保持 inline。
   const remoteMediaPreviewProxy =
@@ -3052,6 +3442,29 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
     return;
   }
 
+  if (msg.type === HostMessageTypes.NativeBrowserCuaMcpServersChanged) {
+    // spec: codex-desktop-native-browser-cua「Global enable toggle」：
+    // 先更新持有器（holder.set 同步触发远程 relay 授权推送），再释放本地活动 runtime，
+    // 保证下一次 spawn 读到的一定是新清单。
+    nativeBrowserCuaMcpState.set({
+      servers: msg.desktopCodexMcpServers,
+      nativeBrowserCua: msg.nativeBrowserCua,
+    });
+    const agentService = activeServices?.getOptional(ICodezAgentService);
+    if (agentService) {
+      void agentService
+        .disposeActiveWorkspaceRuntimes({
+          reason: "nativeBrowserControlEnabled",
+        })
+        .catch((error: unknown) => {
+          logger.warn("restart workspace runtimes for nativeBrowserControlEnabled failed", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+    }
+    return;
+  }
+
   if (msg.type === HostMessageTypes.CuaPipFocusChanged) {
     const service = activeServices?.getOptional(ICuaPipSessionService);
     if (service) {
@@ -3250,6 +3663,16 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
     return;
   }
 
+  if (msg.type === HostMessageTypes.CodexProviderKeyRotationResult) {
+    const pending = pendingCodexKeyRotations.get(msg.requestId);
+    if (pending) {
+      pendingCodexKeyRotations.delete(msg.requestId);
+      if (msg.ok) pending.resolve();
+      else pending.reject(new Error(msg.error ?? "Codex 临时 Key 轮换失败"));
+    }
+    return;
+  }
+
   if (msg.type === HostMessageTypes.ProviderProvisioningExecute) {
     const session = windowRemoteConnectionRegistry.getSession(msg.remoteSessionId);
     if (
@@ -3274,17 +3697,45 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
       workspaceIdentity: session.workspaceIdentity,
     } as const;
     void Promise.resolve()
-      .then(() =>
-        (() => {
-          const provisioningService = getRemoteProviderProvisioningExecutor(
-            windowRemoteConnectionRegistry.resolveScopedServices(scope),
-          );
-          if (!provisioningService) {
-            throw new Error("Remote Environment 不支持 Provider Provisioning");
-          }
+      .then(async (): Promise<ProviderProvisioningResult> => {
+        const provisioningService = getRemoteProviderProvisioningExecutor(
+          windowRemoteConnectionRegistry.resolveScopedServices(scope),
+        );
+        if (!provisioningService) {
+          throw new Error("Remote Environment 不支持 Provider Provisioning");
+        }
+        if (msg.operation === "codex-key-rotation-begin") {
+          await provisioningService.beginCodexKeyRotation();
+          return {
+            syncId: msg.requestId,
+            status: "applied",
+            personalProviderCount: 0,
+            credentialCount: 0,
+            rolledBack: false,
+          };
+        }
+        if (msg.operation === "install-codex-runtime-keys") {
+          await provisioningService.installCodexRuntimeKeys();
+          return {
+            syncId: msg.requestId,
+            status: "applied",
+            personalProviderCount: 0,
+            credentialCount: 0,
+            rolledBack: false,
+          };
+        }
+        if (msg.operation !== "install-runtime-keys") {
           return provisioningService.syncLocalToRemote();
-        })(),
-      )
+        }
+        await provisioningService.installLocalRuntimeKeys();
+        return {
+          syncId: msg.requestId,
+          status: "applied",
+          personalProviderCount: 0,
+          credentialCount: 0,
+          rolledBack: false,
+        };
+      })
       .then((result) => {
         parentPort.postMessage({
           type: HostResponseTypes.ProviderProvisioningExecutionResult,
@@ -3301,7 +3752,13 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           requestId: msg.requestId,
           environmentKey: msg.environmentKey,
           status: "failed",
-          error: error instanceof Error ? error.message : String(error),
+          // 安装 RPC 的远端异常可能回显参数；不能经 Main/连接面板暴露 Key。
+          error:
+            msg.operation === "install-runtime-keys"
+              ? "临时 Key 安装失败"
+              : error instanceof Error
+                ? error.message
+                : String(error),
           errorCode: "host-execution-failed",
         });
       });
@@ -3688,6 +4145,11 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
   }
 
   if (msg.type === HostMessageTypes.InitLocal) {
+    // 持有器必须先于 createLocalServices 初始化：resolveSpawnEnv 经 state source 现读。
+    nativeBrowserCuaMcpState.set({
+      servers: msg.desktopCodexMcpServers ?? [],
+      nativeBrowserCua: msg.nativeBrowserCua,
+    });
     if (!port) {
       logger.error("init-local message missing MessagePort");
       return;
@@ -3709,7 +4171,10 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
         (msg.workspacePath ? [msg.workspacePath] : []),
       env: msg.runtimeProcessEnvPatch,
       publish: (state) => {
-        parentPort?.postMessage({ type: HostResponseTypes.DatabaseStartupState, state });
+        parentPort?.postMessage({
+          type: HostResponseTypes.DatabaseStartupState,
+          state,
+        });
         if (state.phase === "ready") {
           for (const attach of pendingStartupAttachments.values()) {
             try {
@@ -3937,6 +4402,9 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               },
               registerPluginSandbox: pluginSandboxRegistrationBridge.register,
               runtimeProcessEnvPatch: msg.runtimeProcessEnvPatch,
+              nativeBrowserCua: msg.nativeBrowserCua,
+              desktopCodexMcpServers: msg.desktopCodexMcpServers,
+              desktopBrowserMcpStateSource: () => nativeBrowserCuaMcpState.get(),
               agentTelemetry: {
                 getDeviceMid: () => msg.deviceMid,
                 runtimeSurface: "desktop_local_host",
@@ -3959,7 +4427,9 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               },
               onAutomationManualRunRequested: dispatchManualAutomationRun,
               onOffPeakSchedulerWakeRequested: () => {
-                parentPort?.postMessage({ type: HostResponseTypes.OffPeakSchedulerWakeRequest });
+                parentPort?.postMessage({
+                  type: HostResponseTypes.OffPeakSchedulerWakeRequest,
+                });
               },
               onProviderProvisioningSourceChanged: (trigger) => {
                 parentPort?.postMessage({

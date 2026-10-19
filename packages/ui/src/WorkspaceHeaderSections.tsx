@@ -45,7 +45,7 @@ import {
 } from "@/lib/remoteWorkspaceHistory.js";
 import { resolveWorkspaceHeaderProvider } from "@/lib/workspaceHeaderProvider.js";
 import { toast } from "@/components/ui/toast.js";
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
+import { useFeedbackEntryAction } from "@/feedback/useFeedbackEntryAction.js";
 import { useModelTrajectoryStore } from "@/store/modelTrajectoryStore.js";
 import { buildTaskFeedbackDescription } from "@/lib/taskFeedbackDraft.js";
 import { resolveGitBranchTriggerLabel } from "@/git-branch-switcher/display.js";
@@ -121,7 +121,7 @@ export function WorkspaceHeaderTitleSection({
   compact = false,
 }: WorkspaceHeaderTitleSectionProps) {
   const { intl } = useCodezIntl();
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
+  const { runFeedbackEntry } = useFeedbackEntryAction();
   const confirmDialog = useConfirmDialog();
   const services = useWorkspaceServices(workspaceAbsPath, remoteSessionId, workspaceIdentity);
   const baseServices = useBaseWorkspaceServices();
@@ -274,18 +274,14 @@ export function WorkspaceHeaderTitleSection({
         id: activeTaskMeta?.forkedFromTaskId ? "taskList.forkedUntitled" : "taskList.untitled",
       });
     // Header 更多菜单缺少当前任务的反馈入口，用户只能复制日志再手动新建反馈。
-    // 这里打开反馈表单时预填任务标题、路径和日志线索，截图和诊断日志由用户主动选择。
-    openFeedbackSubmit({
+    // 这里直接走 GitHub Issues 预填入口，附带已脱敏的任务标题、路径和日志线索。
+    const outcome = runFeedbackEntry({
       title: intl
         .formatMessage(
           { id: "feedback.submit.template.section.taskFeedbackTitle" },
           { title: taskTitle },
         )
         .slice(0, 80),
-      type: "bug",
-      module: "Agent任务执行失败",
-      severity: "P2-中",
-      includeLogs: true,
       description: buildTaskFeedbackDescription({
         taskTitle,
         taskId: resolvedTaskActionTaskId ?? undefined,
@@ -295,9 +291,10 @@ export function WorkspaceHeaderTitleSection({
         formatMessage: (id: string, values?: Record<string, string>) =>
           intl.formatMessage({ id }, values),
       }),
-      screenshots: [],
     });
-    toast(intl.formatMessage({ id: "taskList.feedbackOpened" }));
+    if (outcome === "opened") {
+      toast(intl.formatMessage({ id: "taskList.feedbackOpened" }));
+    }
   };
 
   const handleStartRenameTask = () => {

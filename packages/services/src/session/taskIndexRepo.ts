@@ -91,6 +91,7 @@ interface TaskIndexWriteRecord {
 interface TaskIndexStatePatch {
   pinned?: boolean;
   archived?: boolean;
+  deleted?: boolean;
   unreadAt?: number;
 }
 
@@ -1111,11 +1112,14 @@ export class TaskIndexRepo {
           typeof params.patch.unreadAt === "number"
             ? Math.max(params.patch.unreadAt, row.last_unread_at + 1, (row.unread_at ?? 0) + 1)
             : null;
-        db.prepare(`UPDATE tasks SET pinned=coalesce(?,pinned),archived=coalesce(?,archived),
+        const nextDeleted =
+          params.patch.deleted === undefined ? row.deleted === 1 : params.patch.deleted;
+        db.prepare(`UPDATE tasks SET pinned=coalesce(?,pinned),archived=coalesce(?,archived),deleted=coalesce(?,deleted),
           unread_at=CASE WHEN ? THEN ? ELSE unread_at END,
           last_unread_at=max(last_unread_at,coalesce(?,0)) WHERE workspace_key=? AND task_id=?`).run(
           params.patch.pinned === undefined ? null : Number(params.patch.pinned),
           params.patch.archived === undefined ? null : Number(params.patch.archived),
+          params.patch.deleted === undefined ? null : Number(params.patch.deleted),
           Number(hasUnread),
           unread,
           hasUnread ? unread : null,
@@ -1123,7 +1127,11 @@ export class TaskIndexRepo {
           params.taskId,
         );
         const result = rowToMeta(this.getTaskRow(params)!);
-        this.admitTaskGroup(result, row.archived === 1, row.deleted === 1);
+        this.admitTaskGroup(
+          result,
+          params.patch.archived === undefined ? row.archived === 1 : params.patch.archived,
+          nextDeleted,
+        );
         db.exec("COMMIT");
         return result;
       } catch (error) {

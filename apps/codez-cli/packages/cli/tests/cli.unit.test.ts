@@ -2944,11 +2944,11 @@ test("command center opens a plugin toggle picker", async () => {
           plugins: [
             {
               commandRootCount: 1,
-              dataPath: "/tmp/codez/plugins/data/ios-simulator@zcode-plugins-official",
+              dataPath: "/tmp/codez/plugins/data/ios-simulator@codez-plugins-official",
               enabled: false,
-              id: "ios-simulator@zcode-plugins-official",
+              id: "ios-simulator@codez-plugins-official",
               manifestPath: "/plugins/ios/.codez-plugin/plugin.json",
-              marketplace: "zcode-plugins-official",
+              marketplace: "codez-plugins-official",
               mcpServerNames: ["ios-simulator"],
               name: "ios-simulator",
               rootPath: "/plugins/ios",
@@ -2985,7 +2985,7 @@ test("command center opens a plugin toggle picker", async () => {
   assert.equal(result.selection?.items[0]?.primary, "○ Ios Simulator");
   assert.equal(
     result.selection?.items[0]?.command,
-    "/plugins enable ios-simulator@zcode-plugins-official",
+    "/plugins enable ios-simulator@codez-plugins-official",
   );
 });
 
@@ -2998,7 +2998,7 @@ test("command center resolves plugin labels from listings by stable plugin id", 
           diagnostics: [],
           mcpServers: {},
           pluginListingsById: {
-            "computer-use@zcode-plugins-official": {
+            "computer-use@codez-plugins-official": {
               displayName: "Computer Use",
               displayNameI18n: { "zh-CN": "电脑控制" },
             },
@@ -3010,11 +3010,11 @@ test("command center resolves plugin labels from listings by stable plugin id", 
           plugins: [
             {
               commandRootCount: 0,
-              dataPath: "/tmp/codez/plugins/data/computer-use@zcode-plugins-official",
+              dataPath: "/tmp/codez/plugins/data/computer-use@codez-plugins-official",
               enabled: true,
-              id: "computer-use@zcode-plugins-official",
+              id: "computer-use@codez-plugins-official",
               manifestPath: "/plugins/cua/.codez-plugin/plugin.json",
-              marketplace: "zcode-plugins-official",
+              marketplace: "codez-plugins-official",
               mcpServerNames: [],
               name: "computer-use",
               rootPath: "/plugins/cua",
@@ -3070,7 +3070,7 @@ test("command center resolves plugin labels from listings by stable plugin id", 
 
   const items = result.selection?.items ?? [];
   assert.equal(
-    items.find((item) => item.id === "computer-use@zcode-plugins-official")?.primary,
+    items.find((item) => item.id === "computer-use@codez-plugins-official")?.primary,
     "✓ 电脑控制",
   );
   assert.equal(
@@ -3095,11 +3095,11 @@ test("command center toggles plugins and refreshes the picker", async () => {
           plugins: [
             {
               commandRootCount: 1,
-              dataPath: "/tmp/codez/plugins/data/ios-simulator@zcode-plugins-official",
+              dataPath: "/tmp/codez/plugins/data/ios-simulator@codez-plugins-official",
               enabled,
-              id: "ios-simulator@zcode-plugins-official",
+              id: "ios-simulator@codez-plugins-official",
               manifestPath: "/plugins/ios/.codez-plugin/plugin.json",
-              marketplace: "zcode-plugins-official",
+              marketplace: "codez-plugins-official",
               mcpServerNames: ["ios-simulator"],
               name: "ios-simulator",
               rootPath: "/plugins/ios",
@@ -3113,18 +3113,18 @@ test("command center toggles plugins and refreshes the picker", async () => {
         }),
         sessionId: "sess_active",
         setPluginEnabled: async (plugin, nextEnabled) => {
-          assert.equal(plugin, "ios-simulator@zcode-plugins-official");
+          assert.equal(plugin, "ios-simulator@codez-plugins-official");
           enabled = nextEnabled;
           return {
             enabled,
             path: "/home/test/.codez/cli/config.json",
             plugin: {
               commandRootCount: 1,
-              dataPath: "/tmp/codez/plugins/data/ios-simulator@zcode-plugins-official",
+              dataPath: "/tmp/codez/plugins/data/ios-simulator@codez-plugins-official",
               enabled,
-              id: "ios-simulator@zcode-plugins-official",
+              id: "ios-simulator@codez-plugins-official",
               manifestPath: "/plugins/ios/.codez-plugin/plugin.json",
-              marketplace: "zcode-plugins-official",
+              marketplace: "codez-plugins-official",
               mcpServerNames: ["ios-simulator"],
               name: "ios-simulator",
               rootPath: "/plugins/ios",
@@ -3143,16 +3143,16 @@ test("command center toggles plugins and refreshes the picker", async () => {
     },
   });
 
-  const result = await submitPrompt("/plugins enable ios-simulator@zcode-plugins-official", {
+  const result = await submitPrompt("/plugins enable ios-simulator@codez-plugins-official", {
     abortSignal: new AbortController().signal,
   });
 
   assert.equal(enabled, true);
-  assert.match(result.response, /Enabled plugin ios-simulator@zcode-plugins-official/);
+  assert.match(result.response, /Enabled plugin ios-simulator@codez-plugins-official/);
   assert.equal(result.selection?.items[0]?.primary, "✓ Ios Simulator");
   assert.equal(
     result.selection?.items[0]?.command,
-    "/plugins disable ios-simulator@zcode-plugins-official",
+    "/plugins disable ios-simulator@codez-plugins-official",
   );
 });
 
@@ -4522,11 +4522,11 @@ test("codez plugins enable persists the selected plugin", async () => {
         path: "/home/test/.codez/cli/config.json",
         plugin: {
           commandRootCount: 1,
-          dataPath: "/tmp/codez/plugins/data/ios-dev@zcode-plugins-official",
+          dataPath: "/tmp/codez/plugins/data/ios-dev@codez-plugins-official",
           enabled: true,
-          id: "ios-dev@zcode-plugins-official",
+          id: "ios-dev@codez-plugins-official",
           manifestPath: "/plugins/ios/.codez-plugin/plugin.json",
-          marketplace: "zcode-plugins-official",
+          marketplace: "codez-plugins-official",
           mcpServerNames: ["ios-simulator"],
           name: "ios-dev",
           rootPath: "/plugins/ios",
@@ -4541,7 +4541,7 @@ test("codez plugins enable persists the selected plugin", async () => {
   assert.equal(exitCode, 0);
   assert.match(
     ctx.stdout.output(),
-    /Enabled plugin ios-dev@zcode-plugins-official in \/home\/test\/.codez\/cli\/config\.json/,
+    /Enabled plugin ios-dev@codez-plugins-official in \/home\/test\/.codez\/cli\/config\.json/,
   );
 });
 

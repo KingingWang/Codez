@@ -31,7 +31,7 @@ function outcome(plugins: PluginMetadata[]): Pick<PluginLoadOutcome, "plugins"> 
 describe("resolvePluginRuntimeFeatures", () => {
   it("enables browser-use without exposing the legacy core node_repl tools", () => {
     expect(
-      resolvePluginRuntimeFeatures(outcome([plugin("browser-use@zcode-plugins-official", true)])),
+      resolvePluginRuntimeFeatures(outcome([plugin("browser-use@codez-plugins-official", true)])),
     ).toEqual({
       browserUse: true,
       browserDocumentationRoot: "/tmp/plugin/docs",
@@ -41,8 +41,8 @@ describe("resolvePluginRuntimeFeatures", () => {
   it("exposes only the stateless modern node_repl runtime, served from the host root", () => {
     const enabledServers = resolveBuiltInNodeReplMcpServers({
       pluginOutcome: outcome([
-        plugin("node-repl-host@zcode-plugins-official", true, "/tmp/host"),
-        plugin("browser-use@zcode-plugins-official", true),
+        plugin("node-repl-host@codez-plugins-official", true, "/tmp/host"),
+        plugin("browser-use@codez-plugins-official", true),
       ]),
       workingDirectory: "/workspace",
     });
@@ -68,7 +68,7 @@ describe("resolvePluginRuntimeFeatures", () => {
     // 宿主缺失只能安全地不注册：没有宿主可跑，绝不回退到某个插件包里的旧产物。
     expect(
       resolveBuiltInNodeReplMcpServers({
-        pluginOutcome: outcome([plugin("browser-use@zcode-plugins-official", true)]),
+        pluginOutcome: outcome([plugin("browser-use@codez-plugins-official", true)]),
         workingDirectory: "/workspace",
       }),
     ).toEqual({});
@@ -79,8 +79,8 @@ describe("resolvePluginRuntimeFeatures", () => {
     // 即便 CUA 启用也拿不到宿主。三个包独立后两个能力对称。
     const servers = resolveBuiltInNodeReplMcpServers({
       pluginOutcome: outcome([
-        plugin("node-repl-host@zcode-plugins-official", true, "/tmp/host"),
-        plugin("computer-use@zcode-plugins-official", true, "/tmp/cua-plugin"),
+        plugin("node-repl-host@codez-plugins-official", true, "/tmp/host"),
+        plugin("computer-use@codez-plugins-official", true, "/tmp/cua-plugin"),
       ]),
       workingDirectory: "/workspace",
     });
@@ -96,7 +96,7 @@ describe("resolvePluginRuntimeFeatures", () => {
 
   it("enables the CUA SDK without registering core node_repl tools", () => {
     expect(
-      resolvePluginRuntimeFeatures(outcome([plugin("computer-use@zcode-plugins-official", true)])),
+      resolvePluginRuntimeFeatures(outcome([plugin("computer-use@codez-plugins-official", true)])),
     ).toEqual({ computerUse: true });
   });
 
@@ -109,8 +109,8 @@ describe("resolvePluginRuntimeFeatures", () => {
     expect(
       resolveBuiltInNodeReplMcpServers({
         pluginOutcome: outcome([
-          plugin("node-repl-host@zcode-plugins-official", true, "/tmp/host"),
-          plugin("browser-use@zcode-plugins-official", false),
+          plugin("node-repl-host@codez-plugins-official", true, "/tmp/host"),
+          plugin("browser-use@codez-plugins-official", false),
         ]),
         workingDirectory: "/workspace",
       }),
@@ -120,9 +120,9 @@ describe("resolvePluginRuntimeFeatures", () => {
   it("keeps the shared host and CUA runtime roots separate", () => {
     const servers = resolveBuiltInNodeReplMcpServers({
       pluginOutcome: outcome([
-        plugin("node-repl-host@zcode-plugins-official", true, "/tmp/host"),
-        plugin("browser-use@zcode-plugins-official", false, "/tmp/browser-plugin"),
-        plugin("computer-use@zcode-plugins-official", true, "/tmp/cua-plugin"),
+        plugin("node-repl-host@codez-plugins-official", true, "/tmp/host"),
+        plugin("browser-use@codez-plugins-official", false, "/tmp/browser-plugin"),
+        plugin("computer-use@codez-plugins-official", true, "/tmp/cua-plugin"),
       ]),
       workingDirectory: "/workspace",
     });
@@ -146,9 +146,24 @@ describe("resolvePluginRuntimeFeatures", () => {
     ).toEqual({});
   });
 
+  // node_repl 的注册开关必须和 browserUse runtime feature 同源，避免以后再次分叉出
+  // 「工具在、bridge 不在」或「bridge 在、工具不在」的半开状态。
+  it("keeps node_repl registration in sync with the browserUse runtime feature", () => {
+    for (const enabled of [true, false]) {
+      const pluginOutcome = outcome([
+        plugin("node-repl-host@codez-plugins-official", true, "/tmp/host"),
+        plugin("browser-use@codez-plugins-official", enabled),
+      ]);
+      const hasNodeRepl =
+        resolveBuiltInNodeReplMcpServers({ pluginOutcome, workingDirectory: "/workspace" })
+          .node_repl !== undefined;
+      expect(hasNodeRepl).toBe(resolvePluginRuntimeFeatures(pluginOutcome).browserUse === true);
+    }
+  });
+
   it("keeps browser-use disabled for disabled or non-official plugins", () => {
     expect(
-      resolvePluginRuntimeFeatures(outcome([plugin("browser-use@zcode-plugins-official", false)])),
+      resolvePluginRuntimeFeatures(outcome([plugin("browser-use@codez-plugins-official", false)])),
     ).toEqual({});
     expect(resolvePluginRuntimeFeatures(outcome([plugin("browser@third-party", true)]))).toEqual(
       {},

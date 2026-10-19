@@ -230,7 +230,7 @@ describe("GeneralSectionContent data directory control", () => {
   it("ModelIO 读取关闭值并通过标准设置开关提交", async () => {
     const onModelIoFullRetentionEnabledChange = vi.fn(async () => {});
 
-    await renderGeneralSection({ onModelIoFullRetentionEnabledChange });
+    await renderGeneralSection({ isDesktop: false, onModelIoFullRetentionEnabledChange });
 
     const modelIoSwitch = capturedSwitches.find(
       (entry) => entry["aria-label"] === "完整保留模型 I/O",

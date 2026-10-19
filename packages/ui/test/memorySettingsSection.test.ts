@@ -32,6 +32,17 @@ vi.mock("@/ControlHintTooltip.js", () => ({
   ControlHintTooltip: ({ children }: { children: ReactNode }) => children,
 }));
 
+// 目录查看的夹具不启动 Host 模型目录；提取模型默认跟随会话，独立于 memory catalog。
+vi.mock("@/hooks/useWorkspaceServices.js", () => ({
+  useBaseWorkspaceServices: () => ({ modelSelectionService: null }),
+}));
+vi.mock("@/hooks/useModelSelectionView.js", () => ({
+  useModelSelectionServiceView: () => ({
+    state: { status: "unavailable", reason: "missing-target" },
+    reload: vi.fn(),
+  }),
+}));
+
 vi.mock("@/WorkspaceEditorButtonGroup.js", () => ({
   WorkspaceEditorButtonGroup: ({ workspaceAbsPath }: { workspaceAbsPath: string }) =>
     createElement("button", {
@@ -173,9 +184,13 @@ describe("MemorySettingsSection", () => {
       "settings.memory.viewer.memoryCount.other:count=2",
     );
     expect(screen.getByTestId(testId(TID_SETTINGS_MEMORY_FILE, "MEMORY.md"))).toBeTruthy();
+    expect(screen.getByTestId(testId(TID_SETTINGS_MEMORY_FILE_ICON, "MEMORY.md"))).toBeTruthy();
     expect(
       screen.getByTestId(testId(TID_SETTINGS_MEMORY_FILE_UPDATED_AT, "MEMORY.md")).textContent,
     ).toContain("settings.memory.viewer.updated.date");
+    const fileName = screen.getByTestId(testId(TID_SETTINGS_MEMORY_FILE_NAME, "MEMORY.md"));
+    expect(fileName.className).toContain("font-medium");
+    expect(fileName.className).not.toContain("font-mono");
     expect(screen.getByTestId("memory-editor-/memory/z-code/MEMORY.md")).toBeTruthy();
     expect(
       screen.getByTestId(testId(TID_SETTINGS_MEMORY_FILE_EDITOR_ACTIONS, "MEMORY.md")),

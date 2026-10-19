@@ -51,6 +51,18 @@ export function nextFollowingAfterScroll(
 export type TimelineScrollEventSource = "user" | "programmatic" | "layout";
 
 /**
+ * Bug 原因：模型/虚拟列表异步布局可在固定 guard 超时后才派发 scroll。
+ * 没有捕获到用户输入时不能仅凭滚动落点推断用户回底。
+ */
+export function classifyTimelineScrollSource(input: {
+  userScrollIntent: TimelineUserScrollIntent;
+  programmaticScroll: boolean;
+}): TimelineScrollEventSource {
+  if (input.userScrollIntent !== "none") return "user";
+  return input.programmaticScroll ? "programmatic" : "layout";
+}
+
+/**
  * scroll 事件后的滚动权裁决。布局/程序化 scroll 不得改变用户意图；只有用户输入
  * 才按最终落点决定是否跟随。
  */
@@ -98,6 +110,13 @@ export function shouldAdjustVirtualizerForItemSizeChange(input: {
 
 /** 未观察滚动的判定容差：小于该值的 scrollTop 回退视为亚像素抖动，不算用户上滚。 */
 export const UNOBSERVED_SCROLL_EPSILON_PX = 2;
+
+/**
+ * 用户上滚检测容差：当 scrollTop 减少超过该值时，认为用户已明确上滚。
+ * 取值需大于亚像素抖动和 virtualizer 补偿量，但小于用户有意义的滚动距离。
+ * 用于在 scroll 事件入账前抢先解除 following，防止内容更新夺走滚动权。
+ */
+export const USER_UPSCROLL_THRESHOLD_PX = 8;
 
 export type TimelineUserScrollIntent =
   | "none"
@@ -159,12 +178,14 @@ export function timelineKeyboardScrollIntent(input: {
  * totalSize/rowCount 变化的 React commit（流式 delta、ResizeObserver 测高修正、
  * composer 尺寸变化引起的窗口重算），贴底 effect 会拿着**过期的 following=true**
  * 把 scrollTop 拽回底部，且回弹落点让随后的 scroll 事件把跟随判回 true——
- * 用户/测试的上滚被整体吞掉（“resize/测量 commit 夺走滚动权”）。
+ * 用户/测试的上滚被整体吞掉（"resize/测量 commit 夺走滚动权"）。
  *
  * 对账规则（在贴底动作之前执行，输入为 commit 时刻的实时指标）：
  * 1. 明确向上滚动 → 立即解除跟随，同帧 terminal/layout commit 也必须让位；
  * 2. 没有用户输入 → 原样保持 following，virtualizer/折叠导致的 scrollTop 回退不算上滚；
  * 3. 方向未知或向下的用户输入 → 落点在底则恢复跟随，明显回退则解除，其余保持。
+ * 4. 未观察到的上滚（scrollTop 回退扣除同期内容收缩量后仍超过阈值）→
+ *    立即解除跟随，防止竞态夺权；内容收缩可解释的钳回不算上滚。
  */
 export function reconcileFollowingForContentAnchor(input: {
   /** 当前跟随态（scroll 事件驱动的既有值）。 */
@@ -173,19 +194,50 @@ export function reconcileFollowingForContentAnchor(input: {
   metrics: TimelineScrollMetrics;
   /** 组件最近一次「已账目」的 scrollTop（scroll 事件读取值或程序化写入后的回读值）。 */
   lastObservedScrollTop: number;
+  /**
+   * 组件最近一次「已账目」的内容高度（与 lastObservedScrollTop 同一时刻读取）。
+   * 用于区分 scrollTop 回退来源：terminal 折叠等内容收缩会把 scrollTop 钳回去，
+   * 这部分回退不是用户上滚；内容高度没变而 scrollTop 大幅回退才是未观察上滚。
+   * 省略时退化为保守策略（任何超阈值回退都视为上滚），与旧行为一致。
+   */
+  lastObservedContentHeight?: number;
   /** 当前内容 commit 前捕获到的用户滚动意图；省略时按旧的未知来源对账。 */
   userScrollIntent?: TimelineUserScrollIntent;
   bottomEpsilonPx?: number;
   scrollEpsilonPx?: number;
 }): boolean {
   const userScrollIntent = input.userScrollIntent ?? "unknown";
+  
+  // 规则 1：明确向上滚动 → 立即解除跟随
   if (userScrollIntent === "awayFromBottom") return false;
-  if (userScrollIntent === "none") return input.following;
-  if (
-    isAtBottom(input.metrics, input.bottomEpsilonPx ?? BOTTOM_ANCHOR_EPSILON_PX)
-  ) {
+  
+  // 规则 2：没有用户输入 → 原样保持 following
+  if (userScrollIntent === "none") {
+    // 规则 4：未观察到的上滚检测
+    // scrollTop 比上次记录值小超过阈值，且回退不能被内容收缩解释时，
+    // 说明用户已上滚（但 scroll 事件还没入账），此时必须解除跟随，
+    // 否则后续的 scrollToBottom() 会夺走滚动权。
+    // Bugfix：terminal 折叠/live tail 迁移会把内容压矮、浏览器随之钳回
+    // scrollTop，同样表现为大幅回退但没有用户输入；把这种钳回误判成上滚
+    // 会解除 following，运行结束后视图停在半空不再贴底。内容收缩可解释的
+    // 那部分回退必须从回退量里扣除后再与阈值比较。
+    const upscrollDelta = input.lastObservedScrollTop - input.metrics.scrollTop;
+    const contentShrink =
+      input.lastObservedContentHeight === undefined
+        ? 0
+        : Math.max(0, input.lastObservedContentHeight - input.metrics.contentHeight);
+    if (upscrollDelta - contentShrink > USER_UPSCROLL_THRESHOLD_PX) {
+      return false;
+    }
+    return input.following;
+  }
+  
+  // 规则 3：方向未知或向下的用户输入
+  if (isAtBottom(input.metrics, input.bottomEpsilonPx ?? BOTTOM_ANCHOR_EPSILON_PX)) {
     return true;
   }
+  
+  // 规则 4：未观察到的上滚（兜底检查）
   const unobservedUpscroll =
     input.metrics.scrollTop <
     input.lastObservedScrollTop -
@@ -193,6 +245,7 @@ export function reconcileFollowingForContentAnchor(input: {
   if (unobservedUpscroll) {
     return false;
   }
+  
   return input.following;
 }
 
@@ -247,6 +300,40 @@ export function prependVirtualAnchorAdjustment(
     return null;
   }
   return next.start - previous.offsetTop - currentScrollTop;
+}
+
+/**
+ * prepend 锚定修正裁决：绝对恢复 vs 位移保持。
+ *
+ * Bugfix（手机 Web 无法滑到会话顶部）：触发 loadOlder 到 rows 提交之间隔了一次
+ * 远程 RPC 往返（手机经 relay 通常 100~500ms+），期间用户的惯性滑动仍在继续。
+ * 旧的绝对恢复公式把 scrollTop 拽回「触发瞬间的锚点视口偏移」，用户每一次上滑
+ * 补页都被拉回触发位置（表现为“滑到上面突然跳回中间”，永远到不了顶部）。
+ *
+ * 裁决：
+ * - 窗口期内检测到用户滚动 → 用锚点位移（next.start - previous.start）保持
+ *   commit 时刻的阅读位置稳定，尊重用户的中间滚动；
+ * - 否则（位移来自恢复布局/virtualizer 改写）→ 维持旧的绝对恢复语义，避免
+ *   把程序化中间位移重复计入。
+ */
+export function resolvePrependVirtualAnchorAdjustment(input: {
+  previous: PrependVirtualAnchor;
+  next: PrependVirtualAnchor;
+  currentScrollTop: number;
+  userScrolledSinceTrigger: boolean;
+}): number | null {
+  if (input.previous.key !== input.next.key) return null;
+  if (input.userScrolledSinceTrigger) {
+    if (
+      !Number.isFinite(input.previous.start) ||
+      !Number.isFinite(input.next.start) ||
+      !Number.isFinite(input.currentScrollTop)
+    ) {
+      return null;
+    }
+    return input.next.start - input.previous.start;
+  }
+  return prependVirtualAnchorAdjustment(input.previous, input.next, input.currentScrollTop);
 }
 
 export interface PrependAnchorInput {

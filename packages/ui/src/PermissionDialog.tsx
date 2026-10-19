@@ -198,6 +198,11 @@ const GLOBAL_PERMISSION_OPTION_NAME_LABELS: Record<string, PermissionOptionNameM
   },
   "always allow in this project": { label: "chat.permission.allowForProject" },
   "always allow computer use in this project": { label: "chat.permission.cua.allowForProject" },
+  "allow for this session": {
+    label: "chat.permission.allowForSession",
+    description: "chat.permission.allowForSession.description",
+  },
+  cancel: { label: "common.cancel" },
   // workflow 运行确认窗的会话免确认：
   // CLI 侧 name 是匹配键，wire kind 是 allowAlways（排序 / 样式同 always allow）。
   "always allow in this session": {

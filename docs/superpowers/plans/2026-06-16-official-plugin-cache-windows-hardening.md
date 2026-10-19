@@ -17,7 +17,7 @@
 - `apps/codez-cli/packages/bootstrap/src/app/bundled-plugins.ts` 的 `seedBundledOfficialPlugins()` 会把官方插件先写到 `${targetRoot}.tmp-${process.pid}-${Date.now()}`，再通过 `replaceSeedRoot()` 删除正式版本目录并 `renameSync(tmp, targetRoot)`。
 - 当前 `replaceSeedRoot()` 只把 `EEXIST` / `ENOTEMPTY` 当成有限竞争重试，且 `rmSync(targetRoot)`、catch 里的 `rmSync(temporaryRoot)` 没有统一的有界重试/退避。Windows 上文件句柄、MCP 子进程、Defender/EDR 扫描都可能让目录删除或 rename 暂时失败。
 - `apps/codez-cli/packages/bootstrap/src/app/official-plugin-runtime.ts` 的 `writeTextFileAtomically()` 对 `.codez-plugin/plugin.json` 的重写也是裸 `renameSync`，带 MCP server 的官方插件更容易碰到 Windows manifest 句柄竞争。
-- `apps/codez-cli/packages/adapters/src/plugins/index.ts` 的 `scanOfficialCache()` 会把 `cache/zcode-plugins-official/<plugin>/` 下所有目录都当作版本候选，没有过滤 `0.1.0.tmp-*` 或 `0.1.0.seed-lock`。
+- `apps/codez-cli/packages/adapters/src/plugins/index.ts` 的 `scanOfficialCache()` 会把 `cache/codez-plugins-official/<plugin>/` 下所有目录都当作版本候选，没有过滤 `0.1.0.tmp-*` 或 `0.1.0.seed-lock`。
 
 修复判定标准：
 
@@ -63,7 +63,7 @@
   it("ignores official cache work directories left by interrupted seed attempts", async () => {
     const dir = await mkdtemp(join(tmpdir(), "codez-plugin-official-cache-workdirs-"));
     const storageRoot = join(dir, "plugins");
-    const cacheRoot = join(storageRoot, "cache", "zcode-plugins-official", "document-skills");
+    const cacheRoot = join(storageRoot, "cache", "codez-plugins-official", "document-skills");
     const temporaryVersionRoot = join(cacheRoot, "0.1.0.tmp-1234-1700000000000");
     const lockRoot = join(cacheRoot, "0.1.0.seed-lock");
 
@@ -106,7 +106,7 @@
 pnpm --dir apps/codez-cli --filter @codez/adapters exec vitest run tests/plugins.test.ts
 ```
 
-预期（实现前）：失败（FAIL）。失败点应是 `outcome.plugins` 包含 `document-skills@zcode-plugins-official`，或 diagnostics 包含 lock 目录缺少 manifest 的错误。
+预期（实现前）：失败（FAIL）。失败点应是 `outcome.plugins` 包含 `document-skills@codez-plugins-official`，或 diagnostics 包含 lock 目录缺少 manifest 的错误。
 
 - [ ] **步骤 3：在发现流程扫描端过滤工作目录**
 
@@ -492,7 +492,7 @@ import { mkdir, mkdtemp, readFile, rm, stat, utimes, writeFile } from "node:fs/p
     const staleTmpRoot = join(
       pluginStorageRoot,
       "cache",
-      "zcode-plugins-official",
+      "codez-plugins-official",
       "document-skills",
       "0.1.0.tmp-1234-1700000000000",
     );
@@ -766,7 +766,7 @@ pnpm --dir apps/codez-cli --filter @codez/bootstrap exec vitest run tests/plugin
 
 Windows 桌面端启动时，内置官方插件会 seed 到：
 
-`~/.codez/cli/plugins/cache/zcode-plugins-official/<plugin>/<version>/`
+`~/.codez/cli/plugins/cache/codez-plugins-official/<plugin>/<version>/`
 
 事故日志显示 `document-skills@0.1.0` 附近有大量 `0.1.0.tmp-*` 残留，并伴随 `ENOTEMPTY` 与 `EPERM` rename 失败。
 

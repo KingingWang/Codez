@@ -2953,4 +2953,43 @@ describe("topic preparation flow membership", () => {
       expect(html).toContain('aria-label="正在准备材料"');
     }
   });
+
+  it("在每轮状态栏右侧渲染单轮 Token 用量与缓存命中率", () => {
+    const [unit] = buildConversationTurnRenderUnits([
+      turnHeader({
+        executionKind: "agent",
+        activeMs: 12_000,
+        outputTokens: 320,
+        turnUsage: {
+          inputTokens: 2000,
+          outputTokens: 320,
+          totalTokens: 2320,
+          cacheReadTokens: 1600,
+          cacheWriteTokens: 100,
+        },
+      }),
+      userInputRow(2),
+      reasoningRow(),
+      assistantTextRow(4, { text: "已完成分析。" }),
+    ]);
+    const html = renderUnit(unit!, {
+      context: {
+        sessionUsage: {
+          contextWindow: {
+            usedTokens: 2320,
+            maxTokens: 128000,
+            autoCompactThresholdTokens: null,
+          },
+          cumulative: {
+            inputTokens: 4000,
+            outputTokens: 640,
+            cacheReadTokens: 3200,
+            cacheWriteTokens: 200,
+          },
+        },
+      },
+    });
+    expect(html).toContain('data-turn-token-usage="true"');
+    expect(html).toContain("tokens · 缓存 80%");
+  });
 });

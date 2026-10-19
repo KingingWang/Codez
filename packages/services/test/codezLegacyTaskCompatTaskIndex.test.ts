@@ -1114,7 +1114,7 @@ describe("Codez legacy task compat task index", () => {
     ).resolves.toEqual(expect.objectContaining({ cronAutomationId: "automation-2" }));
   });
 
-  it("marks automation execution prompts on v4 sendText commands", async () => {
+  it("native automation sendText omits legacy execution identities and Cron tool restrictions", async () => {
     const { agent, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
     vi.mocked(agent.sendConversationCommandV4).mockClear();
@@ -1134,8 +1134,6 @@ describe("Codez legacy task compat task index", () => {
           payload: {
             text: "run scheduled prompt",
             heldQueueDisposition: "keepQueueAndSend",
-            automationId: "automation-1",
-            toolDisallowlist: ["CronCreate", "CronUpdate", "CronDelete"],
           },
         }),
       }),
@@ -2315,7 +2313,7 @@ describe("Codez legacy task compat task index", () => {
     }
   });
 
-  it("drains automation host command with CronCreate denied", async () => {
+  it("drains native automation host commands without legacy Cron tool fields", async () => {
     const { agent, eventEmitter, indexFrameEmitter, service } = createService();
     const task = await service.createTask({ workspacePath: "/repo", provider: "glm" });
 
@@ -2378,8 +2376,6 @@ describe("Codez legacy task compat task index", () => {
         payload: {
           text: "每 5 分钟给我讲个冷笑话",
           heldQueueDisposition: "keepQueueAndSend",
-          automationId: "automation-parent",
-          toolDisallowlist: ["CronCreate", "CronUpdate", "CronDelete"],
         },
       }),
     });

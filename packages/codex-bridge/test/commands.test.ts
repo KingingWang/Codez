@@ -1,0 +1,947 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { projectThread } from "../src/projection.js";
+import { codexThreadSchema } from "../src/codex-types.js";
+import { CommandRouter } from "../src/commands.js";
+import { CommandLedger } from "../src/command-ledger.js";
+import { ThreadStateStore } from "../src/thread-state.js";
+import { InteractionBroker } from "../src/interactions.js";
+import { verifyHistoryChange } from "./fixtures/commands-history-fixture.js";
+import { verifySandboxTransitions } from "./fixtures/commands-mode-fixture.js";
+import { verifyNativeInputIntent } from "./fixtures/commands-intent-fixture.js";
+import { verifyCreateIntent } from "./fixtures/commands-create-fixture.js";
+import {
+  setup,
+  approval,
+  queueMutations,
+  deferred,
+  cwd,
+  workspaceId,
+  sessionId,
+  selection,
+  attachment,
+  textInput,
+  queued,
+  turn,
+  sendCases,
+  queueCases,
+  firstTurnParams,
+  crashAfterRpc,
+} from "./fixtures/commands-fixture.js";
+test("create maps native provider/model and first-input command correlation", async (t) => {
+  for (const firstInput of [undefined, { text: "First", modelSelection: selection }])
+    await t.test(firstInput ? "with first input" : "empty", async (t) => {
+      const h = await setup(t);
+      h.rpc.handlers.set("thread/settings/update", () => ({}));
+      h.rpc.handlers.set("thread/start", () => ({
+        thread: { ...h.authority.thread, id: "created", model: null, turns: [] },
+        model: "effective-model",
+        reasoningEffort: "high",
+      }));
+      const command = h.command(
+        "createSession",
+        { workspaceId, config: { modelSelection: selection }, firstInput },
+        "create",
+        null,
+      );
+      const ack = await h.execute(command);
+      assert.equal(ack.status, "accepted");
+      assert.deepEqual(h.rpc.params("thread/start"), [
+        { cwd, historyMode: "paginated", model: "native-model", modelProvider: "openai" },
+      ]);
+      const model = firstInput ? "native-model" : "effective-model";
+      assert.equal(h.store.get("created")?.thread.model, model);
+      assert.equal(h.store.get("created")?.thread.reasoningEffort, "high");
+      assert.deepEqual(h.rpc.params("turn/start"), firstInput ? [firstTurnParams] : []);
+      assert.deepEqual(await h.execute(command), ack);
+      assert.equal(h.rpc.params("thread/start").length, 1);
+    });
+});
+test("create honors settings and rejects unsupported intent", verifyCreateIntent);
+test("sandbox transitions change native permissions only when intended", verifySandboxTransitions);
+test("create rejects another workspace before any native mutation", async (t) => {
+  const h = await setup(t);
+  const ack = await h.execute(h.command("createSession", { workspaceId: "other" }, "create", null));
+  assert.equal(ack.status, "failed");
+  assert.deepEqual(h.rpc.calls, []);
+});
+test("native input intent is never silently lost", verifyNativeInputIntent);
+test("explicit legacy browser context still fails before idle/busy native admission", async (t) => {
+  for (const busy of [false, true]) {
+    await t.test(busy ? "busy" : "idle", async (t) => {
+      const h = await setup(t, busy);
+      const command = h.command("sendText", {
+        text: "explicit legacy context",
+        browserAmbientContext: { tabCount: 1, currentUrl: "https://example.com/" },
+      });
+      const ack = await h.execute(command);
+      assert.equal(ack.status, "failed");
+      assert.equal(ack.reasonCode, "codex.commandFailed");
+      assert.match(ack.message ?? "", /does not support legacy execution context/);
+      assert.deepEqual(
+        h.rpc.calls,
+        [],
+        "Host automatic-injection fix must not relax explicit guards",
+      );
+      assert.deepEqual(await h.execute(command), ack, "same command replays the rejection");
+      assert.deepEqual(h.rpc.calls, []);
+    });
+  }
+});
+test("mobile resume starts native queue head once without a shadow auto-drain policy", async (t) => {
+  const h = await setup(t);
+  queueMutations(h);
+  h.state.queue = [queued("obsolete-local-entry")];
+  const command = h.command("setAutoDrain", { autoDrain: true }, "mobile-resume");
+  const ack = await h.execute(command);
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.methods(), [
+    "thread/queue/list",
+    "thread/queue/start",
+    "thread/queue/list",
+  ]);
+  assert.deepEqual(h.rpc.params("thread/queue/start"), [
+    { threadId: sessionId, queuedSubmissionId: "q1" },
+  ]);
+  assert.deepEqual(h.state.queue, [queued("q2")]);
+  assert.deepEqual(await h.execute(command), ack);
+  assert.equal(
+    h.rpc.params("thread/queue/start").length,
+    1,
+    "duplicate cannot consume the next item",
+  );
+});
+test("mobile resume of an empty native queue does not create a turn", async (t) => {
+  const h = await setup(t);
+  h.authority.queue = [];
+  const ack = await h.execute(h.command("setAutoDrain", { autoDrain: true }));
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.methods(), ["thread/queue/list"]);
+});
+test("native pause policy and busy resume stay unsupported without mutation", async (t) => {
+  for (const [busy, autoDrain] of [
+    [false, false],
+    [true, true],
+  ] as const) {
+    await t.test(`${busy}:${autoDrain}`, async (t) => {
+      const h = await setup(t, busy);
+      const ack = await h.execute(h.command("setAutoDrain", { autoDrain }));
+      assert.equal(ack.status, "failed");
+      assert.match(ack.message ?? "", /does not support/);
+      assert.deepEqual(h.rpc.calls, []);
+    });
+  }
+});
+test("replayable bot sendText payload (heldQueueDisposition + selection) is admitted", async (t) => {
+  // Host codezTaskServiceAdapter 的 replayable sendText 载荷形状：
+  // { text, heldQueueDisposition: "keepQueueAndSend", modelSelection }，
+  // 不带 mode/plan/attachments。回归：bridge 曾以 held queue 为由整体拒绝该载荷，
+  // 导致所有 Bot/Automation/手机消息在 admission 前失败。
+  const h = await setup(t);
+  const ack = await h.execute(
+    h.command("sendText", {
+      text: "hi",
+      heldQueueDisposition: "keepQueueAndSend",
+      modelSelection: {
+        providerId: "openai",
+        modelId: "fixture-model",
+        options: { reasoningLevel: "medium" },
+      },
+    }),
+  );
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.params("turn/start"), [
+    {
+      threadId: sessionId,
+      input: textInput("hi"),
+      clientUserMessageId: "sendText",
+      model: "fixture-model",
+      effort: "medium",
+    },
+  ]);
+
+  // running 时同一载荷走默认 queue（thread/queue/add），settings 不变不得拒绝。
+  const busy = await setup(t, true);
+  queueMutations(busy);
+  const queuedAck = await busy.execute(
+    busy.command("sendText", {
+      text: "继续",
+      heldQueueDisposition: "keepQueueAndSend",
+      modelSelection: {
+        providerId: "openai",
+        modelId: "fixture-model",
+        options: { reasoningLevel: "medium" },
+      },
+    }),
+  );
+  assert.equal(queuedAck.status, "accepted", queuedAck.message);
+  assert.deepEqual(busy.rpc.methods(), ["thread/queue/add", "thread/queue/list"]);
+});
+test("bot createSession config (provider/model/thought + forced yolo) maps to native thread", async (t) => {
+  // Bot createTask(v4Create) 的载荷形状：config 携带 provider/model/thought，
+  // mode 由 applyDraftConfigOptions 随后经 switchCollaborationMode 强制 yolo。
+  const h = await setup(t);
+  h.rpc.handlers.set("thread/settings/update", () => ({}));
+  h.rpc.handlers.set("thread/start", () => ({
+    thread: { ...h.authority.thread, id: "created", model: null, turns: [] },
+    model: "deepseek-v4-flash",
+    reasoningEffort: "xhigh",
+  }));
+  const ack = await h.execute(
+    h.command(
+      "createSession",
+      {
+        workspaceId,
+        config: { provider: "ollama1", model: "deepseek-v4-flash", thought: "xhigh" },
+      },
+      "create",
+      null,
+    ),
+  );
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.params("thread/start"), [
+    {
+      cwd,
+      historyMode: "paginated",
+      model: "deepseek-v4-flash",
+      modelProvider: "ollama1",
+    },
+  ]);
+  assert.deepEqual(h.rpc.params("thread/settings/update"), [
+    { threadId: "created", effort: "xhigh" },
+  ]);
+
+  const mode = await h.execute(
+    h.command("switchCollaborationMode", { mode: "yolo" }, "yolo", "created"),
+  );
+  assert.equal(mode.status, "accepted", mode.message);
+  const updates = h.rpc.params("thread/settings/update");
+  assert.equal(updates.length, 2);
+  assert.deepEqual(updates[1], {
+    threadId: "created",
+    collaborationMode: {
+      mode: "default",
+      settings: {
+        model: "deepseek-v4-flash",
+        reasoning_effort: "xhigh",
+        developer_instructions: null,
+      },
+    },
+    approvalPolicy: "never",
+    approvalsReviewer: "user",
+    sandboxPolicy: { type: "dangerFullAccess" },
+  });
+});
+test("send startNow/guide/queue decisions use native turn/queue authority", async (t) => {
+  for (const [busy, delivery, method, accepted] of sendCases)
+    await t.test(`${busy}:${delivery}`, async (t) => {
+      const h = await setup(t, busy);
+      queueMutations(h);
+      const ack = await h.execute(
+        h.command("sendText", { text: "Hello", requestedDelivery: delivery }, "send"),
+      );
+      assert.equal(ack.status, method ? "accepted" : "failed");
+      if (!method) {
+        assert.deepEqual(h.rpc.calls, []);
+        return;
+      }
+      assert.deepEqual(ack.result, { type: "inputAccepted", delivery: accepted, inputId: "send" });
+      const params = h.rpc.params(method)[0]!;
+      assert.deepEqual(params.input, textInput("Hello"));
+      assert.equal(params.clientUserMessageId, "send");
+      assert.equal(params.threadId, sessionId);
+      if (method === "turn/steer") assert.equal(params.expectedTurnId, "live-turn");
+      assert.deepEqual(h.state.queue, method === "thread/queue/add" ? h.authority.queue : []);
+    });
+});
+test("queue CRUD/reorder/start read native list, retain external entries, never use turn/start", async (t) => {
+  const h = await setup(t);
+  queueMutations(h);
+  await h.store.refreshQueue(sessionId);
+  for (const [type, payload, native] of queueCases) {
+    const ack = await h.execute(h.command(type, payload));
+    assert.equal(ack.status, "accepted");
+    assert.equal(h.rpc.params(native).length, 1);
+    assert.deepEqual(h.state.queue, h.authority.queue);
+  }
+  assert.deepEqual(h.rpc.params("thread/queue/reorder")[0]?.queuedSubmissionIds, ["q2", "q1"]);
+  assert.equal(h.rpc.params("turn/start").length, 0);
+  assert.equal(h.rpc.methods().at(-1), "thread/queue/list");
+  h.authority.queue = [queued("external-after-restart")];
+  await h.store.refreshQueue(sessionId);
+  assert.equal(
+    projectThread(h.state.thread, { workspacePath: cwd, queue: h.state.queue }).queue.items[0]
+      ?.clientId,
+    "codex-external",
+  );
+});
+test("stop checks expectedTurn and cannot interrupt a later run", async (t) => {
+  const h = await setup(t, true);
+  const stale = await h.execute(
+    h.command("stop", { expectedForegroundExecutionId: "old-turn" }, "stale-stop"),
+  );
+  assert.equal(stale.status, "failed");
+  assert.deepEqual(h.rpc.calls, []);
+  const command = h.command("stop", { expectedForegroundExecutionId: "live-turn" }, "stop");
+  assert.equal((await h.execute(command)).status, "accepted");
+  await h.execute(command);
+  assert.deepEqual(h.rpc.params("turn/interrupt"), [{ threadId: sessionId, turnId: "live-turn" }]);
+});
+
+test("interrupted turn continues in the same thread without reverting completed tool context", async (t) => {
+  const h = await setup(t);
+  const interrupted = h.authority.thread.turns[0]!;
+  interrupted.status = "interrupted";
+  interrupted.items.push({
+    type: "commandExecution",
+    id: "completed-tool",
+    command: "pwd",
+    cwd,
+    status: "completed",
+    aggregatedOutput: "/workspace",
+    exitCode: 0,
+  });
+  h.store.markStarted(structuredClone(h.authority.thread));
+  const current = h.store.get(sessionId)!;
+  const snap = projectThread(current.thread, { workspacePath: cwd });
+  const userRow = snap.rows.window.find((row) => row.kind === "userInput")!;
+  const command = {
+    ...h.command(
+      "sendText",
+      {
+        text: "",
+        interruptedContinueTarget: { rowId: userRow.rowId, entityId: userRow.entityId! },
+        modelSelection: {
+          providerId: "openai",
+          modelId: "new-model",
+          options: { reasoningLevel: "high" },
+        },
+      },
+      "continue-interrupted",
+    ),
+    baseRevision: current.revision,
+    baseLogEpoch: current.epoch,
+  };
+  const accepted = await h.execute(command);
+  assert.equal(accepted.status, "accepted");
+  assert.deepEqual(h.rpc.methods(), ["turn/start"]);
+  assert.equal(h.rpc.params("turn/start")[0]?.model, "new-model");
+  assert.equal(h.rpc.params("turn/start")[0]?.effort, "high");
+  assert.deepEqual(h.rpc.params("turn/start")[0]?.input, [
+    {
+      type: "text",
+      text: '<codex_internal_context source="continue">\n\n</codex_internal_context>',
+      text_elements: [],
+    },
+  ]);
+  const retained = codexThreadSchema.parse(h.store.get(sessionId)?.thread);
+  assert.ok(retained.turns[0]?.items.some((item) => item.id === "completed-tool"));
+  assert.equal(retained.turns[0]?.status, "interrupted");
+  assert.equal(retained.turns.length, 2);
+  assert.deepEqual(await h.execute(command), accepted);
+  assert.equal(h.rpc.params("turn/start").length, 1);
+});
+
+test("interrupted turn without completed tools reverts unfinished step and reruns original prompt", async (t) => {
+  const h = await setup(t);
+  const interrupted = h.authority.thread.turns[0]!;
+  interrupted.status = "interrupted";
+  interrupted.items.push({
+    type: "commandExecution",
+    id: "aborted-tool",
+    command: "sleep 10",
+    cwd,
+    status: "inProgress",
+    aggregatedOutput: "",
+    exitCode: null,
+  });
+  h.rpc.handlers.set("thread/revert", (params) => {
+    assert.deepEqual(params, { threadId: sessionId, beforeTurnId: interrupted.id });
+    h.authority.thread.turns = [];
+    return {
+      thread: { ...h.authority.thread, turns: [] },
+      turnsBackwardsCursor: null,
+      itemsBackwardsCursor: null,
+    };
+  });
+  h.store.markStarted(structuredClone(h.authority.thread));
+  const current = h.store.get(sessionId)!;
+  const snap = projectThread(current.thread, { workspacePath: cwd });
+  const userRow = snap.rows.window.find((row) => row.kind === "userInput")!;
+  const command = {
+    ...h.command(
+      "sendText",
+      {
+        text: "",
+        interruptedContinueTarget: { rowId: userRow.rowId, entityId: userRow.entityId! },
+        modelSelection: {
+          providerId: "openai",
+          modelId: "new-model",
+          options: { reasoningLevel: "high" },
+        },
+      },
+      "continue-revert",
+    ),
+    baseRevision: current.revision,
+    baseLogEpoch: current.epoch,
+  };
+  const accepted = await h.execute(command);
+  assert.equal(accepted.status, "accepted");
+  assert.equal(h.rpc.methods()[0], "thread/revert");
+  assert.equal(h.rpc.methods().at(-1), "turn/start");
+  assert.equal(h.rpc.params("turn/start")[0]?.model, "new-model");
+  assert.equal(h.rpc.params("turn/start")[0]?.effort, "high");
+  assert.deepEqual(
+    h.rpc.params("turn/start")[0]?.input,
+    interrupted.items[0]?.type === "userMessage" ? interrupted.items[0].content : [],
+  );
+});
+
+test("CAS rejects stale revision/epoch and invalid envelopes without side effects", async (t) => {
+  const h = await setup(t);
+  for (const [id, override] of [
+    ["revision", { baseRevision: 0 }],
+    ["epoch", { baseLogEpoch: "old-epoch" }],
+  ] as const) {
+    const ack = await h.execute({
+      ...h.command(
+        "forkAssistant",
+        { target: { rowId: 3, entityId: "codex:turn:turn-1:item:answer-1" } },
+        id,
+      ),
+      ...override,
+    });
+    assert.equal(ack.status, "stale");
+    assert.equal(ack.revisionAtDecision, h.state.revision);
+  }
+  await assert.rejects(
+    h.router.execute({
+      ...h.command("editQueueItem", { queueItemId: "q1", newText: "x" }),
+      baseRevision: undefined,
+    }),
+    /Invalid/,
+  );
+  assert.deepEqual(h.rpc.calls, []);
+});
+
+test("simultaneous duplicate sends wait for one native RPC and replay durable ACK after restart", async (t) => {
+  const h = await setup(t);
+  const entered = deferred();
+  const release = deferred();
+  h.rpc.handlers.set("turn/start", async () => {
+    entered.resolve();
+    await release.promise;
+    return { turn: turn() };
+  });
+  const command = h.command("sendText", { text: "Once" }, "same");
+  const first = h.execute(command);
+  await entered.promise;
+  const second = h.execute(command);
+  release.resolve();
+  const [a, b] = await Promise.all([first, second]);
+  assert.equal(a.status, "accepted");
+  assert.deepEqual(a, b);
+  const restarted = new CommandRouter({ ...h.context, ledger: new CommandLedger(h.root) });
+  assert.deepEqual(await restarted.execute(command), a);
+  assert.equal(h.rpc.params("turn/start").length, 1);
+});
+
+test("pending crash ledger prevents all native retries and preserves session-scoped keys", async (t) => {
+  const h = await setup(t);
+  await crashAfterRpc(h);
+  const restarted = new CommandRouter({ ...h.context, ledger: new CommandLedger(h.root) });
+  const ack = await restarted.execute(h.command("sendText", { text: "Unknown" }, "crashed"));
+  assert.equal(ack.reasonCode, "codex.commandOutcomeUnknown");
+  assert.deepEqual(h.rpc.methods(), ["turn/start"]);
+  assert.equal(await h.ledger.lookup(null, "crashed"), undefined);
+  assert.equal(await h.ledger.lookup(sessionId, "crashed"), "unknown");
+});
+
+test("native rejection is surfaced and duplicate delivery never retries an ambiguous mutation", async (t) => {
+  const h = await setup(t);
+  h.rpc.handlers.set("turn/start", async () => {
+    await Promise.resolve();
+    throw new Error("connection lost after admission");
+  });
+  const command = h.command("sendText", { text: "Once" });
+  const ack = await h.execute(command);
+  assert.equal(ack.status, "failed");
+  assert.match(ack.message ?? "", /connection lost/);
+  assert.deepEqual(await h.execute(command), ack);
+  assert.equal(h.rpc.params("turn/start").length, 1);
+});
+
+test("fork resolves stable row+entity to native turn and rejects stale target identity", async (t) => {
+  const h = await setup(t);
+  h.rpc.handlers.set("thread/fork", () => ({ thread: { ...h.authority.thread, id: "forked" } }));
+  const bad = await h.execute(
+    h.command("forkAssistant", { target: { rowId: 3, entityId: "wrong" } }, "bad-fork"),
+  );
+  assert.equal(bad.status, "failed");
+  assert.deepEqual(h.rpc.calls, []);
+  const ack = await h.execute(
+    h.command("forkAssistant", {
+      target: { rowId: 3, entityId: "codex:turn:turn-1:item:answer-1" },
+    }),
+  );
+  assert.equal(ack.status, "accepted");
+  assert.deepEqual(h.rpc.params("thread/fork"), [{ threadId: sessionId, lastTurnId: "turn-1" }]);
+  assert.equal(h.store.get("forked")?.thread.id, "forked");
+});
+
+test("unsupported file rewind fails closed without destructive RPC", async (t) => {
+  const h = await setup(t);
+  for (const type of ["applyFileRewind", "editUserQuery"] as const) {
+    const ack = await h.execute(
+      h.command(type, {
+        target: { rowId: 1, entityId: "codex:turn:turn-1:item:user-1" },
+        newText: "edit",
+        workspaceMode: "rewind",
+      }),
+    );
+    assert.equal(ack.status, "failed");
+    assert.match(ack.message ?? "", /does not support/);
+  }
+  assert.deepEqual(h.rpc.calls, []);
+});
+test("history edit/retry preserve files, hydrate the correct prefix and rotate epoch", async (t) => {
+  for (const type of ["editUserQuery", "retryTurn"] as const)
+    await t.test(type, (t) => verifyHistoryChange(t, type));
+});
+test("editUserQuery forwards updated modelSelection, reasoningLevel and planEnabled to turn/start", async (t) => {
+  const h = await setup(t);
+  h.rpc.handlers.set("thread/revert", () => ({
+    thread: { ...h.authority.thread, turns: [] },
+    turnsBackwardsCursor: null,
+    itemsBackwardsCursor: null,
+  }));
+  const ack = await h.execute(
+    h.command(
+      "editUserQuery",
+      {
+        target: { rowId: 1, entityId: "codex:turn:turn-1:item:user-1" },
+        newText: "Edited with new model and plan mode",
+        workspaceMode: "preserve",
+        modelSelection: {
+          providerId: "secondary-provider",
+          modelId: "gpt-5.4-secondary",
+          options: { reasoningLevel: "high" },
+        },
+        mode: "custom",
+        planEnabled: true,
+      },
+      "edit-with-overrides",
+    ),
+  );
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.params("turn/start"), [
+    {
+      threadId: sessionId,
+      input: [{ type: "text", text: "Edited with new model and plan mode", text_elements: [] }],
+      clientUserMessageId: "edit-with-overrides",
+      model: "gpt-5.4-secondary",
+      effort: "high",
+      collaborationMode: {
+        mode: "plan",
+        settings: {
+          model: "gpt-5.4-secondary",
+          reasoning_effort: "high",
+          developer_instructions: null,
+        },
+      },
+    },
+  ]);
+  assert.equal(h.store.get(sessionId)?.thread.model, "gpt-5.4-secondary");
+  assert.equal(h.store.get(sessionId)?.thread.modelProvider, "secondary-provider");
+  assert.equal(h.store.get(sessionId)?.thread.reasoningEffort, "high");
+});
+test("approval accept/decline/cancel routes exact reverse request once through broker", async (t) => {
+  const h = await setup(t, true);
+  for (const [index, optionId] of ["accept", "decline", "cancel"].entries()) {
+    const interactionId = await approval(h, index);
+    const command = h.command(
+      "resolveInteraction",
+      { interactionId, answer: { optionId } },
+      `resolve-${index}`,
+    );
+    assert.equal((await h.execute(command)).status, "accepted");
+    await h.execute(command);
+    assert.deepEqual(h.rpc.replies[index], { id: index, result: { decision: optionId } });
+  }
+  assert.equal(h.rpc.replies.length, 3);
+  assert.deepEqual(h.broker.list(sessionId), []);
+  const interactionId = await approval(h, 99);
+  h.broker.expireTurn(sessionId, "live-turn");
+  assert.equal(
+    (
+      await h.execute(
+        h.command("resolveInteraction", { interactionId, answer: { optionId: "accept" } }, "late"),
+      )
+    ).status,
+    "failed",
+  );
+  assert.equal(h.rpc.replies.length, 3);
+});
+
+test("MCP tool approval uses the existing resolveInteraction command once", async (t) => {
+  const h = await setup(t, true);
+  await h.broker.accept({
+    id: "mcp-rpc",
+    method: "mcpServer/elicitation/request",
+    params: {
+      threadId: sessionId,
+      turnId: "live-turn",
+      serverName: "codez-desktop-browser-cua",
+      mode: "form",
+      message: 'Allow the codez-desktop-browser-cua MCP server to run tool "cua_status"?',
+      requestedSchema: { type: "object", properties: {} },
+      _meta: { codex_approval_kind: "mcp_tool_call" },
+    },
+  });
+  const interaction = h.broker.list(sessionId)[0]!;
+  assert.equal(interaction.payload.kind, "permission");
+  assert.deepEqual(
+    interaction.payload.kind === "permission"
+      ? interaction.payload.options.map(({ optionId }) => optionId)
+      : [],
+    ["accept", "cancel"],
+  );
+  const command = h.command(
+    "resolveInteraction",
+    { interactionId: interaction.interactionId, answer: { optionId: "accept" } },
+    "approve-mcp",
+  );
+  assert.equal((await h.execute(command)).status, "accepted");
+  assert.equal((await h.execute(command)).status, "accepted");
+  assert.deepEqual(h.rpc.replies, [
+    { id: "mcp-rpc", result: { action: "accept", content: null, _meta: null } },
+  ]);
+  assert.deepEqual(h.broker.list(sessionId), []);
+});
+
+test("approval write failure is awaited and cannot be retried under a new command ID", async (t) => {
+  const h = await setup(t, true);
+  const interactionId = await approval(h);
+  h.rpc.onRespond = async () => {
+    await Promise.resolve();
+    throw new Error("approval reply lost");
+  };
+  for (const id of ["answer", "second-answer"]) {
+    const ack = await h.execute(
+      h.command("resolveInteraction", { interactionId, answer: { optionId: "accept" } }, id),
+    );
+    assert.equal(ack.status, "failed");
+  }
+  assert.equal(h.rpc.replies.length, 1);
+});
+
+test("attachment resolver is awaited and its async errors prevent native send", async (t) => {
+  const h = await setup(t);
+  const entered = deferred();
+  const release = deferred<unknown[]>();
+  h.context.attachments = async (refs, id) => {
+    assert.deepEqual(refs, [attachment]);
+    assert.equal(id, sessionId);
+    entered.resolve();
+    return release.promise;
+  };
+  const pending = h.execute(h.command("sendText", { text: "Look", attachments: [attachment] }));
+  await entered.promise;
+  assert.deepEqual(h.rpc.calls, []);
+  release.reject(new Error("staging failed"));
+  const ack = await pending;
+  assert.equal(ack.status, "failed");
+  assert.match(ack.message ?? "", /staging failed/);
+  assert.deepEqual(h.rpc.calls, []);
+});
+
+test("cross-provider send executes under the model's catalog provider", async (t) => {
+  // specs/codex-model-provider-grouping.md：codex 原生按 catalog per-model provider
+  // 路由执行（turn_context.with_model），bridge 不再以「线程 provider 不可变」拒绝。
+  // 线程 provider 记录跟随选择，原生 ThreadSettings.model_provider 是创建期固定身份。
+  const h = await setup(t);
+  const ack = await h.execute(
+    h.command("sendText", {
+      text: "Different provider",
+      modelSelection: { ...selection, providerId: "other-provider" },
+    }),
+  );
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.params("turn/start")[0], {
+    threadId: sessionId,
+    input: textInput("Different provider"),
+    clientUserMessageId: "sendText",
+    model: selection.modelId,
+    effort: "high",
+  });
+  assert.equal(h.store.get(sessionId)?.thread.modelProvider, "other-provider");
+});
+
+test("plan collaboration settings preserve the explicit reasoning effort", async (t) => {
+  const h = await setup(t);
+  const ack = await h.execute(
+    h.command("sendText", { text: "Plan", modelSelection: selection, mode: "plan" }),
+  );
+  assert.equal(ack.status, "accepted");
+  const params = h.rpc.params("turn/start")[0]!;
+  assert.equal(params.effort, "high");
+  assert.deepEqual(params.collaborationMode, {
+    mode: "plan",
+    settings: { model: "native-model", reasoning_effort: "high", developer_instructions: null },
+  });
+});
+
+test("distinct sends before TurnStarted notification do not dispatch two native starts", async (t) => {
+  const h = await setup(t);
+  queueMutations(h);
+  const a = h.execute(h.command("sendText", { text: "First" }, "first"));
+  const b = h.execute(h.command("sendText", { text: "Second" }, "second"));
+  const acks = await Promise.all([a, b]);
+  assert.equal(acks[0]?.status, "accepted");
+  assert.equal(
+    h.rpc.params("turn/start").length,
+    1,
+    "the native response already identifies the admitted active turn",
+  );
+  if (acks[1]?.status === "accepted") assert.equal(h.rpc.params("thread/queue/add").length, 1);
+});
+
+test("busy startNow/sendQueuedNow preempt by interrupting the running turn first", async (t) => {
+  const h = await setup(t, true);
+  queueMutations(h);
+  const preempt = await h.execute(
+    h.command("sendText", { text: "抢占", requestedDelivery: "startNow" }, "preempt"),
+  );
+  assert.equal(preempt.status, "accepted", preempt.message);
+  const methods = h.rpc.methods();
+  assert.ok(
+    methods.indexOf("turn/interrupt") > -1 &&
+      methods.indexOf("turn/interrupt") < methods.indexOf("turn/start"),
+    `interrupt must land before the preempting start: ${methods.join(",")}`,
+  );
+  assert.deepEqual(h.rpc.params("turn/interrupt")[0], { threadId: sessionId, turnId: "live-turn" });
+  assert.deepEqual(preempt.result, {
+    type: "inputAccepted",
+    delivery: "startNow",
+    inputId: "preempt",
+  });
+
+  // 队列项"立即发送"同样抢占：interrupt 先行，thread/queue/start 随后。
+  const promote = await h.execute(h.command("sendQueuedNow", { queueItemId: "q2" }, "promote"));
+  assert.equal(promote.status, "accepted", promote.message);
+  const promoteMethods = h.rpc.methods();
+  assert.ok(
+    promoteMethods.lastIndexOf("turn/interrupt") < promoteMethods.indexOf("thread/queue/start"),
+    `interrupt must land before the promoted queue start: ${promoteMethods.join(",")}`,
+  );
+});
+
+test("model switch followed by mode switch cannot restore stale cached model", async (t) => {
+  const h = await setup(t);
+  h.rpc.handlers.set("thread/settings/update", (p) => {
+    if (typeof p.model === "string") h.authority.thread.model = p.model;
+    return {};
+  });
+  assert.equal(
+    (
+      await h.execute(
+        h.command("switchModelConfig", { provider: "openai", model: "new-model", thought: "high" }),
+      )
+    ).status,
+    "accepted",
+  );
+  assert.equal(
+    (await h.execute(h.command("switchCollaborationMode", { mode: "plan" }))).status,
+    "accepted",
+  );
+  assert.deepEqual(h.rpc.params("thread/settings/update")[0], {
+    threadId: sessionId,
+    model: "new-model",
+    effort: "high",
+  });
+  const p = h.rpc.params("thread/settings/update")[1]!;
+  assert.equal(
+    (p.collaborationMode as { settings: { model: string } }).settings.model,
+    "new-model",
+  );
+});
+
+test("cross-provider model switch follows codex catalog routing instead of rejecting", async (t) => {
+  // specs/codex-model-provider-grouping.md：跨 provider 换模型由 codex 原生按
+  // catalog per-model provider 路由，bridge 守卫不再拒绝，线程记录跟随选择。
+  const h = await setup(t);
+  h.rpc.handlers.set("thread/settings/update", () => ({}));
+  const ack = await h.execute(
+    h.command("switchModelConfig", { provider: "openai-my", model: "gpt-6-sol", thought: "high" }),
+  );
+  assert.equal(ack.status, "accepted", ack.message);
+  assert.deepEqual(h.rpc.params("thread/settings/update"), [
+    { threadId: sessionId, model: "gpt-6-sol", effort: "high" },
+  ]);
+  assert.equal(h.store.get(sessionId)?.thread.model, "gpt-6-sol");
+  assert.equal(h.store.get(sessionId)?.thread.modelProvider, "openai-my");
+
+  // 携带新 provider 选择的发送不再触发 provider 守卫，model/effort 直传 turn/start。
+  const send = await h.execute(
+    h.command("sendText", {
+      text: "hi",
+      modelSelection: {
+        providerId: "openai-my",
+        modelId: "gpt-6-sol",
+        options: { reasoningLevel: "high" },
+      },
+    }),
+  );
+  assert.equal(send.status, "accepted", send.message);
+  assert.deepEqual(h.rpc.params("turn/start")[0], {
+    threadId: sessionId,
+    input: textInput("hi"),
+    clientUserMessageId: "sendText",
+    model: "gpt-6-sol",
+    effort: "high",
+  });
+  assert.equal(h.store.get(sessionId)?.thread.modelProvider, "openai-my");
+});
+
+test("resume retains model metadata from native response for subsequent mode requests", async (t) => {
+  const h = await setup(t);
+  h.rpc.handlers.set("thread/resume", () => ({
+    thread: { ...h.authority.thread, model: null },
+    model: "resumed-model",
+    reasoningEffort: "high",
+  }));
+  const store = new ThreadStateStore(h.rpc, cwd);
+  const state = await store.ensure(sessionId);
+  assert.equal(state.thread.model, "resumed-model");
+  assert.equal(state.thread.reasoningEffort, "high");
+});
+
+test("async broker publication failures are not silently detached", async (t) => {
+  const h = await setup(t);
+  const failedPublication = Promise.reject(new Error("snapshot publish failed"));
+  void failedPublication.catch(() => {}); // Attach observation without hiding the broker's required rejection.
+  const broker = new InteractionBroker(h.rpc, () => failedPublication);
+  await assert.rejects(
+    broker.accept({
+      id: 1,
+      method: "item/commandExecution/requestApproval",
+      params: {
+        threadId: sessionId,
+        turnId: "live-turn",
+        itemId: "tool",
+        command: "pwd",
+      },
+    }),
+    /snapshot publish failed/,
+  );
+});
+
+test("sendText prepends a pending rewind notice exactly once", async (t) => {
+  const h = await setup(t);
+  queueMutations(h);
+  h.notices.record(sessionId, {
+    turnId: "turn-1",
+    files: [{ path: "src/new.ts", additions: 4, deletions: 0 }],
+  });
+  const ack = await h.execute(h.command("sendText", { text: "continue" }, "sendText-notice-1"));
+  assert.equal(ack.status, "accepted", ack.message);
+  const starts = h.rpc.params("turn/start");
+  assert.equal(starts.length, 1);
+  const input = (starts[0] as { input: Array<{ text: string }> }).input;
+  assert.ok(input[0]!.text.startsWith("[User action: file changes reverted]"));
+  assert.ok(input[0]!.text.includes("- `src/new.ts` (+4/-0)"));
+  assert.ok(input[0]!.text.endsWith("continue"));
+
+  // 通知一次性：第二条消息不再携带（首轮 turn/start 后线程在跑，第二条走 queue 投递）。
+  const again = await h.execute(h.command("sendText", { text: "again" }, "sendText-notice-2"));
+  assert.equal(again.status, "accepted", again.message);
+  assert.equal(h.rpc.params("turn/start").length, 1);
+  const adds = h.rpc.params("thread/queue/add");
+  assert.equal(adds.length, 1);
+  assert.deepEqual((adds[0] as { input: unknown }).input, textInput("again"));
+});
+
+test("failed sendText retains the rewind notice for the next attempt", async (t) => {
+  const h = await setup(t);
+  h.notices.record(sessionId, {
+    turnId: "turn-1",
+    files: [{ path: "src/new.ts", additions: 4, deletions: 0 }],
+  });
+  h.rpc.handlers.set("turn/start", () => {
+    throw new Error("native boom");
+  });
+  const failed = await h.execute(h.command("sendText", { text: "oops" }, "sendText-fail"));
+  assert.equal(failed.status, "failed");
+
+  // native 恢复后重发：通知仍在，且发送成功后即被消费。
+  h.rpc.handlers.set("turn/start", () => ({ turn: turn("retry-turn") }));
+  const retried = await h.execute(h.command("sendText", { text: "retry" }, "sendText-retry"));
+  assert.equal(retried.status, "accepted", retried.message);
+  const all = h.rpc.params("turn/start");
+  assert.equal(all.length, 2);
+  const retryInput = (all[1] as { input: Array<{ text: string }> }).input;
+  assert.ok(retryInput[0]!.text.startsWith("[User action: file changes reverted]"));
+  assert.equal(h.notices.peek(sessionId), undefined);
+});
+
+test("sendText expands /init into the AGENTS.md initialization prompt", async (t) => {
+  const h = await setup(t);
+  queueMutations(h);
+  const ack = await h.execute(
+    h.command("sendText", { text: "/init Focus on packages/codex-bridge" }, "sendText-init"),
+  );
+  assert.equal(ack.status, "accepted", ack.message);
+  const starts = h.rpc.params("turn/start");
+  assert.equal(starts.length, 1);
+  const input = (starts[0] as { input: Array<{ text: string }> }).input;
+  assert.ok(input[0]!.text.includes("Generate a file named AGENTS.md"));
+  assert.ok(input[0]!.text.includes("Focus on packages/codex-bridge"));
+});
+
+test("sendGoalCommand, pauseGoal and resumeGoal map to native thread/goal/set and project goal state", async (t) => {
+  const h = await setup(t);
+  queueMutations(h);
+  let storedGoal: Record<string, unknown> | null = null;
+  h.rpc.handlers.set("thread/goal/set", (params) => {
+    storedGoal = {
+      threadId: params.threadId,
+      objective: params.objective ?? storedGoal?.objective ?? "Ship native hooks",
+      status: params.status ?? "active",
+      tokenBudget: null,
+      tokensUsed: 0,
+      timeUsedSeconds: 12,
+      createdAt: 1700000000,
+      updatedAt: 1700000012,
+    };
+    return { goal: storedGoal };
+  });
+  const sendAck = await h.execute(
+    h.command(
+      "sendGoalCommand",
+      { text: "Ship native hooks", displayText: "/goal Ship native hooks" },
+      "goal-send-1",
+    ),
+  );
+  assert.equal(sendAck.status, "accepted", sendAck.message);
+  assert.equal(h.rpc.params("thread/goal/set").length, 1);
+  assert.deepEqual(h.rpc.params("thread/goal/set")[0], {
+    threadId: sessionId,
+    origin: "user",
+    objective: "Ship native hooks",
+    status: "active",
+  });
+  assert.equal(h.rpc.params("turn/start").length, 1);
+
+  const pauseAck = await h.execute(h.command("pauseGoal", {}, "goal-pause-1"));
+  assert.equal(pauseAck.status, "accepted", pauseAck.message);
+  assert.equal(h.store.get(sessionId)?.goal?.status, "paused");
+
+  // Simulate turn finished so resumeGoal can proceed while idle.
+  const currentTurns = h.store.get(sessionId)?.thread.turns as Array<Record<string, unknown>>;
+  for (const entry of currentTurns ?? []) {
+    entry.status = "completed";
+  }
+  const resumeAck = await h.execute(h.command("resumeGoal", {}, "goal-resume-1"));
+  assert.equal(resumeAck.status, "accepted", resumeAck.message);
+  assert.equal(h.store.get(sessionId)?.goal?.status, "active");
+});

@@ -18,6 +18,8 @@ import type {
   V4ConversationFileRewindPreviewResult,
   V4ConversationPlansParams,
   V4ConversationPlansResult,
+  V4ConversationRowPayloadParams,
+  V4ConversationRowPayloadResult,
   V4ConversationRowsRangeParams,
   V4ConversationRowsRangeResult,
   V4ConversationWorkflowRunArtifactDataParams,
@@ -34,6 +36,8 @@ import type {
   V4ConversationWorkflowRunsParams,
   V4ConversationWorkflowRunEventsResult,
   V4ConversationWorkflowRunsResult,
+  CodexConversationHistoryRunsParams,
+  CodexConversationHistoryRunsResult,
   ConversationResyncParams,
   V4ConversationResyncResult,
   V4ConversationSubscribeResult,
@@ -63,6 +67,8 @@ export interface ConversationTransport {
   queryCommands(params: CommandsQueryParams): Promise<CommandsQueryResult>;
   /** v4/conversation/rowsRange（loadOlder）：按游标向上取一窗历史行。 */
   rowsRange(params: V4ConversationRowsRangeParams): Promise<V4ConversationRowsRangeResult>;
+  /** v4/conversation/rowPayload：按 rowId 按需读取折叠行的完整载荷。 */
+  rowPayload?(params: V4ConversationRowPayloadParams): Promise<V4ConversationRowPayloadResult>;
   /** v4/conversation/plans：当前有效分支里的全部终态计划。 */
   plans(params: V4ConversationPlansParams): Promise<V4ConversationPlansResult>;
   /** v4/conversation/workflowRunEvents：workflow run 的事件日志分页（cursor = journal sequence）。 */
@@ -71,6 +77,10 @@ export interface ConversationTransport {
   ): Promise<V4ConversationWorkflowRunEventsResult>;
   /** v4/conversation/workflowRuns：workflow run 枚举（journal-backed 的重启后发现面）。 */
   workflowRuns(params: V4ConversationWorkflowRunsParams): Promise<V4ConversationWorkflowRunsResult>;
+  /** v4/codex/conversation/historyRuns：独立只读 Codex thread-history 投影。 */
+  codexHistoryRuns(
+    params: CodexConversationHistoryRunsParams,
+  ): Promise<CodexConversationHistoryRunsResult>;
   /**
    * v4/conversation/workflowRunArtifacts：workflow run 的**用户面产物**清单（冷恢复的 durable 读法）。
    *

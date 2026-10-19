@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines -- v4 row schema union stays grouped in a single protocol module. */
 import { conversationQuotesSchema } from "../conversationSelection.js";
 import { botGroupInputSourceSchema } from "../bots.js";
 // ConversationRow：行类型自包含。
@@ -8,10 +9,7 @@ import { highspeedMessageMetaSchema } from "../highspeed.js";
 import { executionOutputPreviewSchema } from "../execution-output-preview.js";
 import { timestampSchema } from "./core.js";
 import { conversationInputSourceSchema } from "./input-intent.js";
-import {
-  backgroundResultOriginMetaSchema,
-  workflowLaunchMetaSchema,
-} from "./workflow-row-meta.js";
+import { backgroundResultOriginMetaSchema, workflowLaunchMetaSchema } from "./workflow-row-meta.js";
 import { attachmentRefSchema } from "./attachment-ref.js";
 
 // RowBase。rowId：session 内单调、永不复用、事件日志的确定性纯函数。
@@ -63,6 +61,16 @@ export const turnWorkSegmentSchema = z.object({
 });
 export type TurnWorkSegment = z.infer<typeof turnWorkSegmentSchema>;
 
+export const turnTokenUsageSchema = z.object({
+  inputTokens: z.number().int().nonnegative().optional(),
+  outputTokens: z.number().int().nonnegative().optional(),
+  totalTokens: z.number().int().nonnegative().optional(),
+  cacheReadTokens: z.number().int().nonnegative().optional(),
+  cacheWriteTokens: z.number().int().nonnegative().optional(),
+  reasoningTokens: z.number().int().nonnegative().optional(),
+});
+export type TurnTokenUsage = z.infer<typeof turnTokenUsageSchema>;
+
 // turnHeader：product turn 边界 + 权威工时 + 每轮文件摘要。
 // guide 产生的内部折叠边界由 workSegments 表达；行归属仍由 CLI 决定，客户端零归属逻辑。
 export const turnHeaderRowSchema = z.object({
@@ -91,6 +99,8 @@ export const turnHeaderRowSchema = z.object({
   activeMs: z.number().optional(),
   // 当前 product turn 内主链路 ModelComplete 的 output usage 累计；optional 兼容旧快照。
   outputTokens: z.number().int().nonnegative().optional(),
+  // 当前 product turn 内主链路的 token 明细与缓存统计（稀疏/可选，兼容旧快照）。
+  turnUsage: turnTokenUsageSchema.optional(),
   // CLI 从运行时事件聚合的真实耗时；optional 兼容旧快照及普通 turn。
   modelDurationMs: z.number().nonnegative().optional(),
   toolDurationMs: z.number().nonnegative().optional(),
@@ -179,6 +189,12 @@ export const assistantTextRowSchema = z.object({
 });
 export type AssistantTextRow = z.infer<typeof assistantTextRowSchema>;
 
+export const rowPayloadTruncatedRefSchema = z.object({
+  totalBytes: z.number().int().nonnegative(),
+  ref: z.string(),
+});
+export type RowPayloadTruncatedRef = z.infer<typeof rowPayloadTruncatedRefSchema>;
+
 export const reasoningRowSchema = z.object({
   ...rowBaseFields,
   kind: z.literal("reasoning"),
@@ -187,6 +203,7 @@ export const reasoningRowSchema = z.object({
   text: z.string(),
   state: z.enum(["streaming", "complete", "interrupted"]),
   durationMs: z.number().optional(),
+  truncated: rowPayloadTruncatedRefSchema.optional(),
 });
 export type ReasoningRow = z.infer<typeof reasoningRowSchema>;
 
@@ -212,6 +229,7 @@ export const toolCallRowSchema = z.object({
   status: z.enum(["inputStreaming", "pendingApproval", "running", "success", "error", "cancelled"]),
   inputText: z.string(),
   input: z.unknown().optional(),
+  inputTruncated: rowPayloadTruncatedRefSchema.optional(),
   cuaApp: cuaAppIdentitySchema.optional(),
   output: toolOutputSchema.optional(),
   // display 解析失败只丢这张卡的载荷，不拒整条 row（理由见 toolDisplay.ts 的 toolOutputSchema
@@ -403,6 +421,26 @@ export const timelineMarkerPayloadSchema = z.union([
   z.object({
     type: z.literal("checkpointRestored"),
     checkpointId: z.string(),
+  }),
+  // Codex 原生运行时事件（specs/codex-desktop-thread-items.md）：contextCompaction、
+  // review 模式进出、hook 注入提示、子代理活动、sleep。原生 item 不携带
+  // origin/tokens 等 CLI 侧事实，不能与 compact 等现有 variant 混用（会伪造来源），
+  // 因此单列一个 variant；event 是封闭枚举，detail 只放短展示文本（bridge 截断）。
+  z.object({
+    type: z.literal("codexEvent"),
+    event: z.enum([
+      "contextCompaction",
+      "reviewEnter",
+      "reviewExit",
+      "hookPrompt",
+      "subagentStarted",
+      "subagentInteracted",
+      "subagentInterrupted",
+      "subagentCompleted",
+      "sleep",
+    ]),
+    status: z.enum(["running", "completed"]).optional(),
+    detail: z.string().optional(),
   }),
 ]);
 export type TimelineMarkerPayload = z.infer<typeof timelineMarkerPayloadSchema>;

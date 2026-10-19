@@ -1,0 +1,333 @@
+name: Codez desktop
+
+on:
+  pull_request:
+  push:
+    branches: ["**"]
+    tags: ["**"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish installers after all six native targets pass"
+        type: boolean
+        default: true
+      signed:
+        description: "Use protected codex-signing environment credentials (macOS/Windows)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # Pushes must not replace an earlier pending run; only PR checks share a group.
+  group: codex-desktop-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  remote-assets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      CODEZ_ENV: production
+      CODEZ_DESKTOP_RUNTIME: codex
+      # 本次 run 解析出的 fork 最新完整正式版清单，全流水线共享同一份。
+      CODEZ_CODEX_MANIFEST: ${{ github.workspace }}/codex-manifest.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+      - name: Resolve latest complete fork Codex release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/codex-runtime-resolve-latest.mjs codex-manifest.json
+      - run: pnpm install --frozen-lockfile
+      - run: node --test scripts/test-codex-distribution*.mjs
+      - name: Codex service, desktop and remote deployment regressions (Linux once)
+        run: |
+          # services 的 codex*.test.ts 混用 node:test 与 Vitest：按文件内容分流，
+          # 新增 Vitest 文件不能再被 node:test 误跑（文件名特判曾经漏掉新增文件）。
+          node_tests=()
+          vitest_tests=()
+          for file in packages/services/test/codex*.test.ts; do
+            if grep -qE 'from "node:test"' "$file"; then
+              node_tests+=("$file")
+            else
+              vitest_tests+=("$file")
+            fi
+          done
+          pnpm exec tsx --test "${node_tests[@]}" packages/desktop/test/codex*.test.ts packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts packages/server/test/codex*.test.ts
+          # remoteServiceAccess 始终在 Vitest 侧；vitest_tests 为空时退化为只跑它。
+          pnpm exec vitest run packages/client/test/remoteServiceAccess.test.ts "${vitest_tests[@]}"
+      - name: Computer Use helper and packaging regressions (Linux once)
+        run: |
+          pnpm --filter @codez/codez-cua test
+          node --test packages/desktop/scripts/linux-cua-native-package.test.mjs packages/desktop/scripts/windows-cua-native-package.test.mjs packages/desktop/scripts/windows-cua-runtime-assets.test.mjs packages/desktop/scripts/macos-cua-helper-app.test.mjs
+      - name: Git worktree service and shared identity regressions (Linux once)
+        run: pnpm exec tsx --test packages/services/test/gitWorktree.test.ts packages/services/test/gitWorktreeCreation.test.ts packages/shared/test/remoteWorkspaceScope.test.ts
+      - name: Codex UI settings regressions (Linux once)
+        run: pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test packages/ui/src/settings/codex/*.test.ts packages/ui/src/settings/codex/*.test.tsx
+      # 这些回归不在 settings/codex 目录，必须显式纳入，防止 rebase 后修复失守。
+      - name: Automation, Git, Codex capability and conversation recovery UI regressions (Linux once)
+        run: >-
+          pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test
+          packages/ui/src/hooks/useModelSelectionView.test.ts
+          packages/ui/src/settings/automationEditValidation.test.ts
+          packages/ui/src/v4/ConversationStatusPanel.test.tsx
+          packages/ui/src/v4/conversationStatusPanelModel.test.ts
+          packages/ui/src/v4/conversationTurnContinue.test.ts
+          packages/ui/src/capabilities/useGitAuxiliaryCapability.test.ts
+          packages/ui/src/capabilities/codexCapabilities.test.ts
+          packages/ui/src/capabilities/useCodexAutoReviewApprovals.test.ts
+          packages/ui/src/capabilities/useCodexMessageFeedbackCapability.test.tsx
+          packages/ui/src/settings/usage-stats/AppUsagePanel.test.tsx
+          packages/ui/src/TaskActionMenuContent.test.tsx
+          packages/ui/src/v4/composer/composerDraftModeNormalization.test.ts
+          packages/ui/src/v4/composer/codexFullAccessAcknowledgement.test.ts
+          packages/ui/src/lib/projectGrouping.test.ts
+          packages/ui/src/lib/remoteWorkspaceIdentityConsistency.test.ts
+          packages/ui/src/hooks/useProjectWorktreeDiscovery.test.ts
+          packages/ui/src/lib/worktreeSwitcherDisplay.test.ts
+          packages/ui/src/root/worktreeOpenIntent.test.ts
+          packages/ui/src/root/worktreeOpenExecution.test.ts
+          packages/ui/src/GitWorktreeMenu.test.tsx
+          packages/ui/src/CurrentWorkspaceConcurrencyHint.test.ts
+          packages/ui/src/CreateWorktreeDialog.test.tsx
+          packages/ui/src/hooks/useWorktreeCreation.test.ts
+      - name: Assemble four remote targets without compiling Codex
+        run: node scripts/codex-runtime-remote-assets.mjs
+      - name: Native standalone remote package smoke
+        run: node scripts/codex-runtime-remote-smoke.mjs
+      - name: Real bundled remote deployment and shipped executables (Linux once)
+        env:
+          CODEZ_TEST_BUNDLED_REMOTE_ASSETS_DIR: ${{ github.workspace }}/packages/desktop/bundled-resources/codex-remote
+        run: pnpm exec tsx --test --test-name-pattern='actual packaged linux-x64' packages/server/test/codexBundledRemoteAssets.test.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codex-remote-assets
+          if-no-files-found: error
+          path: |
+            packages/desktop/bundled-resources/codex-remote/components/**
+            packages/desktop/bundled-resources/codex-remote/releases/**
+            packages/desktop/bundled-resources/codex-remote/index.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codez-manifest
+          if-no-files-found: error
+          path: codex-manifest.json
+  build:
+    needs: remote-assets
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: darwin, arch: x64, runner: macos-15-intel, builder: mac }
+          - { os: darwin, arch: arm64, runner: macos-15, builder: mac }
+          - { os: linux, arch: x64, runner: ubuntu-24.04, builder: linux }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, builder: linux }
+          - { os: win32, arch: x64, runner: windows-2025, builder: win }
+          - { os: win32, arch: arm64, runner: windows-11-arm, builder: win }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    environment: ${{ inputs.signed && matrix.os != 'linux' && 'codex-signing' || 'codex-unsigned' }}
+    env:
+      CODEZ_ENV: production
+      CODEZ_DESKTOP_RUNTIME: codex
+      CODEZ_CODEX_MANIFEST: ${{ github.workspace }}/.codex-manifest/codex-manifest.json
+      CODEZ_TARGET_OS: ${{ matrix.os }}
+      CODEZ_TARGET_ARCH: ${{ matrix.arch }}
+      # remote-assets 是唯一生产者；不同宿主重新打包会生成 Release 未发布的 SHA。
+      CODEZ_CODEX_REMOTE_ASSETS_READONLY: "1"
+      CODEZ_CODEX_SIGNED: ${{ inputs.signed && matrix.os != 'linux' && '1' || '0' }}
+      CODEZ_ENABLE_MAC_SIGN: ${{ inputs.signed && matrix.os == 'darwin' && '1' || '0' }}
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      CODEZ_ELECTRON_RUNTIME_MIRROR: https://github.com/electron/electron/releases/download/
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: codez-manifest
+          path: .codex-manifest
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+      - name: Verify exact native toolchain
+        run: |
+          node -e 'if (process.version !== "v24.14.0" || process.platform !== process.env.CODEZ_TARGET_OS || process.arch !== process.env.CODEZ_TARGET_ARCH) throw new Error("Native toolchain mismatch")'
+          test "$(pnpm --version)" = "10.33.2"
+      - run: pnpm install --frozen-lockfile
+      - name: Mock distribution regression tests (before network downloads)
+        run: node --test scripts/test-codex-distribution*.mjs
+      - name: Typecheck, lint, architecture and adapter tests
+        env:
+          # 两个 macOS runner 的默认约 2 GiB 堆不足以完成全量 tsc；仅验证步骤放宽，
+          # 避免将 CI 内存配置带入运行时 smoke 或打包产物。
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: |
+          pnpm typecheck
+          pnpm lint
+          pnpm architecture:check
+          pnpm --filter @codez/codex-bridge test
+      - name: Verified native Codex experimental API and isolated handshake
+        run: node scripts/codex-runtime-smoke.mjs
+      - name: Bundled bridge against verified native runtime (isolated fake model)
+        run: node --test scripts/test-codex-bridge-smoke.mjs scripts/test-codex-project-discovery.mjs scripts/test-codex-native-cua-smoke.mjs scripts/test-codex-native-control-isolation.mjs
+      - uses: actions/download-artifact@v4
+        with:
+          name: codex-remote-assets
+          path: packages/desktop/bundled-resources/codex-remote
+      - name: Verify remote package on its native OS/architecture
+        if: matrix.os != 'win32'
+        run: node scripts/codex-runtime-remote-smoke.mjs
+      - name: Checkout pinned Computer Use addon source
+        if: matrix.os == 'linux'
+        uses: actions/checkout@v4
+        with:
+          repository: xa11y/xa11y
+          # npm @crowecawcaw/xa11y 0.15.0 的 gitHead；不能从浮动 main 编译另一版 API。
+          ref: a3badccf5761615ea3412ee55c19ac3764e27913
+          path: .cua-xa11y-source
+          persist-credentials: false
+      - name: Build Linux Computer Use addon on glibc 2.28
+        if: matrix.os == 'linux'
+        run: |
+          bash scripts/build-linux-cua-xa11y.sh \
+            "$GITHUB_WORKSPACE/.cua-xa11y-source" "$RUNNER_TEMP/cua-xa11y" "$CODEZ_TARGET_ARCH"
+          echo "CODEZ_CUA_LINUX_XA11Y_NATIVE_ROOT=$RUNNER_TEMP/cua-xa11y/package" >> "$GITHUB_ENV"
+      - name: Checkout pinned Windows Computer Use addon source
+        if: matrix.os == 'win32'
+        uses: actions/checkout@v4
+        with:
+          repository: xa11y/xa11y
+          ref: a3badccf5761615ea3412ee55c19ac3764e27913
+          path: .cua-xa11y-source
+          persist-credentials: false
+      - name: Build patched Windows Computer Use addon
+        if: matrix.os == 'win32'
+        run: |
+          bash scripts/build-windows-cua-xa11y.sh \
+            "$GITHUB_WORKSPACE/.cua-xa11y-source" "$RUNNER_TEMP/cua-xa11y" "$CODEZ_TARGET_ARCH"
+          echo "CODEZ_CUA_WINDOWS_XA11Y_NATIVE_ROOT=$RUNNER_TEMP/cua-xa11y/package" >> "$GITHUB_ENV"
+      - name: Build Codex desktop
+        run: pnpm --filter @codez/desktop build
+      - name: Prepare macOS Computer Use Helper Node
+        if: matrix.os == 'darwin'
+        # 修复原因：Helper SEA 打包必须显式校验 Node 输入，不能依赖开发机环境变量。
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from "node:crypto";
+          import { appendFile, readFile, realpath } from "node:fs/promises";
+          const executable = await realpath(process.execPath);
+          const digest = createHash("sha256").update(await readFile(executable)).digest("hex");
+          await appendFile(process.env.GITHUB_ENV, [
+            `CODEZ_CUA_MAC_NODE_EXECUTABLE=${executable}`,
+            `CODEZ_CUA_MAC_NODE_VERSION=${process.versions.node}`,
+            `CODEZ_CUA_MAC_NODE_SHA256=${digest}`,
+            "",
+          ].join("\n"));
+          NODE
+      - name: Package fork installers (never auto-publish)
+        env:
+          CSC_LINK: ${{ inputs.signed && (matrix.os == 'darwin' && secrets.MAC_CSC_LINK || secrets.WINDOWS_CSC_LINK) || '' }}
+          CSC_KEY_PASSWORD: ${{ inputs.signed && (matrix.os == 'darwin' && secrets.MAC_CSC_KEY_PASSWORD || secrets.WINDOWS_CSC_KEY_PASSWORD) || '' }}
+          APPLE_SIGNING_IDENTITY: ${{ inputs.signed && secrets.APPLE_SIGNING_IDENTITY || '' }}
+          APPLE_ID: ${{ inputs.signed && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ inputs.signed && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ inputs.signed && secrets.APPLE_TEAM_ID || '' }}
+        run: pnpm --filter @codez/desktop exec electron-builder --config electron-builder.config.js --${{ matrix.builder }} --${{ matrix.arch }} --publish never
+      - name: Installer SHA256 manifests
+        run: node scripts/codex-runtime-artifacts.mjs
+      # 根因：GitHub CreateArtifact 连续超时会让已成功打包的目标阻塞发布。
+      # 只允许同 run/target 再上传一次；第二次失败仍须阻断 release，不能吞掉上传错误。
+      - name: Upload installers
+        id: upload_installers
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: codez-${{ matrix.os }}-${{ matrix.arch }}-${{ inputs.signed && matrix.os != 'linux' && 'signed' || 'unsigned' }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            packages/desktop/dist/*.dmg
+            packages/desktop/dist/*.zip
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.AppImage
+            packages/desktop/dist/*.deb
+            packages/desktop/dist/*.blockmap
+            packages/desktop/dist/*.yml
+            packages/desktop/dist/SHA256SUMS-*.txt
+            packages/desktop/dist/codex-remote-index-*.json
+      - name: Retry installer upload after transport failure
+        if: ${{ steps.upload_installers.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: codez-${{ matrix.os }}-${{ matrix.arch }}-${{ inputs.signed && matrix.os != 'linux' && 'signed' || 'unsigned' }}
+          overwrite: true
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            packages/desktop/dist/*.dmg
+            packages/desktop/dist/*.zip
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.AppImage
+            packages/desktop/dist/*.deb
+            packages/desktop/dist/*.blockmap
+            packages/desktop/dist/*.yml
+            packages/desktop/dist/SHA256SUMS-*.txt
+            packages/desktop/dist/codex-remote-index-*.json
+
+  release:
+    needs: build
+    # 自动发布只认 main 分支 push。侧分支/tag push 曾经也会发布 prerelease，虽然不会
+    # 被标成 Latest，但会占据 release 列表最新一条，手动下载安装包时极易装错构建。
+    # 需要非 main 的安装包时用 workflow_dispatch(publish=true) 显式触发。
+    if: >-
+      github.repository == 'KingingWang/Codez' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: codex-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: codez-*
+          path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: codex-remote-assets
+          path: artifacts/codex-remote-assets
+      - name: Verify all six targets and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: node scripts/codex-runtime-release.mjs artifacts

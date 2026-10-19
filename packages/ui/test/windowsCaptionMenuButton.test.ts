@@ -96,6 +96,14 @@ vi.mock("@/feedback/feedbackStore.js", () => ({
 }));
 
 vi.mock("@/hooks/usePlatform.js", () => ({
+  useOptionalPlatform: () => ({
+    canOpenCommunity: vi.fn(async () => false),
+    captureWindowScreenshot: capturedWindowsCaptionMenu.captureWindowScreenshot,
+    executeDesktopCommand: capturedWindowsCaptionMenu.executeDesktopCommand,
+    exportLogs: capturedWindowsCaptionMenu.exportLogs,
+    openExternal: capturedWindowsCaptionMenu.openExternal,
+    openInFileManager: vi.fn(async () => ({ success: true })),
+  }),
   usePlatform: () => ({
     canOpenCommunity: vi.fn(async () => false),
     captureWindowScreenshot: capturedWindowsCaptionMenu.captureWindowScreenshot,
@@ -162,7 +170,7 @@ describe("WindowsCaptionMenuButton", () => {
     await capturedWindowsCaptionMenu.menuItems
       .find((item) => item.label === "titleBar.menu.help.feedback")
       ?.onSelect?.();
-    capturedWindowsCaptionMenu.menuItems
+    await capturedWindowsCaptionMenu.menuItems
       .find((item) => item.label === "workspaceHeader.help.productRequest")
       ?.onSelect?.();
     capturedWindowsCaptionMenu.menuItems
@@ -173,14 +181,18 @@ describe("WindowsCaptionMenuButton", () => {
       ?.onSelect?.();
 
     expect(capturedWindowsCaptionMenu.captureWindowScreenshot).not.toHaveBeenCalled();
-    expect(capturedWindowsCaptionMenu.openSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "bug",
-        includeLogs: true,
-        screenshots: [],
-      }),
+    expect(capturedWindowsCaptionMenu.openSubmit).not.toHaveBeenCalled();
+    expect(capturedWindowsCaptionMenu.openFeatureRequest).not.toHaveBeenCalled();
+    expect(capturedWindowsCaptionMenu.openExternal).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("https://github.com/KingingWang/Codez/issues/new?"),
     );
-    expect(capturedWindowsCaptionMenu.openFeatureRequest).toHaveBeenCalledTimes(1);
+    expect(capturedWindowsCaptionMenu.openExternal).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining(
+        "https://github.com/KingingWang/Codez/issues/new?title=Feature+request",
+      ),
+    );
     expect(capturedWindowsCaptionMenu.openExternal).toHaveBeenCalledWith("https://zcode.z.ai/docs");
     expect(capturedWindowsCaptionMenu.exportLogs).toHaveBeenCalledTimes(1);
   });

@@ -223,6 +223,9 @@ vi.mock("@/hooks/useSettingService.js", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
+  useCodexModelCatalog: () => ({ status: "unavailable", reload: vi.fn(), readCurrent: vi.fn() }),
+}));
 vi.mock("@/hooks/useServices.js", () => ({
   useComposerClientNamespace: () => "desktop",
   useOptionalServices: () => null,
@@ -861,7 +864,7 @@ describe("SessionPane composer continuity", () => {
     expect(composerLifecycle.disabledStates.at(-1)).toBe(false);
   });
 
-  it("focuses after start-now, preserves position on enqueue, and focuses on queue send-now", async () => {
+  it("preserves the reading position for subsequent direct, queued and queue send-now inputs", async () => {
     const root = createRoot(installMinimalDom());
     mountedRoots.push(root);
     projectionState.current = {
@@ -877,7 +880,8 @@ describe("SessionPane composer continuity", () => {
     await act(async () => {
       await scrollFocus.composerProps?.onSendText("direct prompt");
     });
-    expect(scrollFocus.scrollToBottom).toHaveBeenCalledTimes(1);
+    // fork 的阅读位置合同：后续发送不覆盖用户滚动意图，只有草稿首发主动定位。
+    expect(scrollFocus.scrollToBottom).not.toHaveBeenCalled();
 
     scrollFocus.scrollToBottom.mockClear();
     projectionState.current = {
@@ -895,7 +899,7 @@ describe("SessionPane composer continuity", () => {
     expect(scrollFocus.scrollToBottom).not.toHaveBeenCalled();
 
     act(() => scrollFocus.queueProps?.onSendNow?.("queue-1"));
-    expect(scrollFocus.scrollToBottom).toHaveBeenCalledTimes(1);
+    expect(scrollFocus.scrollToBottom).not.toHaveBeenCalled();
   });
 
   it("running startNow dispatches one atomic sendText and never creates or promotes a queue item", async () => {

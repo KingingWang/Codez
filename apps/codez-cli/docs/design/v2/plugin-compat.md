@@ -27,7 +27,7 @@ Official plugins are built as workspace packages, including
 but runtime plugin loading does not execute from those workspace paths and does
 not import plugin code into the Codez app bundle. Codez seeds first-party plugin
 files into the official plugin cache under
-`~/.codez/cli/plugins/cache/zcode-plugins-official/...` and executes plugin MCP
+`~/.codez/cli/plugins/cache/codez-plugins-official/...` and executes plugin MCP
 servers from that cache. Users only enable or disable each capability.
 
 The Android Emulator plugin P0 supports macOS and Windows only. Linux hosts are
@@ -66,10 +66,10 @@ Codez stores plugin state under the CLI storage root:
 ~/.codez/cli/plugins/
   installed_plugins.json
   marketplaces/
-    zcode-plugins-official/
+    codez-plugins-official/
       marketplace.json
   cache/
-    zcode-plugins-official/
+    codez-plugins-official/
       android-emulator/
         0.1.0/
           .codez-plugin/plugin.json
@@ -104,9 +104,9 @@ Codez stores plugin state under the CLI storage root:
           skills/
           commands/
   data/
-    android-emulator@zcode-plugins-official/
-    ios-simulator@zcode-plugins-official/
-    restore-legacy-sessions@zcode-plugins-official/
+    android-emulator@codez-plugins-official/
+    ios-simulator@codez-plugins-official/
+    restore-legacy-sessions@codez-plugins-official/
 ```
 
 `cache` contains plugin code and static assets. It is version-scoped and can be
@@ -144,7 +144,7 @@ There is no separate unregister step.
 Uninstall is idempotent: removing a plugin id that is not installed is a no-op
 that reports nothing was removed, rather than an error.
 
-The built-in marketplace name is `zcode-plugins-official`.
+The built-in marketplace name is `codez-plugins-official`.
 
 External Claude Marketplace sources use `.claude-plugin/marketplace.json` as
 their canonical manifest location. Codez may normalize the fetched marketplace
@@ -156,19 +156,19 @@ Startup must seed bundled official plugins before plugin discovery:
 
 ```text
 packages/android-emulator-plugin/
-  -> ~/.codez/cli/plugins/cache/zcode-plugins-official/android-emulator/0.1.0/
+  -> ~/.codez/cli/plugins/cache/codez-plugins-official/android-emulator/0.1.0/
 packages/ios-simulator-plugin/
-  -> ~/.codez/cli/plugins/cache/zcode-plugins-official/ios-simulator/0.1.0/
+  -> ~/.codez/cli/plugins/cache/codez-plugins-official/ios-simulator/0.1.0/
 packages/browser-use-plugin/
-  -> ~/.codez/cli/plugins/cache/zcode-plugins-official/browser-use/0.3.0/
+  -> ~/.codez/cli/plugins/cache/codez-plugins-official/browser-use/0.3.0/
 packages/document-skills-plugin/
-  -> ~/.codez/cli/plugins/cache/zcode-plugins-official/document-skills/0.1.4/
+  -> ~/.codez/cli/plugins/cache/codez-plugins-official/document-skills/0.1.4/
 packages/restore-legacy-sessions-plugin/
-  -> ~/.codez/cli/plugins/cache/zcode-plugins-official/restore-legacy-sessions/0.1.0/
+  -> ~/.codez/cli/plugins/cache/codez-plugins-official/restore-legacy-sessions/0.1.0/
 packages/skill-creator-plugin/
-  -> ~/.codez/cli/plugins/cache/zcode-plugins-official/skill-creator/0.1.0/
+  -> ~/.codez/cli/plugins/cache/codez-plugins-official/skill-creator/0.1.0/
 packages/codez-guide-plugin/
-  -> ~/.codez/cli/plugins/cache/zcode-plugins-official/codez-guide/0.3.0/
+  -> ~/.codez/cli/plugins/cache/codez-plugins-official/codez-guide/0.3.0/
 ```
 
 `packages/bundled-skills/` is deliberately absent from this list: it is the CLI's
@@ -188,7 +188,7 @@ command launches the current Codez executable through the hidden
 and call its exported `main()` function. In a SEA build this means the official
 plugin MCP servers run on the SEA-embedded Node.js runtime, but each server
 module is still loaded from
-`~/.codez/cli/plugins/cache/zcode-plugins-official/...`.
+`~/.codez/cli/plugins/cache/codez-plugins-official/...`.
 
 The CLI main entry dispatches `__codez-plugin-host` before importing the Agent
 command runner or provider initialization. It retains environment sanitization,
@@ -212,18 +212,18 @@ A plugin id is:
 
 Session/local development plugin directories use the marketplace `inline`, for
 example `ios-simulator@inline`. Official bundled plugins use
-`zcode-plugins-official`.
+`codez-plugins-official`.
 
 The bundled official capabilities use these ids:
 
 ```text
-android-emulator@zcode-plugins-official
-browser-use@zcode-plugins-official
-document-skills@zcode-plugins-official
-ios-simulator@zcode-plugins-official
-restore-legacy-sessions@zcode-plugins-official
-skill-creator@zcode-plugins-official
-codez-guide@zcode-plugins-official
+android-emulator@codez-plugins-official
+browser-use@codez-plugins-official
+document-skills@codez-plugins-official
+ios-simulator@codez-plugins-official
+restore-legacy-sessions@codez-plugins-official
+skill-creator@codez-plugins-official
+codez-guide@codez-plugins-official
 ```
 
 P0 enablement is config-driven:
@@ -234,16 +234,16 @@ P0 enablement is config-driven:
     "enabled": true,
     "dirs": ["/absolute/path/to/plugin"],
     "enabledPlugins": {
-      "android-emulator@zcode-plugins-official": true,
-      "ios-simulator@zcode-plugins-official": true,
-      "restore-legacy-sessions@zcode-plugins-official": true
+      "android-emulator@codez-plugins-official": true,
+      "ios-simulator@codez-plugins-official": true,
+      "restore-legacy-sessions@codez-plugins-official": true
     },
     "options": {
-      "android-emulator@zcode-plugins-official": {
+      "android-emulator@codez-plugins-official": {
         "default_avd": "medium_phone",
         "api_level": "35"
       },
-      "ios-simulator@zcode-plugins-official": {
+      "ios-simulator@codez-plugins-official": {
         "default_device": "iPhone 16"
       }
     }

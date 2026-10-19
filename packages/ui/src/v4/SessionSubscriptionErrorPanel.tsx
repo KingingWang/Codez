@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { TID_V4_RETRY_SUBSCRIBE } from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
+import { useFeedbackEntryAction } from "@/feedback/useFeedbackEntryAction.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { buildErrorFeedbackDescription } from "@/lib/errorFeedbackDraft.js";
 
@@ -20,14 +20,11 @@ export function SessionSubscriptionErrorPanel({
   onReconnect,
 }: SessionSubscriptionErrorPanelProps) {
   const { intl } = useCodezIntl();
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
+  const { runFeedbackEntry } = useFeedbackEntryAction();
   const handleOpenFeedback = useCallback(async () => {
-    openFeedbackSubmit({
+    const outcome = runFeedbackEntry({
       title: error.slice(0, 80),
-      type: "bug",
-      module: "Agent任务执行失败",
-      severity: "P2-中",
-      includeLogs: true,
+      errorSummary: error,
       description: buildErrorFeedbackDescription({
         message: error,
         contextLines: [
@@ -41,10 +38,11 @@ export function SessionSubscriptionErrorPanel({
         formatMessage: (id: string, values?: Record<string, string>) =>
           intl.formatMessage({ id }, values),
       }),
-      screenshots: [],
     });
-    toast(intl.formatMessage({ id: "chat.error.feedbackOpened" }));
-  }, [error, intl, openFeedbackSubmit, sessionId, workspacePath]);
+    if (outcome === "opened") {
+      toast(intl.formatMessage({ id: "chat.error.feedbackOpened" }));
+    }
+  }, [error, intl, runFeedbackEntry, sessionId, workspacePath]);
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-ui-base">

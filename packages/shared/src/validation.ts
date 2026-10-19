@@ -21,7 +21,10 @@ import {
 import { codezProviderSchema } from "./providers.js";
 import { REMOTE_ASSET_INSTALL_MODES } from "./remoteAssetInstallMode.js";
 import { isKnownRemoteResourcePackageId } from "./remoteResourcePackages.js";
-import type { WebRemoteControlAppPayload } from "./web-remote-control.js";
+import {
+  normalizeWebRemoteControlWirePayload,
+  type WebRemoteControlAppPayload,
+} from "./web-remote-control.js";
 import { PROTOCOL_V4_LIMITS } from "./codez-protocol-v4/core.js";
 import { sourceServerArtifactPolicySchema } from "./source-server/release.js";
 import { sessionWorkflowActivitySchema } from "./codez-protocol-v4/sessions-index-workflow-activity.js";
@@ -50,6 +53,7 @@ import {
   codezMcpTelemetryEventSchema,
   codezProcessResourceSampleSchema,
   codezToolExecResourceSchema,
+  desktopCodexMcpServersSchema,
 } from "./codez-protocol/index.js";
 import { codezTaskModeSchema } from "./codez-task-mode-schema.js";
 
@@ -423,7 +427,9 @@ export const webRemoteControlAppPayloadSchema = z.union(webRemoteControlAppPaylo
 export function parseWebRemoteControlAppPayload(
   payload: unknown,
 ): WebRemoteControlAppPayload | null {
-  const result = webRemoteControlAppPayloadSchema.safeParse(payload);
+  const result = webRemoteControlAppPayloadSchema.safeParse(
+    normalizeWebRemoteControlWirePayload(payload),
+  );
   return result.success ? (result.data as WebRemoteControlAppPayload) : null;
 }
 
@@ -542,6 +548,8 @@ export const broadcastMessageSchema = z.object({
 });
 
 export const remoteAssetDirsSchema = z.object({
+  bundledRemoteAssetsDir: nonEmptyStringSchema.optional(),
+  packagedRemoteAssetsDir: nonEmptyStringSchema.optional(),
   mockCdnDir: z.string().optional(),
   remoteCdnBaseUrl: z.string().optional(),
   remoteCdnBaseUrls: z.array(z.string()).optional(),
@@ -573,6 +581,14 @@ export const hostInitLocalMessageSchema = z.object({
   runtimeProcessEnvPatch: z
     .record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string())
     .optional(),
+  nativeBrowserCua: z
+    .object({
+      browserAvailable: z.boolean(),
+      cuaAvailable: z.boolean(),
+    })
+    .strict()
+    .optional(),
+  desktopCodexMcpServers: desktopCodexMcpServersSchema.optional(),
 });
 
 export const windowHostRemoteWorkspaceDescriptorSchema = z
@@ -609,7 +625,14 @@ export const scopedServicePortPayloadSchema = windowHostRemoteWorkspaceDescripto
 export type ScopedServicePortPayload = z.infer<typeof scopedServicePortPayloadSchema>;
 
 export const windowHostAttachmentScopeSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("local") }).strict(),
+  z
+    .object({
+      kind: z.literal("local"),
+      // 手机 attachment 可绑定 workspace，但 local workspace 仍复用同一窗口 Host。
+      workspacePath: nonEmptyStringSchema.optional(),
+      workspaceIdentity: nonEmptyStringSchema.optional(),
+    })
+    .strict(),
   z
     .object({
       kind: z.literal("source-settings"),
@@ -866,6 +889,19 @@ export const hostPluginSandboxRegisterResultMessageSchema = z
   })
   .strict();
 
+export const hostNativeBrowserCuaMcpServersChangedMessageSchema = z
+  .object({
+    type: z.literal("native-browser-cua-mcp-servers-changed"),
+    desktopCodexMcpServers: desktopCodexMcpServersSchema,
+    nativeBrowserCua: z
+      .object({
+        browserAvailable: z.boolean(),
+        cuaAvailable: z.boolean(),
+      })
+      .strict(),
+  })
+  .strict();
+
 export const hostCuaPipFocusChangedMessageSchema = z
   .object({
     type: z.literal("cua-pip-focus-changed"),
@@ -894,6 +930,14 @@ export const hostProviderProvisioningExecuteMessageSchema = z
     environmentKey: nonEmptyStringSchema,
     remoteSessionId: nonEmptyStringSchema,
     trigger: providerProvisioningTriggerSchema,
+    operation: z
+      .enum([
+        "sync",
+        "install-runtime-keys",
+        "codex-key-rotation-begin",
+        "install-codex-runtime-keys",
+      ])
+      .optional(),
   })
   .strict();
 
@@ -949,6 +993,19 @@ export const hostProjectWorkspacePreparedResponseSchema = z
   })
   .strict();
 
+/** main → host：Codex 原生临时 Key 轮换事务阶段结果（spec: codex-provider-runtime-env-key）。 */
+export const hostCodexProviderKeyRotationResultMessageSchema = z
+  .object({
+    type: z.literal("codex-provider-key-rotation-result"),
+    requestId: nonEmptyStringSchema,
+    ok: z.boolean(),
+    error: z.string().optional(),
+  })
+  .strict();
+export type HostCodexProviderKeyRotationResultMessage = z.infer<
+  typeof hostCodexProviderKeyRotationResultMessageSchema
+>;
+
 export const hostResourceUsageSnapshotRequestMessageSchema = z
   .object({
     type: z.literal("resource-usage-snapshot-request"),
@@ -961,13 +1018,24 @@ export type HostResourceUsageSnapshotRequestMessage = z.infer<
 
 export const hostIncomingMessageSchema = z.discriminatedUnion("type", [
   hostPrepareProjectWorkspaceMessageSchema,
-  z.object({ type: z.literal("network-capture"), control: networkCaptureControlSchema }).strict(),
   z
-    .object({ type: z.literal("database-startup-control"), control: databaseStartupControlSchema })
+    .object({
+      type: z.literal("network-capture"),
+      control: networkCaptureControlSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("database-startup-control"),
+      control: databaseStartupControlSchema,
+    })
     .strict(),
   hostResourceUsageSnapshotRequestMessageSchema,
   z
-    .object({ type: z.literal("resource-usage-snapshot-cancel"), requestId: nonEmptyStringSchema })
+    .object({
+      type: z.literal("resource-usage-snapshot-cancel"),
+      requestId: nonEmptyStringSchema,
+    })
     .strict(),
   hostInitLocalMessageSchema,
   hostConnectRemoteWorkspaceMessageSchema,
@@ -994,7 +1062,9 @@ export const hostIncomingMessageSchema = z.discriminatedUnion("type", [
   hostPluginSandboxRegisterResultMessageSchema,
   hostCuaPipFocusChangedMessageSchema,
   hostApplicationLocaleChangedMessageSchema,
+  hostNativeBrowserCuaMcpServersChangedMessageSchema,
   hostProviderProvisioningExecuteMessageSchema,
+  hostCodexProviderKeyRotationResultMessageSchema,
 ]);
 
 export const hostRemoteWorkspaceConnectedResponseSchema = z
@@ -1476,7 +1546,10 @@ export const hostPluginSandboxRegisterRequestResponseSchema = z
       .optional(),
     // 资源级 `_meta["codez/csp"]` 放宽项；与 mcp-apps 的 mcpAppCspRelaxationsSchema 同步。
     cspRelaxations: z
-      .object({ unsafeEval: z.boolean().optional(), wasmUnsafeEval: z.boolean().optional() })
+      .object({
+        unsafeEval: z.boolean().optional(),
+        wasmUnsafeEval: z.boolean().optional(),
+      })
       .strict()
       .optional(),
     // 资源级 `_meta.ui.permissions`（规范四键）；与 mcp-apps 的 MCP_APPS_RESOURCE_PERMISSIONS 同步。
@@ -1536,6 +1609,19 @@ export const hostProviderProvisioningExecutionResultResponseSchema = z
   })
   .strict();
 
+/** host → main：Codex 原生临时 Key 轮换事务协调请求（不携带 Key 值）。 */
+export const hostCodexProviderKeyRotationRequestResponseSchema = z
+  .object({
+    type: z.literal("codex-provider-key-rotation-request"),
+    requestId: nonEmptyStringSchema,
+    environmentKey: nonEmptyStringSchema,
+    phase: z.enum(["begin", "commit", "rollback"]),
+  })
+  .strict();
+export type HostCodexProviderKeyRotationRequestResponse = z.infer<
+  typeof hostCodexProviderKeyRotationRequestResponseSchema
+>;
+
 export const hostResourceUsageProcessSchema = z
   .object({
     pid: z.number().int().positive(),
@@ -1562,9 +1648,17 @@ export type HostResourceUsageSnapshotResultResponse = z.infer<
 
 export const hostResponseMessageSchema = z.discriminatedUnion("type", [
   hostProjectWorkspacePreparedResponseSchema,
-  z.object({ type: z.literal("network-capture-batch"), batch: networkCaptureBatchSchema }).strict(),
   z
-    .object({ type: z.literal("database-startup-state"), state: databaseStartupStateSchema })
+    .object({
+      type: z.literal("network-capture-batch"),
+      batch: networkCaptureBatchSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("database-startup-state"),
+      state: databaseStartupStateSchema,
+    })
     .strict(),
   hostResourceUsageSnapshotResultResponseSchema,
   hostRemoteWorkspaceConnectionLogResponseSchema,
@@ -1610,6 +1704,7 @@ export const hostResponseMessageSchema = z.discriminatedUnion("type", [
   hostNetworkTelemetryBatchResponseSchema,
   hostProviderProvisioningSourceChangedResponseSchema,
   hostProviderProvisioningExecutionResultResponseSchema,
+  hostCodexProviderKeyRotationRequestResponseSchema,
   hostCronRunResultResponseSchema,
   hostOffPeakRunResultResponseSchema,
   hostCronSchedulerWakeRequestResponseSchema,

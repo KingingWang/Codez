@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { importSubagentStateSelections } from "../src/subagent-state-migration.js";
 
 describe("Subagent 内置 state 单向导入", () => {
-  const pluginId = "plugin:document-skills@zcode-plugins-official:judge";
+  const pluginId = "plugin:document-skills@codez-plugins-official:judge";
   const pluginLegacy = {
     pluginAgentModelOverrides: { [pluginId]: "custom:builtin%3Azai-coding-plan:GLM" },
     pluginAgentThoughtLevelOverrides: { [pluginId]: "high" },

@@ -2412,6 +2412,53 @@ export function useRemoteWorkspaceHistory({
     [remoteWorkspaceController],
   );
 
+  /**
+   * 显式打开发现的远程 worktree（specs/git-worktree-projects.md R5）。
+   * 复用与连接弹窗选目录完全同一条打开流程：新建连接 → open-project。
+   */
+  const handleOpenDiscoveredRemoteWorktree = useCallback(
+    async (params: {
+      anchorWorkspaceKey: string;
+      remoteTarget: RemoteTarget;
+      workspacePath: string;
+    }) => {
+      if (!canUseRemoteWorkspace) {
+        throw new Error("Remote workspace is disabled in this mode");
+      }
+      const { anchorWorkspaceKey, remoteTarget, workspacePath } = params;
+      const anchorSnapshot = remoteWorkspaceSessionsRef.current.find(
+        (entry) => (entry.workspaceIdentity?.trim() || entry.workspacePath) === anchorWorkspaceKey,
+      )?.target;
+      const credentials = {
+        password:
+          anchorSnapshot?.kind === "ssh" && anchorSnapshot.passwordCredentialKey
+            ? await services.credentialService.load(anchorSnapshot.passwordCredentialKey)
+            : null,
+        privateKeyPassphrase:
+          anchorSnapshot?.kind === "ssh" && anchorSnapshot.privateKeyPassphraseCredentialKey
+            ? await services.credentialService.load(
+                anchorSnapshot.privateKeyPassphraseCredentialKey,
+              )
+            : null,
+      };
+      const connectTarget = createRemoteTargetFromSnapshot(remoteTarget, credentials);
+      const sessionId = await connectRemoteWorkspaceTarget(connectTarget);
+      try {
+        await handleSelectRemoteProject(sessionId, workspacePath);
+      } catch (error) {
+        await handleCancelRemoteProject(sessionId).catch(() => undefined);
+        throw error;
+      }
+    },
+    [
+      canUseRemoteWorkspace,
+      connectRemoteWorkspaceTarget,
+      handleCancelRemoteProject,
+      handleSelectRemoteProject,
+      services.credentialService,
+    ],
+  );
+
   const handleOpenRemoteConversation = useCallback(
     async (sessionId: string, sourceServerId?: string) => {
       await remoteWorkspaceController.dispatch({
@@ -2458,6 +2505,7 @@ export function useRemoteWorkspaceHistory({
     handleSelectRemoteProject,
     handleOpenRemoteConversation,
     handleConnectRemote,
+    handleOpenDiscoveredRemoteWorktree,
     handleReconnectRemoteWorkspace,
     handleOpenRemoteWorkspaceFromHistory,
     handleRemoteWorkspaceTabsClosed,

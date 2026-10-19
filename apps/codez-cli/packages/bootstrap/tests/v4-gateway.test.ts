@@ -724,7 +724,7 @@ describe("订阅与帧调度", () => {
           skillMetadata: {
             name: "pptx",
             qualifiedName: "document-skills:pptx",
-            pluginId: "document-skills@zcode-plugins-official",
+            pluginId: "document-skills@codez-plugins-official",
             source: "plugin",
           },
           result: { success: true, content: "<skill_content>正文不进入 fact</skill_content>" },
@@ -740,7 +740,7 @@ describe("订阅与帧调度", () => {
       toolName: "Skill",
       skillName: "pptx",
       skillQualifiedName: "document-skills:pptx",
-      skillPluginId: "document-skills@zcode-plugins-official",
+      skillPluginId: "document-skills@codez-plugins-official",
       skillSource: "plugin",
     });
     expect(JSON.stringify(host.telemetryFacts)).not.toContain("正文不进入 fact");
@@ -773,7 +773,7 @@ describe("订阅与帧调度", () => {
           skillMetadata: {
             name: "pptx",
             qualifiedName: "document-skills:pptx",
-            pluginId: "document-skills@zcode-plugins-official",
+            pluginId: "document-skills@codez-plugins-official",
             source: "plugin",
           },
           error: { type: "SERIALIZATION_ERROR", message: "post hook failed" },
@@ -790,7 +790,7 @@ describe("订阅与帧调度", () => {
           toolName: "Skill",
           skillName: "pptx",
           skillQualifiedName: "document-skills:pptx",
-          skillPluginId: "document-skills@zcode-plugins-official",
+          skillPluginId: "document-skills@codez-plugins-official",
           skillSource: "plugin",
         }),
       ]),

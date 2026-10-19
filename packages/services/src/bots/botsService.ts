@@ -44,6 +44,7 @@ import {
   getPermissionRequestPreview,
   getSupportedBotReplyGranularities,
   normalizeBotReplyGranularity,
+  parseModelPickerValue,
   type CodezConfigOption,
   type CodezElicitationRequest,
   type CodezElicitationQuestion,
@@ -210,10 +211,15 @@ function parseBotModelOptionValue(value: string): ModelSelection | undefined {
   }
   const separatorIndex = value.indexOf("/");
   if (separatorIndex > 0 && separatorIndex < value.length - 1) {
-    return {
-      providerId: value.slice(0, separatorIndex),
-      modelId: value.slice(separatorIndex + 1),
-    };
+    // Bugfix: task.model 是 picker 展示格式 provider/model$effort，modelId 可能带
+    // "$" 档位后缀。手写切分会把 "$xhigh" 留在 modelId 里，/new 继承草稿后首发
+    // 送进 Codex 目录匹配必然 model-not-found（报「无法从目标 Host 解析 Submission
+    // 模型」）。复用共享的 picker 解析器剥离档位为 options.reasoningLevel。
+    try {
+      return parseModelPickerValue(value);
+    } catch {
+      return undefined;
+    }
   }
   return value.trim() ? { providerId: CODEZ_AGENT_PROVIDER, modelId: value.trim() } : undefined;
 }
@@ -2339,15 +2345,25 @@ export function createBotsService(
   ): Promise<ModelSelectionView | null> {
     const service = await resolveModelSelectionServiceForContext(context).catch(() => null);
     if (!service) return null;
-    return service.getView
-      .call(service, selection ? { selection } : undefined)
-      .catch((error: unknown) => {
-        botsLogger.warn(
-          undefined,
-          `read model selection view for bot model display failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
-        return null;
-      });
+    return (
+      service.getView
+        // workspace 必须贯穿：Codex 原生 Host 的模型事实按 workspace 解析；
+        // legacy Registry 忽略该字段。selection 缺省传 null，与 UI 调用口径一致。
+        .call(service, {
+          selection: selection ?? null,
+          workspace: {
+            workspacePath: context.workspacePath,
+            ...(context.workspaceIdentity ? { workspaceIdentity: context.workspaceIdentity } : {}),
+          },
+        })
+        .catch((error: unknown) => {
+          botsLogger.warn(
+            undefined,
+            `read model selection view for bot model display failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          return null;
+        })
+    );
   }
 
   async function listModelSelectionProviderOptions(
@@ -9839,11 +9855,16 @@ export function createBotsService(
       inboundProcessingQueuesByContext.clear();
       // Bugfix：host 的异步资源回收会优先调用 disposeAllAndWait。保留统一 Promise，确保并发关闭
       // 只执行一次，并在返回前等三类 Provider runtime 的请求、WebSocket 和跨进程锁全部收口。
+      // 修复：启动期 fire-and-forget 的 ensureBotStorageMigrated 会在首次运行时物化
+      // bot-config/bot-state 文件；不把它纳入收口，dispose 返回后这次写入才落盘，
+      // 调用方（如测试）随后删除数据目录时会撞 ENOTEMPTY。这里按当前 Promise 一并等待。
+      const pendingStorageMigration = botStorageMigrationPromise ?? Promise.resolve();
       shutdownPromise = Promise.allSettled([
         cancelUploads,
         telegramRuntime.dispose(),
         weixinRuntime.dispose(),
         feishuRuntime.dispose(),
+        pendingStorageMigration,
       ]).then(() => undefined);
       return shutdownPromise;
     },

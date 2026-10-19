@@ -16,9 +16,9 @@ vi.mock("@/ControlHintTooltip.js", () => ({
 // 见 docs/plugin-marketplace-ui-ux.md「降级矩阵」。
 function makeItem(requiresPaidPlan: boolean | undefined): StorePluginItem {
   return {
-    id: "pro-plugin@zcode-plugins-official",
+    id: "pro-plugin@codez-plugins-official",
     name: "pro-plugin",
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     installed: false,
     restorable: false,
     orphaned: false,

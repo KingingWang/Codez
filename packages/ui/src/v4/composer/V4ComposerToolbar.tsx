@@ -58,6 +58,7 @@ import {
   getThoughtLevelLabel,
 } from "@/chat-input-toolbar/thoughtLevelOptions.js";
 import type { V4ComposerConfigPicker } from "@/v4/composer/configPickerState.js";
+import { resolveSessionTaskUsage } from "@/v4/composer/codexSessionUsage.js";
 import { useToolbarShortcutBindings } from "@/v4/composer/toolbarShortcuts.js";
 import {
   resolveModelSelectTriggerDisplay,
@@ -430,6 +431,10 @@ export interface V4ComposerToolbarProps {
   /** 选中思考深度；modelContext 固定本次用户操作的目标模型。 */
   onSelectThought: (thought: string, modelContext: { provider: string; model: string }) => void;
   onSwitchMode: (mode: string) => void;
+  /** Codex 会话：权限档位菜单改用原生档位目录（specs/codex-permission-modes.md）；缺省为 Codez Agent 旧档位。 */
+  codexPermissions?: boolean;
+  /** Approve for me（autoReviewApprovals 能力）是否受原生支持；未支持时隐藏 edit 档（fail-closed）。 */
+  codexAutoReviewSupported?: boolean;
   /** prepare/configOptions 失败时，custom provider 选择走 workspace recovery 链。 */
   onRecoverCustomModelSelection?: (
     value: string,
@@ -1129,16 +1134,7 @@ function V4ComposerModelControlsImpl({
     });
   }, [effectiveConfig, onSelectThought, thoughtOption]);
 
-  const taskUsage = useMemo(() => {
-    const contextWindow = usage?.contextWindow;
-    if (!contextWindow) return null;
-    return {
-      used: contextWindow.usedTokens,
-      size: contextWindow.maxTokens,
-      ...(contextWindow.cache ? { cache: contextWindow.cache } : {}),
-      ...(contextWindow.breakdown ? { breakdown: contextWindow.breakdown } : {}),
-    };
-  }, [usage?.contextWindow]);
+  const taskUsage = useMemo(() => resolveSessionTaskUsage(usage), [usage]);
   // 工具条热键已转正为命令表命令：tooltip 快捷键文案读生效表，
   // 改绑后按钮提示即时跟随（不能用硬编码文案）。
   const modelShortcutLabel = useShortcutCommandLabel("openModelMenu");

@@ -1319,7 +1319,7 @@ describe("messageTelemetry", () => {
         skillMetadata: {
           name: "pptx",
           qualifiedName: "document-skills:pptx",
-          pluginId: "document-skills@zcode-plugins-official",
+          pluginId: "document-skills@codez-plugins-official",
           source: "plugin",
         },
       },
@@ -1340,7 +1340,7 @@ describe("messageTelemetry", () => {
         skillMetadata: {
           name: "pptx",
           qualifiedName: "document-skills:pptx",
-          pluginId: "document-skills@zcode-plugins-official",
+          pluginId: "document-skills@codez-plugins-official",
           source: "plugin",
         },
       },
@@ -1351,7 +1351,7 @@ describe("messageTelemetry", () => {
       tool_name: "Skill",
       skill_name: "pptx",
       skill_qualified_name: "document-skills:pptx",
-      skill_plugin_id: "document-skills@zcode-plugins-official",
+      skill_plugin_id: "document-skills@codez-plugins-official",
       skill_source: "plugin",
     });
 
@@ -1370,7 +1370,7 @@ describe("messageTelemetry", () => {
         skillMetadata: {
           name: "pptx",
           qualifiedName: "document-skills:pptx",
-          pluginId: "document-skills@zcode-plugins-official",
+          pluginId: "document-skills@codez-plugins-official",
           source: "plugin",
         },
       },
@@ -1390,7 +1390,7 @@ describe("messageTelemetry", () => {
         skillMetadata: {
           name: "pptx",
           qualifiedName: "document-skills:pptx",
-          pluginId: "document-skills@zcode-plugins-official",
+          pluginId: "document-skills@codez-plugins-official",
           source: "plugin",
         },
       },

@@ -1,0 +1,399 @@
+import {
+  commandAckSchema,
+  commandPayloadSchemas,
+  parseCommandEnvelope,
+  type CommandAck,
+  type CommandEnvelope,
+  type CommandResult,
+} from "@codez/shared/codez-protocol-v4";
+import type { CodexRpcPort } from "./contract.js";
+import type { ThreadStateStore } from "./thread-state.js";
+import type { InteractionBroker } from "./interactions.js";
+import type { CommandLedger } from "./command-ledger.js";
+import {
+  assertUnchangedInputSettings,
+  nativeInput,
+  selectionOverrides,
+  turnMode,
+  type ResolveAttachments,
+} from "./command-input.js";
+import {
+  assertWritableThreadState,
+  preemptByInterrupt,
+  SubagentReadOnlyError,
+  turnPermissionIntent,
+  WriterConflictError,
+} from "./control-common.js";
+import { array, object, string, unsupported } from "./json.js";
+import { createNativeSession } from "./command-create.js";
+import { formatRewindNotice, type RewindNoticeStore } from "./rewind-notice.js";
+import { createSelectionSideSession } from "./selection-side-session-command.js";
+import { editQueuedInput } from "./queue-edit.js";
+import { resumeNativeQueue, startNativeQueuedSubmission } from "./queue-start.js";
+import { applySelectionSideChatBoundary } from "./selection-side-chat.js";
+import type { SessionTitleCoordinator } from "./session-title.js";
+import type { CodexProviderKeyGate } from "./provider-key-gate.js";
+import {
+  codexThreadProviderId,
+  editUserQueryOrRetryTurn,
+  executeForkAssistant,
+} from "./commands-edit-retry.js";
+import { resolveCodexInitSlashCommandPrompt } from "./builtin-init-command.js";
+import { executeThreadGoalCommand } from "./thread-goal.js";
+import { executeInterruptedTurnContinue } from "./commands-continue.js";
+
+export interface CommandContext {
+  rpc: CodexRpcPort;
+  store: ThreadStateStore;
+  interactions: InteractionBroker;
+  ledger: CommandLedger;
+  workspaceId: string;
+  attachments?: ResolveAttachments;
+  /**
+   * Desktop 文件撤销的一次性模型通知（spec: codex-desktop-file-rewind）。
+   * 缺省时 sendText 不注入，保持旧嵌入方/测试语义。
+   */
+  rewindNotices?: RewindNoticeStore;
+  title?: SessionTitleCoordinator;
+  providerKeyGate?: CodexProviderKeyGate;
+}
+
+/** Per-thread serialization covers admission decisions, not native execution. */
+export class CommandRouter {
+  private readonly serial = new Map<string, Promise<unknown>>();
+  constructor(private readonly context: CommandContext) {}
+
+  async execute(value: unknown): Promise<CommandAck> {
+    const parsed = parseCommandEnvelope(value);
+    if (!parsed.ok)
+      throw Object.assign(new Error("Invalid conversation command"), { code: -32602 });
+    const command = parsed.envelope;
+    const key = command.sessionId ?? "create";
+    const previous = this.serial.get(key) ?? Promise.resolve();
+    const next = previous.catch(() => {}).then(() => this.admit(command));
+    this.serial.set(key, next);
+    try {
+      return await next;
+    } finally {
+      if (this.serial.get(key) === next) this.serial.delete(key);
+    }
+  }
+
+  private async admit(command: CommandEnvelope): Promise<CommandAck> {
+    const { store, ledger } = this.context;
+    const existing = await ledger.lookup(command.sessionId, command.commandId);
+    if (existing && existing !== "unknown") return existing;
+    if (existing === "unknown" || !(await ledger.begin(command.sessionId, command.commandId))) {
+      return {
+        commandId: command.commandId,
+        status: "failed",
+        reasonCode: "codex.commandOutcomeUnknown",
+        message:
+          "The previous native request may have completed. Refresh history; do not resend automatically.",
+        revisionAtDecision: 0,
+      };
+    }
+    let ack: CommandAck;
+    try {
+      const state = command.sessionId ? await store.ensure(command.sessionId) : undefined;
+      if (
+        state &&
+        ((command.baseRevision !== undefined && command.baseRevision !== state.revision) ||
+          (command.baseLogEpoch !== undefined && command.baseLogEpoch !== state.epoch))
+      ) {
+        ack = {
+          commandId: command.commandId,
+          status: "stale",
+          reasonCode: "proto.staleRevision",
+          revisionAtDecision: state.revision,
+        };
+      } else {
+        const result = await this.dispatch(command);
+        ack = {
+          commandId: command.commandId,
+          status: "accepted",
+          revisionAtDecision: state?.revision ?? 0,
+          ...(result ? { result } : {}),
+        };
+      }
+    } catch (error) {
+      // 只读线程上的拒绝是产品语义（rejected + guard reasonCode），不是命令失败：
+      // 子代理会话用原生同词 guard.subagentReadOnly，写锁冲突保持 guard.codex.writerConflict。
+      const readOnlyReasonCode =
+        error instanceof SubagentReadOnlyError
+          ? "guard.subagentReadOnly"
+          : error instanceof WriterConflictError
+            ? "guard.codex.writerConflict"
+            : undefined;
+      ack = readOnlyReasonCode
+        ? {
+            commandId: command.commandId,
+            status: "rejected",
+            reasonCode: readOnlyReasonCode,
+            message: error instanceof Error ? error.message : "Session is read-only",
+            revisionAtDecision: 0,
+          }
+        : {
+            commandId: command.commandId,
+            status: "failed",
+            revisionAtDecision: 0,
+            reasonCode: "codex.commandFailed",
+            message: error instanceof Error ? error.message : "Native request failed",
+          };
+    }
+    await ledger.finish(command.sessionId, ack);
+    return commandAckSchema.parse(ack);
+  }
+
+  private async dispatch(command: CommandEnvelope): Promise<CommandResult | undefined> {
+    const { rpc, store, attachments, interactions } = this.context;
+    if (command.type === "createSession") return createNativeSession(command, this.context);
+    const sessionId = string(command.sessionId, "sessionId");
+    const state = await store.ensure(sessionId);
+    assertWritableThreadState(state, command.type);
+    const native = { threadId: sessionId };
+    // config.toml 生效值读取上下文；权限覆盖仅在档位迁移时下发（specs/codex-permission-modes.md）。
+    const controlContext = { rpc, cwd: store.cwd };
+    const running = array(state.thread.turns)
+      .map(object)
+      .findLast((turn) => turn.status === "inProgress");
+    switch (command.type) {
+      case "sendText": {
+        const p = commandPayloadSchemas.sendText.parse(command.payload);
+        if (p.context_refs?.length) unsupported("shared-context execution");
+        // heldQueueDisposition 在无 held queue 的 Codex 中忽略（兼容 replayable Bot/手机）；
+        // expectedHeldQueueItemIds 属 choice 确认框过期守卫，继续 fail-closed 拒绝。
+        if (p.expectedHeldQueueItemIds) unsupported("held queue item guards");
+        if (
+          p.browserAmbientContext ||
+          p.modelExecution ||
+          p.automationId ||
+          p.offPeakTaskId ||
+          p.toolDisallowlist?.length
+        )
+          unsupported("legacy execution context; this intent cannot be safely applied by Codex");
+        // 本机临时 Key 未安装的供应商在 queue/steer/start 任一投递前统一拒绝（入队即承诺执行）。
+        await this.context.providerKeyGate?.assertTurnAllowed(
+          p.modelSelection?.providerId ?? codexThreadProviderId(state.thread),
+        );
+        if (p.interruptedContinueTarget) {
+          return executeInterruptedTurnContinue({
+            command,
+            payload: p,
+            rpc,
+            store,
+            state,
+            sessionId,
+            running,
+          });
+        }
+        const rewindNotice = this.context.rewindNotices?.peek(sessionId);
+        const expandedInitText = !p.attachments?.length
+          ? resolveCodexInitSlashCommandPrompt(p.text, store.cwd)
+          : undefined;
+        const effectivePromptText = expandedInitText ?? p.text;
+        const rawText = rewindNotice
+          ? `${formatRewindNotice(rewindNotice)}\n\n${effectivePromptText}`
+          : effectivePromptText;
+        const text = applySelectionSideChatBoundary(state.sideChat, state.thread, rawText);
+        const input = await nativeInput(text, p.attachments, sessionId, attachments);
+        const delivery = p.requestedDelivery ?? (running ? "queue" : "startNow");
+        this.context.title?.armFirstInput(sessionId, p.titleGenerationModel);
+        if (delivery === "queue" || (delivery === "guide" && running))
+          assertUnchangedInputSettings(p, state.thread);
+        if (delivery === "queue") {
+          await rpc.request("thread/queue/add", {
+            ...native,
+            input,
+            clientUserMessageId: command.commandId,
+          });
+          await store.refreshQueue(sessionId);
+        } else if (delivery === "guide" && running) {
+          await rpc.request("turn/steer", {
+            ...native,
+            input,
+            expectedTurnId: running.id,
+            clientUserMessageId: command.commandId,
+          });
+        } else {
+          if (running) await preemptByInterrupt(rpc, native, string(running.id, "turnId"));
+          const permissions = await turnPermissionIntent(controlContext, state.thread, p.mode);
+          const turnParams = {
+            ...native,
+            input,
+            clientUserMessageId: command.commandId,
+            ...selectionOverrides(p.modelSelection),
+            ...turnMode(
+              p.mode,
+              p.modelSelection?.modelId ?? (state.thread.model as string | undefined),
+              p.planEnabled,
+              p.modelSelection?.options?.reasoningLevel ??
+                (state.thread.reasoningEffort as string | undefined),
+              permissions,
+            ),
+          };
+          const response = await rpc.request("turn/start", turnParams);
+          store.applySettings(sessionId, {
+            ...turnParams,
+            ...(p.modelSelection ? { modelProvider: p.modelSelection.providerId } : {}),
+          });
+          store.acceptTurnResponse(sessionId, response);
+          store.rememberMode(sessionId, p.mode);
+        }
+        if (rewindNotice) this.context.rewindNotices?.clear(sessionId, rewindNotice);
+        return {
+          type: "inputAccepted",
+          delivery: delivery === "guide" && !running ? "startNow" : delivery,
+          inputId: command.commandId,
+        };
+      }
+      case "sendGoalCommand":
+      case "pauseGoal":
+      case "resumeGoal": {
+        const goalResult = await executeThreadGoalCommand({
+          command,
+          sessionId,
+          state,
+          running,
+          rpc,
+          store,
+          attachments,
+          providerKeyGate: this.context.providerKeyGate,
+        });
+        if (goalResult) return goalResult;
+        break;
+      }
+      case "stop": {
+        const p = commandPayloadSchemas.stop.parse(command.payload);
+        if (p.expectedForegroundExecutionId && p.expectedForegroundExecutionId !== running?.id)
+          throw new Error("Turn changed before stop");
+        if (running) await rpc.request("turn/interrupt", { ...native, turnId: running.id });
+        break;
+      }
+      case "compact":
+        if (running) throw new Error("Wait for the active turn before compacting");
+        await this.context.providerKeyGate?.assertTurnAllowed(codexThreadProviderId(state.thread));
+        await rpc.request("thread/compact/start", native);
+        break;
+      case "renameSession": {
+        const title = commandPayloadSchemas.renameSession.parse(command.payload).title;
+        await (this.context.title?.manualRename(sessionId, title) ??
+          rpc.request("thread/name/set", { ...native, name: title }));
+        break;
+      }
+      case "deleteSession":
+        if (running) throw new Error("Stop the active turn before deleting");
+        this.context.title?.cancel(sessionId);
+        await rpc.request("thread/delete", native);
+        store.remove(sessionId);
+        break;
+      case "resolveInteraction": {
+        const p = commandPayloadSchemas.resolveInteraction.parse(command.payload);
+        await interactions.resolve(sessionId, p.interactionId, p.answer);
+        break;
+      }
+      case "switchModelConfig": {
+        const p = commandPayloadSchemas.switchModelConfig.parse(command.payload);
+        // 跨 provider 换模型由 codex 原生按 catalog 路由（thread/settings/update
+        // 实测接受任意目录模型），bridge 记录跟随选择的 provider 归属。
+        await rpc.request("thread/settings/update", {
+          ...native,
+          model: p.model,
+          effort: p.thought || undefined,
+        });
+        state.thread.model = p.model;
+        state.thread.modelProvider = p.provider;
+        if (p.thought) state.thread.reasoningEffort = p.thought;
+        break;
+      }
+      case "switchCollaborationMode": {
+        const p = commandPayloadSchemas.switchCollaborationMode.parse(command.payload);
+        // 与 sendText 同一迁移规则（specs/codex-permission-modes.md）。
+        const permissions = await turnPermissionIntent(controlContext, state.thread, p.mode);
+        const settings = {
+          ...native,
+          ...turnMode(
+            p.mode,
+            string(state.thread.model, "model"),
+            undefined,
+            state.thread.reasoningEffort as string | undefined,
+            permissions,
+          ),
+        };
+        await rpc.request("thread/settings/update", settings);
+        store.applySettings(sessionId, settings);
+        store.rememberMode(sessionId, p.mode);
+        break;
+      }
+      case "sendQueuedNow": {
+        const p = commandPayloadSchemas.sendQueuedNow.parse(command.payload);
+        // busy 抢占：interrupt 后队列不因 Interrupted idle 自动 dispatch，其余队列项保留。
+        if (running) await preemptByInterrupt(rpc, native, string(running.id, "turnId"));
+        await startNativeQueuedSubmission(rpc, store, sessionId, p.queueItemId);
+        break;
+      }
+      case "setAutoDrain": {
+        const p = commandPayloadSchemas.setAutoDrain.parse(command.payload);
+        if (!p.autoDrain || running) unsupported("native queue pause policy or busy resume");
+        // Bugfix：上游手机的“继续”调用 setAutoDrain，原桥接直接拒绝，停止后无法继续。
+        // Codex 无持久 auto-drain policy；空闲时显式启动原生队首，不复制队列或重发输入。
+        await resumeNativeQueue(rpc, store, sessionId);
+        break;
+      }
+      case "editQueueItem": {
+        const p = commandPayloadSchemas.editQueueItem.parse(command.payload);
+        await editQueuedInput(rpc, store, sessionId, p, attachments);
+        break;
+      }
+      case "deleteQueueItem": {
+        const p = commandPayloadSchemas.deleteQueueItem.parse(command.payload);
+        await rpc.request("thread/queue/delete", { ...native, queuedSubmissionId: p.queueItemId });
+        await store.refreshQueue(sessionId);
+        break;
+      }
+      case "reorderQueueItem": {
+        const p = commandPayloadSchemas.reorderQueueItem.parse(command.payload);
+        await store.refreshQueue(sessionId);
+        const ids = state.queue.map((entry) => string(object(entry).id));
+        if (
+          !ids.includes(p.queueItemId) ||
+          (p.beforeQueueItemId && !ids.includes(p.beforeQueueItemId))
+        )
+          throw new Error("Queue changed");
+        const reordered = ids.filter((id) => id !== p.queueItemId);
+        reordered.splice(
+          p.beforeQueueItemId ? reordered.indexOf(p.beforeQueueItemId) : reordered.length,
+          0,
+          p.queueItemId,
+        );
+        await rpc.request("thread/queue/reorder", { ...native, queuedSubmissionIds: reordered });
+        await store.refreshQueue(sessionId);
+        break;
+      }
+      case "forkAssistant": {
+        return executeForkAssistant({ command, rpc, store, state, sessionId });
+      }
+      case "createSelectionSideSession":
+        return createSelectionSideSession(command, this.context);
+      case "editUserQuery":
+      case "retryTurn": {
+        await editUserQueryOrRetryTurn({
+          command,
+          rpc,
+          store,
+          state,
+          sessionId,
+          running,
+          attachments,
+          title: this.context.title,
+          providerKeyGate: this.context.providerKeyGate,
+        });
+        break;
+      }
+      default:
+        unsupported(command.type);
+    }
+    store.touch(sessionId);
+    return undefined;
+  }
+}

@@ -14,6 +14,7 @@ import {
   type RemoteTarget,
   type TaskRealtimeHostDeliveryKind,
   type WorkspacePurpose,
+  type DesktopCodexMcpServer,
   formatCodezHostProcessName,
   HostMessageTypes,
   hostResponseMessageSchema,
@@ -92,6 +93,13 @@ export interface HostInitMessage {
   codezBuiltinProviderConfigFilePath: string;
   /** Main 提前异步采集并过滤的本机 runtime 环境；只允许传给 InitLocal。 */
   runtimeProcessEnvPatch?: Record<string, string>;
+  /** Desktop Main 提供的稳定 Browser/CUA native MCP availability facts。 */
+  nativeBrowserCua?: {
+    browserAvailable: boolean;
+    cuaAvailable: boolean;
+  };
+  /** 当前窗口的临时 Codex MCP；Main 铸造，绝不写入用户 config。 */
+  desktopCodexMcpServers?: DesktopCodexMcpServer[];
 }
 
 export interface SpawnHostProcessOptions {

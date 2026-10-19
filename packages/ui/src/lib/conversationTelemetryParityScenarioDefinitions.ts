@@ -1200,11 +1200,11 @@ function buildScenarios(): ConversationTelemetryParityScenario[] {
     ]),
     scenario("TDP17", [{ kind: "verification.assert" }, ...tdp17], {}, { chat_error_banner: 1 }, [
       "visible-3007",
-      "exact-codez-plan-provider",
+      "exact-zcode-plan-provider",
       "one-shot-header",
       "accepted-duplicate-handled",
       "failure-retryable",
-      "non-codez-plan-skipped",
+      "non-zcode-plan-skipped",
     ]),
     scenario(
       "TDP18",

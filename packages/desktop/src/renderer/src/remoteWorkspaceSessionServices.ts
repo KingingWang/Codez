@@ -31,6 +31,10 @@ export function buildRemoteWorkspaceSessionServices(
     // Provider/Model 事实属于目标 Environment；不能因 merge 先展开 baseServices 而回落到本地。
     modelSelectionService: remoteServices.modelSelectionService,
     providerSettingsService: remoteServices.providerSettingsService,
+    // 根因：SSH 设置页虽选中 remote session，合并时却沿用 base 的 local Key 服务，
+    // 导致 config.toml 写到远端、凭据/注册表写进 local 分区，远端安装读不到 Key。
+    // Window Host 的 remote-scoped 服务仍将凭据保存在本机，但以目标 Environment 隔离并协调安装。
+    codexNativeProviderKeyService: remoteServices.codexNativeProviderKeyService,
     // SSH/Docker remote 项目的 skills/plugins/commands 目录位于远端文件系统。
     // 之前这里沿用本机 base services，会拿远端 workspacePath 去本机扫描，导致项目级能力读不到。
     skillsService: remoteServices.skillsService,

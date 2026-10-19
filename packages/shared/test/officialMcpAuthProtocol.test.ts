@@ -9,7 +9,7 @@ import {
 
 const VALID_REQUEST = {
   mcpKey: "image-search",
-  pluginId: "codez-tools@zcode-plugins-official",
+  pluginId: "codez-tools@codez-plugins-official",
   requestId: "mcp-auth-1",
   targetOrigin: "https://mcp.codez.example",
   workspace: { workspaceKey: "local:/repo", workspacePath: "/repo" },

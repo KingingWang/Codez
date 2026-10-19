@@ -7,7 +7,7 @@ import type { SettingsDirectoryLocation } from "./settings-source.js";
 import type { McpServerFailureKind } from "./codez-protocol/index.js";
 
 // CUA official plugin 身份常量（port 自 feat；UI 设置面板 + bootstrap 复用以避免字面量漂移）。
-export const CODEZ_CUA_OFFICIAL_PLUGIN_ID = "computer-use@zcode-plugins-official";
+export const CODEZ_CUA_OFFICIAL_PLUGIN_ID = "computer-use@codez-plugins-official";
 // CUA server 身份串（port 自 feat mcp.ts）：server key = 模型可见工具前缀段（刻意不带 codez-）；
 // namespace name = official plugin 运行时命名空间 plugin:<pluginId>:<serverKey>。
 export const CODEZ_CUA_OFFICIAL_MCP_NAMESPACE_NAME = "plugin:computer-use:computer-use";

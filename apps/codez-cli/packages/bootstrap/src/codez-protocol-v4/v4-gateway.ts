@@ -72,6 +72,7 @@ import type {
   V4ConversationWorkflowRunWorkspaceResult,
   V4ConversationWorkflowRunEventsResult,
   V4ConversationWorkflowRunsResult,
+  V4ConversationRowPayloadResult,
   V4ConversationRowsRangeResult,
   WorkspaceConfigState,
   WorkspaceConfigTopicFrame,
@@ -127,6 +128,8 @@ import {
   v4ConversationWorkflowRunEventsResultSchema,
   v4ConversationWorkflowRunsParamsSchema,
   v4ConversationWorkflowRunsResultSchema,
+  v4ConversationRowPayloadParamsSchema,
+  v4ConversationRowPayloadResultSchema,
   v4ConversationRowsRangeParamsSchema,
   v4ConversationResyncParamsSchema,
   v4ConversationSubscribeParamsSchema,
@@ -1738,6 +1741,18 @@ export class ConversationV4Gateway {
       // clientMode 决定行可见性过滤档位：桌面 continuous（默认）/ 断线恢复 replayable。
       params.clientMode === "desktop-continuous" ? "continuous" : "replayable",
     );
+  }
+
+  /** 按 rowId 读取单条折叠 toolCall / reasoning 行的完整载荷；冷会话复用订阅 hydration。 */
+  async rowPayload(rawParams: unknown): Promise<V4ConversationRowPayloadResult> {
+    const params = v4ConversationRowPayloadParamsSchema.parse(rawParams);
+    const existingReady = this.readyFlights.get(params.sessionId);
+    const publisher = existingReady
+      ? await existingReady
+      : !this.hasLiveConversation(params.sessionId)
+        ? await this.ensureColdReadyPublisher(params.sessionId)
+        : await this.hydratePublisher(params.sessionId);
+    return v4ConversationRowPayloadResultSchema.parse(publisher.getRowPayload(params.rowId));
   }
 
   /** 完整有效 projection 的终态计划目录；冷会话复用订阅 hydration。 */

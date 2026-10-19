@@ -419,6 +419,8 @@ describe("WorkflowArtifactSidePane 版本步进器", () => {
     expect(view.getByTestId("workflow-artifact-version").textContent).toBe("第 3 版 / 共 3 版");
     expect(view.getByTestId("workflow-artifact-version-next").hasAttribute("disabled")).toBe(true);
 
+    // 元数据首帧早于 View 的挂载 effect；等初始字节读取建立后再翻版，避免初始化覆盖点击。
+    await waitFor(() => expect(workflowRunArtifactRead.mock.calls.at(-1)?.[0]?.version).toBe(3));
     fireEvent.click(view.getByTestId("workflow-artifact-version-previous"));
     await waitFor(() =>
       expect(view.getByTestId("workflow-artifact-version").textContent).toBe("第 2 版 / 共 3 版"),

@@ -29,7 +29,7 @@ import type { PluginReferenceCatalogEntry } from "@codez/contracts";
 import { resolveSuggestedPluginReference } from "../src/codez-protocol/plugin-reference-catalog.js";
 import type { CodezProtocolAgentServerContext } from "../src/codez-protocol/server-types.js";
 
-const STABLE_ID = "document-skills@zcode-plugins-official";
+const STABLE_ID = "document-skills@codez-plugins-official";
 const WORKSPACE = { workspacePath: "/workspace", workspaceKey: "ssh://host/workspace" };
 const DESKTOP_BOUNDARY = {
   operationId: "suggested-test",
@@ -48,7 +48,7 @@ function catalogEntry(
   return {
     pluginId: STABLE_ID,
     name: "document-skills",
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     enabled: true,
     conflictingPluginIds: [],
     skillQualifiedNames: ["document-skills:pdf"],
@@ -63,7 +63,7 @@ function overviewCandidate(overrides: Record<string, unknown> = {}) {
   return {
     id: STABLE_ID,
     name: "document-skills",
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     installed: false,
     listing: { displayName: "Document skills" },
     ...overrides,
@@ -157,7 +157,7 @@ describe("plugins/resolveSuggestedReference protocol", () => {
       codezPluginsResolveSuggestedReferenceResultSchema.parse({
         stableId: STABLE_ID,
         status: "ready",
-        marketplace: "zcode-plugins-official",
+        marketplace: "codez-plugins-official",
         pluginName: "document-skills",
         sourceTrust: "official",
         icon: "https://cdn.example/plugin.svg",
@@ -208,7 +208,7 @@ describe("plugins/resolveSuggestedReference protocol", () => {
       expect(result).toMatchObject({
         stableId: STABLE_ID,
         status,
-        marketplace: "zcode-plugins-official",
+        marketplace: "codez-plugins-official",
         pluginName: "document-skills",
         sourceTrust: "official",
         icon: "https://cdn.example/document-skills.svg",
@@ -218,7 +218,7 @@ describe("plugins/resolveSuggestedReference protocol", () => {
     },
   );
 
-  it("refreshes only zcode-plugins-official before exposing a missing candidate", async () => {
+  it("refreshes only codez-plugins-official before exposing a missing candidate", async () => {
     mocks.getCodezPluginsOverview.mockReturnValue({
       availablePlugins: [
         overviewCandidate({ listing: { icon: "https://cdn.example/document-skills.svg" } }),
@@ -240,7 +240,7 @@ describe("plugins/resolveSuggestedReference protocol", () => {
     expect(mocks.updateCodezPluginMarketplace).toHaveBeenCalledOnce();
     expect(mocks.updateCodezPluginMarketplace).toHaveBeenCalledWith(
       expect.objectContaining({
-        marketplace: "zcode-plugins-official",
+        marketplace: "codez-plugins-official",
         workingDirectory: "/workspace",
       }),
     );
@@ -251,7 +251,7 @@ describe("plugins/resolveSuggestedReference protocol", () => {
     expect(result).toMatchObject({
       stableId: STABLE_ID,
       status: "missing",
-      marketplace: "zcode-plugins-official",
+      marketplace: "codez-plugins-official",
       pluginName: "document-skills",
       sourceTrust: "official",
       icon: "https://cdn.example/document-skills.svg",
@@ -291,7 +291,7 @@ describe("plugins/resolveSuggestedReference protocol", () => {
         {
           code: "plugin_archive_fetch_failed",
           message: "offline",
-          pluginId: "zcode-plugins-official",
+          pluginId: "codez-plugins-official",
           severity: "error",
         },
       ],

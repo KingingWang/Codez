@@ -133,8 +133,12 @@ const BufferPresets = {
   Int: createOneByteBuffer(DataType.Int),
 };
 
-const RPC_NESTED_UINT8_ARRAY_MARKER = "__codez_rpc_nested_uint8array_v1";
+// Bugfix：二进制 envelope 是跨客户端 wire 协议，上游托管手机页只识别原标记。
+const RPC_NESTED_UINT8_ARRAY_MARKER = "__zcode_rpc_nested_uint8array_v1";
+const RPC_FORK_NESTED_UINT8_ARRAY_MARKER = "__codez_rpc_nested_uint8array_v1";
 const RPC_NESTED_UINT8_ARRAY_BASE64_KEY = "base64";
+
+export type RpcJsonBinaryDialect = "codez" | "upstream";
 
 // ============================================================================
 // serialize / deserialize
@@ -149,7 +153,11 @@ const RPC_NESTED_UINT8_ARRAY_BASE64_KEY = "base64";
  * header 通常是 [RequestType, id, channelName, methodName]
  * body 是方法参数或返回值
  */
-export function serialize(writer: IWriter, data: any): void {
+export function serialize(
+  writer: IWriter,
+  data: any,
+  dialect: RpcJsonBinaryDialect = "codez",
+): void {
   if (typeof data === "undefined") {
     writer.write(BufferPresets.Undefined);
   } else if (typeof data === "string") {
@@ -170,7 +178,7 @@ export function serialize(writer: IWriter, data: any): void {
     writer.write(BufferPresets.Array);
     writeInt32VQL(writer, data.length);
     for (const el of data) {
-      serialize(writer, el);
+      serialize(writer, el, dialect);
     }
   } else if (typeof data === "number" && (data | 0) === data) {
     // 整数用 VQL 编码，比 JSON 更紧凑
@@ -180,7 +188,11 @@ export function serialize(writer: IWriter, data: any): void {
     // 对象字段里的 Uint8Array 之前会被 JSON.stringify 展开成 {"0":...}，
     // 远端 RPC 收到后不再是二进制，skill sync 这类归档传输会在解压阶段失败。
     // 这里保持 Object JSON fallback 的协议形态，只对嵌套 Uint8Array 加标记并在反序列化时恢复。
-    const buffer = VSBuffer.fromString(JSON.stringify(data, encodeRpcJsonValue));
+    const marker =
+      dialect === "upstream" ? RPC_NESTED_UINT8_ARRAY_MARKER : RPC_FORK_NESTED_UINT8_ARRAY_MARKER;
+    const buffer = VSBuffer.fromString(
+      JSON.stringify(data, (key, value) => encodeRpcJsonValue(key, value, marker)),
+    );
     writer.write(BufferPresets.Object);
     writeInt32VQL(writer, buffer.byteLength);
     writer.write(buffer);
@@ -217,10 +229,10 @@ export function deserialize(reader: IReader): any {
   }
 }
 
-function encodeRpcJsonValue(_key: string, value: unknown): unknown {
+function encodeRpcJsonValue(_key: string, value: unknown, marker: string): unknown {
   if (value instanceof Uint8Array) {
     return {
-      [RPC_NESTED_UINT8_ARRAY_MARKER]: true,
+      [marker]: true,
       [RPC_NESTED_UINT8_ARRAY_BASE64_KEY]: bytesToBase64(value),
     };
   }
@@ -243,7 +255,8 @@ function isRpcEncodedUint8Array(value: unknown): value is {
   }
   const record = value as Record<string, unknown>;
   return (
-    record[RPC_NESTED_UINT8_ARRAY_MARKER] === true &&
+    (record[RPC_NESTED_UINT8_ARRAY_MARKER] === true ||
+      record[RPC_FORK_NESTED_UINT8_ARRAY_MARKER] === true) &&
     typeof record[RPC_NESTED_UINT8_ARRAY_BASE64_KEY] === "string" &&
     Object.keys(record).length === 2
   );
