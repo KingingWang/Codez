@@ -1,11 +1,18 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { AddressInfo } from "node:net";
+import { once } from "node:events";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ServiceCollection } from "@codez/services";
 import { SERVER_REMOTE_PROTOCOL_VERSION } from "@codez/shared";
 import { createHttpServer } from "../src/http.js";
+
+async function serverAddress(server: ReturnType<typeof createHttpServer>): Promise<AddressInfo> {
+  // 指定 IPv4 监听后 listen 异步完成；拿到 listening 才能读取系统分配的端口。
+  if (!server.listening) await once(server, "listening");
+  return server.address() as AddressInfo;
+}
 
 describe("server info HTTP endpoint", () => {
   const servers: Array<{ close(callback?: (err?: Error) => void): void }> = [];
@@ -33,6 +40,8 @@ describe("server info HTTP endpoint", () => {
 
   it("returns desktop connector bootstrap metadata", async () => {
     const server = createHttpServer(new ServiceCollection(), 0, {
+      // 测试请求固定访问 IPv4；监听 :: 时端口可能被另一 IPv4 服务占用，误读其响应。
+      host: "127.0.0.1",
       serverId: "studio",
       name: "Studio Server",
       workspaces: [
@@ -43,7 +52,7 @@ describe("server info HTTP endpoint", () => {
       ],
     });
     servers.push(server);
-    const address = server.address() as AddressInfo;
+    const address = await serverAddress(server);
 
     const response = await fetch(`http://127.0.0.1:${address.port}/api/server-info`);
 
@@ -77,12 +86,13 @@ describe("server info HTTP endpoint", () => {
 
   it("announces virtual projects only for an initialized owner host", async () => {
     const server = createHttpServer(new ServiceCollection(), 0, {
+      host: "127.0.0.1",
       serverId: "owner",
       virtualProjects: true,
       migrationFailedPathCount: 2,
     });
     servers.push(server);
-    const address = server.address() as AddressInfo;
+    const address = await serverAddress(server);
     const response = await fetch(`http://127.0.0.1:${address.port}/api/server-info`);
     expect(await response.json()).toMatchObject({
       serverId: "owner",
@@ -93,10 +103,11 @@ describe("server info HTTP endpoint", () => {
 
   it("requires the lite token for protected API routes", async () => {
     const server = createHttpServer(new ServiceCollection(), 0, {
+      host: "127.0.0.1",
       authToken: "secret-token",
     });
     servers.push(server);
-    const address = server.address() as AddressInfo;
+    const address = await serverAddress(server);
     const baseUrl = `http://127.0.0.1:${address.port}`;
 
     const rejected = await fetch(`${baseUrl}/api/server-info`);
@@ -129,9 +140,9 @@ describe("server info HTTP endpoint", () => {
   });
 
   it("does not expose either retired remote-connect route", async () => {
-    const server = createHttpServer(new ServiceCollection(), 0);
+    const server = createHttpServer(new ServiceCollection(), 0, { host: "127.0.0.1" });
     servers.push(server);
-    const address = server.address() as AddressInfo;
+    const address = await serverAddress(server);
 
     const response = await fetch(`http://127.0.0.1:${address.port}/api/connect-remote`, {
       method: "POST",
@@ -153,11 +164,12 @@ describe("server info HTTP endpoint", () => {
     await writeFile(join(staticRoot, "app.js"), "console.log('lite');", "utf8");
 
     const server = createHttpServer(new ServiceCollection(), 0, {
+      host: "127.0.0.1",
       staticRoot,
       spaFallback: true,
     });
     servers.push(server);
-    const address = server.address() as AddressInfo;
+    const address = await serverAddress(server);
     const baseUrl = `http://127.0.0.1:${address.port}`;
 
     const asset = await fetch(`${baseUrl}/app.js`);
