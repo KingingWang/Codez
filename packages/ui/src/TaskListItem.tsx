@@ -27,7 +27,7 @@ import { getTaskListAttention, getTaskListRowActivity } from "@/v4/taskListRowAc
 import { TaskListItemContextMenu } from "@/TaskListItemContextMenu.js";
 import { TaskInteractionBadge } from "@/TaskInteractionBadge.js";
 import { useTaskListItemContextActions } from "@/useTaskListItemContextActions.js";
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
+import { useFeedbackEntryAction } from "@/feedback/useFeedbackEntryAction.js";
 import { useModelTrajectoryStore } from "@/store/modelTrajectoryStore.js";
 import { buildTaskFeedbackDescription } from "@/lib/taskFeedbackDraft.js";
 import { toast } from "@/components/ui/toast.js";
@@ -874,7 +874,7 @@ export function TaskListItemContextMenuContent({
   );
   // 当前 focused session、已有 group 与 pane 上限统一由 shell owner 裁决；row 不再直接写 layout store。
   const canOpenInSplitPane = splitPaneEntry.canOpenSession(splitPaneTarget);
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
+  const { runFeedbackEntry } = useFeedbackEntryAction();
   const {
     taskSessionFile,
     taskNativeSessionLogFile,
@@ -902,19 +902,15 @@ export function TaskListItemContextMenuContent({
     });
 
   const handleOpenTaskFeedback = useCallback(async () => {
-    // 任务右键菜单之前只能复制日志/路径，反馈时缺少任务上下文。
-    // 这里复用反馈中心 draft，只预填脱敏后的任务线索，附件由用户主动选择。
-    openFeedbackSubmit({
+    // Bug 原因：旧表单已下线，任务行仍写 feedbackStore，点击后没有可见入口。
+    // 与其他入口共用 URL 脱敏收口，任务线索只作为预填文本，不自动上传附件。
+    const outcome = runFeedbackEntry({
       title: intl
         .formatMessage(
           { id: "feedback.submit.template.section.taskFeedbackTitle" },
           { title: taskTitle },
         )
         .slice(0, 80),
-      type: "bug",
-      module: "Agent任务执行失败",
-      severity: "P2-中",
-      includeLogs: true,
       description: buildTaskFeedbackDescription({
         taskTitle,
         taskId: task.taskId,
@@ -924,12 +920,11 @@ export function TaskListItemContextMenuContent({
         formatMessage: (id: string, values?: Record<string, string>) =>
           intl.formatMessage({ id }, values),
       }),
-      screenshots: [],
     });
-    toast(intl.formatMessage({ id: "taskList.feedbackOpened" }));
+    if (outcome === "opened") toast(intl.formatMessage({ id: "taskList.feedbackOpened" }));
   }, [
     intl,
-    openFeedbackSubmit,
+    runFeedbackEntry,
     task.taskId,
     taskNativeSessionLogFile.path,
     taskSessionFile.path,

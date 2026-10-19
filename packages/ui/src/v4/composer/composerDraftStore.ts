@@ -33,9 +33,6 @@ export interface V4ComposerDraft {
    */
   permissionModeGen?: 2;
   planEnabled?: boolean;
-  /** 已处理的工具变更，防止重连快照再次覆盖用户选择。 */
-  lastPlanTransitionId?: string;
-  lastPermissionGrantId?: string;
   /**
    * 上次同步到本草稿的权威会话配置指纹（跨端提交后配置同步）。
    * 仅当权威 snapshot.config 相对该指纹发生实质推进时才更新草稿，
@@ -310,12 +307,8 @@ function readDraft(value: unknown): V4ComposerDraft | null {
       : mode.success
         ? { planEnabled: mode.data === "plan" }
         : {}),
-    ...(typeof value.lastPermissionGrantId === "string"
-      ? { lastPermissionGrantId: value.lastPermissionGrantId }
-      : {}),
-    ...(typeof value.lastPlanTransitionId === "string"
-      ? { lastPlanTransitionId: value.lastPlanTransitionId }
-      : {}),
+    // Bug 原因：旧事件消费游标属于当前打开周期的观察基线，不能从 localStorage
+    // 恢复到新周期；忽略旧字段，避免历史授权/Plan 事件覆盖本端新选择。
     ...(typeof value.lastSyncedSessionConfigKey === "string"
       ? { lastSyncedSessionConfigKey: value.lastSyncedSessionConfigKey }
       : {}),

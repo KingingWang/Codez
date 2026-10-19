@@ -1,4 +1,3 @@
-import { redactFeedbackText } from "@codez/shared";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { RemotePasswordInput } from "@/remote-connection/RemotePasswordInput.js";
 import {
@@ -31,7 +30,7 @@ import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import type { RemoteConnectionLogEntry } from "@/hooks/useRemoteConnectionLogs.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
+import { useFeedbackEntryAction } from "@/feedback/useFeedbackEntryAction.js";
 import {
   formatRemoteLinkRailTarget,
   formatRemoteLinkRailDevice,
@@ -289,7 +288,7 @@ export function RemoteConnectionConnectingStep({
   const { intl } = useCodezIntl();
   const credentialInputId = useId();
   const platform = usePlatform();
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
+  const { runFeedbackEntry } = useFeedbackEntryAction();
   const logContainerRef = useRef<HTMLDivElement | null>(null);
   const shouldFollowLatestLogRef = useRef(true);
   const latestLogId = logs.at(-1)?.id;
@@ -400,20 +399,13 @@ export function RemoteConnectionConnectingStep({
   }, [logs.length, latestLogId, latestLogTimestamp]);
 
   const handleOpenFeedback = async () => {
-    // 远程连接失败时用户看到的是连接日志现场。
-    // 反馈入口只预填脱敏后的错误摘要，附件由用户主动选择。
-    openFeedbackSubmit({
+    // Bug 原因：旧表单已下线，且完整连接日志不能进入外部 URL。
+    // 只传用户可见的错误摘要，脱敏与长度限制交给统一 GitHub Issue 入口。
+    runFeedbackEntry({
       title:
         errorMessage.slice(0, 80) ||
         intl.formatMessage({ id: "feedback.submit.template.section.remoteConnectFailed" }),
-      type: "bug",
-      module: kind === "ssh" ? "SSH连接失败" : kind === "wsl" ? "WSL连接失败" : "Agent任务执行失败",
-      severity: "P2-中",
-      includeLogs: false,
-      description: buildRemoteConnectionFeedbackDescription(errorMessage, logs, (id, values) =>
-        intl.formatMessage({ id }, values),
-      ),
-      screenshots: [],
+      errorSummary: errorMessage,
     });
   };
 
@@ -981,29 +973,4 @@ function formatInstallTarget(target: RemoteTarget): string {
     return ["WSL", target.distro ?? "default", target.user].filter(Boolean).join(" · ");
   if (target.kind === "docker") return `Docker · ${target.container}`;
   return target.url;
-}
-
-function buildRemoteConnectionFeedbackDescription(
-  errorMessage: string,
-  logs: RemoteConnectionLogEntry[],
-  formatMessage: (id: string, values?: Record<string, string>) => string,
-) {
-  const logText = logs
-    .slice(-30)
-    .map((entry) => `${entry.timestamp} [${entry.level.toUpperCase()}] ${entry.message}`)
-    .join("\n");
-  return redactFeedbackText(
-    [
-      formatMessage("feedback.submit.template.section.remoteHeading"),
-      "",
-      formatMessage("feedback.submit.template.section.errorSummary"),
-      errorMessage || formatMessage("feedback.submit.template.section.notProvided"),
-      "",
-      formatMessage("feedback.submit.template.section.remoteLog"),
-      logText || formatMessage("feedback.submit.template.section.remoteLogEmpty"),
-      "",
-      formatMessage("feedback.submit.template.section.remoteEnvironment"),
-      formatMessage("feedback.submit.template.section.supplement"),
-    ].join("\n"),
-  );
 }

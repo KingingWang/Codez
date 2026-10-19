@@ -221,9 +221,8 @@ function createHello(context: CodezAgentV4ConnectionContext): HelloMessage {
       compression: "none",
       workspaceHookReview: true,
       independentPlanState: true,
-      // 本 Host 会转发 `workflowRun.*` 键级增量；客户端见到它才能在 clientHello 里回声明
-      // （那个 capabilities 是 .strict() 的，反过来会让老 Host 握不上手）。
-      workflowRunDeltas: true,
+      // Bug 原因：attachment 不是能力所有者；Codex/base 缺失键级增量时不能预先宣告 true。
+      // helloConversationV4 只在底层显式支持后补上该能力，避免客户端错误协商。
       historyFirst: true,
     },
     auth: {},

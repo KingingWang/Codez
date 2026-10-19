@@ -92,6 +92,13 @@ const projectionState = vi.hoisted(() => ({
 }));
 
 const servicesMock = vi.hoisted(() => ({
+  projectService: {
+    resolveSessionDirectories: vi.fn(async (task) => ({
+      ...task,
+      projectId: null,
+      additionalDirectories: [],
+    })),
+  },
   highspeedCardService: {
     getSnapshot: vi.fn(async () => ({ card: null, nextDrawAt: null, drawing: false })),
     prepareTurn: vi.fn(async () => ({
@@ -1081,6 +1088,10 @@ describe("SessionPane user query editing", () => {
       });
 
       expect(sendCommandMock).toHaveBeenCalledTimes(1);
+      expect(servicesMock.projectService.resolveSessionDirectories).toHaveBeenCalledWith(
+        { workspacePath: "/workspace", workspaceIdentity: undefined, taskId: "session-1" },
+        "local",
+      );
       expect(sendCommandMock.mock.calls[0]?.[0]).toMatchObject({
         baseRevision: 7,
         baseLogEpoch: "epoch-1",

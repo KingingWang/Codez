@@ -526,11 +526,11 @@ describe("stageRelease", () => {
     expect(manifest.plugins).toEqual([
       "android-emulator",
       "browser-use",
+      "codez-guide",
       "document-skills",
       "ios-simulator",
       "restore-legacy-sessions",
       "skill-creator",
-      "codez-guide",
     ]);
     expect(manifest.components?.some((component) => component.id === "official-plugins")).toBe(
       true,

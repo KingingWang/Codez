@@ -1,5 +1,6 @@
 import { runStartupReconnectBatch } from "../src/host/sourceServerStartupReconnect.js";
 import { connectSourceServerTarget } from "../src/host/connectSourceServerTarget.js";
+import { buildRemoteEnvironmentKey } from "@codez/shared";
 import { readFile } from "node:fs/promises";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
@@ -63,9 +64,13 @@ describe("Window Host 的 Source 重连与数据库启动整合", () => {
         capabilities: { processResourceTelemetry: true },
       };
       const clientConfig = { config: "host" };
+      const remoteAgent = {
+        updateDesktopBrowserControl: async () => {},
+        onDynamicDesktopBrowserCommandRequest: () => () => ({ dispose() {} }),
+      };
       const manager = {
         connect: async () => ({
-          services: { generation: 1 },
+          services: { generation: 1, codezAgentService: remoteAgent },
           serverInfo: info,
           sourceServerId: "source-1",
         }),
@@ -80,6 +85,11 @@ describe("Window Host 的 Source 重连与数据库启动整合", () => {
         `${compile(node.getText(source))};createWindowRemoteConnectionHandle;`,
         {
           connectSourceServerTarget,
+          buildRemoteEnvironmentKey,
+          nativeBrowserCuaMcpState: {
+            brokerTarget: () => undefined,
+            subscribe: () => () => {},
+          },
           activeServices: { get: () => clientConfig },
           IClientConfigService: {},
           sourceServerDirectory: {
@@ -120,12 +130,12 @@ describe("Window Host 的 Source 重连与数据库启动整合", () => {
             connection.dispose(),
         },
       ) as (params: {
-        target: { kind: "ssh" };
+        target: { kind: "ssh"; host: string; username: string };
         signal: AbortSignal;
         remoteAssets: object;
       }) => Promise<RemoteHandle>;
       const handle = await createHandle({
-        target: { kind: "ssh" },
+        target: { kind: "ssh", host: "example.test", username: "dev" },
         signal: new AbortController().signal,
         remoteAssets: {},
       });
@@ -134,7 +144,7 @@ describe("Window Host 的 Source 重连与数据库启动整合", () => {
       reconnect?.({
         sourceServerId: "source-1",
         serverInfo: reconnectedInfo,
-        services: { generation: 2 },
+        services: { generation: 2, codezAgentService: remoteAgent },
       });
 
       expect(generations).toEqual([2]);
@@ -192,6 +202,7 @@ describe("Window Host 的 Source 重连与数据库启动整合", () => {
       `${compile(`async function run() { ${initNode.getText(source)} }`)};run;`,
       {
         databaseStartup: undefined,
+        nativeBrowserCuaMcpState: { set() {}, get: () => undefined },
         activeSessionRealtimePort: null,
         activeServices: null,
         activeHostApiNetworkTransport: null,

@@ -352,7 +352,7 @@ export function useDraftConfigControl(params: {
               modelSelectionView,
               rootScope,
               {
-              codex,
+                codex,
               },
             )
           : {
@@ -401,15 +401,14 @@ export function useDraftConfigControl(params: {
         mode: currentMode,
         ...(codex ? { permissionModeGen: 2 as const } : {}),
         planEnabled: currentPlan,
-        modelSelection:
-          draft.mode
-            ? draft.modelSelection
-            : resolveSessionConfigModelSelection({
-                sessionConfig,
-                codex,
-                codexUsesCatalog,
-                codexCatalog,
-              }),
+        modelSelection: draft.mode
+          ? draft.modelSelection
+          : resolveSessionConfigModelSelection({
+              sessionConfig,
+              codex,
+              codexUsesCatalog,
+              codexCatalog,
+            }),
       };
     } else if (previous) {
       const permissionChanged =
@@ -620,11 +619,9 @@ export function useDraftConfigControl(params: {
   );
   const replaceComposerDraft = useCallback(
     (replacement: Omit<V4ComposerDraft, "updatedAt">) => {
-      // 撤回编辑替换正文/配置，但不能忘记已经消费的授权，否则旧快照会再次覆盖新选择。
+      // 旧事件消费游标不再属于持久草稿；当前周期的观察基线由 Hook 内存持有。
       updateComposerDraft((current) => ({
         ...replacement,
-        lastPermissionGrantId: current.lastPermissionGrantId,
-        lastPlanTransitionId: current.lastPlanTransitionId,
         lastSyncedSessionConfigKey: current.lastSyncedSessionConfigKey,
         updatedAt: Date.now(),
       }));

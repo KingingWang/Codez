@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -254,7 +254,7 @@ describe("gitCliRepo", () => {
     await expect(repo.getWorkspaceRepositoryInfo(worktreeRoot)).resolves.toEqual({
       workspacePath: worktreeRoot,
       kind: "linked-worktree",
-      gitCommonDir: resolve(mainTreeRoot, ".git"),
+      gitCommonDir: realpathSync(resolve(mainTreeRoot, ".git")),
       isGitAvailable: true,
     });
   });

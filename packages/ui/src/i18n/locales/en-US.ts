@@ -610,6 +610,8 @@ const enUS: Record<string, string> = {
   "common.close": "Close",
   "common.gotIt": "Got it",
   "chat.plan.removeMarker": "Remove Plan from the next submission",
+  "chat.plan.attachmentsBlocked":
+    "The Plan shortcut cannot include attachments or context. Switch to Plan mode first, then send.",
   "common.confirm": "Confirm",
   "common.more": "More",
   "common.refresh": "Refresh",

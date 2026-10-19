@@ -126,6 +126,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     let locale: "zh-CN" | "en-US" = "en-US";
 
     createWindow({
+      nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
       logger: { info: vi.fn(), warn: vi.fn() },

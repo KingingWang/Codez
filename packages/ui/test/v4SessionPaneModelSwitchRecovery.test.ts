@@ -1017,7 +1017,7 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
     }
   });
 
-  for (const entry of ["existing", "prewarm", "create", "fallback-send", "slash-create"] as const) {
+  for (const entry of ["existing", "prewarm"] as const) {
     it.each([
       {
         message: "  Native command cannot apply legacy context  ",
@@ -1041,12 +1041,10 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
         ? { workspaceKey: "/workspace", sessionId: "session-1", promote: vi.fn(), discard }
         : null;
       const onSessionCreated = vi.fn();
-      const failedType =
-        entry === "create" || entry === "slash-create" ? "createSession" : "sendText";
       mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
         ackFor(
           envelope,
-          envelope.type === failedType
+          envelope.type === "sendText"
             ? { status: "failed", ...failure }
             : { result: { type: "createSession", sessionId: "session-1" } },
         ),
@@ -1059,27 +1057,19 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
         let sendError: unknown;
         await act(async () => {
           try {
-            await captured.composerProps?.onSendText(
-              entry === "slash-create" ? "/goal ship once" : "preserve this draft",
-            );
+            await captured.composerProps?.onSendText("preserve this draft");
           } catch (error) {
             sendError = error;
           }
           await flushMicrotasks();
         });
-        const fallback =
-          failedType === "createSession"
-            ? "createSession 被拒绝"
-            : isPrewarm
-              ? "预热会话首发未 accepted"
-              : "sendText 被拒绝";
         expect(sendError).toMatchObject({
-          message: failure.message?.trim() || failure.reasonCode || fallback,
+          message: failure.message?.trim() || failure.reasonCode || "sendText 被拒绝",
         });
         expect(
-          mocks.sendCommand.mock.calls.filter(([command]) => command.type === failedType),
+          mocks.sendCommand.mock.calls.filter(([command]) => command.type === "sendText"),
         ).toHaveLength(1);
-        expect(mocks.sendCommand).toHaveBeenCalledTimes(entry === "fallback-send" ? 2 : 1);
+        expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
         expect(discard).not.toHaveBeenCalled();
         expect(onSessionCreated).not.toHaveBeenCalled();
         expect(composerRecentMocks.acceptSubmission).not.toHaveBeenCalled();
@@ -1093,6 +1083,40 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
       }
     });
   }
+
+  it.each(["normal text", "/goal ship once", "/PLAN 帮我做 X"])(
+    "keeps the draft when the prewarm owner fails before %s admission",
+    async (text) => {
+      projectionState.current = {
+        status: "live",
+        snapshot: null,
+        subscriptionId: "failed-draft-prewarm",
+        lastError: null,
+        optimisticCommands: [],
+        loadingOlder: false,
+      };
+      prewarmHookMock.binding = null;
+      const onSessionCreated = vi.fn();
+      const root = await renderPane({ sessionId: null, onSessionCreated });
+      try {
+        let sendError: unknown;
+        await act(async () => {
+          try {
+            await captured.composerProps?.onSendText(text);
+          } catch (error) {
+            sendError = error;
+          }
+          await flushMicrotasks();
+        });
+        expect(sendError).toMatchObject({ message: "草稿会话创建失败，请重试" });
+        expect(mocks.sendCommand).not.toHaveBeenCalled();
+        expect(onSessionCreated).not.toHaveBeenCalled();
+        expect(composerRecentMocks.acceptSubmission).not.toHaveBeenCalled();
+      } finally {
+        await act(async () => root.unmount());
+      }
+    },
+  );
 
   it.each([
     {
@@ -3413,9 +3437,16 @@ describe("SessionPane Plan picker action", () => {
     await act(async () => root.unmount());
   });
 
-  it.each(["/plan", "/PLAN 帮我做 X"])(
-    "sends literal %s without changing Plan or stripping text",
-    async (text) => {
+  it.each([
+    {
+      text: "/plan",
+      attachments: [{ ref: "codez-artifact://a", fileName: "a.txt", mime: "text/plain", bytes: 1 }],
+      contextAttachmentCount: 0,
+    },
+    { text: "/PLAN 帮我做 X", attachments: [], contextAttachmentCount: 1 },
+  ])(
+    "keeps the draft when $text carries attachments or context",
+    async ({ text, attachments, contextAttachmentCount }) => {
       projectionState.current = {
         status: "live",
         snapshot: makeSnapshot(),
@@ -3427,28 +3458,57 @@ describe("SessionPane Plan picker action", () => {
       mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
         ackFor(envelope, { status: "accepted" }),
       );
-      const attachments = [
-        { ref: "codez-artifact://a", fileName: "a.txt", mime: "text/plain", bytes: 1 },
-      ];
       const root = await renderPane();
       await act(async () => {
         expect(
           await captured.composerProps?.onSendText(text, {
             attachments,
-            contextAttachmentCount: 1,
+            contextAttachmentCount,
           }),
-        ).toBe("sent");
+        ).toBe("blocked");
         await flushMicrotasks();
       });
-      expect(mocks.sendCommand.mock.calls.map(([envelope]) => envelope.type)).toEqual(["sendText"]);
-      expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({
-        payload: { text, mode: "build", planEnabled: false, attachments },
-      });
+      expect(mocks.sendCommand).not.toHaveBeenCalled();
       expect(draftConfigMock.handleDraftSwitchMode).not.toHaveBeenCalled();
-      expect(mocks.toast).not.toHaveBeenCalled();
+      expect(mocks.toast).toHaveBeenCalledWith(
+        "计划快捷命令暂不支持附件或上下文，请先切换计划模式再发送。",
+      );
       await act(async () => root.unmount());
     },
   );
+
+  it.each([
+    { text: "/plan", task: "" },
+    { text: "/PLAN 帮我做 X", task: "帮我做 X" },
+  ])("applies Plan before sending the plain-text shortcut $text", async ({ text, task }) => {
+    projectionState.current = {
+      status: "live",
+      snapshot: makeSnapshot(),
+      subscriptionId: "sub-1",
+      lastError: null,
+      optimisticCommands: [],
+      loadingOlder: false,
+    };
+    mocks.sendCommand.mockImplementation(async (envelope: CommandEnvelope) =>
+      ackFor(envelope, { status: "accepted" }),
+    );
+    const root = await renderPane();
+    await act(async () => {
+      expect(await captured.composerProps?.onSendText(text)).toBe("sent");
+      await flushMicrotasks();
+    });
+    expect(draftConfigMock.handleDraftSwitchMode).toHaveBeenCalledWith("plan");
+    if (task) {
+      expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
+      expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({
+        type: "sendText",
+        payload: { text: task, mode: "build", planEnabled: true },
+      });
+    } else {
+      expect(mocks.sendCommand).not.toHaveBeenCalled();
+    }
+    await act(async () => root.unmount());
+  });
 });
 
 describe("SessionPane Plan mode goal guard", () => {

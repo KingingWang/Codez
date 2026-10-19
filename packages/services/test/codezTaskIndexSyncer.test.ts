@@ -495,13 +495,12 @@ describe("createCodezTaskIndexSyncer", () => {
     syncer.ensureWorkspaceSubscription({ workspacePath: "/repo" });
     await subscribed(env);
     const repository = await env.repo.getProjectRepository();
-    await vi.waitFor(() =>
-      expect(repository.readTree().tasks[0]).toMatchObject({
-        title: "CLI title",
-        updatedAt: 40,
-        pinned: true,
-      }),
-    );
+    // 冷恢复首帧只补缺行；已有产品壳直到真实变更帧才更新 CLI 镜像。
+    expect(repository.readTree().tasks[0]).toMatchObject({
+      title: "Pending task",
+      updatedAt: 2,
+      pinned: true,
+    });
     env.indexEmitter.fire(
       indexUpsertFrame(
         summaryOf(seedTarget.sessionId, "completedSuccess", {
@@ -842,7 +841,7 @@ describe("createCodezTaskIndexSyncer", () => {
     env.configEmitter.dispose();
   });
 
-  it("seeds first-snapshot membership with one scoped invalidation and skips drafts", async () => {
+  it("seeds historical membership and publishes persisted draft summaries", async () => {
     const env = setupEnv({
       initialSessions: [
         summaryOf("sess_history", "completedSuccess", { title: "历史会话" }),
@@ -874,12 +873,22 @@ describe("createCodezTaskIndexSyncer", () => {
       });
     });
 
-    // draft 会话（纯内存态）不进 task index。
+    // FSV02：CLI 已发布的 draft 摘要表示已持久化首发；phase 不再用于隐藏该行。
     env.indexEmitter.fire(indexUpsertFrame(summaryOf("sess_draft", "draft", { title: "草稿" })));
-    await new Promise((resolve) => setImmediate(resolve));
-    expect(await env.repo.getTaskMeta({ workspacePath: "/repo", taskId: "sess_draft" })).toBeNull();
+    await vi.waitFor(async () =>
+      expect(
+        await env.repo.getTaskMeta({ workspacePath: "/repo", taskId: "sess_draft" }),
+      ).toMatchObject({
+        title: "草稿",
+      }),
+    );
     expect(broadcasts).toEqual([
       expect.objectContaining({ type: "workspace_task_list_changed", reason: "task_created" }),
+      expect.objectContaining({
+        type: "workspace_task_list_changed",
+        reason: "task_title_changed",
+        taskId: "sess_draft",
+      }),
     ]);
     expect(broadcasts[0]).not.toHaveProperty("taskMeta");
 
@@ -1230,7 +1239,7 @@ describe("createCodezTaskIndexSyncer", () => {
       taskId: "sess_existing",
       title: "用户标题",
       titleOverridden: true,
-      updatedAt: 999,
+      updatedAt: 100,
       mode: "build",
       model: "anthropic/haiku-4.5",
     });
