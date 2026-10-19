@@ -42,6 +42,7 @@ const allAssetNames = Object.keys(platforms).flatMap((os) =>
   ["x64", "arm64"].flatMap((arch) => targetAssetNames(os, arch)),
 );
 const remoteTargets = ["darwin-x64", "darwin-arm64", "linux-x64", "linux-arm64"];
+const sourceServerTargets = remoteTargets;
 const remoteMounts = (target) => ({
   "server-bundle": "server",
   "node-runtime": `node/${target}`,
@@ -109,6 +110,32 @@ async function fixture(t) {
     );
   }
   await createCodexRemoteIndex({ root: remoteRoot, version: "3.16.1", env });
+  const sourceServerReleaseDir = join(root, "source-server-release");
+  await mkdir(sourceServerReleaseDir, { recursive: true });
+  const sourceServerArchives = sourceServerTargets.map((target) => {
+    const bytes = `source server ${target}`;
+    const fileName = `codez-server-${target}.tar.gz`;
+    return {
+      target,
+      version: "3.16.1",
+      fileName,
+      sha256: digest(bytes),
+      sizeBytes: bytes.length,
+      urls: [fileName],
+      bytes,
+    };
+  });
+  for (const archive of sourceServerArchives) {
+    await writeFile(join(sourceServerReleaseDir, archive.fileName), archive.bytes);
+  }
+  await writeFile(
+    join(sourceServerReleaseDir, "source-server-release.json"),
+    `${JSON.stringify(
+      { schemaVersion: 1, version: "3.16.1", archives: sourceServerArchives },
+      null,
+      2,
+    )}\n`,
+  );
   for (const os of Object.keys(platforms))
     for (const arch of ["x64", "arm64"])
       await copyFile(
@@ -224,7 +251,7 @@ test("release identity rejects PRs, foreign repositories and non-main pushes", (
 test("all six installers and four remote targets yield one exact release asset set", async (t) => {
   const assets = await collectReleaseAssets(await fixture(t));
   // mac: dmg+zip+2 blockmap+yml(5) ×2 arch；win: exe+blockmap+yml(3) ×2；linux: AppImage+deb+yml(3) ×2（AppImage 无 blockmap）。
-  assert.equal(assets.length, 54);
+  assert.equal(assets.length, 59);
   assert.deepEqual(
     assets.map((asset) => asset.name).sort(),
     [
@@ -235,6 +262,8 @@ test("all six installers and four remote targets yield one exact release asset s
           remoteComponentAssetName(target, id, digest(`component ${target}/${id}`)),
         ),
       ]),
+      "source-server-release.json",
+      ...sourceServerTargets.map((target) => `codez-server-${target}.tar.gz`),
     ].sort(),
   );
   // per-arch channel yml 的精确命名契约（含 linux arm64 的 -linux-arm64 双后缀）。
@@ -303,7 +332,7 @@ test("publish verifies all uploads before making release public and main Latest"
   const github = fakeGithub();
   await publishCodexRelease({ directory: await fixture(t), env, run: github.run });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 54);
+  assert.equal(github.state.release.assets.length, 59);
   assert.ok(github.state.calls.find(isCreate).includes(`target_commitish=${sha}`));
   assert.ok(github.state.calls.at(-1).includes("--latest=true"));
   assert.ok(github.state.calls.some((args) => args[1].endsWith("/releases/123")));
@@ -313,7 +342,7 @@ test("created draft identity survives release-list read-after-write lag", async 
   const github = fakeGithub({ hideCreated: true });
   await publishCodexRelease({ directory: await fixture(t), env, run: github.run });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 54);
+  assert.equal(github.state.release.assets.length, 59);
   // 身份必须来自创建接口的返回体；创建后不能再依赖一次可能滞后的列表查询。
   assert.equal(github.state.calls.filter(isList).length, 1);
 });
@@ -352,8 +381,8 @@ test("transient upload resets are retried and still fully verified", async (t) =
     retryDelay: async () => {},
   });
   assert.equal(github.state.release.draft, false);
-  assert.equal(github.state.release.assets.length, 54);
-  assert.equal(github.state.uploadAttempts, 56);
+  assert.equal(github.state.release.assets.length, 59);
+  assert.equal(github.state.uploadAttempts, 61);
 });
 
 test("missing or damaged remote sidecar aborts before opening a public release", async (t) => {
