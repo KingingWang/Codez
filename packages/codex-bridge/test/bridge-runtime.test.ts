@@ -740,6 +740,91 @@ test("sidebar invalidations coalesce during a blocked read and publish the lates
   assert.match(JSON.stringify(h.frames.at(-1)), /Final sidebar name/);
 });
 
+test("first-turn userMessage completion refreshes sessions-index when post-ACK thread/list raced rollout persistence", async (t) => {
+  for (const mode of ["desktop-continuous", "web-remote-replayable"])
+    await t.test(mode, async (t) => {
+      const h = await fixture(t);
+      const topic = `sessions-index/${workspaceId}`;
+      let persistedVisible = false;
+      const createdThread = {
+        ...h.authority.thread,
+        id: "prewarmed-thread",
+        name: null,
+        preview: "First remote prompt",
+        status: { type: "active", activeFlags: [] },
+        turns: [
+          {
+            id: "turn-first",
+            itemsView: "full",
+            status: "inProgress",
+            error: null,
+            startedAt: 1700000100,
+            completedAt: null,
+            durationMs: null,
+            items: [],
+          },
+        ],
+      };
+      h.handlers["thread/list"] = () => ({
+        data: persistedVisible ? [h.authority.thread, createdThread] : [h.authority.thread],
+        nextCursor: null,
+      });
+      const subscription = await h.runtime.request(
+        V4_METHODS.conversationSubscribe,
+        subscribe(topic, mode),
+      );
+      await subscription.afterResponse!();
+      h.frames.length = 0;
+
+      // 1. Prewarm draft session: not persisted in thread/list yet.
+      h.handlers["thread/start"] = () => ({
+        thread: { ...createdThread, status: { type: "idle" }, turns: [] },
+        cwd,
+        model: "fixture-model",
+        modelProvider: "openai",
+        approvalPolicy: "never",
+        sandbox: { type: "readOnly", networkAccess: false },
+      });
+      const created = await h.runtime.request(V4_METHODS.command, create("prewarm-1"));
+      await created.afterResponse!();
+      await tick();
+      assert.equal(JSON.stringify(h.frames).includes("prewarmed-thread"), false);
+      h.frames.length = 0;
+
+      // 2. First sendText ACK arrives before native rollout becomes visible in thread/list.
+      h.handlers["turn/start"] = () => ({
+        turn: { id: "turn-first", status: "inProgress", items: [] },
+      });
+      const sent = await h.runtime.request(V4_METHODS.command, {
+        type: "sendText",
+        commandId: "send-first-1",
+        clientId: "desktop-1",
+        sessionId: "prewarmed-thread",
+        issuedAt: 2,
+        payload: { text: "First remote prompt" },
+      });
+      assert.equal(commandAckSchema.parse(sent.result).status, "accepted");
+      await sent.afterResponse!();
+      await tick();
+      assert.equal(JSON.stringify(h.frames).includes("prewarmed-thread"), false);
+
+      // 3. Rollout materializes as userMessage item completes while turn is still running.
+      persistedVisible = true;
+      h.emit("item/completed", {
+        threadId: "prewarmed-thread",
+        turnId: "turn-first",
+        item: {
+          id: "user-item-1",
+          type: "userMessage",
+          content: [{ type: "text", text: "First remote prompt", text_elements: [] }],
+        },
+      });
+      await tick();
+      assert.equal(h.fatal.length, 0);
+      assert.match(JSON.stringify(h.frames.at(-1)), /prewarmed-thread/);
+    });
+});
+
 test("explicit project listing discovers external history for all existing index consumers", async (t) => {
   const h = await fixture(t);
   const topic = `sessions-index/${workspaceId}`;

@@ -136,8 +136,12 @@ export class BridgeRuntime {
                 "thread/archived",
                 "thread/deleted",
                 "thread/name/updated",
+                "turn/started",
                 "turn/completed",
-              ].includes(event.method)
+              ].includes(event.method) ||
+              // 原因：原生预热线程首轮前无 rollout，command ACK 后的首次 thread/list
+              // 可能早于首条用户消息落盘；在此补刷 sessions-index，避免界面等待改名或整轮完成。
+              (event.method === "item/completed" && object(params.item).type === "userMessage")
             ) {
               this.refreshSidebar("sessions-index");
             }

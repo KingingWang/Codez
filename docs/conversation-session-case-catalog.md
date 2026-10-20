@@ -4096,7 +4096,7 @@ VP-MORE-01（accepted/pending，2026-09-15）：侧栏“显示更多”与任�
 
 ## 草稿首发可见性（FSV，2026-09-15）
 
-FSV01–FSV05 的 accepted 语义与覆盖边界见 [首发可见性 spec](task-first-submit-visibility.md)。FSV05 对应 `conversation-session-first-submit-visibility.test.ts`，位于 conversation-session/manual-review/pending；`desktop-e2e-20260915132619485-p5768-b01dc2cd458ba130` 全局/项目入口 2/2 通过（逐帧同步 + 正文/回复/idle），不自动转正。
+FSV01–FSV06 的 accepted 语义与覆盖边界见 [首发可见性 spec](task-first-submit-visibility.md)。FSV05 对应 `conversation-session-first-submit-visibility.test.ts`，位于 conversation-session/manual-review/pending；`desktop-e2e-20260915132619485-p5768-b01dc2cd458ba130` 全局/项目入口 2/2 通过（逐帧同步 + 正文/回复/idle），不自动转正。FSV06 覆盖原生 Codex 首轮 `thread/list` 晚于命令 ACK 可见时，由 `turn/started` / `item/completed(userMessage)` 触发 coalescing `sessions-index` 刷新，不等待标题生成或 `turn/completed`。
 
 ## A01 草稿创建单飞补充（2026-09-15）
 
