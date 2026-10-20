@@ -33,7 +33,9 @@ failure categories and origin labels, not arbitrary exception text or user paths
 
 Project discovery lists native user-facing history across providers in the scoped
 cwd. A generic legacy session-list read invalidates existing index subscriptions
-after replying; targeted repair reads do not recursively invalidate them. Legacy
+after replying; targeted `sessionIds` reads inspect loaded state or lock-free
+`thread/read` metadata without scanning all workspace threads or recursively
+invalidating index subscriptions. Legacy
 session responses retain the Host-authorized workspace identity as well as its
 key, because shell task-index persistence consumes the identity field. Discovery
 does not resume threads; explicit conversation opening retains the native resume
@@ -41,7 +43,7 @@ path. Native history is never copied, moved or deleted to repair shell visibilit
 
 For local multi-folder Codez projects, Host-validated creation supplies the
 primary cwd and additional directories to native `thread/start.runtimeWorkspaceRoots`.
-A namespaced native `threadSource` carries only the *initial* Host project-origin
+A namespaced native `threadSource` carries only the _initial_ Host project-origin
 hint; it is not Codex's own `projectId`. Native summaries pass that hint to Host
 for first insertion, never subsequent reassignment. An assigned task's cold
 resume supplies current `[thread.cwd, ...additionalDirectories]`, while a

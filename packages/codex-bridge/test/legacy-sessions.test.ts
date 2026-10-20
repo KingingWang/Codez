@@ -202,3 +202,79 @@ test("legacy 线程尚无模型事实时 settings 保持全局 config 视图", a
     options: { reasoningLevel: "high" },
   });
 });
+
+test("targeted session/list reads cached or lock-free thread/read metadata without scanning thread/list", async () => {
+  const parent = threadFixture();
+  const cwd = parent.cwd;
+  const calls: Array<{ method: string; params: unknown }> = [];
+  const rpc = {
+    async request(method: string, params: unknown) {
+      calls.push({ method, params });
+      if (method === "thread/list" || method === "thread/resume") {
+        throw new Error(`targeted session/list must not call ${method}`);
+      }
+      if (method === "thread/read") {
+        const id = (params as { threadId: string }).threadId;
+        if (id === "cold-child") {
+          return {
+            thread: {
+              ...parent,
+              id: "cold-child",
+              parentThreadId: parent.id,
+              cwd: "/isolated/worktree",
+              turns: [],
+            },
+          };
+        }
+        if (id === "foreign-thread") {
+          return {
+            thread: {
+              ...parent,
+              id: "foreign-thread",
+              cwd: "/other/workspace",
+              turns: [],
+            },
+          };
+        }
+        throw new Error("not found");
+      }
+      throw new Error(`unexpected ${method}`);
+    },
+  } as unknown as CodexRpcPort;
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(parent);
+
+  const workspaceIdentity = "remote:server:host-1:/workspace";
+  const workspace = { workspacePath: cwd, workspaceIdentity, workspaceKey: workspaceIdentity };
+
+  // 1. Cached thread resolves with zero native RPCs
+  const cachedResult = codezSessionListResultSchema.parse(
+    await handleLegacySession(
+      "session/list",
+      { workspace, sessionIds: [parent.id] },
+      rpc,
+      store,
+      workspaceIdentity,
+    ),
+  );
+  assert.equal(calls.length, 0);
+  assert.equal(cachedResult.sessions.length, 1);
+  assert.equal(cachedResult.sessions[0]?.sessionId, parent.id);
+  assert.equal(cachedResult.sessions[0]?.sessionKind, "interactive");
+
+  // 2. Unloaded subagent child in isolated worktree resolves via lock-free thread/read and parent ownership
+  const childResult = codezSessionListResultSchema.parse(
+    await handleLegacySession(
+      "session/list",
+      { workspace, sessionIds: ["cold-child", "foreign-thread", "missing-thread"] },
+      rpc,
+      store,
+      workspaceIdentity,
+    ),
+  );
+  assert.equal(childResult.sessions.length, 1);
+  assert.equal(childResult.sessions[0]?.sessionId, "cold-child");
+  assert.equal(childResult.sessions[0]?.sessionKind, "subagent_child");
+  assert.equal(childResult.sessions[0]?.parentSessionId, parent.id);
+  assert.deepEqual(childResult.sessions[0]?.workspace, workspace);
+});
