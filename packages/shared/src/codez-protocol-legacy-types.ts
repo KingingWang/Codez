@@ -73,7 +73,15 @@ export const codezPermissionResponseSchema = z
   })
   .strict();
 export type CodezPermissionResponse = z.infer<typeof codezPermissionResponseSchema>;
-export const codezSessionModeSchema = z.enum(["plan", "build", "edit", "yolo", "guarded", "auto", "custom"]);
+export const codezSessionModeSchema = z.enum([
+  "plan",
+  "build",
+  "edit",
+  "yolo",
+  "guarded",
+  "auto",
+  "custom",
+]);
 export const codezSessionStatusSchema = z.enum([
   "idle",
   "running",
@@ -469,6 +477,8 @@ export const codezSessionApiRetryStatusSchema = z
     retryDelayMs: z.number().int().nonnegative(),
     errorStatus: z.number().int().nonnegative().nullable(),
     error: z.string(),
+    /** 运行态错误响应摘要；必须有界，不能演变成任务历史正文。 */
+    errorDetail: z.string().max(16_384).nullable().optional(),
   })
   .strict();
 export const codezSessionContextCacheUsageSchema = z

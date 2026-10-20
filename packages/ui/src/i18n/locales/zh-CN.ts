@@ -5645,6 +5645,8 @@ const zhCN: Record<string, string> = {
   "chat.goalBanner.label": "目标",
   "chat.apiRetryStatus": "重新连接中... {attempt}/{maxRetries}",
   "chat.codexApiRetryStatus": "模型请求正在重试…",
+  "chat.apiRetryDetails.open": "查看最近一次重试错误",
+  "chat.apiRetryDetails.title": "最近一次重试错误",
   "chat.target.title": "目标",
   "chat.target.status.active": "进行中",
   "chat.target.status.paused": "已暂停",

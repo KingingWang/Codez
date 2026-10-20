@@ -6046,6 +6046,8 @@ const enUS: Record<string, string> = {
   "chat.goalBanner.label": "Goal",
   "chat.apiRetryStatus": "Reconnecting... {attempt}/{maxRetries}",
   "chat.codexApiRetryStatus": "Model request retrying...",
+  "chat.apiRetryDetails.open": "Show latest retry error",
+  "chat.apiRetryDetails.title": "Latest retry error",
   "chat.target.title": "Goal",
   "chat.target.status.active": "Active",
   "chat.target.status.paused": "Paused",

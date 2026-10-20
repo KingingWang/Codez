@@ -419,6 +419,17 @@ function nonNegativeInteger(value: number, fallback: number): number {
   return Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback;
 }
 
+const MAX_RETRY_ERROR_DETAIL_CHARS = 16_384;
+
+function boundedRetryErrorDetail(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const detail = value.trim();
+  if (!detail) return undefined;
+  return detail.length > MAX_RETRY_ERROR_DETAIL_CHARS
+    ? `${detail.slice(0, MAX_RETRY_ERROR_DETAIL_CHARS - 1)}…`
+    : detail;
+}
+
 // apiRetry 是 counted/codex 两变体 union；只有 counted 变体携带 reasonCode。
 // 读取处统一经这里收窄，避免对 codex 变体做不存在的属性访问。
 function readCountedApiRetryReasonCode(apiRetry: ApiRetryState | null): string | undefined {
@@ -2525,11 +2536,21 @@ export class ProductProjection {
           positiveInteger(payload.maxAttempts, attempt + 1),
           attempt + 1,
         );
+        const errorDetail = boundedRetryErrorDetail(payload.errorDetail);
+        const errorStatus =
+          payload.statusCode !== undefined &&
+          Number.isInteger(payload.statusCode) &&
+          payload.statusCode >= 100 &&
+          payload.statusCode <= 599
+            ? payload.statusCode
+            : undefined;
         return this.setApiRetry({
           attempt,
           maxAttempts,
           nextRetryAt: this.ms(event) + nonNegativeInteger(payload.delayMs, 0),
           reasonCode: modelRetryReasonCode(payload.reason),
+          ...(errorDetail ? { errorDetail } : {}),
+          ...(errorStatus === undefined ? {} : { errorStatus }),
         });
       }
       case "model_request_started":
@@ -2634,13 +2655,16 @@ export class ProductProjection {
         ("source" in current && "source" in apiRetry
           ? current.httpStatusCode === apiRetry.httpStatusCode &&
             (current.attempt ?? null) === (apiRetry.attempt ?? null) &&
-            (current.maxRetries ?? null) === (apiRetry.maxRetries ?? null)
+            (current.maxRetries ?? null) === (apiRetry.maxRetries ?? null) &&
+            (current.errorDetail ?? null) === (apiRetry.errorDetail ?? null)
           : !("source" in current) &&
             !("source" in apiRetry) &&
             current.attempt === apiRetry.attempt &&
             current.maxAttempts === apiRetry.maxAttempts &&
             current.nextRetryAt === apiRetry.nextRetryAt &&
-            current.reasonCode === apiRetry.reasonCode))
+            current.reasonCode === apiRetry.reasonCode &&
+            (current.errorStatus ?? null) === (apiRetry.errorStatus ?? null) &&
+            (current.errorDetail ?? null) === (apiRetry.errorDetail ?? null)))
     ) {
       return [];
     }

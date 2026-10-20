@@ -127,12 +127,17 @@ const countedApiRetryStateSchema = z.object({
   maxAttempts: z.number(),
   nextRetryAt: timestampSchema,
   reasonCode: z.string(),
+  /** 最近一次可重试失败的有界响应摘要；只存在于当前运行态。 */
+  errorDetail: z.string().max(16_384).nullable().optional(),
+  errorStatus: z.number().int().min(100).max(599).nullable().optional(),
 });
 const codexApiRetryStateSchema = z.object({
   source: z.literal("codex"),
   httpStatusCode: z.number().int().min(100).max(599).nullable(),
   attempt: z.number().int().positive().nullable().optional(),
   maxRetries: z.number().int().positive().nullable().optional(),
+  /** 原生 willRetry 通知中的有界错误详情；不进入 Codex 历史。 */
+  errorDetail: z.string().max(16_384).nullable().optional(),
 });
 export const apiRetryStateSchema = z.union([countedApiRetryStateSchema, codexApiRetryStateSchema]);
 export type ApiRetryState = z.infer<typeof apiRetryStateSchema>;

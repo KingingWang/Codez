@@ -160,8 +160,6 @@ interface OffPeakTurnCard {
   task: OffPeakCreateTaskSummary;
 }
 
-const MIN_VISIBLE_API_RETRY_ATTEMPT = 3;
-
 interface HighspeedOutputFooterProps {
   generatedLabel: string;
   shareLabel: string;
@@ -222,8 +220,9 @@ function toRetryStatus(apiRetry: Exclude<ApiRetryState, { source: "codex" }>): C
     attempt,
     maxRetries,
     retryDelayMs: 0,
-    errorStatus: null,
+    errorStatus: apiRetry.errorStatus ?? null,
     error: apiRetry.reasonCode,
+    ...(apiRetry.errorDetail ? { errorDetail: apiRetry.errorDetail } : {}),
   };
 }
 
@@ -240,12 +239,10 @@ function TurnChatLoadingSlot({
     [apiRetry],
   );
   const codexRetry = apiRetry && "source" in apiRetry ? apiRetry : null;
-  // 前两次短暂恢复对用户等价于普通加载；保留 apiRetry 运行态，但只在
-  // 第三次重试开始后显示计数。必须在 retry/loading 分支前收敛，否则会留下空 slot，
-  // 而不是回退到 ChatLoading。
-  const visibleRetryStatus =
-    retryStatus && retryStatus.attempt >= MIN_VISIBLE_API_RETRY_ATTEMPT ? retryStatus : null;
-  if (!visibleRetryStatus && !codexRetry && !eligible) return null;
+  // Bug 根因：前两次 retry 被 presentation threshold 隐藏，429 等错误只显示
+  // generic loading，用户无法确认重试次数和最近错误。apiRetry 是运行态事实，
+  // 只要存在就直接渲染计数状态；没有 retry 时才由 eligible 决定是否显示 loading。
+  if (!retryStatus && !codexRetry && !eligible) return null;
   return (
     <div data-codez-chat-loading-slot="true" className="min-h-5">
       {codexRetry ? (
@@ -253,10 +250,11 @@ function TurnChatLoadingSlot({
           httpStatusCode={codexRetry.httpStatusCode}
           attempt={codexRetry.attempt}
           maxRetries={codexRetry.maxRetries}
+          errorDetail={codexRetry.errorDetail}
           intl={intl}
         />
-      ) : visibleRetryStatus ? (
-        <ChatApiRetryStatus apiRetry={visibleRetryStatus} intl={intl} locale={locale} />
+      ) : retryStatus ? (
+        <ChatApiRetryStatus apiRetry={retryStatus} intl={intl} locale={locale} />
       ) : (
         // running 是 ChatLoading 的权威事实；额外静默计时会让 projection
         // 更新反复重启可见性，并使 UI 晚于真实状态。

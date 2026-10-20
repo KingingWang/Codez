@@ -534,9 +534,11 @@ Acceptance:
   with `1 <= attempt <= maxRetries <= 1000`), project those validated integers
   on `control.apiRetry` and render `attempt/maxRetries` after the localized
   retry copy. Show `HTTP nnn` only when the native
-  `codexErrorInfo.httpStatusCode` is a valid HTTP status. Do not display raw
-  `message` or `additionalDetails`, fabricate counts or deadlines when none are
-  reported, or apply the legacy model adapter's "third retry" visibility threshold.
+  `codexErrorInfo.httpStatusCode` is a valid HTTP status. A bounded
+  `additionalDetails` value may be projected as transient `errorDetail`; clicking
+  the retry label shows that latest error detail in a popover. Never persist the
+  detail, fabricate counts or deadlines when none are reported, or apply the
+  legacy model adapter's "third retry" visibility threshold.
 - Accept a retry notification only for the current in-progress turn on the
   already-owned thread. Duplicate or late events for a completed/older turn
   cannot revive the label. The first new model item/progress on that turn,

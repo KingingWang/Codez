@@ -251,6 +251,8 @@ export interface ModelRetryScheduledStatusEvent extends ModelNetworkStatusBase {
   nextAttempt: number;
   reason: ModelRetryReason;
   message: string;
+  /** 有界的 provider 错误响应摘要，仅供当前 retry live state 展示。 */
+  errorDetail?: string;
   statusCode?: number;
   errorCode?: ModelErrorCode;
   providerErrorCode?: string;

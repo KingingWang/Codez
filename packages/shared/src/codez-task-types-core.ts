@@ -892,6 +892,8 @@ export interface CodezApiRetryStatus {
   retryDelayMs: number;
   errorStatus: number | null;
   error: string;
+  /** 最近一次可重试失败的有界响应摘要；只存在于运行态，不写入任务历史。 */
+  errorDetail?: string | null;
 }
 /** Agent 推送会话标题等元信息更新 */
 export interface CodezSessionInfoUpdate {

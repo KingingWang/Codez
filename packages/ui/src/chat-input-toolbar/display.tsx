@@ -4,6 +4,7 @@ import {
   useMemo,
   type ComponentProps,
   type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
   type RefObject,
 } from "react";
 import {
@@ -43,11 +44,9 @@ import {
   SlidersHorizontalIcon,
   type LucideIcon,
 } from "lucide-react";
-import {
-  CODEZ_MODE_OPTION_DESCRIPTION_IDS,
-  CODEZ_MODE_OPTION_LABEL_IDS,
-} from "./display-help.js";
+import { CODEZ_MODE_OPTION_DESCRIPTION_IDS, CODEZ_MODE_OPTION_LABEL_IDS } from "./display-help.js";
 import { RollingToolbarLabel } from "@/chat-input-toolbar/RollingToolbarLabel.js";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover.js";
 
 export {
   ChatContextUsage,
@@ -55,18 +54,89 @@ export {
   getRenderableTaskUsage,
 } from "@/chat-input-toolbar/contextUsage.js";
 
+/**
+ * 重试态详情只绑定当前 live snapshot，不写入 transcript。
+ * 有详情时让状态本身成为触发器，避免用户还要在另一处寻找同一次失败。
+ */
+export function RetryErrorDetailsPopover({
+  detail,
+  intl,
+  retryLabel,
+  children,
+  className,
+  testId,
+}: {
+  detail?: string | null;
+  intl: ReturnType<typeof useCodezIntl>["intl"];
+  retryLabel: string;
+  children: ReactNode;
+  className?: string;
+  testId: string;
+}) {
+  const normalizedDetail = detail?.trim();
+  const detailsLabel = intl.formatMessage({ id: "chat.apiRetryDetails.open" });
+  const statusProps = {
+    role: "status" as const,
+    "aria-live": "polite" as const,
+    "data-testid": testId,
+  };
+
+  if (!normalizedDetail) {
+    return (
+      <span
+        {...statusProps}
+        className={cn("inline-flex min-h-7 max-w-full min-w-0 items-center", className)}
+        title={retryLabel}
+      >
+        {children}
+      </span>
+    );
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          {...statusProps}
+          aria-label={detailsLabel}
+          title={detailsLabel}
+          className={cn(
+            "inline-flex min-h-7 max-w-full min-w-0 cursor-pointer items-center rounded-md text-left",
+            "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            className,
+          )}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {children}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="start"
+        collisionPadding={12}
+        data-testid={`${testId}-details`}
+        className="w-96 max-w-[calc(100vw-1.5rem)] gap-2 p-3"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <PopoverTitle className="text-ui-base font-medium">
+          {intl.formatMessage({ id: "chat.apiRetryDetails.title" })}
+        </PopoverTitle>
+        <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-ui-xs text-foreground-subtle select-text">
+          {normalizedDetail}
+        </pre>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 type ConfigSelectTriggerSize = ComponentProps<typeof SelectTrigger>["size"];
-type ConfigSelectTriggerVariant = ComponentProps<
-  typeof SelectTrigger
->["variant"];
+type ConfigSelectTriggerVariant = ComponentProps<typeof SelectTrigger>["variant"];
 
 /** Radix Select 在受控值与子项注册竞争时可能发出空值等未渲染值；直接上抛会把
  * 系统事件误当成用户选择（如 Automations 编辑页仅打开详情就被标记未保存修改）。
  * 用户只能点到已渲染的 option，值域外的选择回调一律丢弃。 */
-export function isConfigSelectValueInOptions(
-  option: CodezConfigOption,
-  value: string,
-): boolean {
+export function isConfigSelectValueInOptions(option: CodezConfigOption, value: string): boolean {
   return option.options?.some((entry) => String(entry.value) === value) ?? false;
 }
 
@@ -79,9 +149,7 @@ const HIGH_PERMISSION_MODE_VALUES = new Set([
   "yolo",
 ]);
 
-function getConfigSelectTriggerTestId(
-  option: CodezConfigOption,
-): string | undefined {
+function getConfigSelectTriggerTestId(option: CodezConfigOption): string | undefined {
   if (option.category === "thought_level") {
     return TID_CHAT_THOUGHT_LEVEL_SELECT_TRIGGER;
   }
@@ -107,11 +175,7 @@ function getConfigSelectItemTestId(
   return undefined;
 }
 
-export function buildModelSearchText({
-  itemName,
-}: {
-  itemName: string;
-}): string {
+export function buildModelSearchText({ itemName }: { itemName: string }): string {
   // Bugfix: 需求要求模型搜索仅匹配“展示名”，不能再命中分组名/模型值。
   // 这里统一只返回展示名，保证搜索范围收敛且稳定。
   return itemName.trim();
@@ -127,20 +191,19 @@ export function matchesModelDisplayNameSearch(
   }
 
   // Bugfix: 统一用大小写不敏感匹配，避免用户输入大小写与展示名不一致时搜不到。
-  return modelDisplayName
-    .trim()
-    .toLocaleLowerCase()
-    .includes(normalizedSearchText);
+  return modelDisplayName.trim().toLocaleLowerCase().includes(normalizedSearchText);
 }
 
 export function ChatApiRetryStatus({
   apiRetry,
   intl,
   locale,
+  errorDetail,
 }: {
   apiRetry: CodezApiRetryStatus | null;
   intl: ReturnType<typeof useCodezIntl>["intl"];
   locale: string;
+  errorDetail?: string | null;
 }) {
   const retryLabel = useMemo(() => {
     if (!apiRetry) {
@@ -165,21 +228,22 @@ export function ChatApiRetryStatus({
   }
 
   const retryTitle =
-    apiRetry.errorStatus == null
-      ? retryLabel
-      : `${retryLabel} · HTTP ${apiRetry.errorStatus}`;
+    apiRetry.errorStatus == null ? retryLabel : `${retryLabel} · HTTP ${apiRetry.errorStatus}`;
 
   return (
-    <span
-      className="inline-flex h-7 items-center whitespace-nowrap px-1 text-ui-base"
-      title={retryTitle}
+    <RetryErrorDetailsPopover
+      detail={errorDetail ?? apiRetry.errorDetail}
+      intl={intl}
+      retryLabel={retryTitle}
+      testId="v4-api-retry-status"
+      className="h-7 whitespace-nowrap px-1 text-ui-base"
     >
       {/* 样式修复原因：Retry 需要保留 ToolCall/Thinking 的字号、扫光节奏和低透明度移动低谷，
       但作为次级运行状态不应使用同等的纯黑/纯白峰值；这里只将峰值降到 secondary 文本色。 */}
       <span className="animated-gradient-text animated-gradient-text-subtle font-medium">
         {retryLabel}
       </span>
-    </span>
+    </RetryErrorDetailsPopover>
   );
 }
 
@@ -241,10 +305,7 @@ export function getConfigOptionEntryDescription(
     return entry.description;
   }
 
-  const descriptionMessageId = getModeOptionDescriptionMessageId(
-    provider,
-    entry,
-  );
+  const descriptionMessageId = getModeOptionDescriptionMessageId(provider, entry);
   if (descriptionMessageId) {
     return intl.formatMessage({ id: descriptionMessageId });
   }
@@ -321,32 +382,27 @@ export function ConfigSelect({
   // 本组件这次渲染执行的 hook 数量和上次不一致，React 会抛
   // "Rendered fewer hooks than expected" 导致工具栏区域崩溃。
   // 修复方式：early return 下移到所有 hook 之后，保证 hook 调用顺序稳定。
-  const handleContentKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      if (event.key !== "Tab") {
-        return;
-      }
+  const handleContentKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") {
+      return;
+    }
 
-      const highlightedItem =
-        event.currentTarget.querySelector<HTMLElement>(
-          '[data-slot="select-item"][data-highlighted]',
-        ) ??
-        event.currentTarget.querySelector<HTMLElement>(
-          '[data-slot="select-item"][data-state="checked"]',
-        ) ??
-        event.currentTarget.querySelector<HTMLElement>(
-          '[data-slot="select-item"]',
-        );
+    const highlightedItem =
+      event.currentTarget.querySelector<HTMLElement>(
+        '[data-slot="select-item"][data-highlighted]',
+      ) ??
+      event.currentTarget.querySelector<HTMLElement>(
+        '[data-slot="select-item"][data-state="checked"]',
+      ) ??
+      event.currentTarget.querySelector<HTMLElement>('[data-slot="select-item"]');
 
     if (!highlightedItem) {
       return;
     }
 
-      event.preventDefault();
-      highlightedItem.click();
-    },
-    [],
-  );
+    event.preventDefault();
+    highlightedItem.click();
+  }, []);
 
   // early return 必须在所有 hook 之后（见上方注释说明的崩溃原因）
   if (option.type !== "select" || !option.options?.length) {
@@ -356,12 +412,9 @@ export function ConfigSelect({
   const shouldUseToolbarFloatingSelect =
     option.category === "mode" || option.category === "thought_level";
   const shouldShowHighPermissionModeIcon =
-    option.category === "mode" &&
-    isHighPermissionModeValue(option.currentValue);
+    option.category === "mode" && isHighPermissionModeValue(option.currentValue);
   const ResolvedLeadingIcon =
-    option.category === "mode"
-      ? resolveModeOptionIcon(option.currentValue)
-      : LeadingIcon;
+    option.category === "mode" ? resolveModeOptionIcon(option.currentValue) : LeadingIcon;
   const resolvedTriggerClassName = cn(
     triggerClassName,
     shouldShowHighPermissionModeIcon &&
@@ -392,18 +445,16 @@ export function ConfigSelect({
       }
     : undefined;
   const triggerTestId = getConfigSelectTriggerTestId(option);
-  const currentEntry = option.options.find(
-    (entry) => entry.value === option.currentValue,
-  );
+  const currentEntry = option.options.find((entry) => entry.value === option.currentValue);
   const currentValueLabel = currentEntry
     ? getConfigOptionEntryLabel(intl, provider, option, currentEntry)
     : option.category === "mode"
-      // 隐藏旧模式候选不应丢失其回显文案；只翻译当前值，不把它补回可选列表。
-      ? getModeOptionDisplayLabel(intl, provider, {
+      ? // 隐藏旧模式候选不应丢失其回显文案；只翻译当前值，不把它补回可选列表。
+        getModeOptionDisplayLabel(intl, provider, {
           value: String(option.currentValue ?? ""),
           name: String(option.currentValue ?? ""),
         })
-    : String(option.currentValue ?? "");
+      : String(option.currentValue ?? "");
   const thoughtLevelTextClassName =
     option.category === "thought_level" ? "first-letter:uppercase" : undefined;
 
@@ -425,11 +476,7 @@ export function ConfigSelect({
       }}
       disabled={disabled}
     >
-      <ControlHintTooltip
-        title={tooltipTitle}
-        shortcut={shortcutLabel}
-        triggerRef={triggerRef}
-      >
+      <ControlHintTooltip title={tooltipTitle} shortcut={shortcutLabel} triggerRef={triggerRef}>
         <SelectTrigger
           variant={triggerVariant}
           size={triggerSize}
@@ -455,9 +502,7 @@ export function ConfigSelect({
               <RollingToolbarLabel label={currentValueLabel} />
             ) : (
               <SelectValue>
-                <span className={thoughtLevelTextClassName}>
-                  {currentValueLabel}
-                </span>
+                <span className={thoughtLevelTextClassName}>{currentValueLabel}</span>
               </SelectValue>
             )}
           </span>
@@ -482,8 +527,7 @@ export function ConfigSelect({
             return;
           }
           // Bugfix: ConfigSelect 被 Bot 弹窗复用时，关闭菜单不能强制抢焦点到聊天输入框。
-          const input =
-            document.querySelector<HTMLElement>(restoreFocusSelector);
+          const input = document.querySelector<HTMLElement>(restoreFocusSelector);
           logger.debug("[ConfigSelect] picker focus handoff", {
             category: option.category,
             restoreFocusSelector,
@@ -495,12 +539,7 @@ export function ConfigSelect({
         {option.category === "mode"
           ? option.options.map((entry) => {
               const ModeIcon = resolveModeOptionIcon(entry.value);
-              const optionLabel = getConfigOptionEntryLabel(
-                intl,
-                provider,
-                option,
-                entry,
-              );
+              const optionLabel = getConfigOptionEntryLabel(intl, provider, option, entry);
               const optionDescription = getConfigOptionEntryDescription(
                 intl,
                 provider,

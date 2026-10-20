@@ -18,6 +18,7 @@ export function normalizeCodezApiRetryStatus(
       (positiveIntegerValue(record.maxAttempts) ?? attempt + 1) - 1,
     attempt,
   );
+  const errorDetail = retryErrorDetail(record);
   return {
     kind: "api_retry",
     attempt,
@@ -33,6 +34,7 @@ export function normalizeCodezApiRetryStatus(
       stringValue(record.message) ??
       stringValue(record.reason) ??
       "Model retry scheduled",
+    ...(errorDetail ? { errorDetail } : {}),
   };
 }
 
@@ -111,6 +113,36 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+const MAX_RETRY_ERROR_DETAIL_CHARS = 16_384;
+
+function retryErrorDetail(record: Record<string, unknown>): string | undefined {
+  for (const key of ["errorDetail", "providerErrorDetail", "responseBody", "responseBodySummary"]) {
+    const value = record[key];
+    const detail =
+      typeof value === "string"
+        ? value
+        : value !== undefined && value !== null
+          ? stringifyRetryErrorDetail(value)
+          : undefined;
+    const normalized = detail?.trim();
+    if (normalized) {
+      return normalized.length > MAX_RETRY_ERROR_DETAIL_CHARS
+        ? `${normalized.slice(0, MAX_RETRY_ERROR_DETAIL_CHARS - 1)}…`
+        : normalized;
+    }
+  }
+  return undefined;
+}
+
+function stringifyRetryErrorDetail(value: unknown): string | undefined {
+  try {
+    const serialized = JSON.stringify(value);
+    return typeof serialized === "string" ? serialized : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function nonNegativeIntegerValue(value: unknown): number | undefined {

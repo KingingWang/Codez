@@ -50,6 +50,8 @@ export interface ProviderFailureDetails {
   providerErrorCode?: string;
   providerErrorMessage?: string;
   providerRequestId?: string;
+  /** 已脱敏且有界的 provider 错误响应摘要，只用于当前重试提示。 */
+  providerErrorDetail?: string;
 }
 
 export function inspectProviderFailure(error: unknown): ProviderFailureDetails {
@@ -59,23 +61,39 @@ export function inspectProviderFailure(error: unknown): ProviderFailureDetails {
   const businessError =
     findProviderBusinessError(unwrapped) ?? readMappedAiSdkProviderBusinessError(unwrapped);
   if (businessError) {
+    const providerErrorDetail = serializeProviderErrorDetail(businessError.responseBodySummary);
     return {
       providerErrorCode: resolveProviderBusinessCode(businessError),
       providerErrorMessage: providerBusinessMessage(businessError),
       providerRequestId: businessError.providerRequestId,
+      ...(providerErrorDetail ? { providerErrorDetail } : {}),
     };
   }
   const detected = readProviderBusinessFailureFromBody(getApiCallResponseBody(unwrapped));
-  return detected
-    ? {
-        providerErrorCode:
-          typeof detected.providerCode === "number"
-            ? String(detected.providerCode)
-            : detected.providerCode,
-        providerErrorMessage: detected.providerMessage,
-        providerRequestId: detected.providerRequestId,
-      }
-    : {};
+  if (!detected) return {};
+  const providerErrorDetail = serializeProviderErrorDetail(detected.responseBodySummary);
+  return {
+    providerErrorCode:
+      typeof detected.providerCode === "number" ? String(detected.providerCode) : detected.providerCode,
+    providerErrorMessage: detected.providerMessage,
+    providerRequestId: detected.providerRequestId,
+    ...(providerErrorDetail ? { providerErrorDetail } : {}),
+  };
+}
+
+const MAX_PROVIDER_ERROR_DETAIL_CHARS = 16_384;
+
+function serializeProviderErrorDetail(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  try {
+    const serialized = JSON.stringify(value);
+    if (typeof serialized !== "string" || serialized.length === 0) return undefined;
+    return serialized.length > MAX_PROVIDER_ERROR_DETAIL_CHARS
+      ? `${serialized.slice(0, MAX_PROVIDER_ERROR_DETAIL_CHARS - 1)}…`
+      : serialized;
+  } catch {
+    return undefined;
+  }
 }
 
 export function classifyModelFailure(

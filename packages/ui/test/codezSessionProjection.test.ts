@@ -3373,6 +3373,7 @@ describe("codezSessionProjection", () => {
           delayMs: 2_000,
           statusCode: 429,
           message: "rate limited",
+          errorDetail: '{"error":{"code":"rate_limit_reached"}}',
         },
       },
       taskId: "sess_1",
@@ -3402,6 +3403,7 @@ describe("codezSessionProjection", () => {
         retryDelayMs: 2_000,
         errorStatus: 429,
         error: "rate limited",
+        errorDetail: '{"error":{"code":"rate_limit_reached"}}',
       },
     });
   });
