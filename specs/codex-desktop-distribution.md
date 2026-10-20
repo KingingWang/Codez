@@ -396,6 +396,24 @@ naming the attempted bases in the error; it never falls back to the upstream CDN
 roots. The tag is validated against the codex release-tag pattern before it
 enters a URL path.
 
+Fork Source Server archives are self-contained Codex runtimes: staging embeds
+the pinned, hash-verified Codex runtime (the same `stageCodexRuntime` output the
+desktop installer consumes — `bridge.cjs`, `bin/codex`, `bin/codex-code-mode-host`,
+`codex-package.json`, `codex-path/`, `codex-resources/`, `distribution.json`) at
+`runtime/codex/`, as a `codex-agent-runtime` component in the release manifest.
+Staging fails closed when the staged Codex directory is incomplete. The server
+CLI wires the agent runtime per executing release: when the release carries
+`runtime/codex/bridge.cjs` it injects `CODEZ_CODEX_BRIDGE_PATH` and does not
+inject `CODEZ_AGENT_SERVER_COMMAND`, so the Host spawns the fork Codex bridge —
+the only implementation of `codex/request` and `catalog/read` — instead of the
+legacy `codez.cjs app-server`. An explicit `CODEZ_AGENT_SERVER_COMMAND` or
+`CODEZ_CODEX_BRIDGE_PATH` in the environment still wins over both automatic
+wirings, and releases without `runtime/codex/` keep the legacy wiring, so
+updates from pre-Codex releases converge on first relaunch under the new
+release. The codex bridge resolves its native executable and tool host next to
+the bridge and fails closed with an explicit reinstall error when either is
+missing.
+
 The desktop workspace Help menu exposes the existing manual update command for
 both production and Codex product identities. Preview keeps that entry hidden,
 and Web never renders it. The Help menu subscribes to Main's update state;
