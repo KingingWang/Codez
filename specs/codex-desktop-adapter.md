@@ -857,7 +857,7 @@ native scan rebuilds the correct remote shell rows without deleting legacy data.
 ```text
 project activation → scoped session/list → native thread/list
                           ↓ after response
-existing index subscribers refresh → native thread/list
+existing index subscribers refresh (command ACK / turn/started / userMessage completed / rename / completed) → native thread/list
                                                           ↓
 remote task-index syncer → insert missing shell metadata → workspace list invalidation
                                                           ↓
