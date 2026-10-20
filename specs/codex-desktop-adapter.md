@@ -247,12 +247,14 @@ unoffered persistence never reach Codex.
   explicit queue request is not a request to hold an idle turn. External queue
   entries retain their native IDs; unknown admission metadata uses documented
   unavailable display sentinels, not fabricated timestamps or client identities.
-- Busy input defaults to the native queue (`running -> queue`), so a follow-up
-  is immediately visible and editable while a turn runs; steer
-  (`requestedDelivery: "guide"`) stays available only as an explicit per-send
-  intent, because steered input is invisible and not editable until injection.
+- Busy input follows the user's `codezInteractionBehavior` setting (`"queue"`
+  by default, or `"guide"` when configured in General settings), while keeping
+  per-send override in the composer: Queue (`requestedDelivery: "queue"`)
+  places the follow-up in the visible, editable native queue, and Guide
+  (`requestedDelivery: "guide"`) steers the running turn at its next model
+  step.
 - While a Codex turn is running, the composer must expose an explicit, accessible
-  per-send Queue / Guide choice next to Send. Queue remains selected by default:
+  per-send Queue / Guide choice next to Send. Its default selection follows `codezInteractionBehavior` (defaulting to Queue when unset):
   it sends after the current task, appears in the editable native queue, and
   never silently becomes a steer. Guide sends `requestedDelivery: "guide"` on
   this submission only: it joins the current turn at Codex's next model step,
@@ -274,9 +276,9 @@ unoffered persistence never reach Codex.
   Codex's projected user-input row does not necessarily carry `guided: true`;
   matching only that display flag or text leaves a duplicate hint or removes
   the wrong one. The hint is not durable across reload; after restart only
-  native projected facts are shown. A successful send resets the next-send choice to Queue; rejection
+  native projected facts are shown. A successful send resets any per-send override back to the configured default (`codezInteractionBehavior`, or Queue when unset); rejection
   keeps both the draft and the choice for retry. Returning to idle or switching
-  sessions also resets it.
+  sessions also resets any per-send override back to the configured default.
   Modifiers retain the existing inverse action (Queue → interrupt and start,
   Guide → Queue); neither action changes the global legacy follow-up setting.
   A running turn that settles between selection and admission follows the
@@ -290,7 +292,7 @@ unoffered persistence never reach Codex.
   queue shows no card; no pause/resume affordance is shown for native Codex.
 
 ```text
-running snapshot → Composer local next-send intent (Queue by default / Guide)
+running snapshot → Composer local next-send intent (defaults to codezInteractionBehavior: Queue / Guide)
   → sendText(requestedDelivery) → Host route → bridge → native queue/add | turn/steer
   → native queue/turn events → bridge projection → desktop continuous UI
                                      └── mobile replayable snapshot/gap repair
