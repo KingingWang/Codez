@@ -10,6 +10,7 @@
 
 ```text
 CommandInbox 接受输入 → 现有 deferred 提升 → publishCurrentSummaryToIndex
+（或原生 Codex 首轮 turn/started / item/completed(userMessage) → bridge 重读 thread/list）
                                                 ↓
                          task-facts 摄入 → tasks-index 提交 → task_created
                                                 ↓
@@ -21,6 +22,7 @@ CommandInbox 接受输入 → 现有 deferred 提升 → publishCurrentSummaryTo
 ```
 
 - CLI persistence 决定是否为未提交草稿，runtime phase 只表达执行状态。未提交预热不发布到 sessions-index；已提交但未 TurnStarted 的摘要允许落入 Host 索引。
+- 原生 Codex 预热线程在首轮前没有 rollout，`turn/start` 回包后的首次 `thread/list` 可能早于 rollout 落盘。bridge 在 `turn/started` 与 `item/completed(userMessage)` 复用同一 coalescing `sessions-index` 刷新，确保首条消息落地后无需等待自动改名或 `turn/completed` 即可进入 `tasks-index` 与项目树；未发送预热线程仍无 rollout、不进列表。
 - task-facts 仍是 CLI 事实摄入入口，project Host 仍拥有 projectId/pin/archive。首次摘要落库后直接发布 task_created，不为了补行读取完整会话或等待模型/Hook。
 - 共享目录仍只接受 Host readTree 的真实行。首发回调等待完整 workspaceKey + taskId 匹配，目录与原导航在同次 React 提交中更新；不构造 optimistic 项目行。
 - 目录刷新合并重叠请求，在途期间收到失效通知只追加一次读取。当前读取可提交，不因持续活动饿死；切换 service/attachment 或卸载后旧结果失效。
@@ -30,13 +32,14 @@ CommandInbox 接受输入 → 现有 deferred 提升 → publishCurrentSummaryTo
 
 ## 验收
 
-| Case  | 场景/动作                                | 必须断言                                                                      | 验证层      |
-| ----- | ---------------------------------------- | ----------------------------------------------------------------------------- | ----------- |
-| FSV01 | 预热草稿首发，初始化未产生下一事件       | accepted 前发布已提升摘要；未提交草稿仍不进列表                               | CLI 单测    |
-| FSV02 | 收到已持久化、phase=draft 摘要           | 真任务行 + task_created；零 readSession/resumeSession；重复摘要不重复创建广播 | Host 单测   |
-| FSV03 | 首发完成时已有目录读取在途，持续失效通知 | 不并发堆叠、不饿死；目录含行与详情绑定同次提交；同 cwd 不同 identity 不匹配   | UI 单测     |
-| FSV04 | service 切换/卸载、目录错误              | 旧响应不导航，错误可观察，不重新提交输入                                      | UI 单测     |
-| FSV05 | 真实桌面发送草稿                         | 每帧采样：首次详情帧已有侧栏行且选中；CLI/Host 存在对应事实；未首发时无任务行 | pending E2E |
+| Case  | 场景/动作                                    | 必须断言                                                                                                  | 验证层      |
+| ----- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------- |
+| FSV01 | 预热草稿首发，初始化未产生下一事件           | accepted 前发布已提升摘要；未提交草稿仍不进列表                                                           | CLI 单测    |
+| FSV02 | 收到已持久化、phase=draft 摘要               | 真任务行 + task_created；零 readSession/resumeSession；重复摘要不重复创建广播                             | Host 单测   |
+| FSV03 | 首发完成时已有目录读取在途，持续失效通知     | 不并发堆叠、不饿死；目录含行与详情绑定同次提交；同 cwd 不同 identity 不匹配                               | UI 单测     |
+| FSV04 | service 切换/卸载、目录错误                  | 旧响应不导航，错误可观察，不重新提交输入                                                                  | UI 单测     |
+| FSV05 | 真实桌面发送草稿                             | 每帧采样：首次详情帧已有侧栏行且选中；CLI/Host 存在对应事实；未首发时无任务行                             | pending E2E |
+| FSV06 | 原生 Codex 首发，`thread/list` 晚于 ACK 可见 | 首次 `turn/started` 或 `item/completed(userMessage)` 刷新 `sessions-index`，不等待改名或 `turn/completed` | bridge 单测 |
 
 文本与附件共用首发回调。2026-10 的草稿 owner 收口后，首发等待同一预热会话创建并在其上发送；
 `binding=null` 不再另建 `createSession(firstInput)`，创建失败保留草稿且不发命令，详见

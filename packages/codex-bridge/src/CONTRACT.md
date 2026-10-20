@@ -27,8 +27,11 @@ specs/codex-desktop-context-prompt.md for precedence and recovery boundaries.
 
 Presentation identities are turn-scoped; raw native IDs remain the RPC authority.
 The session index collapses duplicate native thread records without changing
-history. Sidebar invalidation shares the existing coalescing publisher but never
-blocks ordered conversation events. Production fatal diagnostics include fixed
+history. Sidebar invalidation shares the existing coalescing publisher across
+command completion, thread lifecycle, `turn/started` and completed `userMessage`
+items so a newly persisted first turn becomes visible without waiting for title
+generation or turn completion, while never blocking ordered conversation events.
+Production fatal diagnostics include fixed
 failure categories and origin labels, not arbitrary exception text or user paths.
 
 Project discovery lists native user-facing history across providers in the scoped
