@@ -4182,6 +4182,7 @@ describe("V4 API 重试状态投影", () => {
         reason: "rate_limited",
         message: "rate limited",
         statusCode: 429,
+        errorDetail: '{"error":{"code":"rate_limit_reached"}}',
       }),
       { turnId: "turn-retry-1", timestampMs: scheduledAt },
     );
@@ -4192,6 +4193,8 @@ describe("V4 API 重试状态投影", () => {
       maxAttempts: 11,
       nextRetryAt: scheduledAt + 44_000,
       reasonCode: "fault.provider.rateLimited",
+      errorStatus: 429,
+      errorDetail: '{"error":{"code":"rate_limit_reached"}}',
     });
     expect(() => conversationSnapshotSchema.parse(projection.getSnapshot())).not.toThrow();
     for (const profile of [DELIVERY_PROFILES.continuous, DELIVERY_PROFILES.replayable]) {
@@ -4255,6 +4258,7 @@ describe("V4 API 重试状态投影", () => {
       maxAttempts: 2,
       nextRetryAt: scheduledAt,
       reasonCode: "fault.provider.requestFailed",
+      errorStatus: 400,
     });
   });
 

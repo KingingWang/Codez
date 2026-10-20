@@ -43,39 +43,46 @@ Agent/runtime retry event
   `attempt/maxAttempts` shape.
 - V4 keeps `maxAttempts` in the protocol shape. The UI displays retry count, so
   `maxRetries = max(maxAttempts - 1, attempt)`. For example, `maxAttempts=11`
-  converts an attempt to the `1/10` user-count shape; the presentation threshold
-  below decides whether that early count is visible.
+  converts an attempt to the `1/10` user-count shape. Every non-null counted
+  retry state renders that count, including the first retry.
+- A retry state may carry the latest bounded `errorDetail` and `errorStatus`.
+  The renderer keeps this detail transient and exposes it from the retry label
+  in a popover; it is not written as a transcript row or durable session error.
 - `nextRetryAt` is computed with the CLI event clock. The current timeline does
   not render a countdown because a single snapshot is not a ticking clock.
 - Existing i18n keys remain the only user-facing copy source:
   `chat.apiRetryStatus`. Moving the status into the timeline keeps the former
   composer copy: `重新连接中... x/y` / `Reconnecting... x/y`.
 
-## Planned presentation threshold (2026-08-17)
+## Retry count and latest error presentation (2026-10-20)
 
-当 `apiRetry.attempt <= 2` 时，UI 不显示重连次数，也不显示
-`重新连接中... x/y` 文案；当前 running turn 继续使用同一个 `ChatLoading` 槽位，
-让用户把前两次短暂恢复视为普通加载。`attempt >= 3` 才显示重连文案，计数仍保持
-现有用户口径（例如 `3/10`）。这里的 `attempt` 是投影层已经转换后的“第几次重试”，
-不是原始 `maxAttempts` 总尝试次数。
+只要 `apiRetry` 是 counted 变体，UI 就显示当前重试次数；`attempt=1/2`
+不能被降级成通用 `ChatLoading`，否则用户无法判断 429 等错误是否正在持续恢复。
+这里的 `attempt` 是投影层已经转换后的“第几次重试”，不是原始
+`maxAttempts` 总尝试次数。
+
+当状态携带非空 `errorDetail` 时，重试文案变为可点击触发器。浮窗显示最近一次
+重试失败的错误响应摘要，并可包含 `HTTP nnn`。没有详情时仍显示普通状态文案，
+不生成空浮窗；状态更新后浮窗内容跟随最新快照替换。
 
 ```text
 ProductProjection.control.apiRetry
               |
               v
       TurnChatLoadingSlot
-        | attempt 1/2 --------------> ChatLoading
-        | attempt 3+ ----------------> Reconnecting... 3/10
+        | counted -------------------> Reconnecting... x/y
+        | errorDetail present --------> clickable retry label -> latest error popover
+        | no counted state -----------> ChatLoading (only when the turn is otherwise loading)
         | progress / terminal --------> apiRetry cleared
         v
   current live turn only
 ```
 
-该门槛只存在于 timeline presentation；不得在
+计数和详情都由同一个 `control.apiRetry` 所有者提供；不得在
 `normalizeCodezApiRetryStatus`、`ProductProjection`、service tracker 或 protocol schema
-中把 1/2 次重试改成 `null`，否则会丢失恢复态，影响 snapshot、desktop continuous 和
-mobile replayable 的恢复一致性。`attempt <= 2` 且当前 turn 被权限/问答/maintenance
-阻塞时，仍遵守现有 gating，不额外显示 generic loading。
+中把早期重试改成 `null`，否则会丢失恢复态，影响 snapshot、desktop continuous 和
+mobile replayable 的恢复一致性。若当前 turn 被权限/问答/maintenance 阻塞，
+仍遵守现有 loading gate。
 
 ## State lifecycle
 
@@ -130,7 +137,8 @@ one CLI projection -----+
 
 ## Boundaries
 
-- No protocol or schema changes.
+- `control.apiRetry` 增加可选的 `errorStatus` 与有界 `errorDetail` 字段；
+  详情只保留在当前运行态，不写入持久化 transcript。
 - No retry transcript part or timeline row is persisted. The display is a
   transient live-turn slot driven only by `control.apiRetry`.
 - The existing `retryNotice` row remains reserved for user-triggered assistant
@@ -138,8 +146,9 @@ one CLI projection -----+
 - No changes to send, queue, stop, or row retry behavior.
 - No changes to retry count, backoff, retry classification, or final-failure
   behavior. Fault catalog cases such as N03/N04 still own those decisions.
-- The `attempt <= 2` rule is presentation-only: runtime retry count, backoff,
-  retry classification, clearing boundary, and final-failure behavior remain unchanged.
+- Retry count, backoff, retry classification, clearing boundary, and final-failure
+  behavior remain unchanged. The change only removes the renderer's early-attempt
+  hiding rule and adds a transient details popover.
 - No changes to desktop `desktop-continuous` or mobile
   `web-remote-replayable` delivery semantics.
 - Read-only Subagent detail still forbids manual retry commands; showing the
@@ -153,27 +162,25 @@ one CLI projection -----+
 - The projected snapshot must pass the V4 runtime schema.
 - The same `state.updated` retry delta must survive both delivery profile
   filters.
-- Timeline tests prove `maxAttempts=11` renders `3/10` only when `attempt=3`,
-  `attempt=1/2` render generic `ChatLoading` without retry text, retry status
-  replaces `ChatLoading` at `attempt=3`, and `apiRetry=null` renders nothing.
+- Timeline tests prove `maxAttempts=11` renders `1/10`, `2/10`, and `3/10`,
+  retry status replaces `ChatLoading` for every counted attempt, a supplied
+  `errorDetail` renders a clickable latest-error popover, and `apiRetry=null`
+  renders nothing.
 - Read-only `SessionPane` tests prove child details receive the same state while
   the composer remains absent.
 - The SAT25 desktop fault-stream E2E exercises both owners in one run: Main
-  observes the hidden early attempts and a visible `3/10` retry before clearing
-  on the successful tool response; the spawned child observes the hidden early
-  retry in its read-only detail pane and clears on text progress.
+  observes `1/10` and `2/10`, opens the latest-error popover, then observes
+  `3/10` before clearing on the successful tool response; the spawned child
+  observes the same counted retry in its read-only detail pane and clears on
+  text progress.
 
-## Implementation status (2026-08-17)
+## Implementation status (2026-10-20)
 
-1. 已在 `packages/ui/src/v4/ConversationTurnGroup.tsx` 的
-   `TurnChatLoadingSlot` 中增加 presentation-only 的
-   `visibleRetryStatus`：`attempt=1/2` 回退到 `ChatLoading`，`attempt>=3` 才
-   进入 `ChatApiRetryStatus`；阻塞交互的既有 loading gate 保持不变。
-2. 已在 `packages/ui/test/v4ConversationTurnGroup.test.ts` 覆盖 attempts `1`、`2`、
-   `3`，以及阻塞交互下的 loading/retry 互斥。
-3. `ChatApiRetryStatus`、projection normalization、runtime snapshot、协议 schema、
-   i18n 和 retry lifecycle 均未修改；SAT25 fixture/manifest 只增加 Main 的第二、
-   第三次 429，使 UI 可观察到隐藏早期尝试与可见 `3/10`。
-4. 验证结果：focused UI test 53/53、`pnpm typecheck`、`pnpm lint`（0 error）和
-   conversation coverage audit 通过。SAT25 WDIO E2E 已完成构建，但当前环境缺少
-   可下载的 macOS arm64 Chromedriver，启动阶段失败，待具备 driver 后复跑。
+1. `TurnChatLoadingSlot` 对所有 counted retry 直接渲染 `ChatApiRetryStatus`，
+   不再按 attempt 隐藏计数；Codex 原生重试继续只显示上游报告的计数。
+2. counted 与 Codex retry state 都可携带当前失败的有界详情；点击状态文案打开
+   最新错误浮窗，进度或终态清理后详情随状态一起消失。
+3. projection、协议 schema、legacy task compatibility 和 i18n 同步扩展；
+   retry 详情仍是运行态，不进入 transcript 或 durable session error。
+4. 回归测试覆盖早期计数、详情投影、popover 触发器和 native retry 生命周期；
+   SAT25 fixture/manifest 同步验证 Main 与 child 的可见计数和详情。

@@ -2285,27 +2285,7 @@ describe("ConversationTurnGroup assistant history status", () => {
 });
 
 describe("ConversationTurnGroup ChatLoading lifecycle", () => {
-  it("第三次 retry 才替换当前 turn 底部的通用 loading，并保留 3/10 计数口径", () => {
-    const html = renderUnit(
-      baseUnit({
-        isRunning: true,
-        assistantHistoryDefaultOpen: true,
-      }),
-      {
-        apiRetry: {
-          attempt: 3,
-          maxAttempts: 11,
-          nextRetryAt: 1_700_000_001_000,
-          reasonCode: "fault.provider.rateLimited",
-        },
-      },
-    );
-
-    expect(html).toContain("重新连接中... 3/10");
-    expect(html).not.toContain('data-testid="chat-loading"');
-  });
-
-  it.each([1, 2])("attempt=%d 时隐藏 retry 文案并继续显示通用 loading", (attempt) => {
+  it.each([1, 2, 3])("attempt=%d 直接显示 retry 计数并替换通用 loading", (attempt) => {
     const html = renderUnit(
       baseUnit({
         isRunning: true,
@@ -2321,12 +2301,35 @@ describe("ConversationTurnGroup ChatLoading lifecycle", () => {
       },
     );
 
-    expect(html).not.toContain("重新连接中...");
-    expect(html).toContain('data-testid="chat-loading"');
+    expect(html).toContain(`重新连接中... ${attempt}/10`);
+    expect(html).not.toContain('data-testid="chat-loading"');
     expect(html).toContain('data-codez-chat-loading-slot="true"');
   });
 
-  it("attempt<=2 时仍遵守阻塞交互的 loading gate", () => {
+  it("retry detail is attached to the clickable status", () => {
+    const html = renderUnit(
+      baseUnit({
+        isRunning: true,
+        assistantHistoryDefaultOpen: true,
+      }),
+      {
+        apiRetry: {
+          attempt: 1,
+          maxAttempts: 11,
+          nextRetryAt: 1_700_000_001_000,
+          reasonCode: "fault.provider.rateLimited",
+          errorStatus: 429,
+          errorDetail: '{"error":{"code":"rate_limit_reached"}}',
+        },
+      },
+    );
+
+    expect(html).toContain("重新连接中... 1/10");
+    expect(html).toContain('data-testid="v4-api-retry-status"');
+    expect(html).toContain('aria-label="查看最近一次重试错误"');
+  });
+
+  it("retry status remains hidden when the turn is blocked by interaction", () => {
     const html = renderUnit(
       baseUnit({
         isRunning: true,

@@ -28,19 +28,27 @@ describe("Main/Subagent provider retry 时间线状态 E2E", () => {
     await clearAppData();
   });
 
-  it("SAT25: 前两次 retry 保持 loading，第三次才显示计数并随进展消失", async function () {
+  it("SAT25: 每次 retry 显示计数，点击状态可查看最近错误并随进展消失", async function () {
     this.timeout(240000);
     await prepareV4ConversationE2E();
 
     await sendV4Prompt(
       `${PARENT_MARKER}: launch one background Agent and finish after its completed task notification with ${PARENT_DONE}.`,
     );
-    const mainEarlyRetryState = await waitForVisiblePane(
+    const mainFirstRetryState = await waitForVisiblePane(
       MAIN_PANE_SELECTOR,
-      (state) => state.hasGenericLoading && !hasRetryText(state.liveTailText),
-      "Main 前两次 retry 没有按 loading 展示且隐藏重连文案",
+      (state) => hasRetryAttemptText(state.liveTailText, 1) && !state.hasGenericLoading,
+      "Main 首次 retry 没有显示 1/10 计数",
     );
-    expect(mainEarlyRetryState.hasGenericLoading).toBe(true);
+    expect(mainFirstRetryState.hasGenericLoading).toBe(false);
+    await openRetryDetails(MAIN_PANE_SELECTOR, "AccountRateLimitExceeded");
+
+    const mainSecondRetryState = await waitForVisiblePane(
+      MAIN_PANE_SELECTOR,
+      (state) => hasRetryAttemptText(state.liveTailText, 2) && !state.hasGenericLoading,
+      "Main 第二次 retry 没有显示 2/10 计数",
+    );
+    expect(mainSecondRetryState.hasGenericLoading).toBe(false);
 
     const mainRetryState = await waitForVisiblePane(
       MAIN_PANE_SELECTOR,
@@ -64,10 +72,11 @@ describe("Main/Subagent provider retry 时间线状态 E2E", () => {
 
     const retryState = await waitForVisiblePane(
       CHILD_PANE_SELECTOR,
-      (state) => state.hasGenericLoading && !hasRetryText(state.liveTailText),
-      "child 前两次以内的 retry 没有按 loading 展示且隐藏重连文案",
+      (state) => hasRetryAttemptText(state.liveTailText, 1) && !state.hasGenericLoading,
+      "child 首次 retry 没有显示 1/10 计数",
     );
-    expect(retryState.hasGenericLoading).toBe(true);
+    expect(retryState.hasGenericLoading).toBe(false);
+    await openRetryDetails(CHILD_PANE_SELECTOR, "AccountRateLimitExceeded");
 
     await waitForVisiblePane(
       CHILD_PANE_SELECTOR,
@@ -96,6 +105,36 @@ async function openChildSidePane() {
     timeoutMsg: "running child 没有右侧会话入口",
   });
   await action.click();
+}
+
+async function openRetryDetails(paneSelector: string, expectedText: string) {
+  await browser.waitUntil(
+    async () =>
+      browser.execute((selector) => {
+        const pane = Array.from(document.querySelectorAll<HTMLElement>(selector)).find(
+          (candidate) => candidate.getClientRects().length > 0,
+        );
+        const trigger = pane?.querySelector<HTMLElement>(
+          '[data-testid="v4-api-retry-status"], [data-testid="v4-codex-retry-status"]',
+        );
+        if (!trigger) return false;
+        trigger.click();
+        return true;
+      }, paneSelector),
+    { timeout: 30000, interval: 100, timeoutMsg: "retry 状态详情触发器没有出现" },
+  );
+  await browser.waitUntil(
+    async () =>
+      browser.execute((text) => {
+        const details = document.querySelector<HTMLElement>(
+          '[data-testid="v4-api-retry-status-details"], [data-testid="v4-codex-retry-status-details"]',
+        );
+        return Boolean(
+          details && details.getClientRects().length > 0 && details.innerText.includes(text),
+        );
+      }, expectedText),
+    { timeout: 10000, interval: 100, timeoutMsg: "retry 状态详情浮窗没有显示最近错误" },
+  );
 }
 
 interface VisiblePaneState {

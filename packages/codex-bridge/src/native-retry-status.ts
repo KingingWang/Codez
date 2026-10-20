@@ -7,13 +7,26 @@ export type NativeRetryState = {
   status: Extract<ApiRetryState, { source: "codex" }>;
 } | null;
 
+const MAX_RETRY_ERROR_DETAIL_CHARS = 16_384;
+
 function optionalRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
 }
 
-/** Only the structured status is safe to show; native error details may contain provider data. */
+/** 原生 additionalDetails 可能是 provider 响应体；只保留有界文本，避免快照被异常正文撑大。 */
+export function retryErrorDetail(error: unknown): string | null {
+  const detail = optionalRecord(error).additionalDetails;
+  if (typeof detail !== "string") return null;
+  const normalized = detail.trim();
+  if (!normalized) return null;
+  return normalized.length > MAX_RETRY_ERROR_DETAIL_CHARS
+    ? `${normalized.slice(0, MAX_RETRY_ERROR_DETAIL_CHARS - 1)}…`
+    : normalized;
+}
+
+/** HTTP 状态码只接受结构化字段；正文另行做有界处理。 */
 export function retryHttpStatus(error: unknown): number | null {
   const info = optionalRecord(optionalRecord(error).codexErrorInfo);
   const value = optionalRecord(info.responseStreamDisconnected).httpStatusCode;
@@ -27,11 +40,9 @@ const MAX_REPORTED_RETRY_COUNT = 1000;
 /**
  * 从原生 willRetry 通知的 error.message 中仅提取正整数进度对 (attempt, maxRetries)，
  * 例如 "Reconnecting... 1/5" -> { attempt: 1, maxRetries: 5 }。
- * 绝不透传原始 message 或 additionalDetails，若未携带有效进度则返回 null，不伪造计数。
+ * 不从 message 之外伪造计数；没有携带有效进度则返回 null。
  */
-export function retryAttemptCounts(
-  error: unknown,
-): { attempt: number; maxRetries: number } | null {
+export function retryAttemptCounts(error: unknown): { attempt: number; maxRetries: number } | null {
   const message = optionalRecord(error).message;
   if (typeof message !== "string") return null;
   const match = /(\d+)\s*\/\s*(\d+)/.exec(message);
@@ -54,7 +65,7 @@ export function retryAttemptCounts(
  * Bug 原因：原生 willRetry 通知以前完全不进入会话投影，用户看不到模型接口正在重试。
  * 只有“最后一个 inProgress turn”的重试才可见：过期 turn、已结束 turn 的通知既不能创建
  * 也不能复活状态；终态（willRetry 非 true）清除该 turn 的重试。状态是瞬时的显示事实，
- * 归属 Codex，桥只提取受校验的 HTTP 状态码和正整数重试进度对，不复制可能含敏感 provider 信息的错误正文。
+ * 归属 Codex，桥只提取受校验的 HTTP 状态码、正整数重试进度对和有界错误详情。
  */
 export function applyNativeRetry(
   thread: JsonObject,
@@ -70,19 +81,27 @@ export function applyNativeRetry(
   if (activeTurn.id !== turnId || activeTurn.status !== "inProgress") return unchanged;
   const httpStatusCode = retryHttpStatus(params.error);
   const counts = retryAttemptCounts(params.error);
+  const errorDetail = retryErrorDetail(params.error);
   const attempt = counts?.attempt ?? null;
   const maxRetries = counts?.maxRetries ?? null;
   if (
     current?.turnId === turnId &&
     current.status.httpStatusCode === httpStatusCode &&
     (current.status.attempt ?? null) === attempt &&
-    (current.status.maxRetries ?? null) === maxRetries
+    (current.status.maxRetries ?? null) === maxRetries &&
+    (current.status.errorDetail ?? null) === errorDetail
   )
     return unchanged;
   return {
     retry: {
       turnId,
-      status: { source: "codex", httpStatusCode, attempt, maxRetries },
+      status: {
+        source: "codex",
+        httpStatusCode,
+        attempt,
+        maxRetries,
+        ...(errorDetail ? { errorDetail } : {}),
+      },
     },
     changed: true,
   };

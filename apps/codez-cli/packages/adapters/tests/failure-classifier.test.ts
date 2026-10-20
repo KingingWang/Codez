@@ -815,6 +815,8 @@ describe("classifyModelFailure provider business codes", () => {
       providerErrorCode: "credit_balance_exhausted",
       providerErrorMessage: message,
       providerRequestId: "req_credit_exhausted",
+      providerErrorDetail:
+        '{"request_id":"req_credit_exhausted","error":{"code":"credit_balance_exhausted","type":"insufficient_quota"}}',
     });
   });
 

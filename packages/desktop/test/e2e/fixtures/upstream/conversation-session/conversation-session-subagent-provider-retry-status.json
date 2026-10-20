@@ -60,12 +60,12 @@
     },
     {
       "id": "subagent-provider-retry-main-second-429",
-      "description": "Main 第二次请求继续返回可重试 429，保持早期 retry 仍按 loading 展示。",
+      "description": "Main 第二次请求继续返回可重试 429，仍显示早期 retry 计数。",
       "metadata": {
         "kind": "main",
         "timingPolicy": "fault-stream",
         "source": "synthetic",
-        "syntheticReason": "第二次 Main retry 仍失败，确保 attempt=2 不显示计数。"
+        "syntheticReason": "第二次 Main retry 仍失败，确保 attempt=2 仍显示计数。"
       },
       "maxMatches": 1,
       "match": {
@@ -92,12 +92,12 @@
     },
     {
       "id": "subagent-provider-retry-main-third-429",
-      "description": "Main 第三次请求继续返回可重试 429，随后进入可见的 3/10 retry。",
+      "description": "Main 第三次请求继续返回可重试 429，随后显示 3/10 retry。",
       "metadata": {
         "kind": "main",
         "timingPolicy": "fault-stream",
         "source": "synthetic",
-        "syntheticReason": "第三次 Main retry 仍失败，确保 attempt=3 达到 UI 显示阈值。"
+        "syntheticReason": "第三次 Main retry 仍失败，确保 attempt=3 仍显示计数。"
       },
       "maxMatches": 1,
       "match": {

@@ -885,6 +885,8 @@ export async function* runStreamText(input: {
           { ...failure, retryReason: ModelRetryReason.AuthRefresh },
           requestHeaders,
           responseHeaders,
+          undefined,
+          error,
         );
         continue;
       }
@@ -901,6 +903,7 @@ export async function* runStreamText(input: {
           requestHeaders,
           responseHeaders,
           admission,
+          error,
         );
         continue;
       }
@@ -952,6 +955,7 @@ export async function* runStreamText(input: {
         requestHeaders,
         responseHeaders,
         admission,
+        error,
       );
       // 退避期间不持票：槽位让给别人，重试再准入。
       admission.release();
@@ -1422,6 +1426,7 @@ async function handleStreamErrorEvent(
       input.requestHeaders,
       responseHeaders,
       input.admission,
+      error,
     );
     return streamChunkResult({
       emittedError: true,
@@ -1486,6 +1491,7 @@ async function handleStreamErrorEvent(
     input.requestHeaders,
     responseHeaders,
     input.admission,
+    error,
   );
   // 退避期间不持票：这次尝试到此结束，槽位让给别人。
   input.admission.release();
@@ -1753,7 +1759,11 @@ async function publishRetryScheduledStatus(
   requestHeaders: Record<string, string>,
   responseHeaders: Record<string, string>,
   admission?: AttemptAdmission,
+  failureError?: unknown,
 ): Promise<void> {
+  const providerErrorDetail = failureError
+    ? inspectProviderFailure(failureError).providerErrorDetail
+    : undefined;
   await publishModelStatus(
     {
       ...statusContext,
@@ -1769,6 +1779,7 @@ async function publishRetryScheduledStatus(
       statusCode: failure.statusCode,
       errorCode: failure.code,
       retryAfterMs: failure.retryAfterMs,
+      ...(providerErrorDetail ? { errorDetail: providerErrorDetail } : {}),
       timestamp: new Date().toISOString(),
       type: "model_retry_scheduled",
     },
