@@ -495,6 +495,8 @@ export async function runGenerateText(input: {
           { ...failure, retryReason: ModelRetryReason.AuthRefresh },
           requestHeaders,
           responseHeaders,
+          undefined,
+          error,
         );
         continue;
       }
@@ -522,6 +524,7 @@ export async function runGenerateText(input: {
           requestHeaders,
           responseHeaders,
           admission,
+          error,
         );
         continue;
       }
@@ -549,6 +552,7 @@ export async function runGenerateText(input: {
         requestHeaders,
         responseHeaders,
         admission,
+        error,
       );
 
       // 退避期间不持票：槽位让给别人，重试再准入。
@@ -686,7 +690,11 @@ async function publishRetryScheduledStatus(
   requestHeaders: Record<string, string>,
   responseHeaders: Record<string, string>,
   admission?: AttemptAdmission,
+  failureError?: unknown,
 ): Promise<void> {
+  const providerErrorDetail = failureError
+    ? inspectProviderFailure(failureError).providerErrorDetail
+    : undefined;
   await publishModelStatus(
     {
       ...statusContext,
@@ -702,6 +710,7 @@ async function publishRetryScheduledStatus(
       statusCode: failure.statusCode,
       errorCode: failure.code,
       retryAfterMs: failure.retryAfterMs,
+      ...(providerErrorDetail ? { errorDetail: providerErrorDetail } : {}),
       timestamp: new Date().toISOString(),
       type: "model_retry_scheduled",
     },
