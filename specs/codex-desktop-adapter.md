@@ -81,9 +81,14 @@ with that project's explicit Host `project_id` appear under it. New project
 threads use its primary root as cwd and native `runtimeWorkspaceRoots` containing
 the cwd and the other current roots. For native creation, the Host verifies the
 selected project/cwd and resolves the roots before the bridge's `thread/start`.
-The bridge writes a namespaced, durable native `threadSource` origin marker;
-only this marker may seed the Host's **initial** project assignment when the
-first Codex summary creates its task row. An explicit unclassified creation has
+The bridge writes a namespaced, durable native `threadSource` origin marker.
+Once `thread/start` or `thread/fork` returns its authoritative native thread ID,
+the Host immediately reserves the created task's project ownership (`cli_created_at = NULL`,
+so unsubmitted prewarm drafts stay hidden from task lists) before returning the
+creation/fork response, allowing immediate `v4/conversation/subscribe` on remote
+and multi-folder projects to resolve ownership without racing asynchronous
+`sessions-index` ingestion; if an index summary arrives first or rebuilds an
+unreserved row, `threadSource` still seeds the **initial** assignment. An explicit unclassified creation has
 a distinct marker, so unique-root migration heuristics cannot claim it. Existing
 task rows, including rows moved by the user, never have their assignment
 overwritten by later native summaries. An unknown/missing project fails closed,
@@ -110,7 +115,8 @@ resolution/validation failure must reject before starting a turn.
 
 ```text
 create: project draft → Host validate A+B → native start(cwd=A, roots=[A,B], origin)
-       → native summary → Host first-insert(project_id=origin) → project tree
+       → Host reserveCreatedTask(id, project_id) → ACK / immediate subscribe
+       → native summary → Host applyCliFacts → project tree
 open:  task ID → Host project_id+roots snapshot → bridge cold resume(roots=[cwd,...])
        → desktop continuous / mobile replayable share that runtime
 view:  Host task rows + projects → single-root cwd projection / multi-root ID match

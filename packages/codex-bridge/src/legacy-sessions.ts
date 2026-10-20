@@ -7,6 +7,7 @@ import { isSelectionSideChatThread } from "./selection-side-chat.js";
 import { object, string, unsupported, type JsonObject } from "./json.js";
 import { projectLegacySnapshot } from "./projection.js";
 import { listSessionSubagents } from "./session-subagents.js";
+import { listTargetedThreads } from "./thread-queries.js";
 import {
   readControlModelSettings,
   type ControlModelThreadOverride,
@@ -52,9 +53,16 @@ export async function handleLegacySession(
       : {}),
   };
   if (method === "session/list") {
+    const sessionIds =
+      p.sessionIds === undefined
+        ? undefined
+        : z.array(z.string().trim().min(1)).min(1).max(64).parse(p.sessionIds);
+    const threads = sessionIds
+      ? await listTargetedThreads(rpc, store.cwd, sessionIds, (id) => store.get(id)?.thread)
+      : await store.list();
     return {
       // 辅助对话 child 与任务列表同一隐藏规则（spec: codex-selection-side-chat）。
-      sessions: (await store.list())
+      sessions: threads
         .filter((thread) => !isSelectionSideChatThread(thread))
         .map((thread) => {
           const session = projectLegacySnapshot(thread, store.cwd).session;

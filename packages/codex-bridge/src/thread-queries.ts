@@ -10,10 +10,12 @@ import {
   type V4ConversationRowsRangeResult,
 } from "@codez/shared/codez-protocol-v4";
 import type { CodexRpcPort } from "./contract.js";
+import { decorateNativeThread } from "./command-input.js";
 import { sameExecutionPath } from "./execution-path.js";
-import { object } from "./json.js";
+import { object, type JsonObject } from "./json.js";
 import { paginateNativeRows } from "./native-paging.js";
 import { canonicalNativeThreads } from "./projection.js";
+import { parentThreadIdOf, parentThreadOwnedByWorkspace } from "./thread-load.js";
 
 /** 工作区会话列表：原生 thread/list 分页 + 物理路径归属过滤（不触碰投影缓存）。 */
 export async function listWorkspaceThreads(rpc: CodexRpcPort, cwd: string): Promise<unknown[]> {
@@ -34,6 +36,51 @@ export async function listWorkspaceThreads(rpc: CodexRpcPort, cwd: string): Prom
   const owned = await Promise.all(rows.map((row) => sameExecutionPath(object(row).cwd, cwd)));
   // 分页只收集原始事实；完整校验与同 ID rollout 选择由投影单一 owner 处理。
   return canonicalNativeThreads(rows.filter((_, index) => owned[index]));
+}
+
+/**
+ * 按指定 sessionIds 读取线程身份（供 subscribeConversationV4 父链回溯与子代理索引修复使用）。
+ * 修复原因：过去 session/list 忽略 sessionIds 全量调用 thread/list 扫描工作区全部历史，
+ * 且 thread/list 的 sourceKinds 不含 subAgent*，既拖慢每次会话订阅（远端实测 1.4s+）又查不到冷启子线程。
+ * 这里优先复用已加载状态，未加载时只做免锁只读 thread/read，不触发 resume 或全量扫描。
+ */
+export async function listTargetedThreads(
+  rpc: CodexRpcPort,
+  cwd: string,
+  sessionIds: readonly string[],
+  getCachedThread: (id: string) => JsonObject | undefined,
+): Promise<unknown[]> {
+  const uniqueIds = [...new Set(sessionIds)];
+  const resolved = await Promise.all(
+    uniqueIds.map(async (id) => {
+      const cached = getCachedThread(id);
+      let metadata: JsonObject;
+      if (cached) {
+        metadata = cached;
+      } else {
+        try {
+          const read = object(await rpc.request("thread/read", { threadId: id }));
+          metadata = decorateNativeThread(read);
+        } catch {
+          return null;
+        }
+      }
+      const parentThreadId = parentThreadIdOf(metadata);
+      const ownedByWorkspace = await sameExecutionPath(metadata.cwd, cwd);
+      const ownedByParent =
+        !ownedByWorkspace &&
+        parentThreadId !== undefined &&
+        (await parentThreadOwnedByWorkspace(
+          rpc,
+          getCachedThread(parentThreadId),
+          cwd,
+          parentThreadId,
+        ));
+      if (!ownedByWorkspace && !ownedByParent) return null;
+      return { ...metadata, cwd, turns: [] };
+    }),
+  );
+  return canonicalNativeThreads(resolved.filter((thread) => thread !== null));
 }
 
 /** 原生队列读取（写操作走命令层，这里只是投影数据源）。 */
