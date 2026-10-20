@@ -5,8 +5,14 @@ import { createInterface } from "node:readline";
 
 // 基础 argv 固定；仅允许 server 级配置覆盖。
 const argv = process.argv.slice(2);
-assert.deepEqual(argv.slice(0, 3), ["app-server", "--listen", "stdio://"]);
-const extraArgv = argv.slice(3);
+assert.deepEqual(argv.slice(0, 5), [
+  "app-server",
+  "--listen",
+  "stdio://",
+  "-c",
+  "features.instant_interrupt=false",
+]);
+const extraArgv = argv.slice(5);
 assert.ok(
   extraArgv.length % 2 === 0 &&
     extraArgv.every((arg, index) =>
